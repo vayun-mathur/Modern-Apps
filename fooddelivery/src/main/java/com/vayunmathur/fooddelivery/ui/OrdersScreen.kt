@@ -79,7 +79,7 @@ fun OrdersScreen(onTrackOrder: (Int) -> Unit = {}) {
             onDismiss = { ratingOrder = null },
             onSubmit = { rating, note, extraTipCents ->
                 scope.launch {
-                    target.uuid?.let {
+                    val submitted = target.uuid?.let {
                         BitesOrders.submitFeedback(
                             it,
                             FeedbackRequest(
@@ -89,8 +89,12 @@ fun OrdersScreen(onTrackOrder: (Int) -> Unit = {}) {
                                 tips = extraTipCents,
                             ),
                         )
-                    }
-                    ratingOrder = null
+                    } == true
+                    // Only dismiss on success: closing unconditionally made a failed
+                    // submit (offline, server error, no uuid) look exactly like a
+                    // delivered rating -- including an extra tip the user believes
+                    // was sent. Staying open lets them retry or cancel explicitly.
+                    if (submitted) ratingOrder = null
                 }
             },
         )

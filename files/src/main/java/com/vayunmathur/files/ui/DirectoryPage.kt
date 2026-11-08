@@ -2,7 +2,6 @@ package com.vayunmathur.files.ui
 
 import android.content.Intent
 import android.os.Build
-import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -16,11 +15,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import com.vayunmathur.files.R
+import com.vayunmathur.files.data.saf.StorageUris
 import com.vayunmathur.files.platform.FilesActions
 import com.vayunmathur.files.platform.FilesUiState
 import com.vayunmathur.files.platform.FilesViewModel
 import com.vayunmathur.library.ui.SnackbarHostState
-import java.io.File
 
 /**
  * Binds [FilesViewModel] to the stateless [DirectoryScreen].
@@ -93,9 +92,10 @@ fun DirectoryPage(
     val treeLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             if (uri != null && zipToUnzip != null) {
-                val path = uri.path?.split(":")?.lastOrNull()?.let {
-                    File(Environment.getExternalStorageDirectory(), it)
-                } ?: currentDirectory
+                // Resolve the picked tree against its own volume: splitting the
+                // URI on ':' and re-rooting at the primary volume extracts an
+                // SD-card pick into the same-named internal folder instead.
+                val path = StorageUris.fileForTreeUri(context, uri) ?: currentDirectory
                 viewModel.unzip(zipToUnzip, path)
             }
         }

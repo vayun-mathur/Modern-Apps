@@ -22,6 +22,7 @@ object ReconcileUseCase {
         val profileSerial: Long,
         val appWidgetId: Int?,
         val hidden: Boolean,
+        val className: String? = null,
     ) {
         val key: PackageKey? get() = packageName?.let { PackageKey(it, profileSerial) }
     }
@@ -47,6 +48,8 @@ object ReconcileUseCase {
         installed: Set<PackageKey>,
         unavailable: Set<PackageKey>,
         boundWidgetIds: Set<Int>,
+        unavailableProfiles: Set<Long> = emptySet(),
+        installedActivities: Set<ActivityKey> = emptySet(),
     ): List<Action> = items.mapNotNull { item ->
         when (item.type) {
             // A folder's existence depends on its children, which FolderRules owns.
@@ -63,7 +66,28 @@ object ReconcileUseCase {
                 val key = item.key
                 when {
                     key == null -> Action.Delete(item.id)
+                    // A profile that is off (quiet mode) at cold start has sent
+                    // no onPackagesUnavailable callback yet, and its packages
+                    // cannot be enumerated to fill [unavailable]. The profile
+                    // itself is the only reliable signal, so hide by profile:
+                    // deleting here wipes every work-profile icon whenever
+                    // the launcher restarts while the profile is paused.
+                    item.profileSerial in unavailableProfiles ->
+                        Action.SetHidden(item.id, true).takeUnless { item.hidden }
                     key in unavailable -> Action.SetHidden(item.id, true).takeUnless { item.hidden }
+                    // The package is still installed but the stored launcher
+                    // activity is gone (an update renamed or removed it):
+                    // the row can never launch again, so it is dead weight
+                    // exactly like an uninstalled app. Only APPLICATION rows
+                    // are judged this way - a pinned shortcut's activity is
+                    // not required to be a launcher activity at all. An
+                    // empty [installedActivities] means the caller supplied
+                    // no activity list, in which case this check is skipped
+                    // rather than deleting everything.
+                    key in installed && item.type == LauncherItemType.APPLICATION &&
+                        installedActivities.isNotEmpty() && item.className != null &&
+                        ActivityKey(key.packageName, item.className, key.profileSerial) !in installedActivities ->
+                        Action.Delete(item.id)
                     key in installed -> Action.SetHidden(item.id, false).takeIf { item.hidden }
                     else -> Action.Delete(item.id)
                 }

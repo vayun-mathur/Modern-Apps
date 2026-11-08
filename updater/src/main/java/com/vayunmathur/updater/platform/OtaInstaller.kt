@@ -277,6 +277,12 @@ object OtaInstaller {
         }
     }
 
+    // Broad catch is deliberate: bind() crosses the binder and throws undocumented
+    // RuntimeExceptions (not just SecurityException) when the service is unavailable — the
+    // same condition a `false` return reports. Without it the throw escapes install(),
+    // whose caller treats the result as a value, so the run would crash with no failure
+    // notification and no cleanup.
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun awaitPayload(
         engine: PayloadEngine,
         packageFile: File,
@@ -312,7 +318,15 @@ object OtaInstaller {
             )
         }
 
-        if (!engine.bind(onStatusUpdate, onComplete)) {
+        // A throw reports the same unavailable-service condition as a `false` return.
+        val bound =
+            try {
+                engine.bind(onStatusUpdate, onComplete)
+            } catch (e: Exception) {
+                Log.error(TAG, "could not bind update_engine", e)
+                false
+            }
+        if (!bound) {
             continuation.resume(Result.Failed("could not attach to the system update service"))
             return@suspendCancellableCoroutine
         }

@@ -4,6 +4,7 @@
     <string name="order_confirmed">Order Confirmed</string>
     <string name="order_placed">Order placed!</string>
     <string name="your_order_is_being_prepared">Your order is being prepared.</string>
+    <string name="view_orders">View orders</string>
     <string name="checkout">Checkout</string>
     <string name="order_summary">Order Summary</string>
     <string name="order_type">Order Type</string>

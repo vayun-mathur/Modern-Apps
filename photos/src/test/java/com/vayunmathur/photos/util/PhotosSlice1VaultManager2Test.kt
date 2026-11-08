@@ -1,5 +1,7 @@
 package com.vayunmathur.photos.util
 
+import android.content.ContentResolver
+import android.content.ContextWrapper
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
@@ -11,11 +13,15 @@ import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.mock
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
@@ -160,5 +166,34 @@ class PhotosSlice1VaultManager2Test {
         val dir = File(context.cacheDir, "never-created-${System.nanoTime()}")
         manager.clearViewerCache(dir) // must not throw
         assertTrue(!File(dir, "vault_view").exists())
+    }
+
+    @Test
+    fun encryptAndMoveWithDeniedStreamThrowsWithoutLeavingPartials() {
+        // Simulate an expired read grant: the thumbnail still loads, but
+        // opening the full stream throws SecurityException — the raw exception
+        // a device delivers when a cloud document's grant is revoked after the
+        // gallery indexed it. (Mockito's inline maker stubs the final
+        // openInputStream; subclassing cannot — every stream API on
+        // ContentResolver is final in the compile SDK.)
+        val resolver = mock(ContentResolver::class.java)
+        `when`(resolver.loadThumbnail(any(), any(), any()))
+            .thenReturn(Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888))
+        `when`(resolver.openInputStream(any()))
+            .thenThrow(SecurityException("denied-open"))
+        val denyingManager = SecureFolderManager(object : ContextWrapper(context) {
+            override fun getContentResolver(): ContentResolver = resolver
+        })
+        val vaultDir = File(context.filesDir, "secure_vault")
+        val before = vaultDir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
+        assertFailsWith<SecurityException> {
+            denyingManager.encryptAndMove(
+                Uri.parse("content://denied/photo1"),
+                "grant-expired.jpg",
+                password,
+            )
+        }
+        val after = vaultDir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
+        assertEquals(before, after, "orphaned partial vault files")
     }
 }

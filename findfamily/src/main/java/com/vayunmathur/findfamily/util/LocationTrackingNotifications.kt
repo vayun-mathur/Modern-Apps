@@ -130,6 +130,19 @@ internal fun LocationTrackingService.notifyNoShow(
     message: String,
     alertId: Long,
     waypointId: Long?,
+) = notifyNoShowAlert(user, message, alertId, waypointId)
+
+/**
+ * Post a no-show notification from any [Context] (the tracking service above, or
+ * [com.vayunmathur.findfamily.platform.NoShowCheckWorker], which is where due
+ * alerts are actually claimed). Keeping this Context-based is what lets the
+ * worker deliver the alert instead of only logging it.
+ */
+internal fun Context.notifyNoShowAlert(
+    user: User,
+    message: String,
+    alertId: Long,
+    waypointId: Long?,
 ) {
     val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     FindFamilyNotificationChannels.ensureNoShowChannel(this, user.id, user.name)

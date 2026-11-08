@@ -74,7 +74,10 @@ class PwaActivity : ComponentActivity() {
         intent ?: return
         val urlFromExtra = intent.getStringExtra(EXTRA_URL)
         val urlFromData = intent.dataString ?: intent.getStringExtra(Intent.EXTRA_TEXT)
-        val url = urlFromExtra ?: extractHttpUrl(urlFromData ?: "") ?: return
+        // This activity is exported (pinned shortcuts), so the extra is sender-controlled:
+        // run it through the same fail-closed extractor as intent data instead of trusting
+        // it verbatim. Our own shortcuts carry clean https URLs, which pass through unchanged.
+        val url = BrowserUtils.extractHttpUrl(urlFromExtra ?: urlFromData ?: "") ?: return
         initialUrlState.value = url
         titleState.value = intent.getStringExtra(EXTRA_TITLE)
         labelRecentsEntry(url, titleState.value)
@@ -96,15 +99,5 @@ class PwaActivity : ComponentActivity() {
                 ActivityManager.TaskDescription(label)
             }
         )
-    }
-
-    private fun extractHttpUrl(text: String): String? {
-        val trimmed = text.trim()
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            val match = Regex("https?://\\S+").find(trimmed)
-            return match?.value ?: trimmed.substringBefore(" ")
-        }
-        Regex("https?://\\S+").find(trimmed)?.let { return it.value }
-        return null
     }
 }

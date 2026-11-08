@@ -201,9 +201,19 @@ class LogViewerViewModelTest {
         assertEquals("content", uri.scheme)
         assertEquals("${app.packageName}.BlobProvider", uri.authority)
         assertTrue(uri.toString().contains(vm.state.value.snapshotFileName.replace(" ", "%20")))
-        // The provider serves the snapshot bytes back, gzipped in between.
-        val text = app.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-        assertEquals("type: logcat\nfirst\nsecond\n", text)
+        // The provider serves the snapshot bytes back, gzipped in between. Robolectric
+        // emulates pipes with temp files, so unlike a real pipe a read does not block
+        // for openPipeHelper's writer thread: a first read can catch the file still
+        // empty. Reopen and reread until the snapshot arrives or a deadline passes.
+        val expected = "type: logcat\nfirst\nsecond\n"
+        val deadline = System.nanoTime() + 10_000_000_000L
+        var text: String? = null
+        while (System.nanoTime() < deadline) {
+            text = app.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            if (text == expected) break
+            Thread.sleep(5)
+        }
+        assertEquals(expected, text)
     }
 
     @Test

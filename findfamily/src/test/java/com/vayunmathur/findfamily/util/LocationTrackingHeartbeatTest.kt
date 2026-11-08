@@ -102,6 +102,15 @@ class LocationTrackingHeartbeatTest {
     }
 
     @Test
+    fun syncHeartbeatPublishesFixSpeed() = runBlocking {
+        service.lastKnownLocation = location().apply { speed = 13.5f }
+        service.syncHeartbeat()
+        val stored = repo.locationHistory(Networking.userid).first()
+        assertEquals(1, stored.size)
+        assertEquals(13.5f, stored[0].speed)
+    }
+
+    @Test
     fun syncHeartbeatWithoutLocationIsNoOp() = runBlocking {
         val before = repo.getAllUsers().size
         service.lastKnownLocation = null

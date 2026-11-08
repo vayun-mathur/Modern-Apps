@@ -62,6 +62,16 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     /** Set when the player ever tries a digit that disagrees with the solution. */
     private var madeMistake = false
 
+    /**
+     * Set once the dealt puzzle's win has been written to stats and achievements.
+     *
+     * Restarting a solved puzzle (the win overlay's play-again) keeps the same givens
+     * and solution, so without this the player could re-enter a solution they already
+     * know and farm wins, streaks and progress achievements off one puzzle. Cleared
+     * only by [newGame]: a fresh deal is a fresh record, a restart is not.
+     */
+    private var winRecorded = false
+
     /** Sequence numbers for answer-mode rejections, so repeats of one digit still animate. */
     private var rejectionAttempt = 0L
 
@@ -89,6 +99,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     fun newGame(config: GameConfig) {
         history.clear()
         madeMistake = false
+        winRecorded = false
         rejectionAttempt = 0
         _uiState.value = SudokuUiState(generating = true)
         viewModelScope.launch {
@@ -160,8 +171,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         mutate { state ->
             state.copy(
                 entries = state.entries.replacing(index, digit),
-                // A written digit makes its own pencil marks meaningless.
-                notes = state.notes.replacing(index, 0),
+                // A written digit makes its own pencil marks meaningless, and it is no
+                // longer a candidate anywhere it can be seen from.
+                notes = state.notesAfterPlacement(index, digit),
                 moveCount = state.moveCount + 1,
             )
         }
@@ -209,6 +221,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         val index = game.selected
         if (index !in 0 until game.size.cellCount || game.isGiven(index)) return
         if (game.isWon || game.isGameOver) return
+        // Nothing to clear: pushing history here would leave an undo step that visibly
+        // does nothing and count a move the player never made.
+        if (game.entries[index] == 0 && game.notes[index] == 0) return
         pushHistory(game)
         mutate { state ->
             state.copy(
@@ -242,7 +257,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         mutate { state ->
             state.copy(
                 entries = state.entries.replacing(index, state.solution[index]),
-                notes = state.notes.replacing(index, 0),
+                notes = state.notesAfterPlacement(index, state.solution[index]),
                 selected = index,
                 hintsUsed = state.hintsUsed + 1,
                 moveCount = state.moveCount + 1,
@@ -303,6 +318,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         if (game.isWon || !game.isComplete) return
         mutate { it.copy(isWon = true, selected = -1) }
 
+        // The board still shows its win on a restart replay; only the recording is once-only.
+        if (winRecorded) return
+        winRecorded = true
         statsRepository.recordGameWon(game.size, game.difficulty, game.elapsedSeconds)
         val manager = achievementsManager
         manager.onAchievementUnlocked("first_win")
@@ -324,6 +342,29 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         manager.onProgressUpdated("wins_10", totalWins)
         manager.onProgressUpdated("wins_50", totalWins)
         manager.onProgressUpdated("win_streak_5", statsRepository.getBestWinStreak())
+    }
+
+    /**
+     * The note masks after [digit] is written at [index]: the cell's own marks go, and the
+     * digit stops being a candidate in every cell that shares its row, column or box.
+     *
+     * Without the peer sweep a placed digit stayed pencilled into its neighbours, so the
+     * board kept claiming a digit was possible where it had just been ruled out — and the
+     * player had to erase those marks by hand after every placement.
+     */
+    private fun SudokuGameState.notesAfterPlacement(index: Int, digit: Int): List<Int> {
+        val clear = (1 shl (digit - 1)).inv()
+        val row = index / size.side
+        val col = index % size.side
+        val box = size.boxOf(index)
+        return notes.mapIndexed { other, mask ->
+            when {
+                other == index -> 0
+                other / size.side == row || other % size.side == col ||
+                    size.boxOf(other) == box -> mask and clear
+                else -> mask
+            }
+        }
     }
 
     private fun pushHistory(game: SudokuGameState) {

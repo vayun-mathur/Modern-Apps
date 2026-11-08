@@ -132,8 +132,10 @@ object HealthAPI {
             val newId = response.recordIdsList.firstOrNull()
             if (newId != null) {
                 Log.status("HealthAPI", "Successfully wrote record to Health Connect with ID: $newId")
-                // Remove old local record and replace with one containing HC ID
-                repo().deleteByIds(listOf(record.primaryKey))
+                // Remove old local record and replace with one containing HC ID.
+                // deleteByIds matches the `id` column, not primaryKey ("$id-$index"),
+                // so passing primaryKey deleted nothing and left a duplicate.
+                repo().deleteByIds(listOf(record.id))
                 val updatedRecord = record.copy(id = newId, primaryKey = "$newId-${record.index}")
                 repo().upsert(listOf(updatedRecord))
             }
@@ -283,6 +285,7 @@ object HealthAPI {
         period: PeriodType,
         dailyQuery: suspend (RecordType, Instant, Instant) -> List<com.vayunmathur.health.data.HealthDao.DailySum>,
         hourlyQuery: suspend (RecordType, Long, Long) -> List<com.vayunmathur.health.data.HealthDao.HourlySum>,
+        combine: (List<Double>) -> Double = { it.average() },
     ): List<Tuple3<Long, Double, Double>> = when (period) {
         PeriodType.Daily -> {
             dailyQuery(recordType, startTime, endTime).sortedBy { it.day }.map {
@@ -294,7 +297,7 @@ object HealthAPI {
                 val date = LocalDate.parse(it.day)
                 date.minus((date.dayOfWeek.ordinal + 1) % DAYS_PER_WEEK, DateTimeUnit.DAY).toEpochDays()
             }.map { (key, values) ->
-                Tuple3(key, values.map { it.totalValue }.average(), values.map { it.totalValue2 }.average())
+                Tuple3(key, combine(values.map { it.totalValue }), combine(values.map { it.totalValue2 }))
             }
         }
         PeriodType.Monthly -> {
@@ -302,7 +305,7 @@ object HealthAPI {
                 val date = LocalDate.parse(it.day)
                 date.minus(date.day - 1, DateTimeUnit.DAY).toEpochDays()
             }.map { (key, values) ->
-                Tuple3(key, values.map { it.totalValue }.average(), values.map { it.totalValue2 }.average())
+                Tuple3(key, combine(values.map { it.totalValue }), combine(values.map { it.totalValue2 }))
             }
         }
         PeriodType.Hourly -> {
@@ -327,6 +330,7 @@ object HealthAPI {
         recordType, startTime, endTime, period,
         dailyQuery = { t, s, e -> repo().getDailyAvgs(t, s, e) },
         hourlyQuery = { t, s, e -> repo().getHourlyAvgs(t, s, e) },
+        combine = ::combineForAverages,
     )
 
     suspend fun getListOfSums(
@@ -338,5 +342,12 @@ object HealthAPI {
         recordType, startTime, endTime, period,
         dailyQuery = { t, s, e -> repo().getDailySums(t, s, e) },
         hourlyQuery = { t, s, e -> repo().getHourlySums(t, s, e) },
+        // Weekly/monthly buckets of daily sums must be summed, not averaged:
+        // averaging reported e.g. mean daily steps as the month total.
+        combine = ::combineForSums,
     )
+
+    /** How a weekly/monthly bucket combines its daily values (test seam). */
+    internal fun combineForSums(values: List<Double>): Double = values.sum()
+    internal fun combineForAverages(values: List<Double>): Double = values.average()
 }

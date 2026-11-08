@@ -131,10 +131,15 @@ class BlobProvider : ContentProvider(), ContentProvider.PipeDataWriter<ByteArray
          * Compressed as it is written, so the uncompressed log never exists as one array.
          */
         fun getUri(blobName: String, write: (OutputStream) -> Unit): Uri {
+            // appendPath, not path: the name is one segment, and it embeds the title -
+            // which embeds the user's filter regex. path() would let a '#' start a
+            // fragment, a '?' a query and a '/' extra segments, so the Uri the share
+            // target hands back would no longer key the entry (and the display name
+            // would be only the last fragment of the name).
             val uri = Uri.Builder()
                 .scheme(ContentResolver.SCHEME_CONTENT)
                 .authority(AUTHORITY)
-                .path(blobName)
+                .appendPath(blobName)
                 .build()
 
             val compressed = ByteArrayOutputStream()

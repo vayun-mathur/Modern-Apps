@@ -83,6 +83,28 @@ class LocationReportingTaskTest {
     }
 
     @Test
+    fun `a changed interval takes effect while running`() {
+        clearStores()
+        clearTelephony()
+        val mac = BeaconKeys.parseMac("00:11:22:33:44:55")!!
+        writeWpsStore(
+            OfflineDatabases.file(context, OfflineDatabases.WIFI),
+            BeaconKeys.WIFI_UNIVERSE_BITS,
+            listOf(WpsRec(0L, mac, 3_742_150_000L, -12_208_400_000L, 25L, null)),
+        )
+        setWifi(listOf("00:11:22:33:44:55"))
+
+        val latch = CountDownLatch(2)
+        val task = LocationReportingTask(context) { latch.countDown() }
+        task.start(60_000L)
+        // A re-request at a faster cadence must restart the loop; if the new
+        // interval were ignored, the second fix would be 60 s away.
+        task.start(1_000L)
+        assertTrue(latch.await(10, TimeUnit.SECONDS), "expected two fixes after interval change")
+        task.stop()
+    }
+
+    @Test
     fun `no scanned beacons produces no fix`() {
         clearStores()
         clearTelephony()

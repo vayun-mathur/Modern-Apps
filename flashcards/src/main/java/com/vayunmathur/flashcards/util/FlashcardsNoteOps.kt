@@ -29,6 +29,7 @@ import com.vayunmathur.flashcards.data.getReviewLogsByCardImpl
 import com.vayunmathur.flashcards.data.getTemplatesForNoteTypeImpl
 import com.vayunmathur.flashcards.data.insertReviewLogImpl
 import com.vayunmathur.flashcards.data.moveCardsByNotesImpl
+import com.vayunmathur.flashcards.data.moveReviewLogsByNotesImpl
 import com.vayunmathur.flashcards.data.regenerateCardsImpl
 import com.vayunmathur.flashcards.data.setCardsSuspendedByNotesImpl
 import com.vayunmathur.flashcards.data.setCardsSuspendedImpl
@@ -79,6 +80,8 @@ internal fun FlashcardsViewModel.saveNoteImpl(
     val misplaced = repository.getCardsByNoteImpl(finalNote.id).filter { it.deckId != finalNote.deckId }
     if (misplaced.isNotEmpty()) {
         repository.upsertCardsImpl(misplaced.map { it.copy(deckId = finalNote.deckId) })
+        // Their review history moves with them (see moveNotesImpl).
+        repository.moveReviewLogsByNotesImpl(listOf(finalNote.id), finalNote.deckId)
     }
 }
 
@@ -110,6 +113,7 @@ internal fun FlashcardsViewModel.setNoteSuspendedImpl(noteId: Long, suspended: B
 internal fun FlashcardsViewModel.suspendCurrentCardImpl() = launchIoImpl {
     val s = session ?: return@launchIoImpl
     val card = s.removeCurrent() ?: return@launchIoImpl
+    reviewLogUndoStack.addLast(null)
     repository.setCardsSuspendedImpl(listOf(card.id), 1)
     publishReviewImpl()
 }
@@ -150,6 +154,11 @@ internal fun FlashcardsViewModel.moveNotesImpl(noteIds: List<Long>, deckId: Long
     }
     repository.upsertNotesImpl(moved)
     repository.moveCardsByNotesImpl(noteIds, deckId)
+    // ReviewLog.deckId is the deck attribution used by per-deck stats,
+    // the FSRS optimizer, and deck deletion: without this, moved cards'
+    // history stays behind (and deleting the target deck later orphans
+    // those logs under the old deck as phantom reviews).
+    repository.moveReviewLogsByNotesImpl(noteIds, deckId)
 }
 
 internal fun FlashcardsViewModel.addTagImpl(noteIds: List<Long>, tag: String) = launchIoImpl {
@@ -252,7 +261,9 @@ internal fun FlashcardsViewModel.saveNoteTypeImpl(
 internal fun FlashcardsViewModel.deleteNoteTypeImpl(id: Long) = launchIoImpl {
     if (id in FlashcardsViewModel.BUILT_IN_NOTE_TYPE_IDS) return@launchIoImpl
     val notes = repository.getNotesByNoteTypeImpl(id)
+    val cardIds = notes.flatMap { repository.getCardsByNoteImpl(it.id) }.map { it.id }
     notes.forEach { repository.deleteCardsByNoteImpl(it.id) }
+    if (cardIds.isNotEmpty()) repository.deleteReviewLogsByCardsImpl(cardIds)
     notes.forEach { repository.deleteNoteImpl(it) }
     repository.deleteFieldsByNoteTypeImpl(id)
     repository.deleteTemplatesByNoteTypeImpl(id)

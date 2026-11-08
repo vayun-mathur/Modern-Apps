@@ -114,7 +114,9 @@ private fun buildVideoData(
     ex.getName().decodeHtml(),
     ex.getViewCount(),
     ex.getLength(),
-    ex.getUploadDate()!!.instant.toKotlinInstant(),
+    // Live/upcoming videos may carry no upload date (extractor returns null);
+    // fall back to now rather than failing a load that extracted fine.
+    ex.getUploadDate()?.instant?.toKotlinInstant() ?: Clock.System.now(),
     ex.getThumbnails().first().url,
     ex.getUploaderName().decodeHtml(),
     channelURLtoID(ex.getUploaderUrl()),

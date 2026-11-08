@@ -52,7 +52,7 @@ internal suspend fun testAndPersistAccount(
 ): String? = withContext(Dispatchers.IO) {
     val loginUser = username.ifBlank { email }
     try {
-        EmailManager().fetchFolders(server = imap, user = loginUser, auth = EmailManager.AuthType.Password(password))
+        EmailManager().fetchFolders(server = imap, user = loginUser, auth = EmailManager.AuthType.Password(password), accountEmail = email)
     } catch (ignored: Exception) {
         val msg = ignored.message?.lowercase() ?: ""
         val isAuth = ignored is com.vayunmathur.email.network.imap.ImapAuthException || msg.contains("auth") && (msg.contains("failed") || msg.contains("invalid") || msg.contains("no") || msg.contains("login"))

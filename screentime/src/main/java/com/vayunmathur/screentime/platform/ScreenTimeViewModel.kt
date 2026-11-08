@@ -222,6 +222,14 @@ class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             if (minutes == null) {
                 rules.timer(packageName)?.let { rules.delete(it) }
+                // Deleting the row is not enough: the platform observer stays armed and
+                // the spent mark stays set, so re-adding a timer later the same day can
+                // pause the app instantly on stale state. Clean up both off the main
+                // thread before reconciling.
+                withContext(Dispatchers.IO) {
+                    AppTimers(getApplication()).unregister(packageName)
+                    SpentState(getApplication()).clear(packageName)
+                }
             } else {
                 rules.upsert(AppTimer(packageName, minutes))
             }

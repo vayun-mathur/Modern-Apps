@@ -43,7 +43,7 @@ class LogcatReaderTest {
         var captured: List<String>? = null
         LogcatReader.executeCommand = { command ->
             captured = command
-            listOf("first +0000 line", "second +0000 and +0000 again", "", "")
+            listOf("first +0000 line", "second +0000 and +0000 again", "", "").asSequence()
         }
         val doc = loaded(
             LogcatReader.read(
@@ -71,7 +71,7 @@ class LogcatReaderTest {
 
     @Test
     fun `default buffers and verbose level leave the plain system title`() {
-        LogcatReader.executeCommand = { emptyList() }
+        LogcatReader.executeCommand = { emptySequence() }
         val doc = loaded(
             LogcatReader.read(
                 context,
@@ -89,7 +89,7 @@ class LogcatReaderTest {
         var captured: List<String>? = null
         LogcatReader.executeCommand = { command ->
             captured = command
-            listOf("app line")
+            listOf("app line").asSequence()
         }
         val pkg = context.packageName
         val doc = loaded(
@@ -108,7 +108,7 @@ class LogcatReaderTest {
     @Test
     fun `unknown target package is silently unavailable and never execs`() {
         var called = false
-        LogcatReader.executeCommand = { called = true; emptyList() }
+        LogcatReader.executeCommand = { called = true; emptySequence() }
         val result = LogcatReader.read(
             context,
             LogcatReader.Request(
@@ -159,7 +159,7 @@ class LogcatReaderTest {
             (refused as LogLoadResult.Unavailable).messageRes,
         )
 
-        LogcatReader.executeCommand = { listOf("own app line") }
+        LogcatReader.executeCommand = { listOf("own app line").asSequence() }
         val own = loaded(
             LogcatReader.read(
                 context,
@@ -185,6 +185,37 @@ class LogcatReaderTest {
         )
         assertTrue(result is LogLoadResult.Unavailable)
         assertNull((result as LogLoadResult.Unavailable).messageRes)
+    }
+
+    @Test
+    fun `read consumes a lazy one-shot sequence`() {
+        // The production executor streams process output; it cannot hand back a
+        // re-readable list. read() must pull the sequence exactly once, as it goes.
+        var pulled = 0
+        LogcatReader.executeCommand = {
+            sequence {
+                pulled++; yield("streamed +0000 one")
+                pulled++; yield("streamed two")
+            }.constrainOnce()
+        }
+        val doc = loaded(
+            LogcatReader.read(
+                context,
+                LogcatReader.Request(null, LogcatReader.DEFAULT_BUFFERS, LogLevel.Verbose, ""),
+            )
+        )
+        assertEquals(listOf("streamed one", "streamed two"), doc.bodyLines)
+        assertEquals(2, pulled)
+    }
+
+    @Test
+    fun `filter regex validation accepts empty and compilable patterns only`() {
+        assertTrue(LogcatReader.isValidFilterRegex(""))
+        assertTrue(LogcatReader.isValidFilterRegex("Foo.*"))
+        assertTrue(LogcatReader.isValidFilterRegex("(?i)error|failure"))
+        assertEquals(false, LogcatReader.isValidFilterRegex("("))
+        assertEquals(false, LogcatReader.isValidFilterRegex("a{2,1}"))
+        assertEquals(false, LogcatReader.isValidFilterRegex("[unclosed"))
     }
 
     @Test

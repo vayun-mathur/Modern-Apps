@@ -32,6 +32,9 @@
     <string name="action_more_info">More info</string>
     <!-- Message when the text tombstone backing "More info" could not be read. -->
     <string name="toast_unable_to_show_more_info">Unable to show more info</string>
+    <!-- Message when Report cannot open the issue tracker because nothing on the device
+         handles web links; the report has still been copied. -->
+    <string name="error_no_app_opens_issue_tracker">No app found to open the issue tracker — the log was copied instead</string>
     <!-- Bottom button on the error report screen: opens the crashed app's log. -->
     <string name="action_show_log">Show log</string>
 
@@ -39,6 +42,9 @@
     <string name="set_filter">Set filter</string>
     <!-- Hint inside the empty "Set filter" text field. -->
     <string name="set_filter_editor_hint">Regex</string>
+    <!-- Message when the filter text is not a compilable regular expression; the previous
+         log and filter stay on screen. -->
+    <string name="error_invalid_filter_regex">Invalid regular expression</string>
 
     <!-- Shown instead of the device log when a secondary user or work profile asks for it. The
          device log contains other users' activity, so only the primary user may read it. -->

@@ -35,6 +35,9 @@ interface LocationValueDao {
     @Query("DELETE FROM LocationValue WHERE timestamp < :cutoffEpochSeconds")
     suspend fun deleteOlderThan(cutoffEpochSeconds: Long)
 
+    @Query("DELETE FROM LocationValue WHERE userid = :userid")
+    suspend fun deleteByUserid(userid: Long)
+
     @Upsert
     suspend fun upsert(value: LocationValue): Long
 
@@ -175,6 +178,14 @@ interface UserDao {
      */
     @Query("UPDATE User SET outboundPairId = :pairId WHERE id = :id AND outboundPairId IS NULL")
     suspend fun setOutboundPairIdIfAbsent(id: Long, pairId: String)
+
+    /** Clear arrival auto-toggles pointing at a waypoint being deleted. */
+    @Query("UPDATE User SET sharingAutoToggleWaypointId = NULL WHERE sharingAutoToggleWaypointId = :waypointId")
+    suspend fun clearArrivalTogglesForWaypoint(waypointId: Long)
+
+    /** Clear current-place pointers at a waypoint being deleted. */
+    @Query("UPDATE User SET lastWaypointId = NULL WHERE lastWaypointId = :waypointId")
+    suspend fun clearLastWaypointForWaypoint(waypointId: Long)
 
     @Query("UPDATE User SET platform = :platform WHERE id = :id")
     suspend fun setPlatform(id: Long, platform: String)

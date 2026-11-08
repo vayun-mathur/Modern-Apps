@@ -154,6 +154,39 @@ class WordMakerViewModelTest {
         vm.setGameMode(GameMode.CASUAL)
         pollUntil { vm.gameMode.value == GameMode.CASUAL }
     }
+    @Test fun competitiveBonusWordsAndHintsStayOutOfCasual() {
+        val vm = vm()
+        pollUntil { vm.crosswordData.value != null }
+        // Plant a casual hint so the competitive board has stale state to (not) show.
+        val data = vm.crosswordData.value!!
+        vm.revealHint(data, vm.foundWords.value, vm.revealedHints.value)
+        pollUntil { vm.revealedHints.value.isNotEmpty() }
+        vm.setGameMode(GameMode.COMPETITIVE)
+        pollUntil { vm.gameMode.value == GameMode.COMPETITIVE }
+        vm.loadNextCompetitiveLevel()
+        pollUntil { vm.competitiveActive.value && vm.crosswordData.value != null }
+        // Competitive play surfaces neither the casual bonus set nor its hint cells.
+        assertTrue(vm.bonusWords.value.isEmpty())
+        assertTrue(vm.revealedHints.value.isEmpty())
+        val totalBefore = kotlinx.coroutines.runBlocking { vm.levelDataStore.totalBonusWords.first() }
+        kotlinx.coroutines.runBlocking { vm.addBonusWord("ZQXCOMPWORD") }
+        pollUntil { vm.bonusWords.value.contains("ZQXCOMPWORD") }
+        // The lifetime total is unchanged: unlimited generated boards must not farm it.
+        assertEquals(totalBefore, kotlinx.coroutines.runBlocking { vm.levelDataStore.totalBonusWords.first() })
+        // A fresh competitive level resets the in-memory set ...
+        vm.loadNextCompetitiveLevel()
+        pollUntil { vm.competitiveActive.value && !vm.bonusWords.value.contains("ZQXCOMPWORD") }
+        // ... and returning to casual shows none of the competitive words either.
+        vm.setGameMode(GameMode.CASUAL)
+        pollUntil { vm.gameMode.value == GameMode.CASUAL }
+        assertFalse(vm.bonusWords.value.contains("ZQXCOMPWORD"))
+    }
+    @Test fun hintAvailableImmediatelyOnLaunch() {
+        // No hint has been used yet, so there is no cooldown to serve: the
+        // UiState contract uses 0 for "available now" and the wheel enables
+        // the hint button when the remaining cooldown is <= 0.
+        assertEquals(0L, vm().hintCooldownEnd.value)
+    }
     @Test fun revealHintRevealsACellAndStartsCooldown() {
         val vm = vm()
         pollUntil { vm.crosswordData.value != null }

@@ -295,6 +295,12 @@ class SecureFolderViewModel(application: Application) : AndroidViewModel(applica
                         Log.error(TAG, "encryptAndMove failed for ${photo.uri}", e)
                     } catch (e: GeneralSecurityException) {
                         Log.error(TAG, "encryptAndMove failed for ${photo.uri}", e)
+                    } catch (e: SecurityException) {
+                        // Revoked/expired read grant: encryptAndMove rethrows
+                        // the raw SecurityException after deleting partials.
+                        // Skip the photo like any other per-photo failure —
+                        // leaking it out of viewModelScope would crash the app.
+                        Log.error(TAG, "encryptAndMove failed for ${photo.uri}", e)
                     }
                 }
                 collected

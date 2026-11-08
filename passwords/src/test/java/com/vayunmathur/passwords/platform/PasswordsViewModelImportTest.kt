@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.passwords.FakeAndroidKeyStore
 import com.vayunmathur.passwords.data.PasswordRepository
+import com.vayunmathur.passwords.domain.ImportSource
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -67,5 +68,22 @@ class PasswordsViewModelImportTest {
         viewModel.importCsv(uri)
         awaitImportDone(viewModel)
         assertEquals("Imported 0 rows, skipped 0 rows", viewModel.importMessage.value)
+    }
+
+    @Test fun bomPrefixedFirstHeaderStillMapsToTitle() {
+        // Exporters and spreadsheet round-trips (e.g. Excel's "CSV UTF-8")
+        // emit a BOM, which lands on the first header cell. 1Password-family
+        // exports put Title first: losing it silently renames every entry
+        // to its URL. Pinned at the mapping layer because an end-to-end
+        // import cannot run under unit tests (SQLCipher native unavailable).
+        val viewModel = vm()
+        val columns = viewModel.resolveColumns(
+            listOf("\uFEFFtitle", "url", "username", "password"),
+            ImportSource.ONE_PASSWORD,
+        )
+        assertEquals(0, columns.name)
+        assertEquals(1, columns.url)
+        assertEquals(2, columns.username)
+        assertEquals(3, columns.password)
     }
 }

@@ -85,10 +85,15 @@ class AirDropController(
 
     suspend fun startReceiving() {
         if (receiving) return
-        receiving = true
         val link = acquire()
-        val port = server.start()
-        discovery.advertise(AirDropMessages.randomShortId(), port, link.network)
+        try {
+            val port = server.start()
+            discovery.advertise(AirDropMessages.randomShortId(), port, link.network)
+            receiving = true
+        } catch (e: Exception) {
+            release()
+            throw e
+        }
     }
 
     suspend fun stopReceiving() {

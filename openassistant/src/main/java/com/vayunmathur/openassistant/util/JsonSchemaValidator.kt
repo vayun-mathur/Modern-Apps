@@ -5,7 +5,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonPrimitive
 
 object JsonSchemaValidator {
     fun validateJsonAgainstSchema(jsonString: String, schemaString: String): String? {
@@ -91,7 +91,12 @@ object JsonSchemaValidator {
 
     private fun validateType(data: JsonElement, schema: JsonObject, path: String): String? {
         val pathPrefix = if (path.isEmpty()) "" else "at $path: "
-        val expectedType = schema["type"]?.jsonPrimitive?.content ?: return null
+        val typeElement = schema["type"] ?: return null
+        // The schema arrives with the starting Intent and may be malformed: a non-string
+        // 'type' must be a validation error, never a throw (callers treat a throw as a
+        // failed inference instead of continuing to stream).
+        val expectedType = (typeElement as? JsonPrimitive)?.content
+            ?: return "${pathPrefix}Invalid 'type' in schema: must be a string"
         if (expectedType == "object" && data !is JsonObject) {
             return "${pathPrefix}Expected an object but got ${data::class.simpleName}"
         }
@@ -119,8 +124,11 @@ object JsonSchemaValidator {
     }
 
     private fun checkRequiredFields(data: JsonObject, schema: JsonObject, path: String): String? {
+        val pathPrefix = if (path.isEmpty()) "" else "at $path: "
         (schema["required"] as? JsonArray)?.forEach { req ->
-            val fieldName = req.jsonPrimitive.content
+            // A non-string entry is a malformed schema: report it, never throw.
+            val fieldName = (req as? JsonPrimitive)?.content
+                ?: return "${pathPrefix}Invalid 'required' entry in schema: must be a string"
             if (!data.containsKey(fieldName)) {
                 val fullPath = if (path.isEmpty()) fieldName else "$path.$fieldName"
                 return "Missing required field: '$fullPath'"
@@ -144,18 +152,24 @@ object JsonSchemaValidator {
     }
 
     private fun validateConst(value: JsonElement, propSchema: JsonObject, fullPath: String): String? {
-        val constValue = propSchema["const"]?.jsonPrimitive?.content ?: return null
-        if (value.jsonPrimitive.content != constValue) {
-            return "Field '$fullPath' must be '$constValue' but got '${value.jsonPrimitive.content}'"
+        val constElement = propSchema["const"] ?: return null
+        // Values are model output and the schema arrives with the starting Intent: either side
+        // may be a non-primitive, which must be a validation error, never a throw (callers treat
+        // a throw as a failed inference instead of continuing to stream).
+        val constContent = (constElement as? JsonPrimitive)?.content ?: constElement.toString()
+        val valueContent = (value as? JsonPrimitive)?.content ?: value.toString()
+        if (valueContent != constContent) {
+            return "Field '$fullPath' must be '$constContent' but got '$valueContent'"
         }
         return null
     }
 
     private fun validateEnum(value: JsonElement, propSchema: JsonObject, fullPath: String): String? {
         val enumValues = propSchema["enum"] as? JsonArray ?: return null
-        val allowed = enumValues.map { it.jsonPrimitive.content }
-        if (value.jsonPrimitive.content !in allowed) {
-            return "Field '$fullPath' has invalid value '${value.jsonPrimitive.content}'. " +
+        val allowed = enumValues.map { (it as? JsonPrimitive)?.content ?: it.toString() }
+        val valueContent = (value as? JsonPrimitive)?.content ?: value.toString()
+        if (valueContent !in allowed) {
+            return "Field '$fullPath' has invalid value '$valueContent'. " +
                 "Allowed values: $allowed"
         }
         return null

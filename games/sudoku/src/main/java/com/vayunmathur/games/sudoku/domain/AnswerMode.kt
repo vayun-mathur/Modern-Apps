@@ -13,7 +13,9 @@ import com.vayunmathur.games.sudoku.data.SudokuGameState
  * The table, in order:
  *
  * - no usable selection (nothing selected, a given cell, or an ended game) is ignored;
- * - notes mode always toggles a pencil mark — possibilities are never judged and cost nothing;
+ * - notes mode toggles a pencil mark on an empty cell — possibilities are never judged and cost
+ *   nothing — but a filled cell has nothing to pencil over, so the tap is ignored there instead
+ *   of deleting the entry to make room for marks;
  * - re-tapping the digit already showing erases the cell, in either mode;
  * - in answer mode a digit that disagrees with the solution is rejected: never placed, one life;
  * - anything else is placed, exactly as classic mode always has.
@@ -34,7 +36,12 @@ object AnswerMode {
             !game.isWon &&
             !game.isGameOver
         if (!usable) return DigitAttempt.Ignore
-        if (game.notesMode) return DigitAttempt.Note(index, digit)
+        if (game.notesMode) {
+            // Pencilling over an entered digit would have to delete it first (the ViewModel's
+            // note write clears the entry), which no player means by tapping in notes mode.
+            if (game.entries[index] != 0) return DigitAttempt.Ignore
+            return DigitAttempt.Note(index, digit)
+        }
         if (game.entries[index] == digit) return DigitAttempt.Erase(index)
         if (game.answerMode && digit != game.solution[index]) return DigitAttempt.Reject(digit)
         return DigitAttempt.Place(index, digit)

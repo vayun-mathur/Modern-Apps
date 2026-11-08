@@ -88,6 +88,9 @@ internal fun MapPageScope.MapWideHost(
             override fun openNearestStop(lat: Double, lon: Double) {
                 transitViewModel.openNearestStop(lat, lon)
             }
+            override fun revealDetails() {
+                viewModel.revealDetails()
+            }
         }
     }
     val panelContent: (@Composable (Modifier) -> Unit)? = when {

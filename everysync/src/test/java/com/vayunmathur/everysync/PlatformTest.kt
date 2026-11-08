@@ -98,7 +98,7 @@ class PlatformTest {
         store.remove("bob")
     }
     @Test fun relayStoresParseAndBaseline() { runBlocking {
-        val contact = ContactRelayStore(ctx, "acc")
+        val contact = ContactRelayStore(ctx, "acc", "v1")
         assertNull(contact.parseRemote("bad")); assertTrue(contact.parseRemote("""{"uid":"c1","displayName":"Ann"}""") != null)
         assertNull(contact.parseRemote("""{"uid":""}""")); assertTrue(contact.serializeForRemote(contact.parseRemote("""{"uid":"c1"}""")!!).contains("c1"))
         assertTrue(contact.loadBaseline().isEmpty()); contact.saveSnapshots(emptyList()); contact.removeSnapshots(emptyList())

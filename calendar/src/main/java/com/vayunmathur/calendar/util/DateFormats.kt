@@ -68,13 +68,20 @@ fun parseIcalBasicDate(value: String): LocalDate? =
     runCatching { AllDayFormat.parse(value.take(BASIC_DATE_PREFIX_LENGTH)) }.getOrNull()
 
 /** Parses an RFC 5545 UNTIL value (date or datetime) to a [LocalDate] in [timeZone]. */
-fun parseIcalUntil(value: String, timeZone: TimeZone): LocalDate? = runCatching {
-    if ('T' in value) {
-        BasicIsoInstantFormat.parse(value).toInstantUsingOffset().toLocalDateTime(timeZone).date
-    } else {
-        AllDayFormat.parse(value)
+fun parseIcalUntil(value: String, timeZone: TimeZone): LocalDate? {
+    if ('T' !in value) {
+        return runCatching { AllDayFormat.parse(value) }.getOrNull()
     }
-}.getOrNull()
+    return runCatching {
+        BasicIsoInstantFormat.parse(value).toInstantUsingOffset().toLocalDateTime(timeZone).date
+    }.getOrNull()
+        // A floating UNTIL (no 'Z', no offset) is valid RFC 5545 alongside a
+        // floating DTSTART, which ICS exporters do emit. It carries no instant
+        // to convert, so the written calendar day is the only meaning it has;
+        // refusing it here made RRule.parse drop the whole recurrence and the
+        // event silently became one-off on import/read.
+        ?: parseIcalBasicDate(value)
+}
 
 /**
  * The calendar day one EXDATE/RDATE value falls on, resolved in [timeZone].

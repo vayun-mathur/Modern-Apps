@@ -17,7 +17,6 @@ import org.robolectric.Shadows.shadowOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 class MainActivityTest {
@@ -45,14 +44,7 @@ class MainActivityTest {
         rule.waitForIdle()
         val intent = shadowOf(rule.activity).nextStartedActivity
         assertNotNull(intent, "no activity launched for voice input settings")
-        assertTrue(
-            intent.action in listOf(
-                Settings.ACTION_LOCALE_SETTINGS,
-                Settings.ACTION_VOICE_INPUT_SETTINGS,
-                Settings.ACTION_SETTINGS,
-            ),
-            "unexpected settings action ${intent.action}",
-        )
+        assertEquals(Settings.ACTION_VOICE_INPUT_SETTINGS, intent.action)
     }
 
     @Test

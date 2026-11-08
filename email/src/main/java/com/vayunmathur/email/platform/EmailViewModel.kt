@@ -227,6 +227,24 @@ class EmailViewModel(application: Application) :
         viewModelScope.launch {
             messagesDao.updateBulkReadStatus(accountEmail, uids, isRead)
             clearSelection()
+            // Push to the server like the single-message path does. Without
+            // this the next read-status pull (sync worker / IDLE) overwrote
+            // the local flip with the server's stale \Seen flag, so bulk
+            // mark-as-read silently reverted. Selection originates from the
+            // currently displayed folder (INBOX for the unified view).
+            val account = accountsDao.getAccountByEmail(accountEmail) ?: return@launch
+            try {
+                emailManager.setSeenFlagSet(
+                    server = account.imapServer(),
+                    user = account.loginUser(),
+                    auth = account.resolveAuth(appContext),
+                    folderName = _selectedFolderName.value,
+                    uids = uids,
+                    seen = isRead,
+                )
+            } catch (_: Exception) {
+                Log.status("EmailViewModel", "Failed to sync bulk read status to server")
+            }
         }
     }
 
@@ -284,6 +302,7 @@ class EmailViewModel(application: Application) :
                     auth = account.resolveAuth(appContext),
                     folderName = message.folderName,
                     uid = message.id,
+                    accountEmail = message.accountEmail,
                 )
                 val (body, isHtml, attachments) = full.contentTriple
                 if (body != null || attachments.isNotEmpty()) {

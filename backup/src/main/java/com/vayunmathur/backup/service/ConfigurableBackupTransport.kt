@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileInputStream
+import java.io.IOException
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
@@ -134,6 +135,9 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
                         if (n <= 0) break
                         offset += n
                     }
+                    if (offset < size) {
+                        throw IOException("truncated entity $key for $pkg: $offset of $size bytes")
+                    }
                     repo.writeEncrypted(BackupRepository.kvPath(pkg, keyId), data)
                 }
             }
@@ -202,7 +206,9 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
             out.write(buffer, 0, read)
             remaining -= read
         }
-        TRANSPORT_OK
+        // A short stream must not be reported as consumed: finishBackup would
+        // otherwise encrypt a truncated tar as a complete full backup.
+        if (remaining > 0) TRANSPORT_ERROR else TRANSPORT_OK
     }
 
     override fun cancelFullBackup() {

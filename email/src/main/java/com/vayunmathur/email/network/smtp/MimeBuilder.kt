@@ -101,9 +101,11 @@ object MimeBuilder {
         cc?.takeIf { it.isNotBlank() }?.let {
             sb.append("Cc: ${splitAddresses(it).joinToString(", ")}\r\n")
         }
-        bcc?.takeIf { it.isNotBlank() }?.let {
-            sb.append("Bcc: ${splitAddresses(it).joinToString(", ")}\r\n")
-        }
+        // Deliberately no Bcc header: blind-copy recipients travel only in
+        // the SMTP envelope (SmtpClient.collectRecipients). Writing them
+        // into the DATA headers would disclose every blind recipient to
+        // all other recipients. The bcc parameter is kept so callers can
+        // pass the full recipient set through one entry point.
         sb.append("Subject: ${encodeHeaderIfNeeded(subject)}\r\n")
         val dateFormat = java.text.SimpleDateFormat(RFC_2822_DATE_PATTERN, java.util.Locale.US)
         sb.append("Date: ${dateFormat.format(java.util.Date())}\r\n")

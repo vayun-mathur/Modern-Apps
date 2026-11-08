@@ -171,8 +171,8 @@ class Expression private constructor(private val root: Node) {
             name in SINGLE_ARG_FUNCTIONS -> evalSingle(singleArg(a))
             name in PAIR_FUNCTIONS -> evalPair(a, angle)
             name == "log" -> if (a.size == 2) ln(a[1]) / ln(a[0]) else log10(singleArg(a))
-            name == "max" -> a.max()
-            name == "min" -> a.min()
+            name == "max" -> a.maxOrNull() ?: throw ExpressionError("max expects at least 1 argument")
+            name == "min" -> a.minOrNull() ?: throw ExpressionError("min expects at least 1 argument")
             else -> throw ExpressionError("Unknown function '$name'")
         }
 
@@ -225,7 +225,7 @@ class Expression private constructor(private val root: Node) {
         private fun evalPair(a: List<Double>, angle: AngleMode): Double {
             require2(a)
             return when (name) {
-                "root" -> a[1].pow(1.0 / a[0])
+                "root" -> realRoot(a[0], a[1])
                 "mod" -> a[0] % a[1]
                 "atan2" -> fromRad(atan2(a[0], a[1]), angle)
                 "ncr" -> combinations(a[0], a[1])
@@ -508,6 +508,14 @@ private fun exactFactorial(n: Int): Double {
     }
     return result
 }
+
+/**
+ * The real [n]th root of [x]. `x.pow(1/n)` is NaN for every negative [x], but an
+ * odd-integer root of a negative number is real (root(3, -8) = -2, exactly what
+ * `cbrt` already returns); even and non-integer roots of negatives stay NaN.
+ */
+private fun realRoot(n: Double, x: Double): Double =
+    if (x < 0 && n == floor(n) && n % 2 != 0.0) -((-x).pow(1.0 / n)) else x.pow(1.0 / n)
 
 private fun combinations(n: Double, r: Double): Double =
     factorial(n) / (factorial(r) * factorial(n - r))

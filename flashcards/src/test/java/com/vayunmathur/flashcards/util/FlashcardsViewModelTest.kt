@@ -186,6 +186,27 @@ class FlashcardsViewModelTest {
     }
 
     @Test
+    fun moveNotesCarriesReviewLogsToTargetDeck() {
+        val from = uniqueDeck("LogMoveFrom"); val to = uniqueDeck("LogMoveTo")
+        val note = saveBasicNote(from.id, "LogMoveFront", "LogMoveBack")
+        val card = runBlocking { repo.getCardsByNoteImpl(note.id) }.single()
+        runBlocking {
+            repo.insertReviewLogImpl(ReviewLog(cardId = card.id, deckId = from.id, reviewedAt = 1, grade = 3, elapsedDays = 1.0, scheduledDays = 2.0, state = 2))
+        }
+        vm.moveNotesImpl(listOf(note.id), to.id)
+        await("logs moved") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(to.id) }.any { it.cardId == card.id }
+        }
+        assertTrue(runBlocking { repo.getReviewLogsByDeckOrderedImpl(from.id) }.none { it.cardId == card.id })
+        // Deleting the target deck must take the moved history with it —
+        // otherwise orphaned logs linger under the old deck and pollute
+        // its stats and FSRS optimization.
+        vm.deleteDeckImpl(to)
+        await("target deck deleted") { vm.decks.value.none { it.id == to.id } }
+        assertTrue(runBlocking { repo.getReviewLogsByDeckOrderedImpl(from.id) }.none { it.cardId == card.id })
+    }
+
+    @Test
     fun bulkNoteOpsTagsMoveSuspendResetAndDelete() {
         val deck = uniqueDeck("BulkDeck"); val target = uniqueDeck("BulkTarget")
         val n1 = saveBasicNote(deck.id, "BulkOne", "1", tags = "old")
@@ -322,6 +343,61 @@ class FlashcardsViewModelTest {
         }
         // Grade/undo with the session drained are safe no-ops once done.
         vm.startSessionImpl(999999L) // missing deck ignored
+    }
+
+    @Test
+    fun reviewUndoDeletesEachGradesOwnLog() {
+        val deck = uniqueDeck("UndoTwiceDeck")
+        saveBasicNote(deck.id, "UndoFront1", "UndoBack1")
+        saveBasicNote(deck.id, "UndoFront2", "UndoBack2")
+        vm.publishReviewImpl()
+        vm.startSessionImpl(deck.id)
+        await("undo session started") { !vm.review.value.done && vm.review.value.front.isNotBlank() }
+        vm.gradeCurrentImpl(Grade.GOOD)
+        await("first log written") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.size == 1
+        }
+        vm.gradeCurrentImpl(Grade.GOOD)
+        await("second log written") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.size == 2
+        }
+        vm.undoReviewImpl()
+        await("second grade undone, first log kept") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.size == 1
+        }
+        vm.undoReviewImpl()
+        await("first grade undone, logs empty") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.isEmpty() &&
+                runBlocking { repo.getCardsByDeckImpl(deck.id) }.all { it.state == CardState.NEW }
+        }
+    }
+
+    @Test
+    fun regeneratingCardsDeletesRemovedCardsReviewLogs() {
+        val deck = uniqueDeck("RegenLogsDeck")
+        vm.saveNoteImpl(0, 2L, deck.id, listOf("RegenFront", "RegenBack"), "")
+        await("reversed note saved") {
+            runBlocking { repo.getAllNotesImpl().any { it.sortField == "RegenFront" } }
+        }
+        val note = runBlocking { repo.getAllNotesImpl().first { it.sortField == "RegenFront" } }
+        val cards = runBlocking { repo.getCardsByNoteImpl(note.id) }
+        assertEquals(2, cards.size)
+        runBlocking {
+            cards.forEach {
+                repo.insertReviewLogImpl(
+                    ReviewLog(cardId = it.id, deckId = deck.id, reviewedAt = 1L, grade = 3,
+                        elapsedDays = 1.0, scheduledDays = 1.0, state = 2),
+                )
+            }
+        }
+        // Blanking the Front removes Card 1 (its front renders blank).
+        vm.saveNoteImpl(note.id, 2L, deck.id, listOf("", "RegenBack"), "")
+        await("card 1 regenerated away with its log") {
+            val remaining = runBlocking { repo.getCardsByNoteImpl(note.id) }
+            remaining.size == 1 &&
+                runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }
+                    .all { log -> remaining.any { it.id == log.cardId } }
+        }
     }
 
     @Test

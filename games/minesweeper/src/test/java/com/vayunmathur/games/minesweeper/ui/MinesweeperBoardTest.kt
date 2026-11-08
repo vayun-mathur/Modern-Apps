@@ -1,10 +1,13 @@
 package com.vayunmathur.games.minesweeper.ui
 
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.minesweeper.R
 import com.vayunmathur.games.minesweeper.data.BoardSize
@@ -61,6 +64,23 @@ class MinesweeperBoardTest {
         composeRule.onNodeWithContentDescription("Row 1, column 1, Covered", substring = true)
             .performClick()
         assertEquals(0, tapped)
+    }
+
+    @Test
+    fun gridCellsExposeClickActionsForScreenReaders() {
+        var tapped = -1
+        var longPressed = -1
+        composeRule.setContent {
+            MineFieldGrid(field(), onTap = { tapped = it }, onLongPress = { longPressed = it })
+        }
+        // The description alone only lets TalkBack announce the cell; activation
+        // needs the click actions too, or the board is heard but not playable.
+        val cell = composeRule.onNodeWithContentDescription("Row 1, column 1, Covered", substring = true)
+        cell.assertHasClickAction()
+        cell.performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals(0, tapped)
+        cell.performSemanticsAction(SemanticsActions.OnLongClick)
+        assertEquals(0, longPressed)
     }
 
     @Test

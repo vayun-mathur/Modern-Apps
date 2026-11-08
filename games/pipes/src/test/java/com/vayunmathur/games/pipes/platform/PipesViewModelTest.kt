@@ -7,6 +7,7 @@ import com.vayunmathur.games.pipes.data.LevelData
 import com.vayunmathur.games.pipes.data.LevelPack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
@@ -266,6 +267,34 @@ class PipesViewModelTest {
         assertTrue(vm.uiState.value.isLevelWon)
         withTimeout(5_000) { vm.dailyStats.first { it.containsKey(level.id) } }
         assertNotNull(vm.dailyStats.value[level.id])
+        Unit
+    }
+
+    @Test fun dailyRolloverReloadsSameIndex() = runBlocking {
+        // A DailyGame route kept open across midnight: refreshDaily() swaps in the new
+        // day's pack, and the re-fired loadLevel must pick up the new board instead of
+        // keeping yesterday's via the same-index early return.
+        val vm = vm()
+        vm.refreshDaily()
+        withTimeout(10_000) { vm.dailyPack.first { it != null } }
+        vm.loadLevel(PipesViewModel.DAILY_PACK_INDEX, 0)
+        val yesterday = vm.uiState.value.levelData!!
+        val ep = yesterday.endpoints[0]
+        val next = (yesterday.adjacency[ep.cells[0]] ?: emptyList())
+            .first { n -> yesterday.endpoints.all { n !in it.cells } }
+        draw(vm, listOf(ep.cells[0], next))
+        assertEquals(1, vm.getCurrentMoves())
+        val rolledOver =
+            com.vayunmathur.games.pipes.domain.DailyLevels.packFor(vm.dailyDay.value + 1)
+        assertNotNull(rolledOver)
+        val field = PipesViewModel::class.java.getDeclaredField("_dailyPack")
+        field.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        (field.get(vm) as MutableStateFlow<LevelPack?>).value = rolledOver
+        vm.loadLevel(PipesViewModel.DAILY_PACK_INDEX, 0)
+        assertEquals(rolledOver.levels[0], vm.uiState.value.levelData)
+        assertTrue(vm.uiState.value.gameState.paths.isEmpty())
+        assertEquals(0, vm.getCurrentMoves())
         Unit
     }
 

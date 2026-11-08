@@ -49,6 +49,24 @@ class TodoDaoTest {
         assertEquals(listOf("in"), dao.getInList("L").map { it.syncId })
         assertEquals(2.0, dao.maxPosition())
     }
+    @Test fun tombstonedSubtasksVisibleForRestore() = runTest {
+        dao.upsert(Todo(syncId = "p", title = "P"))
+        dao.upsert(Todo(syncId = "s", title = "S", parentSyncId = "p"))
+        // Mirror TodoRepository.tombstone: parent plus subtasks are soft-deleted together.
+        dao.upsert(dao.getBySyncId("p")!!.copy(deleted = true))
+        dao.upsertAll(dao.getSubtasks("p").map { it.copy(deleted = true) })
+        assertTrue(dao.getSubtasks("p").isEmpty())
+        // The restore path needs the tombstoned subtasks back; the live query hides them.
+        assertEquals(listOf("s"), dao.getSubtasksIncludingDeleted("p").map { it.syncId })
+        // Mirror TodoRepository.restore: only still-deleted rows are touched.
+        dao.upsert(dao.getBySyncId("p")!!.copy(deleted = false))
+        dao.upsertAll(
+            dao.getSubtasksIncludingDeleted("p")
+                .filter { it.deleted }
+                .map { it.copy(deleted = false) },
+        )
+        assertEquals(listOf("s"), dao.getSubtasks("p").map { it.syncId })
+    }
     @Test fun updatedSinceAndCounts() = runTest {
         dao.upsertRaw(Todo(syncId = "x", title = "X", updatedAt = 5000L))
         dao.upsertRaw(Todo(syncId = "y", title = "Y", updatedAt = 1000L))

@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import com.vayunmathur.library.log.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +39,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 class NotesViewModel(
@@ -48,7 +50,12 @@ class NotesViewModel(
     val notes: StateFlow<List<Note>> = repository.notes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    // Ids deleted from the editor, so a dispose-time flush of a pending edit
+    // cannot resurrect a note the user just deleted.
+    private val deletedNoteIds = mutableSetOf<Long>()
+
     fun delete(note: Note) {
+        synchronized(deletedNoteIds) { deletedNoteIds.add(note.id) }
         viewModelScope.launch(Dispatchers.IO) { repository.delete(note) }
     }
 
@@ -65,16 +72,55 @@ class NotesViewModel(
         val dbNote by noteFlow.collectAsStateWithLifecycle(initialValue = null)
 
         val localState = remember { mutableStateOf<Note?>(null) }
+        val pendingWrites = remember { MutableStateFlow<Note?>(null) }
 
+        // Only adopt the database copy when there is no unsaved local edit.
+        // Unconditionally copying dbNote here reverted the title field to the
+        // last saved value whenever a save landed mid-typing, dropping the
+        // keystrokes typed since that save was enqueued.
         LaunchedEffect(dbNote, currentId) {
-            dbNote?.let { localState.value = it }
+            val db = dbNote ?: return@LaunchedEffect
+            if (localState.value == null || pendingWrites.value == null) {
+                localState.value = db
+            }
         }
 
-        val pendingWrites = remember { MutableStateFlow<Note?>(null) }
         LaunchedEffect(Unit) {
             pendingWrites.filterNotNull().debounce(SAVE_DEBOUNCE_MS).collectLatest { newValue ->
-                val newId = withContext(Dispatchers.IO) { repository.upsert(newValue) }
-                if (currentId == 0L) currentId = newId
+                // A brand-new note keeps id 0 in local state until the flow
+                // round-trips; save under the already-assigned id instead of
+                // inserting a duplicate row per debounce window.
+                val toSave = if (newValue.id == 0L && currentId != 0L) {
+                    newValue.copy(id = currentId)
+                } else {
+                    newValue
+                }
+                val newId = withContext(Dispatchers.IO) { repository.upsert(toSave) }
+                if (currentId == 0L) {
+                    currentId = newId
+                    if (localState.value?.id == 0L) {
+                        localState.value = localState.value?.copy(id = newId)
+                    }
+                }
+                if (pendingWrites.value == newValue) pendingWrites.value = null
+            }
+        }
+
+        // Leaving the editor inside the debounce window must not lose the
+        // last edit: flush any pending write from the ViewModel scope (which
+        // outlives the composition), unless the note was just deleted.
+        DisposableEffect(Unit) {
+            onDispose {
+                val pending = pendingWrites.value ?: return@onDispose
+                val wasDeleted = synchronized(deletedNoteIds) { pending.id in deletedNoteIds }
+                if (!wasDeleted) {
+                    val toSave = if (pending.id == 0L && currentId != 0L) {
+                        pending.copy(id = currentId)
+                    } else {
+                        pending
+                    }
+                    viewModelScope.launch(Dispatchers.IO) { repository.upsert(toSave) }
+                }
             }
         }
 
@@ -136,6 +182,25 @@ class NotesViewModel(
     private val _shareRequests = MutableSharedFlow<NoteShare>(extraBufferCapacity = 1)
     val shareRequests: SharedFlow<NoteShare> = _shareRequests.asSharedFlow()
 
+    // Reads at most [maxBytes] from [uri]; null when the stream is missing or
+    // larger (callers skip oversized files instead of OOMing on readText()).
+    private fun readBoundedText(ctx: Application, uri: Uri, maxBytes: Int): String? {
+        ctx.contentResolver.openInputStream(uri)?.use { stream ->
+            val out = ByteArrayOutputStream()
+            val buf = ByteArray(8_192)
+            var total = 0
+            while (true) {
+                val n = stream.read(buf)
+                if (n < 0) break
+                total += n
+                if (total > maxBytes) return null
+                out.write(buf, 0, n)
+            }
+            return out.toString(Charsets.UTF_8.name())
+        }
+        return null
+    }
+
     // Best-effort import of external files: any failure mode means "skip this
     // file" per this function's contract, and each failure is logged below.
     @Suppress("TooGenericExceptionCaught")
@@ -145,11 +210,12 @@ class NotesViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             uris.forEach { uri ->
                 try {
-                    val content = ctx.contentResolver.openInputStream(uri)
-                        ?.bufferedReader()?.use { it.readText() }
+                    val content = readBoundedText(ctx, uri, MAX_IMPORT_BYTES)
                     if (content != null) {
                         val name = IntentHelper.getFileName(ctx, uri) ?: "Imported Note"
                         repository.upsert(Note(0, name, content))
+                    } else {
+                        Log.status(TAG, "skipping oversized import (> $MAX_IMPORT_BYTES bytes): $uri")
                     }
                 } catch (e: Exception) {
                     Log.error(TAG, "Error importing file: $uri", e)
@@ -165,7 +231,7 @@ class NotesViewModel(
                 val markdown = exportNoteMarkdown(ctx, note)
                 val cachePath = File(ctx.cacheDir, "shared_notes")
                 cachePath.mkdirs()
-                val file = File(cachePath, "${note.title.ifBlank { "note" }}.md")
+                val file = File(cachePath, shareMarkdownFileName(note.title))
                 file.writeText(markdown)
                 val uri = FileProvider.getUriForFile(
                     ctx,
@@ -240,6 +306,10 @@ class NotesViewModel(
     companion object {
         private const val TAG = "NotesViewModel"
         private const val SAVE_DEBOUNCE_MS = 300L
+        // Largest importable file: readText() on an arbitrary shared file is an
+        // OOM vector, and a multi-MB note would also wedge the Room row and the
+        // export/share path. Oversized files are skipped, never truncated.
+        private const val MAX_IMPORT_BYTES = 1_000_000
     }
 }
 

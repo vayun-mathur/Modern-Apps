@@ -7,9 +7,11 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.FindFamilyRepository
 import com.vayunmathur.findfamily.data.NoShowAlert
 import com.vayunmathur.findfamily.domain.NoShowPolicy
+import com.vayunmathur.findfamily.util.notifyNoShowAlert
 import java.util.concurrent.TimeUnit
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -27,8 +29,9 @@ import kotlin.time.Instant
  * this file is only the Android glue: enqueue at the deadline, sweep when the
  * work runs, and re-enqueue everything after reboot / process init.
  *
- * User-visible notification delivery is NOT here — that is wired separately
- * (NO_SHOW channel step), consuming the claimed alerts [sweepNow] returns.
+ * User-visible delivery happens in [NoShowCheckWorker.doWork]: every alert
+ * [sweepNow] claims is posted via `notifyNoShowAlert`. Claiming without
+ * notifying would silently delete one-shot watches, so the two stay together.
  */
 class NoShowCheckWorker(
     appContext: Context,
@@ -39,10 +42,34 @@ class NoShowCheckWorker(
         val fired = NoShowCheckScheduler.sweepNow(applicationContext)
         if (fired.isNotEmpty()) {
             Log.status(TAG, "sweep fired ${fired.size} alert(s): ${fired.map { it.id }}")
+            val repository = FindFamilyRepository.get(applicationContext)
+            for (alert in fired) {
+                // A claimed one-shot is already deleted by the sweep, so a
+                // delivery failure here cannot be retried by re-running the
+                // sweep — log it, but still deliver every other alert.
+                runCatching { deliver(applicationContext, repository, alert) }
+                    .onFailure { e -> Log.status(TAG, "deliver alert ${alert.id} failed", e) }
+            }
         }
         Result.success()
     } catch (_: Exception) {
         Result.retry()
+    }
+
+    /** Post the user-visible notification for one claimed [alert]. */
+    private suspend fun deliver(
+        context: Context,
+        repository: FindFamilyRepository,
+        alert: NoShowAlert,
+    ) {
+        val user = repository.getUser(alert.watchedUserId) ?: return
+        val waypoint = alert.waypointId?.let { runCatching { repository.getWaypoint(it) }.getOrNull() }
+        val message = if (waypoint != null) {
+            context.getString(R.string.notification_noshow_at_place, user.name, waypoint.name)
+        } else {
+            context.getString(R.string.notification_noshow_anywhere, user.name)
+        }
+        context.notifyNoShowAlert(user, message, alert.id, alert.waypointId)
     }
 
     companion object {

@@ -47,6 +47,17 @@ object RelayBlobStore {
         val deleted: Int,
     )
 
+    /**
+     * Blob names come from decrypted relay envelopes (any vault member can
+     * author one) and from snapshot payloads, so they are untrusted input
+     * to the filesystem: only a bare file name may ever reach [fileFor].
+     * A name with a path separator (or "." / "..") could otherwise write
+     * or delete files outside `relay_blobs/<vaultId>/`.
+     */
+    fun isSafeBlobName(name: String): Boolean =
+        name.isNotBlank() && name != "." && name != ".." &&
+            !name.contains('/') && !name.contains('\\')
+
     fun fileFor(context: Context, vaultId: String, name: String): File =
         File(File(context.filesDir, "relay_blobs/$vaultId").apply { mkdirs() }, name)
 
@@ -57,15 +68,18 @@ object RelayBlobStore {
     }
 
     fun readLocal(context: Context, vaultId: String, name: String): ByteArray? {
+        if (!isSafeBlobName(name)) return null
         val f = fileFor(context, vaultId, name)
         return if (f.exists()) runCatching { f.readBytes() }.getOrNull() else null
     }
 
     fun writeLocal(context: Context, vaultId: String, name: String, bytes: ByteArray) {
+        if (!isSafeBlobName(name)) return
         runCatching { fileFor(context, vaultId, name).writeBytes(bytes) }
     }
 
     fun deleteLocal(context: Context, vaultId: String, name: String) {
+        if (!isSafeBlobName(name)) return
         runCatching { fileFor(context, vaultId, name).delete() }
     }
 
@@ -109,7 +123,7 @@ object RelayBlobStore {
         val latest = LinkedHashMap<String, BlobEnvelope>()
         for (raw in result.items) {
             val env = decode(raw) ?: continue
-            if (env.name.isBlank()) continue
+            if (!isSafeBlobName(env.name)) continue
             val prev = latest[env.name]
             if (prev == null || env.updatedAt >= prev.updatedAt) latest[env.name] = env
         }

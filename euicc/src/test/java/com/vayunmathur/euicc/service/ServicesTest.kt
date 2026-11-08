@@ -72,6 +72,13 @@ class ServicesTest {
         controller.destroy()
     }
 
+    @Test fun `deactivation is only required before a forced-off switch download`() {
+        assertTrue(requiresDeactivationBeforeDownload(switchAfterDownload = true, forceDeactivateSim = false, hasActiveProfile = true))
+        kotlin.test.assertFalse(requiresDeactivationBeforeDownload(true, forceDeactivateSim = true, hasActiveProfile = true))
+        kotlin.test.assertFalse(requiresDeactivationBeforeDownload(true, forceDeactivateSim = false, hasActiveProfile = false))
+        kotlin.test.assertFalse(requiresDeactivationBeforeDownload(false, forceDeactivateSim = false, hasActiveProfile = true))
+    }
+
     // ---- DownloadService ----
 
     @Test fun `download service ignores foreign actions and binds null`() {

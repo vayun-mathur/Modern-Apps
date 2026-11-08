@@ -47,9 +47,11 @@ class WebDavBackend(
         for (seg in segments) {
             current = if (current.isEmpty()) seg else "$current/$seg"
             val resp = NetworkClient.execute(url(current), method = "MKCOL", headers = headers())
-            // 201 created; 405/301/409-after-parent are tolerated as "already exists".
-            if (resp.status !in intArrayOf(HTTP_CREATED, HTTP_METHOD_NOT_ALLOWED, HTTP_MOVED, HTTP_OK)) {
-                if (resp.status == HTTP_CONFLICT) continue // parent race; keep going
+            // 201 created; 405/301/200 tolerated as "already exists"; 409 is a
+            // parent race and also tolerated. Anything else (401/403/500...) is
+            // a real failure and must not be silently treated as success.
+            if (resp.status !in intArrayOf(HTTP_CREATED, HTTP_METHOD_NOT_ALLOWED, HTTP_MOVED, HTTP_OK, HTTP_CONFLICT)) {
+                throw IOException("WebDAV MKCOL $current failed: ${resp.status}")
             }
         }
     }

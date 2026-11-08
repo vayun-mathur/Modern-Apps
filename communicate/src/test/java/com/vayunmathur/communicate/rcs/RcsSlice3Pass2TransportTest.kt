@@ -512,6 +512,48 @@ class RcsSlice3Pass2TransportTest {
         db().conversationDao().deleteAll()
     }
 
+    @Test
+    fun inboundCacheRedeliveryDoesNotDoubleCountUnread() = runTest {
+        db().cachedMessageDao().deleteAll()
+        db().conversationDao().deleteAll()
+        // The same SIP messageId delivered twice (retransmit / offline
+        // replay) must stay one row with an unread count of one.
+        repeat(2) {
+            with(CommunicateRepository) {
+                cacheInboundRcsWithImdn(
+                    context = context,
+                    conversationId = "conv-dup",
+                    body = "hello",
+                    messageId = "dup-1",
+                    imdnId = "imdn-dup-1",
+                )
+            }
+        }
+        assertEquals(1, db().cachedMessageDao().getForConversation("conv-dup").size)
+        assertEquals(1, db().conversationDao().getConversation("conv-dup")?.unreadCount)
+        db().cachedMessageDao().deleteAll()
+        db().conversationDao().deleteAll()
+    }
+
+    @Test
+    fun outboxPumpDoesNotSpawnDuplicateRows() = runTest {
+        db().outboxDao().deleteAll()
+        val now = System.currentTimeMillis()
+        db().outboxDao().upsert(
+            com.vayunmathur.communicate.data.rcs.RcsOutboxMessage(
+                messageId = "pump-nodup", conversationId = "conv-pump", kind = "text",
+                body = "retry me", nextRetryMs = now - 1000, expiryMs = now + 60_000,
+                createdAt = now - 2000,
+            ),
+        )
+        RcsOutbox.pumpDue(context, CommunicateRepository)
+        // One original row, bumped in place — never a second row for the
+        // same message (which would double-send on recovery).
+        assertEquals(1, RcsOutbox.pendingCount(context))
+        assertEquals(1, db().outboxDao().get("pump-nodup")?.attempts)
+        db().outboxDao().deleteAll()
+    }
+
     // --- File transfer fail-closed ---
 
     @Test

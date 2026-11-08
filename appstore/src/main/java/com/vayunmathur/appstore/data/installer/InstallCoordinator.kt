@@ -212,8 +212,7 @@ class InstallCoordinator(
                 AppSource.MODERN_APPS -> InstallRequirement(
                     expectedPackage = app.packageName,
                     requiredSigners = ownSigningCertificates(),
-                    expectedSha256 = app.apkSha256
-                        ?.let { mapOf("${app.packageName}.apk" to it) } ?: emptyMap(),
+                    expectedSha256 = expectedSha256ByFile(app),
                     signerOrigin = "this store",
                     requireTvCompatible = isTv,
                 )
@@ -226,20 +225,14 @@ class InstallCoordinator(
                 AppSource.PROPRIETARY -> InstallRequirement(
                     expectedPackage = app.packageName,
                     requiredSigners = app.expectedSigners.toSet(),
-                    expectedSha256 = buildMap {
-                        app.apkSha256?.let { put("${app.packageName}.apk", it) }
-                        app.splitFiles.forEachIndexed { index, split ->
-                            split.sha256?.let { put("${app.packageName}.split$index.apk", it) }
-                        }
-                    },
+                    expectedSha256 = expectedSha256ByFile(app),
                     signerOrigin = "this store's Play mirror",
                     requireTvCompatible = isTv,
                 )
                 else -> InstallRequirement(
                     expectedPackage = app.packageName,
                     requiredSigners = app.expectedSigners.toSet(),
-                    expectedSha256 = app.apkSha256
-                        ?.let { mapOf("${app.packageName}.apk" to it) } ?: emptyMap(),
+                    expectedSha256 = expectedSha256ByFile(app),
                     signerOrigin = when (app.source) {
                         AppSource.IZZY -> "IzzyOnDroid's signed app list"
                         else -> "F-Droid's signed app list"
@@ -249,9 +242,6 @@ class InstallCoordinator(
             }
 
             val file = File(context.cacheDir, DownloadCache.apkName(app.packageName))
-            download(apkUrl, file, app.sizeBytes) { fraction ->
-                stage(app.packageName, InstallStage.Downloading(fraction))
-            }
 
             // Split-set versions install every file in one session: the base
             // plus the sibling splits sharing its versionCode. Without the set,
@@ -603,5 +593,19 @@ class InstallCoordinator(
         private const val HTTP_OK_MIN = 200
         private const val HTTP_OK_MAX = 299
         private const val COPY_BUFFER_SIZE = 64 * 1024
+    }
+}
+
+/**
+ * Published SHA-256 per staged file, keyed by the local file name the verifier
+ * matches on ([DownloadCache.apkName] for the base, [DownloadCache.splitApkName]
+ * for siblings). Every URL source publishes a hash per split in its signed
+ * index, so every source gets the same coverage: a split absent here would be
+ * installed with no hash check at all.
+ */
+internal fun expectedSha256ByFile(app: UnifiedApp): Map<String, String> = buildMap {
+    app.apkSha256?.let { put(DownloadCache.apkName(app.packageName), it) }
+    app.splitFiles.forEachIndexed { index, split ->
+        split.sha256?.let { put(DownloadCache.splitApkName(app.packageName, index), it) }
     }
 }

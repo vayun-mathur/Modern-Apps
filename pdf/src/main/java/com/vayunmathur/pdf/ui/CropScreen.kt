@@ -94,11 +94,18 @@ fun CropScreen(
             }
         } else {
             withContext(Dispatchers.IO) {
-                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                context.contentResolver.openInputStream(uri)?.use {
-                    BitmapFactory.decodeStream(it, null, options)
+                runCatching {
+                    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    context.contentResolver.openInputStream(uri)?.use {
+                        BitmapFactory.decodeStream(it, null, options)
+                    }
+                    // Zero dimensions mean the bounds decode failed (null stream or
+                    // undecodable data); leave originalSize null so the screen keeps
+                    // showing its loading state instead of dividing by zero below.
+                    if (options.outWidth > 0 && options.outHeight > 0) {
+                        originalSize = IntSize(options.outWidth, options.outHeight)
+                    }
                 }
-                originalSize = IntSize(options.outWidth, options.outHeight)
             }
         }
     }
@@ -267,8 +274,11 @@ fun MagnifierWindow(
     val zoom = 3f
 
     val magnifierY = handleScreenPos.y - magnifierSizePx - gapPx
+    // overlayWidth can be narrower than the 120dp magnifier for very tall
+    // captures fitted to height; floor the upper bound so coerceIn never sees
+    // a min greater than its max (which throws IllegalArgumentException).
     val magnifierX = (handleScreenPos.x - magnifierSizePx / 2f)
-        .coerceIn(0f, overlayWidth - magnifierSizePx)
+        .coerceIn(0f, (overlayWidth - magnifierSizePx).coerceAtLeast(0f))
 
     val shape = RoundedCornerShape(12.dp)
 

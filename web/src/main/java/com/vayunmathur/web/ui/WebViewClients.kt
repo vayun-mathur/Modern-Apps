@@ -70,7 +70,7 @@ internal fun createBrowserWebViewClient(
 ) {
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val scheme = request.url.scheme ?: return false
-        if (scheme !in setOf("http", "https", "about", "data", "blob", "javascript")) {
+        if (scheme !in setOf("about", "data", "blob", "javascript") && !BrowserUtils.isWebScheme(scheme)) {
             // Swallowed rather than passed on when the tab is only being
             // restored: the page still renders, it just doesn't throw the
             // user back into the app they last left.
@@ -104,10 +104,10 @@ internal fun createBrowserWebViewClient(
         val title = view.title?.takeIf { it.isNotBlank() } ?: url ?: ""
         if (title.isNotBlank()) {
             viewModel.onTabTitleChange(tabId, title)
-            viewModel.recordHistoryVisit(url ?: "", title)
+            viewModel.recordHistoryVisit(url ?: "", title, isPrivateTab)
         }
         url?.let { u ->
-            if (u.startsWith("http")) {
+            if (BrowserUtils.isWebUrl(u)) {
                 runCatching {
                     val origin = BrowserUtils.originFromUrl(u)
                     val cookies = CookieManager.getInstance().getCookie(u)
@@ -212,7 +212,10 @@ internal fun createBrowserWebChromeClient(
         if (resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) types.add(SitePermissionType.MICROPHONE)
 
         if (types.isEmpty()) {
-            request.grant(resources)
+            // No per-site sheet exists for these resources (protected media ID, MIDI
+            // sysex, ...): fail closed. Silently granting would hand out persistent
+            // device identifiers without any user signal.
+            request.deny()
             return
         }
 

@@ -69,8 +69,8 @@ fun DeckListPage(backStack: NavBackStack<Route>, viewModel: FlashcardsViewModel)
         val deckCards = cards.filter { it.deckId == deck.id }
         DeckSummary(
             deck = deck,
-            dueCount = deckCards.count { !it.isNew && it.dueDate <= now },
-            newCount = deckCards.count { it.isNew },
+            dueCount = deckCards.count { !it.isNew && !it.isSuspended && it.dueDate <= now },
+            newCount = deckCards.count { it.isNew && !it.isSuspended },
             totalCount = deckCards.size,
             mastery = FlashcardsViewModel.mastery(deckCards),
         )

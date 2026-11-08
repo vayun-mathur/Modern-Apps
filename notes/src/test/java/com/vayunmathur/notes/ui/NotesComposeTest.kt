@@ -231,6 +231,17 @@ class NotesComposeTest {
         rule.onNodeWithContentDescription("Add image").assertIsDisplayed()
     }
 
+    @Test fun listSearchHidesDragHandles() {
+        // "title" matches Alpha + Beta (2 rows, so handles would show unfiltered):
+        // while searching, no reorder handle may exist — a drag would persist
+        // positions computed from the filtered subset and corrupt global order.
+        val actions = RecordingListActions()
+        rule.setContent { NotesListScreen(NotesListUiState(notes()), actions, initialSearchQuery = "title") }
+        rule.onNodeWithText("Alpha Title").assertIsDisplayed()
+        rule.onNodeWithText("Beta Title").assertIsDisplayed()
+        assertTrue(rule.onAllNodesWithContentDescription("Reorder").fetchSemanticsNodes().isEmpty())
+    }
+
     @Test fun listDragHandleSwipeDoesNotCrash() {
         val actions = RecordingListActions()
         rule.setContent { NotesListScreen(NotesListUiState(notes()), actions) }

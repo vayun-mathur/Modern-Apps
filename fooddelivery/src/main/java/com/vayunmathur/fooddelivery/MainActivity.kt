@@ -9,9 +9,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.stripe.android.PaymentConfiguration
@@ -22,9 +24,13 @@ import com.vayunmathur.library.ui.IconLocalOffer
 import com.vayunmathur.library.ui.IconPackage
 import com.vayunmathur.library.ui.IconPerson
 import com.vayunmathur.library.ui.IconShoppingCart
+import com.vayunmathur.library.ui.AlertDialog
+import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.PagerTab
 import com.vayunmathur.library.ui.TabStyle
 import com.vayunmathur.library.ui.TabbedPagerScaffold
+import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
@@ -56,6 +62,17 @@ import kotlinx.serialization.Serializable
  */
 internal fun NavBackStack<Route>.pushDetail(route: Route) {
     if (backStack.isNotEmpty() && last()::class == route::class) setLast(route) else add(route)
+}
+
+/**
+ * Checkout posts every cart line to a single merchant's endpoint
+ * (`/merchants/{id}/checkout`, keyed off the first line's merchant), so a cart may
+ * only ever hold one merchant's items. A line with no merchant (0) carries no
+ * evidence against the cart's merchant and is allowed through.
+ */
+internal fun List<CartItem>.canAddFromSameMerchant(item: CartItem): Boolean {
+    val cartMerchant = firstOrNull()?.merchantId ?: return true
+    return cartMerchant == 0 || item.merchantId == 0 || cartMerchant == item.merchantId
 }
 
 sealed interface Route : NavKey {
@@ -191,6 +208,35 @@ private fun FoodDeliveryApp(
     // thread rather than in the remember initialiser. Anything added while the read was in
     // flight stays in the cart, and is re-persisted alongside the restored lines.
     val cart = remember { mutableStateListOf<CartItem>() }
+    // An item from a second restaurant, held until the user decides whether it
+    // replaces the cart they already have (checkout can only order from one).
+    var pendingCartItem by remember { mutableStateOf<CartItem?>(null) }
+    pendingCartItem?.let { pending ->
+        val currentName = cart.firstOrNull()?.merchantName?.ifBlank { "another restaurant" }
+            ?: "another restaurant"
+        val newName = pending.merchantName.ifBlank { "a different restaurant" }
+        AlertDialog(
+            onDismissRequest = { pendingCartItem = null },
+            title = { Text("Start a new cart?") },
+            text = {
+                Text(
+                    "Your cart has items from $currentName. Ordering is from one " +
+                        "restaurant at a time, so adding from $newName will clear it."
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    cart.clear()
+                    cart.add(pending)
+                    CartStore.save(context, cart)
+                    pendingCartItem = null
+                }) { Text("Start new cart") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCartItem = null }) { Text("Keep my cart") }
+            },
+        )
+    }
     LaunchedEffect(Unit) {
         val saved = CartStore.getAll(context)
         if (saved.isEmpty()) return@LaunchedEffect
@@ -212,8 +258,12 @@ private fun FoodDeliveryApp(
                 merchantId = route.id,
                 onBack = { backStack.pop() },
                 onAddToCart = { item ->
-                    cart.add(item)
-                    CartStore.save(context, cart)
+                    if (cart.canAddFromSameMerchant(item)) {
+                        cart.add(item)
+                        CartStore.save(context, cart)
+                    } else {
+                        pendingCartItem = item
+                    }
                 }
             )
         }
@@ -223,9 +273,11 @@ private fun FoodDeliveryApp(
                 items = cart,
                 onBack = { backStack.pop() },
                 onOrderPlaced = {
+                    backStack.reset(Route.Main(initialTab = 3))
+                },
+                onOrderCompleted = {
                     cart.clear()
                     CartStore.clear(context)
-                    backStack.reset(Route.Main(initialTab = 3))
                 },
             )
         }

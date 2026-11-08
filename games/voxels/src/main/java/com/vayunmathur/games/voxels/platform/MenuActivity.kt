@@ -81,6 +81,10 @@ class MenuActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Cold start: a tapped voxels://join link arrives as this activity's launch intent.
+        // singleTop only routes warm starts to onNewIntent, so without this the link is
+        // silently dropped and no join request is ever sent.
+        parseJoinLink(intent)?.let { pendingJoinLink.value = it }
         enableEdgeToEdge()
         setContent {
             // Standard app theme (Material You / system colors), matching the other apps — the menu

@@ -9,7 +9,8 @@ import org.robolectric.annotation.Implements
  * Scripts the microphone: each read fills the buffer with the next queued
  * amplitude (100 ms of constant samples) and returns a full chunk. When the
  * script runs out, reads return silence, which drives the VAD to its
- * end-of-utterance / no-speech exits.
+ * end-of-utterance / no-speech exits. A queued negative value (other than
+ * [BLOCK]) is returned as-is to simulate an AudioRecord read error.
  */
 @Implements(AudioRecord::class)
 class FakeAudioRecordShadow {
@@ -30,6 +31,9 @@ class FakeAudioRecordShadow {
             blockEntered?.countDown()
             blockRelease?.await(10, java.util.concurrent.TimeUnit.SECONDS)
             for (i in 0 until sizeInShorts) audioData[offsetInShorts + i] = 0
+        } else if (amplitude < 0) {
+            reads++
+            return amplitude
         } else {
             for (i in 0 until sizeInShorts) audioData[offsetInShorts + i] = amplitude.toShort()
         }

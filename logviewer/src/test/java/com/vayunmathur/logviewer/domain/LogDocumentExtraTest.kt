@@ -114,6 +114,17 @@ class LogDocumentExtraTest {
     }
 
     @Test
+    fun `snapshot file name budget is in utf-8 bytes not chars`() {
+        // 300 three-byte chars: a 200-char budget would emit a 600-byte filename,
+        // over the 255-byte limit of the filesystems saves land on.
+        val name = LogDocument.snapshotFileName("一".repeat(300))
+        assertTrue(name.toByteArray(Charsets.UTF_8).size <= 200 + 1 + 12 + 4)
+        assertTrue(name.endsWith(".txt"))
+        // 66 chars fit in 200 bytes (198); the 67th does not, and nothing is mangled.
+        assertEquals(66, name.count { it == '一' })
+    }
+
+    @Test
     fun `snapshot file name does not split a surrogate pair at the boundary`() {
         // Char 200 (index 199) is a high surrogate: trimming must drop it too.
         val title = "a".repeat(199) + "\uD83D\uDE00" + "tail"

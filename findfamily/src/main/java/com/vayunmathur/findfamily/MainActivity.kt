@@ -48,6 +48,8 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
+import com.vayunmathur.findfamily.util.EXTRA_NOSHOW_USER_ID
+import com.vayunmathur.findfamily.util.EXTRA_NOSHOW_WAYPOINT_ID
 import com.vayunmathur.findfamily.util.FindFamilyViewModel
 import com.vayunmathur.findfamily.util.FindFamilyViewModelFactory
 import com.vayunmathur.findfamily.util.Platform
@@ -71,8 +73,13 @@ class MainActivity : MaActivity() {
      */
     private val deepLinkAddInvite = mutableStateOf<AddInvite?>(null)
 
+    /** Pending no-show notification target (watched person, expected place), set on
+     * cold start and via [onNewIntent] for warm starts; cleared once routed. */
+    private val noShowTarget = mutableStateOf<Pair<Long, Long?>?>(null)
+
     override fun onCreateBeforeContent() {
         deepLinkAddInvite.value = parseAddDeepLink(intent)
+        noShowTarget.value = parseNoShowTarget(intent)
         // FIRST_PARTY: api.maproj.org + data.maproj.org (Cloudflare ISRG+GTS).
         NetworkClient.init(this, TrustBundle.FIRST_PARTY)
     }
@@ -103,6 +110,8 @@ class MainActivity : MaActivity() {
                 deepLinkPeerId,
                 deepLinkAddInvite.value,
                 onDeepLinkAddConsumed = { deepLinkAddInvite.value = null },
+                noShowTarget = noShowTarget.value,
+                onNoShowTargetConsumed = { noShowTarget.value = null },
             )
 
             // Approximate-only: explain and offer a reliable way to
@@ -126,6 +135,16 @@ class MainActivity : MaActivity() {
         // surface the invite so Compose routes to the prefilled dialog.
         setIntent(intent)
         parseAddDeepLink(intent)?.let { deepLinkAddInvite.value = it }
+        parseNoShowTarget(intent)?.let { noShowTarget.value = it }
+    }
+
+    /** Reads the no-show notification extras into a (user, waypoint) target, or null. */
+    private fun parseNoShowTarget(intent: Intent?): Pair<Long, Long?>? {
+        val userId = intent?.takeIf { it.hasExtra(EXTRA_NOSHOW_USER_ID) }
+            ?.getLongExtra(EXTRA_NOSHOW_USER_ID, -1L)?.takeIf { it != -1L } ?: return null
+        val waypointId = intent.takeIf { it.hasExtra(EXTRA_NOSHOW_WAYPOINT_ID) }
+            ?.getLongExtra(EXTRA_NOSHOW_WAYPOINT_ID, -1L)?.takeIf { it != -1L }
+        return userId to waypointId
     }
 
     /**
@@ -240,6 +259,8 @@ fun Navigation(
     deepLinkUwbPeerId: Long? = null,
     deepLinkAddInvite: AddInvite? = null,
     onDeepLinkAddConsumed: () -> Unit = {},
+    noShowTarget: Pair<Long, Long?>? = null,
+    onNoShowTargetConsumed: () -> Unit = {},
 ) {
     val backStack = rememberNavBackStack<Route>(Route.MainPage())
 
@@ -261,6 +282,14 @@ fun Navigation(
         if (deepLinkAddInvite != null) {
             backStack.add(Route.AddPersonDialog(deepLinkAddInvite.id, deepLinkAddInvite.fingerprint))
             onDeepLinkAddConsumed()
+        }
+    }
+
+    // A tapped no-show notification opens the map on the watched person/place.
+    LaunchedEffect(noShowTarget) {
+        if (noShowTarget != null) {
+            backStack.add(Route.MainPage(noShowTarget.first, noShowTarget.second))
+            onNoShowTargetConsumed()
         }
     }
 

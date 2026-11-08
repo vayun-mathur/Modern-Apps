@@ -82,7 +82,10 @@ class CalculatorTab {
         } catch (ignored: ExpressionError) {
             return // leave input untouched; the preview already flagged the problem
         }
-        if (quantity.value.isNaN()) return
+        // Non-finite results (NaN, 1/0 = ∞) have no re-parsable token form:
+        // recording one would replace the input with "∞"/"Undefined" and
+        // strand it there. Like NaN, they stay a live preview only.
+        if (!quantity.value.isFinite()) return
         val isInstant = quantity.instant
         val unit = if (quantity.isDimensionless || isInstant) {
             null
@@ -90,14 +93,15 @@ class CalculatorTab {
             selectedUnit ?: UnitRegistry.defaultUnitFor(quantity.dimension)
         }
         val display = formatQuantity(quantity, unit)
-        history.add(0, HistoryEntry(input, display))
+        // The token form re-parses, so the result can seed the next calculation.
+        val token = formatQuantity(quantity, unit, useToken = true)
+        history.add(0, HistoryEntry(input, display, token))
         lastAnswer = quantity.value
         if (unit != null) selectedUnit = unit
-        // The token form re-parses, so the result can seed the next calculation.
-        updateInput(formatQuantity(quantity, unit, useToken = true))
+        updateInput(token)
     }
 
-    fun useHistory(entry: HistoryEntry) = updateInput(entry.result)
+    fun useHistory(entry: HistoryEntry) = updateInput(entry.resultToken)
 
     fun selectOutputUnit(token: String) {
         val unit = unitOptions.firstOrNull { it.token == token } ?: return
@@ -107,7 +111,7 @@ class CalculatorTab {
 
     // Memory register operations. M+/M- fold the current preview (or input) into memory.
     fun memoryClear() { memory = 0.0 }
-    fun memoryRecall() = append(formatResult(memory))
+    fun memoryRecall() = append(formatResultToken(memory))
     fun memoryAdd() { currentValue()?.let { memory += it } }
     fun memorySubtract() { currentValue()?.let { memory -= it } }
 

@@ -78,11 +78,17 @@ class EuiccChannelManager(context: Context) {
     /**
      * Opens the ISD-R channel, installs it as [EuiccNative.activeChannel] for the duration of
      * [block] (so native ops can transmit), and closes it afterward.
+     *
+     * Serialized on a process-wide lock, not this instance's monitor: the
+     * ViewModel and EuiccManagerService each own a manager instance, and
+     * [EuiccNative.activeChannel] is a single process-global slot. Per-instance
+     * synchronization let a binder-thread profile op and a UI download
+     * overwrite each other's channel lambda, sending APDUs on the other
+     * session's channel and closing it from under it.
      */
-    @Synchronized
-    fun <T> withIsdrChannel(block: () -> T): T {
+    fun <T> withIsdrChannel(block: () -> T): T = synchronized(CHANNEL_LOCK) {
         val channel = openIsdrChannel()
-        return try {
+        try {
             EuiccNative.activeChannel = { apdu -> transmit(channel, apdu) }
             block()
         } finally {
@@ -191,6 +197,9 @@ class EuiccChannelManager(context: Context) {
     }
 
     companion object {
+        /** Process-wide ISD-R session lock; see [withIsdrChannel]. */
+        private val CHANNEL_LOCK = Any()
+
         private const val TAG = "EuiccChannelManager"
 
         /** ISD-R application identifier (SGP.22). */

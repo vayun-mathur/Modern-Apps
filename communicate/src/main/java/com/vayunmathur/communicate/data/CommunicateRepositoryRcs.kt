@@ -123,6 +123,7 @@ suspend fun CommunicateRepository.sendRcsMessage(
     threadRemoteId: String? = null,
     attachments: List<CommunicateAttachment> = emptyList(),
     participants: List<String> = emptyList(),
+    fromOutbox: Boolean = false,
 ): RcsSendResult = withContext(Dispatchers.IO) {
     if (!RcsFeature.enabled) return@withContext RcsSendResult.Failed
     val recipient = threadRemoteId?.takeIf { it.isNotBlank() } ?: toRcsRecipient(context, address)
@@ -139,12 +140,22 @@ suspend fun CommunicateRepository.sendRcsMessage(
     if (!RcsSipTransport.canSend()) return@withContext RcsSendResult.FallbackSms
     // Group thread (remoteId `rcs-group:…`): fan out 1:1 per member.
     if (recipient.startsWith("rcs-group:") && participants.isNotEmpty()) {
-        return@withContext sendRcsGroup(context, recipient, body, attachments, participants)
+        return@withContext sendRcsGroup(context, recipient, body, attachments, participants, fromOutbox)
     }
     runCatching {
         // E2EE first: when the conversation has an MLS group, encrypt and send
-        // the framed payload as an MLS content message.
-        if (sendRcsEncrypted(context, recipient, body)) return@withContext RcsSendResult.Sent
+        // the framed payload as an MLS content message. A conversation with a
+        // group must never fall through to the plaintext paths below when
+        // encryption or the encrypted send fails: that would silently
+        // downgrade an encrypted chat to cleartext SIP (and, via the caller's
+        // SMS fallback, to cleartext SMS). Fail instead so the user can retry.
+        if (hasRcsE2eGroup(context, recipient)) {
+            return@withContext if (sendRcsEncrypted(context, recipient, body)) {
+                RcsSendResult.Sent
+            } else {
+                RcsSendResult.Failed
+            }
+        }
         // Prefer an established session (MSRP) when one exists; else pager-mode CPIM.
         if (sendRcsViaSession(context, recipient, body, attachments)) {
             return@withContext RcsSendResult.Sent
@@ -152,7 +163,7 @@ suspend fun CommunicateRepository.sendRcsMessage(
         if (attachments.isNotEmpty()) {
             return@withContext sendRcsAttachments(context, recipient, body, attachments)
         }
-        return@withContext sendRcsPager(context, recipient, body)
+        return@withContext sendRcsPager(context, recipient, body, fromOutbox)
     }.getOrElse {
         RcsSendResult.FallbackSms
     }
@@ -172,11 +183,12 @@ private suspend fun CommunicateRepository.sendRcsGroup(
     body: String,
     attachments: List<CommunicateAttachment>,
     participants: List<String>,
+    fromOutbox: Boolean = false,
 ): RcsSendResult {
     var anyOk = false
     for (member in participants.map { it.trim() }.filter { it.isNotEmpty() }.distinct()) {
         val memberResult = sendRcsMessage(
-            context, member, body, member, attachments, emptyList(),
+            context, member, body, member, attachments, emptyList(), fromOutbox = fromOutbox,
         )
         if (memberResult == RcsSendResult.Sent) anyOk = true
     }
@@ -273,6 +285,7 @@ private suspend fun CommunicateRepository.sendRcsPager(
     context: Context,
     recipient: String,
     body: String,
+    fromOutbox: Boolean = false,
 ): RcsSendResult {
     val (startLine, headers, content) = RcsSipTransport.buildChatMessage(
         fromUri = "sip:me@rcs",
@@ -314,7 +327,11 @@ private suspend fun CommunicateRepository.sendRcsPager(
         // (transient): park for deferred retry (§4.3) AND report
         // FallbackSms so the caller still sends SMS now. Duplicate risk
         // (SMS now + RCS later) beats message loss on a dev-gated line.
-        RcsOutbox.enqueue(context, recipient, body)
+        // A retry that came FROM the outbox must not enqueue a second
+        // row for the same message: the pump keeps the original row and
+        // bumps its attempts, so a fresh row would send the message
+        // twice once the transport recovers.
+        if (!fromOutbox) RcsOutbox.enqueue(context, recipient, body)
         return RcsSendResult.FallbackSms
     }
     if (body.isNotBlank()) {
@@ -400,6 +417,9 @@ internal suspend fun CommunicateRepository.cacheInboundRcs(
     runCatching {
         val db = RcsDatabase.getDatabase(context)
         val now = System.currentTimeMillis()
+        // SIP/MSRP redelivery can hand us the same messageId twice; the
+        // upsert is idempotent but an unconditional unread bump is not.
+        val isNew = db.cachedMessageDao().get(messageId) == null
         db.cachedMessageDao().upsert(
             RcsCachedMessage(
                 messageId = messageId,
@@ -416,7 +436,7 @@ internal suspend fun CommunicateRepository.cacheInboundRcs(
         db.conversationDao().upsert(
             (existing ?: RcsConversation(remoteId = conversationId)).copy(
                 lastMessageTimestamp = now,
-                unreadCount = (existing?.unreadCount ?: 0) + 1,
+                unreadCount = (existing?.unreadCount ?: 0) + if (isNew) 1 else 0,
             ),
         )
     }
@@ -592,10 +612,19 @@ internal suspend fun CommunicateRepository.applyRcsDeliveryReport(
     }
 }
 
+/** True when [recipient]'s conversation has an MLS E2EE group. */
+internal suspend fun CommunicateRepository.hasRcsE2eGroup(
+    context: Context,
+    recipient: String,
+): Boolean =
+    com.vayunmathur.communicate.data.rcs.RcsFeature.enabled &&
+        com.vayunmathur.communicate.data.rcs.e2e.RcsE2E.groupIdFor(context, recipient) != null
+
 /**
  * Encrypt [body] for [recipient]'s E2EE group when one exists. Returns the
  * framed MLS payload, or null when the conversation is plaintext (no group)
- * or encryption failed (caller falls through to plaintext paths).
+ * or encryption failed. Callers that know a group exists (see
+ * [hasRcsE2eGroup]) must treat null as a failure, never as plaintext.
  */
 internal suspend fun CommunicateRepository.encryptForE2E(
     context: Context,

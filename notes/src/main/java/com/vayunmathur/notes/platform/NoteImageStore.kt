@@ -26,6 +26,14 @@ object NoteImageStore {
 
     fun fileFor(context: Context, fileName: String): File = File(dir(context), fileName)
 
+    /**
+     * Files that must travel with the notes database in a backup: the whole
+     * images directory as a single entry, so restore recreates it in place.
+     * Without this, a restored database references image files that were
+     * never backed up and every embedded image renders blank.
+     */
+    fun backupFiles(context: Context): List<File> = listOf(dir(context))
+
     /** Copies [uri] into the images dir and returns the new file name, or null on failure. */
     // Broad catch is deliberate: any content-provider failure mode means "no file"
     // per this function's contract, and the failure is logged below.
@@ -127,10 +135,18 @@ object NoteImageStore {
         }
     }
 
-    private fun contentName(file: File): String = "${sha256Hex(file.readBytes())}.jpg"
-
-    private fun sha256Hex(bytes: ByteArray): String {
+    // Streamed, not readBytes(): imported photos can be tens of MB, and loading
+    // the whole file to name it risks OOM on the import path.
+    private fun contentName(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
-        return digest.digest(bytes).joinToString("") { "%02x".format(it) }
+        file.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return "${digest.digest().joinToString("") { "%02x".format(it) }}.jpg"
     }
 }

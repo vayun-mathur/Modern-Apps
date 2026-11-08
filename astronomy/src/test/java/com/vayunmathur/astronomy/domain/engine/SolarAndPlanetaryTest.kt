@@ -38,6 +38,21 @@ class SolarAndPlanetaryTest {
     }
 
     @Test
+    fun `lunar distance actually varies over a lunation`() {
+        // The Moon's distance swings by tens of thousands of km between
+        // perigee and apogee. The old metre/km scale mix-up returned
+        // 385000 km +/- ~30 km for every date.
+        val distances = (0 until 60).map { i ->
+            LunarCalculator.calc(2460676.5 + i * 0.5).distanceKm
+        }
+        assertTrue(distances.all { it in 350000.0..410000.0 }, "range $distances")
+        assertTrue(
+            distances.max() - distances.min() > 20000.0,
+            "distance range ${distances.max() - distances.min()} km is implausibly flat",
+        )
+    }
+
+    @Test
     fun kepler_solver_circular() {
         val meanAnomaly = 1.0; val e = 0.0
         val eccentricAnomaly = PlanetaryCalculator.solveKepler(meanAnomaly, e)
@@ -78,6 +93,52 @@ class SolarAndPlanetaryTest {
             val dayLenHours = (rs.setJd!! - rs.riseJd!!) * 24
             // NYC summer day >14h
             assertTrue(dayLenHours in 10.0..18.0, "day len $dayLenHours h")
+        }
+    }
+
+    @Test
+    fun `orbital elements satisfy mean longitude equals node plus perihelion plus anomaly`() {
+        // By definition L = (omega + w + M0) mod 360 for every planet. Earth,
+        // Venus and Mars shipped with M0 copied from L, which put their
+        // heliocentric longitudes off by the longitude of perihelion
+        // (~92 deg for Earth, ~132 deg for Venus, ~-24 deg for Mars).
+        for (planet in com.vayunmathur.astronomy.data.BuiltInCatalogs.orbital) {
+            if (planet.id == "SUN") continue
+            val implied = (planet.omegaDeg + planet.wDeg + planet.m0Deg) % 360.0
+            var diff = (implied - planet.lDeg) % 360.0
+            if (diff > 180.0) diff -= 360.0
+            if (diff < -180.0) diff += 360.0
+            assertTrue(abs(diff) < 0.25, "${planet.id}: L=${planet.lDeg} but omega+w+M0=$implied")
+        }
+    }
+
+    @Test
+    fun `earth heliocentric longitude opposes the sun at j2000`() {
+        val earth = com.vayunmathur.astronomy.data.BuiltInCatalogs.orbital.first { it.id == "EARTH" }
+        val (x, y, _) = PlanetaryCalculator.heliocentricEcliptic(earth, TimeEngine.J2000)
+        val earthLon = Math.toDegrees(kotlin.math.atan2(y, x))
+        val sunLon = SolarCalculator.calc(TimeEngine.J2000).eclipticLonRad.toDeg()
+        var opposition = (earthLon - sunLon) % 360.0
+        if (opposition < 0) opposition += 360.0
+        assertTrue(abs(opposition - 180.0) < 2.0, "earth lon $earthLon vs sun lon $sunLon")
+    }
+
+    @Test
+    fun `venus never exceeds its maximum elongation from the sun`() {
+        val orbital = com.vayunmathur.astronomy.data.BuiltInCatalogs.orbital
+        val earth = orbital.first { it.id == "EARTH" }
+        val venus = orbital.first { it.id == "VENUS" }
+        val obliq = TimeEngine.meanObliquityRad(TimeEngine.J2000)
+        for (offsetDays in listOf(0.0, 100.0, 200.0, 300.0, 400.0)) {
+            val jd = TimeEngine.J2000 + offsetDays
+            val result = PlanetaryCalculator.geocentricRaDec(venus, earth, jd)
+            val ecliptic = CoordinateTransforms.raDecToEcliptic(result.raDec, obliq)
+            val sunLon = SolarCalculator.calc(jd).eclipticLonRad
+            val elongation = (ecliptic.lonRad - sunLon).normalizePi().toDeg()
+            assertTrue(
+                abs(elongation) < 48.0,
+                "Venus elongation $elongation deg at JD $jd exceeds the ~47 deg maximum",
+            )
         }
     }
 

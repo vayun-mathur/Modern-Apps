@@ -92,6 +92,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
 
             try {
                 downloadProgressiveTracks(input, videoFile, audioFile)
+                // A stop that landed mid-transfer leaves a partial file behind: the
+                // finally below deletes it, so don't record a DB row for it.
+                if (isStopped) return@coroutineScope Result.failure()
                 val download = DownloadedVideo(
                     id = input.videoID,
                     videoItem = input.videoInfo,
@@ -287,15 +290,20 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
         val jobs = (0 until CHUNK_COUNT).map { i ->
             val start = i * chunkSize
             val end = if (i == CHUNK_COUNT - 1) totalBytes - 1 else (i + 1) * chunkSize - 1
+            // No catch here: a failed chunk must fail the download (the caller's
+            // catch deletes the partial file). Swallowing it used to leave a
+            // zero-filled hole in the preallocated file marked as success.
             async(Dispatchers.IO) {
-                try {
-                    fetchChunk(url, file, start, end, downloadedBytes)
-                } catch (e: java.io.IOException) {
-                    Log.error("DownloadWorker", "Error downloading chunk $i", e)
-                }
+                fetchChunk(url, file, start, end, downloadedBytes)
             }
         }
         jobs.forEach { it.await() }
+        // NetworkClient.stream reports a mid-transfer drop as a clean -1 EOF, so a
+        // short chunk also completes "successfully" — reject short files here.
+        val done = downloadedBytes.get()
+        if (done != totalBytes) {
+            throw java.io.IOException("Incomplete download: $done of $totalBytes bytes")
+        }
     }
 
     private suspend fun fetchChunk(
@@ -309,7 +317,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
             url,
             headers = mapOf("Range" to "bytes=$start-$end")
         ) { stream, _ ->
-            if (stream == null) return@stream
+            // Null stream = non-streamable status (error body, 416 on the range,
+            // ...). Returning silently here used to count the chunk as done.
+            if (stream == null) throw java.io.IOException("Range request failed for bytes=$start-$end")
             // RandomAccessFile.write is unbuffered —
             // wrap it via FileChannel so the 64KB
             // socket reads are coalesced into 256KB
@@ -344,39 +354,44 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
     }
 
     private suspend fun downloadFileSimple(url: String, file: File, onProgress: (Double) -> Unit) {
-        try {
-            client.stream(url) { stream, response ->
-                if (stream == null) return@stream
-                val totalBytes = response.contentLength
-                var downloadedBytes = 0L
-                var lastReportedMs = 0L
-                BufferedOutputStream(file.outputStream(), WRITE_BUFFER_SIZE).use { output ->
-                    val buffer = ByteArray(READ_BUFFER_SIZE)
-                    while (!stream.isClosedForRead) {
-                        if (isStopped) {
-                            file.delete()
-                            return@stream
-                        }
-                        val read = stream.read(buffer)
-                        if (read == -1) break
-                        output.write(buffer, 0, read)
-                        downloadedBytes += read
-                        if (totalBytes != null && totalBytes > 0) {
-                            val now = System.currentTimeMillis()
-                            if (now - lastReportedMs >= PROGRESS_INTERVAL_MS) {
-                                onProgress(downloadedBytes.toDouble() / totalBytes.toDouble())
-                                lastReportedMs = now
-                            }
+        // No catch here: like the chunked path, a transfer error must reach the
+        // caller's catch (partial-file cleanup + failure), not a success row.
+        client.stream(url) { stream, response ->
+            if (stream == null) throw java.io.IOException("Simple download request failed for $url")
+            val totalBytes = response.contentLength
+            var downloadedBytes = 0L
+            var lastReportedMs = 0L
+            BufferedOutputStream(file.outputStream(), WRITE_BUFFER_SIZE).use { output ->
+                val buffer = ByteArray(READ_BUFFER_SIZE)
+                while (!stream.isClosedForRead) {
+                    if (isStopped) {
+                        file.delete()
+                        return@stream
+                    }
+                    val read = stream.read(buffer)
+                    if (read == -1) break
+                    output.write(buffer, 0, read)
+                    downloadedBytes += read
+                    if (totalBytes != null && totalBytes > 0) {
+                        val now = System.currentTimeMillis()
+                        if (now - lastReportedMs >= PROGRESS_INTERVAL_MS) {
+                            onProgress(downloadedBytes.toDouble() / totalBytes.toDouble())
+                            lastReportedMs = now
                         }
                     }
-                    output.flush()
-                    if (totalBytes != null && totalBytes > 0) {
-                        onProgress(downloadedBytes.toDouble() / totalBytes.toDouble())
+                }
+                output.flush()
+                if (totalBytes != null && totalBytes > 0) {
+                    onProgress(downloadedBytes.toDouble() / totalBytes.toDouble())
+                    // Same -1-on-drop truncation as the chunked path: a short read
+                    // breaks the loop cleanly, so verify the length when known.
+                    if (downloadedBytes != totalBytes) {
+                        throw java.io.IOException(
+                            "Incomplete download: $downloadedBytes of $totalBytes bytes"
+                        )
                     }
                 }
             }
-        } catch (e: java.io.IOException) {
-            Log.error("DownloadWorker", "Error in simple download", e)
         }
     }
 

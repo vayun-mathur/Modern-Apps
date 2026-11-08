@@ -90,6 +90,7 @@
         <activity
             android:name=".ui.ViewInfoActivity"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
+            android:directBootAware="true"
             android:exported="true"
             android:label="@string/app_name"
             android:launchMode="singleTask"

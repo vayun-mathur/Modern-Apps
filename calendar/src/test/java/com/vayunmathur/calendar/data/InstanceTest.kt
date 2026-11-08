@@ -31,6 +31,22 @@ class InstanceTest {
         assertEquals(listOf(LocalDate.parse("2026-07-15")), instance.spanDays)
     }
 
+    // Regression test: a zero-duration instance at midnight (begin == end, e.g. an
+    // imported timed event with no DTEND) must still span its start day. Before the
+    // fix spanDays was empty, so the event showed in no view.
+    @Test
+    fun zeroDurationAtMidnightSpansStartDay() {
+        val date = LocalDate.parse("2026-07-15")
+        val midnight = date.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
+        val timed = Instance(
+            id = 1L, eventID = 1L, begin = midnight, end = midnight,
+            timezone = "UTC", allDay = false, eventTitle = "Test", color = 0, rrule = null,
+        )
+        assertEquals(listOf(date), timed.spanDays)
+        val allDay = allDayInstance("2026-07-15", "2026-07-15")
+        assertEquals(listOf(date), allDay.spanDays)
+    }
+
     @Test
     fun multiDayAllDaySpansInclusiveDays() {
         val instance = allDayInstance("2026-07-15", "2026-07-18")

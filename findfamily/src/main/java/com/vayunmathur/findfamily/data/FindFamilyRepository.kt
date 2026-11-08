@@ -62,7 +62,19 @@ class FindFamilyRepository internal constructor(
     suspend fun getAllUsers(): List<User> = userDao.getAll()
     suspend fun upsertUser(user: User): Long = userDao.upsert(user)
     suspend fun insertUsersIgnore(users: List<User>) = userDao.insertAllIgnore(users)
-    suspend fun deleteUser(user: User): Int = userDao.delete(user)
+
+    /**
+     * Delete a person and everything stored about them: their location
+     * history and any no-show watches on them. Without the cascade the
+     * precise history outlived the removal (until the 7-day sweep) and
+     * silently resurrected if the same ID was ever re-added.
+     */
+    suspend fun deleteUser(user: User): Int {
+        val deleted = userDao.delete(user)
+        locationValueDao.deleteByUserid(user.id)
+        noShowAlertDao.deleteByWatchedUserId(user.id)
+        return deleted
+    }
 
     suspend fun updateLocationMeta(
         id: Long,
@@ -110,7 +122,20 @@ class FindFamilyRepository internal constructor(
     suspend fun getAllWaypoints(): List<Waypoint> = waypointDao.getAll()
     suspend fun getWaypoint(id: Long): Waypoint = waypointDao.get(id)
     suspend fun upsertWaypoint(waypoint: Waypoint): Long = waypointDao.upsert(waypoint)
-    suspend fun deleteWaypoint(waypoint: Waypoint): Int = waypointDao.delete(waypoint)
+
+    /**
+     * Delete a saved place and its dangling references: arrival auto-toggles
+     * and current-place pointers naming it, plus no-show watches expecting
+     * arrivals there. Without this they pointed at a place that no longer
+     * exists - toggles silently dead, watches firing for a deleted place.
+     */
+    suspend fun deleteWaypoint(waypoint: Waypoint): Int {
+        val deleted = waypointDao.delete(waypoint)
+        userDao.clearArrivalTogglesForWaypoint(waypoint.id)
+        userDao.clearLastWaypointForWaypoint(waypoint.id)
+        noShowAlertDao.deleteByWaypointId(waypoint.id)
+        return deleted
+    }
 
     // ------------------------------------------------------------------
     // LocationValue reads / writes

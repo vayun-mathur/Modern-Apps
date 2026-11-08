@@ -55,11 +55,56 @@ internal fun DrawScope.drawMirror(cell: Int, mirror: Mirror, cols: Int, size: Fl
 }
 
 /**
+ * How far each trailing segment waits for the one ahead of it, in cells of travel.
+ *
+ * This is the whole of the snake feel: the head sets off immediately and every segment behind it
+ * starts [SEGMENT_LAG_CELLS] of travel later, so the arrow eases out instead of translating as
+ * one rigid shape. A fifth of a cell per segment is enough to read as a follow-through on a
+ * five-cell arrow without the tail feeling disconnected on a two-cell one.
+ */
+internal const val SEGMENT_LAG_CELLS = 0.22f
+
+/**
+ * Segment [segmentIndex]'s own advance when the move's global advance is [globalAdvance].
+ *
+ * Pure arithmetic on purpose, so the timing can be pinned by plain unit tests: the head
+ * (the last segment) tracks the global advance exactly, each segment behind it is held back
+ * by one more [lagPerSegment], and no segment ever passes [maxAdvance] or goes negative.
+ * Animating the global value from 0 to [globalAdvanceTarget] therefore starts the head first
+ * and still lands every segment exactly on [maxAdvance].
+ */
+internal fun laggedAdvance(
+    globalAdvance: Float,
+    segmentIndex: Int,
+    segmentCount: Int,
+    maxAdvance: Float,
+    lagPerSegment: Float = SEGMENT_LAG_CELLS,
+): Float {
+    val behindHead = (segmentCount - 1 - segmentIndex).coerceAtLeast(0)
+    return (globalAdvance - behindHead * lagPerSegment).coerceIn(0f, maxAdvance)
+}
+
+/**
+ * The global advance at which even the tail has completed [maxAdvance] of travel: the far end
+ * has to run one lag per segment past it. Durations should be sized from this value so the
+ * arrow's speed per cell is the same whatever its length.
+ */
+internal fun globalAdvanceTarget(
+    maxAdvance: Float,
+    segmentCount: Int,
+    lagPerSegment: Float = SEGMENT_LAG_CELLS,
+): Float = maxAdvance + (segmentCount - 1).coerceAtLeast(0) * lagPerSegment
+
+/**
  * One arrow part-way along its route.
  *
  * Cell `i` of the piece sits at route position `i + advance`, so the body follows wherever the head went
  * and turns corners with it. Fractional advance interpolates between the two positions either side, which
  * is what makes the motion continuous rather than a hop per cell.
+ *
+ * [advance] is the move's *global* advance (see [laggedAdvance]): each segment converts it to
+ * its own, so the head leads and the tail follows a beat later rather than the whole shape
+ * translating rigidly. [maxAdvance] is how far each segment ultimately travels.
  *
  * Once the route runs out the piece is leaving the board, so positions past the end are extrapolated from
  * the final step's direction — it slides off the edge instead of stopping dead on it.
@@ -68,15 +113,19 @@ internal fun DrawScope.drawTravellingArrow(
     piece: ArrowPiece,
     move: ArrowMove,
     advance: Float,
+    maxAdvance: Float,
     cols: Int,
     cell: Float,
     color: Color,
 ) {
-    val centres = piece.cells.indices.map { routePoint(move.route, it + advance, cols, cell) }
+    val segmentAdvance = { index: Int ->
+        laggedAdvance(advance, index, piece.cells.size, maxAdvance)
+    }
+    val centres = piece.cells.indices.map { routePoint(move.route, it + segmentAdvance(it), cols, cell) }
     // Sampled half a cell further along the route rather than taken from the last two body cells: a
     // one-cell arrow has no "last two", and sampling also keeps the head turning smoothly through a
     // mirror instead of snapping once the body reaches it.
-    val headAt = piece.cells.lastIndex + advance
+    val headAt = piece.cells.lastIndex + segmentAdvance(piece.cells.lastIndex)
     val ahead = routePoint(move.route, headAt + 0.5f, cols, cell)
     val head = centres.last()
     val sampled = Offset(ahead.x - head.x, ahead.y - head.y)
@@ -117,14 +166,63 @@ internal fun routePoint(route: List<Int>, at: Float, cols: Int, cell: Float): Of
 /**
  * One arrow: its body as a single joined stroke, and an arrowhead at the head.
  *
- * The stroke runs through cell centres, so a turn in the polyline becomes a rounded corner. The tip
- * reaches past the head's centre by [HEAD_REACH] to leave room for the barbs while staying inside its own
- * cell rather than poking into the next one.
+ * The stroke runs through cell centres, and a turn in the polyline is drawn as a rounded arc (see
+ * [arrowBodyPath]) rather than a sharp corner. The tip reaches past the head's centre by
+ * [HEAD_REACH] to leave room for the barbs while staying inside its own cell rather than poking
+ * into the next one.
  */
 internal fun DrawScope.drawArrow(piece: ArrowPiece, cols: Int, cell: Float, color: Color) {
     val centres = piece.cells.map { Offset((it % cols + 0.5f) * cell, (it / cols + 0.5f) * cell) }
     val heading = Offset(piece.direction.dCol.toFloat(), piece.direction.dRow.toFloat())
     drawArrowShape(centres, heading, cell, color)
+}
+
+/**
+ * The body path through [points] (cell centres, ending at the arrow tip), with every turn
+ * replaced by a rounded quarter-circle arc.
+ *
+ * The arc's radius follows the grid: half a cell, the largest quarter circle that fits inside
+ * one cell, so a turn reads as the arrow bending around the corner cell instead of pivoting on
+ * its centre. It is clamped to half the shorter neighbouring segment so two arcs on adjacent
+ * corners of a short hop can never overlap and swallow the straight between them; a straight
+ * (collinear) point keeps a plain line, and a degenerate zero-length neighbour is skipped.
+ *
+ * Quadratic curves stand in for the circular arc: with the control point on the corner itself
+ * the curve leaves one straight tangentially and joins the next the same way, which at stroke
+ * width is indistinguishable from the true arc while needing no angle bookkeeping per turn.
+ */
+internal fun arrowBodyPath(points: List<Offset>, cell: Float): Path {
+    val path = Path()
+    if (points.isEmpty()) return path
+    path.moveTo(points.first().x, points.first().y)
+    if (points.size == 1) return path
+
+    val maxRadius = cell * 0.5f
+    for (index in 1 until points.lastIndex) {
+        val previous = points[index - 1]
+        val corner = points[index]
+        val next = points[index + 1]
+        val inLength = kotlin.math.hypot(corner.x - previous.x, corner.y - previous.y)
+        val outLength = kotlin.math.hypot(next.x - corner.x, next.y - corner.y)
+        val radius = minOf(maxRadius, inLength / 2f, outLength / 2f)
+        // Collinear (or degenerate) points have no turn to round: cross product ~ 0.
+        val cross = (corner.x - previous.x) * (next.y - corner.y) -
+            (corner.y - previous.y) * (next.x - corner.x)
+        if (radius <= 0f || inLength <= 0f || outLength <= 0f ||
+            kotlin.math.abs(cross) <= 0.001f * inLength * outLength
+        ) {
+            path.lineTo(corner.x, corner.y)
+            continue
+        }
+        val inUnit = Offset((corner.x - previous.x) / inLength, (corner.y - previous.y) / inLength)
+        val outUnit = Offset((next.x - corner.x) / outLength, (next.y - corner.y) / outLength)
+        val arcStart = Offset(corner.x - inUnit.x * radius, corner.y - inUnit.y * radius)
+        val arcEnd = Offset(corner.x + outUnit.x * radius, corner.y + outUnit.y * radius)
+        path.lineTo(arcStart.x, arcStart.y)
+        path.quadraticBezierTo(corner.x, corner.y, arcEnd.x, arcEnd.y)
+    }
+    path.lineTo(points.last().x, points.last().y)
+    return path
 }
 
 /**
@@ -146,13 +244,8 @@ internal fun DrawScope.drawArrowShape(
     val head = centres.last()
     val tip = Offset(head.x + unit.x * cell * 0.34f, head.y + unit.y * cell * 0.34f)
 
-    val path = Path().apply {
-        moveTo(centres.first().x, centres.first().y)
-        for (point in centres.drop(1)) lineTo(point.x, point.y)
-        lineTo(tip.x, tip.y)
-    }
     drawPath(
-        path = path,
+        path = arrowBodyPath(centres + tip, cell),
         color = color,
         style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
     )

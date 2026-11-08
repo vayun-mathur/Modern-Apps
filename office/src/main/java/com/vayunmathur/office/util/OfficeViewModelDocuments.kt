@@ -190,16 +190,35 @@ fun OfficeViewModel.createNewPresentation() {
     originalUri = null
 }
 
+/** OOXML (Microsoft) extensions whose files must be written with the OOXML exporter. */
+private val OOXML_EXTENSIONS = setOf(
+    "docx", "docm", "dotx", "dotm", "xlsx", "xlsm", "xltx", "xltm",
+    "pptx", "pptm", "potx", "potm", "ppsx", "ppsm")
+
+internal fun uriExtension(uri: Uri?): String =
+    uri?.lastPathSegment?.substringAfterLast('.', "")?.lowercase() ?: ""
+
 fun OfficeViewModel.save(targetUri: Uri? = null) {
     val doc = (stateMutable.value as? ViewState.Loaded)?.document ?: return
-    // Source may be null for a brand-new document; the writer then builds the package from scratch.
-    val source = documentUri
     // Write back to the document the user opened, not to the app-private read cache.
     val target = targetUri ?: originalUri ?: return
+    // An OOXML target (.docx/.xlsx/.pptx…) must be written by the OOXML exporter:
+    // writing an ODF package over it (the old behaviour) destroyed the file.
+    val targetIsOoxml = uriExtension(target) in OOXML_EXTENSIONS
+    // Source may be null for a brand-new document; the writer then builds the package from scratch.
+    // Never copy an OOXML source package's parts into an ODF package.
+    val source = documentUri?.takeUnless { uriExtension(it) in OOXML_EXTENSIONS }
     isSavingMutable.value = true
     viewModelScope.launch(Dispatchers.IO) {
         try {
-            OdfWriter.save(getApplication(), source, doc, target)
+            if (targetIsOoxml) {
+                val bytes = com.vayunmathur.library.ui.odf.OoxmlExporter.export(doc)
+                getApplication<Application>().contentResolver.openOutputStream(target)
+                    ?.use { it.write(bytes) }
+                    ?: throw java.io.IOException("Cannot open $target for writing")
+            } else {
+                OdfWriter.save(getApplication(), source, doc, target)
+            }
             hasUnsavedChangesMutable.value = false
             originalUri = target
             if (documentUri == null) documentUri = target

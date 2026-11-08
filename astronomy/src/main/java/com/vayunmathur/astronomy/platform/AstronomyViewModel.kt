@@ -162,10 +162,11 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
     private val _riseSet = MutableStateFlow<RiseSetCalculator.RiseTransitSet?>(null)
     val riseSet: StateFlow<RiseSetCalculator.RiseTransitSet?> = _riseSet
 
-    val visibleSky: StateFlow<VisibleSky> = combine(_simTime, _observer, _catalogReady) { args ->
-        val time = args[0] as Instant
-        val obs = args[1] as ObserverLocation?
-        val ready = args[2] as Boolean
+    // _magLimit is an input to computeVisibleSky (it filters the star
+    // list), so it must be one of the combined flows: without it, changing
+    // the magnitude limit in Settings only took effect on the next
+    // one-second live tick, and never while time was scrubbed/paused.
+    val visibleSky: StateFlow<VisibleSky> = combine(_simTime, _observer, _catalogReady, _magLimit) { time, obs, ready, _ ->
         if (!ready || obs == null) VisibleSky(observer = obs, time = time, jd = TimeEngine.instantToJulianDate(time))
         else computeVisibleSky(time, obs)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, VisibleSky())
@@ -243,30 +244,35 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
             objectId == "MOON" -> { jd -> LunarCalculator.calc(jd).raDec }
             objectId.startsWith("PLANET_") -> {
                 val pid = objectId.removePrefix("PLANET_")
-                val planetElem = catalog.planets.firstOrNull { it.id == pid }
-                val earthElem = catalog.earth
-                if (planetElem != null && earthElem != null) {
-                    { jd -> PlanetaryCalculator.geocentricRaDec(planetElem, earthElem, jd).raDec }
-                } else {
-                    { _ -> RaDec(0.0, 0.0) }
+                // Resolve inside the lambda, not at provider creation: a
+                // provider minted before the catalog finished loading used
+                // to capture the empty catalog and return RaDec(0, 0)
+                // forever, freezing the trajectory/rise-set at the pole.
+                val provider: (Double) -> RaDec = { jd ->
+                    val planetElem = catalog.planets.firstOrNull { it.id == pid }
+                    val earthElem = catalog.earth
+                    if (planetElem != null && earthElem != null) {
+                        PlanetaryCalculator.geocentricRaDec(planetElem, earthElem, jd).raDec
+                    } else {
+                        RaDec(0.0, 0.0)
+                    }
                 }
+                provider
             }
             objectId.startsWith("STAR_") -> {
                 val sid = objectId.removePrefix("STAR_").toIntOrNull()
-                val star = sid?.let { id -> catalog.stars.firstOrNull { it.id == id } }
-                if (star != null) {
-                    { _ -> RaDec(star.ra, star.dec) }
-                } else {
-                    { _ -> RaDec(0.0, 0.0) }
+                val provider: (Double) -> RaDec = { _ ->
+                    val star = sid?.let { id -> catalog.stars.firstOrNull { it.id == id } }
+                    if (star != null) RaDec(star.ra, star.dec) else RaDec(0.0, 0.0)
                 }
+                provider
             }
             else -> {
-                val dso = catalog.deepSky.firstOrNull { it.id == objectId }
-                if (dso != null) {
-                    { _ -> RaDec(dso.ra, dso.dec) }
-                } else {
-                    { _ -> RaDec(0.0, 0.0) }
+                val provider: (Double) -> RaDec = { _ ->
+                    val dso = catalog.deepSky.firstOrNull { it.id == objectId }
+                    if (dso != null) RaDec(dso.ra, dso.dec) else RaDec(0.0, 0.0)
                 }
+                provider
             }
         }
     }
@@ -297,6 +303,11 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
             catalog.loadAll()
             starIndex = catalog.stars.associateBy { it.id }
             _catalogReady.value = true
+            // An object can be selected (e.g. from Search) before the
+            // catalog lands; refresh its derived data now that providers
+            // can resolve it.
+            updateTrajectoryForSelected()
+            updateRiseSetForSelected()
         }
         viewModelScope.launch {
             orientationMgr.orientation.collect { _deviceOrientation.value = it }
@@ -323,7 +334,9 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
         _viewCenter.value = CenterOption.DevicePointing
         val latDeg = snapshot.latDeg
         val lonDeg = snapshot.lonDeg
-        if (latDeg != null && lonDeg != null) {
+        // Ignore an out-of-range persisted pair from an older build
+        // instead of resurrecting a nonsense observer every launch.
+        if (latDeg != null && lonDeg != null && latDeg in -90.0..90.0 && lonDeg in -180.0..180.0) {
             _observer.value = ObserverLocation(latDeg.toRad(), lonDeg.toRad(), latDeg, lonDeg, 0.0)
         }
     }
@@ -373,9 +386,19 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
         prefs.saveDouble("astro_fov", v.toDouble())
     }
     override fun setManualLocation(latDeg: Double, lonDeg: Double) {
+        // The settings form only checked that the text parsed as a
+        // Double, so e.g. latitude 999 was applied and persisted; the
+        // alt-az formulas then silently produced a sky for a latitude
+        // outside [-90, 90] (likewise longitude outside [-180, 180]).
+        if (latDeg !in -90.0..90.0 || lonDeg !in -180.0..180.0) return
         _observer.value = ObserverLocation(latDeg.toRad(), lonDeg.toRad(), latDeg, lonDeg)
         prefs.saveDouble("astro_lat", latDeg)
         prefs.saveDouble("astro_lon", lonDeg)
+        // Rise/set and trajectories are computed for the observer; without
+        // this they kept showing the previous location's times until the
+        // object was re-selected.
+        updateTrajectoryForSelected()
+        updateRiseSetForSelected()
     }
 
     private fun startTicker() {
@@ -406,6 +429,8 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
                 _observer.value = ObserverLocation(latDeg.toRad(), lonDeg.toRad(), latDeg, lonDeg, it.altitude)
                 prefs.saveDouble("astro_lat", latDeg); prefs.saveDouble("astro_lon", lonDeg)
                 orientationMgr.updateLocation(latDeg, lonDeg, it.altitude.toFloat())
+                updateTrajectoryForSelected()
+                updateRiseSetForSelected()
             } ?: run { _observer.value?.let { obs -> orientationMgr.updateLocation(obs.latDeg, obs.lonDeg) } }
         }
     }

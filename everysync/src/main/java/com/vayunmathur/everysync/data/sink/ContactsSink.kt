@@ -55,6 +55,7 @@ object ContactsSink {
     private const val CURSOR_SYNC1 = 2
     private const val CURSOR_DELETED = 3
 
+
     private fun Uri.asSyncAdapter(accountName: String): Uri =
         buildUpon()
             .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true")
@@ -87,10 +88,14 @@ object ContactsSink {
     }
 
     /**
-     * Every live contact for this account in relay form, for the merge's
-     * local side. `updatedAt` comes from SYNC1 (the relay stamp mirrors into
-     * `etag` on every relay write); rows that predate relay sync carry no
-     * stamp and merge as fresh local creates via the adoption path.
+     * Every contact for this account in relay form, for the merge's local
+     * side — including DELETED rows as tombstones. Filtering DELETED rows
+     * out (the old behaviour) made a local delete indistinguishable from a
+     * missed read, so the merge resurrected the relay copy and the delete
+     * never propagated. `updatedAt` comes from SYNC1 (the relay stamp
+     * mirrors into `etag` on every relay write); rows that predate relay
+     * sync carry no stamp, and rows with no SOURCE_ID are bound to a
+     * freshly minted relay identity on this row (see below).
      */
     fun listLocal(context: Context, accountName: String): List<RemoteContact> {
         val out = mutableListOf<RemoteContact>()
@@ -102,10 +107,10 @@ object ContactsSink {
                     ContactsContract.RawContacts._ID,
                     ContactsContract.RawContacts.SOURCE_ID,
                     ContactsContract.RawContacts.SYNC1,
+                    ContactsContract.RawContacts.DELETED,
                 ),
                 "${ContactsContract.RawContacts.ACCOUNT_NAME} = ? AND " +
-                    "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ? AND " +
-                    "${ContactsContract.RawContacts.DELETED} = 0",
+                    "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ?",
                 arrayOf(accountName, ACCOUNT_TYPE),
                 null,
             )
@@ -116,10 +121,27 @@ object ContactsSink {
                 cursor.use { c ->
                     while (c.moveToNext()) {
                         val rawId = c.getLong(CURSOR_RAW_ID)
-                        val uid = c.getStringOrNull(CURSOR_SOURCE_ID).orEmpty()
+                        var uid = c.getStringOrNull(CURSOR_SOURCE_ID).orEmpty()
                         val stamp = c.getStringOrNull(CURSOR_SYNC1)?.toLongOrNull() ?: 0L
-                        val contact = readContact(context, rawId, uid.ifBlank { null })
-                        out += contact.copy(uid = uid, updatedAt = stamp)
+                        if (uid.isBlank()) {
+                            // A contact created on-device has no relay
+                            // identity yet. Bind one to THIS row now: the
+                            // merge can only mint an id in memory, and a
+                            // later upsert-by-uid would insert a duplicate
+                            // instead of attaching to this row, re-minting
+                            // (and re-pushing) a copy every cycle.
+                            uid = com.vayunmathur.everysync.sync.newRelaySyncId()
+                            setSourceId(
+                                context, accountName, rawId, uid,
+                                c.getStringOrNull(CURSOR_SYNC1),
+                            )
+                        }
+                        val contact = readContact(context, rawId, uid)
+                        out += contact.copy(
+                            uid = uid,
+                            updatedAt = stamp,
+                            deleted = c.getInt(CURSOR_DELETED) == 1,
+                        )
                     }
                 }
             }

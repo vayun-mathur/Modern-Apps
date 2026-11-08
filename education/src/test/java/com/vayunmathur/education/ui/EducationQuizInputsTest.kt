@@ -89,6 +89,18 @@ class EducationQuizInputsTest {
         assertTrue(rule.onAllNodesWithText("3").fetchSemanticsNodes().isNotEmpty())
     }
 
+    @Test fun orderingNeverStartsSolved() {
+        // Regression: an unguarded shuffled() can return the identity order
+        // (1 in 6 for 3 items), publishing a correct answer before any input.
+        repeat(200) {
+            val order = shuffledOrdering(3)
+            assertEquals(listOf(0, 1, 2), order.sorted())
+            assertTrue(order != listOf(0, 1, 2), "ordering question must not start solved")
+        }
+        assertEquals(listOf(0), shuffledOrdering(1))
+        assertEquals(emptyList(), shuffledOrdering(0))
+    }
+
     @Test fun matchingPublishesWhenComplete() {
         var answer: Answer? = null
         show { QuestionInput(Fx.matching, null, enabled = true) { answer = it } }
@@ -213,6 +225,33 @@ class EducationQuizInputsTest {
         rule.waitUntil(10_000) { finished == 2 }
     }
 
+    @Test fun k2QuizSecondTracingQuestionCanComplete() {
+        var finished: Int = -1
+        val actions = object : QuizActions {
+            override fun finish(questions: List<com.vayunmathur.education.content.Question>, answers: Map<String, Answer?>) { finished = questions.size }
+        }
+        // Regression: two tracing questions back to back (bundled ex.k-trace has
+        // three). The second must start unfired, or it can never complete.
+        val second = Fx.tracing.copy(id = "q-trace2", glyph = "B")
+        show { K2QuizScreen(QuizUiState(questions = listOf(Fx.tracing, second)), actions) }
+        rule.onNodeWithText("A").assertIsDisplayed()
+        val root = rule.onRoot()
+        var swipes = 0
+        while (onAllNodesWithText("B").fetchSemanticsNodes().isEmpty() && swipes < 8) {
+            root.performTouchInput { swipe(Offset(60f, center.y), Offset(width - 60f, center.y), 120) }
+            rule.waitForIdle()
+            swipes++
+        }
+        rule.waitUntil(10_000) { onAllNodesWithText("B").fetchSemanticsNodes().isNotEmpty() }
+        swipes = 0
+        while (finished != 2 && swipes < 8) {
+            root.performTouchInput { swipe(Offset(60f, center.y), Offset(width - 60f, center.y), 120) }
+            rule.waitForIdle()
+            swipes++
+        }
+        rule.waitUntil(10_000) { finished == 2 }
+    }
+
     @Test fun k2QuizEmptyShowsGoBack() {
         show { K2QuizScreen(QuizUiState(questions = emptyList()), QuizActions.Noop) }
         rule.onNodeWithText(str(R.string.let_s_go_back)).assertIsDisplayed()
@@ -266,6 +305,19 @@ class EducationQuizInputsTest {
     @Test fun videoPlayerRendersTitle() {
         val bs = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.education.Route>(arrayOf(com.vayunmathur.education.Route.Home))
         show { VideoPlayerPage(bs, "http://127.0.0.1:9/none.mp4", "Space video") }
+        rule.onNodeWithText("Space video").assertIsDisplayed()
+    }
+
+    @Test fun videoPlayerRetryAfterErrorDoesNotCrash() {
+        val bs = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.education.Route>(arrayOf(com.vayunmathur.education.Route.Home))
+        show { VideoPlayerPage(bs, "http://127.0.0.1:9/none.mp4", "Space video") }
+        // Unreachable URL must surface the error state with a Retry action.
+        rule.waitUntil(30_000) { onAllNodesWithText(str(R.string.retry)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText(str(R.string.retry)).performClick()
+        rule.waitForIdle()
+        // Regression: retry used to reuse the ExoPlayer that the effect
+        // disposal had just released. The screen must survive and keep
+        // showing the player (title bar still present, no crash).
         rule.onNodeWithText("Space video").assertIsDisplayed()
     }
 

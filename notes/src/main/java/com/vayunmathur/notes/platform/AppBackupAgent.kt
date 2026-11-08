@@ -12,5 +12,5 @@ class AppBackupAgent : BaseBackupAgent() {
         get() = noteDbConfigs(this)
 
     override val extraFiles: List<File>
-        get() = emptyList()
+        get() = NoteImageStore.backupFiles(this)
 }

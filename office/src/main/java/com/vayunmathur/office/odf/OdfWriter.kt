@@ -237,10 +237,8 @@ object OdfWriter {
         val mime = documentMime(document)
         val sb = StringBuilder()
         sb.append("""<?xml version="1.0" encoding="UTF-8"?>""")
-        sb.append("""<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"" +
-            "manifest:version="1.3">""")
-        sb.append("""<manifest:file-entry manifest:full-path="/"" +
-            "manifest:version="1.3" manifest:media-type="$mime"/>""")
+        sb.append("""<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3">""")
+        sb.append("""<manifest:file-entry manifest:full-path="/" manifest:media-type="$mime"/>""")
         // Embedded-object directory entries (declared first so readers register the sub-documents).
         for ((path, type) in extra) {
             if (path.endsWith("/")) {

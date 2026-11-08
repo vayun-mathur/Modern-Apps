@@ -104,6 +104,19 @@ internal fun loadBookmarkItems(prefs: android.content.SharedPreferences): List<F
         .map { it.toBrowserItem() }
 }
 
+/**
+ * A plain file name from an untrusted display name, or null when there is none.
+ *
+ * Display names come from other apps (a share target's provider, a SAF caller),
+ * so they are data, not paths: any directory part is dropped and "." / ".."
+ * are rejected, keeping the result a single name inside whatever folder the
+ * user actually chose.
+ */
+internal fun sanitizedFileName(rawName: String?): String? {
+    val name = rawName?.trim()?.let { File(it).name } ?: return null
+    return name.takeIf { it.isNotBlank() && it != "." && it != ".." }
+}
+
 /** A destination in [dir] named [name], suffixed with " (n)" if that already exists. */
 internal fun uniqueDestination(dir: File, name: String): File {
     var candidate = File(dir, name)

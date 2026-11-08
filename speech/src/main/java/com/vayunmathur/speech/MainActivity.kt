@@ -143,8 +143,8 @@ private fun SetupScreen() {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 val candidates = listOf(
-                    localeIntent,
                     voiceInputIntent,
+                    localeIntent,
                     Intent(Settings.ACTION_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
                 )
                 var launched = false

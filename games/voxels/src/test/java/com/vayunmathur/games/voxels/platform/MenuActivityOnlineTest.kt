@@ -166,4 +166,27 @@ class MenuActivityOnlineTest {
         }
         assertTrue(sent)
     }
+
+    @Test fun `cold start join link sends join request`() {
+        // A tapped voxels://join link with the app closed launches MenuActivity via a VIEW
+        // intent (cold start → onCreate, not onNewIntent). The join request must still go out.
+        val joinIntent = Intent(ctx, MenuActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data = Uri.parse("voxels://join/cold-world-9?owner=owner-remote")
+        }
+        // Scenario (not a bare Robolectric controller): a bare controller's Compose content
+        // never gets its initial composition under Robolectric, so the join effect would
+        // never run. The rule's waitForIdle pumps the scenario activity's frames.
+        val scenario = androidx.test.core.app.ActivityScenario.launch<MenuActivity>(joinIntent)
+        val deadline = System.currentTimeMillis() + 10000
+        var sent = false
+        while (System.currentTimeMillis() < deadline) {
+            composeRule.waitForIdle()
+            sent = FakeVoxelsRelay.logs["inbox:owner-remote"].orEmpty().isNotEmpty()
+            if (sent) break
+            Thread.sleep(50)
+        }
+        scenario.close()
+        assertTrue(sent, "inbox:owner-remote=${FakeVoxelsRelay.logs["inbox:owner-remote"]}")
+    }
 }

@@ -156,4 +156,9 @@
     <string name="deleted_forever_n">Deleted <xliff:g id="count" example="3">%1$d</xliff:g> item(s) permanently</string>
     <!-- Snackbar when the system trash-consent dialog cannot be shown -->
     <string name="trash_request_failed">Could not open the trash request</string>
+
+    <!-- Text editor: shown instead of an editor when the file could not be read -->
+    <string name="editor_load_failed">Could not read this file, so it cannot be edited here. The original file was not changed.</string>
+    <!-- Text editor: shown when writing the edited content back failed -->
+    <string name="editor_save_failed">Could not save your changes. The file on disk was not updated.</string>
 </resources>

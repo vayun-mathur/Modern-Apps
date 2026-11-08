@@ -92,7 +92,10 @@ private fun handleNewline(old: TextFieldValue, input: SingleCharInput, indentUni
         val text = head + "\n" + indent + old.text.substring(input.pos)
         return TextFieldValue(text, TextRange(head.length))
     }
-    if (indent.isEmpty()) return TextFieldValue(old.text, TextRange(input.caret))
+    if (indent.isEmpty()) {
+        val text = old.text.substring(0, input.pos) + "\n" + old.text.substring(input.pos)
+        return TextFieldValue(text, TextRange(input.caret))
+    }
     val text = old.text.substring(0, input.pos) + "\n" + indent + old.text.substring(input.pos)
     return TextFieldValue(text, TextRange(input.caret + indent.length))
 }

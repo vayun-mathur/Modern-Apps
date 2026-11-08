@@ -5,14 +5,16 @@ import android.content.Context
 import android.content.Intent
 import com.vayunmathur.clock.data.Alarm
 import com.vayunmathur.clock.data.ClockRepository
+import com.vayunmathur.library.log.Log
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
@@ -60,10 +62,32 @@ object AlarmScheduler {
         val triggerTime = calculateNextTriggerMillis(alarm)
 
         // Use setAlarmClock so the user sees the alarm icon in their status bar
-        alarmManager.setAlarmClock(
-            AlarmManager.AlarmClockInfo(triggerTime, pendingIntent),
-            pendingIntent
-        )
+        setAlarmClockOrFallback(alarmManager, triggerTime, pendingIntent, alarm.id)
+    }
+
+    /**
+     * [AlarmManager.setAlarmClock] throws [SecurityException] once the user
+     * revokes the exact-alarm special access (the first-launch gate cannot
+     * stop them). An uncaught throw here crashed the alarm-edit UI actions
+     * and aborted BootReceiver's whole reschedule loop. An inexact
+     * while-idle alarm loses the status-bar alarm icon but still rings, so
+     * degrade instead of failing.
+     */
+    private fun setAlarmClockOrFallback(
+        alarmManager: AlarmManager,
+        triggerMillis: Long,
+        pendingIntent: PendingIntent,
+        alarmId: Long,
+    ) {
+        try {
+            alarmManager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(triggerMillis, pendingIntent),
+                pendingIntent
+            )
+        } catch (e: SecurityException) {
+            Log.error(TAG, "Alarm $alarmId: exact alarm denied; falling back to inexact", e)
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
+        }
     }
 
     fun cancel(context: Context, alarm: Alarm) {
@@ -83,10 +107,26 @@ object AlarmScheduler {
         alarm: Alarm,
         snoozeMinutes: Int,
     ): Long {
-        val alarmManager = context.getSystemService(AlarmManager::class.java)
         val triggerMillis = Clock.System.now().plus(
             snoozeMinutes.coerceAtLeast(1).minutes
         ).toEpochMilliseconds()
+        scheduleSnoozeAt(context, repository, alarm, triggerMillis)
+        return triggerMillis
+    }
+
+    /**
+     * Arms the snoozed ring for an exact [triggerMillis]. [BootReceiver] uses
+     * this with the persisted `snoozedUntil`: going through [scheduleSnooze]
+     * would first truncate the remaining time to whole minutes, ringing up
+     * to 59 seconds early.
+     */
+    suspend fun scheduleSnoozeAt(
+        context: Context,
+        repository: ClockRepository,
+        alarm: Alarm,
+        triggerMillis: Long,
+    ) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", alarm.id)
             putExtra(EXTRA_IS_SNOOZE, true)
@@ -103,11 +143,10 @@ object AlarmScheduler {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(triggerMillis, pendingIntent), pendingIntent)
+        setAlarmClockOrFallback(alarmManager, triggerMillis, pendingIntent, alarm.id)
         repository.upsertAlarm(
             alarm.copy(snoozedUntil = Instant.fromEpochMilliseconds(triggerMillis))
         )
-        return triggerMillis
     }
 
     /** Drops the persisted snooze without touching the alarm's own schedule. */
@@ -155,9 +194,20 @@ object AlarmScheduler {
         }
     }
 
-    fun calculateNextTriggerMillis(alarm: Alarm): Long {
-        val now = Clock.System.now()
-        val timeZone = TimeZone.currentSystemDefault()
+    fun calculateNextTriggerMillis(alarm: Alarm): Long =
+        calculateNextTriggerMillis(alarm, Clock.System.now(), TimeZone.currentSystemDefault())
+
+    /**
+     * Next fire instant for [alarm] at or after [now] in [timeZone].
+     *
+     * Day stepping is calendar-based (next local date at the same wall-clock
+     * time), never a fixed 24h duration: adding 24h to an instant lands an
+     * hour late across the spring DST transition and an hour early across
+     * the autumn one, and also shifts the weekday the repeat mask is tested
+     * against near midnight. [LocalDateTime.toInstant] resolves a wall time
+     * inside a DST gap forward and an overlap to the earlier offset.
+     */
+    internal fun calculateNextTriggerMillis(alarm: Alarm, now: Instant, timeZone: TimeZone): Long {
         val today = now.toLocalDateTime(timeZone).date
 
         // 1. Create a LocalDateTime for today at the alarm time
@@ -166,7 +216,7 @@ object AlarmScheduler {
         // 2. Initial check: if the time has already passed today,
         // we must start looking from tomorrow
         if (candidate.toInstant(timeZone) <= now) {
-            candidate = candidate.toInstant(timeZone).plus(1.days).toLocalDateTime(timeZone)
+            candidate = candidate.nextDay(alarm)
         }
 
         // 3. Scenario A: No days selected (One-shot alarm)
@@ -187,12 +237,17 @@ object AlarmScheduler {
             }
 
             // Move to the next day and check again
-            candidate = candidate.toInstant(timeZone).plus(1.days).toLocalDateTime(timeZone)
+            candidate = candidate.nextDay(alarm)
         }
 
         // Fallback (should be unreachable if bits are set)
         return candidate.toInstant(timeZone).toEpochMilliseconds()
     }
 
+    /** Same wall-clock time on the next calendar date. */
+    private fun LocalDateTime.nextDay(alarm: Alarm): LocalDateTime =
+        LocalDateTime(date.plus(1, DateTimeUnit.DAY), alarm.time)
+
     private const val DAYS_IN_WEEK = 7
+    private const val TAG = "AlarmScheduler"
 }

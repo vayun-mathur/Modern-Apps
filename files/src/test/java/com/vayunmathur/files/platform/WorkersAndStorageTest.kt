@@ -54,6 +54,50 @@ class WorkersAndStorageTest {
         dir.deleteRecursively()
     } }
 
+    private fun zipWorker(dir: File, sources: Array<String>, dest: File) =
+        TestListenableWorkerBuilder<ZipWorker>(ctx)
+            .setInputData(
+                workDataOf(
+                    "source_paths" to sources,
+                    "dest_path" to dest.absolutePath,
+                ),
+            )
+            .build()
+
+    @Test
+    fun `zip worker refuses existing destination and destination as source`() { runBlocking {
+        val dir = tempDir("zip-clash")
+        val srcFile = File(dir, "a.txt").apply { writeText("alpha") }
+        val existing = File(dir, "out.zip").apply { writeText("keep me") }
+        assertEquals(
+            ListenableWorker.Result.failure(),
+            zipWorker(dir, arrayOf(srcFile.absolutePath), existing).doWork(),
+        )
+        assertEquals("keep me", existing.readText())
+        // the archive must never be one of its own sources (it would be
+        // truncated before being read)
+        assertEquals(
+            ListenableWorker.Result.failure(),
+            zipWorker(dir, arrayOf(srcFile.absolutePath), srcFile).doWork(),
+        )
+        assertEquals("alpha", srcFile.readText())
+        dir.deleteRecursively()
+    } }
+
+    @Test
+    fun `zip worker deletes its partial archive on failure`() { runBlocking {
+        val dir = tempDir("zip-partial")
+        val srcFile = File(dir, "a.txt").apply { writeText("alpha") }
+        val dest = File(dir, "out.zip")
+        // the same source twice makes ZipOutputStream reject the duplicate entry
+        assertEquals(
+            ListenableWorker.Result.failure(),
+            zipWorker(dir, arrayOf(srcFile.absolutePath, srcFile.absolutePath), dest).doWork(),
+        )
+        assertFalse(dest.exists())
+        dir.deleteRecursively()
+    } }
+
     @Test
     fun `zip worker fails without input`() { runBlocking {
         val worker = TestListenableWorkerBuilder<ZipWorker>(ctx).build()
@@ -103,6 +147,32 @@ class WorkersAndStorageTest {
 
         val noInput = TestListenableWorkerBuilder<UnzipWorker>(ctx).build()
         assertEquals(ListenableWorker.Result.failure(), noInput.doWork())
+        dir.deleteRecursively()
+    } }
+
+    @Test
+    fun `unzip worker refuses to overwrite an existing file`() { runBlocking {
+        val dir = tempDir("unzip-clash")
+        val zipFile = File(dir, "in.zip")
+        java.util.zip.ZipOutputStream(zipFile.outputStream()).use { out ->
+            out.putNextEntry(java.util.zip.ZipEntry("fresh.txt")); out.write("fresh".toByteArray()); out.closeEntry()
+            out.putNextEntry(java.util.zip.ZipEntry("hello.txt")); out.write("replacement".toByteArray()); out.closeEntry()
+        }
+        val destDir = File(dir, "out").apply { mkdirs() }
+        File(destDir, "hello.txt").writeText("original")
+        val worker = TestListenableWorkerBuilder<UnzipWorker>(ctx)
+            .setInputData(
+                workDataOf(
+                    "zip_path" to zipFile.absolutePath,
+                    "dest_path" to destDir.absolutePath,
+                    "size_budget" to 1_000_000L,
+                ),
+            )
+            .build()
+        assertEquals(ListenableWorker.Result.failure(), worker.doWork())
+        // the pre-existing file is untouched and this run's partial output is gone
+        assertEquals("original", File(destDir, "hello.txt").readText())
+        assertFalse(File(destDir, "fresh.txt").exists())
         dir.deleteRecursively()
     } }
 

@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.IBinder
-import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.telecom.TelecomManager
@@ -64,12 +63,15 @@ class SosCountdownService : Service() {
 
         val number = EmergencyNumberLookup(this)
             .policeNumber(GestureProvider.numberOverrideStatic(this))
-        val targetElapsed = SystemClock.elapsedRealtime() + remainingMs
+        // NotificationCompat's setWhen is a wall-clock (epoch) timestamp, and the
+        // chronometer counts down to it; an elapsedRealtime value lands in 1970 and
+        // the countdown row shows a meaningless time. Same clock as scheduleCall.
+        val targetWallClock = System.currentTimeMillis() + remainingMs
         val contentIntent = PendingIntent.getActivity(
-            this, 0, SosActivity.intent(this, remainingMs),
+            this, 0, SosActivity.intentForDeadline(this, targetWallClock),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val notification = SosNotifications.countdown(this, number, targetElapsed, contentIntent)
+        val notification = SosNotifications.countdown(this, number, targetWallClock, contentIntent)
         SosNotifications.notify(this, notification)
         startForeground(SosNotifications.NOTIFICATION_ID, notification)
 
@@ -91,13 +93,24 @@ class SosCountdownService : Service() {
 
     private fun scheduleCall(remainingMs: Long) {
         val alarms = getSystemService<AlarmManager>() ?: return
-        runCatching {
-            alarms.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + remainingMs,
-                SosActionReceiver.makeCallPendingIntent(this),
-            )
-        }.onFailure { Log.status(TAG, "could not schedule the SOS call alarm", it) }
+        val at = System.currentTimeMillis() + remainingMs
+        val pending = SosActionReceiver.makeCallPendingIntent(this)
+        // SCHEDULE_EXACT_ALARM is revocable on modern Android. Dropping the call
+        // when the exact grant is gone would fail the SOS silently - the user
+        // watches the countdown end and no call is placed - so fall back to an
+        // inexact wakeup alarm (the screentime/parentalcontrols pattern): a
+        // slightly late call beats no call.
+        val exact = runCatching { alarms.canScheduleExactAlarms() }.getOrDefault(false)
+        if (exact) {
+            runCatching {
+                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+            }.onSuccess { return }
+                .onFailure { Log.status(TAG, "exact SOS alarm refused; using inexact", it) }
+        } else {
+            Log.status(TAG, "no exact-alarm permission; SOS call will be approximate")
+        }
+        runCatching { alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending) }
+            .onFailure { Log.status(TAG, "could not schedule the SOS call alarm", it) }
     }
 
     companion object {

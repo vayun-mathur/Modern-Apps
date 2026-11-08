@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -140,6 +141,23 @@ class ChromeGrantAndPwaDownloadTest {
         assertEquals(false, geoAllow)
     }
 
+    @Test fun chromeClientDeniesResourcesWithNoPermissionSheet() {
+        // RESOURCE_PROTECTED_MEDIA_ID (persistent DRM device identifier) has no
+        // per-site sheet: it must fail closed, never be silently granted.
+        val v = vm()
+        v.newTab(url = "https://media.example/watch")
+        val tabId = v.activeTabId!!
+        val deps = WebViewClientDeps(context, launcher()) { _, _, _ -> }
+        val chrome = createBrowserWebChromeClient(tabId, v, false, deps, onRequestNewTab = {})
+        val req = FakePermissionRequest(
+            arrayOf(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID),
+            Uri.parse("https://media.example"),
+        )
+        chrome.onPermissionRequest(req)
+        assertTrue(req.denied, "unlisted resource must be denied, granted=${req.granted}")
+        assertTrue(req.granted == null, "granted=${req.granted}")
+    }
+
     private fun findWebView(view: View): WebView? {
         if (view is WebView) return view
         if (view is ViewGroup) for (i in 0 until view.childCount) findWebView(view.getChildAt(i))?.let { return it }
@@ -167,6 +185,55 @@ class ChromeGrantAndPwaDownloadTest {
         // an exception (and with an intent or enqueue recorded) is the behavior.
         val dm = shadowOf(context.getSystemService(android.app.DownloadManager::class.java))
         assertNotNull(dm)
+    }
+
+    @Test fun pwaWebViewBlocksMixedContentPerAggressiveShields() {
+        // PWA windows always run the aggressive shields preset (httpsOnly=true),
+        // so the WebView must refuse plaintext subresources like the browser tab does.
+        rule.setContent {
+            com.vayunmathur.web.platform.PwaBrowser(initialUrl = "https://pwa.example/app", title = "PWA")
+        }
+        rule.waitForIdle()
+        val webView = findWebView(rule.activity.window.decorView)
+        assertNotNull(webView)
+        assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW, webView.settings.mixedContentMode)
+    }
+
+    @Test fun pwaChromeClientDeniesResourcesWithNoCameraOrMic() {
+        // Mirror of chromeClientDeniesResourcesWithNoPermissionSheet: resources that need
+        // neither camera nor mic (MIDI, DRM device id, ...) have no consent path in the
+        // PWA window, so they must fail closed, never be silently granted.
+        rule.setContent {
+            com.vayunmathur.web.platform.PwaBrowser(initialUrl = "https://pwa.example/app", title = "PWA")
+        }
+        rule.waitForIdle()
+        val webView = findWebView(rule.activity.window.decorView)
+        assertNotNull(webView)
+        val chrome = shadowOf(webView).webChromeClient
+        assertNotNull(chrome)
+        val req = FakePermissionRequest(
+            arrayOf(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID),
+            Uri.parse("https://pwa.example"),
+        )
+        chrome.onPermissionRequest(req)
+        assertTrue(req.denied, "unlisted resource must be denied, granted=${req.granted}")
+        assertTrue(req.granted == null, "granted=${req.granted}")
+    }
+
+    @Test fun pwaThirdPartyCookieDecisionHonoursGlobalPref() {
+        // Robolectric's cookie manager ignores setAcceptThirdPartyCookies, so the
+        // decision itself is the unit under test; createPwaWebView feeds it through.
+        val prefs = context.getSharedPreferences("web_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("web_block_third_party", true).apply()
+        try {
+            assertEquals(
+                false,
+                com.vayunmathur.web.platform.shouldAcceptPwaThirdPartyCookies(context),
+            )
+        } finally {
+            prefs.edit().remove("web_block_third_party").apply()
+        }
+        assertEquals(true, com.vayunmathur.web.platform.shouldAcceptPwaThirdPartyCookies(context))
     }
 
     @Test fun pwaBackPressFinishesWhenNoHistory() {

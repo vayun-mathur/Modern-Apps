@@ -83,6 +83,38 @@ class HubCalculatorsTest {
     }
 
     @Test
+    fun streakSurvivesDaylightSavingTransitions() {
+        val denver = java.util.TimeZone.getTimeZone("America/Denver")
+        val previous = java.util.TimeZone.getDefault()
+        java.util.TimeZone.setDefault(denver)
+        try {
+            val zone = java.time.ZoneId.of("America/Denver")
+            fun noon(m: Int, d: Int) =
+                java.time.ZonedDateTime.of(2026, m, d, 12, 0, 0, 0, zone).toInstant().toEpochMilli()
+            fun daySession(start: Long) = PlaySessionEntity(
+                gameId = "g", sessionId = "s$start",
+                startTime = start, endTime = start + 120_000, durationMs = 120_000,
+            )
+            // Spring forward: 2026-03-08 is a 23-hour day in Denver.
+            val spring = StreakCalculator.calculate(
+                listOf(daySession(noon(3, 8)), daySession(noon(3, 9))),
+                now = noon(3, 9),
+            )
+            assertEquals(2, spring.currentStreak)
+            assertEquals(2, spring.longestStreak)
+            // Fall back: 2026-11-01 is a 25-hour day in Denver.
+            val fall = StreakCalculator.calculate(
+                listOf(daySession(noon(11, 1)), daySession(noon(11, 2))),
+                now = noon(11, 2),
+            )
+            assertEquals(2, fall.currentStreak)
+            assertEquals(2, fall.longestStreak)
+        } finally {
+            java.util.TimeZone.setDefault(previous)
+        }
+    }
+
+    @Test
     fun formatPlaytimeAndDuration() {
         assertEquals("0m", formatPlaytime(0))
         assertEquals("0m", formatPlaytime(-5))

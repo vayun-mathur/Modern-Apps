@@ -111,6 +111,7 @@ data class LauncherItemEntity(
         profileSerial = profileSerial,
         appWidgetId = appWidgetId,
         hidden = hidden,
+        className = className,
     )
 }
 

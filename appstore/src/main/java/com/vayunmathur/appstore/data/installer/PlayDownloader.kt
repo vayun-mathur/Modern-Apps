@@ -31,6 +31,10 @@ class PlayDownloader(
         private const val HTTP_PARTIAL = 206
         private const val HTTP_FORBIDDEN = 403
         private const val HTTP_GONE = 410
+
+        /** True only when a Range resume is safe: partial body for a non-empty .tmp. */
+        internal fun resumesPartial(responseCode: Int, existingBytes: Long): Boolean =
+            existingBytes > 0 && responseCode == HTTP_PARTIAL
     }
 
     class ExpiredUrlException(message: String) : java.io.IOException(message)
@@ -138,8 +142,13 @@ class PlayDownloader(
 
         val input = openInput(conn)
             ?: return Result.failure(java.io.IOException("Empty body"))
+        // Resume only on a real partial response. A server (or CDN) that
+        // ignores Range answers 200 with the whole body; appending that to
+        // the partial .tmp corrupts the file, and the install then fails
+        // verification minutes later instead of simply starting over.
+        val append = resumesPartial(code, existing)
         return try {
-            streamToTmp(input, tmpFile, existing, progressCallback)
+            streamToTmp(input, tmpFile, if (append) existing else 0L, progressCallback)
             promoteTmp(tmpFile, destFile)
             Result.success(destFile)
         } catch (expected: java.io.IOException) {

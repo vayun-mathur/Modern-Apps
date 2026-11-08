@@ -31,7 +31,10 @@ data class Timer(
 ): DatabaseItem {
     fun stopped(): Timer {
         val now = Clock.System.now()
-        val remainingTime = remainingLength - (now - remainingStartTime)
+        // Pausing after the finish line (e.g. the finish broadcast is still
+        // in flight) must not persist a negative remaining length; the
+        // notification pause path already clamps, this one did not.
+        val remainingTime = (remainingLength - (now - remainingStartTime)).coerceAtLeast(Duration.ZERO)
         return copy(isRunning = false, remainingLength = remainingTime)
     }
     fun started(): Timer {

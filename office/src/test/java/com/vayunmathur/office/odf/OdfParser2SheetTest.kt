@@ -274,6 +274,21 @@ class OdfParser2SheetTest {
         assertEquals(2, s.sheets.single().rows.single().cells.single().numberFormat!!.decimals)
     }
 
+    @Test
+    fun repeated_rows_and_columns_use_their_own_caps() {
+        // 300 repeated empty rows must be capped at the row cap (200), not the
+        // column cap; 300 repeated columns must survive past the row cap (200).
+        val doc = sheet(
+            """<table:table table:name="S">""" +
+                """<table:table-column table:number-columns-repeated="300"/>""" +
+                """<table:table-row table:number-rows-repeated="300">""" +
+                """<table:table-cell office:value-type="string"><text:p>x</text:p></table:table-cell>""" +
+                """</table:table-row></table:table>""")
+        val s = doc.sheets.single()
+        assertEquals(300, s.columnWidths.size)
+        assertEquals(200, s.rows.size)
+    }
+
     // --- CSV ---
 
     @Test
@@ -304,6 +319,14 @@ class OdfParser2SheetTest {
         assertEquals(listOf("a", "b"), doc.sheets.single().rows[0].cells.map { it.text })
         val unterminated = OdfParser.parseCsv("\"abc", "u.csv")
         assertEquals("abc", unterminated.sheets.single().rows.single().cells.single().text)
+    }
+
+    @Test
+    fun csv_midfield_quote_is_literal() {
+        val doc = OdfParser.parseCsv("5\" nail,plain\nnext,row", "f.csv")
+        val rows = doc.sheets.single().rows
+        assertEquals(listOf("5\" nail", "plain"), rows[0].cells.map { it.text })
+        assertEquals(listOf("next", "row"), rows[1].cells.map { it.text })
     }
 
     @Test

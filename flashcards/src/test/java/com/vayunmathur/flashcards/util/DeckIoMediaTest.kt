@@ -20,6 +20,14 @@ class DeckIoMediaTest {
     }
 
     @Test
+    fun csvRoundTripWithEmbeddedNewlines() {
+        val rows = listOf("line one\nline two" to "back\nwith lines", "next" to "row")
+        assertEquals(rows, DeckIo.parseCsv(DeckIo.writeCsv(rows)))
+        // Header is skipped even when it is not the first physical line's record.
+        assertEquals(rows, DeckIo.parseCsv("\n" + DeckIo.writeCsv(rows)))
+    }
+
+    @Test
     fun parseCsvSkipsHeaderBlankAndShortRows() {
         val parsed = DeckIo.parseCsv("front,back\n\nonlyone\na,b\n,c\n")
         assertEquals(listOf("a" to "b", "" to "c"), parsed)
@@ -54,6 +62,21 @@ class DeckIoMediaTest {
         assertTrue(store.resolve(name).exists())
         assertFalse(store.resolve(second).exists())
         assertFalse(store.resolve(fourth).exists())
+    }
+
+    @Test
+    fun mediaStoreCannotEscapeMediaDir() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val store = MediaStore(ctx)
+        // A traversal name from an untrusted manifest/field must resolve
+        // inside filesDir/media, never at the traversal target.
+        val resolved = store.resolve("../../databases/flashcards-db")
+        assertEquals("media", resolved.parentFile?.name)
+        assertEquals("flashcards-db", resolved.name)
+        val written = store.writeBytes("../evil.png", byteArrayOf(7))
+        assertEquals("evil.png", written)
+        assertTrue(store.resolve("evil.png").exists())
+        assertFalse(java.io.File(ctx.filesDir, "evil.png").exists())
     }
 
     @Test

@@ -35,9 +35,11 @@ internal fun MeasureViewModel.loadPreferenceValuesImpl(): PreferenceValues {
         diagnostics = ds.getBoolean(KEY_DIAGNOSTICS, false),
         haptics = ds.getBoolean(KEY_HAPTICS, true),
         keepOn = ds.getBoolean(KEY_KEEP_SCREEN_ON, true),
-        levelPitch = ds.getDouble(KEY_LEVEL_PITCH),
-        levelRoll = ds.getDouble(KEY_LEVEL_ROLL),
-        levelEdge = ds.getDouble(KEY_LEVEL_EDGE),
+        // Guard against NaN sentinels written by older versions on
+        // calibration clear: NaN is a stored value, not an absence.
+        levelPitch = ds.getDouble(KEY_LEVEL_PITCH)?.takeUnless { it.isNaN() },
+        levelRoll = ds.getDouble(KEY_LEVEL_ROLL)?.takeUnless { it.isNaN() },
+        levelEdge = ds.getDouble(KEY_LEVEL_EDGE)?.takeUnless { it.isNaN() },
     )
 }
 
@@ -131,7 +133,23 @@ internal fun MeasureViewModel.setPixelsPerMmImpl(v: Float) {
 }
 
 internal fun MeasureViewModel.onTrackingUpdateImpl(quality: TrackingQuality, hasPlane: Boolean) {
-    arState.value = arState.value.copy(quality = quality, hasPlane = hasPlane)
+    arState.value = if (quality == TrackingQuality.Lost) {
+        // Anchors from before a loss sit in a world frame the engine can
+        // no longer re-observe (see TrackingQuality.Lost); leaving them
+        // on screen would keep quoting distances that are not anchored
+        // to anything.
+        arState.value.copy(
+            quality = quality,
+            hasPlane = hasPlane,
+            anchors = emptyList(),
+            distanceM = null,
+            areaM2 = null,
+            perimeterM = null,
+            polygonClosed = false,
+        )
+    } else {
+        arState.value.copy(quality = quality, hasPlane = hasPlane)
+    }
 }
 
 internal fun MeasureViewModel.setCameraPermissionImpl(granted: Boolean) {

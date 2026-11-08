@@ -53,8 +53,10 @@ data class EditDocument(
         val newLayers = layers.toMutableList()
         val item = newLayers.removeAt(from)
         newLayers.add(target, item)
-        val newActive = when (activeLayerIndex) {
-            from -> target
+        val newActive = when {
+            activeLayerIndex == from -> target
+            from < target && activeLayerIndex in (from + 1)..target -> activeLayerIndex - 1
+            from > target && activeLayerIndex in target until from -> activeLayerIndex + 1
             else -> activeLayerIndex
         }
         return copy(layers = newLayers, activeLayerIndex = clampIndexFor(newLayers, newActive))

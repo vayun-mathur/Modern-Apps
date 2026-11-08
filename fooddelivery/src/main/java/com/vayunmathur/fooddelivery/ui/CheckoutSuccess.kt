@@ -15,13 +15,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.fooddelivery.R
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 
 @Composable
-internal fun CheckoutSuccess() {
+internal fun CheckoutSuccess(onContinue: () -> Unit = {}) {
     AppScaffold(
         title = stringResource(R.string.order_confirmed),
         scrollBehavior = appBarScrollBehavior(),
@@ -37,6 +38,8 @@ internal fun CheckoutSuccess() {
             Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.your_order_is_being_prepared), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(24.dp))
+            Button(onClick = onContinue) { Text(stringResource(R.string.view_orders)) }
         }
     }
 }

@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.media.AudioRecord
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import androidx.test.core.app.ApplicationProvider
@@ -232,5 +233,34 @@ class WhisperRecognitionSessionTest {
         service.start(intentWithLang("ja"), cb)
         assertTrue(cb.awaitTerminal())
         assertEquals(listOf("hello world"), cb.resultsTexts.toList())
+    }
+
+    @Test
+    fun persistentReadErrorsReportAudioErrorInsteadOfSpinning() {
+        grantMic()
+        val (service, _) = fakeService()
+        // A dead microphone: every read fails. Failed reads advance no audio
+        // clock, so without an error bound the loop would never terminate.
+        FakeAudioRecordShadow.reset(List(200) { AudioRecord.ERROR_INVALID_OPERATION })
+        val cb = RecordingRecognitionCallback(service)
+        service.start(intentWithLang("en"), cb)
+        assertTrue(cb.awaitTerminal(), "no terminal callback; errors=${cb.errors}")
+        assertEquals(listOf(SpeechRecognizer.ERROR_AUDIO), cb.errors.toList())
+        assertTrue(cb.resultsTexts.isEmpty())
+    }
+
+    @Test
+    fun transientReadErrorsDoNotAbortTheSession() {
+        grantMic()
+        val (service, _) = fakeService()
+        FakeAudioRecordShadow.reset(
+            listOf(AudioRecord.ERROR_INVALID_OPERATION, AudioRecord.ERROR_INVALID_OPERATION) +
+                listOf(10000, 10000, 10000) + List(15) { 0 },
+        )
+        val cb = RecordingRecognitionCallback(service)
+        service.start(intentWithLang("en"), cb)
+        assertTrue(cb.awaitTerminal(), "no terminal callback; errors=${cb.errors} results=${cb.resultsTexts}")
+        assertEquals(listOf("hello world"), cb.resultsTexts.toList())
+        assertTrue(cb.errors.isEmpty(), "errors=${cb.errors}")
     }
 }

@@ -1,24 +1,22 @@
 package com.vayunmathur.notes.data
 
+import com.vayunmathur.notes.ui.noteMatchesSearch
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Pins the list search predicate from `NotesListScreen`: a blank query keeps
- * every row, otherwise a row matches when its `toString` contains the query,
- * case-insensitively.
- *
- * The predicate lives inline in a composable, so it is mirrored here rather
- * than called. The mirror is exact: blank check, then `contains(..., true)`.
- * `toString` is the data-class rendering, which embeds title and content, so
- * both fields stay searchable.
+ * Pins the list search predicate from `NotesListScreen` ([noteMatchesSearch]):
+ * a blank query keeps every row, otherwise a row matches when the query
+ * appears in its title or plain-text content, case-insensitively. Internal
+ * fields (id, position, blocks JSON, syncId, updatedAt, deleted) must never
+ * make a note match.
  */
 class NoteSearchFilterTest {
 
     private fun filter(notes: List<Note>, query: String): List<Note> {
         if (query.isBlank()) return notes
-        return notes.filter { it.toString().contains(query, true) }
+        return notes.filter { noteMatchesSearch(it, query) }
     }
 
     private fun note(id: Long, title: String, content: String) =
@@ -78,5 +76,22 @@ class NoteSearchFilterTest {
         val notes = listOf(note(1, "t", "line one\nline two"))
         assertTrue(filter(notes, "line two").isNotEmpty())
         assertTrue(filter(notes, "LINE ONE").isNotEmpty())
+    }
+
+    @Test
+    fun `internal fields never make a note match`() {
+        val withImage = Note(id = 7, title = "plain", content = "")
+            .withBody(NoteBody(listOf(NoteBlock.Text("words", "t1"), NoteBlock.Image("deadbeef.jpg", id = "i1"))))
+            .copy(syncId = "sync-abc", updatedAt = 1_700_000_000_000, position = 42.0)
+        val notes = listOf(withImage)
+        // Each of these appears in the old data-class toString() rendering
+        // (blocks JSON, syncId, timestamps, position, field names) but in
+        // neither the title nor the content.
+        for (query in listOf("image", "deadbeef", "sync-abc", "1700000000000", "42", "deleted", "markdown")) {
+            assertEquals(emptyList(), filter(notes, query), "query=$query must not match")
+        }
+        // The visible text still matches.
+        assertEquals(listOf(7L), filter(notes, "words").map { it.id })
+        assertEquals(listOf(7L), filter(notes, "plain").map { it.id })
     }
 }

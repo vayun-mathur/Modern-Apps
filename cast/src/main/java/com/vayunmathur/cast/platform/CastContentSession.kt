@@ -199,7 +199,12 @@ internal suspend fun CastController.startServedSession(
     appLabel: String,
 ): ContentSessionResult {
     val limits = activeClient.limits ?: DecoderLimits()
-    if (!CodecNegotiation.canPlayAudio(limits)) {
+    // Only an audio-only session stands or falls on Opus: a video session with
+    // no Opus decoder still has a picture worth showing, which is exactly how
+    // the TV itself decides (`serveContent` refuses only `!session.video`).
+    // Refusing every served session here made the two ends disagree, so a TV
+    // that would have played the video was turned away by name for its audio.
+    if (!wantVideo && !CodecNegotiation.canPlayAudio(limits)) {
         Log.status(TAG, "refusing a served session: '${device.friendlyName}' advertised no Opus decoder")
         failureMutable.value = context.getString(R.string.cast_mirror_tv_no_audio)
         mirrorPhaseMutable.value = MirrorPhase.Failed

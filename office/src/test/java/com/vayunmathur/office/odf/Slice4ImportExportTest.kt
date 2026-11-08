@@ -226,6 +226,26 @@ class Slice4ImportExportTest {
         }
     }
 
+    @Test fun savedManifestIsWellFormedXml() {
+        val out = File(context.cacheDir, "slice4-manifest.odt")
+        out.delete()
+        outTarget = out
+        try {
+            OdfWriter.save(context, null, sampleDoc(), contentUri("slice4-manifest.odt"))
+            val manifest = java.util.zip.ZipFile(out).use { z ->
+                z.getInputStream(z.getEntry("META-INF/manifest.xml")).bufferedReader().readText()
+            }
+            // Must parse as XML (previously manifest:version was unquoted/misplaced).
+            val parsed = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder().parse(manifest.byteInputStream())
+            kotlin.test.assertEquals("manifest:manifest", parsed.documentElement.tagName)
+            kotlin.test.assertTrue(manifest.contains("manifest:media-type="), manifest)
+        } finally {
+            out.delete()
+            outTarget = null
+        }
+    }
+
     @Test fun saveAsDelegatesToSave() {
         val out = File(context.cacheDir, "slice4-saveas.odt")
         out.delete()

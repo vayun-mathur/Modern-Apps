@@ -139,13 +139,15 @@ class WelcomeJoinRcsPass3Test {
             assertEquals(meA, row.conversationId)
             assertTrue(row.messageId.startsWith("in-mls-"))
 
-            // The add-commit delivered as data is absorbed without a row.
+            // The add-commit delivered as data is absorbed without a row:
+            // an absorbed (Receipt-kind) result, not null — null would fall
+            // through to the plaintext path and cache the ciphertext.
             val commitRow = onDeviceSuspend(deviceB) {
                 service.handleE2EEInbound(
                     envelope(meA, RcsE2E.CT_COMMIT, wrapped(RcsE2E.CT_COMMIT, commit), "m2"),
                 )
             }
-            assertNull(commitRow)
+            assertEquals(InboundKind.Receipt, commitRow?.kind)
 
             // B replies in the group; A decrypts through its inbound route.
             val reply = onDeviceSuspend(deviceB) {
@@ -165,16 +167,27 @@ class WelcomeJoinRcsPass3Test {
     @Test fun welcomeNegativesAreAbsorbed() = runTest {
         val service = Robolectric.setupService(RcsSyncService::class.java)
         try {
-            // Undecodable body.
-            assertNull(
+            // Undecodable body on a typed Welcome stanza: absorbed (Receipt
+            // kind) so the base64 gibberish never reaches the plaintext
+            // cache as a visible message.
+            assertEquals(
+                InboundKind.Receipt,
                 service.handleE2EEInbound(
                     envelope("+15550001002", RcsE2E.CT_WELCOME, "Content-Type: ${RcsE2E.CT_WELCOME}\r\n\r\n!!!not-base64!!!", "w-bad"),
-                ),
+                )?.kind,
             )
-            // Decodable but not a Welcome.
-            assertNull(
+            // Decodable but not a Welcome: absorbed the same way.
+            assertEquals(
+                InboundKind.Receipt,
                 service.handleE2EEInbound(
                     envelope("+15550001002", RcsE2E.CT_WELCOME, wrapped(RcsE2E.CT_WELCOME, byteArrayOf(9, 8, 7, 6, 5)), "w-junk"),
+                )?.kind,
+            )
+            // Plaintext that merely mentions the Welcome token is not a
+            // Welcome: still falls through (null), never absorbed.
+            assertNull(
+                service.handleE2EEInbound(
+                    envelope("+15550001002", "text/plain", "have you seen application/x-rcs-welcome before?!", "t2"),
                 ),
             )
             // Plain text is not E2EE at all.
@@ -183,14 +196,17 @@ class WelcomeJoinRcsPass3Test {
                     envelope("+15550001002", "text/plain", "just a hello", "t1"),
                 ),
             )
-            // MLS data for a conversation with no group cannot decrypt.
-            assertNull(
+            // MLS data for a conversation with no group cannot decrypt:
+            // absorbed (Receipt kind) so it never reaches the plaintext
+            // cache as base64 gibberish.
+            assertEquals(
+                InboundKind.Receipt,
                 service.handleE2EEInbound(
                     envelope(
                         "+15550009999", RcsE2E.CT_MLS,
                         wrapped(RcsE2E.CT_MLS, byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9)), "m-x",
                     ),
-                ),
+                )?.kind,
             )
         } finally {
             service.onDestroy()

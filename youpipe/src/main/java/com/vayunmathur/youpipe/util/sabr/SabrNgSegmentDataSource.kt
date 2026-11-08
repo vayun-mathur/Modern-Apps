@@ -43,7 +43,10 @@ class SabrNgSegmentDataSource(
 
         val availableRemaining: Long
         if (lastSegment == "init") {
-            val initData = session.getInitialization(itag) ?: ByteArray(0)
+            // Unknown itag means the manifest and the request disagree: fail loudly
+            // so ExoPlayer retries/errors instead of choking on an empty resource.
+            val initData = session.getInitialization(itag)
+                ?: throw IOException("No SABR init data for itag $itag")
             data = initData
             availableRemaining = maxOf(0, initData.size - pos).toLong()
         } else {
@@ -54,8 +57,9 @@ class SabrNgSegmentDataSource(
             }
             val segment = session.getMediaSegment(itag, sequence, segmentTimeoutMs)
             if (segment == null) {
-                data = ByteArray(0)
-                availableRemaining = 0
+                // Pump timeout: a transient fetch failure. Throw so ExoPlayer takes its
+                // load-error/retry path instead of failing opaquely on an empty segment.
+                throw IOException("Timed out awaiting SABR segment itag=$itag seq=$sequence")
             } else {
                 session.updatePlayheadForSegment(itag, sequence)
                 val stream = segment.openStream()

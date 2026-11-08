@@ -269,7 +269,7 @@ private fun createPwaWebView(
     )
     val cookieManager = CookieManager.getInstance()
     cookieManager.setAcceptCookie(true)
-    cookieManager.setAcceptThirdPartyCookies(this, true)
+    cookieManager.setAcceptThirdPartyCookies(this, shouldAcceptPwaThirdPartyCookies(ctx))
 
     applyPwaWebSettings(this, ctx)
 
@@ -298,6 +298,18 @@ private fun createPwaWebView(
     loadUrl(initialUrl)
 }
 
+/**
+ * Whether the PWA WebView accepts third-party cookies. Browser tabs gate this on the
+ * global block-third-party setting; the PWA window must honour the same pref instead of
+ * hardcoding acceptance.
+ */
+internal fun shouldAcceptPwaThirdPartyCookies(context: Context): Boolean {
+    val blocked = context
+        .getSharedPreferences("web_prefs", Context.MODE_PRIVATE)
+        .getBoolean(P_BLOCK_THIRD_PARTY, false)
+    return !blocked
+}
+
 private fun applyPwaWebSettings(webView: WebView, ctx: Context) {
     val settings = webView.settings
     settings.javaScriptEnabled = true
@@ -313,7 +325,15 @@ private fun applyPwaWebSettings(webView: WebView, ctx: Context) {
     settings.displayZoomControls = false
     settings.useWideViewPort = true
     settings.loadWithOverviewMode = true
-    settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+    // Installed sites always run the aggressive shields preset (see createPwaWebViewClient),
+    // which resolves httpsOnly=true: refuse plaintext subresources like the browser tab does
+    // instead of the permissive default.
+    val pwaShields = EffectiveShields.resolve(ShieldsSettings.AGGRESSIVE_DEFAULTS)
+    settings.mixedContentMode = if (pwaShields.httpsOnly) {
+        WebSettings.MIXED_CONTENT_NEVER_ALLOW
+    } else {
+        WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+    }
     settings.setGeolocationEnabled(true)
     @Suppress("DEPRECATION")
     runCatching {
@@ -363,7 +383,7 @@ private fun createPwaWebViewClient(
 ) {
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val scheme = request.url.scheme ?: return false
-        if (scheme !in setOf("http", "https", "about", "data", "blob", "javascript")) {
+        if (scheme !in setOf("about", "data", "blob", "javascript") && !BrowserUtils.isWebScheme(scheme)) {
             return openExternalUri(ctx, request.url.toString()) { fallback -> view.loadUrl(fallback) }
         }
         // For PWA: stay inside same origin; external origins still load but that is okay.
@@ -446,7 +466,9 @@ private fun handlePwaPermissionRequest(deps: PwaChromeDeps, request: PermissionR
     val needsCamera = resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE)
     val needsMic = resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
     if (!needsCamera && !needsMic) {
-        request.grant(resources)
+        // No per-site sheet exists for these resources (MIDI, DRM device id, ...):
+        // fail closed rather than silently granting, mirroring the browser tab.
+        request.deny()
         return
     }
     if (hasMediaPermissions(deps.context, needsCamera, needsMic)) {

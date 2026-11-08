@@ -145,10 +145,14 @@ object CalendarSink {
     }
 
     /**
-     * Every live event in one calendar in relay form, for the merge's local
-     * side. `updatedAt` comes from SYNC_DATA1 (the relay stamp mirrors into
-     * `etag` on every relay write); rows that predate relay sync carry no
-     * stamp and merge as fresh local creates via the adoption path.
+     * Every event in one calendar in relay form, for the merge's local
+     * side — including DELETED rows as tombstones. Filtering DELETED rows
+     * out (the old behaviour) made a local delete indistinguishable from
+     * a missed read, so the merge resurrected the relay copy and the
+     * delete never propagated. `updatedAt` comes from SYNC_DATA1 (the
+     * relay stamp mirrors into `etag` on every relay write); rows that
+     * predate relay sync carry no stamp, and rows with no _SYNC_ID are
+     * bound to a freshly minted relay identity on this row (see below).
      */
     fun listLocal(context: Context, localCalendarId: Long): List<RemoteEvent> {
         val out = mutableListOf<RemoteEvent>()
@@ -164,6 +168,8 @@ object CalendarSink {
         val colAllDay = 7
         val colTz = 8
         val colRrule = 9
+        val colDeleted = 10
+        val colId = 11
         var failed = false
         try {
             val cursor = context.contentResolver.query(
@@ -179,8 +185,10 @@ object CalendarSink {
                     CalendarContract.Events.ALL_DAY,
                     CalendarContract.Events.EVENT_TIMEZONE,
                     CalendarContract.Events.RRULE,
+                    CalendarContract.Events.DELETED,
+                    CalendarContract.Events._ID,
                 ),
-                "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DELETED} = 0",
+                "${CalendarContract.Events.CALENDAR_ID} = ?",
                 arrayOf(localCalendarId.toString()),
                 null,
             )
@@ -190,7 +198,17 @@ object CalendarSink {
             } else {
                 cursor.use { c ->
                     while (c.moveToNext()) {
-                        val uid = c.getStringOrNull(colUid).orEmpty()
+                        var uid = c.getStringOrNull(colUid).orEmpty()
+                        if (uid.isBlank()) {
+                            // An event created on-device has no relay
+                            // identity yet. Bind one to THIS row now: the
+                            // merge can only mint an id in memory, and a
+                            // later upsert-by-uid would insert a duplicate
+                            // instead of attaching to this row, re-minting
+                            // (and re-pushing) a copy every cycle.
+                            uid = com.vayunmathur.everysync.sync.newRelaySyncId()
+                            bindSyncId(context, localCalendarId, c.getLong(colId), uid)
+                        }
                         out += RemoteEvent(
                             uid = uid,
                             etag = c.getStringOrNull(colStamp),
@@ -203,6 +221,7 @@ object CalendarSink {
                             allDay = c.getInt(colAllDay) == 1,
                             timezone = c.getStringOrNull(colTz) ?: "UTC",
                             rrule = c.getStringOrNull(colRrule),
+                            deleted = c.getInt(colDeleted) == 1,
                             updatedAt = c.getStringOrNull(colStamp)?.toLongOrNull() ?: 0L,
                         )
                     }
@@ -214,6 +233,27 @@ object CalendarSink {
         }
         lastListLocalOk = !failed
         return out
+    }
+
+    /** Attaches a freshly minted relay identity to an existing event row. */
+    private fun bindSyncId(context: Context, localCalendarId: Long, eventId: Long, uid: String) {
+        try {
+            val accountName = context.contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                arrayOf(CalendarContract.Calendars.ACCOUNT_NAME),
+                "${CalendarContract.Calendars._ID} = ?",
+                arrayOf(localCalendarId.toString()),
+                null,
+            )?.use { if (it.moveToFirst()) it.getStringOrNull(0) else null } ?: return
+            context.contentResolver.update(
+                CalendarContract.Events.CONTENT_URI.asSyncAdapter(accountName),
+                ContentValues().apply { put(CalendarContract.Events._SYNC_ID, uid) },
+                "${CalendarContract.Events._ID} = ?",
+                arrayOf(eventId.toString()),
+            )
+        } catch (expected: Exception) {
+            Log.error(TAG, "bindSyncId failed", expected)
+        }
     }
 
     private fun eventId(context: Context, localCalendarId: Long, uid: String): Long? =

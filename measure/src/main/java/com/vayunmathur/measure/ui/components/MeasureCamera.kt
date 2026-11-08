@@ -37,7 +37,7 @@ import java.util.concurrent.Executors
 typealias Diagnostics = (Double, Double, Double, Int, Int, Double) -> Unit
 
 /** Analysis resolution: enough texture for tracking, cheap enough to run every frame. */
-private val ANALYSIS_SIZE = Size(640, 480)
+internal val ANALYSIS_SIZE = Size(640, 480)
 
 /**
  * Camera viewfinder plus the frame pump that drives the VIO engine.

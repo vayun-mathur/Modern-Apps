@@ -88,6 +88,12 @@ class SpentState(context: Context) {
 
     fun hasSpent(packageName: String): Boolean = packageName in spent()
 
+    /** Forget one package's spent mark, e.g. when its timer is deleted. */
+    fun clear(packageName: String) {
+        pruneToToday()
+        prefs.edit().putStringSet(KEY_SPENT, spent() - packageName).apply()
+    }
+
     /** Drop yesterday's trips. This is the daily reset; there is no other. */
     fun pruneToToday() {
         if (prefs.getString(KEY_DAY, null) == today()) return

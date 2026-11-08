@@ -93,11 +93,45 @@ class ClipboardTest {
         assertEquals(listOf("one", "two"), store.items.map { it.text })
     }
 
+    /** The same text copied from a password field must not stay plain in the history. */
+    @Test
+    fun `re-copying as sensitive upgrades the existing entry`() {
+        val store = ClipboardStore(java.io.File("/tmp/clip-test-does-not-exist"))
+        store.add(text(1, "correct horse battery staple"))
+        assertEquals(null, store.add(text(2, "correct horse battery staple", sensitive = true)))
+        assertEquals(1, store.items.size)
+        assertTrue(store.items.single().sensitive)
+        // And it therefore stays out of the persisted form.
+        assertFalse(ClipboardStore.encode(store.items).contains("correct horse"))
+        // A later plain re-copy never downgrades it back.
+        store.add(text(3, "correct horse battery staple"))
+        assertTrue(store.items.single().sensitive)
+    }
+
     @Test
     fun `ids are unique and monotonic even within one millisecond`() {
         val ids = (1..1000).map { ClipboardStore.nextId() }
         assertEquals(ids.size, ids.toSet().size, "duplicate clip id")
         assertTrue(ids.zipWithNext().all { (a, b) -> b > a }, "ids must be monotonic")
+    }
+
+    /** Image de-duplication compares cached bytes, not ids, names or timestamps. */
+    @Test
+    fun `sameFileBytes compares image file contents`() {
+        val dir = kotlin.io.path.createTempDirectory("clips").toFile()
+        try {
+            val a = java.io.File(dir, "a.png").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+            val same = java.io.File(dir, "b.png").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+            val different = java.io.File(dir, "c.png").apply { writeBytes(byteArrayOf(1, 2, 4)) }
+            val longer = java.io.File(dir, "d.png").apply { writeBytes(byteArrayOf(1, 2, 3, 4)) }
+            assertTrue(ClipboardStore.sameFileBytes(a, same))
+            assertFalse(ClipboardStore.sameFileBytes(a, different))
+            assertFalse(ClipboardStore.sameFileBytes(a, longer))
+            assertFalse(ClipboardStore.sameFileBytes(a, java.io.File(dir, "missing.png")))
+            assertFalse(ClipboardStore.sameFileBytes(null, a))
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 
     // --- persistence ---

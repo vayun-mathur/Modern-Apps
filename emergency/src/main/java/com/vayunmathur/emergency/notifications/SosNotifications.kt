@@ -44,7 +44,7 @@ object SosNotifications {
     fun countdown(
         context: Context,
         number: String,
-        targetElapsedRealtime: Long,
+        targetWallClockMillis: Long,
         contentIntent: PendingIntent,
     ): Notification {
         val cancel = PendingIntent.getBroadcast(
@@ -66,7 +66,7 @@ object SosNotifications {
             .setContentIntent(contentIntent)
             .setUsesChronometer(true)
             .setChronometerCountDown(true)
-            .setWhen(targetElapsedRealtime)
+            .setWhen(targetWallClockMillis)
             .addAction(
                 android.R.drawable.ic_delete,
                 context.getString(R.string.sos_cancel),

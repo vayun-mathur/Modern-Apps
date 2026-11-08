@@ -134,6 +134,13 @@ class FindFamilyViewModel(
 
     fun deleteUser(user: User) {
         viewModelScope.launch(Dispatchers.IO) {
+            // Cancel pending no-show work before the cascade deletes its rows,
+            // so no orphan WorkManager job fires for a removed person.
+            runCatching {
+                repository.noShowAlertStore.getAll()
+                    .filter { it.watchedUserId == user.id }
+                    .forEach { NoShowCheckScheduler.cancel(ctx, it.id) }
+            }
             repository.deleteUser(user)
             LocationServiceController.syncServiceState(ctx)
         }
@@ -199,7 +206,14 @@ class FindFamilyViewModel(
     }
 
     fun deleteWaypoint(waypoint: Waypoint) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteWaypoint(waypoint) }
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                repository.noShowAlertStore.getAll()
+                    .filter { it.waypointId == waypoint.id }
+                    .forEach { NoShowCheckScheduler.cancel(ctx, it.id) }
+            }
+            repository.deleteWaypoint(waypoint)
+        }
     }
 
     override fun deleteTemporaryLink(link: TemporaryLink) {
@@ -507,6 +521,10 @@ class FindFamilyViewModel(
             Networking.init(repository, DataStoreUtils.getInstance(ctx), ctx.getString(R.string.me_label))
             // Apply any due auto-toggles on cold start
             applyDueAutoToggles()
+            // Re-arm no-show checks: WorkManager work can be lost (app data
+            // restore, force-stop quirks), and an overdue unfired alert then
+            // sweeps immediately instead of never firing.
+            runCatching { NoShowCheckScheduler.rescheduleAll(ctx) }
         }
         // Trim location history older than a week.
         viewModelScope.launch(Dispatchers.IO) {

@@ -54,7 +54,6 @@ class MainActivity : MaActivity() {
                     DeviceController.disconnectScale()
                     if (!DeviceController.hasRememberedDevice()) DeviceService.stop(this@MainActivity)
                 },
-                onHealthConnectClick = {},
             )
         }
     }

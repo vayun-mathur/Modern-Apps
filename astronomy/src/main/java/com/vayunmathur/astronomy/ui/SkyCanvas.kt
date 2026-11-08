@@ -70,6 +70,7 @@ fun SkyCanvas(
     // Kept fresh so the pointer handler (keyed on projection/geometry, not these)
     // always sees the latest selection + callbacks.
     val currentSelectedId by rememberUpdatedState(selectedId)
+    val currentShowPlanets by rememberUpdatedState(showPlanets)
     val currentOnObjectTap by rememberUpdatedState(onObjectTap)
     val currentOnObjectOpen by rememberUpdatedState(onObjectOpen)
     val currentOnTap by rememberUpdatedState(onTap)
@@ -126,7 +127,11 @@ fun SkyCanvas(
                             fun handleHit(id: String) {
                                 if (id == currentSelectedId) currentOnObjectOpen(id) else currentOnObjectTap(id)
                             }
-                            val hitPlanet = projectedPlanets.firstOrNull { (_, off) -> dist(off, pos) < 48f }
+                            val hitPlanet = if (currentShowPlanets) {
+                                projectedPlanets.firstOrNull { (_, off) -> dist(off, pos) < 48f }
+                            } else {
+                                null
+                            }
                             if (hitPlanet != null) {
                                 handleHit("PLANET_${hitPlanet.first.id}")
                             } else {
@@ -137,8 +142,8 @@ fun SkyCanvas(
                                     val hitDeep = projectedDeep.firstOrNull { (_, off) -> dist(off, pos) < 40f }
                                     if (hitDeep != null) handleHit(hitDeep.first.obj.id)
                                     else {
-                                        val sp = sunProj?.second
-                                        val mp = moonProj?.second
+                                        val sp = if (currentShowPlanets) sunProj?.second else null
+                                        val mp = if (currentShowPlanets) moonProj?.second else null
                                         if (sp != null && dist(sp, pos) < 40f) handleHit("SUN")
                                         else if (mp != null && dist(mp, pos) < 40f) handleHit("MOON")
                                         else currentOnTap(pos)
@@ -216,18 +221,23 @@ fun SkyCanvas(
             if (mag < 1.0) drawCircle(col.copy(alpha = 0.2f), r * 2.2f, off)
         }
 
-        sunProj?.let { (_, off) ->
-            if (off != null) {
-                drawCircle(Color(0x99FFEB3B), 18f, off)
-                drawCircle(Color(0xFFFFEB3B), 10f, off)
-                drawText(textMeasurer, "Sun", topLeft = off + Offset(14f, -10f), style = TextStyle(Color(0xFFFFEB3B), fontSize = 12.sp))
+        // The Settings toggle is labelled "Planets / Sun / Moon", so the
+        // Sun and Moon hide with the planets; they used to be drawn (and
+        // tap-targetable) even with the toggle off.
+        if (showPlanets) {
+            sunProj?.let { (_, off) ->
+                if (off != null) {
+                    drawCircle(Color(0x99FFEB3B), 18f, off)
+                    drawCircle(Color(0xFFFFEB3B), 10f, off)
+                    drawText(textMeasurer, "Sun", topLeft = off + Offset(14f, -10f), style = TextStyle(Color(0xFFFFEB3B), fontSize = 12.sp))
+                }
             }
-        }
-        moonProj?.let { (_, off) ->
-            if (off != null) {
-                drawCircle(Color.LightGray, 9f, off)
-                drawCircle(Color.DarkGray, 9f, off, style = Stroke(1f))
-                drawText(textMeasurer, "Moon", topLeft = off + Offset(12f, -8f), style = TextStyle(Color.LightGray, fontSize = 11.sp))
+            moonProj?.let { (_, off) ->
+                if (off != null) {
+                    drawCircle(Color.LightGray, 9f, off)
+                    drawCircle(Color.DarkGray, 9f, off, style = Stroke(1f))
+                    drawText(textMeasurer, "Moon", topLeft = off + Offset(12f, -8f), style = TextStyle(Color.LightGray, fontSize = 11.sp))
+                }
             }
         }
 
@@ -242,9 +252,9 @@ fun SkyCanvas(
 
         if (selectedId != null) {
             val selOff = when {
-                selectedId == "SUN" -> sunProj?.second
-                selectedId == "MOON" -> moonProj?.second
-                selectedId.startsWith("PLANET_") -> projectedPlanets.firstOrNull { it.first.id == selectedId.removePrefix("PLANET_") }?.second
+                selectedId == "SUN" && showPlanets -> sunProj?.second
+                selectedId == "MOON" && showPlanets -> moonProj?.second
+                selectedId.startsWith("PLANET_") && showPlanets -> projectedPlanets.firstOrNull { it.first.id == selectedId.removePrefix("PLANET_") }?.second
                 selectedId.startsWith("STAR_") -> projectedStars.firstOrNull { "STAR_${it.first.star.id}" == selectedId }?.second
                 else -> projectedDeep.firstOrNull { it.first.obj.id == selectedId }?.second
             }

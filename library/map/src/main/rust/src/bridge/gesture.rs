@@ -8,6 +8,16 @@
 //! settles. Pan-only motion never freezes: the zoom is unchanged, so the ideal and fetch
 //! zooms agree and this is a no-op.
 //!
+//! The freeze advances as the live zoom crosses integer tile levels (see
+//! [`fetch_zoom`](GestureDebounce::fetch_zoom)): selection keys on the floored zoom, so
+//! within one level the wanted set only shifts with pan — which the fetch camera already
+//! tracks live — while crossing into a new level changes every key. Holding the whole
+//! gesture pinned the withhold at gesture length plus the host quiet timeout, which is
+//! the zoom-lags-while-pan-is-instant asymmetry: pan fetches live the whole time, a
+//! pinch fetched nothing new until release. Advancing per crossed level starts the
+//! destination level's wave mid-gesture while churn stays bounded at one wanted-set
+//! change per level crossed.
+//!
 //! Fed by [`set_gesture_active`](crate::bridge::handle::MapHandle::set_gesture_active)
 //! from the host's gesture channel; the settle timer runs on frame time so no extra thread
 //! or callback is needed.
@@ -58,6 +68,16 @@ impl GestureDebounce {
     /// mid-flight, the live zoom otherwise. Rendering still uses the live camera —
     /// only the *fetch* set freezes, and resident ancestors/descendants cover the gap.
     ///
+    /// The freeze is per integer tile level, not per gesture: selection keys on the
+    /// floored zoom, so when the live zoom crosses into a new level the freeze
+    /// advances to it and that level's wave starts mid-gesture. Within a level the
+    /// frozen zoom holds (fractional movement changes no key), so a pinch issues at
+    /// most one wanted-set change per level crossed — the same crossings an
+    /// unfrozen fetch would issue — instead of withholding every new level until
+    /// release plus the host quiet timeout. That withhold is the zoom-lags-while-
+    /// pan-is-instant asymmetry: pan fetches its (same-level) tiles live throughout
+    /// the gesture, while a fully pinned pinch fetched nothing new until release.
+    ///
     /// When the host never signals (car path, older hosts), a still camera settles the
     /// freeze by itself after [`SETTLE_FRAMES`](Self::SETTLE_FRAMES) unchanged frames,
     /// so a stuck-active hint cannot pin the map on overzoom forever.
@@ -70,6 +90,16 @@ impl GestureDebounce {
             self.settled_frames = 0;
             return zoom;
         };
+        // Level crossing advances the freeze (see above): a new integer level means
+        // a wholly new wanted set, and starting its fetch now rather than at release
+        // is what closes the zoom-vs-pan gap. Resets the settle count — the camera
+        // is moving by definition — and returns the live zoom, which selects exactly
+        // the entered level.
+        if zoom.floor() != frozen.floor() {
+            self.frozen_zoom = Some(zoom);
+            self.settled_frames = 0;
+            return zoom;
+        }
         if settled {
             self.settled_frames += 1;
             if self.settled_frames >= Self::SETTLE_FRAMES {
@@ -134,10 +164,11 @@ mod tests {
     #[test]
     fn stuck_active_settles_by_itself() {
         // The host signalled active and never released (car path, dropped signal):
-        // 15 settled frames at the *moved* zoom release the freeze.
+        // crossing into z15 advances the freeze to the entered level, then 15
+        // settled frames at the *moved* zoom release it.
         let mut g = GestureDebounce::new();
         g.set_active(true, 14.0);
-        assert_eq!(g.fetch_zoom(15.0), 14.0);
+        assert_eq!(g.fetch_zoom(15.0), 15.0);
         for _ in 0..15 {
             g.fetch_zoom(15.0);
         }
@@ -155,5 +186,62 @@ mod tests {
             g.fetch_zoom(15.0 + (i as f64) * 1e-9);
         }
         assert_eq!(g.fetch_zoom(15.0), 15.0);
+    }
+
+    #[test]
+    fn crossing_a_level_fetches_it_mid_gesture() {
+        // Zoom-in through z15: the freeze holds within z14, then advances to the
+        // entered level so its wave starts mid-pinch instead of at release.
+        let mut g = GestureDebounce::new();
+        g.set_active(true, 14.0);
+        assert_eq!(g.fetch_zoom(14.5), 14.0);
+        assert_eq!(g.fetch_zoom(14.9), 14.0);
+        assert!(g.is_frozen());
+        assert_eq!(g.fetch_zoom(15.1), 15.1);
+        // Within the entered level the freeze holds again at the advanced zoom.
+        assert_eq!(g.fetch_zoom(15.6), 15.1);
+        assert!(g.is_frozen());
+        // Release still fetches the settled zoom on the very next frame.
+        g.set_active(false, 15.6);
+        assert_eq!(g.fetch_zoom(15.6), 15.6);
+        assert!(!g.is_frozen());
+    }
+
+    #[test]
+    fn zoom_out_crossing_advances_too() {
+        // Zoom-out 15 -> 14: the ancestor level starts fetching at the crossing,
+        // which is what the zoom-out upload burst then drains.
+        let mut g = GestureDebounce::new();
+        g.set_active(true, 15.5);
+        assert_eq!(g.fetch_zoom(15.2), 15.5);
+        assert_eq!(g.fetch_zoom(14.8), 14.8);
+        assert!(g.is_frozen());
+        g.set_active(false, 14.2);
+        assert_eq!(g.fetch_zoom(14.2), 14.2);
+        assert!(!g.is_frozen());
+    }
+
+    #[test]
+    fn multi_level_pinch_advances_one_level_at_a_time() {
+        // A fast 14 -> 16 pinch issues one wanted-set change per crossed level —
+        // the same crossings an unfrozen fetch would issue — never per-frame churn.
+        let mut g = GestureDebounce::new();
+        g.set_active(true, 14.0);
+        assert_eq!(g.fetch_zoom(15.2), 15.2);
+        assert_eq!(g.fetch_zoom(15.9), 15.2);
+        assert_eq!(g.fetch_zoom(16.1), 16.1);
+        assert!(g.is_frozen());
+    }
+
+    #[test]
+    fn oscillation_re_freezes_but_stays_live() {
+        // Hovering on a boundary re-freezes on each crossing, but the returned
+        // zoom is always the live level — selection never lags the finger by more
+        // than the in-level hold, which changes no key.
+        let mut g = GestureDebounce::new();
+        g.set_active(true, 14.0);
+        assert_eq!(g.fetch_zoom(15.1), 15.1);
+        assert_eq!(g.fetch_zoom(14.9), 14.9);
+        assert_eq!(g.fetch_zoom(15.1), 15.1);
     }
 }

@@ -33,7 +33,7 @@ class ArrowsAchievementsManagerTest {
     fun checkExistingAfterClearedBoardBackfills() = runBlocking {
         val json = ctx.assets.open("achievements.json").bufferedReader().readText()
         val ds = ArrowsDataStore(ctx)
-        ds.recordCleared()
+        ds.recordClearedOnce(-4242L)
         val daily = DailyChallengeStore(ctx, "arrows_test_achievements2")
         val manager = ArrowsAchievementsManager(ctx, json, ds, daily)
         manager.checkExistingAchievements()

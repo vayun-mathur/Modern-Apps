@@ -53,6 +53,31 @@ class TestFileProvider : android.content.ContentProvider() {
     ): Int = 0
 }
 
+/** Provider whose DISPLAY_NAME is hostile: a path, not a plain file name. */
+class EvilNameProvider : android.content.ContentProvider() {
+    companion object { lateinit var rootDir: File }
+    override fun onCreate(): Boolean = true
+    override fun openFile(uri: Uri, mode: String): android.os.ParcelFileDescriptor =
+        android.os.ParcelFileDescriptor.open(
+            File(rootDir, "payload.txt"),
+            android.os.ParcelFileDescriptor.parseMode("r"),
+        )
+    override fun query(
+        uri: Uri, projection: Array<out String>?, selection: String?,
+        selectionArgs: Array<out String>?, sortOrder: String?,
+    ): android.database.Cursor =
+        android.database.MatrixCursor(arrayOf(android.provider.OpenableColumns.DISPLAY_NAME)).apply {
+            addRow(arrayOf("../../evil.txt"))
+        }
+    override fun getType(uri: Uri): String = "text/plain"
+    override fun insert(uri: Uri, values: android.content.ContentValues?): Uri? = null
+    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+    override fun update(
+        uri: Uri, values: android.content.ContentValues?, selection: String?,
+        selectionArgs: Array<out String>?,
+    ): Int = 0
+}
+
 @RunWith(RobolectricTestRunner::class)
 @Config(shadows = [ShadowEnvironmentFix::class])
 class FilesViewModelTest {
@@ -179,6 +204,32 @@ class FilesViewModelTest {
         assertFalse(File(dirA, "nope").exists())
     }
 
+    @Test
+    fun `rename onto an existing name keeps both files`() {
+        val one = itemOf("one.txt")
+        vm.rename(one, "two.md")
+        Thread.sleep(400); ShadowLooper.idleMainLooper()
+        assertEquals("one", File(dirA, "one.txt").readText())
+        assertEquals("two!", File(dirA, "two.md").readText())
+    }
+
+    @Test
+    fun `rename with a path-like name stays in the same folder`() {
+        vm.rename(itemOf("one.txt"), "../escaped.txt")
+        await { File(dirA, "escaped.txt").isFile && !File(dirA, "one.txt").exists() }
+        assertFalse(File(base, "escaped.txt").exists(), "the new name must not escape the folder")
+        vm.rename(itemOf("two.md"), "sub/nested.md")
+        await { File(dirA, "nested.md").isFile && !File(dirA, "two.md").exists() }
+        assertFalse(
+            File(dirA, "sub/nested.md").exists(),
+            "the new name must not move into a subfolder",
+        )
+        // a bare parent reference is a no-op, like a blank create name
+        vm.rename(itemOf("nested.md"), "..")
+        Thread.sleep(400); ShadowLooper.idleMainLooper()
+        assertTrue(File(dirA, "nested.md").isFile)
+    }
+
     private fun itemOfZip(name: String) = FileBrowserItem(
         name = name, isDirectory = false, size = 1,
         realFile = File(dirA, "one.txt"), zipInnerPath = name, key = "zip:$name",
@@ -238,6 +289,20 @@ class FilesViewModelTest {
         vm.moveInto(listOf(File(dirA, "two.md")), File(dirA, "one.txt"))
         Thread.sleep(200)
         assertTrue(File(dirA, "two.md").isFile)
+    }
+
+    @Test
+    fun `moveInto allows a sibling whose name shares a prefix`() {
+        val foo = File(dirA, "foo").apply { mkdirs(); File(this, "in.txt").writeText("in") }
+        val foobar = File(dirA, "foobar").apply { mkdirs() }
+        vm.moveInto(listOf(foo), foobar)
+        await { File(foobar, "foo/in.txt").isFile && !foo.exists() }
+        // but a folder still cannot be moved into its own descendant
+        val outer = File(dirA, "outer").apply { mkdirs() }
+        val inner = File(outer, "inner").apply { mkdirs() }
+        vm.moveInto(listOf(outer), inner)
+        Thread.sleep(300); ShadowLooper.idleMainLooper()
+        assertTrue(outer.isDirectory && inner.parentFile == outer)
     }
 
     @Test
@@ -431,6 +496,23 @@ class FilesViewModelTest {
     }
 
     @Test
+    fun `incoming uri with hostile display name stays in target directory`() = runBlocking {
+        EvilNameProvider.rootDir = base
+        org.robolectric.Robolectric.buildContentProvider(EvilNameProvider::class.java)
+            .create("evilshare")
+        File(base, "payload.txt").writeText("shared body")
+        val escaped = File(dirB, "../../evil.txt").canonicalFile
+        vm.setIncomingUris(listOf(Uri.parse("content://evilshare/item")))
+        vm.navigateTo(dirB)
+        await { vm.currentDirectory.value == dirB }
+        vm.saveIncomingUris()
+        await(timeoutMs = 5_000) { File(dirB, "evil.txt").isFile || escaped.isFile }
+        assertEquals("shared body", File(dirB, "evil.txt").readText())
+        assertFalse(escaped.exists())
+        Unit
+    }
+
+    @Test
     fun `unzip valid archive enqueues and oversized is refused`() {
         val zipFile = File(base, "small.zip")
         ZipOutputStream(zipFile.outputStream()).use { out ->
@@ -477,5 +559,24 @@ class FilesViewModelTest {
         // missing file loads as empty
         editor.load(Uri.parse("content://testdocs/missing.txt"))
         await { editor.initialContent.value == "" }
+    }
+
+    @Test
+    fun `text editor reports load and save failures instead of hiding them`() {
+        TestFileProvider.rootDir = base
+        org.robolectric.Robolectric.buildContentProvider(TestFileProvider::class.java)
+            .create("testdocs2")
+        val editor = TextEditorViewModel(app)
+        editor.load(Uri.parse("content://testdocs2/missing.txt"))
+        await { editor.loadFailed.value }
+        assertEquals("", editor.initialContent.value)
+        editor.save(Uri.parse("content://unregistered-authority/x.txt"), "boom")
+        await { editor.saveFailed.value }
+        // a good load and save clear the failure flags again
+        File(base, "ok.txt").writeText("fine")
+        editor.load(Uri.parse("content://testdocs2/ok.txt"))
+        await { editor.initialContent.value == "fine" && !editor.loadFailed.value }
+        editor.save(Uri.parse("content://testdocs2/ok.txt"), "finer")
+        await { File(base, "ok.txt").readText() == "finer" && !editor.saveFailed.value }
     }
 }

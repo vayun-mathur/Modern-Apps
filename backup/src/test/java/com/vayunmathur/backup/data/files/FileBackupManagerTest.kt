@@ -12,6 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
@@ -33,6 +34,18 @@ class FileBackupManagerTest {
         assertTrue(progress.isNotEmpty()); assertEquals(0 to 0, progress.first())
         assertEquals(emptyList(), manager.listBackedUp())
         assertTrue(repo.exists("files/index.json"))
+    }
+
+    @Test fun emptyRunPreservesPreviousManifest() = runBlocking<Unit> {
+        val (repo, _, manager) = setup()
+        // A previous backup exists; a later run that enumerates no media
+        // (e.g. media permission revoked) must not wipe its manifest and
+        // orphan the blobs it points at.
+        val entry = FileEntry("id1", "photo.jpg", "Pictures/", "image/jpeg", 3, 100L, "image")
+        repo.writeEncrypted("files/index.json", Json.encodeToString(FileIndex.serializer(), FileIndex(listOf(entry))).toByteArray())
+        repo.writeEncrypted(BackupRepository.filePath("id1"), "abc".toByteArray())
+        assertEquals(0, manager.backupAll())
+        assertEquals(listOf(entry), manager.listBackedUp())
     }
 
     @Test fun corruptIndexYieldsEmptyList() = runBlocking<Unit> {
@@ -60,6 +73,21 @@ class FileBackupManagerTest {
         assertEquals("abc", File(base, "Pictures/photo.jpg").readText())
         assertEquals("wxyz", File(base, "Music/song.mp3").readText())
         assertEquals(0 to 3, progress.first()); assertEquals(3 to 3, progress.last())
+    }
+
+    @Test fun failedRestoreLeavesNoPartialFile() = runBlocking<Unit> {
+        val (repo, _, manager) = setup()
+        val entries = listOf(
+            FileEntry("missing", "gone.bin", "", "application/octet-stream", 1, 0L, "image"),
+            FileEntry("corrupt", "bad.jpg", "Pictures/", "image/jpeg", 3, 100L, "image"),
+        )
+        repo.writeEncrypted("files/index.json", Json.encodeToString(FileIndex.serializer(), FileIndex(entries)).toByteArray())
+        // Corrupt blob: valid framing is absent, so decrypt fails mid-restore.
+        repo.backend.save(BackupRepository.filePath("corrupt"), byteArrayOf(2, 0, 0))
+        assertEquals(0, manager.restoreAll())
+        val base = File(ctx.getExternalFilesDir(null), "BackupRestore")
+        assertFalse(File(base, "gone.bin").exists())
+        assertFalse(File(base, "Pictures/bad.jpg").exists())
     }
 
     @Test fun fileEntryAndIndexSerialization() {

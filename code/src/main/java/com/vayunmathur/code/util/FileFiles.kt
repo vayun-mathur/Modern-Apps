@@ -44,14 +44,34 @@ object FileFiles {
     /** Reads the full UTF-8 text of a file. */
     fun readText(file: File): String = file.readText(Charsets.UTF_8)
 
-    /** Overwrites a file with [text] (truncating any previous contents). */
-    fun writeText(file: File, text: String) = file.writeText(text, Charsets.UTF_8)
+    /** Overwrites a file with [text] (see [writeBytes] for the atomicity contract). */
+    fun writeText(file: File, text: String) = writeBytes(file, text.toByteArray(Charsets.UTF_8))
 
     /** Reads a file's raw bytes, so encoding/BOM/line endings can be sniffed and preserved. */
     fun readBytes(file: File): ByteArray = file.readBytes()
 
-    /** Overwrites a file with raw [bytes] (truncating any previous contents). */
-    fun writeBytes(file: File, bytes: ByteArray) = file.writeBytes(bytes)
+    /**
+     * Overwrites a file with raw [bytes] atomically: the bytes land in a sibling temp file
+     * first and are then renamed over the target, so a crash, kill or concurrent reader can
+     * never observe (or be left with) a truncated file. Falls back to a direct write when
+     * the rename is refused (exotic filesystems), and always cleans the temp file up.
+     */
+    fun writeBytes(file: File, bytes: ByteArray) {
+        val dir = file.absoluteFile.parentFile
+        if (dir == null) {
+            file.writeBytes(bytes)
+            return
+        }
+        val tmp = File(dir, ".${file.name}.tmp-${System.nanoTime()}")
+        try {
+            tmp.writeBytes(bytes)
+            if (!tmp.renameTo(file)) {
+                file.writeBytes(bytes)
+            }
+        } finally {
+            if (tmp.exists()) tmp.delete()
+        }
+    }
 
     /**
      * Creates a new empty file (and any missing parent directories) under [parent]. Returns the

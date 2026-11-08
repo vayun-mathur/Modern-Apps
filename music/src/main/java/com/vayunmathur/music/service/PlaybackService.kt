@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.vayunmathur.music.MainActivity
+import com.vayunmathur.music.platform.nextRepeatMode
 
 /**
  * Playback + media-browse service.
@@ -47,6 +48,30 @@ class PlaybackService : MediaLibraryService() {
     private lateinit var libraryTree: MusicLibraryTree
     private var castQueue: CastQueue? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    /**
+     * Reacts to player changes no single controller owns:
+     *  - keeps the notification's shuffle/repeat icons honest when the mode
+     *    is changed from somewhere other than the notification itself (the
+     *    app's now-playing screen, a headset, Android Auto). Without this
+     *    the buttons were only redrawn on service start and on their own
+     *    clicks, so they showed the mode as it was before the app last
+     *    changed it - and a tap then toggled from the player's real state,
+     *    appearing to do nothing or the opposite of the icon shown.
+     *  - records the track that actually became current in the browse
+     *    tree's recently-played list. Queueing a list used to mark every
+     *    queued song as recently played before any of them had played.
+     */
+    private val playerListener = object : Player.Listener {
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) =
+            updateNotificationButtons()
+
+        override fun onRepeatModeChanged(repeatMode: Int) = updateNotificationButtons()
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            mediaItem?.let { libraryTree.markPlayed(listOf(it.mediaId)) }
+        }
+    }
 
     // Custom Command Constants
     companion object {
@@ -88,6 +113,8 @@ class PlaybackService : MediaLibraryService() {
         libraryTree.onLibraryChanged = {
             mainHandler.post { notifyBrowseChildrenChanged() }
         }
+
+        player.addListener(playerListener)
 
         // Initialize the notification buttons for the first time
         updateNotificationButtons()
@@ -155,12 +182,7 @@ class PlaybackService : MediaLibraryService() {
                     updateNotificationButtons() // Redraw notification with new icon
                 }
                 ACTION_REPEAT -> {
-                    val nextMode = when (session.player.repeatMode) {
-                        Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-                        Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-                        else -> Player.REPEAT_MODE_OFF
-                    }
-                    session.player.repeatMode = nextMode
+                    session.player.repeatMode = nextRepeatMode(session.player.repeatMode)
                     updateNotificationButtons() // Redraw notification with new icon
                 }
             }
@@ -237,7 +259,9 @@ class PlaybackService : MediaLibraryService() {
                     else -> libraryTree.resolveForPlayback(item.mediaId)?.let { resolved.add(it) }
                 }
             }
-            libraryTree.markPlayed(resolved.map { it.mediaId })
+            // Not marked as played here: resolving a queue is not playing
+            // it. The player listener records each track as it becomes
+            // current, which is also what phone playback does.
             return Futures.immediateFuture(resolved)
         }
     }
@@ -247,6 +271,7 @@ class PlaybackService : MediaLibraryService() {
         castQueue?.release()
         castQueue = null
         mediaSession?.run {
+            player.removeListener(playerListener)
             // Releasing the wrapper releases what it wraps, so the local player goes with it.
             player.release()
             release()

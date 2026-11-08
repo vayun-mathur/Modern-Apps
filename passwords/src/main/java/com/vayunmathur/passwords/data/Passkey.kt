@@ -33,24 +33,48 @@ data class Passkey(
     val syncId: String = newSyncId(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) : DatabaseItem {
+    /**
+     * Full-field equality with content (not referential) comparison of
+     * [privateKeyBytes]. `viewModel.passkeys` is a StateFlow, which conflates by
+     * equality: leaving a field out means a change to that field alone produces an
+     * equal list and the emission is dropped, so the UI silently keeps showing
+     * stale data (e.g. `signAssertion` persists only a `signCount`/`lastUsedTime`
+     * bump, and the "last used" card would never update).
+     */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Passkey) return false
         return id == other.id &&
             rpId == other.rpId &&
+            rpName == other.rpName &&
             credentialId == other.credentialId &&
             userId == other.userId &&
-            // StateFlow conflates by equality, so a link-only change would never reach the UI if
-            // this were left out.
-            linkedPasswordSyncId == other.linkedPasswordSyncId
+            userName == other.userName &&
+            userDisplayName == other.userDisplayName &&
+            privateKeyBytes.contentEquals(other.privateKeyBytes) &&
+            creationTime == other.creationTime &&
+            lastUsedTime == other.lastUsedTime &&
+            signCount == other.signCount &&
+            linkedPasswordSyncId == other.linkedPasswordSyncId &&
+            syncId == other.syncId &&
+            updatedAt == other.updatedAt
     }
 
     override fun hashCode(): Int {
         var result = id.hashCode()
         result = 31 * result + rpId.hashCode()
+        result = 31 * result + rpName.hashCode()
         result = 31 * result + credentialId.hashCode()
         result = 31 * result + userId.hashCode()
+        result = 31 * result + userName.hashCode()
+        result = 31 * result + userDisplayName.hashCode()
+        result = 31 * result + privateKeyBytes.contentHashCode()
+        result = 31 * result + creationTime.hashCode()
+        result = 31 * result + lastUsedTime.hashCode()
+        result = 31 * result + signCount
         result = 31 * result + linkedPasswordSyncId.hashCode()
+        result = 31 * result + syncId.hashCode()
+        result = 31 * result + updatedAt.hashCode()
         return result
     }
 }

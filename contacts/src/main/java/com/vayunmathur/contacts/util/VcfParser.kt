@@ -163,7 +163,7 @@ private class VcfParser(
             "X-COMM-PREF" -> applyCommPref(builder, decodedValue)
             "CATEGORIES" -> applyCategories(builder, decodedValue)
             "X-STARRED" -> applyStarred(builder, decodedValue)
-            "PHOTO" -> builder.photos.add(Photo(0, decodedValue))
+            "PHOTO" -> applyPhoto(builder, decodedValue)
             "URL" -> {
                 // Do not create Note rows from URL lines.
             }
@@ -270,6 +270,34 @@ private class VcfParser(
         )
     }
 
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    private fun applyPhoto(builder: ContactBuilder, decodedValue: String) {
+        // Photo.photo is Base64 by contract (Contact.completePhotoOperation
+        // Base64-decodes it while building the provider batch, outside
+        // save()'s error handling). Foreign cards also carry PHOTO as a
+        // URI (PHOTO;VALUE=URI:https://...) or a data: URI; storing those
+        // verbatim made the later decode throw IllegalArgumentException
+        // and abort the whole import. Keep only decodable Base64.
+        val normalized = decodedValue.filterNot { it.isWhitespace() }
+        if (normalized.isEmpty()) return
+        val decodable = try {
+            kotlin.io.encoding.Base64.decode(normalized)
+            true
+        } catch (e: IllegalArgumentException) {
+            try {
+                kotlin.io.encoding.Base64.UrlSafe.decode(normalized)
+                true
+            } catch (e2: IllegalArgumentException) {
+                false
+            }
+        }
+        if (!decodable) {
+            Log.status("VcfParser", "Dropping non-Base64 PHOTO value")
+            return
+        }
+        builder.photos.add(Photo(0, normalized))
+    }
+
     private fun applyNote(builder: ContactBuilder, decodedValue: String) {
         val value = unescapeV(decodedValue)
         if (builder.notes.size == 1 && builder.notes[0].content.isBlank()) {
@@ -364,7 +392,16 @@ private class VcfParser(
                 dv.substring(DATE_PREFIX_LENGTH, DATE_MONTH_END) + "-" +
                 dv.substring(DATE_MONTH_END, DATE_DAY_END)
         } else if (dv.startsWith("--")) {
-            dv = NO_YEAR_SENTINEL + "-" + dv.substring(2)
+            // Both "--MM-DD" and the compact "--MMDD" no-year forms occur
+            // in foreign vCards; only the dashed one parsed before, so
+            // compact birthdays were silently dropped on import.
+            val rest = dv.substring(2)
+            val monthDay = if (rest.length == 4 && rest.all { it.isDigit() }) {
+                rest.substring(0, 2) + "-" + rest.substring(2)
+            } else {
+                rest
+            }
+            dv = "$NO_YEAR_SENTINEL-$monthDay"
         }
         return try {
             LocalDate.parse(dv)

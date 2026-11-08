@@ -275,6 +275,35 @@ class SpiderPyramidOpsTest {
         assertEquals(0, vm.uiState.value.pyramid!!.moveCount)
     }
 
+    @Test fun pyramidDealClearsWasteSelectionOnly() {
+        val vm = vm()
+        val a = c(Suit.SPADES, Rank.ACE); val b = c(Suit.HEARTS, Rank.TWO)
+        // A selected waste card is replaced by dealing: the selection
+        // must not silently retarget to the newly dealt card.
+        setP(
+            vm,
+            pyramidState(
+                listOf(listOf(a), listOf(b, c(Suit.CLUBS, Rank.THREE))),
+                stock = listOf(b), waste = listOf(a), selectedId = "waste",
+            ),
+        )
+        vm.pyramidDealStock()
+        var p = vm.uiState.value.pyramid!!
+        assertEquals(listOf(a, b), p.waste)
+        assertNull(p.selectedId)
+        // A selected pyramid card names a fixed card: dealing keeps it.
+        setP(
+            vm,
+            pyramidState(
+                listOf(listOf(a), listOf(b, c(Suit.CLUBS, Rank.THREE))),
+                stock = listOf(b), waste = listOf(a), selectedId = "pyr_1_0",
+            ),
+        )
+        vm.pyramidDealStock()
+        p = vm.uiState.value.pyramid!!
+        assertEquals("pyr_1_0", p.selectedId)
+    }
+
     @Test fun pyramidCardAtAndRemoveAndParse() {
         val vm = vm()
         val a = c(Suit.SPADES, Rank.ACE); val b = c(Suit.HEARTS, Rank.TWO)

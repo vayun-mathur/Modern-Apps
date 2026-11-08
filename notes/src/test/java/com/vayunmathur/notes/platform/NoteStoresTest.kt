@@ -24,7 +24,18 @@ class NoteStoresTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val imagesDir: File get() = File(context.filesDir, "note_images")
 
-    @BeforeTest fun clean() { imagesDir.deleteRecursively() }
+    @BeforeTest fun clean() {
+        imagesDir.deleteRecursively()
+        // androidx FileProvider caches its path strategy per authority in a static map, but
+        // Robolectric gives every test a fresh temp cacheDir, so a strategy cached by an
+        // earlier test points at a deleted dir and later getUriForFile calls fail with
+        // IllegalArgumentException. Clear it so each test resolves against its own dirs.
+        try {
+            val cache = Class.forName("androidx.core.content.FileProvider")
+                .getDeclaredField("sCache").apply { isAccessible = true }.get(null) as MutableMap<*, *>
+            cache.clear()
+        } catch (_: Exception) { /* sCache renamed in a future core version: tests will say so */ }
+    }
 
     private fun writeImageFile(name: String, w: Int = 40, h: Int = 20): File {
         imagesDir.mkdirs()
@@ -133,6 +144,18 @@ class NoteStoresTest {
         assertTrue(md.contains("data:image/jpeg;base64,"))
     }
 
+    @Test fun markdownCacheUriSanitizesPathHostileTitles() {
+        val uri = markdownCacheUri(context, Note(title = "a/b ../c", content = ""), "body")
+        assertTrue(uri.toString().isNotEmpty())
+        val dir = File(context.cacheDir, "shared_notes")
+        val written = File(dir, shareMarkdownFileName("a/b ../c"))
+        assertTrue(written.exists())
+        assertEquals(dir.absolutePath, written.parentFile!!.absolutePath)
+        assertEquals("note.md", shareMarkdownFileName(""))
+        assertEquals("note.md", shareMarkdownFileName("..."))
+        assertEquals("My Note.md", shareMarkdownFileName("My Note"))
+    }
+
     @Test fun markdownCacheUriWritesFile() {
         val note = Note(title = "My Note", content = "x")
         val uri = markdownCacheUri(context, note, "# hello")
@@ -145,6 +168,18 @@ class NoteStoresTest {
         assertTrue(blank.toString().isNotEmpty())
     }
 
+    @Test fun markdownCacheUriHandlesVeryLongTitle() {
+        // A 300-char title exceeds the 255-byte NAME_MAX: the cache write
+        // must still succeed instead of throwing (which crashes requestShare).
+        for (title in listOf("x".repeat(300), "字".repeat(150))) {
+            val uri = markdownCacheUri(context, Note(title = title, content = ""), "body")
+            assertTrue(uri.toString().isNotEmpty())
+            val written = File(File(context.cacheDir, "shared_notes"), shareMarkdownFileName(title))
+            assertTrue(written.exists(), title.take(20))
+            assertTrue(written.name.toByteArray().size <= 255, written.name)
+        }
+    }
+
     @Test fun exportInkAlphaAndFractionalValues() {
         val stroke = SerializedStroke("pen", 2.567f, 0x80102030.toInt(), 0.1f, listOf(SerializedPoint(1.234f, 2f, 0), SerializedPoint(3f, 4.891f, 1)))
         val note = Note(title = "", content = "").withBody(NoteBody(listOf(NoteBlock.Ink(listOf(stroke), heightDp = 10, id = "k"))))
@@ -152,6 +187,13 @@ class NoteStoresTest {
         assertTrue(md.contains("rgba(16,32,48,0.5)"), md)
         assertTrue(md.contains("stroke-width=\"2.57\""), md)
         assertTrue(md.contains("M 1.23 2"), md)
+    }
+
+    @Test fun backupFilesCoversImagesDir() {
+        writeImageFile("backed-up.jpg")
+        val files = NoteImageStore.backupFiles(context)
+        assertEquals(listOf(imagesDir.absolutePath), files.map { it.absolutePath })
+        assertTrue(File(files.single(), "backed-up.jpg").exists())
     }
 
     @Test fun pruneSkipsNonLegacyKeysAndKeepsFiles() {

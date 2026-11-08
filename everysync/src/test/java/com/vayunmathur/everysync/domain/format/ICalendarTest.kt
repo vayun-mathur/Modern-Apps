@@ -147,6 +147,16 @@ class ICalendarTest {
     }
 
     @Test
+    fun literalBackslashSequencesRoundTrip() {
+        // Value contains a literal backslash followed by 'n', ';' and ',':
+        // on the wire the backslash is doubled, and parsing must not turn
+        // the pair into a newline/semicolon/comma.
+        val original = event(summary = "a\\nb\\;c\\,d\\\\e")
+        val parsed = ICalendar.parse(ICalendar.serialize(original), "cal")
+        assertEquals(original.summary, parsed[0].summary)
+    }
+
+    @Test
     fun continuationLinesAreUnfolded() {
         val text = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:x\r\nSUMMARY:Hello\r\n world\r\n" +
             "DTSTART:20240102T030405Z\r\nDTEND:20240102T040405Z\r\n" +

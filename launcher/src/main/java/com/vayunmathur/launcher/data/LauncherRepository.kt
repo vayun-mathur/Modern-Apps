@@ -2,6 +2,7 @@ package com.vayunmathur.launcher.data
 
 import android.content.Context
 import androidx.room3.withWriteTransaction
+import com.vayunmathur.launcher.domain.ActivityKey
 import com.vayunmathur.launcher.domain.AutoPlacer
 import com.vayunmathur.launcher.domain.CellRect
 import com.vayunmathur.launcher.domain.ContainerRef
@@ -206,16 +207,28 @@ class LauncherRepository private constructor(context: Context) :
                 title = FolderRules.DEFAULT_FOLDER_TITLE,
             ),
         )
+        val draggedFrom = dragged.container
         dao.move(target.id, folderId, 0, 0, 0, 0)
         dao.move(dragged.id, folderId, 0, 0, 0, 1)
+        // The dragged item may have come out of another folder: leaving
+        // that folder with a single child strands a folder that should
+        // have collapsed back into its remaining icon. commitMove checks
+        // this after a plain move; a merge is a move too.
+        if (draggedFrom is ContainerRef.Folder) {
+            collapseFolderIfNeeded(draggedFrom.id)
+        }
         folderId
     }
 
     /** Appends [itemId] to an existing folder. */
     suspend fun addToFolder(folderId: Long, itemId: Long) {
         db.withWriteTransaction {
+            val draggedFrom = dao.get(itemId)?.container
             val ranks = dao.getFolderChildren(folderId).map { it.rank }
             dao.move(itemId, folderId, 0, 0, 0, FolderRules.nextRank(ranks))
+            if (draggedFrom is ContainerRef.Folder && draggedFrom.id != folderId) {
+                collapseFolderIfNeeded(draggedFrom.id)
+            }
         }
     }
 
@@ -303,6 +316,8 @@ class LauncherRepository private constructor(context: Context) :
         installed: Set<PackageKey>,
         unavailable: Set<PackageKey>,
         boundWidgetIds: Set<Int>,
+        unavailableProfiles: Set<Long> = emptySet(),
+        installedActivities: Set<ActivityKey> = emptySet(),
     ): List<Int> = db.withWriteTransaction {
         val all = dao.getAll()
         val actions = ReconcileUseCase.reconcile(
@@ -310,6 +325,8 @@ class LauncherRepository private constructor(context: Context) :
             installed = installed,
             unavailable = unavailable,
             boundWidgetIds = boundWidgetIds,
+            unavailableProfiles = unavailableProfiles,
+            installedActivities = installedActivities,
         )
         val byId = all.associateBy { it.id }
         val orphanedWidgetIds = mutableListOf<Int>()

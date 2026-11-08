@@ -50,6 +50,23 @@ class FormattingEdgeTest {
     }
 
     @Test
+    fun scientificTokenFormReparsesToTheSameValue() {
+        // Display scientific notation is lowercase ("1e+12"), but the parser
+        // reads lowercase e as Euler's constant: "1e+12" re-parses as
+        // 1*e+12 = 14.718... The token form must use uppercase E, the
+        // parser's scientific notation, so a result can seed the next input.
+        assertEquals("1E+12", formatResultToken(1e12))
+        assertEquals("1E-7", formatResultToken(1e-7))
+        assertEquals("-2.5E+13", formatResultToken(-2.5e13))
+        assertEquals("42.5", formatResultToken(42.5))
+        assertEquals(1e12, Expression.parse(formatResultToken(1e12)).eval(), 0.0)
+        assertEquals(1e-7, Expression.parse(formatResultToken(1e-7)).eval(), 0.0)
+        val length = Expression.parse("1E12m").evalQuantity()
+        assertEquals("1E+12 m", formatQuantity(length, unit("m"), useToken = true))
+        assertEquals(1e12, Expression.parse("1E+12 m").evalQuantity().value, 0.0)
+    }
+
+    @Test
     fun tokenFormUsesPlainSpaceForRoundTrips() {
         val q = Expression.parse("5m").evalQuantity()
         assertEquals("5 m", formatQuantity(q, unit("m"), useToken = true))

@@ -168,6 +168,71 @@ class SudokuViewModelTest {
     }
 
     @Test
+    fun clearingAnAlreadyEmptyCellIsANoOp() {
+        val vm = startedVm()
+        val cell = blank(vm)
+        vm.selectCell(cell)
+        vm.clearCell()
+        val after = vm.uiState.value.game!!
+        assertEquals(0, after.moveCount, "erasing nothing is not a move")
+        assertFalse(vm.uiState.value.canUndo, "and leaves no phantom undo step")
+    }
+
+    @Test
+    fun placingADigitRemovesItFromPeerNotesOnly() {
+        val vm = startedVm()
+        val game = vm.uiState.value.game!!
+        val side = game.size.side
+        // Three blanks: one to fill, one sharing its row, one sharing neither row,
+        // column nor box with it.
+        val blanks = game.blankIndices()
+        val target = blanks.first()
+        val row = target / side
+        val col = target % side
+        val peer = blanks.first {
+            it != target && it / side == row
+        }
+        val stranger = blanks.first {
+            it / side != row && it % side != col && game.size.boxOf(it) != game.size.boxOf(target)
+        }
+        val digit = game.solution[target]
+        val bit = 1 shl (digit - 1)
+
+        vm.toggleNotesMode()
+        vm.selectCell(peer); vm.enterDigit(digit)
+        vm.selectCell(stranger); vm.enterDigit(digit)
+        assertTrue(vm.uiState.value.game!!.notes[peer] and bit != 0)
+        assertTrue(vm.uiState.value.game!!.notes[stranger] and bit != 0)
+
+        vm.toggleNotesMode()
+        vm.selectCell(target)
+        vm.enterDigit(digit)
+        val after = vm.uiState.value.game!!
+        assertEquals(digit, after.valueAt(target))
+        assertEquals(0, after.notes[peer] and bit, "a placed digit is no longer a peer candidate")
+        assertTrue(after.notes[stranger] and bit != 0, "unrelated cells keep their marks")
+
+        // Undo restores the marks the placement swept away.
+        vm.undo()
+        assertTrue(vm.uiState.value.game!!.notes[peer] and bit != 0)
+    }
+
+    @Test
+    fun notesTapOnFilledCellKeepsTheEntry() {
+        val vm = startedVm()
+        val cell = blank(vm)
+        val correct = vm.uiState.value.game!!.solution[cell]
+        vm.selectCell(cell)
+        vm.enterDigit(correct)
+        vm.toggleNotesMode()
+        val other = (1..vm.uiState.value.game!!.size.side).first { it != correct }
+        vm.enterDigit(other)
+        val after = vm.uiState.value.game!!
+        assertEquals(correct, after.valueAt(cell), "pencilling over an entry must not erase it")
+        assertEquals(0, after.notes[cell], "and no mark is written over it either")
+    }
+
+    @Test
     fun hintCorrectsWrongEntryFirstThenFillsSelectedBlank() {
         val vm = startedVm()
         val cell = blank(vm)
@@ -269,6 +334,31 @@ class SudokuViewModelTest {
         val entries = vm.uiState.value.game!!.entries
         vm.enterDigit(1)
         assertEquals(entries, vm.uiState.value.game!!.entries)
+    }
+
+    @Test
+    fun replayingASolvedPuzzleDoesNotRecordASecondWin() {
+        val vm = startedVm()
+        fun solve() {
+            var guard = 0
+            while (guard++ < 100) {
+                val game = vm.uiState.value.game!!
+                val next = game.blankIndices().firstOrNull() ?: break
+                vm.selectCell(next)
+                vm.enterDigit(game.solution[next])
+            }
+            assertTrue(vm.uiState.value.game!!.isWon)
+        }
+        solve()
+        assertEquals(1, stats.getStats(BoardSize.SIX, Difficulty.EASY).gamesWon)
+
+        // Play-again on the win overlay restarts the same puzzle; solving it again
+        // shows the win but must not count it twice.
+        vm.restart()
+        solve()
+        val statsAfter = stats.getStats(BoardSize.SIX, Difficulty.EASY)
+        assertEquals(1, statsAfter.gamesWon, "the same puzzle records one win")
+        assertEquals(1, statsAfter.currentWinStreak)
     }
 
     @Test

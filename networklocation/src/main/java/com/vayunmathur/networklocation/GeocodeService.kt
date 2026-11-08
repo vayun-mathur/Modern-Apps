@@ -55,15 +55,19 @@ class GeocodeService : Service() {
                 val parts = locationName.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
                 // A fully structured query is answered from the address index, which is exact.
+                // Callers write the street part as "<number> <street>", but the index keys
+                // streets by name alone (the house number is a separate column), so retry
+                // without a leading house number when the verbatim street misses.
                 val flat = if (parts.size >= 4) {
-                    GeocoderNative.forward(
-                        handle,
-                        country = parts[parts.size - 1],
-                        state = parts[parts.size - 2],
-                        city = parts[parts.size - 3],
-                        street = parts[parts.size - 4],
-                        limit = limit,
-                    )
+                    val country = parts[parts.size - 1]
+                    val state = parts[parts.size - 2]
+                    val city = parts[parts.size - 3]
+                    val street = parts[parts.size - 4]
+                    GeocoderNative.forward(handle, country, state, city, street, limit)
+                        ?.takeIf { it.isNotEmpty() }
+                        ?: streetWithoutHouseNumber(street)?.let {
+                            GeocoderNative.forward(handle, country, state, city, it, limit)
+                        }
                 } else {
                     // Anything else is treated as a feature name. v2 had no name column, so a
                     // query like "Golden Gate Park" could not be answered at all and this
@@ -80,6 +84,17 @@ class GeocodeService : Service() {
                 return null
             }
         }
+    }
+
+    /** "124 Main St" -> "Main St"; null when there is no leading house-number token. */
+    private fun streetWithoutHouseNumber(street: String): String? {
+        val firstSpace = street.indexOf(' ')
+        if (firstSpace <= 0) return null
+        val head = street.substring(0, firstSpace)
+        if (!head.all { it.isDigit() } && !(head.length > 1 && head.dropLast(1).all { it.isDigit() })) {
+            return null
+        }
+        return street.substring(firstSpace + 1).trim().takeIf { it.isNotEmpty() }
     }
 
     override fun onCreate() {

@@ -100,10 +100,11 @@ fun shareContactsAsVcf(
     contacts: List<Contact>,
     filename: String,
     chooserTitle: String,
+    groupNames: Map<Long, String> = emptyMap(),
 ) {
     scope.launch(Dispatchers.IO) {
         val vcfFile = File(context.cacheDir, filename)
-        vcfFile.outputStream().use { out -> VcfUtils.exportContacts(contacts, out) }
+        vcfFile.outputStream().use { out -> VcfUtils.exportContacts(contacts, out, groupNames) }
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", vcfFile)
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/x-vcard"

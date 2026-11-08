@@ -83,6 +83,18 @@ class LocalNetworkTest {
         assertEquals(HostKind.PUBLIC, kind("192.168.1.256"))
     }
 
+    @Test
+    fun `leading-zero octets fail closed`() {
+        // The URL parser reads a leading-zero part as octal, so `010.0.0.1`
+        // resolves to 8.0.0.1, not 10.0.0.1. Decimal classification here would
+        // call it LAN while the renderer connects elsewhere — fail closed.
+        assertEquals(HostKind.PUBLIC, kind("010.0.0.1"))
+        assertEquals(HostKind.PUBLIC, kind("192.168.001.1"))
+        assertEquals(HostKind.PUBLIC, kind("::ffff:010.0.0.1"))
+        // A lone zero is not an octal prefix; this-network stays LAN.
+        assertEquals(HostKind.LAN, kind("0.0.0.0"))
+    }
+
     // -------------------------------------------------------------------- IPv6
 
     @Test

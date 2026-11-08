@@ -209,6 +209,16 @@ class ExpressionTest {
     }
 
     @Test
+    fun oddRootOfNegativeIsReal() {
+        // root(3, -8) is -2 (matching cbrt(-8)); pow(1/3) alone gives NaN.
+        assertClose(-2.0, eval("root(3,-8)"), 1e-9)
+        assertClose(-2.0, eval("cbrt(-8)"), 1e-9)
+        assertClose(2.0, eval("root(5,32)"), 1e-9)
+        // Even roots of negatives have no real value.
+        assertTrue(eval("root(2,-4)").isNaN())
+    }
+
+    @Test
     fun maxAndMinAcceptVariableArity() {
         assertEquals(9.0, eval("max(1,9,4)"))
         assertEquals(1.0, eval("min(1,9,4)"))
@@ -218,6 +228,16 @@ class ExpressionTest {
     fun wrongArityIsRejected() {
         assertFailsWith<ExpressionError> { eval("gcd(1)") }
         assertFailsWith<ExpressionError> { eval("sin(1,2)") }
+    }
+
+    @Test
+    fun emptyMaxAndMinAreExpressionErrorsNotCrashes() {
+        // a.max()/a.min() on an empty list throw NoSuchElementException, which
+        // callers (preview, graph sampling, widget) do not catch — they only
+        // handle ExpressionError. Empty varargs must fail the same way as
+        // every other arity error.
+        assertFailsWith<ExpressionError> { eval("max()") }
+        assertFailsWith<ExpressionError> { eval("min()") }
     }
 
     // ---- errors ----

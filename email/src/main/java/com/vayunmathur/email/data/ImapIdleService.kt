@@ -123,13 +123,11 @@ class ImapIdleService : Service() {
         val rawConn = RawImapConnection(server, trustAll = useTrustAll)
         rawConn.connect()
         var caps = rawConn.capability()
+        // Fail closed on STARTTLS failure (see ImapClient.withConnection):
+        // never fall through to a plaintext LOGIN with the password.
         if (!server.useSsl && caps.has("STARTTLS")) {
-            try {
-                rawConn.startTls()
-                caps = rawConn.capability()
-            } catch (e: IOException) {
-                Log.status(TAG, "STARTTLS fail ${account.email}: ${e.message}")
-            }
+            rawConn.startTls()
+            caps = rawConn.capability()
         }
 
         when (auth) {
@@ -242,12 +240,16 @@ class ImapIdleService : Service() {
     ) {
         try {
             val folders = rawConn.list("", "*").map { entry ->
-                val fullName = entry.mailbox
                 val delim = entry.delimiter ?: "/"
-                val nm = if (fullName.contains(delim)) {
-                    fullName.substringAfterLast(delim)
+                // Persist under the canonical name (see
+                // ImapClient.canonicalizeMailbox): storing the server's
+                // raw "Inbox" here split Outlook folders/messages from
+                // the "INBOX" bucket every other path uses.
+                val fullName = ImapClient.canonicalizeMailbox(entry.mailbox, delim)
+                val nm = if (entry.mailbox.contains(delim)) {
+                    entry.mailbox.substringAfterLast(delim)
                 } else {
-                    fullName.substringAfterLast('/')
+                    entry.mailbox.substringAfterLast('/')
                 }
                 val parent = fullName.lastIndexOf(delim)
                     .let { if (it > 0) fullName.substring(0, it) else null }

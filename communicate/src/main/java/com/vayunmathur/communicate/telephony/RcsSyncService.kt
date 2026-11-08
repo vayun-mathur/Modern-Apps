@@ -77,6 +77,15 @@ class RcsSyncService : Service() {
     /** Subscription listener for subId switches (§7.2); unregistered on destroy. */
     private var subListener: android.telephony.SubscriptionManager.OnSubscriptionsChangedListener? = null
 
+    /**
+     * Guards the one-time setup in [onStartCommand]: a started foreground
+     * service receives onStartCommand repeatedly (every RcsSyncService.start
+     * call, START_STICKY restarts), and without this each call added another
+     * outbox-pump loop, state collectors and subscription listener — so the
+     * same outbox row could be pumped concurrently and sent twice.
+     */
+    private val loopsStarted = java.util.concurrent.atomic.AtomicBoolean(false)
+
     override fun onCreate() {
         super.onCreate()
     }
@@ -104,9 +113,11 @@ class RcsSyncService : Service() {
             RcsSipTransport.onInboundMessage = { message ->
                 serviceScope.launch { handleInbound(message) }
             }
-            watchSubscriptions()
-            startAcceptLoop()
-            startMaintenanceLoops()
+            if (loopsStarted.compareAndSet(false, true)) {
+                watchSubscriptions()
+                startAcceptLoop()
+                startMaintenanceLoops()
+            }
         }
 
         return START_STICKY
@@ -186,6 +197,7 @@ class RcsSyncService : Service() {
             subListener?.let { sm?.removeOnSubscriptionsChangedListener(it) }
         }
         subListener = null
+        loopsStarted.set(false)
         msrpConnections.values.forEach { runCatching { it.close() } }
         msrpConnections.clear()
         serviceScope.cancel()
@@ -512,6 +524,7 @@ class RcsSyncService : Service() {
             subListener?.let { sm?.removeOnSubscriptionsChangedListener(it) }
         }
         subListener = null
+        loopsStarted.set(false)
         msrpConnections.values.forEach { runCatching { it.close() } }
         msrpConnections.clear()
         runCatching { RcsSipTransport.tearDown(this) }

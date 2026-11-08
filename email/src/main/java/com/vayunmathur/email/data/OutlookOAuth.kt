@@ -162,7 +162,10 @@ object OutlookOAuth {
         }
 
         val returnedState = redirect.getQueryParameter("state") ?: extractQueryParam(rawStr, "state")
-        if (session.expectedState != null && returnedState != null && returnedState != session.expectedState) {
+        // Fail closed on a missing state as well as a mismatched one: the
+        // old condition only fired when both values were present, so a
+        // redirect that simply omitted state bypassed the CSRF check.
+        if (session.expectedState == null || returnedState != session.expectedState) {
             Log.error(TAG, "State mismatch exp=${session.expectedState} got=$returnedState")
             prefs.edit { clear() }
             return OAuthResult.Failure(

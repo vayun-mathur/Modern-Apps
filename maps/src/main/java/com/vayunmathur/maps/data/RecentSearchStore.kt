@@ -53,6 +53,9 @@ class RecentSearchStore private constructor(private val ds: DataStoreUtils) {
         private const val KEY = "maps_recent_searches"
         private const val MAX = 10
 
+        /** How many recent queries the store keeps; search weights decay over this. */
+        internal const val RECENT_CAP = MAX
+
         @Volatile private var instance: RecentSearchStore? = null
 
         fun get(context: Context): RecentSearchStore =

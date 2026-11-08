@@ -1,5 +1,6 @@
 package com.vayunmathur.logviewer.platform
 
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -53,7 +54,14 @@ internal open class LogViewerController(
      */
     override fun report() {
         copy()
-        activity.startActivity(Intent(Intent.ACTION_VIEW, ISSUES_URL.toUri()))
+        try {
+            activity.startActivity(Intent(Intent.ACTION_VIEW, ISSUES_URL.toUri()))
+        } catch (e: ActivityNotFoundException) {
+            // No browser (or anything else that handles https) on this build. The log is
+            // already on the clipboard from copy() above, so say that instead of crashing
+            // the viewer over its own Report button.
+            AppMessages.show(activity.getString(R.string.error_no_app_opens_issue_tracker))
+        }
     }
 
     override fun save(uri: Uri) = viewModel.save(uri)

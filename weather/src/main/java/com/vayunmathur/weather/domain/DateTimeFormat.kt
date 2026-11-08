@@ -60,20 +60,33 @@ private val DayMonthLabel: DateTimeFormat<LocalDate> get() = LocalDate.Format {
     monthName(MonthNames(localizedMonthNames(DateNameStyle.SHORT)))
 }
 
-private fun localTimeAt(epochSec: Long): LocalTime =
-    Instant.fromEpochSeconds(epochSec).toLocalDateTime(TimeZone.currentSystemDefault()).time
+/**
+ * Wall-clock time for [epochSec] in the forecast location's zone. Pass the
+ * response's `utc_offset_seconds`; null keeps the device time zone (previews
+ * and callers with no location context).
+ */
+private fun localTimeAt(epochSec: Long, utcOffsetSeconds: Int? = null): LocalTime {
+    // A location's wall clock is the UTC instant shifted by its offset, read
+    // back as UTC fields. (Instant.toLocalDateTime(UtcOffset) is internal in
+    // this kotlinx-datetime version, so shift-then-read-in-UTC instead.)
+    return if (utcOffsetSeconds != null) {
+        Instant.fromEpochSeconds(epochSec + utcOffsetSeconds).toLocalDateTime(TimeZone.UTC).time
+    } else {
+        Instant.fromEpochSeconds(epochSec).toLocalDateTime(TimeZone.currentSystemDefault()).time
+    }
+}
 
-/** Hour-axis label "3 PM" / "09:00" for an epoch second in the system time zone. */
-fun formatHourAxisLabel(epochSec: Long, use24Hour: Boolean): String =
-    DateString.hourLabel(localTimeAt(epochSec), use24Hour)
+/** Hour-axis label "3 PM" / "09:00" for an epoch second in the location's zone. */
+fun formatHourAxisLabel(epochSec: Long, use24Hour: Boolean, utcOffsetSeconds: Int? = null): String =
+    DateString.hourLabel(localTimeAt(epochSec, utcOffsetSeconds), use24Hour)
 
-/** Hourly-strip label "3 PM" / "9" for an epoch second in the system time zone. */
-fun formatStripHour(epochSec: Long, use24Hour: Boolean): String =
-    localTimeAt(epochSec).format(if (use24Hour) HourOfDayBare else HourAmPm)
+/** Hourly-strip label "3 PM" / "9" for an epoch second in the location's zone. */
+fun formatStripHour(epochSec: Long, use24Hour: Boolean, utcOffsetSeconds: Int? = null): String =
+    localTimeAt(epochSec, utcOffsetSeconds).format(if (use24Hour) HourOfDayBare else HourAmPm)
 
-/** Clock time "3:05 PM" / "15:00" for an epoch second in the system time zone. */
-fun formatClockTime(epochSec: Long, use24Hour: Boolean): String =
-    DateString.time(localTimeAt(epochSec), use24Hour)
+/** Clock time "3:05 PM" / "15:00" for an epoch second in the location's zone. */
+fun formatClockTime(epochSec: Long, use24Hour: Boolean, utcOffsetSeconds: Int? = null): String =
+    DateString.time(localTimeAt(epochSec, utcOffsetSeconds), use24Hour)
 
 /** "Wed 25 Jun" for an ISO date like 2026-06-25; echoes the input on parse failure. */
 fun formatDayMonthLabel(isoDate: String): String {

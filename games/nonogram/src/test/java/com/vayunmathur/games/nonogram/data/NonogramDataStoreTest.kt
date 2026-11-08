@@ -72,10 +72,15 @@ class NonogramDataStoreTest {
         assertEquals(emptySet(), s.dailyFilledCells.first()); assertEquals(STARTING_HEARTS, s.dailyHearts.first())
     }
 
-    @Test fun recordCompletedIncrements() = runBlocking {
+    @Test fun recordCompletedOnceBanksEachWinKeyOnce() = runBlocking {
         val s = store()
-        val a = s.recordCompleted(); val b = s.recordCompleted()
+        // Synthetic keys far outside the ViewModel's win namespace (casual: -level, daily: epoch
+        // day), so this stays meaningful even if production keying ever changes.
+        val a = s.recordCompletedOnce(-100_001L); val b = s.recordCompletedOnce(-100_002L)
         assertEquals(a + 1, b); assertEquals(b, s.puzzlesCompleted.first())
+        // A replay reports the lifetime total unchanged: it banks nothing new.
+        assertEquals(b, s.recordCompletedOnce(-100_001L), "replaying a banked win must not count again")
+        assertEquals(b, s.puzzlesCompleted.first())
     }
 
     @Test fun dailyRolloverClearsOnlyOnDayChange() = runBlocking {

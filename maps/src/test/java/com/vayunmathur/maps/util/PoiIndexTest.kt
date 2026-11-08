@@ -587,17 +587,15 @@ class PoiIndexTest {
     }
 
     /**
-     * The documented narrowing: a sorted index answers prefix questions, so a match in the
-     * middle of a *word* is lost where the scan found it. Asserted rather than left to be
-     * discovered, since it is the one thing the two paths disagree about.
+     * The unified search answers substring questions on both paths: a match in the
+     * middle of a *word* is found whether the word index or the scan answers.
+     * (Previously the sorted index answered prefix questions only, so this
+     * disagreed by path; the tiers closed that gap.)
      */
     @Test
-    fun `a mid-word match is found by the scan but not by the index`() {
-        val pois = listOf(Poi(377_749_000, -1_224_194_000, 1, "Pizza"))
-        load(pois, sideFiles = false)
+    fun `a mid-word match is found on both paths`() = bothPaths { sideFiles ->
+        load(listOf(Poi(377_749_000, -1_224_194_000, 1, "Pizza")), sideFiles = sideFiles)
         assertEquals(1, PoiIndex.searchByName("izza", 37.7749, -122.4194).size)
-        load(pois, sideFiles = true)
-        assertTrue(PoiIndex.searchByName("izza", 37.7749, -122.4194).isEmpty())
     }
 
     @Test

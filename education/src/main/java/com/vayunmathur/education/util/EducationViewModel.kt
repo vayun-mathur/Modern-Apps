@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.security.MessageDigest
 
 /**
@@ -41,6 +43,15 @@ class EducationViewModel(
     val content: ContentRepository,
     private val repository: EducationRepository,
 ) : AndroidViewModel(application) {
+
+    /**
+     * Serializes every read-modify-write against the repository. Without it,
+     * concurrent launches on Dispatchers.IO (e.g. ParentPage firing setName
+     * per keystroke while another setter runs, or a quiz commit racing a
+     * parent edit) could read the same base row and overwrite each other's
+     * changes, silently losing edits, streak/star totals or attempts.
+     */
+    private val writeMutex = Mutex()
 
     val learner: StateFlow<Learner?> = repository.learnerFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -91,8 +102,10 @@ class EducationViewModel(
 
     private inline fun updateLearner(crossinline transform: (Learner) -> Learner) {
         viewModelScope.launch(Dispatchers.IO) {
-            val current = repository.getLearner() ?: Learner()
-            repository.upsertLearner(transform(current))
+            writeMutex.withLock {
+                val current = repository.getLearner() ?: Learner()
+                repository.upsertLearner(transform(current))
+            }
         }
     }
 
@@ -103,10 +116,14 @@ class EducationViewModel(
 
     fun setDeadline(type: ModuleType, moduleId: String, dueEpochDay: Long, note: String = "") {
         viewModelScope.launch(Dispatchers.IO) {
-            val existing = repository.getDeadlineFor(type.name, moduleId)
-            val row = existing?.copy(dueEpochDay = dueEpochDay, note = note)
-                ?: Deadline(moduleType = type.name, moduleId = moduleId, dueEpochDay = dueEpochDay, note = note)
-            repository.upsertDeadline(row)
+            // Locked so two rapid sets for the same module cannot both miss
+            // the existing row and insert duplicate deadlines.
+            writeMutex.withLock {
+                val existing = repository.getDeadlineFor(type.name, moduleId)
+                val row = existing?.copy(dueEpochDay = dueEpochDay, note = note)
+                    ?: Deadline(moduleType = type.name, moduleId = moduleId, dueEpochDay = dueEpochDay, note = note)
+                repository.upsertDeadline(row)
+            }
         }
     }
 
@@ -141,6 +158,7 @@ class EducationViewModel(
     /** Persists a graded [result]: best-of star per skill, streak, and total stars. */
     fun commitResult(result: QuizResult) {
         viewModelScope.launch(Dispatchers.IO) {
+            writeMutex.withLock {
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toEpochDays()
             for ((skillId, stars) in result.perSkillStars) {
                 val existing = repository.getSkillProgress(skillId)
@@ -166,6 +184,7 @@ class EducationViewModel(
                 )
             )
             awardBadges(result, all, totalStars, newStreak)
+            }
         }
     }
 

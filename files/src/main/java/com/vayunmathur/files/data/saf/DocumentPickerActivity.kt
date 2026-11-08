@@ -42,6 +42,8 @@ import androidx.lifecycle.lifecycleScope
 import com.vayunmathur.files.R
 import com.vayunmathur.files.platform.FileBrowserItem
 import com.vayunmathur.files.platform.FilesViewModel
+import com.vayunmathur.files.platform.sanitizedFileName
+import com.vayunmathur.files.platform.uniqueDestination
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.DynamicTheme
@@ -366,11 +368,14 @@ class DocumentPickerActivity : ComponentActivity() {
     }
 
     private fun createAndReturn(dir: File, rawName: String) {
-        val name = rawName.trim().ifEmpty { return }
+        // The initial name comes from the calling app (EXTRA_TITLE) and is
+        // only user-editable text, so it must never act as a path: reduce it
+        // to a plain file name inside the folder the user actually picked.
+        val name = sanitizedFileName(rawName) ?: return
         lifecycleScope.launch {
             val file = withContext(Dispatchers.IO) {
-                val target = uniqueChild(dir, name)
-                runCatching { target.parentFile?.mkdirs(); target.createNewFile() }
+                val target = uniqueDestination(dir, name)
+                runCatching { target.createNewFile() }
                 target.takeIf { it.exists() }
             }
             if (file == null) { cancel(); return@launch }
@@ -378,17 +383,6 @@ class DocumentPickerActivity : ComponentActivity() {
             if (uri == null) { cancel(); return@launch }
             finishWithResult(listOf(uri), write = true, persistable = privileged)
         }
-    }
-
-    private fun uniqueChild(dir: File, name: String): File {
-        var candidate = File(dir, name)
-        if (!candidate.exists()) return candidate
-        val dot = name.lastIndexOf('.')
-        val base = if (dot > 0) name.substring(0, dot) else name
-        val ext = if (dot > 0) name.substring(dot) else ""
-        var n = 1
-        while (candidate.exists()) { candidate = File(dir, "$base ($n)$ext"); n++ }
-        return candidate
     }
 
     private fun finishWithResult(uris: List<Uri>, write: Boolean, persistable: Boolean) {

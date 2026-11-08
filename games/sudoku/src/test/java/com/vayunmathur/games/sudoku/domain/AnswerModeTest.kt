@@ -54,6 +54,22 @@ class AnswerModeTest {
     }
 
     @Test
+    fun notesOnAFilledCellAreIgnoredRatherThanErasingTheEntry() {
+        // Pencilling must never delete work: a note tap on a cell that already holds a digit
+        // is ignored, in both modes, whatever digit was tapped.
+        val filled = classic.copy(
+            selected = blank,
+            notesMode = true,
+            entries = classic.entries.toMutableList().also { it[blank] = rightDigit },
+        )
+        assertIs<DigitAttempt.Ignore>(AnswerMode.decide(filled, wrongDigit))
+        assertIs<DigitAttempt.Ignore>(AnswerMode.decide(filled, rightDigit))
+        assertIs<DigitAttempt.Ignore>(
+            AnswerMode.decide(filled.copy(answerMode = true), wrongDigit),
+        )
+    }
+
+    @Test
     fun retappingTheShownDigitErasesEvenInAnswerMode() {
         val game = fresh.copy(
             selected = blank,

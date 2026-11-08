@@ -2,6 +2,7 @@ package com.vayunmathur.findfamily.util
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.vayunmathur.findfamily.platform.NoShowCheckScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,7 +29,11 @@ class BootReceiver : BroadcastReceiver() {
                 // Both broadcasts fire on a normal boot. The locked pass reads only
                 // device-protected state; the unlocked pass reconciles against the real thing.
                 if (locked) LocationServiceController.syncServiceStateLocked(appContext)
-                else LocationServiceController.syncServiceState(appContext)
+                else {
+                    LocationServiceController.syncServiceState(appContext)
+                    // Room is only readable unlocked; re-arm no-show checks here.
+                    runCatching { NoShowCheckScheduler.rescheduleAll(appContext) }
+                }
             } finally {
                 pending.finish()
             }

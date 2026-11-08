@@ -35,6 +35,16 @@ class OrderTrackingService : Service() {
     private var pollJob: Job? = null
     private var trackedOrderId: Int = -1
 
+    override fun onCreate() {
+        super.onCreate()
+        // This service can be (re)started by the system into a cold process where
+        // MainActivity never runs (START_REDELIVER_INTENT after a kill). AppInit.start
+        // is normally MainActivity's job, and pollLoop awaits it -- without this call
+        // that await never completes and tracking hangs on the placeholder forever.
+        // start() is idempotent, so the warm-process path is unaffected.
+        AppInit.start(this)
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

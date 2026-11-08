@@ -47,6 +47,19 @@ class JsonValidationTest {
         assertTrue(validate("""{"a":1}""", """{"type":"object"}""")!!.contains("Unexpected field"))
     }
 
+    @Test fun malformedSchemaEntriesAreErrorsNotThrows() {
+        // Non-primitive "type" and "required" entries come from the caller's schema:
+        // they must surface as validation errors, never throw (a throw aborts the
+        // whole inference instead of letting it continue streaming).
+        val badType = validate("""{"a":1}""", """{"type":["object"],"properties":{"a":{}}}""")
+        assertNotNull(badType)
+        val badRequired = validate(
+            """{"a":1}""",
+            """{"properties":{"a":{}},"required":["a",{}]}""",
+        )
+        assertTrue(badRequired!!.contains("required"), badRequired)
+    }
+
     @Test fun constAndEnumConstraints() {
         val schema = """{"properties":{"kind":{"const":"note"},"level":{"enum":["low","high"]}}}"""
         assertTrue(validate("""{"kind":"task","level":"low"}""", schema)!!.contains("must be 'note'"))
@@ -54,6 +67,23 @@ class JsonValidationTest {
         assertTrue(enumErr!!.contains("invalid value 'mid'"), enumErr)
         assertTrue(enumErr.contains("low"), enumErr)
         assertNull(validate("""{"kind":"note","level":"high"}""", schema))
+    }
+
+    @Test fun constAndEnumWithNonPrimitiveValues() {
+        val schema = """{"properties":{"kind":{"const":"note"},"level":{"enum":["low","high"]}}}"""
+        // Null is a primitive: mismatch, not a throw.
+        val nullErr = validate("""{"kind":null,"level":"low"}""", schema)
+        assertTrue(nullErr!!.contains("must be 'note'"), nullErr)
+        // Object / array values must yield validation errors, never throw.
+        val objErr = validate("""{"kind":{"nested":1},"level":"low"}""", schema)
+        assertTrue(objErr!!.contains("must be 'note'"), objErr)
+        val arrErr = validate("""{"kind":"note","level":["low"]}""", schema)
+        assertTrue(arrErr!!.contains("invalid value"), arrErr)
+        // Non-primitive const/enum entries in the schema itself must not throw either.
+        assertNotNull(validate(
+            """{"kind":"note","level":"low"}""",
+            """{"properties":{"kind":{"const":{"nested":1}},"level":{"enum":[["low"],"high"]}}}""",
+        ))
     }
 
     @Test fun arrayItemsAreValidated() {

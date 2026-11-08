@@ -234,7 +234,7 @@ object FinalLocationReporter {
         val value = LocationValue(
             Networking.userid,
             Coord(location.latitude, location.longitude),
-            0f,
+            if (location.hasSpeed()) location.speed else 0f,
             location.accuracy,
             measuredAt(location, now),
             battery,

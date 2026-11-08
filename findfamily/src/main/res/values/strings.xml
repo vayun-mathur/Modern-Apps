@@ -39,6 +39,10 @@
 
     <!-- LocationTrackingService: Dynamic notification body for low battery. %1$s = contact display name, e.g. Alice -->
     <string name="notification_low_battery"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> has low battery</string>
+    <!-- NoShowCheckWorker: Dynamic notification body when a watched person did not arrive at the expected place. %1$s = person name, %2$s = waypoint name -->
+    <string name="notification_noshow_at_place"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> didn\'t arrive at <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
+    <!-- NoShowCheckWorker: Dynamic notification body when a watched person sent no fresh location by the deadline. %1$s = person name -->
+    <string name="notification_noshow_anywhere"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> didn\'t check in</string>
     <!-- LocationTrackingService: Dynamic notification when contact enters waypoint. %1$s = person name (Alice), %2$s = waypoint name (Home) -->
     <string name="notification_entered_waypoint"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> has entered <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
     <!-- LocationTrackingService: Dynamic notification when contact exits waypoint. %1$s = person name, %2$s = waypoint name -->

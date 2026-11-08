@@ -38,7 +38,9 @@ private fun ContactViewModel.parseSingleVcfUri(
 ) {
     try {
         app.contentResolver.openInputStream(uri)?.use { input ->
-            allContacts.addAll(VcfUtils.parseContacts(input))
+            allContacts.addAll(
+                VcfUtils.parseContacts(input) { names -> resolveImportGroups(app, names) }
+            )
         }
     } catch (e: java.io.FileNotFoundException) {
         Log.error("ContactViewModel", "Error parsing VCF file: $uri", e)
@@ -47,6 +49,80 @@ private fun ContactViewModel.parseSingleVcfUri(
     } catch (e: java.io.IOException) {
         Log.error("ContactViewModel", "Error parsing VCF file: $uri", e)
     }
+}
+
+/**
+ * Resolves vCard CATEGORIES names to GroupMemberships for import, creating
+ * a visible group for any name the provider does not already have. Without
+ * this the parser's resolver defaulted to empty, so group memberships the
+ * exporter writes as CATEGORIES were silently dropped on re-import.
+ * Per-name failures are logged and skipped so one bad name cannot lose
+ * the rest (the parser also guards the call as a whole).
+ */
+private fun resolveImportGroups(
+    app: Application,
+    names: List<String>,
+): List<com.vayunmathur.contacts.data.GroupMembership> {
+    val resolver = app.contentResolver
+    val existing = mutableMapOf<String, Long>()
+    try {
+        resolver.query(
+            android.provider.ContactsContract.Groups.CONTENT_URI,
+            arrayOf(
+                android.provider.ContactsContract.Groups._ID,
+                android.provider.ContactsContract.Groups.TITLE,
+            ),
+            "${android.provider.ContactsContract.Groups.DELETED} = 0",
+            null,
+            null,
+        )?.use { cursor ->
+            val idIdx = cursor.getColumnIndexOrThrow(android.provider.ContactsContract.Groups._ID)
+            val titleIdx = cursor.getColumnIndexOrThrow(android.provider.ContactsContract.Groups.TITLE)
+            while (cursor.moveToNext()) {
+                val title = cursor.getString(titleIdx)?.trim() ?: continue
+                if (title.isNotEmpty()) existing[title.lowercase()] = cursor.getLong(idIdx)
+            }
+        }
+    } catch (e: SecurityException) {
+        Log.error("ContactViewModel", "Error reading groups for VCF import", e)
+        return emptyList()
+    } catch (e: IllegalArgumentException) {
+        Log.error("ContactViewModel", "Error reading groups for VCF import", e)
+        return emptyList()
+    } catch (e: android.database.SQLException) {
+        Log.error("ContactViewModel", "Error reading groups for VCF import", e)
+        return emptyList()
+    }
+
+    val result = mutableListOf<com.vayunmathur.contacts.data.GroupMembership>()
+    for (name in names) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) continue
+        val known = existing[trimmed.lowercase()]
+        if (known != null) {
+            result += com.vayunmathur.contacts.data.GroupMembership(0, known)
+            continue
+        }
+        try {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.ContactsContract.Groups.TITLE, trimmed)
+                put(android.provider.ContactsContract.Groups.GROUP_VISIBLE, 1)
+            }
+            val createdUri = resolver.insert(
+                android.provider.ContactsContract.Groups.CONTENT_URI, values
+            )
+            val newId = createdUri?.lastPathSegment?.toLongOrNull() ?: continue
+            existing[trimmed.lowercase()] = newId
+            result += com.vayunmathur.contacts.data.GroupMembership(0, newId)
+        } catch (e: SecurityException) {
+            Log.error("ContactViewModel", "Error creating group for VCF import", e)
+        } catch (e: IllegalArgumentException) {
+            Log.error("ContactViewModel", "Error creating group for VCF import", e)
+        } catch (e: android.database.SQLException) {
+            Log.error("ContactViewModel", "Error creating group for VCF import", e)
+        }
+    }
+    return result
 }
 
 /** Clears any parsed-VCF state held in the VM (called when the import screen dismisses). */

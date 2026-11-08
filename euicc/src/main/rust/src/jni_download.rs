@@ -9,8 +9,7 @@ use jni::objects::{JClass, JString, JValue};
 use jni::sys::{jboolean, jint, jstring};
 use jni::{Env, EnvUnowned, jni_sig, jni_str};
 
-use std::cell::RefCell;
-use std::collections::HashMap;
+use std::sync::{Mutex, MutexGuard};
 
 use crate::download;
 use crate::es10;
@@ -22,13 +21,37 @@ use crate::jni::{new_jstring, read_string};
 ///
 /// The split-phase flow opens one ISD-R channel per phase (each native entry
 /// runs inside its own `withIsdrChannel`), so the session must survive across
-/// JNI calls on the same thread. The map holds at most a handful of small
-/// blobs (signed material + ids); finish/cancel consume.
+/// JNI calls. Kotlin drives those calls from `Dispatchers.IO`, whose pooled
+/// threads are not pinned: authenticate and finish routinely land on different
+/// Java threads, so the store must be process-global, not `thread_local!` —
+/// a thread-local session reads back as "session expired" whenever the pool
+/// picks another thread. Insertion order is kept so eviction is oldest-first.
+/// The store holds at most a handful of small blobs (signed material + ids);
+/// finish/cancel consume.
 const MAX_SESSIONS: usize = 4;
 
-thread_local! {
-    static SESSION: RefCell<HashMap<String, download::DownloadSession>> =
-        RefCell::new(HashMap::new());
+static SESSIONS: Mutex<Vec<(String, download::DownloadSession)>> = Mutex::new(Vec::new());
+
+fn sessions() -> MutexGuard<'static, Vec<(String, download::DownloadSession)>> {
+    SESSIONS.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// Stores an authenticated session under its transaction-id handle,
+/// evicting oldest-first beyond [`MAX_SESSIONS`].
+fn session_put(handle: String, session: download::DownloadSession) {
+    let mut guard = sessions();
+    guard.retain(|(h, _)| *h != handle);
+    guard.push((handle, session));
+    while guard.len() > MAX_SESSIONS {
+        guard.remove(0);
+    }
+}
+
+/// Removes and returns the session for `handle`, if one is stored.
+fn session_take(handle: &str) -> Option<download::DownloadSession> {
+    let mut guard = sessions();
+    let pos = guard.iter().position(|(h, _)| h == handle)?;
+    Some(guard.remove(pos).1)
 }
 
 /// `nativeDownloadProfile(activationCode)` — runs the full SGP.22 download for
@@ -102,18 +125,7 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeAuthenticate
                 "iccid": empty_to_null(&session.metadata.iccid_display),
                 "ccRequired": session.cc_required,
             });
-            SESSION.with(|s| {
-                // Oldest-first eviction keeps the slot map bounded.
-                let mut guard = s.borrow_mut();
-                guard.insert(handle, session);
-                while guard.len() > MAX_SESSIONS {
-                    if let Some(oldest) = guard.keys().next().cloned() {
-                        guard.remove(&oldest);
-                    } else {
-                        break;
-                    }
-                }
-            });
+            session_put(handle, session);
             reply
         }
         Err(message) => serde_json::json!({
@@ -153,7 +165,7 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeFinishDownlo
         };
         let code = read_string(env, &confirmation_code).filter(|c| !c.is_empty());
         let nickname = read_string(env, &nickname).filter(|c| !c.trim().is_empty());
-        let session = SESSION.with(|s| s.borrow_mut().remove(&handle));
+        let session = session_take(&handle);
         let Some(session) = session else {
             return Ok(finish_json(env, false, "Download session expired — start again"));
         };
@@ -204,7 +216,7 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeCancelDownlo
         let Some(handle) = read_string(env, &transaction_id) else {
             return Ok(false);
         };
-        let session = SESSION.with(|s| s.borrow_mut().remove(&handle));
+        let session = session_take(&handle);
         if let Some(session) = session {
             crate::download::cancel_session(env, &session, cancel_reason(reason));
         }
@@ -314,5 +326,45 @@ impl download::ProgressCallback for JniProgress {
         // Clear a pending Kotlin exception so later JNI calls stay valid.
         let _ = env.exception_clear();
         result.unwrap_or(true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The session store is process-global, so store tests must not run
+    /// concurrently with each other (cargo test defaults to parallel threads).
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    fn session(id: &str) -> download::DownloadSession {
+        download::DownloadSession::for_test(id)
+    }
+
+    #[test]
+    fn session_survives_take_on_another_thread() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        sessions().clear();
+        session_put("tx-cross-thread".to_string(), session("tx-cross-thread"));
+        // Dispatchers.IO does not pin authenticate/finish to one thread; the
+        // take must succeed from a different OS thread than the put.
+        let taken = std::thread::spawn(|| session_take("tx-cross-thread"))
+            .join()
+            .unwrap();
+        assert_eq!(taken.unwrap().transaction_id, "tx-cross-thread");
+        assert!(session_take("tx-cross-thread").is_none());
+    }
+
+    #[test]
+    fn session_eviction_is_oldest_first() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        sessions().clear();
+        for i in 0..=MAX_SESSIONS {
+            session_put(format!("tx-{i}"), session(&format!("tx-{i}")));
+        }
+        assert!(session_take("tx-0").is_none(), "oldest must be evicted");
+        for i in 1..=MAX_SESSIONS {
+            assert!(session_take(&format!("tx-{i}")).is_some());
+        }
     }
 }

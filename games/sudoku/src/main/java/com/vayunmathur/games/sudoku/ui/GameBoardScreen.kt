@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +34,10 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.FilledTonalButton
+import com.vayunmathur.library.ui.IconEdit
+import com.vayunmathur.library.ui.IconEraser
+import com.vayunmathur.library.ui.IconLightbulb
+import com.vayunmathur.library.ui.IconUndo
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.R as UiR
@@ -233,6 +238,18 @@ private fun StatusRow(game: SudokuGameState) {
     }
 }
 
+/** Tighter than a text button's default padding: the content is an icon over a short label. */
+private val ActionPadding = PaddingValues(horizontal = Spacing.xs, vertical = Spacing.sm)
+
+/** One board action's content: its icon above its label, centred. */
+@Composable
+private fun ActionLabel(icon: @Composable () -> Unit, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        icon()
+        Text(label, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
 @Composable
 private fun ActionBar(
     state: SudokuUiState,
@@ -249,33 +266,45 @@ private fun ActionBar(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
+            // Icon over label, as in other Sudoku apps: the four actions stay legible
+            // side by side on a phone, where icon-plus-label in a row would crowd.
             // Tonal fill is the "on" state for notes mode; the label alone is too easy to miss.
             if (game.notesMode) {
                 FilledTonalButton(
                     onClick = { actions.toggleNotesMode() },
                     modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.notes)) }
+                    contentPadding = ActionPadding,
+                ) { ActionLabel({ IconEdit(Modifier.size(20.dp)) }, stringResource(R.string.notes)) }
             } else {
                 OutlinedButton(
                     onClick = { actions.toggleNotesMode() },
                     modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.notes)) }
+                    contentPadding = ActionPadding,
+                ) { ActionLabel({ IconEdit(Modifier.size(20.dp)) }, stringResource(R.string.notes)) }
             }
             OutlinedButton(
                 onClick = { actions.clearCell() },
                 modifier = Modifier.weight(1f),
                 enabled = !ended,
-            ) { Text(stringResource(R.string.erase)) }
+                contentPadding = ActionPadding,
+            ) { ActionLabel({ IconEraser(Modifier.size(20.dp)) }, stringResource(R.string.erase)) }
             OutlinedButton(
                 onClick = { actions.undo() },
                 modifier = Modifier.weight(1f),
                 enabled = state.canUndo,
-            ) { Text(stringResource(com.vayunmathur.library.ui.R.string.undo)) }
+                contentPadding = ActionPadding,
+            ) {
+                ActionLabel(
+                    { IconUndo(Modifier.size(20.dp)) },
+                    stringResource(com.vayunmathur.library.ui.R.string.undo),
+                )
+            }
             OutlinedButton(
                 onClick = { actions.hint() },
                 modifier = Modifier.weight(1f),
                 enabled = !ended,
-            ) { Text(stringResource(R.string.hint)) }
+                contentPadding = ActionPadding,
+            ) { ActionLabel({ IconLightbulb(Modifier.size(20.dp)) }, stringResource(R.string.hint)) }
         }
         TextButton(
             onClick = {

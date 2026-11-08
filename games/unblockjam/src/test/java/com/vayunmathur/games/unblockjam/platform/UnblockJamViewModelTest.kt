@@ -212,6 +212,26 @@ class UnblockJamViewModelTest {
     }
 
     @Test
+    fun loadLevelReloadsSameLevelPristineAfterWin() {
+        val vm = vm()
+        vm.loadLevel(0, 0)
+        val start = vm.uiState.value.currentLevelData!!
+        val idx = lastBlock(start)
+        vm.onBlockMoved(movedCopy(start, idx, 1, 0))
+        vm.onLevelWon()
+        assertTrue(vm.uiState.value.isLevelWon)
+
+        // re-entering the won level (back out, tap it again) must restart it
+        // instead of showing the frozen won board
+        vm.loadLevel(0, 0)
+        val reloaded = vm.uiState.value
+        assertFalse(reloaded.isLevelWon)
+        assertTrue(reloaded.history.isEmpty())
+        assertEquals(LevelPack.PACKS[0].levels[0], reloaded.currentLevelData)
+        assertEquals(0, vm.getCurrentMoves())
+    }
+
+    @Test
     fun levelWonAfterMovingMainBlockHasNoExtraIncrement() {
         val vm = vm()
         vm.loadLevel(0, 0)

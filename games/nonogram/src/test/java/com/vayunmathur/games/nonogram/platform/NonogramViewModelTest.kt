@@ -124,6 +124,15 @@ class NonogramViewModelTest {
         await("daily completion recorded") { runBlocking { vm.dataStore.puzzlesCompleted.first() } > before }
     }
 
+    @Test fun retryGenerationReloadsBoard() {
+        val vm = loadedVm()
+        val before = vm.uiState.value.game!!
+        vm.retryGeneration()
+        await("reload after retry") { !vm.uiState.value.generating && vm.uiState.value.game != null }
+        assertFalse(vm.uiState.value.generationFailed)
+        assertEquals(before.puzzle, vm.uiState.value.game!!.puzzle)
+    }
+
     @Test fun reminderActionsUpdateState() {
         val vm = loadedVm()
         val enabledSeen = java.util.Collections.synchronizedList(mutableListOf<Boolean>())
@@ -147,6 +156,7 @@ class NonogramViewModelTest {
         NonogramGameActions.Noop.tapCell(0); NonogramGameActions.Noop.crossCell(0)
         NonogramGameActions.Noop.setMarkMode(MarkMode.CROSS); NonogramGameActions.Noop.nextLevel()
         NonogramGameActions.Noop.restartLevel(); NonogramGameActions.Noop.setGameMode(GameMode.DAILY)
+        NonogramGameActions.Noop.retryGeneration()
         SettingsActions.Noop.setReminderEnabled(true); SettingsActions.Noop.setReminderTime(1, 2)
         assertEquals(listOf("settings", "datastore_default"), AppBackupAgent().datastoreNames)
     }

@@ -129,6 +129,36 @@ class ArrowsViewModelTest {
     }
 
     @Test
+    fun relaunchOnWonBoardDoesNotRecountTheClear() {
+        // A won board is persisted, but the comment on onCleared's guard admits the guard is only
+        // in-memory: after process death the progress collector replays onto an already-won board
+        // and counts it again. Each relaunch below must leave the lifetime counter alone.
+        val vm = ArrowsViewModel(app)
+        await("board loads") { vm.uiState.value.game != null && !vm.uiState.value.generating }
+        val allIds = vm.uiState.value.game!!.puzzle.pieces.map { it.id }.toSet()
+        runBlocking { vm.dataStore.saveProgress(allIds, 3, daily = false) }
+        await("board won") { vm.uiState.value.game?.isWon == true }
+        // A second ViewModel over the same store is a fresh process for guard purposes: its
+        // in-memory clear guard starts empty while the won board is already persisted.
+        val first = ArrowsViewModel(app)
+        await("relaunch loads won board") { first.uiState.value.game?.isWon == true }
+        Thread.sleep(2_000)
+        val afterFirst = runBlocking { first.dataStore.boardsCleared.first() }
+
+        val second = ArrowsViewModel(app)
+        await("second relaunch loads won board") { second.uiState.value.game?.isWon == true }
+        Thread.sleep(2_000)
+        val afterSecond = runBlocking { second.dataStore.boardsCleared.first() }
+
+        assertEquals(
+            afterFirst,
+            afterSecond,
+            "reloading an already-won board must not count it again",
+        )
+        runBlocking { second.dataStore.resetBoard(daily = false) }
+    }
+
+    @Test
     fun dailyFlowAndReminderSettings() {
         runCatching {
             WorkManager.initialize(app, Configuration.Builder().build())

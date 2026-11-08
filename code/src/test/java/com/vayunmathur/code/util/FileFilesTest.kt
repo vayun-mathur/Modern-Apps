@@ -64,6 +64,17 @@ class FileFilesTest {
     }
 
     @Test
+    fun writeBytesReplacesAtomicallyAndLeavesNoTemp() {
+        val dir = tempDir()
+        val f = File(dir, "a.bin").also { it.writeText("old contents") }
+        FileFiles.writeBytes(f, byteArrayOf(9, 8, 7))
+        assertTrue(FileFiles.readBytes(f).contentEquals(byteArrayOf(9, 8, 7)))
+        // No temp sibling may survive a successful (or failed) atomic write.
+        assertEquals(listOf("a.bin"), dir.list()?.toList())
+        dir.deleteRecursively()
+    }
+
+    @Test
     fun createFileCreatesAndRefusesDuplicates() {
         val dir = tempDir()
         assertNotNull(FileFiles.createFile(dir, "new.txt"))

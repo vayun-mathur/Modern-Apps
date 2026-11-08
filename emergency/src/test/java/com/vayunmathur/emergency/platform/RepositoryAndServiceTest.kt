@@ -222,6 +222,11 @@ class ViewModelAndCoordinatorTest {
         val byDefault = SosCoordinator(app, openedWithMillis = -1)
         await { byDefault.state.value.loaded }
         assertEquals(5_000, byDefault.state.value.totalMillis)
+        // an explicit zero (a deadline that already passed) stays zero so the
+        // screen fires at once instead of restarting the full countdown
+        val expired = SosCoordinator(app, openedWithMillis = 0)
+        await { expired.state.value.loaded }
+        assertEquals(0, expired.state.value.totalMillis)
     }
 }
 
@@ -250,6 +255,49 @@ class SosServiceAndReceiverTest {
         )
         assertNull(service.onBind(null))
         controller.destroy()
+    }
+
+    @Test
+    fun `countdown notification counts down to a wall-clock deadline`() {
+        Shadows.shadowOf(ctx.packageManager)
+            .setSystemFeature(android.content.pm.PackageManager.FEATURE_TELEPHONY, true)
+        val controller = Robolectric.buildService(SosCountdownService::class.java)
+        val service = controller.create().get()
+        val before = System.currentTimeMillis()
+        val intent = Intent().putExtra("service.extra.remaining_time_ms", 60_000L)
+        service.onStartCommand(intent, 0, 1)
+        ShadowLooper.idleMainLooper()
+        val manager = ctx.getSystemService(android.app.NotificationManager::class.java)
+        val posted = manager.activeNotifications
+            .firstOrNull { it.id == SosNotifications.NOTIFICATION_ID }?.notification
+        assertNotNull(posted)
+        // setWhen is epoch wall time: an elapsedRealtime target lands in 1970 and
+        // the chronometer counts down to the wrong instant.
+        assertTrue(posted.`when` >= before + 59_000)
+        assertTrue(posted.`when` <= System.currentTimeMillis() + 61_000)
+        controller.destroy()
+        ShadowLooper.idleMainLooper()
+    }
+
+    @Test
+    fun `countdown arms a call alarm for the countdown deadline`() {
+        Shadows.shadowOf(ctx.packageManager)
+            .setSystemFeature(android.content.pm.PackageManager.FEATURE_TELEPHONY, true)
+        val alarms = ctx.getSystemService(android.app.AlarmManager::class.java)
+        val controller = Robolectric.buildService(SosCountdownService::class.java)
+        val service = controller.create().get()
+        val before = System.currentTimeMillis()
+        val intent = Intent().putExtra("service.extra.remaining_time_ms", 60_000L)
+        service.onStartCommand(intent, 0, 1)
+        ShadowLooper.idleMainLooper()
+        // The countdown must arm the MAKE_CALL alarm for its deadline; the
+        // inexact fallback shares this same arming path when the exact-alarm
+        // grant is unavailable on device.
+        val scheduled = Shadows.shadowOf(alarms).scheduledAlarms
+        assertTrue(scheduled.isNotEmpty())
+        assertTrue(scheduled.first().triggerAtMs >= before + 50_000)
+        controller.destroy()
+        ShadowLooper.idleMainLooper()
     }
 
     @Test

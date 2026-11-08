@@ -27,6 +27,11 @@ fun EditorViewModel.closeFolder() {
     rootDir = null
     rootName = null
     nodes.clear()
+    // The shell is scoped to the folder it was started in; don't leave it running (and
+    // accepting commands) against a project that is no longer open.
+    terminal?.close()
+    terminal = null
+    terminalRunning = false
     viewModelScope.launch { prefs.clearFolderPath() }
 }
 
@@ -256,7 +261,8 @@ fun EditorViewModel.openFile(file: File) {
         return
     }
     viewModelScope.launch {
-        tabs.add(makeFileTab(file))
+        val tab = makeFileTab(file) ?: return@launch
+        tabs.add(tab)
         currentIndex = tabs.lastIndex
         saveSession()
         scheduleDiagnostics()
@@ -297,9 +303,9 @@ fun EditorViewModel.openExternal(uri: Uri) {
     }
 }
 
-/** Reads + decodes [file] off the main thread into a fully-populated tab (empty on failure). */
-internal suspend fun EditorViewModel.makeFileTab(file: File, name: String = file.name): OpenTab {
-    val loaded = loadFile(file)
+/** Reads + decodes [file] off the main thread into a fully-populated tab (null on read failure). */
+internal suspend fun EditorViewModel.makeFileTab(file: File, name: String = file.name): OpenTab? {
+    val loaded = loadFile(file) ?: return null
     return OpenTab(
         file = file,
         initialName = name,
@@ -315,11 +321,14 @@ internal suspend fun EditorViewModel.makeFileTab(file: File, name: String = file
     }
 }
 
-/** Reads [file]'s bytes and decodes them, capturing the on-disk snapshot; safe on failure. */
-internal suspend fun EditorViewModel.loadFile(file: File): LoadedFile = withContext(Dispatchers.IO) {
+/**
+ * Reads [file]'s bytes and decodes them, capturing the on-disk snapshot.
+ *
+ * Returns null on any read failure: callers must not fabricate an empty buffer, because a tab
+ * (or a reload) built on empty text can later be saved straight over the real file.
+ */
+internal suspend fun EditorViewModel.loadFile(file: File): LoadedFile? = withContext(Dispatchers.IO) {
     runCatching {
         LoadedFile(TextEncoding.decode(FileFiles.readBytes(file)), file.lastModified(), file.length())
-    }.getOrDefault(
-        LoadedFile(DecodedText("", Charsets.UTF_8, false, LineEnding.LF), file.lastModified(), file.length()),
-    )
+    }.getOrNull()
 }

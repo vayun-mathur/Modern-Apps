@@ -8,6 +8,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
@@ -80,14 +81,18 @@ class ArrowsDataStoreTest {
     }
 
     @Test
-    fun recordClearedIncrements() = runBlocking {
+    fun recordClearedOnceBanksEachKeyOnce() = runBlocking {
         val s = store()
+        // Unique keys: the DataStore file is shared across test classes in one JVM fork, and
+        // other tests bank real board keys (-1L for casual level 1, day numbers for daily).
         val before = s.boardsCleared.first()
-        val after1 = s.recordCleared()
+        val after1 = s.recordClearedOnce(-777001L)
         assertEquals(before + 1, after1)
         assertEquals(after1, s.boardsCleared.first())
-        val after2 = s.recordCleared()
-        assertEquals(after1 + 1, after2)
+        assertNull(s.recordClearedOnce(-777001L), "replaying the same board must not count twice")
+        assertEquals(after1, s.boardsCleared.first())
+        val after2 = s.recordClearedOnce(-777002L)
+        assertEquals(after1!! + 1, after2)
     }
 
     @Test

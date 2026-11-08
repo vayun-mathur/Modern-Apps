@@ -347,6 +347,21 @@ class AudioCodecTest {
     }
 
     @Test
+    fun `resampling interpolates between neighbouring samples`() {
+        // Regression: the interpolator used the index distance (0 or 1)
+        // instead of the sample difference, so a 0 -> 9000 ramp upsampled
+        // 3x came out as 0,0,0,9000... instead of 0,3000,6000,9000...
+        val pcm = pcmBytes(shortArrayOf(0, 9_000, 9_000))
+        val up = AudioCodec.resampleLinearMono16(pcm, 16_000, 48_000)
+        val view = ByteBuffer.wrap(up).order(ByteOrder.LITTLE_ENDIAN)
+        val samples = ShortArray(up.size / 2) { view.short }
+        assertContentEquals(
+            shortArrayOf(0, 3_000, 6_000, 9_000, 9_000, 9_000, 9_000, 9_000, 9_000),
+            samples,
+        )
+    }
+
+    @Test
     fun `a mono wav unwraps at its native rate`() {
         val samples = shortArrayOf(0, 1000, -1000, 3000)
         val wav = wavBytes(samples, channels = 1, rate = 16_000)

@@ -138,8 +138,13 @@ abstract class FilesShareModel(application: Application) :
     // ---- Archive ----
     override fun archive(archiveName: String) {
         if (isZipMode()) return
-        val destFileName = if (archiveName.endsWith(".zip")) archiveName else "$archiveName.zip"
-        val destFile = File(currentDirectoryState.value, destFileName)
+        // The dialog asks for a file name, not a path, and the archive must
+        // not clobber an existing file (ZipWorker refuses that too): pick a
+        // fresh "name (n).zip" on collision, like create and paste do.
+        val baseName = File(archiveName.trim()).name
+        if (baseName.isBlank()) return
+        val destFileName = if (baseName.endsWith(".zip")) baseName else "$baseName.zip"
+        val destFile = uniqueDestination(currentDirectoryState.value, destFileName)
         val sources = selectedPathsState.value.mapNotNull { it.realFile?.absolutePath }
             .toTypedArray()
         if (sources.isEmpty()) return
@@ -300,10 +305,16 @@ abstract class FilesShareModel(application: Application) :
 }
 
 /** Copies a shared content [Uri] into [targetDir] under its display name. */
-private fun saveUriToPath(context: Context, uri: Uri, targetDir: File) {
-    val name = getSharedFileName(context, uri) ?: "shared_file_${System.currentTimeMillis()}"
-    val targetFile = File(targetDir, name)
-    context.contentResolver.openInputStream(uri)?.use { input ->
+internal fun saveUriToPath(context: Context, uri: Uri, targetDir: File) {
+    // The display name is supplied by the sending app's provider, so it must
+    // never be treated as a path, and an existing file here must not be
+    // truncated: sanitize to a plain name and pick a fresh destination.
+    val name = sanitizedFileName(getSharedFileName(context, uri))
+        ?: "shared_file_${System.currentTimeMillis()}"
+    val targetFile = uniqueDestination(targetDir, name)
+    val input = context.contentResolver.openInputStream(uri)
+        ?: throw IOException("Could not open shared file: $uri")
+    input.use {
         targetFile.outputStream().use { out -> input.copyTo(out) }
     }
 }

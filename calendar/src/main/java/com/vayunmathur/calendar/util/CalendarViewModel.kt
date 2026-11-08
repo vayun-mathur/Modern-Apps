@@ -416,9 +416,19 @@ class CalendarViewModel(application: Application) :
         val instanceDate = Instant.fromEpochMilliseconds(instanceBeginTime)
             .toLocalDateTime(zone).date
         if (event.rdate.contains(instanceDate)) {
-            upsertEvent(eventId, ContentValues().apply {
-                put(CalendarContract.Events.RDATE, event.withoutRdate(instanceDate).rdateColumnValue())
-            })
+            val updated = event.withoutRdate(instanceDate)
+            if (updated.isRecurring) {
+                upsertEvent(eventId, ContentValues().apply {
+                    put(CalendarContract.Events.RDATE, updated.rdateColumnValue())
+                })
+            } else {
+                // That was the last extra date: the event is a one-off now, so
+                // write the full row. A column-only RDATE clear would leave the
+                // recurring row's DTEND=null/DURATION behind, and a
+                // non-recurring event without DTEND expands to no instances -
+                // the remaining event would vanish from every view.
+                upsertEvent(eventId, updated.toContentValues(updated.calendarID))
+            }
             return
         }
         // Timed occurrences need the datetime form; a date-only EXDATE is ignored

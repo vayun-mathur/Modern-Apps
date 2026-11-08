@@ -201,6 +201,10 @@ internal fun SolitaireViewModel.pyramidDealStockImpl() {
         it.copy(pyramid = state.copy(
             stock = state.stock.dropLast(1),
             waste = state.waste + state.stock.last(),
+            // Dealing replaces the waste top, so a "waste" selection
+            // would silently retarget to the new card. Drop it (a
+            // pyramid selection names a fixed card and survives).
+            selectedId = if (state.selectedId == "waste") null else state.selectedId,
             moveCount = state.moveCount + 1
         ))
     }

@@ -234,7 +234,7 @@ internal suspend fun RcsSyncService.handleE2EEInbound(envelope: Envelope): Inbou
     }
     // Welcome envelope → join the group, then announce with a notice row.
     if (isWelcome(contentType, body)) {
-        return handleWelcome(from, body)
+        return handleWelcome(from, contentType, body)
     }
     // MLS data (commit or application) → decrypt against the conversation group.
     return handleMlsData(from, contentType, body)
@@ -284,9 +284,16 @@ private suspend fun RcsSyncService.handleKeyPackage(from: String, body: String) 
     }
 }
 
-/** Join a welcomed group; notice row, or null when fully absorbed. */
-private suspend fun RcsSyncService.handleWelcome(from: String, body: String): InboundRcs? {
-    val welcomeBytes = decodePayloadBody(body) ?: return null
+/** Join a welcomed group; notice row, Receipt-absorb for typed welcomes, else null. */
+private suspend fun RcsSyncService.handleWelcome(from: String, contentType: String?, body: String): InboundRcs? {
+    // Only a stanza typed as a Welcome on the wire is definitely a Welcome:
+    // absorbing its failures keeps undecryptable key material out of the
+    // plaintext cache (visible row + notification + focus relay + IMDN
+    // report). A body-only token match may be pasted plaintext, so it still
+    // falls through (null) on failure.
+    val isTypedWelcome = contentType?.contains(RcsE2E.CT_WELCOME, ignoreCase = true) == true
+    val welcomeBytes = decodePayloadBody(body)
+        ?: return if (isTypedWelcome) receiptResult(from, "welcome-undecodable") else null
     val conversationId = from
     val groupId = RcsE2E.joinEncryptedGroup(this, conversationId, welcomeBytes)
     if (groupId != null) {
@@ -299,7 +306,7 @@ private suspend fun RcsSyncService.handleWelcome(from: String, body: String): In
             "in-welcome-${System.currentTimeMillis()}",
         )
     }
-    return null
+    return if (isTypedWelcome) receiptResult(from, "welcome-unjoinable") else null
 }
 
 /** Decrypt MLS data; visible row for app messages, null otherwise. */
@@ -312,11 +319,16 @@ private suspend fun RcsSyncService.handleMlsData(
         contentType?.contains(RcsE2E.CT_COMMIT, ignoreCase = true) == true ||
         RcsE2E.isMlsPayload(body)
     if (!isMls) return null
-    val payload = decodePayloadBody(body) ?: return null
-    val (plaintext, isApp) = RcsE2E.decryptFor(this, from, payload) ?: return null
-    if (!isApp) return null
+    // From here the stanza is MLS, so every failure must be absorbed (a
+    // non-text result), never null: null makes handleInbound fall through
+    // to the plaintext path, which would cache the base64 ciphertext as a
+    // visible "message", notify for it, and send a delivery report.
+    val payload = decodePayloadBody(body) ?: return receiptResult(from, "mls-undecodable")
+    val (plaintext, isApp) = RcsE2E.decryptFor(this, from, payload)
+        ?: return receiptResult(from, "mls-undecryptable")
+    if (!isApp) return receiptResult(from, "mls-commit")
     val text = plaintext.toString(Charsets.UTF_8)
-    if (text.isBlank()) return null
+    if (text.isBlank()) return receiptResult(from, "mls-blank")
     val callId = text.hashCode().toString()
     return InboundRcs(
         conversationId = from,

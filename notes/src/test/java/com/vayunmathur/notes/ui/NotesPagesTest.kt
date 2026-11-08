@@ -210,7 +210,12 @@ class NotesPagesTest {
             runCatching { rule.onNodeWithText("external-action").assertIsDisplayed(); true }.getOrDefault(false)
         }
         rule.onNodeWithContentDescription("Save").performClick()
-        rule.waitForIdle()
+        // saveExternal writes on Dispatchers.IO, which waitForIdle does not
+        // cover; poll so a torn read right after truncation cannot flake this.
+        val saveDeadline = System.currentTimeMillis() + 8000
+        while (System.currentTimeMillis() < saveDeadline && file.readText() != "original external") {
+            Thread.sleep(30); rule.waitForIdle()
+        }
         assertEquals("original external", file.readText())
         rule.onNodeWithContentDescription("Add").performClick()
         val deadline = System.currentTimeMillis() + 8000
@@ -241,6 +246,39 @@ class NotesPagesTest {
         rule.runOnUiThread { setter!!.invoke(Note(0, "Locally Written", "body")) }
         rule.waitForIdle()
         assertEquals("Locally Written", observed)
+    }
+
+    @Test fun editableNoteNewNoteSavesOnceAndFlushesOnDispose() {
+        val vm = vm()
+        var setter: ((Note) -> Unit)? = null
+        var observed: Note? = null
+        var show by mutableStateOf(true)
+        rule.setContent {
+            if (show) {
+                val state = vm.editableNote(0) { Note(0, "", "") }
+                observed = state.value
+                setter = { state.value = it }
+            }
+        }
+        idle()
+        rule.runOnUiThread { setter!!.invoke(Note(0, "First Draft", "body", syncId = "dup-check")) }
+        // The debounced collector runs on the compose test clock and cannot be
+        // driven reliably under Robolectric, so go straight to the dispose
+        // flush: a second edit inside the debounce window, then leave. The
+        // flush must write exactly one row carrying the latest edit, not a
+        // duplicate per edit or nothing at all.
+        rule.runOnUiThread { setter!!.invoke(observed!!.copy(title = "Second Draft")) }
+        rule.runOnUiThread { show = false }
+        rule.waitForIdle()
+        val deadline2 = System.currentTimeMillis() + 8000
+        while (System.currentTimeMillis() < deadline2) {
+            val all = runBlocking { repo.getAll() }
+            if (all.size == 1 && all.single().title == "Second Draft") break
+            Thread.sleep(30)
+        }
+        val all = runBlocking { repo.getAll() }
+        assertEquals(1, all.size, "new note must be a single row: $all")
+        assertEquals("Second Draft", all.single().title)
     }
 
     @Test fun notePageImageBlockResizeMoveDelete() {

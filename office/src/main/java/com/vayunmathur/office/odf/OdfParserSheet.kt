@@ -136,7 +136,7 @@ private fun OdfParser.applySheetColumn(
     val styleName = getAttr(parser, "style-name")
     val width = resolveStyle(styleName, styles).columnWidth
     val hidden = getAttr(parser, "visibility").let { it == "collapse" || it == "filter" }
-    repeat(repeated.coerceAtMost(MAX_REPEATED_ROWS)) {
+    repeat(repeated.coerceAtMost(MAX_REPEATED_COLS)) {
         if (hidden) hiddenCols.add(acc.colIndex)
         columnWidths.add(width); acc.colIndex++
     }
@@ -156,7 +156,7 @@ private fun OdfParser.applySheetRow(
     val rh = resolveStyle(styleName, styles).rowHeight
     val hidden = getAttr(parser, "visibility").let { it == "collapse" || it == "filter" }
     val cells = parseSpreadsheetCells(parser, styles, numberStyles)
-    repeat(repeated.coerceAtMost(MAX_REPEATED_COLS)) {
+    repeat(repeated.coerceAtMost(MAX_REPEATED_ROWS)) {
         if (hidden) hiddenRows.add(rows.size)
         rows.add(OdfRow(cells)); rowHeights.add(rh)
     }

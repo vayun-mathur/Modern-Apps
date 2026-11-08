@@ -14,8 +14,10 @@ import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.vayunmathur.web.domain.EffectiveShields
+import com.vayunmathur.web.domain.shields.ResourceTypes
 import com.vayunmathur.web.domain.shields.UrlCleaner
 import com.vayunmathur.web.platform.AdultSites
+import com.vayunmathur.web.platform.BrowserUtils
 import com.vayunmathur.web.platform.ContentFilters
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -148,6 +150,15 @@ open class ShieldsWebViewClient(
         }
         if (shields.blockTrackers) {
             result = UrlCleaner.clean(result)
+            // The bundled lists carry $removeparam rules for parameters the fixed
+            // UrlCleaner list above does not know (e.g. `ref` on reddit.com). The
+            // engine only reports a rewrite when the navigation is not blocked, and
+            // main-frame blocking stays out of scope — a null check fails open.
+            ShieldsEngine.check(result, result, ResourceTypes.of(result, isMainFrame = true, headers = emptyMap()))
+                ?.takeIf { !it.blocked }
+                ?.rewritten
+                ?.takeIf { it != result }
+                ?.let { result = it }
         }
         return if (result == url) null else result
     }
@@ -169,7 +180,7 @@ open class ShieldsWebViewClient(
      * only cosmetic, so evaluating them at page start is soon enough.
      */
     private fun applyShields(view: WebView, url: String) {
-        if (!url.startsWith("http")) return
+        if (!BrowserUtils.isWebUrl(url)) return
         val shields = shieldsFor(hostOf(url))
         if (!shields.cosmeticFiltering) return
 

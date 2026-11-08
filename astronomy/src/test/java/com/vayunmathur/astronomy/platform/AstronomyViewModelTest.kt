@@ -97,6 +97,51 @@ class AstronomyViewModelTest {
         assertEquals(RaDec(0.0, 0.0), vm.getRaDecProvider("nope")(2460000.5))
     }
 
+    @Test fun `magnitude limit change recomputes the sky while time is paused`() {
+        val vm = AstronomyViewModel(app)
+        await("catalog ready") { vm.catalogReady.value }
+        vm.setManualLocation(37.0, -122.0)
+        // Pause time so the one-second live ticker cannot mask a missing
+        // recompute: only a magLimit-driven emission can change the sky now.
+        vm.setTime(Instant.fromEpochMilliseconds(1_700_000_000_000), live = false)
+        await("visible sky") { vm.visibleSky.value.stars.isNotEmpty() }
+        val before = vm.visibleSky.value.stars.size
+        vm.setMagLimit(1.0f)
+        await("sky filtered by new mag limit") {
+            val stars = vm.visibleSky.value.stars
+            stars.size < before && stars.all { it.star.mag <= 1.0 }
+        }
+    }
+
+    @Test fun `rise-set recomputes when the observer moves`() {
+        val vm = AstronomyViewModel(app)
+        await("catalog ready") { vm.catalogReady.value }
+        vm.setManualLocation(37.0, -122.0)
+        vm.selectObject("SUN")
+        await("riseSet") { vm.riseSet.value?.riseJd != null }
+        val firstRise = vm.riseSet.value!!.riseJd
+        // Sydney sunrise is many hours away from San Francisco's; a stale
+        // rise-set would keep returning the first value forever.
+        vm.setManualLocation(-33.86, 151.21)
+        await("riseSet for new location") {
+            val rise = vm.riseSet.value?.riseJd
+            rise != null && rise != firstRise
+        }
+    }
+
+    @Test fun `manual location outside valid ranges is rejected`() {
+        val vm = AstronomyViewModel(app)
+        vm.setManualLocation(37.0, -122.0)
+        vm.setManualLocation(999.0, 0.0)
+        assertEquals(37.0, vm.observer.value?.latDeg)
+        vm.setManualLocation(0.0, -999.0)
+        assertEquals(-122.0, vm.observer.value?.lonDeg)
+        // Boundary values are valid observer locations.
+        vm.setManualLocation(90.0, 180.0)
+        assertEquals(90.0, vm.observer.value?.latDeg)
+        assertEquals(180.0, vm.observer.value?.lonDeg)
+    }
+
     @Test fun `time scrubbing leaves live mode and live-now restores it`() {
         val vm = AstronomyViewModel(app)
         val fixed = Instant.fromEpochMilliseconds(1_700_000_000_000)

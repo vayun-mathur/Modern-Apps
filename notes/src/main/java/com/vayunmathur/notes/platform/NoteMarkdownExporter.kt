@@ -53,10 +53,38 @@ fun exportNoteMarkdown(context: Context, note: Note): String =
  * [NotesViewModel.requestShare], so no extra manifest setup is needed. Used by copy
  * so a note with inlined (multi-MB) images is passed as a URI instead of raw text.
  */
+/**
+ * Cache file name for a shared/copied note. The title is user text: used raw
+ * it can contain `/` or `..`, which either makes the write fail (missing
+ * parent dir, crashing the share) or escapes the shared_notes directory so
+ * FileProvider refuses the URI. Strip path-hostile characters instead.
+ *
+ * Also caps the UTF-8 length well under NAME_MAX (255) so very long titles
+ * don't fail the cache write with ENAMETOOLONG.
+ */
+private const val MAX_SHARE_FILENAME_BYTES = 200
+
+internal fun shareMarkdownFileName(title: String): String {
+    val cleaned = title.trim()
+        .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
+        .trim('.')
+    val truncated = truncateUtf8Bytes(cleaned, MAX_SHARE_FILENAME_BYTES).trim('.')
+    return "${truncated.ifBlank { "note" }}.md"
+}
+
+/** Prefix of [s] fitting in [maxBytes] UTF-8 bytes, cut on a code-point boundary. */
+private fun truncateUtf8Bytes(s: String, maxBytes: Int): String {
+    val bytes = s.toByteArray()
+    if (bytes.size <= maxBytes) return s
+    var end = maxBytes
+    while (end > 0 && bytes[end].toInt() and 0xC0 == 0x80) end--
+    return String(bytes, 0, end, Charsets.UTF_8)
+}
+
 fun markdownCacheUri(context: Context, note: Note, markdown: String): Uri {
     val cachePath = File(context.cacheDir, "shared_notes")
     cachePath.mkdirs()
-    val file = File(cachePath, "${note.title.ifBlank { "note" }}.md")
+    val file = File(cachePath, shareMarkdownFileName(note.title))
     file.writeText(markdown)
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }

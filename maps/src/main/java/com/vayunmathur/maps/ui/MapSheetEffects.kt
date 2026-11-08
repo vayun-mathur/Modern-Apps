@@ -103,6 +103,42 @@ internal fun MapSheetEffects(
         )
         if (!wide) sheetState?.partialExpand()
         viewModel.consumeFocus()
+        // Search/deep-link selections are GenericPlaces, which carry no
+        // boundary link, so they could never show the region mask. Now the
+        // camera is on the place, upgrade the selection to the rendered
+        // admin label of the same name at this spot when one is linked —
+        // the mask and admin card follow from the selection as they do
+        // for a tapped label. No name match, no upgrade.
+        val place = viewModel.selectedFeature.value as? SpecificFeature.GenericPlace
+            ?: return@LaunchedEffect
+        val projection = camera.projection ?: return@LaunchedEffect
+        val centre = runCatching {
+            projection.screenLocationFromPosition(request.position)
+        }.getOrNull() ?: return@LaunchedEffect
+        val slop = com.vayunmathur.maps.ui.theme.MapChromeMetrics.hitSlop
+        val candidates = projection.queryRenderedLabels(
+            androidx.compose.ui.unit.DpRect(
+                centre.x - slop, centre.y - slop, centre.x + slop, centre.y + slop,
+            ),
+            com.vayunmathur.maps.ui.map.MapFeaturePicker.NATIVE_LABEL_LAYER_IDS,
+        ).mapNotNull {
+            with(com.vayunmathur.maps.ui.map.MapFeaturePicker.Companion) { it.toFeature1() }
+        }
+        // (toFeature1 is a companion extension; the with() scopes it.)
+        if (candidates.isEmpty()) return@LaunchedEffect
+        val parsed = candidates.mapNotNull { raw ->
+            runCatching {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.vayunmathur.maps.data.parse(raw)
+                }
+            }.getOrNull()
+        }
+        val upgrade = com.vayunmathur.maps.ui.map.adminUpgradeFor(place, parsed)
+        // The selection may have moved on while parsing; only upgrade the
+        // exact selection this focus was for.
+        if (upgrade != null && viewModel.selectedFeature.value === place) {
+            viewModel.set(upgrade)
+        }
     }
 
     // While navigating the in-screen overlay is the primary UI, so the sheet stays down.

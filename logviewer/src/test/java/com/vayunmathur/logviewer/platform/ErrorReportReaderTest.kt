@@ -142,6 +142,16 @@ class ErrorReportReaderTest {
     }
 
     @Test
+    fun `gzipped message expanding past the size cap is unavailable, not an OOM`() {
+        // ~20 MiB of zeros compresses to a few KiB: small on the binder, huge in memory.
+        val bomb = ByteArrayOutputStream()
+        GZIPOutputStream(bomb).use { it.write(ByteArray(20 shl 20)) }
+        val intent = Intent(LogViewerIntents.ACTION_ERROR_REPORT)
+            .putExtra(LogViewerIntents.EXTRA_GZIPPED_MESSAGE, bomb.toByteArray())
+        assertNull(unavailable(ErrorReportReader.read(context, intent)).messageRes)
+    }
+
+    @Test
     fun `empty gzipped message still loads with only the header`() {
         val doc = loaded(ErrorReportReader.read(context, errorReportIntent("")))
         assertTrue(doc.bodyLines.first() == "type: crash")
@@ -168,6 +178,13 @@ class ErrorReportReaderTest {
         val doc = loaded(ErrorReportReader.read(context, tombstoneIntent(file)))
         assertTrue(doc.bodyLines.contains("*** tombstone ***"))
         assertTrue(doc.bodyLines.contains("full native trace"))
+    }
+
+    @Test
+    fun `preferring an oversized tombstone explains the failure`() {
+        val file = tombstoneFile("x".repeat((16 shl 20) + 1))
+        val result = unavailable(ErrorReportReader.read(context, tombstoneIntent(file)))
+        assertEquals(R.string.toast_unable_to_show_more_info, result.messageRes)
     }
 
     @Test

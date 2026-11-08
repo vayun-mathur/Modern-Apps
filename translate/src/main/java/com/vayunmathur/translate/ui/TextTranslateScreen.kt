@@ -181,8 +181,8 @@ private fun SourcePanel(
     )
 
     val micStatus = when (micState) {
-        MicState.LISTENING -> "Listening…"
-        MicState.TRANSCRIBING -> "Transcribing…"
+        MicState.LISTENING -> stringResource(R.string.listening)
+        MicState.TRANSCRIBING -> stringResource(R.string.transcribing)
         MicState.IDLE -> null
     }
     micStatus?.let {
@@ -278,7 +278,7 @@ private fun OutputCard(
             }
 
             Text(
-                text = outputText.ifBlank { "Translation will appear here" },
+                text = outputText.ifBlank { stringResource(R.string.translation_placeholder) },
                 color = if (outputText.isBlank()) {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 } else {

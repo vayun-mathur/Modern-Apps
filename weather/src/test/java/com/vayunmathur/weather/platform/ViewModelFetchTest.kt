@@ -161,3 +161,50 @@ class ViewModelDeviceFixTest {
         assertTrue(awaitError(22L), "state=${vm.forecasts.value}")
     }
 }
+
+@RunWith(AndroidJUnit4::class)
+class ViewModelAddLocationTest {
+
+    private lateinit var app: Application
+    private lateinit var repo: FakeRepository
+    private lateinit var vm: WeatherViewModel
+
+    @BeforeTest fun setUp() {
+        app = ApplicationProvider.getApplicationContext()
+        runCatching {
+            androidx.work.WorkManager.initialize(app, androidx.work.Configuration.Builder().build())
+        }
+        repo = FakeRepository(app)
+        vm = WeatherViewModel(app, repo)
+    }
+
+    private fun drainMain() {
+        repeat(30) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(20)
+        }
+    }
+
+    @Test fun duplicateAddKeepsSingleRow() {
+        vm.addLocation("Berlin", "Germany", 52.52006, 13.40495)
+        vm.addLocation("Berlin", "Germany", 52.52006, 13.40495)
+        drainMain()
+        assertEquals(1, repo.rows.value.size, "rows=${repo.rows.value}")
+    }
+
+    @Test fun distinctNearbyPlacesBothKept() {
+        vm.addLocation("Home", "Germany", 52.52006, 13.40495)
+        vm.addLocation("Office", "Germany", 52.52007, 13.40496)
+        drainMain()
+        assertEquals(2, repo.rows.value.size, "rows=${repo.rows.value}")
+    }
+
+    @Test fun pinningCurrentCityStillAdds() {
+        repo.rows.value = listOf(
+            SavedLocation(id = 50L, name = "GPS", latitude = 52.52, longitude = 13.40, isCurrent = true),
+        )
+        vm.addLocation("Berlin", "Germany", 52.52, 13.40)
+        drainMain()
+        assertEquals(2, repo.rows.value.size, "rows=${repo.rows.value}")
+    }
+}

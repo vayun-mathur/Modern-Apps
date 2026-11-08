@@ -161,6 +161,35 @@ internal fun Modifier.mapGestures(
                 )
             }
         }
+        // Touch-end observer for the gesture-freeze release, declared last so it sees
+        // events after the detectors above. It never consumes anything, so it cannot
+        // steal a gesture from them — it only watches every touch end and reports it
+        // through `CameraState.gestureEndHandler`, releasing the fetch freeze the
+        // instant the finger lifts instead of waiting out the quiet timeout in
+        // `VulkanMapSurface`.
+        //
+        // Deliberately a raw `awaitPointerEvent` up-wait rather than
+        // `waitForUpOrCancellation`: the siblings above consume the up (tap consumes
+        // the first-tap up, quick-zoom the second), and consumption cancels that
+        // helper — but the up event itself is still delivered to every handler, so
+        // this loop sees the lift regardless. If dispatch ever swallows one, the
+        // quiet timeout in `VulkanMapSurface` remains as the backstop, unchanged.
+        //
+        // The release is gated on no camera animation driving the position: a tap
+        // landing mid-`animateTo` must not release the animation's freeze. When the
+        // gate holds, the quiet timeout still releases on the animation's last frame.
+        .pointerInput(cameraState) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                var lifted = false
+                while (!lifted) {
+                    if (awaitPointerEvent().changes.none { it.pressed }) lifted = true
+                }
+                if (!cameraState.animationActive) {
+                    cameraState.gestureEndHandler?.invoke()
+                }
+            }
+        }
 }
 
 /**

@@ -177,6 +177,7 @@ internal fun ForecastColumn(
                         pressureUnit = units.pressure,
                         use24Hour = units.use24Hour,
                         nowEpochSec = nowEpochSec,
+                        utcOffsetSeconds = forecast.utcOffsetSeconds,
                     )
                 }
             }
@@ -188,7 +189,7 @@ internal fun ForecastColumn(
                 title = stringResource(gm.title),
                 points = metricSeries(forecast, gm, selected),
                 valueLabel = metricValueFormatter(gm, units.temperature, units.wind, units.pressure),
-                timeLabel = { epoch -> formatHourAxisLabel(epoch, units.use24Hour) },
+                timeLabel = { epoch -> formatHourAxisLabel(epoch, units.use24Hour, forecast.utcOffsetSeconds) },
                 onOpenMap = {
                     val iso = when (val s = selected) {
                         is SelectedDateOrTime.Time -> s.isoTime

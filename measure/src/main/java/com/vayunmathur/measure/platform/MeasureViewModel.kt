@@ -56,6 +56,9 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
     internal val diagnosticsState = MutableStateFlow(DiagnosticsUiState())
     val diagnostics: StateFlow<DiagnosticsUiState> = diagnosticsState
 
+    /** Native VIO session handle, mirrored from the AR page so reset can reach it. */
+    internal var nativeSessionHandle: Long = 0L
+
     internal var nextAnchorId = 1L
     internal var nextMeasurementId = 1L
 
@@ -103,9 +106,11 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
         levelState.value = levelState.value.copy(isCalibrated = false)
         settingsState.value = settingsState.value.copy(levelCalibrated = false)
         viewModelScope.launch {
-            ds.setDouble(KEY_LEVEL_PITCH, Double.NaN)
-            ds.setDouble(KEY_LEVEL_ROLL, Double.NaN)
-            ds.setDouble(KEY_LEVEL_EDGE, Double.NaN)
+            // Remove the keys rather than writing NaN sentinels: a stored
+            // NaN reads back as a non-null Double, so the loader treated
+            // the level as calibrated forever and subtracted NaN offsets
+            // from every reading after a restart.
+            ds.removeKeys(listOf(KEY_LEVEL_PITCH, KEY_LEVEL_ROLL, KEY_LEVEL_EDGE))
         }
     }
 
@@ -159,6 +164,10 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
     }
 
     override fun resetTracking() {
+        // Actually reset the engine, not just the UI: without this the
+        // diagnostics Reset button cleared the anchor list while the
+        // native session kept its (possibly diverged) pose and map.
+        MeasureNative.reset(nativeSessionHandle)
         clearAnchors()
         arState.value = arState.value.copy(quality = TrackingQuality.Initialising, hasPlane = false)
     }

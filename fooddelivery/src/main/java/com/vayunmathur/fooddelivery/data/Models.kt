@@ -349,6 +349,11 @@ data class Order(
     val stage: OrderStage
         get() {
             if (deliveredAt != null) return OrderStage.DELIVERED
+            // A collected pickup is finished, not "driving to you": pickedupAt is the
+            // pickup order's terminal timestamp (see isDone), and it is also the final
+            // PICKUP milestone the live update expects. Only a delivery order is on
+            // the road once it has been picked up from the merchant.
+            if (!isDelivery && pickedupAt != null) return OrderStage.PICKED_UP
             val distance = driverDistanceMiles
             if (distance != null) {
                 return if (distance <= 0.1) OrderStage.ARRIVING else OrderStage.DRIVING

@@ -22,6 +22,7 @@ import com.vayunmathur.web.data.RemoteImageFetchers
 import com.vayunmathur.web.data.TabThumbnailStore
 import com.vayunmathur.web.data.WebRepository
 import com.vayunmathur.web.platform.BrowserTab
+import com.vayunmathur.web.platform.BrowserUtils
 import com.vayunmathur.web.platform.shields.ShieldsEngine
 import com.vayunmathur.web.platform.shields.ShieldsServiceWorkerClient
 import com.vayunmathur.web.platform.WebViewModel
@@ -129,11 +130,11 @@ class MainActivity : MaActivity() {
 
     private fun extractHttpUrl(text: String): String? {
         val trimmed = text.trim()
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            val match = Regex("https?://\\S+").find(trimmed)
+        if (BrowserUtils.isWebUrl(trimmed)) {
+            val match = Regex("https?://\\S+", RegexOption.IGNORE_CASE).find(trimmed)
             return match?.value ?: trimmed.substringBefore(" ")
         }
-        Regex("https?://\\S+").find(trimmed)?.let { return it.value }
+        Regex("https?://\\S+", RegexOption.IGNORE_CASE).find(trimmed)?.let { return it.value }
         return null
     }
 

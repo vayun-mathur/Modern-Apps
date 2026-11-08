@@ -19,6 +19,7 @@ class WidgetLogicTest {
         assertNull(evaluateForWidget("", 0.0))
         assertNull(evaluateForWidget("1+", 0.0))
         assertNull(evaluateForWidget("0/0", 0.0))
+        assertNull(evaluateForWidget("1/0", 0.0))
         val result = evaluateForWidget("2+3", 0.0)
         assertEquals(5.0, result?.value)
         assertEquals("5", result?.display)

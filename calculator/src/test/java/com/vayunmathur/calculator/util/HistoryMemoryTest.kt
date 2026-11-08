@@ -36,6 +36,19 @@ class HistoryMemoryTest {
     }
 
     @Test
+    fun infiniteResultIsNotRecorded() {
+        val tab = CalculatorTab()
+        tab.updateInput("1/0")
+        assertEquals("∞", tab.preview)
+        tab.evaluate()
+        // Before the fix this recorded "∞" and replaced the input with
+        // that glyph, which the parser cannot read back.
+        assertTrue(tab.history.isEmpty())
+        assertEquals("1/0", tab.input)
+        assertEquals(0.0, tab.lastAnswer)
+    }
+
+    @Test
     fun nanResultIsNotRecorded() {
         val tab = CalculatorTab()
         tab.updateInput("0/0")
@@ -80,6 +93,35 @@ class HistoryMemoryTest {
     }
 
     @Test
+    fun evaluatedScientificResultSeedsInputInReparsableForm() {
+        val tab = CalculatorTab()
+        tab.updateInput("10^12")
+        tab.evaluate()
+        // Before the fix the input became the display form "1e+12", which
+        // re-parses as 1*e+12; the preview then read 14.718...
+        assertEquals("1E+12", tab.input)
+        assertEquals("1e+12", tab.preview)
+        assertEquals(1e12, tab.lastAnswer, 0.0)
+
+        val small = CalculatorTab()
+        small.updateInput("1/10000000")
+        small.evaluate()
+        assertEquals("1E-7", small.input)
+        assertEquals("1e-7", small.preview)
+    }
+
+    @Test
+    fun memoryRecallOfScientificValueSeedsInputInReparsableForm() {
+        val tab = CalculatorTab()
+        tab.updateInput("10^12")
+        tab.memoryAdd()
+        tab.clear()
+        tab.memoryRecall()
+        assertEquals("1E+12", tab.input)
+        assertEquals("1e+12", tab.preview)
+    }
+
+    @Test
     fun memoryRecallInsertsFormattedValue() {
         val tab = CalculatorTab()
         tab.updateInput("8")
@@ -87,6 +129,38 @@ class HistoryMemoryTest {
         tab.clear()
         tab.memoryRecall()
         assertEquals("8", tab.input)
+    }
+
+    @Test
+    fun useHistorySeedsTokenFormNotPrettySymbols() {
+        val tab = CalculatorTab()
+        tab.updateInput("0degC")
+        tab.selectOutputUnit("degC")
+        tab.evaluate()
+        // The history row shows the pretty symbol form, which the parser
+        // cannot read ('°' is not a token character); tapping it must seed
+        // the ASCII token form instead.
+        assertEquals("0\u202F°C", tab.history[0].result)
+        assertEquals("0 degC", tab.history[0].resultToken)
+        tab.clear()
+        tab.useHistory(tab.history[0])
+        assertEquals("0 degC", tab.input)
+        // The cleared tab falls back to the default output unit (K); what
+        // matters is that the seeded input re-parses to the same quantity
+        // instead of failing on the '°' symbol and blanking the preview.
+        assertEquals("273.15\u202FK", tab.preview)
+    }
+
+    @Test
+    fun useHistorySeedsInstantTokenNotLocalisedDate() {
+        val tab = CalculatorTab()
+        tab.insertInstant(1000000L)
+        tab.evaluate()
+        assertEquals("#1000000", tab.history[0].resultToken)
+        tab.clear()
+        tab.useHistory(tab.history[0])
+        assertEquals("#1000000", tab.input)
+        assertTrue(tab.preview.isNotEmpty())
     }
 
     @Test

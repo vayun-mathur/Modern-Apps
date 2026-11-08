@@ -142,7 +142,7 @@ class E2eeProvider : SyncProvider {
             channelType = CH_CONTACTS,
             direction = direction,
             kind = ContactKind,
-            store = ContactRelayStore(context, config.accountName),
+            store = ContactRelayStore(context, config.accountName, vault.vaultId),
             writeRemoteStamps = { item, stamp ->
                 ContactsSink.upsert(
                     context,
@@ -283,7 +283,15 @@ class E2eeProvider : SyncProvider {
         }
         val baseline = store.loadBaseline()
         val plan = RelayMerge.merge(kind, local, remote, baseline, now)
-        if (direction != SyncDirection.PULL && vault.canEdit && plan.remoteOut.isNotEmpty()) {
+        // When the append step is skipped (PULL-only cycle, or a viewer who
+        // may not write), the records in remoteOut never reach the relay.
+        // Their snapshots must NOT be persisted: a snapshot marks a record
+        // as agreed with the relay, so a local-only record would become
+        // reconcileLocalOnly's "baseline present, relay absent" case and
+        // never push again, and a diverged local edit would read clean so
+        // the next cycle lets the remote side overwrite it unpushed.
+        val appendSkipped = direction == SyncDirection.PULL || !vault.canEdit
+        if (!appendSkipped && plan.remoteOut.isNotEmpty()) {
             val blobs = plan.remoteOut.map { store.serializeForRemote(it) }
             if (RelaySync.appendRecords(channel, vault.key, blobs) == null) {
                 // Append failed: never mark un-pushed records clean. Local
@@ -293,35 +301,62 @@ class E2eeProvider : SyncProvider {
             }
         }
         if (direction == SyncDirection.PUSH) return
+        val unpushedIds = if (appendSkipped) {
+            plan.remoteOut.map { kind.syncId(it) }.toSet()
+        } else {
+            emptySet()
+        }
+        val pendingSnapshots = if (unpushedIds.isEmpty()) {
+            plan.snapshots
+        } else {
+            plan.snapshots.filterNot { it.syncId in unpushedIds }
+        }
         if (writeRemoteStamps != null) {
             // System-provider sinks mirror the relay stamp into their
             // change-detection column on write; the IPC stores persist
             // updatedAt via upsertRaw, so they need no stamping.
-            for (item in plan.localUpserts) {
+            // Tombstones are deletes, not upserts: the merge puts a winning
+            // tombstone in localUpserts (IPC sinks persist it as a deleted
+            // row), but the stamped system sinks have no deleted-row form —
+            // upserting one would resurrect it as a live contact/event.
+            val (tombstoneUpserts, liveUpserts) = plan.localUpserts.partition { kind.isDeleted(it) }
+            for (item in liveUpserts) {
                 writeRemoteStamps(item, kind.updatedAt(item))
             }
+            RelayMerge.applyLocal(
+                store,
+                RelayPlan(
+                    localUpserts = emptyList(),
+                    localDeletes = plan.localDeletes + tombstoneUpserts,
+                    remoteOut = emptyList(),
+                    snapshots = pendingSnapshots,
+                    removedSyncIds = plan.removedSyncIds,
+                    remoteChanged = false,
+                    pushed = plan.pushed,
+                    pulled = plan.pulled,
+                    deletedLocal = plan.deletedLocal,
+                    deletedRemote = plan.deletedRemote,
+                ),
+            )
         } else {
-            RelayMerge.applyLocal(store, plan)
+            RelayMerge.applyLocal(
+                store,
+                RelayPlan(
+                    localUpserts = plan.localUpserts,
+                    localDeletes = plan.localDeletes,
+                    remoteOut = emptyList(),
+                    snapshots = pendingSnapshots,
+                    removedSyncIds = plan.removedSyncIds,
+                    remoteChanged = plan.remoteChanged,
+                    pushed = plan.pushed,
+                    pulled = plan.pulled,
+                    deletedLocal = plan.deletedLocal,
+                    deletedRemote = plan.deletedRemote,
+                ),
+            )
             RelayCursorStore.advance(context, channelType, vault.vaultId, CH_RECORDS, pulled.seq)
             return
         }
-        // Stamped path: the upserts above already landed with their stamps,
-        // so apply only deletes + snapshot bookkeeping through the store.
-        RelayMerge.applyLocal(
-            store,
-            RelayPlan(
-                localUpserts = emptyList(),
-                localDeletes = plan.localDeletes,
-                remoteOut = emptyList(),
-                snapshots = plan.snapshots,
-                removedSyncIds = plan.removedSyncIds,
-                remoteChanged = false,
-                pushed = plan.pushed,
-                pulled = plan.pulled,
-                deletedLocal = plan.deletedLocal,
-                deletedRemote = plan.deletedRemote,
-            ),
-        )
         RelayCursorStore.advance(context, channelType, vault.vaultId, CH_RECORDS, pulled.seq)
     }
 
