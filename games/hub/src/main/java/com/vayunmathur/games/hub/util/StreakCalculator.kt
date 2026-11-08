@@ -1,9 +1,8 @@
 package com.vayunmathur.games.hub.util
 
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import com.vayunmathur.games.hub.data.entities.PlaySessionEntity
 
@@ -28,10 +27,18 @@ object StreakCalculator {
         )
     }
 
-    private fun qualifyingDays(sessions: List<PlaySessionEntity>, minSessionMs: Long): List<Long> {
-        val qualifyingDays = mutableSetOf<Long>()
+    // Calendar days (not 24h instants): across a DST transition consecutive local
+    // midnights are 23h/25h apart, so fixed-millisecond day arithmetic breaks
+    // streaks twice a year. Comparing LocalDate epoch days is DST-proof.
+    private fun qualifyingDays(sessions: List<PlaySessionEntity>, minSessionMs: Long): List<LocalDate> {
+        val tz = TimeZone.currentSystemDefault()
+        val qualifyingDays = mutableSetOf<LocalDate>()
         for (s in sessions) {
-            if (isQualifyingSession(s, minSessionMs)) qualifyingDays.add(dayStart(s.startTime))
+            if (isQualifyingSession(s, minSessionMs)) {
+                qualifyingDays.add(
+                    Instant.fromEpochMilliseconds(s.startTime).toLocalDateTime(tz).date
+                )
+            }
         }
         return qualifyingDays.sorted()
     }
@@ -42,11 +49,11 @@ object StreakCalculator {
         else -> false
     }
 
-    private fun longestStreak(sortedDays: List<Long>): Int {
+    private fun longestStreak(sortedDays: List<LocalDate>): Int {
         var maxStreak = 1
         var curRun = 1
         for (i in 1 until sortedDays.size) {
-            if (sortedDays[i] - sortedDays[i - 1] == DAY_MILLIS) {
+            if (sortedDays[i].toEpochDays() - sortedDays[i - 1].toEpochDays() == 1L) {
                 curRun++
                 if (curRun > maxStreak) maxStreak = curRun
             } else {
@@ -56,32 +63,23 @@ object StreakCalculator {
         return maxStreak
     }
 
-    private fun currentStreak(sortedDays: List<Long>, now: Long): Int {
-        val todayStart = dayStart(now)
-        val yesterdayStart = todayStart - DAY_MILLIS
+    private fun currentStreak(sortedDays: List<LocalDate>, now: Long): Int {
+        val tz = TimeZone.currentSystemDefault()
+        val today = Instant.fromEpochMilliseconds(now).toLocalDateTime(tz).date
         val lastDay = sortedDays.last()
-        if (lastDay != todayStart && lastDay != yesterdayStart) return 0
+        val lastEpochDay = lastDay.toEpochDays()
+        val todayEpochDay = today.toEpochDays()
+        if (lastEpochDay != todayEpochDay && lastEpochDay != todayEpochDay - 1) return 0
         var streak = 1
         var idx = sortedDays.lastIndex - 1
-        var expectedDay = lastDay - DAY_MILLIS
-        while (idx >= 0 && sortedDays[idx] >= expectedDay) {
-            if (sortedDays[idx] == expectedDay) {
+        var expectedEpochDay = lastEpochDay - 1
+        while (idx >= 0 && sortedDays[idx].toEpochDays() >= expectedEpochDay) {
+            if (sortedDays[idx].toEpochDays() == expectedEpochDay) {
                 streak++
-                expectedDay -= DAY_MILLIS
+                expectedEpochDay--
             }
             idx--
         }
         return streak
-    }
-
-    private val DAY_MILLIS = 1.days.inWholeMilliseconds
-
-    private fun dayStart(millis: Long): Long {
-        val tz = TimeZone.currentSystemDefault()
-        return Instant.fromEpochMilliseconds(millis)
-            .toLocalDateTime(tz)
-            .date
-            .atStartOfDayIn(tz)
-            .toEpochMilliseconds()
     }
 }
