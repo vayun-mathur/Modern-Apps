@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
+import kotlin.math.roundToInt
 
 /** Zoom-out floor for offering the wide-angle zoom-bar entry. */
 private const val WIDE_ZOOM_ENTRY_MAX = 0.95f
@@ -131,7 +132,11 @@ fun CameraViewModel.enableTorch(enabled: Boolean) {
 fun CameraViewModel.applyExposureCompensation(value: Float) {
     val cam = boundCamera ?: return
     val range = cam.cameraInfo.exposureState.exposureCompensationRange
-    val index = (value * range.upper).toInt().coerceIn(range.lower, range.upper)
+    // The slider is normalized to -1..1, so scale each half against its own
+    // end of the (usually asymmetric) range; round, never truncate, so the
+    // midpoint of an odd-sized half lands on the nearer index.
+    val scaled = if (value >= 0f) value * range.upper else -value * range.lower
+    val index = scaled.roundToInt().coerceIn(range.lower, range.upper)
     cam.cameraControl.setExposureCompensationIndex(index)
 }
 
