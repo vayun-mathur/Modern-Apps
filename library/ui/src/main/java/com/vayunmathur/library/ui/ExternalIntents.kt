@@ -1,5 +1,6 @@
 package com.vayunmathur.library.ui
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -33,7 +34,18 @@ object ExternalIntents {
      */
     fun launch(context: Context, intent: Intent, failureMessage: String? = null): Boolean =
         try {
-            context.startActivity(intent)
+            // startActivity from a non-Activity context (e.g. Application, as
+            // several callers pass LocalContext/applicationContext) throws
+            // AndroidRuntimeException without NEW_TASK; add it so the
+            // "reports instead of throwing" contract below actually holds.
+            val toStart = if (context !is Activity &&
+                intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK == 0
+            ) {
+                Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            } else {
+                intent
+            }
+            context.startActivity(toStart)
             true
         } catch (_: ActivityNotFoundException) {
             AppMessages.show(failureMessage ?: context.getString(R.string.no_app_found))
