@@ -40,45 +40,51 @@ class SavedPlacesViewModel(application: Application) : AndroidViewModel(applicat
 
     fun addSaved(feature: SpecificFeature.RoutableFeature) = launch {
         val place = SavedPlace.from(feature)
-        if (saved.value.none { it.matches(feature) }) {
-            store.setSaved(saved.value + place)
+        store.updateSaved { current ->
+            if (current.any { it.matches(feature) }) current else current + place
         }
     }
 
-    fun removeSaved(place: SavedPlace) = launch { store.setSaved(saved.value - place) }
+    fun removeSaved(place: SavedPlace) = launch { store.updateSaved { current -> current - place } }
 
     fun renameSaved(place: SavedPlace, newName: String) = launch {
         val name = newName.trim()
         if (name.isEmpty()) return@launch
-        store.setSaved(saved.value.map { if (it == place) it.copy(name = name) else it })
+        store.updateSaved { current -> current.map { if (it == place) it.copy(name = name) else it } }
     }
 
     // --- Named lists -------------------------------------------------------
 
     fun createList(name: String) = launch {
         val listName = name.trim()
-        if (listName.isEmpty() || lists.value.containsKey(listName)) return@launch
-        store.setLists(lists.value + (listName to emptyList()))
+        if (listName.isEmpty()) return@launch
+        store.updateLists { current ->
+            if (current.containsKey(listName)) current else current + (listName to emptyList())
+        }
     }
 
-    fun deleteList(name: String) = launch { store.setLists(lists.value - name) }
+    fun deleteList(name: String) = launch { store.updateLists { current -> current - name } }
 
     fun addToList(name: String, feature: SpecificFeature.RoutableFeature) = launch {
         val place = SavedPlace.from(feature)
-        val current = lists.value[name].orEmpty()
-        if (current.any { it.matches(feature) }) return@launch
-        store.setLists(lists.value + (name to (current + place)))
+        store.updateLists { lists ->
+            val current = lists[name].orEmpty()
+            if (current.any { it.matches(feature) }) lists else lists + (name to (current + place))
+        }
     }
 
     fun addToList(name: String, place: SavedPlace) = launch {
-        val current = lists.value[name].orEmpty()
-        if (place in current) return@launch
-        store.setLists(lists.value + (name to (current + place)))
+        store.updateLists { lists ->
+            val current = lists[name].orEmpty()
+            if (place in current) lists else lists + (name to (current + place))
+        }
     }
 
     fun removeFromList(name: String, place: SavedPlace) = launch {
-        val current = lists.value[name] ?: return@launch
-        store.setLists(lists.value + (name to (current - place)))
+        store.updateLists { lists ->
+            val current = lists[name] ?: return@updateLists lists
+            lists + (name to (current - place))
+        }
     }
 
     private fun launch(block: suspend () -> Unit) {

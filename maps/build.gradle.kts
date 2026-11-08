@@ -52,6 +52,7 @@ dependencies {
     // Host-side car screens (CarSearchScreen/CarMapRenderer) run against
     // TestCarContext under Robolectric; the real head unit is DHU-only.
     testImplementation(libs.androidx.car.app.testing)
+    testImplementation(libs.androidx.work.testing)
 
     // Car-view store-listing screenshots render through the shared host renderer.
     add("screenshotTestImplementation", project(":library:carhost"))

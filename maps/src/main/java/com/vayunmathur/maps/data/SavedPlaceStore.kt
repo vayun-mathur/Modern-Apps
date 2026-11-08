@@ -26,6 +26,15 @@ class SavedPlaceStore(private val ds: DataStoreUtils) {
 
     suspend fun setSaved(list: List<SavedPlace>) = ds.setString(KEY_SAVED, Json.encodeToString(list))
 
+    /**
+     * Atomic read-modify-write of the starred list inside one DataStore edit.
+     * Callers that mutate from a StateFlow snapshot race the flow's async
+     * re-emission: two quick mutations can each compute from the pre-write
+     * state and the later write drops the earlier change.
+     */
+    suspend fun updateSaved(transform: (List<SavedPlace>) -> List<SavedPlace>) =
+        ds.updateString(KEY_SAVED) { raw -> Json.encodeToString(transform(decodeList(raw))) }
+
     // --- Named lists -------------------------------------------------------
 
     fun listsFlow(): Flow<Map<String, List<SavedPlace>>> = ds.stringFlow(KEY_LISTS).map { decodeLists(it) }
@@ -33,6 +42,10 @@ class SavedPlaceStore(private val ds: DataStoreUtils) {
 
     suspend fun setLists(lists: Map<String, List<SavedPlace>>) =
         ds.setString(KEY_LISTS, Json.encodeToString(lists))
+
+    /** Atomic read-modify-write of the named lists; see [updateSaved]. */
+    suspend fun updateLists(transform: (Map<String, List<SavedPlace>>) -> Map<String, List<SavedPlace>>) =
+        ds.updateString(KEY_LISTS) { raw -> Json.encodeToString(transform(decodeLists(raw))) }
 
     // --- encode / decode ---------------------------------------------------
 

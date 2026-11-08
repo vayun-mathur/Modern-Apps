@@ -53,7 +53,7 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
             Log.status(TAG, "no base archive; skipping overlay check")
             return Result.success()
         }
-        val text = fetchText(manifestUrl) ?: return Result.retry()
+        val text = manifestFetcher(manifestUrl) ?: return Result.retry()
         val manifest = MapOverlay.parse(text)
         if (manifest == null) {
             Log.status(TAG, "manifest unparseable or too new; skipping")
@@ -280,6 +280,14 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
 
         /** Attempt count guard lives in doWork's caller: WorkManager retries. */
         fun maxAttempts(): Int = MAX_RUN_ATTEMPTS
+
+        /**
+         * Manifest fetch seam (test-only override): production always uses the
+         * pinned [fetchText]; tests substitute a local manifest so the apply/rebase
+         * state machine can run without the live data host. Same pattern as the
+         * HTTP seams other modules added for their fetchers.
+         */
+        internal var manifestFetcher: suspend (String) -> String? = { fetchText(it) }
     }
 }
 
