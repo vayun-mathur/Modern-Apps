@@ -53,12 +53,13 @@ class OmniboxBottomLayoutTest {
         v.newTab()
         var navigated: String? = null
         var dismissed = false
+        val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
         rule.setContent {
             OmniboxEditor(
                 viewModel = v,
                 bookmarks = emptyList(),
                 history = listOf(HistoryEntry(id = 1, url = "https://dock.example", title = "DockHist")),
-                searchFocusRequester = androidx.compose.ui.focus.FocusRequester(),
+                searchFocusRequester = searchFocusRequester,
                 onNavigate = { navigated = it },
                 onDismiss = { dismissed = true },
             )
@@ -82,12 +83,13 @@ class OmniboxBottomLayoutTest {
         shadowOf(Looper.getMainLooper()).idle()
         v.updateSearchBarAtBottom(false)
         v.newTab()
+        val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
         rule.setContent {
             OmniboxEditor(
                 viewModel = v,
                 bookmarks = emptyList(),
                 history = listOf(HistoryEntry(id = 1, url = "https://top.example", title = "TopHist")),
-                searchFocusRequester = androidx.compose.ui.focus.FocusRequester(),
+                searchFocusRequester = searchFocusRequester,
                 onNavigate = {},
                 onDismiss = {},
             )

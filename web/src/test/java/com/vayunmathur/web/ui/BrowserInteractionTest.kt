@@ -118,12 +118,13 @@ class BrowserInteractionTest {
         val v = vm()
         v.newTab()
         v.searchDraft = ""
+        val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
         rule.setContent {
             OmniboxEditor(
                 viewModel = v,
                 bookmarks = listOf(Bookmark(id = 1, url = "https://bm.example", title = "BmTitle")),
                 history = listOf(HistoryEntry(id = 2, url = "https://hist.example", title = "HistTitle")),
-                searchFocusRequester = androidx.compose.ui.focus.FocusRequester(),
+                searchFocusRequester = searchFocusRequester,
                 onNavigate = {},
                 onDismiss = {},
             )

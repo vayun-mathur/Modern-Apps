@@ -220,12 +220,13 @@ class WebPagesTest {
         val v = vm()
         v.addBookmark("https://suggest.example", "Suggest Title")
         await("bookmark for suggestions") { v.bookmarks.value.any { it.title == "Suggest Title" } }
+        val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
         rule.setContent {
             OmniboxEditor(
                 viewModel = v,
                 bookmarks = v.bookmarks.value,
                 history = listOf(HistoryEntry(url = "https://past.example", title = "Past Title")),
-                searchFocusRequester = androidx.compose.ui.focus.FocusRequester(),
+                searchFocusRequester = searchFocusRequester,
                 onNavigate = {},
                 onDismiss = {},
             )
