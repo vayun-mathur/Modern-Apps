@@ -267,7 +267,8 @@ class PasswordsViewModel(
 
     private data class ImportResult(val inserted: Int, val skipped: Int)
 
-    private data class ImportColumns(
+    // Visible for testing (return type of [resolveColumns]).
+    internal data class ImportColumns(
         val name: Int,
         val username: Int,
         val password: Int,
@@ -278,9 +279,16 @@ class PasswordsViewModel(
         val type: Int,
     )
 
-    private fun resolveColumns(header: List<String>, source: ImportSource): ImportColumns {
+    // internal (not private) so unit tests can pin the header mapping: an
+    // end-to-end import cannot run under unit tests (the SQLCipher native
+    // library is unavailable there), and the BOM regression lives in this mapping.
+    internal fun resolveColumns(header: List<String>, source: ImportSource): ImportColumns {
+        // A UTF-8 BOM on the file lands on the first header cell, and trim()
+        // does not remove it — so strip it before matching, or the first
+        // column of BOM'd exports silently maps to nothing.
+        val clean = header.map { it.removePrefix("\uFEFF") }
         fun findCol(vararg names: String): Int =
-            names.firstNotNullOfOrNull { n -> header.indexOf(n).takeIf { it >= 0 } } ?: -1
+            names.firstNotNullOfOrNull { n -> clean.indexOf(n).takeIf { it >= 0 } } ?: -1
         return ImportColumns(
             name = findCol(*source.nameHeaders),
             username = findCol(*source.usernameHeaders),
