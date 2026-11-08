@@ -3,6 +3,7 @@ package com.vayunmathur.games.solitaire.ui
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
+import com.vayunmathur.games.solitaire.data.Card
 import com.vayunmathur.games.solitaire.platform.CardFlight
 import com.vayunmathur.games.solitaire.platform.DragInfo
 import com.vayunmathur.games.solitaire.platform.SolitaireActions
@@ -16,7 +17,8 @@ class RecordingActions : SolitaireActions {
     override val flightInfo: StateFlow<CardFlight?> = MutableStateFlow(null)
     val flightFlow = flightInfo as MutableStateFlow<CardFlight?>
     override val dropTargets: MutableMap<String, Rect> = mutableMapOf()
-    override val cardPositions: MutableMap<String, Rect> = mutableMapOf()
+    val cardPositions: MutableMap<Card, Offset> = mutableMapOf()
+    override fun registerCardPosition(card: Card, position: Offset) { cardPositions[card] = position }
     val calls = mutableListOf<String>()
 
     override fun startDrag(sourceId: String, startPos: Offset, cardSize: IntSize): Boolean {
