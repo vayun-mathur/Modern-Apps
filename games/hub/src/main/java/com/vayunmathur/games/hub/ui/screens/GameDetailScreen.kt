@@ -123,7 +123,7 @@ fun GameDetailScreen(
             }
             if (sessions.isNotEmpty()) {
                 item { Text(stringResource(R.string.recent_sessions), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                items(sessions.take(10), key = { it.id }) { session ->
+                items(sessions.take(10), key = { "session-${it.id}" }) { session ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(text = formatRelativeTime(session.startTime), style = MaterialTheme.typography.bodySmall)
@@ -134,7 +134,7 @@ fun GameDetailScreen(
             }
             if (activity.isNotEmpty()) {
                 item { Text(stringResource(R.string.tab_activity), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                items(activity, key = { it.id }) { event -> ActivityItemCard(event = event) }
+                items(activity, key = { "activity-${it.id}" }) { event -> ActivityItemCard(event = event) }
             }
         }
     }
