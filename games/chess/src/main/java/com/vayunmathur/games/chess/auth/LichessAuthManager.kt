@@ -30,10 +30,6 @@ import kotlinx.serialization.Serializable
  */
 class LichessAuthManager(private val context: Context, private val tokenStore: LichessTokenStore) {
 
-    /** Test seams: when set, replaces the token exchange / account lookup (no real network). */
-    internal var tokenExchange: (suspend (code: String, verifier: String) -> String)? = null
-    internal var accountApi: com.vayunmathur.games.chess.network.LichessApi? = null
-
     companion object {
         private const val OAUTH_URL = "https://lichess.org/oauth"
         private const val TOKEN_URL = "https://lichess.org/api/token"
@@ -120,27 +116,24 @@ class LichessAuthManager(private val context: Context, private val tokenStore: L
         val attempt = pending ?: throw IllegalStateException("No pending Lichess sign-in")
         pending = null
         if (redirect.state != attempt.state) throw IllegalStateException("Lichess state mismatch")
-        val accessToken = tokenExchange?.invoke(redirect.code, attempt.verifier) ?: run {
-            val response: TokenResponse = NetworkClient.callJson(
-                TOKEN_URL,
-                method = "POST",
-                headers = mapOf("Content-Type" to "application/x-www-form-urlencoded"),
-                body = formEncode(
-                    mapOf(
-                        "grant_type" to "authorization_code",
-                        "redirect_uri" to REDIRECT_URI,
-                        "client_id" to "modern-apps-chess",
-                        "code" to redirect.code,
-                        "code_verifier" to attempt.verifier,
-                    )
-                ),
-            )
-            response.accessToken
-        }
-        if (accessToken.isEmpty()) throw IllegalStateException("Empty Lichess access token")
-        tokenStore.saveToken(accessToken)
+        val response: TokenResponse = NetworkClient.callJson(
+            TOKEN_URL,
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/x-www-form-urlencoded"),
+            body = formEncode(
+                mapOf(
+                    "grant_type" to "authorization_code",
+                    "redirect_uri" to REDIRECT_URI,
+                    "client_id" to "modern-apps-chess",
+                    "code" to redirect.code,
+                    "code_verifier" to attempt.verifier,
+                )
+            ),
+        )
+        if (response.accessToken.isEmpty()) throw IllegalStateException("Empty Lichess access token")
+        tokenStore.saveToken(response.accessToken)
         val profile: com.vayunmathur.games.chess.network.LichessProfile =
-            (accountApi ?: com.vayunmathur.games.chess.network.LichessApi(tokenStore)).account()
+            com.vayunmathur.games.chess.network.LichessApi(tokenStore).account()
         tokenStore.saveUsername(profile.username)
         tokenStore.saveUserId(profile.id)
         return profile.username

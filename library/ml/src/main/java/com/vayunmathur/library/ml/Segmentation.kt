@@ -48,16 +48,6 @@ internal class NativeSegmenter(
     assetName: String,
     tag: String,
     create: (ByteArray) -> Long,
-    // Test seams (pass 3): the asset read and the three native calls, each
-    // defaulting to exactly what production did before they were named.
-    private val readAsset: (String) -> ByteArray = { name ->
-        context.assets.open(name).use { it.readBytes() }
-    },
-    private val segmentNative: (Long, IntArray, Int, Int) -> FloatArray? =
-        { h, pixels, w, hh -> MlNative.segment(h, pixels, w, hh) },
-    private val maskWidthNative: (Long) -> Int = { MlNative.maskWidth(it) },
-    private val maskHeightNative: (Long) -> Int = { MlNative.maskHeight(it) },
-    private val destroyNative: (Long) -> Unit = { MlNative.destroy(it) },
 ) : AutoCloseable {
 
     /**
@@ -72,7 +62,7 @@ internal class NativeSegmenter(
         try {
             // `.maml` is `noCompress` in both apps, so this is a straight copy out of the
             // mapped APK rather than an inflate into a second buffer.
-            create(readAsset(assetName))
+            create(context.assets.open(assetName).use { it.readBytes() })
         } catch (expected: Exception) {
             Log.error(tag, "cannot load $assetName", expected)
             0L
@@ -108,9 +98,9 @@ internal class NativeSegmenter(
                 pixels = buffer
             }
             readable.getPixels(buffer, 0, readable.width, 0, 0, readable.width, readable.height)
-            val values = segmentNative(handle, buffer, readable.width, readable.height)
+            val values = MlNative.segment(handle, buffer, readable.width, readable.height)
                 ?: return null
-            SegmentationMask(maskWidthNative(handle), maskHeightNative(handle), values)
+            SegmentationMask(MlNative.maskWidth(handle), MlNative.maskHeight(handle), values)
         } finally {
             if (readable !== bitmap) readable.recycle()
         }
@@ -127,6 +117,6 @@ internal class NativeSegmenter(
         val toDestroy = handle
         handle = 0L
         pixels = null
-        if (toDestroy != 0L) destroyNative(toDestroy)
+        if (toDestroy != 0L) MlNative.destroy(toDestroy)
     }
 }

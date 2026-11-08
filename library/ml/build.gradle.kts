@@ -2,16 +2,6 @@ plugins {
     id("common-conventions-library")
 }
 
-android {
-    // The FD-based handles (Whisper/Maia/Clip/Nnfp, Supertonic) can only open
-    // assets that AAPT stored uncompressed - their create() calls openFd.
-    // Declaring it here makes the library's own (test) APK honour that, which
-    // is also what a consuming app must do for these models to load at all.
-    androidResources {
-        noCompress += listOf("maml", "bin")
-    }
-}
-
 androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addStaticSourceDirectory(

@@ -1,9 +1,9 @@
 package com.vayunmathur.taxi.network.lyft
-import com.vayunmathur.taxi.network.TaxiHttp
 
 import android.os.Build
 import android.util.Base64
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.network.NetworkClient
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -155,7 +155,7 @@ object LyftAuth {
             PhoneAuthRequest.serializer(),
             PhoneAuthRequest(phoneNumber = phoneNumber),
         )
-        val resp = TaxiHttp.performRequest(
+        val resp = NetworkClient.performRequest(
             url = "$BASE/v1/phoneauth",
             method = "POST",
             headers = commonHeaders() + mapOf(
@@ -216,7 +216,7 @@ object LyftAuth {
      * dropping it locally. Best-effort: returns whether the server accepted it.
      */
     suspend fun revoke(token: String): Boolean {
-        val resp = TaxiHttp.performRequest(
+        val resp = NetworkClient.performRequest(
             url = "$BASE/oauth2/revoke_token",
             method = "POST",
             headers = commonHeaders() + mapOf(
@@ -231,7 +231,7 @@ object LyftAuth {
     }
 
     private suspend fun tokenCall(form: String): LyftAuthResult {
-        val resp = TaxiHttp.performRequest(
+        val resp = NetworkClient.performRequest(
             url = "$BASE/oauth2/access_token",
             method = "POST",
             headers = commonHeaders() + mapOf(

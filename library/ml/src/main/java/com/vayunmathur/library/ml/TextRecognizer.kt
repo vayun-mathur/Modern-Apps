@@ -61,17 +61,8 @@ class TextRecognizer(
     recognitionAsset: String = RECOGNITION_ASSET,
     dictionaryAsset: String = DICTIONARY_ASSET,
 ) : AutoCloseable {
-    // Internal (pass-3 test seam): tests drive [recognize] with a fake handle
-    // and [ocrNative] instead of the JNI bridge, which has no host symbols.
-    internal var handle: Long = 0L
+    private var handle: Long = 0L
     private var pixels: IntArray? = null
-
-    /** Test seam (pass 3): the [MlNative.recognizeText] call, replaceable on the host. */
-    internal var ocrNative: (Long, IntArray, Int, Int) -> String? =
-        { h, buf, w, hh -> MlNative.recognizeText(h, buf, w, hh) }
-
-    /** Test seam (pass 3): the [MlNative.destroyOcr] call, replaceable on the host. */
-    internal var destroyNative: (Long) -> Unit = { MlNative.destroyOcr(it) }
 
     init {
         handle = if (!MlNative.isAvailable) {
@@ -113,7 +104,7 @@ class TextRecognizer(
             val count = readable.width * readable.height
             val buffer = pixels?.takeIf { it.size == count } ?: IntArray(count).also { pixels = it }
             readable.getPixels(buffer, 0, readable.width, 0, 0, readable.width, readable.height)
-            val packed = ocrNative(handle, buffer, readable.width, readable.height)
+            val packed = MlNative.recognizeText(handle, buffer, readable.width, readable.height)
                 ?: return emptyList()
             return parse(packed)
         } finally {
@@ -126,10 +117,10 @@ class TextRecognizer(
         val live = handle
         handle = 0L
         pixels = null
-        if (live != 0L) destroyNative(live)
+        if (live != 0L) MlNative.destroyOcr(live)
     }
 
-    internal companion object {
+    private companion object {
         private const val TAG = "TextRecognizer"
         const val DETECTION_ASSET = "ppocr_det.maml"
         const val RECOGNITION_ASSET = "ppocr_rec.maml"

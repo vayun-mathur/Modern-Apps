@@ -97,30 +97,6 @@ fun org.gradle.api.Project.mergedCoverageClassDirs(variant: String): org.gradle.
         layout.buildDirectory.dir("intermediates/javac/$variant/compile${cap}JavaWithJavac/classes"),
     ).builtBy("compile${cap}Kotlin", "compile${cap}JavaWithJavac").asFileTree.matching {
         MERGED_COVERAGE_EXCLUDES.forEach { exclude(it) }
-        // Generated protobuf classes. Protos with a custom java_outer_classname
-        // (communicate's WhatsAppE2EProto, SignalServiceProtos, ...) or a foreign
-        // java_package slip past the name patterns above, so drop every class whose
-        // top-level type has a generated source. Plain Files only: configuration-cache safe.
-        val protoRoots = listOf(
-            layout.buildDirectory.dir("generated/source/proto").get().asFile,
-            layout.buildDirectory.dir("generated/java/generate" + cap + "Proto").get().asFile,
-        )
-        exclude { el -> !el.isDirectory && isGeneratedProtoClass(protoRoots, el.relativePath.pathString) }
-    }
-}
-
-/**
- * True when `a/b/Foo.class` or a nested `a/b/Foo` class has a generated `a/b/Foo.java` under
- * `<root>/java/` or `<root>/<sourceSet>/java/` of one of [roots]: `generated/source/proto`
- * (older protobuf-gradle-plugin layout) or `generated/java/generate<Variant>Proto` (current).
- */
-private fun isGeneratedProtoClass(roots: List<java.io.File>, classPath: String): Boolean {
-    if (!classPath.endsWith(".class")) return false
-    val topLevel = classPath.removeSuffix(".class").substringBefore('\u0024')
-    val source = "java/" + topLevel + ".java"
-    return roots.any { root ->
-        java.io.File(root, source).isFile ||
-            (root.listFiles() ?: emptyArray()).any { java.io.File(it, source).isFile }
     }
 }
 

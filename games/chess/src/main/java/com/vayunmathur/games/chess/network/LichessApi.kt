@@ -23,53 +23,7 @@ class LichessAuthExpired(message: String) : IOException(message)
  * until the server closes them or the caller's coroutine is cancelled; the ViewModel owns
  * exponential-backoff reconnect around them.
  */
-/** Network seam: the default delegates to [NetworkClient]; tests install a fake. */
-interface LichessTransport {
-    suspend fun request(
-        url: String,
-        method: String,
-        headers: Map<String, String>,
-        body: String? = null,
-    ): SimpleResponse
-
-    suspend fun account(url: String, headers: Map<String, String>): LichessProfile
-
-    suspend fun stream(
-        url: String,
-        headers: Map<String, String>,
-        readTimeoutMs: Long,
-        block: suspend (NetworkDataStream?, SimpleResponse) -> Unit,
-    )
-}
-
-object NetworkLichessTransport : LichessTransport {
-    override suspend fun request(
-        url: String,
-        method: String,
-        headers: Map<String, String>,
-        body: String?,
-    ): SimpleResponse = NetworkClient.performRequest(url, method, headers, body)
-
-    override suspend fun account(url: String, headers: Map<String, String>): LichessProfile =
-        NetworkClient.getJson(url, headers)
-
-    override suspend fun stream(
-        url: String,
-        headers: Map<String, String>,
-        readTimeoutMs: Long,
-        block: suspend (NetworkDataStream?, SimpleResponse) -> Unit,
-    ) {
-        NetworkClient.stream(url, headers = headers, readTimeoutMs = readTimeoutMs) { stream, response ->
-            block(stream, response)
-        }
-    }
-}
-
-
-class LichessApi(
-    private val tokenStore: LichessTokenStore,
-    private val transport: LichessTransport = NetworkLichessTransport,
-) {
+class LichessApi(private val tokenStore: LichessTokenStore) {
 
     companion object {
         private const val BASE = "https://lichess.org"
@@ -118,7 +72,7 @@ class LichessApi(
 
     /** Verifies the stored token and returns the account profile (id + username). */
     suspend fun account(): LichessProfile = wrapJson("account") {
-        transport.account("$BASE/api/account", headers())
+        NetworkClient.getJson("$BASE/api/account", headers())
     }
 
     /**
@@ -126,7 +80,7 @@ class LichessApi(
      * server-side; the pairing arrives as a `gameStart` event on [streamEvents].
      */
     suspend fun seek(timeControl: LichessTimeControl) {
-        val response = transport.request(
+        val response = NetworkClient.performRequest(
             "$BASE/api/board/seek",
             method = "POST",
             headers = headers(mapOf("Content-Type" to FORM)),
@@ -152,7 +106,7 @@ class LichessApi(
      */
     suspend fun challenge(username: String, timeControl: LichessTimeControl): String {
         val encoded = URLEncoder.encode(username.trim(), "UTF-8")
-        val response = transport.request(
+        val response = NetworkClient.performRequest(
             "$BASE/api/board/challenge/$encoded",
             method = "POST",
             headers = headers(mapOf("Content-Type" to FORM)),
@@ -176,7 +130,7 @@ class LichessApi(
 
     /** Declines an incoming challenge (Challenge API; same host and Bearer auth). */
     suspend fun declineChallenge(challengeId: String) {
-        val response = transport.request(
+        val response = NetworkClient.performRequest(
             "$BASE/api/challenge/$challengeId/decline",
             method = "POST",
             headers = headers(),
@@ -186,7 +140,7 @@ class LichessApi(
 
     /** Sends one move in UCI (`e2e4`, `e7e8q`, `e1g1`). Empty POST per the Board API. */
     suspend fun sendMove(gameId: String, uci: String) {
-        val response = transport.request(
+        val response = NetworkClient.performRequest(
             "$BASE/api/board/game/$gameId/move/$uci",
             method = "POST",
             headers = headers(),
@@ -195,7 +149,7 @@ class LichessApi(
     }
 
     suspend fun resign(gameId: String) {
-        val response = transport.request(
+        val response = NetworkClient.performRequest(
             "$BASE/api/board/game/$gameId/resign",
             method = "POST",
             headers = headers(),
@@ -204,7 +158,7 @@ class LichessApi(
     }
 
     suspend fun abort(gameId: String) {
-        val response = transport.request(
+        val response = NetworkClient.performRequest(
             "$BASE/api/board/game/$gameId/abort",
             method = "POST",
             headers = headers(),
@@ -219,10 +173,10 @@ class LichessApi(
      * 401, [IOException] on transport failure.
      */
     suspend fun streamEvents(onEvent: suspend (LichessEvent) -> Unit) {
-        transport.stream(
+        NetworkClient.stream(
             "$BASE/api/stream/event",
-            headers(),
-            STREAM_READ_TIMEOUT_MS,
+            headers = headers(),
+            readTimeoutMs = STREAM_READ_TIMEOUT_MS,
         ) { stream, response ->
             if (stream == null) {
                 checkOk(response, "event stream")
@@ -237,10 +191,10 @@ class LichessApi(
      * [streamEvents]; the ViewModel re-attaches with backoff after a drop.
      */
     suspend fun streamGame(gameId: String, onUpdate: suspend (LichessGameUpdate) -> Unit) {
-        transport.stream(
+        NetworkClient.stream(
             "$BASE/api/board/game/stream/$gameId",
-            headers(),
-            STREAM_READ_TIMEOUT_MS,
+            headers = headers(),
+            readTimeoutMs = STREAM_READ_TIMEOUT_MS,
         ) { stream, response ->
             if (stream == null) {
                 checkOk(response, "game stream")

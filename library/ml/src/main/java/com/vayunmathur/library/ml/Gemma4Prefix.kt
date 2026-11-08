@@ -18,9 +18,9 @@ import java.io.File
  */
 internal fun Gemma4Handle.runBenchmark() {
     if (handle != 0L) {
-        backend.capabilities()
-        backend.imageProbe()
-        backend.benchmark(handle)
+        MlNative.capabilitiesGemma4()
+        MlNative.imageProbeGemma4()
+        MlNative.benchmarkGemma4(handle)
     }
 }
 
@@ -110,8 +110,8 @@ private fun Gemma4Handle.ensurePrefixCapacity(positions: Int): Boolean {
     // The cache starts at the smallest tier and this prefix is larger than it. Growing first
     // is not optional: `loadPrefixGemma4` refuses a prefix bigger than the cache rather than
     // truncating it, because half a prefix is keys for a prompt nobody sent.
-    if (backend.capacity(handle) < positions) {
-        val grown = backend.grow(handle, positions + PREFIX_SLACK_POSITIONS)
+    if (MlNative.capacityGemma4(handle) < positions) {
+        val grown = MlNative.growGemma4(handle, positions + PREFIX_SLACK_POSITIONS)
         if (grown < positions) {
             Log.status(
                 Gemma4Handle.TAG,
@@ -129,7 +129,7 @@ private fun Gemma4Handle.installPrefix(
     positions: Int
 ): Boolean {
     val payload = blob.copyOfRange(Gemma4Handle.HEADER, blob.size)
-    val loaded = backend.loadPrefix(handle, positions, payload)
+    val loaded = MlNative.loadPrefixGemma4(handle, positions, payload)
     if (loaded != positions) return false
     // The cache now holds exactly these tokens, so the next turn matches against them and
     // feeds only what follows.

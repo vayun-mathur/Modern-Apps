@@ -14,7 +14,7 @@ import com.vayunmathur.communicate.data.whatsapp.senderKeyDistributionPlaintext
 import android.util.Base64
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.communicate.data.whatsapp.e2e.WhatsAppE2E
-import com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppTransport
+import com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppSocket
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.communicate.data.whatsapp.proto.WhatsAppE2EProto
 import kotlinx.coroutines.Dispatchers
@@ -113,7 +113,7 @@ suspend fun WhatsAppClient.sendCallOffer(conversationId: String, video: Boolean 
 
 /** Encrypt a call key for the peer's (and our) devices and send the offer stanza. */
 private suspend fun WhatsAppClient.sendCallOfferTo(
-    ws: WhatsAppTransport,
+    ws: WhatsAppSocket,
     auth: WhatsAppAuthData,
     crypto: WhatsAppE2E,
     to: String,
@@ -407,7 +407,7 @@ private fun mediaKeyFor(mediaType: String): String = when (mediaType) {
 
 /** Encrypt, upload, build, and send the media stanza. */
 private suspend fun WhatsAppClient.sendMediaPayload(
-    ws: WhatsAppTransport,
+    ws: com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppSocket,
     to: String,
     id: String,
     bytes: ByteArray,

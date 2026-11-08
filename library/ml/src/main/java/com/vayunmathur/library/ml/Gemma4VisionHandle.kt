@@ -33,20 +33,7 @@ import java.io.File
  */
 class Gemma4VisionHandle private constructor(private val file: File) : AutoCloseable {
 
-    // Internal (pass-3 test seam): tests drive [encode] with a fake handle
-    // and fake native calls instead of the JNI bridge (no host symbols).
-    internal var handle: Long = if (MlNative.isAvailable) create(file) else 0L
-
-    /** Test seam (pass 3): the [MlNative.gemma4VisionSize] call. */
-    internal var sizeNative: (Int, Int, Int) -> IntArray? =
-        { w, h, tokens -> MlNative.gemma4VisionSize(w, h, tokens) }
-
-    /** Test seam (pass 3): the [MlNative.encodeImageGemma4] call. */
-    internal var encodeNative: (Long, IntArray, Int, Int) -> FloatArray? =
-        { h, pixels, w, hh -> MlNative.encodeImageGemma4(h, pixels, w, hh) }
-
-    /** Test seam (pass 3): the [MlNative.destroyGemma4Vision] call. */
-    internal var destroyNative: (Long) -> Unit = { MlNative.destroyGemma4Vision(it) }
+    private var handle: Long = if (MlNative.isAvailable) create(file) else 0L
 
     /** Whether the tower came up. False leaves the assistant text-only rather than crashing. */
     val isAvailable: Boolean
@@ -64,7 +51,7 @@ class Gemma4VisionHandle private constructor(private val file: File) : AutoClose
      */
     fun encode(image: Bitmap, softTokens: Int = SOFT_TOKENS_DEFAULT): FloatArray? {
         if (handle == 0L) return null
-        val size = sizeNative(image.width, image.height, softTokens)
+        val size = MlNative.gemma4VisionSize(image.width, image.height, softTokens)
         if (size == null || size.size != 2) {
             Log.status(TAG, "no vision grid for ${image.width}x${image.height} at $softTokens")
             return null
@@ -80,13 +67,13 @@ class Gemma4VisionHandle private constructor(private val file: File) : AutoClose
         val pixels = IntArray(width * height)
         scaled.getPixels(pixels, 0, width, 0, 0, width, height)
         if (scaled !== image) scaled.recycle()
-        return encodeNative(handle, pixels, width, height)
+        return MlNative.encodeImageGemma4(handle, pixels, width, height)
     }
 
     override fun close() {
         val live = handle
         handle = 0L
-        if (live != 0L) destroyNative(live)
+        if (live != 0L) MlNative.destroyGemma4Vision(live)
     }
 
     override fun toString(): String = "Gemma 4 vision tower at $file"
