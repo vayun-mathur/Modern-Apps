@@ -105,7 +105,7 @@ private fun readRawLensOrThrow(info: androidx.camera.core.CameraInfo): RawLens? 
     return RawLens(cam2.getCameraId(), facing, focal, eq35, mono, intrinsic, zoomFloor)
 }
 
-internal data class RawLens(
+private data class RawLens(
     val id: String,
     val facing: LensFacing,
     val focalMm: Float,
@@ -116,7 +116,7 @@ internal data class RawLens(
 )
 
 /** Classifies one facing family into [PhysicalLens] entries with fallback priorities. */
-internal fun buildFamily(facing: LensFacing, raws: List<RawLens>): List<PhysicalLens> {
+private fun buildFamily(facing: LensFacing, raws: List<RawLens>): List<PhysicalLens> {
     val family = raws.filter { it.facing == facing }.sortedBy { it.focalMm }
     if (family.isEmpty()) return emptyList()
     val nonMono = family.filterNot { it.mono }

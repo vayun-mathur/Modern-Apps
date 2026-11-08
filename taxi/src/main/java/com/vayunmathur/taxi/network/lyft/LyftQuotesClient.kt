@@ -1,7 +1,7 @@
 package com.vayunmathur.taxi.network.lyft
-import com.vayunmathur.taxi.network.TaxiHttp
 
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.taxi.data.Place
 import com.vayunmathur.taxi.data.QuoteResult
 import kotlin.math.roundToLong
@@ -70,7 +70,7 @@ internal class LyftQuotesClient(private val session: LyftApiSession) {
     }
 
     private suspend fun readOffers(token: String, url: String, body: String): QuoteResult {
-        val resp = TaxiHttp.execute(
+        val resp = NetworkClient.execute(
             url = url,
             method = "POST",
             // Reuse the exact standard header set the app sends (user-agent, user-device,

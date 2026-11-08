@@ -37,12 +37,9 @@ import java.text.Normalizer
  * position, so two concurrent turns would interleave their tokens into the same conversation.
  * The caller must hold a lock across a whole turn, not merely across a call.
  */
-class Gemma4Handle internal constructor(
-    internal val directory: File,
-    internal val backend: Gemma4Backend = NativeGemma4Backend,
-) : AutoCloseable {
+class Gemma4Handle private constructor(internal val directory: File) : AutoCloseable {
 
-    internal var handle: Long = if (backend.isAvailable) backend.create(directory) else 0L
+    internal var handle: Long = if (MlNative.isAvailable) create(directory) else 0L
 
     /**
      * Why the last construction failed, for the error the user sees.
@@ -53,10 +50,10 @@ class Gemma4Handle internal constructor(
      */
     val loadError: String? = if (handle != 0L) {
         null
-    } else if (backend.isAvailable) {
+    } else if (MlNative.isAvailable) {
         // Native ran and refused: prefer its message, which names the header,
         // graph id, or span that failed rather than just the file.
-        backend.lastError()
+        MlNative.lastGemma4Error()
     } else {
         "libmodelrunner.so did not load on this device"
     }
@@ -93,7 +90,7 @@ class Gemma4Handle internal constructor(
 
     /** Positions in the KV cache, which is where the next token goes. */
     val position: Int
-        get() = if (handle == 0L) 0 else backend.position(handle)
+        get() = if (handle == 0L) 0 else MlNative.positionGemma4(handle)
 
     /** Positions left before [MAX_CONTEXT] is reached. */
     val remaining: Int
@@ -107,7 +104,7 @@ class Gemma4Handle internal constructor(
      */
     fun reset() {
         cachedIds = null
-        if (handle != 0L) backend.reset(handle)
+        if (handle != 0L) MlNative.resetGemma4(handle)
     }
 
     /**
@@ -119,7 +116,7 @@ class Gemma4Handle internal constructor(
     fun encodeText(text: String): IntArray {
         if (handle == 0L) return IntArray(0)
         val normalised = Normalizer.normalize(text, Normalizer.Form.NFKC)
-        return backend.encode(handle, normalised, emptyArray()) ?: IntArray(0)
+        return MlNative.encodeGemma4(handle, normalised, emptyArray()) ?: IntArray(0)
     }
 
     /**
@@ -129,12 +126,12 @@ class Gemma4Handle internal constructor(
      */
     internal fun encodePrompt(text: String): IntArray {
         if (handle == 0L) return IntArray(0)
-        return backend.encode(handle, text, MARKERS) ?: IntArray(0)
+        return MlNative.encodeGemma4(handle, text, MARKERS) ?: IntArray(0)
     }
 
     /** Text for token ids, with byte pieces fused back into characters. */
     fun decode(tokens: IntArray): String =
-        if (handle == 0L) "" else backend.decode(handle, tokens).orEmpty()
+        if (handle == 0L) "" else MlNative.decodeGemma4(handle, tokens).orEmpty()
 
     /**
      * Run one turn, calling [onToken] with the reply so far after each token.
@@ -196,9 +193,9 @@ class Gemma4Handle internal constructor(
         // Grow the cache if this turn has outgrown it. Conversations start at the smallest
         // tier, so most never allocate more than 19 MB; the ones that keep going climb.
         val wantedPositions = length + limit + PromptConstants.PROMPT_SLACK_POSITIONS
-        var capacity = backend.capacity(handle)
+        var capacity = MlNative.capacityGemma4(handle)
         if (capacity in 1 until wantedPositions) {
-            val grown = backend.grow(handle, wantedPositions)
+            val grown = MlNative.growGemma4(handle, wantedPositions)
             if (grown > capacity) {
                 // `cachedIds` deliberately survives. Growing used to empty the cache, so this
                 // cleared the record to match; it now copies the contents into the new arena and
@@ -292,7 +289,7 @@ class Gemma4Handle internal constructor(
             val ceiling = minOf(prior.size, flat.size - 1)
             while (reused < ceiling && prior[reused] == flat[reused]) reused++
         }
-        if (reused > 0 && backend.seek(handle, reused) == reused) {
+        if (reused > 0 && MlNative.seekGemma4(handle, reused) == reused) {
             Log.status(TAG, "reused $reused of $length positions, feeding ${length - reused}")
         } else {
             reused = 0
@@ -311,7 +308,7 @@ class Gemma4Handle internal constructor(
         // Everything but the very last token only fills the cache; its logits would be discarded.
         if (flat != null) {
             val feed = flat.copyOfRange(reused, flat.size - 1)
-            if (feed.isNotEmpty() && backend.push(handle, feed) < 0) return false
+            if (feed.isNotEmpty() && MlNative.pushGemma4(handle, feed) < 0) return false
             // What the cache holds now. The reply's own tokens are appended as they are
             // generated, so the next turn matches against the whole exchange.
             cachedIds = flat.copyOfRange(0, flat.size - 1)
@@ -319,12 +316,12 @@ class Gemma4Handle internal constructor(
         }
         for ((index, part) in parts.withIndex()) {
             val fed = when (part) {
-                is Part.Image -> backend.pushSoft(handle, part.soft)
-                is Part.Audio -> backend.pushSoft(handle, part.soft)
+                is Part.Image -> MlNative.pushSoftGemma4(handle, part.soft)
+                is Part.Audio -> MlNative.pushSoftGemma4(handle, part.soft)
                 is Part.Tokens -> {
                     val ids = if (index == parts.lastIndex) part.ids.dropLast(1).toIntArray()
                     else part.ids
-                    if (ids.isEmpty()) 0 else backend.push(handle, ids)
+                    if (ids.isEmpty()) 0 else MlNative.pushGemma4(handle, ids)
                 }
                 is Part.Text -> -1
             }
@@ -363,23 +360,23 @@ class Gemma4Handle internal constructor(
     /** One generation step: greedy native step, or a sampled draw from native candidates. */
     private fun nextToken(next: Int, sampling: Sampling?, step: Int): Int? {
         val token = when {
-            sampling == null -> backend.step(handle, next)
+            sampling == null -> MlNative.stepGemma4(handle, next)
             sampling.topK in 1..GEMMA4_TOP_K_CANDIDATES -> {
-                val before = backend.position(handle)
-                val candidates = backend.topK(handle, next, GEMMA4_TOP_K_CANDIDATES)
+                val before = MlNative.positionGemma4(handle)
+                val candidates = MlNative.topKGemma4(handle, next, GEMMA4_TOP_K_CANDIDATES)
                 when {
                     candidates != null -> sampleGemma4Candidates(candidates, sampling, step)
                     // Only when the failed call did not consume the token: feeding it again
                     // after it reached the cache would put it there twice.
-                    backend.position(handle) == before -> {
-                        val logits = backend.logits(handle, next) ?: return null
+                    MlNative.positionGemma4(handle) == before -> {
+                        val logits = MlNative.logitsGemma4(handle, next) ?: return null
                         sampleGemma4Logits(logits, sampling, step)
                     }
                     else -> return null
                 }
             }
             else -> {
-                val logits = backend.logits(handle, next) ?: return null
+                val logits = MlNative.logitsGemma4(handle, next) ?: return null
                 sampleGemma4Logits(logits, sampling, step)
             }
         }
@@ -527,7 +524,7 @@ class Gemma4Handle internal constructor(
     override fun close() {
         val live = handle
         handle = 0L
-        if (live != 0L) backend.destroy(live)
+        if (live != 0L) MlNative.destroyGemma4(live)
     }
 
     override fun toString(): String = "Gemma 4 E2B in $directory"
@@ -814,6 +811,9 @@ class Gemma4Handle internal constructor(
          * [isAvailable] false and the assistant simply off.
          */
         fun inDirectory(directory: File): Gemma4Handle = Gemma4Handle(directory)
+
+        // Native handle construction (create, fd close, cache budget) lives in Gemma4Prefix.kt.
+        private fun create(directory: File): Long = createGemma4Handle(directory)
 
         /** The baked prefix cache, beside the weights. Optional. */
         const val PREFIX_CACHE = "gemma4_prefix.kv"

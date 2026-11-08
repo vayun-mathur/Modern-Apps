@@ -2,7 +2,7 @@ package com.vayunmathur.communicate.data.whatsapp
 
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.communicate.data.whatsapp.e2e.WhatsAppE2E
-import com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppTransport
+import com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppSocket
 
 /**
  * Retry-receipt handling (split from WhatsAppClientSync.kt for file length).
@@ -117,7 +117,7 @@ private suspend fun WhatsAppClient.rebuildRetrySession(
 private suspend fun WhatsAppClient.resendRetryMessage(
     auth: WhatsAppAuthData,
     crypto: WhatsAppE2E,
-    ws: WhatsAppTransport,
+    ws: WhatsAppSocket,
     msgId: String,
     deviceJid: String,
     cached: SentDM,

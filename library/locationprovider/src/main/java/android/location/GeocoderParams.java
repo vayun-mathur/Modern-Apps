@@ -17,8 +17,5 @@ public class GeocoderParams {
         throw new RuntimeException("stub");
     }
 
-    // Package-private (not private as in AOSP) so JVM tests in this package can
-    // instantiate the stub and pin its throwing accessors. Compile-only either way:
-    // this class is never packaged, so the difference is invisible at runtime.
-    GeocoderParams() {}
+    private GeocoderParams() {}
 }

@@ -68,9 +68,7 @@ data class DetectedFaceBox(
  */
 class FaceDetector(context: Context, assetName: String = DEFAULT_ASSET) : AutoCloseable {
 
-    // Internal (pass-3 test seam): tests drive [detect] with a fake handle
-    // and [detectNative] instead of the JNI bridge, which has no host symbols.
-    @Volatile internal var handle: Long = if (!MlNative.isAvailable) {
+    @Volatile private var handle: Long = if (!MlNative.isAvailable) {
         0L
     } else {
         try {
@@ -83,13 +81,6 @@ class FaceDetector(context: Context, assetName: String = DEFAULT_ASSET) : AutoCl
 
     /** Whether the detector came up. False means people clustering is off. */
     val isAvailable: Boolean get() = handle != 0L
-
-    /** Test seam (pass 3): the [MlNative.detectFaces] call, replaceable on the host. */
-    internal var detectNative: (Long, IntArray, Int, Int) -> FloatArray? =
-        { h, pixels, w, hh -> MlNative.detectFaces(h, pixels, w, hh) }
-
-    /** Test seam (pass 3): the [MlNative.destroy] call, replaceable on the host. */
-    internal var destroyNative: (Long) -> Unit = { MlNative.destroy(it) }
 
     /** Reused across photos, so an indexing pass does not allocate one array per image. */
     private var pixels: IntArray? = null
@@ -119,7 +110,7 @@ class FaceDetector(context: Context, assetName: String = DEFAULT_ASSET) : AutoCl
                 pixels = buffer
             }
             readable.getPixels(buffer, 0, readable.width, 0, 0, readable.width, readable.height)
-            val flat = detectNative(live, buffer, readable.width, readable.height)
+            val flat = MlNative.detectFaces(live, buffer, readable.width, readable.height)
                 ?: return emptyList()
             unpack(flat)
         } finally {
@@ -128,7 +119,7 @@ class FaceDetector(context: Context, assetName: String = DEFAULT_ASSET) : AutoCl
     }
 
     /** Fifteen floats per face; see `MlNative.detectFaces` for the order. */
-    internal fun unpack(flat: FloatArray): List<DetectedFaceBox> {
+    private fun unpack(flat: FloatArray): List<DetectedFaceBox> {
         if (flat.size % FLOATS_PER_FACE != 0) {
             Log.error(TAG, "${flat.size} floats is not a whole number of faces")
             return emptyList()
@@ -162,7 +153,7 @@ class FaceDetector(context: Context, assetName: String = DEFAULT_ASSET) : AutoCl
         val toDestroy = handle
         handle = 0L
         pixels = null
-        if (toDestroy != 0L) destroyNative(toDestroy)
+        if (toDestroy != 0L) MlNative.destroy(toDestroy)
     }
 
     companion object {

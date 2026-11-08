@@ -1,8 +1,8 @@
 package com.vayunmathur.taxi.network.lyft
-import com.vayunmathur.taxi.network.TaxiHttp
 
 import android.net.Uri
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.RawResponse
 import com.vayunmathur.taxi.data.BookingResult
 import com.vayunmathur.taxi.data.CancelResult
@@ -77,7 +77,7 @@ internal class LyftRidesClient(
             return BookingResult.DryRun(requestJson, account)
         }
 
-        val resp = TaxiHttp.execute(
+        val resp = NetworkClient.execute(
             url = "${LyftAuth.BASE}/v1/core_trips/create",
             method = "POST",
             headers = session.authJsonHeaders(token),
@@ -108,7 +108,7 @@ internal class LyftRidesClient(
 
     suspend fun activeRide(): RideStatusResult {
         val token = session.accessToken() ?: return RideStatusResult.Failed("Not signed in to Lyft")
-        val resp = TaxiHttp.execute(
+        val resp = NetworkClient.execute(
             url = "${LyftAuth.BASE}/v1/activeride",
             method = "GET",
             headers = session.authHeaders(token),
@@ -122,7 +122,7 @@ internal class LyftRidesClient(
 
     suspend fun driverLocation(rideId: String): DriverLocation? {
         val token = session.accessToken() ?: return null
-        val resp = TaxiHttp.execute(
+        val resp = NetworkClient.execute(
             url = "${LyftAuth.BASE}/v1/rides/${Uri.encode(rideId)}/driver-location",
             method = "GET",
             headers = session.authHeaders(token),
@@ -136,7 +136,7 @@ internal class LyftRidesClient(
         val token = session.accessToken() ?: return CancelResult.Failed("Not signed in to Lyft")
         // A cancel genuinely cancels a live ride (and may incur a fee), so it is sent live
         // regardless of booking liveness — that flag only gates ride *creation*.
-        val resp = TaxiHttp.execute(
+        val resp = NetworkClient.execute(
             url = "${LyftAuth.BASE}/v1/rides/${Uri.encode(rideId)}/cancel",
             method = "POST",
             headers = session.authJsonHeaders(token),
@@ -154,7 +154,7 @@ internal class LyftRidesClient(
     /** Reads a specific ride by id (`GET /v1/rides/{id}`), parsed like the active ride. */
     suspend fun rideById(rideId: String): RideStatusResult {
         val token = session.accessToken() ?: return RideStatusResult.Failed("Not signed in to Lyft")
-        val resp = TaxiHttp.execute(
+        val resp = NetworkClient.execute(
             url = "${LyftAuth.BASE}/v1/rides/${Uri.encode(rideId)}",
             method = "GET",
             headers = session.authHeaders(token),

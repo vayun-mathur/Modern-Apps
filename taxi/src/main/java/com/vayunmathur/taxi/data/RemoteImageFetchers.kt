@@ -1,9 +1,9 @@
 package com.vayunmathur.taxi.data
-import com.vayunmathur.taxi.network.TaxiHttp
 
 import android.content.Context
 import android.net.Uri
 import com.vayunmathur.library.image.fetchers.FetchResult
+import com.vayunmathur.library.network.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -29,7 +29,7 @@ object RemoteImageFetchers {
         }
         if (!url.startsWith("http://") && !url.startsWith("https://")) return null
         return withContext(Dispatchers.IO) {
-            val resp = TaxiHttp.execute(url)
+            val resp = NetworkClient.execute(url)
             if (!resp.isSuccess) {
                 throw java.io.IOException("HTTP ${resp.status} for $url")
             }

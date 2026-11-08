@@ -1,9 +1,9 @@
 package com.vayunmathur.taxi.network.lyft
-import com.vayunmathur.taxi.network.TaxiHttp
 
 import android.net.Uri
 import android.util.Base64
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.RawResponse
 import com.vayunmathur.taxi.data.NewCard
 import javax.net.ssl.SSLSocketFactory
@@ -49,7 +49,7 @@ internal class LyftCardTokenizer(
             }
         }.toString()
         val resp = runCatching {
-            TaxiHttp.execute(
+            NetworkClient.execute(
                 url = "${LyftAuth.BASE}/v1/tokenization_strategies",
                 method = "POST",
                 headers = authJsonHeaders(token),
@@ -194,7 +194,7 @@ internal class LyftCardTokenizer(
             config.stripeApiVersion?.takeIf { it.isNotBlank() }?.let { put("Stripe-Version", it) }
         }
         val resp = runCatching {
-            TaxiHttp.execute(
+            NetworkClient.execute(
                 url = "https://api.stripe.com/v1/setup_intents/${Uri.encode(setupIntentId)}/confirm",
                 method = "POST",
                 headers = headers,
@@ -230,7 +230,7 @@ internal class LyftCardTokenizer(
         // useSystemTrust flag falls back to the Lyft-only bundle, which rejects Stripe.) Guard
         // the call so a transport/TLS failure surfaces as an error rather than crashing.
         val resp = runCatching {
-            TaxiHttp.execute(
+            NetworkClient.execute(
                 url = "https://api.stripe.com/v1/tokens",
                 method = "POST",
                 headers = mapOf(
@@ -280,7 +280,7 @@ internal class LyftCardTokenizer(
             }
         }.toString()
         val resp = runCatching {
-            TaxiHttp.execute(
+            NetworkClient.execute(
                 url = graphQlUrl,
                 method = "POST",
                 headers = mapOf(
