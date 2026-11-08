@@ -315,3 +315,34 @@ internal fun regionMaskFor(
         selectedFeature.regionId.takeIf { it != 0L && selectedFeature.position != null }
     else -> null
 }
+
+/**
+ * The admin-region selection that should replace a focused [place] because
+ * a rendered admin label at its position names the same place, or null.
+ *
+ * Search (and deep links) can only build a [SpecificFeature.GenericPlace]:
+ * the offline POI index carries no boundary link, so a region picked from
+ * search could never mask. Once the camera has flown to the place, the
+ * rendered labels at that spot do carry the baked `regionId` — upgrading
+ * the selection to the matching admin label is what wires the mask (and
+ * the admin card) into the search path. Name equality (normalised, see
+ * [PoiSearch]) is required so a POI inside a city is never silently
+ * replaced by the city itself.
+ */
+internal fun adminUpgradeFor(
+    place: com.vayunmathur.maps.data.SpecificFeature.GenericPlace,
+    candidates: List<com.vayunmathur.maps.data.SpecificFeature>,
+): com.vayunmathur.maps.data.SpecificFeature? {
+    val wanted = com.vayunmathur.maps.util.PoiSearch.normalize(place.name)
+    if (wanted.isEmpty()) return null
+    return candidates.firstOrNull { candidate ->
+        val name = when (candidate) {
+            is com.vayunmathur.maps.data.SpecificFeature.Admin0Label -> candidate.name
+            is com.vayunmathur.maps.data.SpecificFeature.Admin1Label -> candidate.name
+            is com.vayunmathur.maps.data.SpecificFeature.Admin2Label -> candidate.name
+            else -> return@firstOrNull false
+        }
+        com.vayunmathur.maps.util.PoiSearch.normalize(name) == wanted &&
+            regionMaskFor(candidate) != null
+    }
+}
