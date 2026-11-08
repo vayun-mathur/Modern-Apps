@@ -94,11 +94,18 @@ fun CropScreen(
             }
         } else {
             withContext(Dispatchers.IO) {
-                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                context.contentResolver.openInputStream(uri)?.use {
-                    BitmapFactory.decodeStream(it, null, options)
+                runCatching {
+                    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    context.contentResolver.openInputStream(uri)?.use {
+                        BitmapFactory.decodeStream(it, null, options)
+                    }
+                    // Zero dimensions mean the bounds decode failed (null stream or
+                    // undecodable data); leave originalSize null so the screen keeps
+                    // showing its loading state instead of dividing by zero below.
+                    if (options.outWidth > 0 && options.outHeight > 0) {
+                        originalSize = IntSize(options.outWidth, options.outHeight)
+                    }
                 }
-                originalSize = IntSize(options.outWidth, options.outHeight)
             }
         }
     }
