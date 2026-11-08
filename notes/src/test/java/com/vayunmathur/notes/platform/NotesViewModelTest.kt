@@ -144,6 +144,19 @@ class NotesViewModelTest {
     }
 
 
+    @Test fun importFilesSkipsOversizedFile() {
+        // A file over the import cap must be skipped, not readText() into memory
+        // and stored as a multi-MB note; a small file alongside still imports.
+        val vm = vm()
+        val dir = File(app.cacheDir, "import-test").apply { mkdirs() }
+        val big = File(dir, "oversized-skip.txt").apply { writeText("x".repeat(1_200_000)) }
+        val small = File(dir, "tiny-ok.txt").apply { writeText("tiny body") }
+        vm.importFiles(listOf(Uri.fromFile(big), Uri.fromFile(small)))
+        await { runBlocking { repo.getAll().any { it.content == "tiny body" } } }
+        val titles = runBlocking { repo.getAll().map { it.title } }
+        assertTrue(titles.none { it.contains("oversized-skip") }, "titles=$titles")
+    }
+
     @Test fun factoryCreatesAndRejects() {
         val factory = NotesViewModelFactory(app, repo)
         assertTrue(factory.create(NotesViewModel::class.java) is NotesViewModel)

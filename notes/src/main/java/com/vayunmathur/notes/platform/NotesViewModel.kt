@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 class NotesViewModel(
@@ -181,6 +182,25 @@ class NotesViewModel(
     private val _shareRequests = MutableSharedFlow<NoteShare>(extraBufferCapacity = 1)
     val shareRequests: SharedFlow<NoteShare> = _shareRequests.asSharedFlow()
 
+    // Reads at most [maxBytes] from [uri]; null when the stream is missing or
+    // larger (callers skip oversized files instead of OOMing on readText()).
+    private fun readBoundedText(ctx: Application, uri: Uri, maxBytes: Int): String? {
+        ctx.contentResolver.openInputStream(uri)?.use { stream ->
+            val out = ByteArrayOutputStream()
+            val buf = ByteArray(8_192)
+            var total = 0
+            while (true) {
+                val n = stream.read(buf)
+                if (n < 0) break
+                total += n
+                if (total > maxBytes) return null
+                out.write(buf, 0, n)
+            }
+            return out.toString(Charsets.UTF_8.name())
+        }
+        return null
+    }
+
     // Best-effort import of external files: any failure mode means "skip this
     // file" per this function's contract, and each failure is logged below.
     @Suppress("TooGenericExceptionCaught")
@@ -190,11 +210,12 @@ class NotesViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             uris.forEach { uri ->
                 try {
-                    val content = ctx.contentResolver.openInputStream(uri)
-                        ?.bufferedReader()?.use { it.readText() }
+                    val content = readBoundedText(ctx, uri, MAX_IMPORT_BYTES)
                     if (content != null) {
                         val name = IntentHelper.getFileName(ctx, uri) ?: "Imported Note"
                         repository.upsert(Note(0, name, content))
+                    } else {
+                        Log.status(TAG, "skipping oversized import (> $MAX_IMPORT_BYTES bytes): $uri")
                     }
                 } catch (e: Exception) {
                     Log.error(TAG, "Error importing file: $uri", e)
@@ -285,6 +306,10 @@ class NotesViewModel(
     companion object {
         private const val TAG = "NotesViewModel"
         private const val SAVE_DEBOUNCE_MS = 300L
+        // Largest importable file: readText() on an arbitrary shared file is an
+        // OOM vector, and a multi-MB note would also wedge the Room row and the
+        // export/share path. Oversized files are skipped, never truncated.
+        private const val MAX_IMPORT_BYTES = 1_000_000
     }
 }
 
