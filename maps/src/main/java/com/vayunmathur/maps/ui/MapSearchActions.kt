@@ -54,7 +54,12 @@ internal fun rememberSearchActions(
                             ),
                         )
                     } else {
-                        viewModel.set(feature)
+                        // Focus as well as select: without the camera move a
+                        // distant result opened its card over a map still
+                        // showing somewhere else (and any region mask with
+                        // it off-screen). selectAndFocus is the same path
+                        // deep links use.
+                        viewModel.selectAndFocus(feature)
                         onCloseSearch()
                     }
                 }
