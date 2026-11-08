@@ -1,5 +1,7 @@
 package com.vayunmathur.travel.ui
 
+import java.util.Locale
+
 /**
  * Short fare-condition chips for an offer, e.g. ["Refundable", "Changeable"].
  * Falls back to "Non-refundable" when a refund rule is explicitly disallowed.
@@ -25,7 +27,9 @@ fun formatMoney(amount: String, currency: String): String {
         "GBP" -> "£"
         else -> currency.uppercase() + " "
     }
-    return symbol + (if (value % 1.0 == 0.0) value.toInt().toString() else "%.2f".format(value))
+    // Pin the decimal separator: the device locale may use ',' (e.g. de-DE),
+    // while booking amounts are always decimal-point strings.
+    return symbol + (if (value % 1.0 == 0.0) value.toInt().toString() else "%.2f".format(Locale.US, value))
 }
 
 /** "510" minutes -> "8h 30m". */
