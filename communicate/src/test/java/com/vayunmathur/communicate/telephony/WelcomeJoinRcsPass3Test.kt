@@ -167,16 +167,27 @@ class WelcomeJoinRcsPass3Test {
     @Test fun welcomeNegativesAreAbsorbed() = runTest {
         val service = Robolectric.setupService(RcsSyncService::class.java)
         try {
-            // Undecodable body.
-            assertNull(
+            // Undecodable body on a typed Welcome stanza: absorbed (Receipt
+            // kind) so the base64 gibberish never reaches the plaintext
+            // cache as a visible message.
+            assertEquals(
+                InboundKind.Receipt,
                 service.handleE2EEInbound(
                     envelope("+15550001002", RcsE2E.CT_WELCOME, "Content-Type: ${RcsE2E.CT_WELCOME}\r\n\r\n!!!not-base64!!!", "w-bad"),
-                ),
+                )?.kind,
             )
-            // Decodable but not a Welcome.
-            assertNull(
+            // Decodable but not a Welcome: absorbed the same way.
+            assertEquals(
+                InboundKind.Receipt,
                 service.handleE2EEInbound(
                     envelope("+15550001002", RcsE2E.CT_WELCOME, wrapped(RcsE2E.CT_WELCOME, byteArrayOf(9, 8, 7, 6, 5)), "w-junk"),
+                )?.kind,
+            )
+            // Plaintext that merely mentions the Welcome token is not a
+            // Welcome: still falls through (null), never absorbed.
+            assertNull(
+                service.handleE2EEInbound(
+                    envelope("+15550001002", "text/plain", "have you seen application/x-rcs-welcome before?!", "t2"),
                 ),
             )
             // Plain text is not E2EE at all.
