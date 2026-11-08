@@ -114,8 +114,67 @@ object PwaHelper {
         return s.takeIf { it.isNotBlank() && it != "null" }
     }
 
-    private fun String.unescapeJson(): String =
-        replace("\\\"", "\"").replace("\\\\", "\\").replace("\\/", "/")
+    /**
+     * Single-pass JSON/JS-string unescaper. The old chained
+     * `replace("\\\"", ...).replace("\\\\", ...).replace("\\/", ...)` re-scanned
+     * already-produced output: after step 2 turned `\\/` into `\/`, step 3 ate
+     * the remaining backslash, so a title like `p\/q` decoded to `p/q`.
+     * Walking once keeps each escape pair intact (`\\/` → `\` + `/`).
+     */
+    private fun String.unescapeJson(): String {
+        val out = StringBuilder(length)
+        var i = 0
+        while (i < length) {
+            val c = this[i]
+            if (c != '\\' || i + 1 >= length) {
+                out.append(c)
+                i++
+                continue
+            }
+            when (val e = this[i + 1]) {
+                '"', '\\', '/' -> {
+                    out.append(e)
+                    i += 2
+                }
+                'n' -> {
+                    out.append('\n')
+                    i += 2
+                }
+                'r' -> {
+                    out.append('\r')
+                    i += 2
+                }
+                't' -> {
+                    out.append('\t')
+                    i += 2
+                }
+                'b' -> {
+                    out.append('\b')
+                    i += 2
+                }
+                'f' -> {
+                    out.append('\u000C')
+                    i += 2
+                }
+                'u' -> {
+                    val hex = if (i + 5 < length) substring(i + 2, i + 6) else null
+                    val code = hex?.toIntOrNull(16)
+                    if (code != null) {
+                        out.append(code.toChar())
+                        i += 6
+                    } else {
+                        out.append('\\')
+                        i++
+                    }
+                }
+                else -> {
+                    out.append(e)
+                    i += 2
+                }
+            }
+        }
+        return out.toString()
+    }
 
     private fun String.strField(key: String): String? {
         val pattern = "\"" + key + "\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\""
