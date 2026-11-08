@@ -151,6 +151,22 @@ object BrowserUtils {
         return isWebUrl(trimmed)
     }
 
+    /**
+     * Fail-closed extractor for externally supplied launch strings: share sheets, shortcut
+     * extras, and intent data/text. Returns the first `http(s)` URL in the text, or null when
+     * there is none — `javascript:`, `file:`, `data:` and friends never come back out.
+     * Hoisted from duplicated private copies so every exported entry point shares one guard.
+     */
+    fun extractHttpUrl(text: String): String? {
+        val trimmed = text.trim()
+        if (isWebUrl(trimmed)) {
+            val match = Regex("https?://\\S+", RegexOption.IGNORE_CASE).find(trimmed)
+            return match?.value ?: trimmed.substringBefore(" ")
+        }
+        Regex("https?://\\S+", RegexOption.IGNORE_CASE).find(trimmed)?.let { return it.value }
+        return null
+    }
+
     /** Kept for migration only â€” new tabs use "" and search uses selected engine. */
     const val HOMEPAGE = "https://duckduckgo.com"
 
