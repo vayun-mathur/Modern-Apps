@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.maps.data.RecentSearchStore
+import com.vayunmathur.maps.data.SavedPlaceStore
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.osmPlace
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +18,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.vayunmathur.library.map.GeoPoint
+import com.vayunmathur.library.util.DataStoreUtils
+
+/** The recency/favorites boost for one search; reads are in-memory, call off the main thread. */
+private fun Application.searchBoost(): Map<String, Double> =
+    buildSearchBoost(
+        RecentSearchStore.get(this).current(),
+        SavedPlaceStore(DataStoreUtils.getInstance(this)).savedInitial().map { it.name },
+    )
 
 /**
  * A single row in the search list. Results come from the offline OSM POI
@@ -31,6 +40,43 @@ data class SearchResult(
     val lon: Double,
     val category: String?,
 )
+
+/**
+ * Weight a saved (starred) place carries in search ranking: large enough that
+ * a favorite always outranks an equally-matching unvisited place (boost only
+ * breaks ties within a text-match rank, so an exact match still beats a
+ * familiar typo), but still only a reorder — [PoiIndex.searchByName] never
+ * returns a non-match.
+ */
+internal const val SAVED_SEARCH_BOOST = 1_000_000.0
+
+/**
+ * The recency/favorites signal for one search: lowercased name → weight.
+ *
+ * Saved names come first at [SAVED_SEARCH_BOOST]; recent queries follow in
+ * most-recent-first order (highest weight = most recent), so a place the user
+ * keeps searching for outranks a textually identical one they never tap. Pure
+ * so the weighting is unit-testable without DataStore.
+ */
+internal fun buildSearchBoost(
+    recentQueries: List<String>,
+    savedNames: List<String>,
+): Map<String, Double> {
+    if (recentQueries.isEmpty() && savedNames.isEmpty()) return emptyMap()
+    val boost = HashMap<String, Double>()
+    for (name in savedNames) {
+        val key = name.lowercase()
+        if (key.isNotBlank()) boost[key] = SAVED_SEARCH_BOOST
+    }
+    // The store dedupes most-recent-first and caps at 10; weight decays with
+    // position so yesterday's query still counts, just less than today's.
+    val cap = RecentSearchStore.RECENT_CAP
+    recentQueries.forEachIndexed { i, q ->
+        val key = q.trim().lowercase()
+        if (key.isNotBlank()) boost.putIfAbsent(key, (cap - i).toDouble())
+    }
+    return boost
+}
 
 private fun PoiIndex.PoiRecord.toSearchResult() = SearchResult(
     id = "poi:$latE7:$lonE7:${name.hashCode()}",
@@ -128,7 +174,7 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
                 val offline = withContext(Dispatchers.IO) {
                     runCatching {
                         PoiIndex.initialize(app)
-                        PoiIndex.searchByName(query, nearLat, nearLon, limit = 20)
+                        PoiIndex.searchByName(query, nearLat, nearLon, limit = 20, boost = app.searchBoost())
                     }.getOrDefault(emptyList())
                 }
                 _results.value = offline.map { it.toSearchResult() }
@@ -164,7 +210,7 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
             val results = withContext(Dispatchers.IO) {
                 runCatching {
                     PoiIndex.initialize(app)
-                    PoiIndex.searchByName(query, nearLat, nearLon, limit = 20)
+                    PoiIndex.searchByName(query, nearLat, nearLon, limit = 20, boost = app.searchBoost())
                 }.getOrDefault(emptyList())
             }.map { it.toSearchResult() }
             _results.value = results

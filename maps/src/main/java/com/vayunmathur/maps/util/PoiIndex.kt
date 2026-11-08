@@ -626,7 +626,8 @@ object PoiIndex {
 
     /**
      * Offline place search over the whole index (no bounding-box limit),
-     * ranked by match tier then by distance to ([nearLat],[nearLon]).
+     * ranked by match tier, then user signal, then distance to
+     * ([nearLat],[nearLon]).
      *
      * Token-based: every query token must match a word of the name (word
      * prefix, substring, or a small edit distance), so multi-word names,
@@ -635,20 +636,24 @@ object PoiIndex {
      * gathering uses the word index when mapped and the name-pool scan
      * otherwise (and as the substring/fuzzy fallback); see
      * [searchPoi][com.vayunmathur.maps.util.searchPoi] and [PoiSearch].
+     *
+     * [boost] (recents + saved places) only breaks ties within a rank — it
+     * never resurrects a non-match.
      */
     fun searchByName(
         query: String,
         nearLat: Double,
         nearLon: Double,
         limit: Int = 20,
+        boost: Map<String, Double> = emptyMap(),
     ): List<PoiRecord> {
         val m = mapped ?: return emptyList()
         if (query.isBlank()) return emptyList()
         // Token-based matching with category and fuzzy fallbacks; see
         // PoiIndexWords.searchPoi and PoiSearch for the ranking contract.
-        return searchPoi(m, query, nearLat, nearLon, limit)
+        // Boost (recents + saved places) only breaks ties within a rank.
+        return searchPoi(m, query, nearLat, nearLon, limit, boost)
     }
-
     // Spatial queries (nearest/inViewport) live in PoiIndexSpatial.kt as
     // extensions, alongside the grid they walk.
 

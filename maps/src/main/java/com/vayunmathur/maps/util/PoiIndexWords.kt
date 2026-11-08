@@ -153,6 +153,58 @@ private fun PoiIndex.Mapped.matchesAt(i: Int, key: ByteArray): Boolean {
 private class Ranked(val record: PoiIndex.PoiRecord, val rank: Int, val distSq: Double)
 
 /**
+ * Weight of [name] from the caller's recency/favorites signal, or 0.
+ *
+ * Keys are lowercased full names. An exact hit wins outright; otherwise the
+ * best key the name merely contains still counts — a recent query is usually
+ * a prefix of the place it found ("blue bottle" → "Blue Bottle Coffee"), not
+ * the whole name. This only reorders candidates the text match already
+ * accepted; it never resurrects a non-match.
+ */
+internal fun boostWeight(boost: Map<String, Double>, name: String): Double {
+    if (boost.isEmpty()) return 0.0
+    val lower = name.lowercase()
+    boost[lower]?.let { return it }
+    var best = 0.0
+    for ((key, weight) in boost) {
+        if (weight > best && lower.contains(key)) best = weight
+    }
+    return best
+}
+
+/**
+ * Whether [a] and [b] differ by at most one insertion, deletion, or
+ * substitution — the cheap typo tolerance. Returns false fast on a length
+ * gap over one; otherwise a small full DP (names/words are short, and the
+ * caller only reaches here when the substring pass already failed).
+ */
+internal fun editDistanceLE1(a: String, b: String): Boolean {
+    if (a == b) return true
+    val n = a.length
+    val m = b.length
+    if (kotlin.math.abs(n - m) > 1) return false
+    var prev = IntArray(m + 1) { it }
+    var cur = IntArray(m + 1)
+    for (i in 1..n) {
+        cur[0] = i
+        var rowMin = cur[0]
+        for (j in 1..m) {
+            cur[j] = minOf(
+                prev[j] + 1,
+                cur[j - 1] + 1,
+                prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1,
+            )
+            if (cur[j] < rowMin) rowMin = cur[j]
+        }
+        if (rowMin > 1) return false
+        val tmp = prev
+        prev = cur
+        cur = tmp
+    }
+    return prev[m] <= 1
+}
+
+/**
  * The unified offline search behind [PoiIndex.searchByName].
  *
  * Matching is token-based (see [PoiSearch]): every query token must match
@@ -168,7 +220,12 @@ private class Ranked(val record: PoiIndex.PoiRecord, val rank: Int, val distSq: 
  * token, intersected by ordinal) and falls back to the name-pool scan
  * when the index is absent or the intersection is empty — which is also
  * the path that provides substring and fuzzy matches the sorted index
- * cannot answer.
+ * cannot answer. A per-token indexed fuzzy supplement (see
+ * [collectIndexedFuzzyMatches]) catches typo'd names the exact prefix
+ * intersection misses.
+ *
+ * Within one tier, [boost] (recents + saved places) breaks ties — it never
+ * resurrects a non-match.
  */
 internal fun searchPoi(
     m: PoiIndex.Mapped,
@@ -176,6 +233,7 @@ internal fun searchPoi(
     nearLat: Double,
     nearLon: Double,
     limit: Int,
+    boost: Map<String, Double> = emptyMap(),
 ): List<PoiIndex.PoiRecord> {
     val queryTokens = PoiSearch.tokens(query)
     if (queryTokens.isEmpty()) return emptyList()
@@ -185,6 +243,7 @@ internal fun searchPoi(
     val tiers = HashMap<Int, Int>()
     if (m.nameIdx != null) {
         collectIndexedMatches(m, queryTokens, queryNorm, tiers)
+        collectIndexedFuzzyMatches(m, queryTokens, queryNorm, tiers)
     }
     if (tiers.isEmpty()) {
         collectScanMatches(m, queryNorm, queryTokens, tiers)
@@ -208,7 +267,11 @@ internal fun searchPoi(
             )
         )
     }
-    ranked.sortWith(compareBy({ it.rank }, { it.distSq }))
+    ranked.sortWith(
+        compareBy<Ranked> { it.rank }
+            .thenByDescending { boostWeight(boost, it.record.name) }
+            .thenBy { it.distSq },
+    )
     return ranked.take(limit).map { it.record }
 }
 
@@ -234,6 +297,31 @@ private fun collectIndexedMatches(
         if (ordinal < 0 || ordinal >= m.count) continue
         val tier = PoiSearch.matchTier(m.record(ordinal).name, queryNorm, queryTokens)
         if (tier != PoiSearch.NO_MATCH) tiers[ordinal] = tier
+    }
+}
+
+/**
+ * Indexed fuzzy supplement: a typo'd name ("Piza Kitchen" for "pizza")
+ * should surface below the exact hits, not vanish. Runs per query token
+ * (deletion variants as prefix lookups, verified by edit distance — see
+ * [fuzzyWordMatches]), and tiers are scored exactly with
+ * [PoiSearch.matchTier] so ranking stays tier-first. Ordinals the exact
+ * pass already found keep their tier; tokens under 3 chars are all
+ * typo-noise and skip the pass.
+ */
+private fun collectIndexedFuzzyMatches(
+    m: PoiIndex.Mapped,
+    queryTokens: List<String>,
+    queryNorm: String,
+    tiers: HashMap<Int, Int>,
+) {
+    for (token in queryTokens) {
+        if (token.length < 3) continue
+        for (ordinal in m.fuzzyWordMatches(token, PoiIndex.CANDIDATE_CAP).keys) {
+            if (ordinal < 0 || ordinal >= m.count || ordinal in tiers) continue
+            val tier = PoiSearch.matchTier(m.record(ordinal).name, queryNorm, queryTokens)
+            if (tier != PoiSearch.NO_MATCH) tiers[ordinal] = tier
+        }
     }
 }
 
@@ -300,4 +388,57 @@ private fun collectCategoryMatches(
     }
 }
 
+/**
+ * Ordinals with a word within one edit of the query [token], as
+ * ordinal → word index.
+ *
+ * The word index only answers prefix questions, so each single-deletion
+ * variant of the token is looked up as a prefix and the underlying word is
+ * verified by edit distance — a one-edit typo always shares a long-enough
+ * prefix with the true word unless the edit is at position 0, which this
+ * deliberately misses (documented: first-letter typos need a different
+ * index). Tokens under 3 chars are all typo-noise and skip the pass.
+ */
+private fun PoiIndex.Mapped.fuzzyWordMatches(
+    token: String,
+    candidateCap: Int,
+): Map<Int, Int> {
+    val tokenLower = token.lowercase()
+    // Strings, not byte arrays: array equality is referential, and repeated
+    // letters ("aa" → "a", "a") would otherwise look the same word up twice.
+    val variants = LinkedHashSet<String>()
+    for (i in tokenLower.indices) {
+        tokenLower.removeRange(i, i + 1).takeIf { it.isNotEmpty() }?.let { variants.add(it) }
+    }
+    // A mid-word substitution ("pizxa" for "pizza") shares no full deletion
+    // with the true word, but does share a two-shorter prefix.
+    if (tokenLower.length >= 5) {
+        variants.add(tokenLower.dropLast(2))
+    }
+    val out = HashMap<Int, Int>()
+    for (variant in variants) {
+        val key = poiQueryKey(variant)
+        for (hit in wordPrefixMatches(key, minOf(candidateCap, FUZZY_PER_VARIANT_CAP))) {
+            val ordinal = hit[0]
+            if (ordinal in out) continue
+            if (wordWithinOneEdit(ordinal, hit[1], tokenLower)) out[ordinal] = hit[1]
+        }
+        if (out.size >= FUZZY_CANDIDATE_CAP) break
+    }
+    return out
+}
 
+/** Whether the [wordIdx]th word of record [ordinal] is one edit from [token]. */
+private fun PoiIndex.Mapped.wordWithinOneEdit(ordinal: Int, wordIdx: Int, token: String): Boolean {
+    val range = wordRange(nameOff(ordinal), wordIdx) ?: return false
+    val len = range.last - range.first + 1
+    if (kotlin.math.abs(len - token.length) > 1) return false
+    val word = CharArray(len) { i ->
+        asciiLowerW(names.get(range.first + i)).toChar()
+    }
+    return editDistanceLE1(token, String(word))
+}
+
+/** Per-variant walk cap and total fuzzy-candidate cap for one token. */
+private const val FUZZY_PER_VARIANT_CAP = 50
+private const val FUZZY_CANDIDATE_CAP = 500
