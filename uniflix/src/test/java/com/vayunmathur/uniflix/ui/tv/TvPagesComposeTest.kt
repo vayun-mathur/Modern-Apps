@@ -10,8 +10,10 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.uniflix.data.TmdbApi
+import com.vayunmathur.uniflix.data.uniflixTransport
 import com.vayunmathur.uniflix.domain.MediaType
 import com.vayunmathur.uniflix.platform.DetailViewModel
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule
@@ -24,6 +26,8 @@ class TvPagesComposeTest {
 
     @get:Rule
     val composeRule = createComposeRule()
+
+    @AfterTest fun tearDown() { uniflixTransport = null }
 
     @Test fun browseTabRendersOffline() {
         composeRule.setContent {
@@ -49,10 +53,11 @@ class TvPagesComposeTest {
     }
 
     @Test fun detailPageShowsFailureAndBackPops() {
+        uniflixTransport = { throw java.io.IOException("offline test double") }
         val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main(), TvRoute.Detail("movie", 42)))
         val vm = DetailViewModel(
             ApplicationProvider.getApplicationContext(),
-            TmdbApi { throw java.io.IOException("offline test double") },
+            TmdbApi(),
         )
         composeRule.setContent {
             DynamicTheme {

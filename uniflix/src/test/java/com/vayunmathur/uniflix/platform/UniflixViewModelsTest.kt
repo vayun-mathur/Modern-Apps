@@ -3,6 +3,7 @@ package com.vayunmathur.uniflix.platform
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.uniflix.data.TmdbApi
+import com.vayunmathur.uniflix.data.uniflixTransport
 import com.vayunmathur.uniflix.domain.MediaType
 import com.vayunmathur.uniflix.domain.StreamProvider
 import com.vayunmathur.uniflix.domain.VideoSource
@@ -33,10 +34,13 @@ class UniflixViewModelsTest {
     private val app: Application get() = ApplicationProvider.getApplicationContext()
 
     /** Catalog client whose every request fails, so tests never touch the network. */
-    private fun offlineApi(): TmdbApi = TmdbApi { throw java.io.IOException("offline test double") }
+    private fun offlineApi(): TmdbApi {
+        uniflixTransport = { throw java.io.IOException("offline test double") }
+        return TmdbApi()
+    }
 
     @BeforeTest fun setUp() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
-    @AfterTest fun tearDown() { Dispatchers.resetMain() }
+    @AfterTest fun tearDown() { Dispatchers.resetMain(); uniflixTransport = null }
 
     private fun await(timeoutMs: Long = 15_000, cond: () -> Boolean): Boolean {
         val deadline = System.currentTimeMillis() + timeoutMs
