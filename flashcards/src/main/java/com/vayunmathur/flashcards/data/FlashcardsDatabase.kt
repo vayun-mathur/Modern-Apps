@@ -223,6 +223,9 @@ interface ReviewLogDao {
     @Query("DELETE FROM ReviewLog WHERE cardId IN (:cardIds)")
     suspend fun deleteByCards(cardIds: List<Long>)
 
+    @Query("UPDATE ReviewLog SET deckId = :deckId WHERE cardId IN (SELECT id FROM Card WHERE noteId IN (:noteIds))")
+    suspend fun moveByNotes(noteIds: List<Long>, deckId: Long)
+
     @Query("DELETE FROM ReviewLog WHERE deckId = :deckId")
     suspend fun deleteByDeck(deckId: Long)
 }

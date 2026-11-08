@@ -186,6 +186,27 @@ class FlashcardsViewModelTest {
     }
 
     @Test
+    fun moveNotesCarriesReviewLogsToTargetDeck() {
+        val from = uniqueDeck("LogMoveFrom"); val to = uniqueDeck("LogMoveTo")
+        val note = saveBasicNote(from.id, "LogMoveFront", "LogMoveBack")
+        val card = runBlocking { repo.getCardsByNoteImpl(note.id) }.single()
+        runBlocking {
+            repo.insertReviewLogImpl(ReviewLog(cardId = card.id, deckId = from.id, reviewedAt = 1, grade = 3, elapsedDays = 1.0, scheduledDays = 2.0, state = 2))
+        }
+        vm.moveNotesImpl(listOf(note.id), to.id)
+        await("logs moved") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(to.id) }.any { it.cardId == card.id }
+        }
+        assertTrue(runBlocking { repo.getReviewLogsByDeckOrderedImpl(from.id) }.none { it.cardId == card.id })
+        // Deleting the target deck must take the moved history with it —
+        // otherwise orphaned logs linger under the old deck and pollute
+        // its stats and FSRS optimization.
+        vm.deleteDeckImpl(to)
+        await("target deck deleted") { vm.decks.value.none { it.id == to.id } }
+        assertTrue(runBlocking { repo.getReviewLogsByDeckOrderedImpl(from.id) }.none { it.cardId == card.id })
+    }
+
+    @Test
     fun bulkNoteOpsTagsMoveSuspendResetAndDelete() {
         val deck = uniqueDeck("BulkDeck"); val target = uniqueDeck("BulkTarget")
         val n1 = saveBasicNote(deck.id, "BulkOne", "1", tags = "old")
