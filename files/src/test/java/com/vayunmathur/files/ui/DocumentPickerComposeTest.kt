@@ -66,6 +66,33 @@ private fun pickerRule(intent: Intent) =
         },
     )
 
+/**
+ * Drops FileProvider's statically cached path strategies.
+ *
+ * The cache is keyed by authority only, but Robolectric gives every test its
+ * own tmp external dir: whichever test first builds a content URI wins the
+ * cache, and every later test's files fall outside those stale roots, so
+ * `getUriForFile` throws "Failed to find configured root". Refreshing it
+ * here makes the strategy resolve against this test's own directories. On a
+ * device the external volume is always a configured root, so this is
+ * sandbox-only.
+ */
+private fun clearFileProviderCache() {
+    val field = try {
+        androidx.core.content.FileProvider::class.java.getDeclaredField("sCache")
+    } catch (e: NoSuchFieldException) {
+        throw AssertionError(
+            "FileProvider no longer caches strategies in sCache; " +
+                "update this for the new androidx.core version",
+            e,
+        )
+    }
+    field.isAccessible = true
+    (field.get(null) as? MutableMap<*, *>
+        ?: throw AssertionError("FileProvider.sCache is no longer a map"))
+        .clear()
+}
+
 @RunWith(RobolectricTestRunner::class)
 @Config(shadows = [ShadowEnvironmentFix::class], qualifiers = "w802dp-h1280dp")
 class PickerOpenSingleTest {
@@ -206,18 +233,33 @@ class PickerCreateTraversalTest {
 
     @Test
     fun `create with a path-like title stays in the chosen folder`() {
+        // Refresh FileProvider's static strategy cache (see clearFileProviderCache):
+        // without this, getUriForFile throws "Failed to find configured root"
+        // for this test's own tmp external dir. With a fresh strategy the
+        // result-uri step succeeds, so no catch hacks are needed below.
+        clearFileProviderCache()
         val root = seedExternalFiles()
         rule.waitForIdle()
         rule.onNodeWithText("Save").performClick()
         val inFolder = File(root, "escaped-create.txt")
         val escaped = File(root, "../escaped-create.txt").canonicalFile
-        val deadline = System.currentTimeMillis() + 10_000
-        while (!inFolder.exists() && !escaped.exists() && System.currentTimeMillis() < deadline) {
+        val createDeadline = System.currentTimeMillis() + 10_000
+        while (!inFolder.exists() && !escaped.exists() &&
+            System.currentTimeMillis() < createDeadline
+        ) {
             rule.waitForIdle()
             Thread.sleep(50)
         }
         assertTrue(inFolder.isFile, "expected the file to be created inside the chosen folder")
         assertTrue(!escaped.exists(), "the title must not escape the chosen folder")
+        // Drain the result-uri continuation to its end: success finishes the
+        // activity. Nothing may leak into the next test's looper.
+        val finishDeadline = System.currentTimeMillis() + 10_000
+        while (!rule.activity.isFinishing && System.currentTimeMillis() < finishDeadline) {
+            rule.waitForIdle()
+            Thread.sleep(50)
+        }
+        assertTrue(rule.activity.isFinishing)
     }
 }
 
