@@ -72,6 +72,19 @@ class SignalE2E(
             rawPublicKeyBytes(b64(auth.identityPublicKey))
         }
 
+    /**
+     * Our own identity public key in serialized (33-byte) form, for fingerprint
+     * computation. [ownIdentityPublicKey] is the raw RingRTC form; feeding that
+     * to `IdentityKey(...)` in the safety-number path throws and silently
+     * yields no safety number at all.
+     */
+    val ownIdentityPublicKeySerialized: ByteArray
+        get() = try {
+            protocolStore.identityKeyPair.publicKey.serialize()
+        } catch (_: Throwable) {
+            b64(auth.identityPublicKey)
+        }
+
     /** Strip the type prefix from a serialized EC public key, as RingRTC's key derivation requires. */
     internal fun rawPublicKeyBytes(serialized: ByteArray): ByteArray = try {
         ECPublicKey(serialized).publicKeyBytes
