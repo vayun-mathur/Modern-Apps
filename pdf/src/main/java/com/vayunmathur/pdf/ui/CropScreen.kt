@@ -274,8 +274,11 @@ fun MagnifierWindow(
     val zoom = 3f
 
     val magnifierY = handleScreenPos.y - magnifierSizePx - gapPx
+    // overlayWidth can be narrower than the 120dp magnifier for very tall
+    // captures fitted to height; floor the upper bound so coerceIn never sees
+    // a min greater than its max (which throws IllegalArgumentException).
     val magnifierX = (handleScreenPos.x - magnifierSizePx / 2f)
-        .coerceIn(0f, overlayWidth - magnifierSizePx)
+        .coerceIn(0f, (overlayWidth - magnifierSizePx).coerceAtLeast(0f))
 
     val shape = RoundedCornerShape(12.dp)
 
