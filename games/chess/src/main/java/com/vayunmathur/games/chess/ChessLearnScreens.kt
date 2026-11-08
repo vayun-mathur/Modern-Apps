@@ -239,7 +239,7 @@ private fun LearnStageContent(
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(12.dp))
-        LearnBoard(ui, viewModel::onSquareClick)
+        LearnBoard(ui, viewModel::onSquareClick, viewModel::onSquareDrop)
         Spacer(Modifier.height(12.dp))
         LevelStepper(
             count = stage.levels.size,
@@ -509,7 +509,11 @@ private const val STAR_HALF_DIVISOR = 2
 private const val STAR_STEP_DIVISOR = 5
 
 @Composable
-fun LearnBoard(ui: LearnUiState, onSquareClick: (com.vayunmathur.games.chess.data.Position) -> Unit) {
+fun LearnBoard(
+    ui: LearnUiState,
+    onSquareClick: (com.vayunmathur.games.chess.data.Position) -> Unit,
+    onSquareDrop: (com.vayunmathur.games.chess.data.Position, com.vayunmathur.games.chess.data.Position) -> Unit = { _, _ -> }
+) {
     // Capped like the game board so a desktop window doesn't blow the grid up.
     Box(Modifier.widthIn(max = ChessBoardMaxWidth).fillMaxWidth().aspectRatio(1f)) {
         BoardGrid(
@@ -517,7 +521,8 @@ fun LearnBoard(ui: LearnUiState, onSquareClick: (com.vayunmathur.games.chess.dat
             selectedPiece = ui.selectedPiece,
             isFlipped = ui.isFlipped,
             turn = ui.playerColor,
-            onSquareClick = onSquareClick
+            onSquareClick = onSquareClick,
+            onSquareDrop = onSquareDrop
         )
         Canvas(
             Modifier

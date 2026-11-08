@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -397,7 +398,8 @@ private fun GameBoardGrid(
         selectedPiece = state.selectedPiece,
         isFlipped = state.isBoardFlipped,
         turn = state.turn,
-        onSquareClick = actions::onSquareClick
+        onSquareClick = actions::onSquareClick,
+        onSquareDrop = actions::onSquareDrop
     )
 }
 
@@ -655,11 +657,15 @@ fun BoardGrid(
     isFlipped: Boolean,
     turn: PieceColor,
     onSquareClick: (Position) -> Unit,
+    onSquareDrop: (Position, Position) -> Unit = { _, _ -> },
     showLastMove: Boolean = false
 ) {
+    val drag = remember { BoardDragState() }
+    // During a drag the hints follow the dragged piece, otherwise the selection.
+    val hintSource = drag.source ?: selectedPiece
     // The squares the selected piece can legally move to (for move-hint dots).
-    val destinations = remember(board, selectedPiece) {
-        legalDestinations(board, selectedPiece)
+    val destinations = remember(board, hintSource) {
+        legalDestinations(board, hintSource)
     }
     // The puzzle board seeds a synthetic zero-length lastMove to encode turn; skip it.
     val lastMove = board.lastMove?.takeIf { showLastMove && it.start != it.end }
@@ -667,13 +673,15 @@ fun BoardGrid(
         Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
+            .onSizeChanged { drag.boardPx = it.width.toFloat() }
+            .boardDragGesture(drag, onSquareDrop)
             .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
     ) {
         for (i in board.pieces.indices) {
             BoardRow(
                 board = board,
                 row = i,
-                selectedPiece = selectedPiece,
+                selectedPiece = hintSource,
                 isFlipped = isFlipped,
                 turn = turn,
                 lastMove = lastMove,

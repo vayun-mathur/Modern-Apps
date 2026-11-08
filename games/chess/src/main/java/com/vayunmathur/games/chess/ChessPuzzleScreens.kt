@@ -99,6 +99,7 @@ fun PuzzleBoardScreen(state: PuzzleUiState, actions: PuzzleActions) {
                     isFlipped = state.isBoardFlipped,
                     turn = state.playerColor,
                     onSquareClick = actions::onSquareClick,
+                    onSquareDrop = actions::onSquareDrop,
                     showLastMove = true
                 )
             }
