@@ -137,10 +137,13 @@ fun PlaylistDetailScreen(backStack: NavBackStack<Route>, musicViewModel: MusicVi
                                     TextField(value = newName, onValueChange = { newName = it })
                                 },
                                 confirmButton = {
-                                    TextButton(onClick = {
-                                        musicViewModel.renamePlaylist(playlist!!, newName)
-                                        showRenameDialog = false
-                                    }) {
+                                    TextButton(
+                                        enabled = newName.isNotBlank(),
+                                        onClick = {
+                                            musicViewModel.renamePlaylist(playlist!!, newName.trim())
+                                            showRenameDialog = false
+                                        }
+                                    ) {
                                         Text(stringResource(UiR.string.rename))
                                     }
                                 },
