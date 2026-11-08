@@ -114,8 +114,22 @@ object BrowserUtils {
     // `kotlin` - into a failed navigation. `nas.local` and `192.168.1.1:8080` already match,
     // and `http://router` works through the explicit-scheme path below.
     private val URL_LIKE = Regex(
-        "^(https?://)?([a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}|localhost|\\d{1,3}(\\.\\d{1,3}){3})(:\\d+)?(/.*)?$"
+        // (?i): schemes are case-insensitive per RFC 3986, and pasted links, intents and
+        // redirects can carry `HTTP://`. Host labels were already A–Z-tolerant; this also
+        // lets `LOCALHOST` match, which DNS treats the same as `localhost`.
+        "^(?i)(https?://)?([a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}|localhost|\\d{1,3}(\\.\\d{1,3}){3})(:\\d+)?(/.*)?$"
     )
+
+    /**
+     * Case-insensitive `http(s)` scheme test for [Uri.getScheme] values: `Uri` preserves the
+     * sender's casing, so `HTTP://` links must not fall through to the external-app path.
+     */
+    fun isWebScheme(scheme: String?): Boolean =
+        scheme.equals("http", ignoreCase = true) || scheme.equals("https", ignoreCase = true)
+
+    /** Case-insensitive `http(s)://` prefix test for raw URL strings. */
+    fun isWebUrl(url: String): Boolean =
+        url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)
 
     /** Kept for migration only â€” new tabs use "" and search uses selected engine. */
     const val HOMEPAGE = "https://duckduckgo.com"
@@ -126,7 +140,7 @@ object BrowserUtils {
     fun looksLikeUrl(text: String): Boolean {
         if (text.contains(" ")) return false
         val trimmed = text.trim()
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return true
+        if (isWebUrl(trimmed)) return true
         return URL_LIKE.matches(trimmed)
     }
 
@@ -144,7 +158,7 @@ object BrowserUtils {
     fun toNavigationUrl(input: String, searchEngine: SearchEngine, safeSearch: Boolean): String {
         val trimmed = input.trim()
         if (trimmed.isEmpty()) return searchEngine.homepage
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
+        if (isWebUrl(trimmed)) return trimmed
         if (looksLikeUrl(trimmed)) {
             // LAN targets are nearly all plain http and have no publicly trusted certificate,
             // so defaulting them to https would fail before the page ever loaded.

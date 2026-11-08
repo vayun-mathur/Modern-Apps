@@ -17,6 +17,7 @@ import com.vayunmathur.web.domain.EffectiveShields
 import com.vayunmathur.web.domain.shields.ResourceTypes
 import com.vayunmathur.web.domain.shields.UrlCleaner
 import com.vayunmathur.web.platform.AdultSites
+import com.vayunmathur.web.platform.BrowserUtils
 import com.vayunmathur.web.platform.ContentFilters
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -179,7 +180,7 @@ open class ShieldsWebViewClient(
      * only cosmetic, so evaluating them at page start is soon enough.
      */
     private fun applyShields(view: WebView, url: String) {
-        if (!url.startsWith("http")) return
+        if (!BrowserUtils.isWebUrl(url)) return
         val shields = shieldsFor(hostOf(url))
         if (!shields.cosmeticFiltering) return
 

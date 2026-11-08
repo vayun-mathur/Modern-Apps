@@ -363,7 +363,7 @@ private fun createPwaWebViewClient(
 ) {
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val scheme = request.url.scheme ?: return false
-        if (scheme !in setOf("http", "https", "about", "data", "blob", "javascript")) {
+        if (scheme !in setOf("about", "data", "blob", "javascript") && !BrowserUtils.isWebScheme(scheme)) {
             return openExternalUri(ctx, request.url.toString()) { fallback -> view.loadUrl(fallback) }
         }
         // For PWA: stay inside same origin; external origins still load but that is okay.

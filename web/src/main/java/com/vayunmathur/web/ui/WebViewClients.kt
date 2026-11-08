@@ -70,7 +70,7 @@ internal fun createBrowserWebViewClient(
 ) {
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val scheme = request.url.scheme ?: return false
-        if (scheme !in setOf("http", "https", "about", "data", "blob", "javascript")) {
+        if (scheme !in setOf("about", "data", "blob", "javascript") && !BrowserUtils.isWebScheme(scheme)) {
             // Swallowed rather than passed on when the tab is only being
             // restored: the page still renders, it just doesn't throw the
             // user back into the app they last left.
@@ -107,7 +107,7 @@ internal fun createBrowserWebViewClient(
             viewModel.recordHistoryVisit(url ?: "", title)
         }
         url?.let { u ->
-            if (u.startsWith("http")) {
+            if (BrowserUtils.isWebUrl(u)) {
                 runCatching {
                     val origin = BrowserUtils.originFromUrl(u)
                     val cookies = CookieManager.getInstance().getCookie(u)

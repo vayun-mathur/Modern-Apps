@@ -75,7 +75,7 @@ object FaviconStore {
      * current session sees it, then downscaled and written off the main thread.
      */
     fun put(url: String, icon: Bitmap, isPrivate: Boolean) {
-        if (!url.startsWith("http")) return
+        if (!BrowserUtils.isWebUrl(url)) return
         val host = BrowserUtils.hostFromUrl(url).lowercase()
         if (host.isBlank()) return
         cache[host] = icon
