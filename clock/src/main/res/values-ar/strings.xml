@@ -50,4 +50,7 @@
     <string name="vibrate">الاهتزاز</string>
     <string name="snooze_length">مدة التأجيل</string>
     <string name="gradually_increase_volume">زيادة مستوى الصوت تدريجيًا</string>
+    <string name="alarm_missing_fullscreen_text">اضغط للفتح — إذن التنبيه بملء الشاشة غير مفعّل</string>
+    <string name="alarm_fullscreen_revoked">منبّهات ملء الشاشة متوقفة — لن تظهر التنبيهات التي ترن فوق شاشة القفل</string>
+    <string name="action_open_settings">فتح الإعدادات</string>
 </resources>
