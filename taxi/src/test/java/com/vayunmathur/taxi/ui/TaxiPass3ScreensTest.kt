@@ -2,6 +2,7 @@ package com.vayunmathur.taxi.ui
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsEnabled
@@ -414,8 +415,8 @@ class TaxiPass3ScreensTest {
     fun navigationShowsRideHomeAndTabs() {
         rule.setContent {
             com.vayunmathur.taxi.Navigation(
-                trackRideId = mutableStateOf(null),
-                bookingTrip = mutableStateOf(null),
+                trackRideId = remember { mutableStateOf(null) },
+                bookingTrip = remember { mutableStateOf(null) },
             )
         }
         waitForText(str(R.string.nav_ride))
