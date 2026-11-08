@@ -77,6 +77,16 @@ class PwaHelperTest {
         assertEquals(24, blank.width)
     }
 
+    @Test fun preservesBackslashBeforeSlashInTitle() {
+        // Title `p\/q` (p, backslash, slash, q): JSON.stringify emits `"p\\/q"`,
+        // evaluateJavascript doubles the backslashes in transit.
+        val raw = """{"title":"p\\/q","origin":"https://x.example"}"""
+        val escaped = "\"" + raw.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        val info = PwaHelper.parseProbeJson(escaped)
+        assertNotNull(info)
+        assertEquals("p\\/q", info.name)
+    }
+
     @Test fun manifestProbeJsMentionsManifestAndIcons() {
         assertTrue(PwaHelper.MANIFEST_PROBE_JS.contains("manifest"))
         assertTrue(PwaHelper.MANIFEST_PROBE_JS.contains("JSON.stringify"))
