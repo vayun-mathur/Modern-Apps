@@ -52,4 +52,8 @@ dependencies {
     // ncnn is gone from the whole tree, not just this app: `:translate` was the last consumer and
     // it now runs SMaLL-100 on `:library:ml` too, so `libncnn_android.so` is in no APK here.
     implementation(project(":library:ml"))
+    // Mockito is already a cataloged test dep used the same way by
+    // sibling modules (e.g. :office): ContentResolver is final-method
+    // heavy, so null-stream failure paths are tested with a mock.
+    testImplementation(libs.mockito.core)
 }
