@@ -200,16 +200,18 @@ class BrowserInteractionTest {
         assertEquals(false, geoResult)
     }
 
-    @Test fun chromeClientGrantsUnmappedResources() {
+    @Test fun chromeClientDeniesUnmappedResources() {
         val v = vm()
         v.newTab(url = "https://pub.example")
         val tabId = v.activeTabId!!
         val chrome = createBrowserWebChromeClient(tabId, v, false, deps(), onRequestNewTab = {})
         val webView = WebView(context)
-        // A protected-media-id request maps to no site-permission type and is granted through.
+        // A protected-media-id request maps to no site-permission type, so it fails
+        // closed instead of being silently granted.
         val req = FakePermissionRequest(arrayOf(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID))
         chrome.onPermissionRequest(req)
-        assertTrue(req.granted?.contains(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID) == true)
+        assertTrue(req.denied)
+        assertTrue(req.granted == null)
         chrome.onProgressChanged(webView, 100)
         assertEquals(1f, v.getProgress(tabId))
     }
