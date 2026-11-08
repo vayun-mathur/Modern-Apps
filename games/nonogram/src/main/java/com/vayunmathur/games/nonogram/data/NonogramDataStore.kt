@@ -131,12 +131,27 @@ class NonogramDataStore(private val context: Context) {
         }
     }
 
-    /** Bumps and returns the lifetime completed count. */
-    suspend fun recordCompleted(): Int {
+    /**
+     * Banks the win identified by [key] and returns the lifetime completed count.
+     *
+     * The first call for a key bumps the count; repeats return the stored total unchanged, all in
+     * one edit. The ViewModel's in-memory guard covers re-emitted flows within a session, but only
+     * these stored keys survive a relaunch: without them, reopening an already-won board (killed
+     * app before advancing, completed daily reopened the same day) replays the win and inflates
+     * the count that feeds the `puzzles_10` / `puzzles_50` progress achievements. A set, not a
+     * single last-key slot, because distinct wins (level 3, then level 4, then level 3 reopened)
+     * must each survive.
+     */
+    suspend fun recordCompletedOnce(key: Long): Int {
         var total = 0
+        val marker = key.toString()
         context.dataStore.edit { prefs ->
-            total = (prefs[COMPLETED_KEY] ?: 0) + 1
+            val banked = prefs[COMPLETED_WIN_KEYS] ?: emptySet()
+            total = prefs[COMPLETED_KEY] ?: 0
+            if (marker in banked) return@edit
+            total += 1
             prefs[COMPLETED_KEY] = total
+            prefs[COMPLETED_WIN_KEYS] = banked + marker
         }
         return total
     }
@@ -167,6 +182,7 @@ class NonogramDataStore(private val context: Context) {
         val GAME_MODE_KEY = stringPreferencesKey("game_mode")
         val MARK_MODE_KEY = stringPreferencesKey("mark_mode")
         val COMPLETED_KEY = intPreferencesKey("puzzles_completed")
+        val COMPLETED_WIN_KEYS = stringSetPreferencesKey("puzzles_completed_win_keys")
 
         val DAILY_DAY_KEY = longPreferencesKey("daily_day")
         val DAILY_FILLED_KEY = stringSetPreferencesKey("daily_filled_cells")
