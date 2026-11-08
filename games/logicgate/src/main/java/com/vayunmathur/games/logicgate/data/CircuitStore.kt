@@ -12,12 +12,17 @@ import com.vayunmathur.games.logicgate.domain.model.PinSide
 import com.vayunmathur.games.logicgate.domain.model.Point
 import com.vayunmathur.games.logicgate.domain.model.Wire
 import com.vayunmathur.library.util.DataStoreUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -49,28 +54,62 @@ data class CircuitDto(val nodes: List<NodeDto>, val wires: List<WireDto>, val ne
  * Per-level circuit drafts, as one JSON map in the shared DataStore. Saves are debounced on the
  * store's own scope rather than the ViewModel's, so the last edit still lands after the screen
  * closes.
+ *
+ * Unsaved drafts wait in [latest], one slot per level: a save for one level must never cancel
+ * another level's draft, [load] must see the newest state even before it is flushed, and
+ * [rewriteAll] must transform unsaved drafts too, so a debounced save can never overwrite a
+ * rewrite with a stale circuit.
  */
 class CircuitStore(context: Context, dispatcher: CoroutineDispatcher) {
     private val ds = DataStoreUtils.getInstance(context)
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val json = Json { ignoreUnknownKeys = true }
-    private var pending: Job? = null
+    private val lock = Any()
+    private val latest = mutableMapOf<String, CircuitDto>()
+    private var flush: Job? = null
 
-    suspend fun load(levelId: String): Circuit? = decode(ds.getStringAwait(KEY))[levelId]?.toDomain()
+    suspend fun load(levelId: String): Circuit? =
+        synchronized(lock) { latest[levelId] }?.toDomain()
+            ?: decode(ds.getStringAwait(KEY))[levelId]?.toDomain()
 
     fun save(levelId: String, circuit: Circuit) {
-        pending?.cancel()
-        pending = scope.launch {
+        synchronized(lock) { latest[levelId] = circuit.toDto() }
+        flush?.cancel()
+        flush = scope.launch {
             delay(SAVE_DEBOUNCE_MS)
-            val dto = circuit.toDto()
-            ds.updateString(KEY) { old -> json.encodeToString(decode(old) + (levelId to dto)) }
+            writePending()
         }
     }
 
     /** Applies [transform] to every saved draft, e.g. to follow a component whose pins moved. */
     suspend fun rewriteAll(transform: (Circuit) -> Circuit) {
+        // Let a flush that already started writing finish first, so its drafts land before the
+        // rewrite reads them; a flush still inside its debounce is cancelled and drained below.
+        // Joining a cancelled flush rethrows its CancellationException, which belongs to the
+        // flush and must not cancel this coroutine: swallow it unless we are cancelled ourselves.
+        flush?.cancel()
+        try {
+            flush?.join()
+        } catch (_: CancellationException) {
+            coroutineContext.ensureActive()
+        }
+        val snapshot: Map<String, CircuitDto> = synchronized(lock) {
+            latest.toMap().also { latest.clear() }
+        }
         ds.updateString(KEY) { old ->
-            json.encodeToString(decode(old).mapValues { (_, dto) -> transform(dto.toDomain()).toDto() })
+            val merged = decode(old) + snapshot
+            json.encodeToString(merged.mapValues { (_, dto) -> transform(dto.toDomain()).toDto() })
+        }
+    }
+
+    private suspend fun writePending() {
+        val snapshot: Map<String, CircuitDto> = synchronized(lock) {
+            if (latest.isEmpty()) return
+            latest.toMap().also { latest.clear() }
+        }
+        // Past this point the snapshot lives only in this job: a cancel must not drop it.
+        withContext(NonCancellable) {
+            ds.updateString(KEY) { old -> json.encodeToString(decode(old) + snapshot) }
         }
     }
 

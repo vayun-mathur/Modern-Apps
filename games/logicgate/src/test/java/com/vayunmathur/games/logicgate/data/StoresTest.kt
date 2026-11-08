@@ -37,6 +37,39 @@ class StoresTest {
         assertNull(store.load("and"))
     }
 
+    @Test fun `back to back saves keep both levels drafts`() = runBlocking {
+        val store = CircuitStore(ctx, Dispatchers.IO)
+        val a = ReferenceCircuits.build("not")
+        val b = ReferenceCircuits.build("and")
+        store.save("race-a", a)
+        store.save("race-b", b)
+        // Before the fix the second save cancelled the first level's debounced write, so the
+        // "race-a" draft never reached the DataStore and this timed out. Read through a fresh
+        // store so the in-memory overlay cannot mask a lost flush.
+        await("both drafts saved") {
+            val fresh = CircuitStore(ctx, Dispatchers.IO)
+            runBlocking { fresh.load("race-a") } != null &&
+                runBlocking { fresh.load("race-b") } != null
+        }
+        val fresh = CircuitStore(ctx, Dispatchers.IO)
+        assertEquals(a.nodes.size, fresh.load("race-a")!!.nodes.size)
+        assertEquals(b.nodes.size, fresh.load("race-b")!!.nodes.size)
+    }
+
+    @Test fun `rewrite during debounce keeps the rewrite`() = runBlocking {
+        val store = CircuitStore(ctx, Dispatchers.IO)
+        val circuit = ReferenceCircuits.build("not")
+        store.save("race-rw", circuit)
+        // The save is still inside its debounce here, so the rewrite must absorb the pending
+        // draft instead of throwing the cancelled flush's CancellationException into the caller.
+        store.rewriteAll { it.copy(nextId = it.nextId + 100) }
+        val fresh = CircuitStore(ctx, Dispatchers.IO)
+        await("rewrite landed") {
+            runBlocking { fresh.load("race-rw") }?.nextId == circuit.nextId + 100
+        }
+        assertEquals(circuit.nextId + 100, fresh.load("race-rw")!!.nextId)
+    }
+
     @Test fun `component store round trips custom chips`() = runBlocking {
         val store = ComponentStore(ctx, Dispatchers.IO)
         store.save(emptyList())
