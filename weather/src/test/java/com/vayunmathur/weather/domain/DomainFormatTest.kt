@@ -92,6 +92,26 @@ class DomainFormatTest {
         assertTrue(formatHourAxisLabel(epoch, true).isNotBlank())
     }
 
+    @Test fun epochLabelsLocationOffset() {
+        // 2026-01-01T00:00Z viewed as a location at UTC+5:30 (05:30 local).
+        val epoch = 1767225600L
+        assertEquals(epoch, parseLocalIsoToEpochSec("2026-01-01T05:30", 19800))
+        assertEquals("5 AM", formatStripHour(epoch, false, 19800))
+        assertEquals("5", formatStripHour(epoch, true, 19800))
+        assertEquals("05:30", formatClockTime(epoch, true, 19800))
+        assertTrue(formatClockTime(epoch, false, 19800).contains("5:30"))
+        assertEquals("05:00", formatHourAxisLabel(epoch, true, 19800))
+        // Same instant viewed as a location at UTC-5 (19:00 on the previous day).
+        assertEquals("7 PM", formatStripHour(epoch, false, -18000))
+        assertEquals("19", formatStripHour(epoch, true, -18000))
+        assertEquals("19:00", formatClockTime(epoch, true, -18000))
+        // Explicit-offset rendering must not depend on the device time zone.
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Denver"))
+        assertEquals("5 AM", formatStripHour(epoch, false, 19800))
+        assertEquals("05:30", formatClockTime(epoch, true, 19800))
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+    }
+
     @Test fun metricMetadata() {
         assertEquals("temperature_2m", WeatherMetric.Temperature.bundleHourlyVar)
         assertEquals("uv_index", WeatherMetric.UvIndex.bundleHourlyVar)

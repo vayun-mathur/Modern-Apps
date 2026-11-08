@@ -63,6 +63,8 @@ fun WeatherBlocks(
      * preview can pin it — otherwise the marker lands somewhere different every render.
      */
     nowEpochSec: Long = System.currentTimeMillis() / 1000,
+    /** `utc_offset_seconds` for the forecast location; null renders times in the device zone. */
+    utcOffsetSeconds: Int? = null,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 140.dp),
@@ -87,8 +89,8 @@ fun WeatherBlocks(
         item { Graphable({ onMetricSelected(WeatherMetric.CloudCover) }) { CloudCoverBlock(current = current) } }
         item { Graphable({ onMetricSelected(WeatherMetric.Pressure) }) { PressureBlock(current = current, pressureUnit = pressureUnit) } }
         item { Graphable({ onMetricSelected(WeatherMetric.Visibility) }) { VisibilityBlock(current = current, useMiles = windUnit == WindUnit.Mph) } }
-        item { SunBlock(sunriseEpochSec = sunriseEpochSec, sunsetEpochSec = sunsetEpochSec, use24Hour = use24Hour, daylightDurationSec = daylightDurationSec, nowEpochSec = nowEpochSec) }
-        item { MoonBlock(moonPhase = moonPhase, moonriseEpochSec = moonriseEpochSec, moonsetEpochSec = moonsetEpochSec, use24Hour = use24Hour, nowEpochSec = nowEpochSec) }
+        item { SunBlock(sunriseEpochSec = sunriseEpochSec, sunsetEpochSec = sunsetEpochSec, use24Hour = use24Hour, daylightDurationSec = daylightDurationSec, nowEpochSec = nowEpochSec, utcOffsetSeconds = utcOffsetSeconds) }
+        item { MoonBlock(moonPhase = moonPhase, moonriseEpochSec = moonriseEpochSec, moonsetEpochSec = moonsetEpochSec, use24Hour = use24Hour, nowEpochSec = nowEpochSec, utcOffsetSeconds = utcOffsetSeconds) }
         item { AirQualityBlock(air = air) }
         item { PollenBlock(air = air) }
     }
