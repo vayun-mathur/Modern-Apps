@@ -99,10 +99,11 @@ class PwaWebViewClientTest {
             val chrome = webView.webChromeClient!!
             chrome.onReceivedTitle(webView, "New Title")
             chrome.onReceivedTitle(webView, "")
-            // Unmapped resource: granted straight through.
+            // Unmapped resource: no consent path, so it fails closed.
             val unmapped = FakePermissionRequest(arrayOf(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID))
             chrome.onPermissionRequest(unmapped)
-            assertTrue(unmapped.granted != null)
+            assertTrue(unmapped.denied)
+            assertTrue(unmapped.granted == null)
             // Camera without system permission: a system request is launched and
             // the WebView request is held pending (neither granted nor denied yet).
             val camera = FakePermissionRequest(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE))
