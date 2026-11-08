@@ -17,6 +17,7 @@ mod placement;
 mod placement_markers;
 mod placement_refresh;
 mod placement_reuse;
+mod pivot;
 mod quad;
 mod rebuild;
 mod record;
@@ -230,51 +231,6 @@ struct TransientBuffers {
 /// What the symbol placer accepted: candidate id → (it took its alternate anchor, where in
 /// acceptance order it landed).
 type AcceptSet = HashMap<u64, (bool, u32)>;
-
-/// Everything [`Renderer::place_symbols`] reads that can change what it decides.
-///
-/// Floats are compared as bit patterns rather than by value. This is an identity test — "is this
-/// the same camera the last accept-set was computed from" — and not a question about numeric
-/// closeness, so bits are both the correct comparison and the one that needs no epsilon.
-///
-/// `center_lon`/`center_lat`/`zoom`/`bearing`/`pitch` carry the exact camera for the fast exact-hit
-/// path; `bucket_*` carry the quantised camera for the retained-collision slow path (see
-/// [`same_bucket`](PlacementKey::same_bucket)): a small pan inside one bucket reuses the accept-set
-/// without re-running the quadratic placer.
-#[derive(PartialEq, Eq, Clone)]
-struct PlacementKey {
-    center_lon: u64,
-    center_lat: u64,
-    zoom: u64,
-    bearing: u64,
-    pitch: u64,
-    /// Quantised camera bucket: zoom in 1/32-level bins, bearing/pitch in 4° bins, centre in
-    /// ~1/1024-tile bins at the floored zoom. Two frames in one bucket share a collision answer
-    /// (only the outcome lags; boxes still re-project per frame in `refresh_placed`).
-    bucket_zoom: i64,
-    bucket_bearing: i64,
-    bucket_pitch: i64,
-    bucket_lon: i64,
-    bucket_lat: i64,
-    /// Whether the globe path was active: globe and flat project through different box
-    /// builders, so a bucket never spans the projection switch.
-    globe: bool,
-    width_dp: u32,
-    height_dp: u32,
-    density: u32,
-    extent: (u32, u32),
-    filter: crate::style::KindFilter,
-    /// Every resident tile with its upload stamp, so a tile that arrives or is replaced re-places
-    /// even though the camera has not moved. `camera.time_seconds` is deliberately *not* in this
-    /// key: it changes every frame and enters no collision box.
-    tiles: Vec<(u64, u32)>,
-    /// The style, by layer count. A style or toggle change re-tessellates the resident set, which
-    /// restamps every tile above, so this only has to catch the layer set itself changing.
-    layers: usize,
-    /// The marker generation ([`Renderer::marker_epoch`]): a pushed pin set must re-place even
-    /// when the camera has not moved, so a new pin immediately culls the POIs it covers.
-    markers: u64,
-}
 
 /// Per-frame synchronisation and its command buffer.
 struct Frame {

@@ -106,6 +106,15 @@ internal object MapNative {
     ): Boolean
 
     /**
+     * Tilt-pivot elevation under [lon]/[lat] in world px at [zoom] — the height the
+     * renderer pivots a tilted frame on (see `Renderer::render`), for the Compose overlay
+     * [Projection] so markers and gestures use the same pivot the basemap drew with.
+     * Returns 0.0 — the legacy sea-level pivot — on a dead handle or where no resident
+     * tile has DEM (oceans, unloaded tiles), exactly the renderer's fallback.
+     */
+    external fun tiltPivotDp(handle: Long, lon: Float, lat: Float, zoom: Float): Double
+
+    /**
      * Upload the Moon raster pair: [colorRgba] is `width x height` RGBA8 (the
      * converted LROC color), [demRg] is `demWidth x demHeight` RG8 packed uint16
      * half-metres + 20000 (the converted LDEM). Called once after attach (and

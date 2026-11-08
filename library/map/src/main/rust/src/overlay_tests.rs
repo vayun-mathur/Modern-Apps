@@ -42,6 +42,7 @@
             density: 3.0,
             bearing_deg: bearing,
             pitch_deg: 0.0,
+            pivot_dp: 0.0,
             time_seconds: 0.0,
             globe: false,
             moon: false,

@@ -3,7 +3,7 @@
 //! Pure move out of `bridge.rs`; no logic changes.
 use super::handle::handle_mut;
 use jni::objects::{JClass, JObject};
-use jni::sys::{jfloat, jlong, jobjectArray};
+use jni::sys::{jdouble, jfloat, jlong, jobjectArray};
 use jni::{jni_str, EnvUnowned};
 /// Task-17 pick: placed labels intersecting the query box (Dp from the
 /// viewport top-left). Returns `\u{1}`-joined `layerId/name/kind/lon/lat/featureId/regionId`
@@ -90,4 +90,30 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_pickAt<'l>(
     let x = (x_dp.max(0.0) * density).round() as u32;
     let y = (y_dp.max(0.0) * density).round() as u32;
     map.renderer.pick_at(x, y) as jlong
+}
+
+/// Tilt-pivot elevation under a geo point, in world px at `zoom`.
+///
+/// The host-side counterpart of the renderer's per-frame pivot resolution (see
+/// `Renderer::render`): the Compose overlay [`Projection`](../../../..) — which
+/// positions markers and answers gesture unprojection on the CPU — must pivot
+/// on the same terrain height the renderer drew with, or overlays drift off
+/// their ground points under tilt. Returns 0.0 — the legacy sea-level pivot —
+/// on a dead handle or where no resident tile has DEM (oceans, unloaded
+/// tiles), exactly the fallback the renderer uses, so both sides agree there
+/// too. `lon`/`lat`/`zoom` are `Float` for the same significant-digits reason
+/// as [`render`](Java_com_vayunmathur_library_map_MapNative_render)'s camera.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_tiltPivotDp<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    lon: jfloat,
+    lat: jfloat,
+    zoom: jfloat,
+) -> jdouble {
+    let Some(map) = handle_mut(handle) else {
+        return 0.0;
+    };
+    map.renderer.pivot_dp_at(lon as f64, lat as f64, zoom as f64)
 }

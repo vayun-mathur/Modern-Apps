@@ -38,6 +38,7 @@ pub mod camera;
 pub mod camera_extra;
 pub mod camera_extra2;
 pub mod camera_extra3;
+pub mod camera_terrain;
 pub mod camera_globe;
 #[cfg(test)]
 mod camera_globe_tests;

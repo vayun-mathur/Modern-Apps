@@ -17,6 +17,7 @@ mod tests {
             density: 1.0,
             bearing_deg: 0.0,
             pitch_deg: 0.0,
+            pivot_dp: 0.0,
             globe: true,
             moon: false,
             time_seconds: 0.0,

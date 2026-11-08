@@ -35,6 +35,7 @@ fn camera(lon: f64, lat: f64, zoom: f64, w: f32, h: f32) -> Camera {
         density: 1.0,
         bearing_deg: 0.0,
         pitch_deg: 0.0,
+        pivot_dp: 0.0,
         time_seconds: 0.0,
         globe: false,
         moon: false,
@@ -65,6 +66,7 @@ fn resident_demand_fits_the_cap_with_headroom() {
                     for globe in [false, true] {
                         let c = Camera {
                             pitch_deg: pitch,
+                            pivot_dp: 0.0,
                             bearing_deg: bearing,
                             globe,
                             ..camera(-122.4194, 37.7749, zoom as f64, w, h)

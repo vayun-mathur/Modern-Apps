@@ -82,6 +82,17 @@ class Projection internal constructor(
      * indistinguishable from flat — see [CameraState.globeEnabled]).
      */
     private val globe: Boolean = false,
+    /**
+     * Tilt-pivot elevation under the projection centre, in world px at [zoom].
+     *
+     * Mirrors the renderer's per-frame `Camera::pivot_dp`: under pitch the camera model
+     * pivots on the terrain height at the target rather than on sea level, so over high
+     * ground overlays stay glued to their ground points instead of sliding downhill.
+     * Refreshed per frame by the rendered surface (see `SurfaceMapRenderer`) from the
+     * same resident heightmaps the renderer resolves its own pivot from; 0.0 is the
+     * legacy sea-level pivot (oceans, unloaded tiles, and every flat frame).
+     */
+    private val pivotDp: Double = 0.0,
 ) {
     private val halfW = widthDp / 2.0
     private val halfH = heightDp / 2.0
@@ -120,23 +131,27 @@ class Projection internal constructor(
         val pitch = Math.toRadians(pitchDeg)
         val psin = sin(pitch)
         val pcos = cos(pitch)
-        val w = d - psin * sy
+        // The eye sits d·cos above the pivot terrain (mirroring `Camera::perspective`),
+        // so the forward ray carries the pivot height on both the constant column and w.
+        val w = d - psin * sy + pcos * pivotDp
         // Behind the eye — only past the horizon, which the pitch cap keeps off-screen. Push it
         // far off rather than dividing by a non-positive w.
         if (w <= 0.0) return DpOffset(OFF_SCREEN_DP.dp, OFF_SCREEN_DP.dp)
         val screenX = halfW + (fx * sx / w) * halfW
-        val screenY = halfH + (fy * pcos * sy / w) * halfH
+        val screenY = halfH + (fy * (pcos * sy + psin * pivotDp) / w) * halfH
         return DpOffset(screenX.toFloat().dp, screenY.toFloat().dp)
     }
 
     /**
      * Geographic position under a screen [offset] (from the viewport top-left).
      *
-     * The tilted branch intersects the eye ray with the flat ground **plane**, ignoring terrain
-     * elevation: over relief this leaves a bounded vertical error, which is fine for gestures
-     * (pan/anchor follow the finger approximately). Exact ground/feature hits under tilt go through
-     * the GPU instead — label picks via `pickLabels` and precise hits via `pickAt`'s id/depth
-     * readback — both of which are terrain-correct because they read what was actually drawn.
+     * The tilted branch intersects the eye ray with the pivot **plane** at [pivotDp] above
+     * sea level — the terrain height the renderer pivoted on — rather than with the flat
+     * ground plane: over relief this leaves only the local height-minus-pivot error, which
+     * is fine for gestures (pan/anchor follow the finger approximately). Exact
+     * ground/feature hits under tilt go through the GPU instead — label picks via
+     * `pickLabels` and precise hits via `pickAt`'s id/depth readback — both of which are
+     * terrain-correct because they read what was actually drawn.
      */
     fun positionFromScreenLocation(offset: DpOffset): GeoPoint {
         if (globe) return globePositionFromScreenLocation(offset)
@@ -152,12 +167,13 @@ class Projection internal constructor(
             val pcos = cos(pitch)
             val ndcX = (offset.x.value - halfW) / halfW
             val ndcY = (offset.y.value - halfH) / halfH
-            // Invert clip.y = fy*cos*sy / (d - sin*sy) for sy, then clip.x for sx. The denominator
-            // only vanishes at/above the horizon, which the pitch cap keeps off-screen; clamp to a
-            // tiny positive so a query exactly on it maps far away rather than to a NaN.
+            // Invert clip.y = fy*(cos*sy + sin*h0) / (d - sin*sy + cos*h0) for sy, then
+            // clip.x for sx. The denominator only vanishes at/above the horizon, which the
+            // pitch cap keeps off-screen; clamp to a tiny positive so a query exactly on it
+            // maps far away rather than to a NaN.
             val denom = (fy * pcos + ndcY * psin).coerceAtLeast(MIN_PERSPECTIVE_DENOM)
-            sy = ndcY * d / denom
-            val w = d - psin * sy
+            sy = (ndcY * (d + pcos * pivotDp) - fy * psin * pivotDp) / denom
+            val w = d - psin * sy + pcos * pivotDp
             sx = ndcX * w / fx
         }
         // Inverse bearing rotation (mirroring `Camera::screen_to_world`): the screen offset back

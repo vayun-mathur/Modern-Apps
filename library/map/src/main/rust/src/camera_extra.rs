@@ -226,9 +226,12 @@ impl Camera {
         let p = self.perspective();
         let sx = cos * dx + sin * dy;
         let sy = -sin * dx + cos * dy;
-        let aw = p.d - psin * sy;
+        // Pivoted anchor: the ground point sits H0 above sea level, so the eye
+        // is H0 higher too and the anchor's clip depth/height carry the pivot.
+        let h0 = self.pivot_dp;
+        let aw = p.d - psin * sy + pcos * h0;
         let ax = p.fx * sx;
-        let ay = p.fy * pcos * sy;
+        let ay = p.fy * (pcos * sy + psin * h0);
         let az = p.depth_a * aw - p.depth_b;
         let rx = radius_dp / (self.width_dp as f64 / 2.0) * aw;
         let ry = radius_dp / (self.height_dp as f64 / 2.0) * aw;
@@ -253,7 +256,7 @@ impl Camera {
     }
 
     /// The tilt-dependent perspective constants for this camera. See [`Perspective`].
-    fn perspective(&self) -> Perspective {
+    pub(crate) fn perspective(&self) -> Perspective {
         let half_w = self.width_dp as f64 / 2.0;
         let half_h = self.height_dp as f64 / 2.0;
         // MapLibre-like: the centre sits 1.5 viewport-heights from the eye. `d` cancels at
@@ -303,6 +306,13 @@ impl Camera {
         } = self.perspective();
         let [au, av, a0] = a;
         let [bu, bv, b0] = b;
+        // The tilt pivot: ground heights are measured from `pivot_dp` (world px
+        // above sea level), not from sea level. Substituting `hh → hh − H0` in
+        // the camera model raises the eye by H0 alongside the pivot plane, so
+        // its height above the pivot terrain stays `d·cos > 0` and the
+        // viewpoint never dives under high terrain. H0 = 0 is the legacy
+        // sea-level pivot, term-for-term what this always was.
+        let h0 = self.pivot_dp;
         // Column-major: the u, v, height and constant columns of (Xclip, Yclip, Zclip, Wclip).
         [
             (fx * au) as f32,
@@ -318,9 +328,9 @@ impl Camera {
             (depth_a * -cos) as f32,
             (-cos) as f32, //
             (fx * a0) as f32,
-            (fy * cos * b0) as f32,
-            (depth_a * (d - sin * b0) - depth_b) as f32,
-            (d - sin * b0) as f32,
+            (fy * (cos * b0 + sin * h0)) as f32,
+            (depth_a * (d - sin * b0 + cos * h0) - depth_b) as f32,
+            (d - sin * b0 + cos * h0) as f32,
         ]
     }
 
@@ -347,13 +357,15 @@ impl Camera {
             let (psin, pcos) = self.pitch_deg.to_radians().sin_cos();
             let ndc_x = (screen_x_dp - half_w) / half_w;
             let ndc_y = (screen_y_dp - half_h) / half_h;
-            // Invert clip.y = fy*cos*sy / (d - sin*sy) for sy, then clip.x for sx.
+            // Invert clip.y = fy*(cos*sy + sin*H0) / (d - sin*sy + cos*H0) for
+            // sy, then clip.x for sx. H0 = 0 is the legacy sea-level solve.
             let denom = p.fy * pcos + ndc_y * psin;
             if denom <= 0.0 {
                 return None; // at or above the horizon: the ray never meets the ground.
             }
-            sy = ndc_y * p.d / denom;
-            let w = p.d - psin * sy;
+            let h0 = self.pivot_dp;
+            sy = (ndc_y * (p.d + pcos * h0) - p.fy * psin * h0) / denom;
+            let w = p.d - psin * sy + pcos * h0;
             sx = ndc_x * w / p.fx;
         }
         // Inverse bearing rotation: screen-flat offset back to a world-px offset from centre.
@@ -361,98 +373,6 @@ impl Camera {
             x: center.x + cos * sx - sin * sy,
             y: center.y + sin * sx + cos * sy,
         })
-    }
-
-    /// The ground world-px under a screen point, intersecting the eye ray with the **displaced
-    /// terrain** rather than the flat plane — the ray/heightfield extension of
-    /// [`screen_to_world`](Self::screen_to_world) that WS-G's seam in
-    /// [`perspective_plane`](Self::perspective_plane) anticipates.
-    ///
-    /// `height_at` returns the terrain height at a world-px ground position, in **world px** — the
-    /// same unit the perspective matrix's `z` input uses (metres scaled by the tile's
-    /// world-px-per-metre; see [`crate::tess::terrain`]). It is a closure rather than a field so
-    /// this stays a pure function of the camera: the renderer passes a sampler over its resident
-    /// heightmaps, tests pass a synthetic surface.
-    ///
-    /// At `pitch_deg == 0` the projection ignores height for x/y, so a tap lands on exactly the
-    /// flat-plane point regardless of relief and this returns
-    /// [`screen_to_world`](Self::screen_to_world) unchanged. Above zero it walks the eye ray from
-    /// the eye toward the flat-plane hit, sampling `height_at`, and returns the first crossing of
-    /// the terrain surface, refined by bisection.
-    ///
-    /// The march exploits that the map from screen-flat `(sx, sy, height)` to camera space is
-    /// affine, so the eye ray is a straight line there: the eye is `(0, d·sin, d·cos)` (solving the
-    /// camera model in [`perspective_plane`](Self::perspective_plane) for the origin) and the
-    /// flat-plane hit is the ray's `height == 0` point, so the segment between them — extended a
-    /// little past the plane for below-sea terrain — is the ray. `None` above the horizon
-    /// (impossible on-screen under [`PITCH_MAX_DEG`]) or when the ray never meets the terrain, in
-    /// which case the flat-plane hit is the best answer.
-    pub fn screen_to_world_over_terrain(
-        &self,
-        screen_x_dp: f64,
-        screen_y_dp: f64,
-        height_at: impl Fn(WorldPx) -> f64,
-    ) -> Option<WorldPx> {
-        if self.pitch_deg == 0.0 {
-            return self.screen_to_world(screen_x_dp, screen_y_dp);
-        }
-        // The flat-plane hit is the ray's height-0 point and, with the eye, fixes its direction.
-        let plane = self.screen_to_world(screen_x_dp, screen_y_dp)?;
-        let center = project(self.center_lon, self.center_lat, self.zoom);
-        let (cos, sin) = self.rotation();
-        // The plane hit as a screen-flat offset from the centre: the inverse of the final rotation
-        // `screen_to_world` applies.
-        let dxw = plane.x - center.x;
-        let dyw = plane.y - center.y;
-        let sx1 = cos * dxw + sin * dyw;
-        let sy1 = -sin * dxw + cos * dyw;
-        // The eye in the same (sx, sy, height) frame, and the ray toward the plane hit.
-        let p = self.perspective();
-        let (psin, pcos) = self.pitch_deg.to_radians().sin_cos();
-        let eye = (0.0f64, p.d * psin, p.d * pcos);
-        let dir = (sx1 - eye.0, sy1 - eye.1, 0.0 - eye.2);
-
-        let world_at = |t: f64| {
-            let sx = eye.0 + t * dir.0;
-            let sy = eye.1 + t * dir.1;
-            WorldPx {
-                x: center.x + cos * sx - sin * sy,
-                y: center.y + sin * sx + cos * sy,
-            }
-        };
-        let ray_height = |t: f64| eye.2 + t * dir.2;
-        // Positive while the ray is above the terrain, non-positive once it has crossed below.
-        let gap = |t: f64| ray_height(t) - height_at(world_at(t));
-
-        // March from the eye toward (and a little past) the plane hit. Terrain above sea rises
-        // toward the ray, so its crossing is at t <= 1; below-sea terrain can push it past 1, so the
-        // march overshoots before giving up. The pitch cap keeps the whole thing bounded.
-        const STEPS: usize = 96;
-        const T_MAX: f64 = 1.5;
-        if gap(0.0) <= 0.0 {
-            // The eye is at or under the terrain: degenerate, fall back to the plane hit.
-            return Some(plane);
-        }
-        let mut prev_t = 0.0;
-        for i in 1..=STEPS {
-            let t = T_MAX * i as f64 / STEPS as f64;
-            if gap(t) <= 0.0 {
-                // A crossing is bracketed in (prev_t, t]; bisect to refine it.
-                let (mut lo, mut hi) = (prev_t, t);
-                for _ in 0..40 {
-                    let mid = 0.5 * (lo + hi);
-                    if gap(mid) > 0.0 {
-                        lo = mid;
-                    } else {
-                        hi = mid;
-                    }
-                }
-                return Some(world_at(0.5 * (lo + hi)));
-            }
-            prev_t = t;
-        }
-        // The ray grazed above every sample: the flat-plane hit is the best available answer.
-        Some(plane)
     }
 
     /// The screen point (Dp from the viewport top-left) a ground world-px projects to, or `None`
@@ -472,13 +392,14 @@ impl Camera {
         }
         let p = self.perspective();
         let (psin, pcos) = self.pitch_deg.to_radians().sin_cos();
-        let w = p.d - psin * sy;
+        let h0 = self.pivot_dp;
+        let w = p.d - psin * sy + pcos * h0;
         if w <= 0.0 {
             return None;
         }
         Some((
             half_w + (p.fx * sx / w) * half_w,
-            half_h + (p.fy * pcos * sy / w) * half_h,
+            half_h + (p.fy * (pcos * sy + psin * h0) / w) * half_h,
         ))
     }
 

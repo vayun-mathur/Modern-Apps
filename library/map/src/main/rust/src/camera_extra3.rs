@@ -110,6 +110,7 @@ mod tests {
             untilted,
             Camera {
                 pitch_deg: 0.0,
+                pivot_dp: 0.0,
                 ..level
             }
             .tile_to_clip(12, 654, 1583)
@@ -128,6 +129,7 @@ mod tests {
             quad,
             Camera {
                 pitch_deg: 0.0,
+                pivot_dp: 0.0,
                 ..level
             }
             .screen_quad_to_clip(-122.4194, 37.7749, 28.0)
@@ -140,6 +142,7 @@ mod tests {
         // its bottom row is no longer the ortho `(_, _, 0, 1)`, so a w-divide happens.
         let tilted = Camera {
             pitch_deg: 45.0,
+            pivot_dp: 0.0,
             ..camera(12.0)
         }
         .tile_to_clip(12, 2048, 2048);
@@ -158,6 +161,7 @@ mod tests {
                 center_lon: -122.4194,
                 center_lat: 37.7749,
                 pitch_deg: pitch,
+                pivot_dp: 0.0,
                 ..camera(12.0)
             };
             let m = cam.screen_quad_to_clip(-122.4194, 37.7749, 28.0);
@@ -192,6 +196,7 @@ mod tests {
                 center_lon: -122.4,
                 center_lat: 37.7,
                 pitch_deg: pitch,
+                pivot_dp: 0.0,
                 ..camera(12.0)
             };
             let center = project(-122.4, 37.7, 12.0);
@@ -209,6 +214,7 @@ mod tests {
         // the top of a tilted view recedes toward the horizon. At pitch 0 the two are equal.
         let cam = Camera {
             pitch_deg: 45.0,
+            pivot_dp: 0.0,
             ..camera(12.0)
         };
         let center = project(cam.center_lon, cam.center_lat, 12.0);
@@ -245,6 +251,7 @@ mod tests {
             center_lon: -122.4,
             center_lat: 37.7,
             pitch_deg: 50.0,
+            pivot_dp: 0.0,
             ..camera(13.0)
         };
         for &(x, y) in &[(256.0, 120.0), (256.0, 256.0), (300.0, 400.0)] {
@@ -266,6 +273,7 @@ mod tests {
             center_lon: 0.0,
             center_lat: 0.0,
             pitch_deg: 55.0,
+            pivot_dp: 0.0,
             ..camera(14.0)
         };
         let pixel = (256.0, 80.0); // above the centre: up-map, toward the horizon
@@ -297,6 +305,7 @@ mod tests {
             center_lon: 2.35,
             center_lat: 48.85,
             pitch_deg: 45.0,
+            pivot_dp: 0.0,
             width_dp: 411.0,
             height_dp,
             ..camera(13.0)
@@ -348,6 +357,7 @@ mod tests {
             center_lon: 0.0,
             center_lat: 0.0,
             pitch_deg: 50.0,
+            pivot_dp: 0.0,
             width_dp: 411.0,
             height_dp,
             ..camera(14.0)

@@ -11,6 +11,7 @@ fn camera(lon: f64, lat: f64, zoom: f64, w: f32, h: f32) -> Camera {
         density: 1.0,
         bearing_deg: 0.0,
         pitch_deg: 0.0,
+        pivot_dp: 0.0,
         time_seconds: 0.0,
         globe: false,
         moon: false,
@@ -135,6 +136,7 @@ fn a_tilted_viewport_pulls_in_the_trapezoid_toward_the_horizon() {
     let level = camera(-122.4194, 37.7749, 14.0, 411.0, 891.0);
     let tilted = Camera {
         pitch_deg: 55.0,
+        pivot_dp: 0.0,
         ..level
     };
     let flat = visible(&level, 0, 16);
@@ -161,6 +163,7 @@ fn every_on_screen_ground_point_of_a_tilted_view_lands_in_a_selected_tile() {
     // renderer draws with, so selection and drawing agree.
     let c = Camera {
         pitch_deg: 50.0,
+        pivot_dp: 0.0,
         bearing_deg: 30.0,
         ..camera(2.3522, 48.8566, 13.0, 411.0, 891.0)
     };
@@ -199,6 +202,7 @@ fn a_zero_pitch_selection_is_unchanged() {
         visible(
             &Camera {
                 pitch_deg: 0.0,
+                pivot_dp: 0.0,
                 ..c
             },
             0,
@@ -210,6 +214,7 @@ fn a_zero_pitch_selection_is_unchanged() {
         visible(
             &Camera {
                 pitch_deg: 0.0,
+                pivot_dp: 0.0,
                 ..turned
             },
             0,

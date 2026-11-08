@@ -63,6 +63,7 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
         density,
         bearing_deg: bearing as f64,
         pitch_deg: (pitch as f64).clamp(0.0, crate::camera::PITCH_MAX_DEG),
+        pivot_dp: 0.0,
         globe,
         moon,
         time_seconds: ((frame_time_nanos.rem_euclid(crate::camera::CLOCK_WRAP_NANOS)) as f64

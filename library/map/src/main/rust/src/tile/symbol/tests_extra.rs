@@ -14,6 +14,7 @@ fn camera(pitch_deg: f64) -> Camera {
         density: 1.0,
         bearing_deg: 0.0,
         pitch_deg,
+        pivot_dp: 0.0,
         time_seconds: 0.0,
         globe: false,
         moon: false,
@@ -24,6 +25,7 @@ fn camera(pitch_deg: f64) -> Camera {
 fn ortho2x2(cam: &Camera, z: u8, x: u32, y: u32) -> [f32; 4] {
     let flat = Camera {
         pitch_deg: 0.0,
+        pivot_dp: 0.0,
         ..*cam
     }
     .tile_to_clip(z, x, y);
@@ -323,6 +325,7 @@ fn an_icon_push_built_from_parts_matches_icon_push() {
     let (z, x, y) = CENTRED_TILE;
     let flat = Camera {
         pitch_deg: 0.0,
+        pivot_dp: 0.0,
         ..cam
     }
     .tile_to_clip(z, x, y);
@@ -349,6 +352,7 @@ fn an_icon_push_built_from_parts_matches_icon_push() {
     let level = camera(0.0);
     let flat_level = Camera {
         pitch_deg: 0.0,
+        pivot_dp: 0.0,
         ..level
     }
     .tile_to_clip(z, x, y);
@@ -374,6 +378,7 @@ fn the_derived_flag_drives_billboard_clip_the_way_the_shader_reads_it() {
         let m = cam.tile_to_clip(z, x, y);
         let flat = Camera {
             pitch_deg: 0.0,
+            pivot_dp: 0.0,
             ..cam
         }
         .tile_to_clip(z, x, y);

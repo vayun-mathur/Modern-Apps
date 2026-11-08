@@ -74,6 +74,17 @@ pub struct Camera {
     /// true perspective (real z, w-divide) and [`screen_quad_to_clip`](Self::screen_quad_to_clip)
     /// billboards its quad upright.
     pub pitch_deg: f64,
+    /// Terrain elevation of the tilt pivot, in world px at this camera's zoom.
+    ///
+    /// Zero is the legacy sea-level pivot: every tilted matrix below is then
+    /// bit-for-bit what it always was. Nonzero raises the pivot plane to the
+    /// terrain height under the camera target, so the eye (kept `d·cos` above
+    /// the pivot) stays out of the ground over high terrain instead of diving
+    /// under it. Resolved per frame in `Renderer::render` from the finest
+    /// resident heightmap tile covering the target; oceans and unloaded tiles
+    /// keep zero. Ignored at pitch 0 (the ortho fast path keys heights out of
+    /// x/y) and on the globe/Moon paths.
+    pub pivot_dp: f64,
     /// Seconds since an arbitrary epoch, forwarded from the host's per-frame `frameTimeNanos`.
     ///
     /// **Bounded to `[0, `[`CLOCK_WRAP_SECONDS`]`)` and wraps** — see [`CLOCK_WRAP_NANOS`] for

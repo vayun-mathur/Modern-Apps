@@ -294,6 +294,7 @@ fn camera(pitch_deg: f64) -> Camera {
         density: 1.0,
         bearing_deg: 0.0,
         pitch_deg,
+        pivot_dp: 0.0,
         time_seconds: 0.0,
         globe: false,
         moon: false,
@@ -304,6 +305,7 @@ fn camera(pitch_deg: f64) -> Camera {
 fn ortho2x2(cam: &Camera, z: u8, x: u32, y: u32) -> [f32; 4] {
     let flat = Camera {
         pitch_deg: 0.0,
+        pivot_dp: 0.0,
         ..*cam
     }
     .tile_to_clip(z, x, y);

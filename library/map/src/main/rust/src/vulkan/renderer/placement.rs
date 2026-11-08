@@ -1,7 +1,9 @@
 use super::{
     anchors_for, kind_name,
-    placement_reuse::{box_inputs, box_inputs_with_arms, bucket_for, reuse_cached_accept},
-    AcceptSet, Overlay, PlacedHit, PlacementKey, Renderer, QUAD_INDICES,
+    placement_reuse::{
+        box_inputs, box_inputs_with_arms, bucket_for, reuse_cached_accept, PlacementKey,
+    },
+    AcceptSet, Overlay, PlacedHit, Renderer, QUAD_INDICES,
 };
 use crate::camera::Camera;
 use crate::marker::Marker;
@@ -61,7 +63,7 @@ impl Renderer {
     ) -> AcceptSet {
         use crate::tile::placement;
         let globe = crate::camera::globe_active(camera);
-        let (bucket_zoom, bucket_bearing, bucket_pitch, bucket_lon, bucket_lat) =
+        let (bucket_zoom, bucket_bearing, bucket_pitch, bucket_pivot, bucket_lon, bucket_lat) =
             bucket_for(camera);
         let key = PlacementKey {
             center_lon: camera.center_lon.to_bits(),
@@ -69,9 +71,11 @@ impl Renderer {
             zoom: camera.zoom.to_bits(),
             bearing: camera.bearing_deg.to_bits(),
             pitch: camera.pitch_deg.to_bits(),
+            pivot: camera.pivot_dp.to_bits(),
             bucket_zoom,
             bucket_bearing,
             bucket_pitch,
+            bucket_pivot,
             bucket_lon,
             bucket_lat,
             globe,

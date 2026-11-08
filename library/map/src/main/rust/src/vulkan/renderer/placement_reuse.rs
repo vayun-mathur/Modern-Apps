@@ -6,8 +6,66 @@
 //! accept-set, the [`PlacementKey`] universe comparison behind it, and the
 //! per-label collision-box inputs the candidate loop reads. A real submodule
 //! (not `include!`), so imports are explicit below.
-use super::PlacementKey;
 use super::AcceptSet;
+
+/// Everything [`Renderer::place_symbols`](super::Renderer::place_symbols) reads that can change
+/// what it decides.
+///
+/// File-length split from the renderer root (see `mod.rs`): the key lives here with the
+/// reuse machinery that compares it, instead of beside the buffer structs.
+///
+/// Floats are compared as bit patterns rather than by value. This is an identity test — "is this
+/// the same camera the last accept-set was computed from" — and not a question about numeric
+/// closeness, so bits are both the correct comparison and the one that needs no epsilon.
+///
+/// `center_lon`/`center_lat`/`zoom`/`bearing`/`pitch` carry the exact camera for the fast exact-hit
+/// path; `bucket_*` carry the quantised camera for the retained-collision slow path (see
+/// [`same_bucket`](PlacementKey::same_bucket)): a small pan inside one bucket reuses the accept-set
+/// without re-running the quadratic placer.
+#[derive(PartialEq, Eq, Clone)]
+pub(crate) struct PlacementKey {
+    pub(super) center_lon: u64,
+    pub(super) center_lat: u64,
+    pub(super) zoom: u64,
+    pub(super) bearing: u64,
+    pub(super) pitch: u64,
+    /// Exact tilt-pivot elevation bits: the pivot moves the projection, so a still camera
+    /// whose pivot resolved differently (a finer DEM tile arrived) must not exact-hit.
+    /// Like centre, it is pose, not universe — drift reuse ignores it (see `within_drift`)
+    /// and the bucket below carries its coarse bins.
+    pub(super) pivot: u64,
+    /// Quantised camera bucket: zoom in 1/32-level bins, bearing/pitch in 4° bins, centre in
+    /// ~1/1024-tile bins at the floored zoom. Two frames in one bucket share a collision answer
+    /// (only the outcome lags; boxes still re-project per frame in `refresh_placed`).
+    pub(super) bucket_zoom: i64,
+    pub(super) bucket_bearing: i64,
+    pub(super) bucket_pitch: i64,
+    /// Coarse pivot bins (32 world px): pivot changes within a bin reuse the accept-set,
+    /// a bin crossing re-places. Self-scaling — a fixed ground height is fewer px at low
+    /// zoom, where its projection effect is negligible, and more where it matters.
+    pub(super) bucket_pivot: i64,
+    pub(super) bucket_lon: i64,
+    pub(super) bucket_lat: i64,
+    /// Whether the globe path was active: globe and flat project through different box
+    /// builders, so a bucket never spans the projection switch.
+    pub(super) globe: bool,
+    pub(super) width_dp: u32,
+    pub(super) height_dp: u32,
+    pub(super) density: u32,
+    pub(super) extent: (u32, u32),
+    pub(super) filter: crate::style::KindFilter,
+    /// Every resident tile with its upload stamp, so a tile that arrives or is replaced re-places
+    /// even though the camera has not moved. `camera.time_seconds` is deliberately *not* in this
+    /// key: it changes every frame and enters no collision box.
+    pub(super) tiles: Vec<(u64, u32)>,
+    /// The style, by layer count. A style or toggle change re-tessellates the resident set, which
+    /// restamps every tile above, so this only has to catch the layer set itself changing.
+    pub(super) layers: usize,
+    /// The marker generation ([`Renderer::marker_epoch`](super::Renderer::marker_epoch)): a pushed
+    /// pin set must re-place even when the camera has not moved, so a new pin immediately culls
+    /// the POIs it covers.
+    pub(super) markers: u64,
+}
 use crate::camera::Camera;
 use crate::style::Layer;
 use crate::tile::geometry;
@@ -97,6 +155,7 @@ impl PlacementKey {
         self.bucket_zoom == other.bucket_zoom
             && self.bucket_bearing == other.bucket_bearing
             && self.bucket_pitch == other.bucket_pitch
+            && self.bucket_pivot == other.bucket_pivot
             && self.bucket_lon == other.bucket_lon
             && self.bucket_lat == other.bucket_lat
             && self.globe == other.globe
@@ -245,20 +304,23 @@ fn collision_padding_dp(zoom: f64) -> f32 {
 ///
 /// Bin sizes: zoom in 1/32-level bins (a slow pinch crosses ~2 bins/sec — each re-place is a
 /// stable answer, not flicker); bearing/pitch in 4° bins (inside the old 2° drift budget's
-/// spirit but coarser, because boxes re-project anyway); centre in ~1/1024-tile bins at the
+/// spirit but coarser, because boxes re-project anyway); pivot in 32-world-px bins (a tile
+/// refining under a still camera usually stays in-bin and reuses; panning into genuinely
+/// higher ground crosses bins and re-places); centre in ~1/1024-tile bins at the
 /// floored zoom (sub-pixel at every zoom — a pan crosses a bin every few frames at most).
 /// Globe is part of the key (flat and globe project through different box builders).
-pub(super) fn bucket_for(camera: &Camera) -> (i64, i64, i64, i64, i64) {
+pub(super) fn bucket_for(camera: &Camera) -> (i64, i64, i64, i64, i64, i64) {
     let zoom_bin = (camera.zoom * 32.0).floor() as i64;
     let bearing_bin = (camera.bearing_deg.rem_euclid(360.0) / 4.0).floor() as i64;
     let pitch_bin = (camera.pitch_deg / 4.0).floor() as i64;
+    let pivot_bin = (camera.pivot_dp / 32.0).floor() as i64;
     // Centre bins in tile units at the floored zoom: zoom-independent bin density.
     let floor_z = camera.zoom.floor().clamp(0.0, 22.0);
     let span = 512.0 * 2f64.powf(floor_z);
     let centre = crate::camera::project(camera.center_lon, camera.center_lat, floor_z);
     let lon_bin = (centre.x / span * 1024.0).floor() as i64;
     let lat_bin = (centre.y / span * 1024.0).floor() as i64;
-    (zoom_bin, bearing_bin, pitch_bin, lon_bin, lat_bin)
+    (zoom_bin, bearing_bin, pitch_bin, pivot_bin, lon_bin, lat_bin)
 }
 
 #[cfg(test)]
@@ -276,6 +338,7 @@ mod tests {
             density: 2.0,
             bearing_deg: bearing,
             pitch_deg: pitch,
+            pivot_dp: 0.0,
             time_seconds: 0.0,
             globe: false,
             moon: false,
@@ -325,8 +388,8 @@ mod tests {
         let low_b = camera(-122.4194 + shift_lon, 37.7749, 6.0, 0.0, 0.0);
         let high_a = camera(-122.4194, 37.7749, 14.0, 0.0, 0.0);
         let high_b = camera(-122.4194 + shift_lon, 37.7749, 14.0, 0.0, 0.0);
-        let low_moved = bucket_for(&low_a).3 != bucket_for(&low_b).3;
-        let high_moved = bucket_for(&high_a).3 != bucket_for(&high_b).3;
+        let low_moved = bucket_for(&low_a).4 != bucket_for(&low_b).4;
+        let high_moved = bucket_for(&high_a).4 != bucket_for(&high_b).4;
         // At z6 the shift is sub-bin (stays), at z14 it crosses bins (moves): the point
         // is the scaling holds, i.e. bins track ground, not zoom floats.
         assert!(!low_moved || high_moved);

@@ -255,6 +255,18 @@ impl Renderer {
         clear: u32,
         filter: &crate::style::KindFilter,
     ) -> Result<bool, String> {
+        // Tilt-pivot resolution: under pitch the camera model pivots on the terrain height
+        // at the target, not on sea level, so over high ground the eye stays `d·cos` above
+        // the pivot instead of diving under the terrain. Resolved here — after selection
+        // ran on the unpivoted JNI camera (a conservative sea-level trapezoid) — from the
+        // finest resident heightmap tile covering the target; oceans and unloaded tiles
+        // resolve 0.0, the legacy pivot, bit-for-bit. Flat, globe and Moon frames skip it:
+        // pitch 0 keys heights out of x/y and the globe/Moon paths project differently.
+        let mut pivoted = *camera;
+        if camera.pitch_deg > 0.0 && !crate::camera::globe_active(camera) {
+            pivoted.pivot_dp = self.ground_pivot_dp(camera);
+        }
+        let camera = &pivoted;
         self.last_camera = Some(*camera);
         if self.width == 0 || self.height == 0 {
             return Ok(true);

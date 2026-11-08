@@ -496,10 +496,39 @@ class SurfaceMapRenderer(
     fun renderFrame(frameTimeNanos: Long): Boolean {
         val snapshot = readFrameSnapshot() ?: return false
         trackFrameChange(snapshot)
+        refreshTiltPivot(snapshot)
         val drawn = renderSnapshot(snapshot, frameTimeNanos)
         if (drawn) onFrame()
         if (!regionResolved) applyRegionMask()
         return drawn
+    }
+
+    /**
+     * Refresh the Compose camera's tilt pivot from the resident heightmaps, so overlays
+     * positioned through [Projection] pivot on the same terrain the basemap draws with.
+     *
+     * Only under pitch on the flat path — the renderer's own gate (`Renderer::render`
+     * resolves its pivot exactly when `pitch > 0` off-globe) — and only on the Compose
+     * path, which is the sole reader of the pivot state. Writes only on change, so a
+     * settled pivot costs no recomposition; while tiles stream in the pivot converges and
+     * overlays track it a frame behind the basemap. A dead handle cannot reach here
+     * (`readFrameSnapshot` returns null first), and the native side answers 0.0 — the
+     * legacy sea-level pivot — wherever no resident tile has DEM.
+     */
+    private fun refreshTiltPivot(snapshot: FrameSnapshot) {
+        val state = composeCamera ?: return
+        val position = snapshot.position
+        if (position.pitch <= 0.0 || snapshot.globe) {
+            if (state.pivotDp != 0.0) state.pivotDp = 0.0
+            return
+        }
+        val pivot = MapNative.tiltPivotDp(
+            handle,
+            position.target.longitude.toFloat(),
+            position.target.latitude.toFloat(),
+            position.zoom.toFloat(),
+        )
+        if (pivot != state.pivotDp) state.pivotDp = pivot
     }
 
     /** Camera + viewport + globe state for one frame, or null when nothing can draw. */

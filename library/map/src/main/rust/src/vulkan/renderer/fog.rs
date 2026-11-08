@@ -150,6 +150,7 @@ mod tests {
             density: 2.0,
             bearing_deg: 0.0,
             pitch_deg: pitch,
+            pivot_dp: 0.0,
             time_seconds: 0.0,
             globe: false,
             moon: false,

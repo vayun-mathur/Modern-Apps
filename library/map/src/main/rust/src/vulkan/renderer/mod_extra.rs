@@ -11,9 +11,10 @@ use std::cell::Cell;
 use std::collections::HashMap;
 
 use super::{
-    AcceptSet, Frame, Overlay, PlacedHit, PlacementKey, ResidentTile, RouteBuffers,
+    AcceptSet, Frame, Overlay, PlacedHit, ResidentTile, RouteBuffers,
     TransientBuffers,
 };
+use super::placement_reuse::PlacementKey;
 use super::quad::Quad;
 use super::upload_pool::UploadPool;
 use crate::style::LayerKind;
@@ -261,6 +262,9 @@ pub(crate) struct FrameVersion {
     zoom: u64,
     bearing: u64,
     pitch: u64,
+    /// Exact tilt-pivot elevation bits: the pivot moves the projection, so a frame whose
+    /// pivot resolved differently must submit rather than early-out.
+    pivot: u64,
     width_dp: u32,
     height_dp: u32,
     density: u32,
@@ -293,6 +297,7 @@ impl FrameVersion {
             zoom: camera.zoom.to_bits(),
             bearing: camera.bearing_deg.to_bits(),
             pitch: camera.pitch_deg.to_bits(),
+            pivot: camera.pivot_dp.to_bits(),
             width_dp: camera.width_dp.to_bits(),
             height_dp: camera.height_dp.to_bits(),
             density: camera.density.to_bits(),

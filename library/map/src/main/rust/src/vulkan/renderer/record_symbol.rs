@@ -218,6 +218,7 @@ impl Renderer {
         // which is exactly the silent failure this sharing exists to make unrepresentable.
         let flat_clip = Camera {
             pitch_deg: 0.0,
+            pivot_dp: 0.0,
             ..*camera
         }
         .tile_to_clip(tz, tx, ty);

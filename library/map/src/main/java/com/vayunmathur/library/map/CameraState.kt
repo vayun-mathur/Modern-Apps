@@ -99,6 +99,18 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
     internal var viewportDp: Size? by mutableStateOf(null)
 
     /**
+     * Tilt-pivot elevation under the camera target, in world px at [CameraPosition.zoom].
+     *
+     * Refreshed once per frame by the rendered surface (see `SurfaceMapRenderer`) from the
+     * same resident heightmaps the renderer resolves its own pivot from, so the Compose
+     * [projection] pivots on what the basemap drew with. 0.0 until the first tilted frame
+     * resolves it — the legacy sea-level pivot — and always 0.0 offshore or before tiles
+     * load, exactly like the renderer's fallback. Only read under pitch (flat frames key
+     * heights out) and never on the globe path, which projects differently.
+     */
+    internal var pivotDp: Double by mutableStateOf(0.0)
+
+    /**
      * Task-17 pick provider: registered by the rendered surface (see
      * `VulkanMapSurface`), answering `(box, layerIds) -> placed labels`.
      * Null until a surface registers — a projection without a live renderer
@@ -148,6 +160,7 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
                 position.target, position.zoom, vp.width, vp.height,
                 position.pitch, position.bearing, labelQueryProvider, markerPickProvider,
                 globe = globeEnabled && position.zoom < GLOBE_DETAIL_ZOOM,
+                pivotDp = pivotDp,
             )
         }
     }
