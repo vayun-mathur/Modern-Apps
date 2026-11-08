@@ -143,7 +143,7 @@ open class WhisperRecognitionService : RecognitionService() {
             while (running && pumpOnce(chunk, state)) {
                 // All work happens in pumpOnce; an empty body keeps the loop to one jump.
             }
-            if (cancelled || state.noMatchReported) return
+            if (cancelled || state.noMatchReported || state.errorReported) return
             finishAndTranscribe(state.speechStarted)
         }
 
@@ -153,7 +153,19 @@ open class WhisperRecognitionService : RecognitionService() {
          */
         private fun pumpOnce(chunk: ShortArray, state: VadState): Boolean {
             val n = readChunk(chunk) ?: return false
-            if (n <= 0) return true // a failed read that is not a cancel: keep draining
+            if (n <= 0) {
+                // A failed read advances no audio clock, so none of the VAD
+                // timeouts can fire. Tolerate transient glitches but abort a
+                // dead microphone instead of spinning forever holding it.
+                state.consecutiveReadErrors++
+                if (state.consecutiveReadErrors >= MAX_CONSECUTIVE_READ_ERRORS) {
+                    finishError(SpeechRecognizer.ERROR_AUDIO)
+                    state.errorReported = true
+                    return false
+                }
+                return true // a failed read that is not a cancel: keep draining
+            }
+            state.consecutiveReadErrors = 0
             appendAudio(chunk, n, state)
             updateVad(state)
             maybeEmitPartial(state)
@@ -250,6 +262,10 @@ open class WhisperRecognitionService : RecognitionService() {
             var partialArmed = false
             /** Set when the no-speech timeout already reported no-match for this session. */
             var noMatchReported = false
+            /** Consecutive AudioRecord read failures; reset by every good chunk. */
+            var consecutiveReadErrors = 0
+            /** Set when a dead microphone already reported ERROR_AUDIO for this session. */
+            var errorReported = false
         }
 
         private fun finishAndTranscribe(speechStarted: Boolean) {
@@ -324,6 +340,12 @@ open class WhisperRecognitionService : RecognitionService() {
         private const val END_SILENCE_MS = 1000    // trailing silence that ends the utterance
         private const val NO_SPEECH_MS = 8000      // give up if nothing is said
         private const val MAX_MS = 29000           // Whisper handles <= 30 s
+        /**
+         * Consecutive failed AudioRecord reads before the session gives up
+         * with ERROR_AUDIO. Failed reads advance no audio clock, so without
+         * this bound a dead microphone spins the recording loop forever.
+         */
+        private const val MAX_CONSECUTIVE_READ_ERRORS = 50
         /** dB scale factor for the UI meter. */
         private const val DB_SCALE = 10.0
         /** Floor keeping silence at 0 dB rather than -infinity. */
