@@ -75,7 +75,6 @@ fun HomePage(
     onForgetBottle: () -> Unit,
     onForgetScale: () -> Unit,
     onResetScale: () -> Unit,
-    onHealthConnectClick: () -> Unit,
     onOpenDevices: () -> Unit,
 ) {
     AppScaffold(
@@ -145,12 +144,6 @@ fun HomePage(
                         )
                         Button(onClick = onOpenDevices) { Text(stringResource(R.string.add_device)) }
                     }
-                }
-            }
-
-            item {
-                OutlinedButton(onClick = onHealthConnectClick, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.permission_health_connect))
                 }
             }
         }
