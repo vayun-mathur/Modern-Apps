@@ -1,7 +1,12 @@
 package com.vayunmathur.maps.ui
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -272,6 +277,29 @@ class RouteTripSearchSlice3Test {
             )
         }
         rule.onNodeWithText("pizza").assertIsDisplayed()
+    }
+
+    @Test
+    fun `search sheet applies the host modifier at its root`() {
+        // The host owns IME padding (MapSheets puts imePadding on the scaffold
+        // root so the whole sheet rides above the keyboard); the sheet must
+        // apply the caller modifier to its own root rather than swallowing it,
+        // or host-supplied insets never reach the sheet.
+        val results = listOf(
+            SearchResult("poi:1:2:3", "Blue Bottle", "Cafe", 37.8, -122.4, "Cafe"),
+        )
+        rule.setContent {
+            Column(Modifier.imePadding()) {
+                SearchSheet(
+                    state = SearchUiState(query = "bl", results = results),
+                    actions = SearchActions.Noop,
+                    modifier = Modifier.testTag("search-sheet"),
+                    autoFocus = false,
+                )
+            }
+        }
+        rule.onNodeWithTag("search-sheet").assertIsDisplayed()
+        rule.onNodeWithText("Blue Bottle").assertIsDisplayed()
     }
 
     // --- ParkingSheet ---

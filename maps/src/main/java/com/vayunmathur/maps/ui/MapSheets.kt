@@ -36,6 +36,14 @@ internal fun MapPageScope.MapSheets(
             SearchSheet(
                 searchState,
                 searchActions,
+                // Top breathing room only. IME padding lives on the scaffold
+                // root below, not here: this content is measured at a capped
+                // height (the sheet's current offset), so padding inside it
+                // shrinks the rows without lifting the sheet, and the keys
+                // would still cover the field. Padding the scaffold root
+                // shrinks the whole layout, which places the sheet above the
+                // keyboard. Keep this free of inset modifiers so the sheet
+                // is not double-counted once the scaffold lifts it.
                 Modifier.padding(top = Spacing.sm),
             )
         }
