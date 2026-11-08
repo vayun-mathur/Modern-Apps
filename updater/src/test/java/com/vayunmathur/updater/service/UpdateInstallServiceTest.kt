@@ -82,6 +82,7 @@ class UpdateInstallServiceTest {
         OtaInstaller.signatureCheckOverride = null
         OtaInstaller.payloadEngineOverride = null
         OtaInstaller.careMapPathOverride = null
+        TestSysProps.reset()
         staged.delete(); careMap.delete()
     }
 
