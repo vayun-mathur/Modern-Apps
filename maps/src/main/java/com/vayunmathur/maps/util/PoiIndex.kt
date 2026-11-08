@@ -326,6 +326,13 @@ object PoiIndex {
     @Volatile
     private var mapped: Mapped? = null
     private var tried = false
+    /**
+     * The candidate POI files as they were at the last mapping attempt. A
+     * failed [initialize] is retried only when this changes, so the steady
+     * state (files absent, e.g. before the first download) stays a cheap
+     * no-op instead of re-running the mmap attempt on every call.
+     */
+    private var lastFingerprint: FileFingerprint? = null
 
     /** Read access for the extension queries in PoiIndexSpatial.kt / PoiIndexWords.kt. */
     internal fun mappedForQuery(): Mapped? = mapped
@@ -344,15 +351,23 @@ object PoiIndex {
      * safe to call repeatedly. Prefers the single-archive `.mamaps` file when
      * present (one download carries tiles, graph, POI and transit), falling
      * back to the side files. Returns false (and stays a no-op) when neither
-     * is present. Not retried automatically after a failure unless [reload]
-     * is called (e.g. after the download completes).
+     * is present.
+     *
+     * A failure is retried automatically when the on-disk files changed since
+     * the last attempt: an early call that ran before the download finished
+     * (e.g. cold-start intent routing, which runs before the `.mamaps` gate)
+     * must not poison later calls into a permanently empty index. An explicit
+     * [reload] is still available after the download completes, and is a
+     * no-op equivalent when the files already changed.
      */
     @Synchronized
     fun initialize(context: Context): Boolean {
         if (mapped != null) return true
-        if (tried) return false
-        tried = true
         val dir = context.getExternalFilesDir(null) ?: return false
+        val fingerprint = fingerprint(dir)
+        if (tried && fingerprint == lastFingerprint) return false
+        tried = true
+        lastFingerprint = fingerprint
         if (tryArchive(dir)) return true
         return open(dir)
     }
@@ -396,8 +411,40 @@ object PoiIndex {
     private fun reloadMapped(dir: File): Boolean {
         mapped = null
         tried = true
+        lastFingerprint = fingerprint(dir)
         if (tryArchive(dir)) return true
         return open(dir)
+    }
+
+    /**
+     * The on-disk inputs one mapping attempt reads: the single archive plus
+     * the side-file pair. Existence, length and mtime are enough to notice a
+     * download landing or files being replaced; hashing multi-gigabyte files
+     * on every call would defeat the cheap no-op this gate protects.
+     */
+    private data class FileFingerprint(
+        val archivePresent: Boolean,
+        val archiveLen: Long,
+        val archiveModified: Long,
+        val indexPresent: Boolean,
+        val indexLen: Long,
+        val namesPresent: Boolean,
+        val namesLen: Long,
+    )
+
+    private fun fingerprint(dir: File): FileFingerprint {
+        val archive = File(dir, MapTileCache.BASEMAP_ARCHIVE_FILE)
+        val index = File(dir, INDEX_FILE)
+        val names = File(dir, NAMES_FILE)
+        return FileFingerprint(
+            archivePresent = archive.isFile,
+            archiveLen = archive.length(),
+            archiveModified = archive.lastModified(),
+            indexPresent = index.isFile,
+            indexLen = index.length(),
+            namesPresent = names.isFile,
+            namesLen = names.length(),
+        )
     }
 
     @Synchronized
