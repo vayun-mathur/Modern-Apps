@@ -35,7 +35,14 @@ class AccrescentNotFoundException(message: String) : Exception(message)
  * gRPC status codes are mapped to intent-revealing exceptions so callers can distinguish
  * "incompatible device" and "no such app" from a generic failure.
  */
-class AccrescentApi {
+class AccrescentApi(
+    private val channelFactory: () -> ManagedChannel = {
+        OkHttpChannelBuilder
+            .forAddress(AccrescentRepo.APP_STORE_API_DOMAIN, HTTPS_PORT)
+            .useTransportSecurity()
+            .build()
+    },
+) {
 
     @Volatile
     private var channelRef: ManagedChannel? = null
@@ -51,11 +58,7 @@ class AccrescentApi {
         channelRef?.let { if (!it.isShutdown && !it.isTerminated) return it }
         return synchronized(this) {
             channelRef?.let { if (!it.isShutdown && !it.isTerminated) return it }
-            OkHttpChannelBuilder
-                .forAddress(AccrescentRepo.APP_STORE_API_DOMAIN, HTTPS_PORT)
-                .useTransportSecurity()
-                .build()
-                .also { channelRef = it }
+            channelFactory().also { channelRef = it }
         }
     }
 

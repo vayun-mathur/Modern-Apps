@@ -55,7 +55,7 @@ object ReproducibleBuilds {
         }
     }
 
-    private fun parse(file: File): Verified {
+    internal fun parse(file: File): Verified {
         val keys = HashSet<String>(24_000)
         JsonReader(file.reader()).use { r ->
             r.isLenient = true

@@ -28,7 +28,7 @@ data class PlayCluster(val title: String, val apps: List<UnifiedApp>)
  */
 class PlayStoreApi(
     private val authData: AuthData,
-    private val httpClient: PlayHttpClient
+    private val httpClient: com.aurora.gplayapi.network.IHttpClient
 ) {
 
     suspend fun getDetails(packageName: String): UnifiedApp? = withContext(Dispatchers.IO) {
