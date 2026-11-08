@@ -212,7 +212,10 @@ internal fun createBrowserWebChromeClient(
         if (resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) types.add(SitePermissionType.MICROPHONE)
 
         if (types.isEmpty()) {
-            request.grant(resources)
+            // No per-site sheet exists for these resources (protected media ID, MIDI
+            // sysex, ...): fail closed. Silently granting would hand out persistent
+            // device identifiers without any user signal.
+            request.deny()
             return
         }
 

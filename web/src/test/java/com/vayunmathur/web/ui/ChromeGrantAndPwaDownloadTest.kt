@@ -140,6 +140,23 @@ class ChromeGrantAndPwaDownloadTest {
         assertEquals(false, geoAllow)
     }
 
+    @Test fun chromeClientDeniesResourcesWithNoPermissionSheet() {
+        // RESOURCE_PROTECTED_MEDIA_ID (persistent DRM device identifier) has no
+        // per-site sheet: it must fail closed, never be silently granted.
+        val v = vm()
+        v.newTab(url = "https://media.example/watch")
+        val tabId = v.activeTabId!!
+        val deps = WebViewClientDeps(context, launcher()) { _, _, _ -> }
+        val chrome = createBrowserWebChromeClient(tabId, v, false, deps, onRequestNewTab = {})
+        val req = FakePermissionRequest(
+            arrayOf(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID),
+            Uri.parse("https://media.example"),
+        )
+        chrome.onPermissionRequest(req)
+        assertTrue(req.denied, "unlisted resource must be denied, granted=${req.granted}")
+        assertTrue(req.granted == null, "granted=${req.granted}")
+    }
+
     private fun findWebView(view: View): WebView? {
         if (view is WebView) return view
         if (view is ViewGroup) for (i in 0 until view.childCount) findWebView(view.getChildAt(i))?.let { return it }
