@@ -125,6 +125,20 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
+    override fun onSquareDrop(from: Position, to: Position) {
+        if (from == to) {
+            onSquareClick(from)
+            return
+        }
+        // A drop is the tap flow in one gesture: the press selects the piece (unless it
+        // already is), and the release taps the target square. The tap path owns every
+        // guard and the AI reply, so a legal drop commits exactly what two taps would and
+        // anything else lands as a tap on [from]. Releasing over the start square is a
+        // single tap, never select-then-deselect.
+        if (_uiState.value.selectedPiece != from) onSquareClick(from)
+        if (_uiState.value.selectedPiece == from) onSquareClick(to)
+    }
+
     override fun onPromote(pieceType: PieceType) {
         val board = _uiState.value.board
         val promotionPosition = board.promotionPosition ?: return

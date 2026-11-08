@@ -215,6 +215,21 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
         finishPlayerMove(level, newBoard, newApples, newMoves, promoPos, state.playerColor)
     }
 
+    /**
+     * Drag-and-drop: the press started on [from] and lifted on [to]. Same
+     * two-taps-in-one-gesture arrangement as the game board — the press selects, the
+     * release taps the target, so a legal drop reaches attemptMove exactly as two taps
+     * would. Anything else lands as a tap on [from].
+     */
+    fun onSquareDrop(from: Position, to: Position) {
+        if (from == to) {
+            onSquareClick(from)
+            return
+        }
+        if (_uiState.value.selectedPiece != from) onSquareClick(from)
+        if (_uiState.value.selectedPiece == from) onSquareClick(to)
+    }
+
     private fun addMovePoints(
         level: LearnLevel,
         apples: Set<Position>,

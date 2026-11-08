@@ -469,6 +469,24 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     /**
+     * Drag-and-drop: the press started on [from] and lifted on [to]. Same
+     * two-taps-in-one-gesture arrangement as the offline board — the press selects,
+     * the release taps the target, so a legal drop previews or sends exactly as two
+     * taps would (including the promotion staging). Anything else lands as a tap on
+     * [from].
+     */
+    fun onSquareDrop(from: Position, to: Position) {
+        if (from == to) {
+            onSquareClick(from)
+            return
+        }
+        val selected = (_uiState.value.connection as? OnlineConnection.Playing)?.selectedPiece
+        if (selected != from) onSquareClick(from)
+        val reselected = (_uiState.value.connection as? OnlineConnection.Playing)?.selectedPiece
+        if (reselected == from) onSquareClick(to)
+    }
+
+    /**
      * POSTs the UCI; the board advances when the server echoes it in the next `gameState`.
      * Sending twice (double-tap) is harmless — Lichess rejects the duplicate and the tail replay
      * skips what is already applied. A 401 drops to re-auth; other failures surface a message
