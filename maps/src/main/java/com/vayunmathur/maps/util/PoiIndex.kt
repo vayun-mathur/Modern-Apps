@@ -626,7 +626,8 @@ object PoiIndex {
         }
 
     /**
-     * Name search, ranked first-word-first then by distance to ([nearLat],[nearLon]).
+     * Name search, ranked by match quality, then user signal, then distance
+     * to ([nearLat],[nearLon]).
      *
      * Two implementations, picked by whether `poi_name_index.bin` was mapped:
      *
@@ -640,39 +641,41 @@ object PoiIndex {
      * so "izza" finds "Pizza"; a sorted index can only answer prefix questions, so the
      * indexed path matches a prefix *of any word*. That is a deliberate narrowing —
      * mid-word matches are lost, whole-word ones are not.
+     *
+     * Ranking, same on both paths: every query token must match (multi-word
+     * queries matched nothing before); tokens within one edit of a word match
+     * too, ranked below exact ones; [boost] (recents + saved places) only
+     * breaks ties within a rank — it never resurrects a non-match.
      */
     fun searchByName(
         query: String,
         nearLat: Double,
         nearLon: Double,
         limit: Int = 20,
+        boost: Map<String, Double> = emptyMap(),
     ): List<PoiRecord> {
         val m = mapped ?: return emptyList()
         if (query.isBlank()) return emptyList()
-        if (m.nameIdx != null) return searchByWordIndex(m, query, nearLat, nearLon, limit)
-        return searchByScan(m, query, nearLat, nearLon, limit)
+        // Fully-qualified: the package-level search lives in PoiIndexWords.kt.
+        if (m.nameIdx != null) {
+            return com.vayunmathur.maps.util.searchByWordIndex(
+                m, query, nearLat, nearLon, limit, CANDIDATE_CAP, boost,
+            )
+        }
+        return searchByScan(m, query, nearLat, nearLon, limit, boost)
     }
 
-    // Indexed search lives in PoiIndexWords.kt; this delegates so searchByName is unchanged.
-    private fun searchByWordIndex(
-        m: Mapped,
-        query: String,
-        nearLat: Double,
-        nearLon: Double,
-        limit: Int,
-    ): List<PoiRecord> = searchByWordIndex(m, query, nearLat, nearLon, limit, CANDIDATE_CAP)
-
-    // Scan search lives in PoiIndexWords.kt; this delegates so searchByName is unchanged.
-    // (This must call the package-level function there: calling itself
-    // recurses forever — StackOverflowError on every scan-path search.)
+    // Scan search lives in PoiIndexWords.kt (call it fully-qualified: calling
+    // itself here would recurse forever — StackOverflowError on every search).
     private fun searchByScan(
         m: Mapped,
         query: String,
         nearLat: Double,
         nearLon: Double,
         limit: Int,
+        boost: Map<String, Double>,
     ): List<PoiRecord> =
-        com.vayunmathur.maps.util.searchByScan(m, query, nearLat, nearLon, limit)
+        com.vayunmathur.maps.util.searchByScan(m, query, nearLat, nearLon, limit, boost)
 
     // Spatial queries (nearest/inViewport) live in PoiIndexSpatial.kt as
     // extensions, alongside the grid they walk.

@@ -150,9 +150,75 @@ private fun PoiIndex.Mapped.matchesAt(i: Int, key: ByteArray): Boolean {
     return wordStartsWith(w, key)
 }
 
-private class WordRanked(val record: PoiIndex.PoiRecord, val rank: Int, val distSq: Double)
+private class WordRanked(
+    val record: PoiIndex.PoiRecord,
+    val boost: Double,
+    val rank: Int,
+    val distSq: Double,
+)
 
-private class Ranked(val record: PoiIndex.PoiRecord, val rank: Int, val distSq: Double)
+private class Ranked(
+    val record: PoiIndex.PoiRecord,
+    val boost: Double,
+    val rank: Int,
+    val distSq: Double,
+)
+
+/** Whitespace-separated, non-empty query tokens; callers fold case first. */
+private fun splitTokens(q: String): List<String> =
+    q.split(' ', '\t', '\n', '\r', '', '').filter { it.isNotEmpty() }
+
+/**
+ * Weight of [name] from the caller's recency/favorites signal, or 0.
+ *
+ * Keys are lowercased full names. An exact hit wins outright; otherwise the
+ * best key the name merely contains still counts — a recent query is usually
+ * a prefix of the place it found ("blue bottle" → "Blue Bottle Coffee"), not
+ * the whole name. This only reorders candidates the text match already
+ * accepted; it never resurrects a non-match.
+ */
+internal fun boostWeight(boost: Map<String, Double>, name: String): Double {
+    if (boost.isEmpty()) return 0.0
+    val lower = name.lowercase()
+    boost[lower]?.let { return it }
+    var best = 0.0
+    for ((key, weight) in boost) {
+        if (weight > best && lower.contains(key)) best = weight
+    }
+    return best
+}
+
+/**
+ * Whether [a] and [b] differ by at most one insertion, deletion, or
+ * substitution — the cheap typo tolerance. Returns false fast on a length
+ * gap over one; otherwise a small full DP (names/words are short, and the
+ * caller only reaches here when the substring pass already failed).
+ */
+internal fun editDistanceLE1(a: String, b: String): Boolean {
+    if (a == b) return true
+    val n = a.length
+    val m = b.length
+    if (kotlin.math.abs(n - m) > 1) return false
+    var prev = IntArray(m + 1) { it }
+    var cur = IntArray(m + 1)
+    for (i in 1..n) {
+        cur[0] = i
+        var rowMin = cur[0]
+        for (j in 1..m) {
+            cur[j] = minOf(
+                prev[j] + 1,
+                cur[j - 1] + 1,
+                prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1,
+            )
+            if (cur[j] < rowMin) rowMin = cur[j]
+        }
+        if (rowMin > 1) return false
+        val tmp = prev
+        prev = cur
+        cur = tmp
+    }
+    return prev[m] <= 1
+}
 
 internal fun searchByScan(
     m: PoiIndex.Mapped,
@@ -160,43 +226,65 @@ internal fun searchByScan(
     nearLat: Double,
     nearLon: Double,
     limit: Int,
+    boost: Map<String, Double> = emptyMap(),
 ): List<PoiIndex.PoiRecord> {
     val q = query.trim().lowercase()
     if (q.isEmpty()) return emptyList()
+    val tokens = splitTokens(q)
 
     // Pass 1: walk the name pool once, recording matching offsets and their
-    // rank (0 = prefix match, 1 = substring). Decoding each unique name once
+    // rank (0 = phrase prefix, 1 = every token a substring, 2 = every token a
+    // substring or a one-edit typo of a word). Decoding each unique name once
     // is the dedup win the side-file layout is designed for.
-    val matchRank = matchNamePool(m, q)
+    val matchRank = matchNamePool(m, q, tokens)
     if (matchRank.isEmpty()) return emptyList()
 
     // Pass 2: scan records, keeping those whose name offset matched.
-    val out = collectScanMatches(m, matchRank, nearLat, nearLon)
-    out.sortWith(compareBy({ it.rank }, { it.distSq }))
+    val out = collectScanMatches(m, matchRank, nearLat, nearLon, boost)
+    out.sortWith(compareBy<Ranked> { it.rank }.thenByDescending { it.boost }.thenBy { it.distSq })
     return out.take(limit).map { it.record }
 }
 
-private fun matchNamePool(m: PoiIndex.Mapped, q: String): Map<Int, Int> {
+private fun matchNamePool(m: PoiIndex.Mapped, q: String, tokens: List<String>): Map<Int, Int> {
     val matchRank = HashMap<Int, Int>()
     var pos = 0
     while (pos < m.namesLen) {
         var end = pos
         while (end < m.namesLen && m.names.get(end).toInt() != 0) end++
         if (end > pos) {
-            rankName(m.nameAt(pos), q)?.let { matchRank[pos] = it }
+            rankName(m.nameAt(pos), q, tokens)?.let { matchRank[pos] = it }
         }
         pos = end + 1
     }
     return matchRank
 }
 
-/** Rank of [name] against the query (0 = prefix, 1 = substring), or null. */
-private fun rankName(name: String?, q: String): Int? {
+/**
+ * Rank of [name] against the query (0 = phrase prefix, 1 = every token a
+ * substring, 2 = every token a substring or a one-edit typo of a word), or
+ * null. Single-token queries behave exactly as before; multi-token queries
+ * used to require the whole spaced string as one substring, so "ferry
+ * building" matched nothing — now each word only has to appear.
+ */
+private fun rankName(name: String?, q: String, tokens: List<String>): Int? {
     if (name == null) return null
     val lower = name.lowercase()
     if (lower.startsWith(q)) return 0
-    if (lower.contains(q)) return 1
+    if (tokens.all { lower.contains(it) }) return 1
+    if (tokens.size > 1 || (tokens.size == 1 && tokens[0].length >= 3)) {
+        val words = splitTokens(lower)
+        if (tokens.all { token -> tokenMatchesWord(token, lower, words) }) return 2
+    }
     return null
+}
+
+/** Whether [token] is a substring of the name or a typo of one of its words. */
+private fun tokenMatchesWord(token: String, lowerName: String, words: List<String>): Boolean {
+    if (lowerName.contains(token)) return true
+    // Tokens under 3 chars are all typo-noise ("al" is one edit from "ax",
+    // "at", "an", ...); they only match exactly.
+    if (token.length < 3) return false
+    return words.any { editDistanceLE1(token, it) }
 }
 
 private fun collectScanMatches(
@@ -204,11 +292,12 @@ private fun collectScanMatches(
     matchRank: Map<Int, Int>,
     nearLat: Double,
     nearLon: Double,
+    boost: Map<String, Double>,
 ): ArrayList<Ranked> {
     val out = ArrayList<Ranked>(minOf(PoiIndex.CANDIDATE_CAP, m.count))
     var i = 0
     while (i < m.count && out.size < PoiIndex.CANDIDATE_CAP) {
-        scanMatchAt(m, i, matchRank, nearLat, nearLon)?.let { out.add(it) }
+        scanMatchAt(m, i, matchRank, nearLat, nearLon, boost)?.let { out.add(it) }
         i++
     }
     return out
@@ -220,13 +309,16 @@ private fun scanMatchAt(
     matchRank: Map<Int, Int>,
     nearLat: Double,
     nearLon: Double,
+    boost: Map<String, Double>,
 ): Ranked? {
     val off = m.nameOff(i)
     val rank = matchRank[off] ?: return null
     val latE7 = m.latE7(i)
     val lonE7 = m.lonE7(i)
+    val name = m.nameAt(off) ?: ""
     return Ranked(
-        PoiIndex.PoiRecord(latE7, lonE7, m.type(i), m.nameAt(off) ?: "", i),
+        PoiIndex.PoiRecord(latE7, lonE7, m.type(i), name, i),
+        boostWeight(boost, name),
         rank,
         PoiIndex.distanceSq(
             latE7 * PoiIndex.E7_TO_DEGREES,
@@ -237,6 +329,18 @@ private fun scanMatchAt(
     )
 }
 
+/**
+ * Ordinals whose name matches every query token, each paired with its rank:
+ * 0 = the name starts with the whole phrase ("blue bottle" → "Blue Bottle
+ * Coffee"), 1 = every token starts a word, 2 = every token starts a word or
+ * is a one-edit typo of one.
+ *
+ * Single-token queries behave exactly as before. Multi-token queries used to
+ * look up the whole spaced string as one key and always miss; fuzzy matches
+ * are new. The fuzzy pass only runs per token (deletion variants of the token
+ * as prefix lookups, verified by edit distance), so its cost stays in the
+ * number of near-matches rather than the size of the word pool.
+ */
 internal fun searchByWordIndex(
     m: PoiIndex.Mapped,
     query: String,
@@ -244,28 +348,135 @@ internal fun searchByWordIndex(
     nearLon: Double,
     limit: Int,
     candidateCap: Int,
+    boost: Map<String, Double> = emptyMap(),
 ): List<PoiIndex.PoiRecord> {
-    val key = poiQueryKey(query.trim())
-    if (key.isEmpty()) return emptyList()
-    val out = ArrayList<WordRanked>()
-    for (hit in m.wordPrefixMatches(key, candidateCap)) {
-        val (ordinal, wordIdx) = hit
-        // Matching the name's first word is the indexed equivalent of the scan's
-        // "starts with", and ranks the same way.
-        val rank = if (wordIdx == 0) 0 else 1
-        out.add(
-            WordRanked(
-                m.record(ordinal),
-                rank,
-                PoiIndex.distanceSq(
-                    nearLat,
-                    nearLon,
-                    m.latE7(ordinal) * PoiIndex.E7_TO_DEGREES,
-                    m.lonE7(ordinal) * PoiIndex.E7_TO_DEGREES,
-                ),
-            )
-        )
+    val tokens = splitTokens(query.trim())
+    if (tokens.isEmpty()) return emptyList()
+    val keys = tokens.map { poiQueryKey(it) }
+
+    // Exact pass: per-token prefix matches, intersected on the ordinal.
+    val exact = keys.map { key ->
+        m.wordPrefixMatches(key, candidateCap).associate { it[0] to it[1] }
     }
-    out.sortWith(compareBy({ it.rank }, { it.distSq }))
+    var ordinals: Set<Int> = exact[0].keys
+    for (t in 1 until exact.size) ordinals = ordinals.intersect(exact[t].keys)
+
+    // Rank 0 needs the tokens on the name's first words in order.
+    fun isPhrasePrefix(o: Int): Boolean {
+        for (t in exact.indices) {
+            if (exact[t][o] != t) return false
+        }
+        return true
+    }
+
+    // Fuzzy pass: every token must match exactly or within one edit. Runs even
+    // when the exact pass hit — a typo'd name ("Piza Kitchen" for "pizza")
+    // should surface below the exact hits, not vanish. Tokens under 3 chars
+    // are all typo-noise and contribute their exact matches only.
+    val fuzzy = HashMap<Int, Int>()
+    val fuzzyPerToken = keys.mapIndexed { t, _ ->
+        if (tokens[t].length >= 3) {
+            val set = HashSet(exact[t].keys)
+            set.addAll(m.fuzzyWordMatches(tokens[t], candidateCap).keys)
+            set
+        } else {
+            exact[t].keys
+        }
+    }
+    var fuzzyOrdinals: Set<Int>? = null
+    for (set in fuzzyPerToken) {
+        fuzzyOrdinals = if (fuzzyOrdinals == null) set else fuzzyOrdinals.intersect(set)
+    }
+    for (o in (fuzzyOrdinals ?: emptySet())) {
+        if (o !in ordinals) fuzzy[o] = 2
+    }
+
+    val out = ArrayList<WordRanked>(minOf(candidateCap, ordinals.size + fuzzy.size))
+    for (o in ordinals) {
+        out.add(wordRanked(m, o, if (isPhrasePrefix(o)) 0 else 1, nearLat, nearLon, boost))
+    }
+    for ((o, rank) in fuzzy) {
+        out.add(wordRanked(m, o, rank, nearLat, nearLon, boost))
+    }
+    out.sortWith(
+        compareBy<WordRanked> { it.rank }.thenByDescending { it.boost }.thenBy { it.distSq },
+    )
     return out.take(limit).map { it.record }
 }
+
+private fun wordRanked(
+    m: PoiIndex.Mapped,
+    ordinal: Int,
+    rank: Int,
+    nearLat: Double,
+    nearLon: Double,
+    boost: Map<String, Double>,
+): WordRanked {
+    val record = m.record(ordinal)
+    return WordRanked(
+        record,
+        boostWeight(boost, record.name),
+        rank,
+        PoiIndex.distanceSq(
+            nearLat,
+            nearLon,
+            m.latE7(ordinal) * PoiIndex.E7_TO_DEGREES,
+            m.lonE7(ordinal) * PoiIndex.E7_TO_DEGREES,
+        ),
+    )
+}
+
+/**
+ * Ordinals with a word within one edit of the query [token], as
+ * ordinal → word index.
+ *
+ * The word index only answers prefix questions, so each single-deletion
+ * variant of the token is looked up as a prefix and the underlying word is
+ * verified by edit distance — a one-edit typo always shares a long-enough
+ * prefix with the true word unless the edit is at position 0, which this
+ * deliberately misses (documented: first-letter typos need a different
+ * index). Tokens under 3 chars are all typo-noise and skip the pass.
+ */
+private fun PoiIndex.Mapped.fuzzyWordMatches(
+    token: String,
+    candidateCap: Int,
+): Map<Int, Int> {
+    val tokenLower = token.lowercase()
+    // Strings, not byte arrays: array equality is referential, and repeated
+    // letters ("aa" → "a", "a") would otherwise look the same word up twice.
+    val variants = LinkedHashSet<String>()
+    for (i in tokenLower.indices) {
+        tokenLower.removeRange(i, i + 1).takeIf { it.isNotEmpty() }?.let { variants.add(it) }
+    }
+    // A mid-word substitution ("pizxa" for "pizza") shares no full deletion
+    // with the true word, but does share a two-shorter prefix.
+    if (tokenLower.length >= 5) {
+        variants.add(tokenLower.dropLast(2))
+    }
+    val out = HashMap<Int, Int>()
+    for (variant in variants) {
+        val key = poiQueryKey(variant)
+        for (hit in wordPrefixMatches(key, minOf(candidateCap, FUZZY_PER_VARIANT_CAP))) {
+            val ordinal = hit[0]
+            if (ordinal in out) continue
+            if (wordWithinOneEdit(ordinal, hit[1], tokenLower)) out[ordinal] = hit[1]
+        }
+        if (out.size >= FUZZY_CANDIDATE_CAP) break
+    }
+    return out
+}
+
+/** Whether the [wordIdx]th word of record [ordinal] is one edit from [token]. */
+private fun PoiIndex.Mapped.wordWithinOneEdit(ordinal: Int, wordIdx: Int, token: String): Boolean {
+    val range = wordRange(nameOff(ordinal), wordIdx) ?: return false
+    val len = range.last - range.first + 1
+    if (kotlin.math.abs(len - token.length) > 1) return false
+    val word = CharArray(len) { i ->
+        asciiLowerW(names.get(range.first + i)).toChar()
+    }
+    return editDistanceLE1(token, String(word))
+}
+
+/** Per-variant walk cap and total fuzzy-candidate cap for one token. */
+private const val FUZZY_PER_VARIANT_CAP = 50
+private const val FUZZY_CANDIDATE_CAP = 500
