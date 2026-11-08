@@ -62,19 +62,41 @@ class MoreCoverageTest {
     }
 
     @Test
-    fun `controller start stop and receive flag`() = runBlocking {
+    fun `controller start stop and receive flag`() {
         ShareReceiveController.start(app)
         ShareReceiveController.start(app) // idempotent
         ShareReceiveController.stop()
         ShareReceiveController.stop()
         ShareReceiveController.refreshLocalIdentity(app)
-        ShareReceiveController.setReceiveEnabled(app, false)
-        assertEquals(false, ShareReceiveController.isReceiveEnabled(app))
+        // setReceiveEnabled reconciles the service via
+        // withContext(Dispatchers.Main); calling it from a runBlocking on
+        // the Robolectric main thread deadlocks (the paused main looper
+        // can never run the posted block while runBlocking occupies the
+        // thread — this hung the whole :share suite in CI). Run the
+        // suspend calls on a worker thread and pump the main looper here.
+        val done = java.util.concurrent.CountDownLatch(1)
+        var failure: Throwable? = null
+        Thread {
+            runBlocking {
+                try {
+                    ShareReceiveController.setReceiveEnabled(app, false)
+                    assertEquals(false, ShareReceiveController.isReceiveEnabled(app))
+                } catch (t: Throwable) {
+                    failure = t
+                } finally {
+                    done.countDown()
+                }
+            }
+        }.start()
+        while (!done.await(50, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+        }
+        failure?.let { throw it }
         assertTrue(ShareReceiveController.connectionFor(app, 1L) == null)
     }
-
     @Test
     fun `tile service lifecycle`() {
+        Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
         val controller = Robolectric.buildService(ShareReceiveTileService::class.java)
         val service = controller.create().get()
         service.onTileAdded()
@@ -82,7 +104,14 @@ class MoreCoverageTest {
         service.onClick()
         Thread.sleep(300)
         Shadows.shadowOf(Looper.getMainLooper()).idle()
-        controller.destroy()
+        // Robolectric's ShadowTileService cannot cast to ShadowService on
+        // destroy() (ClassCastException inside TileService.onDestroy) —
+        // not our code. Best-effort destroy; the service under test
+        // already ran its lifecycle above.
+        try {
+            controller.destroy()
+        } catch (_: ClassCastException) {
+        }
     }
 
     @Test
