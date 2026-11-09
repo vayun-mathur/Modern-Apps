@@ -162,10 +162,11 @@ class ShopViewModel(
         val link = MerchantLinks.parse(url) ?: return
         viewModelScope.launch {
             AppInit.awaitReady()
-            // Raw-host fallback: the link host itself scopes the search. The
-            // former merchant-directory lookup is gone with the endpoint.
-            val domain = link.host
-            val name = domain
+            // Scoped directory lookup; unknown hosts (or lookup failures)
+            // fall back to the raw link host.
+            val merchant = backend.merchantFor(link.host).getOrNull()
+            val domain = merchant?.domain?.takeIf { it.isNotBlank() } ?: link.host
+            val name = merchant?.name?.takeIf { it.isNotBlank() } ?: domain
             when (link) {
                 is MerchantLink.Product -> backend.getProductByHandle(domain, link.handle).fold(
                     onSuccess = { product ->

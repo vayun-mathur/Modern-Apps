@@ -140,6 +140,30 @@ class ShopBackendTest {
         return@runBlocking
     }
 
+    @Test fun merchantForDecodesScopedLookup() = runBlocking {
+        var sentUrl: String? = null
+        ShopHttpBackend.request = { method, url, _ ->
+            assertEquals("GET", method)
+            sentUrl = url
+            ok("""{"id": "learned:shop.example.com", "name": "Trail Store", "domain": "shop.example.com",
+                "siteUrl": "https://shop.example.com", "description": "Shoes",
+                "directoryStatus": "learned", "directoryVerifiedAt": "2026-11-08T00:00:00Z"}""")
+        }
+        val merchant = ShopHttpBackend.merchantFor("shop.example.com").getOrThrow()
+        assertTrue(sentUrl!!.endsWith("/merchant?host=shop.example.com"))
+        assertEquals("shop.example.com", merchant!!.domain)
+        assertEquals("Trail Store", merchant.name)
+        assertEquals("learned", merchant.directoryStatus)
+        return@runBlocking
+    }
+
+    @Test fun merchantForMapsUnknownHostToNull() = runBlocking {
+        stub(BackendRawResponse(404, """{"error":{"code":"not_found","message":"Unknown merchant host"}}""", emptyMap(), null))
+        val merchant = ShopHttpBackend.merchantFor("unknown.example.com").getOrThrow()
+        assertEquals(null, merchant)
+        return@runBlocking
+    }
+
     @Test fun errorEnvelopeMapsToUcpErrors() = runBlocking {
         suspend fun errorFor(code: String, status: Int): UcpError? {
             val body = ShopHttpBackend.json.encodeToString(ShopErrorEnvelope(ShopErrorBody(code, "m", null)))

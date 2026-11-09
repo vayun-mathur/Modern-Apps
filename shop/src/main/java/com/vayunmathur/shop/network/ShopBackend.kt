@@ -4,6 +4,7 @@ import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.shop.data.CartLine
 import com.vayunmathur.shop.data.CatalogOptionSelection
 import com.vayunmathur.shop.data.CheckoutInputs
+import com.vayunmathur.shop.data.MerchantListing
 import com.vayunmathur.shop.data.OrderStatusQuery
 import com.vayunmathur.shop.data.OrderTracking
 import com.vayunmathur.shop.data.UcpCheckout
@@ -44,6 +45,12 @@ interface ShopBackend {
     suspend fun updateCheckout(shop: String, sessionId: String, lines: List<CartLine>, inputs: CheckoutInputs, idempotencyKey: String): Result<UcpCheckout>
     /** Latest tracking per token; tokens without a merchant update yet are omitted. */
     suspend fun orderStatus(orders: List<OrderStatusQuery>): Result<Map<String, OrderTracking>>
+    /**
+     * Scoped merchant lookup for an opened merchant link. Returns the
+     * directory record, or null when the host is unknown (404) so callers
+     * fall back to the raw link host. Never throws for a miss.
+     */
+    suspend fun merchantFor(host: String): Result<MerchantListing?>
 }
 
 class ShopBackendException(val error: UcpError) : Exception(error.toString())
@@ -151,6 +158,18 @@ internal object ShopHttpBackend : ShopBackend {
                 .orders
                 .mapNotNull { status -> status.tracking?.takeIf { status.found }?.let { status.token to it } }
                 .toMap()
+        }
+
+    override suspend fun merchantFor(host: String): Result<MerchantListing?> =
+        catching {
+            require(host.isNotBlank() && host.length <= 253) { "Invalid merchant host" }
+            try {
+                get("$BASE/merchant?host=${host.encode()}").parse<ShopMerchant>().toModel()
+            } catch (error: ShopBackendException) {
+                // Unknown host: the caller falls back to the raw link host.
+                val http = error.error as? UcpError.Http
+                if (http?.status == 404) null else throw error
+            }
         }
 
     private const val MAX_STATUS_TOKENS = 50
