@@ -4,7 +4,6 @@ import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.shop.data.CartLine
 import com.vayunmathur.shop.data.CatalogOptionSelection
 import com.vayunmathur.shop.data.CheckoutInputs
-import com.vayunmathur.shop.data.MerchantListing
 import com.vayunmathur.shop.data.OrderStatusQuery
 import com.vayunmathur.shop.data.OrderTracking
 import com.vayunmathur.shop.data.UcpCheckout
@@ -43,7 +42,6 @@ interface ShopBackend {
     suspend fun createCheckout(shop: String, lines: List<CartLine>, inputs: CheckoutInputs, idempotencyKey: String): Result<UcpCheckout>
     suspend fun getCheckout(shop: String, sessionId: String): Result<UcpCheckout>
     suspend fun updateCheckout(shop: String, sessionId: String, lines: List<CartLine>, inputs: CheckoutInputs, idempotencyKey: String): Result<UcpCheckout>
-    suspend fun listMerchants(refresh: Boolean = false): Result<List<MerchantListing>>
     /** Latest tracking per token; tokens without a merchant update yet are omitted. */
     suspend fun orderStatus(orders: List<OrderStatusQuery>): Result<Map<String, OrderTracking>>
 }
@@ -141,12 +139,6 @@ internal object ShopHttpBackend : ShopBackend {
         val request = ShopUpdateCheckoutRequest(shop, sessionId, lines.map { it.toRequestLine() }, inputs.toRequestInputs(), idempotencyKey)
         put("$BASE/checkout-sessions", json.encodeToString(request)).parseSession()
     }
-
-    override suspend fun listMerchants(refresh: Boolean): Result<List<MerchantListing>> =
-        catching {
-            val url = "$BASE/merchants" + if (refresh) "?refresh=true" else ""
-            get(url).parse<ShopMerchantsResponse>().merchants.map { it.toModel() }
-        }
 
     override suspend fun orderStatus(orders: List<OrderStatusQuery>): Result<Map<String, OrderTracking>> =
         catching {

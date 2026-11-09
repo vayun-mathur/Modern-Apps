@@ -13,7 +13,6 @@ import com.vayunmathur.shop.data.NativeCheckoutState
 import com.vayunmathur.shop.domain.NativeCheckoutCoordinator
 import com.vayunmathur.shop.domain.PendingCheckoutSink
 import com.vayunmathur.shop.data.CartLine
-import com.vayunmathur.shop.data.MerchantListing
 import com.vayunmathur.shop.data.OrderStore
 import com.vayunmathur.shop.data.EmbeddedCheckoutRequest
 import com.vayunmathur.shop.data.Money
@@ -57,7 +56,6 @@ class ShopViewModel(
         private set
     var linkedProducts by mutableStateOf<List<UcpProduct>>(emptyList())
         private set
-    private var merchants: List<MerchantListing>? = null
     var launchLinkHandled = false
     /** Held in memory only: the URL carries a merchant session key. */
     var embeddedCheckout by mutableStateOf<EmbeddedCheckoutRequest?>(null)
@@ -164,9 +162,10 @@ class ShopViewModel(
         val link = MerchantLinks.parse(url) ?: return
         viewModelScope.launch {
             AppInit.awaitReady()
-            val merchant = merchantFor(link.host)
-            val domain = merchant?.domain ?: link.host
-            val name = merchant?.name?.takeIf { it.isNotBlank() } ?: domain
+            // Raw-host fallback: the link host itself scopes the search. The
+            // former merchant-directory lookup is gone with the endpoint.
+            val domain = link.host
+            val name = domain
             when (link) {
                 is MerchantLink.Product -> backend.getProductByHandle(domain, link.handle).fold(
                     onSuccess = { product ->
@@ -195,12 +194,6 @@ class ShopViewModel(
         pendingRoute = Route.Search
         focusSearchRequest++
         if (scopedQuery.isNotBlank()) search()
-    }
-
-    private suspend fun merchantFor(host: String): MerchantListing? {
-        val list = merchants ?: backend.listMerchants().getOrNull()?.also { merchants = it } ?: return null
-        val bare = host.removePrefix("www.")
-        return list.firstOrNull { it.domain == host } ?: list.firstOrNull { it.domain.removePrefix("www.") == bare }
     }
 
     fun loadCart(context: Context) {

@@ -3,7 +3,6 @@ package com.vayunmathur.shop.network
 import com.vayunmathur.shop.data.CartLine
 import com.vayunmathur.shop.data.CatalogOptionSelection
 import com.vayunmathur.shop.data.CheckoutInputs
-import com.vayunmathur.shop.data.MerchantListing
 import com.vayunmathur.shop.data.Money
 import com.vayunmathur.shop.data.OrderStatusQuery
 import com.vayunmathur.shop.data.OrderTracking
@@ -202,17 +201,6 @@ data class ShopProduct(
 )
 
 @Serializable
-data class ShopMerchant(
-    val id: String = "",
-    val name: String = "",
-    val domain: String = "",
-    val siteUrl: String = "",
-    val description: String = "",
-    val directoryStatus: String = "unknown",
-    val directoryVerifiedAt: String? = null,
-)
-
-@Serializable
 data class ShopSearchResponse(
     val products: List<ShopProduct> = emptyList(),
 )
@@ -220,11 +208,6 @@ data class ShopSearchResponse(
 @Serializable
 data class ShopProductResponse(
     val product: ShopProduct = ShopProduct(),
-)
-
-@Serializable
-data class ShopMerchantsResponse(
-    val merchants: List<ShopMerchant> = emptyList(),
 )
 
 @Serializable
@@ -271,16 +254,6 @@ internal fun ShopProduct.toModel(): UcpProduct = UcpProduct(
     checkoutEligible = checkoutEligible,
     descriptionHtml = descriptionHtml,
     storeName = storeName,
-)
-
-internal fun ShopMerchant.toModel(): MerchantListing = MerchantListing(
-    id = id,
-    name = name,
-    domain = domain,
-    siteUrl = siteUrl,
-    description = description,
-    directoryStatus = directoryStatus,
-    directoryVerifiedAt = directoryVerifiedAt,
 )
 
 internal fun ShopCheckoutSession.toModel(): UcpCheckout = UcpCheckout(

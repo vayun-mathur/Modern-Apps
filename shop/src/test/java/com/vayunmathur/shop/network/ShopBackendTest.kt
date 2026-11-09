@@ -140,17 +140,6 @@ class ShopBackendTest {
         return@runBlocking
     }
 
-    @Test fun merchantsDecodeDirectory() = runBlocking {
-        val body = """{"merchants": [{"id": "m1", "name": "Trail Store", "domain": "shop.example.com",
-            "siteUrl": "https://shop.example.com", "description": "Shoes",
-            "directoryStatus": "live", "directoryVerifiedAt": "2026-10-01"}]}"""
-        stub(ok(body))
-        val merchants = ShopHttpBackend.listMerchants().getOrThrow()
-        assertEquals("shop.example.com", merchants.single().domain)
-        assertEquals("live", merchants.single().directoryStatus)
-        return@runBlocking
-    }
-
     @Test fun errorEnvelopeMapsToUcpErrors() = runBlocking {
         suspend fun errorFor(code: String, status: Int): UcpError? {
             val body = ShopHttpBackend.json.encodeToString(ShopErrorEnvelope(ShopErrorBody(code, "m", null)))
