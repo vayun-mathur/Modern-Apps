@@ -84,7 +84,40 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().collect();
+    let mut args: Vec<String> = std::env::args().collect();
+    // `--threads N` anywhere, taken out before the positional parse. It and `MAPS_THREADS`
+    // size every pool this tool runs; neither changes a byte of the output.
+    if let Some(at) = args.iter().position(|a| a == "--threads") {
+        let Some(value) = args.get(at + 1).cloned() else {
+            eprintln!("ERROR: transit_shapes: --threads requires a count");
+            return ExitCode::from(2);
+        };
+        match gtfs_ingest::par::parse_threads(&value) {
+            Ok(n) => gtfs_ingest::par::set_threads(n),
+            Err(e) => {
+                eprintln!("ERROR: transit_shapes: {e}");
+                return ExitCode::from(2);
+            }
+        }
+        args.drain(at..at + 2);
+    }
+    // One pool for every rayon call in the run, sized by the thread budget rather than by
+    // the whole box, so `--threads` / `MAPS_THREADS` govern the parallel sorts and maps too.
+    let pool = match rayon::ThreadPoolBuilder::new()
+        .num_threads(gtfs_ingest::par::threads())
+        .thread_name(|i| format!("transit_shapes-{i}"))
+        .build()
+    {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("ERROR: transit_shapes: cannot start the thread pool: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    pool.install(|| run_main(args))
+}
+
+fn run_main(args: Vec<String>) -> ExitCode {
     if args.len() >= 2 && (args[1] == "-h" || args[1] == "--help") {
         usage();
         return ExitCode::SUCCESS;

@@ -39,7 +39,7 @@ fn a_shallow_merge() -> Vec<Fixture> {
 fn corridor_of(points: &[(i32, i32)]) -> Corridor {
     let points = canonical(points);
     let cum = cumulative(&points);
-    Corridor { points, cum, colours: Vec::new() }
+    Corridor::new(points, cum, Vec::new())
 }
 
 #[cfg(test)]
@@ -146,7 +146,7 @@ mod tests_continued {
     fn corridor_of(points: &[(i32, i32)]) -> Corridor {
         let points = canonical(points);
         let cum = cumulative(&points);
-        Corridor { points, cum, colours: Vec::new() }
+        Corridor::new(points, cum, Vec::new())
     }
 
     /// `n` services sharing `metres` of trunk running north and then leaving it in
@@ -344,5 +344,56 @@ mod tests_continued {
     #[test]
     fn nothing_in_nothing_out() {
         assert!(assign(&[]).is_empty());
+    }
+
+    /// The block-pruned [`nearest`] and [`within`] against the plain walk of every segment they
+    /// replaced, over long, kinked, self-approaching references and probes near and far —
+    /// including probes exactly on a vertex, where several segments tie.
+    #[test]
+    fn pruned_nearest_is_the_full_walk_exactly() {
+        let full = |c: &Corridor, p: (i32, i32)| -> (f64, f64) {
+            let mut best = (f64::INFINITY, 0.0f64);
+            for at in 0..c.points.len().saturating_sub(1) {
+                let (t, offset) = project(p, c.points[at], c.points[at + 1], 0.0);
+                if offset < best.0 {
+                    best = (offset, c.cum[at] + t * (c.cum[at + 1] - c.cum[at]));
+                }
+            }
+            best
+        };
+        let mut x = 0x9E37_79B9_7F4A_7C15u64;
+        let mut next = move || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        for case in 0..40 {
+            let n = [2usize, 3, 33, 64, 65, 500, 3000][case % 7];
+            let (mut lat, mut lon) = (600_000_000i32 - (next() % 1_200_000_000) as i32, (next() % 1_000_000_000) as i32);
+            let mut points = vec![(lat, lon)];
+            for _ in 1..n {
+                // Mostly onward, sometimes doubling back, so distant segments come close.
+                lat += (next() % 20_001) as i32 - 6_000;
+                lon += (next() % 20_001) as i32 - 10_000;
+                points.push((lat, lon));
+            }
+            let c = Corridor::new(points.clone(), cumulative(&points), Vec::new());
+            for probe in 0..200 {
+                let base = points[(next() % points.len() as u64) as usize];
+                let p = if probe % 10 == 0 {
+                    base
+                } else {
+                    let r = [50i32, 500, 5_000, 200_000][probe % 4];
+                    (base.0 + (next() % (2 * r as u64 + 1)) as i32 - r, base.1 + (next() % (2 * r as u64 + 1)) as i32 - r)
+                };
+                let (want, got) = (full(&c, p), nearest(&c, p));
+                assert_eq!(want.0.to_bits(), got.0.to_bits(), "distance, case {case} probe {probe}");
+                assert_eq!(want.1.to_bits(), got.1.to_bits(), "along, case {case} probe {probe}");
+                for radius in [SNAP_M, CORRIDOR_M, 0.0] {
+                    assert_eq!(within(&c, p, radius), want.0 <= radius, "case {case} probe {probe} r {radius}");
+                }
+            }
+        }
     }
 }

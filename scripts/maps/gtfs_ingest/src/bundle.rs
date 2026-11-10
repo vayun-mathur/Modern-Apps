@@ -242,47 +242,70 @@ pub fn assign_with_timer(
     // Flat `(values, ends)` buffers rather than `Vec<Vec<u32>>`: 287 million heap allocations
     // is its own kind of slow, and the whole point of interning is not to hold that many
     // vectors at once.
-    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-    let span = samples.len().div_ceil(threads.max(1)).max(1);
+    let threads = crate::par::threads();
+    // Fixed-size ranges claimed first-come, not one range per thread: sample density is wildly
+    // uneven (a European trunk holds dozens of routes per cell, a desert line one), and with
+    // equal shares the thread that drew the dense ranges finished long after the rest.
+    const PROBE_RANGE: usize = 1 << 18;
+    let ranges = samples.len().div_ceil(PROBE_RANGE);
+    let next_range = AtomicUsize::new(0);
     let probed = AtomicUsize::new(0);
-    let parts: Mutex<Vec<(usize, Vec<u32>, Vec<u32>)>> = Mutex::new(Vec::new());
+    // Per range: its samples as local set ids, plus its distinct sets in the order it first saw
+    // them, flat (`values`, `ends`).
+    let parts: Mutex<Vec<(usize, Vec<u32>, Vec<u32>, Vec<u32>)>> = Mutex::new(Vec::new());
     {
         let grid = &grid;
         let samples = &samples;
         let parts = &parts;
         let probed = &probed;
+        let next_range = &next_range;
         let total = samples.len();
         std::thread::scope(|scope| {
-            for t in 0..threads {
-                let lo = t * span;
-                if lo >= total {
-                    break;
-                }
-                let hi = ((t + 1) * span).min(total);
+            for _ in 0..threads.min(ranges) {
                 scope.spawn(move || {
                     // Per thread, so the stamp trick in `routes_near` needs no sharing: a
                     // stamp only has to be unique against this thread's own array.
                     let mut seen: Vec<u32> = vec![0; route_count];
                     let mut stamp: u32 = 0;
                     let mut near: Vec<u32> = Vec::new();
-                    let mut values: Vec<u32> = Vec::new();
-                    let mut ends: Vec<u32> = Vec::with_capacity(hi - lo);
-                    for (i, sample) in samples[lo..hi].iter().enumerate() {
-                        stamp += 1;
-                        grid.routes_near(samples, sample, &mut near, &mut seen, stamp);
-                        values.extend_from_slice(&near);
-                        ends.push(values.len() as u32);
-                        // Batched, because an atomic per probe would cost more than the probe.
-                        if i % 65_536 == 0 {
-                            let n = probed.fetch_add(65_536, AtomicOrdering::Relaxed) + 65_536;
-                            eprint!(
-                                "\r{:<28} [{:>3}%] {total} sample(s)",
-                                "Corridor probe",
-                                (n * 100 / total.max(1)).min(100)
-                            );
+                    let mut done: Vec<(usize, Vec<u32>, Vec<u32>, Vec<u32>)> = Vec::new();
+                    loop {
+                        let r = next_range.fetch_add(1, AtomicOrdering::Relaxed);
+                        if r >= ranges {
+                            break;
                         }
+                        let (lo, hi) = (r * PROBE_RANGE, ((r + 1) * PROBE_RANGE).min(total));
+                        // Interned locally, in first-seen order within this range; see the
+                        // merge below for why that composes into the global first-seen ids
+                        // exactly.
+                        let mut local: std::collections::HashMap<Vec<u32>, u32> = std::collections::HashMap::new();
+                        let mut ids: Vec<u32> = Vec::with_capacity(hi - lo);
+                        let mut values: Vec<u32> = Vec::new();
+                        let mut ends: Vec<u32> = Vec::new();
+                        for sample in &samples[lo..hi] {
+                            stamp += 1;
+                            grid.routes_near(samples, sample, &mut near, &mut seen, stamp);
+                            let id = match local.get(near.as_slice()) {
+                                Some(&id) => id,
+                                None => {
+                                    let id = ends.len() as u32;
+                                    values.extend_from_slice(&near);
+                                    ends.push(values.len() as u32);
+                                    local.insert(near.clone(), id);
+                                    id
+                                }
+                            };
+                            ids.push(id);
+                        }
+                        done.push((r, ids, values, ends));
+                        let n = probed.fetch_add(hi - lo, AtomicOrdering::Relaxed) + (hi - lo);
+                        eprint!(
+                            "\r{:<28} [{:>3}%] {total} sample(s)",
+                            "Corridor probe",
+                            (n * 100 / total.max(1)).min(100)
+                        );
                     }
-                    parts.lock().expect("probe pool").push((t, values, ends));
+                    parts.lock().expect("probe pool").extend(done);
                 });
             }
         });
@@ -291,10 +314,18 @@ pub fn assign_with_timer(
     // The runs cutting below is spans work, not probe work.
     tick(&mut timer, "corridor-spans");
 
-    // Back in sample order, then interned sequentially: first-seen order is what fixes the ids.
+    // Back in sample order, then each range's local ids mapped onto global ones. The global id
+    // of a set is its rank in first-seen order over the whole sample sequence. A set first
+    // occurs globally in the earliest range holding it, at that range's own first occurrence of
+    // it, so walking the ranges in order and each range's distinct sets in its local first-seen
+    // order meets every set's first global occurrence in global order — the ids come out exactly
+    // as the sample-by-sample interning assigned them, at one map lookup per distinct set per
+    // range instead of one per sample (287 M on a world set, ~50 s on one core).
     let mut parts = parts.into_inner().expect("probe pool");
-    parts.sort_unstable_by_key(|(t, _, _)| *t);
-    for (_, values, ends) in &parts {
+    parts.sort_unstable_by_key(|(t, _, _, _)| *t);
+    let mut remaps: Vec<Vec<u32>> = Vec::with_capacity(parts.len());
+    for (_, _, values, ends) in &parts {
+        let mut remap = Vec::with_capacity(ends.len());
         let mut start = 0usize;
         for &end in ends {
             let near = &values[start..end as usize];
@@ -308,8 +339,17 @@ pub fn assign_with_timer(
                     id
                 }
             };
-            per_sample.push(id);
+            remap.push(id);
         }
+        remaps.push(remap);
+    }
+    let mapped: Vec<Vec<u32>> = parts
+        .par_iter()
+        .zip(remaps.par_iter())
+        .map(|((_, ids, _, _), remap)| ids.iter().map(|&l| remap[l as usize]).collect())
+        .collect();
+    for ids in mapped {
+        per_sample.extend_from_slice(&ids);
     }
     drop(parts);
 
@@ -318,10 +358,10 @@ pub fn assign_with_timer(
     // last one is its end. Summing the chords between probes instead would fall short of
     // that wherever the alignment curves, and the drift accumulates over a route's length
     // until the last run is cut short of the line's own end.
-    let own_cum: Vec<Vec<f64>> = candidates.iter().map(|c| cumulative(c.points)).collect();
+    let own_cum: Vec<Vec<f64>> = candidates.par_iter().map(|c| cumulative(c.points)).collect();
     let probe_cum: Vec<Vec<f64>> = blocks
-        .iter()
-        .zip(&own_cum)
+        .par_iter()
+        .zip(own_cum.par_iter())
         .map(|(block, own)| {
             let total = own.last().copied().unwrap_or(0.0);
             let count = block.len();
@@ -332,8 +372,8 @@ pub fn assign_with_timer(
         .collect();
 
     let runs: Vec<Vec<Run>> = blocks
-        .iter()
-        .zip(&probe_cum)
+        .par_iter()
+        .zip(probe_cum.par_iter())
         .map(|(block, cum)| cut_runs(&per_sample[block.clone()], cum))
         .collect();
 
@@ -391,57 +431,31 @@ pub fn assign_with_timer(
         o.sort_unstable_by_key(|&i| std::cmp::Reverse(runs[i].len()));
         o
     };
-    let cut_next = AtomicUsize::new(0);
+    // On the run's own pool rather than on scoped threads, so the one transcontinental line
+    // that used to grind alone at the end can split its own placements across the idle
+    // workers (see `spans_of`). One candidate per task, so dispatch stays first-come in the
+    // largest-first order above.
     let cut_done = AtomicUsize::new(0);
-    let cut_parts: Mutex<Vec<(usize, Vec<Span>)>> = Mutex::new(Vec::with_capacity(total));
-    {
-        let corridors = &corridors;
-        let cut_parts = &cut_parts;
-        let cut_done = &cut_done;
-        let cut_next = &cut_next;
-        let samples = &samples;
-        let runs = &runs;
-        let blocks = &blocks;
-        let probe_cum = &probe_cum;
-        let own_cum = &own_cum;
-        let order = &order;
-        std::thread::scope(|scope| {
-            for _ in 0..threads.min(total.max(1)) {
-                scope.spawn(move || {
-                    let mut local: Vec<(usize, Vec<Span>)> = Vec::new();
-                    loop {
-                        let slot = cut_next.fetch_add(1, AtomicOrdering::Relaxed);
-                        if slot >= total {
-                            break;
-                        }
-                        let at = order[slot];
-                        local.push((
-                            at,
-                            spans_of(
-                                &candidates[at],
-                                &runs[at],
-                                &samples[blocks[at].clone()],
-                                &probe_cum[at],
-                                &own_cum[at],
-                                corridors,
-                            ),
-                        ));
-                        let n = cut_done.fetch_add(1, AtomicOrdering::Relaxed) + 1;
-                        if n % 64 == 0 {
-                            eprint!(
-                                "\r{:<28} [{:>3}%] {total} line(s)",
-                                "Corridor cut",
-                                n * 100 / total.max(1)
-                            );
-                        }
-                    }
-                    cut_parts.lock().expect("cut pool").extend(local);
-                });
+    let mut cut_parts: Vec<(usize, Vec<Span>)> = order
+        .par_iter()
+        .with_max_len(1)
+        .map(|&at| {
+            let spans = spans_of(
+                &candidates[at],
+                &runs[at],
+                &samples[blocks[at].clone()],
+                &probe_cum[at],
+                &own_cum[at],
+                &corridors,
+            );
+            let n = cut_done.fetch_add(1, AtomicOrdering::Relaxed) + 1;
+            if n % 64 == 0 {
+                eprint!("\r{:<28} [{:>3}%] {total} line(s)", "Corridor cut", n * 100 / total.max(1));
             }
-        });
-    }
+            (at, spans)
+        })
+        .collect();
     eprintln!("\r{:<28} [100%] {total} line(s)", "Corridor cut");
-    let mut cut_parts = cut_parts.into_inner().expect("cut pool");
     cut_parts.sort_unstable_by_key(|(at, _)| *at);
     cut_parts.into_iter().map(|(_, spans)| spans).collect()
 }
@@ -474,6 +488,16 @@ struct Corridor {
     /// The corridor's distinct colours, ordered across it: the first is the left-hand side of
     /// the reference's direction of travel, which is the side [`Span::ordinal`] zero draws on.
     colours: Vec<u32>,
+    /// Bounds over runs of [`SEG_BLOCK`] consecutive segments of `points`, so [`nearest`] can
+    /// skip the ones that cannot hold the answer. Derived from `points`.
+    blocks: Vec<SegBlock>,
+}
+
+impl Corridor {
+    fn new(points: Vec<(i32, i32)>, cum: Vec<f64>, colours: Vec<u32>) -> Corridor {
+        let blocks = seg_blocks(&points);
+        Corridor { points, cum, colours, blocks }
+    }
 }
 
 /// Cut a candidate's samples into runs of constant membership, then smooth away the ones too

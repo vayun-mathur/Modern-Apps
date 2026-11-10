@@ -136,6 +136,37 @@ impl Reader {
         Reader::new(buf)
     }
 
+    /// Read the pack at `path`, but only the header, the directory and the listed sections.
+    ///
+    /// For a caller that needs a few hundred MB of a multi-GB pack: `transit_shapes --pack`
+    /// reads three sections, and reading the whole 4.4 GB world pack first was most of its
+    /// start-up. The buffer is still the file's full length, so every offset means what it
+    /// does in [`open`](Self::open), and it is validated identically; the sections not listed
+    /// read as zeros and must not be used. The zeroed buffer is allocated untouched, so the
+    /// unread sections cost address space, not memory. Listed sections the pack does not have
+    /// (a v6 pack has no RAIL_LINES) are skipped, for the accessors to report.
+    pub fn open_sections(path: &std::path::Path, sections: &[usize]) -> Result<Reader, String> {
+        use std::io::{Read, Seek, SeekFrom};
+        let fail = |e: std::io::Error| format!("cannot read {}: {e}", path.display());
+        let mut f = std::fs::File::open(path).map_err(fail)?;
+        let len = f.metadata().map_err(fail)?.len() as usize;
+        let mut buf = vec![0u8; len];
+        // Header, then the directory it sizes. `new` re-checks both against the real length.
+        let head = HEADER_LEN.min(len);
+        f.read_exact(&mut buf[..head]).map_err(fail)?;
+        if head == HEADER_LEN {
+            let dir_end = (HEADER_LEN + ru32(&buf, 8) as usize * 16).min(len);
+            f.read_exact(&mut buf[HEADER_LEN..dir_end]).map_err(fail)?;
+        }
+        let mut reader = Reader::new(buf)?;
+        for &s in sections {
+            let Some(&(off, l)) = reader.sec.get(s) else { continue };
+            f.seek(SeekFrom::Start(off as u64)).map_err(fail)?;
+            f.read_exact(&mut reader.buf[off..off + l]).map_err(fail)?;
+        }
+        Ok(reader)
+    }
+
     /// The `idx`-th u32 of the header.
     fn hdr(&self, idx: usize) -> u32 {
         ru32(&self.buf, idx * 4)

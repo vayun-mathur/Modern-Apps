@@ -384,3 +384,59 @@ fn a_route_with_no_usable_shape_is_counted_and_drawn_nothing() {
 
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// The cover gates resolve a window of lines speculated in parallel; a window of one line is
+/// the sequential fold exactly, and every other window must reproduce it byte for byte. The
+/// set is built to make the windows disagree if anything were stale: many routes republishing
+/// one track a few metres apart (the colour gate), uncoloured copies (the mode gate), five or
+/// more colours over one stretch (the crowd gate), short-turns, and lines long enough to take
+/// the wide per-line and sharded-add paths.
+#[test]
+fn the_speculative_window_changes_no_byte() {
+    let root = std::env::temp_dir().join(format!("gtfs_shapes_window_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    let colours = ["0054A5", "E31E24", "00A651", "", "FFC20E", "8E44AD", "", "0054A5"];
+    let mut routes = String::from("route_id,route_short_name,route_type,route_color\n");
+    let mut trips = String::from("route_id,trip_id,shape_id\n");
+    let mut shapes = String::from("shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n");
+    let mut x = 0x2545_F491_4F6C_DD1Du64;
+    let mut next = move || {
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        x
+    };
+    for r in 0..60u64 {
+        let colour = colours[(next() % colours.len() as u64) as usize];
+        let route_type = [1, 1, 0, 2][(next() % 4) as usize];
+        routes.push_str(&format!("R{r},L{},{route_type},{colour}\n", r % 9));
+        trips.push_str(&format!("R{r},T{r},S{r}\n"));
+        // Up to ~1.1 degrees (~120 km) of one north-south trunk, starting anywhere along its
+        // first half, offset sideways by 0-40 m, with a kink partway.
+        let start = 37.0 + (next() % 500) as f64 * 1e-3;
+        let length = [0.02, 0.1, 0.5, 1.1][(next() % 4) as usize];
+        let lon = -122.0 + (next() % 40) as f64 * 1e-5;
+        let kink = (next() % 3) as f64 * 1e-4;
+        let points = [(start, lon), (start + length * 0.4, lon + kink), (start + length, lon)];
+        for (seq, (lat, lon)) in points.iter().enumerate() {
+            shapes.push_str(&format!("S{r},{lat:.7},{lon:.7},{}\n", seq + 1));
+        }
+    }
+    std::fs::write(root.join("routes.txt"), routes).unwrap();
+    std::fs::write(root.join("trips.txt"), trips).unwrap();
+    std::fs::write(root.join("shapes.txt"), shapes).unwrap();
+    let specs: Vec<FeedSpec> = vec![("trunk".to_string(), root.clone(), String::new())];
+
+    let render = |window: usize| -> String {
+        let out = root.join(format!("w{window}.geojsonseq"));
+        super::extra2::run_windowed(&out, super::extra2::Inputs::Feeds(&specs), None, window).unwrap();
+        std::fs::read_to_string(&out).unwrap()
+    };
+    let sequential = render(1);
+    assert!(sequential.lines().count() > 3, "the set must keep several lines: {sequential}");
+    for window in [2, 3, 7, 16, 64] {
+        assert_eq!(render(window), sequential, "window {window}");
+    }
+    let _ = std::fs::remove_dir_all(&root);
+}

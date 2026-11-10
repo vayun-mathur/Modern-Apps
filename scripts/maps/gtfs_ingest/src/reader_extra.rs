@@ -66,7 +66,10 @@ impl crate::reader::Reader {
             let end = tail.iter().position(|&b| b == 0).unwrap_or(tail.len());
             String::from_utf8_lossy(&tail[..end]).into_owned()
         };
+        // Each record decodes on its own; `collect` keeps pack order.
+        use rayon::prelude::*;
         let out = (0..count)
+            .into_par_iter()
             .map(|i| {
                 let at = recs + i * RAIL_LINE_REC_BYTES;
                 let field = |k: usize| ru32(s, at + k * 4);

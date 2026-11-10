@@ -1,3 +1,7 @@
+/// Run length, in samples, from which the snap search in [`spans_of`] goes wide. Changes no
+/// answer.
+const PAR_SNAP: usize = 64;
+
 /// One candidate's spans, in its own order of travel.
 fn spans_of(
     candidate: &Candidate,
@@ -14,8 +18,9 @@ fn spans_of(
         return whole();
     }
 
+    // Per run independent, and collected in run order.
     let placements: Vec<Option<Placement>> = runs
-        .iter()
+        .par_iter()
         .map(|run| {
             let corridor = corridors.get(&run.set)?;
             let a = distance_along(corridor, samples[run.from].point);
@@ -26,10 +31,19 @@ fn spans_of(
             if hi - lo < SAMPLE_M {
                 return None;
             }
-            let near = |at: usize| nearest(corridor, samples[at].point).0 <= SNAP_M;
-            let snap = (run.from..=run.to).find(|&at| near(at)).map(|first| {
-                (first, (first..=run.to).rev().find(|&at| near(at)).unwrap_or(first))
-            });
+            let near = |at: usize| within(corridor, samples[at].point, SNAP_M);
+            // Each probe is a walk of the whole reference, so a long run on a long corridor is
+            // the single most expensive thing in the cut. `find_first` / `find_last` are the
+            // sequential first and last match exactly, just searched wide.
+            let snap = if run.to - run.from < PAR_SNAP {
+                (run.from..=run.to).find(|&at| near(at)).map(|first| {
+                    (first, (first..=run.to).rev().find(|&at| near(at)).unwrap_or(first))
+                })
+            } else {
+                (run.from..run.to + 1).into_par_iter().with_min_len(8).find_first(|&at| near(at)).map(|first| {
+                    (first, (first..run.to + 1).into_par_iter().with_min_len(8).find_last(|&at| near(at)).unwrap_or(first))
+                })
+            };
             Some(Placement { corridor, forward, lo, hi, snap })
         })
         .collect();
@@ -266,17 +280,118 @@ fn distance_along(corridor: &Corridor, p: (i32, i32)) -> f64 {
     nearest(corridor, p).1
 }
 
+/// Segments per [`SegBlock`].
+const SEG_BLOCK: usize = 32;
+
+/// Slack, in metres, taken off every [`SegBlock::lower_bound`]: far above the nanometres of
+/// rounding [`project`] can introduce at planetary coordinates, far below anything a skip
+/// could save.
+const BOUND_SLACK_M: f64 = 0.01;
+
+/// The extent of a run of consecutive reference segments, in the terms [`project`] measures in.
+struct SegBlock {
+    lat_lo: i32,
+    lat_hi: i32,
+    lon_lo: i32,
+    lon_hi: i32,
+    /// The smallest of the run's per-segment `cos_lat`s, computed exactly as [`project`] does.
+    cos_min: f64,
+}
+
+impl SegBlock {
+    /// A floor under [`project`]'s distance from `p` to any segment of the run.
+    ///
+    /// `project` measures in metres north (`lat × k`, the same for every segment) and metres
+    /// east scaled by the segment's own `cos_lat`. The closest point of a segment lies inside
+    /// the segment's box, so its northing is at least the latitude gap from `p` to the run's
+    /// box away, and its easting at least the longitude gap times the smallest `cos_lat` in the
+    /// run. Less the slack, so the floor holds through rounding.
+    fn lower_bound(&self, p: (i32, i32)) -> f64 {
+        let k = 1e-7 * 111_320.0;
+        let (lat, lon) = (p.0 as f64, p.1 as f64);
+        let gy = (self.lat_lo as f64 - lat).max(lat - self.lat_hi as f64).max(0.0) * k;
+        let gx = (self.lon_lo as f64 - lon).max(lon - self.lon_hi as f64).max(0.0) * k * self.cos_min.max(0.0);
+        (gx * gx + gy * gy).sqrt() - BOUND_SLACK_M
+    }
+}
+
+fn seg_blocks(points: &[(i32, i32)]) -> Vec<SegBlock> {
+    let segs = points.len().saturating_sub(1);
+    (0..segs.div_ceil(SEG_BLOCK))
+        .map(|b| {
+            let (lo, hi) = (b * SEG_BLOCK, ((b + 1) * SEG_BLOCK).min(segs));
+            let run = &points[lo..=hi];
+            let cos_min = (lo..hi)
+                .map(|at| ((points[at].0 as f64 + points[at + 1].0 as f64) * 0.5 * 1e-7).to_radians().cos())
+                .fold(f64::INFINITY, f64::min);
+            SegBlock {
+                lat_lo: run.iter().map(|q| q.0).min().expect("two points"),
+                lat_hi: run.iter().map(|q| q.0).max().expect("two points"),
+                lon_lo: run.iter().map(|q| q.1).min().expect("two points"),
+                lon_hi: run.iter().map(|q| q.1).max().expect("two points"),
+                cos_min,
+            }
+        })
+        .collect()
+}
+
+/// The segments of block `b` of a polyline with `segs` segments.
+fn block_segs(b: usize, segs: usize) -> std::ops::Range<usize> {
+    b * SEG_BLOCK..((b + 1) * SEG_BLOCK).min(segs)
+}
+
 /// The nearest point on a corridor's reference to `p`, as `(distance to it, distance along)`.
+///
+/// The first segment, in reference order, at the smallest [`project`] distance — what a walk
+/// of every segment keeping strict improvements returns, which is what this used to be. That
+/// walk was most of the corridor cut on a world set: one per probe, over references of tens of
+/// thousands of points. Now the block with the lowest floor is measured first; its best
+/// distance bounds the answer from above, every block whose floor is over that bound is
+/// skipped — it cannot hold the minimum, nor tie it — and the rest are walked in reference
+/// order exactly as before.
 fn nearest(corridor: &Corridor, p: (i32, i32)) -> (f64, f64) {
     let (points, cum) = (&corridor.points, &corridor.cum);
+    let segs = points.len().saturating_sub(1);
+    let blocks = &corridor.blocks;
+    let mut bound = f64::INFINITY;
+    if blocks.len() > 2 {
+        let mut seed = (f64::INFINITY, 0usize);
+        for (b, block) in blocks.iter().enumerate() {
+            let lb = block.lower_bound(p);
+            if lb < seed.0 {
+                seed = (lb, b);
+            }
+        }
+        for at in block_segs(seed.1, segs) {
+            let offset = project(p, points[at], points[at + 1], 0.0).1;
+            if offset < bound {
+                bound = offset;
+            }
+        }
+    }
     let mut best = (f64::INFINITY, 0.0f64);
-    for at in 0..points.len().saturating_sub(1) {
-        let (t, offset) = project(p, points[at], points[at + 1], 0.0);
-        if offset < best.0 {
-            best = (offset, cum[at] + t * (cum[at + 1] - cum[at]));
+    for (b, block) in blocks.iter().enumerate() {
+        if block.lower_bound(p) > bound {
+            continue;
+        }
+        for at in block_segs(b, segs) {
+            let (t, offset) = project(p, points[at], points[at + 1], 0.0);
+            if offset < best.0 {
+                best = (offset, cum[at] + t * (cum[at + 1] - cum[at]));
+            }
         }
     }
     best
+}
+
+/// `nearest(corridor, p).0 <= radius`, deciding as soon as any segment is that close and
+/// skipping every block whose floor is already further.
+fn within(corridor: &Corridor, p: (i32, i32), radius: f64) -> bool {
+    let (points, segs) = (&corridor.points, corridor.points.len().saturating_sub(1));
+    corridor.blocks.iter().enumerate().any(|(b, block)| {
+        block.lower_bound(p) <= radius
+            && block_segs(b, segs).any(|at| project(p, points[at], points[at + 1], 0.0).1 <= radius)
+    })
 }
 
 /// How far to the side of a corridor's reference `p` lies, in metres, signed positive to the
@@ -395,17 +510,62 @@ const NEIGHBOURHOOD: [(i32, i32); 9] =
 /// The lookup is a `HashMap` of cells rather than the sorted vector the rest of this module
 /// uses. Nothing iterates it — the answer is a boolean about one point — so it cannot leak an
 /// order into the output.
-#[derive(Default)]
 pub struct Covered {
-    points: Vec<((i32, i32), f64, f64)>,
-    cells: std::collections::HashMap<Cell, Vec<u32>>,
-    /// Which service drew each sample, parallel to `points`. See [`Covered::crowd`].
-    tags: Vec<u32>,
-    /// The `(cell, tag)` pairs already holding a representative. One sample per cell per
-    /// service is enough for [`covers`](Covered::covers) and [`tags_over`](Covered::tags_over):
+    /// Every drawn sample, bucketed by its cell.
+    ///
+    /// **One representative per cell per service**: a bucket holds at most one sample of each
+    /// tag. That is enough for [`covers`](Covered::covers) and [`tags_over`](Covered::tags_over):
     /// both ask whether *any* sample of a service is within a corridor of a point, and every
     /// sample of one service in one cell answers that identically. Keeping only the first turns
     /// a cell's occupancy from overlap depth — a trunk republished by a dozen feeds is a dozen
     /// sample runs in the same cells — into distinct services, which is what those gates read.
-    filled: std::collections::HashSet<(Cell, u32)>,
+    /// It also makes "is this service already in this cell" a scan of a handful of entries in a
+    /// bucket already being looked up, rather than a second set of `(cell, tag)` pairs.
+    ///
+    /// Split into [`COVER_SHARDS`] maps by [`shard_of`], so a long line's add fills them all
+    /// at once. A pure partition: every cell lives in exactly one shard, and each shard sees its
+    /// cells' samples in line order, so every bucket ends up holding exactly what one map would.
+    cells: Vec<std::collections::HashMap<Cell, Bucket, CellHash>>,
+    /// How many `add` calls this cover has taken; see [`Covered::mark`].
+    adds: u32,
+}
+
+impl Default for Covered {
+    fn default() -> Self {
+        Covered { cells: (0..COVER_SHARDS).map(|_| Default::default()).collect(), adds: 0 }
+    }
+}
+
+/// Shards per [`Covered`]. Changes no answer; only how wide an add can go.
+const COVER_SHARDS: usize = 64;
+
+/// The shard holding `cell`. Mixed independently of [`CellHasher`], so the cells of one shard
+/// still spread over its own table.
+fn shard_of((x, y): Cell) -> usize {
+    let h = (x as u32).wrapping_mul(0x9E37_79B1) ^ (y as u32).wrapping_mul(0x85EB_CA77);
+    (h.wrapping_mul(0xC2B2_AE35) >> 26) as usize % COVER_SHARDS
+}
+
+/// One cell's representatives, in the order they were added.
+struct Bucket {
+    /// The `adds` count of the last add that appended here.
+    added: u32,
+    /// Inline, because most buckets — every bucket of a colour's cover — hold exactly one.
+    first: Drawn,
+    rest: Vec<Drawn>,
+}
+
+impl Bucket {
+    fn iter(&self) -> impl Iterator<Item = &Drawn> {
+        std::iter::once(&self.first).chain(self.rest.iter())
+    }
+}
+
+/// One drawn sample and the service that drew it.
+#[derive(Clone, Copy)]
+struct Drawn {
+    point: (i32, i32),
+    ux: f64,
+    uy: f64,
+    tag: u32,
 }

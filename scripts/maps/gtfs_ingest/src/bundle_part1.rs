@@ -89,7 +89,7 @@ fn corridors_of(
     // the output is byte-identical however the threads interleave.
     let entries: Vec<(u32, Vec<(usize, f64, f64)>)> = members.into_iter().collect();
     let total = entries.len();
-    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let threads = crate::par::threads();
     let next = AtomicUsize::new(0);
     let finished = AtomicUsize::new(0);
     let collected: Mutex<Vec<(u32, Corridor)>> = Mutex::new(Vec::with_capacity(total));
@@ -174,7 +174,7 @@ fn one_corridor(
                 .expect("a corridor has at least one member");
             let points = canonical(candidates[pick].points);
             let cum = cumulative(&points);
-            let reference = Corridor { points, cum, colours: Vec::new() };
+            let reference = Corridor::new(points, cum, Vec::new());
 
             // Where each member sits across the corridor, averaged over the colour: two
             // routes of one colour share a lane, so they share one place in the order.

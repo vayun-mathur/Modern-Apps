@@ -7,10 +7,16 @@
 
 use super::*;
 use gtfs_ingest::reader::Reader;
+use rayon::prelude::*;
 
 /// Every RAIL_LINES entry as a candidate line, in pack order.
 pub(crate) fn pack_lines(path: &Path) -> Result<FeedLines, String> {
-    let pack = Reader::open(path)?;
+    // Only what this reads: the RAIL_LINES records, the feed table and the string pool their
+    // names live in — about 300 MB of a 4.4 GB world pack.
+    let pack = Reader::open_sections(
+        path,
+        &[gtfs_ingest::reader::SEC_STRINGS, gtfs_ingest::reader::SEC_FEEDS, gtfs_ingest::reader::SEC_RAIL_LINES],
+    )?;
     let Some(recs) = pack.rail_lines() else {
         return Err(format!(
             "{} is a v{} pack with no RAIL_LINES section; rebuild it with scripts/maps/build_world_transit.ps1",
@@ -20,27 +26,35 @@ pub(crate) fn pack_lines(path: &Path) -> Result<FeedLines, String> {
     };
     let feeds: Vec<String> = (0..pack.feed_count()).map(|f| pack.feed_name(f)).collect();
     let mut out = FeedLines::default();
-    for rec in recs {
-        let Some(mode) = mode_of(rec.route_type) else {
-            return Err(format!("RAIL_LINES carries route_type {}, which is not rail", rec.route_type));
-        };
-        let (color, fallback) = match rec.color {
-            0 => (fallback_color(mode), true),
-            c => (c, false),
-        };
+    // Built wide (the intercity test walks every line), then taken in pack order, so the first
+    // bad record is still the one reported.
+    let built: Vec<Result<Line, String>> = recs
+        .into_par_iter()
+        .map(|rec| {
+            let Some(mode) = mode_of(rec.route_type) else {
+                return Err(format!("RAIL_LINES carries route_type {}, which is not rail", rec.route_type));
+            };
+            let (color, fallback) = match rec.color {
+                0 => (fallback_color(mode), true),
+                c => (c, false),
+            };
+            Ok(Line {
+                intercity: intercity::is_intercity(intercity::is_long_distance_type(rec.route_type), &rec.points),
+                points: rec.points,
+                color,
+                mode,
+                fallback,
+                route: rec.name,
+                route_key: format!("{}\u{0}{}", feeds[rec.feed_idx as usize], rec.route_id),
+                ordinal: 0,
+                lanes: 1,
+                taper: 255,
+            })
+        })
+        .collect();
+    for line in built {
+        out.lines.push(line?);
         out.shapes_read += 1;
-        out.lines.push(Line {
-            intercity: intercity::is_intercity(intercity::is_long_distance_type(rec.route_type), &rec.points),
-            points: rec.points,
-            color,
-            mode,
-            fallback,
-            route: rec.name,
-            route_key: format!("{}\u{0}{}", feeds[rec.feed_idx as usize], rec.route_id),
-            ordinal: 0,
-            lanes: 1,
-            taper: 255,
-        });
     }
     Ok(out)
 }
