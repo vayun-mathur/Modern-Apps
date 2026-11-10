@@ -31,6 +31,10 @@ import javax.inject.Inject
  * implicitly by cargo when rust-toolchain.toml pins 1.97.0, which is not
  * concurrency-safe and produces "Directory not empty (os error 39)",
  * "cargo not applicable", "failed to install component bin/rust-gdb" errors.
+ *
+ * `-Pmodernapps.cargoParallelism=N` raises the cap for builds whose toolchain is
+ * already installed (the release builder image pre-installs it, so no implicit
+ * rustup install can race). See [cargoParallelism].
  */
 abstract class RustToolchainLock : BuildService<BuildServiceParameters.None>
 
@@ -58,6 +62,22 @@ private fun isRustLengthExempt(path: String): Boolean =
     path.contains("/tests/") || path.contains("/test_fixtures/") ||
         path.contains("/examples/") || path.contains("/generated/") ||
         path.contains("/third_party/")
+
+/**
+ * How many cargoBuild tasks may run at once: `-Pmodernapps.cargoParallelism=N`
+ * (default 1, the historic fully serialized behaviour). The release build on a
+ * many-core box sets it to the number of Rust crate/ABI builds so the ~30 fat-LTO
+ * (codegen-units = 1, single-threaded) link steps overlap instead of queueing
+ * behind one another on the critical path. Only safe when the pinned toolchain is
+ * already installed (see [RustToolchainLock]). Read as a plain Int at configuration
+ * time, so it is configuration-cache safe.
+ */
+fun Project.cargoParallelism(): Int =
+    providers.gradleProperty("modernapps.cargoParallelism").orNull
+        ?.let { raw ->
+            raw.toIntOrNull()?.takeIf { it >= 1 }
+                ?: throw GradleException("Invalid -Pmodernapps.cargoParallelism=$raw: expected an integer >= 1.")
+        } ?: 1
 
 /**
  * An Android ABI paired with the Rust target triple and the NDK clang-wrapper prefix
@@ -361,12 +381,14 @@ fun Project.rustNativeLib(
     glslcArgs: List<String> = emptyList(),
     hostTests: Boolean = true,
 ) {
-    // Serialize cargoBuild across all Rust modules to avoid concurrent rustup installs.
+    // Serialize cargoBuild across all Rust modules to avoid concurrent rustup installs
+    // (unless the build opts into parallel cargo, see cargoParallelism below).
+    val parallelCargo = cargoParallelism()
     val rustLock = gradle.sharedServices.registerIfAbsent(
         "rustToolchainLock",
         RustToolchainLock::class.java
     ) {
-        maxParallelUsages.set(1)
+        maxParallelUsages.set(parallelCargo)
     }
 
     val androidApiLevel = 31
@@ -472,6 +494,19 @@ fun Project.rustNativeLib(
             // (current scheme since Cargo.toml workspace unified to root).
             val perCrateSoOut = file("$srcDir/target/$triple/$profile/lib$crate.so")
             val workspaceSoOut = rootProject.file("target/$triple/$profile/lib$crate.so")
+            // Parallel cargo: cargo locks its whole build dir, so concurrent builds
+            // sharing the workspace target/ would still run one at a time. Give each
+            // crate+ABI its own target dir instead. No sharing is lost: every crate
+            // passes its own --remap-path-prefix RUSTFLAGS, so cargo rebuilds the
+            // shared deps per crate in the workspace target/ anyway. The target dir
+            // path is not baked into the .so (verified byte-identical vs the shared
+            // target/ on the v2.6.11b release build).
+            val isolatedTargetDir: File? = if (parallelCargo > 1) {
+                rootProject.file("target/isolated/$crate-$abiDir")
+            } else {
+                null
+            }
+            val isolatedSoOut = isolatedTargetDir?.let { File(it, "$triple/$profile/lib$crate.so") }
             val destSo = layout.buildDirectory.file("rustJniLibs/$abiDir/lib$crate.so").get().asFile
             val targetRustflags = "-C link-arg=-Wl,-z,max-page-size=16384"
 
@@ -596,6 +631,7 @@ fun Project.rustNativeLib(
                 environment("SOURCE_DATE_EPOCH", it)
             }
             environment("CARGO_INCREMENTAL", "0")
+            isolatedTargetDir?.let { environment("CARGO_TARGET_DIR", it.absolutePath) }
 
             commandLine(
                 "$cargoBin/cargo$exeExt",
@@ -611,6 +647,8 @@ fun Project.rustNativeLib(
             doLast {
                 destSo.parentFile.mkdirs()
                 val src = when {
+                    isolatedSoOut != null -> isolatedSoOut.takeIf { it.exists() }
+                        ?: error("cargo produced no ${isolatedSoOut.path} for $crate")
                     perCrateSoOut.exists() -> perCrateSoOut
                     workspaceSoOut.exists() -> workspaceSoOut
                     else -> error("Neither per-crate ${perCrateSoOut.path} nor workspace ${workspaceSoOut.path} exists for $crate")
