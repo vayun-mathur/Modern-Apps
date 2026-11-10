@@ -414,9 +414,78 @@ mod platform {
     }
 }
 
+/// Ask the filesystem to store an EMPTY scratch file uncompressed. Best effort: a no-op
+/// anywhere but Linux, and any refusal (not btrfs, flag unsupported, file already has
+/// data) is ignored -- the file then behaves exactly as it did before.
+///
+/// Why this exists: the build box mounts btrfs with `compress-force=zstd:3`, which
+/// compresses every extent in 128 KiB units regardless of whether the data shrinks. For
+/// `nodeloc`'s 83 GB coordinate table (planet) the data does not shrink (`compsize`: 94%)
+/// and the access is random 8-byte reads through a mapping, so every 4 KiB page fault that
+/// misses the page cache inflates a whole 128 KiB extent: ~32x read amplification and a
+/// zstd decode per fault. Measured on the Nov 10 planet build, the lane-inheritance scan
+/// ran at 4-5 cores with ~190 threads in `D` state on those faults.
+///
+/// btrfs only skips compression (even under `compress-force`) for a NOCOW inode
+/// (`FS_NOCOW_FL`, `chattr +C`), and NOCOW only takes on a file with no data yet -- so
+/// call this right after `create`/`truncate`, before the first write. Scratch only: NOCOW
+/// also drops data checksums, which is fine for a file the same process deletes.
+///
+/// Bytes read back are identical either way; this changes only how the filesystem stores
+/// them.
+pub fn mark_scratch_uncompressed(file: &std::fs::File) {
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::fd::AsRawFd;
+        const FS_NOCOW_FL: libc::c_long = 0x0080_0000;
+        let fd = file.as_raw_fd();
+        // `c_long` per the ioctl's declared size; the kernel reads/writes the low int.
+        let mut flags: libc::c_long = 0;
+        // SAFETY: `fd` is a live descriptor owned by `file`; both ioctls only read or write
+        // the flag word through the pointer, which outlives the calls.
+        unsafe {
+            if libc::ioctl(fd, libc::FS_IOC_GETFLAGS, &mut flags as *mut libc::c_long) != 0 {
+                return;
+            }
+            if flags & FS_NOCOW_FL != 0 {
+                return;
+            }
+            flags |= FS_NOCOW_FL;
+            let _ = libc::ioctl(fd, libc::FS_IOC_SETFLAGS, &flags as *const libc::c_long);
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = file;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Best effort means it must never fail or disturb the file: whatever the filesystem
+    /// under the temp dir, the file stays writable and reads back what was written.
+    #[test]
+    fn marking_scratch_uncompressed_never_changes_the_bytes() {
+        use std::io::{Read, Seek, Write};
+        let path = std::env::temp_dir().join(format!("osm_nocow_test_{}.bin", std::process::id()));
+        let mut f = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&path)
+            .unwrap();
+        mark_scratch_uncompressed(&f);
+        f.write_all(b"same bytes either way").unwrap();
+        f.rewind().unwrap();
+        let mut back = String::new();
+        f.read_to_string(&mut back).unwrap();
+        drop(f);
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(back, "same bytes either way");
+    }
 
     #[test]
     fn vm_hwm_is_read_in_kilobytes() {

@@ -81,6 +81,10 @@ impl Locs {
             .truncate(true)
             .open(&path)
             .map_err(|e| Error(format!("cannot create {}: {e}", path.display())))?;
+        // Uncompressed on a `compress-force` btrfs: random 8-byte reads through the mapping
+        // must not inflate a 128 KiB extent per page fault, and coordinates do not compress
+        // anyway. Must precede `set_len`/any data; see `mark_scratch_uncompressed`.
+        crate::mem::mark_scratch_uncompressed(&file);
         // Sets the length without writing anything: on both platforms this leaves a sparse or
         // zero-filled file, so the 1.23 GB is not touched until a page is used.
         file.set_len(bytes)
