@@ -119,7 +119,33 @@ pub fn visit_block<F>(
 where
     F: FnMut(Element) -> Result<()>,
 {
-    let mut scratch = Scratch::default();
+    // Reuse this thread's decode buffers across blocks. A fresh `Scratch` per
+    // block regrew ~10 vectors from empty to tens of KB on every blob, and with
+    // 192 decode threads that malloc/realloc churn serialised on allocator
+    // locks (most of a California build's ~400 s of system time). Contents are
+    // cleared before every use, so reuse changes nothing but the allocations.
+    // Taken, not borrowed, so a nested visit (none exists) would just get a
+    // fresh one.
+    let mut scratch = SCRATCH.with(|c| c.take());
+    let r = visit_groups(block, want, kinds, f, &mut scratch);
+    SCRATCH.with(|c| c.set(scratch));
+    r
+}
+
+thread_local! {
+    static SCRATCH: std::cell::Cell<Scratch> = std::cell::Cell::new(Scratch::default());
+}
+
+fn visit_groups<F>(
+    block: &PrimitiveBlock,
+    want: u8,
+    kinds: &mut u8,
+    f: &mut F,
+    scratch: &mut Scratch,
+) -> Result<()>
+where
+    F: FnMut(Element) -> Result<()>,
+{
     for group in &block.groups {
         let mut g = Reader::new(group);
         while let Some((field, wire)) = g.next_field()? {
@@ -132,28 +158,28 @@ where
                     *kinds |= KIND_NODES;
                     let body = g.bytes()?;
                     if want & KIND_NODES != 0 {
-                        visit_node(block, body, &mut scratch, f)?;
+                        visit_node(block, body, scratch, f)?;
                     }
                 }
                 2 => {
                     *kinds |= KIND_NODES;
                     let body = g.bytes()?;
                     if want & KIND_NODES != 0 {
-                        visit_dense(block, body, &mut scratch, f)?;
+                        visit_dense(block, body, scratch, f)?;
                     }
                 }
                 3 => {
                     *kinds |= KIND_WAYS;
                     let body = g.bytes()?;
                     if want & KIND_WAYS != 0 {
-                        visit_way(block, body, &mut scratch, f)?;
+                        visit_way(block, body, scratch, f)?;
                     }
                 }
                 4 => {
                     *kinds |= KIND_RELATIONS;
                     let body = g.bytes()?;
                     if want & KIND_RELATIONS != 0 {
-                        visit_relation(block, body, &mut scratch, f)?;
+                        visit_relation(block, body, scratch, f)?;
                     }
                 }
                 _ => g.skip(wire)?,

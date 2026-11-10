@@ -279,7 +279,7 @@ pub(crate) struct SpillWriter {
     hdr: BufWriter<File>,
     pts: BufWriter<File>,
     /// Points written so far, which is the next chain's `pts_start`.
-    points: u64,
+    pub(crate) points: u64,
     chains: u64,
 }
 
@@ -316,6 +316,20 @@ impl SpillWriter {
         }
         self.points += u64::from(c.pts_len);
         self.chains += 1;
+        Ok(())
+    }
+
+    /// Append chains already encoded by [`build`]'s workers: `hdr` holds whole
+    /// header records whose `pts_start` the caller has rebased onto
+    /// [`SpillWriter::points`], and `pts` the `points` coordinates they cover.
+    /// Same bytes as [`SpillWriter::push`] per chain.
+    pub fn push_encoded(&mut self, hdr: &[u8], pts: &[u8], points: u64) -> Result<()> {
+        debug_assert_eq!(hdr.len() as u64 % CHAIN_REC_BYTES, 0);
+        debug_assert_eq!(pts.len() as u64, points * CHAIN_PT_BYTES);
+        self.hdr.write_all(hdr).map_err(io_err)?;
+        self.pts.write_all(pts).map_err(io_err)?;
+        self.points += points;
+        self.chains += hdr.len() as u64 / CHAIN_REC_BYTES;
         Ok(())
     }
 

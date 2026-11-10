@@ -58,6 +58,7 @@
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 
 use crate::compact::{self, Seg, REMOVED};
 use crate::chains;
@@ -363,6 +364,21 @@ impl Bitset {
         self.bits[(idx / 8) as usize] & (1u8 << (idx % 8)) != 0
     }
 
+    /// A shared, atomic view of the bits for marking from many threads at once.
+    ///
+    /// Setting bits is a set union, which is commutative and idempotent, so the
+    /// final bits — and the count of bits that went from clear to set, which
+    /// [`AtomicBits::set`] reports exactly once per bit — are independent of
+    /// which thread got there first. That is what lets the PBF passes mark from
+    /// their decode workers instead of a single-threaded sink.
+    pub(crate) fn atomic(&mut self) -> AtomicBits<'_> {
+        let bytes: &mut [u8] = &mut self.bits;
+        // SAFETY: `AtomicU8` has the size, alignment and bit validity of `u8`,
+        // and the exclusive borrow of `self.bits` is held for the view's
+        // lifetime, so no plain access can race with the atomic ones.
+        AtomicBits(unsafe { &*(bytes as *mut [u8] as *const [std::sync::atomic::AtomicU8]) })
+    }
+
     /// Index the blocks covering ids up to and including `max_id`, returning the
     /// total number of set bits.
     ///
@@ -374,21 +390,23 @@ impl Bitset {
     fn build_rank(&mut self, max_id: u64) -> u64 {
         let used = (max_id / 8 + 1) as usize;
         let blocks = used.div_ceil(RANK_BLOCK_BYTES);
-        self.rank = Vec::with_capacity(blocks + 1);
+        // Per-block popcounts on the pool, then one serial prefix sum: the
+        // counts are integers, so the result cannot depend on the split.
+        let bits = &self.bits[..used];
+        let mut rank: Vec<u64> = par::install(|| {
+            bits.par_chunks(RANK_BLOCK_BYTES)
+                .map(|c| c.iter().map(|b| u64::from(b.count_ones())).sum::<u64>())
+                .collect()
+        });
+        debug_assert_eq!(rank.len(), blocks);
         let mut total = 0u64;
-        let mut prog = crate::progress::Progress::new("Rank index", blocks as u64);
-        for b in 0..blocks {
-            self.rank.push(total);
-            let start = b * RANK_BLOCK_BYTES;
-            let end = (start + RANK_BLOCK_BYTES).min(used);
-            total += self.bits[start..end]
-                .iter()
-                .map(|byte| u64::from(byte.count_ones()))
-                .sum::<u64>();
-            prog.inc();
+        for r in rank.iter_mut() {
+            let n = *r;
+            *r = total;
+            total += n;
         }
-        prog.finish();
-        self.rank.push(total);
+        rank.push(total);
+        self.rank = rank;
         total
     }
 
@@ -408,6 +426,25 @@ impl Bitset {
         let n = self.rank[block] + u64::from(whole) + u64::from(below);
         debug_assert!(n <= u64::from(u32::MAX), "dense id {n} does not fit a u32");
         n as u32
+    }
+}
+
+/// See [`Bitset::atomic`].
+pub(crate) struct AtomicBits<'a>(&'a [std::sync::atomic::AtomicU8]);
+
+impl AtomicBits<'_> {
+    /// Set bit `idx`; true when this call is the one that set it. A plain load
+    /// first, so re-marking an already-set bit (most refs: a node is shared by
+    /// every way through it) never takes the cache line exclusive.
+    #[inline]
+    pub(crate) fn set(&self, idx: u64) -> bool {
+        use std::sync::atomic::Ordering::Relaxed;
+        let byte = &self.0[(idx / 8) as usize];
+        let mask = 1u8 << (idx % 8);
+        if byte.load(Relaxed) & mask != 0 {
+            return false;
+        }
+        byte.fetch_or(mask, Relaxed) & mask == 0
     }
 }
 
@@ -440,11 +477,13 @@ impl NodeIndex {
 
 #[derive(Default)]
 struct Pass1 {
-    /// Node ids referenced by a routable way, and the ids of stop-tagged nodes.
-    /// Per chunk and freed by the sink: nothing about a way is retained, because
-    /// the ways pass re-reads them.
-    refs: Vec<i64>,
-    stop_nodes: Vec<i64>,
+    /// Ids this chunk was the first to mark. Refs and stops are marked straight
+    /// into the shared mask from the decode workers (a set union, so order
+    /// cannot matter); only these two scalars reach the sink. Nothing about a
+    /// way is retained, because the ways pass re-reads them.
+    marked: u64,
+    /// Largest id this chunk marked or found already marked.
+    max_id: u64,
 }
 
 /// A region bbox filter, or `None` for a world build.

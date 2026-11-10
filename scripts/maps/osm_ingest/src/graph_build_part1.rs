@@ -142,29 +142,23 @@ pub fn build_with(input: &Path, out_dir: &Path, opts: Options) -> Result<Stats> 
     // coordinates are resolved) apply the filter when they re-read the ways.
     // Stop nodes ARE filtered here: a node's own coordinates arrive with it.
     let filter = opts.bbox;
-    let blob_kinds = pbf::run_pass_sink(
-        input,
-        &blobs,
-        None,
-        KIND_NODES | KIND_WAYS,
-        "Pass 1: refs + stops",
-        Pass1::default,
-        |state, block| pass1_blob(state, block, filter),
-        |chunk| {
-            for id in chunk.refs.iter().chain(chunk.stop_nodes.iter()) {
-                if *id >= 0 && (*id as u64) < BITSET_SIZE {
-                    if mask.set(*id as u64) {
-                        marked += 1;
-                    }
-                    // The rank index is sized from the largest id actually
-                    // marked, not from BITSET_SIZE: indexing all 20 G nominal ids
-                    // would cost 313 MB to describe blocks no node reaches.
-                    max_id = max_id.max(*id as u64);
-                }
-            }
-            Ok(())
-        },
-    )?;
+    let blob_kinds = {
+        let bits = mask.atomic();
+        pbf::run_pass_sink(
+            input,
+            &blobs,
+            None,
+            KIND_NODES | KIND_WAYS,
+            "Pass 1: refs + stops",
+            Pass1::default,
+            |state, block| pass1_blob(state, block, filter, &bits),
+            |chunk| {
+                marked += chunk.marked;
+                max_id = max_id.max(chunk.max_id);
+                Ok(())
+            },
+        )?
+    };
     println!("{marked} graph node(s) expected");
     // Cache the complete blob-kinds mask beside the graph so a `mamaps_build` run over the same
     // `.pbf` can skip its own full pass-1 scan. This pass inflated every blob with `None`, so the
@@ -278,40 +272,90 @@ pub fn build_with(input: &Path, out_dir: &Path, opts: Options) -> Result<Stats> 
     // to be collapsed away.
     timer.switch("morton-sort");
     println!("Sorting {kept_count} surviving node(s) by spatial key...");
-    let mut keys: Vec<(u64, u32)> = Vec::with_capacity(kept_count as usize);
-    let mut prog = crate::progress::Progress::new("Morton keys", u64::from(slots));
-    for i in 0..slots {
-        if kept.get(u64::from(i)) {
-            let (lat_e7, lon_e7) = coords[i as usize];
-            keys.push((spatial_from_e7(lat_e7, lon_e7), i));
+    // Keys on the pool, written in place: the kept bitset's rank says where
+    // each slot range's keys start, so every range fills its own disjoint
+    // slice and `keys` comes out exactly as the serial loop pushed it
+    // (ascending `dense`) with no second copy.
+    let mut keys: Vec<(u64, u32)> = vec![(0, 0); kept_count as usize];
+    {
+        const RANGE: usize = 1 << 20;
+        let ranges: Vec<(usize, usize)> = (0..(slots as usize).div_ceil(RANGE))
+            .map(|r| (r * RANGE, ((r + 1) * RANGE).min(slots as usize)))
+            .collect();
+        let mut pieces: Vec<((usize, usize), &mut [(u64, u32)])> = Vec::with_capacity(ranges.len());
+        let mut rest: &mut [(u64, u32)] = &mut keys;
+        for &(lo, hi) in &ranges {
+            // Kept ids below `hi` minus those below `lo`.
+            let rank = |i: usize| -> usize {
+                if i >= slots as usize {
+                    kept_count as usize
+                } else {
+                    kept.dense(i as u64) as usize
+                }
+            };
+            let (mine, tail) = rest.split_at_mut(rank(hi) - rank(lo));
+            pieces.push(((lo, hi), mine));
+            rest = tail;
         }
-        prog.inc();
+        debug_assert!(rest.is_empty());
+        let coords = &coords;
+        let kept = &kept;
+        par::install(|| {
+            pieces.par_iter_mut().for_each(|((lo, hi), out)| {
+                let mut k = 0usize;
+                for i in *lo as u32..*hi as u32 {
+                    if kept.get(u64::from(i)) {
+                        let (lat_e7, lon_e7) = coords[i as usize];
+                        out[k] = (spatial_from_e7(lat_e7, lon_e7), i);
+                        k += 1;
+                    }
+                }
+                debug_assert_eq!(k, out.len());
+            });
+        });
     }
-    prog.finish();
-    debug_assert_eq!(keys.len(), kept_count as usize);
-    // The key is `(spatial, dense)`, and the loop above pushed `dense` ascending, so
-    // this is exactly the order the previous STABLE `sort_by_key(spatial)` produced:
-    // ties there fell back to insertion order, which was ascending `dense`. Spelling
-    // the tie-break into the key makes the order total, and a total order is what lets
-    // an UNSTABLE parallel sort be substituted without changing a single final id --
-    // and final ids are what `nodes.bin`, `edges.bin` and every offset in the pack are
-    // numbered by, so this is the one comparison in the build that must not move.
+    // The key is `(spatial, dense)`, and the keys are laid out with `dense`
+    // ascending, so this is exactly the order the previous STABLE
+    // `sort_by_key(spatial)` produced: ties there fell back to insertion order,
+    // which was ascending `dense`. Spelling the tie-break into the key makes the
+    // order total, and a total order is what lets an UNSTABLE parallel sort be
+    // substituted without changing a single final id -- and final ids are what
+    // `nodes.bin`, `edges.bin` and every offset in the pack are numbered by, so
+    // this is the one comparison in the build that must not move.
     eprintln!("Sorting {kept_count} spatial key(s)...");
     par::install(|| keys.par_sort_unstable());
 
+    // Final ids on the pool. `final_of_kept` is a permutation write (every
+    // `dense` appears once in `keys`), `node_coords` an ordered map, and each
+    // byte of `stops_final` a pure function of its own eight final ids.
     let mut final_of_kept = vec![0u32; kept_count as usize];
-    let mut node_coords: Vec<geom::Pt> = Vec::with_capacity(kept_count as usize);
     let mut stops_final = Bitset::new(u64::from(kept_count));
-    let mut prog = crate::progress::Progress::new("Final id assignment", keys.len() as u64);
-    for (final_id, (_, dense)) in keys.iter().enumerate() {
-        final_of_kept[kept.dense(u64::from(*dense)) as usize] = final_id as u32;
-        node_coords.push(coords[*dense as usize]);
-        if stop.get(u64::from(*dense)) {
-            stops_final.set(final_id as u64);
-        }
-        prog.inc();
-    }
-    prog.finish();
+    let node_coords: Vec<geom::Pt> = {
+        let out = par::SyncPtr(final_of_kept.as_mut_ptr());
+        let (keys, kept, coords, stop) = (&keys, &kept, &coords, &stop);
+        par::install(|| {
+            keys.par_iter().enumerate().for_each(|(final_id, (_, dense))| {
+                // SAFETY: `keys` holds each kept dense id exactly once, so each
+                // rank is written by exactly one iteration.
+                unsafe { out.write(kept.dense(u64::from(*dense)) as usize, final_id as u32) };
+            });
+            stops_final.bits.par_chunks_mut(1 << 16).enumerate().for_each(|(ci, chunk)| {
+                for (j, byte) in chunk.iter_mut().enumerate() {
+                    let base = ((ci << 16) + j) * 8;
+                    let mut v = 0u8;
+                    for k in 0..8 {
+                        if let Some((_, dense)) = keys.get(base + k) {
+                            if stop.get(u64::from(*dense)) {
+                                v |= 1 << k;
+                            }
+                        }
+                    }
+                    *byte = v;
+                }
+            });
+            keys.par_iter().map(|(_, dense)| coords[*dense as usize]).collect()
+        })
+    };
     drop(keys);
     drop(stop);
     // The chain spill holds coordinates, so nothing downstream needs the array

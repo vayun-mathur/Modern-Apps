@@ -47,10 +47,10 @@ use std::path::{Path, PathBuf};
 
 use crate::compact::Chain;
 use crate::geom;
-use crate::graph_build::{way_attrs, Bitset, NodeIndex, WayAttrs, BITSET_SIZE};
+use crate::graph_build::{way_attrs, AtomicBits, Bitset, NodeIndex, WayAttrs};
 use crate::names::{LocalNames, NamePool, NO_NAME};
 use crate::osm::{visit_block, Element};
-use crate::pbf::{self, BlobLoc, KIND_NODES, KIND_WAYS};
+use crate::pbf::{self, BlobLoc, KIND_WAYS};
 use crate::proto::{Error, Result};
 use crate::spatial::accurate_dist_mm;
 use crate::tags;
@@ -74,12 +74,20 @@ pub(crate) fn segment(index: &NodeIndex, a: i64, b: i64) -> Option<(u32, u32)> {
 /// Nodes with more incidences than a byte can hold are junctions whatever the
 /// true count is, so the counter saturates. Only `== 2` changes a decision, and
 /// no node with 255 incidences is a pass-through.
+///
+/// Counted straight into the shared array from the decode workers: a
+/// saturating increment commutes (the result is `min(255, incidences)` in any
+/// order), so nothing reaches the sink and nothing about the order of chunks
+/// can show. The sink used to scatter every endpoint single-threaded, which
+/// bounded the whole pass to one core.
 #[derive(Default)]
-struct DegreePass {
-    /// Both endpoints of every segment, in decode order. Per chunk, so the
-    /// random scatter into the global array happens once, single-threaded, in the
-    /// sink.
-    endpoints: Vec<u32>,
+struct DegreePass;
+
+/// Saturating `+1` on a shared degree byte.
+#[inline]
+fn bump(d: &std::sync::atomic::AtomicU8) {
+    use std::sync::atomic::Ordering::Relaxed;
+    let _ = d.fetch_update(Relaxed, Relaxed, |v| v.checked_add(1));
 }
 
 /// One saturating incidence count per dense node id.
@@ -88,18 +96,39 @@ struct DegreePass {
 /// which touches the region contributes no incidence, so its nodes stay degree
 /// 0 and never survive. Both this and [`build`] must ask the same question —
 /// see [`segment`] — or a chain dead-ends where the degrees say pass-through.
+///
+/// The region test reads pass 2's `coords`, exactly as [`build`]'s does. It used
+/// to resolve the marked nodes' locations again in a side table with an extra
+/// node scan; that table held the same coordinates for the same nodes
+/// (`coords[d]` is set for exactly the nodes `index.dense` accepts), so the
+/// test is unchanged and the scan is gone.
 pub(crate) fn count_degrees(
     input: &Path,
     blobs: &[BlobLoc],
     blob_kinds: &[u8],
     index: &NodeIndex,
+    coords: &[geom::Pt],
     slots: u32,
     filter: crate::graph_build::RegionFilter,
 ) -> Result<Vec<u8>> {
     let mut degree = vec![0u8; slots as usize];
-    if filter.is_none() {
-        // World build: the fast path, unchanged. Every routable way's segments
-        // count, and no coordinate table is needed.
+    {
+        let bytes: &mut [u8] = &mut degree;
+        // SAFETY: `AtomicU8` has the layout of `u8`, and the exclusive borrow of
+        // `degree` is held for as long as this view lives.
+        let shared: &[std::sync::atomic::AtomicU8] =
+            unsafe { &*(bytes as *mut [u8] as *const [std::sync::atomic::AtomicU8]) };
+        let touches = |refs: &[i64]| -> bool {
+            let Some(b) = filter.as_ref() else {
+                return true;
+            };
+            refs.iter().any(|r| {
+                index.dense(*r).is_some_and(|d| {
+                    let (lat, lon) = coords[d as usize];
+                    b.contains_e7(lat, lon)
+                })
+            })
+        };
         let _ = pbf::run_pass_sink(
             input,
             blobs,
@@ -107,15 +136,15 @@ pub(crate) fn count_degrees(
             KIND_WAYS,
             "Pass 3: node degrees",
             DegreePass::default,
-            |state: &mut DegreePass, block| {
+            |_state: &mut DegreePass, block| {
                 let mut kinds = 0u8;
                 visit_block(block, KIND_WAYS, &mut kinds, &mut |el: Element| {
                     if let Element::Way(w) = el {
-                        if tags::get_hw_id(w.tags.get_str("highway")) != 0 {
+                        if tags::get_hw_id(w.tags.get_str("highway")) != 0 && touches(w.refs) {
                             for pair in w.refs.windows(2) {
                                 if let Some((u, v)) = segment(index, pair[0], pair[1]) {
-                                    state.endpoints.push(u);
-                                    state.endpoints.push(v);
+                                    bump(&shared[u as usize]);
+                                    bump(&shared[v as usize]);
                                 }
                             }
                         }
@@ -124,92 +153,9 @@ pub(crate) fn count_degrees(
                 })?;
                 Ok(kinds)
             },
-            |chunk| {
-                for e in chunk.endpoints {
-                    let d = &mut degree[e as usize];
-                    *d = d.saturating_add(1);
-                }
-                Ok(())
-            },
-        )?;
-        return Ok(degree);
-    }
-    // Region build: degrees must agree with the chain walk's filter, or a
-    // chain dead-ends where the degrees say pass-through. The filter needs
-    // coordinates, which live in pass 2's `coords` — not visible here — so
-    // this resolves the marked nodes' locations in a side table first. One
-    // extra node-region scan; dwarfed by what the region saves downstream.
-    let bbox = filter.expect("checked above");
-    let mut locs: Vec<Option<(i32, i32)>> = vec![None; slots as usize];
-    {
-        // (dense id, lat_e7, lon_e7), folded in chunk order.
-        let _ = pbf::run_pass_sink(
-            input,
-            blobs,
-            Some(blob_kinds),
-            KIND_NODES,
-            "Pass 3: region locations",
-            Vec::<(u32, i32, i32)>::new,
-            |state: &mut Vec<(u32, i32, i32)>, block| {
-                let mut kinds = 0u8;
-                visit_block(block, KIND_NODES, &mut kinds, &mut |el: Element| {
-                    if let Element::Node(n) = el {
-                        if n.id >= 0 && (n.id as u64) < BITSET_SIZE && index.mask.get(n.id as u64) {
-                            let d = index.mask.dense(n.id as u64);
-                            state.push((d, n.lat_e7, n.lon_e7));
-                        }
-                    }
-                    Ok(())
-                })?;
-                Ok(kinds)
-            },
-            |chunk| {
-                for (d, lat, lon) in chunk {
-                    locs[d as usize] = Some((lat, lon));
-                }
-                Ok(())
-            },
+            |_chunk| Ok(()),
         )?;
     }
-    let touches = |refs: &[i64]| -> bool {
-        refs.iter().any(|r| {
-            index.dense(*r).and_then(|d| locs[d as usize]).is_some_and(|(lat, lon)| {
-                bbox.contains_e7(lat, lon)
-            })
-        })
-    };
-    let _ = pbf::run_pass_sink(
-        input,
-        blobs,
-        Some(blob_kinds),
-        KIND_WAYS,
-        "Pass 3: node degrees",
-        DegreePass::default,
-        |state: &mut DegreePass, block| {
-            let mut kinds = 0u8;
-            visit_block(block, KIND_WAYS, &mut kinds, &mut |el: Element| {
-                if let Element::Way(w) = el {
-                    if tags::get_hw_id(w.tags.get_str("highway")) != 0 && touches(w.refs) {
-                        for pair in w.refs.windows(2) {
-                            if let Some((u, v)) = segment(index, pair[0], pair[1]) {
-                                state.endpoints.push(u);
-                                state.endpoints.push(v);
-                            }
-                        }
-                    }
-                }
-                Ok(())
-            })?;
-            Ok(kinds)
-        },
-        |chunk| {
-            for e in chunk.endpoints {
-                let d = &mut degree[e as usize];
-                *d = d.saturating_add(1);
-            }
-            Ok(())
-        },
-    )?;
     Ok(degree)
 }
 
@@ -233,11 +179,18 @@ pub(crate) struct Chains {
 
 #[derive(Default)]
 struct ChainPass {
-    chains: Vec<Chain>,
-    pts: Vec<u32>,
+    /// `chains.hdr` records, pre-encoded on the worker with CHUNK-LOCAL
+    /// `pts_start`, name id and lane offsets; the sink rebases those three
+    /// fields in place ([`rebase_header`]) and appends the bytes.
+    hdr: Vec<u8>,
+    /// `chains.pts` bytes for this chunk's chains, coordinates already
+    /// resolved — the random `coords` reads now happen on the pool instead of
+    /// in the single-threaded sink.
+    pts: Vec<u8>,
+    /// Points in `pts`, i.e. the next chain's chunk-local `pts_start`.
+    points: u64,
     lanes: Vec<u16>,
     names: LocalNames,
-    endpoints: Vec<u32>,
     splits: usize,
     raw_edge_count: u64,
 }
@@ -251,6 +204,13 @@ struct ChainPass {
 /// Nothing chain-shaped is retained. Only one chunk's worth exists at a time,
 /// which is what keeps this pass's footprint proportional to a chunk rather than
 /// to the road network.
+///
+/// The workers do everything that does not depend on earlier chunks: encode
+/// each header record, resolve every point to coordinates, and mark chain
+/// endpoints (a set union, straight into a shared bitset). The ordered sink
+/// does only what does: intern the chunk's names, rebase the lane pool and the
+/// point offsets, and append two byte buffers. Same bytes as encoding each
+/// chain in the sink.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build<W: Write + Send>(
     input: &Path,
@@ -265,61 +225,79 @@ pub(crate) fn build<W: Write + Send>(
     pool: &mut NamePool<W>,
     spill: &Spill,
 ) -> Result<Chains> {
-    let mut out = Chains {
-        chain_count: 0,
-        lanes: Vec::new(),
-        endpoints: Bitset::new(u64::from(slots)),
-        splits: 0,
-        raw_edge_count: 0,
-        kinds: Vec::new(),
-    };
+    let mut endpoints = Bitset::new(u64::from(slots));
+    let mut lanes: Vec<u16> = Vec::new();
+    let mut splits = 0usize;
+    let mut raw_edge_count = 0u64;
     let mut writer = spill.writer()?;
-    out.kinds = pbf::run_pass_sink(
-        input,
-        blobs,
-        Some(blob_kinds),
-        KIND_WAYS,
-        "Pass 4: chains",
-        ChainPass::default,
-        |state: &mut ChainPass, block| chain_blob(state, block, index, coords, degree, stop, filter),
-        |chunk| {
-            let name_map = chunk
-                .names
-                .flush(pool)
-                .map_err(|e| Error(e.to_string()))?;
-            let lane_base = out.lanes.len() as u32;
-            out.lanes.extend_from_slice(&chunk.lanes);
-            crate::graph_build::cap_lane_pool(out.lanes.len())?;
-            for mut c in chunk.chains {
-                let lo = c.pts_start as usize;
-                let ids = &chunk.pts[lo..lo + c.pts_len as usize];
-                c.name_offset = if c.name_offset == u32::MAX {
-                    NO_NAME
-                } else {
-                    name_map[c.name_offset as usize]
-                };
-                if c.fwd_lane_count > 0 {
-                    c.fwd_lane_off += lane_base;
+    let kinds = {
+        let ends = endpoints.atomic();
+        pbf::run_pass_sink(
+            input,
+            blobs,
+            Some(blob_kinds),
+            KIND_WAYS,
+            "Pass 4: chains",
+            ChainPass::default,
+            |state: &mut ChainPass, block| {
+                chain_blob(state, block, index, coords, degree, stop, filter, &ends)
+            },
+            |mut chunk| {
+                let name_map = chunk
+                    .names
+                    .flush(pool)
+                    .map_err(|e| Error(e.to_string()))?;
+                let lane_base = lanes.len() as u32;
+                lanes.extend_from_slice(&chunk.lanes);
+                crate::graph_build::cap_lane_pool(lanes.len())?;
+                let points_base = writer.points;
+                for rec in chunk.hdr.chunks_exact_mut(CHAIN_REC_BYTES as usize) {
+                    rebase_header(rec, points_base, &name_map, lane_base);
                 }
-                if c.bwd_lane_count > 0 {
-                    c.bwd_lane_off += lane_base;
-                }
-                // `pts_start` is assigned by the writer, so the chunk-local value
-                // is only used to find the ids above.
-                writer.push(&c, ids, coords)?;
-            }
-            for e in chunk.endpoints {
-                out.endpoints.set(u64::from(e));
-            }
-            out.splits += chunk.splits;
-            out.raw_edge_count += chunk.raw_edge_count;
-            Ok(())
-        },
-    )?;
-    out.chain_count = writer.finish()?;
-    Ok(out)
+                writer.push_encoded(&chunk.hdr, &chunk.pts, chunk.points)?;
+                splits += chunk.splits;
+                raw_edge_count += chunk.raw_edge_count;
+                Ok(())
+            },
+        )?
+    };
+    let chain_count = writer.finish()?;
+    Ok(Chains {
+        chain_count,
+        lanes,
+        endpoints,
+        splits,
+        raw_edge_count,
+        kinds,
+    })
 }
 
+/// Turn a worker-encoded header's chunk-local fields into global ones: exactly
+/// what the sink used to do to the `Chain` before encoding it.
+#[inline]
+fn rebase_header(rec: &mut [u8], points_base: u64, name_map: &[u32], lane_base: u32) {
+    let u32_at = |r: &[u8], o: usize| u32::from_le_bytes(r[o..o + 4].try_into().expect("4 bytes"));
+    let u16_at = |r: &[u8], o: usize| u16::from_le_bytes(r[o..o + 2].try_into().expect("2 bytes"));
+    let start = u64::from_le_bytes(rec[0..8].try_into().expect("8 bytes")) + points_base;
+    rec[0..8].copy_from_slice(&start.to_le_bytes());
+    let name = u32_at(rec, 24);
+    let name = if name == u32::MAX {
+        NO_NAME
+    } else {
+        name_map[name as usize]
+    };
+    rec[24..28].copy_from_slice(&name.to_le_bytes());
+    if u16_at(rec, 36) > 0 {
+        let off = u32_at(rec, 28) + lane_base;
+        rec[28..32].copy_from_slice(&off.to_le_bytes());
+    }
+    if u16_at(rec, 38) > 0 {
+        let off = u32_at(rec, 32) + lane_base;
+        rec[32..36].copy_from_slice(&off.to_le_bytes());
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn chain_blob(
     state: &mut ChainPass,
     block: &pbf::PrimitiveBlock,
@@ -328,6 +306,7 @@ fn chain_blob(
     degree: &[u8],
     stop: &Bitset,
     filter: crate::graph_build::RegionFilter,
+    ends: &AtomicBits,
 ) -> Result<u8> {
     let mut kinds = 0u8;
     let mut path: Vec<u32> = Vec::new();
@@ -371,7 +350,7 @@ fn chain_blob(
             if path.last() != Some(&u) {
                 // The start of the way, the far side of a gap the graph does not
                 // bridge, or the node the previous cut ended on.
-                flush(state, &path, &hops, &attrs, coords);
+                flush(state, &path, &hops, &attrs, coords, ends);
                 path.clear();
                 hops.clear();
                 path.push(u);
@@ -383,14 +362,14 @@ fn chain_blob(
             // stop the reconnect pass addresses directly. Cut there; the next pair
             // restarts from it by the rule above.
             if degree[v as usize] != 2 || stop.get(u64::from(v)) {
-                flush(state, &path, &hops, &attrs, coords);
+                flush(state, &path, &hops, &attrs, coords, ends);
                 path.clear();
                 hops.clear();
             }
         }
         // The way's last node is a chain boundary whatever its degree: a chain may
         // not continue into the next way.
-        flush(state, &path, &hops, &attrs, coords);
+        flush(state, &path, &hops, &attrs, coords, ends);
         Ok(())
     })?;
     Ok(kinds)
@@ -403,6 +382,7 @@ fn flush(
     hops: &[u32],
     attrs: &WayAttrs,
     coords: &[geom::Pt],
+    ends: &AtomicBits,
 ) {
     if path.len() < 2 {
         return;
@@ -413,29 +393,42 @@ fn flush(
         state.splits += runs.len() - 1;
     }
     for (lo, hi) in runs {
-        state.endpoints.push(path[lo]);
-        state.endpoints.push(path[hi]);
-        let pts_start = state.pts.len() as u64;
-        state.pts.extend_from_slice(&path[lo..=hi]);
+        ends.set(u64::from(path[lo]));
+        ends.set(u64::from(path[hi]));
+        let ids = &path[lo..=hi];
         // Directed edges an uncompacted build would have emitted for this run:
         // one per segment per permitted direction. Runs tile every segment of the
         // way exactly once, so summing them is exact without keeping the segments.
         state.raw_edge_count += (hi - lo) as u64 * if attrs.oneway { 1 } else { 2 };
-        state.chains.push(Chain {
-            pts_start,
+        let mut rec = [0u8; CHAIN_REC_BYTES as usize];
+        ChainRec {
+            // Chunk-local; rebased by the sink.
+            pts_start: state.points,
             pts_len: (hi - lo + 1) as u32,
+            first: ids[0],
+            last: ids[ids.len() - 1],
             dist_mm: hops[lo..hi].iter().fold(0u32, |a, d| a.saturating_add(*d)),
+            // Chunk-local name id (or u32::MAX); rebased by the sink.
             name_offset: attrs.name,
+            // Forward is along ref order, and so is the chain: no reorientation,
+            // so no chance of handing the masks to the wrong end. Chunk-local
+            // offsets; rebased by the sink when the count is non-zero.
+            fwd_lane_off: attrs.fwd_lane_off,
+            bwd_lane_off: attrs.bwd_lane_off,
+            fwd_lane_count: attrs.fwd_lane_count,
+            bwd_lane_count: attrs.bwd_lane_count,
             type_: attrs.type_,
             speed_limit: attrs.speed_limit,
             oneway: attrs.oneway,
-            // Forward is along ref order, and so is the chain: no reorientation,
-            // so no chance of handing the masks to the wrong end.
-            fwd_lane_off: attrs.fwd_lane_off,
-            fwd_lane_count: attrs.fwd_lane_count,
-            bwd_lane_off: attrs.bwd_lane_off,
-            bwd_lane_count: attrs.bwd_lane_count,
-        });
+        }
+        .encode(&mut rec);
+        state.hdr.extend_from_slice(&rec);
+        for id in ids {
+            let (lat_e7, lon_e7) = coords[*id as usize];
+            state.pts.extend_from_slice(&lat_e7.to_le_bytes());
+            state.pts.extend_from_slice(&lon_e7.to_le_bytes());
+        }
+        state.points += ids.len() as u64;
     }
 }
 

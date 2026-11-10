@@ -171,6 +171,40 @@ where
         .collect()
 }
 
+/// Apply `f(lo..hi)` to every fixed `chunk_len`-sized range of `0..n`,
+/// returning the results in range order. [`map_chunks`] over indices without
+/// materialising them: the deterministic shape for loops over billions of ids.
+pub fn map_ranges<R, F>(n: usize, chunk_len: usize, f: F) -> Vec<R>
+where
+    R: Send,
+    F: Fn(std::ops::Range<usize>) -> R + Sync,
+{
+    let chunk_len = chunk_len.max(1);
+    let starts: Vec<usize> = (0..n.div_ceil(chunk_len)).map(|c| c * chunk_len).collect();
+    map_chunks(&starts, 1, |_, s| f(s[0]..(s[0] + chunk_len).min(n)))
+}
+
+/// A raw pointer that may be shared across the pool, for scatters whose
+/// targets are provably distinct (a permutation, or slots claimed by an atomic
+/// cursor). Every use states why its writes cannot collide.
+#[derive(Clone, Copy)]
+pub struct SyncPtr<T>(pub *mut T);
+// SAFETY: only ever dereferenced at indices the caller has proven disjoint.
+unsafe impl<T: Send> Send for SyncPtr<T> {}
+unsafe impl<T: Send> Sync for SyncPtr<T> {}
+
+impl<T> SyncPtr<T> {
+    /// Write `v` at `i`.
+    ///
+    /// # Safety
+    /// `i` is in bounds of the allocation and no other thread reads or writes
+    /// index `i` concurrently.
+    #[inline]
+    pub unsafe fn write(self, i: usize, v: T) {
+        unsafe { self.0.add(i).write(v) }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,6 +239,15 @@ mod tests {
             assert_eq!(resolve(0, Some(junk)), box_threads, "MAPS_THREADS={junk}");
         }
         assert_eq!(resolve(0, Some(" 3 ")), 3, "surrounding space is tolerated");
+    }
+
+    #[test]
+    fn ranges_cover_everything_once_in_order() {
+        let out = map_ranges(1001, 64, |r| (r.start, r.end));
+        assert_eq!(out.first(), Some(&(0, 64)));
+        assert_eq!(out.last(), Some(&(960, 1001)));
+        assert!(out.windows(2).all(|w| w[0].1 == w[1].0));
+        assert!(map_ranges(0, 8, |r| r).is_empty());
     }
 
     #[test]

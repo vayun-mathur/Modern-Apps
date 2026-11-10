@@ -18,7 +18,7 @@ use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
-use std::sync::{Condvar, Mutex};
+use std::sync::Mutex;
 
 use crate::proto::{self, Error, Reader, Result, WIRE_BYTES};
 use crate::pbf_extra::decode_blob_header;
@@ -285,9 +285,9 @@ impl<'a> PrimitiveBlock<'a> {
 /// together. Here a chunk is folded and freed while its neighbours are still
 /// being decoded, which also overlaps the merge with the I/O.
 ///
-/// `sink` is called under a lock, so it is serialised against the workers. That
-/// is the same single-threaded merge [`run_pass`]'s callers already do, only
-/// earlier.
+/// `sink` runs on the calling thread, one chunk at a time and strictly in chunk
+/// order, outside any lock the workers take — so it overlaps with decoding but
+/// is still the same single-threaded, ordered merge [`run_pass`]'s callers do.
 ///
 /// `blob_kinds` (from a previous full pass) lets later passes skip blobs that
 /// hold nothing they want — a real win because a PBF stores all nodes first,
@@ -311,11 +311,11 @@ where
     H: FnMut(S) -> Result<()> + Send,
 {
     let n_chunks = blobs.len().div_ceil(CHUNK_BLOBS).max(1);
-    let drain: Mutex<Drain<S, H>> = Mutex::new(Drain {
+    let shared: Mutex<Shared<S>> = Mutex::new(Shared {
         slots: (0..n_chunks).map(|_| None).collect(),
         next: 0,
-        sink,
-        err: None,
+        waiters: Vec::new(),
+        failed: false,
     });
     let kinds: Vec<AtomicU8> = (0..blobs.len()).map(|_| AtomicU8::new(0)).collect();
 
@@ -327,6 +327,8 @@ where
     let pass_start = std::time::Instant::now();
     let n_threads = crate::par::threads().min(n_chunks);
     let mut first_err: Option<Error> = None;
+    let mut sink_err: Option<Error> = None;
+    let mut sink = sink;
     // How far ahead of the sink the workers may run.
     //
     // Without this the reorder buffer is unbounded: a worker deposits and immediately
@@ -343,14 +345,40 @@ where
     // its doc for the 2.19 GB that cost. Bounding this in bytes would mean measuring `S`,
     // which is opaque here by design.
     let window = n_threads.saturating_mul(2).max(2);
-    let progressed = Condvar::new();
+    // Workers still running; the drain stops waiting once it reaches zero, so a
+    // worker that failed (or unwound, in tests) cannot strand it.
+    let alive = AtomicUsize::new(n_threads);
 
+    // The sink runs HERE, on the calling thread, and never under the lock.
+    //
+    // It used to run inside `deposit`, under the one mutex every worker takes
+    // to deposit and to check the window, and each deposit `notify_all`-ed
+    // every worker parked on the window. At 192 threads with a sink that is the
+    // bottleneck that was a thundering herd: California spent ~400 s of system
+    // time (vs ~110 s user) in futex hash-bucket spinlocks. Now a deposit is a
+    // slot store plus an unpark of the drain thread, the sink overlaps with the
+    // deposits, and a window waiter is woken only when ITS chunk enters the
+    // window. Order is unchanged: the sink still sees chunks strictly in index
+    // order, one at a time, on one thread.
+    let drain_thread = std::thread::current();
     std::thread::scope(|scope| {
         let mut handles = Vec::with_capacity(n_threads);
         for _ in 0..n_threads {
             handles.push(scope.spawn(|| -> Result<()> {
+                struct Alive<'a>(&'a AtomicUsize, std::thread::Thread);
+                impl Drop for Alive<'_> {
+                    fn drop(&mut self) {
+                        self.0.fetch_sub(1, Ordering::AcqRel);
+                        self.1.unpark();
+                    }
+                }
+                let _alive = Alive(&alive, drain_thread.clone());
+                let fail = |e: Error| -> Error {
+                    shared.lock().expect("chunk slot mutex").failed = true;
+                    e
+                };
                 let mut file = File::open(path)
-                    .map_err(|e| Error(format!("cannot open {}: {e}", path.display())))?;
+                    .map_err(|e| fail(Error(format!("cannot open {}: {e}", path.display()))))?;
                 let mut compressed = Vec::new();
                 let mut inflated = Vec::new();
                 loop {
@@ -361,11 +389,17 @@ where
                     // Hold off until this chunk is inside the window. The worker that
                     // owns the lowest outstanding chunk always passes this test, so it
                     // always makes progress and the wait cannot deadlock.
-                    {
-                        let mut d = drain.lock().expect("chunk slot mutex");
-                        while chunk >= d.next + window {
-                            d = progressed.wait(d).expect("chunk slot mutex");
+                    loop {
+                        let mut st = shared.lock().expect("chunk slot mutex");
+                        if chunk < st.next + window || st.failed {
+                            st.waiters.retain(|(c, _)| *c != chunk);
+                            break;
                         }
+                        if !st.waiters.iter().any(|(c, _)| *c == chunk) {
+                            st.waiters.push((chunk, std::thread::current()));
+                        }
+                        drop(st);
+                        std::thread::park();
                     }
                     let start = chunk * CHUNK_BLOBS;
                     let end = ((chunk + 1) * CHUNK_BLOBS).min(blobs.len());
@@ -375,20 +409,74 @@ where
                         match blob_kinds.filter(|k| k[idx] & want == 0) {
                             Some(k) => kinds[idx].store(k[idx], Ordering::Relaxed),
                             None => {
-                                read_exact_at(&mut file, loc, &mut compressed)?;
-                                inflate_blob(&compressed, &mut inflated)?;
-                                let block = PrimitiveBlock::decode(&inflated)?;
-                                let seen = body(&mut state, &block)?;
+                                read_exact_at(&mut file, loc, &mut compressed).map_err(fail)?;
+                                inflate_blob(&compressed, &mut inflated).map_err(fail)?;
+                                let block = PrimitiveBlock::decode(&inflated).map_err(fail)?;
+                                let seen = body(&mut state, &block).map_err(fail)?;
                                 kinds[idx].store(seen, Ordering::Relaxed);
                             }
                         }
                         report(label, &done_blobs, &last_pct, blobs.len(), &pass_start);
                     }
-                    drain.lock().expect("chunk slot mutex").deposit(chunk, state);
-                    progressed.notify_all();
+                    shared.lock().expect("chunk slot mutex").slots[chunk] = Some(state);
+                    drain_thread.unpark();
                 }
             }));
         }
+
+        // The in-order drain.
+        let mut next = 0usize;
+        while next < n_chunks {
+            let (ready, failed) = {
+                let mut st = shared.lock().expect("chunk slot mutex");
+                match st.slots[next].take() {
+                    Some(s) => {
+                        st.next = next + 1;
+                        // Admit exactly the waiters whose chunk just entered the window.
+                        let limit = st.next + window;
+                        let mut i = 0;
+                        while i < st.waiters.len() {
+                            if st.waiters[i].0 < limit {
+                                st.waiters.swap_remove(i).1.unpark();
+                            } else {
+                                i += 1;
+                            }
+                        }
+                        (Some(s), st.failed)
+                    }
+                    None => (None, st.failed),
+                }
+            };
+            match ready {
+                Some(s) => {
+                    next += 1;
+                    // Keep draining after a failure: the pass reports the first error
+                    // at the end, and stopping here would strand the remaining chunks.
+                    if let Err(e) = sink(s) {
+                        if sink_err.is_none() {
+                            sink_err = Some(e);
+                        }
+                    }
+                }
+                None => {
+                    if failed || alive.load(Ordering::Acquire) == 0 {
+                        // A worker failed (its chunk will never arrive), or every
+                        // worker is gone: release anyone parked on the window and
+                        // stop; the join below reports the error.
+                        let mut st = shared.lock().expect("chunk slot mutex");
+                        st.failed = true;
+                        for (_, t) in st.waiters.drain(..) {
+                            t.unpark();
+                        }
+                        if alive.load(Ordering::Acquire) == 0 {
+                            break;
+                        }
+                    }
+                    std::thread::park_timeout(std::time::Duration::from_millis(50));
+                }
+            }
+        }
+
         for h in handles {
             match h.join() {
                 Ok(Ok(())) => {}
@@ -404,18 +492,19 @@ where
                 }
             }
         }
+        if first_err.is_none() && next < n_chunks {
+            first_err = Some(Error(format!(
+                "pass {label}: chunks {next}..{n_chunks} were never produced"
+            )));
+        }
     });
 
     if let Some(e) = first_err {
         return Err(e);
     }
-    let mut d = drain.into_inner().expect("chunk slot mutex");
-    if let Some(e) = d.err.take() {
+    if let Some(e) = sink_err {
         return Err(e);
     }
-    // Every chunk was deposited, and deposits drain in order, so nothing can be
-    // left behind unless a sink call failed above.
-    debug_assert_eq!(d.next, n_chunks, "chunks left undrained");
     // Snap to 100% in the same standard shape, then a fresh line so the next
     // stage starts clean instead of on top of the meter.
     {
@@ -428,32 +517,16 @@ where
     Ok(kinds.iter().map(|k| k.load(Ordering::Relaxed)).collect())
 }
 
-/// Holds finished chunks until their turn comes, so the sink sees chunk order
-/// however the workers finish.
-struct Drain<S, H> {
+/// Finished chunks waiting for their turn, plus the window bookkeeping. The
+/// sink itself lives on the draining thread, outside this lock.
+struct Shared<S> {
     slots: Vec<Option<S>>,
+    /// The next chunk the drain will hand to the sink.
     next: usize,
-    sink: H,
-    err: Option<Error>,
-}
-
-impl<S, H: FnMut(S) -> Result<()>> Drain<S, H> {
-    fn deposit(&mut self, chunk: usize, state: S) {
-        self.slots[chunk] = Some(state);
-        while self.next < self.slots.len() {
-            let Some(s) = self.slots[self.next].take() else {
-                break;
-            };
-            self.next += 1;
-            // Keep draining after a failure: the pass reports the first error at
-            // the end, and stopping here would strand the remaining chunks.
-            if let Err(e) = (self.sink)(s) {
-                if self.err.is_none() {
-                    self.err = Some(e);
-                }
-            }
-        }
-    }
+    /// Workers parked until their chunk enters the window: `(chunk, thread)`.
+    waiters: Vec<(usize, std::thread::Thread)>,
+    /// A worker failed, so a chunk will never arrive: stop waiting.
+    failed: bool,
 }
 
 /// Run one pass over the file in parallel, returning every chunk's accumulator.

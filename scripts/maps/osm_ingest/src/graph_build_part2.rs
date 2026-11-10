@@ -16,7 +16,7 @@ fn collapse_within_ways<W: std::io::Write + Send>(
     timer: &mut crate::timing::PhaseTimer,
 ) -> Result<Collapsed> {
     timer.switch("collapse-degrees");
-    let degree = chains::count_degrees(input, blobs, blob_kinds, index, slots, filter)?;
+    let degree = chains::count_degrees(input, blobs, blob_kinds, index, coords, slots, filter)?;
     let spill = chains::Spill::split(spill_dir, spill_pts_dir);
     timer.switch("collapse-chains");
     let built = chains::build(
@@ -24,15 +24,31 @@ fn collapse_within_ways<W: std::io::Write + Send>(
     )?;
     report_way_blobs(blobs.len(), &built.kinds);
 
+    // One byte of `kept` (eight nodes) per item, on the pool: each byte is a
+    // pure function of its own nodes, so the split cannot show.
     let mut kept = Bitset::new(u64::from(slots));
-    let mut prog = crate::progress::Progress::new("Selecting kept nodes", u64::from(slots));
-    for i in 0..slots {
-        if index.present.get(u64::from(i)) && chains::survives(&built.endpoints, &degree, stop, i) {
-            kept.set(u64::from(i));
-        }
-        prog.inc();
+    {
+        let n = u64::from(slots);
+        let present = &index.present;
+        let ends = &built.endpoints;
+        let degree = &degree;
+        par::install(|| {
+            kept.bits.par_chunks_mut(1 << 16).enumerate().for_each(|(ci, chunk)| {
+                for (j, byte) in chunk.iter_mut().enumerate() {
+                    let base = (((ci << 16) + j) as u64) * 8;
+                    let mut v = 0u8;
+                    for k in 0..8u64 {
+                        let i = base + k;
+                        if i < n && present.get(i) && chains::survives(ends, degree, stop, i as u32)
+                        {
+                            v |= 1 << k;
+                        }
+                    }
+                    *byte = v;
+                }
+            });
+        });
     }
-    prog.finish();
     drop(degree);
 
     let count = spill.chain_count()?;
@@ -158,17 +174,33 @@ fn build_csr(
 ) -> Result<Csr> {
     println!("Building the edge index over {kept_count} node(s)...");
     let chain_total = spill.chain_count()?;
-    let mut edge_ptr = vec![0u64; kept_count as usize + 2];
-    let mut hdr = spill.headers()?;
-    let mut prog = crate::progress::Progress::new("Edge index: counting", chain_total);
-    while let Some(c) = hdr.next()? {
-        edge_ptr[ids.get(c.first) as usize + 1] += 1;
-        if !c.oneway {
-            edge_ptr[ids.get(c.last) as usize + 1] += 1;
-        }
-        prog.inc();
+    // Both scans run on the pool over the mapped header file.
+    //
+    // Counting is integer addition into per-node counters, so atomic
+    // increments give the same counts in any order. The scatter claims each
+    // slot with an atomic cursor, so WHERE in its group a target lands depends
+    // on scheduling — but every group is sorted right after (below), and a
+    // sorted group of `u32`s has one arrangement, so `targets` comes out
+    // identical to the serial scan's.
+    let headers = spill.headers_mapped()?;
+    if headers.len()? != chain_total {
+        return Err(Error("chains.hdr changed size under the edge index".into()));
     }
-    prog.finish();
+    let mut edge_ptr = vec![0u64; kept_count as usize + 2];
+    {
+        let counts = atomic_u64s(&mut edge_ptr);
+        let errs: Vec<Result<()>> = par::map_ranges(chain_total as usize, 1 << 16, |r| {
+            for ci in r {
+                let c = headers.get(ci as u64)?;
+                counts[ids.get(c.first) as usize + 1].fetch_add(1, Ordering::Relaxed);
+                if !c.oneway {
+                    counts[ids.get(c.last) as usize + 1].fetch_add(1, Ordering::Relaxed);
+                }
+            }
+            Ok(())
+        });
+        errs.into_iter().collect::<Result<Vec<()>>>()?;
+    }
     for i in 0..=kept_count as usize {
         edge_ptr[i + 1] += edge_ptr[i];
     }
@@ -176,22 +208,28 @@ fn build_csr(
     let total = edge_ptr[kept_count as usize];
     timer.switch("edge-index-scatter");
     let mut targets = vec![0u32; total as usize];
-    let mut cursor: Vec<u64> = edge_ptr[..=kept_count as usize].to_vec();
-    let mut hdr = spill.headers()?;
-    let mut prog = crate::progress::Progress::new("Edge index: scatter", chain_total);
-    while let Some(c) = hdr.next()? {
-        let (a, b) = (ids.get(c.first), ids.get(c.last));
-        let slot = &mut cursor[a as usize];
-        targets[*slot as usize] = b;
-        *slot += 1;
-        if !c.oneway {
-            let slot = &mut cursor[b as usize];
-            targets[*slot as usize] = a;
-            *slot += 1;
-        }
-        prog.inc();
+    {
+        let mut cursor: Vec<u64> = edge_ptr[..=kept_count as usize].to_vec();
+        let cursor = atomic_u64s(&mut cursor);
+        let out = par::SyncPtr(targets.as_mut_ptr());
+        let errs: Vec<Result<()>> = par::map_ranges(chain_total as usize, 1 << 16, |r| {
+            for ci in r {
+                let c = headers.get(ci as u64)?;
+                let (a, b) = (ids.get(c.first), ids.get(c.last));
+                let slot = cursor[a as usize].fetch_add(1, Ordering::Relaxed);
+                // SAFETY: `fetch_add` hands every slot out exactly once, and the
+                // counts above bound each group's slots to its own range.
+                unsafe { out.write(slot as usize, b) };
+                if !c.oneway {
+                    let slot = cursor[b as usize].fetch_add(1, Ordering::Relaxed);
+                    // SAFETY: as above.
+                    unsafe { out.write(slot as usize, a) };
+                }
+            }
+            Ok(())
+        });
+        errs.into_iter().collect::<Result<Vec<()>>>()?;
     }
-    prog.finish();
     edge_ptr.truncate(kept_count as usize + 1);
 
     // Per group, so `twin_is_unique` can binary-search it. Sorting the whole array
@@ -233,6 +271,17 @@ fn build_csr(
     Ok(Csr { edge_ptr, targets })
 }
 
+/// A `Vec<u64>` as shared atomic counters for the length of the borrow.
+fn atomic_u64s(v: &mut [u64]) -> &[std::sync::atomic::AtomicU64] {
+    // SAFETY: `AtomicU64` has the size and bit validity of `u64` and, on every
+    // target this tool builds for, its alignment too (asserted below); the
+    // exclusive borrow is held for the view's lifetime.
+    const _: () = assert!(
+        std::mem::align_of::<std::sync::atomic::AtomicU64>() == std::mem::align_of::<u64>()
+    );
+    unsafe { &*(v as *mut [u64] as *const [std::sync::atomic::AtomicU64]) }
+}
+
 /// True when `target`'s edge range holds exactly one edge pointing back at
 /// `source`.
 ///
@@ -264,8 +313,20 @@ fn pass1_blob(
     state: &mut Pass1,
     block: &pbf::PrimitiveBlock,
     filter: RegionFilter,
+    mask: &AtomicBits,
 ) -> Result<u8> {
     let mut kinds = 0u8;
+    let mut mark = |id: i64| {
+        if id >= 0 && (id as u64) < BITSET_SIZE {
+            if mask.set(id as u64) {
+                state.marked += 1;
+            }
+            // The rank index is sized from the largest id actually marked,
+            // not from BITSET_SIZE: indexing all 20 G nominal ids would cost
+            // 313 MB to describe blocks no node reaches.
+            state.max_id = state.max_id.max(id as u64);
+        }
+    };
     visit_block(
         block,
         KIND_NODES | KIND_WAYS,
@@ -283,13 +344,15 @@ fn pass1_blob(
                         // place the region filter can apply without a location
                         // table.
                         if crate::bbox::keep_e7(filter.as_ref(), n.lat_e7, n.lon_e7) {
-                            state.stop_nodes.push(n.id);
+                            mark(n.id);
                         }
                     }
                 }
                 Element::Way(w) => {
                     if tags::get_hw_id(w.tags.get_str("highway")) != 0 {
-                        state.refs.extend_from_slice(w.refs);
+                        for r in w.refs {
+                            mark(*r);
+                        }
                     }
                 }
                 Element::Relation(_) => {}
