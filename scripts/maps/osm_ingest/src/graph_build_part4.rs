@@ -108,7 +108,9 @@ impl GeomFile {
     fn create(dir: &Path, name: &str, edge_count: u64) -> Result<GeomFile> {
         let path = dir.join(name);
         Ok(GeomFile {
-            out: BufWriter::new(create(&path)?),
+            // Large appends: the drain hands over one batch's blobs at a time, and
+            // on a compress-force filesystem every extent costs CPU.
+            out: BufWriter::with_capacity(WRITE_BUF_BYTES, create(&path)?),
             path,
             blob_len: 0,
             present: PresenceBitmap::new(edge_count),
@@ -311,7 +313,7 @@ struct EdgeFile {
     path: PathBuf,
     /// Blocked record staging: 7 B records stream here (one block in memory,
     /// frames to scratch), finished into the file head at [`EdgeFile::finish`].
-    blocked: tilecodec::blocked::BlockedStreamWriter,
+    blocked: ParBlocked,
     /// `(edge_idx, target, dist_mm)` for the edges a record cannot hold, in
     /// ascending `edge_idx` — which is the order they are pushed in, because the
     /// rounds ascend and each round writes its edges in index order.
@@ -340,7 +342,7 @@ impl EdgeFile {
         let path = dir.join(name);
         let scratch = dir.join(format!("{name}.blocked.tmp"));
         Ok(EdgeFile {
-            blocked: tilecodec::blocked::BlockedStreamWriter::create(EDGE_REC_BYTES as usize, &scratch)
+            blocked: ParBlocked::create(EDGE_REC_BYTES as usize, &scratch)
                 .map_err(|e| Error(format!("cannot stage {}: {e}", scratch.display())))?,
             path,
             escapes: Vec::new(),

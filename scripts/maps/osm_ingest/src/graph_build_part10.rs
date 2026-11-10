@@ -160,3 +160,95 @@
         assert!(parse_args(&["a".into(), "b".into()]).is_err());
         assert!(parse_args(&["--wat".into()]).is_err());
     }
+
+    // ---------------------------------------------------------------------
+    // TODO(write-pipe) re-entry checklist, step 1: bake_batch on a synthetic
+    // buffer, before any pool or drain exists.
+    // ---------------------------------------------------------------------
+
+    /// A one-point `chains.pts` mapping: the synthetic edges carry no chain,
+    /// so nothing reads it, but `bake_batch` takes the shared mapping.
+    fn dummy_points(tag: &str) -> crate::mem::Mapped {
+        let dir = std::env::temp_dir().join(format!("osm_ingest_bake_{tag}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("chains.pts");
+        std::fs::write(&path, [0u8; 8]).unwrap();
+        crate::mem::Mapped::open(&path).unwrap()
+    }
+
+    /// `(node id, edge_ptr)` of every opener, in bake order.
+    fn bake_openers(b: &BakedBatch) -> Vec<(u32, u32)> {
+        (0..b.node_count())
+            .map(|i| {
+                let (lat, _, ptr) = b.opener(i);
+                (lat as u32, ptr)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn bake_batch_opens_every_node_in_its_span_at_base_plus_run_offset() {
+        // Nodes 10..20, whose lat_e7 is the node id so an opener names its node.
+        let kept = 24u32;
+        let node_coords: Vec<geom::Pt> = (0..kept).map(|i| (i as i32, 0)).collect();
+        // Runs: 11 x2, 13 x1, 15 x3. Edgeless: 10 (leading), 12, 14 (interior),
+        // 16..20 (trailing) — the trailing ones are the case a batch that ends
+        // on an edgeless node must still open.
+        let spec: &[(u32, u32)] = &[(11, 3), (11, 4), (13, 2), (15, 1), (15, 5), (15, 6)];
+        let mut edges: Vec<TmpEdge> = spec.iter().map(|(s, t)| tmp_edge(*s, *t, 1000)).collect();
+        // One escaped (dist past u24) and one named edge, to pin their offsets.
+        edges[2].dist_mm = DIST_MM_ESCAPE;
+        edges[4].name_offset = 77;
+        let csr = csr_of(kept, spec);
+        let points = dummy_points("span");
+        let (first, end, base) = (10u32, 20u32, 100u64);
+        let b =
+            bake_batch(&edges, first, end, base, &node_coords, &[], &csr, &[], &points).unwrap();
+        let openers = bake_openers(&b);
+        assert_eq!(
+            openers.len(),
+            (end - first) as usize,
+            "opener count must equal the node span"
+        );
+        let want: Vec<(u32, u32)> = vec![
+            (10, 100),
+            (11, 100),
+            (12, 102),
+            (13, 102),
+            (14, 103),
+            (15, 103),
+            (16, 106),
+            (17, 106),
+            (18, 106),
+            (19, 106),
+        ];
+        assert_eq!(openers, want, "opener edge_ptrs must be base + run offsets");
+        // One record per edge, side tables keyed by the edge's offset in the batch.
+        assert_eq!(b.edge_count, edges.len() as u64);
+        assert_eq!(b.edge_recs.len(), edges.len() * EDGE_REC_BYTES as usize);
+        assert_eq!(b.escapes, vec![(2, 2, DIST_MM_ESCAPE)]);
+        assert_eq!(b.names, vec![(4, 77)]);
+        // The census saw every node of the span, edgeless ones included.
+        assert_eq!(b.census.degree_zero_nodes, 7);
+        assert_eq!(b.census.max_degree, 3);
+    }
+
+    #[test]
+    fn bake_batch_refuses_an_edge_outside_its_span() {
+        let node_coords: Vec<geom::Pt> = (0..8).map(|i| (i, 0)).collect();
+        let csr = csr_of(8, &[(6, 1)]);
+        let points = dummy_points("stray");
+        let edges = [tmp_edge(6, 1, 10)];
+        assert!(bake_batch(&edges, 2, 6, 0, &node_coords, &[], &csr, &[], &points).is_err());
+    }
+
+    #[test]
+    fn bake_batch_opens_a_wholly_edgeless_span() {
+        let node_coords: Vec<geom::Pt> = (0..8).map(|i| (i, 0)).collect();
+        let csr = csr_of(8, &[]);
+        let points = dummy_points("edgeless");
+        let b = bake_batch(&[], 2, 6, 7, &node_coords, &[], &csr, &[], &points).unwrap();
+        assert_eq!(bake_openers(&b), vec![(2, 7), (3, 7), (4, 7), (5, 7)]);
+        assert_eq!(b.edge_count, 0);
+    }

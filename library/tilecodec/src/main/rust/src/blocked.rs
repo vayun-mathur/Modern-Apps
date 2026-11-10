@@ -262,6 +262,23 @@ pub fn write_blocked_with(records: &[u8], record_len: usize, per_block: u32) -> 
     assemble_blocked(record_len, per_block, records.len(), &frames)
 }
 
+/// One block's zstd frame: a fresh level-10 encoder over `block`, exactly what
+/// [`BlockedStreamWriter`] writes for it. Public so a caller can compress
+/// blocks on its own thread pool and hand the frames to
+/// [`BlockedStreamWriter::push_frames`] in order.
+#[cfg(feature = "write")]
+pub fn compress_block(block: &[u8]) -> Vec<u8> {
+    let cfg = zstd_rs::CompressionConfig {
+        level: 10,
+        ..zstd_rs::CompressionConfig::DEFAULT
+    };
+    let mut enc = zstd_rs::Compressor::new(cfg).expect("valid zstd level");
+    let mut frame = Vec::new();
+    enc.compress(block, None, &mut frame)
+        .expect("zstd encode of an in-memory block");
+    frame
+}
+
 /// Lay out header + offset table + frames. Shared by the whole-slice and
 /// streaming writers so the two cannot drift.
 #[cfg(feature = "write")]
@@ -343,17 +360,39 @@ impl BlockedStreamWriter {
     fn flush_block(&mut self) -> std::io::Result<()> {
         use std::io::Write as _;
         let n = self.per_block as usize * self.record_len;
-        let cfg = zstd_rs::CompressionConfig {
-            level: 10,
-            ..zstd_rs::CompressionConfig::DEFAULT
-        };
-        let mut enc = zstd_rs::Compressor::new(cfg).expect("valid zstd level");
-        let mut frame = Vec::new();
-        enc.compress(&self.block[..n], None, &mut frame)
-            .expect("zstd encode of an in-memory block");
+        let frame = compress_block(&self.block[..n]);
         self.frames_out.write_all(&frame)?;
         self.frame_lens.push(frame.len() as u64);
         self.block.drain(..n);
+        Ok(())
+    }
+
+    /// Bytes in one full block (`records_per_block * record_len`): the unit
+    /// [`compress_block`] frames for [`BlockedStreamWriter::push_frames`].
+    pub fn block_bytes(&self) -> usize {
+        self.per_block as usize * self.record_len
+    }
+
+    /// Append whole blocks the caller already compressed with
+    /// [`compress_block`] — the parallel form of [`BlockedStreamWriter::push`].
+    ///
+    /// Byte-identical to pushing the same records: every frame is an
+    /// independent zstd frame of exactly one block, compressed by a fresh
+    /// encoder at the same level, so a frame is a pure function of its block
+    /// whoever compresses it. Only valid on a block boundary (nothing staged
+    /// by `push`), and every frame must hold a full block. The frames go out in
+    /// one write, so the scratch file sees large sequential appends.
+    pub fn push_frames(&mut self, frames: &[Vec<u8>]) -> std::io::Result<()> {
+        use std::io::Write as _;
+        assert!(self.block.is_empty(), "push_frames needs a block boundary");
+        let total: usize = frames.iter().map(Vec::len).sum();
+        let mut joined = Vec::with_capacity(total);
+        for f in frames {
+            joined.extend_from_slice(f);
+            self.frame_lens.push(f.len() as u64);
+        }
+        self.frames_out.write_all(&joined)?;
+        self.records += frames.len() as u64 * u64::from(self.per_block);
         Ok(())
     }
 
@@ -364,14 +403,7 @@ impl BlockedStreamWriter {
         if !self.block.is_empty() {
             // Tail block: fewer than per_block records. Same framing; the
             // reader derives record counts from unpacked_len, never from drum-tight blocks.
-            let cfg = zstd_rs::CompressionConfig {
-                level: 10,
-                ..zstd_rs::CompressionConfig::DEFAULT
-            };
-            let mut enc = zstd_rs::Compressor::new(cfg).expect("valid zstd level");
-            let mut frame = Vec::new();
-            enc.compress(&self.block, None, &mut frame)
-                .expect("zstd encode of an in-memory block");
+            let frame = compress_block(&self.block);
             self.frames_out.write_all(&frame)?;
             self.frame_lens.push(frame.len() as u64);
         }
@@ -476,5 +508,24 @@ mod tests {
             s.record(9999, &mut cache).expect("last"),
             records[9999 * 12..10_000 * 12]
         );
+    }
+
+    #[test]
+    fn pushing_precompressed_frames_matches_pushing_records() {
+        let records = pattern_records(10_000, 12);
+        let dir = std::env::temp_dir();
+        let a = dir.join("tilecodec_blocked_frames_a.tmp");
+        let b = dir.join("tilecodec_blocked_frames_b.tmp");
+        let mut plain = BlockedStreamWriter::create(12, &a).expect("create");
+        plain.push(&records).expect("push");
+        let plain = plain.finish().expect("finish");
+        let mut framed = BlockedStreamWriter::create(12, &b).expect("create");
+        let bb = framed.block_bytes();
+        let full = records.len() / bb * bb;
+        let frames: Vec<Vec<u8>> = records[..full].chunks(bb).map(compress_block).collect();
+        framed.push_frames(&frames).expect("frames");
+        framed.push(&records[full..]).expect("tail");
+        let framed = framed.finish().expect("finish");
+        assert_eq!(framed, plain, "frames compressed elsewhere must be byte-identical");
     }
 }

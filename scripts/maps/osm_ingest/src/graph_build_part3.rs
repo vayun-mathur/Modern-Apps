@@ -191,64 +191,6 @@ struct Written {
     census: Census,
 }
 
-/// One write worker's output for a batch of edges, in batch order.
-///
-/// Two shapes, interleaved in visit order: node openers (one per node the
-/// batch owns, edgeless ones included) and edge items (one per edge). The
-/// serial append folds them positionally — node record, then its edges — so
-/// concatenation reproduces the serial byte sequence exactly. The geometry
-/// decision rides along per edge (computed on the pool from the shared
-/// mapping); census inputs ride along too (the census is additive, replayed
-/// verbatim); node openers carry their own `edge_ptr` snapshot and degree so
-/// the drain never recomputes running state.
-enum BakedItem {
-    /// Open a node: stage its record, count its degree, tick it.
-    Node {
-        /// Node-record bytes (12 B) with the absolute edge pointer.
-        rec: [u8; 12],
-        /// Out-degree, for the census replay.
-        degree: u32,
-    },
-    /// One edge: census inputs, record inputs, geometry outcome, lanes.
-    /// Boxed: edges outnumber nodes ~3:1 and the small `Node` variant would
-    /// otherwise bloat every item to the edge size (the pool holds a whole
-    /// round's items at once).
-    Edge(Box<BakedEdge>),
-}
-
-/// One decided edge: record inputs, geometry outcome, census inputs, lanes.
-struct BakedEdge {
-    /// Census inputs for the edge: source, target, dist, named. The edge
-    /// census is a pure function of these (histogram increments, maxima,
-    /// escape predicates), so the drain replays `Census::edge` verbatim.
-    cen_source: u32,
-    cen_target: u32,
-    cen_dist: u32,
-    cen_named: bool,
-    /// Edge record inputs: the delta/dist pair (or the escape sentinel with
-    /// its row), the final type byte, speed, and name.
-    delta: i16,
-    dist: u32,
-    escaped: Option<(u32, u32)>,
-    type_: u8,
-    speed_limit: u8,
-    name_offset: u32,
-    /// Geometry outcome: encoded interior blob, reverse-flag, or absent.
-    geom: BakedGeom,
-    /// Lane run values when the edge carries lanes.
-    lanes: Vec<u16>,
-}
-
-/// What the pool decided about one edge's geometry.
-enum BakedGeom {
-    /// No blob: two-point chord, short chain, or no chain.
-    Absent,
-    /// Defer to the twin: set the reverse flag, store nothing.
-    Reversed,
-    /// Encoded interior blob, ready to stage.
-    Blob(Vec<u8>),
-}
-
 /// Write the pack in `rounds` source-partitioned rounds.
 ///
 /// # Why rounds, and not computed offsets
@@ -292,11 +234,8 @@ fn write_graph(
     println!("Writing {edge_count} edge(s) in {rounds} round(s)...");
     let chain_total = spill.chain_count()?;
 
-    let mut nodes_blocked = tilecodec::blocked::BlockedStreamWriter::create(
-        12,
-        &out_dir.join("nodes.blocked.tmp"),
-    )
-    .map_err(|e| Error(format!("cannot stage nodes.bin: {e}")))?;
+    let mut nodes_blocked = ParBlocked::create(12, &out_dir.join("nodes.blocked.tmp"))
+        .map_err(|e| Error(format!("cannot stage nodes.bin: {e}")))?;
     let mut edges_out = EdgeFile::create(out_dir, "edges.bin", edge_count)?;
 
     // `intermediate.bin` puts its blob at offset 0 and everything that indexes it
@@ -307,13 +246,9 @@ fn write_graph(
     let mut inter = GeomFile::create(out_dir, "intermediate.bin", edge_count)?;
     let mut lanes = LaneFile::create(out_dir, "lanes.bin")?;
 
-    // Per-batch scratch lives on the workers in the pipeline design;
-    // the restored serial loop below reuses one triple, as before.
-    let mut scratch: Vec<geom::Pt> = Vec::new();
-    let mut encoded: Vec<u8> = Vec::new();
-    let mut lane_bytes: Vec<u8> = Vec::new();
     let mut buffer: Vec<TmpEdge> = Vec::new();
-    let mut points = spill.points()?;
+    let points = spill.points()?;
+    let pmap = chains::points_map(&points);
     let mut edge_ptr: u64 = 0;
     let mut geometry_edges: u64 = 0;
     let mut reversed_edges: u64 = 0;
@@ -321,11 +256,13 @@ fn write_graph(
     // One assignment scan instead of one scan per round: every chain's round
     // is a pure function of its endpoints' final ids, so a single pass over
     // the mapped headers records each chain's index per round and every round
-    // gathers only its chains. `rounds` sequential header passes become one
-    // (the mapping stays resident for the gathers). Chain order within a
-    // round is ascending index — the order the old per-round scan visited —
-    // so the buffer, the sort (stable), and everything downstream are
-    // identical.
+    // gathers only its chains. Chain order within a round is ascending index —
+    // the order the old per-round scan visited — so the buffer, the sort, and
+    // everything downstream are identical.
+    //
+    // Parallel: fixed contiguous chunks of chain indices, each producing its
+    // own per-round lists, concatenated in chunk order — so every list is still
+    // ascending and identical to the serial scan's.
     timer.switch("write-scan");
     let headers = spill.headers_mapped()?;
     let chain_total_now = headers.len()?;
@@ -334,55 +271,85 @@ fn write_graph(
             "chains.hdr holds {chain_total_now} chain(s), expected {chain_total}"
         )));
     }
-    let mut by_round: Vec<Vec<u32>> = vec![Vec::new(); rounds as usize];
-    {
-        let mut prog =
-            crate::progress::Progress::new("Assign rounds".to_string(), chain_total);
-        // `ids.get` is two array lookups; the decode is 48 bytes. Both are
-        // dwarfed by the I/O the old code paid re-streaming per round.
-        for ci in 0..chain_total as u32 {
-            let c = headers.get(ci as u64)?;
-            let (a, b) = (ids.get(c.first), ids.get(c.last));
-            // A chain enters a round when the old scan would have buffered an
-            // edge for it there: source endpoint in range, or (two-way) target
-            // endpoint in range. One entry per qualifying round — a chain whose
-            // endpoints straddle a boundary is gathered twice, once per round,
-            // exactly as the old scan buffered it twice.
-            for round in 0..rounds {
-                let lo = (u64::from(kept) * u64::from(round) / u64::from(rounds)) as u32;
-                let hi =
-                    (u64::from(kept) * u64::from(round + 1) / u64::from(rounds)) as u32;
-                if (lo..hi).contains(&a) || (!c.oneway && (lo..hi).contains(&b)) {
-                    by_round[round as usize].push(ci);
+    let round_lo = |round: u32| (u64::from(kept) * u64::from(round) / u64::from(rounds)) as u32;
+    let by_round: Vec<Vec<u32>> = {
+        let n_chunks = (chain_total as usize).div_ceil(SCAN_CHUNK);
+        let chunk_ids: Vec<usize> = (0..n_chunks).collect();
+        let parts: Vec<Result<Vec<Vec<u32>>>> = par::map_chunks(&chunk_ids, 1, |_, ch| {
+            let c0 = (ch[0] * SCAN_CHUNK) as u64;
+            let c1 = (c0 + SCAN_CHUNK as u64).min(chain_total);
+            let mut mine: Vec<Vec<u32>> = vec![Vec::new(); rounds as usize];
+            for ci in c0..c1 {
+                let c = headers.get(ci)?;
+                let (a, b) = (ids.get(c.first), ids.get(c.last));
+                // A chain enters a round when the old scan would have buffered an
+                // edge for it there: source endpoint in range, or (two-way) target
+                // endpoint in range. One entry per qualifying round — a chain whose
+                // endpoints straddle a boundary is gathered twice, once per round,
+                // exactly as the old scan buffered it twice.
+                for round in 0..rounds {
+                    let (lo, hi) = (round_lo(round), round_lo(round + 1));
+                    if (lo..hi).contains(&a) || (!c.oneway && (lo..hi).contains(&b)) {
+                        mine[round as usize].push(ci as u32);
+                    }
                 }
             }
-            prog.inc();
+            Ok(mine)
+        });
+        let mut by_round: Vec<Vec<u32>> = vec![Vec::new(); rounds as usize];
+        let mut sizes = vec![0usize; rounds as usize];
+        for p in &parts {
+            if let Ok(p) = p {
+                for (r, v) in p.iter().enumerate() {
+                    sizes[r] += v.len();
+                }
+            }
         }
-        prog.finish();
-    }
+        for (r, v) in by_round.iter_mut().enumerate() {
+            v.reserve_exact(sizes[r]);
+        }
+        for p in parts {
+            for (r, v) in p?.into_iter().enumerate() {
+                by_round[r].extend_from_slice(&v);
+            }
+        }
+        by_round
+    };
 
     for round in 0..rounds {
         // Split by node count. Contiguous and ascending, so the four output streams
         // stay append-only across the whole run.
-        let lo = (u64::from(kept) * u64::from(round) / u64::from(rounds)) as u32;
-        let hi = (u64::from(kept) * u64::from(round + 1) / u64::from(rounds)) as u32;
+        let lo = round_lo(round);
+        let hi = round_lo(round + 1);
+        timer.switch("write-scan");
 
-        buffer.clear();
         // Gather: this round's chains in ascending index order — the visit
-        // order of the old per-round scan, so buffer order pre-sort (and
-        // therefore post-sort, stable) is unchanged.
-        for &ci in &by_round[round as usize] {
-            let c = headers.get(ci as u64)?;
-            let (a, b) = (ids.get(c.first), ids.get(c.last));
-            if (lo..hi).contains(&a) {
-                buffer.push(chain_edge(&c, ci, a, b, false));
-            }
-            if !c.oneway && (lo..hi).contains(&b) {
-                buffer.push(chain_edge(&c, ci, b, a, true));
-            }
-        }
+        // order of the old per-round scan. Parallel over fixed chunks of the
+        // round's list, concatenated in chunk order, so the buffer is the
+        // serial one element for element.
+        buffer.clear();
+        let gathered: Vec<Result<Vec<TmpEdge>>> =
+            par::map_chunks(&by_round[round as usize], SCAN_CHUNK, |_, chunk| {
+                let mut out = Vec::with_capacity(chunk.len() + chunk.len() / 2);
+                for &ci in chunk {
+                    let c = headers.get(u64::from(ci))?;
+                    let (a, b) = (ids.get(c.first), ids.get(c.last));
+                    if (lo..hi).contains(&a) {
+                        out.push(chain_edge(&c, ci, a, b, false));
+                    }
+                    if !c.oneway && (lo..hi).contains(&b) {
+                        out.push(chain_edge(&c, ci, b, a, true));
+                    }
+                }
+                Ok(out)
+            });
         let synth_lo = synth.partition_point(|s| s.source < lo);
         let synth_hi = synth.partition_point(|s| s.source < hi);
+        let gathered_len: usize = gathered.iter().map(|g| g.as_ref().map_or(0, Vec::len)).sum();
+        buffer.reserve_exact(gathered_len + (synth_hi - synth_lo));
+        for g in gathered {
+            buffer.extend_from_slice(&g?);
+        }
         for s in &synth[synth_lo..synth_hi] {
             buffer.push(TmpEdge {
                 source: s.source,
@@ -416,118 +383,49 @@ fn write_graph(
         }
 
         // Grouped by source for the reader, then by target so a node's parallel
-        // edges are adjacent, then by chain so the order is total. The sort is
-        // stable and the buffer was built in chain order, so the two directions of
-        // a self-loop keep the order they were emitted in.
-        buffer.sort_by_key(|e| (e.source, e.target, e.chain));
+        // edges are adjacent, then by chain so the order is total.
+        //
+        // This was a STABLE sort on `(source, target, chain)` over a buffer built
+        // in chain order. The only elements that key leaves tied and that still
+        // differ are the two directions of a two-way self-loop chain — same
+        // source, target and chain — which the gather emits forward
+        // (`chain_rev == false`) first. Appending `chain_rev` to the key breaks
+        // exactly that tie the same way, and anything still tied is a
+        // byte-identical duplicate (a repeated connector), whose relative order
+        // cannot show. So the order is total over distinguishable elements and an
+        // UNSTABLE parallel in-place sort yields the stable sort's sequence — with
+        // no merge buffer, which at planet scale would be another 17 GB.
+        par::install(|| {
+            buffer.par_sort_unstable_by_key(|e| (e.source, e.target, e.chain, e.chain_rev))
+        });
 
-        // --- write-write: serial drain over the sorted buffer ----------------
-        //
-        // A parallel bake/drain pipeline lived here (positional batches baked
-        // on the pool, drained in order). It failed the build's own gate:
-        // nodes.bin unpacked to 12x the pushed records while every counter
-        // (bake openers, drain openers, drain pushes) read exactly right —
-        // and the same 12x appeared with the bake forced single-threaded, so
-        // the duplication is not a threading race. The prime suspect is the
-        // batch/item framing itself (spans, bases, or the opener splice
-        // double-covering nodes), but rather than debug the framing blind,
-        // this restores the serial loop verbatim and keeps the pipeline
-        // design (plus the failing counters to re-prove against) in the
-        // task notes. The single-scan assignment above stays: it is proven
-        // (byte-identical CA hashes) and independent of the drain shape.
-        //
-        // TODO(write-pipe): re-land the pipeline. Re-entry checklist:
-        //   1. unit test bake_batch on a synthetic buffer FIRST (no build
-        //      needed): assert opener count == node span and opener edge_ptrs
-        //      == base + run offsets, before any pool or drain exists;
-        //   2. reintroduce pool + drain behind that test;
-        //   3. CA hash must equal the serial hash before any planet run.
+        // --- write-write: parallel bake, in-order drain ------------------------
         timer.switch("write-write");
-        {
-            let mut wprog = crate::progress::Progress::new(
-                format!("Round {}/{rounds}: write", round + 1),
-                u64::from(hi - lo),
-            );
-            let mut cursor = 0usize;
-            for v in lo..hi {
-                let node = node_coords[v as usize];
-                let mut rec = [0u8; 12];
-                rec[0..4].copy_from_slice(&node.0.to_le_bytes());
-                rec[4..8].copy_from_slice(&node.1.to_le_bytes());
-                rec[8..12].copy_from_slice(&(edge_ptr as u32).to_le_bytes());
-                nodes_blocked
-                    .push(&rec)
-                    .map_err(|e| Error(format!("cannot stage node record: {e}")))?;
-                let degree_base = edge_ptr;
-                while cursor < buffer.len() && buffer[cursor].source == v {
-                    let e = &buffer[cursor];
-                    census.edge(e.source, e.target, e.dist_mm, e.name_offset != NO_NAME);
-
-                    // --- geometry ---
-                    let mut type_ = e.type_;
-                    let mut stores = false;
-                    // A two-point chain is just the chord between the edge's own
-                    // endpoints, and under the interior-only encoding that is what an
-                    // absent blob already means, so storing it would cost a presence
-                    // bit to say nothing — and, more to the point here, a read to find
-                    // that out.
-                    if e.chain != NO_CHAIN && e.pts_len >= 3 {
-                        if e.chain_rev
-                            && e.source != e.target
-                            && twin_is_unique(csr, synth, e.source, e.target)
-                        {
-                            type_ |= REVERSE_GEOMETRY_FLAG;
-                            reversed_edges += 1;
-                        } else {
-                            // Only now is the polyline actually needed. Deciding the
-                            // flag first matters more than it looks: this is the only
-                            // random read in the writer, so every edge that defers to
-                            // its twin is one seek saved, and on a filesystem whose
-                            // syscalls are expensive that dominated the whole build.
-                            points.read(e.pts_start, e.pts_len, &mut scratch)?;
-                            if e.chain_rev {
-                                scratch.reverse();
-                            }
-                            assert!(
-                                geom::fits(&scratch),
-                                "chain of {} points cannot be encoded; the collapse should \
-                                 have split it",
-                                scratch.len()
-                            );
-                            // The blob holds only the interior, so the reader rebuilds
-                            // both ends out of `nodes.bin`.
-                            assert_endpoints(&scratch, node_coords, e.source, e.target, e.chain);
-                            encoded.clear();
-                            let n = geom::encode(&scratch, &mut encoded);
-                            debug_assert_eq!(n as usize, geom::encoded_points(&scratch) as usize);
-                            inter.store(&encoded)?;
-                            geometry_edges += 1;
-                            stores = true;
-                        }
-                    }
-                    if !stores {
-                        inter.skip();
-                    }
-
-                    edges_out.push(e, type_)?;
-                    if e.lane_count > 0 && e.lane_off != NO_LANES {
-                        let start = e.lane_off as usize;
-                        lane_bytes.clear();
-                        for m in &lane_pool[start..start + e.lane_count as usize] {
-                            lane_bytes.extend_from_slice(&m.to_le_bytes());
-                        }
-                        lanes.push(edge_ptr, &lane_bytes)?;
-                    }
-                    edge_ptr += 1;
-                    cursor += 1;
-                }
-                census.node((edge_ptr - degree_base) as u32);
-                wprog.inc();
-            }
-            wprog.finish();
-            debug_assert_eq!(cursor, buffer.len(), "the round left edges unwritten");
-        }
+        write_round(
+            &buffer,
+            lo,
+            hi,
+            edge_ptr,
+            node_coords,
+            lane_pool,
+            csr,
+            synth,
+            pmap,
+            &mut WriteSinks {
+                nodes: &mut nodes_blocked,
+                edges: &mut edges_out,
+                inter: &mut inter,
+                lanes: &mut lanes,
+                census: &mut census,
+                geometry_edges: &mut geometry_edges,
+                reversed_edges: &mut reversed_edges,
+            },
+            round,
+            rounds,
+        )?;
+        edge_ptr += buffer.len() as u64;
     }
+    drop(buffer);
 
     if edge_ptr != edge_count {
         return Err(Error(format!(
@@ -563,7 +461,7 @@ fn finish_pack(
     edge_ptr: u64,
     geometry_edges: u64,
     reversed_edges: u64,
-    nodes_blocked: tilecodec::blocked::BlockedStreamWriter,
+    nodes_blocked: ParBlocked,
     edges_out: EdgeFile,
     inter: GeomFile,
     lanes: LaneFile,
@@ -594,9 +492,12 @@ fn finish_pack(
     // Sanity: the blocked section must unpack to exactly the pushed records.
     if parsed.unpacked_len() != (u64::from(kept) + 1) * 12 {
         return Err(Error(format!(
-            "nodes.bin unpacks to {} byte(s), not {} 12-byte records",
+            "nodes.bin unpacks to {} byte(s) ({} 12-byte record(s)), not the {} record(s) \
+             pushed ({} byte(s))",
             parsed.unpacked_len(),
-            u64::from(kept) + 1
+            parsed.unpacked_len() / 12,
+            u64::from(kept) + 1,
+            (u64::from(kept) + 1) * 12
         )));
     }
     std::fs::write(out_dir.join("nodes.bin"), &nodes_bytes).map_err(io_err)?;
@@ -677,207 +578,3 @@ fn finish_pack_tail(
     }
     Ok(())
 }
-
-/// Bake one write batch: every node record and edge record's bytes, decided.
-///
-/// Positional over the sorted edge buffer: `edges` are the buffer slice this
-/// batch owns (one or more whole nodes' runs — batch boundaries fall on node
-/// boundaries by construction), `first_node` the batch's first node id, and
-/// `batch_edge_base` its edge index in the global order (so node records
-/// carry their own absolute `edge_ptr`). Returns node openers interleaved
-/// with their edges in the exact order the serial loop visited them (node
-/// record, then its edges).
-///
-/// Pure over shared tables (`node_coords`, `lane_pool`, `csr`, `synth`,
-/// `points`): safe across the pool. Fallible only like the serial loop was —
-/// a truncated `chains.pts` fails the build rather than shortening it — and
-/// the drain reports the first failure in batch order. `assert_endpoints` and
-/// the `geom::fits` gate run here, on the worker that encoded: same
-/// predicate, same message, same abort.
-#[allow(clippy::too_many_arguments)]
-fn bake_batch(
-    edges: &[TmpEdge],
-    first_node: u32,
-    batch_edge_base: u64,
-    node_coords: &[geom::Pt],
-    lane_pool: &[u16],
-    csr: &Csr,
-    synth: &[Synth],
-    points: &crate::mem::Mapped,
-) -> Result<Vec<BakedItem>> {
-    let mut out: Vec<BakedItem> = Vec::new();
-    let mut scratch: Vec<geom::Pt> = Vec::new();
-    let mut encoded: Vec<u8> = Vec::new();
-    // The slice starts on a node boundary (batches partition the node range)
-    // but its first edge may belong to a later node than `first_node`:
-    // nodes between hold no edges (degree 0) and still open a record each.
-    let mut node = first_node;
-    let mut i = 0usize;
-    let mut edge_idx = batch_edge_base;
-    while i < edges.len() {
-        while node < edges[i].source {
-            out.push(baked_node(node, node_coords, edge_idx, 0));
-            node += 1;
-        }
-        // This run's edges, in slice order (source-sorted, then target, then
-        // chain — the serial order).
-        let source = edges[i].source;
-        debug_assert_eq!(source, node, "batch slices split a node's run");
-        let run_start = out.len();
-        let mut degree = 0u32;
-        while i < edges.len() && edges[i].source == source {
-            out.push(BakedItem::Edge(Box::new(bake_edge(
-                &edges[i],
-                lane_pool,
-                csr,
-                synth,
-                points,
-                node_coords,
-                &mut scratch,
-                &mut encoded,
-            )?)));
-            degree += 1;
-            edge_idx += 1;
-            i += 1;
-        }
-        // The opener comes FIRST in drain order (node record, then its
-        // edges): splice it before the run just baked. Runs are short
-        // (degree ones mostly), so the shift is cheap — and positional
-        // exactness is the whole contract.
-        out.insert(run_start, baked_node(source, node_coords, edge_idx - degree as u64, degree));
-        node += 1;
-    }
-    Ok(out)
-}
-
-/// One node opener: its record bytes with the absolute edge pointer, plus its
-/// out-degree for the census replay.
-fn baked_node(node: u32, node_coords: &[geom::Pt], edge_ptr: u64, degree: u32) -> BakedItem {
-    let coords = node_coords[node as usize];
-    let mut rec = [0u8; 12];
-    rec[0..4].copy_from_slice(&coords.0.to_le_bytes());
-    rec[4..8].copy_from_slice(&coords.1.to_le_bytes());
-    rec[8..12].copy_from_slice(&(edge_ptr as u32).to_le_bytes());
-    BakedItem::Node { rec, degree }
-}
-
-/// One edge, decided: record inputs, geometry outcome, census inputs, lanes.
-///
-/// Mirrors the serial loop's per-edge body exactly: escape narrowing (same
-/// predicate, same sentinel rows), the twin-check-before-read (same flag),
-/// polyline read + reverse + gates + encode, lane run copy. Census inputs
-/// are the edge's own fields (replayed verbatim by the drain).
-fn bake_edge(
-    e: &TmpEdge,
-    lane_pool: &[u16],
-    csr: &Csr,
-    synth: &[Synth],
-    points: &crate::mem::Mapped,
-    node_coords: &[geom::Pt],
-    scratch: &mut Vec<geom::Pt>,
-    encoded: &mut Vec<u8>,
-) -> Result<BakedEdge> {
-    // Narrow first, exactly as `EdgeFile::push` does: the drain replays the
-    // narrowing verbatim through `push_baked_edge`, so the predicate lives in
-    // one place (there) and here only the escape ROW is decided... simpler:
-    // decide everything here and carry the outcome.
-    let (delta, dist, escaped) = match target_delta(e.source, e.target) {
-        Some(d) if e.dist_mm < DIST_MM_ESCAPE => (d, e.dist_mm, None),
-        _ => (
-            TARGET_DELTA_ESCAPE,
-            DIST_MM_ESCAPE,
-            Some((e.target, e.dist_mm)),
-        ),
-    };
-    // --- geometry ---
-    let mut type_ = e.type_;
-    let mut geom = BakedGeom::Absent;
-    // A two-point chain is just the chord between the edge's own endpoints,
-    // and under the interior-only encoding that is what an absent blob
-    // already means, so storing it would cost a presence bit to say nothing —
-    // and, more to the point here, a read to find that out.
-    if e.chain != NO_CHAIN && e.pts_len >= 3 {
-        if e.chain_rev && e.source != e.target && twin_is_unique(csr, synth, e.source, e.target)
-        {
-            type_ |= REVERSE_GEOMETRY_FLAG;
-            geom = BakedGeom::Reversed;
-        } else {
-            // Only now is the polyline actually needed. Deciding the flag
-            // first matters more than it looks: this is the only random read
-            // in the writer, so every edge that defers to its twin is one
-            // seek saved. Shared mapping, no lock: `read_shared` slices the
-            // same pages the serial loop faulted.
-            chains::PointReader::read_shared(points, e.pts_start, e.pts_len, scratch)?;
-            if e.chain_rev {
-                scratch.reverse();
-            }
-            assert!(
-                geom::fits(scratch),
-                "chain of {} points cannot be encoded; the collapse should \
-                 have split it",
-                scratch.len()
-            );
-            // The blob holds only the interior, so the reader rebuilds
-            // both ends out of `nodes.bin`.
-            assert_endpoints(scratch, node_coords, e.source, e.target, e.chain);
-            encoded.clear();
-            let n = geom::encode(scratch, encoded);
-            debug_assert_eq!(n as usize, geom::encoded_points(scratch) as usize);
-            geom = BakedGeom::Blob(std::mem::take(encoded));
-        }
-    }
-    let lanes = if e.lane_count > 0 && e.lane_off != NO_LANES {
-        let start = e.lane_off as usize;
-        lane_pool[start..start + e.lane_count as usize].to_vec()
-    } else {
-        Vec::new()
-    };
-    Ok(BakedEdge {
-        cen_source: e.source,
-        cen_target: e.target,
-        cen_dist: e.dist_mm,
-        cen_named: e.name_offset != NO_NAME,
-        delta,
-        dist,
-        escaped,
-        type_,
-        speed_limit: e.speed_limit,
-        name_offset: e.name_offset,
-        geom,
-        lanes,
-    })
-}
-
-/// Stage one baked edge's record: the narrowing replayed verbatim.
-///
-/// `EdgeFile::push` narrows from the live edge; this narrows from the baked
-/// decision. Same predicate, same rows, same bitmap updates — the function
-/// exists so the two cannot drift: any change to narrowing updates both
-/// call sites' shared outcome type... (they share `BakedEdge`'s fields, and
-/// this function is the drain's only writer into `edges_out`).
-fn push_baked_edge(edges_out: &mut EdgeFile, item: &BakedEdge) -> Result<()> {
-    let (delta, dist) = match item.escaped {
-        Some((target, dist)) => {
-            let idx = edges_out.pushed as u32;
-            edges_out.escapes.push((idx, target, dist));
-            (TARGET_DELTA_ESCAPE, DIST_MM_ESCAPE)
-        }
-        None => (item.delta, item.dist),
-    };
-    let mut rec = [0u8; EDGE_REC_BYTES as usize];
-    rec[0..2].copy_from_slice(&delta.to_le_bytes());
-    rec[2..5].copy_from_slice(&dist.to_le_bytes()[..3]);
-    rec[5] = item.type_;
-    rec[6] = item.speed_limit;
-    edges_out
-        .blocked
-        .push(&rec)
-        .map_err(|e| Error(format!("cannot stage edge record: {e}")))?;
-    if item.name_offset != NO_NAME {
-        edges_out.named.set(edges_out.pushed);
-        edges_out.name_offsets.push(item.name_offset);
-    }
-    edges_out.pushed += 1;
-    Ok(())
-}
-

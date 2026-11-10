@@ -53,6 +53,17 @@ impl Progress {
         }
     }
 
+    /// Record `n` items done at once (a parallel stage's batch), redrawing at
+    /// most once per [`REDRAW_STEP`].
+    #[inline]
+    pub(crate) fn add(&mut self, n: u64) {
+        self.done += n;
+        if self.done >= self.next {
+            self.next = self.done + REDRAW_STEP;
+            self.draw();
+        }
+    }
+
     fn draw(&self) {
         let pct = (self.done * 100).checked_div(self.total).unwrap_or(100);
         let elapsed = self.start.elapsed().as_secs_f64();
