@@ -25,7 +25,11 @@
 use std::io::{self, Write as _};
 use std::path::Path;
 
-use tilecodec::blocked::{BlockCache, Blocked, BlockedStreamWriter};
+use std::sync::atomic::{AtomicU8, Ordering};
+
+use tilecodec::blocked::{write_blocked_with, BlockCache, Blocked, BLOCKED_MAGIC, BLOCK_RECORDS};
+
+use crate::par;
 
 pub const OVERLAY_MAGIC: u32 = 0x4C56_4F4D;
 pub const OVERLAY_VERSION: u32 = 1;
@@ -130,30 +134,64 @@ impl<'a> GraphWalk<'a> {
         })
     }
 
+    /// Node `id`'s record: `(lat_e7, lon_e7, edge_ptr)`, through `cache`.
+    fn node_at(&self, id: u64, cache: &mut BlockCache) -> io::Result<(i32, i32, u64)> {
+        let per = u64::from(BLOCK_RECORDS);
+        let b = cache.get(&self.nodes, (id / per) as usize).map_err(|e| bad(format!("nodes.bin: {e}")))?;
+        let at = (id % per) as usize * 12;
+        let r = &b[at..at + 12];
+        Ok((
+            i32::from_le_bytes(r[0..4].try_into().expect("4")),
+            i32::from_le_bytes(r[4..8].try_into().expect("4")),
+            u64::from(u32::from_le_bytes(r[8..12].try_into().expect("4"))),
+        ))
+    }
+
+    /// The first escape row whose edge index is `>= edge`. Rows are written ascending by
+    /// edge index (the `edges.bin` contract), so this is a binary search; it is what lets a
+    /// walk start mid-graph with the same cursor a walk from node 0 would have reached.
+    fn escape_row_from(&self, edge: u64) -> u64 {
+        let idx = |row: u64| u64::from(u32_at(self.edges_file, self.escape_rows_off + row as usize * 12));
+        let (mut lo, mut hi) = (0u64, self.escape_count);
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2;
+            if idx(mid) < edge {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        lo
+    }
+
     /// Call `f(u, lat_e7, lon_e7, &[(edge_idx, FullEdge)])` for every node.
-    fn for_each(&self, mut f: impl FnMut(u32, i32, i32, &[(u64, FullEdge)]) -> io::Result<()>) -> io::Result<()> {
+    #[cfg(test)]
+    fn for_each(&self, f: impl FnMut(u32, i32, i32, &[(u64, FullEdge)]) -> io::Result<()>) -> io::Result<()> {
+        self.for_range(0, self.node_count, f)
+    }
+
+    /// [`for_each`](Self::for_each) over nodes `a..b` only, inflating each block it touches
+    /// once. Independent ranges share nothing, which is what lets the build walk them on
+    /// every core at once.
+    fn for_range(
+        &self,
+        a: u32,
+        b: u32,
+        mut f: impl FnMut(u32, i32, i32, &[(u64, FullEdge)]) -> io::Result<()>,
+    ) -> io::Result<()> {
         let (mut ncache, mut ecache) = (BlockCache::new(1), BlockCache::new(1));
-        let per = 4096u64;
-        let mut node_rec = |id: u64, cache: &mut BlockCache| -> io::Result<(i32, i32, u64)> {
-            let b = cache.get(&self.nodes, (id / per) as usize).map_err(|e| bad(format!("nodes.bin: {e}")))?;
-            let at = (id % per) as usize * 12;
-            let r = &b[at..at + 12];
-            Ok((
-                i32::from_le_bytes(r[0..4].try_into().expect("4")),
-                i32::from_le_bytes(r[4..8].try_into().expect("4")),
-                u64::from(u32::from_le_bytes(r[8..12].try_into().expect("4"))),
-            ))
-        };
-        let mut escape_row = 0u64;
+        let per = u64::from(BLOCK_RECORDS);
         let mut out: Vec<(u64, FullEdge)> = Vec::new();
-        let (mut lat, mut lon, mut lo) = node_rec(0, &mut ncache)?;
-        for u in 0..self.node_count {
-            let (nlat, nlon, hi) = node_rec(u64::from(u) + 1, &mut ncache)?;
+        let (mut lat, mut lon, mut lo) = self.node_at(u64::from(a), &mut ncache)?;
+        // A walk from node 0 starts its cursor at row 0, exactly as the sequential walk did.
+        let mut escape_row = if a == 0 { 0 } else { self.escape_row_from(lo) };
+        for u in a..b {
+            let (nlat, nlon, hi) = self.node_at(u64::from(u) + 1, &mut ncache)?;
             out.clear();
             for i in lo..hi {
-                let b = ecache.get(&self.edges, (i / per) as usize).map_err(|e| bad(format!("edges.bin: {e}")))?;
+                let blk = ecache.get(&self.edges, (i / per) as usize).map_err(|e| bad(format!("edges.bin: {e}")))?;
                 let at = (i % per) as usize * 7;
-                let r = &b[at..at + 7];
+                let r = &blk[at..at + 7];
                 let delta = i16::from_le_bytes([r[0], r[1]]);
                 let dist = u32::from_le_bytes([r[2], r[3], r[4], 0]);
                 let (target, dist_mm) = if delta == TARGET_DELTA_ESCAPE || dist == DIST_MM_ESCAPE {
@@ -186,6 +224,32 @@ fn on_overlay(type_: u8) -> bool {
     (1..=MAX_CLASS).contains(&(type_ & CLASS_MASK))
 }
 
+/// Nodes per parallel work unit: four 4096-record node blocks.
+///
+/// The output never depends on it — every unit's result is merged in unit order — but it
+/// is a constant rather than a function of the core count so the work split is the same
+/// on every machine. Small enough that California (7.2 M nodes) still yields ~440 units
+/// for 192 threads; large enough that the one edge block a unit shares with its neighbour
+/// (inflated by both) is a few percent of its work.
+const CHUNK_NODES: u32 = 4 * BLOCK_RECORDS;
+
+/// Pass 1's per-unit result: the arterial out-edges in node order, and the coordinates of
+/// every node that owns one, so pass 2 needs to re-inflate no edge block at all and only
+/// the node blocks holding an overlay node that is a target and never a source.
+#[derive(Default)]
+struct Arterials {
+    sources: Vec<(u32, i32, i32)>,
+    edges: Vec<(u32, u64, FullEdge)>,
+}
+
+/// One unit's emitted records. `nodes`' `edge_ptr` fields are relative to the unit and
+/// rebased in the ordered merge, once every earlier unit's edge count is known.
+struct Emitted {
+    nodes: Vec<u8>,
+    edges: Vec<u8>,
+    edge_count: u64,
+}
+
 /// Build `overlay.bin` beside the graph in `graph_dir` (or at `out`).
 pub fn build(graph_dir: &Path, out: &Path) -> io::Result<OverlayStats> {
     let meta = std::fs::read(graph_dir.join("metadata.bin"))?;
@@ -196,24 +260,63 @@ pub fn build(graph_dir: &Path, out: &Path) -> io::Result<OverlayStats> {
 
 /// [`build`] over section bytes, so an archive's graph sections can be used
 /// without unpacking them to a directory.
+///
+/// Parallel and deterministic: the graph is cut into fixed [`CHUNK_NODES`] ranges, each
+/// walked on its own thread by [`par::map_chunks`], and every per-range result is merged in
+/// range order, so the file is byte-identical at any thread count — and to the sequential
+/// two-walk builder this replaced, which spent its whole run inflating every `nodes.bin`
+/// and `edges.bin` block twice on one core.
 pub fn build_from(meta: &[u8], nodes: &[u8], edges: &[u8], out: &Path) -> io::Result<OverlayStats> {
+    build_from_chunked(meta, nodes, edges, out, CHUNK_NODES)
+}
+
+fn build_from_chunked(
+    meta: &[u8],
+    nodes: &[u8],
+    edges: &[u8],
+    out: &Path,
+    chunk_nodes: u32,
+) -> io::Result<OverlayStats> {
     let walk = GraphWalk::open(meta, nodes, edges)?;
     let n = walk.node_count as u64;
     let full_edges = u64_at(meta, 16);
+    let chunk_nodes = chunk_nodes.max(1);
+    let units: Vec<u32> = (0..n.div_ceil(u64::from(chunk_nodes))).map(|c| c as u32).collect();
+    let range = |c: u32| -> (u32, u32) {
+        let a = u64::from(c) * u64::from(chunk_nodes);
+        (a as u32, (a + u64::from(chunk_nodes)).min(n) as u32)
+    };
 
-    // Pass 1: every endpoint of an arterial edge is on the overlay.
-    let mut present = vec![0u8; n.div_ceil(8) as usize];
-    let mut set = |id: u32| present[(id / 8) as usize] |= 1 << (id % 8);
-    walk.for_each(|u, _, _, es| {
-        for (_, e) in es.iter().filter(|(_, e)| on_overlay(e.type_)) {
-            if u64::from(e.target) >= n {
-                return Err(bad(format!("edge from {u} targets {} past the node count", e.target)));
+    // Pass 1: every endpoint of an arterial edge is on the overlay. A target may sit in any
+    // range, so the bitmap is shared; `fetch_or` makes the result independent of which
+    // thread sets a bit first.
+    let shared: Vec<AtomicU8> = (0..n.div_ceil(8)).map(|_| AtomicU8::new(0)).collect();
+    let set = |id: u32| {
+        shared[(id / 8) as usize].fetch_or(1 << (id % 8), Ordering::Relaxed);
+    };
+    let pass1 = par::map_chunks(&units, 1, |_, unit| -> io::Result<Arterials> {
+        let (a, b) = range(unit[0]);
+        let mut art = Arterials::default();
+        walk.for_range(a, b, |u, lat, lon, es| {
+            let before = art.edges.len();
+            for (i, e) in es.iter().filter(|(_, e)| on_overlay(e.type_)) {
+                if u64::from(e.target) >= n {
+                    return Err(bad(format!("edge from {u} targets {} past the node count", e.target)));
+                }
+                set(u);
+                set(e.target);
+                art.edges.push((u, *i, *e));
             }
-            set(u);
-            set(e.target);
-        }
-        Ok(())
-    })?;
+            if art.edges.len() > before {
+                art.sources.push((u, lat, lon));
+            }
+            Ok(())
+        })?;
+        Ok(art)
+    });
+    // The first failing range in range order is the first failure a sequential walk meets.
+    let pass1: Vec<Arterials> = pass1.into_iter().collect::<io::Result<_>>()?;
+    let present: Vec<u8> = shared.into_iter().map(AtomicU8::into_inner).collect();
 
     // Rank index: set bits before each 64-byte block, then the total.
     let blocks = n.div_ceil(RANK_BLOCK_BYTES * 8);
@@ -239,42 +342,80 @@ pub fn build_from(meta: &[u8], nodes: &[u8], edges: &[u8], out: &Path) -> io::Re
     };
     let is_set = |id: u32| present[(id / 8) as usize] & (1 << (id % 8)) != 0;
 
-    // Pass 2: emit nodes in full-id order with their arterial out-edges.
-    let tmp = |s: &str| out.with_extension(s);
-    let mut node_w = BlockedStreamWriter::create(NODE_LEN, &tmp("nodes.tmp"))?;
-    let mut edge_w = BlockedStreamWriter::create(EDGE_LEN, &tmp("edges.tmp"))?;
+    // Pass 2: emit nodes in full-id order with their arterial out-edges, per range.
+    let pass2 = par::map_chunks(&units, 1, |_, unit| -> io::Result<Emitted> {
+        let (a, b) = range(unit[0]);
+        let art = &pass1[unit[0] as usize];
+        let mut em = Emitted { nodes: Vec::new(), edges: Vec::new(), edge_count: 0 };
+        let mut cache = BlockCache::new(1);
+        let (mut si, mut ei) = (0usize, 0usize);
+        for u in a..b {
+            if !is_set(u) {
+                continue;
+            }
+            // Every source is on the overlay, so the cursor meets them in order.
+            let (lat, lon) = match art.sources.get(si) {
+                Some(&(s, lat, lon)) if s == u => {
+                    si += 1;
+                    (lat, lon)
+                }
+                _ => {
+                    let (lat, lon, _) = walk.node_at(u64::from(u), &mut cache)?;
+                    (lat, lon)
+                }
+            };
+            let mut rec = [0u8; NODE_LEN];
+            rec[0..4].copy_from_slice(&lat.to_le_bytes());
+            rec[4..8].copy_from_slice(&lon.to_le_bytes());
+            // Relative; rebased in the merge below.
+            rec[8..12].copy_from_slice(&(em.edge_count as u32).to_le_bytes());
+            rec[12..16].copy_from_slice(&u.to_le_bytes());
+            em.nodes.extend_from_slice(&rec);
+            while let Some(&(src, i, e)) = art.edges.get(ei) {
+                if src != u {
+                    break;
+                }
+                let mut rec = [0u8; EDGE_LEN];
+                rec[0..4].copy_from_slice(&of(e.target).to_le_bytes());
+                rec[4..8].copy_from_slice(&e.dist_mm.to_le_bytes());
+                rec[8..16].copy_from_slice(&i.to_le_bytes());
+                rec[16] = e.type_;
+                rec[17] = e.speed_limit;
+                em.edges.extend_from_slice(&rec);
+                em.edge_count += 1;
+                ei += 1;
+            }
+        }
+        Ok(em)
+    });
+    drop(pass1);
+
+    // Ordered merge: rebase each range's edge pointers on the edges before it.
+    let mut node_recs: Vec<u8> = Vec::with_capacity((m as usize + 1) * NODE_LEN);
+    let mut edge_recs: Vec<u8> = Vec::new();
     let mut k = 0u64;
-    walk.for_each(|u, lat, lon, es| {
-        if !is_set(u) {
-            return Ok(());
+    for em in pass2 {
+        let em = em?;
+        for rec in em.nodes.chunks_exact(NODE_LEN) {
+            let ptr = u32::try_from(k + u64::from(u32_at(rec, 8))).map_err(|_| bad("overlay edge count past u32"))?;
+            node_recs.extend_from_slice(&rec[0..8]);
+            node_recs.extend_from_slice(&ptr.to_le_bytes());
+            node_recs.extend_from_slice(&rec[12..16]);
         }
-        let ptr = u32::try_from(k).map_err(|_| bad("overlay edge count past u32"))?;
-        let mut rec = [0u8; NODE_LEN];
-        rec[0..4].copy_from_slice(&lat.to_le_bytes());
-        rec[4..8].copy_from_slice(&lon.to_le_bytes());
-        rec[8..12].copy_from_slice(&ptr.to_le_bytes());
-        rec[12..16].copy_from_slice(&u.to_le_bytes());
-        node_w.push(&rec)?;
-        for (i, e) in es.iter().filter(|(_, e)| on_overlay(e.type_)) {
-            let mut rec = [0u8; EDGE_LEN];
-            rec[0..4].copy_from_slice(&of(e.target).to_le_bytes());
-            rec[4..8].copy_from_slice(&e.dist_mm.to_le_bytes());
-            rec[8..16].copy_from_slice(&i.to_le_bytes());
-            rec[16] = e.type_;
-            rec[17] = e.speed_limit;
-            edge_w.push(&rec)?;
-            k += 1;
-        }
-        Ok(())
-    })?;
+        edge_recs.extend_from_slice(&em.edges);
+        k += em.edge_count;
+    }
     let mut sentinel = [0u8; NODE_LEN];
     sentinel[8..12].copy_from_slice(&u32::try_from(k).map_err(|_| bad("overlay edge count past u32"))?.to_le_bytes());
     sentinel[12..16].copy_from_slice(&u32::MAX.to_le_bytes());
-    node_w.push(&sentinel)?;
-    let nodes_sec = node_w.finish()?;
-    let edges_sec = edge_w.finish()?;
+    node_recs.extend_from_slice(&sentinel);
+    let nodes_sec = blocked_section(&node_recs, NODE_LEN);
+    drop(node_recs);
+    let edges_sec = blocked_section(&edge_recs, EDGE_LEN);
+    drop(edge_recs);
 
-    let mut f = io::BufWriter::new(std::fs::File::create(out)?);
+    // One large buffer: the file is written in a few big sequential extents.
+    let mut f = io::BufWriter::with_capacity(8 << 20, std::fs::File::create(out)?);
     f.write_all(&OVERLAY_MAGIC.to_le_bytes())?;
     f.write_all(&OVERLAY_VERSION.to_le_bytes())?;
     for v in [n, full_edges, m, k, nodes_sec.len() as u64, edges_sec.len() as u64] {
@@ -293,6 +434,46 @@ pub fn build_from(meta: &[u8], nodes: &[u8], edges: &[u8], out: &Path) -> io::Re
     f.flush()?;
     let bytes = align8(edges_end) + rank.len() as u64 * 8 + present.len() as u64;
     Ok(OverlayStats { full_nodes: n, full_edges, nodes: m, edges: k, bytes })
+}
+
+/// `records` as a ZBLK section, byte-identical to what
+/// [`tilecodec::blocked::BlockedStreamWriter`] writes for the same records, with the
+/// blocks compressed in parallel.
+///
+/// The stream writer compresses each 4096-record block on its own with a fresh encoder, so
+/// a block's frame depends on that block's bytes alone. Each frame here is taken from
+/// [`write_blocked_with`] over that one block — tilecodec's own encoder and settings, so
+/// the two cannot drift — and the header and offset table are laid out as the module docs
+/// of `tilecodec::blocked` specify. `blocked_section_matches_the_stream_writer` pins the
+/// equality.
+fn blocked_section(records: &[u8], record_len: usize) -> Vec<u8> {
+    assert_eq!(records.len() % record_len, 0, "whole records only");
+    let per_block = BLOCK_RECORDS as usize * record_len;
+    let blocks: Vec<&[u8]> = records.chunks(per_block).collect();
+    let frames: Vec<Vec<u8>> = par::map_chunks(&blocks, 1, |_, block| {
+        let one = write_blocked_with(block[0], record_len, BLOCK_RECORDS);
+        let parsed = Blocked::parse(&one).expect("a section tilecodec just wrote");
+        let lo = parsed.block_offset(0).expect("one block") as usize;
+        let hi = parsed.block_offset(1).expect("one block") as usize;
+        one[lo..hi].to_vec()
+    });
+    let mut out = Vec::with_capacity(28 + (frames.len() + 1) * 8 + frames.iter().map(Vec::len).sum::<usize>());
+    out.extend_from_slice(&BLOCKED_MAGIC.to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes());
+    out.extend_from_slice(&(record_len as u32).to_le_bytes());
+    out.extend_from_slice(&BLOCK_RECORDS.to_le_bytes());
+    out.extend_from_slice(&(records.len() as u64).to_le_bytes());
+    out.extend_from_slice(&(frames.len() as u32).to_le_bytes());
+    let mut off = (28 + (frames.len() + 1) * 8) as u64;
+    for f in &frames {
+        out.extend_from_slice(&off.to_le_bytes());
+        off += f.len() as u64;
+    }
+    out.extend_from_slice(&off.to_le_bytes());
+    for f in &frames {
+        out.extend_from_slice(f);
+    }
+    out
 }
 
 #[cfg(test)]
@@ -393,5 +574,54 @@ mod tests {
         build(&dir, &dir.join("a.bin")).unwrap();
         build(&dir, &dir.join("b.bin")).unwrap();
         assert_eq!(std::fs::read(dir.join("a.bin")).unwrap(), std::fs::read(dir.join("b.bin")).unwrap());
+    }
+
+    #[test]
+    fn the_overlay_is_byte_identical_across_work_splits_and_thread_counts() {
+        let dir = sample("overlay_splits");
+        build(&dir, &dir.join("ref.bin")).unwrap();
+        let want = std::fs::read(dir.join("ref.bin")).unwrap();
+        let meta = std::fs::read(dir.join("metadata.bin")).unwrap();
+        let (nodes, edges) = (map(&dir.join("nodes.bin")).unwrap(), map(&dir.join("edges.bin")).unwrap());
+        // One node per range puts every range boundary between a source and its targets,
+        // so a target bit, a target-only node's coordinates and an edge pointer all cross
+        // a range on every edge.
+        for chunk in [1, 2, 3, 5, CHUNK_NODES] {
+            for threads in [1, 3, 8] {
+                crate::par::set_threads(threads);
+                let out = dir.join(format!("c{chunk}_t{threads}.bin"));
+                build_from_chunked(&meta, &nodes, &edges, &out, chunk).unwrap();
+                assert_eq!(std::fs::read(&out).unwrap(), want, "chunk {chunk}, {threads} thread(s)");
+            }
+        }
+        crate::par::clear_threads();
+    }
+
+    #[test]
+    fn blocked_section_matches_the_stream_writer() {
+        // Several full blocks plus a tail, a single partial block, exactly one block, and
+        // nothing at all, at both overlay strides.
+        let mut x = 0x9E37_79B9_7F4A_7C15u64;
+        for record_len in [NODE_LEN, EDGE_LEN] {
+            for count in [0usize, 1, 4095, 4096, 4097, 3 * 4096 + 17] {
+                let records: Vec<u8> = (0..count * record_len)
+                    .map(|i| {
+                        x ^= x << 13;
+                        x ^= x >> 7;
+                        x ^= x << 17;
+                        // Compressible but not trivially: a slow counter plus noise.
+                        if i % 4 == 0 { (x & 0x0F) as u8 } else { (i / 97) as u8 }
+                    })
+                    .collect();
+                let scratch = std::env::temp_dir()
+                    .join(format!("overlay_bs_{}_{record_len}_{count}.tmp", std::process::id()));
+                let mut w = tilecodec::blocked::BlockedStreamWriter::create(record_len, &scratch).unwrap();
+                // Pushed in odd-sized runs, as the old builder pushed one record at a time.
+                for run in records.chunks(record_len * 7) {
+                    w.push(run).unwrap();
+                }
+                assert_eq!(blocked_section(&records, record_len), w.finish().unwrap(), "{record_len} B x {count}");
+            }
+        }
     }
 }

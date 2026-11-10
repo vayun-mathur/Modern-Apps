@@ -1,11 +1,12 @@
-//! `road_overlay --graph DIR [--out FILE]` - build the highway overlay
+//! `road_overlay --graph DIR [--out FILE] [--threads N]` - build the highway overlay
 //! (`overlay.bin`, default `DIR/overlay.bin`) from a finished v7 graph dir.
 //!
 //! See `osm_ingest::overlay` for the layout.
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-const USAGE: &str = "Usage: road_overlay --graph DIR [--out FILE] (default --out DIR/overlay.bin)";
+const USAGE: &str =
+    "Usage: road_overlay --graph DIR [--out FILE] [--threads N] (default --out DIR/overlay.bin; --threads beats MAPS_THREADS beats the box)";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -14,6 +15,15 @@ fn main() -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
+    if let Some(v) = flag("--threads") {
+        match osm_ingest::par::parse_threads(&v) {
+            Ok(n) => osm_ingest::par::set_threads(n),
+            Err(e) => {
+                eprintln!("road_overlay: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
     let out = flag("--out").map(PathBuf::from).unwrap_or_else(|| dir.join("overlay.bin"));
     let started = std::time::Instant::now();
     match osm_ingest::overlay::build(&dir, &out) {
