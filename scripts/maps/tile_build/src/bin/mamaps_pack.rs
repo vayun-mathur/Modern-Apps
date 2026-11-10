@@ -3,6 +3,7 @@
 //! Usage:
 //!   mamaps_pack --tiles IN.mamaps --graph GRAPH_DIR --poi POI_DIR
 //!               [--transit WORLD.transit] --out OUT.mamaps
+//!               [--sha256-out OUT.mamaps.sha256]
 //!
 //! The tile prefix (`[128B header][dict][root][leaves][tile data]`) is treated
 //! as immutable: it is copied verbatim except for two header fields. The sidecar
@@ -523,7 +524,7 @@ fn write_at(out: &mut std::fs::File, offset: u64, bytes: &[u8], out_path: &Path)
         .map_err(|e| format!("cannot write {}: {e}", out_path.display()))
 }
 
-/// [`pack_streaming_with`] for a build id already known (the unit tests).
+/// [`pack_streaming_with`] for a build id already known and no inline hash (the unit tests).
 #[cfg(test)]
 fn pack_streaming(
     tiles_path: &Path,
@@ -531,11 +532,176 @@ fn pack_streaming(
     build_id: u64,
     out: &Path,
 ) -> Result<u64, String> {
-    pack_streaming_with(tiles_path, validated, || Ok(build_id), out).map(|(len, _)| len)
+    pack_streaming_with(tiles_path, validated, || Ok(build_id), out, false).map(|(len, _, _)| len)
+}
+
+/// One stretch of the output, in file order, as the inline hash sees it.
+enum Piece<'a> {
+    /// Bytes this process writes itself (header, padding, transit heads, directory, footer).
+    Mem(&'a [u8]),
+    /// `len` bytes of the output at `off`, final once copy task `gate` has finished.
+    Out { off: u64, len: u64, gate: usize },
+}
+
+/// How far the copy loop has got: tasks finished in order, and whether one failed.
+#[derive(Default)]
+struct Progress {
+    state: std::sync::Mutex<(usize, bool)>,
+    moved: std::sync::Condvar,
+}
+
+impl Progress {
+    fn finish_one(&self) {
+        self.state.lock().expect("progress mutex").0 += 1;
+        self.moved.notify_all();
+    }
+    fn fail(&self) {
+        self.state.lock().expect("progress mutex").1 = true;
+        self.moved.notify_all();
+    }
+    /// Block until task `gate` has finished; `false` if the copy failed first.
+    fn wait_past(&self, gate: usize) -> bool {
+        let mut st = self.state.lock().expect("progress mutex");
+        while st.0 <= gate && !st.1 {
+            st = self.moved.wait(st).expect("progress mutex");
+        }
+        st.0 > gate
+    }
+}
+
+/// Bytes per positional read of the output for the hash, and per double-buffered window.
+const HASH_READ: u64 = 8 << 20;
+const HASH_WINDOW: u64 = 256 << 20;
+
+/// `buf.len()` bytes of `file` at `off`, without moving any shared cursor (so the reads of
+/// one window can run on several threads against one handle).
+fn read_exact_at(file: &std::fs::File, buf: &mut [u8], off: u64) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::FileExt;
+        file.read_exact_at(buf, off)
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::FileExt;
+        let mut done = 0;
+        while done < buf.len() {
+            let n = file.seek_read(&mut buf[done..], off + done as u64)?;
+            if n == 0 {
+                return Err(std::io::ErrorKind::UnexpectedEof.into());
+            }
+            done += n;
+        }
+        Ok(())
+    }
+}
+
+/// SHA-256 over `pieces`, i.e. over the finished archive, byte for byte, while it is still
+/// being written.
+///
+/// The output regions are read back from the output file itself (not from the sources), once
+/// the copy task that fills each one has finished, so the digest is of the bytes actually in
+/// the file: the reflinked tile prefix is read exactly once, here. Reads go 8 MiB at a time
+/// in parallel on the crate pool, double-buffered against the (inherently serial) hash, so
+/// the hash runs at the hasher's speed rather than at one thread's read+zstd-inflate speed.
+/// `sha2` picks its SHA-NI backend at run time on CPUs that have it (Zen 4 does).
+fn hash_pieces(pieces: &[Piece], out_path: &Path, progress: &Progress) -> Result<[u8; 32], String> {
+    use rayon::prelude::*;
+    use sha2::{Digest as _, Sha256};
+    enum Read<'a> {
+        Mem(&'a [u8]),
+        Out { off: u64, len: u64, gate: usize },
+    }
+    // Flatten into bounded reads, then group into windows.
+    let mut reads: Vec<Read> = Vec::new();
+    for p in pieces {
+        match *p {
+            Piece::Mem(b) => reads.push(Read::Mem(b)),
+            Piece::Out { off, len, gate } => {
+                let mut at = 0;
+                while at < len {
+                    let n = (len - at).min(HASH_READ);
+                    reads.push(Read::Out { off: off + at, len: n, gate });
+                    at += n;
+                }
+            }
+        }
+    }
+    let mut windows: Vec<std::ops::Range<usize>> = Vec::new();
+    let (mut start, mut bytes) = (0usize, 0u64);
+    for (i, r) in reads.iter().enumerate() {
+        bytes += match r {
+            Read::Mem(b) => b.len() as u64,
+            Read::Out { len, .. } => *len,
+        };
+        if bytes >= HASH_WINDOW {
+            windows.push(start..i + 1);
+            start = i + 1;
+            bytes = 0;
+        }
+    }
+    if start < reads.len() {
+        windows.push(start..reads.len());
+    }
+
+    let file = std::fs::File::open(out_path)
+        .map_err(|e| format!("cannot read {}: {e}", out_path.display()))?;
+    // One window's output reads, in order; `Mem` reads stay borrowed and need no buffer.
+    let load = |w: &std::ops::Range<usize>| -> Result<Vec<Vec<u8>>, String> {
+        let gate = reads[w.clone()]
+            .iter()
+            .filter_map(|r| match r {
+                Read::Out { gate, .. } => Some(*gate),
+                Read::Mem(_) => None,
+            })
+            .max();
+        if let Some(g) = gate {
+            if !progress.wait_past(g) {
+                return Err("the copy failed".to_string());
+            }
+        }
+        reads[w.clone()]
+            .par_iter()
+            .map(|r| match r {
+                Read::Mem(_) => Ok(Vec::new()),
+                Read::Out { off, len, .. } => {
+                    let mut buf = vec![0u8; *len as usize];
+                    read_exact_at(&file, &mut buf, *off)
+                        .map_err(|e| format!("cannot read {} at {off}: {e}", out_path.display()))?;
+                    Ok(buf)
+                }
+            })
+            .collect()
+    };
+    let mut hasher = Sha256::new();
+    tile_build::par::install(|| -> Result<(), String> {
+        let mut current = match windows.first() {
+            Some(w) => Some(load(w)?),
+            None => None,
+        };
+        for (k, w) in windows.iter().enumerate() {
+            let bufs = current.take().expect("window loaded");
+            let next = windows.get(k + 1);
+            let (_, loaded) = rayon::join(
+                || {
+                    for (r, b) in reads[w.clone()].iter().zip(&bufs) {
+                        match r {
+                            Read::Mem(m) => hasher.update(m),
+                            Read::Out { .. } => hasher.update(b),
+                        }
+                    }
+                },
+                || next.map(&load),
+            );
+            current = loaded.transpose()?;
+        }
+        Ok(())
+    })?;
+    Ok(hasher.finalize().into())
 }
 
 /// Write the archive: tile prefix, sidecars, directory, footer, header rewrite, re-verify,
-/// rename. Returns `(final length, build id)`.
+/// rename. Returns `(final length, build id, SHA-256 of the archive if asked for)`.
 ///
 /// Every byte's position is a function of the staged lengths alone (the payloads sit
 /// back-to-back from `data_end`, each 8-byte aligned), so the whole layout is computed up
@@ -555,13 +721,17 @@ fn pack_streaming(
 /// no wall-clock gain.
 ///
 /// `build_id` runs on its own thread beside the copy: it is only needed for the footer and
-/// the header, both written after the copy, and in `main` it hashes `poi_attrs.bin`.
+/// the header, both written after the copy, and in `main` it hashes `poi_attrs.bin`. With
+/// `sha256`, the same thread then hashes the archive ([`hash_pieces`]) as the copy finishes
+/// each region, so the digest costs little more than the copy instead of a second full read
+/// of a ~80 GB file afterwards.
 fn pack_streaming_with<F>(
     tiles_path: &Path,
     validated: &Validated,
     build_id: F,
     out: &Path,
-) -> Result<(u64, u64), String>
+    sha256: bool,
+) -> Result<(u64, u64, Option<[u8; 32]>), String>
 where
     F: FnOnce() -> Result<u64, String> + Send,
 {
@@ -610,6 +780,15 @@ where
     let dir_len = dir.len() as u64;
     let footer_len = ArchiveFooter { dir_offset, dir_len, build_id: 0 }.serialize().len() as u64;
     let final_len = dir_offset + dir_len + footer_len;
+    // Every gap before a section or the directory, `(offset, zeros)`. Fewer than 8 bytes
+    // each; written by this thread and fed to the hash from the same buffers.
+    let mut gaps: Vec<(u64, Vec<u8>)> = Vec::new();
+    let mut prev_end = tiles_len;
+    for e in &entries {
+        gaps.push((prev_end, vec![0u8; (e.offset - prev_end) as usize]));
+        prev_end = e.offset + e.len;
+    }
+    gaps.push((prev_end, vec![0u8; (dir_offset - prev_end) as usize]));
 
     // A source that changed since staging would shift every offset after it.
     for s in staged {
@@ -639,28 +818,59 @@ where
         let head = s.head.len() as u64;
         tasks.push(CopyTask { src: &s.path, src_off: head, dst_off: e.offset + head, len: s.len - head });
     }
-    let (copied, id) = std::thread::scope(|scope| {
-        let id = scope.spawn(build_id);
-        let copied = tasks.iter().try_for_each(|t| run_copy(t, &mut writer, &tmp));
-        (copied, id.join())
-    });
-    copied?;
-    let build_id = id.map_err(|_| "the build-id thread panicked".to_string())??;
-    // The small writes, after every copy so no copy (a whole-block reflink in particular)
-    // can land on top of them: each transit head (in place of its source's first bytes),
-    // every alignment gap explicitly zeroed, and the directory.
-    let mut prev_end = tiles_len;
-    for (s, e) in staged.iter().zip(&entries) {
-        if e.offset > prev_end {
-            write_at(&mut writer, prev_end, &vec![0u8; (e.offset - prev_end) as usize], &tmp)?;
+    let progress = Progress::default();
+    // The id (and, when asked, the archive digest) on one side thread; the copy here.
+    let side = || -> Result<(u64, Option<[u8; 32]>), String> {
+        let id = build_id()?;
+        if !sha256 {
+            return Ok((id, None));
         }
+        // The final header and footer exactly as written below.
+        let header_bytes = Header { file_len: final_len, build_id: id, ..header }.serialize();
+        let footer_bytes = ArchiveFooter { dir_offset, dir_len, build_id: id }.serialize();
+        let mut pieces: Vec<Piece> = vec![
+            Piece::Mem(&header_bytes[..header_bytes.len().min(128)]),
+            Piece::Out { off: 128, len: tiles_len - 128, gate: 0 },
+        ];
+        for (k, ((s, e), (_, gap))) in staged.iter().zip(&entries).zip(&gaps).enumerate() {
+            pieces.push(Piece::Mem(gap));
+            pieces.push(Piece::Mem(&s.head));
+            let head = s.head.len() as u64;
+            pieces.push(Piece::Out { off: e.offset + head, len: s.len - head, gate: k + 1 });
+        }
+        pieces.push(Piece::Mem(&gaps.last().expect("the directory gap").1));
+        pieces.push(Piece::Mem(&dir));
+        pieces.push(Piece::Mem(&footer_bytes));
+        let digest = hash_pieces(&pieces, &tmp, &progress)?;
+        Ok((id, Some(digest)))
+    };
+    let (copied, side) = std::thread::scope(|scope| {
+        let side = scope.spawn(side);
+        let copied = tasks.iter().try_for_each(|t| {
+            run_copy(t, &mut writer, &tmp)?;
+            progress.finish_one();
+            Ok::<(), String>(())
+        });
+        if copied.is_err() {
+            progress.fail();
+        }
+        (copied, side.join())
+    });
+    // Report a copy failure first, as the serial copy would have met it.
+    copied?;
+    let (build_id, digest) = side.map_err(|_| "the build-id thread panicked".to_string())??;
+    // The small writes, after every copy so no copy (a whole-block reflink in particular)
+    // can land on top of them: every alignment gap explicitly zeroed, each transit head (in
+    // place of its source's first bytes), and the directory.
+    for (offset, zeros) in &gaps {
+        if !zeros.is_empty() {
+            write_at(&mut writer, *offset, zeros, &tmp)?;
+        }
+    }
+    for (s, e) in staged.iter().zip(&entries) {
         if !s.head.is_empty() {
             write_at(&mut writer, e.offset, &s.head, &tmp)?;
         }
-        prev_end = e.offset + e.len;
-    }
-    if dir_offset > prev_end {
-        write_at(&mut writer, prev_end, &vec![0u8; (dir_offset - prev_end) as usize], &tmp)?;
     }
     write_at(&mut writer, dir_offset, &dir, &tmp)?;
 
@@ -689,7 +899,26 @@ where
     verify_packed(&tmp, staged.len())?;
     std::fs::rename(&tmp, out)
         .map_err(|e| format!("cannot write {}: {e}", out.display()))?;
-    Ok((final_len, build_id))
+    Ok((final_len, build_id, digest))
+}
+
+/// Write `<hex>  <file name>\n` -- `sha256sum`'s own format, so `sha256sum -c` run beside
+/// the archive checks it -- via a temp file and a rename, so a reader never sees half a line.
+fn write_sha256_file(path: &Path, archive: &Path, digest: &[u8; 32]) -> Result<(), String> {
+    let name = archive
+        .file_name()
+        .ok_or_else(|| format!("{} has no file name", archive.display()))?
+        .to_string_lossy();
+    let mut line = String::with_capacity(64 + 3 + name.len());
+    for b in digest {
+        line.push_str(&format!("{b:02x}"));
+    }
+    line.push_str("  ");
+    line.push_str(&name);
+    line.push('\n');
+    let tmp = path.with_extension("sha256.tmp");
+    std::fs::write(&tmp, line).map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, path).map_err(|e| format!("cannot write {}: {e}", path.display()))
 }
 
 /// Re-verify a packed archive written by `pack_streaming`.
@@ -809,6 +1038,7 @@ fn main() -> ExitCode {
     let mut poi: Option<PathBuf> = None;
     let mut transit: Option<PathBuf> = None;
     let mut out: Option<PathBuf> = None;
+    let mut sha256_out: Option<PathBuf> = None;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -817,6 +1047,9 @@ fn main() -> ExitCode {
             "--poi" => poi = Some(value(&args, i, "--poi")),
             "--transit" => transit = Some(value(&args, i, "--transit")),
             "--out" => out = Some(value(&args, i, "--out")),
+            // SHA-256 of the finished archive, computed while it is written, in
+            // `sha256sum` format (`<hex>  <archive file name>`).
+            "--sha256-out" => sha256_out = Some(value(&args, i, "--sha256-out")),
             other => {
                 eprintln!("ERROR: mamaps_pack: unknown flag {other}");
                 return ExitCode::from(2);
@@ -825,7 +1058,7 @@ fn main() -> ExitCode {
         i += 2;
     }
     let (Some(tiles), Some(graph), Some(poi), Some(out)) = (tiles, graph, poi, out) else {
-        eprintln!("usage: mamaps_pack --tiles IN.mamaps --graph GRAPH_DIR --poi POI_DIR [--transit WORLD.transit] --out OUT.mamaps");
+        eprintln!("usage: mamaps_pack --tiles IN.mamaps --graph GRAPH_DIR --poi POI_DIR [--transit WORLD.transit] --out OUT.mamaps [--sha256-out OUT.mamaps.sha256]");
         return ExitCode::from(2);
     };
     // One phase clock for the run; subphases tile its wall gaplessly (`other`
@@ -871,8 +1104,16 @@ fn main() -> ExitCode {
         let digest = validated.poi_attrs_digest()?;
         Ok(derive_build_id(&validated.osm_id, &digest, &validated.transit_prefix))
     };
-    match pack_streaming_with(&tiles, &validated, derive, &out) {
-        Ok((final_len, id)) => {
+    match pack_streaming_with(&tiles, &validated, derive, &out, sha256_out.is_some()) {
+        Ok((final_len, id, digest)) => {
+            if let (Some(path), Some(digest)) = (sha256_out.as_ref(), digest.as_ref()) {
+                if let Err(e) = write_sha256_file(path, &out, digest) {
+                    eprintln!("ERROR: mamaps_pack: {e}");
+                    return ExitCode::from(1);
+                }
+                let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
+                println!("sha256 {hex} -> {}", path.display());
+            }
             timer.finish();
             println!(
                 "packed {} ({} bytes, build_id {:#018x}, {} sidecar sections)",
@@ -1082,6 +1323,47 @@ mod tests {
             out.extend_from_slice(&v.to_le_bytes());
         }
         out
+    }
+    /// The inline digest is SHA-256 of the archive as it lands on disk -- transit head,
+    /// padding, directory, footer and the rewritten header included -- at any pool size,
+    /// and the sidecar file is `sha256sum`'s own line.
+    #[test]
+    fn the_inline_sha256_is_the_digest_of_the_written_archive() {
+        use sha2::{Digest as _, Sha256};
+        let (dir, poi) = overlay_fixture("inline_sha");
+        std::fs::write(dir.join("overlay.bin"), overlay_head(4, 2)).expect("fixture overlay");
+        let region = region_payload(7);
+        std::fs::write(poi.join("poi_region.bin"), &region).expect("fixture region");
+        let transit_path = dir.join("world.transit");
+        std::fs::write(&transit_path, transit_pack_v7()).expect("fixture transit");
+        let validated = load_sidecars(&dir, &poi, Some(&transit_path)).expect("stage fixtures");
+        let out = dir.join("packed.mamaps");
+        let mut seen = Vec::new();
+        for threads in [1usize, 3, 8] {
+            tile_build::par::set_threads(threads);
+            let (len, id, digest) =
+                pack_streaming_with(&dir.join("tiles.mamaps"), &validated, || Ok(0xBEEF), &out, true)
+                    .expect("pack");
+            let packed = std::fs::read(&out).expect("read packed");
+            assert_eq!(len, packed.len() as u64);
+            assert_eq!(id, 0xBEEF);
+            let want: [u8; 32] = Sha256::digest(&packed).into();
+            assert_eq!(digest, Some(want), "threads {threads}");
+            seen.push(want);
+        }
+        // (`par::clear_threads` is test-only inside the lib; leaving the cap at 8 changes
+        // nothing another test here asserts.)
+        assert!(seen.windows(2).all(|w| w[0] == w[1]), "same archive at every pool size");
+        let sha = dir.join("packed.mamaps.sha256");
+        write_sha256_file(&sha, &out, &seen[0]).expect("sha file");
+        let line = std::fs::read_to_string(&sha).expect("read sha file");
+        let hex: String = seen[0].iter().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(line, format!("{hex}  packed.mamaps\n"));
+        let (_, _, none) =
+            pack_streaming_with(&dir.join("tiles.mamaps"), &validated, || Ok(0xBEEF), &out, false)
+                .expect("pack without hash");
+        assert!(none.is_none());
+        let _ = std::fs::remove_dir_all(&dir);
     }
     #[test]
     fn an_overlay_is_packed_as_the_last_section() {
