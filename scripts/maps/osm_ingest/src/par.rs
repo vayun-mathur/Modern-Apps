@@ -131,6 +131,12 @@ pub fn install<R: Send>(f: impl FnOnce() -> R + Send) -> R {
     pool().install(f)
 }
 
+/// Run `f` asynchronously on the pool (fire and forget; report back through a
+/// channel). For pipelining work behind a serial stage.
+pub fn spawn(f: impl FnOnce() + Send + 'static) {
+    pool().spawn(f)
+}
+
 /// Apply `f(chunk_start, chunk)` to every chunk of `chunk_len` items, returning
 /// the results in chunk order.
 pub fn map_chunks<T, R, F>(items: &[T], chunk_len: usize, f: F) -> Vec<R>

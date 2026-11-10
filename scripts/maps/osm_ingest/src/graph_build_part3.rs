@@ -480,11 +480,18 @@ fn finish_pack(
     nodes_blocked
         .push(&sentinel)
         .map_err(|e| Error(format!("cannot stage node sentinel: {e}")))?;
-    let nodes_bytes = nodes_blocked
-        .finish()
-        .map_err(|e| Error(format!("cannot finish nodes.bin: {e}")))?;
+    // Streamed straight into the file (no in-memory copy of the section),
+    // then checked against the mapped result.
+    {
+        let mut out = BufWriter::with_capacity(WRITE_BUF_BYTES, create(&out_dir.join("nodes.bin"))?);
+        nodes_blocked
+            .finish_into(&mut out)
+            .map_err(|e| Error(format!("cannot finish nodes.bin: {e}")))?;
+        out.flush().map_err(io_err)?;
+    }
+    let nodes_map = crate::mem::Mapped::open(&out_dir.join("nodes.bin")).map_err(Error)?;
     // Sanity: the blocked section must unpack to exactly the pushed records.
-    let parsed = tilecodec::blocked::Blocked::parse(&nodes_bytes).map_err(|e| {
+    let parsed = tilecodec::blocked::Blocked::parse(&nodes_map).map_err(|e| {
         Error(format!(
             "freshly blocked nodes.bin does not parse: {e}"
         ))
@@ -500,7 +507,7 @@ fn finish_pack(
             (u64::from(kept) + 1) * 12
         )));
     }
-    std::fs::write(out_dir.join("nodes.bin"), &nodes_bytes).map_err(io_err)?;
+    drop(nodes_map);
     let escape_count = edges_out.escapes.len() as u64;
     let named_edges = edges_out.name_offsets.len() as u64;
     let edges_bytes = edges_out.finish(edge_count)?;

@@ -21,6 +21,8 @@ struct Pass2 {
     /// pool: interning a stop code early would shift every way name after it and
     /// rewrite the whole of `road_names.bin`.
     stops: Vec<(u32, Vec<u8>)>,
+    /// Slots this chunk claimed (first sight of the id) in the parallel scan.
+    claimed: u64,
 }
 
 #[derive(Clone, Copy)]
@@ -193,28 +195,79 @@ pub fn build_with(input: &Path, out_dir: &Path, opts: Options) -> Result<Stats> 
     let mut stop_codes: Vec<(u32, Vec<u8>)> = Vec::new();
     let mut node_count: u64 = 0;
     timer.switch("node-scan");
-    let _ = pbf::run_pass_sink(
-        input,
-        &blobs,
-        Some(&blob_kinds),
-        KIND_NODES,
-        "Pass 2: node scan",
-        Pass2::default,
-        |state, block| pass2_blob(state, block, &mask),
-        |chunk| {
-            for (dense, lat_e7, lon_e7) in chunk.locs {
-                coords[dense as usize] = (lat_e7, lon_e7);
-                if present.set(u64::from(dense)) {
-                    node_count += 1;
+    // Coordinates scatter from the decode workers. Each node id claims its
+    // `present` bit atomically and only the claimant writes its slot, so every
+    // slot has exactly one writer. That equals the serial fold — which let the
+    // LAST occurrence of an id win — whenever ids are unique, as they are in
+    // any well-formed (sorted) PBF. If some id occurs twice, the race for its
+    // slot could pick a different occurrence, so the pass is redone with the
+    // original single-threaded fold, keeping the output exact either way.
+    // Stop codes stay in the ordered sink: their order is interning order.
+    let duplicate = std::sync::atomic::AtomicBool::new(false);
+    {
+        let pres = present.atomic();
+        let slots_out = par::SyncPtr(coords.as_mut_ptr());
+        let _ = pbf::run_pass_sink(
+            input,
+            &blobs,
+            Some(&blob_kinds),
+            KIND_NODES,
+            "Pass 2: node scan",
+            Pass2::default,
+            |state, block| {
+                let kinds = pass2_blob(state, block, &mask)?;
+                for (dense, lat_e7, lon_e7) in state.locs.drain(..) {
+                    if pres.set(u64::from(dense)) {
+                        // SAFETY: `dense < slots` (a rank over the mask), and
+                        // the `present` claim above makes this the only writer.
+                        unsafe { slots_out.write(dense as usize, (lat_e7, lon_e7)) };
+                        state.claimed += 1;
+                    } else {
+                        duplicate.store(true, Ordering::Relaxed);
+                    }
                 }
-            }
-            for (dense, code) in chunk.stops {
-                stop.set(u64::from(dense));
-                stop_codes.push((dense, code));
-            }
-            Ok(())
-        },
-    )?;
+                Ok(kinds)
+            },
+            |chunk| {
+                node_count += chunk.claimed;
+                for (dense, code) in chunk.stops {
+                    stop.set(u64::from(dense));
+                    stop_codes.push((dense, code));
+                }
+                Ok(())
+            },
+        )?;
+    }
+    if duplicate.load(Ordering::Relaxed) {
+        eprintln!("WARN: a node id occurs more than once; redoing the node scan serially");
+        coords.iter_mut().for_each(|c| *c = (0, 0));
+        present = Bitset::new(u64::from(slots));
+        stop = Bitset::new(u64::from(slots));
+        stop_codes.clear();
+        node_count = 0;
+        let _ = pbf::run_pass_sink(
+            input,
+            &blobs,
+            Some(&blob_kinds),
+            KIND_NODES,
+            "Pass 2: node scan (serial)",
+            Pass2::default,
+            |state, block| pass2_blob(state, block, &mask),
+            |chunk| {
+                for (dense, lat_e7, lon_e7) in chunk.locs {
+                    coords[dense as usize] = (lat_e7, lon_e7);
+                    if present.set(u64::from(dense)) {
+                        node_count += 1;
+                    }
+                }
+                for (dense, code) in chunk.stops {
+                    stop.set(u64::from(dense));
+                    stop_codes.push((dense, code));
+                }
+                Ok(())
+            },
+        )?;
+    }
     println!(
         "Located {node_count} node(s); {} marked id(s) had no coordinates in the file",
         marked - node_count

@@ -98,9 +98,31 @@ impl Spill {
     /// byte-deterministic.
     pub fn writer(&self) -> Result<SpillWriter> {
         self.make_dirs()?;
+        let mut hdr = BufWriter::with_capacity(8 << 20, create(&self.hdr)?);
+        let mut pts = BufWriter::with_capacity(8 << 20, create(&self.pts)?);
+        // The appends run on threads of their own — one per file, since the two
+        // are independent streams — so the chain pass's ordered sink hands
+        // buffers over instead of copying ~45 GB (planet) through write(2)
+        // itself. Bounded, so at most a few chunks are in flight per file.
+        let spawn = |name: &str, mut out: BufWriter<File>| {
+            let (tx, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(4);
+            std::thread::Builder::new()
+                .name(name.into())
+                .spawn(move || -> std::io::Result<()> {
+                    for b in rx {
+                        out.write_all(&b)?;
+                    }
+                    out.flush()
+                })
+                .map(|t| (tx, t))
+                .map_err(|e| Error(format!("cannot start the spill writer: {e}")))
+        };
+        let (hdr_tx, hdr_t) = spawn("chain-hdr-writer", hdr)?;
+        let (pts_tx, pts_t) = spawn("chain-pts-writer", pts)?;
+        let (tx, thread) = ((hdr_tx, pts_tx), (hdr_t, pts_t));
         Ok(SpillWriter {
-            hdr: BufWriter::with_capacity(1 << 20, create(&self.hdr)?),
-            pts: BufWriter::with_capacity(1 << 20, create(&self.pts)?),
+            tx: Some(tx),
+            thread: Some(thread),
             points: 0,
             chains: 0,
         })
@@ -276,8 +298,13 @@ fn decode_pt(b: &[u8]) -> geom::Pt {
 
 /// Streams `chains.hdr` and `chains.pts` from the front.
 pub(crate) struct SpillWriter {
-    hdr: BufWriter<File>,
-    pts: BufWriter<File>,
+    /// Buffers for the writer thread, in order: `(chains.hdr bytes, chains.pts bytes)`.
+    tx: Option<(std::sync::mpsc::SyncSender<Vec<u8>>, std::sync::mpsc::SyncSender<Vec<u8>>)>,
+    #[allow(clippy::type_complexity)]
+    thread: Option<(
+        std::thread::JoinHandle<std::io::Result<()>>,
+        std::thread::JoinHandle<std::io::Result<()>>,
+    )>,
     /// Points written so far, which is the next chain's `pts_start`.
     pub(crate) points: u64,
     chains: u64,
@@ -308,36 +335,57 @@ impl SpillWriter {
             oneway: c.oneway,
         }
         .encode(&mut rec);
-        self.hdr.write_all(&rec).map_err(io_err)?;
+        let mut pts = Vec::with_capacity(ids.len() * CHAIN_PT_BYTES as usize);
         for id in ids {
             let (lat_e7, lon_e7) = coords[*id as usize];
-            self.pts.write_all(&lat_e7.to_le_bytes()).map_err(io_err)?;
-            self.pts.write_all(&lon_e7.to_le_bytes()).map_err(io_err)?;
+            pts.extend_from_slice(&lat_e7.to_le_bytes());
+            pts.extend_from_slice(&lon_e7.to_le_bytes());
         }
-        self.points += u64::from(c.pts_len);
-        self.chains += 1;
-        Ok(())
+        self.push_encoded(rec.to_vec(), pts, u64::from(c.pts_len))
     }
 
     /// Append chains already encoded by [`build`]'s workers: `hdr` holds whole
     /// header records whose `pts_start` the caller has rebased onto
     /// [`SpillWriter::points`], and `pts` the `points` coordinates they cover.
-    /// Same bytes as [`SpillWriter::push`] per chain.
-    pub fn push_encoded(&mut self, hdr: &[u8], pts: &[u8], points: u64) -> Result<()> {
+    /// Same bytes as [`SpillWriter::push`] per chain; the write itself happens
+    /// on the writer thread, in the order of these calls.
+    pub fn push_encoded(&mut self, hdr: Vec<u8>, pts: Vec<u8>, points: u64) -> Result<()> {
         debug_assert_eq!(hdr.len() as u64 % CHAIN_REC_BYTES, 0);
         debug_assert_eq!(pts.len() as u64, points * CHAIN_PT_BYTES);
-        self.hdr.write_all(hdr).map_err(io_err)?;
-        self.pts.write_all(pts).map_err(io_err)?;
+        let chains = hdr.len() as u64 / CHAIN_REC_BYTES;
+        let (htx, ptx) = self.tx.as_ref().expect("the spill writer is open");
+        if htx.send(hdr).is_err() || ptx.send(pts).is_err() {
+            // The writer thread stopped on an I/O error; `finish` reports it.
+            return self.join().and(Err(Error("the chain spill writer stopped".into())));
+        }
         self.points += points;
-        self.chains += hdr.len() as u64 / CHAIN_REC_BYTES;
+        self.chains += chains;
         Ok(())
+    }
+
+    fn join(&mut self) -> Result<()> {
+        self.tx = None;
+        let Some((h, p)) = self.thread.take() else {
+            return Ok(());
+        };
+        let one = |t: std::thread::JoinHandle<std::io::Result<()>>| match t.join() {
+            Ok(r) => r.map_err(io_err),
+            Err(_) => Err(Error("the chain spill writer panicked".into())),
+        };
+        let (h, p) = (one(h), one(p));
+        h.and(p)
     }
 
     /// Flush both files and report how many chains were written.
     pub fn finish(mut self) -> Result<u64> {
-        self.hdr.flush().map_err(io_err)?;
-        self.pts.flush().map_err(io_err)?;
+        self.join()?;
         Ok(self.chains)
+    }
+}
+
+impl Drop for SpillWriter {
+    fn drop(&mut self) {
+        let _ = self.join();
     }
 }
 

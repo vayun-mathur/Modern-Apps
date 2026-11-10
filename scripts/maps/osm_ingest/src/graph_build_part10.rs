@@ -252,3 +252,19 @@
         assert_eq!(bake_openers(&b), vec![(2, 7), (3, 7), (4, 7), (5, 7)]);
         assert_eq!(b.edge_count, 0);
     }
+
+    #[test]
+    fn a_duplicated_node_id_keeps_its_last_coordinates() {
+        // The parallel node scan lets only the first claimant write a slot, so
+        // a repeated id must fall back to the serial fold, where the LAST
+        // occurrence wins — as it always has.
+        let mut nodes = line_nodes(&[1, 2, 3]);
+        nodes.push((3, 370_090_000, -1_220_000_000));
+        let (pbf, dir) = testpbf::write_shape_sample("dup_node", &nodes, &[(100, &[1, 2, 3])]);
+        let stats = build_with(&pbf, &dir, within_opts()).unwrap();
+        assert_eq!(stats.raw_node_count, 3, "a repeated id is still one node");
+        let o = read_outputs(&dir);
+        let lats: Vec<i32> = (0..node_count(&o)).map(|i| node_at(&o, i).0).collect();
+        assert!(lats.contains(&370_090_000), "the last occurrence wins: {lats:?}");
+        assert!(!lats.contains(&370_030_000), "the first occurrence is gone: {lats:?}");
+    }

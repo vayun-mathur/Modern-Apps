@@ -268,15 +268,32 @@ pub fn write_blocked_with(records: &[u8], record_len: usize, per_block: u32) -> 
 /// [`BlockedStreamWriter::push_frames`] in order.
 #[cfg(feature = "write")]
 pub fn compress_block(block: &[u8]) -> Vec<u8> {
-    let cfg = zstd_rs::CompressionConfig {
-        level: 10,
-        ..zstd_rs::CompressionConfig::DEFAULT
-    };
-    let mut enc = zstd_rs::Compressor::new(cfg).expect("valid zstd level");
-    let mut frame = Vec::new();
-    enc.compress(block, None, &mut frame)
-        .expect("zstd encode of an in-memory block");
-    frame
+    // One context per thread, reused for every block it compresses. A fresh
+    // `Compressor` per block (what this used to do) allocates and zeroes the
+    // level-10 match tables — megabytes — for every 28-48 KiB block, which
+    // dominated the cost of compressing a planet's nodes.bin/edges.bin. The
+    // encoder is built for reuse: its tables are epoch-tagged, so entries from
+    // an earlier frame are never matched, and a frame "depends only on the
+    // configuration, the input and the dictionary, never on which context runs
+    // it". `a_reused_context_frames_blocks_like_a_fresh_one` pins that.
+    thread_local! {
+        static ENC: std::cell::RefCell<Option<zstd_rs::Compressor>> =
+            const { std::cell::RefCell::new(None) };
+    }
+    ENC.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        let enc = slot.get_or_insert_with(|| {
+            zstd_rs::Compressor::new(zstd_rs::CompressionConfig {
+                level: 10,
+                ..zstd_rs::CompressionConfig::DEFAULT
+            })
+            .expect("valid zstd level")
+        });
+        let mut frame = Vec::new();
+        enc.compress(block, None, &mut frame)
+            .expect("zstd encode of an in-memory block");
+        frame
+    })
 }
 
 /// Lay out header + offset table + frames. Shared by the whole-slice and
@@ -394,6 +411,49 @@ impl BlockedStreamWriter {
         self.frames_out.write_all(&joined)?;
         self.records += frames.len() as u64 * u64::from(self.per_block);
         Ok(())
+    }
+
+    /// [`BlockedStreamWriter::finish`], streamed: compress the tail block, then
+    /// write header + offset table into `out` and copy the frames straight from
+    /// the scratch file behind them, never holding the section in memory.
+    /// Byte-identical to writing `finish()`'s bytes. Returns the section length.
+    pub fn finish_into<W: std::io::Write>(mut self, out: &mut W) -> std::io::Result<u64> {
+        use std::io::Write as _;
+        if !self.block.is_empty() {
+            let frame = compress_block(&self.block);
+            self.frames_out.write_all(&frame)?;
+            self.frame_lens.push(frame.len() as u64);
+        }
+        self.frames_out.flush()?;
+        drop(self.frames_out);
+        let block_count = self.frame_lens.len();
+        let unpacked = self.records * self.record_len as u64;
+        let mut head = Vec::with_capacity(28 + (block_count + 1) * 8);
+        head.extend_from_slice(&BLOCKED_MAGIC.to_le_bytes());
+        head.extend_from_slice(&0u32.to_le_bytes());
+        head.extend_from_slice(&(self.record_len as u32).to_le_bytes());
+        head.extend_from_slice(&self.per_block.to_le_bytes());
+        head.extend_from_slice(&unpacked.to_le_bytes());
+        head.extend_from_slice(&(block_count as u32).to_le_bytes());
+        let mut off = (28 + (block_count + 1) * 8) as u64;
+        for len in &self.frame_lens {
+            head.extend_from_slice(&off.to_le_bytes());
+            off += len;
+        }
+        head.extend_from_slice(&off.to_le_bytes());
+        out.write_all(&head)?;
+        let frames_bytes: u64 = self.frame_lens.iter().sum();
+        let mut f = std::fs::File::open(&self.frames_path)?;
+        let copied = std::io::copy(&mut f, out)?;
+        drop(f);
+        let _ = std::fs::remove_file(&self.frames_path);
+        if copied != frames_bytes {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                format!("blocked scratch holds {copied} frame byte(s), expected {frames_bytes}"),
+            ));
+        }
+        Ok(off)
     }
 
     /// Compress the tail block, assemble header + table + frames, remove the
@@ -527,5 +587,50 @@ mod tests {
         framed.push(&records[full..]).expect("tail");
         let framed = framed.finish().expect("finish");
         assert_eq!(framed, plain, "frames compressed elsewhere must be byte-identical");
+    }
+
+    #[test]
+    fn a_reused_context_frames_blocks_like_a_fresh_one() {
+        // Blocks of varied size and content, large before small and back, so
+        // any table state leaking from one frame into the next would show.
+        let mut blocks: Vec<Vec<u8>> = Vec::new();
+        for (n, seed) in [(4096usize, 1u32), (17, 2), (4096, 3), (1, 4), (2500, 5), (4096, 1)] {
+            let mut b = pattern_records(n, 12);
+            for (i, byte) in b.iter_mut().enumerate() {
+                *byte ^= (seed.wrapping_mul(2654435761).rotate_left(i as u32 % 31)) as u8 & 3;
+            }
+            blocks.push(b);
+        }
+        let fresh = |b: &[u8]| {
+            let mut enc = zstd_rs::Compressor::new(zstd_rs::CompressionConfig {
+                level: 10,
+                ..zstd_rs::CompressionConfig::DEFAULT
+            })
+            .unwrap();
+            let mut f = Vec::new();
+            enc.compress(b, None, &mut f).unwrap();
+            f
+        };
+        for b in &blocks {
+            assert_eq!(compress_block(b), fresh(b), "reused context diverged");
+        }
+    }
+
+    #[test]
+    fn finishing_into_a_writer_matches_finish() {
+        let records = pattern_records(10_000, 12);
+        let dir = std::env::temp_dir();
+        let a = dir.join("tilecodec_blocked_into_a.tmp");
+        let b = dir.join("tilecodec_blocked_into_b.tmp");
+        let mut w1 = BlockedStreamWriter::create(12, &a).expect("create");
+        w1.push(&records).expect("push");
+        let whole = w1.finish().expect("finish");
+        let mut w2 = BlockedStreamWriter::create(12, &b).expect("create");
+        w2.push(&records).expect("push");
+        let mut streamed = Vec::new();
+        let n = w2.finish_into(&mut streamed).expect("finish_into");
+        assert_eq!(n as usize, streamed.len());
+        assert_eq!(streamed, whole);
+        assert!(!b.exists(), "scratch is removed");
     }
 }

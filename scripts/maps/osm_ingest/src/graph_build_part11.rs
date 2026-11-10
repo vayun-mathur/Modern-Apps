@@ -35,19 +35,26 @@ const WAVE_BATCHES_PER_THREAD: usize = 4;
 const PAR_BLOCKS: usize = 256;
 
 /// A [`tilecodec::blocked::BlockedStreamWriter`] whose full blocks are
-/// compressed on the pool.
+/// compressed on the pool, behind the drain rather than inside it.
 ///
-/// Records stage here until [`PAR_BLOCKS`] whole blocks are waiting, then
-/// those blocks compress in parallel ([`tilecodec::blocked::compress_block`]
-/// is a pure function of one block) and go to the writer in order as frames.
-/// The tail that never fills a block goes through the writer's own `push`, so
-/// `finish` frames it exactly as before. Byte-identical to pushing every
-/// record straight into the writer.
+/// Records stage here until [`PAR_BLOCKS`] whole blocks are waiting; that
+/// group is handed to the pool to compress ([`tilecodec::blocked::compress_block`]
+/// is a pure function of one block) and the drain carries on. Finished groups
+/// are collected strictly in the order they were handed off and their frames
+/// go to the writer in that order, so the section is exactly what pushing every
+/// record through the writer produces. The tail that never fills a block goes
+/// through the writer's own `push`, so `finish` frames it exactly as before.
 struct ParBlocked {
     w: tilecodec::blocked::BlockedStreamWriter,
     staged: Vec<u8>,
     block_bytes: usize,
+    /// Groups handed to the pool, oldest first.
+    inflight: std::collections::VecDeque<std::sync::mpsc::Receiver<Vec<Vec<u8>>>>,
 }
+
+/// Compressed groups a [`ParBlocked`] may have outstanding before the drain
+/// waits for the oldest: bounds the staged bytes in flight.
+const PAR_INFLIGHT: usize = 8;
 
 impl ParBlocked {
     fn create(record_len: usize, scratch: &Path) -> std::io::Result<ParBlocked> {
@@ -57,6 +64,7 @@ impl ParBlocked {
             w,
             staged: Vec::with_capacity(block_bytes * PAR_BLOCKS * 2),
             block_bytes,
+            inflight: std::collections::VecDeque::new(),
         })
     }
 
@@ -65,36 +73,64 @@ impl ParBlocked {
     fn push(&mut self, records: &[u8]) -> std::io::Result<()> {
         self.staged.extend_from_slice(records);
         if self.staged.len() >= self.block_bytes * PAR_BLOCKS {
-            self.flush_full()?;
+            self.hand_off();
+            self.collect(false)?;
         }
         Ok(())
     }
 
-    /// Compress every whole staged block on the pool and hand the frames over
-    /// in order; keep the partial tail staged.
-    fn flush_full(&mut self) -> std::io::Result<()> {
+    /// Hand every whole staged block to the pool as one group; keep the
+    /// partial tail staged.
+    fn hand_off(&mut self) {
         let full = self.staged.len() / self.block_bytes * self.block_bytes;
         if full == 0 {
-            return Ok(());
+            return;
         }
+        let tail = self.staged[full..].to_vec();
+        let mut group = std::mem::replace(&mut self.staged, Vec::with_capacity(self.block_bytes * PAR_BLOCKS * 2));
+        group.truncate(full);
+        self.staged.extend_from_slice(&tail);
         let bb = self.block_bytes;
-        let staged = &self.staged[..full];
-        let frames: Vec<Vec<u8>> = par::install(|| {
-            staged
-                .par_chunks(bb)
-                .map(tilecodec::blocked::compress_block)
-                .collect()
+        let (tx, rx) = std::sync::mpsc::sync_channel(1);
+        par::spawn(move || {
+            let frames: Vec<Vec<u8>> =
+                group.par_chunks(bb).map(tilecodec::blocked::compress_block).collect();
+            let _ = tx.send(frames);
         });
-        self.w.push_frames(&frames)?;
-        self.staged.drain(..full);
+        self.inflight.push_back(rx);
+    }
+
+    /// Pass finished groups to the writer, oldest first: every ready one, plus
+    /// — when too many are outstanding, or `all` — waiting for the oldest.
+    fn collect(&mut self, all: bool) -> std::io::Result<()> {
+        while let Some(rx) = self.inflight.front() {
+            let must_wait = all || self.inflight.len() > PAR_INFLIGHT;
+            let frames = if must_wait {
+                rx.recv().map_err(|_| std::io::Error::other("a block compressor died"))?
+            } else {
+                match rx.try_recv() {
+                    Ok(f) => f,
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        return Err(std::io::Error::other("a block compressor died"));
+                    }
+                }
+            };
+            self.inflight.pop_front();
+            self.w.push_frames(&frames)?;
+        }
         Ok(())
     }
 
-    fn finish(mut self) -> std::io::Result<Vec<u8>> {
-        self.flush_full()?;
+    /// Finish the section straight into `out` (see
+    /// [`tilecodec::blocked::BlockedStreamWriter::finish_into`]). Returns its
+    /// length.
+    fn finish_into<W: Write>(mut self, out: &mut W) -> std::io::Result<u64> {
+        self.hand_off();
+        self.collect(true)?;
         let tail = std::mem::take(&mut self.staged);
         self.w.push(&tail)?;
-        self.w.finish()
+        self.w.finish_into(out)
     }
 }
 
@@ -471,3 +507,4 @@ fn write_round(
     debug_assert_eq!(sinks.edges.pushed, round_base + buffer.len() as u64);
     Ok(())
 }
+

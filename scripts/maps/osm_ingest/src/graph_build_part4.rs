@@ -394,23 +394,12 @@ impl EdgeFile {
             )));
         }
         let EdgeFile { path, blocked, escapes, named, name_offsets, pushed: _ } = self;
-        let records = blocked
-            .finish()
+        // The record section streams straight into the file head; the sanity
+        // parse reads it back through a mapping once the file is complete.
+        let mut out = BufWriter::with_capacity(WRITE_BUF_BYTES, create(&path)?);
+        let mut at = blocked
+            .finish_into(&mut out)
             .map_err(|e| Error(format!("cannot finish {}: {e}", path.display())))?;
-        // Sanity: the blocked section must unpack to exactly the pushed records.
-        let parsed = tilecodec::blocked::Blocked::parse(&records).map_err(|e| {
-            Error(format!("freshly blocked {} does not parse: {e}", path.display()))
-        })?;
-        if parsed.unpacked_len() != edge_count * EDGE_REC_BYTES {
-            return Err(Error(format!(
-                "{} unpacks to {} byte(s), not {edge_count} 7-byte records",
-                path.display(),
-                parsed.unpacked_len()
-            )));
-        }
-        let mut out = BufWriter::new(create(&path)?);
-        out.write_all(&records).map_err(io_err)?;
-        let mut at = records.len() as u64;
         at = pad_to(&mut out, &path, at)?;
 
         // `escape_first[b]` is the index of the first row in block `b`, i.e. the
@@ -457,10 +446,21 @@ impl EdgeFile {
             out.write_all(&off.to_le_bytes()).map_err(io_err)?;
         }
         out.flush().map_err(io_err)?;
+        drop(out);
 
-        let got = std::fs::metadata(&path)
-            .map_err(|e| Error(format!("cannot stat {}: {e}", path.display())))?
-            .len();
+        // Sanity: the blocked section must unpack to exactly the pushed records.
+        let map = crate::mem::Mapped::open(&path).map_err(Error)?;
+        let parsed = tilecodec::blocked::Blocked::parse(&map).map_err(|e| {
+            Error(format!("freshly blocked {} does not parse: {e}", path.display()))
+        })?;
+        if parsed.unpacked_len() != edge_count * EDGE_REC_BYTES {
+            return Err(Error(format!(
+                "{} unpacks to {} byte(s), not {edge_count} 7-byte records",
+                path.display(),
+                parsed.unpacked_len()
+            )));
+        }
+        let got = map.len() as u64;
         Ok(got)
     }
 }

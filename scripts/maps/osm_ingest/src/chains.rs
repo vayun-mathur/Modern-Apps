@@ -254,7 +254,11 @@ pub(crate) fn build<W: Write + Send>(
                 for rec in chunk.hdr.chunks_exact_mut(CHAIN_REC_BYTES as usize) {
                     rebase_header(rec, points_base, &name_map, lane_base);
                 }
-                writer.push_encoded(&chunk.hdr, &chunk.pts, chunk.points)?;
+                writer.push_encoded(
+                    std::mem::take(&mut chunk.hdr),
+                    std::mem::take(&mut chunk.pts),
+                    chunk.points,
+                )?;
                 splits += chunk.splits;
                 raw_edge_count += chunk.raw_edge_count;
                 Ok(())
