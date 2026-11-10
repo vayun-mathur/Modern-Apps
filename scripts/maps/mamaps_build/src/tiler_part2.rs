@@ -5,15 +5,18 @@
 /// the workers; on a 192-thread box the clipping workers spent most of each small zoom blocked on
 /// it (California: ~190 of 192 workers parked on the chunk channel while the reader ran; the
 /// Nov 10 planet build's map phases ran at 3-5 cores with the reader's wall equal to the map's).
-/// A third of the threads, at least 4 and at most 64: on the planet decode is the whole cost of a
-/// zoom's map (z9: ~270 s of reader wall against ~3 s of clipping per core), and on California,
+/// Half the threads, at least 4 and at most 96: on the planet decode is most of a zoom's map (the
+/// Nov 10 rerun's z14 map clipped at ~28 of 192 cores with 64 decoders), and on California,
 /// where it is not, 32/64/96 decoders measured within noise of each other.
 fn decode_threads() -> usize {
     match std::env::var("MAPS_PREFETCH_LANES").ok().and_then(|v| v.trim().parse::<usize>().ok()) {
         Some(n) if n > 0 => n,
-        _ => (par::threads() / 3).clamp(4, 64),
+        _ => (par::threads() / 2).clamp(4, 96),
     }
 }
+
+/// Spill chunks (64 features each) per decode claim in [`read_chunks`].
+const DECODE_UNIT: usize = 16;
 
 /// Decoded blocks a decode thread may run ahead of the sequencer, per decode thread.
 const DECODE_AHEAD_PER_THREAD: usize = 8;
@@ -55,7 +58,12 @@ fn read_chunks(
         return Ok(());
     }
     let chunks = store.zoom_chunks().map_err(|e| tile_build::proto::Error(e.to_string()))?;
-    let decoders = decode_threads().min(total).max(1);
+    // Decoded in units of `DECODE_UNIT` consecutive spill chunks: one claim, one ring hand-off
+    // and one sequencer wake per unit rather than per 64-feature chunk. The planet's z14 is 21 M
+    // spill chunks, and per-chunk hand-offs (a lock and a futex wake each side) put the
+    // sequencer near saturation while ~28 of 192 cores clipped.
+    let units = total.div_ceil(DECODE_UNIT);
+    let decoders = decode_threads().min(units).max(1);
     let ring = decoders * DECODE_AHEAD_PER_THREAD;
     let claim = AtomicUsize::new(0);
     let stop = std::sync::atomic::AtomicBool::new(false);
@@ -74,10 +82,28 @@ fn read_chunks(
                     let mut records = Vec::new();
                     loop {
                         let k = claim.fetch_add(1, Ordering::Relaxed);
-                        if k >= wanted.len() || stop.load(Ordering::Relaxed) {
+                        if k >= units || stop.load(Ordering::Relaxed) {
                             return;
                         }
-                        let decoded = chunks.decode(wanted[k], z, &mut scratch, &mut records);
+                        // The unit's chunks decoded in order and appended: the same features
+                        // and counts, in the same order, as decoding them one by one.
+                        let lo = k * DECODE_UNIT;
+                        let hi = (lo + DECODE_UNIT).min(wanted.len());
+                        let mut decoded: osm_ingest::proto::Result<(Vec<Feature>, Vec<usize>)> =
+                            Ok((Vec::new(), Vec::new()));
+                        for &chunk in &wanted[lo..hi] {
+                            match chunks.decode(chunk, z, &mut scratch, &mut records) {
+                                Ok((f, c)) => {
+                                    let acc = decoded.as_mut().expect("still Ok");
+                                    acc.0.extend(f);
+                                    acc.1.extend(c);
+                                }
+                                Err(e) => {
+                                    decoded = Err(e);
+                                    break;
+                                }
+                            }
+                        }
                         let failed = decoded.is_err();
                         // Park until the sequencer has emptied this slot of `k - ring`. The thread
                         // holding the lowest outstanding claim always finds its slot free, so the
@@ -106,7 +132,7 @@ fn read_chunks(
         let mut vertices = 0usize;
         let mut index = 0usize;
         let mut outcome: Result<()> = Ok(());
-        'blocks: for k in 0..total {
+        'blocks: for k in 0..units {
             let decoded = {
                 let (lock, cv) = &slots[k % ring];
                 let mut slot = lock.lock().expect("the map reader's ring");
@@ -122,7 +148,7 @@ fn read_chunks(
                 cv.notify_all();
                 block
             };
-            bar.tick("chunk(s)");
+            bar.tick_n((total - k * DECODE_UNIT).min(DECODE_UNIT), "chunk(s)");
             let (mut features, counts) = match decoded {
                 Ok(block) => block,
                 Err(e) => {

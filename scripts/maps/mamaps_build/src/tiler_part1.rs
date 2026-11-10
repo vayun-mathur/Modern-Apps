@@ -148,47 +148,56 @@ fn tile_zooms(
             // matter against the merge it parallelises.
             timer.switch("merge-plan");
             let planning = std::time::Instant::now();
-            let plan = crate::tiler::plan_ranges(&chunks, &spill, z, merge_workers)?;
+            // Many more ranges than workers (see `plan_ranges_auto`): workers claim ranges in
+            // order and the coordinator drains them in order, so `merge_workers` consecutive
+            // ranges merge at once instead of one range at a time behind a full run-ahead budget.
+            let plan = crate::tiler::plan_ranges_auto(&chunks, &spill, z, merge_workers)?;
+            let ranges = plan.bounds.len() - 1;
             stats.merge_ms += planning.elapsed().as_millis() as u64;
-            // One line per zoom on the parallel path: per-range cost estimates
-            // from the planning histogram. The coordinator drains ranges in
-            // order, so the slowest range sets the merge wall — a lopsided
-            // split here names the balancer, not the workers, as the limit.
-            // `hot` is the costliest single tile: ranges assign whole tiles,
-            // so the wall cannot go below it however the ranges split.
+            // One line per zoom on the parallel path: the spread of per-range cost estimates.
+            // `hot` is the costliest single tile: ranges assign whole tiles, so no range can go
+            // below it however they split.
+            let (lo, hi) = plan
+                .range_cost
+                .iter()
+                .fold((u64::MAX, 0u64), |(lo, hi), &c| (lo.min(c), hi.max(c)));
             eprintln!(
-                "  [merge] z{z}: {} range(s), cost {:?}, hot tile {} at {}, entries {}",
-                merge_workers,
-                plan.range_cost,
+                "  [merge] z{z}: {ranges} range(s) on {merge_workers} worker(s), cost {lo}..{hi} per range, hot tile {} at {}, entries {}, planned in {:.1}s",
                 plan.hot_tile,
                 plan.hot_cost,
                 plan.remaining
                     .iter()
                     .map(|row| row.iter().sum::<u64>())
                     .sum::<u64>(),
+                planning.elapsed().as_secs_f64(),
             );
+            let queues = crate::tiler::RangeQueues::new(ranges);
+            let claim = AtomicUsize::new(0);
             std::thread::scope(|s| -> Result<()> {
-                let queues = crate::tiler::RangeQueues::new(merge_workers);
                 // Shared refs are `Copy`: each spawned closure gets its own
                 // copy rather than moving `chunks`/`spill` on first use.
                 let chunks_ref = &chunks;
                 let spill_ref = &spill;
-                for r in 0..merge_workers {
-                    let tx = queues.sender(r);
-                    let range_plan = &plan;
-                    s.spawn(move || {
+                let range_plan = &plan;
+                for _ in 0..merge_workers.min(ranges) {
+                    let (queues, claim) = (&queues, &claim);
+                    s.spawn(move || loop {
+                        let r = claim.fetch_add(1, Ordering::Relaxed);
+                        if r >= ranges || queues.abandoned() {
+                            return;
+                        }
                         crate::tiler::merge_range_into(
                             chunks_ref,
                             spill_ref,
                             range_plan,
                             r,
-                            tx,
+                            queues.sender(r),
                         );
                     });
                 }
                 let mut stream =
                     crate::tiler::MergeStream::Parallel(crate::tiler::ParallelMerge::new(
-                        queues,
+                        std::sync::Arc::clone(&queues),
                     ));
                 consume_merged(
                     &mut stream,
@@ -273,7 +282,52 @@ fn consume_merged(
     // columns still time each part on its own; the run's phase clock books the overlapped
     // stretch as `merge`.
     let mut pending: Option<Vec<Encoded>> = None;
-    loop {
+    // A third stage ahead of those two: a puller thread takes the merge batches (the k-way merge,
+    // or the parallel coordinator) for pass `k + 2` while pass `k + 1` encodes and pass `k`
+    // appends. The pulls are the same `merge_batch` calls in the same order with the same cuts,
+    // only on another thread; the hand-off is a one-deep channel, so at most one pulled pass
+    // waits beside the two in flight.
+    type Pulled = Result<Option<(Vec<(u64, Vec<ChunkEntry>)>, Vec<usize>, u64)>>;
+    std::thread::scope(|scope| -> Result<()> {
+        let (pull_tx, pull_rx) = std::sync::mpsc::sync_channel::<Pulled>(1);
+        let merged = &mut *merged;
+        scope.spawn(move || loop {
+            let merging = std::time::Instant::now();
+            // Several merge batches per encode pass, each cut exactly where `merge_batch`
+            // always cut it. One cost-capped batch is too little work to spread over 192 threads
+            // (California z13: ~8 encode tasks running, the rest of the pool spinning), but the
+            // cut points are what `prune_barren_subtree` is bounded by, so they are kept and each
+            // batch is pruned on its own. Encoding is per tile, so the bytes do not depend on how
+            // many batches share a pass.
+            let mut batch: Vec<(u64, Vec<ChunkEntry>)> = Vec::new();
+            let mut cuts: Vec<usize> = Vec::new();
+            let mut failed = None;
+            for _ in 0..BATCHES_PER_ENCODE {
+                // A truncated scratch file must fail the build rather than end the zoom early and
+                // publish a short archive.
+                match merge_batch(&mut *merged, par::batch_len()) {
+                    Ok(pulled) if pulled.is_empty() => break,
+                    Ok(pulled) => {
+                        batch.extend(pulled);
+                        cuts.push(batch.len());
+                    }
+                    Err(e) => {
+                        failed = Some(e);
+                        break;
+                    }
+                }
+            }
+            let item: Pulled = match failed {
+                Some(e) => Err(e),
+                None if batch.is_empty() => Ok(None),
+                None => Ok(Some((batch, cuts, merging.elapsed().as_millis() as u64))),
+            };
+            let last = !matches!(item, Ok(Some(_)));
+            if pull_tx.send(item).is_err() || last {
+                return;
+            }
+        });
+        loop {
             // Cost-batched rather than count-batched: z14 has tiles whose merged geometry is tens
             // of MB (a dense city tile's whole layer set) beside rural tiles worth bytes. A
             // fixed `batch_len()` of those holds ~GB of merged tiles plus their encoded copies
@@ -284,15 +338,10 @@ fn consume_merged(
             // zooms -- whose batches never reach the cap -- take the same count they always
             // did. Order is untouched: batches are contiguous pulls of the merge in order, and
             // `encode_batch` preserves tile order, so the archive does not move.
-            //
-            // Batched rather than a task per tile: one tile's stage C and encode is tens of
-            // microseconds and rayon's stealing costs more than that. Batched rather than a whole
-            // zoom at once because the batch is what bounds the encoded bytes held before the
-            // writer takes them.
-            //
-            // The merge is timed around `collect` because that is where it happens: `merge` returns
-            // a lazy iterator, so pulling a batch out of it is the k-way merge doing its work.
             timer.switch("merge");
+            let pulled = pull_rx
+                .recv()
+                .unwrap_or_else(|_| Err(tile_build::proto::Error("the merge puller stopped".into())));
             let (appended, produced) = par::install(|| {
                 rayon::join(
                     || -> Result<u64> {
@@ -322,43 +371,17 @@ fn consume_merged(
                         Ok(appending.elapsed().as_millis() as u64)
                     },
                     || -> Result<Option<(Vec<Encoded>, usize, u64, u64)>> {
-                        let merging = std::time::Instant::now();
-                        // Several merge batches per encode pass, each cut exactly where
-                        // `merge_batch` always cut it. One cost-capped batch is too little work
-                        // to spread over 192 threads (California z13: ~8 encode tasks running,
-                        // the rest of the pool spinning), but the cut points are what
-                        // `prune_barren_subtree` is bounded by, so they are kept and each batch
-                        // is pruned on its own below. Encoding is per tile, so the bytes do not
-                        // depend on how many batches share a pass.
-                        let mut batch: Vec<(u64, Vec<ChunkEntry>)> = Vec::new();
-                        let mut cuts: Vec<usize> = Vec::new();
-                        for _ in 0..BATCHES_PER_ENCODE {
-                            // `collect` into a `Result`, because a truncated scratch file must
-                            // fail the build rather than end the zoom early and publish a short
-                            // archive.
-                            let pulled = merge_batch(&mut *merged, par::batch_len())?;
-                            if pulled.is_empty() {
-                                break;
-                            }
-                            batch.extend(pulled);
-                            cuts.push(batch.len());
-                        }
-                        let merge_ms = merging.elapsed().as_millis() as u64;
-                        if batch.is_empty() {
-                            return Ok(None);
-                        }
+                        let Some((batch, cuts, merge_ms)) = pulled? else { return Ok(None) };
                         let tiles = batch.len();
                         let encoding = std::time::Instant::now();
                         let encoded = encode_batch(batch, dem, conventions, region_links)?;
                         // Phase B: prune barren subtrees. A tile whose four children all came
                         // back empty (`None` — genuinely featureless, or full-bleed water
                         // background) is itself the end of the tree: drop the children and let
-                        // the reader stop at the parent (overzoom). Applies recursively up the
-                        // pyramid, so a z13 tile whose z14 children are all ocean ends the tree
-                        // at z13. Only above z0 (the world tile is never pruned) and only when
-                        // all four children of a parent are present-and-empty in this batch —
-                        // never across batch boundaries, so the archive stays independent of
-                        // batching and thread count.
+                        // the reader stop at the parent (overzoom). Only above z0 and only when
+                        // all four children of a parent are present-and-empty in one merge
+                        // batch — never across batch boundaries, so the archive stays
+                        // independent of batching and thread count.
                         let mut done: Vec<Encoded> = Vec::with_capacity(encoded.len());
                         let mut encoded = encoded.into_iter();
                         let mut start = 0usize;
@@ -391,6 +414,8 @@ fn consume_merged(
             }
             pending = Some(done);
         }
+        Ok(())
+    })?;
         if merged_tiles > 0 {
             eprintln!(
                 "\r{:<28} [{merged_tiles:>10} tile(s)]  {} elapsed   ",

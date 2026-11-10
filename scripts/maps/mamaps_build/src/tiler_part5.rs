@@ -114,9 +114,16 @@ fn encode_tile(
     // What the `u16` feature index in the body format has to hold. Sampled here because this is the
     // shape that reaches the encoder: after coalescing merged the line fragments and after stage C
     // dropped what it drops.
+    //
+    // Read before the read-modify-write: the slot almost never grows, and an unconditional
+    // `fetch_max` from every encode thread on every tile kept these few cache lines bouncing
+    // across 192 cores on zooms of millions of small tiles. Same maximum either way.
     for entry in &layers {
-        WIDEST_LAYER[entry.layer.layer_id as usize]
-            .fetch_max(entry.layer.features.len() as u64, Ordering::Relaxed);
+        let slot = &WIDEST_LAYER[entry.layer.layer_id as usize];
+        let n = entry.layer.features.len() as u64;
+        if slot.load(Ordering::Relaxed) < n {
+            slot.fetch_max(n, Ordering::Relaxed);
+        }
     }
     // Fuse the layers' name tables into the body's one, in layer order, remapping every feature's
     // index as it goes. First-use order is deterministic (merge order within a layer, layer order

@@ -267,15 +267,15 @@ const RANGE_BUCKETS: usize = 256;
 /// itself; below it the serial [`merge`] runs (small zooms merge in
 /// milliseconds either way, and spawning buys nothing).
 const PARALLEL_MERGE_MIN_ENTRIES: u64 = 1_000_000;
-/// Worker cap: each worker holds one cursor per chunk, so live readers scale
-/// as chunks × workers. More workers also duplicate more skip-walk; 8 is the
-/// shape until a bigger box says otherwise.
-const PARALLEL_MERGE_MAX_WORKERS: usize = 8;
-/// Per-worker output queue bound: backpressure without unbounded buffering.
-/// Tiles vary wildly in cost (city vs ocean), so this counts entries, not
-/// bytes; the coordinator drains continuously, so queues only ever hold a
-/// scheduling bubble, not a range.
-const RANGE_QUEUE_BOUND: usize = 32;
+/// Worker cap. Workers claim ranges in order (see `plan_ranges_auto`), and each holds one cursor
+/// per chunk for its current range only, windowed to that chunk's share of the range, so live
+/// read buffers scale with the ranges in flight rather than with chunks x workers. Was 8 with
+/// one range per worker: the Nov 10 planet rerun spent 896 s in z12-z14 merges that way.
+const PARALLEL_MERGE_MAX_WORKERS: usize = 48;
+/// Output queue bound for the range being drained: backpressure without unbounded buffering.
+/// Counts tiles, handed over [`SEND_BATCH`] at a time; ranges further ahead are bounded by
+/// [`RANGE_AHEAD_BYTES`] instead.
+const RANGE_QUEUE_BOUND: usize = 4 * SEND_BATCH;
 
 /// Whether the range-parallel merge supports zoom `z`.
 ///
@@ -316,14 +316,136 @@ struct RangePlan {
     exact_end: Vec<Vec<bool>>,
 }
 
+/// Pass 1 of [`plan_ranges`]: the per-tile cost histogram, sorted by tile, plus per-chunk facts.
+struct Histogram {
+    /// `(tile, summed cost)`, ascending by tile, one row per tile that carries entries.
+    tiles: Vec<(u64, u64)>,
+    total: u64,
+    chunk_max: Vec<u64>,
+    chunk_total: Vec<u64>,
+    hot_tile: u64,
+    hot_cost: u64,
+}
+
+/// Skip-walk every chunk once, **in parallel** (chunks are independent; each is read with its own
+/// cursor), collecting per-tile cost runs; then sort-and-sum the runs into one ascending tile
+/// histogram. Sums are order-independent and the result is sorted by tile, so it is exactly the
+/// `HashMap` + sorted-key walk this replaced. The hottest single run is the first run (in chunk
+/// order, then position) of the largest cost, as the serial walk found it -- reporting only.
+fn histogram(chunks: &[ChunkRef], spill: &ChunkSpill) -> Result<Histogram> {
+    struct ChunkScan {
+        runs: Vec<(u64, u64)>,
+        max_tile: u64,
+        consumed: u64,
+        hot: (u64, u64),
+    }
+    let scans: Vec<Result<ChunkScan>> = par::install(|| {
+        chunks
+            .par_iter()
+            .map(|chunk| -> Result<ChunkScan> {
+                let mut reader = spill.reader(chunk, 64 << 10);
+                let mut runs = Vec::new();
+                let (mut consumed, mut max_tile) = (0u64, 0u64);
+                let (mut hot_tile, mut hot_cost) = (0u64, 0u64);
+                // Chunks store entries tile-major ((tile, layer) order), so a run of equal tile
+                // ids is the whole tile.
+                let (mut run_tile, mut run_cost) = (u64::MAX, 0u64);
+                let mut flush = |tile: u64, cost: u64, runs: &mut Vec<(u64, u64)>| {
+                    runs.push((tile, cost));
+                    if cost > hot_cost {
+                        hot_tile = tile;
+                        hot_cost = cost;
+                    }
+                };
+                while let Some(((tile, _), cost)) = reader.skip_entry()? {
+                    if tile != run_tile {
+                        if run_tile != u64::MAX {
+                            flush(run_tile, run_cost, &mut runs);
+                        }
+                        run_tile = tile;
+                        run_cost = 0;
+                    }
+                    run_cost += cost;
+                    consumed += 1;
+                    max_tile = max_tile.max(tile);
+                }
+                if run_tile != u64::MAX {
+                    flush(run_tile, run_cost, &mut runs);
+                }
+                Ok(ChunkScan { runs, max_tile, consumed, hot: (hot_tile, hot_cost) })
+            })
+            .collect()
+    });
+    let mut chunk_max = Vec::with_capacity(chunks.len());
+    let mut chunk_total = Vec::with_capacity(chunks.len());
+    let (mut hot_tile, mut hot_cost) = (0u64, 0u64);
+    let mut runs: Vec<(u64, u64)> = Vec::new();
+    for scan in scans {
+        let scan = scan?;
+        chunk_max.push(scan.max_tile);
+        chunk_total.push(scan.consumed);
+        if scan.hot.1 > hot_cost {
+            (hot_tile, hot_cost) = scan.hot;
+        }
+        runs.extend(scan.runs);
+    }
+    par::install(|| runs.par_sort_unstable_by_key(|r| r.0));
+    let mut tiles: Vec<(u64, u64)> = Vec::new();
+    for (tile, cost) in runs {
+        match tiles.last_mut() {
+            Some(last) if last.0 == tile => last.1 += cost,
+            _ => tiles.push((tile, cost)),
+        }
+    }
+    let total = tiles.iter().map(|t| t.1).sum();
+    Ok(Histogram { tiles, total, chunk_max, chunk_total, hot_tile, hot_cost })
+}
+
+/// Cost-balanced range boundaries over one zoom's tile space, with seek positions, for exactly
+/// `workers` ranges. See [`plan_ranges_from`].
+fn plan_ranges(
+    chunks: &[ChunkRef],
+    spill: &ChunkSpill,
+    z: u8,
+    workers: usize,
+) -> Result<RangePlan> {
+    let hist = histogram(chunks, spill)?;
+    plan_ranges_from(chunks, spill, z, workers, hist)
+}
+
+/// Merged-tile bytes per planning cost unit (features + coordinates), for sizing ranges against
+/// [`RANGE_AHEAD_BYTES`]: coordinates dominate at 8 bytes each. An estimate; never observable.
+const BYTES_PER_COST: u64 = 12;
+/// Most ranges one zoom is cut into. Bounds the plan's per-chunk seek tables
+/// (`chunks x ranges` rows).
+const MAX_MERGE_RANGES: usize = 4096;
+
+/// [`plan_ranges`] with the range count chosen from the zoom's own size: enough ranges that
+/// `merge_workers` of them in flight fit the run-ahead allowance about twice over, so the merge
+/// keeps every worker busy rather than parking all but the one being drained. Never fewer than
+/// `merge_workers`. The count is a scheduling choice: ranges concatenate to the serial sequence
+/// however many there are.
+fn plan_ranges_auto(
+    chunks: &[ChunkRef],
+    spill: &ChunkSpill,
+    z: u8,
+    merge_workers: usize,
+) -> Result<RangePlan> {
+    let hist = histogram(chunks, spill)?;
+    let per_range = (RANGE_AHEAD_BYTES / (2 * merge_workers.max(1) as u64)).max(1);
+    let wanted = (hist.total.saturating_mul(BYTES_PER_COST)).div_ceil(per_range) as usize;
+    let ranges = wanted.clamp(merge_workers.max(1), MAX_MERGE_RANGES);
+    plan_ranges_from(chunks, spill, z, ranges, hist)
+}
+
 /// Cost-balanced range boundaries over one zoom's tile space, with seek
 /// positions.
 ///
-/// Two serial skip-walks over every chunk — header parses and length walks
-/// only, no allocation, no UTF-8, no struct builds, roughly a tenth of a full
-/// decode each. Pass 1 accumulates per-tile cost into a histogram and cuts
-/// tile-granular ranges from it; pass 2 records each chunk's cursor at every
-/// range bound, so seeks are exact and ranges never overlap.
+/// Two skip-walks over every chunk — header parses and length walks only, no allocation, no
+/// UTF-8, no struct builds, roughly a tenth of a full decode each — both run across the pool,
+/// one chunk per task (they were serial: 231 s of the Nov 10 planet build). Pass 1 ([`histogram`])
+/// accumulates per-tile cost and cuts tile-granular ranges from it; pass 2 records each chunk's
+/// cursor at every range bound, so seeks are exact and ranges never overlap.
 ///
 /// Exactness is load-bearing, not decorative: the spill's `check_books` gate
 /// requires every entry decoded exactly once, so a range that re-reads
@@ -336,13 +458,13 @@ struct RangePlan {
 /// Cuts are tile-granular because bucket edges proved too coarse: z14's cost
 /// concentrates inside single buckets (one bucket held 97% of a California
 /// z14), so no bucket-edge cut could balance and seven of eight workers
-/// idled. The sorted key walk (never the map's own order) is what keeps the
-/// cuts independent of hashing.
-fn plan_ranges(
+/// idled.
+fn plan_ranges_from(
     chunks: &[ChunkRef],
     spill: &ChunkSpill,
     z: u8,
     workers: usize,
+    hist: Histogram,
 ) -> Result<RangePlan> {
     use tilecodec::pmtiles::zoom_base;
     debug_assert!(
@@ -350,94 +472,31 @@ fn plan_ranges(
         "plan_ranges needs an exact span/256 split (z4+); z{z} must stay serial"
     );
     let base = zoom_base(z);
-    // Pass 1: per-tile cost across all chunks, plus per-chunk max tile.
-    // A HashMap, not a Vec over the span: z14's span is 268 M tiles but only
-    // ~7.5 M carry entries, so the dense form would be ~2 GB of mostly
-    // zeroes. Never iterated — cuts traverse a sorted key vec, so the map's
-    // own order (and its hasher) is unobservable in the output.
-    let mut tile_cost: HashMap<u64, u64> = HashMap::new();
-    let mut chunk_max: Vec<u64> = Vec::with_capacity(chunks.len());
-    let mut chunk_total: Vec<u64> = Vec::with_capacity(chunks.len());
-    // Hottest single tile and its cost, across all chunks: the merge assigns
-    // whole tiles to one range worker (a tile's layers concatenate in chunk
-    // order), so no range split can beat this tile. Reported alongside the
-    // per-range costs — when it approaches the largest range, the ceiling is
-    // structural, not a balancer bug.
-    let mut hot_tile = 0u64;
-    let mut hot_cost = 0u64;
-    for chunk in chunks {
-        let mut reader = spill.reader(chunk, 8192);
-        let mut consumed = 0u64;
-        let mut max_tile = 0u64;
-        // Current tile's accumulated cost, flushed when the tile id changes:
-        // chunks store entries tile-major ((tile, layer) order), so a run of
-        // equal tile ids is the whole tile.
-        let mut run_tile = u64::MAX;
-        let mut run_cost = 0u64;
-        loop {
-            let Some(((tile, _), cost)) = reader.skip_entry()? else {
-                break;
-            };
-            if tile != run_tile {
-                if run_tile != u64::MAX {
-                    *tile_cost.entry(run_tile).or_insert(0) += run_cost;
-                    if run_cost > hot_cost {
-                        hot_tile = run_tile;
-                        hot_cost = run_cost;
-                    }
-                }
-                run_tile = tile;
-                run_cost = 0;
-            }
-            run_cost += cost;
-            consumed += 1;
-            max_tile = max_tile.max(tile);
-        }
-        // Flush the trailing tile run — the loop only flushes on a tile
-        // change, so the chunk's last tile would otherwise never count.
-        if run_tile != u64::MAX {
-            *tile_cost.entry(run_tile).or_insert(0) += run_cost;
-            if run_cost > hot_cost {
-                hot_tile = run_tile;
-                hot_cost = run_cost;
-            }
-        }
-        chunk_max.push(max_tile);
-        chunk_total.push(consumed);
-    }
+    let Histogram { tiles, total, chunk_max, chunk_total, hot_tile, hot_cost } = hist;
     // Greedy cost balance over TILES, not buckets: cut when crossing each
     // multiple of total/workers, with the cut falling between the tiles that
     // straddle the mark. Fixed rule on scanned data — deterministic across
-    // runs and machines. Tile-granular because bucket edges proved too coarse:
-    // cost concentrates inside single buckets, and only tile steps can split
-    // that mass. The sorted key walk (never the map's own order) is what keeps
-    // the cuts independent of hashing.
-    let total: u64 = tile_cost.values().sum();
-    let mut tiles: Vec<u64> = tile_cost.keys().copied().collect();
-    tiles.sort_unstable();
+    // runs and machines.
     let mut bounds = vec![base];
     let mut acc = 0u64;
     let mut cuts = 1usize;
-    for tile in &tiles {
+    for &(tile, cost) in &tiles {
         // Commit the cut BEFORE adding this tile's cost when the mark was
         // already reached: the cut then falls between the previous tile and
         // this one, and this tile opens the next range. Cutting after would
         // hand the straddling tile's whole cost to the range that already
         // crossed its mark — which is how one range ends up owning nearly the
         // whole zoom.
-        while cuts < workers && acc * workers as u64 >= total * cuts as u64 {
-            let edge = *tile;
-            if edge > *bounds.last().expect("bounds") {
-                bounds.push(edge);
+        while cuts < workers && acc as u128 * workers as u128 >= total as u128 * cuts as u128 {
+            if tile > *bounds.last().expect("bounds") {
+                bounds.push(tile);
             }
             cuts += 1;
         }
-        acc += tile_cost[tile];
+        acc += cost;
     }
     // The trailing range owns through the last tile: no cut is committed
-    // after the loop (the zoom end sentinel below closes it). A mark crossed
-    // only by the final tile still leaves that tile in the last range rather
-    // than stranding it past every cut.
+    // after the loop (the zoom end sentinel below closes it).
     bounds.push(zoom_base(z + 1));
     bounds.dedup();
     // Padding: fewer distinct cut positions than workers (tiny zoom, or one
@@ -446,82 +505,77 @@ fn plan_ranges(
     while bounds.len() < workers + 1 {
         bounds.push(zoom_base(z + 1));
     }
-    // Per-range cost from the same tile histogram the cuts came from: exact,
-    // not bucket-approximated. Reported by the caller (one line per zoom on
-    // the parallel path).
-    let range_cost = {
-        let mut costs = Vec::with_capacity(workers);
-        for r in 0..workers {
-            // Binary search: tiles are sorted, bounds ascending.
-            let lo = tiles.partition_point(|&t| t < bounds[r]);
-            let hi = tiles.partition_point(|&t| t < bounds[r + 1]);
-            costs.push(tiles[lo..hi].iter().map(|t| tile_cost[t]).sum());
-        }
-        costs
-    };
-    // Pass 2: each chunk's cursor at every range bound. Bounds ascend and the
-    // walk is tile-ordered, so one pointer walks the bounds while the entries
-    // stream past: bound `r` records the cursor (and consumed count) of the
-    // first entry with tile >= bounds[r] — exactly the first entry the range
-    // can own. No bucket machinery: the cursor IS the range start, so the
-    // pre-bound skip loop is a provable no-op and `remaining` is the exact
-    // owned-entry difference. Ranges partition tiles, so seeks partition
+    // Per-range cost from the same tile histogram the cuts came from.
+    let range_cost: Vec<u64> = (0..workers)
+        .map(|r| {
+            let lo = tiles.partition_point(|t| t.0 < bounds[r]);
+            let hi = tiles.partition_point(|t| t.0 < bounds[r + 1]);
+            tiles[lo..hi].iter().map(|t| t.1).sum()
+        })
+        .collect();
+    drop(tiles);
+    // Pass 2: each chunk's cursor at every range bound, one chunk per task. Bounds ascend and the
+    // walk is tile-ordered, so one pointer walks the bounds while the entries stream past: bound
+    // `r` records the cursor (and consumed count) of the first entry with tile >= bounds[r] —
+    // exactly the first entry the range can own. Ranges partition tiles, so seeks partition
     // entries: nothing is read twice, and the books balance by construction.
+    #[allow(clippy::type_complexity)]
+    let rows: Vec<Result<(Vec<u64>, Vec<u64>, Vec<bool>)>> = par::install(|| {
+        chunks
+            .par_iter()
+            .enumerate()
+            .map(|(ci, chunk)| -> Result<(Vec<u64>, Vec<u64>, Vec<bool>)> {
+                let mut reader = spill.reader(chunk, 64 << 10);
+                let mut at_bound = 0usize;
+                let mut bound_off = vec![0u64; workers + 1];
+                let mut bound_con = vec![0u64; workers + 1];
+                bound_off[0] = chunk.at;
+                let mut consumed = 0u64;
+                loop {
+                    let off = reader.position();
+                    let Some(((tile, _), _)) = reader.skip_entry()? else {
+                        break;
+                    };
+                    while at_bound < workers && tile >= bounds[at_bound] {
+                        bound_off[at_bound] = off;
+                        bound_con[at_bound] = consumed;
+                        at_bound += 1;
+                    }
+                    consumed += 1;
+                }
+                // Bounds past the chunk's last tile: chunk end, everything consumed. The range
+                // then seeks to chunk end with nothing remaining — it owns nothing here.
+                while at_bound <= workers {
+                    bound_off[at_bound] = chunk.at + chunk.len;
+                    bound_con[at_bound] = consumed;
+                    at_bound += 1;
+                }
+                debug_assert_eq!(
+                    consumed, chunk_total[ci],
+                    "the two planning walks must agree on chunk {ci}'s entry count"
+                );
+                let mut orow = Vec::with_capacity(workers);
+                let mut rrow = Vec::with_capacity(workers);
+                let mut erow = Vec::with_capacity(workers);
+                for r in 0..workers {
+                    orow.push(bound_off[r]);
+                    // Owned entries: everything from this bound to the next.
+                    rrow.push(bound_con[r + 1].saturating_sub(bound_con[r]));
+                    // Exact end iff the chunk's max tile sits inside this range.
+                    erow.push(chunk_max[ci] < bounds[r + 1] && chunk_max[ci] >= bounds[r]);
+                }
+                Ok((orow, rrow, erow))
+            })
+            .collect()
+    });
     let mut offsets = Vec::with_capacity(chunks.len());
     let mut remaining = Vec::with_capacity(chunks.len());
     let mut exact_end = Vec::with_capacity(chunks.len());
-    for (ci, chunk) in chunks.iter().enumerate() {
-        let mut reader = spill.reader(chunk, 8192);
-        // Bound cursors in walk order: bound 0 is always `base` (every entry
-        // qualifies), so it records the chunk start with nothing consumed.
-        let mut at_bound = 0usize;
-        let mut bound_off = vec![0u64; workers + 1];
-        let mut bound_con = vec![0u64; workers + 1];
-        bound_off[0] = chunk.at;
-        let mut consumed = 0u64;
-        loop {
-            let off = reader.position();
-            let Some(((tile, _), _)) = reader.skip_entry()? else {
-                break;
-            };
-            // Record every bound this entry is the first at-or-after: bounds
-            // ascend, entries ascend, so one forward pointer suffices and gap
-            // bounds (past this tile but unmet by later ones) are filled by
-            // the chunk-end fill below.
-            while at_bound < workers && tile >= bounds[at_bound] {
-                bound_off[at_bound] = off;
-                bound_con[at_bound] = consumed;
-                at_bound += 1;
-            }
-            consumed += 1;
-        }
-        // Bounds past the chunk's last tile (or past every tile, for a chunk
-        // entirely below the bound): chunk end, everything consumed. The
-        // range then seeks to chunk end with nothing remaining — it owns
-        // nothing here.
-        while at_bound <= workers {
-            bound_off[at_bound] = chunk.at + chunk.len;
-            bound_con[at_bound] = consumed;
-            at_bound += 1;
-        }
-        debug_assert_eq!(
-            consumed, chunk_total[ci],
-            "the two planning walks must agree on chunk {ci}'s entry count"
-        );
-        let mut orow = Vec::with_capacity(workers);
-        let mut rrow = Vec::with_capacity(workers);
-        let mut erow = Vec::with_capacity(workers);
-        for r in 0..workers {
-            orow.push(bound_off[r]);
-            // Owned entries: everything from this bound to the next. Exact —
-            // no prefix, no tail — because the cursors are the bounds.
-            rrow.push(bound_con[r + 1].saturating_sub(bound_con[r]));
-            // Exact end iff the chunk's max tile sits inside this range.
-            erow.push(chunk_max[ci] < bounds[r + 1] && chunk_max[ci] >= bounds[r]);
-        }
-        offsets.push(orow);
-        remaining.push(rrow);
-        exact_end.push(erow);
+    for row in rows {
+        let (o, r, e) = row?;
+        offsets.push(o);
+        remaining.push(r);
+        exact_end.push(e);
     }
     Ok(RangePlan { bounds, range_cost, hot_tile, hot_cost, offsets, remaining, exact_end })
 }
@@ -562,6 +616,7 @@ fn merge_range(
         return;
     }
     let window = crate::tilespill::read_window_bytes(chunks.len());
+    let ranges = plan.bounds.len() - 1;
     let start_tile = plan.bounds[range];
     let mut readers: Vec<Option<ChunkReader<'_>>> = Vec::with_capacity(chunks.len());
     for (ci, chunk) in chunks.iter().enumerate() {
@@ -570,8 +625,14 @@ fn merge_range(
             readers.push(None);
             continue;
         }
-        let mut reader = spill.reader(chunk, window);
-        reader.seek_to(plan.offsets[ci][range], remaining, plan.exact_end[ci][range]);
+        // The window never larger than this chunk's share of the range: with many small ranges
+        // that share is often a few KB, and a full window per chunk per range would be both the
+        // memory and the I/O. A window size is unobservable in the output (pinned by test).
+        let start = plan.offsets[ci][range];
+        let end = if range + 1 < ranges { plan.offsets[ci][range + 1] } else { chunk.at + chunk.len };
+        let span = (end.saturating_sub(start) as usize).max(1);
+        let mut reader = spill.reader(chunk, window.min(span));
+        reader.seek_to(start, remaining, plan.exact_end[ci][range]);
         // Bucket edges are coarser than range bounds: advance past entries
         // below the bound (skip-walked, uncounted, `left` adjusted by the
         // skips themselves so it still exhausts exactly at range end). A
@@ -691,7 +752,7 @@ fn merge_range_into(
 /// count bound -- it is consumed as it is produced -- and is never held by this budget, which is
 /// what keeps the drain deadlock-free: the coordinator only ever waits on the current range, and
 /// the current range only ever waits on the coordinator.
-const RANGE_AHEAD_BYTES: u64 = 2 << 30;
+const RANGE_AHEAD_BYTES: u64 = 4 << 30;
 
 /// A merged tile's rough size in memory, for [`RANGE_AHEAD_BYTES`]: its feature records and its
 /// coordinates. An estimate for a budget, never observable in the output.
@@ -741,9 +802,14 @@ impl RangeQueues {
         })
     }
 
+    /// Whether the coordinator has stopped reading (an earlier range failed).
+    fn abandoned(&self) -> bool {
+        self.state.lock().expect("the merge's range queues").abandoned
+    }
+
     /// Range `r`'s sending half, for its worker. Dropping it marks the range finished.
     fn sender(self: &std::sync::Arc<Self>, r: usize) -> RangeTx {
-        RangeTx { queues: std::sync::Arc::clone(self), r }
+        RangeTx { queues: std::sync::Arc::clone(self), r, local: Default::default() }
     }
 }
 
@@ -751,7 +817,16 @@ impl RangeQueues {
 struct RangeTx {
     queues: std::sync::Arc<RangeQueues>,
     r: usize,
+    /// Tiles merged but not yet queued, and their byte estimate: handed over
+    /// [`SEND_BATCH`] at a time, so 48 workers take the shared lock once per batch rather than
+    /// once per tile (per-tile sends had most range workers parked on that lock).
+    local: std::cell::RefCell<(Vec<(RangeOut, u64)>, u64)>,
 }
+
+/// Tiles a range worker hands over per lock acquisition (or fewer, once [`SEND_BATCH_BYTES`] of
+/// them are held).
+const SEND_BATCH: usize = 64;
+const SEND_BATCH_BYTES: u64 = 4 << 20;
 
 impl RangeTx {
     /// Queue one tile (or error) for range `r`. `Err` when the coordinator is gone, which ends the
@@ -761,6 +836,27 @@ impl RangeTx {
             Ok((_, layers)) => tile_bytes(layers),
             Err(_) => 0,
         };
+        let failed = item.is_err();
+        let full = {
+            let mut local = self.local.borrow_mut();
+            local.0.push((item, bytes));
+            local.1 += bytes;
+            failed || local.0.len() >= SEND_BATCH || local.1 >= SEND_BATCH_BYTES
+        };
+        if full {
+            self.flush()
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Hand the held tiles to the queue, waiting while the range is over its bound: the count
+    /// bound when it is the range being drained, the shared run-ahead allowance otherwise.
+    fn flush(&self) -> std::result::Result<(), ()> {
+        let (batch, bytes) = std::mem::take(&mut *self.local.borrow_mut());
+        if batch.is_empty() {
+            return Ok(());
+        }
         let q = &self.queues;
         let mut s = q.state.lock().expect("the merge's range queues");
         loop {
@@ -770,8 +866,8 @@ impl RangeTx {
             let wait = if self.r == s.current {
                 s.queues[self.r].len() >= RANGE_QUEUE_BOUND
             } else {
-                // Always let a range queue its first tile, so a range is never blocked behind its
-                // own empty queue; past that, the shared allowance decides.
+                // Always let a range queue its first batch, so a range is never blocked behind
+                // its own empty queue; past that, the shared allowance decides.
                 !s.queues[self.r].is_empty() && s.ahead + bytes > RANGE_AHEAD_BYTES
             };
             if !wait {
@@ -784,7 +880,7 @@ impl RangeTx {
         if self.r != s.current {
             s.ahead += bytes;
         }
-        s.queues[self.r].push_back((item, bytes));
+        s.queues[self.r].extend(batch);
         let wake = self.r == s.current && s.coordinator_waiting;
         drop(s);
         if wake {
@@ -796,6 +892,9 @@ impl RangeTx {
 
 impl Drop for RangeTx {
     fn drop(&mut self) {
+        // Whatever is still held goes out first; then the range is finished. A coordinator that
+        // has gone away refuses the flush, which is fine: nobody is reading.
+        let _ = self.flush();
         let q = &self.queues;
         q.state.lock().expect("the merge's range queues").finished[self.r] = true;
         q.cv.notify_all();
