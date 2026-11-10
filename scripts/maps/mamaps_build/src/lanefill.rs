@@ -237,6 +237,51 @@ impl Record {
     }
 }
 
+/// A way's two endpoint records, built off the serial path. See [`Collector::push_prepared`].
+pub struct Prepared([Record; 2]);
+
+/// What [`Collector::push`] writes for `segment`, or `None` where it writes nothing.
+///
+/// Pure over the segment: the same checks, in the same order, with the same arithmetic as the
+/// inline body this was lifted out of, so a pool-built `Prepared` is bit-for-bit the record pair
+/// the serial path produced.
+pub fn prepare(segment: &Segment) -> Option<Prepared> {
+    if segment.name.is_empty() || segment.nodes.len() < 2 {
+        return None;
+    }
+    if segment.nodes.len() != segment.line.len() {
+        return None;
+    }
+    let first = segment.nodes[0];
+    let last = segment.nodes[segment.nodes.len() - 1];
+    // A closed way has one endpoint, not two, so it can never have a donor at "both" ends and
+    // is not a junction stub in any case.
+    if first == last {
+        return None;
+    }
+    // An untagged way is never a donor, so one too long to be a recipient cannot affect
+    // anything. Dropping it here rather than at resolve time is what keeps the spill small.
+    if segment.lanes == 0 && polyline_length_m(segment.line) > MAX_STUB_M {
+        return None;
+    }
+    // The bearing leaving each end, skipping repeated coordinates: a duplicated vertex has no
+    // direction, and the graph does contain them where a way was split at a coincident point.
+    let head = leaving(segment.line, true)?;
+    let tail = leaving(segment.line, false)?;
+
+    let name_hash = hash_name(segment.name);
+    let base = if segment.oneway { FLAG_ONEWAY } else { 0 };
+    let record = |node: i64, bearing: f64, end: u8| Record {
+        node,
+        way: segment.id,
+        name_hash,
+        bearing: bearing as f32,
+        lanes: segment.lanes,
+        flags: base | end,
+    };
+    Some(Prepared([record(first, head, 0u8), record(last, tail, FLAG_LAST_END)]))
+}
+
 /// Accumulates endpoint records, then resolves them into the ways whose lane count changes.
 pub struct Collector {
     files: Vec<BufWriter<File>>,
@@ -261,42 +306,20 @@ impl Collector {
     }
 
     /// Offer one way to the join. Ways that cannot take part are dropped here.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn push(&mut self, segment: &Segment) -> Result<()> {
-        if segment.name.is_empty() || segment.nodes.len() < 2 {
-            return Ok(());
+        match prepare(segment) {
+            Some(prepared) => self.push_prepared(&prepared),
+            None => Ok(()),
         }
-        if segment.nodes.len() != segment.line.len() {
-            return Ok(());
-        }
-        let first = segment.nodes[0];
-        let last = segment.nodes[segment.nodes.len() - 1];
-        // A closed way has one endpoint, not two, so it can never have a donor at "both" ends and
-        // is not a junction stub in any case.
-        if first == last {
-            return Ok(());
-        }
-        // An untagged way is never a donor, so one too long to be a recipient cannot affect
-        // anything. Dropping it here rather than at resolve time is what keeps the spill small.
-        if segment.lanes == 0 && polyline_length_m(segment.line) > MAX_STUB_M {
-            return Ok(());
-        }
-        // The bearing leaving each end, skipping repeated coordinates: a duplicated vertex has no
-        // direction, and the graph does contain them where a way was split at a coincident point.
-        let Some(head) = leaving(segment.line, true) else { return Ok(()) };
-        let Some(tail) = leaving(segment.line, false) else { return Ok(()) };
+    }
 
-        let name_hash = hash_name(segment.name);
-        let base = if segment.oneway { FLAG_ONEWAY } else { 0 };
-        for (node, bearing, end) in [(first, head, 0u8), (last, tail, FLAG_LAST_END)] {
-            let record = Record {
-                node,
-                way: segment.id,
-                name_hash,
-                bearing: bearing as f32,
-                lanes: segment.lanes,
-                flags: base | end,
-            };
-            record.write(&mut self.files[partition_of(node)])?;
+    /// Write the two endpoint records [`prepare`] built, in the order `push` always wrote them
+    /// (first end, then last end). Split from `push` so the geometry -- length, bearings, name
+    /// hash -- runs on the pool and only these two fixed-width writes stay serial.
+    pub fn push_prepared(&mut self, prepared: &Prepared) -> Result<()> {
+        for record in prepared.0 {
+            record.write(&mut self.files[partition_of(record.node)])?;
         }
         Ok(())
     }

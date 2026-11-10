@@ -232,49 +232,43 @@ pub fn stream_junctions(dir: &Path, conventions: &Conventions, sink: &mut Sink) 
     let class = junction_class();
     let mut emitted = 0u64;
 
-    // Batched, the `materialise_ways` pattern: `junctions_for_node` is pure
-    // per-node work over shared-read-only tables, so a batch of node ids goes
-    // as wide as the pool while the drain pushes **in `n` order**, which is
-    // what keeps the spill — and therefore the archive — byte-identical at
-    // every thread count. The bar ticks in the drain, per node, so it spans
-    // the whole graph and this phase is never silent again.
+    // Pipelined, the `materialise_ways` pattern: `junctions_for_node` is pure per-node work over
+    // shared-read-only tables, and so is building each connector's spill record, so both run on
+    // the pool while the drain only appends **in `n` order** -- which is what keeps the spill, and
+    // therefore the archive, byte-identical at every thread count. The bar ticks in the drain, per
+    // node, so it spans the whole graph and this phase is never silent.
     //
-    // 32 Ki node ids is a few hundred KB of ids in flight; junctions are
-    // sparse, so the geometry coming back is far smaller than a ways batch of
-    // the same count.
-    const JUNCTION_BATCH: usize = 32 * 1024;
+    // Was batches of 32 Ki nodes with the records encoded in the drain: on the planet (440 M
+    // nodes, 177 M connectors) that ran 4m40s at ~28 cores, the drain and the per-batch barrier
+    // being the limit.
+    const JUNCTION_GROUP: usize = 256 * 1024;
     let mut bar = Progress::new(
         "Junctions".to_string(),
         graph.node_count as usize,
         "node(s)",
         true,
     );
-    let mut ids: Vec<u64> = Vec::with_capacity(JUNCTION_BATCH);
-    let mut built: Vec<Vec<Vec<(f64, f64)>>> = Vec::with_capacity(JUNCTION_BATCH);
-    let mut next = 0u64;
-    loop {
-        ids.clear();
-        while ids.len() < JUNCTION_BATCH && next < graph.node_count {
-            ids.push(next);
-            next += 1;
-        }
-        if ids.is_empty() {
-            break;
-        }
-        built.clear();
-        par::install(|| {
-            ids.par_iter()
-                .map(|&n| junctions_for_node(n, &graph, lanes.as_ref(), &incoming, conventions))
-                .collect_into_vec(&mut built)
-        });
-        for node_geoms in built.drain(..) {
-            for points in node_geoms {
-                sink.push(&class, &crate::store::EncodedGeom::live(&Geometry::Lines(vec![points]))?)?;
+    crate::extract::pipeline_ordered(
+        graph.node_count as usize,
+        JUNCTION_GROUP,
+        |n| -> Result<Vec<crate::store::PreRecord>> {
+            junctions_for_node(n as u64, &graph, lanes.as_ref(), &incoming, conventions)
+                .into_iter()
+                .map(|points| {
+                    let encoded = crate::store::EncodedGeom::live(&Geometry::Lines(vec![points]))?;
+                    crate::store::PreRecord::named(&class, &encoded, None, tilecodec::mamaps::body::ID_NONE)
+                })
+                .collect()
+        },
+        |_, records| {
+            for record in records? {
+                sink.push_pre(&record)?;
                 emitted += 1;
             }
             bar.tick("node(s)");
-        }
-    }
+            Ok(())
+        },
+    )?;
     bar.finish("node(s)");
     Ok(emitted)
 }

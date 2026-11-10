@@ -68,15 +68,44 @@ impl StreamWriter {
         // grow its leaf is stored raw instead (`stored_len` zero), so this never costs a byte;
         // with `compress_leaves` off every leaf stores raw and the file is the legacy layout
         // bit for bit.
-        let mut leaf_bytes = Vec::new();
-        for (entry, leaf) in root.iter_mut().zip(leaves.iter()) {
+        //
+        // The frames are built on `options.threads` threads (a group of leaves at a time, each
+        // thread a contiguous run) and laid down in leaf order: same frames, same order, same
+        // bytes. Serially this was level-9 DEFLATE over every leaf on one thread -- ~4.3 GB of
+        // entries on a planet, minutes of a 192-core box at one core.
+        let compress_leaves = self.options.compress_leaves;
+        let stored_for = |leaf: &Vec<index::LeafEntry>| -> Vec<u8> {
             let raw = index::serialize_leaf(leaf);
-            let stored = if self.options.compress_leaves {
+            if compress_leaves {
                 let frame = index::compress_leaf(&raw);
                 if frame.len() < raw.len() { frame } else { raw }
             } else {
                 raw
-            };
+            }
+        };
+        let threads = match self.options.threads {
+            0 => std::thread::available_parallelism().map_or(1, |n| n.get()),
+            n => n,
+        };
+        const LEAF_GROUP: usize = 2048;
+        let mut stored_leaves: Vec<Vec<u8>> = Vec::with_capacity(leaves.len());
+        for group in leaves.chunks(LEAF_GROUP) {
+            if threads <= 1 || group.len() <= 1 {
+                stored_leaves.extend(group.iter().map(&stored_for));
+                continue;
+            }
+            let per = group.len().div_ceil(threads.min(group.len()));
+            let parts: Vec<Vec<Vec<u8>>> = std::thread::scope(|scope| {
+                let handles: Vec<_> = group
+                    .chunks(per)
+                    .map(|run| scope.spawn(|| run.iter().map(&stored_for).collect::<Vec<_>>()))
+                    .collect();
+                handles.into_iter().map(|h| h.join().expect("a leaf compression thread")).collect()
+            });
+            stored_leaves.extend(parts.into_iter().flatten());
+        }
+        let mut leaf_bytes = Vec::new();
+        for ((entry, leaf), stored) in root.iter_mut().zip(leaves.iter()).zip(stored_leaves) {
             entry.leaf_offset = leaf_bytes.len() as u64;
             entry.stored_len = if stored.len() == leaf.len() * index::LEAF_ENTRY_LEN {
                 0

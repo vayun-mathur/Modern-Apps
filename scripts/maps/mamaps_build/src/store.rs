@@ -330,3 +330,4 @@ include!("store_part2.rs");
 include!("store_part3.rs");
 include!("store_part4.rs");
 include!("store_part5.rs");
+include!("store_part6.rs");

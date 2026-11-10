@@ -1,43 +1,37 @@
-/// One relation's geometry, built off the shared tables with nothing mutable touched, so a batch of
-/// them fans out across the pool exactly as [`materialise_ways`] does. The sink and the conventions
-/// grid are fed from these **in relation order** in the serial drain, which is what keeps the
-/// archive byte-identical: the drain order is the spill order is the archive's.
-///
-/// Geometry arrives spill-encoded ([`EncodedGeom`](crate::store::EncodedGeom)): the pool walks
-/// vertices, the drain appends bytes. The region keep/drop decision is precomputed alongside
-/// (pure per-relation work over the resolved shape), so the drain's only vertex touch is
-/// `conventions.add`'s grid stamp — which must stay serial and ordered anyway (precedence).
-enum BuiltRelation {
-    /// A label relation centroided to a point, `None` when it had no locatable members.
-    Label(Option<(f64, f64)>),
-    /// A border relation's member lines, spill-encoded, already filtered to those with two or
-    /// more points. Borders are never region-filtered (region shapes are always kept), so no
-    /// keep flag rides along. `empty` is the pre-encode shape test (`lines.is_empty()`): an
-    /// encoded empty still carries count bytes, so the drain cannot tell it from content by
-    /// looking at the bytes — and the old drain counted it `geometry_failed` rather than
-    /// pushing an empty record.
-    Border { encoded: Result<crate::store::EncodedGeom>, empty: bool },
-    /// An area relation's stitched rings and the ring stats that stitching produced. The stats are
-    /// per-relation here and summed into [`Stats::rings`] serially — they are four additive counts,
-    /// so the sum is the same in any order. `encoded` is the assembled polygons, spill-ready;
-    /// `polygons` travels alongside for `conventions.add`, which needs rings rather than bytes.
-    /// `empty` is the pre-encode shape test (`polygons.is_empty()`), for the same reason as
-    /// [`BuiltRelation::Border`]'s.
-    Area {
-        polygons: Vec<rings::Polygon>,
-        encoded: Result<crate::store::EncodedGeom>,
-        empty: bool,
-        keep: bool,
-        rings: RingStats,
-    },
+/// What one relation contributes, decided on the pool. See [`BuiltRelation`].
+enum RelationOutcome {
+    /// Region-filtered (a `poi` label outside the bbox, a building outside it): counts nothing.
+    Skip,
+    /// No geometry: counts `geometry_failed`.
+    Failed,
+    /// A finished spill record: counts a feature.
+    Kept(PreRecord),
 }
 
-/// Build one relation's geometry. Reads only the shared `members` map and the resolved `table`,
-/// both immutable, so it is safe to call across the pool. See [`BuiltRelation`].
+/// One relation's geometry and spill record, built off the shared tables with nothing mutable
+/// touched, so relations fan out across the pool exactly as [`materialise_ways`]' blocks do. The
+/// sink and the conventions grid are fed from these **in relation order** by the serial drain,
+/// which is what keeps the archive byte-identical: the drain order is the spill order is the
+/// archive's.
 ///
-/// `region` joins the pool inputs (shared ref): the buildings-area keep/drop test walks every
-/// vertex (`polygons_touch`), and the drain must not. Labels keep their O(1) `point_touches`
-/// in the drain — no walk to move.
+/// The record itself ([`PreRecord`]) is built here too -- props, header, geometry bytes -- so the
+/// drain only appends; it used to encode every relation (and DEFLATE its frames) on the one
+/// serial thread, between pool batches of 4096 that each waited on their slowest relation. On
+/// the planet that phase ran 4 minutes at ~8 cores.
+struct BuiltRelation {
+    /// An area relation's ring stats, summed into [`Stats::rings`] whether or not the stitch
+    /// produced anything -- four additive counts, so the order cannot show.
+    rings: Option<RingStats>,
+    outcome: Result<RelationOutcome>,
+    /// A kept country shape's assembled rings, for `conventions.add` -- which has precedence rules
+    /// (an interior claim outranks a border one) and so stays serial and in relation order.
+    conventions: Option<Vec<rings::Polygon>>,
+}
+
+/// Build one relation's geometry and record. Reads only the shared `members` map and the
+/// resolved `table`, both immutable, so it is safe to call across the pool. The decisions --
+/// label point or member lines or stitched rings, region keep/drop, record shape -- are the ones
+/// the serial drain used to make, in the same order.
 fn build_relation(
     relation: &Relation,
     members: &MemberWays,
@@ -53,7 +47,27 @@ fn build_relation(
             .filter_map(|(id, _)| members.get(*id))
             .flat_map(|refs| table.line(refs))
             .collect();
-        return BuiltRelation::Label(centroid(&line));
+        let outcome = match centroid(&line) {
+            None => Ok(RelationOutcome::Failed),
+            // `poi` labels are region-filtered; `places` always kept. O(1) point test.
+            Some(point)
+                if relation.class.layer == tilecodec::mamaps::dict::LAYER_POI
+                    && !point_touches(&point, region) =>
+            {
+                Ok(RelationOutcome::Skip)
+            }
+            Some(point) => crate::store::EncodedGeom::live(&Geometry::Points(vec![point]))
+                .and_then(|encoded| {
+                    PreRecord::named(
+                        &relation.class,
+                        &encoded,
+                        relation.name.as_deref(),
+                        tagged_id(relation.id, ELEMENT_RELATION),
+                    )
+                })
+                .map(RelationOutcome::Kept),
+        };
+        return BuiltRelation { rings: None, outcome, conventions: None };
     }
     // A boundary relation's members are the border. Each is emitted as its own line rather than
     // stitched: the renderer strokes them, and a gap between two member ways is invisible in a
@@ -66,12 +80,18 @@ fn build_relation(
             .map(|refs| table.line(refs))
             .filter(|line| line.len() >= 2)
             .collect();
-        // Captured, not `?`: encode counts cannot overflow on real ways, but a
-        // pool panic would abort the build where a channelled error fails it in
-        // spill order. The drain reports the first failure in relation order.
+        // `empty` is the pre-encode shape test: an encoded empty still carries count bytes, and
+        // an empty border counts `geometry_failed` rather than pushing an empty record.
         let empty = lines.is_empty();
-        let encoded = crate::store::EncodedGeom::live(&Geometry::Lines(lines));
-        return BuiltRelation::Border { encoded, empty };
+        let outcome = crate::store::EncodedGeom::live(&Geometry::Lines(lines)).and_then(|encoded| {
+            if empty {
+                Ok(RelationOutcome::Failed)
+            } else {
+                PreRecord::named(&relation.class, &encoded, None, tilecodec::mamaps::body::ID_NONE)
+                    .map(RelationOutcome::Kept)
+            }
+        });
+        return BuiltRelation { rings: None, outcome, conventions: None };
     }
     let member_ways: Vec<MemberWay> = relation
         .members
@@ -80,26 +100,51 @@ fn build_relation(
             Some(MemberWay { refs: members.get(*id)?.clone(), outer: !inner })
         })
         .collect();
-    let mut rings = RingStats::default();
-    let polygons = rings::assemble(&member_ways, |id| locate(table, id), &mut rings);
+    let mut ring_stats = RingStats::default();
+    let polygons = rings::assemble(&member_ways, |id| locate(table, id), &mut ring_stats);
     // Buildings are region-filtered; every other area layer is always kept.
-    // Decided here, on the assembled rings, so the drain never walks vertices.
     let keep = relation.class.layer != tilecodec::mamaps::dict::LAYER_BUILDINGS
         || polygons_touch(&polygons, region);
+    let empty = polygons.is_empty();
     let geometry = Geometry::Polygons(polygons);
-    let empty = match &geometry {
-        Geometry::Polygons(polygons) => polygons.is_empty(),
-        // Unreachable: built as Polygons two lines up. The match (rather than
-        // reading `polygons` before the move) keeps the emptiness test next to
-        // the value the drain decides on.
-        _ => unreachable!("just built as Polygons"),
-    };
     let encoded = crate::store::EncodedGeom::live(&geometry);
     let Geometry::Polygons(polygons) = geometry else {
         unreachable!("just built as Polygons");
     };
-    BuiltRelation::Area { polygons, encoded, empty, keep, rings }
+    let mut conventions = None;
+    let outcome = encoded.and_then(|encoded| {
+        if empty {
+            return Ok(RelationOutcome::Failed);
+        }
+        if !keep {
+            return Ok(RelationOutcome::Skip);
+        }
+        // A multipolygon building carries its S3DB attributes into the building side table, just
+        // as a building way does.
+        if let Some(building) = relation.building {
+            return PreRecord::building(&relation.class, &encoded, None, building).map(RelationOutcome::Kept);
+        }
+        // The id is what lets the mask gather a region's tile-clipped pieces back together.
+        let id = if tracks_ids(&relation.class) {
+            tagged_id(relation.id, ELEMENT_RELATION)
+        } else {
+            tilecodec::mamaps::body::ID_NONE
+        };
+        let record = PreRecord::named(&relation.class, &encoded, None, id)?;
+        // The country's own shape is also what says how its roads are marked: stamped by the
+        // drain, from these assembled rings, so the grid and the border line agree.
+        if relation.iso.is_some() {
+            conventions = Some(polygons);
+        }
+        Ok(RelationOutcome::Kept(record))
+    });
+    BuiltRelation { rings: Some(ring_stats), outcome, conventions }
 }
+
+/// Relations per pool hand-off in [`materialise_relations`]. Large, because one country-sized
+/// multipolygon can take seconds to stitch and a group's drain waits for its slowest relation;
+/// with the next group computing while this one drains, that wait is mostly hidden.
+const RELATIONS_PER_GROUP: usize = 32 * 1024;
 
 /// Materialise relations; returns the driving-side conventions.
 ///
@@ -124,103 +169,34 @@ fn materialise_relations(
     // Which driving side and centre-line colour applies where, accumulated as the country shapes
     // go past.
     let mut conventions = schema::boundaries::Conventions::default();
-    // Batched, the [`materialise_ways`] pattern: `rings::assemble`, `centroid` and `table.line` are
-    // the heavy per-relation work, are independent, and touch no shared mutable state, so a batch of
-    // them goes as wide as the pool. The sink and the conventions grid then take the results **in
-    // relation order**, which keeps the archive byte-identical. `conventions.add` in particular has
-    // precedence rules (an interior claim outranks a border one), so it must stay serial and in
-    // order.
-    const MATERIALISE_RELATIONS_BATCH: usize = 4096;
-    let mut built: Vec<BuiltRelation> = Vec::with_capacity(MATERIALISE_RELATIONS_BATCH);
-    for batch in relations.chunks(MATERIALISE_RELATIONS_BATCH) {
-        built.clear();
-        par::install(|| {
-            batch
-                .par_iter()
-                .map(|relation| build_relation(relation, members, table, region))
-                .collect_into_vec(&mut built);
-        });
-        for (relation, built) in batch.iter().zip(built.drain(..)) {
-            // `?` in spill order: the first encode failure in relation order,
-            // exactly as inline encoding would report it.
-            match built {
-                BuiltRelation::Label(Some(point)) => {
-                    // `poi` labels are region-filtered; `places` always kept.
-                    // O(1) point test, no vertex walk — stays in the drain.
-                    if relation.class.layer == tilecodec::mamaps::dict::LAYER_POI
-                        && !point_touches(&point, region)
-                    {
-                        bar.tick("relation(s)");
-                        continue;
+    pipeline_ordered(
+        relations.len(),
+        RELATIONS_PER_GROUP,
+        |i| build_relation(&relations[i], members, table, region),
+        |i, built| {
+            if let Some(r) = built.rings {
+                stats.rings.outer_rings += r.outer_rings;
+                stats.rings.inner_rings += r.inner_rings;
+                stats.rings.unclosed += r.unclosed;
+                stats.rings.orphan_inner += r.orphan_inner;
+            }
+            // `?` in spill order: the first failure in relation order, exactly as inline encoding
+            // would report it.
+            match built.outcome? {
+                RelationOutcome::Skip => {}
+                RelationOutcome::Failed => stats.geometry_failed += 1,
+                RelationOutcome::Kept(record) => {
+                    if let (Some(polygons), Some(iso)) = (&built.conventions, &relations[i].iso) {
+                        conventions.add(iso, polygons);
                     }
-                    sink.push_named(
-                        &relation.class,
-                        &crate::store::EncodedGeom::live(&Geometry::Points(vec![point]))?,
-                        relation.name.as_deref(),
-                        tagged_id(relation.id, ELEMENT_RELATION),
-                    )?;
+                    sink.push_pre(&record)?;
                     stats.features += 1;
-                }
-                BuiltRelation::Label(None) => stats.geometry_failed += 1,
-                BuiltRelation::Border { encoded, empty } => {
-                    let encoded = encoded?;
-                    if empty {
-                        stats.geometry_failed += 1;
-                    } else {
-                        sink.push_named(
-                            &relation.class,
-                            &encoded,
-                            None,
-                            tilecodec::mamaps::body::ID_NONE,
-                        )?;
-                        stats.features += 1;
-                    }
-                }
-                BuiltRelation::Area { polygons, encoded, empty, keep, rings } => {
-                    // Accumulated whether or not the stitch produced anything, exactly as the
-                    // in-place `&mut stats.rings` did: a failed stitch still counted its unclosed
-                    // and orphan rings.
-                    stats.rings.outer_rings += rings.outer_rings;
-                    stats.rings.inner_rings += rings.inner_rings;
-                    stats.rings.unclosed += rings.unclosed;
-                    stats.rings.orphan_inner += rings.orphan_inner;
-                    let encoded = encoded?;
-                    if empty {
-                        stats.geometry_failed += 1;
-                    } else {
-                        // The buildings keep/drop was decided on the pool; every
-                        // other area layer is always kept.
-                        if !keep {
-                            bar.tick("relation(s)");
-                            continue;
-                        }
-                        // The id is what lets the mask gather a region's tile-clipped pieces back
-                        // together.
-                        let id = if tracks_ids(&relation.class) {
-                            tagged_id(relation.id, ELEMENT_RELATION)
-                        } else {
-                            tilecodec::mamaps::body::ID_NONE
-                        };
-                        // A multipolygon building carries its S3DB attributes into the building side
-                        // table, just as a building way does.
-                        if let Some(building) = relation.building {
-                            sink.push_building(&relation.class, &encoded, None, building)?;
-                        } else {
-                            // The country's own shape is also what says how its roads are marked.
-                            // Stamped before the shape is moved into the sink, from the assembled
-                            // rings, so the grid and the border line agree about where it is.
-                            if let Some(iso) = &relation.iso {
-                                conventions.add(iso, &polygons);
-                            }
-                            sink.push_named(&relation.class, &encoded, None, id)?;
-                        }
-                        stats.features += 1;
-                    }
                 }
             }
             bar.tick("relation(s)");
-        }
-    }
+            Ok(())
+        },
+    )?;
     bar.finish("relation(s)");
 
     Ok(conventions)

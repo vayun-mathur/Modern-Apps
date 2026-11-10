@@ -1,4 +1,5 @@
 impl WayReader {
+#[cfg_attr(not(test), allow(dead_code))]
     pub fn open(path: &Path) -> Result<WayReader> {
         let file = File::open(path)
             .map_err(|e| Error(format!("cannot open {}: {e}", path.display())))?;
@@ -193,6 +194,7 @@ impl WayReader {
                 }
                 Ok(&buf[*used..])
             }
+            WayIn::Slice { buf, used } => Ok(&buf[*used..]),
         }
     }
 
@@ -200,6 +202,7 @@ impl WayReader {
         match &mut self.inner {
             WayIn::File(f) => f.consume(n),
             WayIn::Anon { used, .. } => *used += n,
+            WayIn::Slice { used, .. } => *used += n,
         }
     }
 

@@ -16,7 +16,6 @@
 //! level yields `None` the same way, whatever the zoom: it carries no relief, and a flat sea-level
 //! grid would make the renderer draw earth-coloured terrain over open water (see [`Dem::heightmap_for`]).
 
-use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::path::Path;
 
@@ -88,7 +87,60 @@ pub struct Dem {
     /// The grid side length, so every grid is `dim * dim` samples. Shared by every tile.
     dim: u16,
     /// `tile_id(out_zoom, x, y)` -> the tile's `dim * dim` samples, row-major from its top-left.
-    grids: HashMap<u64, Vec<u16>>,
+    grids: Grids,
+}
+
+/// The dataset's grids as one sorted id column and one contiguous sample column.
+///
+/// Was a `HashMap<u64, Vec<u16>>`: on the 13 GB world dataset that is ~76 M allocations and a
+/// single-threaded fold of ~76 M inserts on every build regardless of region (the bulk of a
+/// 12-24 s `dem-load` at ~5 cores), plus the map's own slack. Here both columns are built on the
+/// pool and a lookup is a binary search. Same answers as the map for every id, including a file
+/// that repeats one: the map kept the **last** insert, and so does [`Grids::build`].
+struct Grids {
+    /// Tile ids, strictly ascending.
+    ids: Vec<u64>,
+    /// `ids.len() * cells` samples; tile `i`'s grid is `samples[i * cells..][..cells]`.
+    samples: Vec<u16>,
+    cells: usize,
+}
+
+impl Grids {
+    /// From `(id, file index)` for every record and a way to fill a grid from a record index.
+    /// Ids are sorted (already ascending in a `dem_ingest` file, which is checked rather than
+    /// assumed) and a repeated id keeps its last record, as `HashMap::insert` in file order did.
+    fn build<F>(mut keys: Vec<(u64, usize)>, cells: usize, fill: F) -> Grids
+    where
+        F: Fn(usize, &mut [u16]) + Sync,
+    {
+        let ascending = keys.par_windows(2).all(|w| w[0].0 < w[1].0);
+        if !ascending {
+            // (id, index) is a total order with unique keys, so the sort is deterministic; the
+            // last of each id's run is its last record in the file.
+            keys.par_sort_unstable();
+            let mut kept: Vec<(u64, usize)> = Vec::with_capacity(keys.len());
+            for k in keys {
+                match kept.last_mut() {
+                    Some(last) if last.0 == k.0 => *last = k,
+                    _ => kept.push(k),
+                }
+            }
+            keys = kept;
+        }
+        let mut samples = vec![0u16; keys.len() * cells];
+        if cells > 0 {
+            samples
+                .par_chunks_mut(cells)
+                .zip(keys.par_iter())
+                .for_each(|(grid, &(_, index))| fill(index, grid));
+        }
+        Grids { ids: keys.into_iter().map(|(id, _)| id).collect(), samples, cells }
+    }
+
+    fn get(&self, id: &u64) -> Option<&[u16]> {
+        let i = self.ids.binary_search(id).ok()?;
+        Some(&self.samples[i * self.cells..(i + 1) * self.cells])
+    }
 }
 
 impl Dem {
@@ -138,41 +190,26 @@ impl Dem {
         if bytes.len() < 12 + count.saturating_mul(stride) {
             return err("a .mdem dataset ends before its tile count");
         }
-        // Decoded tile indices, not tiles: the byte slices borrow `bytes`, so the
-        // pool maps indices to owned pairs and the fold inserts in file order.
-        // Chunks of 1024 tiles balance scheduling against per-task overhead
-        // (~170 KB of samples per chunk at dim 9 — L2-resident working set).
-        const PARSE_CHUNK_TILES: usize = 1024;
-        let chunks = count.div_ceil(PARSE_CHUNK_TILES);
-        let mut pairs: Vec<Vec<(u64, Vec<u16>)>> = Vec::with_capacity(chunks);
-        par::install(|| {
-            (0..chunks)
+        // Both columns on the pool (see [`Grids`]): the ids straight off their fixed-stride
+        // offsets, then each grid decoded into its slot of one contiguous sample array.
+        let keys: Vec<(u64, usize)> = par::install(|| {
+            (0..count)
                 .into_par_iter()
-                .map(|chunk| {
-                    let lo = chunk * PARSE_CHUNK_TILES;
-                    let hi = (lo + PARSE_CHUNK_TILES).min(count);
-                    let mut out = Vec::with_capacity(hi - lo);
-                    for i in lo..hi {
-                        let at = 12 + i * stride;
-                        let id =
-                            u64::from_le_bytes(bytes[at..at + 8].try_into().expect("8 bytes"));
-                        let mut samples = Vec::with_capacity(cells);
-                        for c in 0..cells {
-                            let o = at + 8 + c * 2;
-                            samples.push(u16::from_le_bytes([bytes[o], bytes[o + 1]]));
-                        }
-                        out.push((id, samples));
-                    }
-                    out
+                .map(|i| {
+                    let at = 12 + i * stride;
+                    (u64::from_le_bytes(bytes[at..at + 8].try_into().expect("8 bytes")), i)
                 })
-                .collect_into_vec(&mut pairs);
+                .collect()
         });
-        let mut grids = HashMap::with_capacity(count);
-        for chunk in pairs.drain(..) {
-            for (id, samples) in chunk {
-                grids.insert(id, samples);
-            }
-        }
+        let grids = par::install(|| {
+            Grids::build(keys, cells, |i, grid| {
+                let at = 12 + i * stride + 8;
+                for (c, out) in grid.iter_mut().enumerate() {
+                    let o = at + c * 2;
+                    *out = u16::from_le_bytes([bytes[o], bytes[o + 1]]);
+                }
+            })
+        });
         Ok(Dem { out_zoom, dim, grids })
     }
 
@@ -201,7 +238,7 @@ impl Dem {
             if relief(samples) <= FLAT_RELIEF_M && self.dim >= FLAT_DIM {
                 return Some(Heightmap { dim: FLAT_DIM, samples: coarsen(samples, self.dim as usize) });
             }
-            return Some(Heightmap { dim: self.dim, samples: samples.clone() });
+            return Some(Heightmap { dim: self.dim, samples: samples.to_vec() });
         }
         self.resample(z, x, y)
     }
@@ -247,7 +284,10 @@ impl Dem {
     /// rather than round-tripping bytes through disk.
     #[cfg(test)]
     pub(crate) fn from_grids(out_zoom: u8, dim: u16, grids: Vec<(u64, Vec<u16>)>) -> Dem {
-        Dem { out_zoom, dim, grids: grids.into_iter().collect() }
+        let cells = dim as usize * dim as usize;
+        let keys: Vec<(u64, usize)> = grids.iter().enumerate().map(|(i, (id, _))| (*id, i)).collect();
+        let grids = Grids::build(keys, cells, |i, grid| grid.copy_from_slice(&grids[i].1));
+        Dem { out_zoom, dim, grids }
     }
 
     /// The elevation at one lon/lat, bilinearly interpolated within the dataset grid that covers it,
@@ -305,6 +345,30 @@ fn tile_y_to_lat(y: f64, z: u8) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The sorted-column grids answer exactly what the old `HashMap` built by inserting in file
+    /// order answered -- for ascending files, unsorted ones, and ones repeating an id (last wins).
+    #[test]
+    fn grids_answer_what_a_file_order_hash_map_did() {
+        let dim = 3u16;
+        let cells = 9usize;
+        let grid = |v: u16| vec![v; cells];
+        let cases: Vec<Vec<(u64, Vec<u16>)>> = vec![
+            vec![(1, grid(1)), (5, grid(5)), (9, grid(9))],
+            vec![(9, grid(1)), (1, grid(2)), (5, grid(3)), (1, grid(4)), (7, grid(5)), (9, grid(6))],
+            vec![],
+        ];
+        for tiles in cases {
+            let dem = Dem::parse(&dataset(10, dim, &tiles)).expect("parse");
+            let mut map = std::collections::HashMap::new();
+            for (id, g) in &tiles {
+                map.insert(*id, g.clone());
+            }
+            for id in 0..12u64 {
+                assert_eq!(dem.grids.get(&id).map(<[u16]>::to_vec), map.get(&id).cloned(), "id {id}");
+            }
+        }
+    }
 
     /// Serialise a synthetic `.mdem` dataset the way `dem_ingest` does, for the parser to read back.
     fn dataset(out_zoom: u8, dim: u16, tiles: &[(u64, Vec<u16>)]) -> Vec<u8> {

@@ -67,7 +67,10 @@ use tile_build::progress::Progress;
 use rayon::prelude::*;
 
 use crate::schema::{self, Class, Layers};
-use crate::store::{Sink, Store, WayCounts, WayReader, WaySink};
+use crate::store::{
+    PreRecord, Sink, Store, WayBlock, WayBlockLoc, WayBlocks, WayCounts, WayReader, WaySink,
+    WAY_BLOCK_WAYS,
+};
 use tilecodec::mamaps::body::{BuildingAttrs, Carriageway};
 use tilecodec::mamaps::dict::LAYER_BUILDINGS;
 
@@ -157,27 +160,6 @@ pub struct Stats {
     /// Untagged road ways that took a lane count from a tagged neighbour. See [`crate::lanefill`].
     pub lanes_inherited: u64,
     pub rings: RingStats,
-}
-
-/// A classified way, held only from the blob it was decoded in until its chunk reaches [`WaySink`].
-struct Way {
-    class: Class,
-    refs: Vec<i64>,
-    /// The display label for `places`/`poi` ways, `None` for every other layer.
-    name: Option<String>,
-    /// A road's carriageway lane count, zero for every other layer and for a road with no `lanes`
-    /// tag. See [`crate::schema::roads::lane_count`].
-    lane_count: u8,
-    /// A road's per-lane turn masks `(forward, backward)`; empty otherwise. See
-    /// [`crate::schema::roads::turn_masks`].
-    turn_fwd: Vec<u16>,
-    turn_bwd: Vec<u16>,
-    /// A road's directional lane split and solid dividers; default otherwise. See
-    /// [`crate::schema::roads::carriageway`].
-    carriageway: Carriageway,
-    /// A building's S3DB attributes, `None` for every non-building. See
-    /// [`crate::schema::buildings::attrs`].
-    building: Option<BuildingAttrs>,
 }
 
 /// A classified relation, held between passes.

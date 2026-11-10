@@ -202,6 +202,11 @@ pub struct NormalizedWriter {
     pending_count: u64,
     /// Compressed scratch, reused across frames so a chunk seal allocates nothing.
     sealed: Vec<u8>,
+    /// Sealed-but-not-yet-compressed frames (raw records), oldest first. Compressed on the pool
+    /// [`SEAL_BATCH`] at a time by [`drain_frames`](Self::drain_frames) and staged in order, so
+    /// DEFLATE leaves the serial push path while the bytes, offsets and chunk index stay exactly
+    /// what sealing one frame at a time produced.
+    queued: Vec<Vec<u8>>,
     /// Bytes written so far, which is the next frame's offset. Tracks *compressed* bytes: the
     /// chunk index addresses frames, not records.
     at: u64,
@@ -209,6 +214,11 @@ pub struct NormalizedWriter {
 
 /// DEFLATE level for spill frames. See [`NormalizedWriter::seal_frame`].
 const SPILL_DEFLATE_LEVEL: u8 = 1;
+
+/// Frames compressed per batch by [`NormalizedWriter::drain_frames`]. ~9 KB raw each on
+/// California, so a batch is tens of MB in flight and one multi-MB write; large enough that
+/// the pool hand-off is noise next to the DEFLATE it parallelises.
+const SEAL_BATCH: usize = 4096;
 
 impl NormalizedWriter {
     pub fn create(path: impl Into<PathBuf>) -> Result<NormalizedWriter> {
@@ -229,6 +239,7 @@ impl NormalizedWriter {
             pending: Vec::new(),
             pending_count: 0,
             sealed: Vec::new(),
+            queued: Vec::new(),
             // The first frame starts past the file header; the chunk index's first offset
             // records exactly this, so readers never special-case it.
             at: NORM_FILE_HEADER_BYTES as u64,
@@ -250,6 +261,7 @@ impl NormalizedWriter {
             pending: Vec::new(),
             pending_count: 0,
             sealed: Vec::new(),
+            queued: Vec::new(),
             at: NORM_FILE_HEADER_BYTES as u64,
         };
         w.write_file_header()?;
@@ -297,10 +309,9 @@ impl NormalizedWriter {
         // chunk `i` -- only the bytes behind the offset are frames now.
         self.pending.extend_from_slice(&self.rec);
         self.pending_count += 1;
-        // Index before sealing, so the offset recorded is this frame's own start.
-        if self.summary.count.is_multiple_of(NORM_CHUNK_FEATURES) {
-            self.summary.chunks.push(self.at);
-        }
+        // The chunk index entry for this frame is recorded when the frame is staged
+        // (`drain_frames`), which is when its offset is known: frames are compressed in
+        // batches, so `at` here still lags the frames queued ahead of this one.
         if self.pending_count >= NORM_CHUNK_FEATURES {
             self.seal_frame()?;
         }
@@ -331,22 +342,26 @@ impl NormalizedWriter {
         bounds: Option<crate::geom::Rect>,
         props: &[(String, Value)],
     ) -> Result<()> {
-        self.rec.clear();
-        self.rec.resize(NORM_HEADER_BYTES, 0);
-        self.rec.extend_from_slice(geom_bytes);
-        let geom_len = count(geom_bytes.len())?;
-        encode_props(props, &mut self.rec)?;
-        let props_len = count(self.rec.len() - NORM_HEADER_BYTES - geom_len as usize)?;
-        let rec_len = count(self.rec.len())?;
-        self.rec[0..4].copy_from_slice(&rec_len.to_le_bytes());
-        self.rec[4..8].copy_from_slice(&geom_len.to_le_bytes());
-        self.rec[8..12].copy_from_slice(&props_len.to_le_bytes());
-        self.rec[12] = kind.tag();
-        self.pending.extend_from_slice(&self.rec);
+        let mut rec = std::mem::take(&mut self.rec);
+        let built = encode_normalized_record(kind, geom_bytes, props, &mut rec);
+        let pushed = built.and_then(|()| self.push_record(kind, &rec, bounds));
+        self.rec = rec;
+        pushed
+    }
+
+    /// Append one record [`encode_normalized_record`] already built (on the pool): the serial half of
+    /// [`push_preencoded`](Self::push_preencoded), byte-for-byte. `kind` and `bounds` are the
+    /// record's own, as `push_preencoded` takes them.
+    pub fn push_record(
+        &mut self,
+        kind: GeomKind,
+        rec: &[u8],
+        bounds: Option<crate::geom::Rect>,
+    ) -> Result<()> {
+        self.pending.extend_from_slice(rec);
         self.pending_count += 1;
-        if self.summary.count.is_multiple_of(NORM_CHUNK_FEATURES) {
-            self.summary.chunks.push(self.at);
-        }
+        // The chunk index entry for this frame is recorded when the frame is staged
+        // (`drain_frames`), which is when its offset is known.
         if self.pending_count >= NORM_CHUNK_FEATURES {
             self.seal_frame()?;
         }
@@ -386,30 +401,71 @@ impl NormalizedWriter {
         if self.pending.is_empty() {
             return Ok(());
         }
+        // Queued raw, compressed later in a batch: see `drain_frames`. `take` leaves `pending`
+        // empty for the next chunk; the frame owns its bytes until it is staged.
+        self.queued.push(std::mem::take(&mut self.pending));
+        self.pending_count = 0;
+        if self.queued.len() >= SEAL_BATCH {
+            self.drain_frames()?;
+        }
+        Ok(())
+    }
+
+    /// Compress every queued frame (on the pool when there is more than one) and stage them in
+    /// queue order, recording each frame's chunk-index offset as it lands.
+    ///
+    /// Byte-identical to sealing frames one at a time: DEFLATE is a pure function of a frame's
+    /// bytes and the level, the frames are staged in the order they were sealed, and each index
+    /// entry is the offset the frame is written at -- exactly the `at` the per-frame path
+    /// recorded at the frame's first record, since every frame starts on a
+    /// `NORM_CHUNK_FEATURES` boundary and the frames before it were staged first.
+    ///
+    /// The batch also turns the writes into one large sequential write per batch (megabytes)
+    /// rather than one per 64-feature frame.
+    fn drain_frames(&mut self) -> Result<()> {
+        if self.queued.is_empty() {
+            return Ok(());
+        }
+        let frames = std::mem::take(&mut self.queued);
+        let compressed: Vec<Vec<u8>> = if frames.len() == 1 {
+            vec![miniz_oxide::deflate::compress_to_vec(&frames[0], SPILL_DEFLATE_LEVEL)]
+        } else {
+            use rayon::prelude::*;
+            crate::par::install(|| {
+                frames
+                    .par_iter()
+                    .map(|raw| miniz_oxide::deflate::compress_to_vec(raw, SPILL_DEFLATE_LEVEL))
+                    .collect()
+            })
+        };
+        drop(frames);
+        let total: usize = compressed.iter().map(|c| 4 + c.len()).sum();
         self.sealed.clear();
-        self.sealed = miniz_oxide::deflate::compress_to_vec(&self.pending, SPILL_DEFLATE_LEVEL);
-        let frame_len = u32::try_from(self.sealed.len())
-            .map_err(|_| Error("a spill frame is larger than 4 GiB".to_string()))?;
-        let mut staged = Vec::with_capacity(4 + self.sealed.len());
-        staged.extend_from_slice(&frame_len.to_le_bytes());
-        staged.extend_from_slice(&self.sealed);
+        self.sealed.reserve(total);
+        for frame in &compressed {
+            let frame_len = u32::try_from(frame.len())
+                .map_err(|_| Error("a spill frame is larger than 4 GiB".to_string()))?;
+            self.summary.chunks.push(self.at + self.sealed.len() as u64);
+            self.sealed.extend_from_slice(&frame_len.to_le_bytes());
+            self.sealed.extend_from_slice(frame);
+        }
         match &mut self.out {
             WriterSink::File(f) => f
-                .write_all(&staged)
+                .write_all(&self.sealed)
                 .map_err(|e| Error(format!("writing {}: {e}", self.path.display())))?,
             WriterSink::Anon(a) => {
-                a.push(&staged)?;
+                a.push(&self.sealed)?;
             }
         }
-        self.at += staged.len() as u64;
-        self.pending.clear();
-        self.pending_count = 0;
+        self.at += self.sealed.len() as u64;
+        self.sealed.clear();
         Ok(())
     }
 
     /// Compressed bytes staged so far (frames plus file header). For spill-size
     /// measurement: the budget calibrator (`SPILL_BYTES_PER_FEATURE`) is tuned
     /// per deflate level, so level experiments report this alongside the wall.
+    /// Lags by the frames still queued for batch compression until `finish`.
     pub fn staged_bytes(&self) -> u64 {
         self.at
     }
@@ -419,6 +475,7 @@ impl NormalizedWriter {
         // The last chunk is usually partial and still needs its frame -- without this its
         // records would be buffered and never staged.
         self.seal_frame()?;
+        self.drain_frames()?;
         self.flush_out()?;
         // Close the last chunk. Without this the final partial chunk has no end, and
         // `chunk_count` would also over-report by one.
@@ -436,6 +493,7 @@ impl NormalizedWriter {
     /// and readers open that path.
     pub fn finish_either(mut self) -> Result<(NormalizedSummary, Option<crate::anon::AnonStore>)> {
         self.seal_frame()?;
+        self.drain_frames()?;
         self.flush_out()?;
         if !self.summary.chunks.is_empty() {
             self.summary.chunks.push(self.at);
@@ -451,6 +509,7 @@ impl NormalizedWriter {
     /// this writer is file-backed (a programming bug, not a runtime one).
     pub fn finish_anon(mut self) -> Result<(NormalizedSummary, crate::anon::AnonStore)> {
         self.seal_frame()?;
+        self.drain_frames()?;
         self.flush_out()?;
         if !self.summary.chunks.is_empty() {
             self.summary.chunks.push(self.at);
@@ -470,6 +529,29 @@ impl NormalizedWriter {
         }
         Ok(())
     }
+}
+
+/// One spill record -- header, pre-encoded geometry, properties -- written into `out`
+/// (cleared first). Pure, so the materialise drains build records on the pool and hand them to
+/// [`NormalizedWriter::push_record`] in order; `push_preencoded` is exactly this plus that.
+pub fn encode_normalized_record(
+    kind: GeomKind,
+    geom_bytes: &[u8],
+    props: &[(String, Value)],
+    out: &mut Vec<u8>,
+) -> Result<()> {
+    out.clear();
+    out.resize(NORM_HEADER_BYTES, 0);
+    out.extend_from_slice(geom_bytes);
+    let geom_len = count(geom_bytes.len())?;
+    encode_props(props, out)?;
+    let props_len = count(out.len() - NORM_HEADER_BYTES - geom_len as usize)?;
+    let rec_len = count(out.len())?;
+    out[0..4].copy_from_slice(&rec_len.to_le_bytes());
+    out[4..8].copy_from_slice(&geom_len.to_le_bytes());
+    out[8..12].copy_from_slice(&props_len.to_le_bytes());
+    out[12] = kind.tag();
+    Ok(())
 }
 
 /// One normalized feature.

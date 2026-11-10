@@ -15,6 +15,7 @@ impl Store {
     /// A chunk whose shallowest `min_zoom` is deeper than `z` holds nothing this zoom draws, so it is
     /// skipped outright — not read, not parsed. Order is unchanged, because the chunks that survive
     /// are still visited in file order, and that is what keeps the archive byte-identical.
+#[cfg_attr(not(test), allow(dead_code))]
     pub fn reader_for_zoom(&self, z: u8) -> Result<ZoomReader> {
         let wanted: Vec<usize> = self
             .chunk_mins
@@ -35,55 +36,10 @@ impl Store {
             .collect()
     }
 
-    pub fn wanted_len_for_zoom(&self, z: u8) -> usize {
-        self.chunk_mins.iter().filter(|min| **min <= z).count()
-    }
-
-    pub fn path(&self) -> &PathBuf {
-        &self.path
-    }
-
-    /// The shared anonymous spill store. Cloned (refcount bump, never bytes)
-    /// into per-lane store views so decode threads read the same memory.
-    /// `None` on the file plan, where lanes open the file at `path` instead.
-    pub fn anon_store(&self) -> Option<std::sync::Arc<tile_build::anon::AnonStore>> {
-        self.anon.clone()
-    }
-
-    pub fn raw_chunks(&self) -> &[u64] {
-        &self.chunks
-    }
-
-    pub fn chunk_mins_cloned(&self) -> Vec<u8> {
-        self.chunk_mins.clone()
-    }
-
     pub fn from_parts(path: PathBuf, chunks: Vec<u64>, chunk_mins: Vec<u8>) -> Self {
         Self {
             path,
             anon: None,
-            chunks,
-            chunk_mins,
-            count: 0,
-            bbox: (0, 0, 0, 0),
-            conventions: crate::schema::boundaries::Conventions::default(),
-        }
-    }
-
-    /// A view over the same staged bytes: `store` is the shared anonymous
-    /// spill (cloned Arc, never bytes) or `None` on the file plan, where the view reads the file
-    /// at `path`. `chunks`/`chunk_mins` the same index either way.
-    /// Used by per-lane decode threads, which need a `Store` to open readers
-    /// from but must not copy the spill.
-    pub fn view_over(
-        path: PathBuf,
-        chunks: Vec<u64>,
-        chunk_mins: Vec<u8>,
-        store: Option<std::sync::Arc<tile_build::anon::AnonStore>>,
-    ) -> Self {
-        Self {
-            path,
-            anon: store,
             chunks,
             chunk_mins,
             count: 0,
@@ -319,6 +275,7 @@ fn feature_of(record: tile_build::spill::NormalizedFeature) -> Result<Feature> {
 /// lookup and the move are free; what is not is dropping the `props` the decoder built — a `Vec` and
 /// an owned key `String` per feature, freed one at a time on the one thread the whole map phase
 /// waits on. Converting in the lane puts that on the lane.
+#[cfg_attr(not(test), allow(dead_code))]
 type Decoded = Result<Vec<Feature>>;
 
 /// Threads decoding spill chunks ahead of the tiler.
@@ -345,6 +302,7 @@ type Decoded = Result<Vec<Feature>>;
 /// continent wants. Removing the need for the knob means removing the re-decode it is compensating
 /// for: the spill is read once per zoom, which is ~1.06 billion feature decodes to deliver
 /// 199.7 M distinct features on north-america, and no lane count makes redundant work cheap.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn prefetch_lanes() -> usize {
     static LANES: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
     *LANES.get_or_init(|| {

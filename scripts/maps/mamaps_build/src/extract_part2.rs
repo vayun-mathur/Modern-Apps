@@ -234,30 +234,6 @@ fn build_resolved_table(
     Ok(table)
 }
 
-/// Open the ways spill for sequential reading, from whichever backend the budget gate chose:
-/// the shared anonymous store when present, else the file at `ways_path`. One helper so the four
-/// readers (two ref collectors, lanefill scan, materialise) share one backend.
-fn open_ways_reader(
-    ways_path: &Path,
-    ways_anon: &Option<std::sync::Arc<tile_build::anon::AnonStore>>,
-) -> Result<WayReader> {
-    WayReader::open_either(ways_path, ways_anon)
-}
-
-/// One named, non-link road way held for parallel coordinate resolve.
-///
-/// Owns its refs and name: the spill cursor cannot be re-read, so a batch row carries
-/// everything the serial push needs after the parallel phase hands the geometry back.
-struct LaneRow {
-    id: i64,
-    /// The class flags: the link test already passed, but the one-way bit rides here for
-    /// the segment the push builds.
-    flags: u8,
-    name: String,
-    lanes: u8,
-    refs: Vec<i64>,
-}
-
 /// The region bbox expanded for the lane join, in degrees.
 ///
 /// A recipient is at most 50 m long (`lanefill::MAX_STUB_M`, enforced again in `push`),
@@ -370,8 +346,7 @@ mod fringe_tests {
 /// be pure waste. `None` (world) disables the filter entirely.
 fn inherit_lane_counts(
     spill_path: &Path,
-    ways_path: &Path,
-    ways_anon: &Option<std::sync::Arc<tile_build::anon::AnonStore>>,
+    blocks: &WayBlocks,
     table: &NodeLocations,
     ways_classified: usize,
     region: Option<&osm_ingest::bbox::BBox>,
@@ -382,35 +357,25 @@ fn inherit_lane_counts(
     // the renderer's flat `oneway ? 1 : 2`. See [`crate::lanefill`] for the conditions and the
     // measurements behind each of them. It runs here rather than in pass 1 because the conditions
     // are geometric — a length and a turn angle — and coordinates are only resolved above.
+    //
+    // Block-parallel: every ways-spill block is decoded, filtered, resolved and turned into its
+    // endpoint records on the pool ([`for_each_way_block`]); only the fixed-width record writes
+    // stay serial, in block order -- which is spill order, so the partition files hold the same
+    // bytes the one-cursor scan wrote. On the planet the one-cursor scan was 6 min at ~4 cores.
     let fringe = region.map(expanded_fringe);
-    let inherited_lanes = {
-        let mut collector = crate::lanefill::Collector::create(spill_path)?;
-        let mut reader = open_ways_reader(ways_path, &ways_anon)?;
-        let mut refs: Vec<i64> = Vec::new();
-        let mut bar = Progress::new(
-            "Lane inheritance: scan".to_string(),
-            ways_classified,
-            "way(s)",
-            true,
-        );
-        // One batch of spill rows at a time: 64 Ki ways at ~10 nodes each is a few tens of
-        // MB of geometry in flight, the same budget the materialise pass uses.
-        const LANE_BATCH: usize = 64 * 1024;
-        let mut batch: Vec<LaneRow> = Vec::with_capacity(LANE_BATCH);
-        let mut lines: Vec<Vec<(f64, f64)>> = Vec::with_capacity(LANE_BATCH);
-        let mut exhausted = false;
-        loop {
-            batch.clear();
-            // Serial fill: the spill is a sequential varint stream — one cursor, no seeking.
-            // The bar ticks here, per way read, so it still spans the whole spill exactly as
-            // before — the batching below must not move the tick or the count drifts.
-            while batch.len() < LANE_BATCH {
-                let Some((id, class, name, lane_count, _, _, _, _)) = reader.next(&mut refs)?
-                else {
-                    exhausted = true;
-                    break;
-                };
-                bar.tick("way(s)");
+    let mut collector = crate::lanefill::Collector::create(spill_path)?;
+    let mut bar = Progress::new(
+        "Lane inheritance: scan".to_string(),
+        ways_classified,
+        "way(s)",
+        true,
+    );
+    for_each_way_block(
+        blocks,
+        |mut reader| -> Result<Vec<crate::lanefill::Prepared>> {
+            let mut refs: Vec<i64> = Vec::new();
+            let mut out = Vec::new();
+            while let Some((id, class, name, lane_count, _, _, _, _)) = reader.next(&mut refs)? {
                 // Roads, and not slip roads. A ramp leaves a junction carrying its parent's name on
                 // very nearly its parent's heading, so it would inherit the mainline's width onto a
                 // single-lane ramp; `corridor` leaves links out of a corridor for the same reason.
@@ -420,30 +385,7 @@ fn inherit_lane_counts(
                     continue;
                 }
                 let Some(name) = name else { continue };
-                batch.push(LaneRow {
-                    id,
-                    flags: class.flags,
-                    name,
-                    lanes: lane_count,
-                    refs: std::mem::take(&mut refs),
-                });
-            }
-            if batch.is_empty() {
-                debug_assert!(exhausted, "an empty batch means the spill is done");
-                break;
-            }
-            // Parallel resolve: the dominant cost, shared-read-only.
-            lines.clear();
-            par::install(|| {
-                batch
-                    .par_iter()
-                    .map(|row| table.line(&row.refs))
-                    .collect_into_vec(&mut lines)
-            });
-            // Serial push, in spill order: the collector's file order never reaches the
-            // archive (`finish` sorts), but keeping it ordered keeps the temp bytes — and
-            // any future debugging of them — deterministic.
-            for (row, line) in batch.iter().zip(lines.drain(..)) {
+                let line = table.line(&refs);
                 // A region build only joins the fringe: a recipient is at most 50 m long, so
                 // a donor sharing an endpoint node with a kept recipient always touches the
                 // expanded box (see `expanded_fringe`). Anything else can pair only with
@@ -451,50 +393,137 @@ fn inherit_lane_counts(
                 if !fringe_touches(fringe.as_ref(), &line) {
                     continue;
                 }
-                let oneway =
-                    row.flags & tilecodec::mamaps::body::FLAG_IS_ONEWAY != 0;
-                collector.push(&crate::lanefill::Segment {
-                    id: row.id,
-                    name: &row.name,
-                    lanes: row.lanes,
+                let oneway = class.flags & tilecodec::mamaps::body::FLAG_IS_ONEWAY != 0;
+                if let Some(prepared) = crate::lanefill::prepare(&crate::lanefill::Segment {
+                    id,
+                    name: &name,
+                    lanes: lane_count,
                     oneway,
-                    nodes: &row.refs,
+                    nodes: &refs,
                     line: &line,
-                })?;
+                }) {
+                    out.push(prepared);
+                }
             }
-            if exhausted {
-                break;
+            Ok(out)
+        },
+        |ways, prepared| {
+            for p in &prepared {
+                collector.push_prepared(p)?;
             }
-        }
-        bar.finish("way(s)");
-        collector.finish()?
-    };
+            bar.tick_n(ways as usize, "way(s)");
+            Ok(())
+        },
+    )?;
+    bar.finish("way(s)");
+    collector.finish()
+}
 
-    Ok(inherited_lanes)
+/// Ways-spill blocks decoded per pool hand-off, per thread. Each block is at most
+/// [`WAY_BLOCK_WAYS`] ways, so a group is ~1.5 M ways on 192 threads: enough to keep every core
+/// busy with even load, and a bounded amount of finished work (endpoint records, spill records)
+/// held while the previous group drains.
+const BLOCKS_PER_THREAD: usize = 2;
+
+/// Run `work` over every block of the ways spill on the pool and hand each block's result to
+/// `drain` **in block order**, which is spill order.
+///
+/// Pipelined: while `drain` consumes group `k` on one thread, the pool computes group `k + 1`.
+/// `work` gets a fresh cursor over its block; `drain` gets the block's way count (for progress)
+/// and its result. The first error in block order wins, exactly as a one-cursor loop would
+/// report it; work already computed past it is discarded.
+fn for_each_way_block<T, W, D>(blocks: &WayBlocks, work: W, mut drain: D) -> Result<()>
+where
+    T: Send,
+    W: Fn(WayReader) -> Result<T> + Sync,
+    D: FnMut(u64, T) -> Result<()> + Send,
+{
+    let locs = blocks.locs();
+    let group = (par::threads() * BLOCKS_PER_THREAD).max(1);
+    pipeline_ordered(
+        locs.len(),
+        group,
+        |i| blocks.reader(i).and_then(&work),
+        |i, result| drain(locs[i].ways(), result?),
+    )
+}
+
+/// Run `work(i)` for every `i in 0..len` on the pool, `group` items per hand-off, and hand each
+/// result to `drain` **in index order**. While `drain` consumes one group on one thread, the pool
+/// computes the next, so the serial drain overlaps the parallel work instead of alternating with
+/// it -- and a slow item delays only its own group's drain, not a barrier every few thousand
+/// items. The first error `drain` returns stops the loop; work already computed past it is
+/// discarded.
+pub(crate) fn pipeline_ordered<T, W, D>(len: usize, group: usize, work: W, mut drain: D) -> Result<()>
+where
+    T: Send,
+    W: Fn(usize) -> T + Sync,
+    D: FnMut(usize, T) -> Result<()> + Send,
+{
+    let group = group.max(1);
+    par::install(|| {
+        let mut start = 0usize;
+        let mut pending: Option<(usize, Vec<T>)> = None;
+        loop {
+            let end = (start + group).min(len);
+            let (drained, next) = rayon::join(
+                || -> Result<()> {
+                    if let Some((first, results)) = pending.take() {
+                        for (k, result) in results.into_iter().enumerate() {
+                            drain(first + k, result)?;
+                        }
+                    }
+                    Ok(())
+                },
+                || {
+                    if start < end {
+                        Some((start..end).into_par_iter().map(&work).collect::<Vec<T>>())
+                    } else {
+                        None
+                    }
+                },
+            );
+            drained?;
+            match next {
+                Some(results) => pending = Some((start, results)),
+                None => return Ok(()),
+            }
+            start = end;
+        }
+    })
 }
 
 /// One materialised way, decided on the pool: the serial drain only appends.
 ///
 /// `Failed` (no geometry) counts `geometry_failed`; `Dropped` (region-filtered)
 /// counts nothing — exactly the two non-pushed paths the inline drain had.
-/// `Kept` carries the spill record's geometry bytes plus the facts the spill
-/// derives, so the drain does no vertex walk.
+/// `Kept` carries the finished spill record ([`PreRecord`]), so the drain neither walks vertices
+/// nor encodes.
 enum BuiltWay {
     Failed,
     Dropped,
-    Kept(crate::store::EncodedGeom),
+    Kept(PreRecord),
 }
 
-/// Resolve one batch item's fate: geometry, region keep/drop, spill encoding.
+/// Resolve one way's fate: geometry, region keep/drop, and its spill record.
 ///
-/// Pure over shared tables (`table`, `region`): safe across the pool. The
-/// region test runs here rather than in the drain — it walks every vertex
-/// (`geometry_touches`), and the drain must not. Order-independent: one slot
-/// per batch item, drained positionally.
+/// Pure over shared tables (`table`, `region`): safe across the pool. The record is built with
+/// the same choice of shape the serial drain made -- a building carries its S3DB attributes, a
+/// road with lane data carries those, everything else (a plain road included) goes the plain,
+/// named way -- so `Sink::push_pre` stages exactly what `push_building` / `push_road` /
+/// `push_named` would have.
+#[allow(clippy::too_many_arguments)]
 fn build_way(
     class: &Class,
     geometry: Option<Geometry>,
     region: Option<&osm_ingest::bbox::BBox>,
+    name: Option<&str>,
+    id: u64,
+    lane_count: u8,
+    turn_fwd: &[u16],
+    turn_bwd: &[u16],
+    carriageway: Carriageway,
+    building: Option<BuildingAttrs>,
 ) -> Result<BuiltWay> {
     let Some(geometry) = geometry else {
         return Ok(BuiltWay::Failed);
@@ -505,7 +534,15 @@ fn build_way(
     if is_region_filtered(class.layer) && !geometry_touches(&geometry, region) {
         return Ok(BuiltWay::Dropped);
     }
-    Ok(BuiltWay::Kept(crate::store::EncodedGeom::live(&geometry)?))
+    let encoded = crate::store::EncodedGeom::live(&geometry)?;
+    let record = if let Some(b) = building {
+        PreRecord::building(class, &encoded, name, b)?
+    } else if lane_count > 0 || !turn_fwd.is_empty() || !turn_bwd.is_empty() || !carriageway.is_empty() {
+        PreRecord::road(class, &encoded, name, lane_count, turn_fwd, turn_bwd, carriageway)?
+    } else {
+        PreRecord::named(class, &encoded, name, id)?
+    };
+    Ok(BuiltWay::Kept(record))
 }
 
 /// Materialise classified ways off disk, in id order. Moved whole from `extract`.
@@ -514,9 +551,13 @@ fn build_way(
 /// one of those layers whose resolved line touches no bbox point is dropped.
 /// Every other layer is always kept. Kept whole, never clipped — the tiler
 /// clips per tile later.
+///
+/// Consumes `blocks`: it is the spill's last reader, and the handle must be closed before the
+/// file is removed (Windows refuses to delete an open file).
+#[allow(clippy::too_many_arguments)]
 fn materialise_ways(
     ways_path: &Path,
-    ways_anon: &Option<std::sync::Arc<tile_build::anon::AnonStore>>,
+    blocks: WayBlocks,
     promoted: &[(i64, u8)],
     inherited_lanes: &[(i64, u8)],
     table: &NodeLocations,
@@ -524,8 +565,6 @@ fn materialise_ways(
     sink: &mut Sink,
     stats: &mut Stats,
 ) -> Result<()> {
-    let mut reader = open_ways_reader(ways_path, ways_anon)?;
-    let mut refs: Vec<i64> = Vec::new();
     // Silent until now, and it is not a short step: on a north-america extract this loop ran 623
     // seconds on one thread with nothing on stdout, which is indistinguishable from a hang.
     let mut bar = Progress::new(
@@ -534,169 +573,107 @@ fn materialise_ways(
         "way(s)",
         true,
     );
-    // Batched, because the expensive part of a way is embarrassingly parallel and the cheap part
-    // cannot be. `table.line` is a coordinate lookup per node -- an id search plus a random read of a
-    // mapped file -- and `way_geometry` closes and winds rings; neither touches shared mutable state,
-    // so a batch of them goes as wide as the pool. The sink then takes the results **in order**,
-    // which is what keeps the archive byte-identical: the spill's feature order is the archive's.
-    //
-    // 64 Ki ways at ~10 nodes each is a few tens of MB of geometry in flight, against a build that
-    // peaks near 7 GB.
-    const MATERIALISE_BATCH: usize = 64 * 1024;
-    #[allow(clippy::type_complexity)]
-    let mut batch: Vec<(
-        Class,
-        Option<String>,
-        Vec<i64>,
-        u64,
-        u8,
-        Vec<u16>,
-        Vec<u16>,
-        Carriageway,
-        Option<BuildingAttrs>,
-    )> = Vec::with_capacity(MATERIALISE_BATCH);
-    let mut built: Vec<Result<BuiltWay>> = Vec::with_capacity(MATERIALISE_BATCH);
-    // TEMP-PROFILE: split the batch loop into fill / resolve / drain walls.
-    // Removed once the split is measured (naonly run).
-    let mut t_fill = std::time::Duration::ZERO;
-    let mut t_resolve = std::time::Duration::ZERO;
-    let mut t_push = std::time::Duration::ZERO;
-    let mut t_rest = std::time::Duration::ZERO;
-    let mut t0 = std::time::Instant::now();
-    loop {
-        let more = reader.next(&mut refs)?;
-        // Moved out of `more` by value below, so named ways cost no `String` clone and
-        // turn-mask vectors move rather than copy: over ~1 B ways the allocator traffic
-        // of cloning is minutes, and the batch owns every field anyway.
-        let done = more.is_none();
-        if let Some((id, class, name, lane_count, turn_fwd, turn_bwd, carriageway, building)) =
-            more
-        {
-            let mut class = class;
-            // The corridor's zoom, where it is shallower than this way's own. Corridors
-            // are built from numbered roads alone, so a non-road way can never have an
-            // entry — searching for one is ~17 wasted compares per boundary, building
-            // and waterway on a region build.
-            if class.layer == tilecodec::mamaps::dict::LAYER_ROADS {
-                if let Ok(at) = promoted.binary_search_by_key(&id, |(id, _)| *id) {
-                    class.min_zoom = promoted[at].1;
-                }
-            }
-            // A neighbour's lane count, where OSM tagged none on this way. Only ever consulted
-            // for a way that has none of its own, so a tag is never overridden.
-            let lane_count = if lane_count == 0 {
-                inherited_lanes
-                    .binary_search_by_key(&id, |(id, _)| *id)
-                    .map_or(0, |at| inherited_lanes[at].1)
-            } else {
-                lane_count
-            };
-            // Only a label way carries its id onward. A road or a building is merged with its
-            // neighbours by `coalesce`, which leaves the survivor's id arbitrary, and the id
-            // table exists for `poi` and `places` alone.
-            let id = if is_label(class.layer) {
-                tagged_id(id, ELEMENT_WAY)
-            } else {
-                tilecodec::mamaps::body::ID_NONE
-            };
-            batch.push((
-                class,
-                name,
-                std::mem::take(&mut refs),
-                id,
-                lane_count,
-                turn_fwd,
-                turn_bwd,
-                carriageway,
-                building,
-            ));
-        }
-        // Flushed when full, and once more at the end with whatever is left.
-        if batch.len() >= MATERIALISE_BATCH || (done && !batch.is_empty()) {
-            t_fill += t0.elapsed();
-            let t1 = std::time::Instant::now();
-            built.clear();
-            par::install(|| {
-                batch
-                    .par_iter()
-                    .map(|(class, _, refs, _, _, _, _, _, _)| {
-                        let line = table.line(refs);
-                        // A label layer's ways are centroided to points: a town mapped as an area
-                        // is still one label, not a loop. Everything else keeps its geometry.
-                        let geometry = if is_label(class.layer) {
-                            centroid(&line).map(|point| Geometry::Points(vec![point]))
-                        } else {
-                            way_geometry(&line, class.area)
-                        };
-                        build_way(class, geometry, region)
-                    })
-                    .collect_into_vec(&mut built);
-            });
-            t_resolve += t1.elapsed();
-            let t2 = std::time::Instant::now();
-            let push_before = t_push;
-            for (
-                (class, name, _, id, lane_count, turn_fwd, turn_bwd, carriageway, building),
-                built,
-            ) in batch.iter().zip(built.drain(..))
+    // Block-parallel end to end: decoding the spill, the coordinate lookups (`table.line`, an id
+    // search plus a random read of a mapped file per node), ring closing, the region test and the
+    // spill record itself all run on the pool, per block; the sink then appends the finished
+    // records **in block order** -- spill order -- which is what keeps the archive byte-identical:
+    // the spill's feature order is the archive's. Measured before this on California: decode
+    // (`fill`) 5.5 s and record encode + DEFLATE (`push`) 19.0 s of 26.6 s were serial.
+    let mut drain_wall = std::time::Duration::ZERO;
+    let wall = std::time::Instant::now();
+    let (mut failed, mut kept) = (0u64, 0u64);
+    for_each_way_block(
+        &blocks,
+        |mut reader| -> Result<Vec<Result<BuiltWay>>> {
+            let mut refs: Vec<i64> = Vec::new();
+            let mut out = Vec::new();
+            while let Some((id, class, name, lane_count, turn_fwd, turn_bwd, carriageway, building)) =
+                reader.next(&mut refs)?
             {
-                // `?` in spill order: the first encode failure in feature order,
-                // exactly as inline encoding would report it.
-                let tp0 = std::time::Instant::now();
-                match built? {
-                    BuiltWay::Failed => stats.geometry_failed += 1,
-                    BuiltWay::Dropped => {}
-                    BuiltWay::Kept(encoded) => {
-                        // A building carries its S3DB attributes; a road with lane data carries
-                        // those; everything else — and a plain road — goes the plain, named way.
-                        if let Some(b) = building {
-                            sink.push_building(class, &encoded, name.as_deref(), *b)?;
-                        } else if *lane_count > 0
-                            || !turn_fwd.is_empty()
-                            || !turn_bwd.is_empty()
-                            || !carriageway.is_empty()
-                        {
-                            sink.push_road(
-                                class,
-                                &encoded,
-                                name.as_deref(),
-                                *lane_count,
-                                turn_fwd,
-                                turn_bwd,
-                                *carriageway,
-                            )?;
-                        } else {
-                            sink.push_named(class, &encoded, name.as_deref(), *id)?;
-                        }
-                        stats.features += 1;
+                let mut class = class;
+                // The corridor's zoom, where it is shallower than this way's own. Corridors
+                // are built from numbered roads alone, so a non-road way can never have an
+                // entry — searching for one is ~17 wasted compares per boundary, building
+                // and waterway on a region build.
+                if class.layer == tilecodec::mamaps::dict::LAYER_ROADS {
+                    if let Ok(at) = promoted.binary_search_by_key(&id, |(id, _)| *id) {
+                        class.min_zoom = promoted[at].1;
                     }
                 }
-                t_push += tp0.elapsed();
-                bar.tick("way(s)");
+                // A neighbour's lane count, where OSM tagged none on this way. Only ever consulted
+                // for a way that has none of its own, so a tag is never overridden.
+                let lane_count = if lane_count == 0 {
+                    inherited_lanes
+                        .binary_search_by_key(&id, |(id, _)| *id)
+                        .map_or(0, |at| inherited_lanes[at].1)
+                } else {
+                    lane_count
+                };
+                // Only a label way carries its id onward. A road or a building is merged with its
+                // neighbours by `coalesce`, which leaves the survivor's id arbitrary, and the id
+                // table exists for `poi` and `places` alone.
+                let id = if is_label(class.layer) {
+                    tagged_id(id, ELEMENT_WAY)
+                } else {
+                    tilecodec::mamaps::body::ID_NONE
+                };
+                let line = table.line(&refs);
+                // A label layer's ways are centroided to points: a town mapped as an area
+                // is still one label, not a loop. Everything else keeps its geometry.
+                let geometry = if is_label(class.layer) {
+                    centroid(&line).map(|point| Geometry::Points(vec![point]))
+                } else {
+                    way_geometry(&line, class.area)
+                };
+                out.push(build_way(
+                    &class,
+                    geometry,
+                    region,
+                    name.as_deref(),
+                    id,
+                    lane_count,
+                    &turn_fwd,
+                    &turn_bwd,
+                    carriageway,
+                    building,
+                ));
             }
-            batch.clear();
-            // Drain wall minus the sink pushes: match + stats + tick + drops.
-            t_rest += t2.elapsed() - (t_push - push_before);
-            t0 = std::time::Instant::now();
-        }
-        if done {
-            break;
-        }
-    }
+            Ok(out)
+        },
+        |ways, built| {
+            let t = std::time::Instant::now();
+            for built in built {
+                // `?` in spill order: the first encode failure in feature order,
+                // exactly as inline encoding would report it.
+                match built? {
+                    BuiltWay::Failed => failed += 1,
+                    BuiltWay::Dropped => {}
+                    BuiltWay::Kept(record) => {
+                        sink.push_pre(&record)?;
+                        kept += 1;
+                    }
+                }
+            }
+            bar.tick_n(ways as usize, "way(s)");
+            drain_wall += t.elapsed();
+            Ok(())
+        },
+    )?;
+    stats.geometry_failed += failed;
+    stats.features += kept;
+    // TEMP-PROFILE: the serial drain's share of the phase wall. Removed with the other probes.
     eprintln!(
-        "  [profile] materialise-ways fill={:.1}s resolve={:.1}s push={:.1}s rest={:.1}s spill={:.2}GB",
-        t_fill.as_secs_f64(),
-        t_resolve.as_secs_f64(),
-        t_push.as_secs_f64(),
-        t_rest.as_secs_f64(),
+        "  [profile] materialise-ways wall={:.1}s drain={:.1}s spill={:.2}GB",
+        wall.elapsed().as_secs_f64(),
+        drain_wall.as_secs_f64(),
         sink.staged_bytes() as f64 / 1e9
     );
     bar.finish("way(s)");
     // Nothing reads the ways spill after this: the relations below reach their members through
-    // `members`, which is why that table is kept at all. The file backend's `.tmp` is removed;
-    // the anon backend's segments unmap with the last `Arc`.
-    drop(reader);
-    let _ = std::fs::remove_file(&ways_path);
+    // `members`, which is why that table is kept at all. The file backend's `.tmp` is removed
+    // (after its handle closes); the anon backend's segments unmap with the last `Arc`.
+    drop(blocks);
+    let _ = std::fs::remove_file(ways_path);
 
     Ok(())
 }

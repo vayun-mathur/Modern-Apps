@@ -552,7 +552,7 @@ fn merge_range(
     plan: &RangePlan,
     range: usize,
     end_tile: u64,
-    out: &std::sync::mpsc::SyncSender<RangeOut>,
+    out: &RangeTx,
 ) {
     use std::cmp::Reverse;
     use std::collections::BinaryHeap;
@@ -674,10 +674,132 @@ fn merge_range_into(
     spill: &ChunkSpill,
     plan: &RangePlan,
     r: usize,
-    tx: std::sync::mpsc::SyncSender<RangeOut>,
+    tx: RangeTx,
 ) {
     let end_tile = plan.bounds[r + 1];
     merge_range(chunks, spill, plan, r, end_tile, &tx);
+}
+
+/// Run-ahead allowance for range workers other than the one being drained, in estimated bytes of
+/// merged tile (see [`tile_bytes`]), shared by all of them.
+///
+/// Ranges drain strictly in order, and each worker used to stop after `RANGE_QUEUE_BOUND` tiles:
+/// so while range 0 drained, ranges 1..7 sat parked after 32 tiles each and the "parallel" merge
+/// was one k-way merge at a time (California z13: merge 4.5 s however many ranges; the Nov 10
+/// planet's z10-z12 merge+encode ran at 6-13 cores). Now the later ranges keep merging into
+/// their queues until this much is buffered between them. The range being drained keeps the old
+/// count bound -- it is consumed as it is produced -- and is never held by this budget, which is
+/// what keeps the drain deadlock-free: the coordinator only ever waits on the current range, and
+/// the current range only ever waits on the coordinator.
+const RANGE_AHEAD_BYTES: u64 = 2 << 30;
+
+/// A merged tile's rough size in memory, for [`RANGE_AHEAD_BYTES`]: its feature records and its
+/// coordinates. An estimate for a budget, never observable in the output.
+fn tile_bytes(layers: &[ChunkEntry]) -> u64 {
+    layers
+        .iter()
+        .map(|entry| entry.layer.features.len() as u64 * 32 + entry.layer.coords.len() as u64 * 8)
+        .sum::<u64>()
+        + 64
+}
+
+/// The range workers' output queues, drained in range order by [`ParallelMerge`].
+struct RangeQueues {
+    state: Mutex<RangeState>,
+    cv: std::sync::Condvar,
+}
+
+struct RangeState {
+    /// Per range: queued tiles (with their byte estimate) and whether its worker is done.
+    queues: Vec<std::collections::VecDeque<(RangeOut, u64)>>,
+    finished: Vec<bool>,
+    /// The range the coordinator is draining.
+    current: usize,
+    /// Bytes queued in ranges past `current`.
+    ahead: u64,
+    /// The coordinator went away (finished early on an error): workers stop.
+    abandoned: bool,
+    /// Who is parked on the condvar, so the hot paths notify only when someone is: a wake per
+    /// tile was the merge's whole cost on a zoom of millions of small tiles.
+    coordinator_waiting: bool,
+    workers_waiting: usize,
+}
+
+impl RangeQueues {
+    fn new(ranges: usize) -> std::sync::Arc<RangeQueues> {
+        std::sync::Arc::new(RangeQueues {
+            state: Mutex::new(RangeState {
+                queues: (0..ranges).map(|_| std::collections::VecDeque::new()).collect(),
+                finished: vec![false; ranges],
+                current: 0,
+                ahead: 0,
+                abandoned: false,
+                coordinator_waiting: false,
+                workers_waiting: 0,
+            }),
+            cv: std::sync::Condvar::new(),
+        })
+    }
+
+    /// Range `r`'s sending half, for its worker. Dropping it marks the range finished.
+    fn sender(self: &std::sync::Arc<Self>, r: usize) -> RangeTx {
+        RangeTx { queues: std::sync::Arc::clone(self), r }
+    }
+}
+
+/// One range worker's end of [`RangeQueues`]: `send` in the shape of the channel it replaced.
+struct RangeTx {
+    queues: std::sync::Arc<RangeQueues>,
+    r: usize,
+}
+
+impl RangeTx {
+    /// Queue one tile (or error) for range `r`. `Err` when the coordinator is gone, which ends the
+    /// worker exactly as a dropped receiver did.
+    fn send(&self, item: RangeOut) -> std::result::Result<(), ()> {
+        let bytes = match &item {
+            Ok((_, layers)) => tile_bytes(layers),
+            Err(_) => 0,
+        };
+        let q = &self.queues;
+        let mut s = q.state.lock().expect("the merge's range queues");
+        loop {
+            if s.abandoned {
+                return Err(());
+            }
+            let wait = if self.r == s.current {
+                s.queues[self.r].len() >= RANGE_QUEUE_BOUND
+            } else {
+                // Always let a range queue its first tile, so a range is never blocked behind its
+                // own empty queue; past that, the shared allowance decides.
+                !s.queues[self.r].is_empty() && s.ahead + bytes > RANGE_AHEAD_BYTES
+            };
+            if !wait {
+                break;
+            }
+            s.workers_waiting += 1;
+            s = q.cv.wait(s).expect("the merge's range queues");
+            s.workers_waiting -= 1;
+        }
+        if self.r != s.current {
+            s.ahead += bytes;
+        }
+        s.queues[self.r].push_back((item, bytes));
+        let wake = self.r == s.current && s.coordinator_waiting;
+        drop(s);
+        if wake {
+            q.cv.notify_all();
+        }
+        Ok(())
+    }
+}
+
+impl Drop for RangeTx {
+    fn drop(&mut self) {
+        let q = &self.queues;
+        q.state.lock().expect("the merge's range queues").finished[self.r] = true;
+        q.cv.notify_all();
+    }
 }
 
 /// Ordered coordinator over range workers: an iterator yielding the serial
@@ -689,14 +811,66 @@ fn merge_range_into(
 /// before it drained cleanly, so it is the earliest tile-ordered failure —
 /// deterministic, like serial.
 struct ParallelMerge {
-    receivers: Vec<std::sync::mpsc::Receiver<RangeOut>>,
-    at: usize,
-    failed: Option<tilecodec::proto::Error>,
+    queues: std::sync::Arc<RangeQueues>,
+    ranges: usize,
+    done: bool,
+    /// Tiles taken off the current range's queue in one go, handed out one per `next`.
+    local: std::collections::VecDeque<RangeOut>,
 }
 
 impl ParallelMerge {
-    fn new(receivers: Vec<std::sync::mpsc::Receiver<RangeOut>>) -> ParallelMerge {
-        ParallelMerge { receivers, at: 0, failed: None }
+    fn new(queues: std::sync::Arc<RangeQueues>) -> ParallelMerge {
+        let ranges = queues.state.lock().expect("the merge's range queues").queues.len();
+        ParallelMerge { queues, ranges, done: false, local: std::collections::VecDeque::new() }
+    }
+
+    /// Move everything queued for the current range into `local`, advancing past finished
+    /// ranges, waiting only when the current range has nothing yet. `false` once every range
+    /// has drained.
+    fn refill(&mut self) -> bool {
+        let q = &self.queues;
+        let mut s = q.state.lock().expect("the merge's range queues");
+        loop {
+            if s.current >= self.ranges {
+                return false;
+            }
+            let current = s.current;
+            if !s.queues[current].is_empty() {
+                self.local.extend(s.queues[current].drain(..).map(|(item, _)| item));
+                let wake = s.workers_waiting > 0;
+                drop(s);
+                if wake {
+                    q.cv.notify_all();
+                }
+                return true;
+            }
+            if s.finished[current] {
+                // Range drained cleanly: advance. Its successor's queued bytes stop counting
+                // against the run-ahead allowance now that it is the one being drained.
+                s.current += 1;
+                if s.current < self.ranges {
+                    let next = s.current;
+                    let queued: u64 = s.queues[next].iter().map(|(_, b)| *b).sum();
+                    s.ahead -= queued;
+                }
+                if s.workers_waiting > 0 {
+                    q.cv.notify_all();
+                }
+                continue;
+            }
+            s.coordinator_waiting = true;
+            s = q.cv.wait(s).expect("the merge's range queues");
+            s.coordinator_waiting = false;
+        }
+    }
+}
+
+impl Drop for ParallelMerge {
+    /// Release any worker still parked on its queue: whatever ended the drain, nobody reads
+    /// further, and the workers' scope is waiting to join them.
+    fn drop(&mut self) {
+        self.queues.state.lock().expect("the merge's range queues").abandoned = true;
+        self.queues.cv.notify_all();
     }
 }
 
@@ -704,38 +878,26 @@ impl Iterator for ParallelMerge {
     type Item = Result<(u64, Vec<ChunkEntry>)>;
 
     fn next(&mut self) -> Option<Result<(u64, Vec<ChunkEntry>)>> {
-        loop {
-            if self.at >= self.receivers.len() {
-                return None;
-            }
-            if let Some(e) = self.failed.take() {
-                // Drain nothing further: receivers drop here, workers exit on
-                // send failure, scope joins them. Lowest-indexed failure wins
-                // because lower ranges already drained clean.
-                self.at = self.receivers.len();
-                self.receivers.clear();
-                return Some(Err(e));
-            }
-            match self.receivers[self.at].recv() {
-                Ok(Ok(tile)) => return Some(Ok(tile)),
-                Ok(Err(e)) => {
-                    self.failed = Some(e);
-                }
-                Err(_) => {
-                    // Sender dropped = range drained cleanly. Advance.
-                    self.at += 1;
-                }
-            }
+        if self.done {
+            return None;
         }
+        if self.local.is_empty() && !self.refill() {
+            self.done = true;
+            return None;
+        }
+        let item = self.local.pop_front().expect("refilled above");
+        if item.is_err() {
+            // Lowest-indexed failure wins because lower ranges already drained clean; nothing
+            // further is read.
+            self.done = true;
+            self.local.clear();
+            self.queues.state.lock().expect("the merge's range queues").abandoned = true;
+            self.queues.cv.notify_all();
+        }
+        Some(item)
     }
 }
 
-/// Merge one zoom's chunks with `workers` range workers, or serially when the
-/// zoom is too small to repay planning.
-///
-/// Returns the tile sequence as an iterator (serial [`Merged`] or parallel
-/// coordinator — both yield `(tile, layers)` ascending), plus a flag the
-/// caller uses only for reporting. Errors surface identically either way.
 enum MergeStream<'a> {
     Serial(Merged<'a>),
     Parallel(ParallelMerge),
@@ -811,18 +973,17 @@ mod tests_parallel {
                 let plan =
                     super::plan_ranges(&chunks, &spill, z, workers).expect("plan the ranges");
                 let got = std::thread::scope(|s| {
-                    let mut receivers = Vec::with_capacity(workers);
+                    let queues = super::RangeQueues::new(workers);
                     let chunks_ref = &chunks;
                     let spill_ref = &spill;
                     let plan_ref = &plan;
                     for r in 0..workers {
-                        let (tx, rx) = std::sync::mpsc::sync_channel(super::RANGE_QUEUE_BOUND);
-                        receivers.push(rx);
+                        let tx = queues.sender(r);
                         s.spawn(move || {
                             super::merge_range_into(chunks_ref, spill_ref, plan_ref, r, tx);
                         });
                     }
-                    let mut coord = super::ParallelMerge::new(receivers);
+                    let mut coord = super::ParallelMerge::new(queues);
                     collect(&mut coord)
                 });
                 assert_eq!(got, want, "worker count {workers} moved z{z}");
@@ -861,18 +1022,17 @@ mod tests_parallel {
         let workers = 4usize;
         let plan = super::plan_ranges(&chunks, &spill, 14, workers).expect("plan");
         let got = std::thread::scope(|s| {
-            let mut receivers = Vec::with_capacity(workers);
+            let queues = super::RangeQueues::new(workers);
             let chunks_ref = &chunks;
             let spill_ref = &spill;
             let plan_ref = &plan;
             for r in 0..workers {
-                let (tx, rx) = std::sync::mpsc::sync_channel(super::RANGE_QUEUE_BOUND);
-                receivers.push(rx);
+                let tx = queues.sender(r);
                 s.spawn(move || {
                     super::merge_range_into(chunks_ref, spill_ref, plan_ref, r, tx);
                 });
             }
-            let mut coord = super::ParallelMerge::new(receivers);
+            let mut coord = super::ParallelMerge::new(queues);
             collect(&mut coord)
         });
         assert_eq!(got, want, "empty ranges must not add or drop tiles");

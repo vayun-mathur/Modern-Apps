@@ -404,42 +404,49 @@ pub fn extend_region_links_with(
         kind: Band,
         kind_name: String,
     }
+    enum Kept {
+        Boundary(Boundary),
+        Place(PlacePoint),
+    }
+    // The scan decodes the whole store across the pool (`Store::par_scan`, file order kept), and
+    // the per-feature filter -- including `Boundary::new`'s area and bbox walk -- runs there too.
+    // The split into the two vectors below is in file order, so both are exactly what the
+    // one-cursor loop built.
+    let kept = store.par_scan(|feature| {
+        if feature.id == ID_NONE {
+            return None;
+        }
+        if feature.class.layer == LAYER_BOUNDARIES && feature.class.area {
+            let Geometry::Polygons(polygons) = feature.geometry else {
+                return None;
+            };
+            if polygons.is_empty() {
+                return None;
+            }
+            Some(Kept::Boundary(Boundary::new(feature.id, feature.class.kind_detail, polygons)))
+        } else if feature.class.layer == LAYER_PLACES {
+            let Geometry::Points(points) = feature.geometry else {
+                return None;
+            };
+            let &point = points.first()?;
+            let kind_name = place_kind_name(feature.class.kind)?;
+            let band = band_for_place_kind(kind_name)?;
+            Some(Kept::Place(PlacePoint {
+                id: feature.id,
+                point,
+                kind: band,
+                kind_name: kind_name.to_string(),
+            }))
+        } else {
+            None
+        }
+    })?;
     let mut boundaries: Vec<Boundary> = Vec::new();
     let mut places: Vec<PlacePoint> = Vec::new();
-    {
-        let mut reader = store.reader()?;
-        while let Some(feature) = reader.next()? {
-            if feature.id == ID_NONE {
-                continue;
-            }
-            if feature.class.layer == LAYER_BOUNDARIES && feature.class.area {
-                let Geometry::Polygons(polygons) = feature.geometry else {
-                    continue;
-                };
-                if polygons.is_empty() {
-                    continue;
-                }
-                boundaries.push(Boundary::new(feature.id, feature.class.kind_detail, polygons));
-            } else if feature.class.layer == LAYER_PLACES {
-                let Geometry::Points(points) = feature.geometry else {
-                    continue;
-                };
-                let Some(&point) = points.first() else {
-                    continue;
-                };
-                let Some(kind_name) = place_kind_name(feature.class.kind) else {
-                    continue;
-                };
-                let Some(band) = band_for_place_kind(kind_name) else {
-                    continue;
-                };
-                places.push(PlacePoint {
-                    id: feature.id,
-                    point,
-                    kind: band,
-                    kind_name: kind_name.to_string(),
-                });
-            }
+    for item in kept {
+        match item {
+            Kept::Boundary(b) => boundaries.push(b),
+            Kept::Place(p) => places.push(p),
         }
     }
     boundaries.retain(|b| b.bbox.is_some() && b.area > 0.0);

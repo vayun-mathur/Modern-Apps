@@ -66,6 +66,21 @@ impl Progress {
         }
     }
 
+    /// `n` units done at once, for loops that finish work in batches rather than one unit at a
+    /// time. Draws at most once per call, and only when the whole percent moved -- the same
+    /// throttle as [`tick`](Self::tick), so the meter reads the same.
+    pub fn tick_n(&mut self, n: usize, unit: &str) {
+        self.done += n;
+        if !self.on || self.total == 0 {
+            return;
+        }
+        let pct = self.done * 100 / self.total;
+        if pct != self.last_pct {
+            self.last_pct = pct;
+            self.draw(unit);
+        }
+    }
+
     /// Snap to 100% and drop to a fresh line, so the next stage's first line
     /// starts clean instead of on top of the meter.
     pub fn finish(&mut self, unit: &str) {

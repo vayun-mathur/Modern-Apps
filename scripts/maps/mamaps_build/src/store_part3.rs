@@ -11,6 +11,7 @@
 /// reader was not waiting on disk, it was busy discarding features (see [`ZoomReader::spawn`]). Kept
 /// as a named constant of 1 rather than deleted, because the shape of the partition is worth being
 /// explicit about and because the next person to look at a 643 MB/s number will have the same idea.
+#[cfg_attr(not(test), allow(dead_code))]
 const PREFETCH_RUN: usize = 1;
 
 /// Chunks one lane may run ahead by.
@@ -18,9 +19,11 @@ const PREFETCH_RUN: usize = 1;
 /// Bounds the prefetch at `prefetch_lanes() * (PREFETCH_DEPTH + 1) * 64` features — about 34 K at
 /// constants above, which is small against the 512 Ki *vertices* the tiler batches immediately
 /// downstream. Depth is here to absorb a slow chunk, not to buffer.
+#[cfg_attr(not(test), allow(dead_code))]
 const PREFETCH_DEPTH: usize = 32;
 
 /// Reads the chunks one zoom needs and seeks past the rest.
+#[cfg_attr(not(test), allow(dead_code))]
 pub struct ZoomReader {
     /// One receiver per lane. Wanted-chunk `k` is decoded by lane `(k / PREFETCH_RUN) % lanes.len()`,
     /// so walking the lanes a run at a time reproduces file order exactly. Empty when there is
@@ -47,6 +50,7 @@ impl Drop for ZoomReader {
     }
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 impl ZoomReader {
     /// Start a lane per [`prefetch_lanes`] over `wanted`, dealt round-robin.
     ///
@@ -176,6 +180,7 @@ impl ZoomReader {
     ///
     /// Exposed so the tiler can show progress: the map phase is the longest in the build and was
     /// silent for all of it, which on a continent is forty minutes of no output at all.
+    #[allow(dead_code)]
     pub fn chunks(&self) -> (usize, usize) {
         (self.at.min(self.total), self.total)
     }
@@ -280,6 +285,10 @@ pub struct WaySink {
     count: u64,
     refs: u64,
     max_ref: i64,
+    /// Bytes staged so far: the next record's offset, for the block index.
+    at: u64,
+    /// The block index over the stream. See [`WayBlockLoc`].
+    blocks: Vec<WayBlockLoc>,
 }
 
 /// Where a [`WaySink`] stages its bytes: a file, or anonymous memory.
@@ -300,6 +309,8 @@ impl WaySink {
             count: 0,
             refs: 0,
             max_ref: 0,
+            at: 0,
+            blocks: Vec::new(),
         })
     }
 
@@ -334,6 +345,8 @@ impl WaySink {
             count: 0,
             refs: 0,
             max_ref: 0,
+            at: 0,
+            blocks: Vec::new(),
         })
     }
 
@@ -359,54 +372,22 @@ impl WaySink {
         building: Option<BuildingAttrs>,
     ) -> Result<()> {
         if self.count > 0 && id <= self.last_id {
-            return err(format!(
-                "way {id} arrived after way {}, so this PBF is not sorted by way id and the \
-                 sequential ways spill cannot be used for it",
-                self.last_id,
-            ));
+            return err(unsorted_ways(id, self.last_id));
         }
         self.record.clear();
         put_svarint(&mut self.record, id.wrapping_sub(self.last_id));
-        put_uvarint(&mut self.record, pack(class)?);
-        put_uvarint(&mut self.record, refs.len() as u64);
-        let mut previous: i64 = 0;
-        for &node in refs {
-            put_svarint(&mut self.record, node.wrapping_sub(previous));
-            previous = node;
-            self.max_ref = self.max_ref.max(node);
-        }
-        match name.filter(|n| !n.is_empty()) {
-            Some(name) => {
-                put_uvarint(&mut self.record, name.len() as u64);
-                self.record.extend_from_slice(name.as_bytes());
-            }
-            None => put_uvarint(&mut self.record, 0),
-        }
-        put_uvarint(&mut self.record, lane_count as u64);
-        // The turn masks: a count then each u16, forward then backward. Zero counts for the
-        // overwhelming majority, which cost one byte each.
-        for masks in [turn_fwd, turn_bwd] {
-            put_uvarint(&mut self.record, masks.len() as u64);
-            for &m in masks {
-                put_uvarint(&mut self.record, m as u64);
-            }
-        }
-        // The directional split, as one packed varint. Zero — one byte — for the roads whose
-        // division was never surveyed, which is most of them.
-        put_uvarint(&mut self.record, pack_carriageway(carriageway));
-        // The building attributes: a presence byte, then the three packed words when present. A
-        // non-building writes one zero byte; a building — even one with no S3DB tags — writes its
-        // (usually all-zero) words so the tiler's side table stays dense-parallel to the layer.
-        match building {
-            Some(attrs) => {
-                put_uvarint(&mut self.record, 1);
-                let (a, b, c) = pack_building(&attrs);
-                put_uvarint(&mut self.record, a);
-                put_uvarint(&mut self.record, b);
-                put_uvarint(&mut self.record, c);
-            }
-            None => put_uvarint(&mut self.record, 0),
-        }
+        let max_ref = encode_way_tail(
+            &mut self.record,
+            class,
+            refs,
+            name,
+            lane_count,
+            turn_fwd,
+            turn_bwd,
+            carriageway,
+            building,
+        )?;
+        self.max_ref = self.max_ref.max(max_ref);
         // Moved out rather than cloned: `out_write` takes `&mut self`, so `&self.record`
         // cannot borrow across the call, and a per-way clone is a memcpy per record over
         // millions of records. The buffer is restored below with its capacity intact, so the
@@ -415,12 +396,62 @@ impl WaySink {
         let result = self.out_write(&record).map_err(|e| {
             Error(format!("cannot write the ways spill: {e}"))
         });
+        let len = record.len() as u64;
         self.record = record;
         result?;
+        self.note_block(len, 1);
         self.last_id = id;
         self.count += 1;
         self.refs += refs.len() as u64;
         Ok(())
+    }
+
+    /// Append a run of ways a worker encoded ([`WayBlock`]). Writes exactly what `push` would
+    /// have written for those ways one at a time: the block's first id varint is re-encoded
+    /// against the last id this sink saw, the rest is copied verbatim. The ordering rule is
+    /// enforced across the block boundary just as `push` enforces it between records.
+    pub fn push_block(&mut self, block: &WayBlock) -> Result<()> {
+        if block.count == 0 {
+            return Ok(());
+        }
+        if self.count > 0 && block.first_id <= self.last_id {
+            return err(unsorted_ways(block.first_id, self.last_id));
+        }
+        self.record.clear();
+        put_svarint(&mut self.record, block.first_id.wrapping_sub(self.last_id));
+        let head = std::mem::take(&mut self.record);
+        let wrote = self
+            .out_write(&head)
+            .and_then(|()| self.out_write(&block.bytes[block.head_len..]));
+        let len = (head.len() + block.bytes.len() - block.head_len) as u64;
+        self.record = head;
+        wrote?;
+        self.note_block(len, block.count);
+        self.last_id = block.last_id;
+        self.count += block.count;
+        self.refs += block.refs;
+        self.max_ref = self.max_ref.max(block.max_ref);
+        Ok(())
+    }
+
+    /// Index `len` bytes / `ways` records just written at `self.at`, whose first delta is taken
+    /// from `self.last_id` (still the pre-write value). Coalesced into the previous entry while
+    /// that stays within [`WAY_BLOCK_WAYS`]: a run of consecutive records decodes from the first
+    /// one's base however it was written, so merging entries changes nothing but the index size.
+    fn note_block(&mut self, len: u64, ways: u64) {
+        match self.blocks.last_mut() {
+            Some(last) if last.offset + last.len == self.at && last.ways + ways <= WAY_BLOCK_WAYS => {
+                last.len += len;
+                last.ways += ways;
+            }
+            _ => self.blocks.push(WayBlockLoc {
+                offset: self.at,
+                len,
+                start_last_id: self.last_id,
+                ways,
+            }),
+        }
+        self.at += len;
     }
 
     fn out_write(&mut self, bytes: &[u8]) -> Result<()> {
@@ -448,7 +479,12 @@ impl WaySink {
             WayOut::File(f) => f.flush().map_err(|e| Error(format!("cannot flush the ways spill: {e}")))?,
             WayOut::Anon(a) => a.finish(),
         }
-        Ok(WayCounts { ways: self.count, refs: self.refs, max_ref: self.max_ref })
+        Ok(WayCounts {
+            ways: self.count,
+            refs: self.refs,
+            max_ref: self.max_ref,
+            blocks: std::mem::take(&mut self.blocks),
+        })
     }
 
     /// Anonymous twin of [`finish`](Self::finish): seals the pagefile-backed
@@ -461,7 +497,12 @@ impl WaySink {
             }
             WayOut::Anon(a) => a.finish(),
         }
-        let counts = WayCounts { ways: self.count, refs: self.refs, max_ref: self.max_ref };
+        let counts = WayCounts {
+            ways: self.count,
+            refs: self.refs,
+            max_ref: self.max_ref,
+            blocks: std::mem::take(&mut self.blocks),
+        };
         match self.out {
             WayOut::Anon(a) => Ok((counts, a)),
             WayOut::File(_) => unreachable!("checked above"),
@@ -477,7 +518,12 @@ impl WaySink {
             WayOut::File(f) => f.flush().map_err(|e| Error(format!("cannot flush the ways spill: {e}")))?,
             WayOut::Anon(a) => a.finish(),
         }
-        let counts = WayCounts { ways: self.count, refs: self.refs, max_ref: self.max_ref };
+        let counts = WayCounts {
+            ways: self.count,
+            refs: self.refs,
+            max_ref: self.max_ref,
+            blocks: std::mem::take(&mut self.blocks),
+        };
         match self.out {
             WayOut::Anon(a) => Ok((counts, Some(a))),
             WayOut::File(_) => Ok((counts, None)),
@@ -493,6 +539,8 @@ pub struct WayCounts {
     /// The largest node ref written, or zero if none were. What a bitset over the id space is sized
     /// from.
     pub max_ref: i64,
+    /// The block index over the stream, in stream order: what [`WayBlocks`] decodes from.
+    pub blocks: Vec<WayBlockLoc>,
 }
 
 /// Reads back what a [`WaySink`] wrote, in the order it was written.
@@ -508,6 +556,7 @@ pub struct WayReader {
 
 /// Where a [`WayReader`] reads from.
 enum WayIn {
+#[cfg_attr(not(test), allow(dead_code))]
     File(BufReader<File>),
     Anon {
         store: std::sync::Arc<tile_build::anon::AnonStore>,
@@ -515,4 +564,6 @@ enum WayIn {
         buf: Vec<u8>,
         used: usize,
     },
+    /// One block of the stream, read whole ([`WayBlocks::reader`]).
+    Slice { buf: Vec<u8>, used: usize },
 }

@@ -146,14 +146,24 @@ fn align_up8(n: usize) -> usize {
 /// Batch-tool path (traffic/junction stream whole tables), so one pass beats
 /// per-block caching. The device inflates lazily instead — see
 /// `maps/.../graph_part1.rs::BlockedView`.
-fn inflate_all(view: &tilecodec::blocked::Blocked) -> Result<Vec<u8>> {
-    let mut cache = tilecodec::blocked::BlockCache::new(0);
+pub(crate) fn inflate_all(view: &tilecodec::blocked::Blocked) -> Result<Vec<u8>> {
+    // Blocks inflate independently (`Blocked::block` is `&self` and pure), so they go across the
+    // pool a group at a time and are appended in block order: the same bytes the one-block-at-a-
+    // time loop produced. On the planet graph this was ~13 GB of nodes + edge records inflated on
+    // one thread, the 1m40s at ~1.3 cores before the junction layer's first connector.
+    use rayon::prelude::*;
+    const GROUP: usize = 4096;
     let mut out = Vec::with_capacity(view.unpacked_len() as usize);
-    for b in 0..view.block_count() {
-        let block = cache
-            .get(view, b)
-            .map_err(|e| osm_ingest::proto::Error(e.0))?;
-        out.extend_from_slice(block);
+    let n = view.block_count();
+    let mut start = 0usize;
+    while start < n {
+        let end = (start + GROUP).min(n);
+        let blocks: Vec<std::result::Result<Vec<u8>, _>> =
+            tile_build::par::install(|| (start..end).into_par_iter().map(|b| view.block(b)).collect());
+        for block in blocks {
+            out.extend_from_slice(&block.map_err(|e| osm_ingest::proto::Error(e.0))?);
+        }
+        start = end;
     }
     if out.len() as u64 != view.unpacked_len() {
         return err("a blocked section inflated short of its unpacked length".to_string());

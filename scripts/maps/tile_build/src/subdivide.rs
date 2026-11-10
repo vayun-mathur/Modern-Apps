@@ -123,6 +123,99 @@ where
     walk(&clipped, level, cx, cy, z, extent, buffer, emit);
 }
 
+/// Vertices below which a cell's subtree is walked on one thread by [`subdivide_par`]. A
+/// cell this small clips in microseconds; above it, the four children are worth a hand-off.
+const PAR_WALK_MIN_VERTICES: usize = 4096;
+
+/// Every vertex in `g`, all parts and rings.
+pub fn vertex_count<V>(g: &Geometry<V>) -> usize {
+    match g {
+        Geometry::Points(p) => p.len(),
+        Geometry::Lines(l) => l.iter().map(Vec::len).sum(),
+        Geometry::Polygons(p) => p.iter().flatten().map(Vec::len).sum(),
+    }
+}
+
+/// [`subdivide`], with the four children of every large cell clipped and walked on the pool,
+/// returned rather than emitted.
+///
+/// For the one feature that would otherwise hold a whole zoom's map phase on one thread: a
+/// state- or country-sized polygon at z12-z14 is a descent through hundreds of thousands of
+/// cells, and a chunk carrying one finishes seconds after every other worker has gone idle
+/// (California, measured: z13's map ran 8.8 s at ~1.4 cores of tiling CPU, its tail one
+/// thread deep in `clip_geometry` under `walk`).
+///
+/// Same tiles, same clipped geometries, **in the same order** `subdivide` emits them: each
+/// child's subtree is the very `walk` the sequential descent runs (same clips of the same
+/// inputs -- the clipper is a pure function), and the four results are concatenated in the
+/// `(0,0), (1,0), (0,1), (1,1)` order the sequential loop visits them. So a caller that
+/// replays the result through its `emit` sees exactly the sequential call sequence.
+pub fn subdivide_par<V>(g: &Geometry<V>, z: u8, extent: u32, buffer: f64) -> Vec<(u64, u64, Geometry<V>)>
+where
+    V: Vertex + Send + Sync,
+{
+    let mut out = Vec::new();
+    if let Geometry::Points(pts) = g {
+        bucket_points(pts, z, extent, buffer, &mut |x, y, leaf: &Geometry<V>| {
+            out.push((x, y, leaf.clone()))
+        });
+        return out;
+    }
+    let Some(box_) = geom::bounds(g) else { return out };
+    let Some(range) = geom::tile_range(&box_, z, extent, buffer) else { return out };
+    let mut shift = 0u32;
+    while (range.x0 >> shift) != (range.x1 >> shift) || (range.y0 >> shift) != (range.y1 >> shift) {
+        shift += 1;
+    }
+    let level = z - shift as u8;
+    let (cx, cy) = (range.x0 >> shift, range.y0 >> shift);
+    let clipped = clip_geometry(g, &cell_rect(level, cx, cy, z, extent, buffer));
+    if is_empty(&clipped) {
+        return out;
+    }
+    crate::par::install(|| walk_par(&clipped, level, cx, cy, z, extent, buffer, &mut out));
+    out
+}
+
+/// [`walk`], fanned out over the four children while the cell is large. See [`subdivide_par`].
+#[allow(clippy::too_many_arguments)]
+fn walk_par<V>(
+    g: &Geometry<V>,
+    level: u8,
+    cx: u64,
+    cy: u64,
+    z: u8,
+    extent: u32,
+    buffer: f64,
+    out: &mut Vec<(u64, u64, Geometry<V>)>,
+) where
+    V: Vertex + Send + Sync,
+{
+    if level == z || vertex_count(g) < PAR_WALK_MIN_VERTICES {
+        walk(g, level, cx, cy, z, extent, buffer, &mut |x, y, leaf: &Geometry<V>| {
+            out.push((x, y, leaf.clone()))
+        });
+        return;
+    }
+    use rayon::prelude::*;
+    let box_ = geom::bounds(g);
+    let children: Vec<Vec<(u64, u64, Geometry<V>)>> = [(0u64, 0u64), (1, 0), (0, 1), (1, 1)]
+        .par_iter()
+        .map(|&(dx, dy)| {
+            let (nx, ny) = (cx * 2 + dx, cy * 2 + dy);
+            let clipped = clip_child(g, box_.as_ref(), &cell_rect(level + 1, nx, ny, z, extent, buffer));
+            let mut sub = Vec::new();
+            if !is_empty(&clipped) {
+                walk_par(&clipped, level + 1, nx, ny, z, extent, buffer, &mut sub);
+            }
+            sub
+        })
+        .collect();
+    for sub in children {
+        out.extend(sub);
+    }
+}
+
 /// One quadtree cell's clip rect in world coordinates, grown by `buffer`.
 ///
 /// At `level == z` this is [`geom::tile_rect`] to the bit: `2^0` is 1, so the

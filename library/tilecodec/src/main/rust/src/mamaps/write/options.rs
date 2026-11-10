@@ -37,6 +37,10 @@ pub struct Options {
     pub min_lat_e7: i32,
     pub max_lon_e7: i32,
     pub max_lat_e7: i32,
+    /// Threads `finish` may use to compress leaves; `0` means the machine's available
+    /// parallelism. Speed only: every leaf's frame is a pure function of the leaf, so the
+    /// archive is the same at any count.
+    pub threads: usize,
 }
 
 impl Default for Options {
@@ -54,6 +58,7 @@ impl Default for Options {
             min_lat_e7: -850_511_287,
             max_lon_e7: 1_800_000_000,
             max_lat_e7: 850_511_287,
+            threads: 0,
         }
     }
 }

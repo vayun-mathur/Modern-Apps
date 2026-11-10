@@ -1,235 +1,166 @@
+/// Decode threads for [`read_chunks`]: `MAPS_PREFETCH_LANES` when set, else a share of the box.
+///
+/// The old reader decoded through one `ZoomReader` (4 lanes) behind three more partitions it could
+/// not consume until the first was done, and moved every feature through one thread on the way to
+/// the workers; on a 192-thread box the clipping workers spent most of each small zoom blocked on
+/// it (California: ~190 of 192 workers parked on the chunk channel while the reader ran; the
+/// Nov 10 planet build's map phases ran at 3-5 cores with the reader's wall equal to the map's).
+/// A third of the threads, at least 4 and at most 64: on the planet decode is the whole cost of a
+/// zoom's map (z9: ~270 s of reader wall against ~3 s of clipping per core), and on California,
+/// where it is not, 32/64/96 decoders measured within noise of each other.
+fn decode_threads() -> usize {
+    match std::env::var("MAPS_PREFETCH_LANES").ok().and_then(|v| v.trim().parse::<usize>().ok()) {
+        Some(n) if n > 0 => n,
+        _ => (par::threads() / 3).clamp(4, 64),
+    }
+}
+
+/// Decoded blocks a decode thread may run ahead of the sequencer, per decode thread.
+const DECODE_AHEAD_PER_THREAD: usize = 8;
+
+/// One decoded spill chunk: the zoom's features from it and each one's vertex count.
+type DecodedBlock = osm_ingest::proto::Result<(Vec<Feature>, Vec<usize>)>;
+
+/// One slot of [`read_chunks`]'s reorder ring. Wanted-chunk `k` lives in slot `k % ring`; the slot
+/// expects `k` once the sequencer has taken `k - ring` out of it. A slot of its own per block --
+/// rather than one map behind one lock and two condvars -- because the shared version woke every
+/// parked decoder on every block taken and the sequencer on every block deposited, and that herd
+/// cost more than the decode it organised.
+struct RingSlot {
+    /// The wanted-chunk index this slot holds or waits for.
+    expect: usize,
+    block: Option<DecodedBlock>,
+}
+
 fn read_chunks(
     store: &Store,
     z: u8,
-    send: std::sync::mpsc::SyncSender<(usize, Vec<Feature>)>,
+    send: std::sync::mpsc::SyncSender<(usize, Vec<Vec<Feature>>)>,
 ) -> Result<()> {
-    // Ordered parallel producer: dedicated decode threads (never the rayon pool)
-    // pull contiguous spill chunks, resequenced by file index before batching.
-    // ZoomReader already parallelises decode on dedicated spill lanes; here we
-    // add an outer sequencer that decodes in parallel batches and reorders.
-    let total_wanted = store.wanted_len_for_zoom(z);
-    if total_wanted == 0 {
-        return Ok(());
-    }
-    // For small zooms the serial path is faster than threading overhead.
-    if total_wanted < 256 {
-        let mut reader =
-            store.reader_for_zoom(z).map_err(|e| tile_build::proto::Error(e.to_string()))?;
-        let want = chunk_vertices();
-        let mut chunk: Vec<Feature> = Vec::new();
-        let mut vertices = 0usize;
-        let mut index = 0usize;
-        let (_, total) = reader.chunks();
-        let mut bar = Progress::new(format!("Map z{z}"), total, "chunk(s)", true);
-        let mut ticked = 0usize;
-        loop {
-            let next = reader.next().map_err(|e| tile_build::proto::Error(e.to_string()))?;
-            let (done, _) = reader.chunks();
-            while ticked < done {
-                bar.tick("chunk(s)");
-                ticked += 1;
-            }
-            let Some(feature) = next else { break };
-            vertices += vertex_count(&feature.geometry);
-            chunk.push(feature);
-            if vertices >= want {
-                if send.send((index, std::mem::take(&mut chunk))).is_err() {
-                    return Ok(());
-                }
-                index += 1;
-                vertices = 0;
-            }
-        }
-        if !chunk.is_empty() {
-            let _ = send.send((index, chunk));
-        }
-        bar.finish("chunk(s)");
-        return Ok(());
-    }
-    // Bounded k-way merge: 4 dedicated decode lanes stream per-feature in
-    // file order with backpressure; peak ~ O(lanes × CHUNK_VERTICES) not O(zoom).
-    // Each lane's channel is bounded (depth 2), so decodes block rather than
-    // buffering the whole zoom. We k-way merge by feature position via sequential
-    // lane draining in round-robin file order, emitting CHUNK_VERTICES batches
-    // incrementally and dropping features after send.
-    let want = chunk_vertices();
-    let lanes = 4usize.min(total_wanted.div_ceil(64));
-    let wanted_per_lane = total_wanted.div_ceil(lanes.max(1));
+    // Cut the zoom's feature stream into chunks of roughly [`chunk_vertices`] input vertices and
+    // send them on, in order. The stream is the wanted spill chunks in file order, each filtered to
+    // the zoom's window -- exactly what `Store::reader_for_zoom` yields -- and the cut is the same
+    // running vertex count, so the chunks (and their indices) are what they always were.
+    //
+    // Decode runs on dedicated threads (not the pool, which the clipping workers' own pool hand-offs
+    // use -- see `ZoomReader::spawn` for what queuing decode behind clipping cost), each claiming
+    // the next wanted chunk, so decode scales with the box instead of with four lanes. The
+    // sequencer (this thread) takes blocks back in wanted order and never touches a feature: it
+    // adds up the decoders' vertex counts and moves whole blocks, splitting one only where a cut
+    // falls inside it. A tiler chunk is therefore a list of blocks, walked in order by
+    // `tile_chunk`.
     let wanted = store.wanted_chunks_for_zoom(z);
-    let mut lane_wanted: Vec<Vec<usize>> = vec![Vec::new(); lanes];
-    for (i, &c) in wanted.iter().enumerate() {
-        let lane = (i / wanted_per_lane).min(lanes - 1);
-        lane_wanted[lane].push(c);
+    let total = wanted.len();
+    if total == 0 {
+        return Ok(());
     }
-    let store_path = store.path().to_path_buf();
-    let store_chunks = store.raw_chunks().to_vec();
-    let store_mins = store.chunk_mins_cloned();
-    let store_anon = store.anon_store();
-    // Bounded per-lane channels: each lane streams its features in order.
-    // Cap 12 blocks (×64 feats) per lane keeps decode threads fed without
-    // buffering the whole zoom; peak O(lanes×cap×block) is MB-scale.
-    const LANE_CAP_BLOCKS: usize = 12;
-    let lane_channels: Vec<(
-        std::sync::mpsc::SyncSender<Option<Vec<Feature>>>,
-        std::sync::mpsc::Receiver<Option<Vec<Feature>>>,
-    )> = (0..lanes)
-        .map(|_| std::sync::mpsc::sync_channel::<Option<Vec<Feature>>>(LANE_CAP_BLOCKS))
+    let chunks = store.zoom_chunks().map_err(|e| tile_build::proto::Error(e.to_string()))?;
+    let decoders = decode_threads().min(total).max(1);
+    let ring = decoders * DECODE_AHEAD_PER_THREAD;
+    let claim = AtomicUsize::new(0);
+    let stop = std::sync::atomic::AtomicBool::new(false);
+    let slots: Vec<(Mutex<RingSlot>, std::sync::Condvar)> = (0..ring)
+        .map(|i| (Mutex::new(RingSlot { expect: i, block: None }), std::sync::Condvar::new()))
         .collect();
-    let (sends, recvs): (Vec<_>, Vec<_>) = lane_channels.into_iter().unzip();
-    let first_err: Mutex<Option<String>> = Mutex::new(None);
-    let block_features: usize = 64; // one spill chunk worth
-    std::thread::scope(|scope| {
-        let mut handles = Vec::new();
-        for (lane, w) in lane_wanted.into_iter().enumerate() {
-            let path = store_path.clone();
-            let chunks = store_chunks.clone();
-            let chunk_mins = store_mins.clone();
-            let anon = store_anon.clone();
-            let first_err = &first_err;
-            let send_lane = sends[lane].clone();
-            let h = std::thread::Builder::new()
+    let want = chunk_vertices();
+
+    std::thread::scope(|scope| -> Result<()> {
+        for lane in 0..decoders {
+            let (chunks, wanted, claim, stop, slots) = (&chunks, &wanted, &claim, &stop, &slots);
+            std::thread::Builder::new()
                 .name(format!("mamaps-decode-{lane}"))
                 .spawn_scoped(scope, move || {
-                    let store_view =
-                        crate::store::Store::view_over(path, chunks, chunk_mins, anon);
-                    let mut r = match store_view.reader_for_wanted(w, z) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            let mut g = first_err.lock().unwrap();
-                            if g.is_none() {
-                                *g = Some(e.to_string());
-                            }
-                            let _ = send_lane.send(None);
+                    let mut scratch = Vec::new();
+                    let mut records = Vec::new();
+                    loop {
+                        let k = claim.fetch_add(1, Ordering::Relaxed);
+                        if k >= wanted.len() || stop.load(Ordering::Relaxed) {
                             return;
                         }
-                    };
-                    let mut block: Vec<Feature> = Vec::with_capacity(block_features);
-                    loop {
-                        match r.next() {
-                            Ok(Some(f)) => {
-                                block.push(f);
-                                if block.len() >= block_features {
-                                    if send_lane.send(Some(std::mem::take(&mut block))).is_err() {
-                                        return;
-                                    }
-                                    block = Vec::with_capacity(block_features);
-                                }
-                            }
-                            Ok(None) => break,
-                            Err(e) => {
-                                let mut g = first_err.lock().unwrap();
-                                if g.is_none() {
-                                    *g = Some(e.to_string());
-                                }
-                                break;
-                            }
+                        let decoded = chunks.decode(wanted[k], z, &mut scratch, &mut records);
+                        let failed = decoded.is_err();
+                        // Park until the sequencer has emptied this slot of `k - ring`. The thread
+                        // holding the lowest outstanding claim always finds its slot free, so the
+                        // ring cannot deadlock.
+                        let (lock, cv) = &slots[k % ring];
+                        let mut slot = lock.lock().expect("the map reader's ring");
+                        while slot.expect != k && !stop.load(Ordering::Relaxed) {
+                            slot = cv.wait(slot).expect("the map reader's ring");
+                        }
+                        if stop.load(Ordering::Relaxed) {
+                            return;
+                        }
+                        slot.block = Some(decoded);
+                        drop(slot);
+                        cv.notify_all();
+                        if failed {
+                            return;
                         }
                     }
-                    if !block.is_empty() {
-                        let _ = send_lane.send(Some(block));
-                    }
-                    let _ = send_lane.send(None);
-                });
-            match h {
-                Ok(handle) => handles.push(handle),
-                Err(e) => {
-                    let mut g = first_err.lock().unwrap();
-                    if g.is_none() {
-                        *g = Some(format!("cannot start decode lane {lane}: {e}"));
-                    }
-                }
-            }
+                })
+                .map_err(|e| tile_build::proto::Error(format!("cannot start decode thread {lane}: {e}")))?;
         }
-        // Drop sends so lanes see close on early abort.
-        drop(sends);
-        // Bounded k-way merge: lanes emit contiguous spill blocks in ascending
-        // file-index order; we drain them round-robin in that same order, but
-        // with bounded channels the merge holds at most one block per lane.
-        // Because partitioning is contiguous, iterating lanes 0..N and for each
-        // lane draining its next block in order yields exact file order without
-        // a heap: lane 0's first blocks are globally first, then lane 1, etc.
-        // Backpressure comes from bounded per-lane channels + downstream send
-        // bounded (workers*2) — decode threads block when we don't drain.
-        let mut bar = Progress::new(format!("Map z{z}"), total_wanted, "chunk(s)", true);
-        let mut tiler_chunk: Vec<Feature> = Vec::new();
+
+        let mut bar = Progress::new(format!("Map z{z}"), total, "chunk(s)", true);
+        let mut current: Vec<Vec<Feature>> = Vec::new();
         let mut vertices = 0usize;
         let mut index = 0usize;
-        let mut ticked = 0usize;
-        // Estimate ticks from spill chunks; exact ticks come from progress model.
-        // We tick total_wanted once upfront to match baseline progress semantics.
-        while ticked < total_wanted {
-            bar.tick("chunk(s)");
-            ticked += 1;
-            if ticked >= total_wanted {
-                break;
-            }
-        }
-        let mut lane_done = vec![false; lanes];
-        let mut lane_buffers: Vec<std::collections::VecDeque<Feature>> =
-            (0..lanes).map(|_| std::collections::VecDeque::new()).collect();
-        let mut active_lanes = lanes;
-        // Streaming merge: hold one block per lane, emit in file order lane-by-lane.
-        // Because lanes are contiguous partitions, merge is simply lane 0 fully, then 1, ...
-        // But to keep peak bounded we rotate: fill one block per lane, emit it, loop.
-        // Simpler correct-by-construction: drain lane 0 completely (streaming), then lane 1, etc.
-        // Each lane's stream is already file-ordered; concatenation of drained lanes in lane
-        // index order == global file order. Bounded because we pull one block at a time per lane.
-        'outer: for lane in 0..lanes {
-            loop {
-                let block = recvs[lane].recv();
-                let block = match block {
-                    Ok(Some(b)) => b,
-                    Ok(None) => {
-                        lane_done[lane] = true;
-                        active_lanes -= 1;
-                        break;
+        let mut outcome: Result<()> = Ok(());
+        'blocks: for k in 0..total {
+            let decoded = {
+                let (lock, cv) = &slots[k % ring];
+                let mut slot = lock.lock().expect("the map reader's ring");
+                let block = loop {
+                    if let Some(block) = slot.block.take() {
+                        break block;
                     }
-                    Err(_) => {
-                        lane_done[lane] = true;
-                        active_lanes -= 1;
-                        break;
-                    }
+                    slot = cv.wait(slot).expect("the map reader's ring");
                 };
-                for feature in block {
-                    vertices += vertex_count(&feature.geometry);
-                    tiler_chunk.push(feature);
-                    if vertices >= want {
-                        if send.send((index, std::mem::take(&mut tiler_chunk))).is_err() {
-                            // Unblock lanes by draining
-                            for (li, done) in lane_done.iter().enumerate() {
-                                if !*done {
-                                    drop(recvs[li].try_recv());
-                                }
-                            }
-                            return Ok(());
-                        }
-                        index += 1;
-                        vertices = 0;
-                    }
+                // Free the slot for `k + ring`, whose decoder may already be parked on it.
+                slot.expect = k + ring;
+                drop(slot);
+                cv.notify_all();
+                block
+            };
+            bar.tick("chunk(s)");
+            let (mut features, counts) = match decoded {
+                Ok(block) => block,
+                Err(e) => {
+                    outcome = Err(tile_build::proto::Error(e.to_string()));
+                    break 'blocks;
                 }
-                // Bounded: after emitting one block's worth, loop pulls next block for this lane.
-                // Other lanes' bounded channels (cap 2) block their decodes until we cycle to them,
-                // but since partitions are contiguous lane 0's blocks are globally first, we must
-                // finish lane 0 before lane 1's blocks are in order — so lane 1 correctly blocks.
+            };
+            // `taken`: how many of this block's features already went out with an earlier cut.
+            let mut taken = 0usize;
+            for (i, &n) in counts.iter().enumerate() {
+                vertices += n;
+                if vertices >= want {
+                    let tail = features.split_off(i + 1 - taken);
+                    current.push(std::mem::replace(&mut features, tail));
+                    if send.send((index, std::mem::take(&mut current))).is_err() {
+                        // The workers are gone (a failure they already recorded): stop reading.
+                        break 'blocks;
+                    }
+                    index += 1;
+                    vertices = 0;
+                    taken = i + 1;
+                }
             }
-            if active_lanes == 0 {
-                break 'outer;
+            if !features.is_empty() {
+                current.push(features);
             }
-            let _ = &mut lane_buffers; // suppress unused warning
         }
-        for h in handles {
-            let _ = h.join();
+        // Release any decoder parked on a slot, whatever ended the loop.
+        stop.store(true, Ordering::Relaxed);
+        for (lock, cv) in &slots {
+            drop(lock.lock().expect("the map reader's ring"));
+            cv.notify_all();
         }
-        if !tiler_chunk.is_empty() {
-            let _ = send.send((index, tiler_chunk));
+        if outcome.is_ok() && !current.is_empty() {
+            let _ = send.send((index, current));
         }
         bar.finish("chunk(s)");
-        if let Some(e) = first_err.lock().unwrap().take() {
-            // Surface decode errors after draining so downstream sees failure rather than short archive.
-            // Error already logged; return Err to fail this zoom rather than publish short archive.
-            return Err(tile_build::proto::Error(e));
-        }
-        Ok(())
+        outcome
     })
 }
 
@@ -245,7 +176,7 @@ fn read_chunks(
 /// The spill write is deliberately **outside** the `catch_unwind`, which wraps [`tile_chunk`] alone.
 /// A failed write records the flag and keeps draining for exactly the same reason a panic does.
 fn tile_chunks(
-    receive: &Mutex<std::sync::mpsc::Receiver<(usize, Vec<Feature>)>>,
+    receive: &Mutex<std::sync::mpsc::Receiver<(usize, Vec<Vec<Feature>>)>>,
     done: &Mutex<Vec<(usize, ChunkRef, Tally)>>,
     failed: &std::sync::atomic::AtomicBool,
     spill: &ChunkSpill,
@@ -334,8 +265,13 @@ fn wash_drops_kind(layer: u8, area: bool, min_zoom: u8, z: u8) -> bool {
         && min_zoom != crate::DEFAULT_MAX_ZOOM
 }
 
+/// Vertices at or above which one feature's quadtree descent runs on the pool
+/// ([`subdivide::subdivide_par`]). Below it a feature tiles in well under a millisecond and the
+/// hand-off would cost more than it saves.
+const PAR_SUBDIVIDE_MIN_VERTICES: usize = 20_000;
+
 fn tile_chunk(
-    features: &[Feature],
+    features: &[Vec<Feature>],
     z: u8,
     tolerance: f64,
     buffer: f64,
@@ -350,7 +286,9 @@ fn tile_chunk(
     let mut t_annotate = std::time::Duration::ZERO;
     let mut t_filter = std::time::Duration::ZERO;
     let mut t_subdiv = std::time::Duration::ZERO;
-    for feature in features {
+    // A chunk is the reader's blocks in stream order (see `read_chunks`); flattened, it is the
+    // feature run the chunk always was.
+    for feature in features.iter().flatten() {
         // Country label gating: the score (footprint × headcount) decided in stage A
         // (see `extract_fallback::country_zoom`); this is where it is enforced. A
         // missing score keeps the schema floor — a missing map entry must never hide
@@ -400,7 +338,7 @@ fn tile_chunk(
             continue;
         }
         let t = std::time::Instant::now();
-        subdivide::subdivide(&thinned, z, EXTENT, buffer, &mut |tx, ty, clipped| {
+        let mut emit = |tx: u64, ty: u64, clipped: &Geometry<SigPt>| {
             // The descent prunes on a part surviving at all; this is the stricter test that
             // decides whether a tile is worth writing, and it stays exactly where it was.
             if is_empty(clipped) {
@@ -413,7 +351,21 @@ fn tile_chunk(
             let added = push(layer, feature, &local);
             tally.features += added.0;
             tally.points += added.1;
-        });
+        };
+        // A huge line or polygon (a state boundary, a national forest, a long coastline run)
+        // descends on the pool: alone it held z12-z14's map phase on one thread for seconds
+        // after every other chunk was done. `subdivide_par` returns the tiles in exactly the
+        // order `subdivide` emits them, so replaying them through the same `emit` is the same
+        // sequence of pushes.
+        if !matches!(thinned, Geometry::Points(_))
+            && subdivide::vertex_count(&thinned) >= PAR_SUBDIVIDE_MIN_VERTICES
+        {
+            for (tx, ty, clipped) in subdivide::subdivide_par(&thinned, z, EXTENT, buffer) {
+                emit(tx, ty, &clipped);
+            }
+        } else {
+            subdivide::subdivide(&thinned, z, EXTENT, buffer, &mut emit);
+        }
         t_subdiv += t.elapsed();
     }
     // TEMP-PROFILE: summed per worker; see `map_zoom` for the fold.
@@ -567,12 +519,3 @@ fn snap_building_ring(ring: &[SigPt]) -> Vec<SigPt> {
     out
 }
 
-/// Input vertices in a geometry, for chunking. Counted rather than estimated, because it is the
-/// number that decides how long a chunk takes.
-fn vertex_count(geometry: &Geometry) -> usize {
-    match geometry {
-        Geometry::Points(points) => points.len(),
-        Geometry::Lines(lines) => lines.iter().map(Vec::len).sum(),
-        Geometry::Polygons(polygons) => polygons.iter().flatten().map(Vec::len).sum(),
-    }
-}

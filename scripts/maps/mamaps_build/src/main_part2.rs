@@ -80,20 +80,10 @@ fn check_graph_dir(dir: &std::path::Path, region: osm_ingest::region::Region) ->
     // Under v7 the record arrays are ZBLK sections: unpack at the boundary
     // (this is a preflight check, not the hot path, so whole-section inflate
     // is fine).
+    // Block-parallel (see `schema::traffic::inflate_all`): the planet's 5 GB node table used to
+    // inflate on one thread here, in the preflight, before stage A could start.
     fn inflate_all(v: &tilecodec::blocked::Blocked) -> Result<Vec<u8>, String> {
-        let mut cache = tilecodec::blocked::BlockCache::new(0);
-        let mut out = Vec::with_capacity(v.unpacked_len() as usize);
-        for b in 0..v.block_count() {
-            out.extend_from_slice(
-                cache
-                    .get(v, b)
-                    .map_err(|e| format!("blocked inflate failed: {e}"))?,
-            );
-        }
-        if out.len() as u64 != v.unpacked_len() {
-            return Err("blocked inflate came up short".to_string());
-        }
-        Ok(out)
+        crate::schema::traffic::inflate_all(v).map_err(|e| format!("blocked inflate failed: {}", e.0))
     }
     let want_nodes = (node_count + 1)
         .checked_mul(12)

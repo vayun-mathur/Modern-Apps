@@ -20,6 +20,13 @@ impl Sink {
             }
             osm_ingest::mem::SpillPlan::File => {
                 eprintln!("  [stage A] feature spill -> {} (file backend: commit budget)", path.display());
+                // Created empty and marked uncompressed first (`create` below truncates the same
+                // inode, keeping the flag): the frames are already DEFLATE, so `compress-force`
+                // spends a zstd attempt per 128 KiB extent at writeback on bytes that will not
+                // shrink -- 289 GB of them on the planet. Best effort; the bytes are the same.
+                if let Ok(file) = std::fs::File::create(path) {
+                    osm_ingest::mem::mark_scratch_uncompressed(&file);
+                }
                 NormalizedWriter::create(path)
                     .map_err(|e| osm_ingest::proto::Error(e.to_string()))?
             }
@@ -85,20 +92,7 @@ impl Sink {
         name: Option<&str>,
         id: u64,
     ) -> Result<()> {
-        self.props[0].1 = Value::Uint(pack(class)?);
-        self.props.truncate(1);
-        if let Some(name) = name.filter(|n| !n.is_empty()) {
-            self.props.push((NAME_KEY.to_string(), Value::String(name.to_string())));
-        }
-        if id != tilecodec::mamaps::body::ID_NONE {
-            if !crate::extract::tracks_ids(class) {
-                return err(format!(
-                    "layer {} carries a feature id, which only places, poi and a boundaries region shape may",
-                    class.layer,
-                ));
-            }
-            self.props.push((ID_KEY.to_string(), Value::Uint(id)));
-        }
+        fill_named(&mut self.props, class, name, id)?;
         self.write_record(class, geometry)
     }
 
@@ -118,34 +112,7 @@ impl Sink {
         turn_bwd: &[u16],
         carriageway: Carriageway,
     ) -> Result<()> {
-        if name.is_none()
-            && lane_count == 0
-            && turn_fwd.is_empty()
-            && turn_bwd.is_empty()
-            && carriageway.is_empty()
-        {
-            return err("a road pushed with no lane data".to_string());
-        }
-        self.props[0].1 = Value::Uint(pack(class)?);
-        self.props.truncate(1);
-        if let Some(name) = name.filter(|n| !n.is_empty()) {
-            self.props.push((NAME_KEY.to_string(), Value::String(name.to_string())));
-        }
-        if lane_count > 0 {
-            self.props.push((LANE_COUNT_KEY.to_string(), Value::Uint(lane_count as u64)));
-        }
-        if !turn_fwd.is_empty() {
-            self.props
-                .push((TURN_FWD_KEY.to_string(), Value::String(osm_ingest::roads::pack_lanes(turn_fwd))));
-        }
-        if !turn_bwd.is_empty() {
-            self.props
-                .push((TURN_BWD_KEY.to_string(), Value::String(osm_ingest::roads::pack_lanes(turn_bwd))));
-        }
-        if !carriageway.is_empty() {
-            self.props
-                .push((CARRIAGEWAY_KEY.to_string(), Value::Uint(pack_carriageway(carriageway))));
-        }
+        fill_road(&mut self.props, class, name, lane_count, turn_fwd, turn_bwd, carriageway)?;
         self.write_record(class, geometry)
     }
 
@@ -161,15 +128,7 @@ impl Sink {
         name: Option<&str>,
         attrs: BuildingAttrs,
     ) -> Result<()> {
-        self.props[0].1 = Value::Uint(pack(class)?);
-        self.props.truncate(1);
-        if let Some(name) = name.filter(|n| !n.is_empty()) {
-            self.props.push((NAME_KEY.to_string(), Value::String(name.to_string())));
-        }
-        let (a, b, c) = pack_building(&attrs);
-        self.props.push((BLD_A_KEY.to_string(), Value::Uint(a)));
-        self.props.push((BLD_B_KEY.to_string(), Value::Uint(b)));
-        self.props.push((BLD_C_KEY.to_string(), Value::Uint(c)));
+        fill_building(&mut self.props, class, name, attrs)?;
         self.write_record(class, geometry)
     }
 

@@ -82,6 +82,7 @@ pub fn extract(
         way_refs,
         way_max_ref,
         ways_anon,
+        way_blocks,
         region_label_nodes,
         mut needed,
     } = pass1;
@@ -113,10 +114,10 @@ pub fn extract(
     // so the next large allocation cannot sit beside a dead one.
     drop(blob_kinds);
     timer.switch("lane-inherit");
+    let way_blocks = WayBlocks::open(&ways_path, &ways_anon, way_blocks)?;
     let inherited_lanes = inherit_lane_counts(
         spill_path,
-        &ways_path,
-        &ways_anon,
+        &way_blocks,
         &table,
         stats.ways_classified as usize,
         region.as_ref(),
@@ -131,7 +132,7 @@ pub fn extract(
     timer.switch("materialise-ways");
     materialise_ways(
         &ways_path,
-        &ways_anon,
+        way_blocks,
         &promoted,
         &inherited_lanes,
         &table,
@@ -349,6 +350,8 @@ struct Pass1Out {
     /// The sealed ways spill, shared by refcount with every later reader; `None` on the file
     /// plan, where readers open `ways_path` instead.
     ways_anon: Option<std::sync::Arc<tile_build::anon::AnonStore>>,
+    /// The block index over the ways spill (either backend), for the parallel readers.
+    way_blocks: Vec<WayBlockLoc>,
     /// `admin_centre`/`label` node member -> its boundary relation id, both raw OSM ids, for every
     /// relation that carries a region shape. The authoritative half of the place->boundary link:
     /// OSM points a boundary relation at its own label node directly, so no geometry test is needed.
@@ -412,14 +415,18 @@ fn run_pass1(
         "Pass 1: ways and relations",
         || {
             (
-                Vec::<(i64, Way)>::new(),
+                Vec::<WayBlock>::new(),
                 Vec::<Relation>::new(),
                 Vec::<crate::corridor::Segment>::new(),
                 Vec::<(i64, i64)>::new(),
+                Vec::<i64>::new(),
             )
         },
         |state, block| {
             let mut kinds = 0u8;
+            // This block's refs land past here; sorted and deduped below, so the drain sets
+            // the needed bitset in ascending runs instead of chasing every ref.
+            let refs_from = state.4.len();
             visit_block(block, KIND_WAYS | KIND_RELATIONS, &mut kinds, &mut |el| {
                 match el {
                     Element::Way(way) => {
@@ -475,19 +482,26 @@ fn run_pass1(
                             } else {
                                 None
                             };
-                            state.0.push((
+                            // Encoded HERE, on the worker, into the chunk's ways-spill blocks: the
+                            // drain only patches each block's first id and appends it. This was
+                            // the serial drain's record-by-record encode, which held pass 1 to ~4
+                            // of 192 cores on the planet (4m40s). Same bytes; see `WayBlock`.
+                            if state.0.last().is_none_or(|b| b.len() >= WAY_BLOCK_WAYS) {
+                                state.0.push(WayBlock::new());
+                            }
+                            let refs: &[i64] = &way.refs[..];
+                            state.0.last_mut().expect("pushed above").push(
                                 way.id,
-                                Way {
-                                    class,
-                                    refs: way.refs.to_vec(),
-                                    name,
-                                    lane_count,
-                                    turn_fwd,
-                                    turn_bwd,
-                                    carriageway,
-                                    building,
-                                },
-                            ));
+                                &class,
+                                refs,
+                                name.as_deref(),
+                                lane_count,
+                                &turn_fwd,
+                                &turn_bwd,
+                                carriageway,
+                                building,
+                            )?;
+                            state.4.extend_from_slice(refs);
                         }
                     }
                     Element::Relation(relation) => {
@@ -575,30 +589,21 @@ fn run_pass1(
                 }
                 Ok(())
             })?;
+            sort_dedup_tail(&mut state.4, refs_from);
             Ok(kinds)
         },
-        |(chunk_ways, chunk_relations, chunk_corridors, chunk_label_nodes)| {
+        |(chunk_ways, chunk_relations, chunk_corridors, chunk_label_nodes, chunk_refs)| {
             // Chunks arrive in file order and a PBF's ways are sorted by id, so appending here
-            // leaves the file in ascending id order. `WaySink::push` refuses an id that does not
-            // advance rather than letting an unsorted file reorder the archive silently.
-            for (id, way) in chunk_ways {
-                // Fused ref collection: the refs are decoded and in hand here,
-                // so the bitset takes them now instead of a later pass
-                // re-reading the spill to find them again.
-                for &node in &way.refs {
-                    needed.set_growable(node)?;
-                }
-                ways.push(
-                    id,
-                    &way.class,
-                    &way.refs,
-                    way.name.as_deref(),
-                    way.lane_count,
-                    &way.turn_fwd,
-                    &way.turn_bwd,
-                    way.carriageway,
-                    way.building,
-                )?;
+            // leaves the file in ascending id order. `WaySink::push_block` refuses an id that does
+            // not advance rather than letting an unsorted file reorder the archive silently.
+            for block in &chunk_ways {
+                ways.push_block(block)?;
+            }
+            // Fused ref collection: the refs were decoded on the worker, so the bitset takes
+            // them now instead of a later pass re-reading the spill to find them again. A bitset
+            // is order- and duplicate-blind, so the per-block sort/dedup changes no bit.
+            for &node in &chunk_refs {
+                needed.set_growable(node)?;
             }
             relations.extend(chunk_relations);
             corridors.extend(chunk_corridors);
@@ -611,8 +616,8 @@ fn run_pass1(
     )?;
     let (counts, store) = ways.finish_either()?;
     stats.ways_classified = counts.ways;
-    let (ways, way_refs, way_max_ref, ways_anon) =
-        (counts.ways, counts.refs, counts.max_ref, store.map(std::sync::Arc::new));
+    let (ways, way_refs, way_max_ref, ways_anon, way_blocks) =
+        (counts.ways, counts.refs, counts.max_ref, store.map(std::sync::Arc::new), counts.blocks);
     stats.relations_classified = relations.len() as u64;
 
     // A numbered road changes class along its length, so deciding `min_zoom` per way chops
@@ -632,7 +637,20 @@ fn run_pass1(
         way_refs,
         way_max_ref,
         ways_anon,
+        way_blocks,
         region_label_nodes,
         needed,
     })
+}
+/// Sort and dedup `v[from..]` in place, leaving `v[..from]` untouched.
+fn sort_dedup_tail(v: &mut Vec<i64>, from: usize) {
+    v[from..].sort_unstable();
+    let mut write = from;
+    for read in from..v.len() {
+        if write == from || v[read] != v[write - 1] {
+            v[write] = v[read];
+            write += 1;
+        }
+    }
+    v.truncate(write);
 }
