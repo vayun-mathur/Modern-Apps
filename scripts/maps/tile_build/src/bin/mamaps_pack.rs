@@ -124,10 +124,25 @@ struct Validated {
     transit_prefix: Vec<u8>,
     /// The tile header's own build-id bytes (`tile_bytes[16..24]`), for `derive_build_id`.
     osm_id: [u8; 8],
-    /// FNV-1a of `poi_attrs.bin`, for `derive_build_id`. Empty without the file. The
+    /// `poi_attrs.bin` when staged non-empty: its FNV-1a feeds `derive_build_id`. The
     /// attributes can change with no tile change (merged review data), and phones cache
     /// byte ranges by build id, so the id has to move with them.
-    poi_attrs_digest: Vec<u8>,
+    ///
+    /// A path, hashed by [`Validated::poi_attrs_digest`] on demand, so `main` can run the
+    /// hash (a strictly serial byte loop, ~1.7 GB on a planet) beside the payload copy
+    /// rather than in front of it: the id is only needed for the header and footer,
+    /// which are written last.
+    poi_attrs: Option<PathBuf>,
+}
+
+impl Validated {
+    /// FNV-1a of `poi_attrs.bin`, or empty without the file.
+    fn poi_attrs_digest(&self) -> Result<Vec<u8>, String> {
+        match &self.poi_attrs {
+            Some(p) => Ok(fnv64_file(p)?.to_vec()),
+            None => Ok(Vec::new()),
+        }
+    }
 }
 
 /// Untimed entry point, kept for the unit tests below: identical staging and
@@ -175,9 +190,9 @@ fn load_sidecars_impl(
     push(ARCHIVE_KIND_POI_ATTRS, poi.join("poi_attrs.bin"), false)?;
     push(ARCHIVE_KIND_POI_SPATIAL, poi.join("poi_spatial.bin"), false)?;
     push(ARCHIVE_KIND_POI_WORDS, poi.join("poi_name_index.bin"), false)?;
-    let poi_attrs_digest = match std::fs::metadata(poi.join("poi_attrs.bin")) {
-        Ok(m) if m.len() > 0 => fnv64_file(&poi.join("poi_attrs.bin"))?.to_vec(),
-        _ => Vec::new(),
+    let poi_attrs = match std::fs::metadata(poi.join("poi_attrs.bin")) {
+        Ok(m) if m.len() > 0 => Some(poi.join("poi_attrs.bin")),
+        _ => None,
     };
     // Transit is optional like the other sidecars: omitted when no pack is
     // staged (a tiles+graph+POI archive still exercises every loader's
@@ -228,7 +243,24 @@ fn load_sidecars_impl(
     validate_sidecars(graph, poi, &staged, timer)?;
     // The tile header's own build-id bytes are read by the caller (it holds the tiles prefix);
     // placeholder filled in `main` after the tiles prefix is parsed.
-    Ok(Validated { staged, transit_prefix, osm_id: [0u8; 8], poi_attrs_digest })
+    Ok(Validated { staged, transit_prefix, osm_id: [0u8; 8], poi_attrs })
+}
+
+/// A file's length, with the same "cannot read" wording a whole-file read would give.
+fn file_len(path: &Path) -> Result<u64, String> {
+    std::fs::metadata(path)
+        .map(|m| m.len())
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))
+}
+
+/// Up to the first `n` bytes of a file (fewer only if the file is shorter).
+fn read_head(path: &Path, n: usize) -> Result<Vec<u8>, String> {
+    let f = std::fs::File::open(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let mut buf = Vec::with_capacity(n);
+    f.take(n as u64)
+        .read_to_end(&mut buf)
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    Ok(buf)
 }
 
 /// FNV-1a 64 over a whole file, streamed.
@@ -265,7 +297,6 @@ fn validate_sidecars(
     // each directory's staging + validation report as one subphase.
     timer.switch("read-graph");
     let g = |name: &str| read_file(&graph.join(name));
-    let p = |name: &str| read_file(&poi.join(name));
     // Graph meta first: it carries the counts every other graph check is sized from.
     let meta = g("metadata.bin")?;
     if meta.len() != 40 {
@@ -408,26 +439,31 @@ fn validate_sidecars(
         }
     }
     // POI index/names/attrs/spatial/words: small, read whole and cross-check counts.
+    //
+    // Every check below needs a file's length and at most its first 16 bytes, so that is
+    // all that is read. These files were read whole before — ~3 GB serially on a planet —
+    // for exactly the same decisions.
     timer.switch("read-poi");
-    let poi_index = p("poi_index.bin")?;
-    if poi_index.len() as u64 % 14 != 0 {
+    let poi_index_len = file_len(&poi.join("poi_index.bin"))?;
+    if poi_index_len % 14 != 0 {
         return Err("poi_index.bin is not whole 14-byte records".to_string());
     }
-    let poi_count = poi_index.len() as u64 / 14;
-    let poi_names = p("poi_names.bin")?;
-    if poi_names.is_empty() && poi_count > 0 {
+    let poi_count = poi_index_len / 14;
+    let poi_names_len = file_len(&poi.join("poi_names.bin"))?;
+    if poi_names_len == 0 && poi_count > 0 {
         return Err("poi carries an index but no names".to_string());
     }
     for name in ["poi_attrs.bin", "poi_spatial.bin", "poi_name_index.bin", "poi_region.bin"] {
         let path = poi.join(name);
         if path.exists() {
-            let b = read_file(&path)?;
             let (magic, want, kind) = match name {
                 "poi_attrs.bin" => (&b"MAPA"[..], 12usize, "attrs"),
                 "poi_spatial.bin" => (&b"PSP1"[..], 32usize, "grid"),
                 "poi_region.bin" => (&b"PRG1"[..], 12usize, "region"),
                 _ => (&b"PNI1"[..], 16usize, "word index"),
             };
+            // Shorter than `want` exactly when the file is.
+            let b = read_head(&path, want)?;
             if b.len() < want {
                 return Err(format!("{name} ends before its header"));
             }
@@ -445,42 +481,92 @@ fn validate_sidecars(
     Ok(())
 }
 
-/// Copy `len` bytes from `src` at `offset` into `out`, in 1 MiB windows.
-///
-/// `std::io::copy` would do, but the windowed loop keeps the copy buffer a fixed 1 MiB against
-/// multi-GB payloads instead of whatever the reader's default is, and reports the path on
-/// failure like every other I/O here.
-fn copy_range(
-    src: &mut std::fs::File,
-    offset: u64,
+/// One byte range to copy: `len` bytes from `src` at `src_off` to the output at `dst_off`.
+struct CopyTask<'a> {
+    src: &'a Path,
+    src_off: u64,
+    dst_off: u64,
     len: u64,
-    out: &mut std::fs::File,
-    src_path: &Path,
-    out_path: &Path,
-) -> Result<u64, String> {
-    src.seek(SeekFrom::Start(offset))
-        .map_err(|e| format!("cannot seek {}: {e}", src_path.display()))?;
-    let mut buf = vec![0u8; 1 << 20];
-    let mut left = len;
-    while left > 0 {
-        let want = (left.min(buf.len() as u64)) as usize;
-        src.read_exact(&mut buf[..want])
-            .map_err(|e| format!("cannot read {}: {e}", src_path.display()))?;
-        out.write_all(&buf[..want])
-            .map_err(|e| format!("cannot write {}: {e}", out_path.display()))?;
-        left -= want as u64;
-    }
-    Ok(len)
 }
 
+/// Copy one range.
+///
+/// `std::io::copy` from a `Take<&File>` to a `&File` is `copy_file_range(2)` on Linux: on
+/// btrfs/XFS that first tries to share the extents (a reflink) and otherwise copies inside
+/// the kernel; elsewhere std falls back to a plain read/write loop. All three put the same
+/// bytes at the same offsets; only the cost differs.
+fn run_copy(t: &CopyTask, dst: &mut std::fs::File, out_path: &Path) -> Result<(), String> {
+    let mut src = std::fs::File::open(t.src)
+        .map_err(|e| format!("cannot read {}: {e}", t.src.display()))?;
+    src.seek(SeekFrom::Start(t.src_off))
+        .map_err(|e| format!("cannot seek {}: {e}", t.src.display()))?;
+    dst.seek(SeekFrom::Start(t.dst_off))
+        .map_err(|e| format!("cannot seek {}: {e}", out_path.display()))?;
+    let n = std::io::copy(&mut (&src).take(t.len), dst)
+        .map_err(|e| format!("cannot copy {} -> {}: {e}", t.src.display(), out_path.display()))?;
+    if n != t.len {
+        return Err(format!(
+            "cannot read {}: {} bytes at {} ended after {n}",
+            t.src.display(),
+            t.len,
+            t.src_off
+        ));
+    }
+    Ok(())
+}
+
+/// `bytes` at `offset` of the output.
+fn write_at(out: &mut std::fs::File, offset: u64, bytes: &[u8], out_path: &Path) -> Result<(), String> {
+    out.seek(SeekFrom::Start(offset))
+        .map_err(|e| format!("cannot write {}: {e}", out_path.display()))?;
+    out.write_all(bytes)
+        .map_err(|e| format!("cannot write {}: {e}", out_path.display()))
+}
+
+/// [`pack_streaming_with`] for a build id already known (the unit tests).
+#[cfg(test)]
 fn pack_streaming(
     tiles_path: &Path,
     validated: &Validated,
     build_id: u64,
     out: &Path,
 ) -> Result<u64, String> {
+    pack_streaming_with(tiles_path, validated, || Ok(build_id), out).map(|(len, _)| len)
+}
+
+/// Write the archive: tile prefix, sidecars, directory, footer, header rewrite, re-verify,
+/// rename. Returns `(final length, build id)`.
+///
+/// Every byte's position is a function of the staged lengths alone (the payloads sit
+/// back-to-back from `data_end`, each 8-byte aligned), so the whole layout is computed up
+/// front and each range is copied straight to its precomputed offset with
+/// `copy_file_range` (see [`run_copy`]) instead of through a 1 MiB user-space buffer. The
+/// output is the same file byte for byte: same bytes, same offsets, and every gap
+/// (alignment padding) is written explicitly with zeros.
+///
+/// The tile prefix is the big one. It sits at offset 0 in both files, so its range is
+/// block-aligned on both sides and a reflinking filesystem (the planet box's btrfs) shares
+/// its extents rather than copying them: measured 1.24 GB in 0.06 s on California, and the
+/// planet's tens of GB of tiles stop costing their size a second time on disk. Sidecars
+/// land at 8-byte-aligned offsets, so they are copied (in-kernel). They are copied one at a
+/// time on purpose: on this btrfs (`compress-force=zstd`) buffered writes top out near
+/// 2.6 GB/s whether one thread or 64 write, to one file or to 64 separate ones (measured
+/// with 64 MiB tasks), and the parallel version burned 86 CPU-seconds of lock spinning for
+/// no wall-clock gain.
+///
+/// `build_id` runs on its own thread beside the copy: it is only needed for the footer and
+/// the header, both written after the copy, and in `main` it hashes `poi_attrs.bin`.
+fn pack_streaming_with<F>(
+    tiles_path: &Path,
+    validated: &Validated,
+    build_id: F,
+    out: &Path,
+) -> Result<(u64, u64), String>
+where
+    F: FnOnce() -> Result<u64, String> + Send,
+{
     // Parse the tile header out of the prefix; everything else rides along. Only the 128-byte
-    // header is read here -- the tile bodies stream below.
+    // header is read here -- the tile bodies are copied below.
     let mut tiles = std::fs::File::open(tiles_path)
         .map_err(|e| format!("cannot read {}: {e}", tiles_path.display()))?;
     let tiles_len = tiles
@@ -491,6 +577,7 @@ fn pack_streaming(
     tiles
         .read_exact(&mut head)
         .map_err(|e| format!("cannot read {}: {e}", tiles_path.display()))?;
+    drop(tiles);
     let header = Header::parse(&head).map_err(|e| format!("tile header does not parse: {e:?}"))?;
     if header.file_len != tiles_len {
         return Err(format!(
@@ -499,57 +586,18 @@ fn pack_streaming(
         ));
     }
     let staged = &validated.staged;
-    // Tile prefix is immutable: copy verbatim, then append from data end. Streams, so the
-    // tiles file (~tens of GB on planet) is never held whole.
-    let tmp = out.with_extension("pack.tmp");
-    let mut writer = std::fs::File::create(&tmp)
-        .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-    copy_range(&mut tiles, 0, tiles_len, &mut writer, tiles_path, &tmp)?;
-    drop(tiles);
-    let mut entries = Vec::new();
+
+    // Layout. Tile prefix is immutable: copied verbatim, then sidecars append from its end.
+    let align = |at: u64| (at + ARCHIVE_ALIGN - 1) & !(ARCHIVE_ALIGN - 1);
+    let mut entries = Vec::with_capacity(staged.len());
     let mut at = tiles_len;
     for s in staged {
         // Every sidecar payload starts 8-byte aligned; padding is zeroes.
-        while at % ARCHIVE_ALIGN != 0 {
-            writer
-                .write_all(&[0])
-                .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-            at += 1;
-        }
-        let mut src = std::fs::File::open(&s.path)
-            .map_err(|e| format!("cannot read {}: {e}", s.path.display()))?;
-        let src_len = src
-            .metadata()
-            .map_err(|e| format!("cannot stat {}: {e}", s.path.display()))?
-            .len();
-        if src_len != s.file_len {
-            return Err(format!(
-                "{} changed under the pack (staged {} bytes, now {src_len})",
-                s.path.display(),
-                s.file_len,
-            ));
-        }
-        writer
-            .write_all(&s.head)
-            .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-        let head = s.head.len() as u64;
-        copy_range(&mut src, head, s.len - head, &mut writer, &s.path, &tmp)?;
-        entries.push(ArchiveEntry {
-            kind: s.kind,
-            flags: 0,
-            offset: at,
-            len: s.len,
-            extra: s.extra,
-        });
+        at = align(at);
+        entries.push(ArchiveEntry { kind: s.kind, flags: 0, offset: at, len: s.len, extra: s.extra });
         at += s.len;
     }
-    while at % ARCHIVE_ALIGN != 0 {
-        writer
-            .write_all(&[0])
-            .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-        at += 1;
-    }
-    let dir_offset = at;
+    let dir_offset = align(at);
     // Directory: count + entries + zero padding to 8.
     let mut dir = Vec::new();
     dir.extend_from_slice(&(entries.len() as u32).to_le_bytes());
@@ -560,44 +608,88 @@ fn pack_streaming(
         dir.push(0);
     }
     let dir_len = dir.len() as u64;
-    writer
-        .write_all(&dir)
+    let footer_len = ArchiveFooter { dir_offset, dir_len, build_id: 0 }.serialize().len() as u64;
+    let final_len = dir_offset + dir_len + footer_len;
+
+    // A source that changed since staging would shift every offset after it.
+    for s in staged {
+        let src_len = std::fs::metadata(&s.path)
+            .map_err(|e| format!("cannot stat {}: {e}", s.path.display()))?
+            .len();
+        if src_len != s.file_len {
+            return Err(format!(
+                "{} changed under the pack (staged {} bytes, now {src_len})",
+                s.path.display(),
+                s.file_len,
+            ));
+        }
+    }
+
+    let tmp = out.with_extension("pack.tmp");
+    let mut writer = std::fs::File::create(&tmp)
         .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
+    // Sized up front: every write below lands at a precomputed offset.
+    writer
+        .set_len(final_len)
+        .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
+
+    // The payload bytes: tile prefix, then each sidecar after its head (written below).
+    let mut tasks: Vec<CopyTask> = vec![CopyTask { src: tiles_path, src_off: 0, dst_off: 0, len: tiles_len }];
+    for (s, e) in staged.iter().zip(&entries) {
+        let head = s.head.len() as u64;
+        tasks.push(CopyTask { src: &s.path, src_off: head, dst_off: e.offset + head, len: s.len - head });
+    }
+    let (copied, id) = std::thread::scope(|scope| {
+        let id = scope.spawn(build_id);
+        let copied = tasks.iter().try_for_each(|t| run_copy(t, &mut writer, &tmp));
+        (copied, id.join())
+    });
+    copied?;
+    let build_id = id.map_err(|_| "the build-id thread panicked".to_string())??;
+    // The small writes, after every copy so no copy (a whole-block reflink in particular)
+    // can land on top of them: each transit head (in place of its source's first bytes),
+    // every alignment gap explicitly zeroed, and the directory.
+    let mut prev_end = tiles_len;
+    for (s, e) in staged.iter().zip(&entries) {
+        if e.offset > prev_end {
+            write_at(&mut writer, prev_end, &vec![0u8; (e.offset - prev_end) as usize], &tmp)?;
+        }
+        if !s.head.is_empty() {
+            write_at(&mut writer, e.offset, &s.head, &tmp)?;
+        }
+        prev_end = e.offset + e.len;
+    }
+    if dir_offset > prev_end {
+        write_at(&mut writer, prev_end, &vec![0u8; (dir_offset - prev_end) as usize], &tmp)?;
+    }
+    write_at(&mut writer, dir_offset, &dir, &tmp)?;
+
     let footer = ArchiveFooter { dir_offset, dir_len, build_id };
-    writer
-        .write_all(&footer.serialize())
-        .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-    writer
-        .flush()
-        .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-    drop(writer);
-    let final_len = std::fs::metadata(&tmp)
-        .map_err(|e| format!("cannot stat {}: {e}", tmp.display()))?
-        .len();
+    write_at(&mut writer, dir_offset + dir_len, &footer.serialize(), &tmp)?;
     // Rewrite the tile header in place: only file_len + build_id move.
     let rewritten = Header { file_len: final_len, build_id, ..header };
     let header_bytes = rewritten.serialize();
     if header_bytes.len() != 128 {
         return Err("rewritten v7 header is not 128 bytes".to_string());
     }
-    let mut patched = std::fs::OpenOptions::new()
-        .write(true)
-        .open(&tmp)
+    write_at(&mut writer, 0, &header_bytes, &tmp)?;
+    writer
+        .flush()
         .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-    patched
-        .seek(SeekFrom::Start(0))
-        .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-    patched
-        .write_all(&header_bytes)
-        .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-    drop(patched);
+    drop(writer);
+    let written = std::fs::metadata(&tmp)
+        .map_err(|e| format!("cannot stat {}: {e}", tmp.display()))?
+        .len();
+    if written != final_len {
+        return Err(format!("{} is {written} bytes, laid out {final_len}", tmp.display()));
+    }
     // Re-verify: footer parse + full ArchiveView validation (magic, bounds,
     // alignment, overlap, build equality, per-kind counts). Streams the footer + directory
     // + the small sidecars it checks; the large payloads were length-checked above.
     verify_packed(&tmp, staged.len())?;
     std::fs::rename(&tmp, out)
         .map_err(|e| format!("cannot write {}: {e}", out.display()))?;
-    Ok(final_len)
+    Ok((final_len, build_id))
 }
 
 /// Re-verify a packed archive written by `pack_streaming`.
@@ -771,12 +863,16 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     }
     validated.osm_id.copy_from_slice(&tile_bytes_prefix[16..24]);
-    let id = derive_build_id(&validated.osm_id, &validated.poi_attrs_digest, &validated.transit_prefix);
-    // Build-id derivation is a 1 KiB hash (microseconds); it books here with the
-    // streaming copy, directory/footer, header rewrite, re-verify and rename.
+    // The build id hashes `poi_attrs.bin` (FNV-1a, strictly serial); it runs beside the
+    // payload copy inside `pack_streaming_with`, and books here with the streaming copy,
+    // directory/footer, header rewrite, re-verify and rename.
     timer.switch("write-output");
-    match pack_streaming(&tiles, &validated, id, &out) {
-        Ok(final_len) => {
+    let derive = || -> Result<u64, String> {
+        let digest = validated.poi_attrs_digest()?;
+        Ok(derive_build_id(&validated.osm_id, &digest, &validated.transit_prefix))
+    };
+    match pack_streaming_with(&tiles, &validated, derive, &out) {
+        Ok((final_len, id)) => {
             timer.finish();
             println!(
                 "packed {} ({} bytes, build_id {:#018x}, {} sidecar sections)",
@@ -942,7 +1038,7 @@ mod tests {
         assert_eq!(validated.staged.len(), 7, "meta+nodes+edges+intermediate+poi-index+poi-names+transit");
         let mut osm_id = [0u8; 8];
         osm_id.copy_from_slice(&v7_tiles()[16..24]);
-        let id = derive_build_id(&osm_id, &validated.poi_attrs_digest, &validated.transit_prefix);
+        let id = derive_build_id(&osm_id, &validated.poi_attrs_digest().unwrap(), &validated.transit_prefix);
         let out = dir.join("packed.mamaps");
         let final_len =
             pack_streaming(&tiles_path, &validated, 0xBEEF, &out).expect("pack");
@@ -1123,14 +1219,14 @@ mod tests {
     #[test]
     fn the_attrs_digest_is_read_from_the_staged_file() {
         let (dir, poi) = overlay_fixture("attrs_digest");
-        assert!(load_sidecars(&dir, &poi, None).expect("no attrs").poi_attrs_digest.is_empty());
+        assert!(load_sidecars(&dir, &poi, None).expect("no attrs").poi_attrs_digest().unwrap().is_empty());
         let mut attrs = Vec::new();
         attrs.extend_from_slice(b"MAPA");
         attrs.extend_from_slice(&[1, 0, 0, 0]);
         attrs.extend_from_slice(&1u32.to_le_bytes());
         attrs.extend_from_slice(&u32::MAX.to_le_bytes());
         std::fs::write(poi.join("poi_attrs.bin"), &attrs).expect("fixture attrs");
-        let digest = load_sidecars(&dir, &poi, None).expect("with attrs").poi_attrs_digest;
+        let digest = load_sidecars(&dir, &poi, None).expect("with attrs").poi_attrs_digest().unwrap();
         assert_eq!(digest, fnv64_file(&poi.join("poi_attrs.bin")).unwrap().to_vec());
         assert_eq!(digest.len(), 8);
         let _ = std::fs::remove_dir_all(&dir);
