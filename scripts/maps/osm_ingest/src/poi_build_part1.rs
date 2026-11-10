@@ -37,6 +37,17 @@ struct Written {
     name_entries: usize,
 }
 
+/// Output buffer size. Large sequential writes: the build box's root is btrfs
+/// with `compress-force=zstd`, which pays per extent, and a default 8 KiB
+/// `BufWriter` turns a multi-GB geojson into a million small writes.
+const WRITE_BUF: usize = 8 << 20;
+
+/// POIs formatted per parallel geojson batch. Bounds the formatted text held at
+/// once (~0.3 KB a line) while giving every thread plenty of chunks.
+const GEOJSON_BATCH: usize = 1 << 18;
+const GEOJSON_CHUNK: usize = 2048;
+
+#[allow(clippy::too_many_arguments)]
 fn write_outputs(
     pois: &[Poi],
     geojson: &Path,
@@ -46,66 +57,65 @@ fn write_outputs(
     spatial: &Path,
     name_index: &Path,
     region: &Path,
+    timer: &mut crate::timing::PhaseTimer,
 ) -> Result<Written> {
-    let mut pool = NamePool::new(BufWriter::new(create(names)?));
-    let mut index_out = BufWriter::new(create(index)?);
-    let mut geojson_out = BufWriter::new(create(geojson)?);
-    // The sidecar is indexed by record ordinal, so it is filled in this same loop
-    // over the same Morton-sorted vector. Any second pass over `pois` would be an
-    // opportunity for the two files to disagree.
-    let mut attr_pool = AttrPool::new();
-    let mut line: Vec<u8> = Vec::new();
-
-    for p in pois {
-        let off = pool.intern(&p.name).map_err(io_err)?;
-        index_out.write_all(&p.lat_e7.to_le_bytes()).map_err(io_err)?;
-        index_out.write_all(&p.lon_e7.to_le_bytes()).map_err(io_err)?;
-        index_out.write_all(&off.to_le_bytes()).map_err(io_err)?;
-        index_out.write_all(&p.type_.to_le_bytes()).map_err(io_err)?;
-        attr_pool.push(&p.attrs).map_err(io_err)?;
-
-        line.clear();
-        write!(
-            line,
-            "{{\"type\":\"Feature\",\"geometry\":{{\"type\":\"Point\",\"coordinates\":[{:.7},{:.7}]}},\"properties\":{{\"name\":\"",
-            p.lon, p.lat
+    // All seven files are pure functions of the Morton-sorted `pois`, and each is
+    // written by exactly one task, so running the tasks side by side cannot change a
+    // byte of any of them. They still join by record ordinal because every one of
+    // them walks the same slice in the same order — the property the single serial
+    // loop used to guarantee.
+    timer.switch("write");
+    let (r_names, r_geojson, r_attrs, r_spatial, r_name_index, r_region) = {
+        let mut r_names = None;
+        let mut r_geojson = None;
+        let mut r_attrs = None;
+        let mut r_spatial = None;
+        let mut r_name_index = None;
+        let mut r_region = None;
+        crate::par::install(|| {
+            rayon::scope(|sc| {
+                sc.spawn(|_| r_names = Some(write_names_and_index(pois, names, index)));
+                sc.spawn(|_| r_geojson = Some(write_geojson(pois, geojson)));
+                sc.spawn(|_| r_attrs = Some(write_attrs(pois, attrs)));
+                sc.spawn(|_| {
+                    r_spatial = Some(write_with(spatial, |out| {
+                        let coords: Vec<(i32, i32)> =
+                            pois.iter().map(|p| (p.lat_e7, p.lon_e7)).collect();
+                        poi_side::write_spatial(out, &coords)
+                    }))
+                });
+                sc.spawn(|_| {
+                    r_name_index = Some(write_with(name_index, |out| {
+                        let name_slices: Vec<&[u8]> = pois.iter().map(|p| p.name.as_slice()).collect();
+                        poi_side::write_name_index(out, &name_slices)
+                    }))
+                });
+                sc.spawn(|_| {
+                    r_region = Some(write_with(region, |out| {
+                        let region_ids: Vec<u64> = pois.iter().map(|p| p.region).collect();
+                        poi_side::write_region(out, &region_ids)
+                    }))
+                });
+            })
+        });
+        let done = "every write task ran";
+        (
+            r_names.expect(done),
+            r_geojson.expect(done),
+            r_attrs.expect(done),
+            r_spatial.expect(done),
+            r_name_index.expect(done),
+            r_region.expect(done),
         )
-        .map_err(io_err)?;
-        json_escape(&p.name, &mut line);
-        writeln!(line, "\",\"type\":{},\"osm_id\":{}}}}}", p.type_, p.osm_id).map_err(io_err)?;
-        geojson_out.write_all(&line).map_err(io_err)?;
-    }
+    };
+    // Errors surface in the order the serial writer would have hit them.
+    let (unique, bytes) = r_names?;
+    r_geojson?;
+    let attr_pool = r_attrs?;
+    let spatial_cells = r_spatial?;
+    let name_entries = r_name_index?;
+    r_region?;
 
-    let mut attrs_out = BufWriter::new(create(attrs)?);
-    attr_pool.write(&mut attrs_out).map_err(io_err)?;
-    attrs_out.flush().map_err(io_err)?;
-
-    // Both side files are derived from the same Morton-sorted vector as the index, in
-    // the same function, for the same reason the sidecar is: they join by record
-    // ordinal, and any second pass over `pois` is an opportunity to disagree.
-    let coords: Vec<(i32, i32)> = pois.iter().map(|p| (p.lat_e7, p.lon_e7)).collect();
-    let mut spatial_out = BufWriter::new(create(spatial)?);
-    let spatial_cells = poi_side::write_spatial(&mut spatial_out, &coords).map_err(io_err)?;
-    spatial_out.flush().map_err(io_err)?;
-
-    let name_slices: Vec<&[u8]> = pois.iter().map(|p| p.name.as_slice()).collect();
-    let mut name_index_out = BufWriter::new(create(name_index)?);
-    let name_entries =
-        poi_side::write_name_index(&mut name_index_out, &name_slices).map_err(io_err)?;
-    name_index_out.flush().map_err(io_err)?;
-
-    // The region sidecar joins by the same ordinal, in the same function, for the
-    // same reason as the two above.
-    let region_ids: Vec<u64> = pois.iter().map(|p| p.region).collect();
-    let mut region_out = BufWriter::new(create(region)?);
-    poi_side::write_region(&mut region_out, &region_ids).map_err(io_err)?;
-    region_out.flush().map_err(io_err)?;
-
-    index_out.flush().map_err(io_err)?;
-    geojson_out.flush().map_err(io_err)?;
-    let unique = pool.unique_count();
-    let bytes = pool.byte_len();
-    pool.finish().map_err(io_err)?;
     println!(
         "Wrote {} record(s), {unique} unique name(s), {bytes} name byte(s)",
         pois.len()
@@ -129,6 +139,81 @@ fn write_outputs(
         spatial_cells,
         name_entries,
     })
+}
+
+/// Create `path`, hand `f` a large buffered writer over it, flush.
+fn write_with<T>(path: &Path, f: impl FnOnce(&mut BufWriter<File>) -> std::io::Result<T>) -> Result<T> {
+    let mut out = BufWriter::with_capacity(WRITE_BUF, create(path)?);
+    let v = f(&mut out).map_err(io_err)?;
+    out.flush().map_err(io_err)?;
+    Ok(v)
+}
+
+/// `poi_names.bin` + `poi_index.bin`. Serial on purpose: a name's offset is the
+/// pool size when it is first seen in record order (see `names.rs`).
+fn write_names_and_index(pois: &[Poi], names: &Path, index: &Path) -> Result<(usize, u32)> {
+    let mut pool = NamePool::new(BufWriter::with_capacity(WRITE_BUF, create(names)?));
+    let mut index_out = BufWriter::with_capacity(WRITE_BUF, create(index)?);
+    for p in pois {
+        let off = pool.intern(&p.name).map_err(io_err)?;
+        let mut rec = [0u8; 14];
+        rec[0..4].copy_from_slice(&p.lat_e7.to_le_bytes());
+        rec[4..8].copy_from_slice(&p.lon_e7.to_le_bytes());
+        rec[8..12].copy_from_slice(&off.to_le_bytes());
+        rec[12..14].copy_from_slice(&p.type_.to_le_bytes());
+        index_out.write_all(&rec).map_err(io_err)?;
+    }
+    index_out.flush().map_err(io_err)?;
+    let unique = pool.unique_count();
+    let bytes = pool.byte_len();
+    pool.finish().map_err(io_err)?;
+    Ok((unique, bytes))
+}
+
+/// The geojsonseq, formatted in parallel batches and written in record order.
+/// Each line is a function of its own POI only, so the bytes are the serial
+/// loop's.
+fn write_geojson(pois: &[Poi], geojson: &Path) -> Result<()> {
+    use rayon::prelude::*;
+    let mut out = BufWriter::with_capacity(WRITE_BUF, create(geojson)?);
+    for batch in pois.chunks(GEOJSON_BATCH) {
+        let texts: Vec<Vec<u8>> = batch
+            .par_chunks(GEOJSON_CHUNK)
+            .map(|chunk| {
+                let mut buf: Vec<u8> = Vec::with_capacity(chunk.len() * 192);
+                for p in chunk {
+                    geojson_line(p, &mut buf);
+                }
+                buf
+            })
+            .collect();
+        for t in &texts {
+            out.write_all(t).map_err(io_err)?;
+        }
+    }
+    out.flush().map_err(io_err)
+}
+
+/// One geojsonseq feature line, appended to `line`.
+fn geojson_line(p: &Poi, line: &mut Vec<u8>) {
+    // Writes into a Vec cannot fail.
+    let _ = write!(
+        line,
+        "{{\"type\":\"Feature\",\"geometry\":{{\"type\":\"Point\",\"coordinates\":[{:.7},{:.7}]}},\"properties\":{{\"name\":\"",
+        p.lon, p.lat
+    );
+    json_escape(&p.name, line);
+    let _ = writeln!(line, "\",\"type\":{},\"osm_id\":{}}}}}", p.type_, p.osm_id);
+}
+
+/// `poi_attrs.bin`, deduplicated in record order (offsets are first-seen).
+fn write_attrs(pois: &[Poi], attrs: &Path) -> Result<AttrPool> {
+    let mut attr_pool = AttrPool::new();
+    for p in pois {
+        attr_pool.push(&p.attrs).map_err(io_err)?;
+    }
+    write_with(attrs, |out| attr_pool.write(out))?;
+    Ok(attr_pool)
 }
 
 fn create(path: &Path) -> Result<File> {

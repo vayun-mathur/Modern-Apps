@@ -206,21 +206,26 @@ fn cell_axis(value: i32, origin: i32) -> u32 {
 /// Returns the number of populated cells. Writes a valid, empty grid for no records
 /// rather than refusing, so the file's presence never depends on the extract.
 pub fn write_spatial<W: Write>(out: &mut W, coords: &[(i32, i32)]) -> io::Result<usize> {
+    use rayon::prelude::*;
     let grid = Grid::fit(coords);
     let (lat0, lon0, cols) = match &grid {
         Some(g) => (g.lat0_e7, g.lon0_e7, g.cols),
         None => (0, 0, 0),
     };
 
-    // (cell, ordinal), sorted so equal cells are adjacent and ordinals ascend within
-    // one — the order the CSR encodes, and the order a reader walks.
-    let mut pairs: Vec<(u32, u32)> = Vec::with_capacity(coords.len());
-    if let Some(g) = &grid {
-        for (ordinal, &(lat, lon)) in coords.iter().enumerate() {
-            pairs.push((g.cell(lat, lon), ordinal as u32));
-        }
-    }
-    pairs.sort_unstable();
+    // `(cell, ordinal)` pairs are unique (the ordinal is), so the parallel
+    // unstable sort orders them exactly as the serial one did.
+    let mut pairs: Vec<(u32, u32)> = match &grid {
+        Some(g) => crate::par::install(|| {
+            coords
+                .par_iter()
+                .enumerate()
+                .map(|(ordinal, &(lat, lon))| (g.cell(lat, lon), ordinal as u32))
+                .collect()
+        }),
+        None => Vec::new(),
+    };
+    crate::par::install(|| pairs.par_sort_unstable());
 
     let mut cell_ids: Vec<u32> = Vec::new();
     let mut cell_off: Vec<u32> = Vec::new();
@@ -232,56 +237,90 @@ pub fn write_spatial<W: Write>(out: &mut W, coords: &[(i32, i32)]) -> io::Result
     }
     cell_off.push(pairs.len() as u32);
 
-    out.write_all(SPATIAL_MAGIC)?;
-    out.write_all(&SPATIAL_VERSION.to_le_bytes())?;
-    out.write_all(&(coords.len() as u32).to_le_bytes())?;
-    out.write_all(&(cell_ids.len() as u32).to_le_bytes())?;
-    out.write_all(&lat0.to_le_bytes())?;
-    out.write_all(&lon0.to_le_bytes())?;
-    out.write_all(&CELL_E7.to_le_bytes())?;
-    out.write_all(&cols.to_le_bytes())?;
+    // One buffer, one write: the file is a few hundred MB on a planet, and
+    // 4-byte `write_all`s through a default `BufWriter` cost more than the sort.
+    let mut buf: Vec<u8> =
+        Vec::with_capacity(SPATIAL_HEADER_BYTES + 4 * (2 * cell_ids.len() + 1 + pairs.len()));
+    buf.extend_from_slice(SPATIAL_MAGIC);
+    buf.extend_from_slice(&SPATIAL_VERSION.to_le_bytes());
+    buf.extend_from_slice(&(coords.len() as u32).to_le_bytes());
+    buf.extend_from_slice(&(cell_ids.len() as u32).to_le_bytes());
+    buf.extend_from_slice(&lat0.to_le_bytes());
+    buf.extend_from_slice(&lon0.to_le_bytes());
+    buf.extend_from_slice(&CELL_E7.to_le_bytes());
+    buf.extend_from_slice(&cols.to_le_bytes());
     for id in &cell_ids {
-        out.write_all(&id.to_le_bytes())?;
+        buf.extend_from_slice(&id.to_le_bytes());
     }
     for off in &cell_off {
-        out.write_all(&off.to_le_bytes())?;
+        buf.extend_from_slice(&off.to_le_bytes());
     }
     for &(_, ordinal) in &pairs {
-        out.write_all(&ordinal.to_le_bytes())?;
+        buf.extend_from_slice(&ordinal.to_le_bytes());
     }
+    out.write_all(&buf)?;
     Ok(cell_ids.len())
 }
 
 /// Write `poi_name_index.bin` for records whose names are `names[ordinal]`.
 ///
-/// Returns the number of entries. The sort resolves each entry's word out of `names`
-/// rather than materialising it, which keeps the working set to 8 bytes per entry
-/// instead of that plus a copy of every word.
+/// Returns the number of entries.
+///
+/// Each entry carries its word's byte range inside its name, so the sort compares
+/// slices directly. The serial version re-split the name with [`word_at`] on every
+/// comparison — O(name) work inside an O(n log n) sort, on one thread — which was
+/// 1.4 s of a 14 s California run and the largest serial stage after the region
+/// stamp. 16 bytes an entry instead of 8; on a planet's ~10^8 entries that is
+/// ~0.8 GB more, at a stage whose peak is otherwise just the POI vector.
+///
+/// Same order, bit for bit: the key is still `cmp_word(word, word)` then
+/// `(ordinal, word_idx)`, a total order (the pair is unique), so the parallel
+/// unstable sort cannot order equal keys differently from the serial one.
 pub fn write_name_index<W: Write>(out: &mut W, names: &[&[u8]]) -> io::Result<usize> {
-    let mut entries: Vec<(u32, u8)> = Vec::new();
-    for (ordinal, name) in names.iter().enumerate() {
-        for (word_idx, _) in words(name) {
-            entries.push((ordinal as u32, word_idx));
-        }
+    use rayon::prelude::*;
+    /// `(ordinal, word start, word end, word_idx)`.
+    type Entry = (u32, u32, u32, u8);
+    let per_name: Vec<Vec<Entry>> = crate::par::install(|| {
+        names
+            .par_iter()
+            .enumerate()
+            .with_min_len(4096)
+            .map(|(ordinal, name)| {
+                let base = name.as_ptr() as usize;
+                words(name)
+                    .map(|(word_idx, w)| {
+                        let start = (w.as_ptr() as usize - base) as u32;
+                        (ordinal as u32, start, start + w.len() as u32, word_idx)
+                    })
+                    .collect()
+            })
+            .collect()
+    });
+    let mut entries: Vec<Entry> = Vec::with_capacity(per_name.iter().map(Vec::len).sum());
+    for v in per_name {
+        entries.extend(v);
     }
+    let word = |e: &Entry| &names[e.0 as usize][e.1 as usize..e.2 as usize];
     // Ordinal breaks ties so the file is reproducible: two runs over the same input
     // must be byte-identical, which an unstable sort only gives on a total order.
-    entries.sort_unstable_by(|a, b| {
-        let wa = word_at(names[a.0 as usize], a.1).unwrap_or_default();
-        let wb = word_at(names[b.0 as usize], b.1).unwrap_or_default();
-        cmp_word(wa, wb).then(a.cmp(b))
+    crate::par::install(|| {
+        entries.par_sort_unstable_by(|a, b| {
+            cmp_word(word(a), word(b)).then((a.0, a.3).cmp(&(b.0, b.3)))
+        })
     });
 
-    out.write_all(NAME_MAGIC)?;
-    out.write_all(&NAME_VERSION.to_le_bytes())?;
-    out.write_all(&(names.len() as u32).to_le_bytes())?;
-    out.write_all(&(entries.len() as u32).to_le_bytes())?;
-    for &(ordinal, _) in &entries {
-        out.write_all(&ordinal.to_le_bytes())?;
+    let mut buf: Vec<u8> = Vec::with_capacity(NAME_HEADER_BYTES + 5 * entries.len());
+    buf.extend_from_slice(NAME_MAGIC);
+    buf.extend_from_slice(&NAME_VERSION.to_le_bytes());
+    buf.extend_from_slice(&(names.len() as u32).to_le_bytes());
+    buf.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+    for e in &entries {
+        buf.extend_from_slice(&e.0.to_le_bytes());
     }
-    for &(_, word_idx) in &entries {
-        out.write_all(&[word_idx])?;
+    for e in &entries {
+        buf.push(e.3);
     }
+    out.write_all(&buf)?;
     Ok(entries.len())
 }
 

@@ -213,6 +213,120 @@ pub fn build_with_reviews(
     bbox: Option<crate::bbox::BBox>,
     reviews: Option<&ReviewTable>,
 ) -> Result<Stats> {
+    build_inner(
+        input,
+        geojson,
+        names,
+        index,
+        attrs,
+        spatial,
+        name_index,
+        region,
+        bbox,
+        match reviews {
+            Some(t) => Reviews::Ready(t),
+            None => Reviews::None,
+        },
+    )
+}
+
+/// A review table still being loaded on another thread; see
+/// [`build_with_review_loader`].
+pub type ReviewLoader = std::thread::JoinHandle<Result<ReviewTable>>;
+
+/// [`build_with_reviews`], with the table still loading on `loader`'s thread.
+///
+/// The table is ~400 MB of TSV on a planet build and is not needed until after
+/// the three PBF passes, so loading it up front serialised a second-scale parse
+/// in front of the whole run. The join happens right before the reviews are
+/// applied; a loader that has already failed is noticed between passes, so a bad
+/// table still fails the run early rather than after the node pass.
+///
+/// `on_loaded` runs once with the joined table (the binary prints its row
+/// count there).
+#[allow(clippy::too_many_arguments)]
+pub fn build_with_review_loader(
+    input: &Path,
+    geojson: &Path,
+    names: &Path,
+    index: &Path,
+    attrs: &Path,
+    spatial: &Path,
+    name_index: &Path,
+    region: &Path,
+    bbox: Option<crate::bbox::BBox>,
+    loader: ReviewLoader,
+    on_loaded: &dyn Fn(&ReviewTable),
+) -> Result<Stats> {
+    build_inner(
+        input,
+        geojson,
+        names,
+        index,
+        attrs,
+        spatial,
+        name_index,
+        region,
+        bbox,
+        Reviews::Loading(Some(loader), on_loaded, None),
+    )
+}
+
+/// Where the review table comes from.
+enum Reviews<'a> {
+    None,
+    Ready(&'a ReviewTable),
+    /// The loader (until joined), the joined-callback, and the joined table.
+    Loading(Option<ReviewLoader>, &'a dyn Fn(&ReviewTable), Option<ReviewTable>),
+}
+
+impl Reviews<'_> {
+    /// Join the loader if it has already finished, so a failed load surfaces now.
+    fn poll(&mut self) -> Result<()> {
+        if let Reviews::Loading(h, _, _) = self {
+            if h.as_ref().is_some_and(|h| h.is_finished()) {
+                return self.join();
+            }
+        }
+        Ok(())
+    }
+
+    /// Block until the table is loaded (no-op unless loading).
+    fn join(&mut self) -> Result<()> {
+        if let Reviews::Loading(h, cb, table) = self {
+            if let Some(h) = h.take() {
+                let t = h
+                    .join()
+                    .map_err(|_| Error("the review loader panicked".into()))??;
+                cb(&t);
+                *table = Some(t);
+            }
+        }
+        Ok(())
+    }
+
+    fn table(&self) -> Option<&ReviewTable> {
+        match self {
+            Reviews::None => None,
+            Reviews::Ready(t) => Some(t),
+            Reviews::Loading(_, _, t) => t.as_ref(),
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_inner(
+    input: &Path,
+    geojson: &Path,
+    names: &Path,
+    index: &Path,
+    attrs: &Path,
+    spatial: &Path,
+    name_index: &Path,
+    region: &Path,
+    bbox: Option<crate::bbox::BBox>,
+    mut reviews: Reviews<'_>,
+) -> Result<Stats> {
     // Fail before the three passes rather than after them if an output path is
     // unwritable.
     for path in [geojson, names, index, attrs, spatial, name_index, region] {
@@ -248,9 +362,9 @@ pub fn build_with_reviews(
         .flat_map(|a| a.outer_ways.iter().copied())
         .chain(boundaries.iter().flat_map(|b| b.member_ways.iter().map(|(w, _)| *w)))
         .collect();
-    outer_wanted.sort_unstable();
-    outer_wanted.dedup();
+    par_sort_dedup(&mut outer_wanted);
     println!("{} POI relation(s)", rel_areas.len());
+    reviews.poll()?;
 
     timer.switch("ways");
     // --- Pass 2: closed-way areas + the relations' outer ways ----------------
@@ -276,14 +390,14 @@ pub fn build_with_reviews(
         .flat_map(|a| a.refs.iter().copied())
         .chain(outer_refs.values().flat_map(|r| r.iter().copied()))
         .collect();
-    needed.sort_unstable();
-    needed.dedup();
+    par_sort_dedup(&mut needed);
     println!(
         "{} closed-way area(s), {} node location(s) needed",
         way_areas.len(),
         needed.len()
     );
 
+    reviews.poll()?;
     timer.switch("nodes");
     // --- Pass 3: node POIs + the node locations areas need -------------------
     let (chunks, _) = pbf::run_pass(
@@ -324,55 +438,69 @@ pub fn build_with_reviews(
 
     timer.switch("centroids");
     // --- Area centroids ------------------------------------------------------
-    for area in &way_areas {
-        if !touches(&mut area.refs.iter().copied()) {
-            continue;
-        }
-        // A closed way's ring is its own node list minus the repeated closing
-        // node.
-        if let Some(poi) = ring_centroid(area.refs[..area.refs.len() - 1].iter().copied(), &location)
-        {
-            pois.push(make_poi(
-                poi,
-                area.type_,
-                area.id,
-                &area.name,
-                area.attrs.clone(),
-                area.self_region,
-                area.place_cap,
-            ));
-        }
-    }
+    // Each area's POI depends on that area alone; `collect` keeps area order, so
+    // `pois` comes out exactly as the serial loop pushed it.
+    use rayon::prelude::*;
+    let way_pois: Vec<Option<Poi>> = crate::par::install(|| {
+        way_areas
+            .par_iter()
+            .with_min_len(256)
+            .map(|area| {
+                if !touches(&mut area.refs.iter().copied()) {
+                    return None;
+                }
+                // A closed way's ring is its own node list minus the repeated
+                // closing node.
+                let poi = ring_centroid(area.refs[..area.refs.len() - 1].iter().copied(), &location)?;
+                Some(make_poi(
+                    poi,
+                    area.type_,
+                    area.id,
+                    &area.name,
+                    area.attrs.clone(),
+                    area.self_region,
+                    area.place_cap,
+                ))
+            })
+            .collect()
+    });
+    pois.extend(way_pois.into_iter().flatten());
     let from_ways = pois.len() - from_nodes;
 
-    for area in &rel_areas {
-        // libosmium assembled a true ring from the member ways; we cannot, so
-        // deduplicate the member node ids instead. That is exact when the outer
-        // ring is a single closed way, and drops the endpoints shared between
-        // consecutive ways when it is split across several.
-        let mut refs: Vec<i64> = area
-            .outer_ways
-            .iter()
-            .filter_map(|w| outer_refs.get(w))
-            .flat_map(|r| r.iter().copied())
-            .collect();
-        refs.sort_unstable();
-        refs.dedup();
-        if !touches(&mut refs.iter().copied()) {
-            continue;
-        }
-        if let Some(poi) = ring_centroid(refs.iter().copied(), &location) {
-            pois.push(make_poi(
-                poi,
-                area.type_,
-                -area.id,
-                &area.name,
-                area.attrs.clone(),
-                area.self_region,
-                area.place_cap,
-            ));
-        }
-    }
+    let rel_pois: Vec<Option<Poi>> = crate::par::install(|| {
+        rel_areas
+            .par_iter()
+            .with_max_len(16)
+            .map(|area| {
+                // libosmium assembled a true ring from the member ways; we cannot,
+                // so deduplicate the member node ids instead. That is exact when
+                // the outer ring is a single closed way, and drops the endpoints
+                // shared between consecutive ways when it is split across several.
+                let mut refs: Vec<i64> = area
+                    .outer_ways
+                    .iter()
+                    .filter_map(|w| outer_refs.get(w))
+                    .flat_map(|r| r.iter().copied())
+                    .collect();
+                refs.sort_unstable();
+                refs.dedup();
+                if !touches(&mut refs.iter().copied()) {
+                    return None;
+                }
+                let poi = ring_centroid(refs.iter().copied(), &location)?;
+                Some(make_poi(
+                    poi,
+                    area.type_,
+                    -area.id,
+                    &area.name,
+                    area.attrs.clone(),
+                    area.self_region,
+                    area.place_cap,
+                ))
+            })
+            .collect()
+    });
+    pois.extend(rel_pois.into_iter().flatten());
     let from_relations = pois.len() - from_nodes - from_ways;
     println!(
         "Extracted {} POI(s): {from_nodes} node, {from_ways} closed-way, {from_relations} relation",
@@ -381,7 +509,10 @@ pub fn build_with_reviews(
 
     // Before the sort: `pois` is still nodes, then ways, then relations, which is
     // the only place the OSM element type is known.
-    let with_reviews = match reviews {
+    timer.switch("reviews-wait");
+    reviews.join()?;
+    timer.switch("reviews");
+    let with_reviews = match reviews.table() {
         Some(table) => {
             let n = apply_reviews(&mut pois, from_nodes, from_ways, table);
             println!("{n} POI(s) with review data ({} review row(s) loaded)", table.len());
@@ -394,7 +525,10 @@ pub fn build_with_reviews(
     // the only place the OSM element type is known. Region links resolve here
     // for the same reason reviews do — and the stamped ids ride the Morton sort
     // on the `Poi` struct, so `poi_region.bin` joins by ordinal afterwards.
-    let with_region = resolve_regions(&mut pois, from_nodes, &boundaries, &outer_refs, &location);
+    timer.switch("regions-assemble");
+    let assembled = assemble_boundaries(&boundaries, &outer_refs, &location);
+    timer.switch("regions-stamp");
+    let with_region = stamp_regions(&mut pois, from_nodes, &boundaries, &assembled);
     if with_region > 0 {
         println!("{with_region} POI(s) with a boundary link");
     }
@@ -402,10 +536,11 @@ pub fn build_with_reviews(
     // Morton order, ties broken by osm_id, so both poi_index.bin and the geojson
     // are stable across runs.
     timer.switch("sort");
-    pois.sort_by_key(|p| (p.morton, p.osm_id));
+    // `par_sort_by_key` is stable like `sort_by_key`, so equal keys keep the
+    // pre-sort (nodes, ways, relations) order exactly as before.
+    crate::par::install(|| pois.par_sort_by_key(|p| (p.morton, p.osm_id)));
 
-    timer.switch("write");
-    let written = write_outputs(&pois, geojson, names, index, attrs, spatial, name_index, region)?;
+    let written = write_outputs(&pois, geojson, names, index, attrs, spatial, name_index, region, &mut timer)?;
     timer.finish();
     Ok(Stats {
         records: written.records,
@@ -428,163 +563,40 @@ pub fn build_with_reviews(
 /// count. `pois[..from_nodes]` are nodes, the next `from_ways` closed ways, the
 /// rest relations (whose `osm_id` is stored negated).
 fn apply_reviews(pois: &mut [Poi], from_nodes: usize, from_ways: usize, table: &ReviewTable) -> usize {
-    let mut matched = 0;
-    for (i, p) in pois.iter_mut().enumerate() {
-        let (element, id) = if i < from_nodes {
-            (ELEMENT_NODE, p.osm_id)
-        } else if i < from_nodes + from_ways {
-            (ELEMENT_WAY, p.osm_id)
-        } else {
-            (ELEMENT_RELATION, -p.osm_id)
-        };
-        if let Some(review) = table.get(element, id) {
-            p.attrs = crate::poi_attrs::append(std::mem::take(&mut p.attrs), &review.fields());
-            matched += 1;
-        }
-    }
-    matched
-}
-
-/// One assembled boundary: its polygons, each exterior ring's absolute area
-/// (smallest-wins needs no sign), its bbox, and its tagged link.
-struct BoundaryPoly {
-    tagged: u64,
-    admin_level: u8,
-    polys: Vec<rings::Polygon>,
-    areas: Vec<f64>,
-    min_lon: f64,
-    min_lat: f64,
-    max_lon: f64,
-    max_lat: f64,
-}
-
-/// Stamp every POI's [`Poi::region`]: self-links are already set, a node carried
-/// as a boundary's `label`/`admin_centre` member takes that boundary's tagged id,
-/// otherwise the smallest-area containing admin at or above the POI's
-/// place-implied cap wins. Returns the stamped count.
-///
-/// `pois[..from_nodes]` are nodes, which is the only slice the member-link map
-/// can hit — node ids and way/relation ids share a namespace per element type,
-/// and a way id equal to a label node id is a different object.
-///
-/// Containment runs through a coarse 1°-cell grid over boundary bboxes, so a
-/// planet build tests each POI only against the boundaries whose bbox covers it
-/// instead of every admin relation on earth.
-fn resolve_regions<L>(
-    pois: &mut [Poi],
-    from_nodes: usize,
-    boundaries: &[BoundaryRel],
-    outer_refs: &HashMap<i64, Vec<i64>>,
-    location: &L,
-) -> usize
-where
-    L: Fn(i64) -> Option<(i32, i32)>,
-{
-    // Deterministic on double-labelling: the lowest boundary id wins.
-    let mut ordered: Vec<&BoundaryRel> = boundaries.iter().collect();
-    ordered.sort_by_key(|b| b.id);
-    let mut labels: HashMap<i64, u64> = HashMap::new();
-    for b in &ordered {
-        let tagged = poi_side::tag_relation(b.id);
-        for n in &b.label_nodes {
-            labels.entry(*n).or_insert(tagged);
-        }
-    }
-
-    let locate = |id: i64| -> Option<Coord> {
-        location(id).map(|(lat_e7, lon_e7)| (lon_e7 as f64 * 1e-7, lat_e7 as f64 * 1e-7))
-    };
-    let mut assembled: Vec<BoundaryPoly> = Vec::new();
-    let mut ring_stats = RingStats::default();
-    for b in &ordered {
-        let members: Vec<MemberWay> = b
-            .member_ways
-            .iter()
-            .map(|(w, outer)| MemberWay {
-                refs: outer_refs.get(w).cloned().unwrap_or_default(),
-                outer: *outer,
+    use rayon::prelude::*;
+    // Per-POI and independent, so chunking cannot change any POI's body.
+    crate::par::install(|| {
+        pois.par_iter_mut()
+            .enumerate()
+            .with_min_len(4096)
+            .map(|(i, p)| {
+                let (element, id) = if i < from_nodes {
+                    (ELEMENT_NODE, p.osm_id)
+                } else if i < from_nodes + from_ways {
+                    (ELEMENT_WAY, p.osm_id)
+                } else {
+                    (ELEMENT_RELATION, -p.osm_id)
+                };
+                match table.get(element, id) {
+                    Some(review) => {
+                        p.attrs =
+                            crate::poi_attrs::append(std::mem::take(&mut p.attrs), &review.fields());
+                        true
+                    }
+                    None => false,
+                }
             })
-            .collect();
-        let polys = rings::assemble(&members, &locate, &mut ring_stats);
-        if polys.is_empty() {
-            continue;
-        }
-        let (mut min_lon, mut min_lat) = (f64::INFINITY, f64::INFINITY);
-        let (mut max_lon, mut max_lat) = (f64::NEG_INFINITY, f64::NEG_INFINITY);
-        let mut areas = Vec::with_capacity(polys.len());
-        for poly in &polys {
-            areas.push(rings::ring_area(&poly[0]).abs());
-            for ring in poly {
-                for &(lon, lat) in ring {
-                    min_lon = min_lon.min(lon);
-                    min_lat = min_lat.min(lat);
-                    max_lon = max_lon.max(lon);
-                    max_lat = max_lat.max(lat);
-                }
-            }
-        }
-        assembled.push(BoundaryPoly {
-            tagged: poi_side::tag_relation(b.id),
-            admin_level: b.admin_level,
-            polys,
-            areas,
-            min_lon,
-            min_lat,
-            max_lon,
-            max_lat,
-        });
-    }
+            .filter(|hit| *hit)
+            .count()
+    })
+}
 
-    let mut grid: HashMap<(i32, i32), Vec<usize>> = HashMap::new();
-    for (i, b) in assembled.iter().enumerate() {
-        for cx in b.min_lon.floor() as i32..=b.max_lon.floor() as i32 {
-            for cy in b.min_lat.floor() as i32..=b.max_lat.floor() as i32 {
-                grid.entry((cx, cy)).or_default().push(i);
-            }
-        }
-    }
-
-    let mut matched = 0;
-    for (i, p) in pois.iter_mut().enumerate() {
-        if p.region != poi_side::REGION_NONE {
-            matched += 1;
-            continue;
-        }
-        // Member links win over containment.
-        if i < from_nodes {
-            if let Some(tagged) = labels.get(&p.osm_id) {
-                p.region = *tagged;
-                matched += 1;
-                continue;
-            }
-        }
-        let lon = p.lon_e7 as f64 * 1e-7;
-        let lat = p.lat_e7 as f64 * 1e-7;
-        let Some(cands) = grid.get(&(lon.floor() as i32, lat.floor() as i32)) else {
-            continue;
-        };
-        let mut best: Option<(f64, u64)> = None;
-        for bi in cands {
-            let b = &assembled[*bi];
-            if b.admin_level > p.place_cap {
-                continue;
-            }
-            for (poly, area) in b.polys.iter().zip(&b.areas) {
-                // Holes excluded: inside an inner ring is not inside the admin.
-                if rings::point_in_ring((lon, lat), &poly[0])
-                    && !poly[1..].iter().any(|h| rings::point_in_ring((lon, lat), h))
-                    && best.is_none_or(|(a, _)| *area < a)
-                {
-                    best = Some((*area, b.tagged));
-                }
-            }
-        }
-        if let Some((_, tagged)) = best {
-            p.region = tagged;
-            matched += 1;
-        }
-    }
-    matched
+/// Sort ascending and drop duplicates. The values are plain integers, so an
+/// unstable parallel sort yields exactly the serial `sort_unstable` + `dedup`.
+fn par_sort_dedup(v: &mut Vec<i64>) {
+    use rayon::prelude::*;
+    crate::par::install(|| v.par_sort_unstable());
+    v.dedup();
 }
 
 fn poi_tags<'a>(t: &osm::Tags<'_, 'a>) -> PoiTags<'a> {
@@ -821,3 +833,4 @@ where
 
 include!("poi_build_part1.rs");
 include!("poi_build_part2.rs");
+include!("poi_build_part3.rs");
