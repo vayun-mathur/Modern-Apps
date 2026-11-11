@@ -154,8 +154,12 @@ class NavigationSessionSlice3ExtraTest {
         var sawRecalc = false
         while (System.currentTimeMillis() < deadline) {
             val s = NavigationSessionManager.state.value
-            if (s is NavigationSessionManager.NavState.Recalculating) { sawRecalc = true; break }
-            if (s is NavigationSessionManager.NavState.Failed) { sawRecalc = true; break }
+            if (s is NavigationSessionManager.NavState.Recalculating ||
+                s is NavigationSessionManager.NavState.Failed
+            ) {
+                sawRecalc = true
+                break
+            }
             Thread.sleep(200)
             // Nudge with another off-route fix via a fresh registration is not possible;
             // the debounce is on fix timestamps, so simply waiting is the honest drive.

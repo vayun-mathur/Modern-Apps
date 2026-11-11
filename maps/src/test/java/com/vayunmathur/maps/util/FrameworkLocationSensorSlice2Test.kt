@@ -66,7 +66,7 @@ class FrameworkLocationSensorSlice2Test {
         val updates = mutableListOf<Pair<GeoPoint, Float?>>()
         val accuracies = mutableListOf<Int>()
         manager.startUpdates(
-            onUpdateReceived = { point, heading -> updates.add(point to heading) },
+            onUpdateReceived = { point, heading, _ -> updates.add(point to heading) },
             onAccuracyReceived = { accuracies.add(it) },
         )
         assertTrue(shadowOf(sm).hasListener(manager), "compass listeners registered")
@@ -110,7 +110,7 @@ class FrameworkLocationSensorSlice2Test {
         shadowOf(lm).setLastKnownLocation(LocationManager.GPS_PROVIDER, fix())
         val manager = FrameworkLocationManager(context)
         val updates = mutableListOf<Pair<GeoPoint, Float?>>()
-        manager.startUpdates(onUpdateReceived = { point, heading -> updates.add(point to heading) })
+        manager.startUpdates(onUpdateReceived = { point, heading, _ -> updates.add(point to heading) })
         assertTrue(shadowOf(lm).requestLocationUpdateListeners.isEmpty())
         assertEquals(0, updates.size)
         manager.stop()
@@ -127,7 +127,7 @@ class FrameworkLocationSensorSlice2Test {
         )
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<GeoPoint>()
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         manager.stop()
         assertEquals(1, points.size)
         assertEquals(37.25, points[0].latitude)
@@ -139,11 +139,11 @@ class FrameworkLocationSensorSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<GeoPoint>()
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         shadowOf(lm).requestLocationUpdateListeners.forEach { it.onLocationChanged(fix()) }
         manager.stop()
         // Same fix again in a fresh session: it must emit, not be rejected as stale.
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         shadowOf(lm).requestLocationUpdateListeners.forEach { it.onLocationChanged(fix()) }
         manager.stop()
         assertEquals(2, points.size)
@@ -157,7 +157,7 @@ class FrameworkLocationSensorSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.NETWORK_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<GeoPoint>()
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         val live = shadowOf(lm).requestLocationUpdateListeners
         // GPS at t=1s, then a network fix 11 s later (GPS stale) far away: taken.
         live.forEach { it.onLocationChanged(fix(timeNanos = 1_000_000_000L)) }

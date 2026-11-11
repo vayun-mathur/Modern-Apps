@@ -24,6 +24,9 @@ import org.junit.runner.RunWith
  * and both routable feature types.
  * Slice-2 coverage for maps (basename B, outside the slice-1 dirs).
  */
+// Robolectric fixtures build real ViewModels inside setContent on purpose: these tests drive
+// the composables against live VM state, with no ViewModelStoreOwner to obtain them from.
+@Suppress("ViewModelConstructorInComposable")
 @RunWith(AndroidJUnit4::class)
 class BottomSheetHeaderDirectionsSlice2Test {
 

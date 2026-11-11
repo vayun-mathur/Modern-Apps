@@ -26,6 +26,9 @@ import kotlin.time.Duration.Companion.minutes
  * (options, markers, overlays, effects) is ordinary Compose state work and
  * must survive composition without a live renderer.
  */
+// Robolectric fixtures build real ViewModels inside setContent on purpose: these tests drive
+// the composables against live VM state, with no ViewModelStoreOwner to obtain them from.
+@Suppress("ViewModelConstructorInComposable")
 @RunWith(RobolectricTestRunner::class)
 class Slice1Pass2MapSurfaceProbeTest {
 

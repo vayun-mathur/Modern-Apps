@@ -66,7 +66,7 @@ class FrameworkLocationLiveSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val updates = mutableListOf<Pair<com.vayunmathur.library.map.GeoPoint, Float?>>()
-        manager.startUpdates(onUpdateReceived = { point, heading -> updates.add(point to heading) })
+        manager.startUpdates(onUpdateReceived = { point, heading, _ -> updates.add(point to heading) })
         val live = listeners(lm)
         assertTrue(live.isNotEmpty(), "listener registered")
         live.forEach { it.onLocationChanged(fix()) }
@@ -84,7 +84,7 @@ class FrameworkLocationLiveSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val headings = mutableListOf<Float?>()
-        manager.startUpdates(onUpdateReceived = { _, heading -> headings.add(heading) })
+        manager.startUpdates(onUpdateReceived = { _, heading, _ -> headings.add(heading) })
         listeners(lm).forEach { it.onLocationChanged(fix(bearing = 90f)) }
         manager.stop()
         assertEquals(listOf<Float?>(90f), headings)
@@ -98,7 +98,7 @@ class FrameworkLocationLiveSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.NETWORK_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<com.vayunmathur.library.map.GeoPoint>()
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         val live = listeners(lm)
         assertTrue(live.isNotEmpty())
         // One GPS fix, then a network fix 1 s later claiming 2x accuracy —
@@ -130,7 +130,7 @@ class FrameworkLocationLiveSlice2Test {
         )
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<com.vayunmathur.library.map.GeoPoint>()
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         manager.stop()
         // The network fix is fresher (larger elapsedRealtimeNanos): it seeds.
         assertEquals(1, points.size)
@@ -149,7 +149,7 @@ class FrameworkLocationLiveSlice2Test {
         )
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<com.vayunmathur.library.map.GeoPoint>()
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         manager.stop()
         assertEquals(0, points.size)
     }
@@ -161,7 +161,7 @@ class FrameworkLocationLiveSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val updates = mutableListOf<Pair<com.vayunmathur.library.map.GeoPoint, Float?>>()
-        manager.startUpdates(onUpdateReceived = { point, heading -> updates.add(point to heading) })
+        manager.startUpdates(onUpdateReceived = { point, heading, _ -> updates.add(point to heading) })
         val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         // Robolectric ships no accelerometer/magnetic-field sensors, so the
         // manager registers nothing — but the compass listeners it *would*
@@ -178,7 +178,7 @@ class FrameworkLocationLiveSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<com.vayunmathur.library.map.GeoPoint>()
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         val live = listeners(lm)
         // Same spot, 1 s apart, tight accuracy: the second fix coalesces
         // into the hold and does not re-emit.
@@ -195,7 +195,7 @@ class FrameworkLocationLiveSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<com.vayunmathur.library.map.GeoPoint>()
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         val live = listeners(lm)
         live.forEach { it.onLocationChanged(fix(timeNanos = 1_000_000_000L, accuracy = 4f)) }
         // 5 m/s: travel, not noise — always emits.

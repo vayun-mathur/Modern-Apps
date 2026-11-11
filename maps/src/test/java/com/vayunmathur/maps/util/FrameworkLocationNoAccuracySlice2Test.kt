@@ -50,7 +50,7 @@ class FrameworkLocationNoAccuracySlice2Test {
         )
         val manager = FrameworkLocationManager(context)
         val updates = mutableListOf<Pair<GeoPoint, Float?>>()
-        manager.startUpdates(onUpdateReceived = { point, heading -> updates.add(point to heading) })
+        manager.startUpdates(onUpdateReceived = { point, heading, _ -> updates.add(point to heading) })
         manager.stop()
         assertEquals(1, updates.size)
         assertEquals(45f, updates[0].second)
@@ -66,7 +66,7 @@ class FrameworkLocationNoAccuracySlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.NETWORK_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<GeoPoint>()
-        manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         val live = shadowOf(lm).requestLocationUpdateListeners
         live.forEach { it.onLocationChanged(bareFix(timeNanos = 1_000_000_000L)) }
         // A network fix with no accuracy stated cannot displace fresh GPS:

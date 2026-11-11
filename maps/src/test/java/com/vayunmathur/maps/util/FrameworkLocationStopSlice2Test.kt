@@ -58,7 +58,7 @@ class FrameworkLocationStopSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val points = mutableListOf<GeoPoint>()
-        val listener = manager.startUpdates(onUpdateReceived = { point, _ -> points.add(point) })
+        val listener = manager.startUpdates(onUpdateReceived = { point, _, _ -> points.add(point) })
         @Suppress("DEPRECATION")
         listener.onStatusChanged(LocationManager.GPS_PROVIDER, 2, Bundle())
         listener.onLocationChanged(fix())
@@ -79,7 +79,7 @@ class FrameworkLocationStopSlice2Test {
         shadowOf(lm).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
         val manager = FrameworkLocationManager(context)
         val updates = mutableListOf<Pair<GeoPoint, Float?>>()
-        manager.startUpdates(onUpdateReceived = { point, heading -> updates.add(point to heading) })
+        manager.startUpdates(onUpdateReceived = { point, heading, _ -> updates.add(point to heading) })
         shadowOf(lm).requestLocationUpdateListeners.forEach { it.onLocationChanged(fix()) }
         assertEquals(1, updates.size)
         // All-zero accel/mag readings cannot form a rotation matrix.

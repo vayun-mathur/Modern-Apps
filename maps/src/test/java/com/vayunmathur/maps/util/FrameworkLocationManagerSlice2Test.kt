@@ -25,7 +25,7 @@ class FrameworkLocationManagerSlice2Test {
         val updates = mutableListOf<Pair<com.vayunmathur.library.map.GeoPoint, Float?>>()
         var accuracy = -1
         val listener = manager.startUpdates(
-            onUpdateReceived = { point, heading -> updates.add(point to heading) },
+            onUpdateReceived = { point, heading, _ -> updates.add(point to heading) },
             onAccuracyReceived = { accuracy = it },
         )
         assertTrue(listener != null)
@@ -45,9 +45,9 @@ class FrameworkLocationManagerSlice2Test {
     fun `a restart after stop emits nothing stale`() {
         val manager = FrameworkLocationManager(context)
         val updates = mutableListOf<Pair<com.vayunmathur.library.map.GeoPoint, Float?>>()
-        manager.startUpdates(onUpdateReceived = { point, heading -> updates.add(point to heading) })
+        manager.startUpdates(onUpdateReceived = { point, heading, _ -> updates.add(point to heading) })
         manager.stop()
-        manager.startUpdates(onUpdateReceived = { point, heading -> updates.add(point to heading) })
+        manager.startUpdates(onUpdateReceived = { point, heading, _ -> updates.add(point to heading) })
         assertEquals(0, updates.size)
         manager.stop()
     }
@@ -56,7 +56,7 @@ class FrameworkLocationManagerSlice2Test {
     fun `magnetometer accuracy reaches the accuracy callback`() {
         val manager = FrameworkLocationManager(context)
         var accuracy = -1
-        manager.startUpdates(onUpdateReceived = { _, _ -> }, onAccuracyReceived = { accuracy = it })
+        manager.startUpdates(onUpdateReceived = { _, _, _ -> }, onAccuracyReceived = { accuracy = it })
         val sensorManager =
             context.getSystemService(android.content.Context.SENSOR_SERVICE) as android.hardware.SensorManager
         val mag = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_MAGNETIC_FIELD)
@@ -71,7 +71,7 @@ class FrameworkLocationManagerSlice2Test {
     fun `accelerometer accuracy never reaches the callback`() {
         val manager = FrameworkLocationManager(context)
         var accuracy = -1
-        manager.startUpdates(onUpdateReceived = { _, _ -> }, onAccuracyReceived = { accuracy = it })
+        manager.startUpdates(onUpdateReceived = { _, _, _ -> }, onAccuracyReceived = { accuracy = it })
         val sensorManager =
             context.getSystemService(android.content.Context.SENSOR_SERVICE) as android.hardware.SensorManager
         val acc = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
@@ -86,7 +86,7 @@ class FrameworkLocationManagerSlice2Test {
     fun `a null sensor never reaches the callback`() {
         val manager = FrameworkLocationManager(context)
         var accuracy = -1
-        manager.startUpdates(onUpdateReceived = { _, _ -> }, onAccuracyReceived = { accuracy = it })
+        manager.startUpdates(onUpdateReceived = { _, _, _ -> }, onAccuracyReceived = { accuracy = it })
         manager.onAccuracyChanged(null, android.hardware.SensorManager.SENSOR_STATUS_ACCURACY_HIGH)
         assertEquals(-1, accuracy)
         manager.stop()
