@@ -64,6 +64,9 @@ fn writer_for(store: &Store, settings: &Settings) -> Result<StreamWriter> {
         spill_dir: settings.scratch.parent().map(std::path::Path::to_path_buf),
         // Leaf compression at finish runs on the build's own thread budget.
         threads: par::threads(),
+        // The body scratch holds already-DEFLATEd bodies (~53 GB on a planet): keep btrfs
+        // `compress-force` from zstd'ing them again at writeback.
+        spill_file_hook: Some(osm_ingest::mem::mark_scratch_uncompressed),
         ..Options::default()
     })
 }
@@ -354,7 +357,9 @@ fn consume_merged(
                             // Uncompressed, as this column has always meant.
                             stats.bytes += raw_len as u64;
                             stats.tiles += 1;
-                            writer.append_stored_with_hash(id, &stored, hash)?;
+                            // Handed over whole: the writer's background thread copies and
+                            // writes the body, this thread only does the dedup bookkeeping.
+                            writer.append_stored_owned(id, stored, hash)?;
                             written += 1;
                             // Every 25k tiles: often enough to look alive on a continent, rare
                             // enough that the write itself is never the cost.

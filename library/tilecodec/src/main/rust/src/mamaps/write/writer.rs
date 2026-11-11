@@ -6,6 +6,32 @@ use crate::mamaps::header::MAX_ZOOM;
 use crate::mamaps::index::{LeafEntry, RootEntry, self};
 use crate::proto::{Result, err};
 use std::collections::HashMap;
+
+/// The dedup index's map: keyed by `(FNV-1a hash, length)`, which is already well mixed, so the
+/// default SipHash only costs time on a lookup made for every appended tile. Never iterated for
+/// output, so the hasher cannot move a byte.
+type SeenMap = HashMap<(u64, u32), Vec<u64>, std::hash::BuildHasherDefault<KeyHasher>>;
+
+/// A multiply-rotate mixer for [`SeenMap`]'s already-hashed keys.
+#[derive(Default)]
+struct KeyHasher(u64);
+
+impl std::hash::Hasher for KeyHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.write_u64(b as u64);
+        }
+    }
+    fn write_u64(&mut self, v: u64) {
+        self.0 = (self.0.rotate_left(5) ^ v).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+    }
+    fn write_u32(&mut self, v: u32) {
+        self.write_u64(v as u64);
+    }
+}
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -27,7 +53,10 @@ pub struct StreamWriter {
     pub(crate) entries: Vec<Pending>,
     /// `(hash, stored length) -> offsets already written`. Several per key only on a collision,
     /// which is why it is a list. Probed, never iterated.
-    seen: HashMap<(u64, u32), Vec<u64>>,
+    seen: SeenMap,
+    /// Every offset in `seen`, in the order it was added (which is ascending), with its key: what
+    /// [`Self::sweep_dedup`] pops from instead of walking the whole map.
+    seen_order: std::collections::VecDeque<(u64, (u64, u32))>,
     last_id: Option<u64>,
     /// The stored bytes of the body `entries.last()` points at, which is what a run-length compare
     /// is against.
@@ -37,7 +66,7 @@ pub struct StreamWriter {
     /// whatever those bytes are. A `debug_assert` in [`Self::append_encoded`] checks it against the
     /// spill on every append, which is how the shortcut is held to the file's answer rather than
     /// trusted to stay in step with it.
-    last_body: Vec<u8>,
+    last_body: std::sync::Arc<Vec<u8>>,
     /// Distinct bodies appended since the last [`Self::sweep_dedup`] pass. Bounds how stale the
     /// dedup index may get between sweeps; see the sweep for why staleness is memory.
     distinct_since_sweep: u64,
@@ -112,14 +141,15 @@ impl StreamWriter {
         }
         // After the option checks, so a build with an impossible zoom range fails without having
         // created a file to clean up.
-        let data = Spill::create(options.spill_dir.as_deref())?;
+        let data = Spill::create(options.spill_dir.as_deref(), options.spill_file_hook)?;
         Ok(StreamWriter {
             options,
             data,
             entries: Vec::new(),
-            seen: HashMap::new(),
+            seen: SeenMap::default(),
+            seen_order: std::collections::VecDeque::new(),
             last_id: None,
-            last_body: Vec::new(),
+            last_body: Default::default(),
             distinct_since_sweep: 0,
             tiles_addressed: 0,
             distinct: 0,
@@ -226,6 +256,24 @@ impl StreamWriter {
     /// anyway (see `MAX_DEDUP_REACH`). Byte-identity on small archives holds because the sweep
     /// never fires there.
     fn push(&mut self, tile_id: u64, stored: &[u8], hash: u64) -> Result<()> {
+        self.push_shared(tile_id, std::sync::Arc::new(stored.to_vec()), hash)
+    }
+
+    /// [`Self::append_stored_with_hash`] for a body the caller hands over whole: the same dedup
+    /// decisions, offsets and index entries, with the body's bytes going to the background writer
+    /// ([`Spill::append_shared`]) instead of being copied on this thread.
+    pub fn append_stored_owned(&mut self, tile_id: u64, stored: Vec<u8>, hash: u64) -> Result<()> {
+        if !self.options.compress {
+            return err(
+                "append_stored was given a compressed body but this archive stores them raw"
+                    .to_string(),
+            );
+        }
+        Body::raw_len(&stored)?;
+        self.push_shared(tile_id, std::sync::Arc::new(stored), hash)
+    }
+
+    fn push_shared(&mut self, tile_id: u64, stored: std::sync::Arc<Vec<u8>>, hash: u64) -> Result<()> {
         let (z, _, _) = crate::pmtiles::tile_zxy(tile_id);
         if z < self.options.min_zoom || z > self.options.max_zoom {
             return err(format!(
@@ -257,7 +305,7 @@ impl StreamWriter {
             );
             if previous.length == length
                 && previous.tile_id + previous.run_length as u64 == tile_id
-                && self.last_body == stored
+                && *self.last_body == *stored
             {
                 previous.run_length += 1;
                 self.runs_used = true;
@@ -268,7 +316,7 @@ impl StreamWriter {
         let key = (hash, length);
         // `seen` and `data` are borrowed apart because confirming a candidate may read the spill,
         // which needs `&mut`, while the bucket being walked lives in the map.
-        let StreamWriter { seen, data, distinct, .. } = &mut *self;
+        let StreamWriter { seen, seen_order, data, distinct, .. } = &mut *self;
         let bucket = seen.entry(key).or_default();
         let mut hit = None;
         let head = data.len();
@@ -287,8 +335,9 @@ impl StreamWriter {
             Some(at) => at,
             None => {
                 let at = data.len();
-                data.append(&stored)?;
+                data.append_shared(std::sync::Arc::clone(&stored))?;
                 bucket.push(at);
+                seen_order.push_back((at, key));
                 *distinct += 1;
                 // Counted here -- not in the caller -- so the sweep below sees every new
                 // distinct body exactly once, wherever the dedup miss happened.
@@ -309,8 +358,7 @@ impl StreamWriter {
             }
         }
         self.entries.push(Pending { tile_id, offset, run_length: 1, length });
-        self.last_body.clear();
-        self.last_body.extend_from_slice(stored);
+        self.last_body = stored;
         Ok(())
     }
 
@@ -333,10 +381,24 @@ impl StreamWriter {
     /// older bodies, so entries past it were dead weight -- buckets walked, never hit.
     fn sweep_dedup(&mut self, head: u64) {
         let floor = head.saturating_sub(DEDUP_KEEP_REACH);
-        self.seen.retain(|_, bucket| {
-            bucket.retain(|&at| at >= floor);
-            !bucket.is_empty()
-        });
+        // Popped from the insertion-ordered list rather than `retain` over the whole map: the
+        // map holds ~2 GiB of bodies' worth of keys (millions on a planet z14) and the sweep
+        // fires every `DEDUP_SWEEP_DISTINCT` new bodies, so walking all of it each time was a
+        // large share of the serial append. Offsets were pushed in ascending order, so the
+        // front of the list is exactly the set `retain(at >= floor)` removed: the same entries
+        // go, the same stay.
+        while let Some(&(at, key)) = self.seen_order.front() {
+            if at >= floor {
+                break;
+            }
+            self.seen_order.pop_front();
+            if let Some(bucket) = self.seen.get_mut(&key) {
+                bucket.retain(|&b| b != at);
+                if bucket.is_empty() {
+                    self.seen.remove(&key);
+                }
+            }
+        }
         self.distinct_since_sweep = 0;
     }
 
@@ -483,11 +545,12 @@ impl StreamWriter {
     ) -> Result<Option<Split>> {
         let w = StreamWriter {
             options: Options::default(),
-            data: Spill::create(None).expect("spill"),
+            data: Spill::create(None, None).expect("spill"),
             entries: entries.to_vec(),
-            seen: std::collections::HashMap::new(),
+            seen: SeenMap::default(),
+            seen_order: std::collections::VecDeque::new(),
             last_id: None,
-            last_body: Vec::new(),
+            last_body: Default::default(),
             distinct_since_sweep: 0,
             tiles_addressed: entries.len() as u64,
             distinct: entries.len() as u64,

@@ -41,6 +41,11 @@ pub struct Options {
     /// parallelism. Speed only: every leaf's frame is a pure function of the leaf, so the
     /// archive is the same at any count.
     pub threads: usize,
+    /// Called on the body scratch file right after it is created, before anything is written:
+    /// lets a host tool mark the scratch for its filesystem (e.g. uncompressed on a
+    /// `compress-force` btrfs, where the already-DEFLATEd bodies would be zstd'd again at
+    /// writeback). Never observable in the archive.
+    pub spill_file_hook: Option<fn(&std::fs::File)>,
 }
 
 impl Default for Options {
@@ -59,6 +64,7 @@ impl Default for Options {
             max_lon_e7: 1_800_000_000,
             max_lat_e7: 850_511_287,
             threads: 0,
+            spill_file_hook: None,
         }
     }
 }
