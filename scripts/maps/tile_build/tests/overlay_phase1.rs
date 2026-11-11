@@ -148,7 +148,7 @@ mod tests {
         let manifest = tile_build::manifest::Manifest {
             version: tile_build::manifest::MANIFEST_VERSION,
             base: tile_build::manifest::BaseRef {
-                url: "https://data.maproj.org/planet3.mamaps".to_string(),
+                url: "https://data.maproj.org/planet4.mamaps".to_string(),
                 build_id: 0x1234,
                 len: 78017648928,
             },

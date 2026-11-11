@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Checks for and fetches incremental map updates (Phase 2: download + store).
  *
- * One run: fetch `planet3.manifest.json` (kilobytes, any network), compare
+ * One run: fetch `planet4.manifest.json` (kilobytes, any network), compare
  * its overlay sequence against the pinned manifest, and — when newer —
  * download the missing segments sequentially through the shared
  * [downloadModels] path (`.part` + Range resume, per-segment SHA-256, atomic
@@ -72,17 +72,20 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
         text: String,
     ): Result {
         val pinned = MapOverlay.pinned(root)
-        if (pinned != null && pinned.overlaySeq >= manifest.overlaySeq) {
+        // Sequence numbers only order overlays of ONE base: a manifest for a new
+        // base (planet3 -> planet4 restarts its sequence) is never "already
+        // applied" just because the old base's stack reached a higher seq.
+        val sameBase = pinned != null && pinned.baseBuildId == manifest.baseBuildId
+        if (pinned != null && sameBase && pinned.overlaySeq >= manifest.overlaySeq) {
             Log.status(TAG, "overlay seq ${manifest.overlaySeq} already applied")
             return Result.success()
         }
         // Base mismatch: either a foreign overlay (refuse) or a server
         // rebase (refresh the base once, then drop the old stack). An empty
-        // segment list with a newer seq is the rebase signal.
+        // segment list with a newer seq, or for a different base than the
+        // pinned one, is the rebase signal.
         if (!baseMatches(root, manifest)) {
-            if (manifest.segments.isEmpty() &&
-                (pinned == null || manifest.overlaySeq > pinned.overlaySeq)
-            ) {
+            if (isRebaseSignal(manifest, pinned)) {
                 return refreshBase(root, ds, manifest, text)
             }
             Log.status(TAG, "overlay seq ${manifest.overlaySeq} is for another base; skipping")
@@ -99,6 +102,17 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
         ds.setLong(KEY_PENDING_BYTES, 0L)
         Log.status(TAG, "overlay seq ${manifest.overlaySeq} stored (${missing.size} segments)")
         return Result.success()
+    }
+
+    /**
+     * An empty segment list is the rebase signal when nothing is pinned yet, when the pinned
+     * manifest is for another base (planet3 → planet4 restarts the sequence), or when its
+     * sequence moved past the pinned one.
+     */
+    private fun isRebaseSignal(manifest: MapOverlay.Manifest, pinned: MapOverlay.Manifest?): Boolean {
+        if (manifest.segments.isNotEmpty()) return false
+        if (pinned == null || pinned.baseBuildId != manifest.baseBuildId) return true
+        return manifest.overlaySeq > pinned.overlaySeq
     }
 
     /** Download [missing] sequentially, one segment at a time: peak transient is one segment. */

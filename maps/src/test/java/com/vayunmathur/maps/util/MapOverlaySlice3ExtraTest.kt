@@ -141,7 +141,7 @@ class MapOverlaySlice3ExtraTest {
     } }
 
     @Test fun workerConstants() {
-        assertEquals("https://data.maproj.org/planet3.manifest.json", MapOverlay.MANIFEST_URL)
+        assertEquals("https://data.maproj.org/planet4.manifest.json", MapOverlay.MANIFEST_URL)
         assertEquals(1, MapOverlay.MANIFEST_VERSION)
     }
 }

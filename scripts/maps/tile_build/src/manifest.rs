@@ -1,4 +1,4 @@
-//! `manifest` — the `planet3.manifest.json` schema for incremental updates.
+//! `manifest` — the `planet4.manifest.json` schema for incremental updates.
 //!
 //! The manifest is the only versioned thing the client fetches on a check
 //! (bytes, not gigabytes): it pins the base archive, names the overlay
@@ -27,7 +27,7 @@ pub const SECTION_CHUNK_BYTES: u64 = 32 * 1024 * 1024;
 
 /// The base archive this overlay applies to.
 pub struct BaseRef {
-    /// Download URL of the base `.mamaps` (today `planet3.mamaps`).
+    /// Download URL of the base `.mamaps` (today `planet4.mamaps`).
     pub url: String,
     /// `build_id` from the base header: the overlay refuses a mismatched base.
     pub build_id: u64,

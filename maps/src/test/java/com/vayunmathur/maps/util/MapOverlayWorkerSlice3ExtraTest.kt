@@ -107,6 +107,20 @@ class MapOverlayWorkerSlice3ExtraTest {
         Unit
     } }
 
+    @Test fun newBaseRebasesEvenWhenItsSeqRestartsBelowThePinnedOne() { runBlocking {
+        // planet3 -> planet4: the device pinned the old base's stack at seq 5;
+        // the new base's manifest restarts at seq 0 with no segments. That is a
+        // rebase (download attempted -> retry against example.invalid), never
+        // "already applied", or the device would sit on the old base forever.
+        cleanRoot(); plantBase(buildId = 0x99)
+        MapOverlay.pin(root, manifest(5, "", baseBuild = "0x99", baseLen = 64))
+        MapOverlayWorker.manifestFetcher = { manifest(0, "", baseBuild = "0x10", baseLen = 64) }
+        try {
+            assertEquals(ListenableWorker.Result.retry(), runWorker())
+        } finally { restoreFetcher(); cleanRoot() }
+        Unit
+    } }
+
     @Test fun missingSegmentsRetryWhenDownloadsFail() { runBlocking {
         cleanRoot(); plantBase()
         val text = manifest(11, """{"url": "https://example.invalid/s0", "len": 4, "sha256": "aa", "seq": 0}""", baseLen = 64)

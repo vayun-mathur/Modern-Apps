@@ -19,11 +19,11 @@ object MapTileCache {
 
     /** Where [BASEMAP_ARCHIVE_FILE] is fetched from on a first launch that has no copy yet. */
     const val BASEMAP_ARCHIVE_URL =
-        "https://data.maproj.org/planet3.mamaps"
+        "https://data.maproj.org/planet4.mamaps"
 
     /** Where the incremental-update manifest lives (see `util/MapOverlay`). */
     const val BASEMAP_MANIFEST_URL =
-        "https://data.maproj.org/planet3.manifest.json"
+        "https://data.maproj.org/planet4.manifest.json"
 
     /**
      * The single source of truth for the streamed basemap PMTiles URL.

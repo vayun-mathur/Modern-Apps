@@ -33,13 +33,13 @@ class MapOverlayTest {
     }
 
     private fun manifestJson(seq: Long = 7): String =
-        """{"version":1,"base":{"url":"https://data.maproj.org/planet3.mamaps","build_id":"0x0000000000001234","len":78017648928},"overlay_seq":$seq,"overlay_build_id":"0x000000000000abcd","segments":[{"url":"https://data.maproj.org/overlays/0007/overlay-0000.mamaps","len":11,"sha256":"abc","seq":0}],"sections":[],"min_client":1}"""
+        """{"version":1,"base":{"url":"https://data.maproj.org/planet4.mamaps","build_id":"0x0000000000001234","len":78017648928},"overlay_seq":$seq,"overlay_build_id":"0x000000000000abcd","segments":[{"url":"https://data.maproj.org/overlays/0007/overlay-0000.mamaps","len":11,"sha256":"abc","seq":0}],"sections":[],"min_client":1}"""
 
     @Test
     fun parses_the_published_schema() {
         val m = MapOverlay.parse(manifestJson())!!
         assertEquals(1, m.version)
-        assertEquals("https://data.maproj.org/planet3.mamaps", m.baseUrl)
+        assertEquals("https://data.maproj.org/planet4.mamaps", m.baseUrl)
         assertEquals(0x1234L, m.baseBuildId)
         assertEquals(78017648928L, m.baseLen)
         assertEquals(7L, m.overlaySeq)

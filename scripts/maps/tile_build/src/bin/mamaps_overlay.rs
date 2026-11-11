@@ -5,7 +5,7 @@
 //!                  [--base-url URL]
 //!
 //! Emits `overlay-0000.mamaps`, `overlay-0001.mamaps`, … plus `overlay.json`
-//! (the per-overlay half of `planet3.manifest.json`: overlay seq/build id,
+//! (the per-overlay half of `planet4.manifest.json`: overlay seq/build id,
 //! segment list with lengths and SHA-256). Each segment is a small
 //! self-contained `.mamaps` holding only changed/added tile bodies with
 //! overlay-relative offsets; the base is never touched.
