@@ -68,7 +68,7 @@ impl Header {
         self.flags & FLAG_LEAVES_COMPRESSED != 0
     }
 
-    /// This header's wire length: always 128 (v8 only).
+    /// This header's wire length: always 128 (v8 and v9).
     pub fn wire_len(&self) -> usize {
         HEADER_LEN
     }

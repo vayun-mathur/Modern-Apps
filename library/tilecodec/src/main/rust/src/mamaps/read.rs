@@ -19,8 +19,8 @@
 //! only stores a `206` whose body length equals what was asked for, so a read of the wrong length
 //! does not merely fail, it poisons that range for every later read.
 //!
-//! The reader speaks v8 only: a 128-byte header, 9 layers, full bodies. Anything else is
-//! refused on open rather than reinterpreted.
+//! The reader speaks v8 and v9 headers (128 bytes, 10 layers) and v8/v9/v10 bodies. Anything
+//! else is refused on open rather than reinterpreted.
 
 pub mod archive;
 pub mod helpers;
@@ -56,5 +56,5 @@ use std::cell::RefCell;
 
 pub use archive::MamapsArchive;
 pub use helpers::{decompress, open_prefix, read_all, MIN_FILE_LEN};
-pub use leaf_cache::{LeafCache, DEFAULT_LEAF_CACHE_CAPACITY};
+pub use leaf_cache::{LeafCache, DEFAULT_LEAF_CACHE_BYTES, DEFAULT_LEAF_CACHE_CAPACITY};
 pub use overlay::{OverlayArchive, TileSource, base_matches, prune_tombstones};

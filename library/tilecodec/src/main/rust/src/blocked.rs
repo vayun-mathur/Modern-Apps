@@ -137,6 +137,11 @@ impl<'a> Blocked<'a> {
         self.record_len
     }
 
+    /// Records per block (the last block may hold fewer).
+    pub fn records_per_block(&self) -> u64 {
+        self.records_per_block
+    }
+
     /// How many blocks the file holds.
     pub fn block_count(&self) -> usize {
         self.block_count
@@ -156,15 +161,7 @@ impl<'a> Blocked<'a> {
             return err(format!("block {b} past the {} in the section", self.block_count));
         }
         let (start, end) = (self.offset(b) as usize, self.offset(b + 1) as usize);
-        let frame = &self.bytes[start..end];
-        let mut decoder = ruzstd::decoding::StreamingDecoder::new(frame)
-            .map_err(|e| Error(format!("a blocked section will not decode: {e:?}")))?;
-        let mut out = Vec::new();
-        use std::io::Read as _;
-        decoder
-            .read_to_end(&mut out)
-            .map_err(|e| Error(format!("a blocked section will not decode: {e:?}")))?;
-        Ok(out)
+        inflate_frame(&self.bytes[start..end], 0)
     }
 
     /// Copy record `id` into a caller buffer. Convenience over [`Blocked::block`]
@@ -178,6 +175,23 @@ impl<'a> Blocked<'a> {
         }
         Ok(block[at..at + self.record_len].to_vec())
     }
+}
+
+/// Inflate one block's zstd frame, the one decode every reader of a ZBLK section
+/// shares (the host tools through [`Blocked::block`], the app's lock-free cached
+/// view in `maps/src/main/rust/src/graph_part1.rs` directly).
+///
+/// `capacity` is a size hint for the output (the block's expected unpacked length,
+/// or 0 when unknown); callers that know the exact length check it themselves.
+pub fn inflate_frame(frame: &[u8], capacity: usize) -> Result<Vec<u8>> {
+    let mut decoder = ruzstd::decoding::StreamingDecoder::new(frame)
+        .map_err(|e| Error(format!("a blocked section will not decode: {e:?}")))?;
+    let mut out = Vec::with_capacity(capacity);
+    use std::io::Read as _;
+    decoder
+        .read_to_end(&mut out)
+        .map_err(|e| Error(format!("a blocked section will not decode: {e:?}")))?;
+    Ok(out)
 }
 
 /// A tiny block cache: the last-inflated block plus an LRU spill.
@@ -489,11 +503,16 @@ mod tests {
 
     fn pattern_records(n: usize, len: usize) -> Vec<u8> {
         // Coordinate-like: small ints LE plus a slow counter, like NodeRecs.
+        // `len` bytes per record: the 12-byte pattern truncated (7-byte edge records)
+        // or zero-padded, so any stride gets whole records.
         let mut out = Vec::with_capacity(n * len);
         for i in 0..n {
-            out.extend_from_slice(&((350_000_000 + i as i32 * 37) as i32).to_le_bytes());
-            out.extend_from_slice(&((-1_200_000_000 + i as i32 * 11) as i32).to_le_bytes());
-            out.extend_from_slice(&(i as u32 * 3).to_le_bytes());
+            let mut rec = Vec::with_capacity(12.max(len));
+            rec.extend_from_slice(&((350_000_000 + i as i32 * 37) as i32).to_le_bytes());
+            rec.extend_from_slice(&((-1_200_000_000 + i as i32 * 11) as i32).to_le_bytes());
+            rec.extend_from_slice(&(i as u32 * 3).to_le_bytes());
+            rec.resize(len, 0);
+            out.extend_from_slice(&rec);
         }
         assert_eq!(out.len(), n * len);
         out
@@ -552,8 +571,9 @@ mod tests {
         let scratch = dir.join("tilecodec_blocked_stream_test.tmp");
         let _ = std::fs::remove_file(&scratch);
         let mut w = BlockedStreamWriter::create(12, &scratch).expect("create");
-        // Odd-sized pushes, including across block boundaries.
-        for chunk in records.chunks(5000) {
+        // Odd-sized pushes (417 whole records each — `push` takes whole records only),
+        // including across block boundaries.
+        for chunk in records.chunks(417 * 12) {
             w.push(chunk).expect("push");
         }
         let streamed = w.finish().expect("finish");

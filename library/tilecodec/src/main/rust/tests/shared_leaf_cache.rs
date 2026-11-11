@@ -196,3 +196,28 @@ fn two_archives_over_one_cache_fetch_a_shared_leaf_once() {
         "open plus a shared-leaf tile: prefix and body, no second leaf fetch"
     );
 }
+
+#[test]
+fn planet_sized_leaves_are_bounded_by_bytes_not_count() {
+    use tilecodec::mamaps::read::DEFAULT_LEAF_CACHE_BYTES;
+    // A planet leaf: 262 144 entries x 16 B = 4 MiB parsed (planet3/planet4 capacity).
+    let big = |lo: u32| {
+        vec![LeafEntry { tile_id_lo: lo, run_length: 1, offset_delta: 0, length: 1 }; 262_144]
+    };
+    let cache = LeafCache::new();
+    for i in 0..40u64 {
+        cache.insert(i, big(i as u32));
+    }
+    assert!(cache.bytes() <= DEFAULT_LEAF_CACHE_BYTES, "held {} bytes", cache.bytes());
+    assert_eq!(cache.len(), DEFAULT_LEAF_CACHE_BYTES / (262_144 * 16));
+    assert!(cache.get(39).is_some(), "the newest leaf survives");
+    assert!(cache.get(0).is_none(), "the oldest planet leaves are evicted by bytes");
+}
+
+#[test]
+fn one_oversize_leaf_is_still_kept() {
+    let cache = LeafCache::with_limits(64, 1024);
+    cache.insert(1, vec![LeafEntry { tile_id_lo: 1, run_length: 1, offset_delta: 0, length: 1 }; 1000]);
+    assert!(cache.get(1).is_some());
+    assert_eq!(cache.len(), 1);
+}

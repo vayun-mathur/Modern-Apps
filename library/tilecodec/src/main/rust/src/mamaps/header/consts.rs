@@ -62,7 +62,8 @@ pub const MAGIC: &[u8; 7] = b"MAMAPS\0";
 /// reject a v3 archive anyway. v1 is no longer read — the last v1 archive predates `places`,
 /// `poi` and `transit` entirely.
 ///
-/// The reader speaks v8 only: any other version byte is refused on open.
+/// The reader speaks v8 and v9 headers ([`FORMAT_VERSION_V9`]); any other version byte is
+/// refused on open. Bodies carry their own version byte (v8, v9 or [`FORMAT_VERSION_V10`]).
 pub const FORMAT_VERSION: u8 = 8;
 
 /// The v9 format version: zstd bodies, compressed leaves, packed sidecars.

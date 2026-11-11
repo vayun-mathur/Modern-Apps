@@ -22,7 +22,7 @@
 //!
 //! # Size
 //!
-//! Nine layers, ~112 kinds and 41 details, at a length byte each: under 2 KiB as measured,
+//! Ten layers, ~122 kinds and 45 details, at a length byte each: under 2 KiB as measured,
 //! which is what lets the header, the dictionary and the root index share one 16 KiB opening
 //! read.
 //!

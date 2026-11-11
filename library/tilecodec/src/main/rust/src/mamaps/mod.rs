@@ -1,7 +1,8 @@
 //! `.mamaps` — the container the Vulkan renderer reads, shaped like what it draws.
 //!
-//! v8 only: a 128-byte header, 9 layers, full tile bodies. Anything else is
-//! refused on open rather than reinterpreted.
+//! v8 or v9 headers (always 128 bytes), 10 layers, v8/v9/v10 tile bodies (the planet
+//! archives are v9 headers over v10 bodies). Anything else is refused on open rather than
+//! reinterpreted.
 //!
 //! # Why not MVT inside PMTiles
 //!

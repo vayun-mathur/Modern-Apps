@@ -373,7 +373,7 @@ impl ArchiveView {
                 return err("a single-archive POI region covers a different index");
             }
         }
-        // Transit: TRIX v3..=6 with a directory that fits.
+        // Transit: TRIX v3..=7 with a directory that fits.
         if let Some(b) = slice(ARCHIVE_KIND_TRANSIT)? {
             if b.len() < 80 {
                 return err("a single-archive transit pack ends before its header");

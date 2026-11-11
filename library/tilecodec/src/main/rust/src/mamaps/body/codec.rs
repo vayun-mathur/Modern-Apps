@@ -128,7 +128,11 @@ impl Body {
         }
         let layer_count = buf[10] as usize;
         let body_flags = buf[11];
-        if body_flags & !KNOWN_BODY_FLAGS != 0 {
+        // All eight bits are defined today, so `!KNOWN_BODY_FLAGS` is 0 and clippy calls this
+        // a no-op; it stays so a ninth flag (or a narrowed set) is refused, not misread.
+        #[allow(clippy::bad_bit_mask)]
+        let unknown = body_flags & !KNOWN_BODY_FLAGS;
+        if unknown != 0 {
             return err(format!("unknown body flags {:#04x}", body_flags));
         }
         // Reserved word must be zero unless extended flag is set; extended uses it as spill for counts.

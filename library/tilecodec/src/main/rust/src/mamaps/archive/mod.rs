@@ -56,7 +56,7 @@
 //!
 //! * `offset + len <= file_len` (checked_add, no wrap), 8-byte aligned offsets.
 //! * No overlap: not with the tile prefix + shared section, not with each other.
-//! * Magic/version per section: `MARG` v6 (graph meta), `TRIX` v3..=6
+//! * Magic/version per section: `MARG` v6..=7 (graph meta), `TRIX` v3..=7
 //!   (transit), `MAPA` v1 (POI attrs), `PSP1`/`PNI1` (POI grid/words).
 //! * Count match: nodes `(N+1)*12`, edges exact length from `(E, escapes,
 //!   named)`, intermediate trailer `G <= E`, lanes sentinel, elevation `N*2`,

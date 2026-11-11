@@ -26,10 +26,23 @@ use crate::mamaps::index::LeafEntry;
 /// while each entry stays a parsed in-memory index (tens of KB), not tile data.
 pub const DEFAULT_LEAF_CACHE_CAPACITY: usize = 64;
 
+/// The byte budget a shared cache keeps by default, on top of the entry count.
+///
+/// The count alone assumed small leaves. A planet archive's leaves hold up to
+/// `leaf_entry_capacity` = 262 144 entries (planet3 and planet4 both), i.e. 4 MiB
+/// parsed each, so 64 of them could pin 256 MiB on a phone over a long session of
+/// panning and zooming (every zoom level lives in its own leaves). 48 MiB keeps a
+/// dozen planet leaves — a viewport's walk through every zoom plus panning — and
+/// leaves state-sized archives, whose leaves are kilobytes, bound by the count as
+/// before. The newest entry is always kept, so one oversize leaf still resolves.
+pub const DEFAULT_LEAF_CACHE_BYTES: usize = 48 * 1024 * 1024;
+
 struct State {
     entries: HashMap<u64, Arc<Vec<LeafEntry>>>,
     /// `leaf_offset`s in use order, most-recently-used last.
     order: VecDeque<u64>,
+    /// Parsed bytes currently held (`entries × size_of::<LeafEntry>()`).
+    bytes: usize,
 }
 
 /// Parsed `.mamaps` leaves keyed by `leaf_offset`, shared across threads.
@@ -46,6 +59,7 @@ struct State {
 /// a failed worker cannot wedge the rest of the surface.
 pub struct LeafCache {
     capacity: usize,
+    max_bytes: usize,
     state: Mutex<State>,
 }
 
@@ -55,15 +69,34 @@ impl LeafCache {
         Self::with_capacity(DEFAULT_LEAF_CACHE_CAPACITY)
     }
 
-    /// A cache with `capacity` entries. A zero capacity is raised to one.
+    /// A cache with `capacity` entries and the default byte budget. A zero capacity is
+    /// raised to one.
     pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_limits(capacity, DEFAULT_LEAF_CACHE_BYTES)
+    }
+
+    /// A cache bounded by both `capacity` entries and `max_bytes` parsed bytes, whichever
+    /// binds first. The most recently inserted leaf is always kept.
+    pub fn with_limits(capacity: usize, max_bytes: usize) -> Self {
         LeafCache {
             capacity: capacity.max(1),
+            max_bytes,
             state: Mutex::new(State {
                 entries: HashMap::new(),
                 order: VecDeque::new(),
+                bytes: 0,
             }),
         }
+    }
+
+    /// The byte budget this cache was built with.
+    pub fn max_bytes(&self) -> usize {
+        self.max_bytes
+    }
+
+    /// Parsed bytes currently held.
+    pub fn bytes(&self) -> usize {
+        self.state.lock().map(|s| s.bytes).unwrap_or(0)
     }
 
     /// The entry budget this cache was built with.
@@ -113,17 +146,27 @@ impl LeafCache {
             return existing;
         }
         let stored = Arc::new(entries);
+        state.bytes += leaf_bytes(&stored);
         state.entries.insert(leaf_offset, Arc::clone(&stored));
         state.order.push_back(leaf_offset);
-        while state.entries.len() > self.capacity {
+        while state.entries.len() > 1
+            && (state.entries.len() > self.capacity || state.bytes > self.max_bytes)
+        {
             if let Some(oldest) = state.order.pop_front() {
-                state.entries.remove(&oldest);
+                if let Some(gone) = state.entries.remove(&oldest) {
+                    state.bytes = state.bytes.saturating_sub(leaf_bytes(&gone));
+                }
             } else {
                 break;
             }
         }
         stored
     }
+}
+
+/// Parsed size of one leaf, as the byte budget counts it.
+fn leaf_bytes(entries: &[LeafEntry]) -> usize {
+    std::mem::size_of_val(entries)
 }
 
 impl Default for LeafCache {

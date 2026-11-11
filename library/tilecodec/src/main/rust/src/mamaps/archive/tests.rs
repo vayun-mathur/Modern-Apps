@@ -146,8 +146,11 @@ fn a_minimal_sidecar_parses_and_slices() {
     transit[4..8].copy_from_slice(&TRANSIT_VERSION.to_le_bytes());
     transit[8..12].copy_from_slice(&20u32.to_le_bytes());
     let mut header = v7_header(0);
+    // Raw (unblocked) node records are a v6 graph; a v7 meta would demand ZBLK sections.
+    let mut meta = graph_meta(4, 2, 0, 0);
+    meta[4..8].copy_from_slice(&GRAPH_VERSION_MIN.to_le_bytes());
     let payloads = vec![
-        (ARCHIVE_KIND_GRAPH_META, graph_meta(4, 2, 0, 0), 0),
+        (ARCHIVE_KIND_GRAPH_META, meta, 0),
         (ARCHIVE_KIND_GRAPH_NODES, nodes.clone(), 0),
         (ARCHIVE_KIND_TRANSIT, transit.clone(), 0),
     ];

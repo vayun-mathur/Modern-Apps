@@ -13,7 +13,7 @@ pub const NONE: u16 = 0;
 
 /// The layers this format carries, in draw order.
 ///
-/// A layer's id **is** its index here. Nine: the wash (`landtype`, everything the style
+/// A layer's id **is** its index here. Ten: the wash (`landtype`, everything the style
 /// draws as a ground fill), then `roads`, `boundaries`, `buildings`, `places` (labels),
 /// `poi` (icons), `transit` (reserved by v2; populated when transit lands), `traffic`
 /// (v4: one line per drivable component segment, recoloured live from a pushed id→speed

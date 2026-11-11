@@ -14,8 +14,8 @@ use crate::mamaps::body::Body;
         w.finish().expect("finish")
     }
 
-    /// Every build is v7: version byte 7, 128-byte header, `file_len` covering
-    /// exactly header/dictionary/root/leaves/data.
+    /// Every build is a v9 container (the planet3/planet4 header): version byte 9,
+    /// 128-byte header, `file_len` covering exactly header/dictionary/root/leaves/data.
     #[test]
     fn builds_are_v7_full_only() {
         let bytes = two_tiles(Options::default());
@@ -25,6 +25,6 @@ use crate::mamaps::body::Body;
             "file_len covers exactly the v7 sections"
         );
         assert_eq!(bytes.len(), 128 + header.dict_len as usize + header.root_len as usize + header.leaf_len as usize + header.data_len as usize);
-        assert_eq!(bytes[7], 7, "a build is version byte 7");
+        assert_eq!(bytes[7], crate::mamaps::header::FORMAT_VERSION_V9, "a build is version byte 9");
         assert_eq!(header.wire_len(), 128);
     }
