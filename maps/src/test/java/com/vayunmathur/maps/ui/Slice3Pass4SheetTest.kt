@@ -58,7 +58,7 @@ class Slice3Pass4SheetTest {
             DynamicTheme {
                 PlaceSheet(
                     poi = null,
-                    selectedSection = PoiSection.REVIEWS,
+                    selectedSection = PoiSection.PHOTOS,
                     feature = genericPlace(),
                 )
             }

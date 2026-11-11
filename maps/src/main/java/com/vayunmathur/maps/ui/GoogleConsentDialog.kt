@@ -18,10 +18,12 @@ import kotlinx.coroutines.launch
 /**
  * First-launch Google services consent.
  *
- * Shown once, on the first map open: enabling turns on place enrichment
- * (ratings/hours/photos), reviews, and Street View — all of which contact
- * Google. Disabled (the default) means zero Google traffic: search, pins,
- * routing, traffic, and transit stay fully offline/first-party.
+ * Shown once, on the first map open: enabling turns on Google place details
+ * (photos, hours, phone/website, popular times) and Street View — the only two
+ * features that contact Google. Ratings, review counts and review summaries
+ * always come from the offline archive. Disabled (the default) means zero
+ * Google traffic: search, pins, routing, traffic, and transit stay fully
+ * offline/first-party.
  *
  * Either answer records [MapPreferences.KEY_GOOGLE_CONSENT_ASKED] so the
  * dialog never returns; the choice stays changeable in Settings.

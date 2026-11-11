@@ -48,8 +48,8 @@ class SelectedFeatureSlice3ExtraTest {
         vm.set(place)
         assertEquals(place, vm.selectedFeature.value)
         assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, vm.poiSection.value)
-        vm.setPoiSection(com.vayunmathur.maps.data.google.PoiSection.REVIEWS)
-        assertEquals(com.vayunmathur.maps.data.google.PoiSection.REVIEWS, vm.poiSection.value)
+        vm.setPoiSection(com.vayunmathur.maps.data.google.PoiSection.PHOTOS)
+        assertEquals(com.vayunmathur.maps.data.google.PoiSection.PHOTOS, vm.poiSection.value)
         vm.set(barePlace("Other"))
         assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, vm.poiSection.value) // set resets section
         // Enrichment runs async against the (absent) POI sidecar; give it its chance

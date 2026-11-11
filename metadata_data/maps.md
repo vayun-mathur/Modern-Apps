@@ -4,8 +4,9 @@ Features:
 - All routing runs on device - driving, walking, biking and public transit
 - Turn-by-turn navigation with voice, lane guidance, and a speed limit widget
 - Android Auto support
+- Offline place search, with ratings and review summaries built into the map data
 - Place details, saved places, transit departure boards, and Street View
 - Routing, POI and transit data are downloaded once on first launch
 - Map tiles stream as you pan, and any area you have viewed keeps working offline
 
-Internet only used for: new map tiles, address search, traffic and transit delays
+Internet only used for: map updates, traffic and transit delays, and, only if you turn on Google services, place photos and hours and Street View

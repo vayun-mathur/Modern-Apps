@@ -200,7 +200,7 @@ class MainActivity : MaActivity() {
                     )
                 }
             }
-            // A query only → run the Google search and auto-select the first hit
+            // A query only → run the offline index search and auto-select the first hit
             // (same path as the contact-address shortcut).
             !query.isNullOrBlank() -> {
                 val near = biasPosition()

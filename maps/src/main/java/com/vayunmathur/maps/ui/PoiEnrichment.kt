@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,7 +17,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.Card
@@ -35,7 +30,6 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.firstLetterUppercase
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.google.GooglePoiInfo
-import com.vayunmathur.maps.data.google.GoogleReview
 import com.vayunmathur.maps.data.google.PoiPopularTimes
 import com.vayunmathur.maps.data.google.PoiSection
 import kotlinx.datetime.TimeZone
@@ -44,7 +38,9 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
 /**
- * Renders one [PoiSection] of the keyless Google Maps POI enrichment.
+ * Renders one [PoiSection] of the keyless Google Maps place details (photos, hours,
+ * fuel price, popular times). No reviews: rating, count and review summary come from the
+ * archive and render in the header and [PlaceSheet]'s Details block.
  *
  * Every part is conditional on its data being present — a keyless response is
  * bot-degraded (popular times and the full photo gallery are usually stripped)
@@ -61,7 +57,6 @@ fun GooglePoiEnrichment(info: GooglePoiInfo, section: PoiSection, showHours: Boo
         when (section) {
             PoiSection.DETAILS -> DetailsSection(info, showHours)
             PoiSection.PHOTOS -> PhotosSection(info.photoUrls)
-            PoiSection.REVIEWS -> ReviewsSection(info)
         }
     }
 }
@@ -81,10 +76,6 @@ private fun DetailsSection(info: GooglePoiInfo, showHours: Boolean) {
                 colors = ListItemDefaults.colors(Color.Transparent),
             )
         }
-    }
-
-    info.editorialSummary?.let {
-        Text(it, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, maxLines = 3)
     }
 
     // Google's hours, which win when it has them (the OSM block is suppressed by
@@ -115,7 +106,7 @@ private fun DetailsSection(info: GooglePoiInfo, showHours: Boolean) {
 /**
  * The photo gallery, two to a row.
  *
- * A grid rather than the single [LazyRow] this replaces: on its own tab there is
+ * A grid rather than the single `LazyRow` this replaces: on its own tab there is
  * width to spend and no competing section, and a row of one visible thumbnail was
  * most of what made the photos feel hidden.
  */
@@ -141,67 +132,10 @@ private fun PhotosSection(photoUrls: List<String>) {
 }
 
 @Composable
-private fun ReviewsSection(info: GooglePoiInfo) {
-    if (info.reviews.isNotEmpty()) {
-        info.reviews.forEach { ReviewCard(it) }
-    } else info.featuredReview?.let {
-        Card {
-            Text(
-                "\u201C$it\u201D",
-                Modifier.padding(12.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                fontStyle = FontStyle.Italic,
-                maxLines = 4,
-            )
-        }
-    }
-}
-
-@Composable
 private fun SectionHeader(title: String, icon: @Composable () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         icon()
         Text(title, style = MaterialTheme.typography.titleMedium)
-    }
-}
-
-@Composable
-private fun ReviewCard(review: GoogleReview) {
-    Card {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                review.authorPhoto?.let {
-                    AsyncImage(
-                        model = it,
-                        contentDescription = stringResource(R.string.poi_reviewer_photo_description),
-                        modifier = Modifier.size(32.dp).clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-                Column {
-                    Text(review.author, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                    review.relativeTime?.let {
-                        Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-            if (review.rating in 1..5) RatingStars(review.rating.toDouble())
-            review.text?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 6)
-            }
-            if (review.photos.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(review.photos) { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = stringResource(R.string.poi_photo_description),
-                            modifier = Modifier.size(72.dp).clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop,
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 

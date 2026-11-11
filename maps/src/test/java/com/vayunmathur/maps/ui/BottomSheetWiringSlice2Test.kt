@@ -72,11 +72,11 @@ class BottomSheetWiringSlice2Test {
             }
         }
         rule.runOnIdle {
-            actions.setPoiSection(PoiSection.REVIEWS)
+            actions.setPoiSection(PoiSection.PHOTOS)
             actions.openNearestStop(37.8, -122.4)
         }
-        assertEquals(PoiSection.REVIEWS, section)
-        assertEquals(PoiSection.REVIEWS, selected.poiSection.value)
+        assertEquals(PoiSection.PHOTOS, section)
+        assertEquals(PoiSection.PHOTOS, selected.poiSection.value)
         assertEquals(37.8, opened?.first)
         assertEquals(-122.4, opened?.second)
     }

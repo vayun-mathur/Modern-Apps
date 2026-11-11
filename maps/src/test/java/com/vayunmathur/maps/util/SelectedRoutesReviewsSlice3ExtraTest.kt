@@ -1,19 +1,13 @@
 package com.vayunmathur.maps.util
 
 import android.app.Application
-import android.content.ComponentName
-import android.os.Bundle
-import android.os.Handler
 import android.os.Looper
-import android.os.Message
-import android.os.Messenger
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.maps.data.MapPreferences
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.GooglePoiDataSource
-import com.vayunmathur.maps.service.ReviewsScraperService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -29,9 +23,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
-import org.robolectric.shadows.ShadowApplication
 
-/** Slice 3/3 extra: currentPoiInfo review streaming + routes flow emission. */
+/** Slice 3/3 extra: currentPoiInfo is place details only (no reviews) + routes flow emission. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class SelectedRoutesReviewsSlice3ExtraTest {
@@ -68,62 +61,52 @@ class SelectedRoutesReviewsSlice3ExtraTest {
 
     private fun pump() = Shadows.shadowOf(Looper.getMainLooper()).idleFor(300, java.util.concurrent.TimeUnit.MILLISECONDS)
 
-    private fun installFakeScraper(reviewsJson: String) {
-        val handler = object : Handler(Looper.getMainLooper()) {
-            override fun handleMessage(msg: Message) {
-                if (msg.what != ReviewsScraperService.MSG_FETCH) return
-                val result = Message.obtain(null, ReviewsScraperService.MSG_RESULT, msg.arg1, 0)
-                result.data = Bundle().apply { putString(ReviewsScraperService.KEY_JSON, reviewsJson) }
-                msg.replyTo?.send(result)
-            }
-        }
-        val shadow = Shadows.shadowOf(app) as ShadowApplication
-        shadow.setComponentNameAndServiceForBindService(
-            ComponentName(app, ReviewsScraperService::class.java),
-            Messenger(handler).binder,
-        )
-    }
-
     // NOTE: no runBlocking here. Robolectric runs tests on the paused main
     // looper and viewModelScope is Main-bound, so blocking the test thread
     // starves the very coroutines under test (this test previously hung the
     // whole suite). Poll the StateFlow value while pumping the looper,
     // bounded, and assert on whatever arrived.
-    @Test fun poiInfoStreamsReviewsFromScraper() {
+    @Test fun poiInfoCarriesPlaceDetailsAndNoReviews() {
         val ds = DataStoreUtils.getInstance(app)
         val prev = ds.getBoolean(MapPreferences.KEY_GOOGLE_SERVICES, false)
         kotlinx.coroutines.runBlocking { ds.setBoolean(MapPreferences.KEY_GOOGLE_SERVICES, true) }
         val defaultGet = GooglePoiDataSource.httpGet
         val defaultWarm = GooglePoiDataSource.httpWarm
-        val name = "Review Stream Cafe"
-        // Search entries wrap the place node: entry = [null, place], and the
-        // parser's paths are entry-relative (NAME=(1,11), FEATURE_ID=(1,10)).
+        val name = "Details Only Cafe"
+        // The response carries rating, featured review and feature id (the old review-scrape
+        // key); none of it may reach the app. Only the place facts do.
         val node = Payload().apply {
             set(11, value = JsonPrimitive(name))
             set(9, 2, value = JsonPrimitive(37.8)); set(9, 3, value = JsonPrimitive(-122.4))
             set(4, 7, value = JsonPrimitive(4.5))
             set(10, value = JsonPrimitive("0x808580:0x808581"))
+            set(142, 1, 0, 1, 0, 0, value = JsonPrimitive("Great"))
+            set(7, 0, value = JsonPrimitive("https://cafe.example"))
+            set(203, 1, 4, 0, value = JsonPrimitive("Open · Closes 9 PM"))
         }.node()
         val entry = JsonArray(listOf(JsonNull, node))
+        val requested = java.util.concurrent.CopyOnWriteArrayList<String>()
         GooglePoiDataSource.httpWarm = { "" }
-        GooglePoiDataSource.httpGet = { Payload().searchBody(entry) }
-        installFakeScraper("""[{"a":"Rev Ann","r":5,"t":"Great"}]""")
+        GooglePoiDataSource.httpGet = { url -> requested.add(url); Payload().searchBody(entry) }
         try {
             val vm = SelectedFeatureViewModel(app)
             vm.set(SpecificFeature.GenericPlace(name, "555", null, null, GeoPoint(-122.4, 37.8)))
-            // currentPoiInfo is WhileSubscribed: keep a collector alive on a
-            // background scope while the main looper is pumped from here.
+            // The sheet only fetches Google details once the user reveals them.
+            vm.revealDetails()
             val seen = java.util.concurrent.atomic.AtomicReference<com.vayunmathur.maps.data.google.GooglePoiInfo?>(null)
             val job = CoroutineScope(Dispatchers.Default).launch {
-                vm.currentPoiInfo.collect { if (it?.reviews?.isNotEmpty() == true) seen.set(it) }
+                vm.currentPoiInfo.collect { if (it != null) seen.set(it) }
             }
             val deadline = System.currentTimeMillis() + 25000
             while (seen.get() == null && System.currentTimeMillis() < deadline) { pump() }
             job.cancel()
             val info = seen.get()
-            assertNotNull(info, "reviews-bearing poi info should stream from the fake scraper")
-            assertEquals("Rev Ann", info.reviews.single().author)
-            assertEquals("0x808580:0x808581", info.featureId)
+            assertNotNull(info, "place details should emit for a matched place")
+            assertEquals("https://cafe.example", info.website)
+            assertEquals("Open · Closes 9 PM", info.statusText)
+            // One details request, and it no longer asks for review posts.
+            assertEquals(1, requested.size)
+            assertTrue(requested.none { it.contains("review_posts") }, "request still selects review posts")
         } finally {
             GooglePoiDataSource.httpGet = defaultGet
             GooglePoiDataSource.httpWarm = defaultWarm

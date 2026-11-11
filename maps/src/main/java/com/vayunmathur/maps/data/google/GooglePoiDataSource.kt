@@ -13,14 +13,18 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Keyless Google Maps POI enrichment.
+ * Keyless Google Maps place details: photos, hours/open status, phone, website, price
+ * band, fuel price and popular times — and nothing review-shaped. Ratings, review
+ * counts, summaries and review text come only from the offline archive
+ * (`PoiIndexAttrs`), so this neither requests review posts (the `pb` carries no
+ * review-posts selector) nor reads the rating/review/editorial slots of the response.
  *
  * Follows the NewPipe model: the device calls the same undocumented google.com/maps
  * web endpoints a logged-out browser does — no API key, no first-party backend,
  * no Play Services. The request is a `pb` protobuf-ish string; the response is a
  * guard-prefixed, deeply nested *positional* JSON array (no field names). The
- * calibrated index paths ([Paths]) pull rating/reviews/hours/price/website/
- * photos/popular-times out of it.
+ * calibrated index paths ([Paths]) pull hours/price/website/phone/photos/
+ * popular-times out of it.
  *
  * This is a scrape of a private endpoint, so it is inherently fragile:
  *  - a Google-side reshape makes fields go null (paths rot) — every accessor
@@ -46,8 +50,7 @@ object GooglePoiDataSource {
 
     // Browser-like identity. The endpoints authorise by referer + a normal
     // desktop UA rather than a key, so these headers ARE the credential.
-    // `internal` so [WebReviewsFetcher] reuses the same desktop UA for its hidden WebView.
-    internal const val USER_AGENT =
+    private const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     private val REQUEST_HEADERS = mapOf(
@@ -131,10 +134,6 @@ object GooglePoiDataSource {
             // "no such place".
             val root = GoogleResponse.parseOrNull(body) ?: return@withContext Outcome.Failed
             val entry = pickEntry(root, lat, lon) ?: return@withContext Outcome.NoMatch
-            // Reviews are no longer fetched here: the dead `listentitiesreviews` RPC 404s, and the
-            // WebView scrape ([WebReviewsFetcher]) is async/slow, so it must NOT block base
-            // enrichment. The base info carries reviews = emptyList(); the caller fills them in
-            // progressively once it has [GooglePoiInfo.featureId].
             parsePlace(entry)?.let { Outcome.Found(it) } ?: Outcome.NoMatch
         }
 
@@ -222,8 +221,6 @@ object GooglePoiDataSource {
         val statusStr = rich ?: s118 ?: entry.at(*Paths.OPEN_STATUS).str()
         val priceText = entry.at(*Paths.PRICE_TEXT).str()
         val info = GooglePoiInfo(
-            rating = entry.at(*Paths.RATING).dbl(),
-            reviewCount = entry.at(*Paths.REVIEW_COUNT).int(),
             priceText = priceText,
             priceLevel = priceLevelOf(priceText),
             website = entry.at(*Paths.WEBSITE).str(),
@@ -231,14 +228,10 @@ object GooglePoiDataSource {
             openNow = parseOpenNow(statusStr),
             statusText = statusStr,
             category = entry.at(*Paths.CATEGORY).str(),
-            editorialSummary = entry.at(*Paths.EDITORIAL).str()?.trim()?.ifBlank { null },
-            featuredReview = entry.at(*Paths.FEATURED_REVIEW).str()?.trim()
-                ?.trim('"', '\u201C', '\u201D')?.ifBlank { null },
             fuelPrice = parseFuelPrice(entry),
             hours = parseHours(entry, prefer118 = rich == null && s118 != null),
             photoUrls = parsePhotos(entry),
             popularTimes = parsePopularTimes(entry),
-            featureId = entry.at(*Paths.FEATURE_ID).str(),
         )
         // Ignore an entry that carried nothing but a name (no signal to show).
         return if (info.isEmpty) null else info
@@ -372,7 +365,13 @@ object GooglePoiDataSource {
 
     /** Build the search `pb`. Calibrated template (2026-06): a plain `q=`
      *  returns an empty envelope, so search needs this full pb, and results are
-     *  viewport-driven (the `!2d<lng>!3d<lat>` block is the OSM point). */
+     *  viewport-driven (the `!2d<lng>!3d<lat>` block is the OSM point).
+     *
+     *  Trimmed 2026-11 of the review-posts selector
+     *  (`!3sother_user_google_review_posts__and__hotel_and_vr_partner_review_posts`, with its
+     *  enclosing counts `!8m10`→`!8m9`, `!72m22`→`!72m21`, `!24m107`→`!24m106`); a live A/B
+     *  against the untrimmed template returned the same 20 results with identical name,
+     *  website, phone, photos, hours and status. */
     private fun buildSearchPb(query: String, lat: Double, lon: Double): String =
         SEARCH_PB_TEMPLATE
             .replace("{QUERY}", query.replace('!', ' ').trim())
@@ -387,12 +386,12 @@ object GooglePoiDataSource {
             "!6b1!14b1!46m1!1b0!96b1!99b1!19m4!2m3!1i360!2i120!4i8!20m57!2m2!1i203!2i100!3m2!2i4!5b1" +
             "!6m6!1m2!1i86!2i86!1m2!1i408!2i240!7m33!1m3!1e1!2b0!3e3!1m3!1e2!2b1!3e2!1m3!1e2!2b0!3e3" +
             "!1m3!1e8!2b0!3e3!1m3!1e10!2b0!3e3!1m3!1e10!2b1!3e2!1m3!1e10!2b0!3e4!1m3!1e9!2b1!3e2!2b1" +
-            "!9b0!15m8!1m7!1m2!1m1!1e2!2m2!1i195!2i195!3i20!15i9937!24m107!1m25!13m9!2b1!3b1!4b1!6i1" +
+            "!9b0!15m8!1m7!1m2!1m1!1e2!2m2!1i195!2i195!3i20!15i9937!24m106!1m25!13m9!2b1!3b1!4b1!6i1" +
             "!8b1!9b1!14b1!20b1!25b1!18m14!3b1!4b1!5b1!6b1!13b1!14b1!17b1!21b1!22b1!32b1!33m1!1b1" +
             "!34b1!36e2!10m1!8e3!11m1!3e1!17b1!20m2!1e3!1e6!24b1!25b1!26b1!27b1!29b1!30m1!2b1!36b1" +
             "!37b1!39m3!2m2!2i1!3i1!43b1!52b1!54m1!1b1!55b1!56m1!1b1!61m2!1m1!1e1!65m5!3m4!1m3!1m2" +
-            "!1i224!2i298!72m22!1m8!2b1!5b1!7b1!12m4!1b1!2b1!4m1!1e1!4b1!8m10!1m6!4m1!1e1!4m1!1e3" +
-            "!4m1!1e4!3sother_user_google_review_posts__and__hotel_and_vr_partner_review_posts!6m1" +
+            "!1i224!2i298!72m21!1m8!2b1!5b1!7b1!12m4!1b1!2b1!4m1!1e1!4b1!8m9!1m6!4m1!1e1!4m1!1e3" +
+            "!4m1!1e4!6m1" +
             "!1e1!9b1!89b1!90m2!1m1!1e2!98m3!1b1!2b1!3b1!103b1!113b1!114m3!1b1!2m1!1b1!117b1!122m1" +
             "!1b1!126b1!127b1!128m1!1b0!26m4!2m3!1i80!2i92!4i8!30m28!1m6!1m2!1i0!2i0!2m2!1i530!2i768" +
             "!1m6!1m2!1i974!2i0!2m2!1i1024!2i768!1m6!1m2!1i0!2i0!2m2!1i1024!2i20!1m6!1m2!1i0!2i748" +
@@ -413,17 +412,12 @@ object GooglePoiDataSource {
         val LAT = intArrayOf(1, 9, 2)
         val LNG = intArrayOf(1, 9, 3)
         val CATEGORY = intArrayOf(1, 13, 0)
-        val RATING = intArrayOf(1, 4, 7)
-        val REVIEW_COUNT = intArrayOf(1, 4, 8)
         val PRICE_TEXT = intArrayOf(1, 4, 2)
         val WEBSITE = intArrayOf(1, 7, 0)
         val PHONE = intArrayOf(1, 178, 0, 0)
-        val FEATURE_ID = intArrayOf(1, 10)
         val PHOTOS = intArrayOf(1, 72, 0)
         // Hero photo inside the PHOTOS list.
         val PHOTO_HERO = intArrayOf(6, 0)
-        val FEATURED_REVIEW = intArrayOf(1, 142, 1, 0, 1, 0, 0)
-        val EDITORIAL = intArrayOf(1, 32, 1, 1)
         val OPEN_STATUS = intArrayOf(1, 203, 1, 8, 0)
         val STATUS_RICH = intArrayOf(1, 203, 1, 4, 0)
         val STATUS_118 = intArrayOf(1, 118, 0, 3, 1, 4, 0)

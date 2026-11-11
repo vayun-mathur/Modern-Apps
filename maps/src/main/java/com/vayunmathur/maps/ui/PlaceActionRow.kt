@@ -117,7 +117,10 @@ private fun PlaceAction(
 
 private fun sharePlace(context: Context, feature: SpecificFeature.RoutableFeature) {
     val pos = feature.position
-    val url = "https://maps.google.com/?q=${pos.latitude},${pos.longitude}"
+    // A neutral, clickable OpenStreetMap link (the map's own data source) rather than a
+    // Google Maps URL: the app no longer points people at Google for places.
+    val url = "https://www.openstreetmap.org/?mlat=${pos.latitude}&mlon=${pos.longitude}" +
+        "#map=$SHARE_ZOOM/${pos.latitude}/${pos.longitude}"
     val body = context.getString(R.string.place_share_text, feature.name, url)
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
@@ -128,3 +131,6 @@ private fun sharePlace(context: Context, feature: SpecificFeature.RoutableFeatur
     }
     ExternalIntents.launch(context, chooser)
 }
+
+/** Zoom of the shared OpenStreetMap link: street level. */
+private const val SHARE_ZOOM = 17

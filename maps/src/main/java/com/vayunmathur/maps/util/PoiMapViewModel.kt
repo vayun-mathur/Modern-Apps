@@ -3,7 +3,7 @@ package com.vayunmathur.maps.util
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.vayunmathur.maps.data.google.GooglePoiPin
+import com.vayunmathur.maps.data.PoiPin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -16,7 +16,7 @@ import kotlin.math.abs
 
 /**
  * Drives the ambient POI overlay: turns viewport boxes into a debounced list
- * of [GooglePoiPin]s to render (Decisions D3/D7, snappier P23), sourced from
+ * of [PoiPin]s to render (Decisions D3/D7, snappier P23), sourced from
  * the offline OSM POI index (P29). No network.
  *
  * The driver keeps the previous pins on screen until a *new, non-empty*
@@ -24,10 +24,10 @@ import kotlin.math.abs
  * debounces fast pans, and still skips wide views (> ~16 km, [MAX_LAT_SPAN])
  * where POI pins are meaningless. All index reads are on [Dispatchers.IO].
  */
-class GooglePoiMapViewModel(application: Application) : AndroidViewModel(application) {
+class PoiMapViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _pins = MutableStateFlow<List<GooglePoiPin>>(emptyList())
-    val pins: StateFlow<List<GooglePoiPin>> = _pins.asStateFlow()
+    private val _pins = MutableStateFlow<List<PoiPin>>(emptyList())
+    val pins: StateFlow<List<PoiPin>> = _pins.asStateFlow()
 
     // Ambient-pin refresh job. Cancelled on each new viewport so a fast pan debounces.
     private var offlineJob: Job? = null
@@ -59,10 +59,8 @@ class GooglePoiMapViewModel(application: Application) : AndroidViewModel(applica
 
     /**
      * Feed a viewport (from `queryVisibleBoundingBox()`). Views wider than
-     * [MAX_LAT_SPAN] are ignored, keeping the last pins (no clear).
-     *
-     * The retired Google-scrape entry point kept its name so former callers
-     * stay compilable during migration; it forwards to [onViewportOffline].
+     * [MAX_LAT_SPAN] are ignored, keeping the last pins (no clear). Same as
+     * [onViewportOffline]: pins only ever come from the offline index.
      */
     fun onViewport(north: Double, east: Double, south: Double, west: Double) {
         onViewportOffline(north, east, south, west)
@@ -70,7 +68,7 @@ class GooglePoiMapViewModel(application: Application) : AndroidViewModel(applica
 
     /** Map an offline index record to the pin model [pins] publishes; the
      *  category label drives its data-driven pin colour (P29). */
-    private fun PoiIndex.PoiRecord.toPin(): GooglePoiPin = GooglePoiPin(
+    private fun PoiIndex.PoiRecord.toPin(): PoiPin = PoiPin(
         id = "poi:$latE7:$lonE7",
         name = name,
         lat = lat,

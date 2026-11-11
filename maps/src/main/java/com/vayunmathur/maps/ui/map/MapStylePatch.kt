@@ -10,8 +10,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
-// Native basemap layers suppressed at runtime — amenities are Google-only now
-// (custom overlay layer). Keeping this in code (vs editing style.json) makes it
+// Native basemap layers suppressed at runtime — amenities come from the archive's
+// offline POI index (custom overlay layer). Keeping this in code (vs editing style.json) makes it
 // OTA-swappable per Decision D1.
 private val SUPPRESSED_LAYERS = setOf("pois")
 
@@ -43,7 +43,7 @@ fun patchStyleForHybrid(
             val type = layer["type"]?.jsonPrimitive?.content ?: ""
 
             // Suppress native basemap POIs at runtime (Decision D1) — amenities
-            // are Google-only now, rendered on the custom overlay layer. Dropping
+            // come from the offline POI index, rendered on the custom overlay layer. Dropping
             // the source layer here (rather than editing style.json) keeps it
             // OTA-swappable. Also drops the would-be _base/_hybrid variants.
             if (id in SUPPRESSED_LAYERS) return@forEach

@@ -104,8 +104,10 @@ class GooglePoiDataSourceSlice1Test {
     }
 
     @Test
-    fun `a full entry parses every field`() {
+    fun `a full entry parses every non-review field and no review field`() {
         val node = place(extra = {
+            // Rating, review count, editorial summary, featured review and feature id are
+            // all present in the response, and must not surface: reviews come from the archive.
             set(4, 7, value = JsonPrimitive(4.5))
             set(4, 8, value = JsonPrimitive(230))
             set(4, 2, value = JsonPrimitive("$10–20"))
@@ -119,8 +121,6 @@ class GooglePoiDataSourceSlice1Test {
         })
         runWithFetch(Payload().searchBody(entry(node))) {
             val info = assertNotNull(GooglePoiDataSource.fetch("Slice1 Cafe", 37.7749, -122.4194))
-            assertEquals(4.5, info.rating)
-            assertEquals(230, info.reviewCount)
             assertEquals("$10–20", info.priceText)
             assertEquals(2, info.priceLevel)
             assertEquals("https://cafe.example", info.website)
@@ -128,30 +128,37 @@ class GooglePoiDataSourceSlice1Test {
             assertEquals(true, info.openNow)
             assertEquals("Open · Closes 9 PM", info.statusText)
             assertEquals("Cafe", info.category)
-            assertEquals("A sunny corner spot.", info.editorialSummary)
-            assertEquals("Best oat latte.", info.featuredReview)
-            assertEquals("0x808580:0x808581", info.featureId)
+            // The model has no review-shaped field left to fill: everything it carries is a
+            // place fact. (A compile-time guarantee; this pins the surviving field set.)
+            assertEquals(
+                GooglePoiInfo(
+                    priceText = "$10–20", priceLevel = 2, website = "https://cafe.example",
+                    phone = "+14155550123", openNow = true, statusText = "Open · Closes 9 PM",
+                    category = "Cafe",
+                ),
+                info.copy(hours = emptyList(), photoUrls = emptyList(), popularTimes = null, fuelPrice = null),
+            )
         }
     }
 
     @Test
     fun `the nearest entry inside the match radius wins`() {
         val near = entry(place(name = "Slice1 Near", lat = 37.7750, lng = -122.4195) {
-            set(4, 7, value = JsonPrimitive(4.0))
+            set(7, 0, value = JsonPrimitive("https://near.example"))
         })
         val far = entry(place(name = "Slice1 Far", lat = 37.7900, lng = -122.4194) {
-            set(4, 7, value = JsonPrimitive(1.0))
+            set(7, 0, value = JsonPrimitive("https://far.example"))
         })
         runWithFetch(Payload().searchBody(far, near)) {
             val info = assertNotNull(GooglePoiDataSource.fetch("Slice1 Pick", 37.7749, -122.4194))
-            assertEquals(4.0, info.rating, "the near entry must win over the far one")
+            assertEquals("https://near.example", info.website, "the near entry must win over the far one")
         }
     }
 
     @Test
     fun `no close match is a negative-cacheable no-match`() {
         val far = entry(place(name = "Slice1 Elsewhere", lat = 38.0, lng = -122.0) {
-            set(4, 7, value = JsonPrimitive(4.0))
+            set(7, 0, value = JsonPrimitive("https://elsewhere.example"))
         })
         runWithFetch(Payload().searchBody(far, far)) { requested ->
             assertNull(GooglePoiDataSource.fetch("Slice1 Nowhere", 37.7749, -122.4194))
@@ -163,11 +170,11 @@ class GooglePoiDataSourceSlice1Test {
     @Test
     fun `a lone far entry is still accepted`() {
         val lone = entry(place(name = "Slice1 Lone", lat = 38.5, lng = -121.0) {
-            set(4, 7, value = JsonPrimitive(3.5))
+            set(7, 0, value = JsonPrimitive("https://lone.example"))
         })
         runWithFetch(Payload().searchBody(lone)) {
             val info = assertNotNull(GooglePoiDataSource.fetch("Slice1 Lone", 37.7749, -122.4194))
-            assertEquals(3.5, info.rating)
+            assertEquals("https://lone.example", info.website)
         }
     }
 
@@ -190,7 +197,7 @@ class GooglePoiDataSourceSlice1Test {
         fun fuelled(kind: String?, tag: String) = entry(place(name = "Slice1 Fuel $tag") {
             set(88, 1, value = kind?.let { JsonPrimitive(it) } ?: JsonNull)
             set(88, 0, value = JsonPrimitive("$6.20/Regular"))
-            set(4, 7, value = JsonPrimitive(4.0))
+            set(7, 0, value = JsonPrimitive("https://$tag.example"))
         })
         runWithFetch(Payload().searchBody(fuelled("SearchResult.TYPE_GAS_STATION", "gas"))) {
             val info = assertNotNull(GooglePoiDataSource.fetch("Slice1 Gas", 37.7749, -122.4194))
@@ -345,12 +352,12 @@ class GooglePoiDataSourceSlice1Test {
     fun `a single geocoded node resolves like a list entry`() {
         // SINGLE = [0,1,0,14]: root[0][1][0][14] carries the place node itself.
         val node = place(name = "Slice1 Single", extra = {
-            set(4, 7, value = JsonPrimitive(4.2))
+            set(7, 0, value = JsonPrimitive("https://single.example"))
         })
         val body = Payload().apply { set(0, 1, 0, 14, value = node) }.body()
         runWithFetch(body) {
             val info = assertNotNull(GooglePoiDataSource.fetch("Slice1 Single", 37.7749, -122.4194))
-            assertEquals(4.2, info.rating)
+            assertEquals("https://single.example", info.website)
         }
     }
 }

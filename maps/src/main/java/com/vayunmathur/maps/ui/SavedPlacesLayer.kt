@@ -66,7 +66,7 @@ fun SavedPlacesLayer(places: List<SavedPlace>, cameraState: CameraState) {
 /**
  * Convert a hit-tested saved pin feature back into a selectable place, reusing
  * [SpecificFeature.GenericPlace] so `SelectedFeatureViewModel.currentPoiInfo`
- * fetches the Google enrichment and the place sheet renders.
+ * fetches the Google place details (photos/hours) and the place sheet renders.
  */
 fun Feature1.toSelectedSavedPlace(): SpecificFeature? {
     val props = properties ?: return null

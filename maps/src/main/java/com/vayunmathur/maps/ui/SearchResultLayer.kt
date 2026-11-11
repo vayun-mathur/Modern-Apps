@@ -29,7 +29,7 @@ private val PIN_SIZE = 26.dp
 private val GLYPH_SIZE = 8.dp
 
 /**
- * Search-result pin overlay: the Google search results drawn
+ * Search-result pin overlay: the offline index search results drawn
  * as plain Compose over VectorMap. Distinct from the ambient POI overlay so search pins read
  * as "your results" (a single accent colour) rather than the category-coloured ambient POIs.
  * Tap → details via [toSelectedSearchResult].
@@ -66,7 +66,7 @@ fun SearchResultLayer(results: List<com.vayunmathur.maps.util.SearchResult>, cam
 /**
  * Convert a hit-tested search pin feature back into a selectable place, reusing
  * [SpecificFeature.GenericPlace] so the existing
- * `SelectedFeatureViewModel.currentPoiInfo` flow fetches the Google enrichment
+ * `SelectedFeatureViewModel.currentPoiInfo` flow fetches the Google place details (photos/hours)
  * and `GooglePoiEnrichment` renders in the sheet — no new detail path needed.
  */
 fun Feature1.toSelectedSearchResult(): SpecificFeature? {

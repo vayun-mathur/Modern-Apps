@@ -22,7 +22,7 @@ object MapPreferences {
     const val KEY_LAYER_TRANSIT = "layer_transit"
 
     /**
-     * Google services (place enrichment + reviews + Street View). OFF by
+     * Google services (place details — photos/hours/phone, never reviews — + Street View). OFF by
      * default: nothing contacts Google until the user opts in, via the
      * first-launch consent dialog or the settings toggle. A null (never
      * asked) value is treated as off — the dialog, not the default, decides.

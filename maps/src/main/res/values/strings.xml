@@ -65,8 +65,6 @@
     <string name="show_details">Show details</string>
     <!-- Place detail: Photos section header. Noun. -->
     <string name="poi_photos_header">Photos</string>
-    <!-- Place detail: Reviews section header. Noun. -->
-    <string name="poi_reviews_header">Reviews</string>
     <!-- Place detail: Popular times section header. Noun phrase. -->
     <string name="poi_popular_times_header">Popular times</string>
     <!-- Place detail: About/overview section header. Noun. -->
@@ -77,8 +75,6 @@
     <string name="poi_hours_live">Live</string>
     <!-- Place detail: Content description for a business photo thumbnail. -->
     <string name="poi_photo_description">Business photo</string>
-    <!-- Place detail: Content description for a reviewer's profile picture. -->
-    <string name="poi_reviewer_photo_description">Reviewer photo</string>
     <!-- Button: Get directions. Noun/Verb. -->
     <string name="directions">Directions</string>
     <!-- Button: Add selected place as stop on route -->
@@ -93,7 +89,7 @@
     <!-- Place sheet action row: share the place -->
     <!-- Place sheet action row: save the place (bookmark) -->
     <!-- Share sheet body. %1$s=place name, %2$s=maps URL -->
-    <string name="place_share_text"><xliff:g id="name" example="Blue Bottle Coffee">%1$s</xliff:g>\n<xliff:g id="url" example="https://maps.google.com/?q=37.0,-122.0">%2$s</xliff:g></string>
+    <string name="place_share_text"><xliff:g id="name" example="Blue Bottle Coffee">%1$s</xliff:g>\n<xliff:g id="url" example="https://www.openstreetmap.org/?mlat=37.0&amp;mlon=-122.0#map=17/37.0/-122.0">%2$s</xliff:g></string>
     <!-- Label: Place is currently open. Adjective. -->
     <!-- Label: Place is closed. Adjective. -->
     <string name="closed_status">Closed</string>
@@ -375,7 +371,7 @@
     <!-- Google consent dialog: title. Noun phrase. -->
     <string name="google_consent_title">Enable Google services?</string>
     <!-- Google consent dialog: body explaining what enabling contacts. -->
-    <string name="google_consent_message">Place details, reviews, and Street View come from Google. If you keep this off, the map stays fully offline and nothing is sent to Google.</string>
+    <string name="google_consent_message">Place photos and hours, and Street View, come from Google. Ratings and review summaries always come from the offline map. If you keep this off, nothing is sent to Google.</string>
     <!-- Google consent dialog: opt-in button. Verb. -->
     <string name="google_consent_enable">Enable</string>
     <!-- Google consent dialog: opt-out button. Verb. -->
@@ -383,7 +379,7 @@
     <!-- Settings: Google services toggle title. Noun. -->
     <string name="settings_google_services">Google services</string>
     <!-- Settings: Google services toggle description. -->
-    <string name="settings_google_services_desc">Place details, reviews, Street View</string>
+    <string name="settings_google_services_desc">Place photos and hours, Street View</string>
     <!-- Settings: section header for offline map data. Noun. -->
     <string name="settings_section_map_data">Offline map data</string>
     <!-- Settings: check-for-updates row title. Verb phrase. -->

@@ -10,7 +10,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.maps.data.google.FuelPrice
 import com.vayunmathur.maps.data.google.GooglePoiInfo
-import com.vayunmathur.maps.data.google.GoogleReview
 import com.vayunmathur.maps.data.google.PoiDayBusyness
 import com.vayunmathur.maps.data.google.PoiHourBusyness
 import com.vayunmathur.maps.data.google.PoiPopularTimes
@@ -30,7 +29,6 @@ class PoiEnrichmentSlice3ExtraTest {
 
     @Test fun detailsWithFuelHoursAndPopularTimes() {
         val info = GooglePoiInfo(
-            editorialSummary = "A busy station",
             fuelPrice = FuelPrice("$3.89", "Regular"),
             hours = listOf("Monday: 6 AM–10 PM", "Funday 24 hours"), // second line has no day separator
             popularTimes = PoiPopularTimes(listOf(
@@ -41,7 +39,6 @@ class PoiEnrichmentSlice3ExtraTest {
         rule.setContent { DynamicTheme { GooglePoiEnrichment(info, PoiSection.DETAILS) } }
         rule.onNodeWithText("$3.89").assertIsDisplayed()
         rule.onNodeWithText("Regular").assertIsDisplayed()
-        rule.onNodeWithText("A busy station").assertIsDisplayed()
         rule.onNodeWithText("Monday").assertIsDisplayed()
         rule.onNodeWithText("Popular times", substring = true).assertIsDisplayed()
         rule.onRoot().captureToImage()
@@ -66,38 +63,17 @@ class PoiEnrichmentSlice3ExtraTest {
         rule.onRoot().captureToImage()
     }
 
-    @Test fun reviewsCardsAndFeaturedFallback() {
-        val info = GooglePoiInfo(reviews = listOf(
-            GoogleReview("Ann", "https://example.com/av.jpg", 5, "a week ago", "Loved the food", photos = listOf("https://example.com/r1.jpg")),
-            GoogleReview("Bo", null, 0, null, null), // rating-only, no stars row (0 out of 1..5), no text
-        ))
-        rule.setContent { DynamicTheme { GooglePoiEnrichment(info, PoiSection.REVIEWS) } }
-        rule.onNodeWithText("Ann").assertIsDisplayed()
-        rule.onNodeWithText("Loved the food").assertIsDisplayed()
-        rule.onNodeWithText("Bo").assertIsDisplayed()
-
-        // featuredReview fallback is exercised in a second composition below via a fresh rule state:
-        // (single setContent per test, so assert the empty case in its own test)
-    }
-
-    @Test fun featuredReviewAndEmptyInfo() {
-        val featured = GooglePoiInfo(featuredReview = "Best tacos in town")
-        rule.setContent { DynamicTheme { GooglePoiEnrichment(featured, PoiSection.REVIEWS) } }
-        rule.onNodeWithText("Best tacos in town", substring = true).assertIsDisplayed()
-    }
-
     @Test fun emptyInfoRendersNothingInAllSections() {
         rule.setContent {
             DynamicTheme {
                 androidx.compose.foundation.layout.Column {
                     GooglePoiEnrichment(GooglePoiInfo(), PoiSection.DETAILS)
                     GooglePoiEnrichment(GooglePoiInfo(), PoiSection.PHOTOS)
-                    GooglePoiEnrichment(GooglePoiInfo(), PoiSection.REVIEWS)
                 }
             }
         }
         rule.waitForIdle()
         assertTrue(GooglePoiInfo().isEmpty)
-        assertTrue(!GooglePoiInfo(rating = 4.0).isEmpty)
+        assertTrue(!GooglePoiInfo(website = "https://x.example").isEmpty)
     }
 }

@@ -11,7 +11,6 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.OpeningHours
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.GooglePoiInfo
-import com.vayunmathur.maps.data.google.GoogleReview
 import com.vayunmathur.maps.data.google.PoiSection
 import com.vayunmathur.maps.util.PlacePanelActions
 import com.vayunmathur.maps.util.PlacePanelState
@@ -60,7 +59,7 @@ class PlaceSheetSlice3Test {
 
     // Header tests below exercise the revealed state; the mask itself is
     // pinned in PlaceMaskTest.
-    private fun panel(saved: Boolean = false) = PlacePanelState(saved = emptyList(), detailsRevealed = true)
+    private fun panel() = PlacePanelState(saved = emptyList(), detailsRevealed = true)
 
     // --- PlaceSheet (generic) ---
 
@@ -138,28 +137,6 @@ class PlaceSheetSlice3Test {
         rule.onNodeWithText("Tuesday", substring = true).assertDoesNotExist()
     }
 
-    @Test
-    fun `enrichment details show the editorial summary`() {
-        val info = GooglePoiInfo(editorialSummary = "A landmark ferry terminal")
-        rule.setContent {
-            GooglePoiEnrichment(info, PoiSection.DETAILS)
-        }
-        rule.onNodeWithText("A landmark ferry terminal").assertIsDisplayed()
-    }
-
-    @Test
-    fun `enrichment reviews tab lists the reviews`() {
-        val info = GooglePoiInfo(
-            reviews = listOf(
-                GoogleReview("Ann", null, 5, "a week ago", "Loved it"),
-            ),
-        )
-        rule.setContent {
-            GooglePoiEnrichment(info, PoiSection.REVIEWS)
-        }
-        rule.onNodeWithText("Loved it", substring = true).assertIsDisplayed()
-    }
-
     // --- PlaceSheetHeader ---
 
     @Test
@@ -172,7 +149,7 @@ class PlaceSheetSlice3Test {
         }
         rule.setContent {
             PlaceSheetHeader(
-                panelState = panel(saved = false),
+                panelState = panel(),
                 panelActions = actions,
                 inactiveNavigation = null,
                 feature = genericPlace(),

@@ -234,7 +234,6 @@ private fun PlaceSheetHeaderContent(
                                     when (tab) {
                                         PoiSection.DETAILS -> R.string.poi_tab_details
                                         PoiSection.PHOTOS -> R.string.poi_photos_header
-                                        PoiSection.REVIEWS -> R.string.poi_reviews_header
                                     }
                                 )
                             )
@@ -266,13 +265,13 @@ private fun MaskedPlaceHeader(
 }
 
 /**
- * The tabs worth offering for [poi]: Details always, the other two only when the
- * enrichment actually came back with something behind them.
+ * The tabs worth offering for [poi]: Details always, Photos only when the place details
+ * actually came back with photos. There is no reviews tab: the archive's rating and count
+ * sit in the header and its review summary in Details.
  */
 internal fun poiTabs(poi: GooglePoiInfo?): List<PoiSection> = buildList {
     add(PoiSection.DETAILS)
     if (poi?.photoUrls?.isNotEmpty() == true) add(PoiSection.PHOTOS)
-    if (poi?.reviews?.isNotEmpty() == true || poi?.featuredReview != null) add(PoiSection.REVIEWS)
 }
 
 /**
@@ -301,15 +300,14 @@ private fun PlaceHeader(
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        // The archive's rating first, so it shows offline and with Google turned off.
-        // Rating and count come from the same source, never one from each.
-        val (rating, reviewCount) = offline?.rating?.let { it to offline.reviewCount }
-            ?: (poi?.rating to poi?.reviewCount)
-        rating?.let {
+        // Rating and review count come only from the archive (`poi_attrs` keys 10/11, baked
+        // from the review table at build time), so they show offline and with Google off,
+        // and Google is never asked for them.
+        offline?.rating?.let {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 RatingStars(it)
                 Text(
-                    stringResource(R.string.reviews_summary, it, reviewCount ?: 0),
+                    stringResource(R.string.reviews_summary, it, offline.reviewCount ?: 0),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

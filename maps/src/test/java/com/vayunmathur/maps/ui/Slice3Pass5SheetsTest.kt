@@ -3,6 +3,7 @@ package com.vayunmathur.maps.ui
 import android.app.Application
 import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -38,6 +39,9 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.GraphicsMode
 
 /** Slice 3/3 pass 5: compact MapSheets with real sheet states. */
+// Robolectric fixtures build real ViewModels inside setContent on purpose: these tests drive
+// the composables against live VM state, with no ViewModelStoreOwner to obtain them from.
+@Suppress("ViewModelConstructorInComposable")
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class Slice3Pass5SheetsTest {
@@ -61,24 +65,27 @@ class Slice3Pass5SheetsTest {
             coroutineScope = cs,
             messenger = messenger,
             noResultsMessage = "No results",
-            chrome = MapChromeState(
-                mutableStateOf(RouteService.TravelMode.DRIVE),
-                mutableStateOf(null),
-                mutableStateOf(MapOverlay.None),
-                mutableStateOf(true),
-                mutableStateOf(false),
-                mutableStateOf(null),
-                mutableStateOf(0L),
-            ),
+            chrome = remember {
+                MapChromeState(
+                    mutableStateOf(RouteService.TravelMode.DRIVE),
+                    mutableStateOf(null),
+                    mutableStateOf(MapOverlay.None),
+                    mutableStateOf(true),
+                    mutableStateOf(false),
+                    mutableStateOf(null),
+                    mutableStateOf(0L),
+                )
+            },
             camera = CameraState(),
             selectedFeature = selectedFeature,
             inactiveNavigation = null,
             route = null,
             poiSection = PoiSection.DETAILS,
-            poiEnrichmentKey = PoiEnrichmentKey(0, 0, false),
+            poiEnrichmentKey = PoiEnrichmentKey(0, hasHours = false, hasPopularTimes = false),
             userPosition = GeoPoint(-122.4, 37.8),
             userBearing = null,
             userHeadingAccuracy = 3,
+            userSpeedMps = 0f,
             savedPins = emptyList(),
             parkingSpot = null,
             searchResults = emptyList(),

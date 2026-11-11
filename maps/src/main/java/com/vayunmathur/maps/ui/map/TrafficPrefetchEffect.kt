@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.collectLatest
  * a re-pan over an already-fetched square is a cheap no-op and the fetched
  * data is kept. Keyed on the toggle so it stops when traffic is off.
  * `collectLatest { delay() }` is the repo's debounce idiom (see
- * GooglePoiMapViewModel): a newer camera position cancels the pending delay,
+ * PoiMapViewModel): a newer camera position cancels the pending delay,
  * so the fetch only fires after the camera stops moving.
  *
  * Extracted from MapSurface so no ui file exceeds the [FileLength] limit.

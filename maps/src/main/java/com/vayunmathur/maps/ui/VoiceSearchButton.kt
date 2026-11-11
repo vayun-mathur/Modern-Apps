@@ -23,7 +23,7 @@ import com.vayunmathur.library.ui.rememberPermissionRequest
  * in-app STT engine.
  *
  * On a final transcript it calls [onResult]; callers fill the search query and
- * run the P3 Google search. RECORD_AUDIO is requested through the shared
+ * run the P3 offline index search. RECORD_AUDIO is requested through the shared
  * [rememberPermissionRequest] helper (which deep-links to app settings on
  * permanent denial). When no recognition service is available the button hides
  * itself entirely (renders nothing).

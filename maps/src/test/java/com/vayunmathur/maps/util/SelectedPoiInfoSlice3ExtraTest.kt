@@ -62,8 +62,11 @@ class SelectedPoiInfoSlice3ExtraTest {
         set(11, value = JsonPrimitive(name))
         set(9, 2, value = JsonPrimitive(lat))
         set(9, 3, value = JsonPrimitive(lng))
+        // Google sends a rating/count too; the app must not read them.
         set(4, 7, value = JsonPrimitive(4.5))
         set(4, 8, value = JsonPrimitive(230))
+        set(7, 0, value = JsonPrimitive("https://place.example"))
+        set(178, 0, 0, value = JsonPrimitive("+14155550123"))
     }.node()
 
     // No runBlocking: it blocks the paused Robolectric main looper that
@@ -83,6 +86,8 @@ class SelectedPoiInfoSlice3ExtraTest {
         try {
             val vm = SelectedFeatureViewModel(app)
             vm.set(SpecificFeature.GenericPlace(name, "555", null, null, GeoPoint(-122.4, 37.8)))
+            // The sheet only fetches Google details once the user reveals them.
+            vm.revealDetails()
             val seen = java.util.concurrent.atomic.AtomicReference<com.vayunmathur.maps.data.google.GooglePoiInfo?>(null)
             val job = CoroutineScope(Dispatchers.Default).launch {
                 vm.currentPoiInfo.collect { if (it != null) seen.set(it) }
@@ -94,8 +99,10 @@ class SelectedPoiInfoSlice3ExtraTest {
             job.cancel()
             val info = seen.get()
             assertNotNull(info, "poi info should emit for a matched place")
-            assertEquals(4.5, info.rating)
-            assertEquals(230, info.reviewCount)
+            // Non-review place details only (photos/hours/phone/website…); rating and review
+            // count are archive-only and have no field on the Google model.
+            assertEquals("https://place.example", info.website)
+            assertEquals("+14155550123", info.phone)
         } finally {
             GooglePoiDataSource.httpGet = defaultGet
             GooglePoiDataSource.httpWarm = defaultWarm
@@ -114,6 +121,8 @@ class SelectedPoiInfoSlice3ExtraTest {
         try {
             val vm = SelectedFeatureViewModel(app)
             vm.set(SpecificFeature.GenericPlace("Nowhere Place", "555", null, null, GeoPoint(-122.4, 37.8)))
+            // The sheet only fetches Google details once the user reveals them.
+            vm.revealDetails()
             val seen = java.util.concurrent.atomic.AtomicReference<com.vayunmathur.maps.data.google.GooglePoiInfo?>(null)
             val job = CoroutineScope(Dispatchers.Default).launch {
                 vm.currentPoiInfo.collect { seen.set(it) }

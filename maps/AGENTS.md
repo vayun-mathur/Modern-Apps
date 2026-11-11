@@ -16,7 +16,8 @@ _Install: ./install maps (dev by default)._
 **Key features:**
 - On-device routing (drive/walk/bike/transit) over a single packed `.mamaps` archive, downloaded once on first launch; viewed areas keep working offline
 - Turn-by-turn navigation with voice (TTS), lane guidance, speed-limit widget, and elevation; Android Auto via `car/`
-- Place details, saved places, transit departure boards, Street View, parking, and POI search (Google + offline index)
+- Place details, saved places, transit departure boards, Street View, parking, and POI search (offline index from the archive; ratings/review counts/summaries are archive-only, `poi_attrs` keys 10-12)
+- Google is used for exactly two opt-in features (Settings → Google services): Street View and non-review place details (photos, hours, phone/website, popular times) via `GooglePoiDataSource`. No Google search, traffic, POI discovery or reviews
 - Handles external `geo:` / `google.navigation:` / Google-Maps links from other apps
 **Architecture / data-flow:** `ui/` map surface + sheets over per-concern `util/` ViewModels (`SelectedFeatureViewModel`, `MapsSearchViewModel`, `SavedPlacesViewModel`, …) → `data/` stores/parsers + `util/OfflineRouter*` routing against the memory-mapped archive; guidance runs in the `util/NavigationService` foreground service via `NavigationSessionManager`. `onCreateBeforeContent`: `NetworkClient.init(FIRST_PARTY)` → delete the legacy `world_z0-6.pmtiles` → route the cold-start deep link; `Content()` gates on the `.mamaps` download before the map renders.
 **Entry points + reading order:** `Route` (`MapPage` / `SavedPlacesPage` / `SettingsPage`, inline) → `MainActivity.kt` (`handleIntent`, `navigateTo`) → `ui/MapPage.kt` → `util/SelectedFeatureViewModel.kt` → `util/OfflineRouterRoadRoutes.kt`.
@@ -47,17 +48,12 @@ _Install: ./install maps (dev by default)._
 - com/vayunmathur/maps/data/SavedPlaceStore.kt
 - com/vayunmathur/maps/data/RecentSearchStore.kt
 - com/vayunmathur/maps/data/ParkingStore.kt
-- com/vayunmathur/maps/data/google/GoogleSearchDataSource.kt
-- com/vayunmathur/maps/data/google/GooglePoiDataSource.kt
-- com/vayunmathur/maps/data/google/GooglePoiDiscovery.kt
+- com/vayunmathur/maps/data/google/GooglePoiDataSource.kt — Google place details (photos/hours/phone; no ratings/reviews)
 - com/vayunmathur/maps/data/google/GooglePoiModels.kt
-- com/vayunmathur/maps/data/google/GooglePoiMapModels.kt
+- com/vayunmathur/maps/data/PoiPin.kt — offline map POI pin
 - com/vayunmathur/maps/data/google/GoogleResponse.kt
-- com/vayunmathur/maps/data/google/GoogleTrafficSource.kt
 - com/vayunmathur/maps/data/google/StreetViewDataSource.kt
 - com/vayunmathur/maps/data/google/StreetViewModels.kt
-- com/vayunmathur/maps/data/google/ReviewsWebParser.kt
-- com/vayunmathur/maps/data/google/WebReviewsFetcher.kt
 - com/vayunmathur/maps/data/transit/TransitousDataSource.kt
 - com/vayunmathur/maps/data/transit/TransitousModels.kt
 ### intents/ — assistant IPC
@@ -151,7 +147,7 @@ _Install: ./install maps (dev by default)._
 - com/vayunmathur/maps/util/SavedPlacesViewModel.kt
 - com/vayunmathur/maps/util/MapSettingsViewModel.kt
 - com/vayunmathur/maps/util/PlacePanelState.kt
-- com/vayunmathur/maps/util/GooglePoiMapViewModel.kt
+- com/vayunmathur/maps/util/PoiMapViewModel.kt — map POI pins from the offline index
 - com/vayunmathur/maps/util/TransitStopsViewModel.kt
 - com/vayunmathur/maps/util/TransitClock.kt
 - com/vayunmathur/maps/util/ParkingViewModel.kt
@@ -167,11 +163,12 @@ _Install: ./install maps (dev by default)._
 - com/vayunmathur/maps/util/NavigationTts.kt
 - com/vayunmathur/maps/util/PolylineProgress.kt
 - com/vayunmathur/maps/util/GTFSProvider.kt
-- com/vayunmathur/maps/util/PoiArchive.kt
 - com/vayunmathur/maps/util/PoiIndex.kt
 - com/vayunmathur/maps/util/PoiIndexAttrs.kt
 - com/vayunmathur/maps/util/PoiIndexSpatial.kt
 - com/vayunmathur/maps/util/PoiIndexWords.kt
+- com/vayunmathur/maps/util/PoiIndexRegion.kt — `poi_region` (kind 15) boundary links
+- com/vayunmathur/maps/util/PoiArchive.kt — POI sections out of the archive (per-section mmaps; planet is ~80 GB)
 - com/vayunmathur/maps/util/PoiCategories.kt
 - com/vayunmathur/maps/util/SpatialKey.kt
 - com/vayunmathur/maps/util/RegionalUnits.kt

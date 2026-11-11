@@ -313,7 +313,7 @@ private fun ReviewSummaryRow(summary: String) {
 /**
  * Five stars, filled up to [rating].
  *
- * `Double` rather than `Int` because Google's place rating is fractional; a review's own
+ * `Double` rather than `Int` because the archive's place rating is fractional; a review's own
  * rating is a whole number and converts. There used to be one of these per file, differing
  * only in that parameter type.
  */

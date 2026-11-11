@@ -8,7 +8,6 @@ import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.osmPlace
 import com.vayunmathur.maps.data.google.GooglePoiDataSource
 import com.vayunmathur.maps.data.google.GooglePoiInfo
-import com.vayunmathur.maps.service.ReviewsScraperClient
 import com.vayunmathur.maps.data.parse
 import com.vayunmathur.maps.data.google.PoiSection
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +16,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -78,18 +76,7 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
      */
     var selectedRouteMode: RouteService.TravelMode = RouteService.TravelMode.DRIVE
 
-    /**
-     * Coalescing gates for the review-streaming partials in [currentPoiInfo]:
-     * forward a partial only when the list grew by [PARTIAL_MIN_GROWTH]
-     * reviews or [PARTIAL_MIN_INTERVAL_MS] elapsed since the last forward.
-     * Dozens of per-parse emissions used to recompose the sheet for a list
-     * the user barely sees change; the authoritative final send still always
-     * runs, so a dropped partial loses nothing.
-     */
     private companion object {
-        const val PARTIAL_MIN_GROWTH = 5
-        const val PARTIAL_MIN_INTERVAL_MS = 2_000L
-
         /**
          * Minimum movement (metres, equirectangular — fine at this scale)
          * before the persisted position is rewritten.
@@ -145,10 +132,6 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
      * file per edit, so a standing-still phone should not rewrite it every second.
      */
     private var lastPersisted: GeoPoint? = null
-
-    // Hidden-WebView reviews scraper (keyless; Google 404'd the old reviews RPC), run in the
-    // `:reviews` process so Chromium never maps into this one.
-    private val webReviews = ReviewsScraperClient(application)
 
     init {
         locationManager.startUpdates(
@@ -272,10 +255,11 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
         }
 
     /**
-     * Keyless Google Maps enrichment (rating, reviews, hours, photos, price,
-     * popular times, …) for the currently selected restaurant or generic place.
-     * Emits null for other feature types and while the network scrape is in
-     * flight; cancels the in-flight fetch when the selection changes.
+     * Keyless Google Maps place details (photos, hours/open status, phone, website, price,
+     * popular times — never ratings or reviews, which come only from the archive's POI
+     * attributes on the selected [SpecificFeature.GenericPlace]) for the currently selected
+     * restaurant or generic place. Emits null for other feature types and while the fetch is
+     * in flight; cancels the in-flight fetch when the selection changes.
      * [GooglePoiDataSource] caches and does its own IO, so a re-select is instant.
      *
      * Hard-gated on the Google services toggle: when off, emits null without
@@ -297,44 +281,9 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
                 else -> return@flatMapLatest flowOf(null)
             }
             if (name.isBlank()) return@flatMapLatest flowOf(null)
-            // channelFlow so the WebView scrape's onPartial callback (arriving on a JavaBridge
-            // thread) can push progressive review updates into the same stream via trySend.
-            channelFlow {
-                send(null)
-                val base = GooglePoiDataSource.fetch(name, pos.latitude, pos.longitude)
-                send(base)
-                // Base sheet is up. Reviews load lazily via the hidden WebView: no feature id
-                // (e.g. no confident Google match) → nothing more to fetch. Best-effort; any
-                // failure/timeout just leaves reviews empty and the sheet as-is.
-                val fid = base?.featureId
-                if (base != null && !fid.isNullOrBlank()) {
-                    // Coalesce the progressive partials: the scraper streams the
-                    // accumulated list on every parse, and each trySend
-                    // recomposes the sheet that collects this flow. Forward a
-                    // partial only when it grew meaningfully or enough time
-                    // passed; the authoritative final send below still always
-                    // runs, so nothing is ever lost by a dropped partial.
-                    var lastPartialSize = 0
-                    var lastPartialMs = 0L
-                    val reviews = runCatching {
-                        webReviews.fetch(
-                            featureId = fid,
-                            onPartial = { list ->
-                                if (list.isNotEmpty()) {
-                                    val nowMs = System.currentTimeMillis()
-                                    if (list.size - lastPartialSize >= PARTIAL_MIN_GROWTH ||
-                                        nowMs - lastPartialMs >= PARTIAL_MIN_INTERVAL_MS
-                                    ) {
-                                        lastPartialSize = list.size
-                                        lastPartialMs = nowMs
-                                        trySend(base.copy(reviews = list))
-                                    }
-                                }
-                            },
-                        )
-                    }.getOrDefault(emptyList())
-                    if (reviews.isNotEmpty()) send(base.copy(reviews = reviews))
-                }
+            flow {
+                emit(null)
+                emit(GooglePoiDataSource.fetch(name, pos.latitude, pos.longitude))
             }.flowOn(Dispatchers.IO)
         }
         .stateIn(

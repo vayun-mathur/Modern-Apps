@@ -104,7 +104,7 @@ class ViewModelsSlice3Test {
     @Test
     fun `selecting resets the poi section to details`() {
         val vm = SelectedFeatureViewModel(app)
-        vm.setPoiSection(com.vayunmathur.maps.data.google.PoiSection.REVIEWS)
+        vm.setPoiSection(com.vayunmathur.maps.data.google.PoiSection.PHOTOS)
         vm.set(place())
         assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, vm.poiSection.value)
     }

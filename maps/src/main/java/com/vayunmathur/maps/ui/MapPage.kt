@@ -62,7 +62,7 @@ import com.vayunmathur.maps.ui.streetview.StreetViewPegman
 import com.vayunmathur.maps.ui.theme.MapChromeMetrics
 import com.vayunmathur.maps.ui.map.MapChromeState
 import com.vayunmathur.maps.util.DeparturesState
-import com.vayunmathur.maps.util.GooglePoiMapViewModel
+import com.vayunmathur.maps.util.PoiMapViewModel
 import com.vayunmathur.maps.util.MapTileCache
 import com.vayunmathur.maps.util.OfflineRouter
 import com.vayunmathur.maps.util.MapSettingsViewModel
@@ -102,9 +102,9 @@ fun MapPage(
     parkingViewModel: com.vayunmathur.maps.util.ParkingViewModel,
     transitViewModel: com.vayunmathur.maps.util.TransitStopsViewModel,
 ) {
-    // Obtained in-body (not a parameter) so the MainActivity call site stays stable: the Google
+    // Obtained in-body (not a parameter) so the MainActivity call site stays stable: the offline
     // POI overlay pins are viewport-driven state owned by this screen alone.
-    val poiViewModel: GooglePoiMapViewModel = viewModel()
+    val poiViewModel: PoiMapViewModel = viewModel()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val messenger = rememberMessenger()

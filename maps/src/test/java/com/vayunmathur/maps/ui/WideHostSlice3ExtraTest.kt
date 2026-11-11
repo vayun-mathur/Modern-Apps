@@ -6,6 +6,7 @@ import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.maps.ui.map.MapChromeState
 import com.vayunmathur.maps.ui.map.MapOverlay
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -43,6 +44,9 @@ import org.robolectric.annotation.GraphicsMode
  * Robolectric it composes without presenting frames, which is enough for
  * the host/panel branch logic that is this slice's subject.
  */
+// Robolectric fixtures build real ViewModels inside setContent on purpose: these tests drive
+// the composables against live VM state, with no ViewModelStoreOwner to obtain them from.
+@Suppress("ViewModelConstructorInComposable")
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class WideHostSlice3ExtraTest {
@@ -80,24 +84,27 @@ class WideHostSlice3ExtraTest {
             coroutineScope = cs,
             messenger = messenger,
             noResultsMessage = "No results",
-            chrome = MapChromeState(
-                mutableStateOf(RouteService.TravelMode.DRIVE),
-                mutableStateOf(null),
-                mutableStateOf(MapOverlay.None),
-                mutableStateOf(true),
-                mutableStateOf(false),
-                mutableStateOf(null),
-                mutableStateOf(0L),
-            ),
+            chrome = remember {
+                MapChromeState(
+                    mutableStateOf(RouteService.TravelMode.DRIVE),
+                    mutableStateOf(null),
+                    mutableStateOf(MapOverlay.None),
+                    mutableStateOf(true),
+                    mutableStateOf(false),
+                    mutableStateOf(null),
+                    mutableStateOf(0L),
+                )
+            },
             camera = CameraState(),
             selectedFeature = selectedFeature ?: route,
             inactiveNavigation = inactiveNavigation,
             route = null,
             poiSection = PoiSection.DETAILS,
-            poiEnrichmentKey = PoiEnrichmentKey(0, 0, false),
+            poiEnrichmentKey = PoiEnrichmentKey(0, hasHours = false, hasPopularTimes = false),
             userPosition = GeoPoint(-122.4, 37.8),
             userBearing = null,
             userHeadingAccuracy = 3,
+            userSpeedMps = 0f,
             savedPins = savedPins,
             parkingSpot = parkingSpot,
             searchResults = emptyList(),

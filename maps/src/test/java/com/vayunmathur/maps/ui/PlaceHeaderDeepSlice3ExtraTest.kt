@@ -55,7 +55,7 @@ class PlaceHeaderDeepSlice3ExtraTest {
     @Test fun headerWithPoiShowsTabsAndSwitchesSection() {
         val actions = RecordingActions()
         val state = PlacePanelState(
-            poi = GooglePoiInfo(rating = 4.2, reviewCount = 87, popularTimes = null),
+            poi = GooglePoiInfo(photoUrls = listOf("https://example.com/p.jpg"), popularTimes = null),
             saved = emptyList(),
         )
         rule.setContent {

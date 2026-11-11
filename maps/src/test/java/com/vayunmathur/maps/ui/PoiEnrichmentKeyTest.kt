@@ -1,40 +1,22 @@
 package com.vayunmathur.maps.ui
 
 import com.vayunmathur.maps.data.google.GooglePoiInfo
-import com.vayunmathur.maps.data.google.GoogleReview
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 /**
- * The coarse enrichment identity behind the inner place sheet's contentKey.
+ * The coarse place-details identity behind the inner place sheet's contentKey.
  *
- * Late-arriving reviews/photos grow the sheet content after measurement, which
- * the scaffold's learned ceiling would otherwise never re-learn — so the key
- * must move when the enrichment arrives. But it must stay coarse
- * (counts/presence, not the lists): progressive review streaming would reset
- * the ceiling on every partial if the key named the content itself.
+ * Late-arriving details grow the sheet content after measurement, which the scaffold's
+ * learned ceiling would otherwise never re-learn — so the key must move when the details
+ * arrive. But it must stay coarse (counts/presence, not the lists).
  */
 class PoiEnrichmentKeyTest {
 
-    private fun review(i: Int) = GoogleReview(
-        author = "a$i",
-        authorPhoto = null,
-        rating = 5,
-        relativeTime = null,
-        text = "review $i",
-    )
-
     @Test
     fun `null enrichment keys to zero`() {
-        assertEquals(PoiEnrichmentKey(0, 0, false), PoiEnrichmentKey.of(null))
-    }
-
-    @Test
-    fun `arriving reviews move the key`() {
-        val before = PoiEnrichmentKey.of(GooglePoiInfo())
-        val after = PoiEnrichmentKey.of(GooglePoiInfo(reviews = List(8, ::review)))
-        assertNotEquals(before, after)
+        assertEquals(PoiEnrichmentKey(0, hasHours = false, hasPopularTimes = false), PoiEnrichmentKey.of(null))
     }
 
     @Test
@@ -45,20 +27,16 @@ class PoiEnrichmentKeyTest {
     }
 
     @Test
-    fun `a featured review moves the key`() {
+    fun `arriving hours move the key`() {
         val before = PoiEnrichmentKey.of(GooglePoiInfo())
-        val after = PoiEnrichmentKey.of(GooglePoiInfo(featuredReview = "great soup"))
+        val after = PoiEnrichmentKey.of(GooglePoiInfo(hours = listOf("Tuesday: 9 AM–5 PM")))
         assertNotEquals(before, after)
     }
 
     @Test
-    fun `review text churn without growth keeps the key`() {
-        // Progressive streaming re-sends the accumulated list on every parse:
-        // same size, same shape → same key → the ceiling survives the partials.
-        val a = PoiEnrichmentKey.of(GooglePoiInfo(reviews = List(8, ::review)))
-        val b = PoiEnrichmentKey.of(
-            GooglePoiInfo(reviews = List(8) { review(it).copy(text = "edited $it") })
-        )
+    fun `photo url churn without growth keeps the key`() {
+        val a = PoiEnrichmentKey.of(GooglePoiInfo(photoUrls = listOf("u1", "u2")))
+        val b = PoiEnrichmentKey.of(GooglePoiInfo(photoUrls = listOf("v1", "v2")))
         assertEquals(a, b)
     }
 }

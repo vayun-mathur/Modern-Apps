@@ -33,25 +33,24 @@ import com.vayunmathur.maps.util.TransitStopsViewModel
 import kotlinx.coroutines.CoroutineScope
 
 /**
- * Coarse identity of the place enrichment for the inner place sheet's
- * contentKey: review/photo counts plus featured-review presence.
+ * Coarse identity of the place details for the inner place sheet's contentKey:
+ * photo count plus hours / popular-times presence.
  *
- * Late-arriving reviews and photos grow the sheet content after measurement,
- * which the scaffold's learned ceiling would otherwise never re-learn. Kept
- * to counts/presence rather than the full lists so progressive review
- * streaming settles the key (null → base → final) instead of resetting the
- * ceiling on every partial.
+ * Late-arriving details grow the sheet content after measurement, which the
+ * scaffold's learned ceiling would otherwise never re-learn. Kept to
+ * counts/presence rather than the full lists so the key settles (null → details)
+ * instead of resetting the ceiling on every recomposition.
  */
 data class PoiEnrichmentKey(
-    val reviewCount: Int,
     val photoCount: Int,
-    val hasFeaturedReview: Boolean,
+    val hasHours: Boolean,
+    val hasPopularTimes: Boolean,
 ) {
     companion object {
         fun of(poi: GooglePoiInfo?): PoiEnrichmentKey = PoiEnrichmentKey(
-            reviewCount = poi?.reviews?.size ?: 0,
             photoCount = poi?.photoUrls?.size ?: 0,
-            hasFeaturedReview = poi?.featuredReview != null,
+            hasHours = poi?.hours?.isNotEmpty() == true,
+            hasPopularTimes = poi?.popularTimes != null,
         )
     }
 }
@@ -60,7 +59,7 @@ data class PoiEnrichmentKey(
  * An open search sheet.
  *
  * Search used to be a nav destination, so these three lived in the route. They are still needed —
- * the bias centre because the Google search is biased toward what the user can see, and
+ * the bias centre because the offline index search ranks by distance to what the user can see, and
  * [waypointIndex] because picking a result while editing a route replaces that leg rather than
  * selecting a place — but now they are the identity of a sheet, not of a page. `null` is the
  * closed state, which is why the whole thing is one nullable value rather than a flag plus three

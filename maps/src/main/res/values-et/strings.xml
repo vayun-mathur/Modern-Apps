@@ -22,7 +22,6 @@
     <string name="poi_fuel_price_header">Kütusehind</string>
     <string name="poi_tab_details">Üksikasjad</string>
     <string name="poi_photos_header">Fotod</string>
-    <string name="poi_reviews_header">Arvustused</string>
     <string name="poi_popular_times_header">Populaarsed kasutusajad</string>
     <string name="poi_about_header">Teave</string>
     <string name="menu_label">Menüü</string>
@@ -44,13 +43,12 @@
     <string name="car_searching">Otsin…</string>
     <string name="car_route_failed">Seal ei leidunud teekonda.</string>
     <string name="poi_photo_description">Asutuse foto</string>
-    <string name="poi_reviewer_photo_description">Arvustaja foto</string>
     <string name="place_action_website">Veebisait</string>
     <string name="add_stop_to_route">Lisa teekonnapunkt</string>
     <string name="wikipedia">Vikipeedia</string>
     <string name="place_action_order">Telli</string>
     <string name="closed_status">Suletud</string>
-    <string name="place_share_text"><xliff:g id="name" example="Sinine kohvik">%1$s</xliff:g>\n<xliff:g id="url" example="https://maps.google.com/?q=59.437, 24.745">%2$s</xliff:g></string>
+    <string name="place_share_text"><xliff:g id="name" example="Sinine kohvik">%1$s</xliff:g>\n<xliff:g id="url" example="https://www.openstreetmap.org/?mlat=59.437&amp;mlon=24.745#map=17/59.437/24.745">%2$s</xliff:g></string>
     <string name="closes_at">Suletakse <xliff:g id="time" example="21:00">%1$s</xliff:g></string>
     <string name="opens_at">Avatakse <xliff:g id="time" example="09:00">%1$s</xliff:g></string>
     <string name="search_placeholder">Otsi…</string>

@@ -63,15 +63,15 @@ enum class SearchPhase {
  * without supplying behaviour — [Noop] is the whole implementation a preview needs.
  *
  * These are not implemented by [MapsSearchViewModel]: a query needs the visible bounding
- * box (to bias the Google search toward the map centre) and picking a result touches the
+ * box (to rank the offline index search toward the map centre) and picking a result touches the
  * selection the map screen owns, so the map screen builds the adapter itself.
  */
 interface SearchActions {
     fun setQuery(query: String) {}
     fun selectResult(result: SearchResult) {}
     /**
-     * Handle a postal address picked from a contact (P17): run the Google search
-     * for [address] and auto-select the first result — the same path as tapping
+     * Handle a postal address picked from a contact (P17): run the offline index
+     * search for [address] and auto-select the first result — the same path as tapping
      * the top search row, no user tap required. No-op when the search is empty.
      */
     fun pickContactAddress(address: String) {}

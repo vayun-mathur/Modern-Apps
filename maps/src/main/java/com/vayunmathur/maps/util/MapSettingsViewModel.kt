@@ -120,7 +120,7 @@ class MapSettingsViewModel(application: Application) : AndroidViewModel(applicat
     )
 
     /**
-     * Google services (place enrichment + reviews + Street View). Off by
+     * Google services (place details — photos/hours/phone, never reviews — + Street View). Off by
      * default; the first-launch consent dialog or the settings toggle opts in.
      * Every Google call site gates on this — off means zero Google traffic.
      */

@@ -9,7 +9,6 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.GooglePoiInfo
-import com.vayunmathur.maps.data.google.GoogleReview
 import com.vayunmathur.maps.data.google.PoiSection
 import com.vayunmathur.maps.util.PlacePanelActions
 import com.vayunmathur.maps.util.PlacePanelState
@@ -47,24 +46,20 @@ class Slice3Pass3HeaderTest {
         assertEquals(listOf(PoiSection.DETAILS), poiTabs(GooglePoiInfo()))
     }
 
-    @Test fun tabsAddPhotosAndReviewsWhenPresent() {
+    @Test fun tabsAddPhotosWhenPresentAndNeverAReviewsTab() {
         val withPhotos = GooglePoiInfo(photoUrls = listOf("https://x/y.jpg"))
         assertEquals(listOf(PoiSection.DETAILS, PoiSection.PHOTOS), poiTabs(withPhotos))
-        val withReview = GooglePoiInfo(featuredReview = "Great")
-        assertEquals(listOf(PoiSection.DETAILS, PoiSection.REVIEWS), poiTabs(withReview))
+        // Hours/popular times live under Details; no Google field can add a reviews tab.
         val full = GooglePoiInfo(
             photoUrls = listOf("https://x/y.jpg"),
-            reviews = listOf(GoogleReview("Ann", null, 5, null, "Great")),
+            hours = listOf("Tuesday: 9 AM–5 PM"),
         )
-        assertEquals(
-            listOf(PoiSection.DETAILS, PoiSection.PHOTOS, PoiSection.REVIEWS),
-            poiTabs(full),
-        )
+        assertEquals(listOf(PoiSection.DETAILS, PoiSection.PHOTOS), poiTabs(full))
     }
 
     @Test fun resolveFallsBackToDetailsWhenTabVanishes() {
         assertEquals(PoiSection.DETAILS, resolvePoiSection(PoiSection.PHOTOS, null))
-        assertEquals(PoiSection.DETAILS, resolvePoiSection(PoiSection.REVIEWS, GooglePoiInfo()))
+        assertEquals(PoiSection.DETAILS, resolvePoiSection(PoiSection.PHOTOS, GooglePoiInfo()))
         val poi = GooglePoiInfo(photoUrls = listOf("https://x/y.jpg"))
         assertEquals(PoiSection.PHOTOS, resolvePoiSection(PoiSection.PHOTOS, poi))
         assertEquals(PoiSection.DETAILS, resolvePoiSection(PoiSection.DETAILS, null))
@@ -91,7 +86,7 @@ class Slice3Pass3HeaderTest {
 
     @Test fun headerShowsSubtitleRatingAndOpenStatus() {
         val poi = GooglePoiInfo(
-            category = "Cafe", priceText = "$$", rating = 4.5, reviewCount = 230,
+            category = "Cafe", priceText = "$$",
             statusText = "Open · Closes 9 PM", openNow = true,
             photoUrls = listOf("https://x/y.jpg"),
         )
@@ -99,7 +94,7 @@ class Slice3Pass3HeaderTest {
         rule.setContent {
             DynamicTheme {
                 PlaceSheetHeader(
-                    panelState = PlacePanelState(poi = poi),
+                    panelState = PlacePanelState(poi = poi, detailsRevealed = true),
                     panelActions = actions,
                     inactiveNavigation = null,
                     feature = place(),
@@ -120,7 +115,7 @@ class Slice3Pass3HeaderTest {
         rule.setContent {
             DynamicTheme {
                 PlaceSheetHeader(
-                    panelState = PlacePanelState(poi = poi),
+                    panelState = PlacePanelState(poi = poi, detailsRevealed = true),
                     panelActions = PlacePanelActions.Noop,
                     inactiveNavigation = null,
                     feature = place(),
@@ -131,13 +126,14 @@ class Slice3Pass3HeaderTest {
         rule.onNodeWithText("Closed · Opens 8 AM", substring = true).assertIsDisplayed()
     }
 
-    @Test fun headerPrefersOfflineRatingOverPoi() {
-        // Archive rating wins so the header works with Google off.
-        val poi = GooglePoiInfo(rating = 1.0, reviewCount = 3)
+    @Test fun headerRatingComesOnlyFromTheArchive() {
+        // Google details carry no rating at all; the archive's rating/count render, so the
+        // header works offline and with Google off.
+        val poi = GooglePoiInfo(category = "Cafe", photoUrls = listOf("https://x/y.jpg"))
         rule.setContent {
             DynamicTheme {
                 PlaceSheetHeader(
-                    panelState = PlacePanelState(poi = poi),
+                    panelState = PlacePanelState(poi = poi, detailsRevealed = true),
                     panelActions = PlacePanelActions.Noop,
                     inactiveNavigation = null,
                     feature = place(rating = 4.9, reviewCount = 999),
@@ -146,7 +142,25 @@ class Slice3Pass3HeaderTest {
             }
         }
         rule.onNodeWithText("Blue Bottle").assertIsDisplayed()
-        rule.onNodeWithText("999", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("4.9 stars | 999 reviews").assertIsDisplayed()
+    }
+
+    @Test fun headerShowsNoRatingWithoutArchiveRating() {
+        // No archive rating → no rating row, whatever Google returned.
+        val poi = GooglePoiInfo(category = "Cafe", statusText = "Open", openNow = true)
+        rule.setContent {
+            DynamicTheme {
+                PlaceSheetHeader(
+                    panelState = PlacePanelState(poi = poi, detailsRevealed = true),
+                    panelActions = PlacePanelActions.Noop,
+                    inactiveNavigation = null,
+                    feature = place(),
+                    requestDirections = {},
+                )
+            }
+        }
+        rule.onNodeWithText("stars", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("reviews", substring = true).assertDoesNotExist()
     }
 
     @Test fun restaurantHeaderRenders() {

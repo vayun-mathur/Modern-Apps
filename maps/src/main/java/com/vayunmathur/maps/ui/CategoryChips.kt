@@ -20,7 +20,7 @@ import com.vayunmathur.maps.R
 import com.vayunmathur.maps.util.PoiCategories
 
 /**
- * One quick category: a display label, the Google search [query] it runs on the
+ * One quick category: a display label, the offline index search [query] it runs on the
  * search page, the archive [kinds] it filters the drawn POI layers down to on the
  * browse screen, and the set of OSM POI [types] ([PoiCategories]) the offline
  * index is searched by.
@@ -41,7 +41,7 @@ data class MapCategory(
  * Shared quick-category definitions, reused by both the browse map screen and
  * the search page so the two stay in lock-step. On the
  * browse map a chip FILTERS the drawn POI layers to its [MapCategory.kinds];
- * on the search page it runs the [MapCategory.query] Google search (P3).
+ * on the search page it runs the [MapCategory.query] offline index search (P3).
  *
  * Gas, Hotels and ATMs only became real filters with the v3 archive: it is the first one
  * whose schema has a `fuel`, `hotel` or `atm` kind at all, so before it those three chips
@@ -62,7 +62,7 @@ val MAP_CATEGORIES: List<MapCategory> = listOf(
 /**
  * Horizontally-scrolling row of quick category chips. [onCategory] is invoked
  * with the tapped [MapCategory] — on browse this toggles the on-map POI filter,
- * on the search page it runs the category's Google query. [selected] is the
+ * on the search page it runs the category's offline index query. [selected] is the
  * currently-active category (shown highlighted), or null when none is active.
  *
  * [contentPadding] is the row's inset, and is applied *inside* the scroll rather than
