@@ -193,6 +193,9 @@ object PoiCategories {
         else -> null
     }
 
+    /** Place labels (cities, towns, villages…), searchable since planet4 (`osm_ingest` `TYPE_PLACE`). */
+    internal const val TYPE_PLACE = 51
+
     private const val TYPE_RESTAURANT = 0
     private const val TYPE_CAFE = 1
     private const val TYPE_FAST_FOOD = 2

@@ -42,10 +42,10 @@ internal fun poiQueryKey(query: String): ByteArray {
     return ByteArray(raw.size) { asciiLowerW(raw[it]).toByte() }
 }
 
-private fun PoiIndex.Mapped.entryOrdinal(i: Int): Int =
+internal fun PoiIndex.Mapped.entryOrdinal(i: Int): Int =
     nameIdx!!.getInt(PoiIndex.NAME_INDEX_HEADER_BYTES + INT_SLOT_BYTES * i)
 
-private fun PoiIndex.Mapped.entryWordIdx(i: Int): Int {
+internal fun PoiIndex.Mapped.entryWordIdx(i: Int): Int {
     val off = PoiIndex.NAME_INDEX_HEADER_BYTES + INT_SLOT_BYTES * entryCount + i
     return nameIdx!!.get(off).toInt() and WORD_BYTE_MASK
 }
@@ -54,7 +54,7 @@ private fun PoiIndex.Mapped.entryWordIdx(i: Int): Int {
  * Byte range of the [wordIdx]th whitespace-separated word of the name at [off], or
  * null when the name has fewer words. Must match `word_at` in `poi_side.rs`.
  */
-private fun PoiIndex.Mapped.wordRange(off: Int, wordIdx: Int): IntRange? {
+internal fun PoiIndex.Mapped.wordRange(off: Int, wordIdx: Int): IntRange? {
     if (off < 0 || off >= namesLen) return null
     var i = off
     var idx = 0
@@ -100,7 +100,7 @@ private fun PoiIndex.Mapped.compareWord(range: IntRange, key: ByteArray): Int {
     return len - key.size
 }
 
-private fun PoiIndex.Mapped.wordStartsWith(range: IntRange, key: ByteArray): Boolean {
+internal fun PoiIndex.Mapped.wordStartsWith(range: IntRange, key: ByteArray): Boolean {
     if (range.last - range.first + 1 < key.size) return false
     for (k in key.indices) {
         if (asciiLowerW(names.get(range.first + k)) != (key[k].toInt() and WORD_BYTE_MASK)) return false
@@ -109,7 +109,7 @@ private fun PoiIndex.Mapped.wordStartsWith(range: IntRange, key: ByteArray): Boo
 }
 
 /** First entry whose word is >= [key], or [entryCount]. */
-private fun PoiIndex.Mapped.lowerBoundWord(key: ByteArray): Int {
+internal fun PoiIndex.Mapped.lowerBoundWord(key: ByteArray): Int {
     var lo = 0
     var hi = entryCount
     while (lo < hi) {
@@ -271,7 +271,7 @@ private fun rankName(name: String?, q: String, tokens: List<String>): Int? {
     val lower = name.lowercase()
     if (lower.startsWith(q)) return 0
     if (tokens.all { lower.contains(it) }) return 1
-    if (tokens.size > 1 || (tokens.size == 1 && tokens[0].length >= 3)) {
+    if (tokens.size > 1 || (tokens.size == 1 && tokens[0].length >= MIN_TYPO_TOKEN_LEN)) {
         val words = splitTokens(lower)
         if (tokens.all { token -> tokenMatchesWord(token, lower, words) }) return 2
     }
@@ -283,7 +283,7 @@ private fun tokenMatchesWord(token: String, lowerName: String, words: List<Strin
     if (lowerName.contains(token)) return true
     // Tokens under 3 chars are all typo-noise ("al" is one edit from "ax",
     // "at", "an", ...); they only match exactly.
-    if (token.length < 3) return false
+    if (token.length < MIN_TYPO_TOKEN_LEN) return false
     return words.any { editDistanceLE1(token, it) }
 }
 
@@ -354,55 +354,58 @@ internal fun searchByWordIndex(
     if (tokens.isEmpty()) return emptyList()
     val keys = tokens.map { poiQueryKey(it) }
 
-    // Exact pass: per-token prefix matches, intersected on the ordinal.
+    // Exact pass, planet-safe: walk the RAREST token's whole prefix range and verify the
+    // other tokens against each candidate's own name ([rarestTokenMatches]). The old
+    // per-token walks stopped at [candidateCap] entries in word order, which at planet scale
+    // (30.9 M records, 69.6 M word entries in planet4) is an arbitrary Morton slice of the
+    // world: "golden" alone has tens of thousands of entries, so "Golden Gate Bridge" from
+    // SF intersected to a Lego model in Carlsbad and "British Museum" to nothing. When even
+    // the rarest token is too common to walk whole ("cafe"), fall back to the capped walks;
+    // the local pass below then supplies the nearby hits.
+    val exactRanks: Map<Int, Int> = m.rarestTokenMatches(keys, FULL_WALK_CAP)
+        ?: cappedExactMatches(m, keys, candidateCap)
     val exact = keys.map { key ->
-        m.wordPrefixMatches(key, candidateCap).associate { it[0] to it[1] }
-    }
-    var ordinals: Set<Int> = exact[0].keys
-    for (t in 1 until exact.size) ordinals = ordinals.intersect(exact[t].keys)
-
-    // Rank 0 needs the tokens on the name's first words in order.
-    fun isPhrasePrefix(o: Int): Boolean {
-        for (t in exact.indices) {
-            if (exact[t][o] != t) return false
-        }
-        return true
-    }
-
-    // Fuzzy pass: every token must match exactly or within one edit. Runs even
-    // when the exact pass hit — a typo'd name ("Piza Kitchen" for "pizza")
-    // should surface below the exact hits, not vanish. Tokens under 3 chars
-    // are all typo-noise and contribute their exact matches only.
-    val fuzzy = HashMap<Int, Int>()
-    val fuzzyPerToken = keys.mapIndexed { t, _ ->
-        if (tokens[t].length >= 3) {
-            val set = HashSet(exact[t].keys)
-            set.addAll(m.fuzzyWordMatches(tokens[t], candidateCap).keys)
-            set
+        if (keys.size == 1) {
+            emptyMap()
         } else {
-            exact[t].keys
+            m.wordPrefixMatches(key, FUZZY_EXACT_SEED_CAP).associate { it[0] to it[1] }
         }
     }
-    var fuzzyOrdinals: Set<Int>? = null
-    for (set in fuzzyPerToken) {
-        fuzzyOrdinals = if (fuzzyOrdinals == null) set else fuzzyOrdinals.intersect(set)
-    }
-    for (o in (fuzzyOrdinals ?: emptySet())) {
-        if (o !in ordinals) fuzzy[o] = 2
-    }
+    val local = m.localWordMatches(keys, nearLat, nearLon, limit)
+    val ordinals: Set<Int> = exactRanks.keys + local.keys
+    fun isPhrasePrefix(o: Int): Boolean = (exactRanks[o] ?: local[o]) == 0
 
-    val out = ArrayList<WordRanked>(minOf(candidateCap, ordinals.size + fuzzy.size))
-    for (o in ordinals) {
-        out.add(wordRanked(m, o, if (isPhrasePrefix(o)) 0 else 1, nearLat, nearLon, boost))
-    }
-    for ((o, rank) in fuzzy) {
+    val fuzzy = fuzzyMatches(m, tokens, exact, ordinals, candidateCap)
+    val shortlist = m.shortlist(
+        ordinals.map { it to if (isPhrasePrefix(it)) 0 else 1 } + fuzzy.toList(),
+        nearLat,
+        nearLon,
+    )
+    val out = ArrayList<WordRanked>(shortlist.size)
+    for ((o, rank) in shortlist) {
         out.add(wordRanked(m, o, rank, nearLat, nearLon, boost))
     }
+    // Within a rank, a name that IS the query comes first when it is a place label (type 51:
+    // "Oakland" the city, among hundreds of "Oakland …" businesses nearer the centre — a city
+    // is searched for from anywhere) or is local (a same-named bar on another continent must
+    // not beat the "Tokyo Station Cafe" next to the user); then the user's signal; then
+    // distance.
+    val whole = query.trim()
+    fun exactTier(r: WordRanked): Boolean =
+        r.record.name.equals(whole, ignoreCase = true) &&
+            (r.record.type == PoiCategories.TYPE_PLACE || r.distSq <= EXACT_LOCAL_DEG_SQ)
     out.sortWith(
-        compareBy<WordRanked> { it.rank }.thenByDescending { it.boost }.thenBy { it.distSq },
+        compareBy<WordRanked> { it.rank }
+            .thenBy { !exactTier(it) }
+            .thenByDescending { it.boost }
+            .thenBy { it.distSq },
     )
     return out.take(limit).map { it.record }
 }
+
+/** "Local" for the exact-name tier: ~0.5° (≈55 km) from the centre, squared. */
+private const val EXACT_LOCAL_DEG_SQ = 0.25
+
 
 private fun wordRanked(
     m: PoiIndex.Mapped,
@@ -437,7 +440,7 @@ private fun wordRanked(
  * deliberately misses (documented: first-letter typos need a different
  * index). Tokens under 3 chars are all typo-noise and skip the pass.
  */
-private fun PoiIndex.Mapped.fuzzyWordMatches(
+internal fun PoiIndex.Mapped.fuzzyWordMatches(
     token: String,
     candidateCap: Int,
 ): Map<Int, Int> {
@@ -450,7 +453,7 @@ private fun PoiIndex.Mapped.fuzzyWordMatches(
     }
     // A mid-word substitution ("pizxa" for "pizza") shares no full deletion
     // with the true word, but does share a two-shorter prefix.
-    if (tokenLower.length >= 5) {
+    if (tokenLower.length >= SUBSTITUTION_MIN_LEN) {
         variants.add(tokenLower.dropLast(2))
     }
     val out = HashMap<Int, Int>()
@@ -476,6 +479,22 @@ private fun PoiIndex.Mapped.wordWithinOneEdit(ordinal: Int, wordIdx: Int, token:
     }
     return editDistanceLE1(token, String(word))
 }
+
+/**
+ * Entries the exact pass will walk for the rarest query token before it falls back to the
+ * capped walks: a planet's rare words ("tartine", "golden") are well under this, its common
+ * ones ("cafe", "street") well over.
+ */
+private const val FULL_WALK_CAP = 200_000
+
+/** Per-token exact seed for the fuzzy intersection (its exact half), kept small. */
+private const val FUZZY_EXACT_SEED_CAP = 2_000
+
+/** Shortest token the typo passes consider (shorter ones are all typo-noise). */
+internal const val MIN_TYPO_TOKEN_LEN = 3
+
+/** Shortest token whose mid-word substitution is looked up via a two-shorter prefix. */
+private const val SUBSTITUTION_MIN_LEN = 5
 
 /** Per-variant walk cap and total fuzzy-candidate cap for one token. */
 private const val FUZZY_PER_VARIANT_CAP = 50

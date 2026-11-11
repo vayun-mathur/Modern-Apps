@@ -44,7 +44,7 @@ object PoiSearch {
 
     /** Singular form of a token for category matching ("restaurants" -> "restaurant"). */
     fun singular(token: String): String =
-        if (token.length > 3 && token.endsWith('s')) token.dropLast(1) else token
+        if (token.length > MIN_PLURAL_LEN && token.endsWith('s')) token.dropLast(1) else token
 
     /**
      * Tier at which the normalised [name] matches the normalised query
@@ -82,8 +82,8 @@ object PoiSearch {
 
     /** Typo budget for a token: none for short tokens, growing with length. */
     fun maxEditDistance(token: String): Int = when {
-        token.length < 4 -> 0
-        token.length < 8 -> 1
+        token.length < ONE_TYPO_MIN_LEN -> 0
+        token.length < TWO_TYPO_MIN_LEN -> 1
         else -> 2
     }
 
@@ -118,7 +118,16 @@ object PoiSearch {
         val match = COORD_QUERY.matchEntire(query) ?: return null
         val lat = match.groupValues[1].toDoubleOrNull() ?: return null
         val lon = match.groupValues[2].toDoubleOrNull() ?: return null
-        if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
+        if (lat !in -MAX_LAT..MAX_LAT || lon !in -MAX_LON..MAX_LON) return null
         return lat to lon
     }
+
+    /** Tokens longer than this lose a trailing "s" for category matching. */
+    private const val MIN_PLURAL_LEN = 3
+    /** Shortest token allowed one typo, and the shortest allowed two. */
+    private const val ONE_TYPO_MIN_LEN = 4
+    private const val TWO_TYPO_MIN_LEN = 8
+    /** Valid WGS84 latitude / longitude magnitudes for a typed coordinate. */
+    private const val MAX_LAT = 90.0
+    private const val MAX_LON = 180.0
 }

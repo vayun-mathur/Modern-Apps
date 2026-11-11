@@ -501,6 +501,28 @@ class PoiIndexTest {
     }
 
     @Test
+    fun `the place sheet model takes rating count and summary from archive attrs`() {
+        // The only review source the app has: poi_attrs keys 10/11/12 -> osmPlace ->
+        // GenericPlace, which PlaceSheetHeader (rating/count) and PlaceSheet
+        // (ReviewSummaryRow) render. No Google call is involved.
+        val recs = load(listOf(Poi(377_749_000, -1_224_194_000, 1, "Diner")), attrs = emptyMap())
+        load(
+            recs,
+            attrs = mapOf(0 to "+1-555-DINER"),
+            attrFields = mapOf(
+                0 to listOf(KEY_RATING to "4.3", KEY_REVIEW_COUNT to "1234", KEY_REVIEW_SUMMARY to "Huge portions."),
+            ),
+        )
+        val place = kotlinx.coroutines.runBlocking {
+            com.vayunmathur.maps.data.osmPlace("Diner", com.vayunmathur.library.map.GeoPoint(-122.4194, 37.7749))
+        }
+        assertEquals(4.3, place.rating)
+        assertEquals(1234, place.reviewCount)
+        assertEquals("Huge portions.", place.reviewSummary)
+        assertEquals("+1-555-DINER", place.phone)
+    }
+
+    @Test
     fun `attributesNear returns null when nothing nearby carries attributes`() {
         load(
             listOf(

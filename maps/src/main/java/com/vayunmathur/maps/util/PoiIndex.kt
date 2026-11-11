@@ -31,7 +31,7 @@ import java.nio.channels.FileChannel
  *    Both are laid out in `scripts/maps/osm_ingest/src/poi_side.rs`.
  *
  * It exposes a name search and a spatial nearest lookup, so a POI query can resolve
- * locally without a Google call. Everything is a harmless no-op until the index and
+ * locally, with no network call. Everything is a harmless no-op until the index and
  * the name pool are present (they ship from the same host as the graph); queries then
  * return empty lists. The three side files are each separately optional, and each is
  * refused rather than trusted when its record count disagrees with the index — they
@@ -211,9 +211,6 @@ object PoiIndex {
         internal val entryCount: Int = 0,
         /** The region sidecar, or null when absent or mismatched. */
         internal val region: MappedByteBuffer? = null,
-        /** The whole archive mapping, when loaded from one file: pins every slice above. */
-        @Suppress("unused")
-        val archive: MappedByteBuffer? = null,
     ) {
         internal fun latE7(i: Int): Int = index.getInt(i * RECORD_BYTES)
         internal fun lonE7(i: Int): Int = index.getInt(i * RECORD_BYTES + LON_FIELD_OFF)

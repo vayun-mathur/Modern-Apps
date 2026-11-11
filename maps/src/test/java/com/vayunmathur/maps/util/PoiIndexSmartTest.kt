@@ -51,6 +51,14 @@ class PoiIndexSmartTest {
                 spatialFromE7(b.latE7, b.lonE7),
             )
         }
+        val nameOff = writeNames(dir, sorted)
+        writeIndex(dir, sorted, nameOff)
+        writeWordIndex(dir, sorted)
+        writeGrid(dir, sorted)
+        assertTrue(PoiIndex.reload(dir), "fixture did not map")
+    }
+
+    private fun writeNames(dir: File, sorted: List<Poi>): Map<String, Int> {
         val nameOff = LinkedHashMap<String, Int>()
         val namesOut = java.io.ByteArrayOutputStream()
         for (p in sorted) {
@@ -62,6 +70,10 @@ class PoiIndexSmartTest {
         }
         File(dir, PoiIndex.NAMES_FILE).writeBytes(namesOut.toByteArray())
 
+        return nameOff
+    }
+
+    private fun writeIndex(dir: File, sorted: List<Poi>, nameOff: Map<String, Int>) {
         val index = ByteBuffer.allocate(sorted.size * 14).order(ByteOrder.LITTLE_ENDIAN)
         for (p in sorted) {
             index.putInt(p.latE7)
@@ -70,7 +82,9 @@ class PoiIndexSmartTest {
             index.putShort(p.type.toShort())
         }
         File(dir, PoiIndex.INDEX_FILE).writeBytes(index.array())
+    }
 
+    private fun writeWordIndex(dir: File, sorted: List<Poi>) {
         val entries = ArrayList<Pair<Int, Int>>()
         sorted.forEachIndexed { ordinal, p ->
             words(p.name).indices.take(255).forEach { wordIdx -> entries.add(ordinal to wordIdx) }
@@ -90,7 +104,9 @@ class PoiIndexSmartTest {
         entries.forEach { nameIndex.putInt(it.first) }
         entries.forEach { nameIndex.put(it.second.toByte()) }
         File(dir, PoiIndex.NAME_INDEX_FILE).writeBytes(nameIndex.array())
+    }
 
+    private fun writeGrid(dir: File, sorted: List<Poi>) {
         val lat0 = sorted.minOfOrNull { it.latE7 } ?: 0
         val lon0 = sorted.minOfOrNull { it.lonE7 } ?: 0
         val cols = if (sorted.isEmpty()) 0 else axis(sorted.maxOf { it.lonE7 }, lon0) + 1
@@ -121,8 +137,6 @@ class PoiIndexSmartTest {
         cellOff.forEach { grid.putInt(it) }
         pairs.forEach { grid.putInt(it.second) }
         File(dir, PoiIndex.SPATIAL_FILE).writeBytes(grid.array())
-
-        assertTrue(PoiIndex.reload(dir), "fixture did not map")
     }
 
     @Test
