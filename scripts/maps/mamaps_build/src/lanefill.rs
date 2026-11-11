@@ -346,6 +346,9 @@ pub fn prepare_lazy(
 pub struct Collector {
     files: Vec<BufWriter<File>>,
     paths: Vec<PathBuf>,
+    /// Whether the partition names were unlinked at creation (Unix); if not, `finish` and drop
+    /// delete them.
+    unlinked: bool,
 }
 
 impl Collector {
@@ -355,14 +358,25 @@ impl Collector {
         let mut paths = Vec::with_capacity(PARTITIONS);
         for i in 0..PARTITIONS {
             let path = stem.with_extension(format!("lanefill{i:03}.tmp"));
-            let file = File::create(&path)
+            // Read and write on one handle, so `finish` reads the partition back through it and
+            // the name can be unlinked straight away: a build killed mid-scan leaves nothing.
+            let file = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&path)
                 .map_err(|e| Error(format!("cannot create {}: {e}", path.display())))?;
             // Small buffers: there are `PARTITIONS` of them held open at once, and each takes a
             // steady trickle rather than a burst.
             files.push(BufWriter::with_capacity(1 << 14, file));
             paths.push(path);
         }
-        Ok(Collector { files, paths })
+        let mut unlinked = true;
+        for path in &paths {
+            unlinked &= osm_ingest::mem::unlink_open_scratch(path);
+        }
+        Ok(Collector { files, paths, unlinked })
     }
 
     /// Offer one way to the join. Ways that cannot take part are dropped here.
@@ -390,10 +404,13 @@ impl Collector {
     /// Ways whose inherited count equals the default they would have had anyway are left out, the
     /// same way [`crate::corridor::promote`] leaves out ways its corridor does not move.
     pub fn finish(mut self) -> Result<Vec<(i64, u8)>> {
-        for file in &mut self.files {
-            file.flush().map_err(|e| Error(format!("cannot flush a lanefill partition: {e}")))?;
+        let mut files: Vec<File> = Vec::with_capacity(self.files.len());
+        for file in std::mem::take(&mut self.files) {
+            files.push(
+                file.into_inner()
+                    .map_err(|e| Error(format!("cannot flush a lanefill partition: {e}")))?,
+            );
         }
-        drop(self.files);
 
         // `(way, end, donor lanes, one-way)`. The only state that outlives a partition, because a
         // way's two endpoints hash to two different files and the "donor at both ends" condition
@@ -405,11 +422,12 @@ impl Collector {
         // concatenation order never reaches the output: the resolution stays independent of both
         // the write order and the partition order.
         let per_partition: Vec<Vec<(i64, u8, u8, bool)>> = par::install(|| {
-            self.paths
-                .par_iter()
-                .map(|path| -> Result<Vec<(i64, u8, u8, bool)>> {
+            files
+                .par_iter_mut()
+                .zip(self.paths.par_iter())
+                .map(|(file, path)| -> Result<Vec<(i64, u8, u8, bool)>> {
                     let mut records: Vec<Record> = Vec::new();
-                    read_partition(path, &mut records)?;
+                    read_partition(file, path, &mut records)?;
                     let mut local: Vec<(i64, u8, u8, bool)> = Vec::new();
                     if !records.is_empty() {
                         // Sorted rather than hashed, for the reason `corridor::promote` gives: a
@@ -426,8 +444,11 @@ impl Collector {
                 .collect::<Result<Vec<_>>>()
         })?;
         let mut found: Vec<(i64, u8, u8, bool)> = per_partition.into_iter().flatten().collect();
-        for path in &self.paths {
-            let _ = std::fs::remove_file(path);
+        drop(files);
+        if !self.unlinked {
+            for path in &self.paths {
+                let _ = std::fs::remove_file(path);
+            }
         }
 
         found.sort_unstable();
@@ -445,6 +466,19 @@ impl Collector {
             }
         }
         Ok(out)
+    }
+}
+
+impl Drop for Collector {
+    /// Only where the names could not be unlinked at creation: a collector dropped on an error
+    /// path must not leave its partitions behind.
+    fn drop(&mut self) {
+        if !self.unlinked {
+            self.files.clear();
+            for path in &self.paths {
+                let _ = std::fs::remove_file(path);
+            }
+        }
     }
 }
 
@@ -467,10 +501,9 @@ fn pair_up(run: &[Record], found: &mut Vec<(i64, u8, u8, bool)>) {
     }
 }
 
-fn read_partition(path: &Path, out: &mut Vec<Record>) -> Result<()> {
+fn read_partition(file: &mut File, path: &Path, out: &mut Vec<Record>) -> Result<()> {
     out.clear();
-    let mut file =
-        File::open(path).map_err(|e| Error(format!("cannot open {}: {e}", path.display())))?;
+    std::io::Seek::rewind(file).map_err(|e| Error(format!("cannot rewind {}: {e}", path.display())))?;
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes)
         .map_err(|e| Error(format!("cannot read {}: {e}", path.display())))?;
@@ -597,5 +630,22 @@ mod lazy_tests {
                 (a, b) => panic!("case {case}: whole {} lazy {}", a.is_some(), b.is_some()),
             }
         }
+    }
+
+    /// The partition files are unlinked at creation on Unix: their directory is empty while the
+    /// collector is live, and `finish` still reads every record back through the handles.
+    #[test]
+    fn partitions_leave_no_names_behind() {
+        let dir = std::env::temp_dir().join(format!("mamaps_lanefill_unlink_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut c = Collector::create(&dir.join("tiles.features.tmp")).unwrap();
+        let line = [(-122.0, 37.0), (-122.0, 37.0001)];
+        let a = Segment { id: 1, name: "A St", lanes: 0, oneway: false, nodes: &[10, 11], line: &line };
+        c.push(&a).unwrap();
+        #[cfg(unix)]
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0, "a partition name was left");
+        let _ = c.finish().unwrap();
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+        std::fs::remove_dir(&dir).unwrap();
     }
 }

@@ -174,6 +174,8 @@ pub struct ChunkRef {
 /// pagefile-backed memory. Same offsets, same bytes, no
 /// file. The merge reads through the same [`ChunkReader`] either way.
 pub struct ChunkSpill {
+    /// The scratch file's name was removed right after creation (Unix): see [`Self::create`].
+    unlinked: bool,
     /// `None` only while dropping, where the handle has to close before the file can be unlinked or
     /// Windows refuses the delete. Always `None` on the anon path (no handle at all).
     file: Option<File>,
@@ -232,7 +234,11 @@ impl ChunkSpill {
         // Uncompressed on a `compress-force` btrfs: every zoom's clipped geometry passes through
         // here (hundreds of GB over a planet build), written once, read back by the merge.
         osm_ingest::mem::mark_scratch_uncompressed(&file);
+        // Every read and write goes through this one handle, so the name can go now: a build
+        // killed mid-zoom leaves no tile-chunk scratch behind (tens of GB at planet z14).
+        let unlinked = osm_ingest::mem::unlink_open_scratch(&path);
         Ok(ChunkSpill {
+            unlinked,
             file: Some(file),
             anon: None,
             path,
@@ -262,6 +268,7 @@ impl ChunkSpill {
     pub fn create_planned(path: impl Into<PathBuf>, plan: osm_ingest::mem::SpillPlan) -> Result<ChunkSpill> {
         match plan {
             osm_ingest::mem::SpillPlan::Anon => Ok(ChunkSpill {
+                unlinked: false,
                 file: None,
                 anon: Some(std::sync::Mutex::new(tile_build::anon::AnonStore::new())),
                 path: path.into(),
@@ -440,7 +447,9 @@ impl ChunkSpill {
             ));
         }
         let staged = match (&self.file, &self.anon) {
-            (Some(_), None) => std::fs::metadata(&self.path)
+            // Through the handle: the name is unlinked at creation.
+            (Some(f), None) => f
+                .metadata()
                 .map_err(|e| Error(format!("cannot stat {}: {e}", self.path.display())))?
                 .len(),
             (None, Some(a)) => a.lock().expect("the anon tile chunk spill").len(),
@@ -476,7 +485,9 @@ impl Drop for ChunkSpill {
         // The handle first, or Windows refuses the delete. Anon path holds no
         // handle and no file: nothing to do, the mapping frees with the store.
         self.file = None;
-        if self.anon.is_none() {
+        // Not when the name was unlinked at creation: per-zoom spills share one path, so the
+        // name may by now belong to the next zoom's file.
+        if self.anon.is_none() && !self.unlinked {
             let _ = std::fs::remove_file(&self.path);
         }
     }

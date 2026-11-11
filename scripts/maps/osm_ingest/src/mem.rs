@@ -438,6 +438,43 @@ mod platform {
 ///
 /// Bytes read back are identical either way; this changes only how the filesystem stores
 /// them.
+/// Where named scratch files go: `MAPS_SCRATCH_DIR` if set, else the directory a tool set with
+/// [`set_scratch_dir`] (mamaps_build: the build's own scratch directory, next to its spills),
+/// else the system temp dir. Path only: nothing written there is observable in any output.
+pub fn scratch_dir() -> std::path::PathBuf {
+    if let Some(dir) = std::env::var_os("MAPS_SCRATCH_DIR").filter(|d| !d.is_empty()) {
+        return std::path::PathBuf::from(dir);
+    }
+    SCRATCH_DIR
+        .lock()
+        .expect("the scratch dir setting")
+        .clone()
+        .unwrap_or_else(std::env::temp_dir)
+}
+
+/// Set the default for [`scratch_dir`] (the `MAPS_SCRATCH_DIR` override still wins).
+pub fn set_scratch_dir(dir: Option<std::path::PathBuf>) {
+    *SCRATCH_DIR.lock().expect("the scratch dir setting") = dir;
+}
+
+static SCRATCH_DIR: std::sync::Mutex<Option<std::path::PathBuf>> = std::sync::Mutex::new(None);
+
+/// Unlink a scratch file the caller keeps open (and possibly mapped), so the kernel frees its
+/// blocks when the last handle closes -- on any exit, a kill included -- instead of leaving it on
+/// disk. Returns whether the name is gone; on platforms that cannot delete an open file (Windows)
+/// it does nothing and returns `false`, and the caller keeps deleting the file on drop.
+pub fn unlink_open_scratch(path: &std::path::Path) -> bool {
+    #[cfg(unix)]
+    {
+        std::fs::remove_file(path).is_ok()
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        false
+    }
+}
+
 pub fn mark_scratch_uncompressed(file: &std::fs::File) {
     #[cfg(target_os = "linux")]
     {

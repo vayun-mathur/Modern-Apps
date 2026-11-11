@@ -13,6 +13,9 @@ const BUFFER_BYTES: usize = 1 << 20;
 /// and a read for anything already on disk, but a slice compare for anything still in the buffer,
 /// and the bodies most recently written are the ones a repeat is likeliest to match.
 pub(crate) struct Spill {
+    /// The name was removed right after creation (Unix): the handle is the file, and `Drop`
+    /// must not delete whatever may have reused the path since.
+    unlinked: bool,
     pub(crate) path: PathBuf,
     /// Opened for reading as well as writing, because a content-dedup compare reads back a body
     /// this same handle wrote.
@@ -85,7 +88,15 @@ impl Spill {
         if let Some(hook) = hook {
             hook(&file);
         }
+        // Everything after this goes through the one handle (appends, dedup reads, the copy into
+        // the archive), so on Unix the name can go now: a build killed mid-way then leaves no
+        // body scratch behind (tens of GB on a planet). Elsewhere `Drop` deletes it as before.
+        #[cfg(unix)]
+        let unlinked = std::fs::remove_file(&path).is_ok();
+        #[cfg(not(unix))]
+        let unlinked = false;
         Ok(Spill {
+            unlinked,
             path,
             file,
             buffer: Vec::with_capacity(BUFFER_BYTES),
@@ -394,7 +405,9 @@ impl Drop for Spill {
     /// The error is dropped on purpose. Scratch that outlives the process is untidy; panicking in a
     /// `Drop` while a real failure is unwinding would replace its diagnostic with this one.
     fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.path);
+        if !self.unlinked {
+            let _ = std::fs::remove_file(&self.path);
+        }
     }
 }
 
@@ -500,5 +513,25 @@ mod bg_tests {
         let mut out = Vec::new();
         spill.copy_to_vec(&mut out).unwrap();
         assert_eq!(out, want);
+    }
+
+    /// The body scratch is unlinked at creation on Unix: its directory is empty while the spill
+    /// is live and written to, and reading it back still works.
+    #[test]
+    fn the_body_scratch_leaves_no_name_behind() {
+        let dir = std::env::temp_dir().join(format!("mamaps_bodies_unlink_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut spill = Spill::create(Some(&dir), None).unwrap();
+        spill.append(b"abc").unwrap();
+        spill.append_shared(std::sync::Arc::new(vec![7u8; 100_000])).unwrap();
+        #[cfg(unix)]
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0, "a body scratch name was left");
+        assert!(spill.matches_at(0, b"abc").unwrap());
+        let mut out = Vec::new();
+        spill.copy_to_vec(&mut out).unwrap();
+        assert_eq!(out.len(), 100_003);
+        drop(spill);
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+        std::fs::remove_dir(&dir).unwrap();
     }
 }

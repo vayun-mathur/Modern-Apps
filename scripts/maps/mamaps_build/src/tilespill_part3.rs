@@ -13,6 +13,24 @@ mod tests {
         ))
     }
 
+    /// The tile-chunk scratch is unlinked at creation on Unix: nothing named is left in its
+    /// directory while chunks are written and read back, and the books still balance.
+    #[test]
+    fn the_chunk_scratch_leaves_no_name_behind() {
+        let dir = tmp("unlinkdir");
+        std::fs::create_dir_all(&dir).unwrap();
+        let spill = ChunkSpill::create(dir.join("tiles.chunks.tmp")).unwrap();
+        let chunk = spill.write_chunk(std::collections::BTreeMap::new()).unwrap();
+        #[cfg(unix)]
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0, "a chunk scratch name was left");
+        let mut reader = spill.reader(&chunk, 4096);
+        assert!(reader.next().unwrap().is_none());
+        spill.check_books().unwrap();
+        drop(spill);
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+        std::fs::remove_dir(&dir).unwrap();
+    }
+
     pub(super) fn feature(kind: u16, detail: u16, geom: u8, flags: u8, at: u32, n: u32) -> BodyFeature {
         BodyFeature {
             kind,

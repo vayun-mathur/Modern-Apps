@@ -371,7 +371,10 @@ fn the_body_scratch_file_is_removed_however_the_build_ends() {
     {
         let mut writer = StreamWriter::new(scratch.options()).expect("options");
         writer.append(tile_id(0, 0, 0), &body_for(1)).expect("append");
-        assert_eq!(scratch.files().len(), 1, "a writer holding bodies has a scratch file");
+        // Unlinked as soon as it is created on Unix, so even a killed build leaves nothing; named
+        // until drop elsewhere.
+        let named = if cfg!(unix) { 0 } else { 1 };
+        assert_eq!(scratch.files().len(), named, "the body scratch's name while the writer lives");
     }
     assert!(scratch.files().is_empty(), "dropping the writer took its scratch with it");
 

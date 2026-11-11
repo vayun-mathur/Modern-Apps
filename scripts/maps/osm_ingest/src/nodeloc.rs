@@ -57,17 +57,23 @@ struct Locs {
     map: Option<memmap2::MmapMut>,
     /// One bit per node, set when a coordinate has been written.
     resolved: Vec<u64>,
-    /// Deleted on drop. Scratch, and large enough that leaving it behind would matter.
+    /// Deleted on drop where it could not be unlinked at creation (Windows). Scratch, and large
+    /// enough that leaving it behind matters: 83 GB on a planet.
     path: Option<PathBuf>,
     len: usize,
 }
 
 impl Locs {
     fn new(len: usize) -> Result<Locs> {
+        Self::new_in(&crate::mem::scratch_dir(), len)
+    }
+
+    /// [`new`](Self::new) with the scratch file in `dir`.
+    fn new_in(dir: &std::path::Path, len: usize) -> Result<Locs> {
         if len == 0 {
             return Ok(Locs { map: None, resolved: Vec::new(), path: None, len: 0 });
         }
-        let path = std::env::temp_dir().join(format!(
+        let path = dir.join(format!(
             "osm_nodeloc_{}_{}.bin",
             std::process::id(),
             // Distinct per table, so two in one process cannot share a file.
@@ -94,10 +100,14 @@ impl Locs {
         // mapping is live, which is the one thing that would make the slice dangle.
         let map = unsafe { memmap2::MmapMut::map_mut(&file) }
             .map_err(|e| Error(format!("cannot map {}: {e}", path.display())))?;
+        // The mapping keeps the file alive; its name can go now, so a process that dies -- an
+        // OOM kill, a SIGKILL -- leaves nothing behind (an orphaned 83 GB table in /tmp once
+        // failed the next planet build's disk gate). Where that is impossible, drop deletes it.
+        let path = if crate::mem::unlink_open_scratch(&path) { None } else { Some(path) };
         Ok(Locs {
             map: Some(map),
             resolved: vec![0u64; len.div_ceil(64)],
-            path: Some(path),
+            path,
             len,
         })
     }
@@ -491,3 +501,25 @@ impl NodeLocations {
 
 include!("nodeloc_part1.rs");
 include!("nodeloc_part2.rs");
+
+#[cfg(test)]
+mod scratch_tests {
+    use super::*;
+
+    /// The coordinate table's scratch file is unlinked as soon as it is mapped: nothing is left
+    /// in the scratch dir even while the table is live, and the table still works.
+    #[test]
+    fn the_coordinate_scratch_is_unlinked_while_mapped() {
+        let dir = std::env::temp_dir().join(format!("osm_nodeloc_unlink_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut locs = Locs::new_in(&dir, 1000).unwrap();
+        locs.set(7, 123, -456);
+        let left: Vec<_> = std::fs::read_dir(&dir).unwrap().collect();
+        #[cfg(unix)]
+        assert!(left.is_empty(), "scratch left in {}: {left:?}", dir.display());
+        assert_eq!(locs.get(7), Some((123, -456)));
+        drop(locs);
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+        std::fs::remove_dir(&dir).unwrap();
+    }
+}

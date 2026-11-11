@@ -10,6 +10,12 @@ fn run(
     // Features are spilled here rather than held: it was 4.9 GB of a measured 10.03 GB California
     // peak, and nothing reads them until the tiler does.
     let spill = out.with_extension("features.tmp");
+    // Named scratch (the pass-3 coordinate table: 83 GB on a planet) goes next to the spills,
+    // not in the system temp dir; `MAPS_SCRATCH_DIR` overrides. Such files are unlinked as soon
+    // as they are open, so a killed build leaves none of them behind.
+    osm_ingest::mem::set_scratch_dir(spill.parent().map(|p| {
+        if p.as_os_str().is_empty() { std::path::PathBuf::from(".") } else { p.to_path_buf() }
+    }));
     check_required(&run.coastline, "--coastline")?;
     check_required(&run.transit_routes, "--transit-routes")?;
     check_required(&run.dem, "--dem")?;

@@ -40,7 +40,9 @@ mod tests_extra {
         {
             let spill = ChunkSpill::create(&path).expect("create");
             spill.write_chunk(every_layer().into_iter().collect()).expect("write");
-            assert!(path.exists());
+            // Unlinked at creation on Unix (a killed build leaves nothing); named until drop
+            // elsewhere.
+            assert_eq!(path.exists(), cfg!(not(unix)));
         }
         assert!(!path.exists(), "the scratch file outlived its spill");
     }
