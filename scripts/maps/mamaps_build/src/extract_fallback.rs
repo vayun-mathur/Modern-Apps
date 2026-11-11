@@ -412,7 +412,14 @@ pub fn extend_region_links_with(
     // the per-feature filter -- including `Boundary::new`'s area and bbox walk -- runs there too.
     // The split into the two vectors below is in file order, so both are exactly what the
     // one-cursor loop built.
-    let kept = store.par_scan(|feature| {
+    // Pre-filter on the packed class (no geometry decoded): only an id-carrying boundary area
+    // or place can pass the filter below.
+    let kept = store.par_scan_where(
+        |class, has_id| {
+            has_id
+                && ((class.layer == LAYER_BOUNDARIES && class.area) || class.layer == LAYER_PLACES)
+        },
+        |feature| {
         if feature.id == ID_NONE {
             return None;
         }

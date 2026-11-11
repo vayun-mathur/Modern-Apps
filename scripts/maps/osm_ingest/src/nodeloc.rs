@@ -110,6 +110,10 @@ impl Locs {
         self.resolved[index / 64] |= 1 << (index % 64);
     }
 
+    fn is_resolved(&self, index: usize) -> bool {
+        index < self.len && self.resolved[index / 64] & (1 << (index % 64)) != 0
+    }
+
     fn get(&self, index: usize) -> Option<(i32, i32)> {
         if index >= self.len || self.resolved[index / 64] & (1 << (index % 64)) == 0 {
             return None;
@@ -447,6 +451,28 @@ impl NodeLocations {
 
     pub fn get(&self, id: i64) -> Option<(i32, i32)> {
         self.locs.get(self.index_of(id)? as usize)
+    }
+
+    /// Every ref's table index into `out` (cleared first), `false` as soon as one ref has no
+    /// coordinate -- exactly the refs [`Self::line`] would drop. Reads only the in-memory id index
+    /// and resolved bits, never the coordinate array: a caller that needs only some of a way's
+    /// coordinates (its ends, or a prefix) can then read just those with [`Self::coord_at`].
+    pub fn indices_if_complete(&self, refs: &[i64], out: &mut Vec<usize>) -> bool {
+        out.clear();
+        for &id in refs {
+            match self.index_of(id) {
+                Some(i) if self.locs.is_resolved(i as usize) => out.push(i as usize),
+                _ => return false,
+            }
+        }
+        true
+    }
+
+    /// The coordinate at a table index [`Self::indices_if_complete`] returned, in the same
+    /// `(lon, lat)` degrees [`Self::line`] produces.
+    pub fn coord_at(&self, index: usize) -> Coord {
+        let (lat_e7, lon_e7) = self.locs.get(index).expect("a resolved index");
+        (lon_e7 as f64 * 1e-7, lat_e7 as f64 * 1e-7)
     }
 
     /// A way's geometry in lon/lat order, with unresolved refs skipped.

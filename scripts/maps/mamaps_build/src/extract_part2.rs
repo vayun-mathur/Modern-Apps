@@ -374,6 +374,7 @@ fn inherit_lane_counts(
         blocks,
         |mut reader| -> Result<Vec<crate::lanefill::Prepared>> {
             let mut refs: Vec<i64> = Vec::new();
+            let mut indices: Vec<usize> = Vec::new();
             let mut out = Vec::new();
             while let Some((id, class, name, lane_count, _, _, _, _)) = reader.next(&mut refs)? {
                 // Roads, and not slip roads. A ramp leaves a junction carrying its parent's name on
@@ -385,6 +386,25 @@ fn inherit_lane_counts(
                     continue;
                 }
                 let Some(name) = name else { continue };
+                let oneway = class.flags & tilecodec::mamaps::body::FLAG_IS_ONEWAY != 0;
+                if fringe.is_none() {
+                    // World build: no fringe to test, so read only the coordinates the join needs
+                    // (`lanefill::prepare_lazy`). A way with an unresolved node is one `prepare`
+                    // drops (its line would be shorter than its refs).
+                    if table.indices_if_complete(&refs, &mut indices) {
+                        if let Some(prepared) = crate::lanefill::prepare_lazy(
+                            id,
+                            &name,
+                            lane_count,
+                            oneway,
+                            &refs,
+                            |i| table.coord_at(indices[i]),
+                        ) {
+                            out.push(prepared);
+                        }
+                    }
+                    continue;
+                }
                 let line = table.line(&refs);
                 // A region build only joins the fringe: a recipient is at most 50 m long, so
                 // a donor sharing an endpoint node with a kept recipient always touches the
@@ -393,7 +413,6 @@ fn inherit_lane_counts(
                 if !fringe_touches(fringe.as_ref(), &line) {
                     continue;
                 }
-                let oneway = class.flags & tilecodec::mamaps::body::FLAG_IS_ONEWAY != 0;
                 if let Some(prepared) = crate::lanefill::prepare(&crate::lanefill::Segment {
                     id,
                     name: &name,

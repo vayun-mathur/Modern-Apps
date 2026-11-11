@@ -282,6 +282,66 @@ pub fn prepare(segment: &Segment) -> Option<Prepared> {
     Some(Prepared([record(first, head, 0u8), record(last, tail, FLAG_LAST_END)]))
 }
 
+/// [`prepare`] for a way whose coordinates are read on demand: `coord(i)` is node `i`'s
+/// coordinate, valid for every `i < nodes.len()` (the caller has checked every node resolves --
+/// `prepare`'s `nodes.len() == line.len()` test).
+///
+/// The same decisions on the same arithmetic, reading only the coordinates they need: a donor
+/// (`lanes > 0`) needs only the bearings leaving its two ends, and a recipient's length test can
+/// stop as soon as the running sum passes [`MAX_STUB_M`] -- the sum of non-negative segments only
+/// grows, so a prefix over the limit means the whole way is. On the planet every coordinate read
+/// is a random read of an ~80 GB table, and lane inheritance read every coordinate of every named
+/// road (134 s); most of them are long and decided after a few nodes.
+pub fn prepare_lazy(
+    id: i64,
+    name: &str,
+    lanes: u8,
+    oneway: bool,
+    nodes: &[i64],
+    coord: impl Fn(usize) -> (f64, f64),
+) -> Option<Prepared> {
+    if name.is_empty() || nodes.len() < 2 {
+        return None;
+    }
+    let first = nodes[0];
+    let last = nodes[nodes.len() - 1];
+    if first == last {
+        return None;
+    }
+    if lanes == 0 {
+        // `polyline_length_m`, summed in the same order, stopping once it is decided.
+        let mut length = -0.0f64;
+        let mut previous = coord(0);
+        for i in 1..nodes.len() {
+            let p = coord(i);
+            let north = (p.1 - previous.1) * METRES_PER_DEGREE;
+            let east = (p.0 - previous.0) * METRES_PER_DEGREE * previous.1.to_radians().cos();
+            length += (north * north + east * east).sqrt();
+            if length > MAX_STUB_M {
+                return None;
+            }
+            previous = p;
+        }
+    }
+    // `leaving`, scanning from each end for the first coordinate that differs.
+    let origin = coord(0);
+    let head = bearing(origin, (1..nodes.len()).map(&coord).find(|p| *p != origin)?);
+    let origin = coord(nodes.len() - 1);
+    let tail = bearing(origin, (0..nodes.len() - 1).rev().map(&coord).find(|p| *p != origin)?);
+
+    let name_hash = hash_name(name);
+    let base = if oneway { FLAG_ONEWAY } else { 0 };
+    let record = |node: i64, bearing: f64, end: u8| Record {
+        node,
+        way: id,
+        name_hash,
+        bearing: bearing as f32,
+        lanes,
+        flags: base | end,
+    };
+    Some(Prepared([record(first, head, 0u8), record(last, tail, FLAG_LAST_END)]))
+}
+
 /// Accumulates endpoint records, then resolves them into the ways whose lane count changes.
 pub struct Collector {
     files: Vec<BufWriter<File>>,
@@ -485,3 +545,57 @@ fn deviation(a: f64, b: f64) -> f64 {
 }
 
 include!("lanefill_part1.rs");
+
+#[cfg(test)]
+mod lazy_tests {
+    use super::*;
+
+    /// `prepare_lazy` decides every way exactly as `prepare` on its full line does: same `None`s,
+    /// same records, for donors and recipients, short and long, with repeated vertices at either
+    /// end and degenerate ways.
+    #[test]
+    fn lazy_preparation_matches_preparing_the_whole_line() {
+        let mut state = 0x2545_F491_4F6C_DD1Du64;
+        let mut next = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for case in 0..20_000i64 {
+            let n = 2 + (next() % 12) as usize;
+            let step = [1e-6, 1e-5, 1e-4, 3e-4][(next() % 4) as usize];
+            let mut line = Vec::with_capacity(n);
+            let (mut x, mut y) = (-122.3 + (next() % 1000) as f64 * 1e-3, 37.5);
+            for _ in 0..n {
+                if next() % 5 != 0 {
+                    x += ((next() % 200) as f64 - 100.0) * step;
+                    y += ((next() % 200) as f64 - 100.0) * step;
+                }
+                line.push((x, y));
+            }
+            let mut nodes: Vec<i64> = (0..n as i64).map(|k| 1000 + k).collect();
+            if case % 9 == 0 {
+                let last = nodes.len() - 1;
+                nodes[last] = nodes[0];
+            }
+            let lanes = (next() % 3) as u8;
+            let oneway = next() % 2 == 0;
+            let name = if case % 13 == 0 { "" } else { "Main St" };
+            let whole = prepare(&Segment { id: case, name, lanes, oneway, nodes: &nodes, line: &line });
+            let lazy = prepare_lazy(case, name, lanes, oneway, &nodes, |i| line[i]);
+            match (whole, lazy) {
+                (None, None) => {}
+                (Some(a), Some(b)) => {
+                    for (ra, rb) in a.0.iter().zip(b.0.iter()) {
+                        let (mut ba, mut bb) = (Vec::new(), Vec::new());
+                        ra.write(&mut ba).unwrap();
+                        rb.write(&mut bb).unwrap();
+                        assert_eq!(ba, bb, "case {case}");
+                    }
+                }
+                (a, b) => panic!("case {case}: whole {} lazy {}", a.is_some(), b.is_some()),
+            }
+        }
+    }
+}

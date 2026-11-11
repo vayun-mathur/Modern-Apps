@@ -1136,6 +1136,70 @@ impl NormalizedChunks {
     /// The chunk span covers one compressed frame: it is read whole, inflated, and decoded
     /// with the same [`decode_chunk_records`] the sequential reader uses, so the two paths
     /// cannot diverge on what they accept.
+    /// [`read_into`](Self::read_into), keeping only the records whose properties pass `keep` --
+    /// and decoding the geometry of those alone. For whole-spill scans that want a sliver of it
+    /// (the region fallback keeps boundary shapes and place labels out of ~1.35 B planet
+    /// features): the properties sit after the geometry in each record and are a few bytes, the
+    /// geometry is most of the decode. Kept records come back exactly as `read_into` yields them.
+    pub fn read_into_where(
+        &self,
+        i: usize,
+        scratch: &mut Vec<u8>,
+        out: &mut Vec<NormalizedFeature>,
+        keep: &dyn Fn(&[(String, Value)]) -> bool,
+    ) -> Result<()> {
+        out.clear();
+        let mut all = Vec::new();
+        // Inflate through `read_into`'s own path, then walk the raw records here.
+        let (Some(&start), Some(&end)) = (self.chunks.get(i), self.chunks.get(i + 1)) else {
+            return self.read_into(i, scratch, &mut all);
+        };
+        if end < start {
+            return self.read_into(i, scratch, &mut all);
+        }
+        scratch.clear();
+        scratch.resize((end - start) as usize, 0);
+        match (&self.file, &self.anon) {
+            (Some(f), None) => crate::pmtiles::read_exact_at(f, scratch, start).map_err(|e| {
+                Error(format!("reading normalized chunk {i} of {}: {e}", self.path.display()))
+            })?,
+            (None, Some(a)) => a.read_at(start, scratch).map_err(|e| {
+                Error(format!("reading normalized chunk {i} of {}: {e}", self.path.display()))
+            })?,
+            _ => return err("a normalized chunk reader has no backend".to_string()),
+        }
+        let raw = inflate_frame(i, &self.path, scratch)?;
+        let mut at = 0usize;
+        while at < raw.len() {
+            if raw.len() - at < NORM_HEADER_BYTES {
+                return err(format!(
+                    "normalized chunk {i} of {} ends inside a record header",
+                    self.path.display()
+                ));
+            }
+            let head: &[u8; NORM_HEADER_BYTES] =
+                raw[at..at + NORM_HEADER_BYTES].try_into().expect("a header's worth of bytes");
+            let (geom_len, props_len, kind) = norm_header(head)?;
+            let body = at + NORM_HEADER_BYTES;
+            let rec_end = body + geom_len + props_len;
+            if rec_end > raw.len() {
+                return err(format!(
+                    "normalized chunk {i} of {} holds a record running past its end",
+                    self.path.display()
+                ));
+            }
+            let props = decode_props(&raw[body + geom_len..rec_end])?;
+            if keep(&props) {
+                out.push(NormalizedFeature {
+                    geometry: decode_geometry(kind, &raw[body..body + geom_len])?,
+                    props,
+                });
+            }
+            at = rec_end;
+        }
+        Ok(())
+    }
+
     pub fn read_into(
         &self,
         i: usize,

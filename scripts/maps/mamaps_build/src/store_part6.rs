@@ -688,6 +688,27 @@ impl Store {
         T: Send,
         F: Fn(Feature) -> Option<T> + Sync,
     {
+        self.par_scan_where(|_, _| true, keep)
+    }
+
+    /// [`par_scan`](Self::par_scan) with a cheap pre-filter on each record's packed class and
+    /// whether it carries a feature id: records it rejects are never turned into features (their
+    /// geometry is never decoded), so it must accept every record `keep` could keep.
+    pub fn par_scan_where<T, P, F>(&self, pre: P, keep: F) -> Result<Vec<T>>
+    where
+        T: Send,
+        P: Fn(&Class, bool) -> bool + Sync,
+        F: Fn(Feature) -> Option<T> + Sync,
+    {
+        let pre = |props: &[(String, Value)]| -> bool {
+            let class = props.iter().find_map(|(k, v)| match (k.as_str(), v) {
+                (CLASS_KEY, Value::Uint(bits)) => Some(unpack(*bits)),
+                _ => None,
+            });
+            // A record with no class is corrupt: let it through so `feature_of` reports it.
+            let Some(class) = class else { return true };
+            pre(&class, props.iter().any(|(k, _)| k == ID_KEY))
+        };
         use rayon::prelude::*;
         let chunks = self.open_chunks()?;
         let n = chunks.chunk_count();
@@ -704,7 +725,7 @@ impl Store {
                         || (Vec::new(), Vec::new()),
                         |(scratch, records), i| -> Result<Vec<T>> {
                             chunks
-                                .read_into(i, scratch, records)
+                                .read_into_where(i, scratch, records, &pre)
                                 .map_err(|e| osm_ingest::proto::Error(e.to_string()))?;
                             let mut kept = Vec::new();
                             for record in records.drain(..) {
