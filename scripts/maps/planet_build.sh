@@ -29,30 +29,64 @@
 # --graph-ready-file -- mamaps_build's own passes 1-3 / lane / materialise,
 # which then block on $GRAPH/.ready until road_graph + road_overlay succeed.
 #
-# Overlap is memory-admitted, never assumed (fb-oomd killed a 169 GB
-# container on Nov 10 while road_graph + poi_extract ran). Every tool runs in
-# its own `systemd-run --user --scope` with MemoryMax (~1.3x its peak) and
-# MemorySwapMax=0 (the box has a 254 GB swapfile; never lean on it), and a
-# background tool starts only when
-#     MemAvailable - sum(budget - RSS of tools already running)
+# Overlap is memory-admitted, never assumed. Budgets are ANONYMOUS memory
+# (RssAnon), because that is what cannot be reclaimed; page cache is left to
+# the kernel. A background tool starts only when
+#     MemAvailable - sum(budget - RssAnon of tools already running)
 #         >= its budget + MEM_HEADROOM_GB
 # checked under one lock, so two admissions cannot both spend the same
-# headroom. A tool that does not fit waits (polls) instead. Budgets are the
-# measured planet peaks (GiB, Nov 10):
-#     road_graph       107.0  Peak RSS in graph.log (192 threads)
-#     transit_shapes    16.4  sampled; its input is world.transit for any region
-#     poi_extract       40.3  sampled planet run, all anonymous, at the write stage
-#     mamaps_build      ~95   lane/materialise (~83 of it the file-backed nodeloc
-#                             map); passes 1-3 + coords-resolve <= 56 (sampled)
-# mamaps_build overlapping road_graph is admitted against its pass-1..coords
-# budget (60), because that is what runs during road_graph's ~3 minutes; its
-# scope gets MemoryHigh = what admission left it, so if it reaches the
-# 95 GB stages early it is throttled (reclaims its own nodeloc pages) instead
-# of pressuring road_graph or the box. MemoryHigh is lifted when the graph is
-# ready. On a ~235 GB box that is otherwise idle (~215 GB available):
-# road_graph + early mamaps_build (110 + 60 + 30) fits; adding poi_extract
-# (+44) or transit_shapes (+18) at the same time does not, so they start as
-# soon as road_graph's memory comes back (beside mamaps_build, niced).
+# headroom; a tool that does not fit waits (polls). Measured planet peaks
+# (GiB, Nov 10):
+#     road_graph       107.0  Peak RSS in graph.log; budgeted as all anonymous
+#     transit_shapes    16.4  sampled
+#     poi_extract       40.3  sampled planet run, all anonymous (write stage)
+#     mamaps_build      ~56   anonymous (pass 1/3; tiling <= ~35), PLUS the
+#                             ~83 GB file-backed nodeloc map that lane-inherit
+#                             and materialise read at random
+#
+# CGROUPS (2026-11-11, after fb-oomd killed the round-3 early mamaps_build):
+# every tool runs in its own `systemd-run --user --scope` with
+# MemorySwapMax=0 (the box has a 254 GB swapfile; never lean on it).
+#   * NO tool gets MemoryMax or MemoryHigh. Both count page cache, which is
+#     charged to the cgroup that first reads or writes it, and these tools
+#     stream the 95 GB planet PBF plus ~100+ GB of spill and mapped files.
+#     The round-3 MemoryHigh=65G on mamaps_build turned ordinary cache use
+#     into constant in-cgroup reclaim, which is a memory stall; user.slice
+#     PSI sat above 40% for 300 s and fb-oomd's "user session protection"
+#     rule (pressure_above user.slice 40/300s -> kill_by_memory_size_or_growth)
+#     killed the biggest cgroup, pb-mb (139.6 GB memory.current, mostly
+#     cache), 13 min in; pass 1 had also slowed 3m42s vs 1m05s. The Nov 11
+#     confirmation run showed the same with a plain MemoryMax: pb-poi pinned
+#     at its 58G cap (33G anon + 24G PBF cache), 53% PSI inside it and
+#     user.slice PSI 51% within a minute. Unlimited, clean cache is reclaimed
+#     globally by kswapd and costs no stall.
+#   * Runaway protection is an in-script ANON guard instead: a tool whose
+#     RssAnon passes ANON_GUARD_PCT% of its budget is killed and the build
+#     fails.
+#   * road_graph and mamaps_build (the critical path) also get
+#     ManagedOOMPreference=avoid: systemd sets user.oomd_avoid=1 on the scope
+#     and fb-oomd-cpp honours it, so under pressure it picks another cgroup
+#     first. The anon guard keeps `avoid` from sheltering a runaway.
+# A pressure log ($TMP/pressure.log, every 30 s) records user.slice PSI,
+# MemAvailable and each scope's anon/file, so the next failure is diagnosable.
+#
+# EARLY mamaps_build (start it beside road_graph with --graph-ready-file)
+# starts once the transit routes exist (it reads them before its graph gate;
+# transit_shapes takes ~30 s) while road_graph still runs, and
+# overlaps only its graph-independent, anonymous-only head: pass 1, corridors,
+# member ways, refs-collect, id-index (~1.5 min alone on the planet, peak
+# ~51 GB anon). It is FROZEN (cgroup freezer, `systemctl --user freeze`) the
+# moment it reaches "Pass 3" (coords-resolve) if road_graph is still running,
+# and thawed when the graph is ready. Pass 3 writes and lane/materialise then
+# randomly re-read the 83 GB nodeloc map; beside road_graph's 107 GB that
+# working set does not fit this ~235 GB box, so it would be evicted and every
+# refault is a memory stall (PSI counts workingset refaults) -- the same
+# fb-oomd rule, reached without any cgroup limit. Frozen tasks are not
+# stalled, keep their (admitted) anon, and their page cache stays reclaimable.
+# Admission is therefore road_graph + PEAK_MB_EARLY_GB (default PEAK_MB_GB,
+# 60) + headroom; PB_MB_EARLY=0|1 forces it off/on (1 still honours the disk
+# gate). PB_MB_FREEZE=0 lets it run on (only for a box with RAM for both
+# working sets: >= ~300 GB).
 #
 # DISK: phase 4's measured peak is ~202 GB (tiles.features.tmp 98.5 +
 # tilechunks 72.8 + bodies 31); road_graph's out dir peaks at ~3.6x its final
@@ -87,8 +121,12 @@ MEM_HEADROOM_GB=${MEM_HEADROOM_GB:-30}
 PEAK_RG_GB=${PEAK_RG_GB:-110}
 PEAK_TS_GB=${PEAK_TS_GB:-18}
 PEAK_POI_GB=${PEAK_POI_GB:-44}
-PEAK_MB_EARLY_GB=${PEAK_MB_EARLY_GB:-60}
-PEAK_MB_GB=${PEAK_MB_GB:-100}
+PEAK_MB_GB=${PEAK_MB_GB:-60}          # anonymous
+PEAK_MB_FILE_GB=${PEAK_MB_FILE_GB:-90} # nodeloc map working set (file-backed)
+PEAK_MB_EARLY_GB=${PEAK_MB_EARLY_GB:-$PEAK_MB_GB}  # its head is anon-only (EARLY above)
+PB_MB_EARLY=${PB_MB_EARLY:-auto}       # auto | 0 | 1
+PB_MB_FREEZE=${PB_MB_FREEZE:-1}        # freeze early mamaps_build at Pass 3 while road_graph runs
+ANON_GUARD_PCT=${ANON_GUARD_PCT:-150}  # kill a tool whose RssAnon passes this % of its budget
 PEAK_OVL_GB=${PEAK_OVL_GB:-16}
 ADMIT_POLL_S=${ADMIT_POLL_S:-10}
 # Disk gates (KiB): phase 4 alone after the graph, and phase 2+4 overlapped.
@@ -98,7 +136,11 @@ DISK_GATE_OVERLAP_KB=283115520   # 270 GiB
 export PATH=$HOME/.cargo/bin:$PATH
 export RUSTUP_TOOLCHAIN=1.97.0-x86_64-unknown-linux-gnu
 unset MAPS_THREADS RAYON_NUM_THREADS MAPS_PREFETCH_LANES
-export MAPS_ANON_SPILL=1
+# Tile-chunk spill through its scratch file, never anonymous staging:
+# anonymous staging is commit (= swap) backed, and every tool here runs with
+# MemorySwapMax=0. Same chunks, same bytes either way; the planet already
+# chose files on its own (642 GB needed vs ~196 GB of commit headroom).
+export MAPS_ANON_SPILL=0
 
 ts(){ date '+%F %T'; }
 log(){ echo "[$(ts)] $*" | tee -a "$LOG"; }
@@ -108,11 +150,21 @@ BG_PIDS=()
 die(){
     log "FATAL: $*"
     for p in ${BG_PIDS[@]+"${BG_PIDS[@]}"}; do pkill -TERM -P "$p" 2>/dev/null; kill "$p" 2>/dev/null; done
+    # The tools themselves live in their scopes; stop those too (thawed first,
+    # so a frozen early mamaps_build can act on the TERM).
+    for u in $(systemctl --user list-units "pb-*-$$.scope" --no-legend --plain 2>/dev/null | awk '{print $1}'); do
+        systemctl --user thaw "$u" 2>/dev/null
+        systemctl --user kill --signal=TERM "$u" 2>/dev/null
+    done
+    [ -s "$JOBS/.mb-stopped" ] && kill -CONT "$(cat "$JOBS/.mb-stopped")" 2>/dev/null
     exit 1
 }
-# Inside a background job: report and fail that job only (the main line's
-# `wait` turns it into a FATAL there).
-bgdie(){ log "FATAL: $*"; exit 1; }
+# Inside a background job: report, then make the main line fail now (USR1)
+# rather than at its next join -- a POI failure must not let a 20-minute
+# mamaps_build run to completion first.
+MAIN_PID=$$
+bgdie(){ log "FATAL: $*"; kill -USR1 "$MAIN_PID" 2>/dev/null; exit 1; }
+trap 'die "a background job failed (see above)"' USR1
 
 mem_avail_gb(){
     if [ -n "${PB_TEST_MEMAVAIL_GB:-}" ]; then echo "$PB_TEST_MEMAVAIL_GB"; return; fi
@@ -129,15 +181,26 @@ mem_avail_gb(){
     cg=$(( (lim - cur + inact) / 1073741824 ))
     echo $(( cg < host ? cg : host ))
 }
-# Memory the running tools may still grow into: sum(budget - current RSS).
+SCOPE_ROOT=/sys/fs/cgroup/user.slice/user-$(id -u).slice/user@$(id -u).service/app.slice
+# Anonymous memory (GiB) of tool NAME: its scope's memory.stat `anon` (covers
+# every process in it, whatever PID systemd-run left us), else RssAnon of PID.
+anon_gb(){
+    local st=$SCOPE_ROOT/pb-$1-$$.scope/memory.stat
+    if [ -r "$st" ]; then
+        awk '/^anon /{print int($2/1073741824)}' "$st"
+    else
+        awk '/^RssAnon:/{print int($2/1048576)}' "/proc/$2/status" 2>/dev/null
+    fi
+}
+# Anonymous memory the running tools may still grow into: sum(budget - anon).
 outstanding_gb(){
-    local f pid budget rss sum=0
+    local f pid budget anon sum=0
     for f in "$JOBS"/*; do
         [ -f "$f" ] || continue
         read -r pid budget < "$f" || continue
         [ -d "/proc/$pid" ] || continue
-        rss=$(awk '/^VmRSS:/{print int($2/1048576)}' "/proc/$pid/status" 2>/dev/null)
-        [ "${budget:-0}" -gt "${rss:-0}" ] && sum=$((sum + budget - ${rss:-0}))
+        anon=$(anon_gb "$(basename "$f")" "$pid")
+        [ "${budget:-0}" -gt "${anon:-0}" ] && sum=$((sum + budget - ${anon:-0}))
     done
     echo "$sum"
 }
@@ -149,19 +212,28 @@ if systemd-run --user --scope --quiet -p MemoryMax=1G -p MemorySwapMax=0 -- true
     SCOPES=1
 fi
 
-# run_tool NAME BUDGET_GB MAX_GB HIGH ADMIT -- cmd...
-#   Runs cmd (in a memory-capped scope when available) and waits for it.
-#   ADMIT=1: first wait until BUDGET_GB fits (see header). HIGH: "-" for no
-#   MemoryHigh, "auto" for whatever admission left (overlap throttle), or GiB.
-#   The tool's PID and budget are registered for later admissions while it runs.
+# run_tool NAME BUDGET_GB AVOID ADMIT -- cmd...
+#   Runs cmd in its own scope (when available) and waits for it.
+#   BUDGET_GB: anonymous peak (admission + anon guard). AVOID=1: ask fb-oomd to
+#   pick other cgroups first (critical-path tools). ADMIT=1: first wait until
+#   BUDGET_GB fits; ADMIT=try:N: start only if N GiB fit right now, else return
+#   75 without starting. No memory caps (see CGROUPS above). The tool's PID and
+#   budget are registered for later admissions while it runs.
 run_tool(){
-    local name=$1 budget=$2 max=$3 high=$4 admit=$5; shift 6
-    local fd p rc spare props=()
+    local name=$1 budget=$2 avoid=$3 admit=$4; shift 5
+    local fd p rc spare anon guard i=0 tripped=0 props=()
     exec {fd}>"$JOBS/.lock"
     local waited=0
     while :; do
         flock "$fd"
         spare=$(spare_gb)
+        case $admit in
+            try:*)
+                [ "$spare" -ge "${admit#try:}" ] && break
+                flock -u "$fd"; exec {fd}>&-
+                log "  $name not started: ${spare}G spare < ${admit#try:}G needed now (MemAvailable $(mem_avail_gb)G)"
+                return 75 ;;
+        esac
         if [ "$admit" = 0 ] || [ "$spare" -ge "$budget" ]; then break; fi
         # Nothing of ours left to wait for: the shortfall is other tenants, and
         # running alone is what the sequential build always did.
@@ -174,10 +246,9 @@ run_tool(){
         flock -u "$fd"
         sleep "$ADMIT_POLL_S"
     done
-    [ "$high" = auto ] && high=$spare
     if [ "$SCOPES" = 1 ]; then
-        props=(-p "MemoryMax=${max}G" -p MemorySwapMax=0)
-        [ "$high" != - ] && props+=(-p "MemoryHigh=${high}G")
+        props=(-p MemorySwapMax=0)
+        [ "$avoid" = 1 ] && props+=(-p ManagedOOMPreference=avoid)
         systemd-run --user --scope --quiet --collect --unit="pb-$name-$$" "${props[@]}" -- "$@" {fd}>&- &
     else
         "$@" {fd}>&- &
@@ -185,15 +256,32 @@ run_tool(){
     p=$!
     echo "$p $budget" > "$JOBS/$name"
     flock -u "$fd"; exec {fd}>&-
-    log "  started $name (pid $p; budget ${budget}G, spare was ${spare}G, MemoryMax ${max}G, MemoryHigh ${high}G, scopes=$SCOPES)"
+    log "  started $name (pid $p; anon budget ${budget}G, guard $(( budget * ANON_GUARD_PCT / 100 ))G, spare was ${spare}G, oomd avoid=$avoid, scopes=$SCOPES)"
+    # Anon guard (also the only runaway guard for the uncapped tools).
+    guard=$(( budget * ANON_GUARD_PCT / 100 ))
+    while kill -0 "$p" 2>/dev/null; do
+        sleep 1
+        i=$((i + 1)); [ $((i % 5)) = 0 ] || continue
+        anon=$(anon_gb "$name" "$p")
+        if [ "${anon:-0}" -gt "$guard" ]; then
+            log "  FATAL: $name RssAnon ${anon}G passed its guard ${guard}G (${ANON_GUARD_PCT}% of ${budget}G); killing it"
+            kill -TERM "$p" 2>/dev/null
+            [ "$SCOPES" = 1 ] && systemctl --user kill --signal=TERM "pb-$name-$$.scope" 2>/dev/null
+            sleep 10
+            kill -KILL "$p" 2>/dev/null
+            [ "$SCOPES" = 1 ] && systemctl --user kill --signal=KILL "pb-$name-$$.scope" 2>/dev/null
+            tripped=1
+            break
+        fi
+    done
     wait "$p"; rc=$?
     rm -f "$JOBS/$name"
+    [ "$tripped" = 1 ] && return 99
     return "$rc"
 }
-cap(){ echo $(( ($1 * 13 + 9) / 10 )); }   # MemoryMax = ~1.3x the budget
 
 mkdir -p "$TMP" "$POI" "$LOGDIR" "$JOBS"
-rm -f "$JOBS"/* 2>/dev/null
+rm -f "$JOBS"/* "$JOBS/.mb-stopped" 2>/dev/null
 BIN=$REPO/target/release
 cd "$REPO" || die "cannot cd $REPO"
 
@@ -234,6 +322,23 @@ log "  memory: MemAvailable $(mem_avail_gb)G, headroom ${MEM_HEADROOM_GB}G, scop
 MB_ARGS=(--input "$IN/planet.osm.pbf" --out "$TILES"
     --coastline "$IN/coastline.shp" --graph "$GRAPH"
     --transit-routes "$ROUTES" --dem "$IN/world.mdem" --region world)
+
+# Pressure log: user.slice memory PSI (what fb-oomd watches), MemAvailable and
+# each build scope's anon/file, every 30 s, for the life of the build.
+pressure_logger(){
+    local a=$SCOPE_ROOT d l
+    while :; do
+        l="$(ts) $(awk '/^some/{split($2,x,"=");split($3,y,"=");printf "user.slice psi some avg10=%s avg60=%s",x[2],y[2]}' /sys/fs/cgroup/user.slice/memory.pressure 2>/dev/null) MemAvailable=$(mem_avail_gb)G"
+        for d in "$a"/pb-*-$$.scope; do
+            [ -d "$d" ] || continue
+            l="$l $(basename "$d" "-$$.scope"):anon=$(awk '/^anon /{print int($2/1073741824)}' "$d/memory.stat")G,file=$(awk '/^file /{print int($2/1073741824)}' "$d/memory.stat")G"
+        done
+        echo "$l" >> "$TMP/pressure.log"
+        sleep 30
+    done
+}
+pressure_logger & PRESSURE_PID=$!
+trap 'kill "$PRESSURE_PID" 2>/dev/null' EXIT
 
 # Phase-4 footprint cut (2026-11-08, ENOSPC at 13:23 after 289G stage-A file
 # spill): free what mamaps_build does not need BEFORE it starts -- now at the
@@ -276,7 +381,7 @@ transit_job(){
     done
     log "  world.transit present ($(stat -c%s "$WT") B); shaping routes when memory admits"
     # Written aside and renamed, so mamaps_build can never read a partial file.
-    run_tool ts "$PEAK_TS_GB" "$(cap "$PEAK_TS_GB")" - 1 -- \
+    run_tool ts "$PEAK_TS_GB" 0 1 -- \
         "$BIN/transit_shapes" "$ROUTES.tmp" --pack "$WT" >"$TMP/transit.log" 2>&1 \
         || bgdie "transit_shapes failed (see $TMP/transit.log)"
     mv -f "$ROUTES.tmp" "$ROUTES" || bgdie "cannot place $ROUTES"
@@ -295,8 +400,13 @@ poi_job(){
     else
         log "  go-file present; poi_extract (built in phase 1) starts when memory admits"
     fi
+    # The early-mamaps_build decision goes first: it is on the critical path,
+    # POI is not (needed only at phase 6).
+    if [ -n "${MB_PID:-}" ]; then
+        while kill -0 "$MB_PID" 2>/dev/null && [ ! -f "$JOBS/mb" ]; do sleep 1; done
+    fi
     # Niced: it may run beside mamaps_build, which is the critical path.
-    run_tool poi "$PEAK_POI_GB" "$(cap "$PEAK_POI_GB")" - 1 -- \
+    run_tool poi "$PEAK_POI_GB" 0 1 -- \
         nice -n 10 "$BIN/poi_extract" "$IN/planet.osm.pbf" \
         --geojson "$POI/poi.geojsonseq" --names "$POI/poi_names.bin" \
         --index "$POI/poi_index.bin" --region world --reviews "$IN/reviews_archive.tsv" \
@@ -307,21 +417,74 @@ poi_job(){
     log "  poi sidecars done ($(stat -c%s "$POI/poi_region.bin") B region sidecar)"
 }
 
+# --- background job: hold early mamaps_build at Pass 3 while road_graph runs -
+# Freezes the scope (or SIGSTOPs the PID without scopes) as soon as build.log
+# shows "Pass 3" while road_graph ($RG_PID) still runs; the main line thaws it
+# when road_graph exits (and again at the graph gate, which covers the race of
+# a freeze landing just after that).
+mb_hold_job(){
+    BG_PIDS=()
+    local pid
+    while kill -0 "$RG_PID" 2>/dev/null; do
+        if [ -f "$JOBS/mb" ] && grep -aq 'Pass 3' "$TMP/build.log" 2>/dev/null; then
+            kill -0 "$RG_PID" 2>/dev/null || break
+            if [ "$SCOPES" = 1 ]; then
+                systemctl --user freeze "pb-mb-$$.scope" \
+                    && log "  early mamaps_build reached Pass 3 while road_graph runs: frozen until it is done (anon $(anon_gb mb 0)G)"
+            else
+                read -r pid _ < "$JOBS/mb" && kill -STOP "$pid" \
+                    && echo "$pid" > "$JOBS/.mb-stopped" \
+                    && log "  early mamaps_build reached Pass 3 while road_graph runs: stopped until it is done"
+            fi
+            break
+        fi
+        sleep 1
+    done
+}
+mb_release(){
+    if [ "$SCOPES" = 1 ]; then
+        systemctl --user thaw "pb-mb-$$.scope" 2>/dev/null
+    elif [ -s "$JOBS/.mb-stopped" ]; then
+        kill -CONT "$(cat "$JOBS/.mb-stopped")" 2>/dev/null
+    fi
+}
+
 # --- background job: early mamaps_build (phase 4 started in phase 2) --------
+# mamaps_build reads the transit routes before its graph gate, so the decision
+# waits for them (transit_shapes, ~30 s on the planet). It then starts only if
+# road_graph is still running, the disk gate passes, and its anon head fits
+# now (PB_MB_EARLY=1 skips the memory rule). Not started: the job ends 0 and
+# the main line runs phase 4 after the graph as before.
 mb_early_job(){
     BG_PIDS=()
-    # Reserved at its full peak from the start, so nothing else is admitted into
-    # memory it may grow into; admitted (in the main line) against its early
-    # budget, and throttled by MemoryHigh to what admission left it.
-    run_tool mb "$PEAK_MB_GB" "$(cap "$PEAK_MB_GB")" auto 0 -- \
+    local fkb admit="try:$PEAK_MB_EARLY_GB" rc
+    [ "$PB_MB_EARLY" = 1 ] && admit=0
+    while [ ! -s "$ROUTES" ]; do
+        kill -0 "$RG_PID" 2>/dev/null || { log "  early mamaps_build: NO -- road_graph finished before the transit routes"; return 0; }
+        sleep 1
+    done
+    kill -0 "$RG_PID" 2>/dev/null || { log "  early mamaps_build: NO -- road_graph already finished"; return 0; }
+    fkb=$(free_kb)
+    if [ "$fkb" -lt "$DISK_GATE_OVERLAP_KB" ]; then
+        log "  early mamaps_build: NO -- $((fkb / 1048576))G free < 270G needed for graph + phase-4 spill together"
+        return 0
+    fi
+    : > "$TMP/build.log"
+    run_tool mb "$PEAK_MB_GB" 1 "$admit" -- \
         "$BIN/mamaps_build" "${MB_ARGS[@]}" --graph-ready-file "$READY" \
-        >"$TMP/build.log" 2>&1 || bgdie "mamaps_build failed (see $TMP/build.log)"
+        >>"$TMP/build.log" 2>&1
+    rc=$?
+    case $rc in
+        0) ;;
+        75) log "  early mamaps_build: NO -- does not fit beside road_graph now"; return 0 ;;
+        *) bgdie "mamaps_build failed (see $TMP/build.log)" ;;
+    esac
 }
 
 log "[2/7] road graph: road_graph --rounds 3 (planet pbf is >10GB); transit, POI and early tiles beside it when they fit"
 rm -f "$READY" "$ROUTES.tmp"
 free_for_phase4
-run_tool rg "$PEAK_RG_GB" "$(cap "$PEAK_RG_GB")" - 0 -- \
+run_tool rg "$PEAK_RG_GB" 1 0 -- \
     "$BIN/road_graph" "$IN/planet.osm.pbf" --out "$GRAPH" --region world --rounds 3 \
     >"$TMP/graph.log" 2>&1 &
 RG_PID=$!; BG_PIDS+=("$RG_PID")
@@ -329,20 +492,14 @@ RG_PID=$!; BG_PIDS+=("$RG_PID")
 for _ in $(seq 1 300); do [ -f "$JOBS/rg" ] && break; sleep 0.1; done
 [ -f "$JOBS/rg" ] || die "road_graph did not start"
 
-# Early mamaps_build: only with the flag, the disk for both, and the memory
-# for road_graph + its pass-1..coords stages (+ headroom) right now.
-MB_EARLY=0
-if [ "$GRAPH_READY_FLAG" = 1 ]; then
-    spare=$(spare_gb); fkb=$(free_kb)
-    if [ "$fkb" -lt "$DISK_GATE_OVERLAP_KB" ]; then
-        log "  early mamaps_build: NO -- $((fkb / 1048576))G free < 270G needed for graph + phase-4 spill together"
-    elif [ "$spare" -lt "$PEAK_MB_EARLY_GB" ]; then
-        log "  early mamaps_build: NO -- ${spare}G spare beside road_graph < ${PEAK_MB_EARLY_GB}G (MemAvailable $(mem_avail_gb)G)"
-    else
-        log "  early mamaps_build: YES (${spare}G spare beside road_graph, $((fkb / 1048576))G free); blocks on $READY"
-        MB_EARLY=1
-        mb_early_job & MB_PID=$!; BG_PIDS+=("$MB_PID")
-        for _ in $(seq 1 300); do [ -f "$JOBS/mb" ] && break; sleep 0.1; done
+# Early mamaps_build (see EARLY above): decided in the background once the
+# routes exist; a hold job freezes it at Pass 3 while road_graph runs.
+MB_PID=""
+: > "$TMP/build.log"
+if [ "$GRAPH_READY_FLAG" = 1 ] && [ "$PB_MB_EARLY" != 0 ]; then
+    mb_early_job & MB_PID=$!; BG_PIDS+=("$MB_PID")
+    if [ "$PB_MB_FREEZE" = 1 ]; then
+        mb_hold_job & HOLD_PID=$!; BG_PIDS+=("$HOLD_PID")
     fi
 fi
 transit_job & TRANSIT_PID=$!; BG_PIDS+=("$TRANSIT_PID")
@@ -350,14 +507,14 @@ poi_job & POI_PID=$!; BG_PIDS+=("$POI_PID")
 log "  background: transit shapes (pid $TRANSIT_PID), POI sidecars (pid $POI_PID)"
 
 wait "$RG_PID" || die "road_graph failed (see $TMP/graph.log)"
-# road_graph's memory is back: early mamaps_build may use its full peak now.
-if [ "$MB_EARLY" = 1 ] && [ "$SCOPES" = 1 ]; then
-    systemctl --user set-property --runtime "pb-mb-$$.scope" MemoryHigh=infinity 2>/dev/null \
-        && log "  road_graph done: lifted early mamaps_build MemoryHigh"
+# road_graph's memory is back: an early mamaps_build held at Pass 3 goes on
+# (it still blocks on $READY before the stages that read the graph).
+if [ -f "$JOBS/mb" ]; then
+    mb_release && log "  road_graph done: early mamaps_build released"
 fi
 [ -f "$GRAPH/metadata.bin" ] || die "road_graph produced no $GRAPH/metadata.bin"
 log "  metadata.bin present; running road_overlay --graph"
-run_tool ovl "$PEAK_OVL_GB" "$(cap "$PEAK_OVL_GB")" - 0 -- \
+run_tool ovl "$PEAK_OVL_GB" 0 0 -- \
     "$BIN/road_overlay" --graph "$GRAPH" >>"$TMP/graph.log" 2>&1 \
     || die "road_overlay failed (see $TMP/graph.log)"
 log "  graph done"
@@ -369,10 +526,22 @@ log "  routes ready ($(stat -c%s "$ROUTES") B)"
 free_transit_work
 
 log "[4/7] tiles: mamaps_build (this is the long pole)"
+# Collect the early decision (the job ends 0 when it did not start one).
+MB_EARLY=0
+if [ -n "$MB_PID" ]; then
+    while kill -0 "$MB_PID" 2>/dev/null && [ ! -f "$JOBS/mb" ]; do sleep 1; done
+    if [ -f "$JOBS/mb" ]; then
+        MB_EARLY=1
+    else
+        wait "$MB_PID" || die "early mamaps_build job failed (see $TMP/build.log)"
+    fi
+fi
 if [ "$MB_EARLY" = 1 ]; then
-    # Graph and routes are final: release mamaps_build past its graph gate.
+    # Graph and routes are final: release mamaps_build past its graph gate
+    # (and out of the freezer, if the hold job put it there).
     touch "$READY" || die "cannot create $READY"
-    log "  graph ready -> early mamaps_build continues (pid $MB_PID); pre-phase-4 free: $(df -h "$DISK_PATH" | awk 'NR==2{print $4}')"
+    mb_release
+    log "  graph ready -> early mamaps_build continues (job $MB_PID); pre-phase-4 free: $(df -h "$DISK_PATH" | awk 'NR==2{print $4}')"
     wait "$MB_PID" || die "mamaps_build failed (see $TMP/build.log)"
 else
     # Disk gate (2026-11-10): measured phase-4 peak on two full planet runs was
@@ -383,7 +552,7 @@ else
     [ "$(free_kb)" -ge "$DISK_GATE_P4_KB" ] \
         || die "phase 4 needs ~240G free for the stage-A feature spill; free space or shrink staging first (see build.log WARN)"
     # Admitted like the others: waits for a running poi_extract if both would not fit.
-    run_tool mb "$PEAK_MB_GB" "$(cap "$PEAK_MB_GB")" - 1 -- \
+    run_tool mb "$PEAK_MB_GB" 1 1 -- \
         "$BIN/mamaps_build" "${MB_ARGS[@]}" \
         >"$TMP/build.log" 2>&1 || die "mamaps_build failed (see $TMP/build.log)"
 fi
