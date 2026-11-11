@@ -248,24 +248,37 @@ pub fn stream_junctions(dir: &Path, conventions: &Conventions, sink: &mut Sink) 
         "node(s)",
         true,
     );
+    // One task per run of `JUNCTION_NODES` consecutive nodes, each producing one `RecordRun`, so
+    // the serial drain appends a run at a time rather than a record at a time (~177 M connectors
+    // on the planet).
+    const JUNCTION_NODES: usize = 1024;
+    let node_count = graph.node_count as usize;
+    let units = node_count.div_ceil(JUNCTION_NODES);
     crate::extract::pipeline_ordered(
-        graph.node_count as usize,
-        JUNCTION_GROUP,
-        |n| -> Result<Vec<crate::store::PreRecord>> {
-            junctions_for_node(n as u64, &graph, lanes.as_ref(), &incoming, conventions)
-                .into_iter()
-                .map(|points| {
+        units,
+        JUNCTION_GROUP / JUNCTION_NODES,
+        |u| -> Result<crate::store::RecordRun> {
+            let mut run = crate::store::RecordRun::default();
+            let lo = u * JUNCTION_NODES;
+            for n in lo..(lo + JUNCTION_NODES).min(node_count) {
+                for points in junctions_for_node(n as u64, &graph, lanes.as_ref(), &incoming, conventions) {
                     let encoded = crate::store::EncodedGeom::live(&Geometry::Lines(vec![points]))?;
-                    crate::store::PreRecord::named(&class, &encoded, None, tilecodec::mamaps::body::ID_NONE)
-                })
-                .collect()
-        },
-        |_, records| {
-            for record in records? {
-                sink.push_pre(&record)?;
-                emitted += 1;
+                    run.add(crate::store::PreRecord::named(
+                        &class,
+                        &encoded,
+                        None,
+                        tilecodec::mamaps::body::ID_NONE,
+                    )?);
+                }
             }
-            bar.tick("node(s)");
+            Ok(run)
+        },
+        |u, run| {
+            let run = run?;
+            emitted += run.len() as u64;
+            sink.push_run(run)?;
+            let lo = u * JUNCTION_NODES;
+            bar.tick_n((lo + JUNCTION_NODES).min(node_count) - lo, "node(s)");
             Ok(())
         },
     )?;

@@ -68,7 +68,7 @@ use rayon::prelude::*;
 
 use crate::schema::{self, Class, Layers};
 use crate::store::{
-    PreRecord, Sink, Store, WayBlock, WayBlockLoc, WayBlocks, WayCounts, WayReader, WaySink,
+    PreRecord, RecordRun, Sink, Store, WayBlock, WayBlockLoc, WayBlocks, WayCounts, WayReader, WaySink,
     WAY_BLOCK_WAYS,
 };
 use tilecodec::mamaps::body::{BuildingAttrs, Carriageway};

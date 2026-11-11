@@ -389,3 +389,69 @@
         assert!(!path.exists(), "the guard must remove it");
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    /// Runs pushed whole ([`NormalizedWriter::push_run`]) -- of every length, starting mid-frame
+    /// and on frame boundaries, mixed with single records and with enough frames to cross a
+    /// background batch -- write the same file and the same summary as pushing record by record.
+    #[test]
+    fn pushing_runs_writes_what_pushing_records_writes() {
+        let dir = tmp("runs");
+        let mut records: Vec<(GeomKind, Vec<u8>, Option<crate::geom::Rect>)> = Vec::new();
+        for i in 0..(NORM_CHUNK_FEATURES as usize * 4200 + 37) {
+            let g = Geometry::Lines(vec![vec![(i as f64 * 1e-4, 1.0), (i as f64 * 1e-4 + 0.5, (i % 7) as f64)]]);
+            let mut geom = Vec::new();
+            encode_geometry(&g, &mut geom).unwrap();
+            let mut rec = Vec::new();
+            let props = vec![("c".to_string(), Value::Uint(i as u64))];
+            encode_normalized_record(GeomKind::of(&g), &geom, &props, &mut rec).unwrap();
+            records.push((GeomKind::of(&g), rec, crate::geom::bounds(&g)));
+        }
+        for anon in [false, true] {
+            let (a, b) = (dir.join(format!("one{anon}.bin")), dir.join(format!("run{anon}.bin")));
+            let mk = |p: &std::path::Path| {
+                if anon { NormalizedWriter::create_anon(p) } else { NormalizedWriter::create(p) }.unwrap()
+            };
+            let mut one = mk(&a);
+            for (k, r, bd) in &records {
+                one.push_record(*k, r, *bd).unwrap();
+            }
+            let mut run = mk(&b);
+            let mut i = 0usize;
+            let mut step = 1usize;
+            while i < records.len() {
+                let n = step.min(records.len() - i);
+                let mut bytes = Vec::new();
+                let mut ends = Vec::new();
+                let mut bounds = None;
+                for (_, r, bd) in &records[i..i + n] {
+                    bytes.extend_from_slice(r);
+                    ends.push(bytes.len());
+                    bounds = match (bounds, *bd) {
+                        (None, x) => x,
+                        (x, None) => x,
+                        (Some(p), Some(q)) => Some(crate::geom::Rect {
+                            min_x: f64::min(p.min_x, q.min_x),
+                            min_y: f64::min(p.min_y, q.min_y),
+                            max_x: f64::max(p.max_x, q.max_x),
+                            max_y: f64::max(p.max_y, q.max_y),
+                        }),
+                    };
+                }
+                run.push_run(bytes, &ends, Some(records[i].0), bounds).unwrap();
+                i += n;
+                step = [1, 63, 64, 65, 200, 4096 * 64 + 3][(step + i) % 6];
+            }
+            let (s1, st1) = one.finish_either().unwrap();
+            let (s2, st2) = run.finish_either().unwrap();
+            assert_eq!(s1, s2, "summaries (chunk index included) agree, anon={anon}");
+            let bytes = |p: &std::path::Path, st: Option<crate::anon::AnonStore>| match st {
+                Some(s) => {
+                    let mut v = vec![0u8; s.len() as usize];
+                    s.read_at(0, &mut v).unwrap();
+                    v
+                }
+                None => std::fs::read(p).unwrap(),
+            };
+            assert_eq!(bytes(&a, st1), bytes(&b, st2), "same bytes, anon={anon}");
+        }
+    }

@@ -322,6 +322,11 @@ impl SpillPlan {
         const ANON_SHARE_DEN: u64 = 2;
         let need_anon = budget.anon_commit_bytes();
         let need_disk = budget.disk_bytes();
+        // Test knob: take the file backend whatever the budget says, so a regional extract runs
+        // the planet's code path (file-staged spills) for profiling. Same records either way.
+        if std::env::var_os("MAPS_FORCE_FILE_SPILL").is_some() {
+            return Ok(SpillPlan::File);
+        }
 
         match (commit_avail_bytes(), commit_limit_bytes(), disk_free_bytes(spill_path)) {
             (Some(avail), Some(limit), disk) => {

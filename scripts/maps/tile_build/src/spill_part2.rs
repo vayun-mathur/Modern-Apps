@@ -188,8 +188,90 @@ const NORM_FILE_HEADER_BYTES: usize = 8;
 /// kilobytes; a gigabyte frame is corruption, not a dense chunk.
 const MAX_FRAME_BYTES: u64 = 1 << 30;
 
+/// A sealed frame's raw records: its own buffer, or a whole-frame slice of a caller's run
+/// ([`NormalizedWriter::push_run`]) compressed in place without a copy.
+enum FrameSrc {
+    Owned(Vec<u8>),
+    Shared(std::sync::Arc<Vec<u8>>, std::ops::Range<usize>),
+}
+
+impl FrameSrc {
+    fn bytes(&self) -> &[u8] {
+        match self {
+            FrameSrc::Owned(v) => v,
+            FrameSrc::Shared(v, r) => &v[r.clone()],
+        }
+    }
+}
+
+/// A thread staging compressed frames into the sink, in the order they are sent: each frame as
+/// its `u32` length then its bytes, exactly what the inline path wrote. Bounded, so at most a few
+/// batches wait.
+struct BgWriter {
+    tx: Option<std::sync::mpsc::SyncSender<Vec<Vec<u8>>>>,
+    handle: Option<std::thread::JoinHandle<Result<WriterSink>>>,
+}
+
+impl BgWriter {
+    fn start(mut out: WriterSink, path: PathBuf) -> BgWriter {
+        let (tx, rx) = std::sync::mpsc::sync_channel::<Vec<Vec<u8>>>(4);
+        let handle = std::thread::Builder::new()
+            .name("spill-writer".to_string())
+            .spawn(move || -> Result<WriterSink> {
+                for batch in rx {
+                    for frame in batch {
+                        let len = (frame.len() as u32).to_le_bytes();
+                        match &mut out {
+                            WriterSink::File(f) => f
+                                .write_all(&len)
+                                .and_then(|()| f.write_all(&frame))
+                                .map_err(|e| Error(format!("writing {}: {e}", path.display())))?,
+                            WriterSink::Anon(a) => {
+                                a.push(&len)?;
+                                a.push(&frame)?;
+                            }
+                        }
+                    }
+                }
+                Ok(out)
+            })
+            .expect("start the spill writer thread");
+        BgWriter { tx: Some(tx), handle: Some(handle) }
+    }
+
+    /// Queue one batch. A writer that already failed reports its error here, at the next send,
+    /// rather than at `finish`.
+    fn send(&self, batch: Vec<Vec<u8>>) -> Result<()> {
+        if self.tx.as_ref().expect("open until finish").send(batch).is_err() {
+            return err("the spill writer stopped early; its error follows at finish".to_string());
+        }
+        Ok(())
+    }
+
+    fn finish(mut self) -> Result<WriterSink> {
+        drop(self.tx.take());
+        self.handle
+            .take()
+            .expect("joined once")
+            .join()
+            .map_err(|_| Error("the spill writer thread panicked".to_string()))?
+    }
+}
+
+impl Drop for BgWriter {
+    fn drop(&mut self) {
+        drop(self.tx.take());
+        if let Some(h) = self.handle.take() {
+            let _ = h.join();
+        }
+    }
+}
+
 pub struct NormalizedWriter {
-    out: WriterSink,
+    /// `None` while a background writer owns it (see [`BgWriter`]); back by `finish`.
+    out: Option<WriterSink>,
+    /// The thread staging compressed frames, started at the first batch.
+    bg: Option<BgWriter>,
     path: PathBuf,
     summary: NormalizedSummary,
     rec: Vec<u8>,
@@ -200,13 +282,11 @@ pub struct NormalizedWriter {
     pending: Vec<u8>,
     /// Records in `pending`. Counted rather than derived because records are variable-length.
     pending_count: u64,
-    /// Compressed scratch, reused across frames so a chunk seal allocates nothing.
-    sealed: Vec<u8>,
     /// Sealed-but-not-yet-compressed frames (raw records), oldest first. Compressed on the pool
     /// [`SEAL_BATCH`] at a time by [`drain_frames`](Self::drain_frames) and staged in order, so
     /// DEFLATE leaves the serial push path while the bytes, offsets and chunk index stay exactly
     /// what sealing one frame at a time produced.
-    queued: Vec<Vec<u8>>,
+    queued: Vec<FrameSrc>,
     /// Bytes written so far, which is the next frame's offset. Tracks *compressed* bytes: the
     /// chunk index addresses frames, not records.
     at: u64,
@@ -232,13 +312,13 @@ impl NormalizedWriter {
         let f = File::create(&path)
             .map_err(|e| Error(format!("cannot create {}: {e}", path.display())))?;
         let mut w = NormalizedWriter {
-            out: WriterSink::File(BufWriter::with_capacity(1 << 20, f)),
+            out: Some(WriterSink::File(BufWriter::with_capacity(8 << 20, f))),
+            bg: None,
             path,
             summary: NormalizedSummary::default(),
             rec: Vec::new(),
             pending: Vec::new(),
             pending_count: 0,
-            sealed: Vec::new(),
             queued: Vec::new(),
             // The first frame starts past the file header; the chunk index's first offset
             // records exactly this, so readers never special-case it.
@@ -254,13 +334,13 @@ impl NormalizedWriter {
     /// [`NormalizedChunks::open_anon`] on the way back.
     pub fn create_anon(path: impl Into<PathBuf>) -> Result<NormalizedWriter> {
         let mut w = NormalizedWriter {
-            out: WriterSink::Anon(crate::anon::AnonStore::new()),
+            out: Some(WriterSink::Anon(crate::anon::AnonStore::new())),
+            bg: None,
             path: path.into(),
             summary: NormalizedSummary::default(),
             rec: Vec::new(),
             pending: Vec::new(),
             pending_count: 0,
-            sealed: Vec::new(),
             queued: Vec::new(),
             at: NORM_FILE_HEADER_BYTES as u64,
         };
@@ -275,7 +355,7 @@ impl NormalizedWriter {
         let mut head = [0u8; NORM_FILE_HEADER_BYTES];
         head[0..4].copy_from_slice(NORM_MAGIC);
         head[4] = NORM_VERSION;
-        match &mut self.out {
+        match self.out.as_mut().expect("the header is written before any batch") {
             WriterSink::File(f) => f
                 .write_all(&head)
                 .map_err(|e| Error(format!("writing {}: {e}", self.path.display())))?,
@@ -403,7 +483,7 @@ impl NormalizedWriter {
         }
         // Queued raw, compressed later in a batch: see `drain_frames`. `take` leaves `pending`
         // empty for the next chunk; the frame owns its bytes until it is staged.
-        self.queued.push(std::mem::take(&mut self.pending));
+        self.queued.push(FrameSrc::Owned(std::mem::take(&mut self.pending)));
         self.pending_count = 0;
         if self.queued.len() >= SEAL_BATCH {
             self.drain_frames()?;
@@ -428,37 +508,100 @@ impl NormalizedWriter {
         }
         let frames = std::mem::take(&mut self.queued);
         let compressed: Vec<Vec<u8>> = if frames.len() == 1 {
-            vec![miniz_oxide::deflate::compress_to_vec(&frames[0], SPILL_DEFLATE_LEVEL)]
+            vec![miniz_oxide::deflate::compress_to_vec(frames[0].bytes(), SPILL_DEFLATE_LEVEL)]
         } else {
             use rayon::prelude::*;
             crate::par::install(|| {
                 frames
                     .par_iter()
-                    .map(|raw| miniz_oxide::deflate::compress_to_vec(raw, SPILL_DEFLATE_LEVEL))
+                    .map(|raw| miniz_oxide::deflate::compress_to_vec(raw.bytes(), SPILL_DEFLATE_LEVEL))
                     .collect()
             })
         };
         drop(frames);
-        let total: usize = compressed.iter().map(|c| 4 + c.len()).sum();
-        self.sealed.clear();
-        self.sealed.reserve(total);
+        // Each frame's offset is known here, from the sizes alone (a prefix sum from `at`), so
+        // the chunk index is complete before a byte is written; the bytes themselves go to the
+        // background writer, which stages them in this same order. The serial pusher no longer
+        // waits on the copy into the buffer or on the write.
         for frame in &compressed {
-            let frame_len = u32::try_from(frame.len())
+            u32::try_from(frame.len())
                 .map_err(|_| Error("a spill frame is larger than 4 GiB".to_string()))?;
-            self.summary.chunks.push(self.at + self.sealed.len() as u64);
-            self.sealed.extend_from_slice(&frame_len.to_le_bytes());
-            self.sealed.extend_from_slice(frame);
+            self.summary.chunks.push(self.at);
+            self.at += 4 + frame.len() as u64;
         }
-        match &mut self.out {
-            WriterSink::File(f) => f
-                .write_all(&self.sealed)
-                .map_err(|e| Error(format!("writing {}: {e}", self.path.display())))?,
-            WriterSink::Anon(a) => {
-                a.push(&self.sealed)?;
+        if self.bg.is_none() {
+            let out = self.out.take().expect("the sink is here until the writer starts");
+            self.bg = Some(BgWriter::start(out, self.path.clone()));
+        }
+        self.bg.as_ref().expect("started above").send(compressed)
+    }
+
+    /// Stop the background writer, if one ran, and take the sink back: every frame staged.
+    fn join_bg(&mut self) -> Result<()> {
+        if let Some(bg) = self.bg.take() {
+            self.out = Some(bg.finish()?);
+        }
+        Ok(())
+    }
+
+    /// Append a run of records the caller encoded off-thread, all at once: what calling
+    /// [`push_record`](Self::push_record) for each would do, without the per-record work on the
+    /// serial thread. `ends[i]` is the end offset of record `i` in `bytes`; `first_kind` the
+    /// first record's kind; `bounds` the fold of every record's bounds.
+    ///
+    /// Byte-identical to the per-record path: frames close on the same 64-record boundaries
+    /// (records topping up the open frame are copied into it, whole frames inside the run are
+    /// compressed straight out of `bytes`, the tail is copied into the next open frame), the chunk
+    /// index entries are recorded the same way, and the summary folds are associative.
+    pub fn push_run(
+        &mut self,
+        bytes: Vec<u8>,
+        ends: &[usize],
+        first_kind: Option<GeomKind>,
+        bounds: Option<crate::geom::Rect>,
+    ) -> Result<()> {
+        let n = ends.len();
+        if n == 0 {
+            return Ok(());
+        }
+        let bytes = std::sync::Arc::new(bytes);
+        let start_of = |i: usize| if i == 0 { 0 } else { ends[i - 1] };
+        let per = NORM_CHUNK_FEATURES as usize;
+        let mut i = 0usize;
+        if self.pending_count > 0 {
+            let k = (per - self.pending_count as usize).min(n);
+            self.pending.extend_from_slice(&bytes[..start_of(k)]);
+            self.pending_count += k as u64;
+            i = k;
+            if self.pending_count >= NORM_CHUNK_FEATURES {
+                self.seal_frame()?;
             }
         }
-        self.at += self.sealed.len() as u64;
-        self.sealed.clear();
+        while n - i >= per {
+            self.queued.push(FrameSrc::Shared(std::sync::Arc::clone(&bytes), start_of(i)..start_of(i + per)));
+            i += per;
+            if self.queued.len() >= SEAL_BATCH {
+                self.drain_frames()?;
+            }
+        }
+        if i < n {
+            self.pending.extend_from_slice(&bytes[start_of(i)..]);
+            self.pending_count += (n - i) as u64;
+        }
+        if self.summary.geom_kind.is_none() {
+            self.summary.geom_kind = first_kind;
+        }
+        self.summary.bounds = match (self.summary.bounds, bounds) {
+            (None, b) => b,
+            (a, None) => a,
+            (Some(a), Some(b)) => Some(crate::geom::Rect {
+                min_x: a.min_x.min(b.min_x),
+                min_y: a.min_y.min(b.min_y),
+                max_x: a.max_x.max(b.max_x),
+                max_y: a.max_y.max(b.max_y),
+            }),
+        };
+        self.summary.count += n as u64;
         Ok(())
     }
 
@@ -476,6 +619,7 @@ impl NormalizedWriter {
         // records would be buffered and never staged.
         self.seal_frame()?;
         self.drain_frames()?;
+        self.join_bg()?;
         self.flush_out()?;
         // Close the last chunk. Without this the final partial chunk has no end, and
         // `chunk_count` would also over-report by one.
@@ -494,11 +638,12 @@ impl NormalizedWriter {
     pub fn finish_either(mut self) -> Result<(NormalizedSummary, Option<crate::anon::AnonStore>)> {
         self.seal_frame()?;
         self.drain_frames()?;
+        self.join_bg()?;
         self.flush_out()?;
         if !self.summary.chunks.is_empty() {
             self.summary.chunks.push(self.at);
         }
-        match self.out {
+        match self.out.take().expect("joined above") {
             WriterSink::Anon(a) => Ok((self.summary, Some(a))),
             WriterSink::File(_) => Ok((self.summary, None)),
         }
@@ -510,18 +655,19 @@ impl NormalizedWriter {
     pub fn finish_anon(mut self) -> Result<(NormalizedSummary, crate::anon::AnonStore)> {
         self.seal_frame()?;
         self.drain_frames()?;
+        self.join_bg()?;
         self.flush_out()?;
         if !self.summary.chunks.is_empty() {
             self.summary.chunks.push(self.at);
         }
-        match self.out {
+        match self.out.take().expect("joined above") {
             WriterSink::Anon(a) => Ok((self.summary, a)),
             WriterSink::File(_) => err("finish_anon on a file-backed writer".to_string()),
         }
     }
 
     fn flush_out(&mut self) -> Result<()> {
-        match &mut self.out {
+        match self.out.as_mut().expect("joined before flushing") {
             WriterSink::File(f) => f
                 .flush()
                 .map_err(|e| Error(format!("flushing {}: {e}", self.path.display())))?,

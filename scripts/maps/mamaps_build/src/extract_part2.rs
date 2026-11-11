@@ -584,9 +584,13 @@ fn materialise_ways(
     let (mut failed, mut kept) = (0u64, 0u64);
     for_each_way_block(
         &blocks,
-        |mut reader| -> Result<Vec<Result<BuiltWay>>> {
+        |mut reader| -> Result<(RecordRun, u64)> {
             let mut refs: Vec<i64> = Vec::new();
-            let mut out = Vec::new();
+            // The block's kept records go straight into one run (`Sink::push_run`); the first
+            // failure in the block ends it with that error, which the in-order drain reports as
+            // the first in spill order -- as the record-by-record drain did.
+            let mut run = RecordRun::default();
+            let mut block_failed = 0u64;
             while let Some((id, class, name, lane_count, turn_fwd, turn_bwd, carriageway, building)) =
                 reader.next(&mut refs)?
             {
@@ -625,7 +629,7 @@ fn materialise_ways(
                 } else {
                     way_geometry(&line, class.area)
                 };
-                out.push(build_way(
+                match build_way(
                     &class,
                     geometry,
                     region,
@@ -636,24 +640,20 @@ fn materialise_ways(
                     &turn_bwd,
                     carriageway,
                     building,
-                ));
+                )? {
+                    BuiltWay::Failed => block_failed += 1,
+                    BuiltWay::Dropped => {}
+                    BuiltWay::Kept(record) => run.add(record),
+                }
             }
-            Ok(out)
+            Ok((run, block_failed))
         },
         |ways, built| {
             let t = std::time::Instant::now();
-            for built in built {
-                // `?` in spill order: the first encode failure in feature order,
-                // exactly as inline encoding would report it.
-                match built? {
-                    BuiltWay::Failed => failed += 1,
-                    BuiltWay::Dropped => {}
-                    BuiltWay::Kept(record) => {
-                        sink.push_pre(&record)?;
-                        kept += 1;
-                    }
-                }
-            }
+            let (run, block_failed) = built;
+            failed += block_failed;
+            kept += run.len() as u64;
+            sink.push_run(run)?;
             bar.tick_n(ways as usize, "way(s)");
             drain_wall += t.elapsed();
             Ok(())

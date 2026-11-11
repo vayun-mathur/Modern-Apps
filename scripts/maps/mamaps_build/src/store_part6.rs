@@ -160,7 +160,87 @@ impl PreRecord {
     }
 }
 
+/// Many pool-built records in one buffer, for [`Sink::push_run`]: what the materialise drains
+/// used to push one `PreRecord` at a time. Built on the pool (one per ways block, per junction
+/// group), so the serial thread does one call per run instead of per-record bookkeeping -- on the
+/// planet ~1.1 B records, which was the floor under `materialise-ways` (195 s, all of it drain).
+#[derive(Default)]
+pub struct RecordRun {
+    bytes: Vec<u8>,
+    ends: Vec<usize>,
+    min_zoom: Vec<u8>,
+    first_kind: Option<GeomKind>,
+    bounds: Option<Rect>,
+    ebbx: Option<(i32, i32, i32, i32)>,
+}
+
+impl RecordRun {
+    /// Append one record, folding its facts exactly as `Sink::push_pre` would one at a time.
+    pub fn add(&mut self, record: PreRecord) {
+        if self.bytes.is_empty() && self.ends.is_empty() {
+            self.bytes = record.rec;
+        } else {
+            self.bytes.extend_from_slice(&record.rec);
+        }
+        self.ends.push(self.bytes.len());
+        self.min_zoom.push(record.min_zoom);
+        if self.first_kind.is_none() {
+            self.first_kind = Some(record.kind);
+        }
+        self.bounds = match (self.bounds, record.bounds) {
+            (None, b) => b,
+            (a, None) => a,
+            (Some(a), Some(b)) => Some(Rect {
+                min_x: a.min_x.min(b.min_x),
+                min_y: a.min_y.min(b.min_y),
+                max_x: a.max_x.max(b.max_x),
+                max_y: a.max_y.max(b.max_y),
+            }),
+        };
+        if let Some((x0, y0, x1, y1)) = record.ebbx {
+            self.ebbx = Some(match self.ebbx {
+                None => (x0, y0, x1, y1),
+                Some(e) => (e.0.min(x0), e.1.min(y0), e.2.max(x1), e.3.max(y1)),
+            });
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.ends.len()
+    }
+}
+
 impl Sink {
+    /// Append a whole [`RecordRun`]: the same writer bytes, chunk minimums, count and bounding box
+    /// as `push_pre` on each of its records in order. The chunk minimums close on the same
+    /// 64-record boundaries; the box and the summary folds are min/max, so folding a run first
+    /// changes nothing.
+    pub fn push_run(&mut self, run: RecordRun) -> Result<()> {
+        let RecordRun { bytes, ends, min_zoom, first_kind, bounds, ebbx } = run;
+        if ends.is_empty() {
+            return Ok(());
+        }
+        self.writer
+            .push_run(bytes, &ends, first_kind, bounds)
+            .map_err(|e| osm_ingest::proto::Error(e.to_string()))?;
+        let per = NORM_CHUNK_FEATURES as usize;
+        let mut rest = &min_zoom[..];
+        while !rest.is_empty() {
+            let room = per - (self.count % NORM_CHUNK_FEATURES) as usize;
+            let take = room.min(rest.len());
+            let m = rest[..take].iter().copied().min().expect("non-empty");
+            self.filling = self.filling.min(m);
+            self.count += take as u64;
+            if self.count % NORM_CHUNK_FEATURES == 0 {
+                self.chunk_mins.push(self.filling);
+                self.filling = u8::MAX;
+            }
+            rest = &rest[take..];
+        }
+        self.grow_bounds(ebbx);
+        Ok(())
+    }
+
     /// Append a pool-built record: [`write_record`](Self::write_record) with the encoding already
     /// done. Same writer call, same chunk-min, count and bbox bookkeeping, in the same order.
     pub fn push_pre(&mut self, record: &PreRecord) -> Result<()> {

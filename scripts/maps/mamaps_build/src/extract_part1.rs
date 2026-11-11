@@ -228,8 +228,9 @@ fn plan_ways_spill(
     let input_bytes = std::fs::metadata(input)
         .map(|m| m.len())
         .unwrap_or(0);
-    // No gate on small inputs: the historical anon path, no behaviour change.
-    if input_bytes < (8u64 << 30) {
+    // No gate on small inputs: the historical anon path, no behaviour change (unless the
+    // `MAPS_FORCE_FILE_SPILL` test knob asks for the planet's file path).
+    if input_bytes < (8u64 << 30) && std::env::var_os("MAPS_FORCE_FILE_SPILL").is_none() {
         return Ok(osm_ingest::mem::SpillPlan::Anon);
     }
     let estimate = (input_bytes / 32).max(1 << 30);
