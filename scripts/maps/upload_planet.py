@@ -1,8 +1,17 @@
 """Upload any local file to R2 as planet3.mamaps (bucket: maps).
 
-Usage: python upload_planet.py <local-file> [options]
-       python upload_planet.py --manifest <overlay-dir> --overlay-seq N --base-build-id HEX [options]
-       python upload_planet.py --rebase --overlay-seq N --base-build-id HEX --base-len N [--dry-run]
+Usage: python upload_planet.py <local-file> [--key K] [options]
+       python upload_planet.py --manifest <overlay-dir> --overlay-seq N --base-build-id HEX [--key K]
+                               [--manifest-key M] [options]
+       python upload_planet.py --rebase --overlay-seq N --base-build-id HEX --base-len N [--key K]
+                               [--manifest-key M] [--base-sha256 HEX] [--dry-run]
+
+--key names the base object (default planet3.mamaps). The manifest written by
+--manifest / --rebase goes to --manifest-key, which defaults to the name
+derived from --key (planetN.mamaps -> planetN.manifest.json; any other key ->
+planet3.manifest.json), so `--key planet4.mamaps` publishes a planet4 stack
+without touching planet3.* (which the shipped apps read). Without --key every
+mode behaves exactly as before.
 
 Serves https://data.maproj.org/planet3.mamaps, which the apps'
 basemap URLs point at (library/map urls.rs, maps MapTileCache.kt).
@@ -74,6 +83,24 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 BUCKET = os.environ.get("R2_BUCKET", "maps")
 KEY = "planet3.mamaps"
 MANIFEST_KEY = "planet3.manifest.json"
+
+
+def manifest_key_for(key: str) -> str:
+    """planetN.mamaps -> planetN.manifest.json; anything else -> MANIFEST_KEY."""
+    if key.endswith(".mamaps") and "/" not in key:
+        return key[: -len(".mamaps")] + ".manifest.json"
+    return MANIFEST_KEY
+
+
+def add_key_args(ap: argparse.ArgumentParser) -> None:
+    ap.add_argument("--key", default=KEY, help=f"base object key (default {KEY})")
+    ap.add_argument("--manifest-key", default=None,
+                    help="manifest object key (default derived from --key: planetN.mamaps -> "
+                         f"planetN.manifest.json; {MANIFEST_KEY} for the default key)")
+
+
+def manifest_key(args) -> str:
+    return args.manifest_key or manifest_key_for(args.key)
 CDN = os.environ.get("R2_CDN", "https://data.maproj.org")
 
 MIB = 1024 * 1024
@@ -721,9 +748,11 @@ def publish_manifest(argv: list) -> int:
                     help="base length in bytes (else read from overlay.json sidecar)")
     ap.add_argument("--base-sha256", default=None,
                     help="expected SHA-256 of the base on R2 (checked against its x-amz-meta-sha256)")
+    add_key_args(ap)
     add_transfer_args(ap)
     args = ap.parse_args(argv)
     part_mb, conc = transfer_settings(args)
+    base_key, mkey = args.key, manifest_key(args)
     overlay_dir = args.overlay_dir
     descriptor_path = os.path.join(overlay_dir, "overlay.json")
     try:
@@ -741,9 +770,9 @@ def publish_manifest(argv: list) -> int:
         s3 = make_client(conc)
 
     base_len = args.base_len if args.base_len is not None else descriptor.get("base_len")
-    base_head = head_or_none(s3, BUCKET, KEY)
+    base_head = head_or_none(s3, BUCKET, base_key)
     if base_head is None:
-        log(f"WARN: s3://{BUCKET}/{KEY} does not exist; the manifest would pin a missing base")
+        log(f"WARN: s3://{BUCKET}/{base_key} does not exist; the manifest would pin a missing base")
         if not args.dry_run:
             return 2
     else:
@@ -804,7 +833,7 @@ def publish_manifest(argv: list) -> int:
     manifest = {
         "version": MANIFEST_VERSION,
         "base": {
-            "url": f"{CDN}/{KEY}",
+            "url": f"{CDN}/{base_key}",
             "build_id": args.base_build_id,
             "len": args.base_len or 0,
         },
@@ -816,9 +845,9 @@ def publish_manifest(argv: list) -> int:
         "min_client": MIN_CLIENT_COMPAT,
     }
     body = json.dumps(manifest, indent=1).encode()
-    s3.put_object(Bucket=BUCKET, Key=MANIFEST_KEY, Body=body,
+    s3.put_object(Bucket=BUCKET, Key=mkey, Body=body,
                   ContentType="application/json")
-    log(f"wrote s3://{BUCKET}/{MANIFEST_KEY} "
+    log(f"wrote s3://{BUCKET}/{mkey} "
         f"({len(segments)} segments, overlay_build_id={manifest['overlay_build_id']})")
     return 0
 
@@ -841,13 +870,31 @@ def publish_rebase(argv: list) -> int:
     ap.add_argument("--overlay-seq", type=int, required=True)
     ap.add_argument("--base-build-id", required=True)
     ap.add_argument("--base-len", type=int, required=True)
+    ap.add_argument("--base-sha256", default=None,
+                    help="expected SHA-256 of the base on R2 (checked against its x-amz-meta-sha256)")
     ap.add_argument("--dry-run", action="store_true")
+    add_key_args(ap)
     args = ap.parse_args(argv)
+    base_key, mkey = args.key, manifest_key(args)
     s3 = FakeS3() if args.dry_run else make_client(DEFAULT_CONCURRENCY)
+    if not args.dry_run:
+        # Never pin a base that is missing or is not the file we think it is.
+        head = head_or_none(s3, BUCKET, base_key)
+        if head is None:
+            log(f"s3://{BUCKET}/{base_key} does not exist; refusing to write a manifest that pins it")
+            return 2
+        blen, bsha = int(head["ContentLength"]), server_sha(head)
+        log(f"base on server: {blen} bytes, sha256 {bsha}")
+        if blen != args.base_len:
+            log(f"BASE MISMATCH: server base is {blen} bytes, --base-len says {args.base_len}")
+            return 2
+        if args.base_sha256 and bsha != args.base_sha256.lower():
+            log(f"BASE MISMATCH: server base sha256 {bsha}, expected {args.base_sha256.lower()}")
+            return 2
     manifest = {
         "version": MANIFEST_VERSION,
         "base": {
-            "url": f"{CDN}/{KEY}",
+            "url": f"{CDN}/{base_key}",
             "build_id": args.base_build_id,
             "len": args.base_len,
         },
@@ -859,9 +906,9 @@ def publish_rebase(argv: list) -> int:
         "min_client": MIN_CLIENT_COMPAT,
     }
     body = json.dumps(manifest, indent=1).encode()
-    s3.put_object(Bucket=BUCKET, Key=MANIFEST_KEY, Body=body,
+    s3.put_object(Bucket=BUCKET, Key=mkey, Body=body,
                   ContentType="application/json")
-    log(f"{'DRY RUN: would write' if args.dry_run else 'wrote'} s3://{BUCKET}/{MANIFEST_KEY} "
+    log(f"{'DRY RUN: would write' if args.dry_run else 'wrote'} s3://{BUCKET}/{mkey} "
         f"rebase seq={args.overlay_seq} (empty overlay; clients refresh the base once)")
     return 0
 
@@ -872,12 +919,12 @@ def main() -> int:
     if len(sys.argv) >= 2 and sys.argv[1] == "--rebase":
         return publish_rebase(sys.argv[2:])
     if len(sys.argv) < 2:
-        log(f"usage: {os.path.basename(sys.argv[0])} <local-file> [--dry-run] [--part-size-mb N] "
+        log(f"usage: {os.path.basename(sys.argv[0])} <local-file> [--key K] [--dry-run] [--part-size-mb N] "
             f"[--concurrency N] [--sha256 HEX] [--state-file PATH] [--no-resume]")
         log(f"   or: {os.path.basename(sys.argv[0])} --manifest <overlay-dir> --overlay-seq N "
-            f"--base-build-id HEX [--base-len N] [--base-sha256 HEX] [--dry-run]")
+            f"--base-build-id HEX [--base-len N] [--base-sha256 HEX] [--key K] [--manifest-key M] [--dry-run]")
         log(f"   or: {os.path.basename(sys.argv[0])} --rebase --overlay-seq N --base-build-id HEX "
-            f"--base-len N [--dry-run]")
+            f"--base-len N [--base-sha256 HEX] [--key K] [--manifest-key M] [--dry-run]")
         return 2
     return upload_base(sys.argv[1:])
 

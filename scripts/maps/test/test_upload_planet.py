@@ -286,5 +286,80 @@ class Manifest(unittest.TestCase):
         self.assertNotIn("maps/planet3.manifest.json", self.bucket())
 
 
+class ManifestKey(unittest.TestCase):
+    """--key / --manifest-key: a planetN stack never touches planet3.*."""
+
+    def test_the_manifest_key_follows_the_base_key(self):
+        self.assertEqual(up.manifest_key_for("planet3.mamaps"), "planet3.manifest.json")
+        self.assertEqual(up.manifest_key_for("planet4.mamaps"), "planet4.manifest.json")
+        self.assertEqual(up.manifest_key_for("staging/x.bin"), up.MANIFEST_KEY)
+
+    def test_overlay_manifest_for_planet4_pins_planet4_and_leaves_planet3_alone(self):
+        m = Manifest("test_segments_upload_with_their_hash_and_the_manifest_lists_them")
+        m.setUp()
+        try:
+            b = load(m.bucket_file)
+            b["objects"]["maps/planet4.mamaps"] = {"size": 5000, "meta": {"sha256": "ef" * 32}, "etag": '"y"'}
+            save(m.bucket_file, b)
+            rc, out = m.run_manifest("--key", "planet4.mamaps", "--base-sha256", "ef" * 32)
+            self.assertEqual(rc, 0, out)
+            objs = m.bucket()
+            self.assertIn("maps/planet4.manifest.json", objs)
+            self.assertNotIn("maps/planet3.manifest.json", objs)
+            # an explicit --manifest-key wins
+            rc, out = m.run_manifest("--key", "planet4.mamaps", "--manifest-key", "beta.manifest.json")
+            self.assertEqual(rc, 0, out)
+            self.assertIn("maps/beta.manifest.json", m.bucket())
+        finally:
+            m.tearDown()
+
+    def rebase(self, s3, *extra):
+        bodies = {}
+        real_put = s3.put_object
+
+        def put(Bucket, Key, Body, **kw):
+            bodies[Key] = json.loads(bytes(Body))
+            return real_put(Bucket=Bucket, Key=Key, Body=Body, **kw)
+        s3.put_object = put
+        orig = up.make_client
+        up.make_client = lambda *_a, **_k: s3
+        try:
+            rc, out = quiet(up.publish_rebase, ["--overlay-seq", "0", "--base-build-id", "0x2ab5",
+                                                "--base-len", "5000", *extra])
+        finally:
+            up.make_client = orig
+        return rc, out, bodies
+
+    def test_rebase_writes_an_empty_stack_for_the_named_base(self):
+        s3 = up.FakeS3()
+        s3.objects["maps/planet4.mamaps"] = {"size": 5000, "meta": {"sha256": "ef" * 32}, "etag": '"y"'}
+        rc, out, bodies = self.rebase(s3, "--key", "planet4.mamaps", "--base-sha256", "ef" * 32)
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(list(bodies), ["planet4.manifest.json"])
+        m = bodies["planet4.manifest.json"]
+        self.assertEqual(m["base"], {"url": f"{up.CDN}/planet4.mamaps", "build_id": "0x2ab5", "len": 5000})
+        self.assertEqual((m["segments"], m["overlay_seq"]), ([], 0))
+
+    def test_rebase_refuses_a_missing_or_different_base(self):
+        rc, out, bodies = self.rebase(up.FakeS3(), "--key", "planet4.mamaps")
+        self.assertEqual((rc, bodies), (2, {}), out)
+        s3 = up.FakeS3()
+        s3.objects["maps/planet4.mamaps"] = {"size": 4999, "meta": {"sha256": "ef" * 32}, "etag": '"y"'}
+        rc, out, bodies = self.rebase(s3, "--key", "planet4.mamaps")
+        self.assertEqual((rc, bodies), (2, {}), out)
+        self.assertIn("BASE MISMATCH", out)
+        s3.objects["maps/planet4.mamaps"]["size"] = 5000
+        rc, out, bodies = self.rebase(s3, "--key", "planet4.mamaps", "--base-sha256", "00" * 32)
+        self.assertEqual((rc, bodies), (2, {}), out)
+
+    def test_without_key_the_defaults_are_unchanged(self):
+        s3 = up.FakeS3()
+        s3.objects["maps/planet3.mamaps"] = {"size": 5000, "meta": {}, "etag": '"z"'}
+        rc, out, bodies = self.rebase(s3)
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(list(bodies), ["planet3.manifest.json"])
+        self.assertEqual(bodies["planet3.manifest.json"]["base"]["url"], f"{up.CDN}/planet3.mamaps")
+
+
 if __name__ == "__main__":
     unittest.main()
