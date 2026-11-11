@@ -92,14 +92,35 @@ fn main() -> ExitCode {
         usage();
         return ExitCode::from(2);
     };
-    let bytes = match std::fs::read(&input) {
-        Ok(b) => b,
+    // Mapped, not read: `--mode header` is the planet build's publish gate and touches only the
+    // ~9 KB prefix, but `std::fs::read` pulled the whole archive into memory first -- 81 GB and
+    // 34 s on the Nov 10 planet, and an 81 GB anonymous allocation on a box whose memory budget
+    // is the build's tightest constraint. Every mode sees the same bytes either way; the other
+    // modes simply page in what they walk.
+    let file = match std::fs::File::open(&input) {
+        Ok(f) => f,
         Err(e) => {
             eprintln!("mamaps_dump: cannot read {input}: {e}");
             return ExitCode::from(1);
         }
     };
-    match run(&bytes, &mode, only_layer.as_deref(), only_tile) {
+    let empty = file.metadata().map(|m| m.len() == 0).unwrap_or(false);
+    // SAFETY: a read-only mapping of a finished archive. Nothing in this process writes the
+    // file; another process truncating it mid-dump could fault the read, which for a
+    // diagnostic dump of a published file is the same failure a short read would be.
+    let map = if empty {
+        None
+    } else {
+        match unsafe { memmap2::Mmap::map(&file) } {
+            Ok(m) => Some(m),
+            Err(e) => {
+                eprintln!("mamaps_dump: cannot read {input}: {e}");
+                return ExitCode::from(1);
+            }
+        }
+    };
+    let bytes: &[u8] = map.as_deref().unwrap_or(&[]);
+    match run(bytes, &mode, only_layer.as_deref(), only_tile) {
         Ok(code) => code,
         Err(e) => {
             eprintln!("mamaps_dump: {input}: {e}");
