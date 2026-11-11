@@ -206,7 +206,7 @@ fn materialise_relations(
 fn append_external_and_finish(
     coastline: &Path,
     transit_routes: &Path,
-    graph: &Path,
+    graph: &crate::GraphGate,
     mut sink: Sink,
     stats: &mut Stats,
     conventions: schema::boundaries::Conventions,
@@ -260,9 +260,16 @@ fn append_external_and_finish(
     // node's own incident edges, so there is nothing to read that the traffic pass did not
     // already need. `conventions` decides which side of a road the direction of travel sits
     // on, and is borrowed here because it is moved into the store below.
+    // The first stage that reads `--graph`: with `--graph-ready-file`, everything above ran while
+    // `road_graph` was still working, and this is where the build waits for it.
+    if !graph.ready_now() {
+        timer.switch("graph-wait");
+    }
+    graph.wait().map_err(osm_ingest::proto::Error)?;
     timer.switch("junctions");
     println!("building lane connectors from the v6 routing graph for the junction layer");
-    stats.junction_connectors = schema::junction::stream_junctions(graph, &conventions, &mut sink)?;
+    stats.junction_connectors =
+        schema::junction::stream_junctions(graph.dir(), &conventions, &mut sink)?;
     stats.features += stats.junction_connectors;
     println!("  {} lane connector(s)", stats.junction_connectors);
     // `sink.finish` itself is a flush, not a loop: every feature was serialised and its coordinates

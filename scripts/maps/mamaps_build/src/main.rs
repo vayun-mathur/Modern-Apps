@@ -19,6 +19,11 @@
 //! region's bbox. Everything else is always included regardless. `world` (the
 //! default) disables the filter.
 //!
+//! `--graph-ready-file PATH` lets the build start while `road_graph` is still writing
+//! `--graph`: every stage that does not read the graph runs first, and the build waits for PATH
+//! to exist (polling once a second, logging "waiting for graph") before the first one that does.
+//! See [`GraphGate`] for exactly which stages those are. Without the flag nothing changes.
+//!
 //! `--build-graph-to` / `--build-poi-to` fold the routing graph and POI
 //! sidecars into this process instead of running `road_graph` / `poi_extract`
 //! as separate binaries first. Same thread pool, one shared blob scan, and the
@@ -122,6 +127,7 @@ fn main() -> ExitCode {
     let mut region: Option<String> = None;
     let mut build_graph_to: Option<PathBuf> = None;
     let mut build_poi_to: Option<PathBuf> = None;
+    let mut graph_ready_file: Option<PathBuf> = None;
 
     let mut i = 1;
     while i < args.len() {
@@ -163,6 +169,10 @@ fn main() -> ExitCode {
             }),
             "--build-poi-to" => value("--build-poi-to").map(|v| {
                 build_poi_to = Some(PathBuf::from(v));
+                2
+            }),
+            "--graph-ready-file" => value("--graph-ready-file").map(|v| {
+                graph_ready_file = Some(PathBuf::from(v));
                 2
             }),
             "-h" | "--help" => {
@@ -209,6 +219,7 @@ fn main() -> ExitCode {
         region,
         build_graph_to,
         build_poi_to,
+        graph_ready_file,
     };
     match run(&input, &out, &settings) {
         Ok(()) => ExitCode::SUCCESS,
@@ -241,6 +252,9 @@ struct RunSettings {
     /// When set, build the POI sidecars in-process into this dir instead of
     /// expecting them from a prior `poi_extract` run.
     build_poi_to: Option<PathBuf>,
+    /// `--graph-ready-file`: start before the routing graph exists and wait for this file to
+    /// appear before the first stage that reads `--graph`. See [`GraphGate`].
+    graph_ready_file: Option<PathBuf>,
 }
 
 include!("main_part1.rs");

@@ -1,3 +1,69 @@
+/// The routing graph's availability, for `--graph-ready-file`.
+///
+/// Exactly three things in `mamaps_build` read `--graph`, and they are the only stages that wait:
+///
+/// | stage | what it reads | without the graph yet |
+/// |---|---|---|
+/// | preflight (`check_graph_dir`) | `metadata.bin`, `nodes.bin`, `edges.bin`, `intermediate.bin` | deferred to the gate |
+/// | pass 1 blob-kinds sidecar (`pbf::load_blob_kinds`) | `blob_kinds.bin` (optional, a skip list) | skipped: pass 1 scans every blob, same output |
+/// | feature-spill budget (`plan_feature_spill`) | file sizes of the graph | sized as file-staged (the safe backend), same output |
+/// | **junction layer** (`schema::junction::stream_junctions`) | the whole graph + `lanes.bin` | **waits here** |
+///
+/// Everything before the junction layer -- passes 1-3, corridors, lane inheritance, materialise
+/// ways and relations, land polygons, transit routes -- reads only the `.osm.pbf`, the coastline
+/// and the transit routes, and runs while `road_graph` is still working. The tiler and
+/// everything after it never read the graph. Without the flag the graph is ready by definition
+/// and none of this changes behaviour.
+pub(crate) struct GraphGate {
+    dir: PathBuf,
+    ready_file: Option<PathBuf>,
+    region: osm_ingest::region::Region,
+    validated: std::cell::Cell<bool>,
+}
+
+impl GraphGate {
+    fn new(dir: PathBuf, ready_file: Option<PathBuf>, region: osm_ingest::region::Region) -> GraphGate {
+        GraphGate { dir, ready_file, region, validated: std::cell::Cell::new(false) }
+    }
+
+    /// The graph directory.
+    pub(crate) fn dir(&self) -> &std::path::Path {
+        &self.dir
+    }
+
+    /// Whether the graph may be read right now without waiting.
+    pub(crate) fn ready_now(&self) -> bool {
+        self.validated.get() || self.ready_file.as_ref().is_none_or(|p| p.exists())
+    }
+
+    /// Block until the ready file exists (polling once a second), then validate the graph
+    /// directory exactly as the preflight does. Idempotent.
+    pub(crate) fn wait(&self) -> Result<(), String> {
+        if self.validated.get() {
+            return Ok(());
+        }
+        if let Some(ready) = &self.ready_file {
+            if !ready.exists() {
+                println!("waiting for graph: {}", ready.display());
+                let start = std::time::Instant::now();
+                let mut said = 0u64;
+                while !ready.exists() {
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                    let waited = start.elapsed().as_secs();
+                    if waited >= said + 60 {
+                        said = waited;
+                        println!("waiting for graph: {} ({waited}s)", ready.display());
+                    }
+                }
+                println!("graph ready after {:.0}s", start.elapsed().as_secs_f64());
+            }
+        }
+        check_graph_dir(&self.dir, self.region)?;
+        self.validated.set(true);
+        Ok(())
+    }
+}
+
 fn usage() {
     eprintln!(
         "usage: mamaps_build --input IN.osm.pbf --out OUT.mamaps\n\
@@ -7,11 +73,13 @@ fn usage() {
         \x20                   --dem HEIGHTMAPS.mdem\n\
         \x20                   [--region california|world]\n\
         \x20                   [--build-graph-to DIR] [--build-poi-to DIR]\n\
+        \x20                   [--graph-ready-file PATH]\n\
         \n\
         \x20All six flags are required. Every build carries all 9 layers at\n\
         \x20z0-14 as FORMAT_VERSION 8. --region filters roads/pois/buildings\n\
         \x20to the region (default world = no filter); everything else is\n\
-        \x20always included."
+        \x20always included. --graph-ready-file starts before GRAPH_DIR is\n\
+        \x20written and waits for PATH before the junction layer reads it."
     );
 }
 

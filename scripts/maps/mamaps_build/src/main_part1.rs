@@ -56,7 +56,18 @@ fn run(
     // The graph is validated HERE, before stage A — not 43 minutes in when
     // `traffic` tries to read it. This is the failure the world build hit:
     // an empty graph dir with no `metadata.bin`, paid for in full.
-    check_graph_dir(&graph_dir, run.region)?;
+    //
+    // With `--graph-ready-file` and the graph not yet ready, validation moves to the gate: it
+    // runs the moment the ready file appears, before the first stage that reads the graph.
+    let gate = GraphGate::new(graph_dir.clone(), run.graph_ready_file.clone(), run.region);
+    if gate.ready_now() {
+        gate.wait()?;
+    } else {
+        println!(
+            "graph not ready yet: starting without it, will wait for {} before the junction layer",
+            run.graph_ready_file.as_ref().expect("only without the flag is the graph always ready").display(),
+        );
+    }
 
     // The run's gapless phase clock. Opens in `"other"`, so the setup above (graph/POI builds,
     // validation) books as overhead; every major stage below switches it, and `finish` emits the
@@ -67,7 +78,7 @@ fn run(
         layers,
         &run.coastline,
         &run.transit_routes,
-        &graph_dir,
+        &gate,
         &spill,
         run.region.bbox(),
         &mut timer,

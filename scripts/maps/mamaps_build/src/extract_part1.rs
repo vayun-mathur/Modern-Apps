@@ -12,7 +12,7 @@ pub fn extract(
     layers: Layers,
     coastline: &Path,
     transit_routes: &Path,
-    graph: &Path,
+    graph: &crate::GraphGate,
     spill_path: &Path,
     region: Option<osm_ingest::bbox::BBox>,
     timer: &mut crate::timing::PhaseTimer,
@@ -41,7 +41,13 @@ pub fn extract(
     // warns — the blob mask itself is optional — but a region build still
     // validates the graph's own coverage below in `append_external_and_finish`.
     timer.switch("blob-kinds");
-    let graph_kinds = pbf::load_blob_kinds(graph, input, &blobs);
+    // Only from a ready graph (`--graph-ready-file`): a sidecar `road_graph` may still be writing
+    // is not read. Without it pass 1 scans every blob -- same output, see above.
+    let graph_kinds = if graph.ready_now() {
+        pbf::load_blob_kinds(graph.dir(), input, &blobs)
+    } else {
+        None
+    };
     if let Some(b) = region.as_ref() {
         println!(
             "region filter: keeping roads/pois/buildings touching {:.3},{:.3} .. {:.3},{:.3}",
@@ -264,7 +270,7 @@ fn plan_ways_spill(
 fn plan_feature_spill(
     pass1: &Pass1Out,
     members: &MemberWays,
-    graph: &Path,
+    graph: &crate::GraphGate,
     spill_path: &Path,
 ) -> Result<osm_ingest::mem::SpillPlan> {
     let member_refs: u64 = members.values().map(|refs| refs.len() as u64).sum();
@@ -290,7 +296,13 @@ fn plan_feature_spill(
         .saturating_add(2_000_000);
     budget.bytes_per_feature = SPILL_BYTES_PER_FEATURE;
     budget.relations = pass1.relations.len() as u64;
-    budget.graph_bytes = graph_mapped_bytes(graph).unwrap_or(0);
+    if !graph.ready_now() {
+        // The graph's size is unknown until `road_graph` finishes, and it shares the junction
+        // phase's peak: take the file backend, the safe side. Same records either way.
+        eprintln!("  [stage A] feature spill -> file backend (graph not ready to size)");
+        return Ok(osm_ingest::mem::SpillPlan::File);
+    }
+    budget.graph_bytes = graph_mapped_bytes(graph.dir()).unwrap_or(0);
     let context = format!(
         "stage A feature spill ({} ways, {} relations, {} refs, max node {})",
         pass1.ways, pass1.relations.len(), refs_total, pass1.way_max_ref,
