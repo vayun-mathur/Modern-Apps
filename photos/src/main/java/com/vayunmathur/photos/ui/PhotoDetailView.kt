@@ -1,21 +1,9 @@
 package com.vayunmathur.photos.ui
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.provider.MediaStore
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,7 +11,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -32,31 +19,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
-import com.vayunmathur.library.image.ImageRequest
-import com.vayunmathur.library.image.compose.AnimatedImage
-import com.vayunmathur.library.image.compose.AsyncImage
-import com.vayunmathur.library.ui.ExternalIntents
-import com.vayunmathur.library.ui.FadeVisibility
-import com.vayunmathur.library.ui.FilledTonalButton
-import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
-import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.OcrLayout
 import com.vayunmathur.photos.data.Photo
@@ -230,71 +199,19 @@ fun PhotoDetailView(
                 translationX = zoom.offset.x
                 translationY = zoom.offset.y
             }
-        if (photo.videoData == null && !(motionPlaying && motionFile != null)) {
-            val imageModifier =
-                Modifier.fillMaxSize()
-                    .onGloballyPositioned { layoutCoordinates ->
-                        size = layoutCoordinates.size
-                    }
-                    .then(zoomModifier)
-                    .then(
-                        if (sharedKey == null) Modifier
-                        else Modifier.sharedContainer("photo-image-$sharedKey")
-                    )
-            if (photo.isGif) {
-                AnimatedImage(
-                    uri = photo.uri.toUri(),
-                    contentDescription = null,
-                    modifier = imageModifier
-                )
-            } else {
-                AsyncImage(
-                    model =
-                        ImageRequest.Builder(context)
-                            .data(photo.uri.toUri())
-                            // refreshKey stays out of the disk key: it bumps on
-                            // every ON_RESUME, so including it there made a
-                            // return from the editor or a share sheet re-fetch
-                            // and re-write the file. The memory key still
-                            // carries it, which is the point — the pixels may
-                            // have been edited.
-                            .diskCacheKey("thumb_${photo.id}_${photo.dateModified}")
-                            .memoryCacheKey("thumb_${photo.id}_${photo.dateModified}_$refreshKey")
-                            // Without a size this decodes at full resolution: a
-                            // 12 MP photo is ~48 MB as ARGB_8888, enough for one
-                            // opened photo to evict every grid thumbnail from a
-                            // memory cache measured in tens of MB.
-                            .size(viewerImageSize)
-                            .build(),
-                    contentDescription = null,
-                    modifier = imageModifier,
-                    contentScale = ContentScale.Fit
-                )
-            }
-        } else if (motionPlaying && motionFile != null) {
-            // Motion-photo playback. The seek bar is the frame inspector:
-            // scrubbing pauses polling and seeks on release, like videos.
-            // Autoplay is gated on the settled page, mirroring plain videos.
-            VideoPlayer(
-                modifier =
-                    Modifier.fillMaxSize()
-                        .onGloballyPositioned { size = it.size }
-                        .then(zoomModifier),
-                uri = Uri.fromFile(motionFile!!),
-                isMetadataVisible = isMetadataVisible,
-                isSettledPage = isSettled && motionPlaying
-            )
-        } else {
-            VideoPlayer(
-                modifier =
-                    Modifier.fillMaxSize()
-                        .onGloballyPositioned { size = it.size }
-                        .then(zoomModifier),
-                uri = photo.uri.toUri(),
-                isMetadataVisible = isMetadataVisible,
-                isSettledPage = isSettled
-            )
-        }
+        PhotoDetailMedia(
+            photo = photo,
+            context = context,
+            viewerImageSize = viewerImageSize,
+            refreshKey = refreshKey,
+            sharedKey = sharedKey,
+            motionPlaying = motionPlaying,
+            motionFile = motionFile,
+            isMetadataVisible = isMetadataVisible,
+            isSettled = isSettled,
+            zoomModifier = zoomModifier,
+            onSizeChanged = { size = it },
+        )
 
         PhotoDetailSection(
             photo = photo,
