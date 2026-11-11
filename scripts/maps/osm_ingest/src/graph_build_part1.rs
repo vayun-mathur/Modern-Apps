@@ -166,7 +166,7 @@ pub fn build_with(input: &Path, out_dir: &Path, opts: Options) -> Result<Stats> 
     // `.pbf` can skip its own full pass-1 scan. This pass inflated every blob with `None`, so the
     // mask is complete. Best-effort: a write failure must not fail the graph build, which never
     // reads the sidecar itself.
-    if let Err(e) = pbf::write_blob_kinds(out_dir, input, &blob_kinds) {
+    if let Err(e) = pbf::write_blob_kinds(out_dir, input, &blobs, &blob_kinds) {
         eprintln!("WARN: could not write blob-kinds sidecar: {e}");
     }
     let slots = cap_u32("marked graph node", marked)?;

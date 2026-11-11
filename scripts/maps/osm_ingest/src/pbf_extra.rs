@@ -47,11 +47,32 @@ pub fn probe_compression(path: &Path, blobs: &[BlobLoc]) -> Result<()> {
 pub const BLOB_KINDS_FILE: &str = "blob_kinds.bin";
 
 /// Magic + version for the blob-kinds sidecar. Bumped if the header or payload layout changes, so an
-/// old sidecar is rejected rather than misread.
-const BLOB_KINDS_MAGIC: &[u8; 4] = b"MBK1";
+/// old sidecar is rejected rather than misread. `MBK2` replaced `MBK1`'s source mtime with a content
+/// fingerprint, so the graph directory is byte-identical wherever and whenever the `.pbf` lives.
+const BLOB_KINDS_MAGIC: &[u8; 4] = b"MBK2";
 
-/// Header bytes before the per-blob kind payload: magic, blob count, source length, mtime.
-const BLOB_KINDS_HEAD: usize = 4 + 8 + 8 + 8 + 4;
+/// Header bytes before the per-blob kind payload: magic, blob count, source length, fingerprint.
+const BLOB_KINDS_HEAD: usize = 4 + 8 + 8 + 8;
+
+/// What guards a blob-kinds sidecar against a different `.pbf`: the file's content fingerprint
+/// (length, first and last 4 MiB -- [`crate::fingerprint::file_fingerprint`]) mixed with the blob
+/// index pass 1 already holds (every blob's offset and size), so an edit anywhere that resizes a
+/// blob changes it. Never a path or a timestamp: a copy of the same file elsewhere, or touched,
+/// still matches, and the sidecar's bytes depend only on the input's bytes.
+fn blob_kinds_guard(input: &Path, blobs: &[BlobLoc]) -> Result<u64> {
+    let mut h = crate::fingerprint::Fnv::default();
+    h.eat(b"blob-kinds/2");
+    h.eat_u64(
+        crate::fingerprint::file_fingerprint(input)
+            .map_err(|e| Error(format!("cannot read {}: {e}", input.display())))?,
+    );
+    h.eat_u64(blobs.len() as u64);
+    for b in blobs {
+        h.eat_u64(b.offset);
+        h.eat_u64(b.datasize as u64);
+    }
+    Ok(h.finish())
+}
 
 /// Persist a complete per-blob kind mask beside a tool's output, guarded against the source `.pbf`
 /// it describes.
@@ -59,18 +80,18 @@ const BLOB_KINDS_HEAD: usize = 4 + 8 + 8 + 8 + 4;
 /// A full pass already learns which blobs hold nodes, ways or relations; two tools run back to back
 /// over the same file (`road_graph` then `mamaps_build`) both want that mask, and the second would
 /// otherwise pay a full scan to recompute it. Writing it here lets the second load it instead. The
-/// guard -- blob count, file length and mtime -- is what makes a stale sidecar a fall-back rather
-/// than a wrong answer; see [`load_blob_kinds`].
-pub fn write_blob_kinds(dir: &Path, input: &Path, kinds: &[u8]) -> Result<()> {
-    let meta = std::fs::metadata(input)
-        .map_err(|e| Error(format!("cannot stat {}: {e}", input.display())))?;
-    let (secs, nanos) = mtime_parts(&meta);
+/// guard -- blob count, file length and a content fingerprint ([`blob_kinds_guard`]) -- is what
+/// makes a stale sidecar a fall-back rather than a wrong answer; see [`load_blob_kinds`].
+pub fn write_blob_kinds(dir: &Path, input: &Path, blobs: &[BlobLoc], kinds: &[u8]) -> Result<()> {
+    let len = std::fs::metadata(input)
+        .map_err(|e| Error(format!("cannot stat {}: {e}", input.display())))?
+        .len();
+    let guard = blob_kinds_guard(input, blobs)?;
     let mut out = Vec::with_capacity(BLOB_KINDS_HEAD + kinds.len());
     out.extend_from_slice(BLOB_KINDS_MAGIC);
     out.extend_from_slice(&(kinds.len() as u64).to_le_bytes());
-    out.extend_from_slice(&meta.len().to_le_bytes());
-    out.extend_from_slice(&secs.to_le_bytes());
-    out.extend_from_slice(&nanos.to_le_bytes());
+    out.extend_from_slice(&len.to_le_bytes());
+    out.extend_from_slice(&guard.to_le_bytes());
     out.extend_from_slice(kinds);
     let path = dir.join(BLOB_KINDS_FILE);
     std::fs::write(&path, &out)
@@ -79,11 +100,11 @@ pub fn write_blob_kinds(dir: &Path, input: &Path, kinds: &[u8]) -> Result<()> {
 
 /// Load a blob-kinds mask written by [`write_blob_kinds`], but only if it still describes `input`.
 ///
-/// `None` on any mismatch or error -- a missing file, wrong magic, a different blob count, a changed
-/// length or mtime, a short read -- so the caller falls back to a full scan. `blobs` supplies the
-/// count the mask must match; nothing here trusts the file's own count past that check. The returned
-/// mask is byte-for-byte what a full pass over `input` would produce, so feeding it to a later pass
-/// changes no output.
+/// `None` on any mismatch or error -- a missing file, wrong magic (an `MBK1` sidecar included), a
+/// different blob count, a changed length or fingerprint, a short read -- so the caller falls back
+/// to a full scan. `blobs` supplies the count the mask must match; nothing here trusts the file's
+/// own count past that check. The returned mask is byte-for-byte what a full pass over `input`
+/// would produce, so feeding it to a later pass changes no output.
 pub fn load_blob_kinds(dir: &Path, input: &Path, blobs: &[BlobLoc]) -> Option<Vec<u8>> {
     let raw = std::fs::read(dir.join(BLOB_KINDS_FILE)).ok()?;
     if raw.len() < BLOB_KINDS_HEAD || &raw[0..4] != BLOB_KINDS_MAGIC {
@@ -91,28 +112,18 @@ pub fn load_blob_kinds(dir: &Path, input: &Path, blobs: &[BlobLoc]) -> Option<Ve
     }
     let count = u64::from_le_bytes(raw[4..12].try_into().ok()?);
     let file_len = u64::from_le_bytes(raw[12..20].try_into().ok()?);
-    let secs = u64::from_le_bytes(raw[20..28].try_into().ok()?);
-    let nanos = u32::from_le_bytes(raw[28..32].try_into().ok()?);
+    let guard = u64::from_le_bytes(raw[20..28].try_into().ok()?);
     // The count must match the file being read now, and the payload must be exactly that many bytes:
     // a truncated or padded sidecar is as untrustworthy as a stale one.
     if count as usize != blobs.len() || raw.len() != BLOB_KINDS_HEAD + blobs.len() {
         return None;
     }
-    let meta = std::fs::metadata(input).ok()?;
-    if meta.len() != file_len || mtime_parts(&meta) != (secs, nanos) {
+    if std::fs::metadata(input).ok()?.len() != file_len
+        || blob_kinds_guard(input, blobs).ok()? != guard
+    {
         return None;
     }
     Some(raw[BLOB_KINDS_HEAD..].to_vec())
-}
-
-/// A file's modification time as `(seconds, nanoseconds)` since the Unix epoch, or `(0, 0)` when the
-/// platform cannot report one. Split rather than a single `u128` so the sidecar header is fixed-width
-/// integers that any reader can parse without a wide type.
-fn mtime_parts(meta: &std::fs::Metadata) -> (u64, u32) {
-    match meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()) {
-        Some(d) => (d.as_secs(), d.subsec_nanos()),
-        None => (0, 0),
-    }
 }
 
 #[cfg(test)]
@@ -472,14 +483,36 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let input = dir.join("in.osm.pbf");
-        std::fs::write(&input, b"a fake pbf, only its length and mtime matter here").unwrap();
+        std::fs::write(&input, b"a fake pbf, only its bytes matter here").unwrap();
 
-        let blobs: Vec<BlobLoc> = (0..5).map(|_| BlobLoc { offset: 0, datasize: 0 }).collect();
+        let blobs: Vec<BlobLoc> =
+            (0..5).map(|i| BlobLoc { offset: i * 10, datasize: 10 }).collect();
         let kinds = vec![KIND_NODES, KIND_NODES | KIND_WAYS, KIND_WAYS, KIND_RELATIONS, 0];
-        write_blob_kinds(&dir, &input, &kinds).unwrap();
+        write_blob_kinds(&dir, &input, &blobs, &kinds).unwrap();
 
         // Happy path: same file, same blob count.
         assert_eq!(load_blob_kinds(&dir, &input, &blobs).as_deref(), Some(kinds.as_slice()));
+        // Place and time are not content: the same bytes copied elsewhere and touched later still
+        // match, and the sidecar written for the copy is byte-identical.
+        let elsewhere = dir.join("moved");
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        let copy = elsewhere.join("renamed.osm.pbf");
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        std::fs::copy(&input, &copy).unwrap();
+        assert_eq!(load_blob_kinds(&dir, &copy, &blobs).as_deref(), Some(kinds.as_slice()));
+        write_blob_kinds(&elsewhere, &copy, &blobs, &kinds).unwrap();
+        assert_eq!(
+            std::fs::read(dir.join(BLOB_KINDS_FILE)).unwrap(),
+            std::fs::read(elsewhere.join(BLOB_KINDS_FILE)).unwrap(),
+            "the sidecar depends on the input's path or mtime"
+        );
+        // Same length, different bytes: the content guard fires.
+        std::fs::write(&copy, b"a fake pbf, only its BYTES matter here").unwrap();
+        assert!(load_blob_kinds(&dir, &copy, &blobs).is_none(), "content guard did not fire");
+        // A resized blob in the index is a different file even with the same bytes sampled.
+        let mut moved = blobs.clone();
+        moved[2].datasize += 1;
+        assert!(load_blob_kinds(&dir, &input, &moved).is_none(), "blob-index guard did not fire");
         // A different blob count is a different file to pass 1, whatever the sidecar claims.
         let fewer: Vec<BlobLoc> = blobs[..4].to_vec();
         assert!(load_blob_kinds(&dir, &input, &fewer).is_none(), "blob-count guard did not fire");

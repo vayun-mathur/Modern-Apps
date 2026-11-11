@@ -22,6 +22,7 @@ pub mod chains;
 pub mod compact;
 pub mod dem;
 pub mod extract;
+pub mod fingerprint;
 pub mod geojson;
 pub mod geom;
 pub mod graph_build;

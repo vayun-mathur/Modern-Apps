@@ -31,7 +31,7 @@ pub fn extract(
 
     // A blob-kinds mask cached beside the routing graph -- `road_graph`'s pass 1 wrote it over this
     // same `.pbf` -- lets pass 1 skip node blobs outright rather than inflating them to learn they
-    // hold no ways or relations. Guarded by blob count, file length and mtime, so a missing or stale
+    // hold no ways or relations. Guarded by blob count, file length and a content fingerprint, so a missing or stale
     // sidecar simply falls back to a full scan. Byte-neutral either way: the mask `run_pass1` returns
     // carries the skipped blobs' kinds, so it is a complete description of the file regardless.
     //
@@ -48,6 +48,14 @@ pub fn extract(
     } else {
         None
     };
+    match &graph_kinds {
+        Some(kinds) => println!(
+            "pass 1: blob-kinds sidecar matches this pbf ({} blob(s), {} without ways or relations skipped)",
+            kinds.len(),
+            kinds.iter().filter(|&&k| k & (pbf::KIND_WAYS | pbf::KIND_RELATIONS) == 0).count(),
+        ),
+        None => println!("pass 1: no matching blob-kinds sidecar beside the graph; scanning every blob"),
+    }
     if let Some(b) = region.as_ref() {
         println!(
             "region filter: keeping roads/pois/buildings touching {:.3},{:.3} .. {:.3},{:.3}",
