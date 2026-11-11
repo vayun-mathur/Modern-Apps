@@ -191,6 +191,27 @@ pub struct ChunkSpill {
     written_entries: AtomicU64,
     read: AtomicU64,
     read_entries: AtomicU64,
+    /// Per written chunk (keyed by its start offset and length -- an empty chunk shares its start
+    /// with the next one): its tile runs, recorded by `write_chunk` from
+    /// the map it encoded. What the merge planner reads instead of skip-walking every chunk back
+    /// off disk (twice per zoom: 78 s of the Nov 10 planet build, z14 alone 47 s).
+    runs: Mutex<Vec<((u64, u64), Vec<TileRun>)>>,
+}
+
+/// One tile's entries within one chunk, as `write_chunk` laid them down. Narrow on purpose: a
+/// planet z14 records tens of millions of these, so offsets are relative to the chunk and counts
+/// are `u32` (a chunk is a few MB); a chunk that would overflow one is simply not indexed and the
+/// planner walks it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TileRun {
+    pub tile: u64,
+    /// Summed merge cost (features + coordinates) of the run's entries: what
+    /// [`ChunkReader::skip_entry`] reports for each.
+    pub cost: u32,
+    /// Offset of the run's first entry from the chunk's start.
+    pub rel_offset: u32,
+    /// Entries in the chunk before this run.
+    pub before: u32,
 }
 
 impl ChunkSpill {
@@ -208,6 +229,9 @@ impl ChunkSpill {
             .truncate(true)
             .open(&path)
             .map_err(|e| Error(format!("cannot create {}: {e}", path.display())))?;
+        // Uncompressed on a `compress-force` btrfs: every zoom's clipped geometry passes through
+        // here (hundreds of GB over a planet build), written once, read back by the merge.
+        osm_ingest::mem::mark_scratch_uncompressed(&file);
         Ok(ChunkSpill {
             file: Some(file),
             anon: None,
@@ -218,6 +242,7 @@ impl ChunkSpill {
             written_entries: AtomicU64::new(0),
             read: AtomicU64::new(0),
             read_entries: AtomicU64::new(0),
+            runs: Mutex::new(Vec::new()),
         })
     }
 
@@ -246,6 +271,7 @@ impl ChunkSpill {
                 written_entries: AtomicU64::new(0),
                 read: AtomicU64::new(0),
                 read_entries: AtomicU64::new(0),
+                runs: Mutex::new(Vec::new()),
             }),
             osm_ingest::mem::SpillPlan::File => Self::create(path),
         }
@@ -275,7 +301,29 @@ impl ChunkSpill {
     pub fn write_chunk(&self, map: BTreeMap<(u64, u8), ChunkEntry>) -> Result<ChunkRef> {
         let entries = map.len() as u64;
         let mut len = 0u64;
-        for ((_, layer_id), entry) in &map {
+        // The chunk's tile runs, offsets relative to the chunk start. `None` once a field would
+        // not fit its `u32` (never in practice), which leaves the chunk unindexed.
+        let mut runs: Option<Vec<TileRun>> = Some(Vec::new());
+        for (n, ((tile, layer_id), entry)) in map.iter().enumerate() {
+            let cost = entry.layer.features.len() as u64 + entry.layer.coords.len() as u64;
+            if let Some(list) = runs.as_mut() {
+                let fits = |v: u64| u32::try_from(v).ok();
+                let ok = match list.last_mut() {
+                    Some(run) if run.tile == *tile => {
+                        fits(run.cost as u64 + cost).map(|c| run.cost = c).is_some()
+                    }
+                    _ => match (fits(cost), fits(len), fits(n as u64)) {
+                        (Some(cost), Some(rel_offset), Some(before)) => {
+                            list.push(TileRun { tile: *tile, cost, rel_offset, before });
+                            true
+                        }
+                        _ => false,
+                    },
+                };
+                if !ok {
+                    runs = None;
+                }
+            }
             if *layer_id != entry.layer.layer_id {
                 // The merge keys its heap on the map key and reads `layer_id` off the layer it
                 // yields, so the two disagreeing would mean the round trip had to preserve both. It
@@ -317,6 +365,14 @@ impl ChunkSpill {
         }
         self.written.fetch_add(len, Ordering::Relaxed);
         self.written_entries.fetch_add(entries, Ordering::Relaxed);
+        drop(_commit);
+        // An empty chunk is never indexed: it has nothing to plan, and its start is the next
+        // chunk's start, so a run list keyed on the offset alone could be handed to the wrong one
+        // (which is what sent US West's z14 merge reading past chunk ends). The key carries the
+        // length too, so even a zero-length key cannot meet a real chunk's.
+        if let (Some(runs), true) = (runs, entries > 0) {
+            self.runs.lock().expect("the tile chunk spill's run index").push(((at, len), runs));
+        }
         Ok(ChunkRef { at, len, entries })
     }
 
@@ -342,6 +398,15 @@ impl ChunkSpill {
         let n = buf.len() as u64;
         buf.clear();
         Ok(n)
+    }
+
+    /// The tile runs `write_chunk` recorded for every chunk, keyed by chunk start offset. Empty
+    /// for a chunk written some other way (tests building chunks by hand), which the planner
+    /// answers by skip-walking that chunk as it always did.
+    pub fn take_runs(&self) -> std::collections::HashMap<(u64, u64), Vec<TileRun>> {
+        std::mem::take(&mut *self.runs.lock().expect("the tile chunk spill's run index"))
+            .into_iter()
+            .collect()
     }
 
     /// A forward cursor over one chunk, buffering `window` bytes at a time.

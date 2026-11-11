@@ -325,6 +325,8 @@ struct Histogram {
     chunk_total: Vec<u64>,
     hot_tile: u64,
     hot_cost: u64,
+    /// The spill's recorded tile runs, per chunk start offset (see `ChunkSpill::take_runs`).
+    runs: HashMap<(u64, u64), Vec<crate::tilespill::TileRun>>,
 }
 
 /// Skip-walk every chunk once, **in parallel** (chunks are independent; each is read with its own
@@ -339,10 +341,28 @@ fn histogram(chunks: &[ChunkRef], spill: &ChunkSpill) -> Result<Histogram> {
         consumed: u64,
         hot: (u64, u64),
     }
+    // Chunks `write_chunk` indexed need no reading at all: their runs are the skip-walk's answer,
+    // recorded when the chunk was encoded (same tiles, same summed costs). Anything else is
+    // walked as before.
+    let indexed = spill.take_runs();
     let scans: Vec<Result<ChunkScan>> = par::install(|| {
         chunks
             .par_iter()
             .map(|chunk| -> Result<ChunkScan> {
+                if let Some(runs) = indexed.get(&(chunk.at, chunk.len)) {
+                    let mut hot = (0u64, 0u64);
+                    for r in runs {
+                        if r.cost as u64 > hot.1 {
+                            hot = (r.tile, r.cost as u64);
+                        }
+                    }
+                    return Ok(ChunkScan {
+                        runs: runs.iter().map(|r| (r.tile, r.cost as u64)).collect(),
+                        max_tile: runs.last().map_or(0, |r| r.tile),
+                        consumed: chunk.entries,
+                        hot,
+                    });
+                }
                 let mut reader = spill.reader(chunk, 64 << 10);
                 let mut runs = Vec::new();
                 let (mut consumed, mut max_tile) = (0u64, 0u64);
@@ -398,7 +418,7 @@ fn histogram(chunks: &[ChunkRef], spill: &ChunkSpill) -> Result<Histogram> {
         }
     }
     let total = tiles.iter().map(|t| t.1).sum();
-    Ok(Histogram { tiles, total, chunk_max, chunk_total, hot_tile, hot_cost })
+    Ok(Histogram { tiles, total, chunk_max, chunk_total, hot_tile, hot_cost, runs: indexed })
 }
 
 /// Cost-balanced range boundaries over one zoom's tile space, with seek positions, for exactly
@@ -472,7 +492,7 @@ fn plan_ranges_from(
         "plan_ranges needs an exact span/256 split (z4+); z{z} must stay serial"
     );
     let base = zoom_base(z);
-    let Histogram { tiles, total, chunk_max, chunk_total, hot_tile, hot_cost } = hist;
+    let Histogram { tiles, total, chunk_max, chunk_total, hot_tile, hot_cost, runs } = hist;
     // Greedy cost balance over TILES, not buckets: cut when crossing each
     // multiple of total/workers, with the cut falling between the tiles that
     // straddle the mark. Fixed rule on scanned data — deterministic across
@@ -525,12 +545,28 @@ fn plan_ranges_from(
             .par_iter()
             .enumerate()
             .map(|(ci, chunk)| -> Result<(Vec<u64>, Vec<u64>, Vec<bool>)> {
-                let mut reader = spill.reader(chunk, 64 << 10);
                 let mut at_bound = 0usize;
                 let mut bound_off = vec![0u64; workers + 1];
                 let mut bound_con = vec![0u64; workers + 1];
                 bound_off[0] = chunk.at;
                 let mut consumed = 0u64;
+                if let Some(chunk_runs) = runs.get(&(chunk.at, chunk.len)) {
+                    // From the recorded runs: the first entry at-or-after a bound is the first
+                    // entry of the first run whose tile reaches it -- the same cursor and count
+                    // the walk below arrives at, without reading the chunk.
+                    for run in chunk_runs {
+                        while at_bound < workers && run.tile >= bounds[at_bound] {
+                            bound_off[at_bound] = chunk.at + run.rel_offset as u64;
+                            bound_con[at_bound] = run.before as u64;
+                            at_bound += 1;
+                        }
+                    }
+                    consumed = chunk.entries;
+                }
+                let mut reader = spill.reader(chunk, 64 << 10);
+                if runs.contains_key(&(chunk.at, chunk.len)) {
+                    reader.seek_to(chunk.at + chunk.len, 0, false);
+                }
                 loop {
                     let off = reader.position();
                     let Some(((tile, _), _)) = reader.skip_entry()? else {
@@ -619,7 +655,7 @@ fn merge_range(
     let ranges = plan.bounds.len() - 1;
     let start_tile = plan.bounds[range];
     let mut readers: Vec<Option<ChunkReader<'_>>> = Vec::with_capacity(chunks.len());
-    for (ci, chunk) in chunks.iter().enumerate() {
+    'chunks: for (ci, chunk) in chunks.iter().enumerate() {
         let remaining = plan.remaining[ci][range];
         if remaining == 0 {
             readers.push(None);
@@ -642,9 +678,12 @@ fn merge_range(
                 Ok(Some(t)) => t < start_tile,
                 Ok(None) => false,
                 Err(e) => {
+                    // On to the next chunk. (A bare `continue` here re-ran this skip loop on the
+                    // same failed reader forever, queueing an error and a reader slot per turn:
+                    // unbounded memory instead of a failed build.)
                     let _ = out.send(Err(e));
                     readers.push(None);
-                    continue;
+                    continue 'chunks;
                 }
             };
             if !below {
@@ -654,9 +693,12 @@ fn merge_range(
                 Ok(Some(_)) => {}
                 Ok(None) => break,
                 Err(e) => {
+                    // On to the next chunk. (A bare `continue` here re-ran this skip loop on the
+                    // same failed reader forever, queueing an error and a reader slot per turn:
+                    // unbounded memory instead of a failed build.)
                     let _ = out.send(Err(e));
                     readers.push(None);
-                    continue;
+                    continue 'chunks;
                 }
             }
         }
@@ -1088,6 +1130,105 @@ mod tests_parallel {
                 assert_eq!(got, want, "worker count {workers} moved z{z}");
             }
         }
+    }
+
+    /// The planner answers the same from `write_chunk`'s recorded tile runs as from skip-walking
+    /// the chunks back off the spill: same cuts, seeks, counts and ends. (The first plan takes the
+    /// runs; the second finds them gone and walks.)
+    #[test]
+    fn planning_from_recorded_runs_equals_walking_the_chunks() {
+        for z in [10u8, 14] {
+            for workers in [2usize, 5, 13] {
+                let (chunks, spill) = map_chunks(&a_crowd(), z);
+                let indexed = super::plan_ranges(&chunks, &spill, z, workers).expect("plan");
+                let walked = super::plan_ranges(&chunks, &spill, z, workers).expect("plan");
+                assert_eq!(indexed.bounds, walked.bounds, "z{z} x{workers}");
+                assert_eq!(indexed.range_cost, walked.range_cost, "z{z} x{workers}");
+                assert_eq!((indexed.hot_tile, indexed.hot_cost), (walked.hot_tile, walked.hot_cost));
+                assert_eq!(indexed.offsets, walked.offsets, "z{z} x{workers}");
+                assert_eq!(indexed.remaining, walked.remaining, "z{z} x{workers}");
+                assert_eq!(indexed.exact_end, walked.exact_end, "z{z} x{workers}");
+            }
+        }
+    }
+
+    /// Empty chunks (a map chunk whose features all clipped away) start where the next chunk
+    /// starts. The run index must not hand one chunk's runs to the other: re-spill a fixture with
+    /// an empty chunk ahead of every real one and the indexed plan still equals the walked plan,
+    /// and the parallel merge still equals the serial one.
+    #[test]
+    fn empty_chunks_do_not_borrow_their_neighbours_runs() {
+        let z = 14u8;
+        let (chunks, spill) = map_chunks(&a_crowd(), z);
+        let respill = ChunkSpill::create(scratch()).expect("spill");
+        let mut rechunks = Vec::new();
+        for chunk in &chunks {
+            let mut reader = spill.reader(chunk, 64 << 10);
+            let mut map = std::collections::BTreeMap::new();
+            while let Some((key, entry)) = reader.next().expect("read back") {
+                map.insert(key, entry);
+            }
+            rechunks.push(respill.write_chunk(std::collections::BTreeMap::new()).expect("empty"));
+            rechunks.push(respill.write_chunk(map).expect("chunk"));
+        }
+        assert!(rechunks.windows(2).any(|w| w[0].len == 0 && w[0].at == w[1].at));
+        let want = collect(&mut super::merge(&rechunks, &respill));
+        for workers in [2usize, 5] {
+            let indexed = super::plan_ranges(&rechunks, &respill, z, workers).expect("plan");
+            let walked = super::plan_ranges(&rechunks, &respill, z, workers).expect("plan");
+            assert_eq!(indexed.offsets, walked.offsets);
+            assert_eq!(indexed.remaining, walked.remaining);
+            assert_eq!(indexed.exact_end, walked.exact_end);
+            assert_eq!(indexed.bounds, walked.bounds);
+            // A fresh index for the merge itself.
+            let respill2 = ChunkSpill::create(scratch()).expect("spill");
+            let mut again = Vec::new();
+            for c in &rechunks {
+                let mut reader = respill.reader(c, 64 << 10);
+                let mut map = std::collections::BTreeMap::new();
+                while let Some((key, entry)) = reader.next().expect("read back") {
+                    map.insert(key, entry);
+                }
+                again.push(respill2.write_chunk(map).expect("chunk"));
+            }
+            let plan = super::plan_ranges(&again, &respill2, z, workers).expect("plan");
+            let got = std::thread::scope(|s| {
+                let queues = super::RangeQueues::new(workers);
+                for r in 0..workers {
+                    let tx = queues.sender(r);
+                    let (c, sp, p) = (&again, &respill2, &plan);
+                    s.spawn(move || super::merge_range_into(c, sp, p, r, tx));
+                }
+                collect(&mut super::ParallelMerge::new(queues))
+            });
+            assert_eq!(got, want, "x{workers}");
+        }
+    }
+
+    /// A range worker whose reader fails while skipping to the range start reports the error and
+    /// finishes, rather than looping on the failed reader. Here the plan is corrupted on purpose
+    /// (a seek one byte into an entry).
+    #[test]
+    fn a_failing_range_reader_reports_and_stops() {
+        let z = 14u8;
+        let (chunks, spill) = map_chunks(&a_crowd(), z);
+        let workers = 3usize;
+        let mut plan = super::plan_ranges(&chunks, &spill, z, workers).expect("plan");
+        let r = 1usize;
+        let ci = (0..chunks.len())
+            .find(|&ci| plan.remaining[ci][r] > 0)
+            .expect("a chunk with entries in the middle range");
+        plan.offsets[ci][r] += 1;
+        let queues = super::RangeQueues::new(workers);
+        std::thread::scope(|s| {
+            for w in 0..workers {
+                let tx = queues.sender(w);
+                let (c, sp, p) = (&chunks, &spill, &plan);
+                s.spawn(move || super::merge_range_into(c, sp, p, w, tx));
+            }
+        });
+        let mut coord = super::ParallelMerge::new(queues);
+        assert!(coord.by_ref().any(|item| item.is_err()), "the corrupt seek must surface");
     }
 
     /// Ranges that hold nothing yield nothing: a single-tile fixture merged
