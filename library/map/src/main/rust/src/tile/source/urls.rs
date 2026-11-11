@@ -1,6 +1,11 @@
-/// Where this renderer reads its tiles from: the planet-scale v8 single-file
-/// full `.mamaps` archive (9 layers, 128-byte header).
-pub const BASEMAP_ARCHIVE_URL: &str = "https://data.maproj.org/planet3.mamaps";
+/// Where this renderer reads its tiles from: the planet-scale single-file full `.mamaps`
+/// archive (v9 header with v10 bodies, 10 layers, 128-byte header, graph/POI/transit
+/// sections behind the `MAMA8` footer).
+///
+/// A new URL is a new cache origin: [`basemap_origin`] carries the URL, so the first open
+/// against this URL wipes every range cached for the previous archive (planet3) instead of
+/// keeping both — the cache directory is shared, not keyed per URL.
+pub const BASEMAP_ARCHIVE_URL: &str = "https://data.maproj.org/planet4.mamaps";
 
 /// Bumped when the on-disk cache layout changes, so old entries are dropped rather than
 /// misread. The URL is in the marker too, because the archive is republished under the

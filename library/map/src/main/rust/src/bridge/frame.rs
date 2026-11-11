@@ -1,7 +1,10 @@
 //! One frame from a camera snapshot.
 //!
 //! Pure move out of `bridge.rs`; no logic changes.
-use super::handle::{handle_mut, TileResult, RESIDENT_BYTE_BUDGET, RESIDENT_TILE_CAP, UPLOADS_PER_FRAME, WASH_MAX_ZOOM};
+use super::handle::{
+    handle_mut, TileResult, BOUNDARIES_MAX_ZOOM, RESIDENT_BYTE_BUDGET, RESIDENT_TILE_CAP, UPLOADS_PER_FRAME,
+    WASH_MAX_ZOOM,
+};
 use super::log::{log, log_info};
 use crate::camera::Camera;
 use crate::style;
@@ -221,27 +224,29 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
     // Bounded: one z14 tile covers 2^(z-14) visible tiles, so this adds at most
     // a quarter of the visible count, and the existing has_tile/absent/retry
     // gates dedup it exactly like a visible fetch.
-    let wash_extra: Vec<select::TileId> = if fetch_zoom > WASH_MAX_ZOOM as f64 {
-        let mut seen = std::collections::HashSet::new();
-        let mut extra = Vec::new();
-        for tile in &visible {
-            if tile.z <= WASH_MAX_ZOOM {
-                continue;
-            }
-            let shift = tile.z - WASH_MAX_ZOOM;
-            let ancestor = select::TileId {
-                z: WASH_MAX_ZOOM,
-                x: tile.x >> shift,
-                y: tile.y >> shift,
-            };
-            if seen.insert(ancestor.key()) {
-                extra.push(ancestor);
-            }
-        }
-        extra
+    let mut wash_extra: Vec<select::TileId> = if fetch_zoom > WASH_MAX_ZOOM as f64 {
+        covering_ancestors(&visible, WASH_MAX_ZOOM)
     } else {
         Vec::new()
     };
+    // Same gap one layer over: the archive's `boundaries` stop at z12 (planet3/planet4:
+    // mamaps_build `schema/mod.rs`, "drop boundaries z13"), so at z13+ no visible tile
+    // carries border lines or the `region_area` shapes the selection mask reads, and a cold
+    // start at z13+ showed no borders and could never mask a region. Fetch the z12 covering
+    // tiles too (at most 1/4 + 1/16 of the visible count); per-layer suppression keeps the
+    // z12 boundary draws alive under finer tiles that carry none. Only while z12 is inside
+    // the ancestor window `resident_set` keeps — past it the tile would be evicted the
+    // frame after it landed.
+    if fetch_zoom > BOUNDARIES_MAX_ZOOM as f64
+        && fetch_zoom <= (BOUNDARIES_MAX_ZOOM + select::ANCESTOR_DEPTH) as f64
+    {
+        let mut seen: std::collections::HashSet<u64> = wash_extra.iter().map(|t| t.key()).collect();
+        for ancestor in covering_ancestors(&visible, BOUNDARIES_MAX_ZOOM) {
+            if seen.insert(ancestor.key()) {
+                wash_extra.push(ancestor);
+            }
+        }
+    }
     // The wanted set for the drain-and-replace generation (issue 815): when it changes, the
     // queued remainder of the previous set is stale and is drained below, so a pan does not
     // wait behind fetches for tiles that scrolled out. `wash_extra` counts as wanted — it is
@@ -444,4 +449,23 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_lastFrameStepT
         Ok(out.into_raw())
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
+}
+
+/// The distinct `cap`-zoom ancestors of every visible tile deeper than `cap`, in first-seen
+/// order: what a layer the archive stops emitting at `cap` (the z14 wash, the z12
+/// boundaries) has to be fetched from when the camera is past it.
+fn covering_ancestors(visible: &[select::TileId], cap: u8) -> Vec<select::TileId> {
+    let mut seen = std::collections::HashSet::new();
+    let mut extra = Vec::new();
+    for tile in visible {
+        if tile.z <= cap {
+            continue;
+        }
+        let shift = tile.z - cap;
+        let ancestor = select::TileId { z: cap, x: tile.x >> shift, y: tile.y >> shift };
+        if seen.insert(ancestor.key()) {
+            extra.push(ancestor);
+        }
+    }
+    extra
 }

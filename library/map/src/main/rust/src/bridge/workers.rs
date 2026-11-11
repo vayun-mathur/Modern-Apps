@@ -62,7 +62,7 @@ pub(crate) fn spawn_worker(
                 if FileRangeReader::exists(path) {
                     // A pinned overlay (segments + tombstones beside the base) serves
                     // patch-first; any gap falls back to the base alone, silently.
-                    if let Some(found) = discover(std::path::Path::new(path)) {
+                    if let Some(found) = discover(std::path::Path::new(path), Arc::clone(&leaves)) {
                         log(&format!(
                             "worker {index} serving base plus overlay seq {}",
                             found.seq,
@@ -221,8 +221,10 @@ fn serve<T: tilecodec::mamaps::read::TileSource>(
     // absences recorded against a previous publish (see `absent_build_id`).
     zoom_range.set(archive.header().min_zoom, archive.header().max_zoom, archive.header().build_id);
     let layers = style::layers();
-    // Read once from the header rather than per tile: it is a property of the archive.
-    let rings_validated = archive.header().rings_validated();
+    // Read once from the header rather than per tile: it is a property of the archive. Gated
+    // by `TRUST_RINGS_VALIDATED`: the published planets set the flag without earning it.
+    let rings_validated =
+        archive.header().rings_validated() && geometry::TRUST_RINGS_VALIDATED;
 
     loop {
         // One blocking take, then drain whatever else is waiting without blocking: a wave of

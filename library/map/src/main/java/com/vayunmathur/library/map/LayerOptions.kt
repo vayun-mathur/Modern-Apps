@@ -68,6 +68,12 @@ data class LayerOptions(
      * tessellation like [poi]/[transit], so leaving it off costs nothing — only a navigation
      * view wants the whole drivable network drawn a second time. A segment with no pushed
      * colour draws nothing, so the basemap road shows through as the no-data look.
+     *
+     * **Draws nothing on planet3/planet4:** the archive writer stopped emitting `traffic`
+     * features (mamaps_build "NA diet"; the layer stays in the dictionary, empty), so there is
+     * no geometry to colour. Route ETAs still use live speeds from the first-party
+     * `api.maproj.org/maps/traffic` feed; only this map overlay is dark until a rebuild brings
+     * the layer back (the real-archive test pins its absence).
      */
     val traffic: Boolean = false,
     /**

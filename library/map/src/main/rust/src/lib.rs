@@ -1,9 +1,9 @@
 //! The Vulkan vector-tile map renderer behind `:library:map`.
 //!
 //! Replaces the CARTO raster basemap in findfamily, photos, weather, taxi and
-//! fooddelivery (#615) with our own renderer over the planet-scale v7
-//! single-file `planet3.mamaps` archive at `data.maproj.org/planet3.mamaps`
-//! (12 layers, 128-byte header).
+//! fooddelivery (#615) with our own renderer over the planet-scale
+//! single-file `planet4.mamaps` archive at `data.maproj.org/planet4.mamaps`
+//! (v9 header, v10 bodies, 10 layers, 128-byte header).
 //!
 //! # Layout
 //!

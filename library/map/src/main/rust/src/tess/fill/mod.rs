@@ -56,6 +56,19 @@ pub const FLOATS_PER_VERTEX: usize = 3;
 /// Coordinates below this many make a ring that encloses nothing.
 const MIN_RING_COORDS: usize = 6;
 
+/// Groups with each group's holes sorted, so two groupings compare equal when they hold the
+/// same exteriors with the same holes in any order. Debug-assertion support only (still
+/// compiled in release: `debug_assert_eq!` type-checks its operands there).
+#[cfg_attr(not(debug_assertions), allow(dead_code))]
+fn canonical_groups(mut groups: Vec<Vec<usize>>) -> Vec<Vec<usize>> {
+    for group in &mut groups {
+        if group.len() > 2 {
+            group[1..].sort_unstable();
+        }
+    }
+    groups
+}
+
 /// Tessellate one polygon: the exterior ring first, then holes, each flat and
 /// **closed** as the decoder returns them.
 ///
@@ -102,9 +115,12 @@ pub fn tessellate(
         // what `polygons` would work out anyway, at the cost of an O(holes x outers) containment
         // scan per feature per frame.
         let trusted = vec![(0..open.len()).collect::<Vec<usize>>()];
+        // Compared up to hole order: the repair pass sorts holes largest-first, the producer
+        // keeps its own order (planet-scale v10 bodies routinely differ), and earcut draws the
+        // same area either way. A dropped, extra or regrouped ring still fails.
         debug_assert_eq!(
-            polygons(&open),
-            trusted,
+            canonical_groups(polygons(&open)),
+            canonical_groups(trusted.clone()),
             "an archive claimed validated rings and the repair pass disagreed",
         );
         trusted

@@ -29,7 +29,7 @@ pub enum Variant {
 pub enum Toggle {
     Poi,
     Transit,
-    /// The live traffic layer (`LAYER_TRAFFIC`, id 10). Gated at tessellation like the
+    /// The live traffic layer (`LAYER_TRAFFIC`, id 7). Gated at tessellation like the
     /// others so an archive without it — or a consumer that never enables it — pays
     /// nothing; the per-segment colours arrive separately as a pushed id→ARGB table
     /// (see [`crate::vulkan::renderer::Renderer::set_traffic_speeds`]).

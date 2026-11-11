@@ -25,8 +25,8 @@ impl Drop for Fixture {
     }
 }
 
-const URL: &str = "https://data.maproj.org/planet3.mamaps";
-const ORIGIN: &str = "v1|https://data.maproj.org/planet3.mamaps";
+const URL: &str = "https://data.maproj.org/planet4.mamaps";
+const ORIGIN: &str = "v1|https://data.maproj.org/planet4.mamaps";
 
 fn cache_with(dir: &Path, clock: Arc<AtomicU64>, max_bytes: u64) -> RangeCache {
     let c = clock.clone();
@@ -186,6 +186,41 @@ fn changing_the_origin_marker_drops_every_entry() {
         fs::read_to_string(f.dir.join(ORIGIN_FILE)).unwrap(),
         "v2|different"
     );
+}
+
+#[test]
+fn moving_from_planet3_to_planet4_wipes_the_planet3_ranges() {
+    // The URL switch must not leave the old archive's ranges beside the new
+    // ones: the directory is shared (not keyed per URL), and the real origin
+    // marker carries the URL, so the first planet4 open drops every planet3
+    // entry and the cache never holds both.
+    use crate::tile::source::{basemap_origin, BASEMAP_ARCHIVE_URL};
+    const PLANET3: &str = "https://data.maproj.org/planet3.mamaps";
+    assert_eq!(BASEMAP_ARCHIVE_URL, URL, "the renderer reads planet4");
+    let f = Fixture::new("planet3to4");
+    let clock = || Box::new(|| 1_000_000u64) as Box<dyn Fn() -> u64 + Send + Sync>;
+    {
+        let old = RangeCache::with_clock(
+            &f.dir,
+            &basemap_origin(PLANET3, 0x0a90_e5e4_ab91_159e),
+            DEFAULT_MAX_BYTES,
+            clock(),
+        );
+        for i in 0..5 {
+            old.write(&RangeCache::key(PLANET3, &format!("bytes={i}-{i}")), &[i as u8]);
+        }
+        assert_eq!(data_files(&f.dir).len(), 5);
+    }
+    let new = RangeCache::with_clock(
+        &f.dir,
+        &basemap_origin(BASEMAP_ARCHIVE_URL, 0x2ab5_ba58_33e5_4438),
+        DEFAULT_MAX_BYTES,
+        clock(),
+    );
+    assert_eq!(data_files(&f.dir).len(), 0, "planet3 ranges must be evicted on the switch");
+    new.write(&RangeCache::key(BASEMAP_ARCHIVE_URL, "bytes=0-127"), &[0u8; 128]);
+    assert_eq!(data_files(&f.dir).len(), 1);
+    assert!(fs::read_to_string(f.dir.join(ORIGIN_FILE)).unwrap().contains("planet4.mamaps"));
 }
 
 #[test]

@@ -31,10 +31,13 @@ pub struct Discovered {
 /// Discover and open the pinned overlay for the base at `base_path`, or
 /// `None` when there is none (no manifest, no segments, any mismatch).
 ///
-/// Every file is opened read-only and never mutated; each archive gets its
-/// own leaf cache (offsets collide across archives). A corrupt segment
-/// header refuses the whole overlay rather than serving a mixed map.
-pub fn discover(base_path: &Path) -> Option<Discovered> {
+/// Every file is opened read-only and never mutated. The base reads through
+/// `base_leaves` — the surface's one shared cache, the same one the plain
+/// single-archive path uses, so overlay discovery does not give every worker a
+/// private copy of the (4 MiB-per-leaf, at planet scale) base index. Each segment
+/// gets its own cache (offsets collide across archives). A corrupt segment header
+/// refuses the whole overlay rather than serving a mixed map.
+pub fn discover(base_path: &Path, base_leaves: Arc<LeafCache>) -> Option<Discovered> {
     let dir = base_path.parent()?;
     let overlays = dir.join("overlays");
     let text = std::fs::read_to_string(overlays.join("manifest.json")).ok()?;
@@ -68,7 +71,6 @@ pub fn discover(base_path: &Path) -> Option<Discovered> {
     names.sort_by_key(|(seq, _, _)| *seq);
     let _ = names.iter().map(|(_, url, _)| url).collect::<Vec<_>>();
 
-    let base_leaves = Arc::new(LeafCache::new());
     let base = MamapsArchive::open_with_cache(
         FileRangeReader::open(base_path).ok()?,
         Arc::clone(&base_leaves),

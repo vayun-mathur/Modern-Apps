@@ -1,8 +1,8 @@
 # The Vulkan vector-tile renderer for `:library:map`.
 #
 # Replaces the CARTO raster basemap in findfamily, photos, weather, taxi and
-# fooddelivery (#615) with our own renderer over the planet-scale v7
-# single-file planet3.mamaps archive.
+# fooddelivery (#615) with our own renderer over the planet-scale
+# single-file planet4.mamaps archive (v9 header, v10 bodies, 10 layers).
 #
 # Why Vulkan and not `androidx.webgpu`: that wrapper bundles Dawn as a 5.79 MB
 # `libwebgpu_c_bundled.so` per ABI, to translate to the Vulkan that is already on
@@ -20,7 +20,7 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 license = "GPL-2.0-only"
-description = "Vulkan vector-tile map renderer: planet3.mamaps v7 in, triangles out"
+description = "Vulkan vector-tile map renderer: planet4.mamaps (v9/v10) in, triangles out"
 
 [lib]
 name = "map_renderer"
@@ -39,7 +39,7 @@ sha2.workspace = true
 serde_json.workspace = true
 
 # The .mamaps codec, shared with `scripts/maps`, which builds the
-# planet3.mamaps archive this reads. One implementation, so the two cannot drift.
+# planet4.mamaps archive this reads. One implementation, so the two cannot drift.
 tilecodec = { path = "../../../../tilecodec/src/main/rust" }
 
 # HTTP goes back out through Kotlin: this crate opens no sockets and carries no TLS

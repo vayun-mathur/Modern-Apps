@@ -259,6 +259,34 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
      * ([globePanBy]), and the twist/tilt gestures are ignored: the globe path
      * is north-up level, and tilting a planet is a separate workstream.
      */
+    /** [onGesture] on an active globe: pan rotates the sphere, zoom stays centroid-anchored. */
+    @Suppress("LongParameterList")
+    private fun onGlobeGesture(
+        centroidDp: Offset,
+        panDp: Offset,
+        zoomChange: Float,
+        minZoom: Double,
+        maxZoom: Double,
+        scrollEnabled: Boolean,
+        zoomEnabled: Boolean,
+        vp: Size,
+    ) {
+        var zoom = position.zoom
+        var center = position.target
+        if (scrollEnabled && (panDp.x != 0f || panDp.y != 0f)) {
+            center = globePanBy(center, panDp, vp, position.zoom)
+        }
+        if (zoomEnabled && zoomChange != 1f && zoomChange > 0f) {
+            val newZoom = (zoom + log2(zoomChange.toDouble())).coerceIn(minZoom, maxZoom)
+            if (newZoom != zoom) {
+                val zoomed = anchoredZoom(position.copy(target = center), newZoom, centroidDp, vp)
+                center = zoomed.target
+                zoom = zoomed.zoom
+            }
+        }
+        position = position.copy(target = center, zoom = zoom, bearing = 0.0, pitch = 0.0)
+    }
+
     internal fun onGesture(
         centroidDp: Offset,
         panDp: Offset,
@@ -278,19 +306,9 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
         // Globe: rotate the sphere under the finger; zoom stays Mercator-anchored
         // so the threshold crossing is continuous.
         if (globeEnabled && position.zoom < GLOBE_DETAIL_ZOOM) {
-            var center = position.target
-            if (scrollEnabled && (panDp.x != 0f || panDp.y != 0f)) {
-                center = globePanBy(center, panDp, vp, position.zoom)
-            }
-            if (zoomEnabled && zoomChange != 1f && zoomChange > 0f) {
-                val newZoom = (zoom + log2(zoomChange.toDouble())).coerceIn(effectiveMinZoom, maxZoom)
-                if (newZoom != zoom) {
-                    val zoomed = anchoredZoom(position.copy(target = center), newZoom, centroidDp, vp)
-                    center = zoomed.target
-                    zoom = zoomed.zoom
-                }
-            }
-            position = position.copy(target = center, zoom = zoom, bearing = 0.0, pitch = 0.0)
+            onGlobeGesture(
+                centroidDp, panDp, zoomChange, effectiveMinZoom, maxZoom, scrollEnabled, zoomEnabled, vp,
+            )
             return
         }
 
@@ -375,6 +393,7 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
  * `cos(lat)`. Longitude wraps; latitude clamps to the Mercator bound the flat path honours.
  * Unused [vp]: kept so the signature matches the flat pan it replaces at the call site.
  */
+@Suppress("UnusedParameter") // `vp`: signature parity with the flat pan, see above.
 internal fun globePanBy(center: GeoPoint, panDp: Offset, vp: Size, zoom: Double): GeoPoint {
     val r = globeRadius(zoom, center.latitude)
     if (r <= 0.0) return center

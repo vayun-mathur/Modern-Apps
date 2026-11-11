@@ -120,6 +120,12 @@ pub(crate) const UPLOADS_PER_FRAME_ZOOM_OUT: usize = 16;
 /// the tiler's z14 is the truth and this names it.
 pub(crate) const WASH_MAX_ZOOM: u8 = 14;
 
+/// The deepest zoom the `boundaries` layer (border lines + `region_area` mask shapes) tiles
+/// to: the writer dropped it from z13 and z14 (mamaps_build `schema/mod.rs`, commit
+/// aa8d1d07d), so a z13+ viewport reads its borders from z12 ancestors the fetch loop asks
+/// for explicitly (see `frame.rs`).
+pub(crate) const BOUNDARIES_MAX_ZOOM: u8 = 12;
+
 /// What a worker reports back about a tile.
 pub(crate) enum TileResult {
     /// Tessellated and ready to upload.
