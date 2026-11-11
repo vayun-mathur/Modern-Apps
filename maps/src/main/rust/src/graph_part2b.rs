@@ -61,6 +61,14 @@ impl Graph {
         self.node(id)
     }
 
+    /// Whether the graph carries node elevations at all (`elevation.bin` / archive kind 7, raw
+    /// v6 or blocked v7). The planet archives are built without it (`road_graph` ran without
+    /// `--dem`), and then every [`node_elevation`](Self::node_elevation) is 0: callers use this
+    /// to report "no profile" instead of a flat 0 m one.
+    pub fn has_elevation(&self) -> bool {
+        self.elevation_view.is_some() || !self.elevation.is_null()
+    }
+
     /// Ground elevation of node `id` in metres, or 0 when the graph carries no `elevation.bin` or
     /// `id` is out of range. Baked from the DEM at build time (WS-G); a build without a DEM, or a
     /// node off the DEM's coverage, reads as 0 so the route profile is simply flat there.

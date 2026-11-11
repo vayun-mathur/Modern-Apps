@@ -116,51 +116,29 @@ unsafe impl Send for BlockedView {}
 unsafe impl Sync for BlockedView {}
 
 impl BlockedView {
-    /// Parse over `bytes` (the whole section file/slice). Refuses bad magic,
-    /// unknown flags, zero stride, and offsets outside the section. Mirrors
-    /// `tilecodec::blocked::Blocked::parse` without borrowing it, so no
-    /// lifetime ties this view to the mapping.
+    /// Parse over `bytes` (the whole section file/slice) with the shared
+    /// `tilecodec::blocked::Blocked::parse` — the same header and offset-table
+    /// checks the writer's own reader runs (bad magic, unknown flags, zero
+    /// stride, a table running past the section, unordered or out-of-bounds
+    /// offsets) — then copies the offset table so no lifetime ties this view to
+    /// the mapping. A corrupt section is `None` (no graph), never a panic.
     pub(crate) fn parse(bytes: &[u8]) -> Option<BlockedView> {
-        if bytes.len() < 28 {
-            return None;
-        }
-        let u32_at = |o: usize| {
-            u32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]])
-        };
-        let u64_at = |o: usize| {
-            u64::from_le_bytes([
-                bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3], bytes[o + 4],
-                bytes[o + 5], bytes[o + 6], bytes[o + 7],
-            ])
-        };
-        if u32_at(0) != tilecodec::blocked::BLOCKED_MAGIC || u32_at(4) != 0 {
-            return None;
-        }
-        let record_len = u32_at(8) as usize;
-        let records_per_block = u32_at(12) as u64;
-        let unpacked_len = u64_at(16);
-        if record_len == 0 || records_per_block == 0 {
-            return None;
-        }
-        let block_count = u32_at(24) as usize;
-        let mut offsets = Vec::with_capacity(block_count + 1);
-        for i in 0..=block_count {
-            let o = u64_at(28 + i * 8);
-            if o > bytes.len() as u64 || (i > 0 && o < offsets[i - 1]) {
-                return None;
-            }
-            offsets.push(o);
-        }
+        let shared = tilecodec::blocked::Blocked::parse(bytes).ok()?;
+        let block_count = shared.block_count();
+        let offsets = (0..=block_count)
+            .map(|b| shared.block_offset(b))
+            .collect::<Option<Vec<u64>>>()?;
+        let records_per_block = shared.records_per_block();
         // No end-equality check: a blocked record array may share its file
         // with trailing tables (`edges.bin`'s escapes/names). Truncation is
-        // still refused above — an offset past the bytes fails.
+        // still refused by the shared parse — an offset past the bytes fails.
         Some(BlockedView {
-            record_len,
+            record_len: shared.record_len(),
             records_per_block,
             block_shift: records_per_block
                 .is_power_of_two()
                 .then(|| records_per_block.trailing_zeros()),
-            unpacked_len,
+            unpacked_len: shared.unpacked_len(),
             offsets,
             frames: bytes.as_ptr(),
             blocks: (0..block_count).map(|_| std::sync::OnceLock::new()).collect(),
@@ -188,14 +166,11 @@ impl BlockedView {
         let want = block_bytes.min(self.unpacked_len.saturating_sub(b as u64 * block_bytes)) as usize;
         let (start, end) = (self.offsets[b] as usize, self.offsets[b + 1] as usize);
         let frame = unsafe { std::slice::from_raw_parts(self.frames.add(start), end - start) };
-        let mut out = Vec::with_capacity(want);
-        let decoded = ruzstd::decoding::StreamingDecoder::new(frame)
-            .ok()
-            .and_then(|mut d| std::io::Read::read_to_end(&mut d, &mut out).ok());
-        if decoded.is_none() || out.len() != want {
-            return Box::default();
+        // The shared ZBLK frame decode (same code the writer's reader runs).
+        match tilecodec::blocked::inflate_frame(frame, want) {
+            Ok(out) if out.len() == want => out.into_boxed_slice(),
+            _ => Box::default(),
         }
-        out.into_boxed_slice()
     }
 }
 

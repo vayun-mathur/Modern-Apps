@@ -1,7 +1,7 @@
 //! On-device transit index loader + RAPTOR journey planner (P11b / world pack).
 //!
 //! Consumes the compact `.transit` index produced by the host tool
-//! `scripts/maps/gtfs_ingest` (P11a). The on-disk layout (format v6 "TRX2") is
+//! `scripts/maps/gtfs_ingest` (P11a). The on-disk layout (format v3..=v7 "TRIX") is
 //! documented at the top of that tool's `src/index.rs` and MUST stay in sync
 //! with the section constants and record accessors here.
 //!
@@ -40,15 +40,18 @@
 use crate::graph::{read_at, MmapRegion};
 use std::collections::HashMap;
 
-// --- Format constants (mirror scripts/maps/gtfs_ingest/src/index.rs) ---
-const MAGIC: u32 = 0x5452_4958; // "TRIX"
-/// Newest format this reader understands. v7 only adds host-only RAIL_LINES after the
-/// sections read here, which the directory loop below ignores.
-const VERSION: u32 = 7;
-/// Oldest format still accepted. Reading both means an app update and a pack
-/// rebuild can land in either order without offline transit silently degrading
-/// to the online planner in between.
-const VERSION_MIN: u32 = 3;
+// --- Format constants: the shared tilecodec values the writer (gtfs_ingest) and the
+// archive validator also check, so the three ranges cannot drift apart. ---
+// `"TRIX"`, little-endian.
+use tilecodec::mamaps::archive::TRANSIT_MAGIC as MAGIC;
+// Newest format this reader understands (7). v7 only adds host-only RAIL_LINES after
+// the sections read here, which the directory loop below ignores (and `mamaps_pack`
+// strips to length 0).
+use tilecodec::mamaps::archive::TRANSIT_VERSION as VERSION;
+// Oldest format still accepted (3). Reading both means an app update and a pack
+// rebuild can land in either order without offline transit silently degrading
+// to the online planner in between.
+use tilecodec::mamaps::archive::TRANSIT_VERSION_MIN as VERSION_MIN;
 pub const NONE: u32 = 0xFFFF_FFFF;
 const HEADER_LEN: usize = 80;
 /// Section count of the newest format. The section directory is sized to this

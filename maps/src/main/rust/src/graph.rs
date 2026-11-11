@@ -72,7 +72,7 @@ pub const DEG_TO_RAD: f64 = std::f64::consts::PI / 180.0;
 /// per-OSM-node transit nodes were removed: that changed `node_count` and
 /// `edge_count`, so a pack directory holding files from two vintages reads
 /// garbage. The magic + version make that a clean rejection instead.
-pub const GRAPH_MAGIC: u32 = 0x4752_414D;
+pub use tilecodec::mamaps::archive::GRAPH_MAGIC;
 /// Version 2 narrowed `nodes.bin` to 12-byte records, made `lanes.bin` a sparse
 /// index and gave `intermediate.bin` two-level offsets — 50.8 GB of planet became
 /// 34 GB. Version 3 gave `intermediate.bin` a presence bitmap and dropped both
@@ -88,9 +88,10 @@ pub const GRAPH_MAGIC: u32 = 0x4752_414D;
 /// Version 7 blocked-compresses `nodes.bin`, `edges.bin` records and
 /// `elevation.bin` (ZBLK sections); readers accept 6 and 7, inflating v7
 /// sections once on first use.
-pub const GRAPH_VERSION: u32 = 7;
-/// Oldest graph version decoded: v6 raw tables still read directly.
-pub const GRAPH_VERSION_MIN: u32 = 6;
+///
+/// Re-exported from tilecodec (with [`GRAPH_VERSION_MIN`], v6: raw tables still read
+/// directly) so the app, the archive validator and the writer share one range.
+pub use tilecodec::mamaps::archive::{GRAPH_VERSION, GRAPH_VERSION_MIN};
 
 /// Sentinel `name_offset` meaning "this edge has no name".
 ///

@@ -196,7 +196,14 @@ pub extern "system" fn Java_com_vayunmathur_maps_util_OfflineRouter_findRouteNat
             return Ok(null);
         }
 
-        let steps = reconstruct_path(&g, &speeds, mode, &ctx, scratch);
+        let mut steps = reconstruct_path(&g, &speeds, mode, &ctx, scratch);
+        // No elevation section (planet4 ships none): every sample is a fabricated 0 m, which
+        // Kotlin would draw as a flat chart with 0 m ascent. Empty arrays read as "no profile".
+        if !g.has_elevation() {
+            for step in &mut steps {
+                step.elevations.clear();
+            }
+        }
         // Whole-route elevation totals (WS-G): cumulative ascent/descent in metres, computed once and
         // carried on every RawStep so Kotlin can read them off any step.
         let (ascent_m, descent_m) = route_ascent_descent(&steps);
