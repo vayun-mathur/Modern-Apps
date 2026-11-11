@@ -13,6 +13,39 @@ pluginManagement {
     }
 }
 
+// Deterministic R8 (reproducible release APKs, see gradle.properties
+// android.r8.threadPoolSize): R8 9.5 races its worker threads while recording
+// argument-type-strengthened signatures, so its output (method protos in
+// classes.dex and the mapping hash embedded as the map id) depends on thread
+// timing, CPU count and how many R8 tasks share AGP's in-process thread pool.
+// Running each R8 task in its own worker process gives it its own pool, which
+// gradle.properties sizes to one thread: every APK is then byte-identical on
+// any machine (F-Droid's builder included) while tasks still run in parallel
+// across apps (android.r8.maxWorkers). The version must equal `agp` in
+// gradle/libs.versions.toml (settings plugins cannot read the catalog).
+plugins {
+    id("com.android.settings") version "9.5.0-alpha09"
+}
+
+android {
+    execution {
+        profiles {
+            create("deterministicR8") {
+                r8 {
+                    runInSeparateProcess = true
+                    jvmOptions += listOf(
+                        "-Xmx3g", "-XX:+UseParallelGC", "-Dfile.encoding=UTF-8",
+                        "-XX:ActiveProcessorCount=1",
+                        "-Djava.util.concurrent.ForkJoinPool.common.parallelism=1",
+                        "-Dcom.android.tools.r8.deterministicdebugging=true",
+                    )
+                }
+            }
+        }
+        defaultProfile = "deterministicR8"
+    }
+}
+
 @Suppress("UnstableApiUsage")
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
