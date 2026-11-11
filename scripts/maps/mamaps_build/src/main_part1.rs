@@ -175,14 +175,17 @@ fn run(
     // cache. Derived rather than asked for, so a forgotten input cannot silently republish
     // under the old one. The region is part of the id: a california and a world
     // build from the same pbf are different archives.
+    tiler::V8_BODIES.store(run.v8_bodies, std::sync::atomic::Ordering::Relaxed);
+    let digests = input_digests(input, &run.coastline, &graph_dir, &run.transit_routes, &run.dem)?;
     let build_id = derive_build_id(
-        input,
+        &digests,
         layers,
         min_zoom,
         max_zoom,
         simplification,
         stats.features,
         run.region.name(),
+        run.v8_bodies,
     );
 
     // The DEM heightmap dataset. Loaded here (this is where I/O belongs) and
@@ -311,8 +314,10 @@ fn run(
     let archive_len = std::fs::metadata(out)
         .map(|m| m.len())
         .map_err(|e| format!("cannot stat {}: {e}", out.display()))?;
+    // The header's id: the seed above folded with the archive's tile digest by the writer.
+    let header_id = read_header_build_id(out)?;
     println!(
-        "\nwrote {} ({archive_len} bytes, build_id {build_id:#018x})",
+        "\nwrote {} ({archive_len} bytes, build_id {header_id:#018x}, seed {build_id:#018x})",
         out.display(),
     );
     Ok(())
@@ -329,47 +334,101 @@ fn scratch_path(out: &std::path::Path) -> PathBuf {
     PathBuf::from(p)
 }
 
-/// Hash the inputs that decide what an archive contains.
+/// The build id in a finished archive's header.
+fn read_header_build_id(out: &std::path::Path) -> Result<u64, String> {
+    use std::io::Read;
+    let mut head = vec![0u8; tilecodec::mamaps::header::HEADER_LEN];
+    std::fs::File::open(out)
+        .and_then(|mut f| f.read_exact(&mut head))
+        .map_err(|e| format!("cannot read back {}: {e}", out.display()))?;
+    tilecodec::mamaps::header::Header::parse(&head)
+        .map(|h| h.build_id)
+        .map_err(|e| format!("cannot parse {}: {e}", out.display()))
+}
+
+/// Content fingerprints of every file the archive is built from ([`input_digests`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct InputDigests {
+    pub pbf: u64,
+    pub coastline: u64,
+    pub graph: u64,
+    pub transit_routes: u64,
+    pub dem: u64,
+}
+
+/// Fingerprint every input by content ([`osm_ingest::fingerprint`]): never a path or an mtime.
 ///
-/// The input's **length and modification time** rather than its bytes: digesting 1.3 GB to decide a
-/// cache key would double the build's I/O for a number that only has to change when the data does.
-/// A rebuild from an unchanged file therefore keeps its id, which is what makes a byte-identical
-/// rebuild byte-identical.
+/// - `.osm.pbf`: length + first and last 4 MiB. The first blob is the `OSMHeader` block (with the
+///   replication timestamp and sequence number), always well inside the first 4 MiB.
+/// - coastline: the `.shp` (the only part of the shapefile read).
+/// - graph: every regular file in the directory, by relative name (dot-files such as
+///   `planet_build.sh`'s `.ready` signal skipped) -- metadata, nodes, edges, lanes, names, the
+///   overlay outputs and `blob_kinds.bin`.
+/// - transit routes and DEM: length + first and last 4 MiB.
+pub(crate) fn input_digests(
+    pbf: &std::path::Path,
+    coastline: &std::path::Path,
+    graph: &std::path::Path,
+    transit_routes: &std::path::Path,
+    dem: &std::path::Path,
+) -> Result<InputDigests, String> {
+    use osm_ingest::fingerprint::{dir_fingerprint, file_fingerprint};
+    let file = |p: &std::path::Path| {
+        file_fingerprint(p).map_err(|e| format!("cannot fingerprint {}: {e}", p.display()))
+    };
+    Ok(InputDigests {
+        pbf: file(pbf)?,
+        coastline: file(coastline)?,
+        graph: dir_fingerprint(graph)
+            .map_err(|e| format!("cannot fingerprint {}: {e}", graph.display()))?,
+        transit_routes: file(transit_routes)?,
+        dem: file(dem)?,
+    })
+}
+
+/// The generator's build id: the seed the archive writer then mixes with the digest of every tile
+/// it holds (`Options::build_id_from_content`, `tilecodec::mamaps::write::content_build_id`), so
+/// the header's id is
 ///
-/// The leading generator revision has to be bumped whenever this crate changes what it *puts* in an
-/// archive for the same input, because readers cache byte ranges under `(url, build_id)` and the
-/// URL is deliberately stable across republishes. A device with a warm cache would otherwise keep
-/// serving the old archive's bytes forever. See `library/map/.../tile/source.rs`.
-fn derive_build_id(
-    input: &std::path::Path,
+/// ```text
+/// header build_id = content_build_id(derive_build_id(..), tile digest)
+/// tile digest     = fold over every appended tile, in order, of (tile id, stored length,
+///                   FNV-1a 64 of the stored body)
+/// ```
+///
+/// The seed is FNV-1a 64 over, in order: the tool revision tag `mamaps_build/18`; the archive
+/// format version; the region name; the five input fingerprints ([`InputDigests`]: pbf,
+/// coastline, graph, transit routes, DEM); the layer flags and zoom range; the simplification
+/// factor; the stage-A feature count; the schema table's kind count; and the body encoding (v10,
+/// or v8 under `--v8-bodies`).
+///
+/// Nothing environmental goes in -- no path, mtime, host, user or clock -- so identical inputs and
+/// identical code give an identical id on any machine; a changed input changes the seed, and any
+/// changed tile changes the digest. Readers key caches on this id, so both halves err on the side
+/// of changing it.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn derive_build_id(
+    inputs: &InputDigests,
     layers: schema::Layers,
     min_zoom: u8,
     max_zoom: u8,
     simplification: f64,
     features: u64,
     region: &str,
+    v8_bodies: bool,
 ) -> u64 {
-    let mut h = 0xcbf2_9ce4_8422_2325u64;
-    let mut eat = |bytes: &[u8]| {
-        for &b in bytes {
-            h ^= b as u64;
-            h = h.wrapping_mul(0x100_0000_01b3);
-        }
-    };
-    // Revision 17 fixes the missing lane byte in mixed landtype Road records (#821).
-    // The corrected rebuild must invalidate cached ranges from the malformed archive.
-    eat(b"mamaps_build/17");
-    eat(region.as_bytes());
-    eat(input.to_string_lossy().as_bytes());
-    if let Ok(meta) = std::fs::metadata(input) {
-        eat(&meta.len().to_le_bytes());
-        if let Ok(time) = meta.modified() {
-            if let Ok(since) = time.duration_since(std::time::UNIX_EPOCH) {
-                eat(&since.as_secs().to_le_bytes());
-            }
-        }
+    let mut h = osm_ingest::fingerprint::Fnv::default();
+    // Revision 17 fixed the missing lane byte in mixed landtype Road records (#821).
+    // Revision 18: the id is content-derived (input fingerprints + tile digest), no longer the
+    // input's path and mtime.
+    h.eat(b"mamaps_build/18");
+    h.eat(&[tilecodec::mamaps::header::FORMAT_VERSION]);
+    h.eat(region.as_bytes());
+    h.eat(&[0]);
+    for digest in [inputs.pbf, inputs.coastline, inputs.graph, inputs.transit_routes, inputs.dem] {
+        h.eat_u64(digest);
     }
-    eat(&[
+    h.eat(&[
         u8::from(layers.landtype),
         u8::from(layers.buildings),
         u8::from(layers.roads),
@@ -382,10 +441,11 @@ fn derive_build_id(
         min_zoom,
         max_zoom,
     ]);
-    eat(&simplification.to_le_bytes());
-    eat(&features.to_le_bytes());
+    h.eat(&simplification.to_le_bytes());
+    h.eat_u64(features);
     // The schema table's own version, so a remapped kind invalidates every cache even when the
     // input has not moved.
-    eat(&(tilecodec::mamaps::dict::KINDS.len() as u64).to_le_bytes());
-    h
+    h.eat_u64(tilecodec::mamaps::dict::KINDS.len() as u64);
+    h.eat(if v8_bodies { b"bodies/v8" } else { b"bodies/v10" });
+    h.finish()
 }

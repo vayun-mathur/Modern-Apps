@@ -128,6 +128,7 @@ fn main() -> ExitCode {
     let mut build_graph_to: Option<PathBuf> = None;
     let mut build_poi_to: Option<PathBuf> = None;
     let mut graph_ready_file: Option<PathBuf> = None;
+    let mut v8_bodies = false;
 
     let mut i = 1;
     while i < args.len() {
@@ -175,6 +176,12 @@ fn main() -> ExitCode {
                 graph_ready_file = Some(PathBuf::from(v));
                 2
             }),
+            // Dense v8 bodies instead of the v10 default (was the `MAMAPS_V8` environment
+            // variable; a flag, so no environment value can change an output byte).
+            "--v8-bodies" => {
+                v8_bodies = true;
+                Ok(1)
+            }
             "-h" | "--help" => {
                 usage();
                 return ExitCode::SUCCESS;
@@ -220,6 +227,7 @@ fn main() -> ExitCode {
         build_graph_to,
         build_poi_to,
         graph_ready_file,
+        v8_bodies,
     };
     match run(&input, &out, &settings) {
         Ok(()) => ExitCode::SUCCESS,
@@ -255,6 +263,8 @@ struct RunSettings {
     /// `--graph-ready-file`: start before the routing graph exists and wait for this file to
     /// appear before the first stage that reads `--graph`. See [`GraphGate`].
     graph_ready_file: Option<PathBuf>,
+    /// `--v8-bodies`: encode dense v8 tile bodies instead of the v10 default. In the build id.
+    v8_bodies: bool,
 }
 
 include!("main_part1.rs");

@@ -73,7 +73,7 @@ fn usage() {
         \x20                   --dem HEIGHTMAPS.mdem\n\
         \x20                   [--region california|world]\n\
         \x20                   [--build-graph-to DIR] [--build-poi-to DIR]\n\
-        \x20                   [--graph-ready-file PATH]\n\
+        \x20                   [--graph-ready-file PATH] [--v8-bodies]\n\
         \n\
         \x20All six flags are required. Every build carries all 9 layers at\n\
         \x20z0-14 as FORMAT_VERSION 8. --region filters roads/pois/buildings\n\
@@ -300,29 +300,73 @@ mod tests {
         );
     }
 
-    /// The id has to change when the data would, and not otherwise. A rebuild from an unchanged file
-    /// keeps its id, which is what makes a byte-identical rebuild byte-identical.
+    /// The id has to change when the data would, and not otherwise. A rebuild from unchanged
+    /// inputs keeps its id -- wherever the inputs live and whenever they were touched -- which is
+    /// what makes a byte-identical rebuild byte-identical.
     #[test]
     fn a_build_id_follows_the_inputs_that_decide_the_output() {
-        let path = std::path::Path::new("nonexistent.osm.pbf");
+        let dir = |name: &str| {
+            let d = std::env::temp_dir().join(format!("mamaps_bid_{}_{name}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&d);
+            std::fs::create_dir_all(d.join("graph")).unwrap();
+            for (f, bytes) in [
+                ("in.osm.pbf", &b"pbf bytes"[..]),
+                ("coast.shp", b"shp bytes"),
+                ("routes.geojsonseq", b"routes"),
+                ("world.mdem", b"dem bytes"),
+                ("graph/metadata.bin", b"graph meta"),
+                ("graph/edges.bin", b"edges"),
+            ] {
+                std::fs::write(d.join(f), bytes).unwrap();
+            }
+            d
+        };
+        let digests = |d: &std::path::Path| {
+            input_digests(
+                &d.join("in.osm.pbf"),
+                &d.join("coast.shp"),
+                &d.join("graph"),
+                &d.join("routes.geojsonseq"),
+                &d.join("world.mdem"),
+            )
+            .unwrap()
+        };
         let all = schema::Layers::all();
-        let base = derive_build_id(path, all, 0, 14, 1.0, 100, "world");
-        assert_eq!(base, derive_build_id(path, all, 0, 14, 1.0, 100, "world"), "stable");
-        for other in [
-            derive_build_id(path, all, 0, 14, 2.0, 100, "world"),
-            derive_build_id(path, all, 0, 14, 1.0, 101, "world"),
-            derive_build_id(path, all, 0, 14, 1.0, 100, "california"),
-            derive_build_id(
-                std::path::Path::new("other.osm.pbf"),
-                all,
-                0,
-                14,
-                1.0,
-                100,
-                "world",
-            ),
-        ] {
-            assert_ne!(base, other, "a changed input should change the id");
+        let a = dir("a");
+        let inputs = digests(&a);
+        let base = derive_build_id(&inputs, all, 0, 14, 1.0, 100, "world", false);
+        assert_eq!(base, derive_build_id(&inputs, all, 0, 14, 1.0, 100, "world", false), "stable");
+        // The same bytes at another path, written later, with a `.ready` signal in the graph dir:
+        // the same id.
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        let b = dir("b");
+        std::fs::write(b.join("graph/.ready"), b"").unwrap();
+        assert_eq!(digests(&b), inputs, "place or time leaked into an input digest");
+        // Every input's content and every parameter moves it.
+        let mut others = vec![
+            derive_build_id(&inputs, all, 0, 14, 2.0, 100, "world", false),
+            derive_build_id(&inputs, all, 0, 14, 1.0, 101, "world", false),
+            derive_build_id(&inputs, all, 0, 14, 1.0, 100, "california", false),
+            derive_build_id(&inputs, all, 0, 13, 1.0, 100, "world", false),
+            derive_build_id(&inputs, all, 0, 14, 1.0, 100, "world", true),
+        ];
+        for f in ["in.osm.pbf", "coast.shp", "routes.geojsonseq", "world.mdem", "graph/edges.bin"] {
+            let c = dir("c");
+            std::fs::write(c.join(f), b"changed content").unwrap();
+            others.push(derive_build_id(&digests(&c), all, 0, 14, 1.0, 100, "world", false));
+        }
+        for (i, other) in others.iter().enumerate() {
+            assert_ne!(base, *other, "change #{i} should change the id");
+        }
+        // The header id folds in the tile digest: same seed, different tiles, different id.
+        use tilecodec::mamaps::write::content_build_id;
+        assert_eq!(content_build_id(base, 1), content_build_id(base, 1));
+        assert_ne!(content_build_id(base, 1), content_build_id(base, 2));
+        assert_ne!(content_build_id(base, 1), content_build_id(base ^ 1, 1));
+        for d in ["a", "b", "c"] {
+            let _ = std::fs::remove_dir_all(
+                std::env::temp_dir().join(format!("mamaps_bid_{}_{d}", std::process::id())),
+            );
         }
     }
 

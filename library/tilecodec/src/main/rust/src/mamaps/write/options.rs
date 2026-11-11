@@ -13,6 +13,11 @@ pub struct Options {
     /// The writer does not compute it: only the generator knows those inputs. It does carry it, and
     /// a reader's cache marker is `CACHE_FORMAT | URL | build_id`.
     pub build_id: u64,
+    /// Fold the archive's own tile content into the header's build id: when set, the id written
+    /// is [`content_build_id`](super::content_build_id)`(build_id, digest)`, where the digest runs
+    /// over every appended tile in order (tile id, stored length, stored-body hash). Identical
+    /// tiles and seed give an identical id on any machine; any changed tile byte changes it.
+    pub build_id_from_content: bool,
     pub compress: bool,
     /// Store each leaf as one raw-DEFLATE frame rather than raw fixed-stride entries.
     ///
@@ -54,6 +59,7 @@ impl Default for Options {
             min_zoom: 0,
             max_zoom: 14,
             build_id: 0,
+            build_id_from_content: false,
             compress: true,
             compress_leaves: true,
             rings_validated: false,

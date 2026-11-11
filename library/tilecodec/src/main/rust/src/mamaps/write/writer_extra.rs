@@ -143,7 +143,7 @@ impl StreamWriter {
             layer_count: dict::LAYERS.len() as u8,
             min_zoom: self.options.min_zoom,
             max_zoom: self.options.max_zoom,
-            build_id: self.options.build_id,
+            build_id: self.header_build_id(),
             // The file is exactly header/dictionary/root/leaves/data.
             file_len: data_offset + data_len,
             dict_offset,

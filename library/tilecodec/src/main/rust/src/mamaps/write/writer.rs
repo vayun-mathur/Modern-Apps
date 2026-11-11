@@ -7,6 +7,30 @@ use crate::mamaps::index::{LeafEntry, RootEntry, self};
 use crate::proto::{Result, err};
 use std::collections::HashMap;
 
+/// Start value of the running tile digest.
+const CONTENT_DIGEST_SEED: u64 = 0x6d61_6d61_7073_2f31; // "mamaps/1"
+
+/// SplitMix64's finaliser: a full-avalanche 64-bit mix.
+fn mix64(mut z: u64) -> u64 {
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    z ^ (z >> 31)
+}
+
+/// One tile into the running content digest: order-dependent, every field avalanched.
+fn digest_step(digest: u64, tile_id: u64, stored_len: u64, body_hash: u64) -> u64 {
+    let d = mix64(digest ^ tile_id);
+    let d = mix64(d ^ stored_len.rotate_left(32));
+    mix64(d ^ body_hash)
+}
+
+/// The header build id for [`Options::build_id_from_content`]: the generator's seed (its inputs
+/// and parameters) mixed with the digest of every tile the archive holds. Public so a tool can
+/// document and test the derivation.
+pub fn content_build_id(seed: u64, content_digest: u64) -> u64 {
+    mix64(mix64(seed ^ 0x6275_696c_645f_6964) ^ content_digest)
+}
+
 /// The dedup index's map: keyed by `(FNV-1a hash, length)`, which is already well mixed, so the
 /// default SipHash only costs time on a lookup made for every appended tile. Never iterated for
 /// output, so the hasher cannot move a byte.
@@ -67,6 +91,8 @@ pub struct StreamWriter {
     /// spill on every append, which is how the shortcut is held to the file's answer rather than
     /// trusted to stay in step with it.
     last_body: std::sync::Arc<Vec<u8>>,
+    /// Running digest of every appended tile, for [`Options::build_id_from_content`].
+    content: u64,
     /// Distinct bodies appended since the last [`Self::sweep_dedup`] pass. Bounds how stale the
     /// dedup index may get between sweeps; see the sweep for why staleness is memory.
     distinct_since_sweep: u64,
@@ -150,6 +176,7 @@ impl StreamWriter {
             seen_order: std::collections::VecDeque::new(),
             last_id: None,
             last_body: Default::default(),
+            content: CONTENT_DIGEST_SEED,
             distinct_since_sweep: 0,
             tiles_addressed: 0,
             distinct: 0,
@@ -274,6 +301,8 @@ impl StreamWriter {
     }
 
     fn push_shared(&mut self, tile_id: u64, stored: std::sync::Arc<Vec<u8>>, hash: u64) -> Result<()> {
+        // Every tile, repeats and dedup hits included, in append order: the archive's content.
+        self.content = digest_step(self.content, tile_id, stored.len() as u64, hash);
         let (z, _, _) = crate::pmtiles::tile_zxy(tile_id);
         if z < self.options.min_zoom || z > self.options.max_zoom {
             return err(format!(
@@ -551,11 +580,24 @@ impl StreamWriter {
             seen_order: std::collections::VecDeque::new(),
             last_id: None,
             last_body: Default::default(),
+            content: CONTENT_DIGEST_SEED,
             distinct_since_sweep: 0,
             tiles_addressed: entries.len() as u64,
             distinct: entries.len() as u64,
             runs_used: false,
         };
         w.partition(capacity)
+    }
+}
+
+impl StreamWriter {
+    /// The build id the header carries: the generator's id, or, with
+    /// [`Options::build_id_from_content`], [`content_build_id`] of it and the tile digest.
+    pub fn header_build_id(&self) -> u64 {
+        if self.options.build_id_from_content {
+            content_build_id(self.options.build_id, self.content)
+        } else {
+            self.options.build_id
+        }
     }
 }

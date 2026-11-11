@@ -329,6 +329,9 @@ pub struct ZoomStats {
     pub append_ms: u64,
 }
 
+/// `--v8-bodies`: encode dense v8 bodies (set once by `main` before tiling).
+pub static V8_BODIES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 pub struct Settings {
     pub build_id: u64,
     /// Where one zoom's chunks go while they wait for the merge. See [`crate::tilespill`].

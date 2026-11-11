@@ -299,8 +299,9 @@ fn encode_tile(
     // v10 narrowed records + sparse side tables are the default: same
     // geometry either way — only the fixed records shrink — so this
     // changes bytes, never shapes. `MAMAPS_V8=1` opts back out to the
-    // dense v8 bodies (escape hatch for bisecting a suspect build).
-    let encoded_body = if std::env::var("MAMAPS_V8").is_ok() {
+    // dense v8 bodies (escape hatch for bisecting a suspect build). A command-line flag
+    // (`--v8-bodies`), never the environment, and part of the build id.
+    let encoded_body = if crate::tiler::V8_BODIES.load(std::sync::atomic::Ordering::Relaxed) {
         tilecodec::mamaps::body::serialize_into(&body, scratch)
     } else {
         tilecodec::mamaps::body::serialize_into_v10(&body, scratch)

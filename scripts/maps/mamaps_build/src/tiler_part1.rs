@@ -52,6 +52,9 @@ fn writer_for(store: &Store, settings: &Settings) -> Result<StreamWriter> {
         min_zoom: 0,
         max_zoom: crate::DEFAULT_MAX_ZOOM,
         build_id: settings.build_id,
+        // The header carries the seed folded with the digest of every tile written: identical
+        // tiles from identical inputs give an identical id anywhere (see `derive_build_id`).
+        build_id_from_content: true,
         compress: true,
         // Stage C runs on every tile below, so the claim is true. It is what lets the renderer
         // skip its repair pass — and the renderer still keeps that pass, gated, because a claim is
