@@ -25,6 +25,10 @@ private const val RED_SHIFT = 16
 private const val GREEN_SHIFT = 8
 private const val MAX_COLOR_COMPONENT = 255f
 
+/** A UTF-8 continuation byte is `10xxxxxx`: (b and MASK) == BITS. */
+private const val UTF8_CONTINUATION_MASK = 0xC0
+private const val UTF8_CONTINUATION_BITS = 0x80
+
 /**
  * Exports a note as a SINGLE self-contained Markdown document:
  *  - text blocks are emitted verbatim,
@@ -77,7 +81,7 @@ private fun truncateUtf8Bytes(s: String, maxBytes: Int): String {
     val bytes = s.toByteArray()
     if (bytes.size <= maxBytes) return s
     var end = maxBytes
-    while (end > 0 && bytes[end].toInt() and 0xC0 == 0x80) end--
+    while (end > 0 && bytes[end].toInt() and UTF8_CONTINUATION_MASK == UTF8_CONTINUATION_BITS) end--
     return String(bytes, 0, end, Charsets.UTF_8)
 }
 
