@@ -236,25 +236,28 @@ internal fun SolitaireViewModel.freeCellAutoMoveImpl(sourceId: String) {
  * handler.
  */
 internal fun SolitaireViewModel.resolveFreeCellAutoMoveTarget(sourceId: String): String? {
-    val state = uiStateInternal.value.freeCell ?: return null
-    if (state.isWon) return null
+    val state = uiStateInternal.value.freeCell?.takeUnless { it.isWon } ?: return null
     val cards = draggedCards(sourceId)
-    if (cards.isEmpty()) return null
-    val origin = freeCellMoveOrigin(sourceId) ?: return null
-    if (cards.size == SINGLE_CARD) {
-        for (fi in state.foundations.indices) {
-            if (canPlaceOnFoundation(cards.first(), state.foundations[fi], fi)) return "foundation_$fi"
-        }
+    val origin = freeCellMoveOrigin(sourceId)
+    if (cards.isEmpty() || origin == null) return null
+    val single = cards.size == SINGLE_CARD
+    val foundation = if (single) {
+        state.foundations.indices.firstOrNull { fi -> canPlaceOnFoundation(cards.first(), state.foundations[fi], fi) }
+    } else {
+        null
     }
-    state.tableauPiles.indices.firstOrNull { toCol ->
+    val column = state.tableauPiles.indices.firstOrNull { toCol ->
         toCol != origin.fromCol && isViableTableauTarget(state, cards, origin, toCol)
-    }?.let { return "tableau_$it" }
-    // Empty free cell — last resort for a single card off a tableau column.
-    if (cards.size == SINGLE_CARD && origin.fromCol != null) {
-        val emptyCell = state.freeCells.indexOfFirst { it == null }
-        if (emptyCell >= 0) return "freecell_$emptyCell"
     }
-    return null
+    // Empty free cell — last resort for a single card off a tableau column.
+    val cell = state.freeCells.indexOfFirst { it == null }
+        .takeIf { it >= 0 && single && origin.fromCol != null }
+    return when {
+        foundation != null -> "foundation_$foundation"
+        column != null -> "tableau_$column"
+        cell != null -> "freecell_$cell"
+        else -> null
+    }
 }
 
 private data class FreeCellMoveOrigin(val fromCol: Int?, val fromIdx: Int, val fromCell: Int?)
