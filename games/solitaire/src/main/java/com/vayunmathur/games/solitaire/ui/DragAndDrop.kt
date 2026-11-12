@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,6 +35,8 @@ import com.vayunmathur.games.solitaire.platform.SolitaireActions
 fun DraggableCard(
     card: Card,
     sourceId: String,
+    pileId: String,
+    index: Int,
     actions: SolitaireActions,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
@@ -44,14 +45,14 @@ fun DraggableCard(
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var startPos by remember { mutableStateOf(Offset.Zero) }
     var cardSize by remember { mutableStateOf(IntSize.Zero) }
-    // Hidden while a staged flight covers this card, so the flight — not a
-    // duplicate underneath — is what the player sees travelling.
-    val flight by actions.flightInfo.collectAsState()
-    val isFlying = flight?.cards?.contains(card) == true
+    // Hidden while a flight carries this card into (or back to) this slot, so the
+    // flight — not a copy underneath — is what the player sees travelling.
+    val flights by actions.flights.collectAsState()
+    val isFlying = flights.any { it.hides.covers(pileId, index, card) }
     // Feeds the animated auto-complete its launch points; unlaid cards (the stock)
     // stay absent and fly instantly instead.
-    LaunchedEffect(card, startPos) {
-        if (startPos != Offset.Zero) actions.registerCardPosition(card, startPos)
+    LaunchedEffect(card, startPos, cardSize) {
+        if (startPos != Offset.Zero) actions.registerCardPosition(card, startPos, cardSize)
     }
 
     Box(
@@ -62,7 +63,7 @@ fun DraggableCard(
             }
             .pointerInput(card, sourceId) {
                 detectTapGestures(
-                    onTap = { actions.requestAutoMove(sourceId, startPos) },
+                    onTap = { actions.requestAutoMove(sourceId, startPos, cardSize) },
                 )
             }
             .pointerInput(card, sourceId) {
@@ -137,32 +138,3 @@ fun DragOverlay(
         }
     }
 }
-
-@Composable
-fun DropTarget(
-    targetId: String,
-    actions: SolitaireActions,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    // The map outlives the board — it hangs off the view model, which is scoped to the
-    // activity. A pile that leaves the composition has to take its rectangle with it, or a
-    // mode with fewer piles (or piles somewhere else) keeps resolving drops against the
-    // previous mode's geometry.
-    DisposableEffect(targetId) {
-        onDispose { actions.dropTargets.remove(targetId) }
-    }
-    Box(
-        modifier = modifier.onGloballyPositioned { coords ->
-            val pos = coords.positionInRoot()
-            val size = coords.size
-            actions.dropTargets[targetId] = androidx.compose.ui.geometry.Rect(
-                pos.x, pos.y,
-                pos.x + size.width, pos.y + size.height
-            )
-        }
-    ) {
-        content()
-    }
-}
-

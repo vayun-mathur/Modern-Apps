@@ -38,8 +38,20 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     internal val dragInfoInternal = MutableStateFlow<DragInfo?>(null)
     override val dragInfo: StateFlow<DragInfo?> = dragInfoInternal.asStateFlow()
 
-    internal val flightInfoInternal = MutableStateFlow<CardFlight?>(null)
-    override val flightInfo: StateFlow<CardFlight?> = flightInfoInternal.asStateFlow()
+    internal val flightsInternal = MutableStateFlow<List<CardFlight>>(emptyList())
+    override val flights: StateFlow<List<CardFlight>> = flightsInternal.asStateFlow()
+
+    /** Ids for [flights]; never reused, so a late landing can never touch a newer flight. */
+    internal var nextFlightId = 0L
+
+    /** The auto-complete hop the run is waiting on, or null. */
+    internal var autoCompleteFlightId: Long? = null
+
+    /** Taps on cards that were still in the air, replayed as their flights land. */
+    internal val queuedTaps = ArrayDeque<QueuedTap>()
+
+    /** Card size last laid out, for flights launched without a gesture (auto-complete). */
+    internal var lastCardSize: IntSize = IntSize.Zero
 
     internal val autoCompleteRunningInternal = MutableStateFlow(false)
     override val autoCompleteRunning: StateFlow<Boolean> = autoCompleteRunningInternal.asStateFlow()
@@ -50,8 +62,9 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
      * re-registered as piles lay out, so a stale entry never survives a new game.
      */
     internal val cardPositions = mutableMapOf<Card, Offset>()
-    override fun registerCardPosition(card: Card, position: Offset) {
+    override fun registerCardPosition(card: Card, position: Offset, size: IntSize) {
         cardPositions[card] = position
+        if (size.width > 0 && size.height > 0) lastCardSize = size
     }
 
     internal val statsRepository = SolitaireStatsRepository(application)
@@ -89,7 +102,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun selectMode(mode: GameMode, config: GameConfig = GameConfig()) {
-        clearFlight()
+        clearMotion()
         cardPositions.clear()
         when (mode) {
             GameMode.KLONDIKE -> newKlondikeGame(config)
@@ -122,7 +135,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     override fun giveUp() {
-        clearFlight()
+        clearMotion()
         val mode = uiStateInternal.value.gameMode ?: return
         statsRepository.recordGameLost(mode, currentVariant())
         uiStateInternal.value = SolitaireUiState()
@@ -167,14 +180,12 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
 
     override fun autoMove(sourceId: String) = autoMoveImpl(sourceId)
 
-    override fun requestAutoMove(sourceId: String, startPos: Offset): Boolean {
+    override fun requestAutoMove(sourceId: String, startPos: Offset, cardSize: IntSize): Boolean {
         if (autoCompleteRunningInternal.value) { skipAutoCompleteToEnd(); return false }
-        return requestFlightImpl(sourceId, startPos)
+        return requestFlightImpl(sourceId, startPos, cardSize)
     }
 
-    override fun commitFlight() = commitFlightImpl()
-
-    override fun cancelFlight() = cancelFlightImpl()
+    override fun landFlight(id: Long) = landFlightImpl(id)
 
     /**
      * Starts a drag from [sourceId], deriving the carried cards from current state.
@@ -197,7 +208,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     override fun cancelDrag() = cancelDragImpl()
 
     override fun undo() {
-        clearFlight()
+        clearMotion()
         val history = uiStateInternal.value.history
         if (history.isEmpty()) return
         val prev = history.last()

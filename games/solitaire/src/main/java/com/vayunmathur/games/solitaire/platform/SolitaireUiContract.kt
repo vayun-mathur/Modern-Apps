@@ -23,10 +23,11 @@ interface SolitaireActions {
     val dragInfo: StateFlow<DragInfo?> get() = NoDrag
 
     /**
-     * A tap-to-move travelling to its destination, or null. The overlay animates it;
-     * the move itself commits only when the flight lands.
+     * Cards in the air, each flight independent and keyed by its id. Visual only: the move a
+     * flight shows is already applied to game state, and the board hides the flying cards in
+     * their new pile until the motion layer reports the landing through [landFlight].
      */
-    val flightInfo: StateFlow<CardFlight?> get() = NoFlight
+    val flights: StateFlow<List<CardFlight>> get() = NoFlights
 
     /** Drop zones, registered by the piles as they are laid out. */
     val dropTargets: MutableMap<String, Rect> get() = DiscardedDropTargets
@@ -37,9 +38,10 @@ interface SolitaireActions {
     /**
      * Records where [card] was last laid out in root coordinates, so the animated
      * auto-complete can fly it from there. Positions for cards never laid out (in
-     * the stock) are simply absent, and those steps apply instantly.
+     * the stock) are simply absent, and those steps apply instantly. [size] is the
+     * laid-out card size, which flights without a gesture of their own are drawn at.
      */
-    fun registerCardPosition(card: Card, position: Offset) {}
+    fun registerCardPosition(card: Card, position: Offset, size: IntSize = IntSize.Zero) {}
 
     fun startDrag(sourceId: String, startPos: Offset, cardSize: IntSize = IntSize.Zero): Boolean = false
     fun updateDrag(offset: Offset) {}
@@ -61,18 +63,16 @@ interface SolitaireActions {
     fun autoMove(sourceId: String) {}
 
     /**
-     * Animated tap-to-move: resolves the best legal destination for [sourceId] and
-     * stages the flight from [startPos], which the overlay animates before committing.
-     * Returns false (and stages nothing) when there is no legal move or a flight is
-     * already active. Klondike and FreeCell only, like [autoMove].
+     * Animated tap-to-move: resolves the best legal destination for [sourceId], applies
+     * the move at once and launches a flight from [startPos] (the tapped card's top-left,
+     * [cardSize] its laid-out size) to the exact slot the cards now occupy. Other flights
+     * keep flying; a tap on cards still in the air is queued until they land. Returns
+     * false when there is no legal move. Klondike and FreeCell only, like [autoMove].
      */
-    fun requestAutoMove(sourceId: String, startPos: Offset): Boolean = false
+    fun requestAutoMove(sourceId: String, startPos: Offset, cardSize: IntSize = IntSize.Zero): Boolean = false
 
-    /** Lands the staged flight, performing its move. A no-op without one. */
-    fun commitFlight() {}
-
-    /** Drops the staged flight without moving anything. */
-    fun cancelFlight() {}
+    /** The motion layer finished drawing flight [id]; its cards show in their pile again. */
+    fun landFlight(id: Long) {}
 
     fun undo() {}
     fun restart() {}
@@ -84,7 +84,7 @@ interface SolitaireActions {
 }
 
 private val NoDrag: StateFlow<DragInfo?> = MutableStateFlow(null)
-private val NoFlight: StateFlow<CardFlight?> = MutableStateFlow(null)
+private val NoFlights: StateFlow<List<CardFlight>> = MutableStateFlow(emptyList())
 private val NoAutoComplete: StateFlow<Boolean> = MutableStateFlow(false)
 
 /** Somewhere for a [SolitaireActions.Noop] board to register its drop zones and forget them. */

@@ -47,7 +47,8 @@ _Install: ./install games/solitaire (dev by default)._
 - com/vayunmathur/games/solitaire/ui/SpiderBoard.kt
 - com/vayunmathur/games/solitaire/ui/PyramidBoard.kt
 - com/vayunmathur/games/solitaire/ui/TableauColumn.kt
-- com/vayunmathur/games/solitaire/ui/FoundationView.kt
+- com/vayunmathur/games/solitaire/ui/FoundationSlot.kt
+- com/vayunmathur/games/solitaire/ui/FreeCellSlot.kt
 - com/vayunmathur/games/solitaire/ui/CardView.kt
 - com/vayunmathur/games/solitaire/ui/DragAndDrop.kt
 - com/vayunmathur/games/solitaire/ui/GameActionBar.kt

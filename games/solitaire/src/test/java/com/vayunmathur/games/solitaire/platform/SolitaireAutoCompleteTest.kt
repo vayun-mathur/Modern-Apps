@@ -13,7 +13,6 @@ import com.vayunmathur.games.solitaire.data.TableauPile
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 import org.junit.runner.RunWith
@@ -53,18 +52,20 @@ class SolitaireAutoCompleteTest {
         elapsedSeconds = 42,
     )
 
-    @Test fun stagingLeavesStateUnchangedWithOneHistoryEntry() {
+    @Test fun firstHopIsAppliedAndFlownWithOneHistoryEntry() {
         val vm = vm()
         setK(vm, almostWon())
         val heartsK = Card(Suit.HEARTS, Rank.KING)
         vm.registerCardPosition(heartsK, Offset(10f, 10f))
         vm.klondikeAutoComplete()
         assertTrue(vm.autoCompleteRunning.value)
-        val flight = vm.flightInfo.value!!
-        assertEquals("waste", flight.sourceId)
+        val flight = vm.flights.value.single()
+        assertEquals(listOf(heartsK), flight.cards)
+        assertEquals(FlightTarget.Slot("foundation_0", 0, 12), flight.target)
         assertTrue(flight.fast)
-        // The staged card still lives in state until the flight lands.
-        assertEquals(listOf(heartsK), vm.uiState.value.klondike!!.waste)
+        // Logical state leads: the King is on its foundation while it flies.
+        assertTrue(vm.uiState.value.klondike!!.waste.isEmpty())
+        assertEquals(13, vm.uiState.value.klondike!!.foundations[0].size)
         assertEquals(1, vm.uiState.value.history.size)
     }
 
@@ -73,7 +74,7 @@ class SolitaireAutoCompleteTest {
         setK(vm, almostWon())
         vm.klondikeAutoComplete()
         assertFalse(vm.autoCompleteRunning.value)
-        assertNull(vm.flightInfo.value)
+        assertTrue(vm.flights.value.isEmpty())
         val k = vm.uiState.value.klondike!!
         assertTrue(k.isWon, "state=$k")
         assertTrue(k.foundations.all { it.size == 13 })
@@ -87,19 +88,22 @@ class SolitaireAutoCompleteTest {
         vm.registerCardPosition(Card(Suit.DIAMONDS, Rank.KING), Offset(20f, 20f))
         vm.registerCardPosition(Card(Suit.CLUBS, Rank.KING), Offset(30f, 30f))
         vm.klondikeAutoComplete()
-        val staged = mutableListOf<String>()
+        val flown = mutableListOf<Card>()
         var guard = 0
         while (vm.autoCompleteRunning.value) {
             if (guard++ > 10) fail("run did not finish")
-            val flight = vm.flightInfo.value ?: fail("running without a staged flight")
+            val flight = vm.flights.value.singleOrNull() ?: fail("running without a hop in the air")
             assertTrue(flight.fast, "flight=$flight")
-            staged += flight.sourceId
-            vm.commitFlight()
+            assertFalse(vm.uiState.value.klondike!!.isWon, "won before the last hop landed")
+            flown += flight.cards
+            vm.landFlight(flight.id)
         }
         // The stock spades King was never laid out, so its draw and landing apply
-        // instantly between the staged flights rather than staging a fourth flight.
-        // (tableau_1_0: column 1, the King at card index 0 of its pile.)
-        assertEquals(listOf("waste", "tableau_0_0", "tableau_1_0"), staged)
+        // instantly between the flown hops rather than flying a fourth.
+        assertEquals(
+            listOf(Card(Suit.HEARTS, Rank.KING), Card(Suit.DIAMONDS, Rank.KING), Card(Suit.CLUBS, Rank.KING)),
+            flown,
+        )
         val k = vm.uiState.value.klondike!!
         assertTrue(k.isWon, "state=$k")
         assertTrue(k.foundations.all { it.size == 13 })
@@ -113,7 +117,8 @@ class SolitaireAutoCompleteTest {
         assertTrue(vm.autoCompleteRunning.value)
         assertFalse(vm.requestAutoMove("waste", Offset.Zero))
         assertFalse(vm.autoCompleteRunning.value)
-        assertNull(vm.flightInfo.value)
+        // The hop already in the air is left to land; its move is applied.
+        assertEquals(1, vm.flights.value.size)
         assertTrue(vm.uiState.value.klondike!!.isWon)
     }
 
@@ -147,7 +152,7 @@ class SolitaireAutoCompleteTest {
         assertTrue(vm.autoCompleteRunning.value)
         vm.klondikeAutoComplete()
         assertFalse(vm.autoCompleteRunning.value)
-        assertNull(vm.flightInfo.value)
+        assertEquals(1, vm.flights.value.size)
         assertTrue(vm.uiState.value.klondike!!.isWon)
     }
 
@@ -179,7 +184,7 @@ class SolitaireAutoCompleteTest {
         )
         vm.klondikeAutoComplete()
         assertFalse(vm.autoCompleteRunning.value)
-        assertNull(vm.flightInfo.value)
+        assertTrue(vm.flights.value.isEmpty())
         assertTrue(vm.uiState.value.history.isEmpty())
     }
 }

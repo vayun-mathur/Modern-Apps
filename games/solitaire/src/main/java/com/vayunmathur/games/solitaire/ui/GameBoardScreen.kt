@@ -92,6 +92,8 @@ fun GameBoardScreen(state: SolitaireUiState, mode: GameMode, actions: SolitaireA
                 }
             }
             }
+            // Cards in motion draw above the board and outside its scrolling column.
+            CardMotionLayer(actions)
             if (isWon) { WinOverlay(elapsedSeconds = elapsed, moveCount = moveCount, onNewGame = { actions.restart() }, onBack = onExit) }
             if (confirmGiveUp) {
                 ConfirmDialog(

@@ -14,11 +14,11 @@ import kotlinx.coroutines.flow.StateFlow
 class RecordingActions : SolitaireActions {
     override val dragInfo: StateFlow<DragInfo?> = MutableStateFlow(null)
     val dragFlow = dragInfo as MutableStateFlow<DragInfo?>
-    override val flightInfo: StateFlow<CardFlight?> = MutableStateFlow(null)
-    val flightFlow = flightInfo as MutableStateFlow<CardFlight?>
+    override val flights: StateFlow<List<CardFlight>> = MutableStateFlow(emptyList())
+    val flightsFlow = flights as MutableStateFlow<List<CardFlight>>
     override val dropTargets: MutableMap<String, Rect> = mutableMapOf()
     val cardPositions: MutableMap<Card, Offset> = mutableMapOf()
-    override fun registerCardPosition(card: Card, position: Offset) { cardPositions[card] = position }
+    override fun registerCardPosition(card: Card, position: Offset, size: IntSize) { cardPositions[card] = position }
     val calls = mutableListOf<String>()
 
     override fun startDrag(sourceId: String, startPos: Offset, cardSize: IntSize): Boolean {
@@ -35,12 +35,11 @@ class RecordingActions : SolitaireActions {
     override fun pyramidTapCard(id: String) { calls += "pyramidTapCard:$id" }
     override fun pyramidDealStock() { calls += "pyramidDealStock" }
     override fun autoMove(sourceId: String) { calls += "autoMove:$sourceId" }
-    override fun requestAutoMove(sourceId: String, startPos: Offset): Boolean {
+    override fun requestAutoMove(sourceId: String, startPos: Offset, cardSize: IntSize): Boolean {
         calls += "autoMove:$sourceId"
         return true
     }
-    override fun commitFlight() { calls += "commitFlight" }
-    override fun cancelFlight() { calls += "cancelFlight" }
+    override fun landFlight(id: Long) { calls += "landFlight:$id" }
     override fun undo() { calls += "undo" }
     override fun restart() { calls += "restart" }
     override fun giveUp() { calls += "giveUp" }

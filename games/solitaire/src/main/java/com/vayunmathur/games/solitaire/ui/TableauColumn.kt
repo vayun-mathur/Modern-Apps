@@ -6,13 +6,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import com.vayunmathur.games.solitaire.data.Card
 import com.vayunmathur.games.solitaire.data.TableauPile
 import com.vayunmathur.games.solitaire.platform.SolitaireActions
-
-private val FACE_DOWN_OVERLAP = 8.dp
-private val FACE_UP_OVERLAP = 22.dp
 
 @Composable
 fun TableauColumn(
@@ -26,30 +21,32 @@ fun TableauColumn(
     val totalHeight = if (pile.faceDown.isEmpty() && pile.faceUp.isEmpty()) {
         cardHeight
     } else {
-        FACE_DOWN_OVERLAP * pile.faceDown.size +
-        FACE_UP_OVERLAP * maxOf(0, pile.faceUp.size - 1) +
-        cardHeight
+        tableauCardOffset(pile.faceDown.size, maxOf(0, pile.faceUp.size - 1)) + cardHeight
     }
+    val pileId = "tableau_$columnIndex"
 
-    DropTarget("tableau_$columnIndex", actions, modifier) {
+    DropTarget(pileId, actions, modifier) {
         Box(modifier = Modifier.heightIn(min = totalHeight)) {
-            if (pile.faceDown.isEmpty() && pile.faceUp.isEmpty()) {
+            // Drawn under the cards too, so a column whose every card is being carried
+            // or is in the air reads as the empty column it is about to be.
+            if (pile.faceDown.isEmpty()) {
                 EmptySlot(cardWidth = cardWidth, cardHeight = cardHeight)
             }
             pile.faceDown.indices.forEach { i ->
                 CardBack(
-                    modifier = Modifier.offset(y = FACE_DOWN_OVERLAP * i),
+                    modifier = Modifier.offset(y = tableauCardOffset(i, 0)),
                     cardWidth = cardWidth,
                     cardHeight = cardHeight
                 )
             }
-            val faceDownOffset = FACE_DOWN_OVERLAP * pile.faceDown.size
             pile.faceUp.forEachIndexed { index, card ->
                 DraggableCard(
                     card = card,
-                    sourceId = "tableau_${columnIndex}_$index",
+                    sourceId = "${pileId}_$index",
+                    pileId = pileId,
+                    index = index,
                     actions = actions,
-                    modifier = Modifier.offset(y = faceDownOffset + FACE_UP_OVERLAP * index),
+                    modifier = Modifier.offset(y = tableauCardOffset(pile.faceDown.size, index)),
                 ) {
                     CardFace(
                         card = card,
@@ -61,42 +58,3 @@ fun TableauColumn(
         }
     }
 }
-
-@Composable
-fun FreeCellTableauColumn(
-    pile: List<Card>,
-    columnIndex: Int,
-    actions: SolitaireActions,
-    modifier: Modifier = Modifier,
-    cardWidth: Dp = CARD_WIDTH,
-    cardHeight: Dp = CARD_HEIGHT
-) {
-    val totalHeight = if (pile.isEmpty()) {
-        cardHeight
-    } else {
-        FACE_UP_OVERLAP * maxOf(0, pile.size - 1) + cardHeight
-    }
-
-    DropTarget("tableau_$columnIndex", actions, modifier) {
-        Box(modifier = Modifier.heightIn(min = totalHeight)) {
-            if (pile.isEmpty()) {
-                EmptySlot(cardWidth = cardWidth, cardHeight = cardHeight)
-            }
-            pile.forEachIndexed { index, card ->
-                DraggableCard(
-                    card = card,
-                    sourceId = "tableau_${columnIndex}_$index",
-                    actions = actions,
-                    modifier = Modifier.offset(y = FACE_UP_OVERLAP * index),
-                ) {
-                    CardFace(
-                        card = card,
-                        cardWidth = cardWidth,
-                        cardHeight = cardHeight
-                    )
-                }
-            }
-        }
-    }
-}
-

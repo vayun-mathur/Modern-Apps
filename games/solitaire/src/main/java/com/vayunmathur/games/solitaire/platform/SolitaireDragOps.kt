@@ -110,15 +110,14 @@ internal fun SolitaireViewModel.autoMoveImpl(sourceId: String) {
  * Returns false (and starts nothing) when that source holds no card.
  */
 internal fun SolitaireViewModel.startDragImpl(sourceId: String, startPos: Offset, cardSize: IntSize): Boolean {
-    // No drag may start under a travelling flight: the cards live in game
-    // state until the flight lands, so a mid-flight drag would corrupt both.
-    if (flightInfoInternal.value != null) return false
-    val cards = draggedCards(sourceId)
-    if (cards.isEmpty()) {
+    val range = sourceRange(sourceId)
+    // Cards still in the air cannot be picked up: the hand would grab cards the
+    // player cannot see where they are drawn. Other flights keep flying.
+    if (range == null || isAirborne(range)) {
         dragInfoInternal.value = null
         return false
     }
-    dragInfoInternal.value = DragInfo(cards, sourceId, startPos, startPos, cardSize)
+    dragInfoInternal.value = DragInfo(range.cards, sourceId, startPos, startPos, cardSize)
     return true
 }
 

@@ -67,12 +67,19 @@ fun KlondikeBoard(state: KlondikeState, actions: SolitaireActions, modifier: Mod
                     val visibleCards = state.waste.takeLast(visibleCount)
                     val fanOffset = cardWidth * 0.3f
                     Box(modifier = Modifier.width(cardWidth + fanOffset * (visibleCount - 1))) {
+                        // Draw-one shows only the top, so the card beneath is drawn under it:
+                        // the top is hidden while it is carried or flies away.
+                        if (visibleCount == 1 && state.waste.size > 1) {
+                            CardFace(state.waste[state.waste.size - 2], cardWidth = cardWidth, cardHeight = cardHeight)
+                        }
                         visibleCards.forEachIndexed { index, card ->
                             val isTop = index == visibleCards.lastIndex
                             if (isTop) {
                                 DraggableCard(
                                     card = card,
                                     sourceId = "waste",
+                                    pileId = "waste",
+                                    index = state.waste.lastIndex,
                                     actions = actions,
                                     modifier = Modifier.offset(x = fanOffset * index),
                                 ) {
@@ -120,7 +127,6 @@ fun KlondikeBoard(state: KlondikeState, actions: SolitaireActions, modifier: Mod
         }
 
         DragOverlay(actions, cardWidth, cardHeight)
-        CardFlightOverlay(actions, cardWidth, cardHeight)
         }
     }
 }
