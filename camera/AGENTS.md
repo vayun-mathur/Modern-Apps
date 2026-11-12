@@ -32,6 +32,7 @@ _Install: ./install camera (dev by default)._
 ### domain/ — pure lens-selection logic
 - com/vayunmathur/camera/domain/LensModel.kt
 - com/vayunmathur/camera/domain/LensSelectionLogic.kt
+- com/vayunmathur/camera/domain/ArgbToI420Converter.kt — bulk ARGB→YUV 4:2:0 for the Motion Photo clip
 ### platform/ — capability queries
 - com/vayunmathur/camera/platform/CameraCapabilities.kt
 - com/vayunmathur/camera/platform/LensSelector.kt

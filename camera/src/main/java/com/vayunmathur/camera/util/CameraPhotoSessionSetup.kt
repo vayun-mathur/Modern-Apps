@@ -228,7 +228,7 @@ internal fun CameraViewModel.buildPhotoCapture(maxRes: Boolean, ultraHdr: Boolea
  * resolution: PhotoAnalyzer samples average luminance, runs a ZXing decode
  * over the whole Y plane, and copies each frame via toBitmap() for the
  * Motion-Photo ring buffer, whose frames MotionPhotoEncoder then converts to
- * I420 in a per-pixel loop. All of that is paid per frame and scales with
+ * YUV 4:2:0 for the clip. All of that is paid per frame and scales with
  * area, so an uncapped stream made QR scanning and motion capture far more
  * expensive on high-end sensors for no quality gain. Night mode is unaffected:
  * captureNightBurst() shoots full-resolution frames through ImageCapture.
