@@ -59,6 +59,8 @@ data class KlondikeState(
     val difficulty: KlondikeDifficulty = KlondikeDifficulty.REGULAR,
     val redealsRemaining: Int = 2,
     val variant: String = "",
+    /** Deal seed (see domain/SolitaireDeals): re-dealing it reproduces this board. */
+    val seed: Long = 0L,
     val moveCount: Int = 0,
     val elapsedSeconds: Int = 0,
     val usedUndo: Boolean = false,
@@ -74,6 +76,8 @@ data class SpiderState(
     val suitCount: Int = 4,
     val variant: String = "",
     val completedSuits: Int = 0,
+    /** Deal seed (see domain/SolitaireDeals): re-dealing it reproduces this board. */
+    val seed: Long = 0L,
     val moveCount: Int = 0,
     val elapsedSeconds: Int = 0,
     val usedUndo: Boolean = false,
@@ -88,6 +92,8 @@ data class FreeCellState(
     val freeCells: List<Card?> = List(size = FREECELL_COUNT) { null },
     val foundations: List<List<Card>> = List(size = FOUNDATION_COUNT) { emptyList() },
     val variant: String = "",
+    /** Deal seed (see domain/SolitaireDeals): re-dealing it reproduces this board. */
+    val seed: Long = 0L,
     val moveCount: Int = 0,
     val elapsedSeconds: Int = 0,
     val usedUndo: Boolean = false,
@@ -114,6 +120,8 @@ data class PyramidState(
     val relaxed: Boolean = false,
     val variant: String = "",
     val selectedId: String? = null,
+    /** Deal seed (see domain/SolitaireDeals): re-dealing it reproduces this board. */
+    val seed: Long = 0L,
     val moveCount: Int = 0,
     val elapsedSeconds: Int = 0,
     val usedUndo: Boolean = false,
