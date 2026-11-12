@@ -52,7 +52,13 @@ import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.havershine
+import com.vayunmathur.findfamily.domain.MotionTransition
+import com.vayunmathur.findfamily.domain.MovementDetector
+import com.vayunmathur.findfamily.platform.CurrentLocationSource
 import com.vayunmathur.findfamily.platform.FinalLocationReporter
+import com.vayunmathur.findfamily.platform.onLocationFix
+import com.vayunmathur.findfamily.platform.keepAliveTick
+import com.vayunmathur.findfamily.platform.stopLowPowerUpdates
 import com.vayunmathur.findfamily.uwb.UwbEnvelope
 import com.vayunmathur.findfamily.uwb.UwbEnvelopeKind
 import com.vayunmathur.findfamily.uwb.UwbInbox
@@ -91,23 +97,17 @@ import kotlin.time.Duration.Companion.seconds
 
 class LocationTrackingService : Service(), SensorEventListener {
     internal val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private lateinit var locationManager: LocationManager
+    internal lateinit var locationManager: LocationManager
     private lateinit var sensorManager: SensorManager
-    private lateinit var powerManager: PowerManager
+    internal lateinit var powerManager: PowerManager
     private var accelerometer: Sensor? = null
     private var significantMotionSensor: Sensor? = null
 
+    // One extra wake-up source, no longer the only one (#895): fixes from the always-on
+    // low-power request and the periodic forced fix can also flip the phone to moving.
     private val triggerEventListener = object : TriggerEventListener() {
         override fun onTrigger(event: TriggerEvent?) {
-            isMoving = true
-            lastMovementTime = System.currentTimeMillis()
-            serviceScope.launch(Dispatchers.Main) {
-                setupLocationUpdates()
-            }
-            // Start monitoring for stillness
-            accelerometer?.let {
-                sensorManager.registerListener(this@LocationTrackingService, it, SensorManager.SENSOR_DELAY_NORMAL)
-            }
+            serviceScope.launch(Dispatchers.Main) { startMovingNow() }
         }
     }
 
@@ -120,9 +120,37 @@ class LocationTrackingService : Service(), SensorEventListener {
     internal lateinit var bm: BatteryManager
     
     private var isGpsRunning = false
-    internal var isMoving = false
-    internal var lastMovementTime = 0L
+    private var accelerometerRegistered = false
     internal var lastKnownLocation: Location? = null
+
+    /**
+     * Moving/still state machine (#895): acceleration, fix speed and fix displacement all
+     * count, so a car or tram at steady speed stays "moving". See [MovementDetector].
+     */
+    internal val motion = MovementDetector()
+
+    /** True while active (10 s network / GPS) updates run; owned by [motion]. */
+    internal val isMoving: Boolean get() = motion.isMoving
+
+    // Sender keep-alive (#895). The logic lives in platform/LocationKeepAlive.kt; the state
+    // lives here because it is per-service-instance.
+
+    /** Always-on coarse NETWORK request; catches departures while "still". */
+    internal val lowPowerListener = LocationListener { onLocationFix(it) }
+
+    /** PASSIVE request: free fixes other apps (e.g. navigation) already paid for. */
+    internal val passiveListener = LocationListener { onLocationFix(it) }
+
+    /** Interval of the current low-power request, or 0 when none is registered. */
+    internal var lowPowerIntervalMs = 0L
+    internal var passiveRequested = false
+
+    /** elapsedRealtime of the last forced-fix attempt, or null before the first one. */
+    internal var lastForcedFixAttemptMs: Long? = null
+    internal var forcedFixJob: Job? = null
+
+    /** Test seam: replaces LocationManager.getCurrentLocation for the forced fix. */
+    internal var currentLocationSourceOverride: CurrentLocationSource? = null
 
     /**
      * Monotonic timestamp (elapsedRealtime) of the last fix delivered by
@@ -186,7 +214,7 @@ class LocationTrackingService : Service(), SensorEventListener {
 
     private val networkListener = LocationListener { location ->
         lastNetworkFixElapsedMs = SystemClock.elapsedRealtime()
-        recordFix(location)
+        onLocationFix(location)
         if (!location.hasAccuracy() || location.accuracy > MAX_FIX_ACCURACY_METERS) {
             if (!isGpsRunning && isMoving) startGps()
         } else {
@@ -194,7 +222,7 @@ class LocationTrackingService : Service(), SensorEventListener {
         }
     }
     private val gpsListener = LocationListener { location ->
-        recordFix(location)
+        onLocationFix(location)
     }
 
     // The heartbeat and fix selection live in LocationTrackingHeartbeat.kt.
@@ -209,23 +237,51 @@ class LocationTrackingService : Service(), SensorEventListener {
             val y = event.values[1]
             val z = event.values[2]
             val accel = sqrt(x*x + y*y + z*z)
-            if (accel > MOVEMENT_ACCELERATION_THRESHOLD) {
-                lastMovementTime = System.currentTimeMillis()
-                if (!isMoving) {
-                    isMoving = true
-                    setupLocationUpdates()
-                }
-            } else {
-                if (isMoving && (System.currentTimeMillis() - lastMovementTime > STILLNESS_TIMEOUT_MS)) {
-                    isMoving = false
-                    stopTrackingUpdates()
-                    if (significantMotionSensor != null) {
-                        sensorManager.unregisterListener(this, accelerometer)
-                        requestSignificantMotion()
-                    }
+            // Low acceleration alone no longer means "still": the detector also
+            // needs the recent fixes to show no speed or displacement (#895).
+            applyMotionTransition(motion.onAcceleration(accel, SystemClock.elapsedRealtime()))
+        }
+    }
+
+    /** Something outside the fix stream says "moving" (significant motion, no fix yet). */
+    internal fun startMovingNow() {
+        motion.markMoving(SystemClock.elapsedRealtime())
+        setupLocationUpdates()
+        registerAccelerometer()
+    }
+
+    /** Switches the radios for a [MovementDetector] verdict. Main thread. */
+    internal fun applyMotionTransition(transition: MotionTransition) {
+        when (transition) {
+            MotionTransition.BECAME_MOVING -> {
+                Log.status(TAG_MOTION, "moving: starting active location updates")
+                setupLocationUpdates()
+                // Watch for stillness again (it was unregistered when the phone went still).
+                registerAccelerometer()
+            }
+            MotionTransition.BECAME_STILL -> {
+                Log.status(TAG_MOTION, "still: active updates off, low-power request stays on")
+                stopTrackingUpdates()
+                if (significantMotionSensor != null) {
+                    unregisterAccelerometer()
+                    requestSignificantMotion()
                 }
             }
+            MotionTransition.NONE -> Unit
         }
+    }
+
+    private fun registerAccelerometer() {
+        if (accelerometerRegistered || !::sensorManager.isInitialized) return
+        val sensor = accelerometer ?: return
+        accelerometerRegistered =
+            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
+    private fun unregisterAccelerometer() {
+        if (!accelerometerRegistered) return
+        sensorManager.unregisterListener(this, accelerometer)
+        accelerometerRegistered = false
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -332,14 +388,10 @@ class LocationTrackingService : Service(), SensorEventListener {
                 withContext(Dispatchers.Main) {
                     registerSensors()
                     // If we don't have any recent location (e.g. fresh start or recovery
-                    // from a crash), force isMoving = true so setupLocationUpdates()
+                    // from a crash), start moving so setupLocationUpdates()
                     // immediately starts requesting GPS instead of waiting for the
                     // significant-motion sensor to trigger.
-                    if (lastKnownLocation == null) {
-                        isMoving = true
-                        lastMovementTime = System.currentTimeMillis()
-                    }
-                    setupLocationUpdates()
+                    if (lastKnownLocation == null) startMovingNow() else setupLocationUpdates()
                 }
                 trackingInitialized = true
             }
@@ -356,6 +408,9 @@ class LocationTrackingService : Service(), SensorEventListener {
                         withContext(Dispatchers.Main) { stopSelf() }
                         break
                     }
+                    // Stillness re-check, low-power request upkeep and the periodic
+                    // forced fix (#895). Main thread: it owns the motion state.
+                    withContext(Dispatchers.Main) { keepAliveTick() }
                     syncHeartbeat()
                     try {
                         seedDirectBootMirror()
@@ -403,8 +458,12 @@ class LocationTrackingService : Service(), SensorEventListener {
         if (significantMotionSensor != null) {
             requestSignificantMotion()
         } else {
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+            registerAccelerometer()
         }
+        // Never fully dark while "still" (#895): a coarse network request with a
+        // displacement filter plus a passive request, both kept for the service's life.
+        // Updated (power-save interval) on every keepAliveTick().
+        keepAliveTick()
     }
 
     private fun requestSignificantMotion() {
@@ -530,6 +589,7 @@ class LocationTrackingService : Service(), SensorEventListener {
         internal const val TAG_DIRECT_BOOT = "FF-DirectBoot"
         internal const val TAG_POWERED_OFF = "FF-PoweredOff"
         internal const val TAG_NETWORK_ASSIST = "FF-NetworkAssist"
+        internal const val TAG_MOTION = "FF-Motion"
 
         /**
          * How long NETWORK_PROVIDER may go without delivering any fix before GPS
@@ -540,12 +600,6 @@ class LocationTrackingService : Service(), SensorEventListener {
          * device (no network provider at all) never arms this path.
          */
         internal const val NETWORK_NO_LOCK_TIMEOUT_MS = 60_000L
-
-        /** Acceleration magnitude that counts as movement on the linear-acceleration sensor. */
-        internal const val MOVEMENT_ACCELERATION_THRESHOLD = 0.5f
-
-        /** How long low acceleration must persist before the device counts as still. */
-        internal const val STILLNESS_TIMEOUT_MS = 60_000L
 
         /** How often to drain powered-off sightings. See [LocationTrackingService.pollPoweredOffSightings]. */
         internal const val POWERED_OFF_POLL_INTERVAL_MS = 5 * 60 * 1000L
@@ -604,6 +658,7 @@ class LocationTrackingService : Service(), SensorEventListener {
         }
         if (::locationManager.isInitialized) {
             stopTrackingUpdates()
+            stopLowPowerUpdates()
         }
         stopForeground(STOP_FOREGROUND_REMOVE)
     }

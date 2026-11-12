@@ -43,9 +43,11 @@ WebSocket relay host: `wss://api.maproj.org/api/ws` (Cloudflare FIRST_PARTY pins
 - com/vayunmathur/findfamily/data/Coord.kt
 - com/vayunmathur/findfamily/data/LocationValue.kt
 - com/vayunmathur/findfamily/data/DirectBootStore.kt
-### domain/ — pairing auth + no-show policy (pure logic)
+### domain/ — pairing auth, no-show policy, sender movement policy (pure logic)
 - com/vayunmathur/findfamily/domain/PairAuth.kt
 - com/vayunmathur/findfamily/domain/NoShowPolicy.kt
+- com/vayunmathur/findfamily/domain/MovementDetector.kt — sender moving/still state machine (acceleration + fix speed + displacement, #895)
+- com/vayunmathur/findfamily/domain/ForcedFixPolicy.kt — when a "still" sender forces a one-off fix (#895)
 ### intents/ — assistant IPC
 - com/vayunmathur/findfamily/intents/GetIntent.kt
 - com/vayunmathur/findfamily/intents/CreateLinkIntent.kt
@@ -56,6 +58,7 @@ WebSocket relay host: `wss://api.maproj.org/api/ws` (Cloudflare FIRST_PARTY pins
 - com/vayunmathur/findfamily/platform/FinalLocationReporter.kt
 - com/vayunmathur/findfamily/platform/NoShowCheckScheduler.kt
 - com/vayunmathur/findfamily/platform/PoweredOffBeacon.kt
+- com/vayunmathur/findfamily/platform/LocationKeepAlive.kt — sender keep-alive: single fix intake, low-power/passive requests, forced fix (#895)
 ### service/ — Quick Settings tile
 - com/vayunmathur/findfamily/service/SharingTileService.kt
 ### tracker/ — BLE tracker protocol + powered-off finding

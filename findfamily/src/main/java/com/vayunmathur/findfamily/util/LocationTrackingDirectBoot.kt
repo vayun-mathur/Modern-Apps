@@ -12,6 +12,7 @@ import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.DirectBootStore
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.platform.keepAliveTick
 import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +40,10 @@ internal fun LocationTrackingService.startDirectBootTracking() {
         // Expected on the first boot after this ships, and after a factory reset: there is
         // nothing to publish with yet. Seeding happens below once the user unlocks.
         if (!DirectBootStore.isSeeded(ctx)) {
-            Log.status(LocationTrackingService.TAG_DIRECT_BOOT, "no device-protected mirror yet; idle until first unlock")
+            Log.status(
+                LocationTrackingService.TAG_DIRECT_BOOT,
+                "no device-protected mirror yet; idle until first unlock"
+            )
             return@launch
         }
         if (!DirectBootStore.isTrackingEnabled(ctx)) {
@@ -53,9 +57,7 @@ internal fun LocationTrackingService.startDirectBootTracking() {
 
         withContext(Dispatchers.Main) {
             registerSensors()
-            isMoving = true
-            lastMovementTime = System.currentTimeMillis()
-            setupLocationUpdates()
+            startMovingNow()
         }
         // Inbound delivery needs Room to persist anything, so the pre-unlock socket is
         // publish-only. Peers' locations are picked up on reconnect after unlock.
@@ -64,8 +66,13 @@ internal fun LocationTrackingService.startDirectBootTracking() {
         val sharing = DirectBootStore.isGlobalSharingEnabled(ctx)
         val targets = if (sharing) DirectBootStore.roster(ctx) else emptyList()
         publishRoster = targets
-        Log.status(LocationTrackingService.TAG_DIRECT_BOOT, "running pre-unlock, sharing=$sharing targets=${targets.size}")
+        Log.status(
+            LocationTrackingService.TAG_DIRECT_BOOT,
+            "running pre-unlock, sharing=$sharing targets=${targets.size}"
+        )
         while (isActive) {
+            // Same sender keep-alive as the unlocked heartbeat (#895).
+            withContext(Dispatchers.Main) { keepAliveTick() }
             publishDirectBoot(targets)
             delay(30.seconds)
         }
