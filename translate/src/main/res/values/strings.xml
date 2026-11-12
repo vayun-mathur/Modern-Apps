@@ -38,6 +38,8 @@
     <string name="could_not_read_image">Couldn’t read that image</string>
     <!-- Image translate: retry action after a failed image load. -->
     <string name="pick_another_image">Pick another image</string>
+    <!-- Image translate: an image shared to / opened with the app exceeds the size limit. -->
+    <string name="shared_image_too_large">That image is too large to translate</string>
     <!-- Placeholder in the translation output card before any input is typed. -->
     <string name="translation_placeholder">Translation will appear here</string>
     <!-- Mic status under the source field while audio is being captured. -->

@@ -13,10 +13,12 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.translate.Navigation
 import com.vayunmathur.translate.data.PlainSqlCipherDriverShadow
+import com.vayunmathur.translate.data.SharedImageCache
 import com.vayunmathur.translate.data.TranslateRepository
 import com.vayunmathur.translate.data.TranslationRecord
 import com.vayunmathur.translate.domain.Languages
 import com.vayunmathur.translate.platform.FakeAndroidKeyStoreProvider
+import com.vayunmathur.translate.platform.SharedImageArrival
 import com.vayunmathur.translate.platform.TranslateViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -279,6 +281,44 @@ class DbBackedPagesTest {
                 rule.onAllNodesWithContentDescription("History").fetchSemanticsNodes().isNotEmpty()
         }
         assertEquals("en", viewModel.sourceLang.value)
+    }
+
+    @Test
+    fun `navigation opens a shared image on top of text`() {
+        val viewModel = vm()
+        idle()
+        var consumed = false
+        // A file uri that does not exist: the image route opens and shows its failure state.
+        val missing = android.net.Uri.fromFile(java.io.File("/nonexistent/shared-1.png")).toString()
+        rule.setContent {
+            Navigation(
+                viewModel = viewModel,
+                initialText = "",
+                sharedImage = SharedImageArrival.Ready(missing),
+                onSharedImageConsumed = { consumed = true },
+            )
+        }
+        rule.waitUntil(8_000) {
+            rule.onAllNodesWithText("Pick another image").fetchSemanticsNodes().isNotEmpty()
+        }
+        assertTrue(consumed)
+    }
+
+    @Test
+    fun `navigation stays on text for a rejected shared image`() {
+        val viewModel = vm()
+        idle()
+        var consumed = false
+        rule.setContent {
+            Navigation(
+                viewModel = viewModel,
+                initialText = "",
+                sharedImage = SharedImageArrival.Rejected(SharedImageCache.Result.TooLarge),
+                onSharedImageConsumed = { consumed = true },
+            )
+        }
+        rule.waitUntil(8_000) { consumed }
+        rule.onNodeWithContentDescription("History").assertIsDisplayed()
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.vayunmathur.translate.platform
 
+import com.vayunmathur.translate.data.SharedImageCache
 import com.vayunmathur.translate.data.TranslateRepository
 import com.vayunmathur.translate.data.TranslateSettings
 import com.vayunmathur.translate.data.TranslationRecord
@@ -7,15 +8,29 @@ import com.vayunmathur.translate.domain.Languages
 import com.vayunmathur.translate.domain.TranslationEngine
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ocr.OcrEngine
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/** An image handed over by Share / Open with, waiting for the navigation to open it. */
+sealed interface SharedImageArrival {
+    /** Copied into the app cache; [imageUri] is the copy's file uri. */
+    data class Ready(val imageUri: String) : SharedImageArrival
+
+    /** Not opened; [reason] says why, for the message shown instead. */
+    data class Rejected(val reason: SharedImageCache.Result) : SharedImageArrival
+}
 
 /**
  * Holds the shared engines (translation, OCR, TTS) and the persisted language
@@ -59,6 +74,22 @@ class TranslateViewModel(app: Application) : AndroidViewModel(app) {
     val favorites: StateFlow<List<TranslationRecord>> = historyRepo.favorites.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList(),
     )
+
+    /**
+     * The latest shared/opened image, held until [consumeSharedImage]. It lives here,
+     * not in the activity, so it waits out the model-download gate and survives the
+     * activity being recreated before the navigation has opened it.
+     */
+    private val _sharedImage = MutableStateFlow<SharedImageArrival?>(null)
+    val sharedImage: StateFlow<SharedImageArrival?> = _sharedImage.asStateFlow()
+
+    /**
+     * Set once the activity has looked at its launch intent, so a recreated activity
+     * (same intent, same ViewModel) does not open the image a second time.
+     */
+    var launchIntentHandled: Boolean = false
+
+    private val sharedImageCache = SharedImageCache.inCacheDir(app.cacheDir)
 
     init {
         viewModelScope.launch {
@@ -141,9 +172,47 @@ class TranslateViewModel(app: Application) : AndroidViewModel(app) {
 
     fun stopSpeaking() = tts.stop()
 
+    /**
+     * Copies the image at [uri] (a sender's content uri, readable only for now) into
+     * the app cache, then publishes it through [sharedImage]. See [SharedImageCache]
+     * for why the copy is needed.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    fun openSharedImage(uri: Uri) {
+        val resolver = getApplication<Application>().contentResolver
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    resolver.openInputStream(uri)?.use { sharedImageCache.store(it) }
+                        ?: SharedImageCache.Result.Unreadable
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Another app's provider is on the other end: besides IOException
+                    // and SecurityException (no or expired grant) it can throw any
+                    // RuntimeException, all of which mean "couldn't read that image".
+                    Log.status(TAG, "shared image unreadable", e)
+                    SharedImageCache.Result.Unreadable
+                }
+            }
+            _sharedImage.value = when (result) {
+                is SharedImageCache.Result.Cached ->
+                    SharedImageArrival.Ready(Uri.fromFile(result.file).toString())
+                else -> SharedImageArrival.Rejected(result)
+            }
+        }
+    }
+
+    /** The navigation has acted on [sharedImage]; clear it so it is not acted on again. */
+    fun consumeSharedImage() {
+        _sharedImage.value = null
+    }
+
     override fun onCleared() {
         ocr.close()
         (translator as? NllbTranslator)?.close()
         tts.shutdown()
     }
 }
+
+private const val TAG = "TranslateViewModel"
