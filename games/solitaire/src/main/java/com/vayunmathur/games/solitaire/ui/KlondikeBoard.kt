@@ -126,7 +126,6 @@ fun KlondikeBoard(state: KlondikeState, actions: SolitaireActions, modifier: Mod
             }
         }
 
-        DragOverlay(actions, cardWidth, cardHeight)
         }
     }
 }

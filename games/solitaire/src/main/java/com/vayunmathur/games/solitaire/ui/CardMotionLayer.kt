@@ -33,7 +33,8 @@ private const val FAST_FLIGHT_MILLIS = 110
 private const val MOTION_LAYER_Z = 1f
 
 /**
- * Every card in motion, drawn in one layer laid over the whole game screen.
+ * Every card in motion — the stack under the finger and every flight — drawn in one layer laid
+ * over the whole game screen.
  *
  * It lives outside the board's scrolling column rather than inside a pile, so nothing in motion
  * is clipped by a pile's bounds or by the scroll viewport, and it works in root coordinates so a
@@ -47,6 +48,7 @@ private const val MOTION_LAYER_Z = 1f
 @Composable
 fun CardMotionLayer(actions: SolitaireActions, modifier: Modifier = Modifier) {
     val flights by actions.flights.collectAsState()
+    val drag by actions.dragInfo.collectAsState()
     var origin by remember { mutableStateOf(Offset.Zero) }
     Box(
         modifier = modifier
@@ -56,6 +58,14 @@ fun CardMotionLayer(actions: SolitaireActions, modifier: Modifier = Modifier) {
     ) {
         flights.forEach { flight ->
             key(flight.id) { FlyingCards(flight, actions) { origin } }
+        }
+        // The stack under the finger, drawn last so it passes over everything else.
+        drag?.let { carried ->
+            CarriedCards(
+                cards = carried.cards,
+                cardSize = carried.cardSize,
+                modifier = Modifier.offset { (carried.offset - origin).round() },
+            )
         }
     }
 }

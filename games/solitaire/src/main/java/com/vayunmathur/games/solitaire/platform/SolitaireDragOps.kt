@@ -49,22 +49,23 @@ private fun tableauFaceUp(state: SolitaireUiState, col: Int): List<Card>? = when
 /** A foundation only ever accepts a drag that carries the single top card. */
 internal fun SolitaireViewModel.isSingleCardDrag(sourceId: String): Boolean = draggedCards(sourceId).size == 1
 
+/**
+ * Drops the stack from [sourceId] on the first candidate target that accepts it. Returns the
+ * accepting target's id, or null when no target took the move (nothing changed).
+ */
 internal fun SolitaireViewModel.tryMoveByDragImpl(
     sourceId: String,
     dropOffset: Offset,
     cardSize: IntSize = IntSize.Zero,
-) {
-    val mode = uiStateInternal.value.gameMode ?: return
+): String? {
+    val mode = uiStateInternal.value.gameMode ?: return null
+    if (mode == GameMode.PYRAMID) return null // Pyramid is tap-based, not drag-based.
     for (targetId in candidateDropTargets(dropOffset, cardSize)) {
         val before = uiStateInternal.value
-        when (mode) {
-            GameMode.KLONDIKE -> handleKlondikeDropImpl(sourceId, targetId)
-            GameMode.SPIDER -> handleSpiderDropImpl(sourceId, targetId)
-            GameMode.FREECELL -> handleFreeCellDropImpl(sourceId, targetId)
-            GameMode.PYRAMID -> return // Pyramid is tap-based, not drag-based.
-        }
-        if (uiStateInternal.value !== before) return
+        applyDrop(sourceId, targetId)
+        if (uiStateInternal.value !== before) return targetId
     }
+    return null
 }
 
 /**
@@ -117,7 +118,15 @@ internal fun SolitaireViewModel.startDragImpl(sourceId: String, startPos: Offset
         dragInfoInternal.value = null
         return false
     }
-    dragInfoInternal.value = DragInfo(range.cards, sourceId, startPos, startPos, cardSize)
+    dragInfoInternal.value = DragInfo(
+        cards = range.cards,
+        sourceId = sourceId,
+        offset = startPos,
+        startPos = startPos,
+        cardSize = cardSize,
+        pileId = range.pileId,
+        startIndex = range.start,
+    )
     return true
 }
 
@@ -125,15 +134,34 @@ internal fun SolitaireViewModel.updateDragImpl(offset: Offset) {
     dragInfoInternal.update { it?.copy(offset = offset) }
 }
 
+/**
+ * Drops the carried stack. An accepted drop is applied at once and the stack flies from under
+ * the finger to the slot it now occupies; a rejected one flies back to where it was picked up.
+ * Either way the stack is handed from the drag to a flight in the same update, so the cards
+ * are hidden in their pile until that flight lands and reappear there exactly once.
+ */
 internal fun SolitaireViewModel.endDragImpl(dropOffset: Offset, cardSize: IntSize) {
     val info = dragInfoInternal.value ?: return
     // Use the cardSize recorded at drag start (finger owns that card), with the
     // current drop size as fallback so call sites lacking a size still resolve.
     val effectiveSize = if (cardSize.width > 0 && cardSize.height > 0) cardSize else info.cardSize
-    tryMoveByDrag(info.sourceId, dropOffset, effectiveSize)
+    val targetId = tryMoveByDrag(info.sourceId, dropOffset, effectiveSize)
+    if (targetId != null) {
+        launchFlight(info.cards, info.offset, targetId, info.cardSize)
+    } else {
+        returnCarriedCards(info)
+    }
     dragInfoInternal.value = null
 }
 
+/** The gesture was cancelled: the stack goes back where it came from. */
 internal fun SolitaireViewModel.cancelDragImpl() {
+    dragInfoInternal.value?.let { returnCarriedCards(it) }
     dragInfoInternal.value = null
+}
+
+/** Flies an undropped stack home, if it is still where it was picked up. */
+private fun SolitaireViewModel.returnCarriedCards(info: DragInfo) {
+    if (sourceRange(info.sourceId) != info.range) return
+    launchReturnFlight(info.range, info.offset, info.startPos, info.cardSize)
 }

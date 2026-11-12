@@ -36,6 +36,7 @@ _Install: ./install games/solitaire (dev by default)._
 - com/vayunmathur/games/solitaire/platform/SolitaireSpiderOps.kt
 - com/vayunmathur/games/solitaire/platform/SolitairePyramidOps.kt
 - com/vayunmathur/games/solitaire/platform/SolitaireDragOps.kt
+- com/vayunmathur/games/solitaire/platform/SolitaireFlight.kt — in-flight moves (visual only; game state updates first)
 - com/vayunmathur/games/solitaire/platform/SolitaireAchievementsManager.kt
 - com/vayunmathur/games/solitaire/platform/AppBackupAgent.kt
 ### ui/ — boards + shared card/drag components
@@ -47,10 +48,14 @@ _Install: ./install games/solitaire (dev by default)._
 - com/vayunmathur/games/solitaire/ui/SpiderBoard.kt
 - com/vayunmathur/games/solitaire/ui/PyramidBoard.kt
 - com/vayunmathur/games/solitaire/ui/TableauColumn.kt
+- com/vayunmathur/games/solitaire/ui/FreeCellTableauColumn.kt
 - com/vayunmathur/games/solitaire/ui/FoundationSlot.kt
 - com/vayunmathur/games/solitaire/ui/FreeCellSlot.kt
 - com/vayunmathur/games/solitaire/ui/CardView.kt
-- com/vayunmathur/games/solitaire/ui/DragAndDrop.kt
+- com/vayunmathur/games/solitaire/ui/DraggableCard.kt — pick-up/tap source; hidden while it is carried or in flight
+- com/vayunmathur/games/solitaire/ui/DropTarget.kt
+- com/vayunmathur/games/solitaire/ui/CardMotionLayer.kt — top-level layer drawing the drag + every flight (outside the scroll clip)
+- com/vayunmathur/games/solitaire/ui/PileLayout.kt — card slot offsets shared by piles (draw) and flights (land)
 - com/vayunmathur/games/solitaire/ui/GameActionBar.kt
 - com/vayunmathur/games/solitaire/ui/GameModeDisplayName.kt
 - com/vayunmathur/games/solitaire/ui/WinOverlay.kt

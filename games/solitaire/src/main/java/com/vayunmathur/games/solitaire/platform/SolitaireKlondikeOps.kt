@@ -39,7 +39,7 @@ fun SolitaireViewModel.tryMoveByDrag(
     sourceId: String,
     dropOffset: androidx.compose.ui.geometry.Offset,
     cardSize: androidx.compose.ui.unit.IntSize = androidx.compose.ui.unit.IntSize.Zero,
-) = tryMoveByDragImpl(sourceId, dropOffset, cardSize)
+): String? = tryMoveByDragImpl(sourceId, dropOffset, cardSize)
 
 internal fun SolitaireViewModel.newKlondikeGameImpl(config: GameConfig) {
     val deck = createShuffledDeck()

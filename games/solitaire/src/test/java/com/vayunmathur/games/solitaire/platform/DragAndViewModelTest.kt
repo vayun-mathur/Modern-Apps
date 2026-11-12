@@ -63,10 +63,16 @@ class DragAndViewModelTest {
         val k = vm.uiState.value.klondike!!
         assertTrue(k.waste.isEmpty())
         assertEquals(queen, k.tableauPiles[0].faceUp.last())
-        // Cancel clears without moving.
+        // The accepted drop flies the queen from under the finger to her new slot.
+        val landing = vm.flights.value.single()
+        assertEquals(FlightTarget.Slot("tableau_0", 0, 1), landing.target)
+        assertEquals(Offset(50f, 60f), landing.from)
+        vm.landFlight(landing.id)
+        // Cancel clears without moving, flying the card back home.
         assertTrue(vm.startDrag("tableau_0_1", Offset.Zero, IntSize(60, 84)))
         vm.cancelDrag()
         assertNull(vm.dragInfo.value)
+        assertEquals(FlightTarget.Point(Offset.Zero), vm.flights.value.single().target)
         assertEquals(1, vm.uiState.value.klondike!!.moveCount)
         // EndDrag with nothing in flight is a no-op.
         vm.endDrag(Offset.Zero, IntSize.Zero)

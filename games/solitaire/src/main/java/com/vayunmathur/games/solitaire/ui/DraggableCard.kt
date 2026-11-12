@@ -3,8 +3,6 @@ package com.vayunmathur.games.solitaire.ui
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,18 +16,21 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import com.vayunmathur.games.solitaire.data.Card
 import com.vayunmathur.games.solitaire.platform.SolitaireActions
 
 /**
- * A card the player can pick up. [sourceId] identifies the pile position it comes from;
- * the cards the drag actually carries are derived from live game state by the view model,
- * so nothing here can go stale between recompositions.
+ * A card the player can pick up. [sourceId] identifies the pile position it comes from; the
+ * cards a drag or tap actually carries are derived from live game state by the view model, so
+ * nothing here can go stale between recompositions.
+ *
+ * [pileId] and [index] locate the card in its pile. While the card is part of the stack under
+ * the finger, or of a flight still travelling to (or back to) this slot, it is laid out but not
+ * drawn — the motion layer draws it instead — so every card is on screen exactly once. It stays
+ * laid out so the gesture that carries it keeps running and its position stays registered.
  */
 @Composable
 fun DraggableCard(
@@ -41,14 +42,13 @@ fun DraggableCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    var isDragging by remember { mutableStateOf(false) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var startPos by remember { mutableStateOf(Offset.Zero) }
     var cardSize by remember { mutableStateOf(IntSize.Zero) }
-    // Hidden while a flight carries this card into (or back to) this slot, so the
-    // flight — not a copy underneath — is what the player sees travelling.
+    val drag by actions.dragInfo.collectAsState()
     val flights by actions.flights.collectAsState()
-    val isFlying = flights.any { it.hides.covers(pileId, index, card) }
+    val hidden = drag?.range?.covers(pileId, index, card) == true ||
+        flights.any { it.hides.covers(pileId, index, card) }
     // Feeds the animated auto-complete its launch points; unlaid cards (the stock)
     // stay absent and fly instantly instead.
     LaunchedEffect(card, startPos, cardSize) {
@@ -70,7 +70,7 @@ fun DraggableCard(
                 detectDragGestures(
                     onDragStart = {
                         dragOffset = Offset.Zero
-                        isDragging = actions.startDrag(sourceId, startPos, cardSize)
+                        actions.startDrag(sourceId, startPos, cardSize)
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
@@ -80,61 +80,18 @@ fun DraggableCard(
                     onDragEnd = {
                         val center = Offset(cardSize.width / 2f, cardSize.height / 2f)
                         actions.endDrag(startPos + dragOffset + center, cardSize)
-                        isDragging = false
                         dragOffset = Offset.Zero
                     },
                     onDragCancel = {
                         actions.cancelDrag()
-                        isDragging = false
                         dragOffset = Offset.Zero
                     }
                 )
             }
-            .graphicsLayer {
-                if (isDragging || isFlying) alpha = 0f
-            }
+            .graphicsLayer { if (hidden) alpha = 0f }
+            // The copy in motion is the one a screen reader should find, not this one.
+            .then(if (hidden) Modifier.semantics { hideFromAccessibility() } else Modifier)
     ) {
         content()
-    }
-}
-
-@Composable
-fun DragOverlay(
-    actions: SolitaireActions,
-    cardWidth: Dp,
-    cardHeight: Dp,
-    modifier: Modifier = Modifier
-) {
-    val dragInfo by actions.dragInfo.collectAsState()
-    var overlayPos by remember { mutableStateOf(Offset.Zero) }
-
-    val faceUpOverlap = 22.dp
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .zIndex(Float.MAX_VALUE)
-            .onGloballyPositioned { coords ->
-                overlayPos = coords.positionInRoot()
-            }
-    ) {
-        val info = dragInfo ?: return@Box
-        val relX = (info.offset.x - overlayPos.x).toInt()
-        val relY = (info.offset.y - overlayPos.y).toInt()
-
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(relX, relY) }
-                .graphicsLayer { alpha = 0.9f }
-        ) {
-            info.cards.forEachIndexed { index, card ->
-                CardFace(
-                    card = card,
-                    modifier = Modifier.offset(y = faceUpOverlap * index),
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight
-                )
-            }
-        }
     }
 }

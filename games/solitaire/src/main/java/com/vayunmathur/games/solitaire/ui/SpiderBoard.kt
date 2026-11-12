@@ -70,7 +70,6 @@ fun SpiderBoard(state: SpiderState, actions: SolitaireActions, modifier: Modifie
             }
         }
 
-        DragOverlay(actions, cardWidth, cardHeight)
         }
     }
 }

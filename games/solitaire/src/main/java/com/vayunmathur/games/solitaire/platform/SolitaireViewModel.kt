@@ -23,13 +23,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+/**
+ * The stack under the finger. [offset] is the leading card's current top-left and [startPos]
+ * where it was picked up, both in root coordinates. The carried cards stay in game state at
+ * [pileId] from [startIndex] until the drop, and the board hides them there so the only copy
+ * on screen is the one the motion layer draws under the finger.
+ */
 data class DragInfo(
     val cards: List<Card>,
     val sourceId: String,
     val offset: Offset = Offset.Zero,
     val startPos: Offset = Offset.Zero,
-    val cardSize: IntSize = IntSize.Zero
-)
+    val cardSize: IntSize = IntSize.Zero,
+    val pileId: String = "",
+    val startIndex: Int = 0,
+) {
+    /** Where the carried cards live while they are carried. */
+    val range: PileRange get() = PileRange(pileId, startIndex, cards)
+}
 
 class SolitaireViewModel(application: Application) : AndroidViewModel(application), SolitaireActions {
     internal val uiStateInternal = MutableStateFlow(SolitaireUiState())
