@@ -247,7 +247,9 @@ internal fun SolitaireViewModel.runAutoCompleteLoop(start: KlondikeState): Klond
 }
 
 /**
- * Animated auto-complete entry: the button tap (and re-tap) lands here. A tap
+ * Animated auto-complete entry: the button tap (and re-tap) lands here. Merely
+ * offering the button locks nothing; only a started run pauses board input, and
+ * board input then stops the run ([stopAutoComplete]). Re-tapping the button
  * mid-run skips straight to the finished board; otherwise the run applies one
  * step at a time and flies each foundation hop, continuing when that hop lands
  * ([landFlightImpl]). One history entry covers the whole run, so a single undo
@@ -309,6 +311,17 @@ private fun autoCompleteStep(before: KlondikeState, after: KlondikeState): AutoC
     before.foundations.indices.firstOrNull { fi ->
         after.foundations[fi].size == before.foundations[fi].size + 1
     }?.let { fi -> AutoCompleteStep(after.foundations[fi].last(), fi) }
+
+/**
+ * Stops a running auto-complete where it is: every step taken so far stays applied (one
+ * undo still restores the pre-run board), the hop in the air lands, and the board is
+ * playable again with the offer back if it can still finish. A tap, drag or stock tap
+ * on the board mid-run lands here.
+ */
+internal fun SolitaireViewModel.stopAutoComplete() {
+    autoCompleteRunningInternal.value = false
+    autoCompleteFlightId = null
+}
 
 /**
  * Skips the animation: runs the shared loop to the end on the live state. Hops

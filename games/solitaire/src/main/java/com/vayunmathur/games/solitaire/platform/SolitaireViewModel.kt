@@ -156,8 +156,8 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     // Public game operations live as extensions in SolitaireKlondikeOps.kt.
 
     override fun drawFromStock() {
-        // Any tap mid-run skips the animation straight to the finished board.
-        if (autoCompleteRunningInternal.value) { skipAutoCompleteToEnd(); return }
+        // Input mid-run stops the run where it is; the board stays playable.
+        if (autoCompleteRunningInternal.value) { stopAutoComplete(); return }
         drawFromStockImpl()
     }
 
@@ -192,7 +192,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     override fun autoMove(sourceId: String) = autoMoveImpl(sourceId)
 
     override fun requestAutoMove(sourceId: String, startPos: Offset, cardSize: IntSize): Boolean {
-        if (autoCompleteRunningInternal.value) { skipAutoCompleteToEnd(); return false }
+        if (autoCompleteRunningInternal.value) { stopAutoComplete(); return false }
         return requestFlightImpl(sourceId, startPos, cardSize)
     }
 
@@ -207,7 +207,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         startPos: Offset,
         cardSize: IntSize,
     ): Boolean {
-        if (autoCompleteRunningInternal.value) { skipAutoCompleteToEnd(); return false }
+        if (autoCompleteRunningInternal.value) { stopAutoComplete(); return false }
         return startDragImpl(sourceId, startPos, cardSize)
     }
 

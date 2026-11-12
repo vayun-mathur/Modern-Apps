@@ -77,8 +77,10 @@ fun GameBoardScreen(state: SolitaireUiState, mode: GameMode, actions: SolitaireA
                 when (mode) {
                     GameMode.KLONDIKE -> state.klondike?.let {
                         KlondikeBoard(it, actions, Modifier.align(Alignment.CenterHorizontally).widthIn(max = boardMaxWidth).fillMaxWidth())
-                        // The button stays up mid-run as the skip switch: draining
-                        // foundations can otherwise hide it under the player's tap.
+                        // Offering the button locks nothing: the board stays fully
+                        // playable. It stays up mid-run as the skip switch (draining
+                        // foundations can otherwise hide it under the player's tap),
+                        // and any tap on the board mid-run stops the run instead.
                         val autoCompleteRunning by actions.autoCompleteRunning.collectAsState()
                         if (canKlondikeAutoComplete(it) || autoCompleteRunning) {
                             Button(onClick = { actions.klondikeAutoComplete() }, Modifier.align(Alignment.CenterHorizontally)) {

@@ -20,10 +20,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Animated Klondike auto-complete: the run stages one fast flight per step while a
- * card position is known, applies the rest instantly, and any tap mid-run skips to
- * the finished board. Every path must end on the same legal won board the instant
- * loop produces, with a single history entry so one undo restores the pre-run board.
+ * Animated Klondike auto-complete: the run applies each step and flies it while a card
+ * position is known, and applies the rest instantly. Board input mid-run stops it where
+ * it is, the button re-tap skips to the finished board, and merely offering it locks
+ * nothing. A run to the end lands on the same legal won board as the instant loop, and
+ * a single history entry lets one undo restore the pre-run board.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -109,39 +110,66 @@ class SolitaireAutoCompleteTest {
         assertTrue(k.foundations.all { it.size == 13 })
     }
 
-    @Test fun tapMidRunSkipsToWin() {
+    /** Starts a run whose first hop (the waste King) is in the air. */
+    private fun startedRun(): SolitaireViewModel {
         val vm = vm()
         setK(vm, almostWon())
         vm.registerCardPosition(Card(Suit.HEARTS, Rank.KING), Offset(10f, 10f))
+        vm.registerCardPosition(Card(Suit.DIAMONDS, Rank.KING), Offset(20f, 20f))
         vm.klondikeAutoComplete()
         assertTrue(vm.autoCompleteRunning.value)
-        assertFalse(vm.requestAutoMove("waste", Offset.Zero))
-        assertFalse(vm.autoCompleteRunning.value)
-        // The hop already in the air is left to land; its move is applied.
-        assertEquals(1, vm.flights.value.size)
-        assertTrue(vm.uiState.value.klondike!!.isWon)
+        return vm
     }
 
-    @Test fun dragMidRunSkipsToWin() {
-        val vm = vm()
-        setK(vm, almostWon())
-        vm.registerCardPosition(Card(Suit.HEARTS, Rank.KING), Offset(10f, 10f))
-        vm.klondikeAutoComplete()
-        assertTrue(vm.autoCompleteRunning.value)
-        assertFalse(vm.startDrag("waste", Offset.Zero))
+    /** After a stop: the hop that was flying lands, nothing else moves, the board plays on. */
+    private fun assertStoppedAfterFirstHop(vm: SolitaireViewModel) {
         assertFalse(vm.autoCompleteRunning.value)
-        assertTrue(vm.uiState.value.klondike!!.isWon)
+        val hop = vm.flights.value.single()
+        vm.landFlight(hop.id)
+        assertTrue(vm.flights.value.isEmpty())
+        val k = vm.uiState.value.klondike!!
+        assertFalse(k.isWon)
+        assertEquals(13, k.foundations[0].size) // the hearts King that was flying
+        assertEquals(listOf(Card(Suit.DIAMONDS, Rank.KING)), k.tableauPiles[0].faceUp)
+        assertEquals(1, vm.uiState.value.history.size)
+        // The offer is back, and the board takes ordinary moves again.
+        assertTrue(canKlondikeAutoComplete(k))
+        assertTrue(vm.requestAutoMove("tableau_0_0", Offset(1f, 1f)))
+        assertEquals(13, vm.uiState.value.klondike!!.foundations[1].size)
     }
 
-    @Test fun stockTapMidRunSkipsToWin() {
-        val vm = vm()
-        setK(vm, almostWon())
-        vm.registerCardPosition(Card(Suit.HEARTS, Rank.KING), Offset(10f, 10f))
-        vm.klondikeAutoComplete()
-        assertTrue(vm.autoCompleteRunning.value)
+    @Test fun tapMidRunStopsTheRun() {
+        val vm = startedRun()
+        assertFalse(vm.requestAutoMove("tableau_1_0", Offset.Zero)) // the tap is the stop
+        assertStoppedAfterFirstHop(vm)
+    }
+
+    @Test fun dragMidRunStopsTheRun() {
+        val vm = startedRun()
+        assertFalse(vm.startDrag("tableau_1_0", Offset.Zero))
+        assertStoppedAfterFirstHop(vm)
+    }
+
+    @Test fun stockTapMidRunStopsTheRun() {
+        val vm = startedRun()
         vm.drawFromStock()
+        assertEquals(listOf(Card(Suit.SPADES, Rank.KING)), vm.uiState.value.klondike!!.stock)
+        assertStoppedAfterFirstHop(vm)
+    }
+
+    @Test fun offeredButNotStartedLocksNothing() {
+        val vm = vm()
+        setK(vm, almostWon())
+        assertTrue(canKlondikeAutoComplete(vm.uiState.value.klondike!!))
+        // Tap, stock and drag all play normally; no run starts.
+        assertTrue(vm.requestAutoMove("waste", Offset.Zero))
+        assertTrue(vm.uiState.value.klondike!!.waste.isEmpty())
+        vm.drawFromStock()
+        assertEquals(listOf(Card(Suit.SPADES, Rank.KING)), vm.uiState.value.klondike!!.waste)
+        assertTrue(vm.startDrag("tableau_0_0", Offset.Zero))
+        vm.cancelDrag()
         assertFalse(vm.autoCompleteRunning.value)
-        assertTrue(vm.uiState.value.klondike!!.isWon)
+        assertEquals(2, vm.uiState.value.klondike!!.moveCount)
     }
 
     @Test fun buttonRetapMidRunSkipsToWin() {
