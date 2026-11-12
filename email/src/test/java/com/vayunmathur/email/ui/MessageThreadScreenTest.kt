@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -102,9 +103,13 @@ class MessageThreadScreenTest {
             )
         }
         composeRule.onNodeWithText("Trip plans").assertIsDisplayed()
-        composeRule.onNodeWithText("Hello there").assertIsDisplayed()
-        composeRule.onNodeWithText("Second reply").performScrollTo()
+        // A read thread opens on its newest message; the strip opens the others.
         composeRule.onNodeWithText("Second reply").assertIsDisplayed()
+        composeRule.onNodeWithText("Hello there").assertDoesNotExist()
+        composeRule.onAllNodes(isSelectable())[0].performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Hello there").assertIsDisplayed()
+        composeRule.onNodeWithText("Second reply").assertDoesNotExist()
     }
 
     @Test
@@ -184,7 +189,6 @@ class MessageThreadScreenTest {
         composeRule.setContent {
             MessageThreadScreen(messages = listOf(msg(1L)), actions = FakeActions())
         }
-        composeRule.onNodeWithText("Snooze").performScrollTo()
         composeRule.onNodeWithText("Snooze").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Tomorrow", substring = true).assertIsDisplayed()
@@ -196,7 +200,6 @@ class MessageThreadScreenTest {
         composeRule.setContent {
             MessageThreadScreen(messages = listOf(msg(1L, isRead = true)), actions = actions)
         }
-        composeRule.onNodeWithContentDescription("Mark Unread").performScrollTo()
         composeRule.onNodeWithContentDescription("Mark Unread").performClick()
         composeRule.waitForIdle()
         assertTrue(actions.reads.any { it.second == 1L && !it.third }, "reads: ${actions.reads}")
@@ -207,7 +210,6 @@ class MessageThreadScreenTest {
         composeRule.setContent {
             MessageThreadScreen(messages = listOf(msg(1L)), actions = FakeActions())
         }
-        composeRule.onNodeWithContentDescription("More").performScrollTo()
         composeRule.onNodeWithContentDescription("More").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Save as .eml").assertIsDisplayed()
@@ -329,7 +331,6 @@ class MessageThreadScreenTest {
                 onBack = { backs++ },
             )
         }
-        composeRule.onNodeWithText("Snooze").performScrollTo()
         composeRule.onNodeWithText("Snooze").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("In 1 week").performClick()
@@ -344,7 +345,6 @@ class MessageThreadScreenTest {
         composeRule.setContent {
             MessageThreadScreen(messages = listOf(msg(1L)), actions = FakeActions())
         }
-        composeRule.onNodeWithContentDescription("More").performScrollTo()
         composeRule.onNodeWithContentDescription("More").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Save as .eml").performClick()

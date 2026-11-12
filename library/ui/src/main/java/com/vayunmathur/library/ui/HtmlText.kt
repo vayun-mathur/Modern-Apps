@@ -16,20 +16,33 @@ import androidx.compose.ui.viewinterop.AndroidView
 import java.io.File
 
 /**
- * Renders an HTML fragment (an email body, typically) in an inline, wrap-content
- * [WebView].
+ * Renders an HTML fragment (an email body, typically) in a [WebView].
+ *
+ * By default the view is inline and wrap-content: it sizes itself to its
+ * content for embedding in a scrolling column. That depends on the WebView
+ * reporting its content height accurately, which it does not reliably do for
+ * wide, fixed-layout mail; a reader that shows long untrusted HTML should use
+ * [scrollInternally] instead.
  *
  * @param openLinksExternally hands tapped links to the system browser rather than
- *   letting them navigate inside this view. The view is sized to its content and
- *   embedded in a scrolling column, so in-place navigation would strand the user
- *   on a full web page inside a message. Only turn this off for content that is
- *   genuinely meant to be browsed in place.
+ *   letting them navigate inside this view. An inline view is sized to its
+ *   content and embedded in a scrolling column, so in-place navigation would
+ *   strand the user on a full web page inside a message. Only turn this off for
+ *   content that is genuinely meant to be browsed in place.
  * @param javaScriptEnabled runs scripts in the content. Untrusted mail should
  *   pass false: a sender's script otherwise executes on open.
  * @param blockRemoteContent refuses every network fetch (images, CSS, fonts,
  *   iframes, script requests) - not just `<img>` like [blockRemoteImages] - so
  *   opening a message cannot ping the sender's server. Inline `cid:` images
  *   and `data:` URIs still load.
+ * @param scrollInternally makes the view fill the bounded height it is given
+ *   (e.g. `Modifier.weight(1f)` in a non-scrolling column) and scroll its own
+ *   content, with a scrollbar and pinch-zoom. Never place such a view inside a
+ *   vertically scrolling parent: the two scrollers would fight over every drag.
+ * @param fitContentToWidth makes fixed-width layouts (600px newsletter tables,
+ *   inline `min-width`, long unbreakable links) fit the view width at a
+ *   readable 1:1 scale, and drops any viewport tag the sender embedded. See
+ *   [HtmlTextDocument.FIT_TO_WIDTH_CSS].
  */
 @Composable
 fun HtmlText(
@@ -41,6 +54,8 @@ fun HtmlText(
     openLinksExternally: Boolean = true,
     javaScriptEnabled: Boolean = true,
     blockRemoteContent: Boolean = false,
+    scrollInternally: Boolean = false,
+    fitContentToWidth: Boolean = false,
 ) {
     val backgroundColor = MaterialTheme.colorScheme.surface
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
@@ -48,19 +63,11 @@ fun HtmlText(
 
     val backgroundHex = String.format("#%06X", 0xFFFFFF and backgroundColor.toArgb())
     val textHex = String.format("#%06X", 0xFFFFFF and onSurfaceColor.toArgb())
-    val quoteCss = if (hideQuotes) {
-        "blockquote, .gmail_quote, .yahoo_quoted, .moz-cite-prefix, .gmail_extra, .protonmail_quote { display: none !important; }"
-    } else ""
 
     // Rewrite cid: -> https://cid.local/ to allow intercept without network permission
     val rewrittenHtml = remember(html, cidMap) {
         if (cidMap.isEmpty()) html
-        else {
-            var h = html
-            // Replace src="cid:xxx" with src="https://cid.local/xxx" (case insensitive)
-            h = h.replace(Regex("cid:", RegexOption.IGNORE_CASE), "https://cid.local/")
-            h
-        }
+        else html.replace(Regex("cid:", RegexOption.IGNORE_CASE), "https://cid.local/")
     }
     // One client instance for the life of the view, mutated in place. Swapping in a
     // new WebViewClient on every recomposition used to be how the cid map was
@@ -70,119 +77,58 @@ fun HtmlText(
     webClient.openLinksExternally = openLinksExternally
     webClient.blockRemoteContent = blockRemoteContent
     // Defence in depth alongside the request interceptor: the document itself
-    // forbids any non-local fetch when remote content is blocked.
-    val csp = if (blockRemoteContent) {
-        "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; " +
-            "img-src data: https://cid.local; style-src 'unsafe-inline'; font-src data:\">"
-    } else ""
+    // forbids any non-local fetch when remote content is blocked (CSP in the spec).
+    val spec = HtmlTextDocumentSpec(
+        backgroundHex = backgroundHex,
+        textHex = textHex,
+        isDark = isDark,
+        hideQuotes = hideQuotes,
+        blockRemoteContent = blockRemoteContent,
+        fitContentToWidth = fitContentToWidth,
+    )
 
     AndroidView(
         modifier = modifier,
         factory = { context ->
             WebView(context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-                isVerticalScrollBarEnabled = false
-                settings.javaScriptEnabled = javaScriptEnabled
-                settings.useWideViewPort = true
+                // Before the view is attached: AndroidView sizes it from these params.
+                applyHtmlTextLayout(scrollInternally)
                 settings.loadWithOverviewMode = false
-                settings.builtInZoomControls = false
                 settings.displayZoomControls = false
-                settings.blockNetworkImage = blockRemoteImages
                 setBackgroundColor(backgroundColor.toArgb())
-
                 webViewClient = webClient
             }
         },
         update = { webView ->
+            webView.applyHtmlTextLayout(scrollInternally)
+            webView.settings.useWideViewPort = true
             webView.settings.blockNetworkImage = blockRemoteImages || blockRemoteContent
             webView.settings.javaScriptEnabled = javaScriptEnabled
-            val htmlToLoad = if (cidMap.isEmpty()) html else rewrittenHtml
-            val richCss = """
-                h1,h2,h3 { margin:0.5em 0; font-weight:600; line-height:1.25; }
-                h1 { font-size:1.6em; }
-                h2 { font-size:1.35em; }
-                h3 { font-size:1.15em; }
-                blockquote { border-left:2px solid #ccc; margin:0 0 0 8px; padding-left:8px; color:#666; font-style:italic; }
-                code { font-family:monospace; background:rgba(0,0,0,0.06); padding:2px 4px; border-radius:3px; word-break:break-word; }
-                hr { border:none; border-top:1px solid #ccc; margin:12px 0; }
-                pre { background:#f5f5f5; padding:8px; overflow-x:auto; border-radius:4px; font-family:monospace; white-space:pre-wrap; }
-                ul, ol { margin:0.5em 0; padding-left:24px; }
-                li { margin:0.25em 0; }
-            """.trimIndent()
-
-            if (isDark) {
-                val darkModeHtml = """
-                    <html>
-                    <head>
-                        <meta name="viewport" content="width=device-width, initial-scale=1">
-                        $csp
-                        <style>
-                            * { box-sizing: border-box; }
-                            html, body { max-width: 100%; }
-                            body {
-                                margin: 0;
-                                padding: 8px;
-                                background-color: $backgroundHex;
-                                font-family: sans-serif;
-                                font-size: 14px;
-                                line-height: 1.5;
-                                word-wrap: break-word;
-                                overflow-wrap: break-word;
-                                filter: invert(1) hue-rotate(180deg);
-                            }
-                            img, video, iframe, svg, table { max-width: 100% !important; }
-                            img, video, iframe, svg {
-                                filter: invert(1) hue-rotate(180deg) brightness(0.9);
-                                height: auto;
-                            }
-                            code {
-                                filter: invert(1) hue-rotate(180deg);
-                                background: rgba(255,255,255,0.12) !important;
-                            }
-                            $richCss
-                            $quoteCss
-                        </style>
-                    </head>
-                    <body>$htmlToLoad</body>
-                    </html>
-                """.trimIndent()
-                webView.loadDataWithBaseURL("https://cid.local/", darkModeHtml, "text/html", "UTF-8", null)
-            } else {
-                val lightHtml = """
-                    <html>
-                    <head>
-                        <meta name="viewport" content="width=device-width, initial-scale=1">
-                        $csp
-                        <style>
-                            * { box-sizing: border-box; }
-                            html, body { max-width: 100%; }
-                            body {
-                                margin: 0;
-                                padding: 8px;
-                                color: $textHex;
-                                background-color: $backgroundHex;
-                                font-family: sans-serif;
-                                font-size: 14px;
-                                line-height: 1.5;
-                                word-wrap: break-word;
-                                overflow-wrap: break-word;
-                            }
-                            img, table { max-width: 100% !important; }
-                            img { height: auto; }
-                            $richCss
-                            $quoteCss
-                        </style>
-                    </head>
-                    <body>$htmlToLoad</body>
-                    </html>
-                """.trimIndent()
-                webView.loadDataWithBaseURL("https://cid.local/", lightHtml, "text/html", "UTF-8", null)
+            val document = HtmlTextDocument.build(rewrittenHtml, spec)
+            // Only reload when what would be shown changed. `update` re-runs whenever
+            // anything it captures changes (layout mode, a new cidMap instance with
+            // the same files, ...), and reloading identical content resets the
+            // scroll position and re-measures the view mid-read.
+            val loadKey = "$blockRemoteImages|$javaScriptEnabled|$document"
+            if (webView.tag != loadKey) {
+                webView.tag = loadKey
+                webView.loadDataWithBaseURL("https://cid.local/", document, "text/html", "UTF-8", null)
             }
         },
     )
+}
+
+/**
+ * Inline (wrap-content, no scrollbar, no zoom) or self-scrolling (fills its
+ * bounds, scrollbar, pinch-zoom without on-screen buttons).
+ */
+private fun WebView.applyHtmlTextLayout(scrollInternally: Boolean) {
+    val height = if (scrollInternally) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT
+    if (layoutParams?.width != ViewGroup.LayoutParams.MATCH_PARENT || layoutParams?.height != height) {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height)
+    }
+    isVerticalScrollBarEnabled = scrollInternally
+    settings.builtInZoomControls = scrollInternally
 }
 
 /**

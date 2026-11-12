@@ -114,7 +114,8 @@
 - com/vayunmathur/library/ui/HtmlEditorControllerCore.kt
 - com/vayunmathur/library/ui/HtmlEditorSpans.kt
 - com/vayunmathur/library/ui/HtmlSerialize.kt
-- com/vayunmathur/library/ui/HtmlText.kt
+- com/vayunmathur/library/ui/HtmlText.kt — `scrollInternally`/`fitContentToWidth` for long untrusted mail (#900)
+- com/vayunmathur/library/ui/HtmlTextDocument.kt — pure document wrapper (viewport, CSP, fit CSS)
 - com/vayunmathur/library/ui/RichEmailSpans.kt
 - com/vayunmathur/library/ui/EditorFormatter.kt
 - com/vayunmathur/library/ui/EditorLink.kt

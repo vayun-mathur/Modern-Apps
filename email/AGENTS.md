@@ -85,7 +85,10 @@ _Install: ./install email (dev by default)._
 ### ui/ — list, thread, composer, account flows
 - com/vayunmathur/email/ui/MainContent.kt
 - com/vayunmathur/email/ui/MessageListScreen.kt
-- com/vayunmathur/email/ui/MessageThreadScreen.kt
+- com/vayunmathur/email/ui/MessageThreadScreen.kt — thread pane: strip + one open message, no outer scroller (#900)
+- com/vayunmathur/email/ui/ThreadMessageStrip.kt
+- com/vayunmathur/email/ui/MessageItem.kt — header / self-scrolling body / footer
+- com/vayunmathur/email/ui/MessageFooter.kt
 - com/vayunmathur/email/ui/FolderList.kt
 - com/vayunmathur/email/ui/DetailItem.kt
 - com/vayunmathur/email/ui/ComposerScreen.kt

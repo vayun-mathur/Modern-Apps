@@ -6,12 +6,14 @@ import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -136,62 +138,80 @@ fun EmlViewerScreen(
                 val emlAtts = parsed!!.emlAttachments
                 val cidMap = parsed!!.inlineCidMap
 
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
-                ) {
-                    val senderName = senderDisplayName(msg.from).ifEmpty { msg.from }
-                    val senderEmail = msg.from.substringAfter("<").substringBefore(">").trim()
-                    val initial = senderName.take(1).uppercase()
-                    val avatarColor = Color(accountColor(msg.from.ifBlank { "eml-viewer" }))
-
-                    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = CircleShape, color = avatarColor, modifier = Modifier.size(40.dp)) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(text = initial, color = contentColorOn(avatarColor), style = MaterialTheme.typography.titleMedium)
+                // Same layout as the thread screen (#900): header fixed on top, an
+                // HTML body that fills the rest and scrolls itself, never a
+                // wrap-content WebView inside a scrolling column.
+                BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    val attachmentsMaxHeight = maxHeight * EML_ATTACHMENTS_MAX_FRACTION
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        EmlHeader(msg.from, msg.date, msg.to, msg.cc, msg.subject)
+                        if (msg.isHtml && msg.body != null) {
+                            val settings = remember(context) { com.vayunmathur.email.data.EmailSettings.get(context) }
+                            val loadRemoteByDefault by settings.loadRemoteImages.collectAsStateWithLifecycle()
+                            var loadImages by remember(uriString, loadRemoteByDefault) { mutableStateOf(loadRemoteByDefault) }
+                            if (!loadImages && cidMap.isEmpty()) {
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(stringResource(R.string.remote_images_blocked), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    TextButton(onClick = { loadImages = true }) { Text(stringResource(R.string.load_images)) }
+                                }
+                            }
+                            HtmlText(
+                                html = msg.body,
+                                blockRemoteImages = !loadImages && cidMap.isEmpty(),
+                                cidMap = cidMap,
+                                scrollInternally = true,
+                                fitContentToWidth = true,
+                                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),
+                            )
+                            if (emlAtts.isNotEmpty()) {
+                                Column(Modifier.fillMaxWidth().heightIn(max = attachmentsMaxHeight).verticalScroll(rememberScrollState())) {
+                                    EmlAttachments(emlAtts)
+                                }
+                            }
+                        } else {
+                            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+                                Text(text = msg.body ?: stringResource(R.string.no_content_1), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
+                                EmlAttachments(emlAtts)
+                                Spacer(Modifier.height(24.dp))
                             }
                         }
-                        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                            Text(text = senderName, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                            Text(text = msg.date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (!msg.to.isNullOrBlank()) Text(text = stringResource(R.string.to, msg.to), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (!msg.cc.isNullOrBlank()) Text(text = stringResource(R.string.cc_1, msg.cc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
                     }
-
-                    Text(text = msg.subject, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp))
-                    Spacer(Modifier.height(12.dp))
-
-                    if (msg.isHtml && msg.body != null) {
-                        val settings = remember(context) { com.vayunmathur.email.data.EmailSettings.get(context) }
-                        val loadRemoteByDefault by settings.loadRemoteImages.collectAsStateWithLifecycle()
-                        var loadImages by remember(uriString, loadRemoteByDefault) { mutableStateOf(loadRemoteByDefault) }
-                        if (!loadImages && cidMap.isEmpty()) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text(stringResource(R.string.remote_images_blocked), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                TextButton(onClick = { loadImages = true }) { Text(stringResource(R.string.load_images)) }
-                            }
-                        }
-                        HtmlText(
-                            html = msg.body,
-                            blockRemoteImages = !loadImages && cidMap.isEmpty(),
-                            cidMap = cidMap,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        )
-                    } else {
-                        Text(text = msg.body ?: stringResource(R.string.no_content_1), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
-                    }
-
-                    if (emlAtts.isNotEmpty()) {
-                        Spacer(Modifier.height(16.dp))
-                        Text(stringResource(R.string.attachments_2), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp))
-                        emlAtts.forEach { att -> EmlAttachmentItem(attachment = att) }
-                    }
-
-                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
     }
+}
+
+/** Share of the pane the attachment list under an HTML body may take before it scrolls. */
+private const val EML_ATTACHMENTS_MAX_FRACTION = 0.3f
+
+@Composable
+private fun EmlHeader(from: String, date: String, to: String?, cc: String?, subject: String) {
+    val senderName = senderDisplayName(from).ifEmpty { from }
+    val avatarColor = Color(accountColor(from.ifBlank { "eml-viewer" }))
+    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(shape = CircleShape, color = avatarColor, modifier = Modifier.size(40.dp)) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(text = senderName.take(1).uppercase(), color = contentColorOn(avatarColor), style = MaterialTheme.typography.titleMedium)
+            }
+        }
+        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            Text(text = senderName, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            Text(text = date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!to.isNullOrBlank()) Text(text = stringResource(R.string.to, to), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!cc.isNullOrBlank()) Text(text = stringResource(R.string.cc_1, cc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    Text(text = subject, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp))
+    Spacer(Modifier.height(12.dp))
+}
+
+@Composable
+private fun EmlAttachments(attachments: List<EmlAttachment>) {
+    if (attachments.isEmpty()) return
+    Spacer(Modifier.height(16.dp))
+    Text(stringResource(R.string.attachments_2), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp))
+    attachments.forEach { att -> EmlAttachmentItem(attachment = att) }
 }
 
 @Composable
