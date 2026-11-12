@@ -312,6 +312,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathBuilder
+import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
@@ -836,6 +837,41 @@ fun IconDirectionsWalk(modifier: Modifier = Modifier, tint: Color = LocalContent
 @Composable
 fun IconMenuBook(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.AutoMirrored.Filled.MenuBook, "Menu", modifier, tint)
+
+/**
+ * Material Symbols "book_2" (outlined), bundled as a vector so apps need no drawable
+ * of their own. The word games use it for their bonus-words button.
+ */
+private const val BOOK_2_PATH =
+    "M300,880Q242,880 201,839Q160,798 160,740L160,220Q160,162 201,121Q242,80 " +
+    "300,80L800,80L800,680Q775,680 757.5,697.5Q740,715 740,740Q740,765 " +
+    "757.5,782.5Q775,800 800,800L800,880L300,880Z" +
+    "M240,613Q254,606 269,603Q284,600 300,600L320,600L320,160L300,160Q275,160 " +
+    "257.5,177.5Q240,195 240,220L240,613Z" +
+    "M400,600L720,600L720,160L400,160L400,600Z" +
+    "M240,613Q240,613 240,613Q240,613 240,613L240,613L240,160L240,160Q240,160 " +
+    "240,160Q240,160 240,160L240,613Z" +
+    "M300,800L673,800Q667,786 663.5,771.5Q660,757 660,740Q660,724 663,709Q666,694 " +
+    "673,680L300,680Q274,680 257,697.5Q240,715 240,740Q240,766 257,783Q274,800 " +
+    "300,800Z"
+
+private val Book2 by lazy {
+    ImageVector.Builder(
+        name = "Book2",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f,
+    ).addPath(pathData = addPathNodes(BOOK_2_PATH), fill = SolidColor(Color.Black)).build()
+}
+
+/** A closed book. [contentDescription] defaults to "Book"; pass the control's own label. */
+@Composable
+fun IconBook(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+    contentDescription: String? = "Book",
+) = AppIcon(Book2, contentDescription, modifier, tint)
 
 @Composable
 fun IconFuelPrice(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =

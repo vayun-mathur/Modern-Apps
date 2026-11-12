@@ -298,7 +298,7 @@ class WordMakerComposeTest {
                 BonusWordsDialog(bonusWords = setOf("DOG", "CAT"), getDefinition = { listOf("def of $it") }, onDismiss = {})
             }
         }
-        rule.onNodeWithText("Bonus Words").assertIsDisplayed()
+        rule.onNodeWithText("Bonus Words (2)").assertIsDisplayed()
         rule.onNodeWithText("DOG").performClick()
         rule.onNodeWithText("def of DOG").assertIsDisplayed()
     }
@@ -338,7 +338,7 @@ class WordMakerComposeTest {
                 )
             }
         }
-        rule.onNodeWithText("Bonus Words").assertIsDisplayed()
+        rule.onNodeWithText("Bonus Word (1)").assertIsDisplayed()
         rule.onNodeWithText("DOG").assertIsDisplayed()
     }
     private val frameClock = object : androidx.compose.runtime.MonotonicFrameClock {

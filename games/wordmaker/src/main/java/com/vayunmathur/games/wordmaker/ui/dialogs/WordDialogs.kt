@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.wordmaker.R
@@ -57,7 +58,8 @@ fun BonusWordsDialog(
     var definitionDialog by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.bonus_words)) },
+        // The count of this puzzle's bonus words found so far (#915).
+        title = { Text(text = pluralStringResource(R.plurals.bonus_words_title, bonusWords.size, bonusWords.size)) },
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 items(bonusWords.toList().sorted()) { word ->

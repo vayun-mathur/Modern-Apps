@@ -5,8 +5,13 @@
     <string name="error_parse_level">Failed to parse level data.</string>
     <!-- WordMakerTopBar: Title in casual mode when level number present. %1$d = level number integer, e.g. 12. Noun phrase -->
     <string name="level_number">Level <xliff:g id="level" example="12">%1$d</xliff:g></string>
-    <!-- BonusWordsDialog: Title for dialog listing extra words not in puzzle. Noun phrase -->
+    <!-- WordGameScreen: Accessibility label of the bonus words button (book icon, with a count badge) that opens the list of extra words found that are not in the puzzle. Noun phrase -->
     <string name="bonus_words">Bonus Words</string>
+    <!-- BonusWordsDialog: Title of the dialog listing extra words found that are not in the puzzle; %1$d = how many have been found in this puzzle. Noun phrase -->
+    <plurals name="bonus_words_title">
+        <item quantity="one">Bonus Word (<xliff:g id="count" example="1">%1$d</xliff:g>)</item>
+        <item quantity="other">Bonus Words (<xliff:g id="count" example="3">%1$d</xliff:g>)</item>
+    </plurals>
     <!-- Settings: Toggle for tap-to-spell input mode. Label -->
     <string name="tap_to_spell">Tap to Spell</string>
     <!-- SettingsPage: Subtitle explaining tap-to-spell behavior. Sentence -->

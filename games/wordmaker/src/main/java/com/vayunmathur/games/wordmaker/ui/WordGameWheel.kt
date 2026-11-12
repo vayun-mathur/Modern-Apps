@@ -29,10 +29,13 @@ import com.vayunmathur.games.wordmaker.platform.WordGameActions
 import com.vayunmathur.games.wordmaker.ui.components.CompetitiveStatusBar
 import com.vayunmathur.games.wordmaker.ui.components.DailyStatusBar
 import com.vayunmathur.games.wordmaker.ui.components.LetterChooser
+import com.vayunmathur.library.ui.Badge
+import com.vayunmathur.library.ui.BadgedBox
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FilledIconButton
 import com.vayunmathur.library.ui.Icon
+import com.vayunmathur.library.ui.IconBook
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
 
@@ -154,13 +157,20 @@ fun BoxScope.WordGameCornerButtons(
                 translationX = bonusShake
             },
     ) {
-        FilledIconButton(
-            onClick = onOpenBonusWords,
-            enabled = bonusWords.isNotEmpty()
+        // Badge: how many bonus words this puzzle has so far (#915).
+        BadgedBox(
+            badge = {
+                if (bonusWords.isNotEmpty()) {
+                    Badge { Text(bonusBadgeText(bonusWords.size)) }
+                }
+            },
         ) {
-            Icon(
-                painterResource(R.drawable.outline_book_2_24), null
-            )
+            FilledIconButton(
+                onClick = onOpenBonusWords,
+                enabled = bonusWords.isNotEmpty()
+            ) {
+                IconBook(contentDescription = stringResource(R.string.bonus_words))
+            }
         }
     }
 
@@ -191,3 +201,10 @@ fun BoxScope.WordGameCornerButtons(
         }
     }
 }
+
+/** Most bonus words the badge spells out; beyond it shows "99+". */
+private const val BONUS_BADGE_MAX = 99
+
+/** Badge text for [count] bonus words: the number, capped at "99+". */
+internal fun bonusBadgeText(count: Int): String =
+    if (count > BONUS_BADGE_MAX) "$BONUS_BADGE_MAX+" else count.toString()
