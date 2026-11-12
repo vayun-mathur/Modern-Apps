@@ -223,6 +223,21 @@ class ServiceOpsTest {
     }
 
     @Test
+    fun `opening the clipboard page spends the fresh-clip chip`() {
+        val item = ClipItem(id = 991101, text = "just copied")
+        service.offerClip(item)
+        // Other pages leave the offer standing; it only gives up after CLIP_CHIP_MS.
+        service.setPage(KeyboardPage.SYMBOLS)
+        assertEquals(item, service.kbState.clipSuggestion)
+        // The clipboard page lists the clip itself, so the chip is spent (#555)...
+        service.setPage(KeyboardPage.CLIPBOARD)
+        assertNull(service.kbState.clipSuggestion)
+        // ...and coming back to the letters does not resurrect it.
+        service.setPage(KeyboardPage.LETTERS)
+        assertNull(service.kbState.clipSuggestion)
+    }
+
+    @Test
     fun `commitEmoji remembers recent and leaves search`() {
         service.kbState.emojiData = com.vayunmathur.keyboard.util.EmojiData.BUILTIN
         service.startEmojiSearch()

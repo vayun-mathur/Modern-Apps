@@ -119,8 +119,10 @@ private fun Strip(state: KeyboardState, actions: ImeActions) {
     // offered before anything has been typed and the service drops it on the first keypress,
     // which is exactly when suggestions appear. The chip carries its own open button, so it
     // stands in for the whole strip rather than sitting beside the clipboard key.
+    // Never above the clipboard page itself, which already lists that clip first: a copy
+    // made while the page is open would otherwise draw it twice (#555).
     val clip = state.clipSuggestion
-    if (clip != null) {
+    if (clip != null && state.page != KeyboardPage.CLIPBOARD) {
         ClipboardStrip(
             height = StripHeight,
             item = clip,

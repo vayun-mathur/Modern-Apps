@@ -361,6 +361,24 @@ class KeyboardScreenTest {
     }
 
     @Test
+    fun `clip chip is not drawn above the clipboard page`() {
+        // A clip copied while the page is open is both the chip and the head of the list;
+        // it must show once, as the list entry (#555).
+        val actions = RecordingActions()
+        val clip = ClipItem(id = 44, text = "copied while open")
+        val st = state {
+            page = KeyboardPage.CLIPBOARD
+            clips = listOf(clip)
+            clipSuggestion = clip
+        }
+        rule.setContent { KeyboardScreen(st, actions) }
+        assertEquals(1, rule.onAllNodesWithText("copied while open").fetchSemanticsNodes().size)
+        // Back on the letters the chip is still on offer (until it times out).
+        rule.runOnIdle { st.page = KeyboardPage.LETTERS }
+        rule.onNodeWithText("copied while open").assertIsDisplayed()
+    }
+
+    @Test
     fun `clipboard page empty state`() {
         val actions = RecordingActions()
         rule.setContent {

@@ -67,5 +67,9 @@ internal fun KeyboardService.setPage(page: KeyboardPage) {
         kbState.emojiQuery = null
         kbState.emojiResults = emptyList()
     }
+    // The fresh-clip chip is an offer to open or paste that clip; opening the clipboard
+    // page takes it up (the clip heads the list there), so the offer is spent rather than
+    // left to reappear when the user comes back to the letters (#555).
+    if (page == KeyboardPage.CLIPBOARD) dismissClipSuggestion()
     kbState.page = page
 }
