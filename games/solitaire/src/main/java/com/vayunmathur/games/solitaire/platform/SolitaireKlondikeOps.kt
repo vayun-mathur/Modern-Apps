@@ -3,19 +3,14 @@ package com.vayunmathur.games.solitaire.platform
 import androidx.compose.ui.geometry.Rect
 import com.vayunmathur.games.solitaire.data.Card
 import com.vayunmathur.games.solitaire.data.DrawMode
-import com.vayunmathur.games.solitaire.data.FOUNDATION_COUNT
 import com.vayunmathur.games.solitaire.data.GameConfig
 import com.vayunmathur.games.solitaire.data.GameMode
-import com.vayunmathur.games.solitaire.data.KLONDIKE_TABLEAU_COUNT
 import com.vayunmathur.games.solitaire.data.KlondikeState
 import com.vayunmathur.games.solitaire.data.Rank
-import com.vayunmathur.games.solitaire.data.SolitaireUiState
 import com.vayunmathur.games.solitaire.data.Suit
 import com.vayunmathur.games.solitaire.data.TableauPile
 import com.vayunmathur.games.solitaire.data.alternatesColorWith
-import com.vayunmathur.games.solitaire.data.createShuffledDeck
 import com.vayunmathur.games.solitaire.data.isOneHigherThan
-import com.vayunmathur.games.solitaire.data.redeals
 import kotlinx.coroutines.flow.update
 
 // ---- Klondike ----
@@ -41,35 +36,8 @@ fun SolitaireViewModel.tryMoveByDrag(
     cardSize: androidx.compose.ui.unit.IntSize = androidx.compose.ui.unit.IntSize.Zero,
 ): String? = tryMoveByDragImpl(sourceId, dropOffset, cardSize)
 
-internal fun SolitaireViewModel.newKlondikeGameImpl(config: GameConfig) {
-    val deck = createShuffledDeck()
-    val tableauPiles = mutableListOf<TableauPile>()
-    var index = 0
-    for (i in 0 until KLONDIKE_TABLEAU_COUNT) {
-        val faceDown = deck.subList(index, index + i)
-        index += i
-        val faceUp = listOf(deck[index])
-        index++
-        tableauPiles.add(TableauPile(faceDown, faceUp))
-    }
-    val stock = deck.subList(index, deck.size)
-    val variant = "${config.drawMode.name}_${config.klondikeDifficulty.name}"
-    uiStateInternal.value = SolitaireUiState(
-        gameMode = GameMode.KLONDIKE,
-        klondike = KlondikeState(
-            stock = stock,
-            waste = emptyList(),
-            tableauPiles = tableauPiles,
-            foundations = List(FOUNDATION_COUNT) { emptyList() },
-            drawMode = config.drawMode,
-            difficulty = config.klondikeDifficulty,
-            redealsRemaining = config.klondikeDifficulty.redeals(),
-            variant = variant
-        ),
-        history = emptyList()
-    )
-    statsRepository.recordGamePlayed(GameMode.KLONDIKE, variant)
-}
+/** A new game on a solver-proven deal for [config] (see SolitaireDealSource). */
+internal fun SolitaireViewModel.newKlondikeGameImpl(config: GameConfig) = startNewDeal(GameMode.KLONDIKE, config)
 
 internal fun SolitaireViewModel.drawFromStockImpl() {
     val state = uiStateInternal.value.klondike ?: return

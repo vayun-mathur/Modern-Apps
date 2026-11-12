@@ -1,15 +1,11 @@
 package com.vayunmathur.games.solitaire.platform
 
 import com.vayunmathur.games.solitaire.data.Card
-import com.vayunmathur.games.solitaire.data.FOUNDATION_COUNT
-import com.vayunmathur.games.solitaire.data.FREECELL_COUNT
-import com.vayunmathur.games.solitaire.data.FREECELL_TABLEAU_COUNT
 import com.vayunmathur.games.solitaire.data.FreeCellState
+import com.vayunmathur.games.solitaire.data.GameConfig
 import com.vayunmathur.games.solitaire.data.GameMode
 import com.vayunmathur.games.solitaire.data.Rank
-import com.vayunmathur.games.solitaire.data.SolitaireUiState
 import com.vayunmathur.games.solitaire.data.alternatesColorWith
-import com.vayunmathur.games.solitaire.data.createShuffledDeck
 import com.vayunmathur.games.solitaire.data.isOneHigherThan
 import kotlinx.coroutines.flow.update
 
@@ -33,24 +29,8 @@ fun SolitaireViewModel.freeCellMoveTableauToFoundation(fromColumn: Int, foundati
 fun SolitaireViewModel.freeCellMoveTableauToTableau(fromColumn: Int, cardIndex: Int, toColumn: Int) =
     freeCellMoveTableauToTableauImpl(fromColumn, cardIndex, toColumn)
 
-internal fun SolitaireViewModel.newFreeCellGameImpl() {
-    val deck = createShuffledDeck()
-    val piles = List(FREECELL_TABLEAU_COUNT) { mutableListOf<Card>() }
-    for (i in deck.indices) {
-        piles[i % FREECELL_TABLEAU_COUNT].add(deck[i])
-    }
-    uiStateInternal.value = SolitaireUiState(
-        gameMode = GameMode.FREECELL,
-        freeCell = FreeCellState(
-            tableauPiles = piles.map { it.toList() },
-            freeCells = List(FREECELL_COUNT) { null },
-            foundations = List(FOUNDATION_COUNT) { emptyList() },
-            variant = "STANDARD"
-        ),
-        history = emptyList()
-    )
-    statsRepository.recordGamePlayed(GameMode.FREECELL, "STANDARD")
-}
+/** A new game on a solver-proven deal (see SolitaireDealSource). */
+internal fun SolitaireViewModel.newFreeCellGameImpl() = startNewDeal(GameMode.FREECELL, GameConfig())
 
 internal fun SolitaireViewModel.freeCellMoveToFreeCellImpl(fromColumn: Int, cellIndex: Int) {
     val state = uiStateInternal.value.freeCell ?: return

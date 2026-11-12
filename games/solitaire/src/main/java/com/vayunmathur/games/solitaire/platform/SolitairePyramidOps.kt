@@ -3,12 +3,9 @@ package com.vayunmathur.games.solitaire.platform
 import com.vayunmathur.games.solitaire.data.Card
 import com.vayunmathur.games.solitaire.data.GameConfig
 import com.vayunmathur.games.solitaire.data.GameMode
-import com.vayunmathur.games.solitaire.data.PYRAMID_ROWS
 import com.vayunmathur.games.solitaire.data.PAIR_TARGET
 import com.vayunmathur.games.solitaire.data.PyramidState
 import com.vayunmathur.games.solitaire.data.Rank
-import com.vayunmathur.games.solitaire.data.SolitaireUiState
-import com.vayunmathur.games.solitaire.data.createShuffledDeck
 import kotlinx.coroutines.flow.update
 
 // ---- Pyramid ----
@@ -16,32 +13,8 @@ import kotlinx.coroutines.flow.update
 
 fun SolitaireViewModel.newPyramidGame(config: GameConfig) = newPyramidGameImpl(config)
 
-internal fun SolitaireViewModel.newPyramidGameImpl(config: GameConfig) {
-    val deck = createShuffledDeck()
-    var index = 0
-    val rows = mutableListOf<List<Card?>>()
-    for (r in 0 until PYRAMID_ROWS) {
-        val row = mutableListOf<Card?>()
-        for (c in 0..r) {
-            row.add(deck[index]); index++
-        }
-        rows.add(row)
-    }
-    val stock = deck.subList(index, deck.size).toList()
-    val variant = if (config.relaxed) "RELAXED" else "ORIGINAL"
-    uiStateInternal.value = SolitaireUiState(
-        gameMode = GameMode.PYRAMID,
-        pyramid = PyramidState(
-            pyramid = rows,
-            stock = stock,
-            waste = emptyList(),
-            relaxed = config.relaxed,
-            variant = variant
-        ),
-        history = emptyList()
-    )
-    statsRepository.recordGamePlayed(GameMode.PYRAMID, variant)
-}
+/** A new game on a solver-proven deal for [config] (see SolitaireDealSource). */
+internal fun SolitaireViewModel.newPyramidGameImpl(config: GameConfig) = startNewDeal(GameMode.PYRAMID, config)
 
 /** A pyramid card is exposed when both cards resting on it have been removed. */
 internal fun SolitaireViewModel.isPyramidCardExposed(state: PyramidState, row: Int, col: Int): Boolean {

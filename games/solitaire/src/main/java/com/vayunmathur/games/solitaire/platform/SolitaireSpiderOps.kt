@@ -6,14 +6,8 @@ import com.vayunmathur.games.solitaire.data.FULL_SUIT_SIZE
 import com.vayunmathur.games.solitaire.data.GameMode
 import com.vayunmathur.games.solitaire.data.Rank
 import com.vayunmathur.games.solitaire.data.SPIDER_TABLEAU_COUNT
-import com.vayunmathur.games.solitaire.data.SPIDER_COLUMN_CARDS
-import com.vayunmathur.games.solitaire.data.SPIDER_TALL_COLUMN_CARDS
-import com.vayunmathur.games.solitaire.data.SPIDER_TALL_COLUMN_COUNT
-import com.vayunmathur.games.solitaire.data.SolitaireUiState
 import com.vayunmathur.games.solitaire.data.TOTAL_SPIDER_SUITS
-import com.vayunmathur.games.solitaire.data.SpiderState
 import com.vayunmathur.games.solitaire.data.TableauPile
-import com.vayunmathur.games.solitaire.data.createSpiderDeck
 import com.vayunmathur.games.solitaire.data.isOneHigherThan
 import kotlinx.coroutines.flow.update
 
@@ -25,34 +19,8 @@ fun SolitaireViewModel.newSpiderGame(config: GameConfig) = newSpiderGameImpl(con
 fun SolitaireViewModel.spiderMoveCards(fromColumn: Int, cardIndex: Int, toColumn: Int) =
     spiderMoveCardsImpl(fromColumn, cardIndex, toColumn)
 
-internal fun SolitaireViewModel.newSpiderGameImpl(config: GameConfig) {
-    val suitCount = config.spiderSuits
-    val deck = createSpiderDeck(suitCount)
-    val tableauPiles = mutableListOf<TableauPile>()
-    var index = 0
-    for (i in 0 until SPIDER_TABLEAU_COUNT) {
-        val count = if (i < SPIDER_TALL_COLUMN_COUNT) SPIDER_TALL_COLUMN_CARDS else SPIDER_COLUMN_CARDS
-        val faceDown = deck.subList(index, index + count - 1)
-        index += count - 1
-        val faceUp = listOf(deck[index])
-        index++
-        tableauPiles.add(TableauPile(faceDown, faceUp))
-    }
-    val remaining = deck.subList(index, deck.size)
-    val stockGroups = remaining.chunked(SPIDER_TABLEAU_COUNT)
-    val variant = "${suitCount}SUIT"
-    uiStateInternal.value = SolitaireUiState(
-        gameMode = GameMode.SPIDER,
-        spider = SpiderState(
-            tableauPiles = tableauPiles,
-            stockGroups = stockGroups,
-            suitCount = suitCount,
-            variant = variant
-        ),
-        history = emptyList()
-    )
-    statsRepository.recordGamePlayed(GameMode.SPIDER, variant)
-}
+/** A new game on a solver-proven deal for [config] (see SolitaireDealSource). */
+internal fun SolitaireViewModel.newSpiderGameImpl(config: GameConfig) = startNewDeal(GameMode.SPIDER, config)
 
 internal fun SolitaireViewModel.dealSpiderStockImpl() {
     val state = uiStateInternal.value.spider ?: return
