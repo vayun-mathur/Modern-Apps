@@ -4,7 +4,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.net.Uri
+import androidx.annotation.OptIn
 import com.vayunmathur.library.log.Log
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
@@ -35,6 +37,7 @@ internal fun CameraViewModel.captureSinglePhoto() {
 
 /** Everything doCapture/runSingleCapture needs, resolved up front. */
 @Suppress("DEPRECATION")
+@OptIn(ExperimentalCamera2Interop::class)
 private data class SingleCapturePlan(
     val capture: ImageCapture,
     val pending: PendingStill,
@@ -55,6 +58,7 @@ private data class SingleCapturePlan(
  * Null when there is no save target (caller clears the in-flight flag).
  */
 @Suppress("DEPRECATION")
+@OptIn(ExperimentalCamera2Interop::class)
 private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill): SingleCapturePlan? {
     val capture = imageCapture ?: return null
     val outputOptions = pending.outputOptions
@@ -103,6 +107,7 @@ private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill): Singl
 
 /** Applies the transient night exposure, then runs the capture (or the capture directly). */
 @Suppress("DEPRECATION")
+@OptIn(ExperimentalCamera2Interop::class)
 private fun CameraViewModel.applyNightExposureThen(plan: SingleCapturePlan, doCapture: (SingleCapturePlan) -> Unit) {
     try {
         val options = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
@@ -159,6 +164,9 @@ private fun CameraViewModel.runSingleCapture(plan: SingleCapturePlan) {
         plan.outputOptions,
         ContextCompat.getMainExecutor(app),
         object : ImageCapture.OnImageSavedCallback {
+            override fun onCaptureStarted() {
+                emitShutterFeedback()
+            }
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                 finishCapture(plan.pending.resolveUri(outputFileResults))
             }
@@ -185,6 +193,9 @@ private fun CameraViewModel.captureProcessedSingle(
     plan.capture.takePicture(
         ContextCompat.getMainExecutor(app),
         object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureStarted() {
+                emitShutterFeedback()
+            }
             override fun onCaptureSuccess(image: ImageProxy) {
                 val degrees = image.imageInfo.rotationDegrees
                 // cropRect reflects setCropAspectRatio; apply it to the decoded bitmap

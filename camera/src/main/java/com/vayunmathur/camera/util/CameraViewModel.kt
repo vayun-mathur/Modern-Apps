@@ -11,6 +11,7 @@ import android.location.Location
 import android.net.Uri
 import com.vayunmathur.library.log.Log
 import androidx.camera.core.CameraSelector
+import com.vayunmathur.camera.domain.MotionSaveQueue
 import androidx.camera.core.Camera
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
@@ -27,6 +28,12 @@ import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.util.DataStoreUtils
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,9 +41,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlin.math.atan2
 
+/**
+ * State and session owner for the single camera screen: the bound CameraX session, every
+ * capture setting, and the capture paths (implemented as extensions in the sibling files).
+ */
 class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
+    /** Tuning constants and lookup tables shared by the extension files. */
     companion object {
         // Companions are public so same-module extension files resolve these constants.
 
@@ -76,6 +89,11 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
         // scales with the chosen duration but is hard-capped to bound memory.
         const val MOTION_FRAMES_PER_SECOND = 8
         const val MOTION_MAX_FRAMES_HARD_CAP = 24
+
+        // Motion Photos still building after their shutter was released (#914). Each holds its
+        // drained frames (up to MOTION_MAX_FRAMES_HARD_CAP bitmaps) until encoded, so keep this
+        // small: one encoding plus one waiting. A press beyond it takes a plain still.
+        const val MAX_PENDING_MOTION_SAVES = 2
 
         val EXPOSURE_TIME_STOPS = listOf(
             ExposureTimeStop("Auto", null),
@@ -220,6 +238,24 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val isCapturingMutable = MutableStateFlow(false)
     val isCapturing = isCapturingMutable.asStateFlow()
 
+    // Fires when the sensor starts exposing a still (CameraX onCaptureStarted), so the viewfinder
+    // can flash at the real moment of capture instead of when the file lands (#914).
+    internal val shutterFeedbackMutable = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val shutterFeedback = shutterFeedbackMutable.asSharedFlow()
+
+    // Background Motion Photo saves (#914): the clip is built after the shutter is released.
+    // The scope is deliberately not cancelled in onCleared, so a save in progress still lands;
+    // the dispatcher and saver are vars only so tests can drive the state machine.
+    internal val motionSaveQueue = MotionSaveQueue(MAX_PENDING_MOTION_SAVES)
+    internal val motionSaveMutex = Mutex()
+    internal val motionSaveScope = CoroutineScope(
+        SupervisorJob() + CoroutineExceptionHandler { _, e ->
+            Log.error("CameraViewModel", "Background Motion Photo save failed", e)
+        }
+    )
+    internal var motionSaveDispatcher: CoroutineDispatcher = Dispatchers.IO
+    internal var motionPhotoSaver: suspend (MotionSaveRequest) -> Uri? = { assembleAndSaveMotionPhoto(it) }
+
     internal val locationEnabledMutable = MutableStateFlow(false)
     val locationEnabled = locationEnabledMutable.asStateFlow()
 
@@ -316,9 +352,9 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     val nightModeActive = combine(lowLightDetectedMutable, nightModeOverriddenOffMutable) { low, off -> low && !off }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    // Whether to offer the vendor NIGHT extension. We optimistically probe with
-    // isSessionConfigSupported(), but the authoritative signal is the actual bind: if
-    // setupNightPreviewSession() ever fails on this device, we remember that (persisted, with a
+    // Whether to offer the vendor NIGHT extension. We optimistically probe with the
+    // isSessionConfigSupported check, but the authoritative signal is the actual bind: if
+    // the night preview session ever fails to bind on this device, we remember that (persisted, with a
     // ~1-week TTL) and stop offering night for a week — so a broken extender (GrapheneOS/Pixel)
     // makes at most one failed attempt per week instead of engaging/failing in a loop.
     internal val nightExtensionUsableMutable = MutableStateFlow(false)
@@ -469,8 +505,11 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val burstCountMutable = MutableStateFlow(0)
     val burstCount = burstCountMutable.asStateFlow()
 
-    // Motion-Photo ring buffer: the last ~MOTION_WINDOW of analysis frames (RGB copies), fed by the
-    // PhotoAnalyzer off the shared analysis stream and drained when a Motion Photo is captured.
+    /**
+     * One Motion-Photo ring-buffer entry: the last ~MOTION_WINDOW of analysis frames (RGB copies),
+     * fed by the PhotoAnalyzer off the shared analysis stream and drained when a Motion Photo is
+     * captured.
+     */
     class MotionFrame(val bitmap: Bitmap, val timestampNanos: Long, val rotationDegrees: Int)
     internal val motionFrames = ArrayDeque<MotionFrame>()
     internal val motionLock = Any()

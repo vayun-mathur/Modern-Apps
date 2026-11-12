@@ -238,6 +238,7 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
         // Show a plain black fill (no debug text) so the switch reads as instant.
         Box(modifier = previewModifier.background(Color.Black))
     }
+    CaptureFlashOverlay(viewModel.shutterFeedback, previewSize.clip(RoundedCornerShape(12.dp)))
 
     CameraPreviewOverlays(
         gridEnabled = state.gridEnabled,

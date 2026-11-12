@@ -8,9 +8,9 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.roundToInt
 
 /** Shutter-timer countdown tick (1s). */
@@ -42,28 +42,57 @@ fun CameraViewModel.takePhoto() {
 internal fun CameraViewModel.capturePhoto() {
     if (imageCapture == null || isCapturingMutable.value || burstActiveMutable.value) return
     // Claim in-flight synchronously so a second shutter tap (or a stacked timer firing)
-    // can't start a concurrent capture; every path below clears it on completion.
+    // can't start a concurrent capture. Every path clears it once its frame is captured
+    // (Motion Photo) or saved (the other paths) — never later.
     isCapturingMutable.value = true
-    when {
-        // Night Sight mode (or auto-engaged night): the preview is bound with the vendor NIGHT
-        // extension, so a plain single capture through that ImageCapture lets the vendor pipeline
-        // produce the multi-frame night image.
-        nightPreviewActiveMutable.value -> captureSinglePhoto()
-        // Multi-frame night capture only when night mode is active, exposure is fully auto,
-        // and flash is off: the night paths lock AE off (CONTROL_AE_MODE_OFF) with a forced
-        // long exposure, which breaks flash metering/timing and double-exposes (issue #721).
-        // With flash on, fall through to the plain single capture so the shot is an instant
-        // flash photo with no long-exposure countdown overlay.
-        nightModeActive.value && isExposureAuto() && flashModeMutable.value == FlashMode.OFF -> captureNightPhoto()
-        // Motion Photo for plain PHOTO captures (no warmth/shadows bake, not capturing for a
-        // caller). Only at the native 4:3 ratio: the motion still is saved as raw JPEG bytes
-        // (to preserve the Ultra HDR gain map + motion trailer), which can't carry CameraX's
-        // crop. For other ratios fall through to the single-shot path, which saves a cropped JPEG.
-        cameraModeMutable.value == CameraMode.PHOTO && !captureForResult &&
-            warmthMutable.value == 0f && shadowsMutable.value == 0f &&
-            aspectRatioMutable.value == AspectRatioOption.RATIO_4_3 -> captureMotionPhoto()
-        else -> captureSinglePhoto()
+    when (routeStillCapture()) {
+        StillRoute.NIGHT -> captureNightPhoto()
+        StillRoute.MOTION_PHOTO -> captureMotionPhoto()
+        StillRoute.SINGLE -> captureSinglePhoto()
     }
+}
+
+/** Which capture path a shutter press takes; chosen by [routeStillCapture]. */
+internal enum class StillRoute { SINGLE, NIGHT, MOTION_PHOTO }
+
+/**
+ * Picks the capture path for a shutter press. Choosing [StillRoute.MOTION_PHOTO] reserves a
+ * [CameraViewModel.motionSaveQueue] slot, which the Motion Photo path releases once its save
+ * lands; with every slot taken by earlier shots still encoding, the press takes a plain still
+ * instead of waiting (#914).
+ */
+internal fun CameraViewModel.routeStillCapture(): StillRoute = when {
+    // Night Sight mode (or auto-engaged night): the preview is bound with the vendor NIGHT
+    // extension, so a plain single capture through that ImageCapture lets the vendor pipeline
+    // produce the multi-frame night image.
+    nightPreviewActiveMutable.value -> StillRoute.SINGLE
+    // Multi-frame night capture only when night mode is active, exposure is fully auto,
+    // and flash is off: the night paths lock AE off (CONTROL_AE_MODE_OFF) with a forced
+    // long exposure, which breaks flash metering/timing and double-exposes (issue #721).
+    // With flash on, fall through to the plain single capture so the shot is an instant
+    // flash photo with no long-exposure countdown overlay.
+    nightModeActive.value && isExposureAuto() && flashModeMutable.value == FlashMode.OFF -> StillRoute.NIGHT
+    !motionPhotoEligible() -> StillRoute.SINGLE
+    motionSaveQueue.tryReserve() -> StillRoute.MOTION_PHOTO
+    else -> {
+        Log.status(
+            "CameraViewModel",
+            "${motionSaveQueue.pending} Motion Photos still saving; taking a plain still instead"
+        )
+        StillRoute.SINGLE
+    }
+}
+
+/**
+ * Motion Photo for plain PHOTO captures (no warmth/shadows bake, not capturing for a caller).
+ * Only at the native 4:3 ratio: the motion still is saved as raw JPEG bytes (to preserve the
+ * Ultra HDR gain map + motion trailer), which can't carry CameraX's crop. For other ratios the
+ * single-shot path saves a cropped JPEG.
+ */
+private fun CameraViewModel.motionPhotoEligible(): Boolean {
+    val plainPhoto = cameraModeMutable.value == CameraMode.PHOTO && !captureForResult
+    val noBake = warmthMutable.value == 0f && shadowsMutable.value == 0f
+    return plainPhoto && noBake && aspectRatioMutable.value == AspectRatioOption.RATIO_4_3
 }
 
 /**
@@ -160,18 +189,51 @@ internal fun CameraViewModel.clearMotionFrames() = synchronized(motionLock) {
 }
 
 /**
+ * A captured Motion Photo still waiting for its clip: the JPEG bytes, the ring-buffer frames
+ * drained at capture time (owned by the request and recycled once the save finishes), and the
+ * capture-time orientation, mirroring and file name, so a camera flip or a later shot while
+ * this one waits in the queue can't change how it is saved.
+ */
+internal class MotionSaveRequest(
+    val jpegBytes: ByteArray,
+    val frames: List<CameraViewModel.MotionFrame>,
+    val rotationDegrees: Int,
+    val mirrored: Boolean,
+    val displayName: String
+)
+
+/**
  * Captures a Motion Photo: the still (captured in-memory so its bytes can carry the trailer) plus
  * the buffered ring-buffer frames encoded to a short MP4 and appended as a Google Motion Photo
  * trailer. Falls back to saving the plain still if no frames are buffered or encoding fails.
  * The still may be Ultra HDR (gain map preserved); the appended clip is SDR at analysis resolution.
+ *
+ * The caller ([routeStillCapture]) has already reserved a [CameraViewModel.motionSaveQueue] slot.
+ * The shutter is released as soon as the still is in memory; the clip is built and saved in the
+ * background by [onMotionStillCaptured] (#914).
  */
 internal fun CameraViewModel.captureMotionPhoto() {
-    val capture = imageCapture ?: return
+    val capture = imageCapture ?: run {
+        motionSaveQueue.release()
+        isCapturingMutable.value = false
+        return
+    }
     isCapturingMutable.value = true
+    // Name, mirroring and orientation are fixed at the shutter press, not when the save runs.
+    val displayName = "IMG_${MediaStoreSaver.timestamp()}.jpg"
+    val mirrored = mirrorCaptures
     capture.takePicture(
         ContextCompat.getMainExecutor(app),
         object : ImageCapture.OnImageCapturedCallback() {
+            private var feedbackSent = false
+
+            override fun onCaptureStarted() {
+                feedbackSent = true
+                emitShutterFeedback()
+            }
+
             override fun onCaptureSuccess(image: ImageProxy) {
+                if (!feedbackSent) emitShutterFeedback()
                 val degrees = image.imageInfo.rotationDegrees
                 val jpegBytes = try {
                     image.planes[0].buffer.let { buf ->
@@ -180,18 +242,14 @@ internal fun CameraViewModel.captureMotionPhoto() {
                 } finally {
                     image.close()
                 }
-                val frames = drainMotionFrames()
-                viewModelScope.launch {
-                    val uri = withContext(Dispatchers.Default) {
-                        assembleAndSaveMotionPhoto(jpegBytes, frames, degrees)
-                    }
-                    frames.forEach { it.bitmap.recycle() }
-                    isCapturingMutable.value = false
-                    if (uri != null) setLastCaptureUri(uri)
-                }
+                onMotionStillCaptured(
+                    MotionSaveRequest(jpegBytes, drainMotionFrames(), degrees, mirrored, displayName)
+                )
             }
+
             override fun onError(exception: ImageCaptureException) {
                 Log.error("CameraViewModel", "Motion Photo capture failed; falling back to still", exception)
+                motionSaveQueue.release()
                 isCapturingMutable.value = false
                 captureSinglePhoto()
             }
@@ -199,16 +257,37 @@ internal fun CameraViewModel.captureMotionPhoto() {
     )
 }
 
-internal fun CameraViewModel.assembleAndSaveMotionPhoto(
-    jpegBytes: ByteArray,
-    frames: List<CameraViewModel.MotionFrame>,
-    degrees: Int
-): Uri? {
-    val name = "IMG_${MediaStoreSaver.timestamp()}.jpg"
+/**
+ * The Motion Photo still is in memory: release the shutter now and finish the clip in the
+ * background. Saves run on [CameraViewModel.motionSaveDispatcher] one at a time, in shot order
+ * (the mutex is fair), inside [CameraViewModel.motionSaveScope], which outlives the screen so
+ * a shot taken just before leaving still lands. The thumbnail updates when each save lands.
+ */
+internal fun CameraViewModel.onMotionStillCaptured(request: MotionSaveRequest): Job {
+    isCapturingMutable.value = false
+    return motionSaveScope.launch(motionSaveDispatcher) {
+        val uri = try {
+            motionSaveMutex.withLock { motionPhotoSaver(request) }
+        } finally {
+            request.frames.forEach { it.bitmap.recycle() }
+            motionSaveQueue.release()
+        }
+        if (uri != null) setLastCaptureUri(uri)
+    }
+}
+
+/** Signals the UI that the sensor started (or finished) exposing a still. */
+internal fun CameraViewModel.emitShutterFeedback() {
+    shutterFeedbackMutable.tryEmit(Unit)
+}
+
+/** Builds the clip for [request], appends it to the still and saves it. Blocking: call off main. */
+internal fun CameraViewModel.assembleAndSaveMotionPhoto(request: MotionSaveRequest): Uri? {
+    val frames = request.frames
     // In-memory captures carry no ImageCapture.Metadata, so stamp GPS/orientation into the
     // still bytes here (issue #731). Must happen BEFORE the MP4 trailer is appended —
     // ExifInterface only understands a pure JPEG.
-    val stillBytes = stampStillBytes(jpegBytes, degrees, mirrorCaptures)
+    val stillBytes = stampStillBytes(request.jpegBytes, request.rotationDegrees, request.mirrored)
     // Only frames matching the newest frame's dimensions are encoded (a rebind can change size).
     val sized = frames.takeIf { it.isNotEmpty() }?.let { list ->
         val w = list.last().bitmap.width
@@ -234,7 +313,7 @@ internal fun CameraViewModel.assembleAndSaveMotionPhoto(
     } else {
         stillBytes
     }
-    return saveStillBytes(name, bytes)
+    return saveStillBytes(request.displayName, bytes)
 }
 
 /**
