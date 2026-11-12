@@ -5,10 +5,12 @@ import com.vayunmathur.contacts.data.CDKPhone
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactDetails
 import com.vayunmathur.contacts.data.Name
+import com.vayunmathur.contacts.data.NewContactAccountPolicy
 import com.vayunmathur.contacts.data.Nickname
 import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
+import com.vayunmathur.contacts.data.SystemDefaultAccountSource
 import com.vayunmathur.library.intents.contacts.ContactData
 import com.vayunmathur.library.util.AssistantIntent
 import kotlinx.serialization.InternalSerializationApi
@@ -27,7 +29,10 @@ class InsertIntent: AssistantIntent<ContactData, Unit>(serializer<ContactData>()
             notes = listOf(Note(0, "")),
             nicknames = listOf(Nickname(0, "", CDKNickname.TYPE_DEFAULT))
         )
-        val contact = Contact(0L, null, null, false, details)
+        // No account was asked for, so use the system default: on Android 16+ a cloud
+        // default makes the provider refuse the device-local account (#916).
+        val cloud = NewContactAccountPolicy.resolve(SystemDefaultAccountSource(this))?.cloudAccount
+        val contact = Contact(0L, cloud?.type, cloud?.name, false, details)
         contact.save(this, contact.details, ContactDetails.empty())
     }
 }

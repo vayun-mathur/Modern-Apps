@@ -25,10 +25,12 @@ import com.vayunmathur.contacts.data.ContactDetail
 import com.vayunmathur.contacts.data.ContactDetails
 import com.vayunmathur.contacts.data.ContactGroup
 import com.vayunmathur.contacts.data.ContactPrefill
+import com.vayunmathur.contacts.data.DefaultAccountSource
 import com.vayunmathur.contacts.data.Email
 import com.vayunmathur.contacts.data.Event
 import com.vayunmathur.contacts.data.GroupMembership
 import com.vayunmathur.contacts.data.Name
+import com.vayunmathur.contacts.data.NewContactRestriction
 import com.vayunmathur.contacts.data.Nickname
 import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
@@ -36,9 +38,11 @@ import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.Photo
 import com.vayunmathur.contacts.data.PrefillValue
 import com.vayunmathur.contacts.data.SIM_ACCOUNT_TYPE
+import com.vayunmathur.contacts.data.SaveOutcome
 import com.vayunmathur.contacts.data.LOCAL_ACCOUNT_TYPE
 import com.vayunmathur.contacts.data.SimContact
 import com.vayunmathur.contacts.data.SimContactsDataSource
+import com.vayunmathur.contacts.data.SystemDefaultAccountSource
 import com.vayunmathur.contacts.data.isSimAccountType
 import com.vayunmathur.contacts.data.isDefaultLocalAccount
 import com.vayunmathur.contacts.data.isLocalAccountType
@@ -84,7 +88,13 @@ private const val SUBSCRIBE_TIMEOUT = 5_000L
 /** Debounce for coalesced system-contact change notifications. */
 private const val SYNC_DEBOUNCE_MILLIS = 300L
 
-class ContactViewModel(application: Application) : AndroidViewModel(application), ContactsActions {
+class ContactViewModel internal constructor(
+    application: Application,
+    /** Where the provider's default-account facts come from (#916); tests pass a fake. */
+    internal val defaultAccountSource: DefaultAccountSource,
+) : AndroidViewModel(application), ContactsActions {
+
+    constructor(application: Application) : this(application, SystemDefaultAccountSource(application))
 
     internal val dataStore = DataStoreUtils.getInstance(application)
 
@@ -219,6 +229,11 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     val accounts: StateFlow<List<ContactAccount>> = accountsState.asStateFlow()
 
     internal val lastSelectedAccountState = MutableStateFlow<ContactAccount?>(null)
+
+    // Android 16+: accounts that cannot take new contacts while the system default
+    // account is a cloud account (#916). null = no restriction.
+    internal val newContactRestrictionState = MutableStateFlow<NewContactRestriction?>(null)
+    val newContactRestriction: StateFlow<NewContactRestriction?> = newContactRestrictionState.asStateFlow()
 
     // Parsed-VCF state for the import screen. null = not yet parsed (or cleared);
     // empty list = parsed and found nothing; non-empty = parsed contacts ready to import.
@@ -496,12 +511,8 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /** Writes [contact] to the SIM or the contacts provider. Returns false if the write failed. */
-    internal suspend fun persistContact(contact: com.vayunmathur.contacts.data.Contact): Boolean {
-        if (isSimAccountType(contact.accountType)) {
-            return persistSimContact(contact)
-        }
-        return persistProviderContact(contact)
-    }
+    internal suspend fun persistContact(contact: com.vayunmathur.contacts.data.Contact): Boolean =
+        persistContactWithOutcome(contact) == SaveOutcome.SAVED
 
     // ---------------------------------------------------------------------
     // Base64 photo decode cache.

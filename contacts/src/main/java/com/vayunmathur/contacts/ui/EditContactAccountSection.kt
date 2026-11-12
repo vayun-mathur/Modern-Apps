@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.contacts.R
+import com.vayunmathur.contacts.data.NewContactRestriction
 import com.vayunmathur.contacts.util.ContactAccount
 import com.vayunmathur.contacts.util.ContactViewModel
 import com.vayunmathur.library.ui.DropdownMenu
@@ -30,19 +31,25 @@ fun EditContactAccountSection(
     draft: ContactViewModel.ContactDraft,
     accounts: List<ContactAccount>,
     simLabels: Map<String, String> = emptyMap(),
+    restriction: NewContactRestriction? = null,
     onAccountChange: (String, String) -> Unit,
 ) {
-    AccountChooser(draft.accountName, draft.accountType, accounts, simLabels) { name, type ->
+    AccountChooser(draft.accountName, draft.accountType, accounts, simLabels, restriction) { name, type ->
         onAccountChange(name, type)
     }
 }
 
+/**
+ * Accounts [restriction] blocks (Android 16+ with a cloud default account, #916) are listed
+ * disabled with the reason, since the provider would refuse a new contact there.
+ */
 @Composable
 internal fun AccountChooser(
     accountName: String,
     accountType: String,
     accounts: List<ContactAccount>,
     simLabels: Map<String, String> = emptyMap(),
+    restriction: NewContactRestriction? = null,
     onAccountChange: (String, String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -54,6 +61,10 @@ internal fun AccountChooser(
         accountName.isNotEmpty() -> accountName
         else -> onDevice
     }
+    val blockedReason = restriction?.let {
+        stringResource(R.string.account_unavailable_cloud_default, it.cloudAccount.name)
+    }
+    val currentBlocked = restriction?.blocks(accountName, accountType) == true
     Box(Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = displayValue,
@@ -62,6 +73,10 @@ internal fun AccountChooser(
             label = { Text(stringResource(R.string.account)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            isError = currentBlocked,
+            supportingText = if (currentBlocked && blockedReason != null) {
+                { Text(blockedReason) }
+            } else null,
             trailingIcon = {
                 IconButton(onClick = { expanded = true }) {
                     IconArrowDropDown()
@@ -70,6 +85,7 @@ internal fun AccountChooser(
         )
         DropdownMenu(expanded, { expanded = false }) {
             if (accounts.none { it.name.isBlank() && it.type.isBlank() }) {
+                val blocked = restriction?.blocks("", "") == true
                 SelectableDropdownMenuItem(
                     selected = accountName.isEmpty() && accountType.isEmpty(),
                     onClick = {
@@ -77,18 +93,27 @@ internal fun AccountChooser(
                         expanded = false
                     },
                     text = { Text(onDevice) },
+                    enabled = !blocked,
+                    supportingText = if (blocked && blockedReason != null) {
+                        { Text(blockedReason) }
+                    } else null,
                     selectedLeadingIcon = { com.vayunmathur.library.ui.IconCheck() },
                 )
             }
             accounts.forEach { account ->
                 val key = "${account.type}|${account.name}"
                 val label = simLabels[key] ?: account.name.ifEmpty { onDevice }
+                val blocked = restriction?.blocks(account.name, account.type) == true
                 SelectableDropdownMenuItem(
                     selected = currentKey == key,
                     onClick = {
                         onAccountChange(account.name, account.type)
                         expanded = false
                     },
+                    enabled = !blocked,
+                    supportingText = if (blocked && blockedReason != null) {
+                        { Text(blockedReason) }
+                    } else null,
                     text = { Text(when {
                         simLabels.containsKey(key) -> label
                         account.type.isBlank() -> label

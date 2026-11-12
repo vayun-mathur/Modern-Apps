@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactDetails
+import com.vayunmathur.contacts.data.SaveOutcome
 import com.vayunmathur.contacts.data.SimContactsDataSource
 import com.vayunmathur.contacts.data.isSimAccountType
 import com.vayunmathur.library.log.Log
@@ -132,17 +133,18 @@ fun ContactViewModel.clearParsedVcf() {
 
 /**
  * Bulk-imports the previously parsed [contacts] into the account with [accountName] and [accountType].
- * Runs off the main thread; invokes [onDone] on the main thread when complete (or on failure).
+ * Runs off the main thread; invokes [onDone] on the main thread when complete (or on failure),
+ * with a user-facing error when the provider refused the target account (#916), else null.
  */
 fun ContactViewModel.importVcfContacts(
     contacts: List<Contact>,
     accountName: String,
     accountType: String,
-    onDone: () -> Unit = {},
+    onDone: (error: String?) -> Unit = {},
 ) {
     val app = getApplication<Application>()
     viewModelScope.launch {
-        withContext(Dispatchers.IO) {
+        val rejected = withContext(Dispatchers.IO) {
             // Broad catch is deliberate: bulk import crosses the contacts
             // provider, SIM ADN and VCF parsing, and must report failure
             // via onDone rather than crashing the import screen.
@@ -152,15 +154,17 @@ fun ContactViewModel.importVcfContacts(
                     importVcfToSim(app, contacts, accountName)
                     // Refresh unified list
                     withContext(Dispatchers.Main) { loadContacts() }
+                    false
                 } else {
                     importVcfToProvider(app, contacts, accountName, accountType)
                 }
             } catch (e: Exception) {
                 Log.error("ContactViewModel", "Error importing contacts", e)
+                false
             }
         }
         loadContacts()
-        onDone()
+        onDone(if (rejected) cloudDefaultRejectionMessage() else null)
     }
 }
 
@@ -183,17 +187,24 @@ private suspend fun ContactViewModel.importVcfToSim(
     }
 }
 
-private fun ContactViewModel.importVcfToProvider(
+/**
+ * Saves each contact into the account. Returns true when the provider refused the account
+ * because the system default is a cloud account (#916); every contact targets the same
+ * account, so the first refusal stops the import instead of failing each one in turn.
+ */
+private fun importVcfToProvider(
     app: Application,
     contacts: List<Contact>,
     accountName: String,
     accountType: String,
-) {
-    contacts.forEach { contact ->
+): Boolean {
+    for (contact in contacts) {
         val toSave = contact.copy(
             accountName = accountName,
             accountType = accountType
         )
-        toSave.save(app, toSave.details, ContactDetails.empty())
+        val outcome = toSave.saveWithOutcome(app, toSave.details, ContactDetails.empty())
+        if (outcome == SaveOutcome.REJECTED_CLOUD_DEFAULT) return true
     }
+    return false
 }

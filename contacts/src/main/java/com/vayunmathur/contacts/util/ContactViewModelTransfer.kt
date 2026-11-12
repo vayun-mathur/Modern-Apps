@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactDetails
+import com.vayunmathur.contacts.data.SaveOutcome
 import com.vayunmathur.contacts.data.SimContactsDataSource
 import com.vayunmathur.contacts.data.isSimAccountType
 import com.vayunmathur.library.log.Log
@@ -28,7 +29,13 @@ enum class SimDroppedField {
     FAVORITE,
 }
 
-data class TransferResult(val moved: Int, val failed: Int, val groupsDropped: Boolean)
+data class TransferResult(
+    val moved: Int,
+    val failed: Int,
+    val groupsDropped: Boolean,
+    /** True when the provider refused the destination account (#916). */
+    val rejectedByCloudDefault: Boolean = false,
+)
 
 /**
  * Pure helper: which fields of [contact] would not survive a move to a SIM
@@ -56,19 +63,26 @@ fun computeSimLoss(contact: Contact): List<SimDroppedField> {
  * MOVEs [contactIds] to ([destName], [destType]): copies each contact into the
  * destination with fresh data-row ids, then deletes the source only when the
  * insert succeeded. Sequential so SIM ADN insert ordering is deterministic.
- * [onResult] is invoked on the main thread.
+ * [onResult] is invoked on the main thread. When the provider refused the destination
+ * because the system default account is a cloud account (#916), [onRejected] receives
+ * the user-facing reason first.
  */
 fun ContactViewModel.transferContacts(
     contactIds: List<Long>,
     destName: String,
     destType: String,
+    onRejected: ((message: String) -> Unit)? = null,
     onResult: ((moved: Int, failed: Int, groupsDropped: Boolean) -> Unit)? = null,
 ) {
     viewModelScope.launch {
         val result = withContext(Dispatchers.IO) { transferContactsInternal(contactIds, destName, destType) }
         loadAccounts()
         loadContacts()
-        withContext(Dispatchers.Main) { onResult?.invoke(result.moved, result.failed, result.groupsDropped) }
+        val rejection = if (result.rejectedByCloudDefault) cloudDefaultRejectionMessage() else null
+        withContext(Dispatchers.Main) {
+            rejection?.let { onRejected?.invoke(it) }
+            onResult?.invoke(result.moved, result.failed, result.groupsDropped)
+        }
     }
 }
 
@@ -80,6 +94,7 @@ private suspend fun ContactViewModel.transferContactsInternal(
     var moved = 0
     var failed = 0
     var groupsDropped = false
+    var rejected = false
     for (id in contactIds) {
         val outcome = moveContactById(id, destName, destType)
         if (outcome == null) continue
@@ -88,9 +103,10 @@ private suspend fun ContactViewModel.transferContactsInternal(
             if (outcome.groupsDropped) groupsDropped = true
         } else {
             failed++
+            if (outcome.rejected) rejected = true
         }
     }
-    return TransferResult(moved, failed, groupsDropped)
+    return TransferResult(moved, failed, groupsDropped, rejected)
 }
 
 /** Moves one contact by id. Null when the destination equals the source (skipped, not failed). */
@@ -107,7 +123,7 @@ private suspend fun ContactViewModel.moveContactById(
 private fun isSameAccount(contact: Contact, destName: String, destType: String): Boolean =
     (contact.accountType.orEmpty() == destType) && (contact.accountName.orEmpty() == destName)
 
-private data class MoveOutcome(val moved: Boolean, val groupsDropped: Boolean)
+private data class MoveOutcome(val moved: Boolean, val groupsDropped: Boolean, val rejected: Boolean = false)
 
 // Broad catch is deliberate: transfer crosses provider + SIM ADN writes and
 // must report failure via the outcome rather than crashing the caller.
@@ -126,7 +142,7 @@ private suspend fun ContactViewModel.moveOneContact(
             fromSim && !toSim -> copySimToProvider(contact, destName, destType)
             else -> copySimToSim(contact, destName)
         }
-        if (!inserted.ok) return MoveOutcome(false, false)
+        if (!inserted.ok) return MoveOutcome(false, false, inserted.rejected)
         deleteTransferSource(contact)
         return MoveOutcome(true, inserted.groupsDropped)
     } catch (e: Exception) {
@@ -135,7 +151,10 @@ private suspend fun ContactViewModel.moveOneContact(
     }
 }
 
-private data class InsertOutcome(val ok: Boolean, val groupsDropped: Boolean)
+private data class InsertOutcome(val ok: Boolean, val groupsDropped: Boolean, val rejected: Boolean = false)
+
+/** Refusal of the destination account (#916): a retry without groups cannot help. */
+private val REJECTED_INSERT = InsertOutcome(ok = false, groupsDropped = false, rejected = true)
 
 private suspend fun ContactViewModel.copyProviderToProvider(
     contact: Contact,
@@ -144,8 +163,10 @@ private suspend fun ContactViewModel.copyProviderToProvider(
 ): InsertOutcome {
     val app = getApplication<Application>()
     val withGroups = contact.zeroedCopy(destName, destType)
-    if (withGroups.save(app, withGroups.details, ContactDetails.empty())) {
-        return InsertOutcome(true, false)
+    when (withGroups.saveWithOutcome(app, withGroups.details, ContactDetails.empty())) {
+        SaveOutcome.SAVED -> return InsertOutcome(true, false)
+        SaveOutcome.REJECTED_CLOUD_DEFAULT -> return REJECTED_INSERT
+        SaveOutcome.FAILED -> Unit
     }
     // Fallback: group row ids may not exist for the destination; retry without them.
     if (withGroups.details.groups.isEmpty()) return InsertOutcome(false, false)
@@ -180,7 +201,9 @@ private suspend fun ContactViewModel.copySimToProvider(
     // Never leak the negative synthetic SIM id into the provider insert.
     val fresh = contact.zeroedCopy(destName, destType)
     val withoutGroups = fresh.copy(details = fresh.details.copy(groups = emptyList()))
-    val ok = withoutGroups.save(app, withoutGroups.details, ContactDetails.empty())
+    val outcome = withoutGroups.saveWithOutcome(app, withoutGroups.details, ContactDetails.empty())
+    if (outcome == SaveOutcome.REJECTED_CLOUD_DEFAULT) return REJECTED_INSERT
+    val ok = outcome == SaveOutcome.SAVED
     return InsertOutcome(ok, contact.details.groups.isNotEmpty() && ok)
 }
 

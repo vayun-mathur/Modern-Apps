@@ -30,6 +30,7 @@ import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.Photo
 import com.vayunmathur.contacts.data.PrefillValue
+import com.vayunmathur.contacts.data.SaveOutcome
 import com.vayunmathur.contacts.data.SimContactsDataSource
 import com.vayunmathur.contacts.data.isSimAccountType
 import kotlinx.coroutines.Dispatchers
@@ -110,12 +111,13 @@ private fun ContactViewModel.ContactDraft.withListFields(
 )
 
 // An existing contact keeps its own account even when that is on-device (null); only a new
-// contact falls back to the last account picked in the add screen.
+// contact falls back to the last account picked in the add screen, or to the cloud default
+// when the provider would refuse that account (#916).
 private fun ContactViewModel.draftAccountName(contact: Contact?): String =
-    if (contact != null) contact.accountName.orEmpty() else lastSelectedAccountState.value?.name.orEmpty()
+    if (contact != null) contact.accountName.orEmpty() else newContactDefaultAccount().name
 
 private fun ContactViewModel.draftAccountType(contact: Contact?): String =
-    if (contact != null) contact.accountType.orEmpty() else lastSelectedAccountState.value?.type.orEmpty()
+    if (contact != null) contact.accountType.orEmpty() else newContactDefaultAccount().type
 
 private fun ContactViewModel.draftPhoneNumbers(
     details: ContactDetails?,
@@ -304,14 +306,17 @@ fun ContactViewModel.saveEditDraft(onResult: ((Boolean, String?, Long?) -> Unit)
     }
     val newContact = buildContactFromDraft(draft)
     viewModelScope.launch {
-        val ok = withContext(Dispatchers.IO) { persistContact(newContact) }
+        val outcome = withContext(Dispatchers.IO) { persistContactWithOutcome(newContact) }
+        val ok = outcome == SaveOutcome.SAVED
         val savedId = when {
             !ok -> null
             isSimAccountType(newContact.accountType) -> findSavedSimContactId(newContact)
             else -> newContact.id.takeIf { it != 0L }
         }
         if (ok) clearEditDraft()
-        onResult?.invoke(ok, null, savedId)
+        // A refused account gets its reason (#916); other failures keep the caller's generic text.
+        val error = if (outcome == SaveOutcome.REJECTED_CLOUD_DEFAULT) cloudDefaultRejectionMessage() else null
+        onResult?.invoke(ok, error, savedId)
     }
 }
 

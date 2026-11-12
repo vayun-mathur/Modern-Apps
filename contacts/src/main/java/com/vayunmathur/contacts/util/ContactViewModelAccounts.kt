@@ -5,8 +5,10 @@ import android.content.ContentProviderOperation
 import android.provider.ContactsContract
 import com.vayunmathur.library.log.Log
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.LOCAL_ACCOUNT_TYPE
+import com.vayunmathur.contacts.data.NewContactAccountPolicy
 import com.vayunmathur.contacts.data.SIM_ACCOUNT_TYPE
 import com.vayunmathur.contacts.data.SimContactsDataSource
 import com.vayunmathur.contacts.data.isDefaultLocalAccount
@@ -88,7 +90,50 @@ internal suspend fun ContactViewModel.loadAccountsInternal() {
     val savedAccounts = loadSavedAccounts()
     migrateHiddenAccountKeys()
     refreshSimAccounts(app)
-    sortAccountsIntoState((accountSet + savedAccounts + simAccountsOf(app)).toList())
+    val restriction = NewContactAccountPolicy.resolve(defaultAccountSource)
+    newContactRestrictionState.value = restriction
+    // The cloud default is where new contacts now go, so offer it even when it holds
+    // no contacts yet (it would otherwise be missing from every account picker).
+    val cloud = restriction?.cloudAccount?.let { ContactAccount(it.name, it.type) }
+    sortAccountsIntoState((accountSet + savedAccounts + simAccountsOf(app) + listOfNotNull(cloud)).toList())
+}
+
+/**
+ * Re-reads the system default account for new contacts (Android 16+, #916) so the
+ * pickers and new drafts reflect a change made in system settings since the last sync.
+ */
+internal suspend fun ContactViewModel.refreshNewContactRestriction() {
+    newContactRestrictionState.value = withContext(Dispatchers.IO) {
+        NewContactAccountPolicy.resolve(defaultAccountSource)
+    }
+}
+
+/**
+ * User-facing reason a write was refused because the system default account for new
+ * contacts is a cloud account (#916). Refreshes the restriction first, so the pickers
+ * grey out the refused accounts and the message names the current default.
+ */
+internal suspend fun ContactViewModel.cloudDefaultRejectionMessage(): String {
+    refreshNewContactRestriction()
+    val app = getApplication<Application>()
+    val cloud = newContactRestrictionState.value?.cloudAccount?.name
+    return if (cloud.isNullOrBlank()) {
+        app.getString(R.string.cloud_default_rejected_generic)
+    } else {
+        app.getString(R.string.cloud_default_rejected, cloud)
+    }
+}
+
+/**
+ * Account a new contact starts in: the last one picked, unless the provider would refuse
+ * new contacts there (device or provider SIM account while the system default is a cloud
+ * account, #916), in which case the cloud default account.
+ */
+internal fun ContactViewModel.newContactDefaultAccount(): ContactAccount {
+    val last = lastSelectedAccountState.value ?: ContactAccount("", "")
+    val restriction = newContactRestrictionState.value ?: return last
+    if (!restriction.blocks(last.name, last.type)) return last
+    return ContactAccount(restriction.cloudAccount.name, restriction.cloudAccount.type)
 }
 
 private suspend fun ContactViewModel.queryProviderAccounts(

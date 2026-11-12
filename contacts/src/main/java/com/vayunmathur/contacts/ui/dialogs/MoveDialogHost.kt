@@ -34,6 +34,7 @@ fun MoveDialogHost(
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val simLabels by viewModel.simAccountLabels.collectAsStateWithLifecycle()
     val contacts by viewModel.contacts.collectAsStateWithLifecycle()
+    val restriction by viewModel.newContactRestriction.collectAsStateWithLifecycle()
 
     val toMove = remember(contacts, contactIds) {
         contacts.filter { it.id in contactIds }
@@ -58,12 +59,15 @@ fun MoveDialogHost(
         simLabels = simLabels,
         selectedAccount = selectedAccount,
         simLossLabels = simLoss.map { it.localized() },
+        restriction = restriction,
         onSelectAccount = { selectedAccount = it },
         onClearSelection = { selectedAccount = null },
         onConfirm = {
             val dest = selectedAccount ?: return@MoveToAccountDialog
             val ids = toMove.map { it.id }.ifEmpty { contactIds }
-            viewModel.transferContacts(ids, dest.name, dest.type) { moved, failed, _ ->
+            // Set when the provider refused the destination (#916); explains the failure.
+            var rejection: String? = null
+            viewModel.transferContacts(ids, dest.name, dest.type, onRejected = { rejection = it }) { moved, failed, _ ->
                 // Resources (not composable stringResource): this callback runs
                 // outside composition on the main thread.
                 val message = when {
@@ -71,7 +75,7 @@ fun MoveDialogHost(
                         context.resources.getQuantityString(R.plurals.move_success, moved, moved)
                     moved > 0 ->
                         context.getString(R.string.move_partial_failure, moved, failed)
-                    else -> context.getString(R.string.move_failed)
+                    else -> rejection ?: context.getString(R.string.move_failed)
                 }
                 messenger.show(message)
                 if (moved > 0) onTransferred()

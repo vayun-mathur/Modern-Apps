@@ -13,6 +13,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.contacts.R
+import com.vayunmathur.contacts.data.NewContactRestriction
 import com.vayunmathur.contacts.data.isSimAccountType
 import com.vayunmathur.contacts.util.ContactAccount
 import com.vayunmathur.library.ui.AlertDialog
@@ -26,8 +27,9 @@ import com.vayunmathur.library.ui.R as UiR
 /**
  * Stateless move-to-account dialog: account picker first, then a SIM data-loss
  * warning when the destination is a SIM account that would drop fields.
- * Same-account destinations are shown disabled. Dropped-field labels come from
- * [simLossLabels], resolved by the caller from strings.
+ * Same-account destinations are shown disabled, as are destinations [restriction]
+ * blocks (Android 16+ with a cloud default account, #916), with the reason. Dropped-field
+ * labels come from [simLossLabels], resolved by the caller from strings.
  */
 @Composable
 fun MoveToAccountDialog(
@@ -37,6 +39,7 @@ fun MoveToAccountDialog(
     simLabels: Map<String, String> = emptyMap(),
     selectedAccount: ContactAccount?,
     simLossLabels: List<String> = emptyList(),
+    restriction: NewContactRestriction? = null,
     onSelectAccount: (ContactAccount) -> Unit,
     onClearSelection: () -> Unit,
     onConfirm: () -> Unit,
@@ -71,6 +74,10 @@ fun MoveToAccountDialog(
         )
         return
     }
+    val blockedReason = restriction?.let {
+        stringResource(R.string.account_unavailable_cloud_default, it.cloudAccount.name)
+    }
+    fun isBlocked(account: ContactAccount) = restriction?.blocks(account.name, account.type) == true
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.move_to_account)) },
@@ -83,11 +90,13 @@ fun MoveToAccountDialog(
                 )
                 LazyColumn(Modifier.fillMaxWidth()) {
                     items(accounts, key = { "${it.type}|${it.name}" }) { account ->
+                        val blocked = isBlocked(account)
                         DestinationRow(
                             account = account,
                             simLabels = simLabels,
                             selected = destination == account,
-                            enabled = account !in sourceAccounts,
+                            enabled = account !in sourceAccounts && !blocked,
+                            disabledReason = blockedReason.takeIf { blocked },
                             onClick = { onSelectAccount(account) },
                         )
                     }
@@ -96,7 +105,7 @@ fun MoveToAccountDialog(
         },
         confirmButton = {
             TextButton(
-                enabled = destination != null && destination !in sourceAccounts,
+                enabled = destination != null && destination !in sourceAccounts && !isBlocked(destination),
                 onClick = onConfirm,
             ) {
                 Text(stringResource(R.string.move))
@@ -116,12 +125,14 @@ private fun DestinationRow(
     simLabels: Map<String, String>,
     selected: Boolean,
     enabled: Boolean,
+    disabledReason: String?,
     onClick: () -> Unit,
 ) {
     val key = "${account.type}|${account.name}"
     val onDevice = stringResource(R.string.on_device)
     val label = simLabels[key] ?: account.name.ifEmpty { onDevice }
     val supporting = when {
+        disabledReason != null -> disabledReason
         simLabels.containsKey(key) -> null
         account.type.isNotBlank() -> account.type
         else -> null

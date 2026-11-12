@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.SIM_ACCOUNT_TYPE
+import com.vayunmathur.contacts.data.SaveOutcome
 import com.vayunmathur.contacts.data.SimContactsDataSource
 import com.vayunmathur.contacts.data.isSimAccountType
 import kotlinx.coroutines.delay
@@ -123,9 +124,22 @@ internal fun ContactViewModel.scheduleSimConvergenceSync() {
 /** Delay before the SIM convergence re-sync; hoisted so tests can reference it. */
 internal const val SIM_CONVERGENCE_DELAY_MILLIS = 2_000L
 
+/**
+ * Writes [contact] to the SIM or the contacts provider, telling a provider refusal of
+ * the target account (#916) apart from other failures.
+ */
+internal suspend fun ContactViewModel.persistContactWithOutcome(
+    contact: com.vayunmathur.contacts.data.Contact
+): SaveOutcome {
+    if (isSimAccountType(contact.accountType)) {
+        return if (persistSimContact(contact)) SaveOutcome.SAVED else SaveOutcome.FAILED
+    }
+    return persistProviderContact(contact)
+}
+
 internal suspend fun ContactViewModel.persistProviderContact(
     contact: com.vayunmathur.contacts.data.Contact
-): Boolean {
+): SaveOutcome {
     val app = getApplication<Application>()
     val contactId = contact.id
     val details = contact.details
@@ -139,14 +153,14 @@ internal suspend fun ContactViewModel.persistProviderContact(
     } ?: contacts.value.find { it.id == contactId }?.details
         ?: allContactsState.value.find { it.id == contactId }?.details
         ?: com.vayunmathur.contacts.data.ContactDetails.empty()
-    val ok = contact.save(app, details, oldDetails)
-    if (ok) {
+    val outcome = contact.saveWithOutcome(app, details, oldDetails)
+    if (outcome == SaveOutcome.SAVED) {
         // The provider observer re-syncs on its own debounce, but an edit must be
         // visible immediately - refresh now so the details page and list update
         // without waiting for the observer round-trip.
         syncFromSystem()
     }
-    return ok
+    return outcome
 }
 
 fun ContactViewModel.simDisplayLabel(account: ContactAccount): String? =

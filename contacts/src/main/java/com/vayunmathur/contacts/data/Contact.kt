@@ -331,7 +331,15 @@ data class Contact(
         get() = details.notes.firstOrNull() ?: Note(0, "")
 
     /** Returns false if the provider rejected the batch; never throws. */
-    fun save(context: Context, newDetails: ContactDetails, oldDetails: ContactDetails): Boolean {
+    fun save(context: Context, newDetails: ContactDetails, oldDetails: ContactDetails): Boolean =
+        saveWithOutcome(context, newDetails, oldDetails) == SaveOutcome.SAVED
+
+    /**
+     * Like [save], but tells a provider refusal of the target account apart from other
+     * failures: on Android 16+ a new contact in the device or a provider SIM account is
+     * rejected while the default account is a cloud account (see [NewContactRestriction]).
+     */
+    fun saveWithOutcome(context: Context, newDetails: ContactDetails, oldDetails: ContactDetails): SaveOutcome {
         val ops = ArrayList<ContentProviderOperation>()
         if (id == 0L) {
             ops += ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
@@ -355,19 +363,23 @@ data class Contact(
         }
         return try {
             context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
-            true
+            SaveOutcome.SAVED
         } catch (e: android.content.OperationApplicationException) {
             Log.error("Contact", "Error saving contact", e)
-            false
+            SaveOutcome.FAILED
         } catch (e: android.os.RemoteException) {
             Log.error("Contact", "Error saving contact", e)
-            false
+            SaveOutcome.FAILED
         } catch (e: SecurityException) {
             Log.error("Contact", "Error saving contact", e)
-            false
+            SaveOutcome.FAILED
         } catch (e: IllegalArgumentException) {
             Log.error("Contact", "Error saving contact", e)
-            false
+            if (NewContactAccountPolicy.isCloudDefaultRejection(e)) {
+                SaveOutcome.REJECTED_CLOUD_DEFAULT
+            } else {
+                SaveOutcome.FAILED
+            }
         }
     }
 

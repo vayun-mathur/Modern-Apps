@@ -28,19 +28,16 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
 import com.vayunmathur.library.ui.CircularProgressIndicator
-import com.vayunmathur.library.ui.DropdownMenu
-import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
-import com.vayunmathur.library.ui.IconArrowDropDown
 import com.vayunmathur.library.ui.IconSave
-import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.RadioButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.ui.isExpandedWidth
 import androidx.compose.ui.Alignment
@@ -74,7 +71,9 @@ fun ImportVcfScreen(
     val uriList = remember(uris) { uris.map { it.toUri() } }
     val parsedContacts by viewModel.parsedVcfContacts.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val restriction by viewModel.newContactRestriction.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    val messenger = rememberMessenger()
 
     var importMode by remember { mutableStateOf(ImportMode.Existing) }
     var selectedAccount by remember { mutableStateOf<ContactAccount?>(null) }
@@ -91,16 +90,25 @@ fun ImportVcfScreen(
         onDispose { viewModel.clearParsedVcf() }
     }
 
-    // Auto-select first account
-    LaunchedEffect(accounts) {
-        if (selectedAccount == null) {
-            selectedAccount = accounts.firstOrNull()
+    // Auto-select the first account that can take new contacts (Android 16+ refuses the
+    // device account while the default account is a cloud account, #916).
+    LaunchedEffect(accounts, restriction) {
+        val current = selectedAccount
+        if (current == null || restriction?.blocks(current.name, current.type) == true) {
+            selectedAccount = accounts.firstOrNull { restriction?.blocks(it.name, it.type) != true }
         }
+    }
+    // A refused import stays on this screen with the reason so another account can be picked.
+    val onImportDone: (String?) -> Unit = { error ->
+        isImporting = false
+        if (error != null) messenger.show(error) else backStack.pop()
     }
 
     val contacts = parsedContacts
+    val selectedBlocked = selectedAccount?.let { restriction?.blocks(it.name, it.type) } == true
     val canImport = when (importMode) {
-        ImportMode.Existing -> selectedAccount != null && contacts?.isNotEmpty() == true && !isImporting
+        ImportMode.Existing -> selectedAccount != null && !selectedBlocked &&
+            contacts?.isNotEmpty() == true && !isImporting
         ImportMode.New -> newAccountName.isNotBlank() && contacts?.isNotEmpty() == true && !isImporting
     }
 
@@ -116,10 +124,7 @@ fun ImportVcfScreen(
                         when (importMode) {
                             ImportMode.Existing -> {
                                 val account = selectedAccount ?: return@launch
-                                viewModel.importVcfContacts(cnts, account.name, account.type) {
-                                    isImporting = false
-                                    backStack.pop()
-                                }
+                                viewModel.importVcfContacts(cnts, account.name, account.type, onImportDone)
                             }
                             ImportMode.New -> {
                                 // Create account, then import
@@ -127,10 +132,9 @@ fun ImportVcfScreen(
                                     name = newAccountName,
                                     type = "com.vayunmathur.contacts.local",
                                     onComplete = {
-                                        viewModel.importVcfContacts(cnts, newAccountName, "com.vayunmathur.contacts.local") {
-                                            isImporting = false
-                                            backStack.pop()
-                                        }
+                                        viewModel.importVcfContacts(
+                                            cnts, newAccountName, "com.vayunmathur.contacts.local", onImportDone
+                                        )
                                     }
                                 )
                             }
@@ -243,6 +247,7 @@ fun ImportVcfScreen(
                                 AccountSelectorDropdown(
                                     accounts = accounts,
                                     selectedAccount = selectedAccount,
+                                    restriction = restriction,
                                     onSelect = { selectedAccount = it },
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -274,35 +279,6 @@ fun ImportVcfScreen(
                     }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun AccountSelectorDropdown(
-    accounts: List<ContactAccount>,
-    selectedAccount: ContactAccount?,
-    modifier: Modifier = Modifier,
-    onSelect: (ContactAccount) -> Unit,
-) {
-    var showDropdown by remember { mutableStateOf(false) }
-
-    Box(modifier) {
-        ListItem(
-            content = { Text(selectedAccount?.name?.ifEmpty { stringResource(R.string.on_device) } ?: stringResource(R.string.select_account)) },
-            trailingContent = { IconArrowDropDown() },
-            modifier = Modifier.clickable { showDropdown = true },
-        )
-        DropdownMenu(expanded = showDropdown, onDismissRequest = { showDropdown = false }) {
-            accounts.forEach { account ->
-                DropdownMenuItem(
-                    text = { Text(account.name.ifEmpty { stringResource(R.string.on_device) }) },
-                    onClick = {
-                        onSelect(account)
-                        showDropdown = false
-                    },
-                )
             }
         }
     }

@@ -42,6 +42,7 @@ import com.vayunmathur.contacts.data.SIM_ACCOUNT_TYPE
 import com.vayunmathur.contacts.util.ContactViewModel
 import com.vayunmathur.contacts.util.initEditDraft
 import com.vayunmathur.contacts.util.loadLastSelectedAccount
+import com.vayunmathur.contacts.util.refreshNewContactRestriction
 import com.vayunmathur.contacts.util.saveEditDraft
 import com.vayunmathur.contacts.util.setLastSelectedAccount
 import com.vayunmathur.contacts.util.updateEditDraft
@@ -65,6 +66,9 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
         // this runs falls back to on-device despite the stored choice.
         if (isNewContact) {
             viewModel.loadLastSelectedAccount()
+            // Android 16+: a cloud default account refuses new device contacts, so the
+            // draft must not be seeded with On-Device (#916).
+            viewModel.refreshNewContactRestriction()
         }
         viewModel.initEditDraft(
             contactId = contactId,
@@ -74,6 +78,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
     val draft by viewModel.editDraft.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val simLabels by viewModel.simAccountLabels.collectAsStateWithLifecycle()
+    val restriction by viewModel.newContactRestriction.collectAsStateWithLifecycle()
 
     val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
@@ -139,7 +144,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
 
             // Account chooser for new contacts (SIM accounts appear here as normal accounts)
             if (isNewContact) {
-                EditContactAccountSection(currentDraft, accounts, simLabels) { name, type ->
+                EditContactAccountSection(currentDraft, accounts, simLabels, restriction) { name, type ->
                     viewModel.updateEditDraft { it.copy(accountName = name, accountType = type) }
                     viewModel.setLastSelectedAccount(name, type)
                 }

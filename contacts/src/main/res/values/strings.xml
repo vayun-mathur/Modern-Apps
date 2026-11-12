@@ -251,6 +251,12 @@
     <!-- Storage label on a contact row and in the account picker, naming the SIM slot a contact lives on. %1$d is the 1-based slot number. -->
     <string name="sim_slot_label">SIM %1$d</string>
     <string name="save_failed">Save failed</string>
+    <!-- Android 16+: the system refuses new contacts in the device (On-Device) or SIM account while the default account for new contacts is a cloud account. Shown in the editor, the import screen and the move dialog when a save is refused. %1$s is the default account, e.g. an email address. -->
+    <string name="cloud_default_rejected">Android won\'t add contacts to this account while your default contacts account is <xliff:g id="account" example="name@gmail.com">%1$s</xliff:g>. Choose another account, or change the default in system Contacts settings.</string>
+    <!-- Same as cloud_default_rejected, when the default account's name is unknown -->
+    <string name="cloud_default_rejected_generic">Android won\'t add contacts to this account while your default contacts account is a cloud account. Choose another account, or change the default in system Contacts settings.</string>
+    <!-- Account pickers: supporting text under a disabled On-Device/SIM account (see cloud_default_rejected). %1$s is the default account, e.g. an email address. -->
+    <string name="account_unavailable_cloud_default">Unavailable while your default contacts account is <xliff:g id="account" example="name@gmail.com">%1$s</xliff:g>. Change it in system Contacts settings.</string>
     <string name="importing">Importing…</string>
 
     <!-- Empty states -->
