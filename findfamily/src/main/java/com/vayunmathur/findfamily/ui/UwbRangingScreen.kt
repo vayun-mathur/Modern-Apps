@@ -160,6 +160,10 @@ fun UwbRangingContent(
                     sub = s.reason,
                     progress = false
                 )
+                UwbSessionManager.UwbSessionState.PeerUnsupported -> StatusBlock(
+                    main = stringResource(R.string.uwb_status_peer_unsupported),
+                    progress = false
+                )
                 is UwbSessionManager.UwbSessionState.Failed -> StatusBlock(
                     main = stringResource(R.string.uwb_status_failed),
                     sub = s.reason,

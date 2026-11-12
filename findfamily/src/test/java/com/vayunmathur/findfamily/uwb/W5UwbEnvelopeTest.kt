@@ -1,9 +1,11 @@
 package com.vayunmathur.findfamily.uwb
 
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -76,6 +78,42 @@ class W5UwbEnvelopeTest {
     }
 
     @Test
+    fun cancelReasonRoundTripsJson() {
+        val e = envelope(UwbEnvelopeKind.CANCEL).copy(reason = UwbCancelReason.UNSUPPORTED)
+        val wire = json.encodeToString(UwbEnvelope.serializer(), e)
+        assertTrue(wire.contains("\"reason\":\"unsupported\""))
+        assertEquals(e, json.decodeFromString(UwbEnvelope.serializer(), wire))
+    }
+
+    @Test
+    fun plainCancelOmitsReasonOnTheWire() {
+        // Defaults aren't encoded, so a plain cancel is exactly what pre-#869 builds send.
+        val wire = json.encodeToString(UwbEnvelope.serializer(), envelope(UwbEnvelopeKind.CANCEL))
+        assertFalse(wire.contains("reason"))
+        assertNull(json.decodeFromString(UwbEnvelope.serializer(), wire).reason)
+    }
+
+    @Test
+    fun cancelFromOlderPeerDecodesAsPlainCancel() {
+        val raw = """{"sessionId":"s","sender":7,"senderPlatform":"android","kind":"cancel"}"""
+        val decoded = json.decodeFromString(UwbEnvelope.serializer(), raw)
+        assertEquals(UwbEnvelopeKind.CANCEL, decoded.kind)
+        assertNull(decoded.reason)
+    }
+
+    @Test
+    fun olderPeerParsesCancelWithReason() {
+        // An older build's envelope class has no `reason`; it must still decode the new cancel.
+        val wire = json.encodeToString(
+            UwbEnvelope.serializer(),
+            envelope(UwbEnvelopeKind.CANCEL).copy(reason = UwbCancelReason.UNSUPPORTED),
+        )
+        val legacy = json.decodeFromString(LegacyUwbEnvelope.serializer(), wire)
+        assertEquals(UwbEnvelopeKind.CANCEL, legacy.kind)
+        assertEquals("session-1", legacy.sessionId)
+    }
+
+    @Test
     fun inboxCachesRequestsUntilConsumed() = runTest {
         val req = envelope(UwbEnvelopeKind.REQUEST, sender = 11uL)
         UwbInbox.emit(req)
@@ -107,3 +145,14 @@ class W5UwbEnvelopeTest {
         assertEquals("two", UwbInbox.consumePendingRequest(14L)?.sessionId)
     }
 }
+
+/** [UwbEnvelope] as builds before #869 declared it: no `reason` field. */
+@Serializable
+private data class LegacyUwbEnvelope(
+    val sessionId: String,
+    val sender: ULong,
+    val senderPlatform: String,
+    val kind: String,
+    val payload: UwbHandshake? = null,
+    val recovery: PoweredOffGrant? = null,
+)

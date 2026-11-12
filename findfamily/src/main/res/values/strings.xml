@@ -268,6 +268,8 @@
     <string name="uwb_status_unsupported">Find Nearby (UWB) isn\'t supported on this device.</string>
     <!-- UwbRangingScreen: Generic failure status. Sentence -->
     <string name="uwb_status_failed">Find Nearby (UWB) failed.</string>
+    <!-- UwbRangingScreen: Status when the other person's phone declined the request because it has no UWB / Find Nearby support. Sentence -->
+    <string name="uwb_status_peer_unsupported">Their phone doesn\'t support Find Nearby.</string>
 
     <!-- SecurityCodeDialog: Title. Noun phrase -->
     <string name="security_code">Security code</string>

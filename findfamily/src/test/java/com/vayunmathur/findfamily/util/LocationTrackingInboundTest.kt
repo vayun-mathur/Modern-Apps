@@ -3,6 +3,7 @@ package com.vayunmathur.findfamily.util
 import android.app.Application
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -14,11 +15,15 @@ import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.findfamily.uwb.UwbCancelReason
 import com.vayunmathur.findfamily.uwb.UwbEnvelope
 import com.vayunmathur.findfamily.uwb.UwbEnvelopeKind
+import com.vayunmathur.findfamily.uwb.UwbInbox
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.Shadows
@@ -27,6 +32,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -162,11 +168,15 @@ class LocationTrackingInboundTest {
         val before = Shadows.shadowOf(nm).allNotifications.size
         assertTrue(before >= 2)
         service.handleUwbEnvelopes(emptyList())
-        service.handleUwbEnvelopes(listOf(
-            // Different sender than the direct call above, whose notification it would replace.
-            UwbEnvelope(sessionId = "s1", sender = 77uL, senderPlatform = "android", kind = UwbEnvelopeKind.REQUEST),
-            UwbEnvelope(sessionId = "s2", sender = 56uL, senderPlatform = "android", kind = UwbEnvelopeKind.ACK),
-        ))
+        service.handleUwbEnvelopes(
+            listOf(
+                // Different sender than the direct call above, whose notification it would replace.
+                UwbEnvelope(sessionId = "s1", sender = 77uL, senderPlatform = "android", kind = UwbEnvelopeKind.REQUEST),
+                UwbEnvelope(sessionId = "s2", sender = 56uL, senderPlatform = "android", kind = UwbEnvelopeKind.ACK),
+            ),
+            // The Robolectric sandbox (SDK 34) has no UWB; this path is about a phone that does.
+            uwbAvailable = true,
+        )
         delay(300)
         assertTrue(Shadows.shadowOf(nm).allNotifications.size > before)
         // Powered-off grant from unknown/unconfigured path: silently ignored (no keys store).
@@ -174,6 +184,52 @@ class LocationTrackingInboundTest {
             UwbEnvelope(sessionId = "s3", sender = 55uL, senderPlatform = "android", kind = UwbEnvelopeKind.POF_GRANT,
                 recovery = com.vayunmathur.findfamily.uwb.PoweredOffGrant(epoch = 1, secretB64 = "AA==", recoveryPrivB64 = "AA==", sigB64 = "AA==")),
         ))
+        Unit
+    }
+
+    @Test
+    fun unsupportedPhoneDeclinesUwbRequestWithoutNotifying() = runBlocking {
+        service.setupNotificationChannels()
+        // Even with the radio feature present, the SDK 34 sandbox is below the Android 16
+        // ranging API, so the default availability gate must say no (#869).
+        Shadows.shadowOf(ctx.packageManager).setSystemFeature(PackageManager.FEATURE_UWB, true)
+        val bob = repo.upsertUser(user("Bob"))
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        val before = Shadows.shadowOf(nm).allNotifications.size
+        val reply = CompletableDeferred<Pair<UwbEnvelope, Long>>()
+        service.handleUwbEnvelopes(
+            listOf(UwbEnvelope(sessionId = "req-1", sender = bob.toULong(), senderPlatform = "android", kind = UwbEnvelopeKind.REQUEST)),
+            sendUwb = { env, to, peer ->
+                assertEquals("Bob", peer?.name)
+                reply.complete(env to to)
+                true
+            },
+        )
+        val (env, to) = withTimeout(5_000) { reply.await() }
+        assertEquals(bob, to)
+        assertEquals(UwbEnvelopeKind.CANCEL, env.kind)
+        assertEquals(UwbCancelReason.UNSUPPORTED, env.reason)
+        assertEquals("req-1", env.sessionId)
+        // No "someone is finding you" notification, and nothing handed to the ranging inbox.
+        assertEquals(before, Shadows.shadowOf(nm).allNotifications.size)
+        assertNull(UwbInbox.consumePendingRequest(bob))
+    }
+
+    @Test
+    fun supportedPhoneStillNotifiesAndSendsNoDecline() = runBlocking {
+        service.setupNotificationChannels()
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        val before = Shadows.shadowOf(nm).allNotifications.size
+        var replies = 0
+        service.handleUwbEnvelopes(
+            listOf(UwbEnvelope(sessionId = "req-2", sender = 88uL, senderPlatform = "android", kind = UwbEnvelopeKind.REQUEST)),
+            uwbAvailable = true,
+            sendUwb = { _, _, _ -> replies++; true },
+        )
+        delay(300)
+        assertEquals(0, replies)
+        assertTrue(Shadows.shadowOf(nm).allNotifications.size > before)
+        assertNotNull(UwbInbox.consumePendingRequest(88L))
         Unit
     }
 

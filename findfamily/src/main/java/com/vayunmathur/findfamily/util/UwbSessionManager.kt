@@ -19,6 +19,7 @@ import com.vayunmathur.findfamily.tracker.TrackerUwbGatt
 import com.vayunmathur.findfamily.uwb.RangingSample
 import com.vayunmathur.findfamily.uwb.UwbAccessoryProtocol
 import com.vayunmathur.findfamily.uwb.UwbBytes
+import com.vayunmathur.findfamily.uwb.UwbCancelReason
 import com.vayunmathur.findfamily.uwb.UwbController
 import com.vayunmathur.findfamily.uwb.UwbEnvelope
 import com.vayunmathur.findfamily.uwb.UwbEnvelopeKind
@@ -63,6 +64,11 @@ object UwbSessionManager {
         data class Ranging(val sample: RangingSample) : UwbSessionState
         data object PeerDisconnected : UwbSessionState
         data class Unsupported(val reason: String? = null) : UwbSessionState
+        /**
+         * The peer's phone declined the REQUEST because it can't do Find Nearby at all
+         * (CANCEL with [UwbCancelReason.UNSUPPORTED], #869). Terminal until the screen closes.
+         */
+        data object PeerUnsupported : UwbSessionState
         data class Failed(val reason: String) : UwbSessionState
     }
 
@@ -139,11 +145,7 @@ object UwbSessionManager {
                         }
                         // If already busy, drop — UWB is one-session-at-a-time.
                     }
-                    UwbEnvelopeKind.CANCEL -> {
-                        if (env.sessionId == currentSessionId) {
-                            stopLocal()
-                        }
-                    }
+                    UwbEnvelopeKind.CANCEL -> endOnPeerCancel(env)
                     // ACK and CONFIG envelopes are consumed by the waiting
                     // initiator/responder coroutines via UwbInbox.flow.first {...}.
                     else -> {}
@@ -264,8 +266,7 @@ object UwbSessionManager {
             return
         }
         if (ack.kind == UwbEnvelopeKind.CANCEL) {
-            _state.value = UwbSessionState.Idle
-            stopLocal()
+            endOnPeerCancel(ack)
             return
         }
         val peerAddress = ack.payload?.addressB64?.let(UwbBytes::from)
@@ -592,6 +593,40 @@ object UwbSessionManager {
         } catch (e: Exception) {
             Log.error(TAG, "publishUwbMessage threw exception", e)
             false
+        }
+    }
+
+    /**
+     * The state a requester lands in when the peer answers its REQUEST with [cancel].
+     * Only [UwbCancelReason.UNSUPPORTED] gets its own state; a plain cancel, an unknown
+     * reason from a newer peer, or no reason from an older one all mean "peer stopped".
+     */
+    internal fun stateAfterPeerCancel(cancel: UwbEnvelope): UwbSessionState =
+        if (cancel.reason == UwbCancelReason.UNSUPPORTED) {
+            UwbSessionState.PeerUnsupported
+        } else {
+            UwbSessionState.Idle
+        }
+
+    /**
+     * Tear down the session [cancel] belongs to and publish [stateAfterPeerCancel].
+     *
+     * Both the inbox collector in [init] and the initiator's ACK wait see the same CANCEL
+     * and race to handle it, so this is synchronized and keyed on [currentSessionId]: the
+     * first caller wins, the second finds the session already gone. A terminal state keeps
+     * the peer id so the screen's dispose still matches it and calls [stop], which resets
+     * the manager to Idle for the next find or incoming request.
+     */
+    @Synchronized
+    private fun endOnPeerCancel(cancel: UwbEnvelope) {
+        if (cancel.sessionId != currentSessionId) return
+        val peer = _peerUserId.value
+        stopLocal()
+        val next = stateAfterPeerCancel(cancel)
+        if (next != UwbSessionState.Idle) {
+            Log.status(TAG, "peer declined session ${cancel.sessionId}: reason=${cancel.reason}")
+            _peerUserId.value = peer
+            _state.value = next
         }
     }
 

@@ -38,7 +38,26 @@ data class UwbEnvelope(
      * iOS peer would drain it and fail to parse it as a location.
      */
     val recovery: PoweredOffGrant? = null,
+    /**
+     * Why a [UwbEnvelopeKind.CANCEL] was sent, one of [UwbCancelReason]; null everywhere else.
+     *
+     * Optional and additive, the same way [recovery] is: null is a plain cancel (user stopped,
+     * screen closed), which is all a peer that predates this field ever sends. Defaults are not
+     * encoded, so a plain cancel is byte-identical on the wire to what older builds produce, and
+     * an older peer that does get a reason drops the unknown key (`ignoreUnknownKeys` on
+     * Android, `JSONDecoder` on iOS) and treats it as the plain cancel it already understands.
+     */
+    val reason: String? = null,
 )
+
+/** Values for [UwbEnvelope.reason]. Unknown values must be treated as a plain cancel. */
+object UwbCancelReason {
+    /**
+     * The receiving phone can't do Find Nearby at all (below Android 16 or no UWB radio), so it
+     * declined the REQUEST on arrival instead of letting the requester wait out its timeout.
+     */
+    const val UNSUPPORTED = "unsupported"
+}
 
 /**
  * The keys a peer needs to find this device once it is switched off, sealed to that peer's own

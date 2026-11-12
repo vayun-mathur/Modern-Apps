@@ -10,6 +10,7 @@ import com.vayunmathur.findfamily.data.havershine
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.domain.NoShowPolicy
 import com.vayunmathur.findfamily.domain.PairAuth
+import com.vayunmathur.findfamily.uwb.UwbCancelReason
 import com.vayunmathur.findfamily.uwb.UwbEnvelope
 import com.vayunmathur.findfamily.uwb.UwbEnvelopeKind
 import com.vayunmathur.findfamily.uwb.UwbInbox
@@ -38,6 +39,12 @@ private const val LOW_BATTERY_THRESHOLD = 15f
 
 /** Assumed battery when no prior fix exists to compare against. */
 private const val FULL_BATTERY = 100f
+
+private const val TAG_UWB = "FF-Uwb"
+
+/** Sends one UWB envelope to a peer; shaped like [Networking.publishUwbMessage] so tests can swap it. */
+internal typealias UwbEnvelopeSender =
+    suspend (envelope: UwbEnvelope, recipientUserId: Long, recipient: User?) -> Boolean
 
 /**
  * Authenticated entry point for every inbound fix carrying a claimed sender.
@@ -350,13 +357,23 @@ private fun LocationTrackingService.maybeNotifyEntryExit(
  * Powered-off recovery grants ride the same channel (see [UwbEnvelopeKind.POF_GRANT]) and are
  * handled here instead, deliberately without reaching [UwbInbox]: they are not ranging
  * traffic and have no business waking the Find Nearby screen.
+ *
+ * On a phone that can't do Find Nearby ([uwbAvailable] false: below Android 16 or no UWB
+ * radio) a REQUEST is declined on the spot instead (#869): see [declineUnsupportedUwbRequest].
+ * [sendUwb] is the reply path, swappable for tests.
  */
-internal suspend fun LocationTrackingService.handleUwbEnvelopes(list: List<UwbEnvelope>) {
+internal suspend fun LocationTrackingService.handleUwbEnvelopes(
+    list: List<UwbEnvelope>,
+    uwbAvailable: Boolean = UwbSessionManager.isAvailable(this),
+    sendUwb: UwbEnvelopeSender = Networking::publishUwbMessage,
+) {
     if (list.isEmpty()) return
     val users = repository.getAllUsers()
     for (envelope in list) {
-        when (envelope.kind) {
-            UwbEnvelopeKind.POF_GRANT -> acceptPoweredOffGrant(envelope)
+        when {
+            envelope.kind == UwbEnvelopeKind.POF_GRANT -> acceptPoweredOffGrant(envelope)
+            envelope.kind == UwbEnvelopeKind.REQUEST && !uwbAvailable ->
+                declineUnsupportedUwbRequest(envelope, users, sendUwb)
             else -> {
                 UwbInbox.tryEmit(envelope)
                 if (envelope.kind == UwbEnvelopeKind.REQUEST) {
@@ -367,6 +384,47 @@ internal suspend fun LocationTrackingService.handleUwbEnvelopes(list: List<UwbEn
                 }
             }
         }
+    }
+}
+
+/**
+ * Answer a Find Nearby REQUEST this phone can never serve with an immediate CANCEL carrying
+ * [UwbCancelReason.UNSUPPORTED], so the requester shows "their phone doesn't support it"
+ * instead of waiting out its 60 s timeout.
+ *
+ * The request is not forwarded to [UwbInbox] and posts no notification: tapping it could only
+ * open a screen that fails, and on an Android 16 phone without a radio the inbox would also
+ * start the auto-accept path in [UwbSessionManager], which fails silently. The reply goes out
+ * on [LocationTrackingService.serviceScope] because publishing is a network round trip and
+ * this runs on the live socket's reader coroutine.
+ *
+ * Broad catch is deliberate, same as `UwbSessionManager.publish`: the reply crosses Room and
+ * the relay socket, and a failed courtesy reply must not take the scope down with it.
+ */
+@Suppress("TooGenericExceptionCaught")
+private fun LocationTrackingService.declineUnsupportedUwbRequest(
+    request: UwbEnvelope,
+    users: List<User>,
+    sendUwb: UwbEnvelopeSender,
+) {
+    val senderId = request.sender.toLong()
+    if (senderId == Networking.userid) return
+    val decline = UwbEnvelope(
+        sessionId = request.sessionId,
+        sender = Networking.userid.toULong(),
+        senderPlatform = "android",
+        kind = UwbEnvelopeKind.CANCEL,
+        reason = UwbCancelReason.UNSUPPORTED,
+    )
+    val peer = users.firstOrNull { it.id == senderId }
+    serviceScope.launch {
+        val sent = try {
+            sendUwb(decline, senderId, peer)
+        } catch (e: Exception) {
+            Log.status(TAG_UWB, "decline reply to ${senderId.toULong()} threw", e)
+            false
+        }
+        Log.status(TAG_UWB, "declined Find Nearby request from ${senderId.toULong()} (no UWB here), sent=$sent")
     }
 }
 
