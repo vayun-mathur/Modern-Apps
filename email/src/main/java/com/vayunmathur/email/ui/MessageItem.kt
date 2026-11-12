@@ -222,6 +222,8 @@ private fun ColumnScope.HtmlMessageBody(
         blockRemoteImages = remoteBlocked,
         hideQuotes = hasQuotes && !showQuotes,
         cidMap = cidMap,
+        // Received mail is untrusted: a sender's script must never run on open.
+        javaScriptEnabled = false,
         scrollInternally = true,
         fitContentToWidth = true,
         // 8dp here plus the document's 8px body padding lines text up with the

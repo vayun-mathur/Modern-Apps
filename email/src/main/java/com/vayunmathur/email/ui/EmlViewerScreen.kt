@@ -159,6 +159,8 @@ fun EmlViewerScreen(
                                 html = msg.body,
                                 blockRemoteImages = !loadImages && cidMap.isEmpty(),
                                 cidMap = cidMap,
+                                // An .eml file is received mail too: never run its scripts.
+                                javaScriptEnabled = false,
                                 scrollInternally = true,
                                 fitContentToWidth = true,
                                 modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),

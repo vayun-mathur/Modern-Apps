@@ -2,6 +2,10 @@ package com.vayunmathur.email.ui
 
 import android.app.Application
 import android.net.Uri
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebView
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -10,6 +14,8 @@ import androidx.test.core.app.ApplicationProvider
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -152,5 +158,42 @@ class EmlViewerSuccessTest {
         composeRule.onNodeWithText("Load images").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Remote images blocked", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `html eml renders with javascript off`() {
+        val file = writeEml(
+            "script.eml",
+            """
+            From: eve@x.com
+            To: me@x.com
+            Subject: Script mail
+            Date: Wed, 17 Jul 2024 12:00:00 +0000
+            MIME-Version: 1.0
+            Content-Type: text/html; charset="UTF-8"
+
+            <p>Hello</p><script>document.title='pwned'</script>
+            """.trimIndent(),
+        )
+        var root: View? = null
+        composeRule.setContent {
+            root = LocalView.current
+            EmlViewerScreen(uriString = Uri.fromFile(file).toString(), onBack = {})
+        }
+        composeRule.waitUntil(15_000) {
+            composeRule.onAllNodesWithText("Remote images blocked", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.waitForIdle()
+        val webViews = mutableListOf<WebView>()
+        val q = ArrayDeque<View>().apply { add(assertNotNull(root).rootView) }
+        while (q.isNotEmpty()) {
+            val v = q.removeFirst()
+            if (v is WebView) webViews.add(v)
+            if (v is ViewGroup) for (i in 0 until v.childCount) q.add(v.getChildAt(i))
+        }
+        assertTrue(webViews.isNotEmpty(), "no WebView rendered")
+        // An .eml file is received mail: a sender's script must not run on open.
+        webViews.forEach { assertFalse(it.settings.javaScriptEnabled, "sender script would run on open") }
     }
 }
