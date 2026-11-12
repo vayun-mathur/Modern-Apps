@@ -183,6 +183,37 @@ internal fun SolitaireViewModel.klondikeMoveTableauToTableauImpl(fromColumn: Int
     }
 }
 
+/**
+ * Brings the top card of foundation [foundationIndex] back down onto column [toColumn]
+ * (standard Klondike: alternate colour, one rank lower, or a King on an empty column).
+ * A normal move: one history entry (so undo restores it) and one move counted. Klondike
+ * here keeps no score, so there is no foundation-to-tableau penalty to apply.
+ */
+internal fun SolitaireViewModel.klondikeMoveFoundationToTableauImpl(foundationIndex: Int, toColumn: Int) {
+    val state = uiStateInternal.value.klondike ?: return
+    if (state.isWon || !canMoveKlondikeFoundationToTableau(state, foundationIndex, toColumn)) return
+    val card = state.foundations[foundationIndex].last()
+    saveHistory()
+    val newFoundations = state.foundations.toMutableList()
+    newFoundations[foundationIndex] = newFoundations[foundationIndex].dropLast(1)
+    val newPiles = state.tableauPiles.toMutableList()
+    newPiles[toColumn] = newPiles[toColumn].let { it.copy(faceUp = it.faceUp + card) }
+    uiStateInternal.update {
+        it.copy(klondike = state.copy(
+            foundations = newFoundations,
+            tableauPiles = newPiles,
+            moveCount = state.moveCount + 1
+        ))
+    }
+}
+
+/** Whether the top of foundation [foundationIndex] may come down onto column [toColumn]. Pure. */
+fun canMoveKlondikeFoundationToTableau(state: KlondikeState, foundationIndex: Int, toColumn: Int): Boolean {
+    val card = state.foundations.getOrNull(foundationIndex)?.lastOrNull() ?: return false
+    val pile = state.tableauPiles.getOrNull(toColumn) ?: return false
+    return canPlaceCardOnKlondikeTableau(card, pile)
+}
+
 internal fun SolitaireViewModel.klondikeAutoCompleteImpl() {
     val state = uiStateInternal.value.klondike ?: return
     if (!canKlondikeAutoComplete(state)) return
@@ -357,7 +388,11 @@ private fun SolitaireViewModel.moveTableauToFoundation(current: KlondikeState): 
 private fun remainingAfterRecycle(redealsRemaining: Int): Int =
     if (redealsRemaining == Int.MAX_VALUE) Int.MAX_VALUE else redealsRemaining - 1
 
-internal fun SolitaireViewModel.canPlaceOnKlondikeTableau(card: Card, pile: TableauPile): Boolean = when {
+internal fun SolitaireViewModel.canPlaceOnKlondikeTableau(card: Card, pile: TableauPile): Boolean =
+    canPlaceCardOnKlondikeTableau(card, pile)
+
+/** Klondike tableau rule: a King on an empty column, else alternate colour one rank lower. Pure. */
+fun canPlaceCardOnKlondikeTableau(card: Card, pile: TableauPile): Boolean = when {
     pile.faceUp.isEmpty() && pile.faceDown.isEmpty() -> card.rank == Rank.KING
     pile.faceUp.isEmpty() -> false
     else -> pile.faceUp.last().isOneHigherThan(card) && card.alternatesColorWith(pile.faceUp.last())
@@ -432,6 +467,10 @@ internal fun SolitaireViewModel.handleKlondikeDropImpl(sourceId: String, targetI
             val toCol = targetId.removePrefix("tableau_").toInt()
             when {
                 sourceId == "waste" -> klondikeMoveWasteToTableau(toCol)
+                sourceId.startsWith(FOUNDATION_PREFIX) -> {
+                    val fi = sourceId.removePrefix(FOUNDATION_PREFIX).toIntOrNull() ?: return
+                    klondikeMoveFoundationToTableauImpl(fi, toCol)
+                }
                 sourceId.startsWith("tableau_") -> {
                     val parts = sourceId.removePrefix("tableau_").split("_")
                     val fromCol = parts[0].toInt()

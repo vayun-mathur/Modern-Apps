@@ -20,10 +20,18 @@ internal fun SolitaireViewModel.draggedCards(sourceId: String): List<Card> {
     val state = uiStateInternal.value
     return when {
         sourceId == "waste" -> state.klondike?.waste?.lastOrNull()?.let { listOf(it) } ?: emptyList()
+        // Only Klondike lets a card come back down off a foundation.
+        sourceId.startsWith(FOUNDATION_PREFIX) && state.gameMode == GameMode.KLONDIKE ->
+            klondikeFoundationTop(state, sourceId)?.let { listOf(it) } ?: emptyList()
         sourceId.startsWith("freecell_") -> freeCellDragCards(state, sourceId)
         sourceId.startsWith("tableau_") -> tableauDragCards(state, sourceId)
         else -> emptyList()
     }
+}
+
+private fun klondikeFoundationTop(state: SolitaireUiState, sourceId: String): Card? {
+    val fi = sourceId.removePrefix(FOUNDATION_PREFIX).toIntOrNull() ?: return null
+    return state.klondike?.foundations?.getOrNull(fi)?.lastOrNull()
 }
 
 private fun freeCellDragCards(state: SolitaireUiState, sourceId: String): List<Card> {
