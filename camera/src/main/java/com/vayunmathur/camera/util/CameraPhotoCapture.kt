@@ -2,7 +2,9 @@ package com.vayunmathur.camera.util
 
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.annotation.OptIn
 import com.vayunmathur.library.log.Log
+import androidx.camera.core.ExperimentalZeroShutterLag
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
@@ -66,12 +68,7 @@ internal fun CameraViewModel.routeStillCapture(): StillRoute = when {
     // extension, so a plain single capture through that ImageCapture lets the vendor pipeline
     // produce the multi-frame night image.
     nightPreviewActiveMutable.value -> StillRoute.SINGLE
-    // Multi-frame night capture only when night mode is active, exposure is fully auto,
-    // and flash is off: the night paths lock AE off (CONTROL_AE_MODE_OFF) with a forced
-    // long exposure, which breaks flash metering/timing and double-exposes (issue #721).
-    // With flash on, fall through to the plain single capture so the shot is an instant
-    // flash photo with no long-exposure countdown overlay.
-    nightModeActive.value && isExposureAuto() && flashModeMutable.value == FlashMode.OFF -> StillRoute.NIGHT
+    nightCaptureApplies() -> StillRoute.NIGHT
     !motionPhotoEligible() -> StillRoute.SINGLE
     motionSaveQueue.tryReserve() -> StillRoute.MOTION_PHOTO
     else -> {
@@ -82,6 +79,25 @@ internal fun CameraViewModel.routeStillCapture(): StillRoute = when {
         StillRoute.SINGLE
     }
 }
+
+/**
+ * Whether a shot takes the night path (multi-frame burst, or the single-frame long-exposure
+ * override): night mode active, exposure fully auto and flash off. The night paths lock AE off
+ * (CONTROL_AE_MODE_OFF) with a forced long exposure, which breaks flash metering/timing and
+ * double-exposes (issue #721); with flash on the shot stays an instant flash photo with no
+ * long-exposure countdown overlay. Also requires a non-ZSL ImageCapture: a ZSL capture returns
+ * a frame buffered before the AE lock, so a night shot fired in the moment before the session
+ * rebinds without ZSL (see [CameraViewModel.zslCompatible]) takes a plain photo instead (#914).
+ */
+internal fun CameraViewModel.nightCaptureApplies(): Boolean {
+    val nightAuto = nightModeActive.value && isExposureAuto()
+    return nightAuto && flashModeMutable.value == FlashMode.OFF && !stillCaptureIsZsl()
+}
+
+/** True when the bound ImageCapture was built for zero-shutter-lag capture. */
+@OptIn(ExperimentalZeroShutterLag::class)
+internal fun CameraViewModel.stillCaptureIsZsl(): Boolean =
+    imageCapture?.captureMode == ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
 
 /**
  * Motion Photo for plain PHOTO captures (no warmth/shadows bake, not capturing for a caller).

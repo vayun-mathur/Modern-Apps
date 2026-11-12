@@ -1,8 +1,16 @@
 package com.vayunmathur.camera.util
 
+import android.graphics.ImageFormat
+import android.hardware.camera2.CameraCharacteristics
+import android.os.Build
+import androidx.annotation.OptIn
 import com.vayunmathur.library.log.Log
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalZeroShutterLag
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
@@ -11,6 +19,9 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import android.util.Size
+import com.vayunmathur.camera.domain.StillCaptureInputs
+import com.vayunmathur.camera.domain.StillCaptureMode
+import com.vayunmathur.camera.domain.StillCaptureModePolicy
 import com.vayunmathur.camera.platform.bindWithFallback
 import com.vayunmathur.camera.platform.currentLensFamily
 import com.vayunmathur.camera.platform.ensureLensesEnumerated
@@ -21,7 +32,9 @@ import com.vayunmathur.camera.platform.refreshCapabilities
  * Binds a manual Preview + ImageCapture + ImageAnalysis session for the photo modes
  * (PHOTO / PORTRAIT / PANORAMA / PHOTOSPHERE / QR). ImageCapture requests the sensor's
  * maximum resolution; if the 3-stream max-res combination exceeds a device's stream-config
- * limits, it falls back to a default ImageCapture resolution. ImageAnalysis is always
+ * limits, it falls back to a default ImageCapture resolution. It captures with zero shutter
+ * lag when [chooseStillCaptureMode] allows (then at the default resolution, see
+ * [buildPhotoCapture]). ImageAnalysis is always
  * capped (~1.2 MP) — see the note in [CameraViewModel.bindSession].
  */
 suspend fun CameraViewModel.setupPhotoSession(): Boolean {
@@ -169,12 +182,14 @@ internal fun CameraViewModel.bindPhotoUseCases(
             "START thread=${Thread.currentThread().name}"
     )
     return try {
-        val capture = buildPhotoCapture(maxRes, ultraHdr)
+        val mode = chooseStillCaptureMode(session.provider, lensSelector, ultraHdr)
+        val capture = buildPhotoCapture(maxRes, ultraHdr, mode)
         val analysis = buildPhotoAnalysis()
         bindSession(session.provider, session.owner, lensSelector, session.preview, capture, analysis).also {
             Log.dev(
                 "NightPreview",
                 "setupPhotoSession() bind SUCCESS res=${it.cameraInfo} " +
+                    "still=${capture.resolutionInfo?.resolution} mode=$mode " +
                     "zoom min=${it.cameraInfo.zoomState.value?.minZoomRatio} " +
                     "max=${it.cameraInfo.zoomState.value?.maxZoomRatio}"
             )
@@ -198,11 +213,24 @@ internal fun CameraViewModel.bindPhotoUseCases(
     }
 }
 
-/** Builds the max/default-res ImageCapture with the still crop applied. */
-internal fun CameraViewModel.buildPhotoCapture(maxRes: Boolean, ultraHdr: Boolean): ImageCapture {
+/**
+ * Builds the max/default-res ImageCapture with the still crop applied, in [mode].
+ *
+ * ZSL reprocesses a buffered PRIVATE frame, and CameraX restricts a ZSL ImageCapture to sizes
+ * that are also PRIVATE reprocessing inputs. That drops the high-resolution-only sizes that
+ * [maxRes] (PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE) exists to add, so a ZSL capture binds
+ * at the default resolution instead of asking for sizes CameraX would filter out (#914).
+ */
+@OptIn(ExperimentalZeroShutterLag::class)
+internal fun CameraViewModel.buildPhotoCapture(
+    maxRes: Boolean,
+    ultraHdr: Boolean,
+    mode: StillCaptureMode = StillCaptureMode.MINIMIZE_LATENCY
+): ImageCapture {
+    val zsl = mode == StillCaptureMode.ZERO_SHUTTER_LAG
     val selectorBuilder = ResolutionSelector.Builder()
         .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
-    if (maxRes) {
+    if (maxRes && !zsl) {
         selectorBuilder.setAllowedResolutionMode(
             ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE
         )
@@ -210,6 +238,10 @@ internal fun CameraViewModel.buildPhotoCapture(maxRes: Boolean, ultraHdr: Boolea
     val captureBuilder = ImageCapture.Builder()
         .setResolutionSelector(selectorBuilder.build())
         .setFlashMode(getImageCaptureFlashMode())
+        // MINIMIZE_LATENCY is also CameraX's default; set explicitly so the choice is visible.
+        .setCaptureMode(
+            if (zsl) ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG else ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+        )
     if (ultraHdr) {
         captureBuilder.setOutputFormat(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)
     }
@@ -219,6 +251,49 @@ internal fun CameraViewModel.buildPhotoCapture(maxRes: Boolean, ultraHdr: Boolea
     // OutputFileOptions saves to this and exposes it as cropRect for in-memory shots.
     capture.setCropAspectRatio(currentCropAspectRatio())
     return capture
+}
+
+/**
+ * Picks ZSL or MINIMIZE_LATENCY for the camera behind [lensSelector] from its capabilities and
+ * the live exposure/night state ([StillCaptureModePolicy]). Any query failure means no ZSL.
+ */
+@OptIn(ExperimentalZeroShutterLag::class)
+internal fun CameraViewModel.chooseStillCaptureMode(
+    provider: ProcessCameraProvider,
+    lensSelector: CameraSelector,
+    ultraHdr: Boolean
+): StillCaptureMode {
+    val info = try {
+        provider.getCameraInfo(lensSelector)
+    } catch (e: IllegalArgumentException) {
+        Log.status("NightPreview", "setupPhotoSession() no CameraInfo for ZSL probe; not using ZSL", e)
+        return StillCaptureMode.MINIMIZE_LATENCY
+    }
+    val zslSupported = info.isZslSupported
+    val inputs = StillCaptureInputs(
+        zslSupported = zslSupported,
+        ultraHdr = ultraHdr,
+        ultraHdrReprocessable = zslSupported && ultraHdr && isJpegRReprocessable(info),
+        autoExposure = isExposureAuto(),
+        nightMode = nightModeActive.value,
+    )
+    return StillCaptureModePolicy.choose(inputs).also {
+        Log.dev("NightPreview", "setupPhotoSession() captureMode=$it from $inputs")
+    }
+}
+
+/** True when the camera lists JPEG_R (Ultra HDR) as a reprocessing output for PRIVATE input. */
+@OptIn(ExperimentalCamera2Interop::class)
+private fun isJpegRReprocessable(info: CameraInfo): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
+    return try {
+        val map = Camera2CameraInfo.from(info)
+            .getCameraCharacteristic(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+        map != null && ImageFormat.JPEG_R in map.getValidOutputFormatsForInput(ImageFormat.PRIVATE)
+    } catch (e: IllegalArgumentException) {
+        Log.status("NightPreview", "setupPhotoSession() reprocess formats unavailable", e)
+        false
+    }
 }
 
 /**

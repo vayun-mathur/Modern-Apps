@@ -69,12 +69,10 @@ private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill): Singl
     // Skip it when the vendor NIGHT extension preview is bound: that session runs its own
     // multi-frame AE and rejects Camera2-interop AE_MODE_OFF/manual-exposure options, which makes
     // the capture fail. In that case a plain takePicture() lets the extension produce the shot.
-    // Also skip it when flash is on: the night override locks AE off with a forced long
-    // exposure, which breaks flash metering/timing and double-exposes (issue #721). The
-    // capturePhoto() router already keeps flash shots on the plain path; this guard covers
-    // any direct captureSinglePhoto() entry (e.g. night-burst fallback) the same way.
-    val nightExposure = if (nightModeActive.value && isExposureAuto() && !nightPreviewActiveMutable.value &&
-        flashModeMutable.value == FlashMode.OFF) {
+    // Also skip it when flash is on (issue #721) or the ImageCapture is ZSL (#914); see
+    // nightCaptureApplies(). The capturePhoto() router already keeps those shots on the plain
+    // path; this guard covers any direct captureSinglePhoto() entry (e.g. night-burst fallback).
+    val nightExposure = if (nightCaptureApplies() && !nightPreviewActiveMutable.value) {
         computeNightExposure()
     } else {
         null

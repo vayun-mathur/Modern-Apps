@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -351,6 +352,15 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
 
     val nightModeActive = combine(lowLightDetectedMutable, nightModeOverriddenOffMutable) { low, off -> low && !off }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    // Whether live state lets the photo session use zero-shutter-lag capture: exposure and ISO on
+    // Auto, night off (see StillCaptureModePolicy). The photo session rebinds when this flips,
+    // but never mid-shot: while a capture is in flight the previous value is held (#914).
+    val zslCompatible = combine(
+        exposureTimeIndexMutable, manualIsoIndexMutable, nightModeActive, isCapturingMutable
+    ) { exposure, iso, night, capturing -> ZslGate(exposure == 0 && iso == 0 && !night, capturing) }
+        .runningFold(true) { held, gate -> if (gate.capturing) held else gate.compatible }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     // Whether to offer the vendor NIGHT extension. We optimistically probe with the
     // isSessionConfigSupported check, but the authoritative signal is the actual bind: if
@@ -691,3 +701,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     }
 }
 // (ManualLifecycleOwner lives in CameraViewModelTypes.kt.)
+
+/** One [CameraViewModel.zslCompatible] input sample: wanted value plus whether a shot is in flight. */
+internal class ZslGate(val compatible: Boolean, val capturing: Boolean)

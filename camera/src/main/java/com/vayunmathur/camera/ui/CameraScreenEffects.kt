@@ -8,6 +8,8 @@ import androidx.camera.core.ImageAnalysis
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
@@ -236,8 +238,12 @@ internal fun CameraScreenEffects(
     // Codec/audio/mirror are fixed at bind time (Recorder mime, AudioSource, MirrorMode), so
     // they join the effect keys: changing them in Settings rebinds instead of silently waiting
     // for the next mode switch. Aspect ratio is applied live (setCropAspectRatio) — no rebind.
-    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, state.videoCodec, state.audioInputSource, state.mirrorFront, lifecycleOwner) {
-        Log.dev("NightPreview", "CameraScreen session LaunchedEffect START keys lensFacing=$lensFacing selectedLens=${selectedLens?.labelKey} sessionKind=$sessionKind useNightPreview=$useNightPreview codec=${state.videoCodec} audio=${state.audioInputSource} mirror=${state.mirrorFront} lifecycle=${lifecycleOwner.lifecycle.currentState} thread=${Thread.currentThread().name}")
+    // The photo session's capture mode (ZSL or not) is fixed at bind time too, so it rebinds when
+    // manual exposure or night mode makes ZSL unsafe, or safe again (#914). Other kinds ignore it.
+    val zslCompatible by viewModel.zslCompatible.collectAsState()
+    val zslKey = if (sessionKind == SessionKind.PHOTO) zslCompatible else null
+    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, zslKey, state.videoCodec, state.audioInputSource, state.mirrorFront, lifecycleOwner) {
+        Log.dev("NightPreview", "CameraScreen session LaunchedEffect START keys zsl=$zslKey lensFacing=$lensFacing selectedLens=${selectedLens?.labelKey} sessionKind=$sessionKind useNightPreview=$useNightPreview codec=${state.videoCodec} audio=${state.audioInputSource} mirror=${state.mirrorFront} lifecycle=${lifecycleOwner.lifecycle.currentState} thread=${Thread.currentThread().name}")
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             Log.dev("NightPreview", "CameraScreen repeatOnLifecycle STARTED – calling teardownSession()")
             viewModel.teardownSession()

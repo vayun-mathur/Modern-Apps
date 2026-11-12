@@ -34,6 +34,7 @@ _Install: ./install camera (dev by default)._
 - com/vayunmathur/camera/domain/LensSelectionLogic.kt
 - com/vayunmathur/camera/domain/ArgbToI420Converter.kt — bulk ARGB→YUV 4:2:0 for the Motion Photo clip
 - com/vayunmathur/camera/domain/MotionSaveQueue.kt — bound on Motion Photos still saving after the shutter
+- com/vayunmathur/camera/domain/StillCaptureModePolicy.kt — ZSL vs MINIMIZE_LATENCY choice
 ### platform/ — capability queries
 - com/vayunmathur/camera/platform/CameraCapabilities.kt
 - com/vayunmathur/camera/platform/LensSelector.kt
