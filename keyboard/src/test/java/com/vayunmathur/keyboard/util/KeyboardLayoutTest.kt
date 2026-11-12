@@ -88,6 +88,17 @@ class KeyboardLayoutTest {
         }
     }
 
+    /** #555: every precomposed fraction is on the number row exactly once. */
+    @Test
+    fun `digit alternates offer every vulgar fraction once`() {
+        val fractions = "½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒"
+        val offered = Layouts.DIGIT_ALTERNATES.values.joinToString("").filter { it in fractions }
+        assertEquals(fractions.toSet(), offered.toSet())
+        assertEquals(fractions.length, offered.length, "a fraction is offered on two keys")
+        // The commonest stay first on the 1 key, so its corner hint is unchanged.
+        assertTrue(Layouts.DIGIT_ALTERNATES.getValue('1').startsWith("¹½⅓¼"))
+    }
+
     /**
      * The corner preview exists to show the user something they could not guess, so an
      * accented form of the key's own letter is not worth printing — those keep the dot.

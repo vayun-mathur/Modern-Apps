@@ -82,10 +82,18 @@ object Layouts {
         '&' to "§", '#' to "№",
     )
 
-    /** Long-press alternates for the digits: superscripts and the common fractions. */
+    /**
+     * Long-press alternates for the digits: superscripts and every precomposed vulgar
+     * fraction Unicode has (#555), each filed under its numerator in denominator order.
+     *
+     * The exception is the 1 key, which would need ten fractions and blow the seven-entry
+     * cap the popup can show on a small phone (see KeyboardLayoutTest): it keeps the six
+     * commonest, and the rarest three sit on their denominator's key instead — ⅐ on 7, ⅑ on
+     * 9, ⅒ on 0 — where the digit already on the key is the hint.
+     */
     val DIGIT_ALTERNATES: Map<Char, String> = mapOf(
-        '1' to "¹½⅓¼⅛", '2' to "²⅔", '3' to "³¾⅜", '4' to "⁴", '5' to "⁵⅝",
-        '6' to "⁶", '7' to "⁷⅞", '8' to "⁸", '9' to "⁹", '0' to "⁰∅ⁿ",
+        '1' to "¹½⅓¼⅕⅙⅛", '2' to "²⅔⅖", '3' to "³¾⅗⅜", '4' to "⁴⅘", '5' to "⁵⅚⅝",
+        '6' to "⁶", '7' to "⁷⅞⅐", '8' to "⁸", '9' to "⁹⅑", '0' to "⁰∅ⁿ⅒",
     )
 
     /** The alternates for a symbol-page or number-row key, or "" if it has none. */
