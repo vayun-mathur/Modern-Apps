@@ -53,6 +53,7 @@ import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotosRepository
 import com.vayunmathur.photos.glance.PhotoGlanceWidgetReceiver
 import com.vayunmathur.photos.ui.AlbumDetailPage
+import com.vayunmathur.photos.ui.FavoritesPage
 import com.vayunmathur.photos.ui.AlbumsPage
 import com.vayunmathur.photos.ui.GalleryPage
 import com.vayunmathur.photos.ui.MapPage
@@ -165,6 +166,10 @@ sealed interface Route: NavKey {
     @Serializable
     data class AlbumDetail(val albumName: String): Route
 
+    /** The Favorites album: every MediaStore favorite, opened from its Albums tile. */
+    @Serializable
+    data object Favorites: Route
+
     @Serializable
     data object Trash: Route
 
@@ -268,8 +273,12 @@ fun Navigation(
         }
 
         // Built-in collections, opened from the Albums grid's default tiles
-        // (Trash, Secure Folder). Detail pages: they push over Albums and show
-        // a back arrow instead of the bottom bar.
+        // (Favorites, Trash, Secure Folder). Detail pages: they push over Albums
+        // and show a back arrow instead of the bottom bar.
+        entry<Route.Favorites> {
+            FavoritesPage(backStack, galleryViewModel, secureFolderViewModel)
+        }
+
         entry<Route.Trash> {
             TrashPage(backStack, galleryViewModel)
         }

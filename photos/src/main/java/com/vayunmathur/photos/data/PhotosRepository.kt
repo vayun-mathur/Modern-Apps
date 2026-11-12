@@ -38,6 +38,7 @@ open class PhotosRepository internal constructor(context: Context) :
     open suspend fun deleteByIds(ids: List<Long>) = photoDao.deleteByIds(ids)
     suspend fun setTrashed(id: Long) = photoDao.setTrashed(id)
     suspend fun setAlbum(ids: List<Long>, album: String?) = photoDao.setAlbum(ids, album)
+    open suspend fun setFavorite(ids: List<Long>, value: Boolean) = photoDao.setFavorite(ids, value)
     suspend fun searchPhotos(query: String): List<Photo> = photoDao.searchPhotos(query)
 
     companion object {

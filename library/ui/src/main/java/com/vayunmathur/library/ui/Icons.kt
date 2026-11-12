@@ -176,6 +176,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
@@ -561,9 +562,21 @@ fun IconMarkRead(modifier: Modifier = Modifier, tint: Color = LocalContentColor.
 fun IconMarkUnread(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Outlined.MailOutline, "Mark Unread", modifier, tint)
 
+/** A filled heart. [contentDescription] defaults to "Favorite"; pass the control's own label. */
 @Composable
-fun IconFavorite(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
-    AppIcon(Icons.Filled.Favorite, "Favorite", modifier, tint)
+fun IconFavorite(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+    contentDescription: String? = "Favorite",
+) = AppIcon(Icons.Filled.Favorite, contentDescription, modifier, tint)
+
+/** An outlined heart, the "not a favourite" state of [IconFavorite]. */
+@Composable
+fun IconFavoriteBorder(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+    contentDescription: String? = "Favorite",
+) = AppIcon(Icons.Filled.FavoriteBorder, contentDescription, modifier, tint)
 
 @Composable
 fun IconFire(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =

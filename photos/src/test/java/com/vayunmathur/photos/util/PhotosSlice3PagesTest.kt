@@ -10,6 +10,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -137,6 +140,9 @@ class PhotosSlice3PagesTest {
                 )
             }
         }
+        // The default tiles (Favorites, Trash, Secure Folder) fill the first
+        // rows of the grid, so bring the empty copy below them into view.
+        composeRule.onNode(hasScrollAction()).performScrollToNode(hasText(str(R.string.albums_empty)))
         composeRule.onNodeWithText(str(R.string.albums_empty), substring = false)
             .assertIsDisplayed()
     }
@@ -354,6 +360,7 @@ class PhotosSlice3PagesTest {
         override suspend fun delete(value: Photo): Int = dao.delete(value)
         override suspend fun setTrashed(id: Long) = dao.setTrashed(id)
         override suspend fun setAlbum(ids: List<Long>, album: String?) = dao.setAlbum(ids, album)
+        override suspend fun setFavorite(ids: List<Long>, value: Boolean) = dao.setFavorite(ids, value)
         override suspend fun getAll(): List<Photo> = dao.getAll()
     }
 

@@ -62,10 +62,13 @@ data class DefaultAlbum(
      * the vault is locked, so its size stays private).
      */
     val count: Int? = null,
+    /** Cover photo drawn instead of the icon (Favorites: its newest item), if any. */
+    val cover: Photo? = null,
 )
 
 /** Which built-in collection a [DefaultAlbum] tile opens. */
 enum class DefaultAlbumKind {
+    FAVORITES,
     TRASH,
     SECURE_FOLDER,
 }
@@ -89,6 +92,13 @@ interface GalleryActions {
 
     /** Ask MediaStore to trash the current selection. */
     fun trashSelection() {}
+
+    /**
+     * Favorite the current selection, or unfavorite it when every selected item
+     * already is one (a mixed selection is favorited). Goes through a MediaStore
+     * request launcher, so the binder supplies it.
+     */
+    fun toggleFavoriteSelection() {}
 
     /**
      * Move the current selection into album [name] (created on first use),

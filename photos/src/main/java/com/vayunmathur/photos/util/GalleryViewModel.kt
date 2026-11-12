@@ -15,6 +15,8 @@ import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoScanRepository
 import com.vayunmathur.photos.data.PhotosRepository
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.photos.platform.FavoriteToggler
+import com.vayunmathur.photos.platform.MediaStoreFavoriteRequests
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -96,6 +98,18 @@ class GalleryViewModel(
 
     private val _selectedIds = MutableStateFlow<Set<Long>>(emptySet())
     val selectedIds: StateFlow<Set<Long>> = _selectedIds.asStateFlow()
+
+    /**
+     * Favourites through MediaStore's IS_FAVORITE (#912), shared by the viewer
+     * and the grids. Held here so a request waiting on its system dialog
+     * survives a configuration change; a granted request resyncs.
+     */
+    val favoriteToggler = FavoriteToggler(
+        writeLocal = { ids, value -> repository.setFavorite(ids, value) },
+        requests = MediaStoreFavoriteRequests(application.contentResolver),
+        scope = viewModelScope,
+        onApplied = { runSync() },
+    )
 
     /** True while a media sync is enqueued or running (drives pull-to-refresh). */
     val isRefreshing: StateFlow<Boolean> = workInfosFlow(application, SyncWorker.WORK_NAME)
@@ -238,6 +252,17 @@ class GalleryViewModel(
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * The Favourites album (#912): items favourited in MediaStore, newest first
+     * (getAllFlow is ORDER BY date DESC). Trashed items are left out, like every
+     * other album; MediaStore keeps their flag, so a restored favourite returns.
+     */
+    val favorites: StateFlow<List<Photo>> = repository.getAllFlow()
+        .map { all -> all.filter { it.isFavorite && !it.isTrashed } }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
      * Face geometry per photo, for the viewer's face overlay. Combined with the
@@ -550,6 +575,7 @@ interface PhotoStore {
     suspend fun delete(photo: Photo): Int
     suspend fun setTrashed(id: Long)
     suspend fun setAlbum(ids: List<Long>, album: String?)
+    suspend fun setFavorite(ids: List<Long>, value: Boolean)
     suspend fun getByUri(uri: String): List<Photo>
     suspend fun getAll(): List<Photo>
 }
@@ -576,6 +602,7 @@ private class PhotoStoreRepository(application: Application, val delegate: Photo
     override suspend fun delete(photo: Photo): Int = repository.delete(photo)
     override suspend fun setTrashed(id: Long) = repository.setTrashed(id)
     override suspend fun setAlbum(ids: List<Long>, album: String?) = repository.setAlbum(ids, album)
+    override suspend fun setFavorite(ids: List<Long>, value: Boolean) = repository.setFavorite(ids, value)
     override suspend fun getByUri(uri: String): List<Photo> = repository.getByUri(uri)
     override suspend fun getAll(): List<Photo> = repository.getAll()
 }

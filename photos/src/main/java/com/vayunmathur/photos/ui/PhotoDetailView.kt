@@ -69,6 +69,9 @@ fun PhotoDetailView(
     onEditPhoto: () -> Unit,
     onSetWallpaper: (Photo) -> Unit = {},
     onDelete: (Photo) -> Unit = {},
+    /** Whether this photo is a MediaStore favorite (drives the heart). */
+    isFavorite: Boolean = false,
+    onToggleFavorite: (Photo) -> Unit = {},
     /**
      * Non-null makes this page the destination of the container transform out of the grid
      * tile. Null for a page the pager keeps composed either side of the current one: they
@@ -238,6 +241,8 @@ fun PhotoDetailView(
             onSetWallpaper = onSetWallpaper,
             onEditPhoto = onEditPhoto,
             onDelete = onDelete,
+            isFavorite = isFavorite,
+            onToggleFavorite = onToggleFavorite,
             onShowImmersive = { showImmersive = it },
             onMetadataLayout = { metadataSize = it },
             onMotionClick = {

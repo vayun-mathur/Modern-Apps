@@ -23,6 +23,8 @@ import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
+import com.vayunmathur.library.ui.IconFavorite
+import com.vayunmathur.library.ui.IconFavoriteBorder
 import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.IconWallpaper
 import com.vayunmathur.library.ui.MaterialTheme
@@ -34,7 +36,7 @@ import kotlin.time.Instant
 
 /**
  * Bottom metadata overlay: name, date, location, resolution, size, people count,
- * and the wallpaper/edit/share/delete actions. Fades with the pager swipe distance.
+ * and the favorite/wallpaper/edit/share/delete actions. Fades with the pager swipe distance.
  */
 @Composable
 internal fun PhotoMetadataCard(
@@ -49,6 +51,8 @@ internal fun PhotoMetadataCard(
     onSetWallpaper: (Photo) -> Unit = {},
     onEditPhoto: () -> Unit,
     onDelete: (Photo) -> Unit = {},
+    isFavorite: Boolean = false,
+    onToggleFavorite: (Photo) -> Unit = {},
 ) {
     Column(
         modifier =
@@ -117,6 +121,13 @@ internal fun PhotoMetadataCard(
             modifier = Modifier.align(Alignment.End),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = { onToggleFavorite(photo) }) {
+                if (isFavorite) {
+                    IconFavorite(tint = Color.White, contentDescription = stringResource(R.string.action_unfavorite))
+                } else {
+                    IconFavoriteBorder(tint = Color.White, contentDescription = stringResource(R.string.action_favorite))
+                }
+            }
             IconButton(onClick = { onSetWallpaper(photo) }) {
                 IconWallpaper(tint = Color.White)
             }

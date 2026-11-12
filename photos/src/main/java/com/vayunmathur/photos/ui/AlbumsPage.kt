@@ -23,6 +23,7 @@ fun AlbumsPage(
     val albums by galleryViewModel.albums.collectAsState()
     val allPhotos by galleryViewModel.photos.collectAsState()
     val trashCount by remember { derivedStateOf { allPhotos.count { it.isTrashed } } }
+    val favorites by galleryViewModel.favorites.collectAsState()
     val vaultPhotos by secureFolderViewModel.photos.collectAsState()
     val vaultDao by secureFolderViewModel.vaultPhotoDao.collectAsState()
 
@@ -31,6 +32,8 @@ fun AlbumsPage(
         state = AlbumsUiState(
             albums = albums,
             defaultAlbums = listOf(
+                // Covered by the newest favorite (the list is newest first).
+                DefaultAlbum(DefaultAlbumKind.FAVORITES, favorites.size, cover = favorites.firstOrNull()),
                 DefaultAlbum(DefaultAlbumKind.TRASH, trashCount),
                 // The vault size stays private while locked: hide the count line.
                 DefaultAlbum(DefaultAlbumKind.SECURE_FOLDER, vaultPhotos.size.takeIf { vaultDao != null }),

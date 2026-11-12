@@ -20,6 +20,10 @@ import com.vayunmathur.photos.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.VideoData
+import com.vayunmathur.photos.util.Album
+import com.vayunmathur.photos.util.AlbumsUiState
+import com.vayunmathur.photos.util.DefaultAlbum
+import com.vayunmathur.photos.util.DefaultAlbumKind
 import com.vayunmathur.photos.util.GalleryActions
 import com.vayunmathur.photos.util.GalleryUiState
 import com.vayunmathur.photos.util.PeopleUiState
@@ -104,6 +108,33 @@ class MetadataPreviews {
             PhotoViewerWideLayout(
                 viewer = { GalleryPreview(GalleryUiState(photos = samplePhotos())) },
                 filmstrip = { GalleryPreview(GalleryUiState(photos = samplePhotos().take(4))) },
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "5-albums", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview5Albums() {
+        val photos = samplePhotos()
+        DynamicTheme(darkTheme = true) {
+            AlbumsScreen(
+                backStack = NavBackStack(arrayOf<Route>(Route.Albums)),
+                state = AlbumsUiState(
+                    albums = listOf(
+                        Album("Camera", photos[0], photos.take(14)),
+                        Album("Screenshots", photos[14], photos.drop(14)),
+                        Album("Trip", photos[4], photos.slice(4..9)),
+                        Album("WhatsApp Images", photos[18], photos.takeLast(3)),
+                    ),
+                    defaultAlbums = listOf(
+                        // The Favorites tile takes its newest favorite as the cover.
+                        DefaultAlbum(DefaultAlbumKind.FAVORITES, count = 6, cover = photos[2]),
+                        DefaultAlbum(DefaultAlbumKind.TRASH, count = 3),
+                        DefaultAlbum(DefaultAlbumKind.SECURE_FOLDER, count = null),
+                    ),
+                ),
+                thumbnail = { photo, modifier -> PlaceholderTile(photo, modifier) },
             )
         }
     }

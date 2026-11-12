@@ -77,7 +77,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             // scan (their GENERATION_MODIFIED hasn't moved), so scan everything
             // until they're all backfilled.
             val needsMimeBackfill = scanRepository.countMissingMimeType() > 0
-            syncPhotos(applicationContext, repository, null, if (needsMimeBackfill) 0L else lastGeneration)
+            syncLibrary(
+                applicationContext, repository, lastGeneration, needsMimeBackfill,
+                DataStoreOneTimeFlag(dataStore, FAVORITES_RESCAN_DONE_KEY),
+            )
         }
         
         setExifData(scanRepository, applicationContext)
@@ -172,6 +175,51 @@ class OCRWorker(context: Context, params: WorkerParameters) : CoroutineWorker(co
     }
 }
 
+/**
+ * A persisted "has this one-off job run yet" bit. An interface so the
+ * once-only behaviour of [syncLibrary] is testable without DataStore.
+ */
+internal interface OneTimeFlag {
+    suspend fun isSet(): Boolean
+    suspend fun set()
+}
+
+private class DataStoreOneTimeFlag(
+    private val dataStore: DataStoreUtils,
+    private val key: String,
+) : OneTimeFlag {
+    override suspend fun isSet(): Boolean = dataStore.getBooleanAwait(key)
+    override suspend fun set() = dataStore.setBoolean(key, true)
+}
+
+/**
+ * Set once the post-upgrade full rescan for IS_FAVORITE (#912) has run.
+ * MIGRATION_19_20 adds the column as 0 everywhere, and an incremental scan
+ * only sees rows whose GENERATION_MODIFIED moved since the last sync, so
+ * photos favourited in another app before the upgrade would never show up
+ * without one full pass.
+ */
+internal const val FAVORITES_RESCAN_DONE_KEY = "favorites_rescan_done"
+
+/**
+ * The untriggered library sync: incremental from [lastGeneration], unless a
+ * full scan is owed — rows still missing their mimeType, or the one-time
+ * favourites rescan behind [favoritesRescan] has not run yet. The flag is set
+ * only after a full scan completed, so it runs exactly once.
+ */
+internal suspend fun syncLibrary(
+    context: Context,
+    repository: PhotosRepository,
+    lastGeneration: Long,
+    needsMimeBackfill: Boolean,
+    favoritesRescan: OneTimeFlag,
+) {
+    val needsFavoritesRescan = !favoritesRescan.isSet()
+    val fullScan = needsMimeBackfill || needsFavoritesRescan
+    syncPhotos(context, repository, null, if (fullScan) 0L else lastGeneration)
+    if (needsFavoritesRescan) favoritesRescan.set()
+}
+
 suspend fun syncPhotos(
     context: Context,
     repository: PhotosRepository,
@@ -225,11 +273,17 @@ suspend fun syncPhotos(
     if (newOrUpdatedPhotos.isNotEmpty()) {
         repository.upsertAll(newOrUpdatedPhotos)
     }
+    // Favourite-only diffs (a toggle here or in another gallery app) are written
+    // by column: an upsert of the row rebuilt above would drop its CLIP
+    // embedding and OCR geometry and send it back through indexing.
+    for ((value, ids) in cursorScope.favoriteChanges.entries.groupBy({ it.value }, { it.key })) {
+        ids.chunked(DELETE_ID_CHUNK_SIZE).forEach { chunk -> repository.setFavorite(chunk, value) }
+    }
 }
 
 private const val MILLIS_PER_SECOND = 1000L
 
-/** SQLite bind-variable ceiling; deletions are chunked under it. */
+/** SQLite bind-variable ceiling; deletions and favourite writes are chunked under it. */
 private const val DELETE_ID_CHUNK_SIZE = 900
 
 /** OCR preview length in the worker log line. */
@@ -271,6 +325,7 @@ private class CursorColumns(cursor: android.database.Cursor, isVideo: Boolean) {
     val isTrashed: Int = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.IS_TRASHED)
     val mimeType: Int = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
     val album: Int = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
+    val isFavorite: Int = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.IS_FAVORITE)
     val duration: Int = if (isVideo) cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION) else -1
 }
 
@@ -278,6 +333,8 @@ private class CursorColumns(cursor: android.database.Cursor, isVideo: Boolean) {
 private class CursorScope(
     val existingPhotos: Map<Long, Photo>,
     val newOrUpdatedPhotos: MutableList<Photo>,
+    /** Rows whose only difference is IS_FAVORITE: id -> new value. */
+    val favoriteChanges: MutableMap<Long, Boolean> = mutableMapOf(),
 )
 
 private fun processCursor(cursor: android.database.Cursor, isVideo: Boolean, scope: CursorScope) {
@@ -319,6 +376,7 @@ private fun readCursorRow(
     val isTrashed = cursor.getInt(cols.isTrashed) == 1
     val mimeType = cursor.getString(cols.mimeType)
     val album = cursor.getString(cols.album)
+    val isFavorite = cursor.getInt(cols.isFavorite) == 1
     val contentUri = ContentUris.withAppendedId(baseUri, id).toString()
     val videoData = if (isVideo) VideoData(cursor.getLong(cols.duration)) else null
 
@@ -334,8 +392,10 @@ private fun readCursorRow(
             existing?.panoData, isTrashed,
             faceScanned = existing?.faceScanned ?: false,
             ocrText = existing?.ocrText, ocrScanned = existing?.ocrScanned ?: false,
-            mimeType = mimeType, album = album,
+            mimeType = mimeType, album = album, isFavorite = isFavorite,
         )
+    } else if (existing != null && existing.isFavorite != isFavorite) {
+        scope.favoriteChanges[id] = isFavorite
     }
 }
 
@@ -414,6 +474,7 @@ private val IMAGE_PROJECTION = arrayOf(
     MediaStore.Images.Media.IS_TRASHED,
     MediaStore.Images.Media.MIME_TYPE,
     MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
+    MediaStore.Images.Media.IS_FAVORITE,
 )
 
 private val VIDEO_PROJECTION = arrayOf(
@@ -428,6 +489,7 @@ private val VIDEO_PROJECTION = arrayOf(
     MediaStore.Video.Media.IS_TRASHED,
     MediaStore.Video.Media.MIME_TYPE,
     MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
+    MediaStore.Video.Media.IS_FAVORITE,
 )
 
 internal fun Context.syncForegroundInfo(

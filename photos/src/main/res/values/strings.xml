@@ -41,6 +41,16 @@
         <item quantity="one"><xliff:g id="count" example="12">%1$d</xliff:g> photo</item>
         <item quantity="other"><xliff:g id="count" example="12">%1$d</xliff:g> photos</item>
     </plurals>
+    <!-- Album tile and page title for the built-in Favorites collection (photos marked with the heart). Noun plural -->
+    <string name="label_favorites">Favorites</string>
+    <!-- Content description of the outlined heart: marks the photo (or selected photos) as favorites. Verb -->
+    <string name="action_favorite">Favorite</string>
+    <!-- Content description of the filled heart: removes the photo (or selected photos) from favorites. Verb phrase -->
+    <string name="action_unfavorite">Remove from favorites</string>
+    <!-- Empty state of the Favorites album. Sentence -->
+    <string name="favorites_empty">No favorites yet. Tap the heart on a photo to add it here.</string>
+    <!-- Snackbar when the system refuses to change a photo's favorite state. Sentence -->
+    <string name="favorite_failed">Couldn\'t update favorites</string>
     <!-- Title of the selection action / dialog to add the chosen photos to an album. Verb phrase -->
     <string name="label_add_to_album">Add to album</string>
     <!-- Text field label/hint for entering an album name. Noun -->

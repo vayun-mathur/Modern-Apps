@@ -28,7 +28,7 @@ interface PhotoDao {
     @Query(
         "SELECT id, name, uri, date, width, height, dateModified, exifSet, lat, `long`, duration, " +
             "fullWidth, fullHeight, croppedWidth, croppedHeight, croppedLeft, croppedTop, projectionType, " +
-            "isTrashed, faceScanned, ocrScanned, clipScanned, mimeType, album FROM Photo ORDER BY date DESC"
+            "isTrashed, faceScanned, ocrScanned, clipScanned, mimeType, album, isFavorite FROM Photo ORDER BY date DESC"
     )
     fun getAllFlow(): Flow<List<Photo>>
 
@@ -60,6 +60,14 @@ interface PhotoDao {
      */
     @Query("UPDATE Photo SET album = :album WHERE id IN (:ids)")
     suspend fun setAlbum(ids: List<Long>, album: String?)
+
+    /**
+     * Mirror MediaStore's IS_FAVORITE for [ids]. Column-targeted, like [setAlbum],
+     * so neither the optimistic toggle nor the sync's favourite-only diff
+     * rewrites (and nulls) the clipEmbedding BLOB.
+     */
+    @Query("UPDATE Photo SET isFavorite = :value WHERE id IN (:ids)")
+    suspend fun setFavorite(ids: List<Long>, value: Boolean)
 
     @Query(
         "SELECT * FROM Photo WHERE isTrashed = 0 AND " +
@@ -284,7 +292,7 @@ data class ExifResult(
     val pano: PanoData?,
 )
 
-@Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 19, exportSchema = false)
+@Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 20, exportSchema = false)
 abstract class PhotoDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
     abstract fun photoScanDao(): PhotoScanDao
@@ -295,7 +303,7 @@ abstract class PhotoDatabase : RoomDatabase() {
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
             MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
             MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-            MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
+            MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
         )
     }
 }
@@ -401,6 +409,14 @@ val MIGRATION_18_19 = Migration(18, 19) {
     it.execSQL("CREATE INDEX IF NOT EXISTS `index_PhotoFace_photoId` ON `PhotoFace` (`photoId`)")
     it.execSQL("CREATE INDEX IF NOT EXISTS `index_PhotoFace_clusterId` ON `PhotoFace` (`clusterId`)")
     it.execSQL("UPDATE Photo SET faceScanned = 0")
+}
+
+val MIGRATION_19_20 = Migration(19, 20) {
+    // Mirror MediaStore's IS_FAVORITE (#912). Existing rows start as not
+    // favourite; SyncWorker runs one full MediaStore rescan after this upgrade
+    // (see FAVORITES_RESCAN_DONE_KEY) so items already favourited in another
+    // gallery app show up. SQL mirrors Room's generated schema exactly.
+    it.execSQL("ALTER TABLE Photo ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0")
 }
 
 val MIGRATION_8_9 = Migration(8, 9) {

@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
-import com.vayunmathur.library.ui.IconLock
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
@@ -52,8 +51,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
 import com.vayunmathur.library.ui.IconClose
-import com.vayunmathur.library.ui.IconDelete
-import com.vayunmathur.library.ui.IconAlbum
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.NavBackStack
@@ -64,6 +61,7 @@ import com.vayunmathur.photos.pushPhoto
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
+import com.vayunmathur.photos.domain.FavoriteRule
 import com.vayunmathur.photos.util.GalleryActions
 import com.vayunmathur.photos.util.GalleryUiState
 import com.vayunmathur.photos.util.GalleryViewModel
@@ -103,6 +101,9 @@ fun GalleryScreen(
     var searchActive by remember { mutableStateOf(initialSearchActive) }
     var showAlbumPicker by remember { mutableStateOf(false) }
     val isSelectionMode = state.selectedIds.isNotEmpty()
+    val allFavorite = remember(state.photos, state.selectedIds) {
+        !FavoriteRule.targetValue(state.photos.filter { it.id in state.selectedIds }.map { it.isFavorite })
+    }
 
     // Grouping is O(library) with a timezone conversion per photo, so it runs on
     // Dispatchers.Default. The initial value is computed inline so the very first
@@ -148,15 +149,7 @@ fun GalleryScreen(
                             }
                         },
                         actions = {
-                            IconButton(onClick = { showAlbumPicker = true }) {
-                                IconAlbum()
-                            }
-                            IconButton(onClick = { actions.moveSelectionToSecureFolder() }) {
-                                IconLock()
-                            }
-                            IconButton(onClick = { actions.trashSelection() }) {
-                                IconDelete()
-                            }
+                            GallerySelectionActions(allFavorite, actions, onAddToAlbum = { showAlbumPicker = true })
                         }
                     )
                 } else {

@@ -82,6 +82,10 @@ data class Photo(
     // in. Null only on rows written before the column existed, which the next
     // sync backfills; the Albums view shows those as Unknown meanwhile.
     val album: String? = null,
+    // MediaStore IS_FAVORITE, mirrored like [isTrashed]: MediaStore owns the
+    // flag (so favourites survive a reinstall and match other gallery apps),
+    // the sync copies it here, and the Favourites album reads it from here.
+    val isFavorite: Boolean = false,
 ) : DatabaseItem {
     /** True for an animated image, which plays rather than showing a single frame. */
     val isGif: Boolean get() = mimeType.equals("image/gif", ignoreCase = true)

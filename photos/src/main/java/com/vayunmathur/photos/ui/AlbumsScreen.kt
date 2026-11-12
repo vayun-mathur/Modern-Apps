@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.res.pluralStringResource
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconDelete
+import com.vayunmathur.library.ui.IconFavoriteBorder
 import com.vayunmathur.library.ui.IconLock
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -49,8 +50,9 @@ import com.vayunmathur.photos.util.DefaultAlbumKind
  * The albums grid, with no dependency on the ViewModel so it can be rendered from a
  * `@Preview` — see `src/screenshotTest`, which is where the store listing images come from.
  *
- * Built-in collections (Trash, Secure Folder) render first as icon tiles with no
- * cover photo; they open the same pages the bottom nav used to hold.
+ * Built-in collections (Favorites, Trash, Secure Folder) render first as icon
+ * tiles; Favorites shows its newest photo as the cover once it has one. Trash
+ * and the Secure Folder open the same pages the bottom nav used to hold.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,9 +82,11 @@ fun AlbumsScreen(
             items(state.defaultAlbums, key = { it.kind }) { album ->
                 DefaultAlbumTile(
                     album = album,
+                    thumbnail = thumbnail,
                     onClick = {
                         backStack.add(
                             when (album.kind) {
+                                DefaultAlbumKind.FAVORITES -> Route.Favorites
                                 DefaultAlbumKind.TRASH -> Route.Trash
                                 DefaultAlbumKind.SECURE_FOLDER -> Route.SecureFolder
                             }
@@ -135,15 +139,18 @@ fun AlbumsScreen(
 }
 
 /**
- * A built-in collection tile: the collection's icon on a tonal surface
- * instead of a cover photo, with the same name/count caption as an album.
+ * A built-in collection tile: the collection's icon on a tonal surface (or its
+ * [DefaultAlbum.cover], when it has one), with the same name/count caption as
+ * an album.
  */
 @Composable
 private fun DefaultAlbumTile(
     album: DefaultAlbum,
+    thumbnail: @Composable (Photo, Modifier) -> Unit,
     onClick: () -> Unit,
 ) {
     val title = when (album.kind) {
+        DefaultAlbumKind.FAVORITES -> stringResource(R.string.label_favorites)
         DefaultAlbumKind.TRASH -> stringResource(R.string.label_trash)
         DefaultAlbumKind.SECURE_FOLDER -> stringResource(R.string.label_secure_folder)
     }
@@ -157,12 +164,19 @@ private fun DefaultAlbumTile(
                 .invisibleClickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            when (album.kind) {
-                DefaultAlbumKind.TRASH -> IconDelete(
+            val cover = album.cover
+            when {
+                cover != null -> thumbnail(cover, Modifier.fillMaxSize())
+                album.kind == DefaultAlbumKind.FAVORITES -> IconFavoriteBorder(
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    contentDescription = null,
+                )
+                album.kind == DefaultAlbumKind.TRASH -> IconDelete(
                     modifier = Modifier.size(64.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                DefaultAlbumKind.SECURE_FOLDER -> IconLock(
+                else -> IconLock(
                     modifier = Modifier.size(64.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

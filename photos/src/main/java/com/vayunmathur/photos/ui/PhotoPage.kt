@@ -56,6 +56,10 @@ fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapVie
         val source = overridePhotosList ?: photosAll.filter { !it.isTrashed }
         source.filter { it.id !in locallyDeleted }
     }
+    // Favorite state from the live rows: overridePhotosList (an album, person or
+    // search snapshot) does not see a heart tapped after it was taken.
+    val favoriteIds = remember(photosAll) { photosAll.filter { it.isFavorite }.mapTo(HashSet()) { it.id } }
+    val toggleFavorite = rememberFavoriteToggle(galleryViewModel.favoriteToggler)
     val matchedCounts by galleryViewModel.faceCountByPhoto.collectAsState()
     val faceBoxes by galleryViewModel.faceBoxesByPhoto.collectAsState()
 
@@ -216,6 +220,8 @@ fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapVie
                             }
                         },
                         onDelete = onDeletePhoto,
+                        isFavorite = photo.id in favoriteIds,
+                        onToggleFavorite = { p -> toggleFavorite(listOf(p.copy(isFavorite = p.id in favoriteIds))) },
                         // The route's own photo, not whichever page the pager has settled on:
                         // after a swipe those differ, and back would then morph into a grid tile
                         // the user never tapped.

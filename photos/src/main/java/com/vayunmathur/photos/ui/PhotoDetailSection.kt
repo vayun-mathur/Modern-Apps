@@ -63,6 +63,8 @@ fun BoxScope.PhotoDetailSection(
      * taps then toggle (restore) as usual.
      */
     onMetadataLayout: (IntSize) -> Unit = {},
+    isFavorite: Boolean = false,
+    onToggleFavorite: (Photo) -> Unit = {},
 ) {
     ocrLayout?.takeIf { isSettled && size != IntSize.Zero }?.let { layout ->
         key(ocrClearToken) {
@@ -108,6 +110,8 @@ fun BoxScope.PhotoDetailSection(
             onSetWallpaper = onSetWallpaper,
             onEditPhoto = onEditPhoto,
             onDelete = onDelete,
+            isFavorite = isFavorite,
+            onToggleFavorite = onToggleFavorite,
         )
     }
 

@@ -425,6 +425,7 @@ class PhotosSlice3GalleryTest {
         override suspend fun delete(value: Photo): Int = dao.delete(value)
         override suspend fun setTrashed(id: Long) = dao.setTrashed(id)
         override suspend fun setAlbum(ids: List<Long>, album: String?) = dao.setAlbum(ids, album)
+        override suspend fun setFavorite(ids: List<Long>, value: Boolean) = dao.setFavorite(ids, value)
         override suspend fun getAll(): List<Photo> = dao.getAll()
     }
 
