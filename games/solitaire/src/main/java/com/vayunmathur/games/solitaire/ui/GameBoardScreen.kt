@@ -82,7 +82,14 @@ fun GameBoardScreen(state: SolitaireUiState, mode: GameMode, actions: SolitaireA
                         // foundations can otherwise hide it under the player's tap),
                         // and any tap on the board mid-run stops the run instead.
                         val autoCompleteRunning by actions.autoCompleteRunning.collectAsState()
-                        if (canKlondikeAutoComplete(it) || autoCompleteRunning) {
+                        // Offered only when the run can actually finish (stock draws and
+                        // recycles under the pass limit included); keyed on the board, not
+                        // the ticking timer.
+                        val canAutoComplete = remember(
+                            it.stock, it.waste, it.tableauPiles, it.foundations,
+                            it.redealsRemaining, it.drawMode, it.isWon,
+                        ) { canKlondikeAutoComplete(it) }
+                        if (canAutoComplete || autoCompleteRunning) {
                             Button(onClick = { actions.klondikeAutoComplete() }, Modifier.align(Alignment.CenterHorizontally)) {
                                 Text(stringResource(if (autoCompleteRunning) R.string.skip else R.string.auto_complete))
                             }

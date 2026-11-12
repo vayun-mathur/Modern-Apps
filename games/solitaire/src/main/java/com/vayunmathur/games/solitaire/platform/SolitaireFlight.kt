@@ -196,56 +196,63 @@ internal fun SolitaireViewModel.launchReturnFlight(range: PileRange, from: Offse
  * A pile that no longer ends with the cards (a Spider run that completed and cleared) still
  * yields its next slot, and the flight's hidden range then matches nothing.
  */
-internal fun SolitaireViewModel.landingSlot(targetId: String, cards: List<Card>): FlightTarget.Slot? {
-    val state = uiStateInternal.value
-    return when {
-        targetId.startsWith(FOUNDATION_PREFIX) -> {
-            val fi = targetId.removePrefix(FOUNDATION_PREFIX).toIntOrNull() ?: return null
-            val pile = currentFoundations()?.getOrNull(fi) ?: return null
+internal fun SolitaireViewModel.landingSlot(targetId: String, cards: List<Card>): FlightTarget.Slot? = when {
+    targetId.startsWith(FOUNDATION_PREFIX) -> {
+        val fi = targetId.removePrefix(FOUNDATION_PREFIX).toIntOrNull()
+        currentFoundations()?.getOrNull(fi ?: -1)?.let { pile ->
             FlightTarget.Slot(targetId, 0, (pile.size - cards.size).coerceAtLeast(0))
         }
-        targetId.startsWith(FREECELL_PREFIX) -> FlightTarget.Slot(targetId, 0, 0)
-        targetId.startsWith(TABLEAU_PREFIX) -> {
-            val col = targetId.removePrefix(TABLEAU_PREFIX).toIntOrNull() ?: return null
-            val (faceDown, faceUp) = when (state.gameMode) {
-                GameMode.KLONDIKE -> state.klondike?.tableauPiles?.getOrNull(col)?.let { it.faceDown.size to it.faceUp.size }
-                GameMode.SPIDER -> state.spider?.tableauPiles?.getOrNull(col)?.let { it.faceDown.size to it.faceUp.size }
-                GameMode.FREECELL -> state.freeCell?.tableauPiles?.getOrNull(col)?.let { 0 to it.size }
-                else -> null
-            } ?: return null
-            FlightTarget.Slot(targetId, faceDown, (faceUp - cards.size).coerceAtLeast(0))
-        }
-        else -> null
     }
+    targetId.startsWith(FREECELL_PREFIX) -> FlightTarget.Slot(targetId, 0, 0)
+    targetId.startsWith(TABLEAU_PREFIX) -> tableauLandingSlot(targetId, cards)
+    else -> null
+}
+
+private fun SolitaireViewModel.tableauLandingSlot(targetId: String, cards: List<Card>): FlightTarget.Slot? {
+    val col = targetId.removePrefix(TABLEAU_PREFIX).toIntOrNull() ?: return null
+    val state = uiStateInternal.value
+    // (face-down count, face-up count) of the column after the move.
+    val counts = when (state.gameMode) {
+        GameMode.KLONDIKE -> state.klondike?.tableauPiles?.getOrNull(col)?.let { it.faceDown.size to it.faceUp.size }
+        GameMode.SPIDER -> state.spider?.tableauPiles?.getOrNull(col)?.let { it.faceDown.size to it.faceUp.size }
+        GameMode.FREECELL -> state.freeCell?.tableauPiles?.getOrNull(col)?.let { 0 to it.size }
+        else -> null
+    } ?: return null
+    return FlightTarget.Slot(targetId, counts.first, (counts.second - cards.size).coerceAtLeast(0))
 }
 
 /**
  * A flight reached its destination: the board draws its cards in their pile again. The landing
  * of the auto-complete's current hop advances the run; queued taps whose cards are now down are
- * replayed against the live state.
+ * replayed against the live state (not mid-run: a run owns the board until it stops).
  */
 internal fun SolitaireViewModel.landFlightImpl(id: Long) {
     if (flightsInternal.value.none { it.id == id }) return
     flightsInternal.update { flights -> flights.filterNot { it.id == id } }
-    if (id == autoCompleteFlightId) {
-        autoCompleteFlightId = null
-        if (autoCompleteRunningInternal.value) advanceAutoComplete()
-    }
-    replayQueuedTaps()
+    if (id == autoCompleteFlightId) autoCompleteFlightId = null
+    // The run continues when its own hop lands, or — while it waits on a card a player's
+    // move still has in the air — when that flight does.
+    if (autoCompleteRunningInternal.value && autoCompleteFlightId == null) advanceAutoComplete()
+    if (!autoCompleteRunningInternal.value) replayQueuedTaps()
 }
 
 private fun SolitaireViewModel.replayQueuedTaps() {
     if (queuedTaps.isEmpty()) return
     val pending = queuedTaps.toList()
     queuedTaps.clear()
-    for (tap in pending) {
-        val range = sourceRange(tap.sourceId)
-        // The state moved on under the queued tap: the card it was aimed at is gone.
-        if (range == null || range.cards.first() != tap.card) continue
-        if (isAirborne(range)) { queuedTaps.addLast(tap); continue }
-        val targetId = resolveAutoMoveTarget(tap.sourceId) ?: continue
-        flyMove(tap.sourceId, targetId, range.cards, cardPositions[tap.card], lastCardSize)
+    pending.forEach { replayQueuedTap(it) }
+}
+
+private fun SolitaireViewModel.replayQueuedTap(tap: QueuedTap) {
+    val range = sourceRange(tap.sourceId)
+    // The state moved on under the queued tap: the card it was aimed at is gone.
+    if (range == null || range.cards.first() != tap.card) return
+    if (isAirborne(range)) {
+        queuedTaps.addLast(tap)
+        return
     }
+    val targetId = resolveAutoMoveTarget(tap.sourceId) ?: return
+    flyMove(tap.sourceId, targetId, range.cards, cardPositions[tap.card], lastCardSize)
 }
 
 /** Drops every flight and queued tap: undo, restart, mode switch and give-up replace the board. */

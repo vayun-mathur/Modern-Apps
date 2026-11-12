@@ -184,6 +184,67 @@ class SolitaireAutoCompleteTest {
         assertTrue(vm.uiState.value.klondike!!.isWon)
     }
 
+    /**
+     * The waste King sits on the Queen it needs, the stock is empty and one pass is left:
+     * finishing takes a recycle. The old loop drew the stock dry and stalled here.
+     */
+    private fun needsRecycle() = KlondikeState(
+        waste = listOf(Card(Suit.HEARTS, Rank.QUEEN), Card(Suit.HEARTS, Rank.KING)),
+        tableauPiles = sevenPiles(TableauPile(faceUp = listOf(Card(Suit.CLUBS, Rank.KING)))),
+        foundations = Suit.entries.map { suit ->
+            val top = if (suit == Suit.HEARTS) Rank.JACK else if (suit == Suit.CLUBS) Rank.QUEEN else Rank.KING
+            Rank.entries.filter { it.value <= top.value }.map { Card(suit, it) }
+        },
+        redealsRemaining = 1,
+    )
+
+    @Test fun animatedRunRecyclesTheStockInsteadOfStalling() {
+        val vm = vm()
+        setK(vm, needsRecycle())
+        vm.registerCardPosition(Card(Suit.CLUBS, Rank.KING), Offset(30f, 30f))
+        vm.registerCardPosition(Card(Suit.HEARTS, Rank.KING), Offset(10f, 10f))
+        vm.registerCardPosition(Card(Suit.HEARTS, Rank.QUEEN), Offset(10f, 10f))
+        vm.klondikeAutoComplete()
+        val flown = mutableListOf<Card>()
+        var guard = 0
+        while (vm.autoCompleteRunning.value) {
+            if (guard++ > 10) fail("run did not finish")
+            val flight = vm.flights.value.singleOrNull() ?: fail("running without a hop in the air")
+            flown += flight.cards
+            vm.landFlight(flight.id)
+        }
+        // The recycled cards' old positions are stale (they went face down), so their
+        // hops after the recycle apply instantly rather than flying from the old spot.
+        assertEquals(listOf(Card(Suit.CLUBS, Rank.KING)), flown)
+        val k = vm.uiState.value.klondike!!
+        assertTrue(k.isWon, "state=$k")
+        assertEquals(0, k.redealsRemaining)
+        assertEquals(1, vm.uiState.value.history.size)
+    }
+
+    @Test fun instantAndSkippedRunsRecycleToo() {
+        val instant = vm()
+        setK(instant, needsRecycle())
+        instant.klondikeAutoComplete()
+        assertTrue(instant.uiState.value.klondike!!.isWon)
+        val skipped = vm()
+        setK(skipped, needsRecycle())
+        skipped.registerCardPosition(Card(Suit.CLUBS, Rank.KING), Offset(30f, 30f))
+        skipped.klondikeAutoComplete()
+        assertTrue(skipped.autoCompleteRunning.value)
+        skipped.klondikeAutoComplete() // the Skip button
+        assertTrue(skipped.uiState.value.klondike!!.isWon)
+    }
+
+    @Test fun notOfferedNorStartedWhenPassesRunOut() {
+        val vm = vm()
+        setK(vm, needsRecycle().copy(redealsRemaining = 0))
+        assertFalse(canKlondikeAutoComplete(vm.uiState.value.klondike!!))
+        vm.klondikeAutoComplete()
+        assertFalse(vm.autoCompleteRunning.value)
+        assertTrue(vm.uiState.value.history.isEmpty())
+    }
+
     @Test fun undoRestoresPreRunBoard() {
         val vm = vm()
         setK(vm, almostWon())

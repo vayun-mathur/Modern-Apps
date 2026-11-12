@@ -135,16 +135,6 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         } ?: GameConfig()
     }
 
-    internal fun currentVariant(): String = with(uiStateInternal.value) {
-        when (gameMode) {
-            GameMode.KLONDIKE -> klondike?.variant
-            GameMode.SPIDER -> spider?.variant
-            GameMode.FREECELL -> freeCell?.variant
-            GameMode.PYRAMID -> pyramid?.variant
-            null -> null
-        } ?: ""
-    }
-
     override fun giveUp() {
         clearMotion()
         val mode = uiStateInternal.value.gameMode ?: return
@@ -308,3 +298,13 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     }
 }
 
+/** The stats variant key of the active game ("" without one). */
+internal fun SolitaireViewModel.currentVariant(): String = with(uiStateInternal.value) {
+    when (gameMode) {
+        GameMode.KLONDIKE -> klondike?.variant
+        GameMode.SPIDER -> spider?.variant
+        GameMode.FREECELL -> freeCell?.variant
+        GameMode.PYRAMID -> pyramid?.variant
+        null -> null
+    } ?: ""
+}

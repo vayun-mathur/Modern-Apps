@@ -195,21 +195,29 @@ class SolitaireRulesTest {
 
     @Test
     fun autoCompleteVisibility() {
+        // Offered only when the run can actually finish (see KlondikeAutoCompletePlanTest).
         val aceHearts = Card(Suit.HEARTS, Rank.ACE)
-        val base = KlondikeState(
-            stock = emptyList(), waste = listOf(aceHearts),
-            tableauPiles = listOf(TableauPile(faceUp = listOf(Card(Suit.SPADES, Rank.TWO)))) + List(6) { TableauPile() },
+        val almostDone = KlondikeState(
+            stock = emptyList(), waste = listOf(Card(Suit.HEARTS, Rank.KING)),
+            foundations = Suit.entries.map { suit ->
+                Rank.entries.filter { suit != Suit.HEARTS || it != Rank.KING }.map { Card(suit, it) }
+            },
         )
-        assertTrue(canKlondikeAutoComplete(base))
+        assertTrue(canKlondikeAutoComplete(almostDone))
         // Face-down cards hide the button even with stock remaining.
-        val withDown = base.copy(
+        val withDown = almostDone.copy(
             stock = listOf(aceHearts),
             tableauPiles = listOf(TableauPile(faceDown = listOf(aceHearts), faceUp = listOf(aceHearts))) + List(6) { TableauPile() },
         )
         assertFalse(canKlondikeAutoComplete(withDown))
-        assertFalse(canKlondikeAutoComplete(base.copy(isWon = true)))
-        // Stock present (and no face-down) always shows it.
-        assertTrue(canKlondikeAutoComplete(base.copy(stock = listOf(aceHearts), waste = emptyList())))
+        assertFalse(canKlondikeAutoComplete(almostDone.copy(isWon = true)))
+        // A board that could make a move or two but never finish is no longer offered
+        // (it used to be, and the run then stalled at the end of the stock).
+        val partial = KlondikeState(
+            stock = emptyList(), waste = listOf(aceHearts),
+            tableauPiles = listOf(TableauPile(faceUp = listOf(Card(Suit.SPADES, Rank.TWO)))) + List(6) { TableauPile() },
+        )
+        assertFalse(canKlondikeAutoComplete(partial))
     }
 
     @Test
