@@ -27,10 +27,22 @@
     <string name="select_mode">Select Mode</string>
     <!-- MainActivity: Pyramid mode option original single pass through stock. Noun/adjective -->
     <string name="mode_original">Original</string>
-    <!-- MainActivity: Mode option relaxed unlimited redeals. Klondike and Pyramid. Adjective -->
+    <!-- GameConfigDialog: Pyramid mode option relaxed unlimited redeals. Adjective -->
     <string name="mode_relaxed">Relaxed</string>
-    <!-- MainActivity: Klondike regular difficulty 2 redeals (3 passes). Adjective -->
-    <string name="difficulty_regular">Regular</string>
+    <!-- GameConfigDialog: Caption above the Klondike option row choosing how many times the player may go through the draw pile (stock). Noun phrase -->
+    <string name="stock_passes">Passes through the stock</string>
+    <!-- GameConfigDialog: Spoken label of the Klondike option allowing unlimited passes through the stock (shown as ∞); KlondikeBoard: spoken label of the empty stock in such a game. Noun phrase -->
+    <string name="passes_unlimited">Unlimited passes</string>
+    <!-- GameConfigDialog: Spoken label of a Klondike option allowing %1$d passes through the stock (shown as the bare number). Noun phrase -->
+    <plurals name="passes_count">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> pass</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> passes</item>
+    </plurals>
+    <!-- KlondikeBoard: Spoken label of the empty stock (shown as ↻ and the count): %1$d more passes through the stock are allowed. Noun phrase -->
+    <plurals name="stock_passes_left">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> pass left</item>
+        <item quantity="other"><xliff:g id="count" example="2">%1$d</xliff:g> passes left</item>
+    </plurals>
 
     <!-- MainActivity: Button to auto-complete Klondike when all tableau faceDown empty and not won. Verb phrase CTA -->
     <string name="auto_complete">Auto Complete</string>

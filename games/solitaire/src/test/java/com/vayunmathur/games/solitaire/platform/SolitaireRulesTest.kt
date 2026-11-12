@@ -6,7 +6,9 @@ import com.vayunmathur.games.solitaire.data.Card
 import com.vayunmathur.games.solitaire.data.DrawMode
 import com.vayunmathur.games.solitaire.data.GameConfig
 import com.vayunmathur.games.solitaire.data.GameMode
+import com.vayunmathur.games.solitaire.data.KLONDIKE_DIFFICULTY_ORDER
 import com.vayunmathur.games.solitaire.data.KlondikeDifficulty
+import com.vayunmathur.games.solitaire.data.passes
 import com.vayunmathur.games.solitaire.data.KlondikeState
 import com.vayunmathur.games.solitaire.data.PyramidState
 import com.vayunmathur.games.solitaire.data.Rank
@@ -71,6 +73,42 @@ class SolitaireRulesTest {
         assertEquals(Int.MAX_VALUE, KlondikeDifficulty.RELAXED.redeals())
         assertEquals(2, KlondikeDifficulty.REGULAR.redeals())
         assertEquals(0, KlondikeDifficulty.HARD.redeals())
+    }
+
+    @Test
+    fun klondikePassesPerDifficulty() {
+        // Names make up the stats key and must never change; new values are appended.
+        assertEquals(
+            listOf("RELAXED", "REGULAR", "HARD", "TWO_PASSES"),
+            KlondikeDifficulty.entries.map { it.name },
+        )
+        assertEquals(1, KlondikeDifficulty.TWO_PASSES.redeals())
+        assertEquals(null, KlondikeDifficulty.RELAXED.passes())
+        assertEquals(3, KlondikeDifficulty.REGULAR.passes())
+        assertEquals(2, KlondikeDifficulty.TWO_PASSES.passes())
+        assertEquals(1, KlondikeDifficulty.HARD.passes())
+        assertEquals(
+            listOf(KlondikeDifficulty.RELAXED, KlondikeDifficulty.REGULAR, KlondikeDifficulty.TWO_PASSES, KlondikeDifficulty.HARD),
+            KLONDIKE_DIFFICULTY_ORDER,
+        )
+    }
+
+    @Test
+    fun twoPassKlondikeRecyclesExactlyOnce() {
+        val vm = vm()
+        vm.newKlondikeGame(GameConfig(drawMode = DrawMode.DRAW_ONE, klondikeDifficulty = KlondikeDifficulty.TWO_PASSES))
+        assertEquals("DRAW_ONE_TWO_PASSES", vm.uiState.value.klondike!!.variant)
+        assertEquals(1, vm.uiState.value.klondike!!.redealsRemaining)
+        repeat(24) { vm.drawFromStock() }
+        vm.drawFromStock() // recycle: second pass begins
+        var k = vm.uiState.value.klondike!!
+        assertEquals(24, k.stock.size)
+        assertEquals(0, k.redealsRemaining)
+        repeat(24) { vm.drawFromStock() }
+        vm.drawFromStock() // no recycles left: nothing happens
+        k = vm.uiState.value.klondike!!
+        assertEquals(0, k.stock.size)
+        assertEquals(24, k.waste.size)
     }
 
     @Test

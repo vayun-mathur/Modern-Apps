@@ -14,7 +14,6 @@
     <string name="select_mode">Vali mängutüüp</string>
     <string name="mode_original">Algne</string>
     <string name="mode_relaxed">Leevendatud</string>
-    <string name="difficulty_regular">Tavaline</string>
     <string name="auto_complete">Automaatne lõpetus</string>
     <string name="completed_8">Tehtud: <xliff:g id="completed" example="2">%1$s</xliff:g>/8</string>
     <string name="card_colors">Kaardivärvid</string>

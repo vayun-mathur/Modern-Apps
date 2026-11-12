@@ -14,7 +14,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.games.solitaire.R
 import com.vayunmathur.games.solitaire.data.DrawMode
 import com.vayunmathur.games.solitaire.data.KlondikeState
 import com.vayunmathur.games.solitaire.platform.SolitaireActions
@@ -39,8 +44,18 @@ fun KlondikeBoard(state: KlondikeState, actions: SolitaireActions, modifier: Mod
                         cardHeight = cardHeight
                     )
                 } else {
+                    // Empty stock: show the passes still to come, like Pyramid's ↻ (#911).
+                    val passesLeft = klondikePassesLeft(state)
+                    val description = when (passesLeft) {
+                        null -> ""
+                        UNLIMITED_PASSES -> stringResource(R.string.passes_unlimited)
+                        else -> pluralStringResource(R.plurals.stock_passes_left, passesLeft, passesLeft)
+                    }
                     EmptySlot(
-                        modifier = Modifier.clickable { actions.drawFromStock() },
+                        modifier = Modifier
+                            .clickable(enabled = passesLeft != null) { actions.drawFromStock() }
+                            .semantics { if (description.isNotEmpty()) contentDescription = description },
+                        label = klondikeStockLabel(passesLeft),
                         cardWidth = cardWidth,
                         cardHeight = cardHeight
                     )
@@ -110,3 +125,23 @@ fun KlondikeBoard(state: KlondikeState, actions: SolitaireActions, modifier: Mod
     }
 }
 
+/** [klondikePassesLeft] value for a game with unlimited passes. */
+internal const val UNLIMITED_PASSES = Int.MAX_VALUE
+
+/**
+ * Passes through the stock still to come once the current one ends: null when the
+ * empty stock cannot be recycled (no redeals left, or nothing in the waste),
+ * [UNLIMITED_PASSES] for unlimited games, else the count.
+ */
+internal fun klondikePassesLeft(state: KlondikeState): Int? = when {
+    state.waste.isEmpty() || state.redealsRemaining <= 0 -> null
+    state.redealsRemaining == Int.MAX_VALUE -> UNLIMITED_PASSES
+    else -> state.redealsRemaining
+}
+
+/** Empty-stock label: blank when it cannot recycle, ↻ when unlimited, else "↻ n". */
+internal fun klondikeStockLabel(passesLeft: Int?): String = when (passesLeft) {
+    null -> ""
+    UNLIMITED_PASSES -> "↻"
+    else -> "↻ $passesLeft"
+}

@@ -9,20 +9,37 @@ enum class GameMode { KLONDIKE, SPIDER, FREECELL, PYRAMID }
 
 enum class DrawMode { DRAW_ONE, DRAW_THREE }
 
-/** Klondike redeal difficulty: how many times the waste may be recycled. */
-enum class KlondikeDifficulty { RELAXED, REGULAR, HARD }
+/**
+ * Klondike redeal difficulty: how many passes through the stock are allowed.
+ *
+ * The names are part of the persisted stats key (`<draw>_<difficulty>`, see
+ * SolitaireKlondikeOps), so never rename them; append new values, never reorder.
+ */
+enum class KlondikeDifficulty { RELAXED, REGULAR, HARD, TWO_PASSES }
 
-/** Redeals allowed for each difficulty (RELAXED is effectively unlimited). */
+/** Redeals (waste recycles) allowed for each difficulty; RELAXED is unlimited. */
 fun KlondikeDifficulty.redeals(): Int = when (this) {
     KlondikeDifficulty.RELAXED -> Int.MAX_VALUE
     KlondikeDifficulty.REGULAR -> 2   // 3 passes total
+    KlondikeDifficulty.TWO_PASSES -> 1
     KlondikeDifficulty.HARD -> 0      // single pass
 }
+
+/** Passes through the stock for each difficulty, or null when unlimited. */
+fun KlondikeDifficulty.passes(): Int? = redeals().takeIf { it != Int.MAX_VALUE }?.plus(1)
+
+/** The New Game dialog's order: most passes first. */
+val KLONDIKE_DIFFICULTY_ORDER: List<KlondikeDifficulty> = listOf(
+    KlondikeDifficulty.RELAXED,
+    KlondikeDifficulty.REGULAR,
+    KlondikeDifficulty.TWO_PASSES,
+    KlondikeDifficulty.HARD,
+)
 
 /**
  * Options chosen in the New Game dialog. Only the fields relevant to the chosen
  * [GameMode] are used:
- *  - Klondike: [drawMode] + [klondikeDifficulty] (Relaxed/Regular/Hard redeals).
+ *  - Klondike: [drawMode] + [klondikeDifficulty] (unlimited / 3 / 2 / 1 passes).
  *  - Spider: [spiderSuits] (1 = easy, 2 = medium, 4 = hard).
  *  - Pyramid: [relaxed] (unlimited passes vs a single pass).
  */

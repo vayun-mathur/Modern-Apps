@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
+import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.SegmentedButton
 import com.vayunmathur.library.ui.SegmentedButtonDefaults
@@ -16,13 +17,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.solitaire.R
 import com.vayunmathur.games.solitaire.data.DrawMode
 import com.vayunmathur.games.solitaire.data.GameConfig
 import com.vayunmathur.games.solitaire.data.GameMode
+import com.vayunmathur.games.solitaire.data.KLONDIKE_DIFFICULTY_ORDER
 import com.vayunmathur.games.solitaire.data.KlondikeDifficulty
+import com.vayunmathur.games.solitaire.data.passes
 import com.vayunmathur.games.solitaire.ui.displayName
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Button
@@ -47,11 +53,7 @@ fun GameConfigDialog(mode: GameMode, onStart: (GameConfig) -> Unit, onDismiss: (
                                 SegmentedButton(shape = SegmentedButtonDefaults.itemShape(idx, 2), onClick = { drawMode = value }, selected = drawMode == value) { Text(stringResource(label)) }
                             }
                         }
-                        SingleChoiceSegmentedButtonRow {
-                            listOf(KlondikeDifficulty.RELAXED to R.string.mode_relaxed, KlondikeDifficulty.REGULAR to R.string.difficulty_regular, KlondikeDifficulty.HARD to UiR.string.hard).forEachIndexed { idx, (value, label) ->
-                                SegmentedButton(shape = SegmentedButtonDefaults.itemShape(idx, 3), onClick = { klondikeDifficulty = value }, selected = klondikeDifficulty == value) { Text(stringResource(label)) }
-                            }
-                        }
+                        KlondikePassesRow(klondikeDifficulty) { klondikeDifficulty = it }
                     }
                     GameMode.SPIDER -> {
                         SingleChoiceSegmentedButtonRow {
@@ -69,6 +71,37 @@ fun GameConfigDialog(mode: GameMode, onStart: (GameConfig) -> Unit, onDismiss: (
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(UiR.string.back)) } }
     )
+}
+
+/**
+ * Klondike passes through the stock (#911). The caption carries the meaning so each
+ * segment can be just the count, which keeps four options on one row in a phone
+ * dialog; the spoken label is the full phrase ("3 passes", "Unlimited passes").
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun KlondikePassesRow(selected: KlondikeDifficulty, onChange: (KlondikeDifficulty) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(R.string.stock_passes), style = MaterialTheme.typography.labelLarge)
+        SingleChoiceSegmentedButtonRow {
+            KLONDIKE_DIFFICULTY_ORDER.forEachIndexed { idx, value ->
+                val passes = value.passes()
+                val spoken = if (passes == null) {
+                    stringResource(R.string.passes_unlimited)
+                } else {
+                    pluralStringResource(R.plurals.passes_count, passes, passes)
+                }
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(idx, KLONDIKE_DIFFICULTY_ORDER.size),
+                    onClick = { onChange(value) },
+                    selected = selected == value,
+                    modifier = Modifier.semantics { contentDescription = spoken },
+                ) {
+                    Text(passes?.toString() ?: "\u221E")
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
