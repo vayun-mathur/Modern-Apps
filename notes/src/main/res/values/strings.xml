@@ -19,4 +19,30 @@
     <!-- NotePage: Clipboard label for note content. Noun, lowercase intentional. -->
     <string name="note">note</string>
     <string name="share_note">Share Note</string>
+    <!-- NotePage tag row: placeholder of the field that adds a tag to the note. Verb phrase. -->
+    <string name="add_tag">Add tag</string>
+    <!-- NotePage tag row: accessibility label of the x on a tag chip. %1$s is the tag. -->
+    <string name="remove_tag">Remove tag %1$s</string>
+    <!-- NotePage tag row: shown instead of the add field once a note has the maximum number of tags. -->
+    <plurals name="tag_limit_reached">
+        <item quantity="one">A note can have up to %1$d tag</item>
+        <item quantity="other">A note can have up to %1$d tags</item>
+    </plurals>
+    <!-- NotesList filter row: accessibility action for long-pressing a tag chip (opens Rename / Delete). -->
+    <string name="tag_options">Tag options</string>
+    <!-- NotesList: hint under the tag filter row; dragging to reorder is off while a tag is selected. -->
+    <string name="tag_filter_reorder_hint">Showing one tag. Select All to reorder notes.</string>
+    <!-- Rename tag dialog: title. -->
+    <string name="rename_tag_title">Rename tag</string>
+    <!-- Rename tag dialog: text field label. Noun. -->
+    <string name="tag_name">Tag name</string>
+    <!-- Rename tag dialog: shown when the new name is an existing tag. %1$s is that tag. -->
+    <string name="rename_tag_merges">Merges into the existing tag \"%1$s\"</string>
+    <!-- Delete tag dialog: title. %1$s is the tag. -->
+    <string name="delete_tag_title">Delete tag \"%1$s\"?</string>
+    <!-- Delete tag dialog: body. %1$d is how many notes carry the tag. -->
+    <plurals name="delete_tag_message">
+        <item quantity="one">Removes the tag from %1$d note. The note itself is kept.</item>
+        <item quantity="other">Removes the tag from %1$d notes. The notes themselves are kept.</item>
+    </plurals>
 </resources>

@@ -120,6 +120,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.WrapText
 import androidx.compose.material.icons.automirrored.outlined.ArrowRightAlt
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
@@ -1864,3 +1865,23 @@ fun IconChecklist(modifier: Modifier = Modifier, tint: Color = LocalContentColor
 @Composable
 fun IconSnooze(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Filled.Snooze, "Snooze", modifier, tint)
+
+/** A label - note tags in notes. [contentDescription] defaults to "Tag"; pass null when decorative. */
+@Composable
+fun IconTag(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+    contentDescription: String? = "Tag",
+) = AppIcon(Icons.AutoMirrored.Outlined.Label, contentDescription, modifier, tint)
+
+/**
+ * Small "x" that clears or removes one item, e.g. the remove affordance on an input chip.
+ * [contentDescription] defaults to "Clear"; pass the control's own label (or null when the
+ * enclosing control already carries one).
+ */
+@Composable
+fun IconClear(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+    contentDescription: String? = "Clear",
+) = AppIcon(Icons.Filled.Close, contentDescription, modifier, tint)

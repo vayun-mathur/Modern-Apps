@@ -12,6 +12,7 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.notes.data.Note
 import com.vayunmathur.notes.data.NotesRepository
 import com.vayunmathur.notes.data.SyncSnapshot
+import com.vayunmathur.notes.domain.normalizeTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -341,6 +342,14 @@ internal data class RelayNoteJson(
     val deleted: Boolean = false,
     /** Last local-or-remote modification (epoch ms); drives relay LWW. */
     val updatedAt: Long = 0L,
+    /**
+     * User tags (#913). Last on purpose and empty by default: `json` does not
+     * encode defaults, so an untagged note's envelope — and so its content
+     * hash — is byte-identical to the pre-tags shape and nothing re-syncs.
+     * Must stay in the same position as `RemoteNote.tags` (the hash is over
+     * the encoded bytes, which follow declaration order).
+     */
+    val tags: List<String> = emptyList(),
 )
 
 internal fun RelayNoteJson.toNote(id: Long): Note = Note(
@@ -352,6 +361,9 @@ internal fun RelayNoteJson.toNote(id: Long): Note = Note(
     syncId = uid,
     updatedAt = updatedAt,
     deleted = deleted,
+    // Normalise on receive: another device's build is not trusted to have
+    // applied the same rules (length, count, case-insensitive dedupe).
+    tags = normalizeTags(tags),
 )
 
 // Envelope mapper: native <-> relay-log bytes.
@@ -363,4 +375,5 @@ internal fun Note.toRelayJson(): RelayNoteJson = RelayNoteJson(
     position = position,
     deleted = deleted,
     updatedAt = updatedAt,
+    tags = tags,
 )

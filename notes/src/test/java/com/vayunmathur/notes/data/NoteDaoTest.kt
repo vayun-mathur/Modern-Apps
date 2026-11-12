@@ -87,7 +87,7 @@ class NoteDaoTest {
     @Test fun dbNameAndConfigsShape() {
         assertEquals("notes-db", DB_NAME)
         assertNotNull(NoteDatabase.migrations)
-        assertEquals(listOf(1 to 2, 2 to 3), NoteDatabase.migrations.map { it.startVersion to it.endVersion })
+        assertEquals(listOf(1 to 2, 2 to 3, 3 to 4), NoteDatabase.migrations.map { it.startVersion to it.endVersion })
     }
 }
 

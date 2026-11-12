@@ -34,24 +34,28 @@ class MetadataPreviews {
             title = "Weekend plans",
             content = "Saturday: farmers market + hike at Twin Peaks. Sunday: brunch with Sam, then finish the book.",
             position = 0.0,
+            tags = listOf("Personal", "Plans"),
         ),
         Note(
             id = 2,
             title = "Groceries",
             content = "Oat milk, eggs, sourdough, spinach, cherry tomatoes, olive oil, dark chocolate.",
             position = 1.0,
+            tags = listOf("Personal", "Lists"),
         ),
         Note(
             id = 3,
             title = "Project ideas",
             content = "1. Auto-generate app screenshots 2. Offline map tiles 3. A tiny synth in Compose.",
             position = 2.0,
+            tags = listOf("Work", "Ideas"),
         ),
         Note(
             id = 4,
             title = "Meeting notes",
             content = "Ship the metadata pipeline. Add dark-mode shots. Review the release checklist.",
             position = 3.0,
+            tags = listOf("Work"),
         ),
         Note(
             id = 5,
@@ -99,6 +103,8 @@ class MetadataPreviews {
                             id = "weekend-body",
                         ),
                     ),
+                    tags = listOf("Personal", "Plans"),
+                    knownTags = listOf("Personal", "Work", "Plans", "Lists", "Ideas"),
                 ),
                 actions = NoteActions.Noop,
             )
@@ -114,6 +120,20 @@ class MetadataPreviews {
                 state = NotesListUiState(notes = samples),
                 actions = NotesListActions.Noop,
                 initialSearchQuery = "book",
+            )
+        }
+    }
+
+    /** The tag filter (#913): "Work" selected, so only work notes show and reordering is paused. */
+    @PreviewTest
+    @Preview(name = "4-tags", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview4Tags() {
+        DynamicTheme(darkTheme = true) {
+            NotesListScreen(
+                state = NotesListUiState(notes = samples),
+                actions = NotesListActions.Noop,
+                initialTagFilter = "Work",
             )
         }
     }

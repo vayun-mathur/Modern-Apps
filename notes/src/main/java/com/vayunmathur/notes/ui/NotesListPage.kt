@@ -69,6 +69,8 @@ fun NotesListPage(backStack: NavBackStack<Route>, viewModel: NotesViewModel) {
             override fun createNote() { backStack.add(Route.Note(0)) }
             override fun delete(note: Note) { viewModel.delete(note) }
             override fun upsertAll(notes: List<Note>) { viewModel.upsertAll(notes) }
+            override fun renameTag(from: String, to: String) { viewModel.renameTag(from, to) }
+            override fun deleteTag(tag: String) { viewModel.deleteTag(tag) }
         }
     }
 

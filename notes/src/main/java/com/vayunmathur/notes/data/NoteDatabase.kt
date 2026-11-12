@@ -1,6 +1,7 @@
 package com.vayunmathur.notes.data
 
 import android.content.Context
+import androidx.room3.ColumnTypeConverters
 import androidx.room3.Dao
 import androidx.room3.Database
 import androidx.room3.Delete
@@ -80,7 +81,8 @@ interface NoteSyncSnapshotDao {
     suspend fun deleteAll()
 }
 
-@Database(entities = [Note::class, SyncSnapshot::class], version = 3, exportSchema = false)
+@Database(entities = [Note::class, SyncSnapshot::class], version = 4, exportSchema = false)
+@ColumnTypeConverters(NoteConverters::class)
 abstract class NoteDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun syncSnapshotDao(): NoteSyncSnapshotDao
@@ -90,6 +92,14 @@ abstract class NoteDatabase : RoomDatabase() {
         // rows keep blocks = NULL and are read as a single text block.
         // v3 adds relay sync identity (mirrors passwords 2->3 backfill): syncId /
         // updatedAt / deleted on Note plus the SyncSnapshot baseline table.
+        // v4 adds `tags` (#913), a JSON array of strings. NOT NULL DEFAULT '[]'
+        // so every existing row reads back as untagged; no backfill needed.
+
+        /** v3 -> v4: the `tags` column. Hand-written (exportSchema is off). */
+        val MIGRATION_3_4 = Migration(3, 4) {
+            it.execSQL("ALTER TABLE `Note` ADD COLUMN `tags` TEXT NOT NULL DEFAULT '[]'")
+        }
+
         override val migrations = listOf(
             Migration(1, 2) {
                 it.execSQL("ALTER TABLE Note ADD COLUMN blocks TEXT")
@@ -112,6 +122,7 @@ abstract class NoteDatabase : RoomDatabase() {
                     )""",
                 )
             },
+            MIGRATION_3_4,
         )
     }
 }

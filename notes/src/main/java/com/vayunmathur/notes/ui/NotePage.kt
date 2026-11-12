@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -29,6 +30,9 @@ import com.vayunmathur.notes.data.NoteBody
 import com.vayunmathur.notes.data.body
 import com.vayunmathur.notes.data.randomBlockId
 import com.vayunmathur.notes.data.withBody
+import com.vayunmathur.notes.domain.canonicalTag
+import com.vayunmathur.notes.domain.normalizeTags
+import com.vayunmathur.notes.domain.withoutTag
 import com.vayunmathur.notes.platform.NoteActions
 import com.vayunmathur.notes.platform.NoteImageStore
 import com.vayunmathur.notes.platform.NoteUiState
@@ -58,6 +62,8 @@ fun NotePage(
     val scope = rememberCoroutineScope()
     val shareNoteLabel = stringResource(R.string.share_note)
     val noteClipLabel = stringResource(R.string.note)
+    val tagCounts by notesViewModel.tagCounts.collectAsStateWithLifecycle()
+    val knownTags = remember(tagCounts) { tagCounts.map { it.name } }
 
     // Local, editable copy of the note body: an ordered list of inline blocks
     // (text / image / ink). Every change is written back to [note], which persists
@@ -132,12 +138,21 @@ fun NotePage(
     }
 
     NoteScreen(
-        state = NoteUiState(title = note.title, blocks = blocks.toList()),
+        state = NoteUiState(title = note.title, blocks = blocks.toList(), tags = note.tags, knownTags = knownTags),
         sharedTextKey = "note-title-$noteID",
         actions = object : NoteActions {
             override fun back() = backStack.pop()
 
             override fun setTitle(title: String) { note = note.copy(title = title) }
+
+            // Tags save through the same debounced editableNote write as the title,
+            // so they get the same updatedAt bump and sync as any other edit.
+            override fun addTag(tag: String) {
+                val clean = canonicalTag(tag, knownTags) ?: return
+                note = note.copy(tags = normalizeTags(note.tags + clean))
+            }
+
+            override fun removeTag(tag: String) { note = note.copy(tags = withoutTag(note.tags, tag)) }
 
             override fun setBlockMarkdown(id: String, markdown: String) {
                 val i = blocks.indexOfFirst { it.id == id }

@@ -51,6 +51,7 @@ import com.vayunmathur.notes.platform.NoteImageStore
 import com.vayunmathur.notes.platform.NoteUiState
 import com.vayunmathur.notes.ui.components.ImageBlock
 import com.vayunmathur.notes.ui.components.InkBlock
+import com.vayunmathur.notes.ui.components.NoteTagEditor
 
 /**
  * The note editor, with no dependency on the ViewModel or the back stack so it can be
@@ -126,6 +127,14 @@ fun NoteScreen(state: NoteUiState, actions: NoteActions, sharedTextKey: Any? = n
                         ) { innerTextField() }
                     }
                 },
+            )
+
+            NoteTagEditor(
+                tags = state.tags,
+                knownTags = state.knownTags,
+                onAdd = { actions.addTag(it) },
+                onRemove = { actions.removeTag(it) },
+                modifier = Modifier.padding(vertical = 4.dp),
             )
 
             state.blocks.forEach { block ->

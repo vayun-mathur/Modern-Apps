@@ -2,6 +2,8 @@ package com.vayunmathur.notes.data
 
 import android.content.Context
 import com.vayunmathur.library.room.RoomRepository
+import com.vayunmathur.notes.domain.withTagRenamed
+import com.vayunmathur.notes.domain.withoutTag
 import kotlinx.coroutines.flow.Flow
 
 class NotesRepository private constructor(context: Context) :
@@ -36,6 +38,26 @@ class NotesRepository private constructor(context: Context) :
     }
     suspend fun deleteBySyncId(syncId: String): Int = dao.deleteBySyncId(syncId)
     suspend fun upsertAll(values: List<Note>) = dao.upsertAll(values)
+
+    /**
+     * Renames tag [from] to [to] on every live note (case-insensitive match). A
+     * note that already carries [to] merges the two. Returns how many notes
+     * changed. Local writes, so updatedAt is bumped and the change syncs.
+     */
+    suspend fun renameTag(from: String, to: String): Int = rewriteTags { withTagRenamed(it, from, to) }
+
+    /** Removes [tag] from every live note. Notes themselves are never deleted. */
+    suspend fun deleteTag(tag: String): Int = rewriteTags { withoutTag(it, tag) }
+
+    private suspend fun rewriteTags(transform: (List<String>) -> List<String>): Int {
+        val changed = dao.getAll().mapNotNull { note ->
+            val tags = transform(note.tags)
+            if (tags != note.tags) note.copy(tags = tags) else null
+        }
+        // One batch upsert (a single Room transaction) for every changed note.
+        if (changed.isNotEmpty()) dao.upsertAll(changed)
+        return changed.size
+    }
 
     /** Removes every note (including tombstones). Used when a relay vault is purged. */
     suspend fun purge() = dao.deleteAll()

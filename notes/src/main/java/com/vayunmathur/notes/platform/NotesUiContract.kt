@@ -31,21 +31,34 @@ interface NotesListActions {
     /** Persists a reordered list; each note already carries its new position. */
     fun upsertAll(notes: List<Note>) {}
 
+    /** Renames tag [from] to [to] on every note, merging into [to] where it already exists. */
+    fun renameTag(from: String, to: String) {}
+
+    /** Removes [tag] from every note. Never deletes a note. */
+    fun deleteTag(tag: String) {}
+
     companion object {
         val Noop: NotesListActions = object : NotesListActions {}
     }
 }
 
-/** Everything the note editor draws: the title plus the ordered body blocks. */
+/** Everything the note editor draws: the title, the note's tags, and the ordered body blocks. */
 data class NoteUiState(
     val title: String = "",
     val blocks: List<NoteBlock> = emptyList(),
+    val tags: List<String> = emptyList(),
+    /** Every tag used by any note, most used first: the autocomplete source for the tag field. */
+    val knownTags: List<String> = emptyList(),
 )
 
 /** Note editor callbacks. Same no-op-default arrangement as [NotesListActions]. */
 interface NoteActions {
     fun back() {}
     fun setTitle(title: String) {}
+
+    /** Adds a tag typed or picked in the tag field (normalised by the binder). */
+    fun addTag(tag: String) {}
+    fun removeTag(tag: String) {}
 
     /** The text block [id] was edited to [markdown]. */
     fun setBlockMarkdown(id: String, markdown: String) {}

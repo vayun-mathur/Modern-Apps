@@ -3,6 +3,8 @@ package com.vayunmathur.notes.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -17,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,20 +52,12 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.animatedDp
 import com.vayunmathur.notes.R
 import com.vayunmathur.notes.data.Note
+import com.vayunmathur.notes.domain.tagCounts
+import com.vayunmathur.notes.domain.tagKey
+import com.vayunmathur.notes.ui.components.NoteTagsLine
+import com.vayunmathur.notes.ui.components.TagFilterRow
 import com.vayunmathur.notes.platform.NotesListActions
 import com.vayunmathur.notes.platform.NotesListUiState
-
-/**
- * List search predicate: a note matches when the query appears in its title
- * or its plain-text content (which [com.vayunmathur.notes.data.withBody]
- * keeps in sync with the text blocks). Deliberately NOT the data-class
- * `toString()`: that rendering also embeds the id, position, blocks JSON,
- * syncId, updatedAt and deleted flag, so queries like "image", "deleted"
- * or a digit from a timestamp matched nearly every note.
- */
-internal fun noteMatchesSearch(note: Note, query: String): Boolean =
-    note.title.contains(query, ignoreCase = true) ||
-        note.content.contains(query, ignoreCase = true)
 
 /**
  * The notes list, with no dependency on the ViewModel or the back stack so it can be
@@ -81,15 +76,23 @@ fun NotesListScreen(
      * previews set it so the search results can be captured without typing.
      */
     initialSearchQuery: String = "",
+    /** Seed for the tag filter (null = All), for the same reason as [initialSearchQuery]. */
+    initialTagFilter: String? = null,
 ) {
     var searchQuery by remember { mutableStateOf(initialSearchQuery) }
-    val filtered = remember(state.notes, searchQuery) {
-        if (searchQuery.isBlank()) state.notes
-        else state.notes.filter { noteMatchesSearch(it, searchQuery) }
-    }
+    // Tag filter (#913): single-select. One tag at a time avoids the AND-vs-OR
+    // question a multi-select row raises; the selected chip is filled and checked.
+    var selectedTag by rememberSaveable { mutableStateOf(initialTagFilter) }
+    val tags = remember(state.notes) { tagCounts(state.notes.map { it.tags }) }
+    // The selection only applies while some note still carries the tag.
+    val activeTag = selectedTag?.let { sel -> tags.firstOrNull { tagKey(it.name) == tagKey(sel) }?.name }
+    val filtered = remember(state.notes, searchQuery, activeTag) { filterNotes(state.notes, searchQuery, activeTag) }
 
     BackHandler(enabled = searchQuery.isNotEmpty()) {
         searchQuery = ""
+    }
+    BackHandler(enabled = searchQuery.isEmpty() && activeTag != null) {
+        selectedTag = null
     }
 
     val hapticFeedback = LocalHapticFeedback.current
@@ -172,7 +175,7 @@ fun NotesListScreen(
     }
 
     LazyListScaffold(
-        topBar = {
+        topBar = { Column {
             if (isSelectionMode) {
                 TopAppBar(
                     title = { Text(selectedIds.size.toString()) },
@@ -204,7 +207,31 @@ fun NotesListScreen(
                     actions = backupButtons
                 )
             }
-        },
+            if (tags.isNotEmpty()) {
+                TagFilterRow(
+                    tags = tags,
+                    totalCount = state.notes.size,
+                    selected = activeTag,
+                    onSelect = { selectedTag = it },
+                    onRename = { from, to ->
+                        if (activeTag != null && tagKey(activeTag) == tagKey(from)) selectedTag = to
+                        actions.renameTag(from, to)
+                    },
+                    onDelete = { tag ->
+                        if (activeTag != null && tagKey(activeTag) == tagKey(tag)) selectedTag = null
+                        actions.deleteTag(tag)
+                    },
+                )
+            }
+            if (activeTag != null) {
+                Text(
+                    stringResource(R.string.tag_filter_reorder_hint),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } },
         floatingActionButton = {
             if (state.showAddButton && !isSelectionMode) {
                 FloatingActionButton(onClick = { actions.createNote() }) {
@@ -252,14 +279,17 @@ fun NotesListScreen(
                                 }
                             ),
                             supportingContent = {
-                                Text(note.content.substringBefore('\n').take(40))
+                                Column {
+                                    Text(note.content.substringBefore('\n').take(40))
+                                    NoteTagsLine(note.tags)
+                                }
                             },
                             trailingContent = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    // No drag handle while searching: onMove reassigns positions within
-                                    // the visible (filtered) subset and upsertAll persists them, which
-                                    // would corrupt the global order of the hidden notes.
-                                    if (searchQuery.isBlank() && localData.size > 1 && selectedIds.size < localData.size && (!isSelectionMode || isContiguous)) {
+                                    // No drag handle while searching or tag-filtering: onMove reassigns
+                                    // positions within the visible (filtered) subset and upsertAll persists
+                                    // them, which would corrupt the global order of the hidden notes.
+                                    if (searchQuery.isBlank() && activeTag == null && localData.size > 1 && selectedIds.size < localData.size && (!isSelectionMode || isContiguous)) {
                                         IconButton(
                                             modifier = Modifier.reorderDragHandle(
                                                 reorderState = reorderState,

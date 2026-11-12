@@ -5,7 +5,7 @@
 _Install: ./install notes (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :notes / dir: notes/
-- Package roots present: ui, data, platform, intents
+- Package roots present: ui, data, domain, platform, intents, sync
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
 - Deps: :library:room, :library:ink, :library:image
 - Metadata: metadata_data/notes.md (present)
@@ -34,6 +34,9 @@ _Install: ./install notes (dev by default)._
 - com/vayunmathur/notes/data/NoteBlock.kt
 - com/vayunmathur/notes/data/NoteDatabase.kt
 - com/vayunmathur/notes/data/NotesRepository.kt
+- com/vayunmathur/notes/data/NoteConverters.kt — `tags` JSON-array column (#913)
+### domain/ — pure rules (no Android)
+- com/vayunmathur/notes/domain/NoteTags.kt — tag normalisation, rename/merge, counts, suggestions
 ### platform/ — ViewModel, contract, stores, export
 - com/vayunmathur/notes/platform/NotesViewModel.kt
 - com/vayunmathur/notes/platform/NotesUiContract.kt

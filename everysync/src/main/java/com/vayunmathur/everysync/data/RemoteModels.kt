@@ -113,6 +113,13 @@ data class RemoteNote(
     val deleted: Boolean = false,
     /** Last local-or-remote modification (epoch ms); drives relay LWW. */
     val updatedAt: Long = 0L,
+    /**
+     * Note tags (notes #913). Mirror of notes' `RelayNoteJson.tags`: same name,
+     * same last position. Defaults are omitted on encode, so an untagged note
+     * hashes exactly as it did before tags existed; a tag edit is a content
+     * change and syncs like any other.
+     */
+    val tags: List<String> = emptyList(),
 )
 
 /**

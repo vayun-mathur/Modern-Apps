@@ -18,6 +18,9 @@ data class Note(
     val syncId: String = newSyncId(),
     val updatedAt: Long = System.currentTimeMillis(),
     val deleted: Boolean = false,
+    // User tags (#913), normalised by domain.normalizeTags before they are
+    // written. Stored as one JSON-array TEXT column (see NoteConverters).
+    val tags: List<String> = emptyList(),
 ): ReorderableDatabaseItem<Note> {
     override fun withPosition(position: Double) = copy(position = position)
 }

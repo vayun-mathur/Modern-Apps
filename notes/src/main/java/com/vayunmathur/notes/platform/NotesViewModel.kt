@@ -24,6 +24,8 @@ import com.vayunmathur.library.util.IntentHelper
 import com.vayunmathur.library.util.parseMarkdown
 import com.vayunmathur.notes.data.Note
 import com.vayunmathur.notes.data.NotesRepository
+import com.vayunmathur.notes.domain.TagCount
+import com.vayunmathur.notes.domain.tagCounts as countTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,6 +53,11 @@ class NotesViewModel(
     val notes: StateFlow<List<Note>> = repository.notes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Every tag across the live notes, most used first: the list filter row and editor autocomplete. */
+    val tagCounts: StateFlow<List<TagCount>> = notes
+        .map { list -> countTags(list.map { it.tags }) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     // Ids deleted from the editor, so a dispose-time flush of a pending edit
     // cannot resurrect a note the user just deleted.
     private val deletedNoteIds = mutableSetOf<Long>()
@@ -61,6 +69,14 @@ class NotesViewModel(
 
     fun upsertAll(notes: List<Note>) {
         viewModelScope.launch(Dispatchers.IO) { repository.upsertAll(notes) }
+    }
+
+    fun renameTag(from: String, to: String) {
+        viewModelScope.launch(Dispatchers.IO) { repository.renameTag(from, to) }
+    }
+
+    fun deleteTag(tag: String) {
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteTag(tag) }
     }
 
     @OptIn(FlowPreview::class)
