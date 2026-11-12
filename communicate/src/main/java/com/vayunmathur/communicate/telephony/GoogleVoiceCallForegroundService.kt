@@ -13,7 +13,10 @@ import androidx.core.content.ContextCompat
 import com.vayunmathur.communicate.MainActivity
 import com.vayunmathur.communicate.R
 import com.vayunmathur.communicate.data.googlevoice.call.CallPhase
+import com.vayunmathur.communicate.data.googlevoice.call.CallState
 import com.vayunmathur.communicate.data.googlevoice.call.GoogleVoiceCallManager
+import com.vayunmathur.communicate.domain.dialableNumberOrNull
+import com.vayunmathur.communicate.notifications.setCallFullScreenIntent
 import com.vayunmathur.library.util.deleteNotificationChannel
 import com.vayunmathur.library.util.ensureNotificationChannel
 import kotlinx.coroutines.CoroutineScope
@@ -61,11 +64,7 @@ class GoogleVoiceCallForegroundService : Service() {
     private fun startForegroundWithNotification() {
         ensureChannels()
         val state = GoogleVoiceCallManager.state.value
-        if (state.phase == CallPhase.Incoming) {
-            CallRinger.start(this)
-        } else {
-            CallRinger.stop()
-        }
+        updateRinging(state)
         val contentIntent = callActivityIntent(0)
         val notification = if (state.phase == CallPhase.Incoming) {
             buildIncomingCallNotification(state.remoteNumber, contentIntent)
@@ -77,6 +76,22 @@ class GoogleVoiceCallForegroundService : Service() {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL)
         } else {
             startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun updateRinging(state: CallState) {
+        if (state.phase == CallPhase.Incoming) {
+            CallRinger.start(
+                this,
+                RingRequest(
+                    line = RingLine.GoogleVoice,
+                    callKey = state.remoteNumber,
+                    number = dialableNumberOrNull(state.remoteNumber),
+                    callWaiting = LiveCalls.otherThan(RingLine.GoogleVoice),
+                ),
+            )
+        } else {
+            CallRinger.stop(RingLine.GoogleVoice)
         }
     }
 
@@ -124,7 +139,7 @@ class GoogleVoiceCallForegroundService : Service() {
             .setOngoing(true)
             .setAutoCancel(false)
             .setContentIntent(contentIntent)
-            .setFullScreenIntent(callActivityIntent(1), true)
+            .setCallFullScreenIntent(this, callActivityIntent(1))
             .build()
     }
 
@@ -170,7 +185,7 @@ class GoogleVoiceCallForegroundService : Service() {
     )
 
     private fun stopSelfSafely() {
-        CallRinger.stop()
+        CallRinger.stop(RingLine.GoogleVoice)
         androidx.core.app.ServiceCompat.stopForeground(
             this, androidx.core.app.ServiceCompat.STOP_FOREGROUND_REMOVE,
         )
@@ -178,7 +193,7 @@ class GoogleVoiceCallForegroundService : Service() {
     }
 
     override fun onDestroy() {
-        CallRinger.stop()
+        CallRinger.stop(RingLine.GoogleVoice)
         observeJob?.cancel()
         super.onDestroy()
     }

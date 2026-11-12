@@ -40,6 +40,11 @@ class GoogleVoiceConnection : Connection(), CallConnection {
         destroy()
     }
 
+    /** Volume or power pressed while ringing: mute the ring, keep the call ringing on screen. */
+    override fun onSilence() {
+        CallRinger.silence(RingLine.GoogleVoice)
+    }
+
     override fun onPlayDtmfTone(c: Char) {
         GoogleVoiceCallManager.sendDtmf(c.toString())
     }

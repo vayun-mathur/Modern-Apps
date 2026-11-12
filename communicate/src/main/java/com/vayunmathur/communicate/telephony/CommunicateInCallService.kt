@@ -13,6 +13,7 @@ import com.vayunmathur.communicate.MainActivity
 import com.vayunmathur.communicate.R
 import com.vayunmathur.communicate.data.CommunicateRepository
 import com.vayunmathur.communicate.data.findContactName
+import com.vayunmathur.communicate.notifications.setCallFullScreenIntent
 import com.vayunmathur.library.util.deleteNotificationChannel
 import com.vayunmathur.library.util.ensureNotificationChannel
 
@@ -21,19 +22,28 @@ import com.vayunmathur.library.util.ensureNotificationChannel
  *
  * Owns the system call surface (notification controls) and mirrors the call into [SimCallBridge] so the
  * shared in-app call screen serves regular phone calls too — with the dial pad voicemail needs.
+ *
+ * Also rings: the manifest declares `IN_CALL_SERVICE_RINGING`, so Telecom plays neither the ringtone nor
+ * the call-waiting tone for carrier calls and [SimRingController] drives [CallRinger] instead (#856).
+ * Every leg gets the callback, not just [currentCall], so the ringer sees a call-waiting leg arrive and
+ * the call it is waiting behind end.
  */
 class CommunicateInCallService : InCallService() {
 
+    private val ringController by lazy {
+        SimRingController(CallRinger.asIncomingRinger(this)) { LiveCalls.otherThan(RingLine.Sim) }
+    }
+
     private val callback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
-            currentCall = call
-            showOrClearNotification(call)
+            if (call == currentCall) showOrClearNotification(call)
             SimCallBridge.onStateChanged(call, state)
+            updateRinging()
         }
 
         override fun onDetailsChanged(call: Call, details: Call.Details) {
-            currentCall = call
-            showOrClearNotification(call)
+            if (call == currentCall) showOrClearNotification(call)
+            updateRinging()
         }
     }
 
@@ -44,12 +54,12 @@ class CommunicateInCallService : InCallService() {
 
     override fun onCallAdded(call: Call) {
         super.onCallAdded(call)
-        currentCall?.unregisterCallback(callback)
         currentCall = call
         call.registerCallback(callback)
         showOrClearNotification(call)
         val number = call.details.handle?.schemeSpecificPart.orEmpty()
         SimCallBridge.onCallAdded(this, call, number, callerLabel(number))
+        updateRinging()
         // Ringing must surface the screen, not just a notification: bring the app forward so the
         // InAppCallOverlay shows the incoming call with answer / decline.
         if (call.details.state == Call.STATE_RINGING) bringCallScreenForward()
@@ -61,7 +71,40 @@ class CommunicateInCallService : InCallService() {
         if (wasTracked) currentCall = null
         clearNotification()
         SimCallBridge.onCallRemoved(call)
+        updateRinging(removed = call)
         super.onCallRemoved(call)
+    }
+
+    /** Volume or power pressed while ringing: Telecom asks the ringing dialer to go quiet. */
+    override fun onSilenceRinger() {
+        super.onSilenceRinger()
+        ringController.silence()
+    }
+
+    override fun onDestroy() {
+        ringController.release()
+        LiveCalls.simCallLive = false
+        super.onDestroy()
+    }
+
+    /** Re-derive ringing from every leg Telecom holds ([removed] may still be listed mid-removal). */
+    private fun updateRinging(removed: Call? = null) {
+        val legs = calls.filter { it != removed }.map { it.toSimLeg() }
+        LiveCalls.simCallLive = legs.any { it.state == SimLegState.Live }
+        ringController.onCallsChanged(legs)
+    }
+
+    private fun Call.toSimLeg(): SimLeg {
+        val callDetails = details
+        // Telecom puts a call-screening service's silence request in the intent extras.
+        val silentRingingRequested = listOfNotNull(callDetails.intentExtras, callDetails.extras)
+            .any { it.getBoolean(Call.EXTRA_SILENT_RINGING_REQUESTED) }
+        return SimLeg(
+            key = this,
+            state = simLegState(callDetails.state),
+            number = callDetails.handle?.schemeSpecificPart?.takeIf { it.isNotBlank() },
+            silentRingingRequested = silentRingingRequested,
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -108,9 +151,9 @@ class CommunicateInCallService : InCallService() {
             description = getString(R.string.regular_call_channel_desc),
         ) {
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            // Telecom (the system phone stack) owns ringing audio for carrier calls; this
-            // notification is only the answer/decline surface, so it stays silent and never
-            // re-alerts — otherwise its ding would double up with the system ringtone.
+            // CallRinger owns ringing audio for carrier calls (IN_CALL_SERVICE_RINGING turns
+            // Telecom's off); this notification is only the answer/decline surface, so it stays
+            // silent and never re-alerts — otherwise its ding would double up with the ringtone.
             setSound(null, null)
             enableVibration(false)
         }
@@ -167,7 +210,7 @@ class CommunicateInCallService : InCallService() {
             .setOngoing(true)
             .setAutoCancel(false)
             .setContentIntent(activityIntent())
-            .setFullScreenIntent(fullScreenIntent(), true)
+            .setCallFullScreenIntent(this, fullScreenIntent())
             .build()
         val nm = getSystemService(NotificationManager::class.java) ?: return
         nm.notify(NOTIFICATION_ID, notification)
@@ -175,7 +218,7 @@ class CommunicateInCallService : InCallService() {
 
     private fun fullScreenIntent(): PendingIntent = PendingIntent.getActivity(
         this,
-        4,
+        FULL_SCREEN_REQUEST_CODE,
         Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         },
@@ -224,6 +267,7 @@ class CommunicateInCallService : InCallService() {
         private const val ACTION_DECLINE = "com.vayunmathur.communicate.regularcall.DECLINE"
         private const val ACTION_DISCONNECT = "com.vayunmathur.communicate.regularcall.DISCONNECT"
         private const val DISCONNECT_REQUEST_CODE = 3
+        private const val FULL_SCREEN_REQUEST_CODE = 4
 
         private var currentCall: Call? = null
         private var lookedUpNumber: String? = null

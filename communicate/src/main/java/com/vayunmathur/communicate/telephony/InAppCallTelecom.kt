@@ -111,6 +111,11 @@ class InAppCallConnection : Connection(), InAppCallConnectionBridge {
         destroy()
     }
 
+    /** Volume or power pressed while ringing: mute the ring, keep the call ringing on screen. */
+    override fun onSilence() {
+        CallRinger.silence(RingLine.InApp)
+    }
+
     /** The system mute button, as opposed to the in-app one. */
     override fun onMuteStateChanged(isMuted: Boolean) {
         if (InAppCallRegistry.state.value.muted != isMuted) InAppCallRegistry.toggleMuted()

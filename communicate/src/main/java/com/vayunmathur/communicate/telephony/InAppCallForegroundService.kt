@@ -14,8 +14,12 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.vayunmathur.communicate.MainActivity
 import com.vayunmathur.communicate.R
+import com.vayunmathur.communicate.data.CommunicateLine
 import com.vayunmathur.communicate.data.call.InAppCallPhase
 import com.vayunmathur.communicate.data.call.InAppCallRegistry
+import com.vayunmathur.communicate.data.call.InAppCallState
+import com.vayunmathur.communicate.domain.dialableNumberOrNull
+import com.vayunmathur.communicate.notifications.setCallFullScreenIntent
 import com.vayunmathur.library.util.deleteNotificationChannel
 import com.vayunmathur.library.util.ensureNotificationChannel
 import kotlinx.coroutines.CoroutineScope
@@ -63,11 +67,7 @@ class InAppCallForegroundService : Service() {
     private fun startForegroundWithNotification() {
         ensureChannels()
         val state = InAppCallRegistry.state.value
-        if (state.phase == InAppCallPhase.Incoming) {
-            CallRinger.start(this)
-        } else {
-            CallRinger.stop()
-        }
+        updateRinging(state)
         val notification = if (state.phase == InAppCallPhase.Incoming) {
             buildIncomingCallNotification(state.peerName)
         } else {
@@ -84,6 +84,27 @@ class InAppCallForegroundService : Service() {
             startForeground(NOTIFICATION_ID, notification, types)
         } else {
             startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    /**
+     * Ring while the WhatsApp/Signal call is incoming. The registry also mirrors SIM and Google Voice
+     * calls, which ring from their own services, so only this service's lines ring here.
+     */
+    private fun updateRinging(state: InAppCallState) {
+        val ownLine = state.line == CommunicateLine.WhatsApp || state.line == CommunicateLine.Signal
+        if (state.phase == InAppCallPhase.Incoming && ownLine) {
+            CallRinger.start(
+                this,
+                RingRequest(
+                    line = RingLine.InApp,
+                    callKey = "${state.line}:${state.peerId}",
+                    number = dialableNumberOrNull(state.peerId),
+                    callWaiting = LiveCalls.otherThan(RingLine.InApp),
+                ),
+            )
+        } else {
+            CallRinger.stop(RingLine.InApp)
         }
     }
 
@@ -129,7 +150,7 @@ class InAppCallForegroundService : Service() {
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
-            .setFullScreenIntent(callActivityIntent(1), true)
+            .setCallFullScreenIntent(this, callActivityIntent(1))
             .build()
     }
 
@@ -170,13 +191,13 @@ class InAppCallForegroundService : Service() {
     )
 
     private fun stopSelfSafely() {
-        CallRinger.stop()
+        CallRinger.stop(RingLine.InApp)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
-        CallRinger.stop()
+        CallRinger.stop(RingLine.InApp)
         observeJob?.cancel()
         super.onDestroy()
     }
