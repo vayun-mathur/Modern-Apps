@@ -161,13 +161,6 @@ internal class SearchBias(
     val boost: Map<String, Double> = emptyMap(),
 )
 
-private class WordRanked(
-    val record: PoiIndex.PoiRecord,
-    val boost: Double,
-    val rank: Int,
-    val distSq: Double,
-)
-
 private class Ranked(
     val record: PoiIndex.PoiRecord,
     val boost: Double,
@@ -176,7 +169,7 @@ private class Ranked(
 )
 
 /** Whitespace-separated, non-empty query tokens; callers fold case first. */
-private fun splitTokens(q: String): List<String> =
+internal fun splitTokens(q: String): List<String> =
     q.split(' ', '\t', '\n', '\r', '', '').filter { it.isNotEmpty() }
 
 /**
@@ -341,111 +334,6 @@ private fun scanMatchAt(
 }
 
 /**
- * Ordinals whose name matches every query token, each paired with its rank:
- * 0 = the name starts with the whole phrase ("blue bottle" → "Blue Bottle
- * Coffee"), 1 = every token starts a word, 2 = every token starts a word or
- * is a one-edit typo of one.
- *
- * Single-token queries behave exactly as before. Multi-token queries used to
- * look up the whole spaced string as one key and always miss; fuzzy matches
- * are new. The fuzzy pass only runs per token (deletion variants of the token
- * as prefix lookups, verified by edit distance), so its cost stays in the
- * number of near-matches rather than the size of the word pool.
- */
-internal fun searchByWordIndex(
-    m: PoiIndex.Mapped,
-    query: String,
-    bias: SearchBias,
-    candidateCap: Int,
-    cancelled: () -> Boolean = { false },
-): List<PoiIndex.PoiRecord> {
-    val nearLat = bias.lat
-    val nearLon = bias.lon
-    val limit = bias.limit
-    val boost = bias.boost
-    val tokens = splitTokens(query.trim())
-    if (tokens.isEmpty()) return emptyList()
-    val keys = tokens.map { poiQueryKey(it) }
-
-    // Exact pass, planet-safe: walk the RAREST token's whole prefix range and verify the
-    // other tokens against each candidate's own name ([rarestTokenMatches]). The old
-    // per-token walks stopped at [candidateCap] entries in word order, which at planet scale
-    // (30.9 M records, 69.6 M word entries in planet4) is an arbitrary Morton slice of the
-    // world: "golden" alone has tens of thousands of entries, so "Golden Gate Bridge" from
-    // SF intersected to a Lego model in Carlsbad and "British Museum" to nothing. When even
-    // the rarest token is too common to walk whole ("cafe"), fall back to the capped walks;
-    // the local pass below then supplies the nearby hits.
-    val exactRanks: Map<Int, Int> = m.rarestTokenMatches(keys, FULL_WALK_CAP)
-        ?: cappedExactMatches(m, keys, candidateCap)
-    val exact = keys.map { key ->
-        if (keys.size == 1) {
-            emptyMap()
-        } else {
-            m.wordPrefixMatches(key, FUZZY_EXACT_SEED_CAP).associate { it[0] to it[1] }
-        }
-    }
-    if (cancelled()) return emptyList()
-    val local = m.localWordMatches(keys, nearLat, nearLon, limit)
-    if (cancelled()) return emptyList()
-    val ordinals: Set<Int> = exactRanks.keys + local.keys
-    fun isPhrasePrefix(o: Int): Boolean = (exactRanks[o] ?: local[o]) == 0
-
-    val fuzzy = fuzzyMatches(m, tokens, exact, ordinals, candidateCap)
-    if (cancelled()) return emptyList()
-    val shortlist = m.shortlist(
-        ordinals.map { it to if (isPhrasePrefix(it)) 0 else 1 } + fuzzy.toList(),
-        nearLat,
-        nearLon,
-    )
-    val out = ArrayList<WordRanked>(shortlist.size)
-    for ((o, rank) in shortlist) {
-        out.add(wordRanked(m, o, rank, nearLat, nearLon, boost))
-    }
-    // Within a rank, a name that IS the query comes first when it is a place label (type 51:
-    // "Oakland" the city, among hundreds of "Oakland …" businesses nearer the centre — a city
-    // is searched for from anywhere) or is local (a same-named bar on another continent must
-    // not beat the "Tokyo Station Cafe" next to the user); then the user's signal; then
-    // distance.
-    val whole = query.trim()
-    fun exactTier(r: WordRanked): Boolean =
-        r.record.name.equals(whole, ignoreCase = true) &&
-            (r.record.type == PoiCategories.TYPE_PLACE || r.distSq <= EXACT_LOCAL_DEG_SQ)
-    out.sortWith(
-        compareBy<WordRanked> { it.rank }
-            .thenBy { !exactTier(it) }
-            .thenByDescending { it.boost }
-            .thenBy { it.distSq },
-    )
-    return out.take(limit).map { it.record }
-}
-
-/** "Local" for the exact-name tier: ~0.5° (≈55 km) from the centre, squared. */
-private const val EXACT_LOCAL_DEG_SQ = 0.25
-
-
-private fun wordRanked(
-    m: PoiIndex.Mapped,
-    ordinal: Int,
-    rank: Int,
-    nearLat: Double,
-    nearLon: Double,
-    boost: Map<String, Double>,
-): WordRanked {
-    val record = m.record(ordinal)
-    return WordRanked(
-        record,
-        boostWeight(boost, record.name),
-        rank,
-        PoiIndex.distanceSq(
-            nearLat,
-            nearLon,
-            m.latE7(ordinal) * PoiIndex.E7_TO_DEGREES,
-            m.lonE7(ordinal) * PoiIndex.E7_TO_DEGREES,
-        ),
-    )
-}
-
-/**
  * Ordinals with a word within one edit of the query [token], as
  * ordinal → word index.
  *
@@ -495,16 +383,6 @@ private fun PoiIndex.Mapped.wordWithinOneEdit(ordinal: Int, wordIdx: Int, token:
     }
     return editDistanceLE1(token, String(word))
 }
-
-/**
- * Entries the exact pass will walk for the rarest query token before it falls back to the
- * capped walks: a planet's rare words ("tartine", "golden") are well under this, its common
- * ones ("cafe", "street") well over.
- */
-private const val FULL_WALK_CAP = 200_000
-
-/** Per-token exact seed for the fuzzy intersection (its exact half), kept small. */
-private const val FUZZY_EXACT_SEED_CAP = 2_000
 
 /** Shortest token the typo passes consider (shorter ones are all typo-noise). */
 internal const val MIN_TYPO_TOKEN_LEN = 3

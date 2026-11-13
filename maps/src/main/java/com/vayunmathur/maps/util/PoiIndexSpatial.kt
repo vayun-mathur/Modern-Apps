@@ -26,18 +26,73 @@ private fun PoiIndex.Mapped.axis(value: Int, origin: Int): Int {
 private fun PoiIndex.Mapped.row(latE7: Int): Int = axis(latE7, lat0E7)
 private fun PoiIndex.Mapped.col(lonE7: Int): Int = axis(lonE7, lon0E7).coerceAtMost(cols - 1)
 
-/** Index of [cellId] in the ascending cell-id array, or -1 when unpopulated. */
-private fun PoiIndex.Mapped.cellIndexOf(cellId: Int): Int {
-    val buf = spatial ?: return -1
+/** The [i]th entry of the ascending populated-cell-id array. */
+private fun PoiIndex.Mapped.cellIdAt(i: Int): Int =
+    spatial!!.getInt(PoiIndex.SPATIAL_HEADER_BYTES + CELL_SLOT_BYTES * i)
+
+/** Index of the first populated cell whose id is >= [cellId], or [PoiIndex.Mapped.cellCount]. */
+private fun PoiIndex.Mapped.cellLowerBound(cellId: Int): Int {
     var lo = 0
     var hi = cellCount
     while (lo < hi) {
         val mid = (lo + hi) ushr 1
-        val v = buf.getInt(PoiIndex.SPATIAL_HEADER_BYTES + CELL_SLOT_BYTES * mid)
-        if (v == cellId) return mid
-        if (v < cellId) lo = mid + 1 else hi = mid
+        if (cellIdAt(mid) < cellId) lo = mid + 1 else hi = mid
     }
-    return -1
+    return lo
+}
+
+/**
+ * Visit the populated cells overlapping the box, as indices into the cell arrays, stopping
+ * when [onCell] returns false.
+ *
+ * One binary search per grid ROW, then a forward walk of the ascending cell-id array across
+ * the row (a row's populated cells are adjacent in that array), rather than one binary
+ * search per cell of the box.
+ */
+internal fun PoiIndex.Mapped.forEachCellInBox(
+    minLatE7: Int,
+    maxLatE7: Int,
+    minLonE7: Int,
+    maxLonE7: Int,
+    onCell: (cellIndex: Int) -> Boolean,
+) {
+    if (spatial == null || cellCount <= 0 || cols <= 0 || cellE7 <= 0) return
+    val c0 = col(minLonE7)
+    val c1 = col(maxLonE7)
+    for (r in row(minLatE7)..row(maxLatE7)) {
+        val last = r.toLong() * cols + c1
+        var ci = cellLowerBound((r.toLong() * cols + c0).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+        while (ci < cellCount && cellIdAt(ci) <= last) {
+            if (!onCell(ci)) return
+            ci++
+        }
+    }
+}
+
+/**
+ * Every ordinal filed under the populated cells overlapping the box, cell by cell, with no
+ * per-record coordinate test and no sort: for callers that compute each hit's distance
+ * themselves anyway (name search), the cell granularity (~2 km) is the whole filter they
+ * need. Stops when [visit] returns false.
+ */
+internal fun PoiIndex.Mapped.forEachGridOrdinal(
+    minLatE7: Int,
+    maxLatE7: Int,
+    minLonE7: Int,
+    maxLonE7: Int,
+    visit: (ordinal: Int) -> Boolean,
+) {
+    forEachCellInBox(minLatE7, maxLatE7, minLonE7, maxLonE7) { ci ->
+        var k = cellOff(ci)
+        val end = cellOff(ci + 1)
+        var go = true
+        while (go && k < end) {
+            val ordinal = gridOrdinal(k)
+            if (ordinal in 0 until count) go = visit(ordinal)
+            k++
+        }
+        go
+    }
 }
 
 /** CSR prefix entry [i], i.e. where cell `i`'s ordinals begin. */
@@ -60,20 +115,11 @@ internal fun PoiIndex.Mapped.forEachInCells(
     onHit: (ordinal: Int, latE7: Int, lonE7: Int) -> Boolean,
 ) {
     val hits = ArrayList<Int>()
-    for (r in row(minLatE7)..row(maxLatE7)) {
-        for (c in col(minLonE7)..col(maxLonE7)) {
-            val ci = cellIndexOf(r * cols + c)
-            if (ci < 0) continue
-            for (k in cellOff(ci) until cellOff(ci + 1)) {
-                val ordinal = gridOrdinal(k)
-                if (ordinal < 0 || ordinal >= count) continue
-                if (latE7(ordinal) in minLatE7..maxLatE7 &&
-                    lonE7(ordinal) in minLonE7..maxLonE7
-                ) {
-                    hits.add(ordinal)
-                }
-            }
+    forEachGridOrdinal(minLatE7, maxLatE7, minLonE7, maxLonE7) { ordinal ->
+        if (latE7(ordinal) in minLatE7..maxLatE7 && lonE7(ordinal) in minLonE7..maxLonE7) {
+            hits.add(ordinal)
         }
+        true
     }
     hits.sort()
     for (ordinal in hits) {

@@ -632,9 +632,11 @@ object PoiIndex {
      *
      * Two implementations, picked by whether `poi_name_index.bin` was mapped:
      *
-     *  * **Indexed** — binary search to the query's place in a word-sorted index, then a
-     *    walk of the matching range, so the cost is the number of matches. Because every
-     *    word of a name is indexed, "pizza" still finds "Joe's Pizza".
+     *  * **Indexed** — binary search to each token's range in the word-sorted index, then
+     *    sequential scans of those ranges' ordinal arrays joined against the spatial grid
+     *    around the bias point, so the cost is a few hundred page reads and names are
+     *    decoded only for the rows returned (see PoiSearchEngine.kt). Because every word
+     *    of a name is indexed, "pizza" still finds "Joe's Pizza".
      *  * **Scan** — the name pool, then every record. Two passes whose cost is the whole
      *    dataset, kept only because the side file is optional.
      *
@@ -666,7 +668,7 @@ object PoiIndex {
         // Fully-qualified: the package-level search lives in PoiIndexWords.kt.
         if (m.nameIdx != null) {
             return com.vayunmathur.maps.util.searchByWordIndex(
-                m, query, SearchBias(nearLat, nearLon, limit, boost), CANDIDATE_CAP, cancelled,
+                m, query, SearchBias(nearLat, nearLon, limit, boost), cancelled,
             )
         }
         return searchByScan(m, query, nearLat, nearLon, limit, boost)
