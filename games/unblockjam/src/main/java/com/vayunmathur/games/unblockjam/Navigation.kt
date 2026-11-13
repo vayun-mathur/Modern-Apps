@@ -377,6 +377,8 @@ fun GamePage(backStack: NavBackStack<Route>, viewModel: UnblockJamViewModel, pac
                     if (isDaily) Route.DailyGame(clamped) else Route.Game(packIndex, clamped)
                 )
             }
+
+            override fun onBackToPacks() = backStack.popToPacks()
         }
     }
 
@@ -487,6 +489,12 @@ private fun GameActionButtons(state: GameUiState, actions: GameActions) {
         Button(onClick = { actions.onLevelChange(state.levelIndex + 1) }) {
             Text(stringResource(R.string.next_level))
         }
+    } else {
+        // The pack's last puzzle: there is no next one, but the player still needs a way on
+        // rather than a board with no buttons at all.
+        Button(onClick = { actions.onBackToPacks() }) {
+            Text(stringResource(R.string.back_to_packs))
+        }
     }
 }
 
@@ -554,4 +562,9 @@ private fun PortraitGameLayout(state: GameUiState, actions: GameActions) {
             GameActionButtons(state, actions)
         }
     }
+}
+
+/** Pops back to the pack list (the root), however the player got to this puzzle. */
+internal fun NavBackStack<Route>.popToPacks() {
+    while (backStack.size > 1 && last() !is Route.PackSelector) pop()
 }

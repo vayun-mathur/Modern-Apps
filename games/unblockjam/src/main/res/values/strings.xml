@@ -39,4 +39,6 @@
     <string name="restart_confirm_title">Restart this puzzle?</string>
     <!-- GameScreen restart confirmation: Explains the moves made so far are lost. Sentence -->
     <string name="restart_confirm_message">Your moves on this puzzle will be lost.</string>
+    <!-- GameScreen: Shown after solving the last puzzle of a pack, returns to the pack list. Verb phrase -->
+    <string name="back_to_packs">Back to packs</string>
 </resources>

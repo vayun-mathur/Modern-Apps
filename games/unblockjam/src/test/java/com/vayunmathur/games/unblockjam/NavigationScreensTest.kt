@@ -83,6 +83,8 @@ class NavigationScreensTest {
         override fun onLevelWon() { won++ }
         override fun onUndo() { undo++ }
         override fun onRestart() { restart++ }
+        var backToPacks = 0
+        override fun onBackToPacks() { backToPacks++ }
         override fun onLevelChange(newIndex: Int) { levelChange = newIndex }
     }
 
@@ -332,5 +334,33 @@ class NavigationScreensTest {
 
     private companion object {
         val GameActionsNoopSettings: SettingsActions = SettingsActions.Noop
+    }
+
+    @Test
+    fun solvingTheLastPuzzleOfAPackOffersBackToPacks() {
+        val actions = RecordingActions()
+        rule.setContent {
+            GameScreen(
+                state = GameUiState(levelData = sampleLevel(), levelIndex = 4, maxLevelIndex = 4, isLevelWon = true),
+                actions = actions, onBack = {},
+            )
+        }
+        rule.onNodeWithText(str(R.string.next_level)).assertDoesNotExist()
+        rule.onNodeWithText(str(R.string.back_to_packs)).performClick()
+        assertEquals(1, actions.backToPacks)
+    }
+
+    @Test
+    fun popToPacksReturnsToThePackList() {
+        val stack = com.vayunmathur.library.util.NavBackStack<Route>(
+            arrayOf(Route.PackSelector, Route.LevelSelector(2), Route.Game(2, 9))
+        )
+        stack.popToPacks()
+        assertEquals(listOf<Route>(Route.PackSelector), stack.backStack)
+        val daily = com.vayunmathur.library.util.NavBackStack<Route>(
+            arrayOf(Route.PackSelector, Route.DailySelector, Route.DailyGame(4))
+        )
+        daily.popToPacks()
+        assertEquals(listOf<Route>(Route.PackSelector), daily.backStack)
     }
 }

@@ -51,6 +51,12 @@ interface GameActions {
      */
     fun onLevelChange(newIndex: Int) {}
 
+    /**
+     * Leave the solved last puzzle of a pack for the pack list. Navigation too, so likewise left
+     * to the binder.
+     */
+    fun onBackToPacks() {}
+
     companion object {
         val Noop: GameActions = object : GameActions {}
     }
