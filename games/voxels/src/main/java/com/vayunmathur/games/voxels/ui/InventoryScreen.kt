@@ -118,9 +118,10 @@ fun InventoryOverlay(
                 }
             }
 
-            // Right catalog (creative): tap a block to add a stack.
+            // Right catalog (creative): tap a block to add a stack. Eight 96 dp tabs don't fit the
+            // 236 dp column, so the tab strip scrolls sideways.
             Column(Modifier.width(236.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TabButton("Natural", catTab == 0) { catTab = 0 }
                     TabButton("Ores", catTab == 1) { catTab = 1 }
                     TabButton("Ocean", catTab == 3) { catTab = 3 }
