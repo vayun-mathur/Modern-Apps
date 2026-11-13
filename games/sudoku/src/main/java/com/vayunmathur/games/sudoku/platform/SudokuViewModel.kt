@@ -286,7 +286,16 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         checkWin()
     }
 
+    /**
+     * Steps the board back one move.
+     *
+     * A no-op once the game has ended. Undoing on a won board used to restore the pre-win entries
+     * while `isWon` stayed true, reopening a "solved" grid the player could then edit; and on an
+     * answer-mode loss it let the player keep working a board the overlay says is over.
+     */
     override fun undo() {
+        val game = _uiState.value.game ?: return
+        if (game.isWon || game.isGameOver) return
         val snapshot = history.removeLastOrNull() ?: return
         mutate { it.copy(entries = snapshot.entries, notes = snapshot.notes, usedUndo = true) }
         _uiState.update { it.copy(canUndo = history.isNotEmpty()) }

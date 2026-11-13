@@ -337,6 +337,47 @@ class SudokuViewModelTest {
     }
 
     @Test
+    fun undoIsANoOpOnceTheGameIsWon() {
+        val vm = startedVm()
+        var guard = 0
+        while (guard++ < 100) {
+            val game = vm.uiState.value.game!!
+            val next = game.blankIndices().firstOrNull() ?: break
+            vm.selectCell(next)
+            vm.enterDigit(game.solution[next])
+        }
+        val won = vm.uiState.value.game!!
+        assertTrue(won.isWon)
+        assertTrue(vm.uiState.value.canUndo, "history is still there; undo must refuse it")
+
+        vm.undo()
+        val after = vm.uiState.value.game!!
+        assertEquals(won.entries, after.entries, "undo cannot reopen a solved grid")
+        assertTrue(after.isComplete)
+        assertFalse(after.usedUndo)
+    }
+
+    @Test
+    fun undoIsANoOpOnceAnswerModeRunsOutOfLives() {
+        val vm = startedVm(GameConfig(BoardSize.SIX, Difficulty.EASY, answerMode = true))
+        val first = blank(vm)
+        vm.selectCell(first)
+        vm.enterDigit(vm.uiState.value.game!!.solution[first])
+        // A correct placement first, so there is history that undo would otherwise pop.
+        assertTrue(vm.uiState.value.canUndo)
+        val game = vm.uiState.value.game!!
+        val second = game.blankIndices().first()
+        val wrong = (1..game.size.side).first { it != game.solution[second] }
+        vm.selectCell(second)
+        repeat(3) { vm.enterDigit(wrong) }
+        val over = vm.uiState.value.game!!
+        assertTrue(over.isGameOver)
+
+        vm.undo()
+        assertEquals(over.entries, vm.uiState.value.game!!.entries, "undo cannot revive a lost board")
+    }
+
+    @Test
     fun replayingASolvedPuzzleDoesNotRecordASecondWin() {
         val vm = startedVm()
         fun solve() {

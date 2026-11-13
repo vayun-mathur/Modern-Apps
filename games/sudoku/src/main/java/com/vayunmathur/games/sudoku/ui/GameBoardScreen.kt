@@ -261,8 +261,8 @@ private fun ActionBar(
 ) {
     val game = state.game ?: return
     var confirmGiveUp by remember { mutableStateOf(false) }
-    // Won or out of lives: the board takes no more input, so erase and hint go quiet too. Undo
-    // stays as it is — it only restores entries, which cannot revive a finished game either way.
+    // Won or out of lives: the board takes no more input, so erase, undo and hint go quiet too.
+    // Undo in particular would otherwise restore pre-win entries under a board still marked won.
     val ended = game.isWon || game.isGameOver
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Row(
@@ -294,7 +294,7 @@ private fun ActionBar(
             OutlinedButton(
                 onClick = { actions.undo() },
                 modifier = Modifier.weight(1f),
-                enabled = state.canUndo,
+                enabled = state.canUndo && !ended,
                 contentPadding = ActionPadding,
             ) {
                 ActionLabel(
