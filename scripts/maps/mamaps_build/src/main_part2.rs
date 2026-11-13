@@ -74,6 +74,8 @@ fn usage() {
         \x20                   [--region california|world]\n\
         \x20                   [--build-graph-to DIR] [--build-poi-to DIR]\n\
         \x20                   [--graph-ready-file PATH] [--v8-bodies]\n\
+        \x20                   [--body-zstd LEVEL] [--dem-max-error M] [--dem-px K]\n\
+        \x20                   [--simplify-scale S] [--z14-tolerance T] [--coord-quant]\n\
         \n\
         \x20All six flags are required. Every build carries all 9 layers at\n\
         \x20z0-14 as FORMAT_VERSION 8. --region filters roads/pois/buildings\n\

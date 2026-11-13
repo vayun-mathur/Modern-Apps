@@ -60,6 +60,34 @@ pub fn compress_body_zstd(encoded: &[u8]) -> Vec<u8> {
     out
 }
 
+/// [`compress_body_zstd`] at a chosen level, reusing one encoder per thread.
+///
+/// Planet-size prototype (`mamaps_build --body-zstd LEVEL`). A fresh `zstd_rs::Compressor` per
+/// body would allocate its match tables per tile on every core — the same trap
+/// [`compress_body_with`] documents for DEFLATE — so each worker keeps one per level. Output is
+/// a pure function of input + level (the encoder is reset per frame), so dedup and the content
+/// build id behave exactly as with DEFLATE.
+#[cfg(feature = "write")]
+pub fn compress_body_zstd_level(encoded: &[u8], level: i32) -> Vec<u8> {
+    use std::cell::RefCell;
+    thread_local! {
+        static ENC: RefCell<Option<(i32, zstd_rs::Compressor)>> = const { RefCell::new(None) };
+    }
+    let header_len = body::BODY_HEADER_LEN;
+    let mut out = Vec::with_capacity(encoded.len());
+    out.extend_from_slice(&encoded[..header_len]);
+    ENC.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        if slot.as_ref().map(|(l, _)| *l) != Some(level) {
+            let cfg = zstd_rs::CompressionConfig { level, ..zstd_rs::CompressionConfig::DEFAULT };
+            *slot = Some((level, zstd_rs::Compressor::new(cfg).expect("valid zstd level")));
+        }
+        let (_, enc) = slot.as_mut().expect("encoder");
+        enc.compress(&encoded[header_len..], None, &mut out).expect("zstd encode of an in-memory body");
+    });
+    out
+}
+
 /// FNV-1a. Only ever a bucket key — every hit is confirmed by comparing bytes — so it needs to be
 /// fast and well spread, not collision-proof.
 ///

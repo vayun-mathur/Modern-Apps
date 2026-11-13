@@ -19,6 +19,9 @@ pub struct Options {
     /// tiles and seed give an identical id on any machine; any changed tile byte changes it.
     pub build_id_from_content: bool,
     pub compress: bool,
+    /// Bodies are zstd frames (header `compression` 2) rather than DEFLATE. Only meaningful with
+    /// `compress`; the generator compresses (see `compress_body_zstd_level`) and appends stored.
+    pub zstd: bool,
     /// Store each leaf as one raw-DEFLATE frame rather than raw fixed-stride entries.
     ///
     /// The root stays raw either way — same 32-byte stride, same opening-prefix budget — and
@@ -61,6 +64,7 @@ impl Default for Options {
             build_id: 0,
             build_id_from_content: false,
             compress: true,
+            zstd: false,
             compress_leaves: true,
             rings_validated: false,
             leaf_entry_capacity: DEFAULT_LEAF_CAPACITY,

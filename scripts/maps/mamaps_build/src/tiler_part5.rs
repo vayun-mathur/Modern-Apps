@@ -307,7 +307,12 @@ fn encode_tile(
         tilecodec::mamaps::body::serialize_into_v10(&body, scratch)
     }?;
     let raw_len = encoded_body.len();
-    let stored = tilecodec::mamaps::write::compress_body_with(deflate, encoded_body);
+    let level = crate::tiler::size_opts().zstd_level;
+    let stored = if level > 0 {
+        tilecodec::mamaps::write::compress_body_zstd_level(encoded_body, level)
+    } else {
+        tilecodec::mamaps::write::compress_body_with(deflate, encoded_body)
+    };
     // Compute the dedup key here, in the parallel worker, rather than on the serial append thread.
     // It is a pure function of the stored bytes, so the key — and every dedup decision the writer
     // makes from it — is unchanged; it just no longer walks the whole body downstream of this phase.

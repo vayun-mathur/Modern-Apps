@@ -371,6 +371,11 @@ fn tile_chunk(
                 return;
             }
             let local = geom::to_tile(clipped, tx, ty, EXTENT);
+            let q = size_opts().quant_step(z, feature.class.layer);
+            let local = if q > 1 { snap_grid(local, q) } else { local };
+            if is_empty_int(&local) {
+                return;
+            }
             let layer = tiles
                 .entry((tile_id(z, tx, ty), feature.class.layer))
                 .or_insert_with(|| ChunkEntry::new(feature.class.layer));
@@ -456,14 +461,27 @@ fn tolerance_for_layer(layer: u8, z: u8, tolerance: f64) -> f64 {
 fn tolerance_for_feature(feature: &crate::extract::Feature, z: u8, tolerance: f64) -> f64 {
     use tilecodec::mamaps::dict;
     let base = tolerance_for_layer(feature.class.layer, z, tolerance);
-    if z == crate::DEFAULT_MAX_ZOOM
+    let base = if z == crate::DEFAULT_MAX_ZOOM
         && feature.class.layer == dict::LAYER_ROADS
         && !needs_crisp(feature)
     {
         base.max(ROAD_DETAIL_FLOOR)
     } else {
         base
+    };
+    // `--z14-tolerance`: a z14 floor for the washable layers (crisp roads keep full detail).
+    let floor = size_opts().z14_tolerance;
+    if floor > 0.0 && z == crate::DEFAULT_MAX_ZOOM {
+        let l = feature.class.layer;
+        let washable = l == dict::LAYER_LANDTYPE
+            || l == dict::LAYER_BOUNDARIES
+            || l == dict::LAYER_BUILDINGS
+            || (l == dict::LAYER_ROADS && !needs_crisp(feature));
+        if washable {
+            return base.max(floor);
+        }
     }
+    base
 }
 
 /// Snap a building geometry's near-axis-aligned edges to exactly axis-aligned.
@@ -545,3 +563,58 @@ fn snap_building_ring(ring: &[SigPt]) -> Vec<SigPt> {
     out
 }
 
+
+/// `--coord-quant`: snap tile-local coordinates to a `q`-unit grid, dropping consecutive
+/// duplicates. Max displacement per vertex is `q/2` per axis (`q/sqrt(2)` units). A line that
+/// collapses below 2 vertices or a ring below 4 is dropped (a ring that was the exterior takes
+/// its polygon with it) — the same floors `simplify::filter` applies. Points are untouched.
+/// Rings are re-normalised by stage C afterwards, so `rings_validated` stays true.
+fn snap_grid(g: tile_build::geom::IntGeometry, q: i32) -> tile_build::geom::IntGeometry {
+    use tile_build::geom::IntGeometry;
+    let s = |v: i32| (v + q / 2).div_euclid(q) * q;
+    let snap = |pts: &[(i32, i32)]| -> Vec<(i32, i32)> {
+        let mut out: Vec<(i32, i32)> = Vec::with_capacity(pts.len());
+        for &(x, y) in pts {
+            let p = (s(x), s(y));
+            if out.last() != Some(&p) {
+                out.push(p);
+            }
+        }
+        out
+    };
+    match g {
+        IntGeometry::Points(p) => IntGeometry::Points(p),
+        IntGeometry::Lines(lines) => {
+            IntGeometry::Lines(lines.iter().map(|l| snap(l)).filter(|l| l.len() >= 2).collect())
+        }
+        IntGeometry::Polygons(polys) => IntGeometry::Polygons(
+            polys
+                .iter()
+                .filter_map(|rings| {
+                    let mut out = Vec::with_capacity(rings.len());
+                    for (i, r) in rings.iter().enumerate() {
+                        let sr = snap(r);
+                        // Distinct corners: a closed ring repeats its first vertex.
+                        let closed = sr.len() > 1 && sr.first() == sr.last();
+                        let distinct = sr.len() - usize::from(closed);
+                        if distinct >= 3 {
+                            out.push(sr);
+                        } else if i == 0 {
+                            return None;
+                        }
+                    }
+                    (!out.is_empty()).then_some(out)
+                })
+                .collect(),
+        ),
+    }
+}
+
+fn is_empty_int(g: &tile_build::geom::IntGeometry) -> bool {
+    use tile_build::geom::IntGeometry;
+    match g {
+        IntGeometry::Points(p) => p.is_empty(),
+        IntGeometry::Lines(l) => l.is_empty(),
+        IntGeometry::Polygons(p) => p.is_empty(),
+    }
+}

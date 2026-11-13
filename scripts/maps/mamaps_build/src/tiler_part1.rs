@@ -70,6 +70,8 @@ fn writer_for(store: &Store, settings: &Settings) -> Result<StreamWriter> {
         // The body scratch holds already-DEFLATEd bodies (~53 GB on a planet): keep btrfs
         // `compress-force` from zstd'ing them again at writeback.
         spill_file_hook: Some(osm_ingest::mem::mark_scratch_uncompressed),
+        // `--body-zstd`: the header says zstd; the encode worker compresses with it.
+        zstd: size_opts().zstd_level > 0,
         ..Options::default()
     })
 }
@@ -110,7 +112,8 @@ fn tile_zooms(
     for z in 0..=crate::DEFAULT_MAX_ZOOM {
         let mut stats = ZoomStats { zoom: z, ..ZoomStats::default() };
         let tolerance =
-            simplify::tolerance_for(z, crate::DEFAULT_MAX_ZOOM, DEFAULT_SIMPLIFICATION);
+            simplify::tolerance_for(z, crate::DEFAULT_MAX_ZOOM, DEFAULT_SIMPLIFICATION)
+                * size_opts().simplify_scale;
         let buffer = geom::buffer_for(EXTENT);
 
         // Per zoom, so peak scratch is the largest single zoom rather than the sum, and so a build

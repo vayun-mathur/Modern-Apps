@@ -139,7 +139,13 @@ impl StreamWriter {
 
         let header = Header {
             flags,
-            compression: if self.options.compress { COMPRESSION_DEFLATE } else { COMPRESSION_NONE },
+            compression: if !self.options.compress {
+                COMPRESSION_NONE
+            } else if self.options.zstd {
+                crate::mamaps::header::COMPRESSION_ZSTD
+            } else {
+                COMPRESSION_DEFLATE
+            },
             layer_count: dict::LAYERS.len() as u8,
             min_zoom: self.options.min_zoom,
             max_zoom: self.options.max_zoom,

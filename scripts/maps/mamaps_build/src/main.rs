@@ -129,6 +129,7 @@ fn main() -> ExitCode {
     let mut build_poi_to: Option<PathBuf> = None;
     let mut graph_ready_file: Option<PathBuf> = None;
     let mut v8_bodies = false;
+    let mut size = tiler::SizeOpts::DEFAULT;
 
     let mut i = 1;
     while i < args.len() {
@@ -182,6 +183,31 @@ fn main() -> ExitCode {
                 v8_bodies = true;
                 Ok(1)
             }
+            // Planet-size prototype knobs (see `tiler::SizeOpts`); defaults = today's bytes.
+            "--body-zstd" => value("--body-zstd").and_then(|v| {
+                size.zstd_level = v.parse().map_err(|_| format!("--body-zstd: bad level '{v}'"))?;
+                Ok(2)
+            }),
+            "--dem-max-error" => value("--dem-max-error").and_then(|v| {
+                size.dem_max_error_m = v.parse().map_err(|_| format!("--dem-max-error: bad '{v}'"))?;
+                Ok(2)
+            }),
+            "--dem-px" => value("--dem-px").and_then(|v| {
+                size.dem_px = v.parse().map_err(|_| format!("--dem-px: bad '{v}'"))?;
+                Ok(2)
+            }),
+            "--simplify-scale" => value("--simplify-scale").and_then(|v| {
+                size.simplify_scale = v.parse().map_err(|_| format!("--simplify-scale: bad '{v}'"))?;
+                Ok(2)
+            }),
+            "--z14-tolerance" => value("--z14-tolerance").and_then(|v| {
+                size.z14_tolerance = v.parse().map_err(|_| format!("--z14-tolerance: bad '{v}'"))?;
+                Ok(2)
+            }),
+            "--coord-quant" => {
+                size.coord_quant = true;
+                Ok(1)
+            }
             "-h" | "--help" => {
                 usage();
                 return ExitCode::SUCCESS;
@@ -218,6 +244,13 @@ fn main() -> ExitCode {
         },
     };
 
+    if tiler::SIZE_OPTS.set(size).is_err() {
+        eprintln!("mamaps_build: size options set twice");
+        return ExitCode::from(2);
+    }
+    if !size.is_default() {
+        println!("size options: {}", size.tag());
+    }
     let settings = RunSettings {
         coastline,
         transit_routes,

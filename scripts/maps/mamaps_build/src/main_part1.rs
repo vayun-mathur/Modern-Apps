@@ -316,6 +316,7 @@ fn run(
         .map_err(|e| format!("cannot stat {}: {e}", out.display()))?;
     // The header's id: the seed above folded with the archive's tile digest by the writer.
     let header_id = read_header_build_id(out)?;
+    crate::dem::DEM_STATS.report();
     println!(
         "\nwrote {} ({archive_len} bytes, build_id {header_id:#018x}, seed {build_id:#018x})",
         out.display(),
@@ -447,5 +448,10 @@ pub(crate) fn derive_build_id(
     // input has not moved.
     h.eat_u64(tilecodec::mamaps::dict::KINDS.len() as u64);
     h.eat(if v8_bodies { b"bodies/v8" } else { b"bodies/v10" });
+    // Planet-size knobs: only hashed when set, so a default build keeps its id.
+    let size = tiler::size_opts();
+    if !size.is_default() {
+        h.eat(size.tag().as_bytes());
+    }
     h.finish()
 }

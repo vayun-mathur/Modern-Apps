@@ -79,6 +79,149 @@ fn coarsen(samples: &[u16], dim: usize) -> Vec<u16> {
     out
 }
 
+/// The grid a tile carries, from its full-resolution `dim x dim` samples.
+///
+/// Default: today's relief gate (flat tiles coarsen to `FLAT_DIM`). Under
+/// `--dem-max-error M` (planet-size prototype): the coarsest aligned sub-grid whose bilinear
+/// reconstruction stays within `M/2` of the full grid, then elevations quantised to a
+/// `floor(M)`-metre step (rounding error <= M/2), so the total error is <= M metres by
+/// construction — flat ground collapses to 2x2, mountains keep 9x9. Either way the emitted
+/// grid's error against the full grid is recorded in [`DEM_STATS`].
+fn finish_grid(z: u8, y: u64, samples: &[u16], dim: u16) -> Heightmap {
+    let o = crate::tiler::size_opts();
+    let tol = if o.dem_px > 0.0 {
+        let lat = tile_y_to_lat(y as f64 + 0.5, z);
+        let m_per_px = 156_543.033_92 * lat.to_radians().cos() / (1u64 << z) as f64;
+        (o.dem_px * m_per_px).max(o.dem_max_error_m.max(1.0))
+    } else {
+        o.dem_max_error_m
+    };
+    let full = Heightmap { dim, samples: samples.to_vec() };
+    let out = if tol > 0.0 {
+        adapt_grid(&full, tol)
+    } else if relief(samples) <= FLAT_RELIEF_M && dim >= FLAT_DIM {
+        Heightmap { dim: FLAT_DIM, samples: coarsen(samples, dim as usize) }
+    } else {
+        full.clone()
+    };
+    DEM_STATS.record(z, &full, &out);
+    out
+}
+
+fn bilinear_at(g: &[u16], dg: usize, fr: f64, fc: f64) -> f64 {
+    let gr = fr * (dg - 1) as f64;
+    let gc = fc * (dg - 1) as f64;
+    let r0 = (gr.floor() as usize).min(dg - 1);
+    let c0 = (gc.floor() as usize).min(dg - 1);
+    let r1 = (r0 + 1).min(dg - 1);
+    let c1 = (c0 + 1).min(dg - 1);
+    let (fy, fx) = (gr - r0 as f64, gc - c0 as f64);
+    let at = |r: usize, c: usize| g[r * dg + c] as f64;
+    let top = at(r0, c0) * (1.0 - fx) + at(r0, c1) * fx;
+    let bot = at(r1, c0) * (1.0 - fx) + at(r1, c1) * fx;
+    top * (1.0 - fy) + bot * fy
+}
+
+/// Max abs and sum of squared error of `new` against `full`, at every full-grid node. Both are
+/// bilinear surfaces and the coarse nodes are a subset of the fine ones, so the difference is
+/// bilinear inside every fine cell: the max over the nodes is the max over the whole surface.
+fn grid_error(full: &Heightmap, new: &Heightmap) -> (f64, f64) {
+    let d = full.dim as usize;
+    let dn = new.dim as usize;
+    let (mut mx, mut ss) = (0.0f64, 0.0f64);
+    for r in 0..d {
+        for c in 0..d {
+            let e = (bilinear_at(&new.samples, dn, r as f64 / (d - 1) as f64, c as f64 / (d - 1) as f64)
+                - full.samples[r * d + c] as f64)
+                .abs();
+            mx = mx.max(e);
+            ss += e * e;
+        }
+    }
+    (mx, ss)
+}
+
+fn adapt_grid(full: &Heightmap, tol: f64) -> Heightmap {
+    let d = full.dim as usize;
+    let mut pick = full.clone();
+    for dn in (2..=d).filter(|dn| (d - 1) % (dn - 1) == 0) {
+        let mut sub = Vec::with_capacity(dn * dn);
+        for r in 0..dn {
+            for c in 0..dn {
+                sub.push(full.samples[(r * (d - 1) / (dn - 1)) * d + c * (d - 1) / (dn - 1)]);
+            }
+        }
+        let cand = Heightmap { dim: dn as u16, samples: sub };
+        if grid_error(full, &cand).0 <= tol / 2.0 + 1e-9 {
+            pick = cand;
+            break;
+        }
+    }
+    let q = tol.floor().max(1.0) as i32;
+    if q > 1 {
+        for v in &mut pick.samples {
+            let m = *v as i32 - SEA_LEVEL as i32;
+            let r = ((m as f64 / q as f64).round() as i32) * q;
+            *v = (r + SEA_LEVEL as i32).clamp(0, u16::MAX as i32) as u16;
+        }
+        // Quantising can make a coastal grid all-sea-level; keep it (the caller already decided
+        // the tile has relief) — the renderer's land mask handles the shore.
+    }
+    pick
+}
+
+/// Per-zoom DEM error/size accounting, printed at the end of the build.
+pub struct DemStats {
+    max_bits: [std::sync::atomic::AtomicU64; 15],
+    ss_micro: [std::sync::atomic::AtomicU64; 15],
+    nodes: [std::sync::atomic::AtomicU64; 15],
+    grids: [std::sync::atomic::AtomicU64; 15],
+    cells: [std::sync::atomic::AtomicU64; 15],
+}
+
+#[allow(clippy::declare_interior_mutable_const)]
+const ZERO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static DEM_STATS: DemStats =
+    DemStats { max_bits: [ZERO; 15], ss_micro: [ZERO; 15], nodes: [ZERO; 15], grids: [ZERO; 15], cells: [ZERO; 15] };
+
+impl DemStats {
+    fn record(&self, z: u8, full: &Heightmap, out: &Heightmap) {
+        use std::sync::atomic::Ordering::Relaxed;
+        let z = (z as usize).min(14);
+        let (mx, ss) = grid_error(full, out);
+        // Non-negative f64s order like their bit patterns.
+        self.max_bits[z].fetch_max(mx.to_bits(), Relaxed);
+        self.ss_micro[z].fetch_add((ss * 1e6).round() as u64, Relaxed);
+        self.nodes[z].fetch_add((full.dim as u64).pow(2), Relaxed);
+        self.grids[z].fetch_add(1, Relaxed);
+        self.cells[z].fetch_add((out.dim as u64).pow(2), Relaxed);
+    }
+
+    pub fn report(&self) {
+        use std::sync::atomic::Ordering::Relaxed;
+        println!("DEM grids (error vs the full {}-sample dataset grid, metres):", "dim^2");
+        let (mut gmx, mut gss, mut gn) = (0.0f64, 0.0f64, 0u64);
+        for z in 0..15 {
+            let g = self.grids[z].load(Relaxed);
+            if g == 0 {
+                continue;
+            }
+            let mx = f64::from_bits(self.max_bits[z].load(Relaxed));
+            let ss = self.ss_micro[z].load(Relaxed) as f64 / 1e6;
+            let n = self.nodes[z].load(Relaxed);
+            gmx = gmx.max(mx);
+            gss += ss;
+            gn += n;
+            println!(
+                "  DEMSTAT z{z:<2} grids {g:>10} avg_cells {:>6.1} max_err {mx:>7.2} rms_err {:>7.3}",
+                self.cells[z].load(Relaxed) as f64 / g as f64,
+                (ss / n.max(1) as f64).sqrt()
+            );
+        }
+        println!("  DEMSTAT all max_err {gmx:.2} rms_err {:.3}", (gss / gn.max(1) as f64).sqrt());
+    }
+}
+
 /// A loaded `.mdem` dataset: one `u16` grid per output tile, keyed by pmtiles tile id at the
 /// dataset's own zoom.
 pub struct Dem {
@@ -235,10 +378,7 @@ impl Dem {
             }
             // A flat tile's grid is mostly repetition: coarsen it. Steep
             // tiles keep the full grid.
-            if relief(samples) <= FLAT_RELIEF_M && self.dim >= FLAT_DIM {
-                return Some(Heightmap { dim: FLAT_DIM, samples: coarsen(samples, self.dim as usize) });
-            }
-            return Some(Heightmap { dim: self.dim, samples: samples.to_vec() });
+            return Some(finish_grid(z, y, samples, self.dim));
         }
         self.resample(z, x, y)
     }
@@ -274,10 +414,7 @@ impl Dem {
         }
         // Same flat-tile coarsening as the verbatim path: the resampled grid
         // is full resolution, so relief is measured on it directly.
-        if relief(&samples) <= FLAT_RELIEF_M && self.dim >= FLAT_DIM {
-            return Some(Heightmap { dim: FLAT_DIM, samples: coarsen(&samples, dim) });
-        }
-        Some(Heightmap { dim: self.dim, samples })
+        Some(finish_grid(z, y, &samples, self.dim))
     }
 
     /// Build a dataset directly from grids, for tests that inject a synthetic DEM into the tiler
@@ -345,6 +482,26 @@ fn tile_y_to_lat(y: f64, z: u8) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `--dem-max-error`: a plane collapses to 2x2 (bilinear reproduces it exactly), a spike keeps
+    /// the full grid, and every emitted grid stays within the bound against the full grid.
+    #[test]
+    fn adaptive_grids_respect_their_error_bound() {
+        let full = |f: &dyn Fn(usize, usize) -> i32| Heightmap {
+            dim: 9,
+            samples: (0..81).map(|i| (f(i / 9, i % 9) + SEA_LEVEL as i32) as u16).collect(),
+        };
+        let plane = full(&|r, c| 100 + 3 * r as i32 + 2 * c as i32);
+        assert_eq!(adapt_grid(&plane, 1.0).dim, 2, "a plane is exactly bilinear");
+        let spike = full(&|r, c| if r == 4 && c == 4 { 500 } else { 100 });
+        assert_eq!(adapt_grid(&spike, 2.0).dim, 9, "a spike keeps full resolution");
+        for tol in [1.0, 2.0, 5.0, 10.0] {
+            for g in [&plane, &spike, &full(&|r, c| ((r * 37 + c * 11) % 23) as i32 * 7)] {
+                let out = adapt_grid(g, tol);
+                assert!(grid_error(g, &out).0 <= tol + 1e-9, "tol {tol}: {}", grid_error(g, &out).0);
+            }
+        }
+    }
 
     /// The sorted-column grids answer exactly what the old `HashMap` built by inserting in file
     /// order answered -- for ascending files, unsorted ones, and ones repeating an id (last wins).

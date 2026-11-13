@@ -329,6 +329,70 @@ pub struct ZoomStats {
     pub append_ms: u64,
 }
 
+/// Planet-size prototype knobs (exp/planet-size). Every field's default reproduces today's
+/// archive byte for byte; a non-default value is folded into the build id (see
+/// `derive_build_id`). Set once by `main` before tiling, read everywhere after.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SizeOpts {
+    /// `--body-zstd LEVEL`: zstd bodies (header compression 2, which the shipping reader already
+    /// decodes with `ruzstd`) instead of DEFLATE-9. 0 = DEFLATE (today).
+    pub zstd_level: i32,
+    /// `--dem-max-error M`: error-bounded adaptive heightmap grids (coarsest aligned sub-grid +
+    /// elevation step whose reconstruction stays within M metres of the full grid). 0 = today's
+    /// relief-gated 5x5 coarsening.
+    pub dem_max_error_m: f64,
+    /// `--dem-px K`: zoom-adaptive DEM bound — the error allowed on a tile is K times its ground
+    /// resolution (metres per 256-px-tile pixel at the tile's latitude), floored at
+    /// `dem_max_error_m` (or 1 m). 0 = off.
+    pub dem_px: f64,
+    /// `--simplify-scale S`: multiply every below-max-zoom simplification tolerance. 1 = today.
+    pub simplify_scale: f64,
+    /// `--z14-tolerance T`: extent-unit DP floor at z14 for landtype, boundaries, buildings and
+    /// washable roads (crisp roads keep full detail). 0 = today's floors.
+    pub z14_tolerance: f64,
+    /// `--coord-quant`: snap tile coordinates below z14 to a zoom-scaled grid (2 units at z13,
+    /// 4 at z<=12; points and the junction layer untouched). false = today.
+    pub coord_quant: bool,
+}
+
+impl SizeOpts {
+    pub const DEFAULT: SizeOpts = SizeOpts {
+        zstd_level: 0,
+        dem_max_error_m: 0.0,
+        dem_px: 0.0,
+        simplify_scale: 1.0,
+        z14_tolerance: 0.0,
+        coord_quant: false,
+    };
+    pub fn is_default(&self) -> bool {
+        *self == SizeOpts::DEFAULT
+    }
+    /// Stable text for the build id (only hashed when non-default).
+    pub fn tag(&self) -> String {
+        format!(
+            "size/zstd={};dem={};dempx={};simp={};z14={};q={}",
+            self.zstd_level, self.dem_max_error_m, self.dem_px, self.simplify_scale, self.z14_tolerance, self.coord_quant
+        )
+    }
+    /// The coordinate grid step for zoom `z` under `--coord-quant` (1 = untouched).
+    pub fn quant_step(&self, z: u8, layer: u8) -> i32 {
+        if !self.coord_quant || layer == tilecodec::mamaps::dict::LAYER_JUNCTION {
+            return 1;
+        }
+        match z {
+            0..=12 => 4,
+            13 => 2,
+            _ => 1,
+        }
+    }
+}
+
+pub static SIZE_OPTS: std::sync::OnceLock<SizeOpts> = std::sync::OnceLock::new();
+
+pub fn size_opts() -> SizeOpts {
+    *SIZE_OPTS.get().unwrap_or(&SizeOpts::DEFAULT)
+}
+
 /// `--v8-bodies`: encode dense v8 bodies (set once by `main` before tiling).
 pub static V8_BODIES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
