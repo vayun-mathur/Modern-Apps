@@ -4,12 +4,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import com.vayunmathur.games.pipes.data.CellPos
 import com.vayunmathur.games.pipes.data.LevelData
 import com.vayunmathur.games.pipes.platform.PipesGameState
@@ -29,102 +29,15 @@ fun GameBoard(
 ) {
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
     val boardSize = minOf(maxWidth, maxHeight)
-    // For staggered hex layouts contentW/H come from renderPositions bounds, not rows/cols.
-    val renderPositions = levelData.renderPositions
-    val hasRenderPositions = renderPositions != null
-    val (contentW, contentH) = if (hasRenderPositions && levelData.cells.isNotEmpty()) {
-        val xs = renderPositions.filterKeys { it in levelData.cells }.values.map { it.x }
-        val ys = renderPositions.filterKeys { it in levelData.cells }.values.map { it.y }
-        if (xs.isEmpty()) 1f to 1f else (xs.maxOrNull()!! - xs.minOrNull()!! + 1f) to (ys.maxOrNull()!! - ys.minOrNull()!! + 1f)
-    } else {
-        levelData.cols.toFloat() to levelData.rows.toFloat()
-    }
-    // Hex rows overlap vertically (0.866 spacing) so shrink slightly to avoid clipping.
-    val hexShrink = if (levelData.grid == "hex") 0.92f else 1f
-    val effectiveMaxDim = maxOf(contentW, contentH, 1f) / hexShrink
-    val maxDim = maxOf(maxOf(levelData.rows, levelData.cols).toFloat(), effectiveMaxDim)
-    val cellSizeDp = boardSize / maxDim
-
-    val cellSizePx = with(androidx.compose.ui.platform.LocalDensity.current) { cellSizeDp.toPx() }
-
-    // Center the board within the square canvas using the actual cells' bounding
-    // box, so non-square / non-rectangular shapes aren't stuck in the top-left.
-    // Skip when explicit render positions are provided.
-    val (offsetCol, offsetRow) = if (hasRenderPositions || levelData.cells.isEmpty()) {
-        0f to 0f
-    } else {
-        val minRow = levelData.cells.minOf { it.row }
-        val maxRow = levelData.cells.maxOf { it.row }
-        val minCol = levelData.cells.minOf { it.col }
-        val maxCol = levelData.cells.maxOf { it.col }
-        val usedCols = maxCol - minCol + 1
-        val usedRows = maxRow - minRow + 1
-        val ox = (maxDim - usedCols) / 2f - minCol
-        val oy = (maxDim - usedRows) / 2f - minRow
-        ox to oy
-    }
-
-    // Shift render-position layouts so min sits at 0 and center in the square canvas.
-    val (shiftX, shiftY) = if (hasRenderPositions && levelData.cells.isNotEmpty()) {
-        val xs = renderPositions.filterKeys { it in levelData.cells }.values.map { it.x }
-        val ys = renderPositions.filterKeys { it in levelData.cells }.values.map { it.y }
-        val minX = xs.minOrNull() ?: 0f
-        val minY = ys.minOrNull() ?: 0f
-        val offX = (maxDim - contentW) / 2f - minX
-        val offY = (maxDim - contentH) / 2f - minY
-        offX to offY
-    } else {
-        0f to 0f
-    }
-
-    val cellRects = levelData.cells.associateWith { cell ->
-        val (x, y) = levelData.renderPositions?.get(cell)?.let { (it.x + shiftX) to (it.y + shiftY) }
-            ?: ((cell.col + offsetCol) to (cell.row + offsetRow))
-        Rect(Offset(x * cellSizePx, y * cellSizePx), Size(cellSizePx, cellSizePx))
-    }
-
-    val isHex = levelData.grid == "hex"
-
-    fun hitTest(offset: Offset): CellPos? {
-        if (!isHex) {
-            return cellRects.entries.firstOrNull { (_, rect) ->
-                rect.contains(offset)
-            }?.key
-        }
-        // Hex: nearest center within the hex radius wins (rects overlap vertically).
-        var best: CellPos? = null
-        var bestDist = Float.MAX_VALUE
-        for ((cell, rect) in cellRects) {
-            val d = (rect.center - offset).getDistanceSquared()
-            if (d < bestDist && d <= (cellSizePx * 0.62f) * (cellSizePx * 0.62f)) {
-                bestDist = d
-                best = cell
-            }
-        }
-        if (best != null) return best
-        return cellRects.entries.firstOrNull { (_, rect) -> rect.contains(offset) }?.key
-    }
-
-    val boardBounds = if (cellRects.isEmpty()) Rect.Zero else Rect(
-        left = cellRects.values.minOf { it.left },
-        top = cellRects.values.minOf { it.top },
-        right = cellRects.values.maxOf { it.right },
-        bottom = cellRects.values.maxOf { it.bottom }
-    )
-
-    // While dragging, a finger that leaves the board keeps driving the border
-    // cell nearest to it, so the user doesn't have to come back inside to
-    // continue the pipe.
-    fun hitTestDrag(offset: Offset): CellPos? {
-        hitTest(offset)?.let { return it }
-        if (cellRects.isEmpty() || boardBounds.contains(offset)) return null
-        return cellRects.entries.minWithOrNull(
-            compareBy(
-                { squaredDistanceToRect(it.value, offset) },
-                { (it.value.center - offset).getDistanceSquared() }
-            )
-        )?.key
-    }
+    // Layout and pixel geometry are cached: the board recomposes on every drag step, and
+    // rescanning every cell for bounds and rects each time is wasted work.
+    val layout = remember(levelData) { BoardLayout(levelData) }
+    val cellSizeDp = boardSize / layout.maxDim
+    val cellSizePx = with(LocalDensity.current) { cellSizeDp.toPx() }
+    val geometry = remember(layout, cellSizePx) { BoardGeometry(layout, cellSizePx) }
+    val cellRects = geometry.cellRects
+    val isHex = geometry.isHex
+    val labelPaint = remember { ColorLabelPaint() }
 
     Canvas(
         modifier = Modifier
@@ -138,11 +51,11 @@ fun GameBoard(
 
                         when {
                             event.changes.any { it.pressed && !it.previousPressed } -> {
-                                val cell = hitTest(pos)
+                                val cell = geometry.hitTest(pos)
                                 if (cell != null) onStartDraw(cell)
                             }
                             event.changes.any { it.pressed } -> {
-                                val cell = hitTestDrag(pos)
+                                val cell = geometry.hitTestDrag(pos)
                                 if (cell != null) onExtendPath(cell)
                             }
                             event.changes.any { !it.pressed && it.previousPressed } -> {
@@ -221,17 +134,11 @@ fun GameBoard(
             for (cell in ep.cells) {
                 val rect = cellRects[cell] ?: continue
                 drawEndpointBall(rect, color)
-                if (colorblind) drawColorLabel(rect, ep.colorIndex)
+                if (colorblind) drawColorLabel(rect, ep.colorIndex, labelPaint)
             }
         }
     }
     }
-}
-
-private fun squaredDistanceToRect(rect: Rect, point: Offset): Float {
-    val dx = maxOf(rect.left - point.x, 0f, point.x - rect.right)
-    val dy = maxOf(rect.top - point.y, 0f, point.y - rect.bottom)
-    return dx * dx + dy * dy
 }
 
 private fun directionBetween(from: CellPos, to: CellPos): Direction? {
