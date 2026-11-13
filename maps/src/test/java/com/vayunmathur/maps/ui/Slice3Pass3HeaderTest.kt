@@ -94,7 +94,7 @@ class Slice3Pass3HeaderTest {
         rule.setContent {
             DynamicTheme {
                 PlaceSheetHeader(
-                    panelState = PlacePanelState(poi = poi, detailsRevealed = true),
+                    panelState = PlacePanelState(poi = poi),
                     panelActions = actions,
                     inactiveNavigation = null,
                     feature = place(),
@@ -115,7 +115,7 @@ class Slice3Pass3HeaderTest {
         rule.setContent {
             DynamicTheme {
                 PlaceSheetHeader(
-                    panelState = PlacePanelState(poi = poi, detailsRevealed = true),
+                    panelState = PlacePanelState(poi = poi),
                     panelActions = PlacePanelActions.Noop,
                     inactiveNavigation = null,
                     feature = place(),
@@ -133,7 +133,7 @@ class Slice3Pass3HeaderTest {
         rule.setContent {
             DynamicTheme {
                 PlaceSheetHeader(
-                    panelState = PlacePanelState(poi = poi, detailsRevealed = true),
+                    panelState = PlacePanelState(poi = poi),
                     panelActions = PlacePanelActions.Noop,
                     inactiveNavigation = null,
                     feature = place(rating = 4.9, reviewCount = 999),
@@ -151,7 +151,7 @@ class Slice3Pass3HeaderTest {
         rule.setContent {
             DynamicTheme {
                 PlaceSheetHeader(
-                    panelState = PlacePanelState(poi = poi, detailsRevealed = true),
+                    panelState = PlacePanelState(poi = poi),
                     panelActions = PlacePanelActions.Noop,
                     inactiveNavigation = null,
                     feature = place(),

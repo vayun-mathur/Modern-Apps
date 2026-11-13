@@ -91,8 +91,6 @@ class SelectedRoutesReviewsSlice3ExtraTest {
         try {
             val vm = SelectedFeatureViewModel(app)
             vm.set(SpecificFeature.GenericPlace(name, "555", null, null, GeoPoint(-122.4, 37.8)))
-            // The sheet only fetches Google details once the user reveals them.
-            vm.revealDetails()
             val seen = java.util.concurrent.atomic.AtomicReference<com.vayunmathur.maps.data.google.GooglePoiInfo?>(null)
             val job = CoroutineScope(Dispatchers.Default).launch {
                 vm.currentPoiInfo.collect { if (it != null) seen.set(it) }

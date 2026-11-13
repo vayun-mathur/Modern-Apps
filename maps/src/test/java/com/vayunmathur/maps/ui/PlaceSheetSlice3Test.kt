@@ -57,9 +57,7 @@ class PlaceSheetSlice3Test {
         position = GeoPoint(-122.4, 37.8),
     )
 
-    // Header tests below exercise the revealed state; the mask itself is
-    // pinned in PlaceMaskTest.
-    private fun panel() = PlacePanelState(saved = emptyList(), detailsRevealed = true)
+    private fun panel() = PlacePanelState(saved = emptyList())
 
     // --- PlaceSheet (generic) ---
 
@@ -170,7 +168,6 @@ class PlaceSheetSlice3Test {
                     saved = listOf(
                         com.vayunmathur.maps.data.SavedPlace.from(genericPlace()),
                     ),
-                    detailsRevealed = true,
                 ),
                 panelActions = PlacePanelActions.Noop,
                 inactiveNavigation = null,

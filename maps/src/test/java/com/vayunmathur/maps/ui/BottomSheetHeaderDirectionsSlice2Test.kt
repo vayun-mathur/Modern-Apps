@@ -55,7 +55,7 @@ class BottomSheetHeaderDirectionsSlice2Test {
         var selected: SpecificFeature? = null
         rule.setContent {
             BottomSheetHeader(
-                panelState = PlacePanelState(detailsRevealed = true),
+                panelState = PlacePanelState(),
                 panelActions = PlacePanelActions.Noop,
                 selectedFeature = cafe,
                 setSelectedFeature = { selected = it },
@@ -73,7 +73,7 @@ class BottomSheetHeaderDirectionsSlice2Test {
         val inactive = SpecificFeature.Route(listOf(null, cafe))
         rule.setContent {
             BottomSheetHeader(
-                panelState = PlacePanelState(detailsRevealed = true),
+                panelState = PlacePanelState(),
                 panelActions = PlacePanelActions.Noop,
                 selectedFeature = place,
                 setSelectedFeature = { selected = it },
@@ -87,10 +87,9 @@ class BottomSheetHeaderDirectionsSlice2Test {
 
     @Test fun `viewmodel restaurant header directions starts a fresh route`() {
         var selected: SpecificFeature? = null
-        val viewModel = SelectedFeatureViewModel(app).also { it.revealDetails() }
         rule.setContent {
             BottomSheetHeader(
-                viewModel = viewModel,
+                viewModel = SelectedFeatureViewModel(app),
                 selectedFeature = cafe,
                 setSelectedFeature = { selected = it },
                 inactiveNavigation = null,
@@ -105,10 +104,9 @@ class BottomSheetHeaderDirectionsSlice2Test {
     @Test fun `viewmodel place header directions appends to the inactive route`() {
         var selected: SpecificFeature? = null
         val inactive = SpecificFeature.Route(listOf(place))
-        val viewModel = SelectedFeatureViewModel(app).also { it.revealDetails() }
         rule.setContent {
             BottomSheetHeader(
-                viewModel = viewModel,
+                viewModel = SelectedFeatureViewModel(app),
                 selectedFeature = place,
                 setSelectedFeature = { selected = it },
                 inactiveNavigation = inactive,

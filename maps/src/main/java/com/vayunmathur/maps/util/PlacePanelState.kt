@@ -22,7 +22,6 @@ data class PlacePanelState(
     val poiSection: PoiSection = PoiSection.DETAILS,
     val saved: List<SavedPlace> = emptyList(),
     val userPosition: com.vayunmathur.library.map.GeoPoint? = null,
-    val detailsRevealed: Boolean = false,
 ) {
     /** True when [feature] is already in the flat starred list. */
     fun isSaved(feature: SpecificFeature.RoutableFeature): Boolean =
@@ -43,7 +42,6 @@ interface PlacePanelActions {
     fun addSaved() {}
     fun removeSaved(place: SavedPlace) {}
     fun openNearestStop(lat: Double, lon: Double) {}
-    fun revealDetails() {}
 
     companion object {
         val Noop: PlacePanelActions = object : PlacePanelActions {}
@@ -66,12 +64,10 @@ fun rememberPlacePanelState(
     val poiSection by viewModel.poiSection.collectAsState()
     val saved by savedPlacesViewModel.saved.collectAsState()
     val userPosition by viewModel.userPosition.collectAsState()
-    val detailsRevealed by viewModel.detailsRevealed.collectAsState()
     return PlacePanelState(
         poi = poi,
         poiSection = poiSection,
         saved = saved,
         userPosition = userPosition,
-        detailsRevealed = detailsRevealed,
     )
 }

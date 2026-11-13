@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -51,20 +50,6 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
 
     fun setPoiSection(section: PoiSection) {
         _poiSection.value = section
-    }
-
-    /**
-     * Whether the user explicitly asked to see this selection's place details.
-     *
-     * False on every selection: the sheet opens masked (name only) and the
-     * [currentPoiInfo] enrichment stays parked at null until [revealDetails]
-     * runs. One tap reveals; selecting anything else re-masks.
-     */
-    private val _detailsRevealed = MutableStateFlow(false)
-    val detailsRevealed = _detailsRevealed.asStateFlow()
-
-    fun revealDetails() {
-        _detailsRevealed.value = true
     }
 
     /**
@@ -198,7 +183,6 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
     private fun setDirect(feature: SpecificFeature?) {
         _selectedFeature.value = feature
         _poiSection.value = PoiSection.DETAILS
-        _detailsRevealed.value = false
     }
 
     private fun needsEnrichment(place: SpecificFeature.GenericPlace): Boolean =
@@ -263,17 +247,11 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
      * [GooglePoiDataSource] caches and does its own IO, so a re-select is instant.
      *
      * Hard-gated on the Google services toggle: when off, emits null without
-     * touching the network — zero Google traffic. Also gated on the per-selection
-     * reveal ([detailsRevealed]): selecting a place parks this at null and starts
-     * no fetch; only [revealDetails] lets the enrichment run.
+     * touching the network — zero Google traffic.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val currentPoiInfo: StateFlow<GooglePoiInfo?> = combine(
-        selectedFeature,
-        detailsRevealed,
-    ) { feature, revealed -> feature to revealed }
-        .flatMapLatest { (feature, revealed) ->
-            if (!revealed) return@flatMapLatest flowOf(null)
+    val currentPoiInfo: StateFlow<GooglePoiInfo?> = selectedFeature
+        .flatMapLatest { feature ->
             if (!googleServicesEnabled()) return@flatMapLatest flowOf(null)
             val (name, pos) = when (feature) {
                 is SpecificFeature.Restaurant -> feature.name to feature.position

@@ -60,9 +60,6 @@
     <!-- Place detail: Label of the first tab under the action buttons, holding the
          description, address and opening hours. Noun, plural. -->
     <string name="poi_tab_details">Details</string>
-    <!-- Place sheet: masked header button revealing the full place details
-         (rating, hours, actions) for the selected place. Verb phrase. -->
-    <string name="show_details">Show details</string>
     <!-- Place detail: Photos section header. Noun. -->
     <string name="poi_photos_header">Photos</string>
     <!-- Place detail: Popular times section header. Noun phrase. -->
