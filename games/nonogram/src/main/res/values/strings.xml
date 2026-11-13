@@ -33,8 +33,14 @@
     <!-- NonogramGameScreen: Retries generation after a failure, and the level after running out of hearts. Verb -->
     <string name="try_again">Try Again</string>
 
-    <!-- NonogramBoard: Content description of a cell. %1$d = row number starting at 1, e.g. 4. %2$d = column number starting at 1, e.g. 6. %3$s = the cell's state word, e.g. Filled -->
-    <string name="cd_cell">Row <xliff:g id="row" example="4">%1$d</xliff:g>, column <xliff:g id="column" example="6">%2$d</xliff:g>, <xliff:g id="state" example="Filled">%3$s</xliff:g></string>
+    <!-- NonogramBoard: Content description of a cell; TalkBack reads its state after it. %1$d = row number starting at 1, e.g. 4. %2$d = column number starting at 1, e.g. 6 -->
+    <string name="cd_cell_position">Row <xliff:g id="row" example="4">%1$d</xliff:g>, column <xliff:g id="column" example="6">%2$d</xliff:g></string>
+    <!-- NonogramBoard: TalkBack action that fills a cell as part of the picture. Verb, imperative -->
+    <string name="action_fill">Fill</string>
+    <!-- NonogramBoard: TalkBack action that marks a cell as empty with an X. Verb phrase, imperative -->
+    <string name="action_cross">Cross out</string>
+    <!-- NonogramBoard: TalkBack action that removes the player's own X from a cell. Verb phrase, imperative -->
+    <string name="action_uncross">Remove cross</string>
     <!-- NonogramBoard: Cell state, painted as part of the picture. Verb past participle -->
     <string name="cd_filled">Filled</string>
     <!-- NonogramBoard: Cell state, ruled out by the player. Verb past participle -->

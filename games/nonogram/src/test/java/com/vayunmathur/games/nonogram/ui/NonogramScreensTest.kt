@@ -8,6 +8,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.longClick
 import androidx.test.core.app.ApplicationProvider
@@ -59,6 +62,36 @@ class NonogramScreensTest {
     private fun game(filled: Set<Int> = emptySet(), crossed: Set<Int> = emptySet(), revealed: Set<Int> = emptySet(), hearts: Int = STARTING_HEARTS, mode: GameMode = GameMode.CASUAL) =
         NonogramGameState(puzzle(), filled, crossed, revealed, hearts, mode, level = 2)
     private fun answer() = puzzle().solution.indices.filter { puzzle().solution[it] }.toSet()
+
+    /** The cell at 1-based [row], [col], asserted to announce [state] as its state. */
+    private fun cell(row: Int, col: Int, state: Int) =
+        rule.onNodeWithContentDescription(str(R.string.cd_cell_position, row, col))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, str(state)))
+
+    @Test fun talkBackCanFillAndCrossThroughNamedActions() {
+        val taps = mutableListOf<Int>(); val longs = mutableListOf<Int>()
+        rule.setContent {
+            NonogramBoard(game = game(filled = setOf(1), crossed = setOf(0)), onTap = { taps += it }, onLongPress = { longs += it }, markMode = MarkMode.FILL)
+        }
+        // Fill mode: double tap fills, double-tap-and-hold crosses (or removes an existing cross).
+        cell(2, 2, R.string.cd_blank)
+            .assert(SemanticsMatcher("fill label") { it.config[SemanticsActions.OnClick].label == str(R.string.action_fill) })
+            .assert(SemanticsMatcher("cross label") { it.config[SemanticsActions.OnLongClick].label == str(R.string.action_cross) })
+            .performSemanticsAction(SemanticsActions.OnClick)
+        cell(2, 2, R.string.cd_blank).performSemanticsAction(SemanticsActions.OnLongClick)
+        cell(1, 1, R.string.cd_crossed)
+            .assert(SemanticsMatcher("uncross label") { it.config[SemanticsActions.OnLongClick].label == str(R.string.action_uncross) })
+        // A settled cell offers nothing to do.
+        cell(1, 2, R.string.cd_filled).assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+        assertEquals(listOf(4), taps); assertEquals(listOf(4), longs)
+    }
+
+    @Test fun talkBackActionsFollowCrossMode() {
+        rule.setContent { NonogramBoard(game = game(crossed = setOf(0)), onTap = {}, onLongPress = {}, markMode = MarkMode.CROSS) }
+        cell(1, 1, R.string.cd_crossed)
+            .assert(SemanticsMatcher("uncross on tap") { it.config[SemanticsActions.OnClick].label == str(R.string.action_uncross) })
+            .assert(SemanticsMatcher("fill on hold") { it.config[SemanticsActions.OnLongClick].label == str(R.string.action_fill) })
+    }
 
     @Test fun loadingStateShowsBoardChrome() {
         val a = Recording()
@@ -133,22 +166,22 @@ class NonogramScreensTest {
     @Test fun boardCellsReportDescriptionsAndTaps() {
         val taps = mutableListOf<Int>()
         rule.setContent { NonogramBoard(game = game(filled = setOf(1), crossed = setOf(0)), onTap = { taps += it }, onLongPress = {}) }
-        rule.onNodeWithContentDescription(str(R.string.cd_cell, 1, 2, str(R.string.cd_filled))).assertExists()
-        rule.onNodeWithContentDescription(str(R.string.cd_cell, 1, 1, str(R.string.cd_crossed))).assertExists()
-        rule.onNodeWithContentDescription(str(R.string.cd_cell, 1, 3, str(R.string.cd_blank))).performClick()
+        cell(1, 2, R.string.cd_filled).assertExists()
+        cell(1, 1, R.string.cd_crossed).assertExists()
+        cell(1, 3, R.string.cd_blank).performClick()
         assertEquals(listOf(2), taps)
     }
 
     @Test fun boardTellsARevealedBlankApartFromANote() {
         rule.setContent { NonogramBoard(game = game(crossed = setOf(0), revealed = setOf(2)), onTap = {}, onLongPress = {}) }
-        rule.onNodeWithContentDescription(str(R.string.cd_cell, 1, 1, str(R.string.cd_crossed))).assertExists()
-        rule.onNodeWithContentDescription(str(R.string.cd_cell, 1, 3, str(R.string.cd_revealed))).assertExists()
+        cell(1, 1, R.string.cd_crossed).assertExists()
+        cell(1, 3, R.string.cd_revealed).assertExists()
     }
 
     @Test fun boardLongPressFiresCross() {
         val crosses = mutableListOf<Int>()
         rule.setContent { NonogramBoard(game = game(), onTap = {}, onLongPress = { crosses += it }) }
-        rule.onNodeWithContentDescription(str(R.string.cd_cell, 2, 2, str(R.string.cd_blank)))
+        cell(2, 2, R.string.cd_blank)
             .performTouchInput { longClick() }
         assertEquals(listOf(4), crosses)
     }
@@ -158,7 +191,7 @@ class NonogramScreensTest {
             true,true,false,false, false,false,false,false, false,false,true,false, false,false,false,true))
         val g = NonogramGameState(p, emptySet(), emptySet(), emptySet(), STARTING_HEARTS, GameMode.CASUAL, 1)
         rule.setContent { NonogramBoard(game = g, onTap = {}, onLongPress = {}) }
-        rule.onNodeWithContentDescription(str(R.string.cd_cell, 2, 1, str(R.string.cd_blank))).assertExists()
+        cell(2, 1, R.string.cd_blank).assertExists()
         rule.onNodeWithText("0").assertExists()
     }
 
@@ -166,7 +199,7 @@ class NonogramScreensTest {
         val p = requireNotNull(com.vayunmathur.games.nonogram.domain.NonogramGenerator.generateSeeded(15, 99L))
         val g = NonogramGameState(p, setOf(0), setOf(1), emptySet(), 2, GameMode.CASUAL, 25)
         rule.setContent { NonogramBoard(game = g, onTap = {}, onLongPress = {}) }
-        rule.onNodeWithContentDescription(str(R.string.cd_cell, 15, 15, str(R.string.cd_blank))).assertExists()
+        cell(15, 15, R.string.cd_blank).assertExists()
     }
 
     @Test fun cluesFitTheirSlotsAtLargeFontScale() {

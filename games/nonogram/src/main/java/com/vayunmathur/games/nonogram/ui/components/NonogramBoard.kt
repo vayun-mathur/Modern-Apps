@@ -27,6 +27,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -34,6 +37,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.nonogram.R
 import com.vayunmathur.games.nonogram.data.CellMark
+import com.vayunmathur.games.nonogram.data.MarkMode
 import com.vayunmathur.games.nonogram.data.NonogramGameState
 import com.vayunmathur.library.ui.ColorScheme
 import com.vayunmathur.library.ui.MaterialTheme
@@ -53,6 +57,7 @@ fun NonogramBoard(
     onTap: (Int) -> Unit,
     onLongPress: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    markMode: MarkMode = MarkMode.FILL,
 ) {
     val size = game.size
     // Widest clue list decides the gutter, so a row needing "3 1 2" is not cut off.
@@ -85,7 +90,7 @@ fun NonogramBoard(
             }
             Row {
                 RowClues(game, rowGutterCells, cell, clueCell, fontSize, lineHeight)
-                Grid(game, cell, onTap, onLongPress)
+                Grid(game, markMode, cell, onTap, onLongPress)
             }
         }
     }
@@ -168,6 +173,7 @@ private fun ClueText(
 @Composable
 private fun Grid(
     game: NonogramGameState,
+    markMode: MarkMode,
     cell: Dp,
     onTap: (Int) -> Unit,
     onLongPress: (Int) -> Unit,
@@ -179,7 +185,11 @@ private fun Grid(
         crossed = stringResource(R.string.cd_crossed),
         revealed = stringResource(R.string.cd_revealed),
         blank = stringResource(R.string.cd_blank),
+        fill = stringResource(R.string.action_fill),
+        cross = stringResource(R.string.action_cross),
+        uncross = stringResource(R.string.action_uncross),
     )
+    val over = game.isOver
     // Stable callbacks: the cells get the same lambda instance every recomposition, so a cell whose
     // mark did not change is skipped outright instead of being recomposed for a new closure.
     val currentTap by rememberUpdatedState(onTap)
@@ -195,12 +205,16 @@ private fun Grid(
                         // Each cell sees only its own mark, so one tap recomposes one cell, not all
                         // 225 of a 15x15.
                         val mark = game.markAt(index)
+                        // Settled cells and finished boards take no input, so TalkBack offers no
+                        // actions there rather than ones that silently do nothing.
+                        val actionable = !over && !game.isLocked(index)
                         NonogramCell(
                             mark = mark,
                             index = index,
-                            row = row,
-                            col = col,
+                            position = CellPosition(row, col),
                             stateWord = labels.wordFor(mark),
+                            tapLabel = labels.tapLabel(mark, markMode).takeIf { actionable },
+                            longPressLabel = labels.longPressLabel(mark, markMode).takeIf { actionable },
                             onTap = tap,
                             onLongPress = longPress,
                             modifier = Modifier.size(cell),
@@ -217,13 +231,16 @@ private fun Grid(
     }
 }
 
-/** The four state words TalkBack reads, looked up once per grid. */
+/** The state words and action names TalkBack reads, looked up once per grid. */
 @Immutable
 private data class CellLabels(
     val filled: String,
     val crossed: String,
     val revealed: String,
     val blank: String,
+    val fill: String,
+    val cross: String,
+    val uncross: String,
 ) {
     fun wordFor(mark: CellMark): String = when (mark) {
         CellMark.FILLED -> filled
@@ -231,15 +248,30 @@ private data class CellLabels(
         CellMark.REVEALED -> revealed
         CellMark.BLANK -> blank
     }
+
+    /** What a tap (TalkBack double tap) does: the mode's own mark. */
+    fun tapLabel(mark: CellMark, mode: MarkMode): String =
+        if (mode == MarkMode.FILL) fill else noteLabel(mark)
+
+    /** What a long press (TalkBack double tap and hold) does: the other mark. */
+    fun longPressLabel(mark: CellMark, mode: MarkMode): String =
+        if (mode == MarkMode.FILL) noteLabel(mark) else fill
+
+    private fun noteLabel(mark: CellMark) = if (mark == CellMark.CROSSED) uncross else cross
 }
+
+/** Zero-based row and column, kept together so the cell signature stays short. */
+@Immutable
+private data class CellPosition(val row: Int, val col: Int)
 
 @Composable
 private fun NonogramCell(
     mark: CellMark,
     index: Int,
-    row: Int,
-    col: Int,
+    position: CellPosition,
     stateWord: String,
+    tapLabel: String?,
+    longPressLabel: String?,
     onTap: (Int) -> Unit,
     onLongPress: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -256,7 +288,7 @@ private fun NonogramCell(
         CellMark.REVEALED -> scheme.errorContainer
         else -> Color.Transparent
     }
-    val description = stringResource(R.string.cd_cell, row + 1, col + 1, stateWord)
+    val description = stringResource(R.string.cd_cell_position, position.row + 1, position.col + 1)
 
     Box(
         modifier
@@ -272,7 +304,14 @@ private fun NonogramCell(
                     },
                 )
             }
-            .clearAndSetSemantics { contentDescription = description },
+            // Position as the description, the mark as state, and the same two moves a finger has
+            // as named actions — without them TalkBack could read a cell but never fill or cross it.
+            .clearAndSetSemantics {
+                contentDescription = description
+                stateDescription = stateWord
+                if (tapLabel != null) onClick(label = tapLabel) { onTap(index); true }
+                if (longPressLabel != null) onLongClick(label = longPressLabel) { onLongPress(index); true }
+            },
         contentAlignment = Alignment.Center,
     ) {
         if (mark == CellMark.CROSSED || mark == CellMark.REVEALED) {
