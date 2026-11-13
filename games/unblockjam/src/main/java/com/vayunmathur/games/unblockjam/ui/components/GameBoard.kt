@@ -12,11 +12,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -115,7 +112,7 @@ private fun ExitLane(boardSize: Dp, cellSize: DpSize, exitRow: Int, fadeCells: I
             .size(cellSize.width + 1.dp, cellSize.height)
             .testTag(EXIT_LANE_TEST_TAG)
             .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(topEndPercent = 35, bottomEndPercent = 35))
-            .drawBehind { drawChevrons(chevronColor) }
+            .drawBehind { drawExitChevrons(chevronColor) }
             .semantics { contentDescription = exitLabel }
     )
     Box(
@@ -132,18 +129,6 @@ private fun ExitLane(boardSize: Dp, cellSize: DpSize, exitRow: Int, fadeCells: I
                 )
             )
     )
-}
-
-/** Two right-pointing chevrons across the middle of the lane. */
-private fun DrawScope.drawChevrons(color: Color) {
-    val stroke = size.minDimension * 0.09f
-    val halfHeight = size.height * 0.16f
-    val halfWidth = size.width * 0.1f
-    for (centreX in floatArrayOf(size.width * 0.36f, size.width * 0.64f)) {
-        val tip = Offset(centreX + halfWidth, center.y)
-        drawLine(color, Offset(centreX - halfWidth, center.y - halfHeight), tip, stroke, StrokeCap.Round)
-        drawLine(color, Offset(centreX - halfWidth, center.y + halfHeight), tip, stroke, StrokeCap.Round)
-    }
 }
 
 /** Tags the exit opening, for tests. */

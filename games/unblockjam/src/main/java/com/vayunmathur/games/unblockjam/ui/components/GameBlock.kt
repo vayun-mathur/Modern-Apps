@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
@@ -46,6 +47,7 @@ internal fun GameBlock(
         block.fixed -> MaterialTheme.colorScheme.secondaryContainer
         else -> MaterialTheme.colorScheme.primaryContainer
     }
+    val markColor = MaterialTheme.colorScheme.onTertiary
     val blockWidth = cellWidth * block.dimension.width
     val blockHeight = cellHeight * block.dimension.height
 
@@ -95,6 +97,10 @@ internal fun GameBlock(
         .testTag("block_$index")
         .padding(scaling * BLOCK_INSET_SCALE)
         .background(color, shape = RoundedCornerShape(percent = BLOCK_CORNER_PERCENT))
+        // The target block carries the exit's chevrons, so it stands out by shape as well as
+        // colour: on several pack palettes it was only red against orange, which colour-blind
+        // players cannot tell apart.
+        .then(if (isMainBlock) Modifier.drawBehind { drawExitChevrons(markColor) } else Modifier)
 
     if (!block.fixed) {
         modifier = modifier.blockDragGestures(
