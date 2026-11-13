@@ -39,6 +39,8 @@
     <string name="cd_filled">Filled</string>
     <!-- NonogramBoard: Cell state, ruled out by the player. Verb past participle -->
     <string name="cd_crossed">Crossed out</string>
+    <!-- NonogramBoard: Cell state, shown empty by the game after a wrong guess cost a heart. Adjective phrase -->
+    <string name="cd_revealed">Empty, revealed by a mistake</string>
     <!-- NonogramBoard: Cell state, untouched. Adjective -->
     <string name="cd_blank">Blank</string>
 </resources>

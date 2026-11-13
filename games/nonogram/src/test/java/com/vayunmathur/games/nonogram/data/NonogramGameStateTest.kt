@@ -87,9 +87,9 @@ class NonogramGameStateTest {
     }
 
     @Test
-    fun aRevealedBlankDrawsAsACrossButIsLocked() {
+    fun aRevealedBlankIsDistinctFromANoteAndLocked() {
         val s = state(revealedBlanks = setOf(blankCell))
-        assertEquals(CellMark.CROSSED, s.markAt(blankCell))
+        assertEquals(CellMark.REVEALED, s.markAt(blankCell), "a mistake must not look like the player's own X")
         assertTrue(s.isLocked(blankCell), "a cell the game revealed cannot be charged for twice")
     }
 

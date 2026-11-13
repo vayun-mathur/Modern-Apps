@@ -12,12 +12,14 @@ import kotlinx.serialization.Serializable
 enum class GameMode { CASUAL, DAILY }
 
 /**
- * What the player has put in a cell.
+ * What a cell shows.
  *
- * [CROSSED] is the "definitely blank" mark. It is bookkeeping only — the win check looks at [FILLED]
- * alone — but it is how a nonogram is actually solved, so it has to persist alongside the fills.
+ * [CROSSED] is the player's own "definitely blank" note. It is bookkeeping only — the win check looks
+ * at [FILLED] alone — but it is how a nonogram is actually solved, so it has to persist alongside the
+ * fills. [REVEALED] is a blank the game exposed after a wrong guess; it is drawn differently from a
+ * note so the player can tell their own working from the cells their mistakes paid for.
  */
-enum class CellMark { BLANK, FILLED, CROSSED }
+enum class CellMark { BLANK, FILLED, CROSSED, REVEALED }
 
 /**
  * Which mark a plain tap places.
@@ -39,8 +41,8 @@ const val STARTING_HEARTS = 3
  *  - [crossed] is the player's own note that a cell looks empty. Free to place and to take back, and
  *    never checked against the solution — being wrong in a note is not a guess worth punishing.
  *  - [revealedBlanks] is a cell the game has *told* the player is empty, after a wrong guess cost a
- *    heart. It draws the same as a cross but cannot be cleared, which is what stops the same cell
- *    being charged for twice.
+ *    heart. It draws as a distinct error-coloured cross and cannot be cleared, which is what stops
+ *    the same cell being charged for twice.
  *
  * Storing them as sets rather than per-cell lists keeps the DataStore write small — only the cells
  * actually touched are persisted.
@@ -59,7 +61,8 @@ data class NonogramGameState(
 
     fun markAt(index: Int): CellMark = when {
         index in filled -> CellMark.FILLED
-        index in crossed || index in revealedBlanks -> CellMark.CROSSED
+        index in revealedBlanks -> CellMark.REVEALED
+        index in crossed -> CellMark.CROSSED
         else -> CellMark.BLANK
     }
 

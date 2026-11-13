@@ -198,13 +198,20 @@ private fun NonogramCell(
     val haptics = LocalHapticFeedback.current
     val mark = game.markAt(index)
 
-    // No mistake colour: a fill only ever lands on a cell that belongs to the picture, because a wrong
-    // guess is turned into a cross instead.
-    val background = if (mark == CellMark.FILLED) scheme.onSurface else Color.Transparent
+    // A fill only ever lands on a cell that belongs to the picture, because a wrong guess is turned
+    // into a revealed blank instead. That revealed blank gets a tinted cell and an error-coloured X so
+    // it reads as "the game told you" rather than the player's own grey note: colour plus a filled
+    // background, so it does not rely on hue alone.
+    val background = when (mark) {
+        CellMark.FILLED -> scheme.onSurface
+        CellMark.REVEALED -> scheme.errorContainer
+        else -> Color.Transparent
+    }
 
     val stateWord = when (mark) {
         CellMark.FILLED -> stringResource(R.string.cd_filled)
         CellMark.CROSSED -> stringResource(R.string.cd_crossed)
+        CellMark.REVEALED -> stringResource(R.string.cd_revealed)
         CellMark.BLANK -> stringResource(R.string.cd_blank)
     }
     val description = stringResource(
@@ -229,12 +236,16 @@ private fun NonogramCell(
             .clearAndSetSemantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        if (mark == CellMark.CROSSED) {
+        if (mark == CellMark.CROSSED || mark == CellMark.REVEALED) {
+            val revealed = mark == CellMark.REVEALED
             Box(
                 Modifier
                     .fillMaxSize()
                     .padding(CrossInset)
-                    .drawCross(scheme.onSurfaceVariant)
+                    .drawCross(
+                        color = if (revealed) scheme.onErrorContainer else scheme.onSurfaceVariant,
+                        width = if (revealed) RevealedCrossWidth else NoteCrossWidth,
+                    )
             )
         }
     }
@@ -243,8 +254,14 @@ private fun NonogramCell(
 /** Keeps the X clear of the cell borders so it reads as a mark rather than a filled square. */
 private val CrossInset = 3.dp
 
-private fun Modifier.drawCross(color: Color) = drawBehind {
-    val stroke = 1.5.dp.toPx()
+/** The player's own note: a light grey X. */
+private val NoteCrossWidth = 1.5.dp
+
+/** A blank a mistake revealed: heavier, so it differs in weight as well as colour. */
+private val RevealedCrossWidth = 2.5.dp
+
+private fun Modifier.drawCross(color: Color, width: Dp) = drawBehind {
+    val stroke = width.toPx()
     drawLine(color, Offset(0f, 0f), Offset(size.width, size.height), stroke)
     drawLine(color, Offset(size.width, 0f), Offset(0f, size.height), stroke)
 }

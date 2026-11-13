@@ -137,6 +137,12 @@ class NonogramScreensTest {
         assertEquals(listOf(2), taps)
     }
 
+    @Test fun boardTellsARevealedBlankApartFromANote() {
+        rule.setContent { NonogramBoard(game = game(crossed = setOf(0), revealed = setOf(2)), onTap = {}, onLongPress = {}) }
+        rule.onNodeWithContentDescription(str(R.string.cd_cell, 1, 1, str(R.string.cd_crossed))).assertExists()
+        rule.onNodeWithContentDescription(str(R.string.cd_cell, 1, 3, str(R.string.cd_revealed))).assertExists()
+    }
+
     @Test fun boardLongPressFiresCross() {
         val crosses = mutableListOf<Int>()
         rule.setContent { NonogramBoard(game = game(), onTap = {}, onLongPress = { crosses += it }) }
