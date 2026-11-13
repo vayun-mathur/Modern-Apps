@@ -6,6 +6,5 @@ Features:
 - Around 50,000 Lichess puzzles, selectable by rating
 - Interactive Learn mode with staged lessons
 - Online play via Lichess (quick seek and challenges)
-- Translated into 20 languages
 
 Internet only used for: online play
