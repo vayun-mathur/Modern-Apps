@@ -40,11 +40,12 @@ fun DashboardPage(
 
     val iconCache = remember { mutableMapOf<String, Drawable?>() }
 
-    val installedGameIds = remember(games) {
-        games.filter { g ->
-            try { context.packageManager.getPackageInfo(g.packageName, 0); true } catch (_: Exception) { false }
-        }.mapTo(mutableSetOf()) { it.gameId }
-    }
+    // Checked off the main thread and again on every resume (see rememberInstalledGameIds).
+    // Until the first check lands, registered games count as installed - they were when they
+    // registered - so cards do not flash "Not installed"; Play re-checks at tap time anyway.
+    val packagesByGameId = remember(games) { games.associate { it.gameId to it.packageName } }
+    val installedGameIds = rememberInstalledGameIds(packagesByGameId) ?: packagesByGameId.keys
+    val openGame = rememberGameOpener()
 
     val recentlyPlayedGames = remember(sessions, games) {
         val cutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
@@ -81,7 +82,7 @@ fun DashboardPage(
             override fun openProfile() = onProfileClick()
             override fun openActivity() = onActivityClick()
             override fun openGamesList() = onGamesClick()
-            override fun playGame(game: HubGameEntity) = launchGame(context, game)
+            override fun playGame(game: HubGameEntity) = openGame(game.packageName, game.displayName)
             override fun openController() = onControllerClick()
         },
         iconFor = { game -> iconCache.getOrPut(game.packageName) { GameIconResolver.resolveAppIcon(context, game.packageName) } },

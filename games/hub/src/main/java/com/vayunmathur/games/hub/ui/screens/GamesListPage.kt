@@ -28,11 +28,12 @@ fun GamesListPage(
 
     val iconCache = remember { mutableMapOf<String, Drawable?>() }
 
-    val installedGameIds = remember(games) {
-        games.filter { g ->
-            try { context.packageManager.getPackageInfo(g.packageName, 0); true } catch (_: Exception) { false }
-        }.mapTo(mutableSetOf()) { it.gameId }
-    }
+    // Checked off the main thread and again on every resume (see rememberInstalledGameIds).
+    // Until the first check lands, registered games count as installed - they were when they
+    // registered - so cards do not flash "Not installed"; Play re-checks at tap time anyway.
+    val packagesByGameId = remember(games) { games.associate { it.gameId to it.packageName } }
+    val installedGameIds = rememberInstalledGameIds(packagesByGameId) ?: packagesByGameId.keys
+    val openGame = rememberGameOpener()
 
     val achievementProgressByGame = remember(allAchievements) {
         allAchievements.groupBy { it.gameId }.mapValues { (_, list) -> list.count { it.isUnlocked } to list.size }
@@ -47,7 +48,7 @@ fun GamesListPage(
         ),
         actions = object : GamesListActions {
             override fun openGame(gameId: String) = onGameClick(gameId)
-            override fun playGame(game: HubGameEntity) = launchGame(context, game)
+            override fun playGame(game: HubGameEntity) = openGame(game.packageName, game.displayName)
         },
         iconFor = { game -> iconCache.getOrPut(game.packageName) { GameIconResolver.resolveAppIcon(context, game.packageName) } },
         ownsGameMorphKeys = ownsGameMorphKeys,

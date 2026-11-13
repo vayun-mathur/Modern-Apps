@@ -71,9 +71,12 @@ fun GameDetailScreen(
     val context = LocalContext.current
 
     val iconDrawable: Drawable? = remember(game?.packageName) { game?.packageName?.let { GameIconResolver.resolveAppIcon(context, it) } }
-    val isInstalled = remember(game?.packageName) {
-        try { if (game?.packageName != null) { context.packageManager.getPackageInfo(game!!.packageName, 0); true } else false } catch (_: Exception) { false }
+    val packagesByGameId = remember(game?.packageName) {
+        game?.packageName?.let { mapOf(gameId to it) }.orEmpty()
     }
+    // Off the main thread, re-checked on resume; unknown until then counts as installed.
+    val isInstalled = rememberInstalledGameIds(packagesByGameId)?.contains(gameId) ?: true
+    val openGame = rememberGameOpener()
 
     AppScaffold(
         title = KnownGames.displayName(gameId, game?.displayName),
@@ -103,7 +106,12 @@ fun GameDetailScreen(
                     }
                 }
             }
-            item { Button(onClick = { launchGame(context, g) }, enabled = isInstalled, modifier = Modifier.fillMaxWidth()) { Text(if (isInstalled) stringResource(R.string.play_1, g.displayName) else stringResource(R.string.not_installed)) } }
+            // Never a dead disabled button: a missing game offers Install (its store listing).
+            item {
+                Button(onClick = { openGame(g.packageName, g.displayName) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(if (isInstalled) R.string.play_1 else R.string.install_game, g.displayName))
+                }
+            }
             // Kart runs on TV with phones as controllers: the hub hosts the controller pad.
             if (gameId == KART_GAME_ID) {
                 item { OutlinedButton(onClick = { backStack.add(MainRoute.PlayOnTv) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.play_on_tv)) } }

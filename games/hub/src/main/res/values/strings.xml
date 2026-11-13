@@ -117,6 +117,10 @@
     <string name="player">Player</string>
     <!-- GameDetailScreen: Play button including game name. %1$s = game display name e.g. Solitaire. Verb phrase CTA -->
     <string name="play_1">Play <xliff:g id="game_name" example="Solitaire">%1$s</xliff:g></string>
+    <!-- GameCard / GameDetailScreen: Button (and its TalkBack label) that opens a missing game's store listing. %1$s = game display name e.g. Solitaire. Verb phrase CTA -->
+    <string name="install_game">Install <xliff:g id="game_name" example="Solitaire">%1$s</xliff:g></string>
+    <!-- Snackbar when Play/Install finds neither the game nor any app store. %1$s = game display name e.g. Solitaire. Sentence -->
+    <string name="game_unavailable"><xliff:g id="game_name" example="Solitaire">%1$s</xliff:g> isn\'t installed, and no app store was found to install it from.</string>
     <!-- GameDetailScreen: Badge for session currently in progress (no end time). Adjective phrase -->
     <string name="session_in_progress">In progress</string>
     <!-- GamesListScreen: Empty state when search query matches no games. Sentence -->

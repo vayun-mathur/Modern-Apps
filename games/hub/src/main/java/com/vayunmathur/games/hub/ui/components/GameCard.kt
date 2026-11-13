@@ -19,6 +19,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,7 @@ import com.vayunmathur.games.hub.util.formatPlaytime
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
 import com.vayunmathur.library.ui.IconButton
+import com.vayunmathur.library.ui.IconDownload
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -113,8 +116,14 @@ fun GameCard(
 
             // No achievement ring here: the "Achievements: x/y" line above already says it,
             // and a small trackless circular indicator read as a loading spinner (#ux-audit).
-            IconButton(onClick = onPlay) {
-                IconPlay()
+            // Not installed (never, or uninstalled since): offer Install, which opens the store
+            // listing, rather than a Play button that cannot work. Both speak the game's name.
+            val actionLabel = if (isInstalled) stringResource(R.string.play_1, game.displayName)
+            else stringResource(R.string.install_game, game.displayName)
+            IconButton(onClick = onPlay, modifier = Modifier.semantics { contentDescription = actionLabel }) {
+                Box(Modifier.clearAndSetSemantics { }) {
+                    if (isInstalled) IconPlay() else IconDownload()
+                }
             }
         }
     }

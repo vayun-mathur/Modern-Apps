@@ -1,6 +1,5 @@
 package com.vayunmathur.games.hub.ui.screens
 
-import android.content.Context
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -168,11 +167,4 @@ fun DashboardScreen(
             }
         }
     }
-}
-
-fun launchGame(context: Context, game: HubGameEntity) {
-    try {
-        val intent = context.packageManager.getLaunchIntentForPackage(game.packageName)
-        if (intent != null) context.startActivity(intent)
-    } catch (_: Exception) { }
 }

@@ -33,6 +33,13 @@
         <package android:name="com.vayunmathur.games.arrows" />
         <package android:name="com.vayunmathur.games.kart" />
         <package android:name="com.vayunmathur.games" />
+        <!-- Install fallback for a missing game: its listing in the Modern Apps store, or any
+             store handling market:// links (GameLauncher resolves these before starting). -->
+        <package android:name="com.vayunmathur.appstore" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="market" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
         </intent>

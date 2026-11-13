@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.performClick
 import com.vayunmathur.games.hub.ui.screens.GamesListScreen
 import com.vayunmathur.games.hub.util.GamesListActions
 import com.vayunmathur.games.hub.util.GamesListUiState
@@ -22,7 +23,6 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -198,5 +198,20 @@ class HubUxAuditTest {
         page = 0
         rule.waitForIdle()
         assertTrue(chessAboveSudoku(), "sort order survived the swipe")
+    }
+
+    @Test
+    fun gameCardOffersInstallForAMissingGame() {
+        var played = 0
+        rule.setContent {
+            Column {
+                GameCard(game("chess", "Chess"), isInstalled = true, onClick = {}, onPlay = {})
+                GameCard(game("sudoku", "Sudoku"), isInstalled = false, onClick = {}, onPlay = { played++ })
+            }
+        }
+        rule.onNodeWithContentDescription("Play Chess").assertExists()
+        rule.onNodeWithContentDescription("Install Sudoku").assertExists().performClick()
+        assertEquals(1, played)
+        rule.onAllNodesWithContentDescription("Play Sudoku").assertCountEquals(0)
     }
 }
