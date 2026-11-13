@@ -5,8 +5,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import com.vayunmathur.library.map.CameraState
 import com.vayunmathur.maps.util.visibleBoundsOrWorld
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withContext
 
 /**
  * Prefetch traffic for the visible 1° squares once the camera settles, so the
@@ -30,7 +32,11 @@ fun TrafficPrefetchEffect(camera: CameraState, trafficEnabled: Boolean) {
             // world-zoom viewport would enumerate hundreds of 1° squares, so only prefetch
             // once zoomed in enough for it to be useful.
             if (camera.position.zoom < TRAFFIC_MIN_ZOOM) return@collectLatest
-            prefetchTrafficSquares(camera.visibleBoundsOrWorld())
+            // The bounds are camera state (read here, on main); the prefetch itself is up to
+            // sixteen JNI calls into the router, each taking the native traffic lock a
+            // finished fetch's update holds while it walks its square, so it runs on IO.
+            val bounds = camera.visibleBoundsOrWorld()
+            withContext(Dispatchers.IO) { prefetchTrafficSquares(bounds) }
         }
     }
 }

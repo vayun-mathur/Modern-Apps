@@ -62,38 +62,44 @@ pub extern "system" fn Java_com_vayunmathur_maps_util_OfflineRouter_updateTraffi
             return Ok(());
         }
 
-        let mut speeds_w = super::routes::traffic_speeds().write().unwrap();
-        let mut meta = traffic_meta().lock().unwrap();
-        let segments = meta.by_square.entry(packed_square).or_default();
-        segments.clear();
-
+        // The walk runs with no lock held. It recovers each edge's source node (a binary
+        // search over the planet's node array) and reads three records out of the mapped
+        // graph, which on a phone means cold flash pages and zstd blocks — while
+        // `traffic_meta` is the lock the camera-settle prefetch (`ensureTrafficLoadedNative`)
+        // takes first. Holding it across the walk let the caller wait out the whole square.
+        // Now both locks are held only for the swap-in below.
+        let mut updates: Vec<(u64, u8)> = Vec::with_capacity(len);
+        let mut fresh: Vec<f64> = Vec::with_capacity(len * 5);
         for i in 0..len {
             let edge_id = ids[i] as u64;
             let speed = sp[i] as u8;
-            if edge_id < g.edge_count {
-                if speed < 255 {
-                    speeds_w.insert(edge_id, speed);
-                    // The only entry point with no source node in hand: the id comes
-                    // from Kotlin. Recovered first, because reading the record needs it.
-                    let source = g.find_node_idx_for_edge(edge_id);
-                    let edge = g.edge(source, edge_id);
-                    let node_u = g.node(source);
-                    if edge.target < g.node_count {
-                        let node_v = g.node(edge.target);
-                        let ratio = if edge.speed_limit > 0 {
-                            speed as f64 / edge.speed_limit as f64
-                        } else {
-                            1.0
-                        };
-                        segments.push(node_u.lat_e7 as f64 * 1e-7);
-                        segments.push(node_u.lon_e7 as f64 * 1e-7);
-                        segments.push(node_v.lat_e7 as f64 * 1e-7);
-                        segments.push(node_v.lon_e7 as f64 * 1e-7);
-                        segments.push(ratio);
-                    }
+            if edge_id < g.edge_count && speed < 255 {
+                updates.push((edge_id, speed));
+                // The only entry point with no source node in hand: the id comes
+                // from Kotlin. Recovered first, because reading the record needs it.
+                let source = g.find_node_idx_for_edge(edge_id);
+                let edge = g.edge(source, edge_id);
+                let node_u = g.node(source);
+                if edge.target < g.node_count {
+                    let node_v = g.node(edge.target);
+                    let ratio = if edge.speed_limit > 0 {
+                        speed as f64 / edge.speed_limit as f64
+                    } else {
+                        1.0
+                    };
+                    fresh.push(node_u.lat_e7 as f64 * 1e-7);
+                    fresh.push(node_u.lon_e7 as f64 * 1e-7);
+                    fresh.push(node_v.lat_e7 as f64 * 1e-7);
+                    fresh.push(node_v.lon_e7 as f64 * 1e-7);
+                    fresh.push(ratio);
                 }
             }
         }
+        {
+            let mut speeds_w = super::routes::traffic_speeds().write().unwrap();
+            speeds_w.extend(updates);
+        }
+        traffic_meta().lock().unwrap().by_square.insert(packed_square, fresh);
         Ok(())
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
