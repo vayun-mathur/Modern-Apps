@@ -17,7 +17,7 @@ class ArrowsUiContractTest {
     fun noopGameActionsDoNothingAndDoNotThrow() {
         val noop = ArrowsGameActions.Noop
         noop.tapArrow(3)
-        noop.commitMove()
+        noop.finishMove(1L)
         noop.nextLevel()
         noop.restartLevel()
         noop.setGameMode(GameMode.DAILY)
@@ -49,16 +49,16 @@ class ArrowsUiContractTest {
         assertFalse(s.dailyDone)
         assertFalse(s.generating)
         assertFalse(s.generationFailed)
-        assertNull(s.move)
+        assertTrue(s.moves.isEmpty())
     }
 
     @Test
     fun uiStateCopyRetainsUnchangedFields() {
         val game = ArrowsGameState(ArrowsPuzzle(3, 3, emptyList()), emptySet(), 3, 2, GameMode.DAILY)
         val move = ArrowMove(1, listOf(0, 1), 1, true)
-        val s = ArrowsUiState(game = game, mode = GameMode.DAILY, level = 5, showRoutes = false, dailyStreak = 7, dailyDone = true, generating = true, move = move)
+        val s = ArrowsUiState(game = game, mode = GameMode.DAILY, level = 5, showRoutes = false, dailyStreak = 7, dailyDone = true, generating = true, moves = listOf(move))
         assertEquals(game, s.game)
-        assertEquals(move, s.move)
+        assertEquals(listOf(move), s.moves)
         val copy = s.copy(generating = false)
         assertFalse(copy.generating)
         assertEquals(5, copy.level)

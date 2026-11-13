@@ -38,7 +38,7 @@ class ArrowsScreensTest {
         var retries = 0
         val modes = mutableListOf<GameMode>()
         override fun tapArrow(pieceId: Int) { tapped += pieceId }
-        override fun commitMove() { commits++ }
+        override fun finishMove(moveId: Long) { commits++ }
         override fun nextLevel() { nexts++ }
         override fun restartLevel() { restarts++ }
         override fun retryGeneration() { retries++ }

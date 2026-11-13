@@ -132,9 +132,9 @@ fun ArrowsGameScreen(
                     ArrowsBoard(
                         game = game,
                         showRoutes = state.showRoutes,
-                        move = state.move,
+                        moves = state.moves,
                         onTapArrow = actions::tapArrow,
-                        onMoveFinished = actions::commitMove,
+                        onMoveFinished = actions::finishMove,
                         modifier = Modifier
                             .widthIn(max = BoardMaxWidth)
                             .fillMaxWidth(),

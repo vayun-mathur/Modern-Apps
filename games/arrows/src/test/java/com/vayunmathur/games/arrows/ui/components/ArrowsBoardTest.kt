@@ -51,7 +51,7 @@ class ArrowsBoardTest {
     fun boardRendersArrowSemanticsAndClickTapsHead() {
         val tapped = mutableListOf<Int>()
         rule.setContent {
-            ArrowsBoard(game(), showRoutes = true, move = null, onTapArrow = { tapped += it }, onMoveFinished = {})
+            ArrowsBoard(game(), showRoutes = true, moves = emptyList(), onTapArrow = { tapped += it }, onMoveFinished = {})
         }
         // Head of piece0 at row3 col3 (1-based), pointing right
         val desc0 = str(R.string.cd_arrow, str(R.string.cd_right), 3, 3)
@@ -69,7 +69,7 @@ class ArrowsBoardTest {
         rule.setContent {
             ArrowsBoard(
                 game(removed = setOf(0), mirrors = mapOf(at(1, 1) to Mirror.FORWARD)),
-                showRoutes = true, move = null, onTapArrow = {}, onMoveFinished = {},
+                showRoutes = true, moves = emptyList(), onTapArrow = {}, onMoveFinished = {},
             )
         }
         rule.onNodeWithContentDescription(str(R.string.cd_redirector)).assertExists()
@@ -83,7 +83,7 @@ class ArrowsBoardTest {
         rule.setContent {
             ArrowsBoard(
                 game(blockedId = 0),
-                showRoutes = true, move = null, onTapArrow = { tapped += it }, onMoveFinished = {},
+                showRoutes = true, moves = emptyList(), onTapArrow = { tapped += it }, onMoveFinished = {},
             )
         }
         val desc0 = str(R.string.cd_arrow, str(R.string.cd_right), 3, 3)
@@ -95,7 +95,7 @@ class ArrowsBoardTest {
     @Test
     fun boardWithoutRoutesStillRendersBlockedArrow() {
         rule.setContent {
-            ArrowsBoard(game(blockedId = 0), showRoutes = false, move = null, onTapArrow = {}, onMoveFinished = {})
+            ArrowsBoard(game(blockedId = 0), showRoutes = false, moves = emptyList(), onTapArrow = {}, onMoveFinished = {})
         }
         rule.onNodeWithContentDescription(str(R.string.cd_arrow, str(R.string.cd_right), 3, 3)).assertIsDisplayed()
     }
@@ -107,7 +107,7 @@ class ArrowsBoardTest {
         val piece = g.puzzle.pieces[0]
         val move = ArrowMove(piece.id, piece.cells + listOf(at(2, 3), at(2, 4)), 2, true)
         rule.setContent {
-            ArrowsBoard(g, showRoutes = true, move = move, onTapArrow = {}, onMoveFinished = { finished++ })
+            ArrowsBoard(g, showRoutes = true, moves = listOf(move), onTapArrow = {}, onMoveFinished = { finished++ })
         }
         rule.waitUntil(timeoutMillis = 10_000) { finished > 0 }
         assertEquals(1, finished)
@@ -120,7 +120,7 @@ class ArrowsBoardTest {
         val piece = g.puzzle.pieces[0]
         val move = ArrowMove(piece.id, piece.cells + listOf(at(2, 3)), 1, false)
         rule.setContent {
-            ArrowsBoard(g, showRoutes = true, move = move, onTapArrow = {}, onMoveFinished = { finished++ })
+            ArrowsBoard(g, showRoutes = true, moves = listOf(move), onTapArrow = {}, onMoveFinished = { finished++ })
         }
         rule.waitUntil(timeoutMillis = 10_000) { finished > 0 }
         assertEquals(1, finished)
@@ -133,17 +133,33 @@ class ArrowsBoardTest {
         val piece = g.puzzle.pieces[0]
         val move = ArrowMove(piece.id, piece.cells, 0, false)
         rule.setContent {
-            ArrowsBoard(g, showRoutes = false, move = move, onTapArrow = {}, onMoveFinished = { finished++ })
+            ArrowsBoard(g, showRoutes = false, moves = listOf(move), onTapArrow = {}, onMoveFinished = { finished++ })
         }
         rule.waitUntil(timeoutMillis = 10_000) { finished > 0 }
         assertEquals(1, finished)
     }
 
     @Test
+    fun twoConcurrentMovesEachAnimateAndFinishOnTheirOwn() {
+        val finished = mutableListOf<Long>()
+        // Both arrows were applied at tap time, so neither is in `remaining` any more.
+        val g = game(removed = setOf(0, 1))
+        val p0 = g.puzzle.pieces[0]
+        val p1 = g.puzzle.pieces[1]
+        val m0 = ArrowMove(p0.id, p0.cells + listOf(at(2, 3), at(2, 4)), 2, true, id = 1L)
+        val m1 = ArrowMove(p1.id, p1.cells + listOf(at(2, 4), at(3, 4), at(4, 4)), 3, true, id = 2L)
+        rule.setContent {
+            ArrowsBoard(g, showRoutes = true, moves = listOf(m0, m1), onTapArrow = {}, onMoveFinished = { finished += it })
+        }
+        rule.waitUntil(timeoutMillis = 10_000) { finished.size == 2 }
+        assertEquals(setOf(1L, 2L), finished.toSet())
+    }
+
+    @Test
     fun boardCanvasTapViaTouchHitsArrow() {
         val tapped = mutableListOf<Int>()
         rule.setContent {
-            ArrowsBoard(game(), showRoutes = true, move = null, onTapArrow = { tapped += it }, onMoveFinished = {})
+            ArrowsBoard(game(), showRoutes = true, moves = emptyList(), onTapArrow = { tapped += it }, onMoveFinished = {})
         }
         // Touch near the centre should hit some arrow cell or at least not crash; head clicks are
         // covered via semantics above, this exercises the board's pointerInput path.

@@ -59,7 +59,7 @@ class ArrowsBoardRtlTest {
         rule.setContent {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 Box(Modifier.size(250.dp).testTag("board")) {
-                    ArrowsBoard(game, showRoutes = true, move = null, onTapArrow = onTap, onMoveFinished = {})
+                    ArrowsBoard(game, showRoutes = true, moves = emptyList(), onTapArrow = onTap, onMoveFinished = {})
                 }
             }
         }

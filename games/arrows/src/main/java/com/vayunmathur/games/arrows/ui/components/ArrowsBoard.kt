@@ -1,5 +1,5 @@
 // RAW ANIMATION EXCEPTION: an arrow travelling its route is imperative motion - one Animatable
-// per tap, run through a sequence of legs (travel, blocked-hold, retreat) whose easing and length
+// per tap (several may be in flight at once), run through a sequence of legs (travel, blocked-hold, retreat) whose easing and length
 // depend on how far the arrow actually got, which no declarative target value can express.
 package com.vayunmathur.games.arrows.ui.components
 
@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -57,9 +58,9 @@ import kotlinx.coroutines.delay
 fun ArrowsBoard(
     game: ArrowsGameState,
     showRoutes: Boolean,
-    move: ArrowMove?,
+    moves: List<ArrowMove>,
     onTapArrow: (Int) -> Unit,
-    onMoveFinished: () -> Unit,
+    onMoveFinished: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -69,42 +70,29 @@ fun ArrowsBoard(
     val dotColor = scheme.outlineVariant
     val cols = game.puzzle.cols
 
-    // How far along its route the moving arrow currently is, in cells. Driven by one animation per tap;
-    // `0` whenever nothing is moving, so a settled board draws from `game` alone.
-    val advance = remember(move) { Animatable(0f) }
-    // Turns red only once it has actually run into something, not from the first frame.
-    var showBlocked by remember(move) { mutableStateOf(false) }
-
-    LaunchedEffect(move) {
-        if (move == null) return@LaunchedEffect
-        // Segments do not share this advance: each converts it with laggedAdvance(), so the head
-        // sets off first and the tail follows. The global value therefore has to run past each
-        // segment's own destination by one lag per trailing segment (globalAdvanceTarget()).
-        val segmentCount = game.remaining.firstOrNull { it.id == move.pieceId }?.cells?.size ?: 1
-        if (move.clears) {
-            // One past the end of the route, so the tail clears the edge too rather than winking
-            // out on it. The route already ends with the head's escape path, so its size alone is
-            // the distance that takes the tail out; adding `move.advance` counted that path twice
-            // and kept the (by then invisible) arrow animating - and taps locked - for up to a
-            // whole extra board crossing after it had left.
-            val maxAdvance = move.route.size.toFloat()
-            val target = globalAdvanceTarget(maxAdvance, segmentCount)
-            advance.animateTo(target, Motion.over(cellMillis(target)))
-        } else {
-            // Wedged arrows still get a nudge, or a tap on one reads as the game ignoring the input.
-            val maxAdvance = if (move.advance == 0) NUDGE_CELLS else move.advance.toFloat()
-            val target = globalAdvanceTarget(maxAdvance, segmentCount)
-            advance.animateTo(target, Motion.open(cellMillis(target)))
-            showBlocked = true
-            delay(BLOCKED_HOLD_MILLIS)
-            advance.animateTo(0f, Motion.close(cellMillis(target)))
+    // One flight per move still animating, each on its own clock: the moves were applied when
+    // tapped, so a second arrow can set off while the first is still in the air. Keyed by move id
+    // so adding or retiring one never restarts another.
+    val finished by rememberUpdatedState(onMoveFinished)
+    val flights = moves.map { move ->
+        key(move.id) {
+            val segmentCount =
+                game.puzzle.pieces.firstOrNull { it.id == move.pieceId }?.cells?.size ?: 1
+            val flight = remember { Flight(move, segmentCount) }
+            LaunchedEffect(Unit) {
+                flight.fly()
+                finished(move.id)
+            }
+            flight
         }
-        onMoveFinished()
     }
+    val flightFor = flights.associateBy { it.move.pieceId }
 
     // The route the last blocked arrow tried to take, up to and including what stopped it. Derived rather
-    // than stored, so it cannot go stale against the board.
-    val blockedRoute = if (!showRoutes || game.blockedId < 0) emptyList() else {
+    // than stored, so it cannot go stale against the board. Held back while that arrow is still on its
+    // way to the obstruction, so the trail appears when it hits rather than the moment it is tapped.
+    val blockedStillTravelling = flightFor[game.blockedId]?.let { !it.showBlocked } == true
+    val blockedRoute = if (!showRoutes || game.blockedId < 0 || blockedStillTravelling) emptyList() else {
         game.puzzle.pieces.firstOrNull { it.id == game.blockedId }?.let { piece ->
             val travel = ArrowsRules.travel(game, piece)
             // route is body + path, so drop the body and keep one past where it stopped: the cell that
@@ -138,24 +126,19 @@ fun ArrowsBoard(
                         drawRoute(blockedRoute, cols, cellPx, blockedColor)
                     }
                     for (piece in game.remaining) {
-                        val moving = piece.id == move?.pieceId
-                        val color = when {
-                            moving && showBlocked -> blockedColor
-                            piece.id == game.blockedId -> blockedColor
-                            else -> arrowColor
-                        }
-                        if (moving && move != null) {
-                            val maxAdvance = if (move.clears) {
-                                move.route.size.toFloat()
-                            } else if (move.advance == 0) {
-                                NUDGE_CELLS
-                            } else {
-                                move.advance.toFloat()
-                            }
-                            drawTravellingArrow(piece, move, advance.value, maxAdvance, cols, cellPx, color)
-                        } else {
-                            drawArrow(piece, cols, cellPx, color)
-                        }
+                        if (piece.id in flightFor) continue
+                        val color = if (piece.id == game.blockedId) blockedColor else arrowColor
+                        drawArrow(piece, cols, cellPx, color)
+                    }
+                    // In-flight arrows last, over the settled ones they pass. A clearing arrow is
+                    // already gone from `game.remaining`, so it is drawn from the puzzle.
+                    for (flight in flights) {
+                        val piece = game.puzzle.pieces.firstOrNull { it.id == flight.move.pieceId }
+                            ?: continue
+                        val color = if (flight.showBlocked) blockedColor else arrowColor
+                        drawTravellingArrow(
+                            piece, flight.move, flight.advance.value, flight.maxAdvance, cols, cellPx, color,
+                        )
                     }
                 }
         ) {
@@ -204,6 +187,46 @@ fun ArrowsBoard(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * One tap being animated: how far along its route the arrow is, in cells, and whether it has
+ * hit something yet.
+ */
+private class Flight(val move: ArrowMove, private val segmentCount: Int) {
+    val advance = Animatable(0f)
+
+    /** Turns red only once it has actually run into something, not from the first frame. */
+    var showBlocked by mutableStateOf(false)
+        private set
+
+    /** How far each segment ultimately travels. */
+    val maxAdvance: Float = when {
+        // One past the end of the route, so the tail clears the edge too rather than winking out
+        // on it. The route already ends with the head's escape path, so its size alone is the
+        // distance that takes the tail out.
+        move.clears -> move.route.size.toFloat()
+        // Wedged arrows still get a nudge, or a tap on one reads as the game ignoring the input.
+        move.advance == 0 -> NUDGE_CELLS
+        else -> move.advance.toFloat()
+    }
+
+    /**
+     * Segments do not share this advance: each converts it with laggedAdvance(), so the head
+     * sets off first and the tail follows. The global value therefore has to run past each
+     * segment's own destination by one lag per trailing segment (globalAdvanceTarget()).
+     */
+    suspend fun fly() {
+        val target = globalAdvanceTarget(maxAdvance, segmentCount)
+        if (move.clears) {
+            advance.animateTo(target, Motion.over(cellMillis(target)))
+        } else {
+            advance.animateTo(target, Motion.open(cellMillis(target)))
+            showBlocked = true
+            delay(BLOCKED_HOLD_MILLIS)
+            advance.animateTo(0f, Motion.close(cellMillis(target)))
         }
     }
 }

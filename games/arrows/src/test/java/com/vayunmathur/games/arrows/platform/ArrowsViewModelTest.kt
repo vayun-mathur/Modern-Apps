@@ -23,7 +23,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -47,10 +46,15 @@ class ArrowsViewModelTest {
         assertTrue(cond(), "timed out: $desc")
     }
 
-    @Test
-    fun casualFlowTapCommitRestartNextLevelAndSettings() {
+    private fun loadedViewModel(): ArrowsViewModel {
         val vm = ArrowsViewModel(app)
         await("board loads") { vm.uiState.value.game != null && !vm.uiState.value.generating }
+        return vm
+    }
+
+    @Test
+    fun casualTapsApplyAtOnceAndRunConcurrently() {
+        val vm = loadedViewModel()
         val initial = vm.uiState.value
         val game = assertNotNull(initial.game)
         assertTrue(game.puzzle.pieces.isNotEmpty())
@@ -60,48 +64,71 @@ class ArrowsViewModelTest {
         assertEquals("arrows_daily", ArrowsViewModel.DAILY_KEY_PREFIX)
         vm.dismissAchievementNotification()
 
-        // Unknown tap and commit-without-move are no-ops.
+        // Unknown tap and finishing an unknown move are no-ops.
         vm.tapArrow(999_999)
-        assertNull(vm.uiState.value.move)
-        vm.commitMove()
-        assertNull(vm.uiState.value.move)
+        vm.finishMove(42L)
+        assertTrue(vm.uiState.value.moves.isEmpty())
 
-        // Tap a clearable arrow: move is set, taps lock out, commit removes it.
-        val clearable = ArrowsRules.clearableNow(vm.uiState.value.game!!)
-        assertTrue(clearable.isNotEmpty(), "fresh board should have a clearable arrow")
-        val piece = clearable.first()
+        // A clearable arrow leaves the board the moment it is tapped and animates as a move.
+        val piece = ArrowsRules.clearableNow(game).first()
         vm.tapArrow(piece.id)
-        assertNotNull(vm.uiState.value.move)
-        assertEquals(piece.id, vm.uiState.value.move!!.pieceId)
-        assertTrue(vm.uiState.value.move!!.clears)
-        val other = vm.uiState.value.game!!.remaining.firstOrNull { it.id != piece.id }
-        if (other != null) {
-            vm.tapArrow(other.id)
-            assertEquals(piece.id, vm.uiState.value.move!!.pieceId, "taps locked while moving")
-        }
-        vm.commitMove()
-        assertNull(vm.uiState.value.move)
-        assertTrue(piece.id in vm.uiState.value.game!!.removed)
+        val afterFirst = vm.uiState.value
+        assertTrue(piece.id in afterFirst.game!!.removed, "tap applies at once")
+        val firstMove = afterFirst.moves.single()
+        assertEquals(piece.id, firstMove.pieceId)
+        assertTrue(firstMove.clears)
 
-        // Restart restores a full board with full hearts.
+        // A second arrow can set off while the first is still in the air, judged against the
+        // board without the first; tapping the one in flight again does nothing.
+        val second = ArrowsRules.clearableNow(afterFirst.game!!).firstOrNull()
+        if (second != null) {
+            vm.tapArrow(second.id)
+            assertEquals(listOf(piece.id, second.id), vm.uiState.value.moves.map { it.pieceId })
+            assertTrue(second.id in vm.uiState.value.game!!.removed)
+        }
+        val movesBefore = vm.uiState.value.moves
+        vm.tapArrow(piece.id)
+        assertEquals(movesBefore, vm.uiState.value.moves)
+
+        // Finishing an animation only retires the move; the board keeps the cleared arrows,
+        // including once the store has caught up with both writes.
+        vm.finishMove(firstMove.id)
+        assertTrue(vm.uiState.value.moves.none { it.id == firstMove.id })
+        val expected = vm.uiState.value.game!!.removed
+        await("store catches up") { runBlocking { vm.dataStore.removedArrows.first() } == expected }
+        Thread.sleep(200)
+        assertEquals(expected, vm.uiState.value.game!!.removed)
+
         vm.restartLevel()
-        await("restart resets") {
-            vm.uiState.value.game?.removed?.isEmpty() == true && vm.uiState.value.game?.hearts == 3
-        }
+        await("restart persisted") { runBlocking { vm.dataStore.removedArrows.first() }.isEmpty() }
+    }
 
-        // Blocked tap costs a heart when a blocked arrow exists on this board.
+    @Test
+    fun blockedTapCostsOneHeartAtOnceAndRestartIsImmediate() {
+        val vm = loadedViewModel()
+        // Some progress first, so the restart below has something to undo.
+        ArrowsRules.clearableNow(vm.uiState.value.game!!).firstOrNull()?.let { vm.tapArrow(it.id) }
+        vm.restartLevel()
+        assertTrue(vm.uiState.value.game!!.removed.isEmpty(), "restart applies at once")
+        assertTrue(vm.uiState.value.moves.isEmpty())
         val fresh = vm.uiState.value.game!!
         val blocked = fresh.remaining.firstOrNull { ArrowsRules.isBlocked(fresh, it) }
         if (blocked != null) {
             vm.tapArrow(blocked.id)
-            assertEquals(false, vm.uiState.value.move!!.clears)
-            vm.commitMove()
+            assertEquals(false, vm.uiState.value.moves.single().clears)
             assertEquals(2, vm.uiState.value.game!!.hearts)
             assertEquals(blocked.id, vm.uiState.value.game!!.blockedId)
             assertTrue(blocked.id !in vm.uiState.value.game!!.removed)
-            vm.restartLevel()
-            await("restart after blocked") { vm.uiState.value.game?.hearts == 3 }
+            vm.tapArrow(blocked.id)
+            assertEquals(2, vm.uiState.value.game!!.hearts, "double tap costs one heart")
         }
+        vm.restartLevel()
+        await("restart persisted") { runBlocking { vm.dataStore.hearts.first() } == 3 }
+    }
+
+    @Test
+    fun casualRestartWinNextLevelAndSettings() {
+        val vm = loadedViewModel()
 
         // Show-routes setting round-trips through the store into uiState.
         vm.setShowRoutes(false)

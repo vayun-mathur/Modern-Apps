@@ -173,9 +173,12 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
      */
     private suspend fun observeProgress(session: Session, puzzle: ArrowsPuzzle, day: Long) {
         val daily = session.mode == GameMode.DAILY
+        boardDay = day
         val removedFlow = if (daily) dataStore.dailyRemoved else dataStore.removedArrows
         val heartsFlow = if (daily) dataStore.dailyHearts else dataStore.hearts
 
+        // A fresh board starts with nothing of ours in flight; see [expectedProgress].
+        expectedProgress = null
         combine(removedFlow, heartsFlow, dataStore.dailyDay, dailyStore.lastCompletedDayFlow) {
             removed, hearts, storedDay, lastCompleted ->
             val stale = daily && storedDay != day
@@ -189,6 +192,17 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
             // otherwise be considered finished by leftover progress that does not match it.
             val valid = progress.removed.filterTo(mutableSetOf()) { id ->
                 puzzle.pieces.any { it.id == id }
+            }
+            val expected = expectedProgress
+            if (expected != null) {
+                if (expected != (valid to progress.hearts)) {
+                    // An echo of an earlier write while a later one is still on its way: the
+                    // board on screen is already ahead of it, so showing it would put an arrow
+                    // that has just flown back on the board for a frame.
+                    _uiState.value = _uiState.value.copy(dailyDone = progress.dailyDone)
+                    return@collectLatest
+                }
+                expectedProgress = null
             }
             val game = ArrowsGameState(
                 puzzle = puzzle,
@@ -217,58 +231,74 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
      */
     private var lastBlockedId: Int = -1
 
+    /** The day the board on screen was loaded for, which is what a daily clear is banked under. */
+    private var boardDay: Long = 0
+
+    /** Source of [ArrowMove.id]. */
+    private var nextMoveId = 1L
+
     /**
-     * Starts a tap: works out what will happen and hands it to the board to animate.
+     * The progress our latest write will leave in the store, until the store reports it.
      *
-     * Nothing is committed here. The outcome is decided now, from the board as it stands, but applying it
-     * waits for [commitMove] so the arrow can be seen travelling — and, if it is blocked, seen coming
-     * back. Taps are ignored while an animation is in flight, which also stops two arrows moving at once.
+     * Taps are applied on screen at once and written behind, so a quick second tap is shown before
+     * the first one's write has echoed back through the progress flow. Echoes that do not match
+     * this are stale and skipped; the one that does clears it.
+     */
+    private var expectedProgress: Pair<Set<Int>, Int>? = null
+
+    /**
+     * Applies a tap at once and hands it to the board to animate.
+     *
+     * The outcome is decided and committed now, from the board as it stands, so a second tap made
+     * while the first arrow is still flying is judged against a board that no longer has it: arrows
+     * can be launched as fast as the player can find them, each animating on its own. Committing at
+     * tap time rather than queueing the tap was chosen because a queue only hides the wait — the
+     * second arrow would still not move until the first had landed — while concurrent moves need no
+     * waiting at all and cannot disagree with what is drawn, since the board draws exactly the state
+     * the next tap is judged against.
+     *
+     * A tap on an arrow that is already animating is ignored, so a double tap on a blocked arrow
+     * still costs one heart, not two.
      */
     override fun tapArrow(pieceId: Int) {
         val state = _uiState.value
         val game = state.game ?: return
-        if (game.isOver || state.move != null) return
+        if (game.isOver || state.moves.any { it.pieceId == pieceId }) return
         val piece = game.remaining.firstOrNull { it.id == pieceId } ?: return
 
         val travel = ArrowsRules.travel(game, piece)
-        _uiState.value = state.copy(
-            move = ArrowMove(
-                pieceId = pieceId,
-                route = travel.route,
-                advance = travel.advance,
-                clears = travel.clears,
-            )
-        )
-    }
-
-    /**
-     * Applies the animated tap.
-     *
-     * Re-runs the rules rather than trusting the outcome worked out when the tap started: the board cannot
-     * have changed in between - taps are locked out while animating - but deriving the result in one place
-     * keeps [ArrowsRules.tap] the only thing that decides what a tap does.
-     */
-    override fun commitMove() {
-        val state = _uiState.value
-        val move = state.move ?: return
-        val game = state.game ?: return
-
-        val (next, outcome) = ArrowsRules.tap(game, move.pieceId)
-        if (outcome == TapOutcome.IGNORED) {
-            _uiState.value = state.copy(move = null)
-            return
-        }
+        val (next, outcome) = ArrowsRules.tap(game, pieceId)
+        if (outcome == TapOutcome.IGNORED) return
 
         lastBlockedId = next.blockedId
-        _uiState.value = state.copy(game = next, move = null)
+        val move = ArrowMove(
+            pieceId = pieceId,
+            route = travel.route,
+            advance = travel.advance,
+            clears = travel.clears,
+            id = nextMoveId++,
+        )
+        _uiState.value = state.copy(game = next, moves = state.moves + move)
 
         val daily = state.mode == GameMode.DAILY
+        val day = boardDay
+        expectedProgress = next.removed to next.hearts
         viewModelScope.launch {
             dataStore.saveProgress(next.removed, next.hearts, daily)
             if (outcome == TapOutcome.BLOCKED) {
                 achievementsManager.onAchievementUnlocked("first_block")
             }
         }
+        // The progress collector would see the win too, but it skips echoes it is not expecting;
+        // [onCleared] is exactly-once whichever path reaches it first.
+        if (next.isWon) onCleared(next, daily, day)
+    }
+
+    /** Retires a finished animation. The move itself was applied when the arrow was tapped. */
+    override fun finishMove(moveId: Long) {
+        val state = _uiState.value
+        if (state.moves.none { it.id == moveId }) return
+        _uiState.value = state.copy(moves = state.moves.filterNot { it.id == moveId })
     }
 
     /**
@@ -286,20 +316,25 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         val state = _uiState.value
         if (state.mode == GameMode.DAILY) return
         lastBlockedId = -1
-        _uiState.value = state.copy(move = null)
+        _uiState.value = state.copy(moves = emptyList())
         viewModelScope.launch { dataStore.saveLevel(state.level + 1) }
     }
 
     override fun restartLevel() {
-        val daily = _uiState.value.mode == GameMode.DAILY
+        val state = _uiState.value
+        val daily = state.mode == GameMode.DAILY
         lastBlockedId = -1
-        _uiState.value = _uiState.value.copy(move = null)
+        // Reset on screen now rather than waiting for the store to echo it, for the same reason
+        // taps are applied at once: a tap made in between must be judged against the fresh board.
+        val reset = state.game?.let(ArrowsRules::resetAfterFailure)
+        _uiState.value = state.copy(game = reset ?: state.game, moves = emptyList())
+        if (reset != null) expectedProgress = reset.removed to reset.hearts
         viewModelScope.launch { dataStore.resetBoard(daily) }
     }
 
     override fun setGameMode(mode: GameMode) {
         lastBlockedId = -1
-        _uiState.value = _uiState.value.copy(move = null)
+        _uiState.value = _uiState.value.copy(moves = emptyList())
         viewModelScope.launch { dataStore.setGameMode(mode) }
     }
 

@@ -17,8 +17,11 @@ interface ArrowsGameActions {
     /** Sends the tapped arrow on its way, or spends a heart if it is boxed in. */
     fun tapArrow(pieceId: Int) {}
 
-    /** Called once the board has finished animating [ArrowsUiState.move], to commit its outcome. */
-    fun commitMove() {}
+    /**
+     * Called once the board has finished animating the move with [moveId], so it can stop being
+     * drawn in flight. The move itself was already applied when the arrow was tapped.
+     */
+    fun finishMove(moveId: Long) {}
 
     fun nextLevel() {}
     fun restartLevel() {}
@@ -30,11 +33,13 @@ interface ArrowsGameActions {
 }
 
 /**
- * A tap that is being animated but has not yet taken effect.
+ * A tap that has already taken effect and is still being animated.
  *
- * The outcome is decided the moment the arrow is tapped, but nothing is written until the board has
- * finished showing it: an arrow that clears has to stay drawn while it flies out, and one that is blocked
- * has to be drawn moving and coming back. [ArrowsGameActions.commitMove] is what applies it.
+ * The outcome is applied to the board the moment the arrow is tapped, so the next tap is judged
+ * against the board as it now stands and several arrows can be in the air at once. The move only
+ * tells the board what to draw meanwhile: an arrow that clears has to stay drawn while it flies out
+ * even though it is gone from [ArrowsUiState.game], and one that is blocked has to be drawn moving
+ * and coming back. [ArrowsGameActions.finishMove] retires it.
  *
  * @param route the piece's cells followed by its head's escape path, so cell `i` sits at
  *   `route[i + advance]` at full advance.
@@ -46,6 +51,8 @@ data class ArrowMove(
     val route: List<Int>,
     val advance: Int,
     val clears: Boolean,
+    /** Tells concurrent moves apart, so each animates on its own clock. */
+    val id: Long = 0,
 )
 
 /** What the board needs to draw itself. [game] is null only while a board is being generated. */
@@ -60,8 +67,8 @@ data class ArrowsUiState(
     val generating: Boolean = false,
     /** Set when even a widened seed search found no clearable board, so the board can offer a retry. */
     val generationFailed: Boolean = false,
-    /** The tap currently being animated, if any. Taps are ignored while this is set. */
-    val move: ArrowMove? = null,
+    /** Taps still being animated, oldest first. Already applied to [game]. */
+    val moves: List<ArrowMove> = emptyList(),
 )
 
 interface SettingsActions {
