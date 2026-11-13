@@ -1,16 +1,27 @@
 package com.vayunmathur.library.ui.game
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -20,8 +31,10 @@ import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.Button
+import com.vayunmathur.library.ui.FadeVisibility
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.R
 import com.vayunmathur.library.ui.Spacing
@@ -49,7 +62,15 @@ import com.vayunmathur.library.ui.TextButton
  * [stats] is a free slot for the lines a game wants to boast about, which is the one part that has
  * never been the same twice.
  *
- * @param onPlayAgain primary action. Null hides it, for a daily board where there is nothing to replay.
+ * "View board" is built in: it fades the card and scrim away and leaves a small bar at the bottom with
+ * "Show result" and the primary action, so the player can look at the finished board — the solved grid,
+ * where the mine was — before moving on. The board stays untouchable while viewed. Back returns to the
+ * card.
+ *
+ * @param onPlayAgain primary action. Null hides it, for a daily board where there is nothing to replay;
+ *   the board-view bar then offers [onBack] instead.
+ * @param allowViewBoard false drops the "View board" action, for a game whose board says nothing more
+ *   once it is over.
  */
 @Composable
 fun GameResultOverlay(
@@ -60,49 +81,93 @@ fun GameResultOverlay(
     onPlayAgain: (() -> Unit)? = null,
     playAgainLabel: String = stringResource(R.string.game_play_again),
     backLabel: String = stringResource(R.string.game_back),
+    allowViewBoard: Boolean = true,
     stats: @Composable ColumnScope.() -> Unit = {},
 ) {
+    var viewingBoard by rememberSaveable { mutableStateOf(false) }
+    val showingBoard = allowViewBoard && viewingBoard
+    // Back from the board view returns to the result rather than leaving the game behind it.
+    if (showingBoard) BackHandler { viewingBoard = false }
+
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
+    // Again on every switch: the focused button may just have faded out with the card or the bar.
+    LaunchedEffect(showingBoard) { focusRequester.requestFocus() }
     Box(
         modifier
             .fillMaxSize()
             .modalPane(title, focusRequester),
     ) {
         // A sibling under the card rather than its parent: a parent that swallowed events would also
-        // eat the moves of a press on the card's own buttons and cancel it.
+        // eat the moves of a press on the card's own buttons and cancel it. It stays in place while the
+        // board is being viewed, which is for looking at: the game is over and must not take input.
         Box(
             Modifier
                 .matchParentSize()
-                .background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA))
                 .swallowPointerInput(),
         )
-        Box(
-            Modifier
-                .fillMaxSize()
+        FadeVisibility(visible = !showingBoard, modifier = Modifier.matchParentSize()) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA))
+                    .padding(Spacing.lg),
+                contentAlignment = Alignment.Center,
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ) {
+                    Column(
+                        Modifier.padding(Spacing.xl),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = if (won) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error,
+                        )
+                        stats()
+                        if (onPlayAgain != null) {
+                            Button(onClick = onPlayAgain, Modifier.fillMaxWidth()) { Text(playAgainLabel) }
+                        }
+                        if (allowViewBoard) {
+                            TextButton(onClick = { viewingBoard = true }, Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.game_view_board))
+                            }
+                        }
+                        TextButton(onClick = onBack, Modifier.fillMaxWidth()) { Text(backLabel) }
+                    }
+                }
+            }
+        }
+        FadeVisibility(
+            visible = showingBoard,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(BarInsetSides))
                 .padding(Spacing.lg),
-            contentAlignment = Alignment.Center,
         ) {
             Surface(
                 shape = MaterialTheme.shapes.extraLarge,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shadowElevation = BAR_ELEVATION,
             ) {
-                Column(
-                    Modifier.padding(Spacing.xl),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                Row(
+                    Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = if (won) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.error,
-                    )
-                    stats()
-                    if (onPlayAgain != null) {
-                        Button(onClick = onPlayAgain, Modifier.fillMaxWidth()) { Text(playAgainLabel) }
+                    TextButton(onClick = { viewingBoard = false }) {
+                        Text(stringResource(R.string.game_show_result))
                     }
-                    TextButton(onClick = onBack, Modifier.fillMaxWidth()) { Text(backLabel) }
+                    // The card's primary action; a board with nothing to replay offers its way out instead.
+                    if (onPlayAgain != null) {
+                        Button(onClick = onPlayAgain) { Text(playAgainLabel) }
+                    } else {
+                        Button(onClick = onBack) { Text(backLabel) }
+                    }
                 }
             }
         }
@@ -136,3 +201,9 @@ private fun Modifier.swallowPointerInput(): Modifier = pointerInput(Unit) {
 
 /** Dark enough to mute the board behind, light enough to keep it recognisable. */
 private const val SCRIM_ALPHA = 0.7f
+
+/** Lifts the board-view bar off a board that may be any colour under it. */
+private val BAR_ELEVATION = 6.dp
+
+/** The bar sits on the bottom edge, so it keeps clear of the navigation bar and any side cutout. */
+private val BarInsetSides = WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal

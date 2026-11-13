@@ -214,6 +214,10 @@
     <string name="game_play_again">Play Again</string>
     <!-- Shared library: UI - GameResultOverlay: secondary button dismissing the result and leaving the board. Verb -->
     <string name="game_back">Back</string>
+    <!-- Shared library: UI - GameResultOverlay: button hiding the result card so the finished board can be looked at. Verb phrase, keep short -->
+    <string name="game_view_board">View Board</string>
+    <!-- Shared library: UI - GameResultOverlay: button on the small bar shown while viewing the finished board; brings the result card back. Verb phrase, keep short -->
+    <string name="game_show_result">Show Result</string>
     <!-- Shared library: UI - games: label preceding an elapsed time, e.g. Time: 04:12. Noun -->
     <string name="game_time">Time</string>
     <!-- Shared library: UI - LevelPickerBox: title over the current level number. Noun -->

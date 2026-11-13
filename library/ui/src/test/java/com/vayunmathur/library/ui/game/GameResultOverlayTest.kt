@@ -2,6 +2,8 @@ package com.vayunmathur.library.ui.game
 
 import android.view.View
 import android.view.accessibility.AccessibilityManager
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
@@ -17,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -131,6 +134,68 @@ class GameResultOverlayTest {
         rule.waitForIdle()
         assertEquals(0, behindFocused)
     }
+
+    @Test
+    fun `view board swaps the card for a bar and back`() {
+        var again = 0
+        setBoardWithOverlay {
+            GameResultOverlay(title = "Solved", won = true, onBack = {}, onPlayAgain = { again++ })
+        }
+        rule.onNodeWithText("Solved").assertIsDisplayed()
+        rule.onNodeWithText(str(UiR.string.game_view_board)).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Solved").assertDoesNotExist()
+        rule.onNodeWithText(str(UiR.string.game_show_result)).assertIsDisplayed()
+
+        // The board is on view, not live: a tap on it still goes nowhere.
+        rule.onNodeWithTag(ROOT).performTouchInput { click(Offset(centerX, centerY)) }
+        rule.waitForIdle()
+        assertEquals(0, behindTaps)
+
+        // The bar carries the primary action...
+        rule.onNodeWithText(str(UiR.string.game_play_again)).performClick()
+        assertEquals(1, again)
+        // ...and brings the card back.
+        rule.onNodeWithText(str(UiR.string.game_show_result)).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Solved").assertIsDisplayed()
+        rule.onNodeWithText(str(UiR.string.game_show_result)).assertDoesNotExist()
+    }
+
+    @Test
+    fun `back from the board view returns to the card`() {
+        lateinit var dispatcher: OnBackPressedDispatcher
+        setBoardWithOverlay {
+            dispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+            GameResultOverlay(title = "Solved", won = true, onBack = {})
+        }
+        rule.onNodeWithText(str(UiR.string.game_view_board)).performClick()
+        rule.waitForIdle()
+        rule.runOnIdle { dispatcher.onBackPressed() }
+        rule.waitForIdle()
+        rule.onNodeWithText("Solved").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a daily board's bar offers the way out`() {
+        var back = 0
+        setBoardWithOverlay { GameResultOverlay(title = "Daily", won = true, onBack = { back++ }) }
+        rule.onNodeWithText(str(UiR.string.game_view_board)).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText(str(UiR.string.game_back)).performClick()
+        assertEquals(1, back)
+    }
+
+    @Test
+    fun `callers can opt out of view board`() {
+        setBoardWithOverlay {
+            GameResultOverlay(title = "Solved", won = true, onBack = {}, allowViewBoard = false)
+        }
+        rule.onNodeWithText("Solved").assertIsDisplayed()
+        rule.onNodeWithText(str(UiR.string.game_view_board)).assertDoesNotExist()
+    }
+
+    private fun str(id: Int): String = appContext.getString(id)
 
     /** What an accessibility service sees for one semantics node; null when it is left out of the tree. */
     private fun accessibilityNode(view: View, id: Int): Any? {
