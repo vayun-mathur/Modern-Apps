@@ -1,0 +1,29 @@
+{
+  "base": "runs/2026111312-1794600000/t/",
+  "cams_europe_run_mod": 1794569769,
+  "cams_global_run_mod": 1794563303,
+  "gen": 1794600000,
+  "geo": "geo/v1/",
+  "grid": {
+    "cells": 8,
+    "dx": 0.125,
+    "dy": 0.125,
+    "lat0": -90.0,
+    "lon0": -180.0,
+    "model": "dwd_icon",
+    "nx": 2879,
+    "ny": 1441
+  },
+  "hist": {
+    "base": "hist/",
+    "from_day": 20762,
+    "to_day": 20770
+  },
+  "icon_run": "2026-11-13T12:00:00Z",
+  "icon_run_mod": 1794584021,
+  "index": "runs/2026111312-1794600000/index.json",
+  "next_check": 1794607421,
+  "run": "2026111312-1794600000",
+  "tiles": 52,
+  "v": 1
+}
