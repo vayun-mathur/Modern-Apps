@@ -2,6 +2,8 @@ package com.vayunmathur.library.ui.game
 
 import android.view.View
 import android.view.accessibility.AccessibilityManager
+import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityNodeProvider
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.clickable
@@ -35,8 +37,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /** The result card over a finished board: what it lets through, and what it doesn't. */
 @RunWith(RobolectricTestRunner::class)
@@ -102,13 +104,14 @@ class GameResultOverlayTest {
             }
         }
         val behindId = rule.onNodeWithText("Behind").fetchSemanticsNode().id
-        assertNotNull(accessibilityNode(view, behindId), "control: the board is reachable before the overlay")
+        assertTrue(behindId in reachableIds(view), "control: the board is reachable before the overlay")
 
         showOverlay = true
         rule.waitForIdle()
         val titleId = rule.onNodeWithText("Solved").fetchSemanticsNode().id
-        assertNotNull(accessibilityNode(view, titleId), "the card itself stays reachable")
-        assertNull(accessibilityNode(view, behindId), "the covered board is out of the accessibility tree")
+        val reachable = reachableIds(view)
+        assertTrue(titleId in reachable, "the card itself stays reachable")
+        assertFalse(behindId in reachable, "the covered board is out of the accessibility tree")
     }
 
     @Test
@@ -197,14 +200,26 @@ class GameResultOverlayTest {
 
     private fun str(id: Int): String = appContext.getString(id)
 
-    /** What an accessibility service sees for one semantics node; null when it is left out of the tree. */
-    private fun accessibilityNode(view: View, id: Int): Any? {
-        var node: Any? = null
+    /**
+     * Every virtual node an accessibility service can reach by walking down from the host view, the way
+     * TalkBack builds its traversal. Child ids come from AccessibilityNodeInfo's hidden getChildId, whose
+     * high 32 bits are the virtual id.
+     */
+    private fun reachableIds(view: View): Set<Int> {
+        val seen = mutableSetOf<Int>()
         rule.runOnIdle {
             val provider = checkNotNull(view.accessibilityNodeProvider) { "compose exposes a node provider" }
-            node = provider.createAccessibilityNodeInfo(id)
+            val getChildId = AccessibilityNodeInfo::class.java.getMethod("getChildId", Int::class.javaPrimitiveType)
+            fun walk(id: Int) {
+                val info = provider.createAccessibilityNodeInfo(id) ?: return
+                for (i in 0 until info.childCount) {
+                    val childId = ((getChildId.invoke(info, i) as Long) ushr 32).toInt()
+                    if (seen.add(childId)) walk(childId)
+                }
+            }
+            walk(AccessibilityNodeProvider.HOST_VIEW_ID)
         }
-        return node
+        return seen
     }
 
     private companion object {
