@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Row
@@ -19,37 +20,66 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.R
 import com.vayunmathur.library.util.Achievement
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
+/**
+ * The toast announcing an unlocked achievement, sliding in from the top of the screen.
+ *
+ * It stays about four seconds — longer when the user has asked Android to give timed messages more
+ * time — and goes early on a tap or an upward swipe. Only the card itself takes touches: the rest of
+ * the screen keeps working under and around it.
+ *
+ * [onDismiss] runs once the exit animation has finished, which is when the caller should move on to the
+ * next queued unlock. Each [achievement] gets a fresh toast, so a queue that advances in place shows
+ * the next one from the start.
+ */
 @Composable
 fun AchievementNotification(
     achievement: Achievement,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
-    val visibleState = remember { MutableTransitionState(initialState = false) }
+    key(achievement) { AchievementToast(achievement, onDismiss) }
+}
 
-    LaunchedEffect(achievement) {
-        visibleState.targetState = true
-        delay(8000)
-        visibleState.targetState = false
+@Composable
+private fun AchievementToast(achievement: Achievement, onDismiss: () -> Unit) {
+    // Starts hidden with a visible target, so it slides in on first composition.
+    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    val accessibilityManager = LocalAccessibilityManager.current
+    val hide = { visibleState.targetState = false }
+
+    LaunchedEffect(Unit) {
+        val shownFor = accessibilityManager?.calculateRecommendedTimeoutMillis(
+            DISPLAY_MILLIS,
+            containsIcons = true,
+            containsText = true,
+            containsControls = true,
+        ) ?: DISPLAY_MILLIS
+        delay(shownFor)
+        hide()
     }
-    // Notify the caller only once the exit transition has fully played out.
-    LaunchedEffect(visibleState.isIdle) {
-        if (visibleState.isIdle && !visibleState.currentState) {
-            onDismiss()
-        }
+    // Tell the caller only once the exit transition has fully played out.
+    LaunchedEffect(Unit) {
+        snapshotFlow { visibleState.isIdle && !visibleState.currentState }.first { it }
+        currentOnDismiss()
     }
 
     AnimatedVisibility(
@@ -62,10 +92,11 @@ fun AchievementNotification(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 24.dp)
-                // Swipe up on the card to dismiss it early. Dragging up past the
-                // threshold plays the same exit animation as the auto-dismiss.
+                // Tap to dismiss; swipe up past the threshold to dismiss too. Both play the same exit
+                // animation as the timeout.
+                .clickable(onClickLabel = stringResource(R.string.dismiss), onClick = hide)
                 .pointerInput(Unit) {
-                    val threshold = 48.dp.toPx()
+                    val threshold = SWIPE_THRESHOLD.toPx()
                     var totalDrag = 0f
                     detectVerticalDragGestures(
                         onDragEnd = { totalDrag = 0f },
@@ -73,9 +104,7 @@ fun AchievementNotification(
                     ) { change, dragAmount ->
                         change.consume()
                         totalDrag += dragAmount
-                        if (totalDrag <= -threshold) {
-                            visibleState.targetState = false
-                        }
+                        if (totalDrag <= -threshold) hide()
                     }
                 },
             shape = MaterialTheme.shapes.largeIncreased,
@@ -119,3 +148,8 @@ fun AchievementNotification(
         }
     }
 }
+
+/** Long enough to read a name and a one-line description; the old eight seconds overstayed. */
+private const val DISPLAY_MILLIS = 4_000L
+
+private val SWIPE_THRESHOLD = 48.dp

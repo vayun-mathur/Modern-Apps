@@ -47,7 +47,7 @@
     <string name="link_action_open">Open</string>
     <!-- Shared library: UI – MarkdownEditor: Toolbar heading dropdown item. %1$s = level number 1-3. Shows in heading selector -->
     <string name="heading">Heading <xliff:g id="level" example="2">%1$s</xliff:g></string>
-    <!-- Shared library: UI – AchievementNotification: Banner title shown when achievement unlocked, auto-dismiss 8s swipeable card above achievement name -->
+    <!-- Shared library: UI – AchievementNotification: Banner title shown when achievement unlocked, auto-dismiss ~4s, tap or swipe up to dismiss; label above achievement name -->
     <string name="achievement_unlocked">Achievement Unlocked!</string>
     <!-- Shared library: UI – EditorFormatter: Accessibility content description for link toolbar icon button, not visible text. Active when cursor on link -->
     <string name="cd_link">Link</string>
