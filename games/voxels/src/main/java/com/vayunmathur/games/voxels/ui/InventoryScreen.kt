@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -47,6 +49,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -100,14 +103,15 @@ fun InventoryOverlay(
         // Narrow landscape phones: a 3-wide catalog leaves the 9-wide grid room for usable slots.
         val narrow = maxWidth < NARROW_PANEL
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Left tabs (top→bottom: Crafting, Outfit, Inventory).
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Left tabs (top→bottom: Crafting, Outfit, Inventory). Scrolls if large text makes the
+            // tabs taller than the panel.
+            Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TabButton(stringResource(R.string.crafting), leftTab == 2) { leftTab = 2 }
                 TabButton(stringResource(R.string.blessings), leftTab == 3) { leftTab = 3 }
                 TabButton(stringResource(R.string.achievements), leftTab == 4) { leftTab = 4 }
                 TabButton(stringResource(R.string.outfit), leftTab == 1) { leftTab = 1 }
                 TabButton(stringResource(R.string.inventory), leftTab == 0) { leftTab = 0 }
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(8.dp))
                 TabButton(stringResource(UiR.string.close), false) { onClose() }
             }
 
@@ -167,13 +171,15 @@ fun InventoryOverlay(
 
 @Composable
 private fun TabButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    // Minimum size so large font scales grow the tab rather than clip its label.
     Box(
-        Modifier.width(96.dp).height(40.dp).clip(RoundedCornerShape(8.dp))
+        Modifier.widthIn(min = 96.dp).heightIn(min = 40.dp).clip(RoundedCornerShape(8.dp))
             .background(if (selected) Color(0xFF3A6B3A) else Color.White.copy(alpha = 0.10f))
             .border(1.dp, Color.White.copy(alpha = if (selected) 0.5f else 0.15f), RoundedCornerShape(8.dp))
-            .clickable { onClick() },
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
-    ) { Text(label, color = Color.White.copy(0.95f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
+    ) { Text(label, color = Color.White.copy(0.95f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center) }
 }
 
 @Composable

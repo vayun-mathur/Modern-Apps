@@ -146,6 +146,11 @@
     <string name="boss_dragon">Ender Dragon</string>
     <string name="boss_wither">The Wither</string>
     <string name="boss_generic">Boss</string>
+    <!-- Accessibility read-out of the hearts row; %1$s = hearts left (e.g. 7.5), %2$d = max hearts. -->
+    <plurals name="health_hearts">
+        <item quantity="one">Health: %1$s of %2$d heart</item>
+        <item quantity="other">Health: %1$s of %2$d hearts</item>
+    </plurals>
     <!-- Status-effect chips: %1$s = effect name (with level), %2$d = seconds left. -->
     <string name="effect_chip">%1$s %2$ds</string>
     <string name="effect_regen">Regen</string>

@@ -11,7 +11,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.games.voxels.R
 import com.vayunmathur.library.ui.MaterialTheme
@@ -32,6 +37,31 @@ private val effectColors = mapOf(
     "night" to Color(0xFF3B3BA0), "jump" to Color(0xFF34A02C), "slow" to Color(0xFF5A6472)
 )
 
+private val HeartFull = Color(0xFFE23A45)
+private val HeartEmpty = Color(0xFF3A1516)
+
+/** How much of heart `i` is filled given `remaining` = hearts of health minus `i`: 0, 0.5 or 1. */
+internal fun heartFill(remaining: Float): Float = when { remaining >= 1f -> 1f; remaining >= 0.5f -> 0.5f; else -> 0f }
+
+/** Hearts of health for read-out, e.g. "7.5" or "8". */
+internal fun heartsLabel(hearts: Float): String {
+    val halves = (hearts * 2).toInt().coerceAtLeast(0)
+    return if (halves % 2 == 0) "${halves / 2}" else "${halves / 2}.5"
+}
+
+@Composable
+private fun Heart(fill: Float) {
+    Box {
+        Text("♥", color = HeartEmpty, style = MaterialTheme.typography.bodyMedium)
+        if (fill > 0f) {
+            Text(
+                "♥", color = HeartFull, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.drawWithContent { clipRect(right = size.width * fill) { this@drawWithContent.drawContent() } },
+            )
+        }
+    }
+}
+
 private fun roman(n: Int) = when (n) { 0 -> ""; 1 -> " II"; 2 -> " III"; 3 -> " IV"; else -> " ${n + 1}" }
 
 @Composable
@@ -49,13 +79,13 @@ fun HealthOverlay(healthJson: String, modifier: Modifier = Modifier) {
                 }
             }
         }
-        // Hearts (each = 2 HP); absorption shown as gold hearts appended.
+        // Hearts (each = 2 HP); absorption shown as gold hearts appended. A half heart is drawn
+        // half-filled (shape, not just a lighter colour), and the row reads out as a number.
         val totalHearts = (h.max / 2f).toInt().coerceIn(1, 30)
-        Row {
+        val healthText = pluralStringResource(R.plurals.health_hearts, totalHearts, heartsLabel(h.hp / 2f), totalHearts)
+        Row(Modifier.clearAndSetSemantics { contentDescription = healthText }) {
             for (i in 0 until totalHearts) {
-                val filled = h.hp / 2f - i
-                val c = when { filled >= 1f -> Color(0xFFE23A45); filled >= 0.5f -> Color(0xFFEE8891); else -> Color(0xFF3A1516) }
-                Text("♥", color = c, style = MaterialTheme.typography.bodyMedium)
+                Heart(fill = heartFill(h.hp / 2f - i))
             }
             val absHearts = (h.absorb / 2f).toInt().coerceIn(0, 10)
             for (i in 0 until absHearts) { Text("♥", color = Color(0xFFF2C15A), style = MaterialTheme.typography.bodyMedium) }
