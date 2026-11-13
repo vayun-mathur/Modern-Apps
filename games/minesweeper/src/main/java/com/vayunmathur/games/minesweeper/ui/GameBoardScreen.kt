@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +56,8 @@ private val FieldMaxWidth = 480.dp
  *
  * @param elapsedSeconds the clock, read lazily so a 1 Hz tick recomposes only the text that
  * shows it rather than the field.
+ * @param onDialogShownChange told whenever a confirmation dialog opens or closes, so the stateful
+ * caller can pause the clock while the field is covered.
  */
 @Composable
 fun GameBoardScreen(
@@ -61,6 +65,7 @@ fun GameBoardScreen(
     actions: MinesweeperActions,
     onExit: () -> Unit,
     elapsedSeconds: () -> Int = { 0 },
+    onDialogShownChange: (Boolean) -> Unit = {},
 ) {
     val game = state.game
     val mineCount = state.config.difficulty.mineCount(state.config.size)
@@ -70,6 +75,9 @@ fun GameBoardScreen(
     val hasProgress = game?.let { it.started && !it.isOver } == true
     var confirmRestart by remember { mutableStateOf(false) }
     var confirmGiveUp by remember { mutableStateOf(false) }
+    val dialogShownChange by rememberUpdatedState(onDialogShownChange)
+    val dialogShown = confirmRestart || confirmGiveUp
+    LaunchedEffect(dialogShown) { dialogShownChange(dialogShown) }
     AppScaffold(
         // Size name plus the mine count rather than size plus density name: the two enums share
         // labels ("Medium" and "Medium"), and the raw count is what a player actually wants to know.
