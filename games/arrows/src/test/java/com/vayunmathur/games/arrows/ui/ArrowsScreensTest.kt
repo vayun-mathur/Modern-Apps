@@ -12,6 +12,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
+import androidx.compose.ui.unit.height
 import com.vayunmathur.games.arrows.ui.components.BOARD_TEST_TAG
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
