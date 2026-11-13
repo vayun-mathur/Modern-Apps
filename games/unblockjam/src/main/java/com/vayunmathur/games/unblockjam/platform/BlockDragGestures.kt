@@ -114,33 +114,41 @@ private class DragParams(
 )
 
 /**
- * Where a dragged block is, in cells: `x`/`y` of its top-left corner, fractional mid-drag.
+ * Where a block is, in cells: `x`/`y` of its top-left corner, fractional mid-drag or mid-settle.
  *
  * Cells rather than dp so the position means the same thing at any board size: a rotation or a
  * window resize changes how big a cell is drawn, not which cell a block is in.
  */
-class BlockOffset(
-    val x: () -> Float,
-    val y: () -> Float,
-    val setX: (Float) -> Unit,
-    val setY: (Float) -> Unit,
-)
+interface BlockPosition {
+    val x: Float
+    val y: Float
 
-private fun settleAfterDrag(params: DragParams, offset: BlockOffset) {
-    val (newX, newY) = snappedPosition(params, offset)
+    /** Puts the block under the finger. */
+    fun dragTo(x: Float, y: Float)
+
+    /**
+     * Lets go: the block glides from wherever the finger left it to wherever the level now puts
+     * it - the cell a move was committed to, or back to its own cell if the move was refused or
+     * the drag was cancelled.
+     */
+    fun release()
+}
+
+private fun settleAfterDrag(params: DragParams, position: BlockPosition) {
+    val (newX, newY) = snappedPosition(params, position)
     val newBlock = params.block.copy(position = Coord(newX, newY))
     when {
         isWinningMove(params, newX) -> params.onLevelWon()
         isValidRelocation(params, newBlock) -> applyRelocation(params, newBlock)
-        else -> resetOffsets(params, offset)
     }
+    position.release()
 }
 
-private fun snappedPosition(params: DragParams, offset: BlockOffset): Pair<Int, Int> =
+private fun snappedPosition(params: DragParams, position: BlockPosition): Pair<Int, Int> =
     if (params.isHorizontal) {
-        offset.x().roundToInt() to params.block.position.y
+        position.x.roundToInt() to params.block.position.y
     } else {
-        params.block.position.x to offset.y().roundToInt()
+        params.block.position.x to position.y.roundToInt()
     }
 
 private fun isWinningMove(params: DragParams, newX: Int): Boolean =
@@ -158,19 +166,14 @@ private fun applyRelocation(params: DragParams, newBlock: Block) {
     params.onLevelChanged(params.levelData.copy(blocks = newBlocks, lastMovedBlockIndex = params.index))
 }
 
-private fun resetOffsets(params: DragParams, offset: BlockOffset) {
-    offset.setX(params.block.position.x.toFloat())
-    offset.setY(params.block.position.y.toFloat())
-}
-
 /** Moves the block by a drag of ([dx], [dy]) cells along its axis, within [min]..[max]. */
-private fun handleDragDelta(params: DragParams, min: Float, max: Float, offset: BlockOffset, dx: Float, dy: Float) {
+private fun handleDragDelta(params: DragParams, min: Float, max: Float, position: BlockPosition, dx: Float, dy: Float) {
     if (!params.isHorizontal) {
-        offset.setY((offset.y() + dy).coerceIn(min, max))
+        position.dragTo(position.x, (position.y + dy).coerceIn(min, max))
         return
     }
-    val newX = (offset.x() + dx).coerceIn(min, max)
-    offset.setX(newX)
+    val newX = (position.x + dx).coerceIn(min, max)
+    position.dragTo(newX, position.y)
     val reachedExit = newX.roundToInt() + params.block.dimension.width - 1 >= params.levelData.exit.x
     if (params.isMainBlock && params.block.position.y == params.levelData.exit.y && reachedExit) {
         params.onLevelWon()
@@ -178,7 +181,7 @@ private fun handleDragDelta(params: DragParams, min: Float, max: Float, offset: 
 }
 
 /**
- * Drags [block] along its long axis, reading and writing its position through [offset] in cells.
+ * Drags [block] along its long axis, reading and writing its position through [position] in cells.
  *
  * [cellWidth] and [cellHeight] only convert finger movement into cells. They are part of the
  * gesture's key, so a resize mid-game restarts the detector with the new cell size rather than
@@ -190,7 +193,7 @@ fun Modifier.blockDragGestures(
     index: Int,
     isLevelWon: Boolean,
     cellSize: DpSize,
-    offset: BlockOffset,
+    position: BlockPosition,
     onLevelWon: () -> Unit,
     onLevelChanged: (LevelData) -> Unit,
 ): Modifier {
@@ -221,22 +224,22 @@ fun Modifier.blockDragGestures(
                 },
                 onDragEnd = {
                     dragging = false
-                    settleAfterDrag(params, offset)
+                    settleAfterDrag(params, position)
                 },
                 onDragCancel = {
                     dragging = false
-                    resetOffsets(params, offset)
+                    position.release()
                 },
                 onDrag = { change, dragAmount ->
                     change.consume()
                     handleDragDelta(
-                        params, minOffset, maxOffset, offset,
+                        params, minOffset, maxOffset, position,
                         dragAmount.x / cellWidthPx, dragAmount.y / cellHeightPx,
                     )
                 }
             )
         } finally {
-            if (dragging) resetOffsets(params, offset)
+            if (dragging) position.release()
         }
     }
 }
