@@ -9,9 +9,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.MaterialTheme
@@ -29,6 +37,12 @@ import com.vayunmathur.library.ui.TextButton
  *
  * The scrim is also a touch barrier: it swallows every pointer event that lands outside the card, so a
  * tap meant to dismiss nothing cannot fall through to a cell or a number-pad key on the finished board.
+ *
+ * It is modal for assistive technology and keyboards too. The overlay is a pane titled [title]: it is
+ * announced when it appears, and because it covers the board, TalkBack drops the covered board nodes
+ * from its tree, so swiping cannot reach a cell whose click action would bypass the touch barrier.
+ * Keyboard focus moves onto the overlay when it appears and cannot leave it, so Tab and the D-pad stay
+ * on the card's buttons.
  *
  * [won] only picks the title colour; the caller supplies the words, because "Solved", "Field Cleared"
  * and "Congratulations" all mean the same thing in different games and none of them belongs here.
@@ -48,7 +62,13 @@ fun GameResultOverlay(
     backLabel: String = stringResource(R.string.game_back),
     stats: @Composable ColumnScope.() -> Unit = {},
 ) {
-    Box(modifier.fillMaxSize()) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
+    Box(
+        modifier
+            .fillMaxSize()
+            .modalPane(title, focusRequester),
+    ) {
         // A sibling under the card rather than its parent: a parent that swallowed events would also
         // eat the moves of a press on the card's own buttons and cancel it.
         Box(
@@ -88,6 +108,19 @@ fun GameResultOverlay(
         }
     }
 }
+
+/**
+ * The accessibility and focus half of being modal.
+ *
+ * A pane title makes the node important for accessibility, and Compose leaves out of the accessibility
+ * tree any node wholly covered by an important node drawn above it — that is what hides the board from
+ * TalkBack. The node is also a focus target that refuses to let focus leave it.
+ */
+private fun Modifier.modalPane(title: String, focusRequester: FocusRequester): Modifier = this
+    .semantics { paneTitle = title }
+    .focusRequester(focusRequester)
+    .focusProperties { onExit = { cancelFocusChange() } }
+    .focusTarget()
 
 /**
  * Makes this node a hit target that consumes everything it receives, so nothing drawn beneath it — and
