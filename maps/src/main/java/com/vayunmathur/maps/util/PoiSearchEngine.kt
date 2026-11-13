@@ -150,35 +150,52 @@ internal class CandidateSearch(
 
     /** The driver's whole range in a table, intersected with the other scanned tokens. */
     private fun collectMaterialized(driver: Int) {
-        val table = HitTable(tokens.size, tokens[driver].size)
-        if (!m.scanToken(tokens[driver], cancelled) { o, e -> table.mark(table.add(o), driver, m.entryWordIdx(e)) }) return
-        for (t in scanned) {
-            if (t == driver) continue
-            val ok = m.scanToken(tokens[t], cancelled) { o, e ->
-                val i = table.indexOf(o)
-                if (i >= 0) table.mark(i, t, m.entryWordIdx(e))
-            }
-            if (!ok) return
-        }
+        val table = intersectScanned(driver) ?: return
         val survivors = BooleanArray(table.size) { i -> scanned.all { table.mask(i, it) != 0L } }
         val count = survivors.count { it }
         if (count == 0) return
         // Near first: the grid's ordinals are a sequential read, a survivor's coordinates a
         // random one, so even a small survivor set is only placed whole when the boxes
         // around the bias point did not already fill the page.
+        if (joinRings(table, survivors)) return
+        if (count <= GLOBAL_ALL_CAP) {
+            for (i in 0 until table.size) if (survivors[i]) addIndexed(table.ordinals[i], table, i)
+        } else {
+            collectRegional(table, survivors)
+        }
+    }
+
+    /** The driver's entries in a [HitTable], marked by every scanned token; null when cancelled. */
+    private fun intersectScanned(driver: Int): HitTable? {
+        val table = HitTable(tokens.size, tokens[driver].size)
+        val read = m.scanToken(tokens[driver], cancelled) { o, e ->
+            table.mark(table.add(o), driver, m.entryWordIdx(e))
+        }
+        if (!read) return null
+        for (t in scanned.filter { it != driver }) {
+            val ok = m.scanToken(tokens[t], cancelled) { o, e ->
+                val i = table.indexOf(o)
+                if (i >= 0) table.mark(i, t, m.entryWordIdx(e))
+            }
+            if (!ok) return null
+        }
+        return table
+    }
+
+    /**
+     * Survivors inside the growing boxes around the bias point; true when that settled the
+     * search (the page is full after at least [MIN_RINGS] boxes, or it was cancelled).
+     */
+    private fun joinRings(table: HitTable, survivors: BooleanArray): Boolean {
         RING_HALF_KM.forEachIndexed { ring, half ->
             forEachOrdinalNear(half) { o ->
                 val i = table.indexOf(o)
                 if (i >= 0 && survivors[i]) addIndexed(o, table, i)
                 true
             }
-            if ((ring + 1 >= MIN_RINGS && found.size >= bias.limit) || cancelled()) return
+            if ((ring + 1 >= MIN_RINGS && found.size >= bias.limit) || cancelled()) return true
         }
-        if (count <= GLOBAL_ALL_CAP) {
-            for (i in 0 until table.size) if (survivors[i]) addIndexed(table.ordinals[i], table, i)
-        } else {
-            collectRegional(table, survivors)
-        }
+        return false
     }
 
     /**
@@ -253,7 +270,7 @@ internal class CandidateSearch(
                 if (o !in found) {
                     visited++
                     val name = m.nameAt(m.nameOff(o))
-                    val tier = if (name == null) PoiSearch.NO_MATCH else PoiSearch.matchTier(name, queryNorm, queryWords)
+                    val tier = name?.let { PoiSearch.matchTier(it, queryNorm, queryWords) } ?: PoiSearch.NO_MATCH
                     val accept = tier != PoiSearch.NO_MATCH && (acceptLoose || tier <= PoiSearch.TIER_TOKENS)
                     if (accept) add(o, tier)
                 }
@@ -410,7 +427,8 @@ internal fun rankCandidates(
         val record = m.record(c.ordinal)
         val tier = PoiSearch.matchTier(record.name, queryNorm, queryWords)
             .takeIf { it != PoiSearch.NO_MATCH } ?: c.tier
-        val place = if (tier == PoiSearch.TIER_EXACT && record.type == PoiCategories.TYPE_PLACE) PLACE_EXACT_BONUS else 0.0
+        val exactPlace = tier == PoiSearch.TIER_EXACT && record.type == PoiCategories.TYPE_PLACE
+        val place = if (exactPlace) PLACE_EXACT_BONUS else 0.0
         val score = tierPenalty(tier) + distancePenalty(c.distKm) - place - typeBonus(record.type) -
             boostBonus(boostWeight(bias.boost, record.name))
         RankedRow(record, score, c.distKm)

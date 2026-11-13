@@ -26,6 +26,10 @@ private fun PoiIndex.Mapped.axis(value: Int, origin: Int): Int {
 private fun PoiIndex.Mapped.row(latE7: Int): Int = axis(latE7, lat0E7)
 private fun PoiIndex.Mapped.col(lonE7: Int): Int = axis(lonE7, lon0E7).coerceAtMost(cols - 1)
 
+/** Whether the CSR grid is present and its header describes a usable grid. */
+private fun PoiIndex.Mapped.gridUsable(): Boolean =
+    spatial != null && cellCount > 0 && minOf(cols, cellE7) > 0
+
 /** The [i]th entry of the ascending populated-cell-id array. */
 private fun PoiIndex.Mapped.cellIdAt(i: Int): Int =
     spatial!!.getInt(PoiIndex.SPATIAL_HEADER_BYTES + CELL_SLOT_BYTES * i)
@@ -56,7 +60,7 @@ internal fun PoiIndex.Mapped.forEachCellInBox(
     maxLonE7: Int,
     onCell: (cellIndex: Int) -> Boolean,
 ) {
-    if (spatial == null || cellCount <= 0 || cols <= 0 || cellE7 <= 0) return
+    if (!gridUsable()) return
     val c0 = col(minLonE7)
     val c1 = col(maxLonE7)
     for (r in row(minLatE7)..row(maxLatE7)) {

@@ -25,7 +25,8 @@ private const val SCAN_POLL_MASK = 0xFFFF
 
 /** Entries `[first, last]` whose word starts with [key]; empty when none. */
 internal fun PoiIndex.Mapped.prefixRange(key: ByteArray, within: IntRange = 0 until entryCount): IntRange {
-    if (nameIdx == null || entryCount == 0 || key.isEmpty() || within.isEmpty()) return IntRange.EMPTY
+    if (nameIdx == null || entryCount == 0) return IntRange.EMPTY
+    if (key.isEmpty() || within.isEmpty()) return IntRange.EMPTY
     val end = within.last + 1
     val lo = lowerBoundWord(key, within.first, end)
     // Most spellings (an accented form nobody uses) are empty: one probe settles it

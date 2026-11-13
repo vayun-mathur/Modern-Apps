@@ -197,28 +197,26 @@ private fun PoiIndex.Mapped.cachedBoundaryCity(region: Long, ordinal: Int): Stri
 
 /** The hierarchy walk for boundary [tagged]; see the file comment for the level rules. */
 internal fun AdminTable.localityOf(tagged: Long, english: Boolean): String? {
-    var city: String? = null
-    var deepest: String? = null
-    var state: String? = null
-    var region: String? = null
-    var country: String? = null
+    val chain = chainOf(tagged, english)
+    if (chain.isEmpty()) return null
+    // The first (deepest) name per level, walking up.
+    fun first(levels: IntRange): String? =
+        chain.firstOrNull { (level, name) -> level in levels && name != null }?.second
+    val city = first(CITY_MIN_LEVEL..CITY_MAX_LEVEL) ?: first(CITY_MAX_LEVEL + 1..Int.MAX_VALUE)
+    val state = first(STATE_LEVEL..STATE_LEVEL) ?: first(REGION_LEVEL..REGION_LEVEL)
+    return joinLocality(city, state, first(COUNTRY_LEVEL..COUNTRY_LEVEL))
+}
+
+/** `(admin_level, name)` from boundary [tagged] up to the top, at most [MAX_CHAIN] long. */
+private fun AdminTable.chainOf(tagged: Long, english: Boolean): List<Pair<Int, String?>> {
+    val out = ArrayList<Pair<Int, String?>>()
     var at = find(tagged)
-    var steps = 0
-    while (at >= 0 && steps < MAX_CHAIN) {
-        val level = level(at)
-        val name = name(at, english)
-        when {
-            level == COUNTRY_LEVEL -> country = country ?: name
-            level == REGION_LEVEL -> region = region ?: name
-            level == STATE_LEVEL -> state = state ?: name
-            level in CITY_MIN_LEVEL..CITY_MAX_LEVEL -> city = city ?: name
-            level > CITY_MAX_LEVEL -> deepest = deepest ?: name
-        }
+    while (at >= 0 && out.size < MAX_CHAIN) {
+        out.add(level(at) to name(at, english))
         val parent = parent(at)
         at = if (parent == REGION_NONE) -1 else find(parent)
-        steps++
     }
-    return joinLocality(city ?: deepest, state ?: region, country)
+    return out
 }
 
 /** The non-blank parts joined with ", ", consecutive repeats dropped ("Singapore, Singapore"). */
