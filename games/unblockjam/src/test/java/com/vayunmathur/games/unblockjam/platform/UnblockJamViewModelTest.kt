@@ -91,6 +91,14 @@ class UnblockJamViewModelTest {
         assertFalse(vm.uiState.value.isLevelWon)
     }
 
+    /** A real one-cell move on [level], along some block's own axis, as a drag would make. */
+    private fun legalMove(level: com.vayunmathur.games.unblockjam.data.LevelData) =
+        level.blocks.indices.firstNotNullOf { i ->
+            listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1).firstNotNullOfOrNull { (dx, dy) ->
+                (stepBlock(level, i, dx, dy) as? StepResult.Moved)?.level
+            }
+        }
+
     private fun lastBlock(level: com.vayunmathur.games.unblockjam.data.LevelData): Int =
         level.blocks.indices.last { !level.blocks[it].fixed }
 
@@ -115,6 +123,52 @@ class UnblockJamViewModelTest {
         } ?: block
         val blocks = level.blocks.toMutableList().also { it[blockIndex] = chosen }
         return level.copy(blocks = blocks, lastMovedBlockIndex = blockIndex)
+    }
+
+    @Test
+    fun boardLeftPartWaySurvivesALevelSwitchAndProcessDeath() {
+        val vm = vm()
+        vm.loadLevel(0, 0)
+        val start = vm.uiState.value.currentLevelData!!
+        val moved = legalMove(start)
+        vm.onBlockMoved(moved)
+
+        // Off to another puzzle and back.
+        vm.loadLevel(0, 1)
+        vm.loadLevel(0, 0)
+        assertEquals(moved.blocks, vm.uiState.value.currentLevelData!!.blocks)
+        assertEquals(1, vm.getCurrentMoves())
+
+        // A fresh ViewModel stands in for the process being killed; undo history comes back too.
+        val revived = vm()
+        revived.loadLevel(0, 0)
+        assertEquals(moved.blocks, revived.uiState.value.currentLevelData!!.blocks)
+        assertEquals(listOf(start.blocks), revived.uiState.value.history.map { it.blocks })
+        revived.onUndo()
+        assertEquals(start.blocks, revived.uiState.value.currentLevelData!!.blocks)
+
+        // Undone back to the start: nothing left to restore.
+        val again = vm()
+        again.loadLevel(0, 0)
+        assertEquals(start, again.uiState.value.currentLevelData)
+    }
+
+    @Test
+    fun restartAndWinForgetTheSavedBoard() {
+        val vm = vm()
+        vm.loadLevel(0, 0)
+        val start = vm.uiState.value.currentLevelData!!
+        val moved = legalMove(start)
+        vm.onBlockMoved(moved)
+        vm.onRestart()
+        vm().also { it.loadLevel(0, 0) }.let { assertEquals(start, it.uiState.value.currentLevelData) }
+
+        vm.onBlockMoved(moved)
+        vm.onLevelWon()
+        vm().also { it.loadLevel(0, 0) }.let {
+            assertEquals(start, it.uiState.value.currentLevelData)
+            assertTrue(it.uiState.value.history.isEmpty())
+        }
     }
 
     @Test

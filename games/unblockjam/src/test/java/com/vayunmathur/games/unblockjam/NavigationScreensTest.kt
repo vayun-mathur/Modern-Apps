@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -153,7 +156,17 @@ class NavigationScreensTest {
         rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.undo)).assertIsDisplayed()
         rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.undo)).performClick()
         assertEquals(1, actions.undo)
+        // Restart asks first; dismissing keeps the board, confirming restarts it.
         rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.restart)).performClick()
+        assertEquals(0, actions.restart)
+        rule.onNodeWithText(str(R.string.restart_confirm_title)).assertIsDisplayed()
+        rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.cancel)).performClick()
+        rule.onNodeWithText(str(R.string.restart_confirm_title)).assertDoesNotExist()
+        assertEquals(0, actions.restart)
+        rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.restart)).performClick()
+        rule.onNode(
+            hasText(str(com.vayunmathur.library.ui.R.string.restart)) and hasAnyAncestor(isDialog())
+        ).performClick()
         assertEquals(1, actions.restart)
         assertEquals(0, actions.won)
     }

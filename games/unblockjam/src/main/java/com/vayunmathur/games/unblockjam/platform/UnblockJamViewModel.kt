@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.games.unblockjam.data.CompletedLevelsRepository
 import com.vayunmathur.games.unblockjam.data.DailyLevelGenerator
+import com.vayunmathur.games.unblockjam.data.InProgressBoards
 import com.vayunmathur.games.unblockjam.data.LevelData
 import com.vayunmathur.games.unblockjam.data.LevelPack
 import com.vayunmathur.library.util.LevelStats
@@ -54,6 +55,9 @@ data class UnblockJamUiState(
 class UnblockJamViewModel(application: Application) : AndroidViewModel(application), GameActions {
 
     val repository: CompletedLevelsRepository = CompletedLevelsRepository(application)
+
+    /** Boards left part-way, restored when their level is opened again. */
+    private val inProgress = InProgressBoards(application)
 
     val achievementsManager: UnblockJamAchievementsManager = run {
         val json = application.assets.open("achievements.json")
@@ -151,6 +155,7 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
             withContext(Dispatchers.IO) {
                 // Only today's pack is ever playable, so yesterday's scores are dead weight.
                 dailyRepository.retainOnly(todayLevelIds(today))
+                inProgress.retainDaily(todayLevelIds(today))
                 _dailyStats.value = dailyRepository.getLevelStats()
             }
             _dailyPack.value = DailyLevelGenerator.packFor(today)
@@ -175,20 +180,35 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
      * won board (gestures and Undo/Restart are all disabled once won).
      * Safe to call from a [androidx.compose.runtime.LaunchedEffect] keyed on
      * ([packIndex], [levelIndex]).
+     *
+     * A level left part-way - by Back, by switching puzzles, or by the process
+     * being killed - comes back as it was left, undo history included.
      */
     fun loadLevel(packIndex: Int, levelIndex: Int) {
-        val current = _uiState.value
-        if (current.packIndex == packIndex &&
-            current.levelIndex == levelIndex &&
-            current.currentLevelData != null &&
-            !current.isLevelWon
-        ) return
+        if (isPlaying(packIndex, levelIndex)) return
         val levelData = levelsFor(packIndex)?.getOrNull(levelIndex) ?: return
+        val saved = inProgress.load(levelData)
         _uiState.value = UnblockJamUiState(
             packIndex = packIndex,
             levelIndex = levelIndex,
-            currentLevelData = levelData,
+            currentLevelData = saved?.current ?: levelData,
+            history = saved?.history.orEmpty(),
         )
+    }
+
+    /** Whether ([packIndex], [levelIndex]) is already on screen and still being played. */
+    private fun isPlaying(packIndex: Int, levelIndex: Int): Boolean {
+        val current = _uiState.value
+        val sameLevel = current.packIndex == packIndex && current.levelIndex == levelIndex
+        return sameLevel && current.currentLevelData != null && !current.isLevelWon
+    }
+
+    /** Writes the board on screen to [inProgress], or forgets it once it is back at the start. */
+    private fun saveProgress() {
+        val s = _uiState.value
+        val current = s.currentLevelData ?: return
+        if (s.isLevelWon) return
+        if (s.history.isEmpty()) inProgress.clear(current.id) else inProgress.save(current, s.history)
     }
 
     /** Move count for the active attempt, including the winning move if applicable. */
@@ -210,6 +230,7 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
                     history = it.history.dropLast(1),
                 )
             }
+            saveProgress()
             return
         }
         if (s.isLevelWon) return
@@ -230,6 +251,7 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
         } else {
             _uiState.update { it.copy(currentLevelData = newLevelData) }
         }
+        saveProgress()
     }
 
     override fun onLevelWon() {
@@ -238,6 +260,7 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
         _uiState.update { it.copy(isLevelWon = true) }
 
         val level = s.currentLevelData ?: return
+        inProgress.clear(level.id)
         val moves = getCurrentMoves()
 
         if (s.packIndex == DAILY_PACK_INDEX) {
@@ -296,6 +319,7 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
                 history = it.history.dropLast(1),
             )
         }
+        saveProgress()
         viewModelScope.launch(Dispatchers.IO) {
             repository.incrementUndoCount()
             achievementsManager.onProgressUpdated(
@@ -315,6 +339,7 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
                 isLevelWon = false,
             )
         }
+        inProgress.clear(pristine.id)
     }
 
     fun dismissAchievementNotification() {

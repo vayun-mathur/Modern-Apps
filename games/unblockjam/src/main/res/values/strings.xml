@@ -35,4 +35,8 @@
     <string name="action_move_up">Move up</string>
     <!-- GameBoard: Screen-reader action sliding a block one cell down. Verb phrase -->
     <string name="action_move_down">Move down</string>
+    <!-- GameScreen restart confirmation: Title asking whether to put every block back. Question -->
+    <string name="restart_confirm_title">Restart this puzzle?</string>
+    <!-- GameScreen restart confirmation: Explains the moves made so far are lost. Sentence -->
+    <string name="restart_confirm_message">Your moves on this puzzle will be lost.</string>
 </resources>

@@ -25,7 +25,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -45,6 +47,7 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
 import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.DailyReminderSettingsSection
 import com.vayunmathur.library.ui.DetailScaffold
 import com.vayunmathur.library.ui.DynamicTheme
@@ -400,6 +403,27 @@ fun GamePage(backStack: NavBackStack<Route>, viewModel: UnblockJamViewModel, pac
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameScreen(state: GameUiState, actions: GameActions, onBack: () -> Unit) {
+    // Restart throws away every move on the puzzle, so it asks first, as Pipes does. The buttons
+    // get actions whose onRestart opens the dialog; only confirming reaches the real one.
+    var confirmRestart by remember { mutableStateOf(false) }
+    val screenActions = remember(actions) {
+        object : GameActions by actions {
+            override fun onRestart() {
+                confirmRestart = true
+            }
+        }
+    }
+    if (confirmRestart) {
+        ConfirmDialog(
+            title = stringResource(R.string.restart_confirm_title),
+            message = stringResource(R.string.restart_confirm_message),
+            confirmLabel = stringResource(UiR.string.restart),
+            dismissLabel = stringResource(UiR.string.cancel),
+            destructive = true,
+            onConfirm = { actions.onRestart() },
+            onDismiss = { confirmRestart = false },
+        )
+    }
     AppScaffold(
         title = {},
         onNavigateBack = onBack,
@@ -416,9 +440,9 @@ fun GameScreen(state: GameUiState, actions: GameActions, onBack: () -> Unit) {
                     .padding(16.dp)
             ) {
                 if (maxWidth > maxHeight) {
-                    LandscapeGameLayout(state, actions)
+                    LandscapeGameLayout(state, screenActions)
                 } else {
-                    PortraitGameLayout(state, actions)
+                    PortraitGameLayout(state, screenActions)
                 }
             }
         }
