@@ -352,16 +352,18 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
     //
     // After `render`, so `draws`/`tris` and every step sample below belong to the frame this
     // line describes rather than the one before it.
-    {
+    //
+    // Once a second rather than every frame (see `timing::REPORT_INTERVAL`): the step report
+    // then carries avg/max over the whole window, so a single slow frame still shows.
+    if let Some(window) = map.report.tick(std::time::Instant::now()) {
         let (tiles, meshes, draws, triangles) = map.renderer.stats();
         let (width_px, height_px) = map.renderer.extent();
         // `meshes` is what is resident, `draws` what the frame just submitted. They
         // differ wherever the authored style ramps a layer's width to zero, so reporting only
         // the first would claim roads are being drawn at zooms where they are gated out.
         //
-        // The step report is built (and its window reset) every frame: `avg/max`
-        // per step in ms for this frame alone.
-        let steps = map.renderer.step_times.borrow_mut().report(1);
+        // `avg/max` per step in ms over the frames since the last line, then reset.
+        let steps = map.renderer.step_times.borrow_mut().report(window);
         log_info(&format!(
             "z{:.2} @{:.4},{:.4} b{:.0} vp {}x{}dp {}x{}px msaa {}x | resident {} tiles, {} meshes, \
              {} draws, {} tris | {} in flight, {} absent, {} stale-dropped | archive z{}..{} | {}",

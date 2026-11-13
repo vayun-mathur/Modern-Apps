@@ -249,6 +249,42 @@ impl StepTimes {
     }
 }
 
+/// How often the per-frame report line reaches logcat.
+///
+/// The line used to be written on every frame: at 60 fps that is 60 `format!`s of a ~400-byte
+/// line plus 60 `__android_log_write`s a second (a socket write to `logd` each), on the frame's
+/// own thread, in release builds too — and enough volume for `logd`'s chatty filter to start
+/// dropping the lines anyway. Once a second, carrying the window's avg/max, keeps every number
+/// the per-frame line had (the max still catches a single slow frame) for 1/60th of the cost.
+pub(crate) const REPORT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(1);
+
+/// Decides which frames write the report line: the first one, then at most one per
+/// [`REPORT_INTERVAL`], each covering every frame since the last.
+pub(crate) struct ReportThrottle {
+    frames: u32,
+    last: Option<std::time::Instant>,
+}
+
+impl ReportThrottle {
+    pub(crate) fn new() -> Self {
+        ReportThrottle { frames: 0, last: None }
+    }
+
+    /// Count one frame at `now`; `Some(frames in the window)` when this frame should report.
+    pub(crate) fn tick(&mut self, now: std::time::Instant) -> Option<u32> {
+        self.frames = self.frames.saturating_add(1);
+        if let Some(last) = self.last {
+            if now.saturating_duration_since(last) < REPORT_INTERVAL {
+                return None;
+            }
+        }
+        let frames = self.frames;
+        self.frames = 0;
+        self.last = Some(now);
+        Some(frames)
+    }
+}
+
 /// Nanos between two `Instant` reads, saturating rather than wrapping on absurd values.
 pub(crate) fn nanos_since(start: std::time::Instant) -> u64 {
     u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX)
@@ -280,6 +316,45 @@ mod tests {
         t.record(Step::Present, 2_500_000);
         let line = t.report(1);
         assert!(line.contains("prs 2.5/2.5"), "got {line}");
+    }
+
+    #[test]
+    fn the_report_line_is_written_once_a_second_not_every_frame() {
+        use std::time::{Duration, Instant};
+        let mut throttle = ReportThrottle::new();
+        let t0 = Instant::now();
+        // The first frame reports (startup is when the line matters most).
+        assert_eq!(throttle.tick(t0), Some(1));
+        // 59 more frames at 60 fps inside the second: silent.
+        for i in 1..60u64 {
+            assert_eq!(throttle.tick(t0 + Duration::from_micros(16_667 * i)), None);
+        }
+        // The frame at one second reports the whole window.
+        assert_eq!(throttle.tick(t0 + REPORT_INTERVAL), Some(60));
+    }
+
+    #[test]
+    #[ignore = "timing harness; run with --ignored --nocapture"]
+    fn the_per_frame_report_formatting_cost() {
+        // What every frame paid before the throttle, before the logd write itself.
+        let mut t = StepTimes::new();
+        let n = 20_000u32;
+        let start = std::time::Instant::now();
+        let mut bytes = 0usize;
+        for i in 0..n {
+            for step in Step::ALL {
+                t.record(step, u64::from(i) * 1_000);
+            }
+            let line = format!(
+                "z{:.2} @{:.4},{:.4} b{:.0} vp {}x{}dp {}x{}px msaa {}x | resident {} tiles, {} meshes, \
+                 {} draws, {} tris | {} in flight, {} absent, {} stale-dropped | archive z{}..{} | {}",
+                14.2, -122.4194, 37.7749, 0.0, 412.0, 915.0, 1080, 2400, 4, 40, 900, 1200, 400_000,
+                3, 10, 0, 0, 15, t.report(1)
+            );
+            bytes += line.len();
+        }
+        let per = start.elapsed().as_secs_f64() * 1e6 / f64::from(n);
+        println!("report line: {per:.2} us/frame to build ({} bytes)", bytes / n as usize);
     }
 
     #[test]

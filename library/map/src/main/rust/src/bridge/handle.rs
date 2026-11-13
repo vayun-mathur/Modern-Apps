@@ -216,6 +216,9 @@ pub(crate) struct MapHandle {
     /// frame; `None` after a Moon frame, so returning from the Moon always takes the
     /// burst path once rather than comparing against a stale Earth zoom.
     pub(crate) last_zoom: Option<f64>,
+    /// Which frames write the per-frame report line (once a second; see
+    /// `timing::REPORT_INTERVAL`).
+    pub(crate) report: crate::timing::ReportThrottle,
 }
 
 impl MapHandle {

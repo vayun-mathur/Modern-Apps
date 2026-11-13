@@ -155,6 +155,7 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_create<'l>(
         density: 1.0,
         last_zoom: None,
         absent_build_id: 0,
+        report: crate::timing::ReportThrottle::new(),
     });
     Box::into_raw(handle) as jlong
 }
