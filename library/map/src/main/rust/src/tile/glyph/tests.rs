@@ -275,3 +275,43 @@ fn budapest_street_names_shape_every_character() {
         }
     }
 }
+
+#[test]
+fn the_fast_distance_transform_matches_the_square_scan_on_every_glyph() {
+    // The nearest-first search with a precomputed mask must be bit-identical to the original
+    // square scan, or every label on the map changes weight. Checked over the real charset in
+    // both weights, which covers both placement branches (scale 1.0 and scaled-to-fit).
+    if !real_fonts_staged() {
+        eprintln!("SKIP: staged TTFs are 404 pages, not fonts");
+        return;
+    }
+    use super::sdf::{sdf_from_coverage, sdf_from_coverage_reference};
+    use ab_glyph::FontRef;
+    let mut checked = 0;
+    for ttf in [REGULAR_TTF, MEDIUM_TTF] {
+        let font = FontRef::try_from_slice(ttf).unwrap();
+        for ch in super::metrics::charset() {
+            let id = font.glyph_id(ch);
+            let Some(outlined) = font.outline_glyph(id.with_scale(48.0)) else { continue };
+            let bounds = outlined.px_bounds();
+            let (w, h) = (bounds.width().ceil() as u32, bounds.height().ceil() as u32);
+            if w == 0 || h == 0 {
+                continue;
+            }
+            let mut coverage = vec![0u8; (w * h) as usize];
+            outlined.draw(|x, y, v| {
+                if x < w && y < h {
+                    coverage[(y * w + x) as usize] = (v * 255.0) as u8;
+                }
+            });
+            let placement = place_in_cell(w, h);
+            assert_eq!(
+                sdf_from_coverage(&coverage, w, h, placement),
+                sdf_from_coverage_reference(&coverage, w, h, placement),
+                "SDF of {ch:?} differs from the reference"
+            );
+            checked += 1;
+        }
+    }
+    assert!(checked > 400, "only {checked} glyphs checked");
+}
