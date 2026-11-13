@@ -7,11 +7,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.vayunmathur.games.unblockjam.data.LevelData
@@ -31,6 +34,12 @@ fun GameBoard(
     isLevelWon: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // The board is a picture of physical space, not text: the exit is on the right and a drag to
+    // the right moves a block right, whatever the locale. Under RTL the rtl-aware offsets used for
+    // the blocks and the exit mirrored the drawing while drag deltas stayed physical, so blocks
+    // slid opposite to the finger. Pinning the board to LTR keeps drawing, hit-testing and drag
+    // math in one coordinate system.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
     val boardSize = minOf(maxWidth, maxHeight)
     val cellWidth = boardSize / levelData.dimension.width
@@ -72,6 +81,7 @@ fun GameBoard(
                 )
             }
         }
+    }
     }
     }
 }
