@@ -90,7 +90,7 @@ internal fun CraftingTable(recipesJson: String) {
                             )
                         }
                         Text(
-                            blockNames[rec.outId] ?: "",
+                            blockName(rec.outId) ?: "",
                             color = Color.White.copy(if (rec.known) 0.95f else 0.4f), fontSize = 12.sp,
                         )
                     }
@@ -122,7 +122,7 @@ internal fun CraftingTable(recipesJson: String) {
             // A locked recipe says what opens it, so the tree reads as a path rather than a wall.
             if (r != null && !r.known) {
                 Text(
-                    stringResource(R.string.recipe_requires, blockNames[r.requires] ?: "?"),
+                    stringResource(R.string.recipe_requires, blockName(r.requires) ?: "?"),
                     color = Color(0xFFD9B36C), fontSize = 12.sp,
                 )
             }

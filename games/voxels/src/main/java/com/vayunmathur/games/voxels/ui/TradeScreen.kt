@@ -155,6 +155,6 @@ private fun ItemChip(id: Int, count: Int) {
         Box(Modifier.size(40.dp).clip(RoundedCornerShape(6.dp)).background(Color.Black.copy(0.4f)), contentAlignment = Alignment.Center) {
             if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(28.dp), filterQuality = FilterQuality.None)
         }
-        Text("${count}× ${blockNames[id] ?: id}", color = Color.White, fontSize = 12.sp)
+        Text("${count}× ${blockName(id) ?: id}", color = Color.White, fontSize = 12.sp)
     }
 }

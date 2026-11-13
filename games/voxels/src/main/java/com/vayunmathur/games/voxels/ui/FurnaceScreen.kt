@@ -117,7 +117,7 @@ fun FurnaceOverlay(smeltingJson: String, smeltJson: String, isBlast: Boolean, on
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(26.dp), filterQuality = FilterQuality.None)
-                            Text(blockNames[rec.outId] ?: "", color = Color.White.copy(0.95f), fontSize = 12.sp)
+                            Text(blockName(rec.outId) ?: "", color = Color.White.copy(0.95f), fontSize = 12.sp)
                         }
                     }
                 }
@@ -298,8 +298,8 @@ private fun TapSlot(slot: InvSlot, onTap: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         if (slot.id != 0) {
-            if (icon != null) Image(bitmap = icon, contentDescription = blockNames[slot.id], modifier = Modifier.size(28.dp), filterQuality = FilterQuality.None)
-            else Text(blockNames[slot.id]?.take(2) ?: "", color = Color.White, fontSize = 10.sp)
+            if (icon != null) Image(bitmap = icon, contentDescription = blockName(slot.id), modifier = Modifier.size(28.dp), filterQuality = FilterQuality.None)
+            else Text(blockName(slot.id)?.take(2) ?: "", color = Color.White, fontSize = 10.sp)
             if (slot.count > 1 && !isDurabilityItem(slot.id)) {
                 Box(Modifier.align(Alignment.BottomEnd)) { Text("${slot.count}", color = Color.White, fontSize = 10.sp) }
             }

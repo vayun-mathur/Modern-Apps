@@ -20,7 +20,7 @@ import com.vayunmathur.games.voxels.R
 import com.vayunmathur.games.voxels.domain.NetFailure
 import com.vayunmathur.games.voxels.domain.NetStatus
 import com.vayunmathur.games.voxels.domain.peerChanges
-import com.vayunmathur.games.voxels.domain.playerLabel
+import com.vayunmathur.games.voxels.domain.playerSuffix
 import com.vayunmathur.library.ui.Text
 import kotlinx.coroutines.delay
 import org.json.JSONArray
@@ -50,8 +50,8 @@ fun OnlineHud(status: NetStatus, peersJson: String, ownerDevice: String, isHost:
         if (before == null) return@LaunchedEffect
         val c = peerChanges(before, peers)
         val now = System.nanoTime()
-        c.joined.forEachIndexed { i, id -> notices += Notice(now + i, playerLabel(id), joined = true) }
-        c.left.forEachIndexed { i, id -> notices += Notice(now + 1000 + i, playerLabel(id), joined = false) }
+        c.joined.forEachIndexed { i, id -> notices += Notice(now + i, playerSuffix(id), joined = true) }
+        c.left.forEachIndexed { i, id -> notices += Notice(now + 1000 + i, playerSuffix(id), joined = false) }
     }
     Column(modifier.widthIn(max = 320.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Chip(stringResource(R.string.players_online, peers.size + 1), Color(0x99000000))
@@ -66,7 +66,8 @@ fun OnlineHud(status: NetStatus, peersJson: String, ownerDevice: String, isHost:
             is NetStatus.Failed -> Chip(stringResource(failureText(status.reason)), Color(0xCCB00020))
         }
         for (n in notices) {
-            Chip(stringResource(if (n.joined) R.string.player_joined else R.string.player_left, n.player), Color(0x99000000))
+            val who = stringResource(R.string.player_name, n.player)
+            Chip(stringResource(if (n.joined) R.string.player_joined else R.string.player_left, who), Color(0x99000000))
             LaunchedEffect(n.id) {
                 delay(NOTICE_MS)
                 notices.remove(n)

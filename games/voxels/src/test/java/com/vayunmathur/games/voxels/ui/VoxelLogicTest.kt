@@ -43,13 +43,15 @@ class VoxelLogicTest {
     }
 
     @Test fun `catalog names blocks items and blessings`() {
-        assertEquals("Stone", blockNames[1])
-        assertEquals("Diamond Ore", blockNames[20])
-        assertEquals("Apple", blockNames[1026])
-        assertEquals("Blessing of Athena", blockNames[1141])
-        assertEquals("Fishing Rod", blockNames[1149])
-        assertEquals(null, blockNames[99999])
-        assertTrue(blockNames.values.all { it.isNotBlank() })
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        fun name(id: Int) = blockNameRes[id]?.let { ctx.getString(it) }
+        assertEquals("Stone", name(1))
+        assertEquals("Diamond Ore", name(20))
+        assertEquals("Apple", name(1026))
+        assertEquals("Blessing of Athena", name(1141))
+        assertEquals("Fishing Rod", name(1149))
+        assertEquals(null, name(99999))
+        assertTrue(blockNameRes.values.all { ctx.getString(it).isNotBlank() })
     }
 
     @Test fun `roles gate editing`() {

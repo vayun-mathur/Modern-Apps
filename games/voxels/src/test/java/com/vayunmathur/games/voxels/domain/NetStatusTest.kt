@@ -18,6 +18,6 @@ class NetStatusTest {
     }
 
     @Test fun `players are labelled by their id suffix`() {
-        assertEquals("Player 9f3e", playerLabel("0123-4567-9f3e"))
+        assertEquals("9f3e", playerSuffix("0123-4567-9f3e"))
     }
 }

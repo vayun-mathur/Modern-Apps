@@ -112,7 +112,7 @@ fun StonecutterOverlay(cutsJson: String, inventoryJson: String, onClose: () -> U
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(26.dp), filterQuality = FilterQuality.None)
-                            Text(blockNames[id] ?: "", color = Color.White.copy(0.95f), fontSize = 12.sp)
+                            Text(blockName(id) ?: "", color = Color.White.copy(0.95f), fontSize = 12.sp)
                         }
                     }
                 }
@@ -136,7 +136,7 @@ fun StonecutterOverlay(cutsJson: String, inventoryJson: String, onClose: () -> U
                             Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) {
                                 if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(28.dp), filterQuality = FilterQuality.None)
                             }
-                            Text(blockNames[c.outId] ?: "", color = Color.White.copy(0.95f), fontSize = 13.sp)
+                            Text(blockName(c.outId) ?: "", color = Color.White.copy(0.95f), fontSize = 13.sp)
                             Spacer(Modifier.weight(1f))
                             Text("×${c.outN}", color = Color.White.copy(0.7f), fontSize = 12.sp)
                         }

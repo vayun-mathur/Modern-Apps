@@ -137,14 +137,14 @@ fun InventoryOverlay(
             // 236 dp column, so the tab strip scrolls sideways.
             Column(Modifier.width(if (narrow) 160.dp else 236.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TabButton("Natural", catTab == 0) { catTab = 0 }
-                    TabButton("Ores", catTab == 1) { catTab = 1 }
-                    TabButton("Ocean", catTab == 3) { catTab = 3 }
-                    TabButton("Items", catTab == 4) { catTab = 4 }
-                    TabButton("Gear", catTab == 6) { catTab = 6 }
+                    TabButton(stringResource(R.string.catalog_natural), catTab == 0) { catTab = 0 }
+                    TabButton(stringResource(R.string.catalog_ores), catTab == 1) { catTab = 1 }
+                    TabButton(stringResource(R.string.catalog_ocean), catTab == 3) { catTab = 3 }
+                    TabButton(stringResource(R.string.catalog_items), catTab == 4) { catTab = 4 }
+                    TabButton(stringResource(R.string.catalog_gear), catTab == 6) { catTab = 6 }
                     TabButton(stringResource(R.string.blessings), catTab == 5) { catTab = 5 }
-                    TabButton("Music", catTab == 7) { catTab = 7 }
-                    TabButton("Build", catTab == 2) { catTab = 2 }
+                    TabButton(stringResource(R.string.catalog_music), catTab == 7) { catTab = 7 }
+                    TabButton(stringResource(R.string.catalog_build), catTab == 2) { catTab = 2 }
                 }
                 Spacer(Modifier.height(8.dp))
                 val cat = when (catTab) { 0 -> catalogNatural; 1 -> catalogOres; 3 -> catalogOcean; 4 -> catalogItems; 5 -> catalogBlessings; 6 -> catalogGear; 7 -> catalogMusic; else -> catalogBuilding }
@@ -197,7 +197,7 @@ private fun SlotBox(index: Int, slot: InvSlot, bounds: MutableMap<Int, Rect>, sl
     ) {
         if (slot.id != 0) {
             if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(slotSize * 0.65f), filterQuality = FilterQuality.None)
-            else Text(blockNames[slot.id]?.take(2) ?: "", color = Color.White, fontSize = 10.sp)
+            else Text(blockName(slot.id)?.take(2) ?: "", color = Color.White, fontSize = 10.sp)
             if (slot.count > 1 && !isDurabilityItem(slot.id)) Box(Modifier.align(Alignment.BottomEnd)) { Text("${slot.count}", color = Color.White, fontSize = 10.sp) }
             if (isDurabilityItem(slot.id)) DurabilityBar(slot.id, slot.count, Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp))
         }
@@ -244,8 +244,8 @@ private fun CatalogGrid(ids: List<Int>, columns: Int, onPick: (Int) -> Unit) {
                             .clickable { onPick(id) },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (icon != null) Image(bitmap = icon, contentDescription = blockNames[id], modifier = Modifier.size(32.dp), filterQuality = FilterQuality.None)
-                        else Text(blockNames[id]?.take(2) ?: "", color = Color.White, fontSize = 10.sp)
+                        if (icon != null) Image(bitmap = icon, contentDescription = blockName(id), modifier = Modifier.size(32.dp), filterQuality = FilterQuality.None)
+                        else Text(blockName(id)?.take(2) ?: "", color = Color.White, fontSize = 10.sp)
                     }
                 }
             }
@@ -255,7 +255,7 @@ private fun CatalogGrid(ids: List<Int>, columns: Int, onPick: (Int) -> Unit) {
 
 @Composable
 private fun OutfitView(armor: List<InvSlot>) {
-    val labels = listOf("Helmet", "Chestplate", "Leggings", "Boots")
+    val labels = listOf(R.string.armor_helmet, R.string.armor_chestplate, R.string.armor_leggings, R.string.armor_boots)
     Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.equipped_armor), color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         Text(stringResource(R.string.hold_an_armor_piece_in_hand_to_equip_it), color = Color.White.copy(0.6f), fontSize = 12.sp)
@@ -270,7 +270,7 @@ private fun OutfitView(armor: List<InvSlot>) {
                     val icon = if (s.id != 0) rememberBlockIcon(s.id) else null
                     if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(34.dp), filterQuality = FilterQuality.None)
                 }
-                Text(if (s.id != 0) (blockNames[s.id] ?: "?") else "${labels[i]}: empty", color = Color.White.copy(if (s.id != 0) 0.95f else 0.5f))
+                Text(if (s.id != 0) (blockName(s.id) ?: "?") else stringResource(R.string.armor_slot_empty, stringResource(labels[i])), color = Color.White.copy(if (s.id != 0) 0.95f else 0.5f))
             }
         }
     }

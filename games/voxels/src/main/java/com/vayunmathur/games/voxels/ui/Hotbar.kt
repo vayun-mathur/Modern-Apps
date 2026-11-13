@@ -1,21 +1,17 @@
 package com.vayunmathur.games.voxels.ui
 
-import androidx.compose.ui.res.stringResource
-import com.vayunmathur.games.voxels.R
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -212,10 +208,10 @@ fun Hotbar(
             ) {
                 if (slot.id != 0) {
                     if (iconBitmap != null) {
-                        Image(bitmap = iconBitmap, contentDescription = blockNames[slot.id], modifier = Modifier.size(32.dp).clip(RoundedCornerShape(4.dp)), filterQuality = FilterQuality.None)
+                        Image(bitmap = iconBitmap, contentDescription = blockName(slot.id), modifier = Modifier.size(32.dp).clip(RoundedCornerShape(4.dp)), filterQuality = FilterQuality.None)
                     } else {
                         Box(Modifier.size(28.dp).background(Color(0xFF7A7A7A), RoundedCornerShape(3.dp)), contentAlignment = Alignment.Center) {
-                            Text(text = blockNames[slot.id]?.take(2) ?: "${slot.id}", style = MaterialTheme.typography.labelSmall, color = Color.White)
+                            Text(text = blockName(slot.id)?.take(2) ?: "${slot.id}", style = MaterialTheme.typography.labelSmall, color = Color.White)
                         }
                     }
                     if (slot.count > 1 && !isDurabilityItem(slot.id)) {
@@ -235,95 +231,5 @@ fun Hotbar(
                 .clickable { onOpenInventory() },
             contentAlignment = Alignment.Center
         ) { Text("…", color = Color.White, style = MaterialTheme.typography.titleLarge) }
-    }
-}
-
-@Serializable
-data class EffJson(val k: String = "", val amp: Int = 0, val t: Int = 0)
-
-@Serializable
-data class HealthJson(val hp: Float = 20f, val max: Float = 20f, val absorb: Float = 0f, val dead: Boolean = false, val estus: Int = 0, val effects: List<EffJson> = emptyList(), val boss: Float = -1f, val bossName: String = "", val elytra: Boolean = false, val gliding: Boolean = false)
-
-// Small chip shown while an elytra is equipped: prompts to deploy, or confirms gliding.
-@Composable
-fun GlideIndicator(healthJson: String, modifier: Modifier = Modifier) {
-    val hj = remember(healthJson) {
-        try { voxelsJson.decodeFromString<HealthJson>(healthJson) } catch (_: Exception) { HealthJson() }
-    }
-    if (!hj.elytra) return
-    val (label, tint) = if (hj.gliding) "Gliding" to Color(0xFF7CE0FF) else "Tap ▲ mid-air to glide" to Color.White.copy(0.75f)
-    Box(modifier.background(Color.Black.copy(0.45f), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
-        Text(label, color = tint, style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-@Composable
-fun BossBar(healthJson: String, modifier: Modifier = Modifier) {
-    val hj = remember(healthJson) {
-        try { voxelsJson.decodeFromString<HealthJson>(healthJson) } catch (_: Exception) { HealthJson() }
-    }
-    if (hj.boss < 0f) return
-    val wither = hj.bossName == "The Wither"
-    val textColor = if (wither) Color(0xFFBDBDBD) else Color(0xFFB388FF)
-    val barColor = if (wither) Color(0xFF4A4A55) else Color(0xFF9B30FF)
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(hj.bossName.ifEmpty { "Boss" }, color = textColor, style = MaterialTheme.typography.labelMedium)
-        Box(Modifier.width(220.dp).height(7.dp).background(Color.Black.copy(0.6f), RoundedCornerShape(3.dp))) {
-            Box(Modifier.fillMaxWidth(hj.boss.coerceIn(0f, 1f)).fillMaxHeight().background(barColor, RoundedCornerShape(3.dp)))
-        }
-    }
-}
-
-private val effectNames = mapOf(
-    "regen" to "Regen", "poison" to "Poison", "resist" to "Resist", "strength" to "Strength",
-    "speed" to "Speed", "haste" to "Haste", "absorb" to "Absorption", "fireres" to "Fire Res",
-    "night" to "Night Vis", "jump" to "Leaping", "slow" to "Slowness"
-)
-private val effectColors = mapOf(
-    "regen" to Color(0xFFE573B5), "poison" to Color(0xFF6DA33A), "resist" to Color(0xFF9E9E9E),
-    "strength" to Color(0xFF932423), "speed" to Color(0xFF7CAFC6), "haste" to Color(0xFFD9C043),
-    "absorb" to Color(0xFFF2C15A), "fireres" to Color(0xFFE0913A),
-    "night" to Color(0xFF3B3BA0), "jump" to Color(0xFF34A02C), "slow" to Color(0xFF5A6472)
-)
-
-private fun roman(n: Int) = when (n) { 0 -> ""; 1 -> " II"; 2 -> " III"; 3 -> " IV"; else -> " ${n + 1}" }
-
-@Composable
-fun HealthOverlay(healthJson: String, modifier: Modifier = Modifier) {
-    val h = remember(healthJson) {
-        try { voxelsJson.decodeFromString<HealthJson>(healthJson) } catch (_: Exception) { HealthJson() }
-    }
-    Column(modifier, horizontalAlignment = Alignment.Start) {
-        // Effects (above the hearts).
-        if (h.effects.isNotEmpty()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                h.effects.forEach { e ->
-                    Box(Modifier.clip(RoundedCornerShape(4.dp)).background((effectColors[e.k] ?: Color.Gray).copy(alpha = 0.85f)).padding(horizontal = 5.dp, vertical = 1.dp)) {
-                        Text("${effectNames[e.k] ?: e.k}${roman(e.amp)} ${e.t}s", style = MaterialTheme.typography.labelSmall, color = Color.White)
-                    }
-                }
-            }
-        }
-        // Hearts (each = 2 HP); absorption shown as gold hearts appended.
-        val totalHearts = (h.max / 2f).toInt().coerceIn(1, 30)
-        Row {
-            for (i in 0 until totalHearts) {
-                val filled = h.hp / 2f - i
-                val c = when { filled >= 1f -> Color(0xFFE23A45); filled >= 0.5f -> Color(0xFFEE8891); else -> Color(0xFF3A1516) }
-                Text("♥", color = c, style = MaterialTheme.typography.bodyMedium)
-            }
-            val absHearts = (h.absorb / 2f).toInt().coerceIn(0, 10)
-            for (i in 0 until absHearts) { Text("♥", color = Color(0xFFF2C15A), style = MaterialTheme.typography.bodyMedium) }
-        }
-        if (h.estus > 0) {
-            Text(stringResource(R.string.estus, h.estus), color = Color(0xFFFFC957), style = MaterialTheme.typography.labelSmall)
-        }
-    }
-}
-
-@Composable
-fun DebugOverlay(debugJson: String, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(6.dp)).padding(6.dp)) {
-        Text(text = debugJson, style = MaterialTheme.typography.labelSmall, color = Color(0xFFB2FF59))
     }
 }

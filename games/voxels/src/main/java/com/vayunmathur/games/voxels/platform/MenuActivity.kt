@@ -31,6 +31,7 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.rememberIsOnline
+import com.vayunmathur.games.voxels.domain.playerSuffix
 import com.vayunmathur.games.voxels.network.JoinRequests
 import com.vayunmathur.games.voxels.network.VoxelsRoles
 import com.vayunmathur.games.voxels.network.VoxelsSync
@@ -147,7 +148,7 @@ class MenuActivity : ComponentActivity() {
                     val ok = withContext(Dispatchers.IO) {
                         runCatching {
                             VoxelsSync.init(ctx)
-                            val myName = "Player " + VoxelsSync.deviceId.takeLast(4)
+                            val myName = getString(R.string.player_name, playerSuffix(VoxelsSync.deviceId))
                             VoxelsSync.sendJoinRequest(ownerId, worldId, VoxelsSync.deviceId, myName)
                         }.getOrDefault(false)
                     }

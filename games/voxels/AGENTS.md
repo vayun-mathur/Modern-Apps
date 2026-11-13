@@ -15,7 +15,7 @@ _Install: ./install games/voxels (dev by default)._
 Host: `api.maproj.org` (Cloudflare FIRST_PARTY pins). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Env template: `../location_share_server/.env.example` (copy to `.env`, never commit secrets). Full details: root `AGENTS.md` → "Backend server (outside this repo)".
 
 ## Overview
-**Purpose:** Voxel sandbox on a hand-written Rust + Vulkan engine — infinite procedural worlds (25 biomes, villages), crafting/fishing/trading, saves, optional E2EE multiplayer through an untrusted relay. 19 languages.
+**Purpose:** Voxel sandbox on a hand-written Rust + Vulkan engine — infinite procedural worlds (25 biomes, villages), crafting/fishing/trading, saves, optional E2EE multiplayer through an untrusted relay. English plus 9 partially translated locales (13 locale files are empty and fall back to English; never machine-translate).
 **NOT a standard MA game:** `ui/` is thin Compose chrome (menus, inventory, hotbar, joystick) over `VoxelSurfaceView`; the world, physics and rendering live in Rust behind `platform/VoxelsNative`. Multiplayer sync (`network/VoxelsSync`) reuses the everysync E2EE-relay pattern.
 **Entry points:** `MainActivity.kt` → `platform/MenuActivity.kt` (`parseJoinLink`-style world invites live here, mirroring everysync) → `ui/VoxelSurfaceView.kt` → `platform/VoxelsNative.kt` → `data/WorldManager.kt`.
 **Gotchas:**

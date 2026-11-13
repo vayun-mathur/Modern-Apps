@@ -39,7 +39,7 @@ data class PeerChanges(val joined: Set<String>, val left: Set<String>)
 fun peerChanges(before: Set<String>, after: Set<String>): PeerChanges =
     PeerChanges(joined = after - before, left = before - after)
 
-/** Short display name for a device id, matching the join-request naming ("Player 1a2b"). */
-fun playerLabel(deviceId: String): String = "Player " + deviceId.takeLast(PLAYER_SUFFIX)
+/** The short id suffix players are known by ("1a2b" in "Player 1a2b"; the word is a UI string). */
+fun playerSuffix(deviceId: String): String = deviceId.takeLast(PLAYER_SUFFIX)
 
 private const val PLAYER_SUFFIX = 4

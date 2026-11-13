@@ -504,7 +504,7 @@ class MainActivity : ComponentActivity() {
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 HoldButton(
-                                    label = if (flying) "Up" else "Jump",
+                                    label = stringResource(if (flying) R.string.up else R.string.jump),
                                     dimmed = !flying && sneaking,
                                     onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(true) } catch (_: Exception) {} },
                                     onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(false) } catch (_: Exception) {} },
@@ -517,7 +517,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 } else {
                                     HoldButton(
-                                        label = if (sneaking) "Sneaking" else "Sneak",
+                                        label = stringResource(if (sneaking) R.string.sneaking else R.string.sneak),
                                         dimmed = sneaking,
                                         onPress = {
                                             sneaking = !sneaking
