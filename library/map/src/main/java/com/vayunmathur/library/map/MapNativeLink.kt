@@ -136,7 +136,14 @@ internal class MapNativeLink {
         val issued = generation
         MapRenderThread.post {
             val h = nativeHandle
-            val result = if (h == 0L) FrameResult.NONE else drawFrame(h, snapshot, density, frameTimeNanos, pivotWanted, region)
+            // Every dispatched frame must answer, or the main thread's loop waits on it forever
+            // (`frameInFlight`); a throwing frame answers "not drawn" and the loop asks again.
+            val result = try {
+                if (h == 0L) FrameResult.NONE else drawFrame(h, snapshot, density, frameTimeNanos, pivotWanted, region)
+            } catch (t: Throwable) {
+                Log.error("MapNativeLink", "native frame threw", t)
+                FrameResult.NONE
+            }
             MapRenderThread.toMain { if (issued == generation) onDone(result) }
         }
     }
