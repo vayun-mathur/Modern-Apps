@@ -1,6 +1,7 @@
 package com.vayunmathur.games.wordmaker.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
@@ -16,7 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -24,9 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -69,18 +71,19 @@ fun CrosswordBoard(
         val numRows = crosswordData.gridStructure.size
         val numCols = if (numRows > 0) crosswordData.gridStructure[0].length else 0
 
-        val boardWidth = 37.dp * numCols
-        val boardHeight = 37.dp * numRows
-
-        val initialScale = remember(crosswordData, maxWidth, maxHeight) {
-            val scaleX = if (boardWidth.value > 0) maxWidth / boardWidth else 1f
-            val scaleY = if (boardHeight.value > 0) maxHeight / boardHeight else 1f
-            minOf(scaleX, scaleY, 1f)
-        }
-
-        var scale by remember(crosswordData) { mutableFloatStateOf(initialScale) }
-        var offset by remember(crosswordData) { mutableStateOf(Offset.Zero) }
-        var boxCenter by remember { mutableStateOf(Offset.Zero) }
+        val density = LocalDensity.current
+        val board = with(density) { Size((CELL_PITCH * numCols).toPx(), (CELL_PITCH * numRows).toPx()) }
+        val box = Size(
+            if (constraints.hasBoundedWidth) constraints.maxWidth.toFloat() else board.width,
+            if (constraints.hasBoundedHeight) constraints.maxHeight.toFloat() else board.height,
+        )
+        // Recomputed from the current size on every layout, so after a rotation the board is
+        // fitted to the new box instead of keeping a scale meant for the old one. The user's
+        // zoom is stored relative to this fit and re-clamped to the new size.
+        val fit = BoardZoom.fitScale(board, box)
+        var zoom by remember(crosswordData) { mutableStateOf(BoardZoom()) }
+        val view = zoom.clampedTo(fit, board, box)
+        val scale = view.scale(fit)
 
         // Ensure parent knows the current scale, especially the initial one
         LaunchedEffect(scale) {
@@ -88,31 +91,41 @@ fun CrosswordBoard(
         }
 
         val state = rememberTransformableState { centroid, zoomChange, offsetChange, _ ->
-            scale *= zoomChange
-            // Keep the board point under the gesture centroid fixed while zooming.
-            // The graphicsLayer lives on the centered child (default centre
-            // transformOrigin), so pivot relative to the container centre, then
-            // apply the two-finger drag.
-            val d = centroid - boxCenter
-            offset = d - (d - offset) * zoomChange + offsetChange
-            scaleUpdated(scale)
+            // Zoom is clamped between the fit and BoardZoom.maxZoom, and the pan so the board
+            // cannot be pushed off-screen. The graphicsLayer pivots on the board centre, which
+            // sits on the box centre, so the centroid is taken relative to the box centre.
+            zoom = zoom.clampedTo(fit, board, box).transformed(
+                fit = fit,
+                board = board,
+                box = box,
+                centroid = centroid - Offset(box.width / 2, box.height / 2),
+                zoomChange = zoomChange,
+                panChange = offsetChange,
+            )
         }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .onGloballyPositioned { boxCenter = Offset(it.size.width / 2f, it.size.height / 2f) }
+                // Double-tap anywhere off a found word puts the board back to fit-to-screen.
+                // Outside transformable on purpose: the tap detector consumes the down, and
+                // transformable abandons a gesture whose events were consumed before it saw them.
+                .pointerInput(crosswordData) {
+                    detectTapGestures(onDoubleTap = { zoom = BoardZoom() })
+                }
                 .transformable(state = state)
         ) {
             Column(
                 modifier = Modifier.align(Alignment.Center)
-                    .wrapContentSize(align = Alignment.TopStart, unbounded = true)
+                    // Centred even when larger than the box, so the layer's pivot (the board
+                    // centre) is the box centre the zoom maths assumes.
+                    .wrapContentSize(align = Alignment.Center, unbounded = true)
                     .graphicsLayer(
                         scaleX = scale,
                         scaleY = scale,
-                        translationX = offset.x,
-                        translationY = offset.y
-                    ) // 3. Apply transformations
+                        translationX = view.pan.x,
+                        translationY = view.pan.y
+                    )
             ) {
                 crosswordData.gridStructure.forEachIndexed { y, rowString ->
                     Row {
@@ -147,6 +160,9 @@ fun CrosswordBoard(
 
 /** A crossword cell (excluding its 1 dp margin). */
 private val CELL_SIZE = 35.dp
+
+/** A cell plus its margin on both sides: the grid's pitch. */
+private val CELL_PITCH = 37.dp
 
 /** A cell's letter. */
 private val CELL_GLYPH = 18.dp
