@@ -342,6 +342,19 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Retries the load that failed for the current mode (the error screen's Retry button):
+     * reloads the casual level, regenerates today's daily, or generates a new competitive board.
+     */
+    fun retryLoad() {
+        _error.value = null
+        when (gameMode.value) {
+            GameMode.CASUAL -> viewModelScope.launch { loadCasualLevel(currentLevel.value) }
+            GameMode.DAILY -> viewModelScope.launch { refreshDaily() }
+            GameMode.COMPETITIVE -> loadNextCompetitiveLevel()
+        }
+    }
+
     override fun setDifficulty(difficulty: Difficulty) {
         // Difficulty is chosen on the lobby between levels, so it only needs to be persisted.
         viewModelScope.launch { levelDataStore.setDifficulty(difficulty) }

@@ -3,8 +3,6 @@ package com.vayunmathur.games.wordmaker.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,8 +48,18 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, viewModel: WordMakerView
                 )
             }
 
+            // Inside the normal scaffold (mode chooser, settings) with a Retry button, rather
+            // than a bare line of text the player could not get away from.
             error != null -> {
-                Text(text = error!!, color = MaterialTheme.colorScheme.error)
+                WordMakerLoadError(
+                    message = error!!,
+                    gameMode = gameMode,
+                    levelNumber = currentLevel,
+                    onSelectMode = viewModel::setGameMode,
+                    onRetry = viewModel::retryLoad,
+                    onOpenGameCenter = { backStack.add(Route.GameCenter) },
+                    onOpenSettings = { backStack.add(Route.Settings) },
+                )
             }
 
             crosswordData != null -> {
