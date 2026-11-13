@@ -11,9 +11,9 @@ import java.nio.channels.FileChannel
 /**
  * Load the POI side files out of a single-archive `.mamaps` file.
  *
- * The archive carries the same six payloads as the side files (`poi_index`,
+ * The archive carries the same payloads as the side files (`poi_index`,
  * `poi_names`, and the optional `poi_attrs` / `poi_spatial` / `poi_name_index`
- * / `poi_region` sections, kinds 8-12 and 15) after the tile data, each 8-byte aligned and named by
+ * / `poi_region` / `poi_admin` sections, kinds 8-12, 15 and 16) after the tile data, each 8-byte aligned and named by
  * the section directory + `MAMA8` footer. This reads the container (tile
  * header, footer, directory) with positional reads, maps each POI section on
  * its own, then runs the same validators the multi-file path runs
@@ -71,6 +71,7 @@ object PoiArchive {
     const val KIND_SPATIAL = 11
     const val KIND_WORDS = 12
     const val KIND_REGION = 15
+    const val KIND_ADMIN = 16
 
     /** Tile-header offsets this needs: `build_id` at 16, `file_len` at 24. */
     private const val HEADER_BUILD_ID_OFF = 16
@@ -190,7 +191,8 @@ object PoiArchive {
             ?.let { PoiIndex.nameIndexFromBuffer(it, count) }
         val region = overrideOrBase(overrides, KIND_REGION, sections, whole)
             ?.let { regionFromBuffer(it, count) }
-        return mappedOf(indexBuf, namesBuf, count, attrs, grid, words, region)
+        val admin = overrideOrBase(overrides, KIND_ADMIN, sections, whole)?.let { adminFromBuffer(it) }
+        return mappedOf(indexBuf, namesBuf, count, attrs, grid, words, region, admin)
     }
 
     /** The [PoiIndex.Mapped] for already-validated section buffers (absent ones degrade). */
@@ -203,6 +205,7 @@ object PoiArchive {
         grid: PoiIndex.Grid?,
         words: Pair<MappedByteBuffer, Int>?,
         region: MappedByteBuffer?,
+        admin: AdminTable?,
     ): PoiIndex.Mapped {
         return PoiIndex.Mapped(
             index = indexBuf,
@@ -220,11 +223,12 @@ object PoiArchive {
             nameIdx = words?.first,
             entryCount = words?.second ?: 0,
             region = region,
+            admin = admin,
         ).also {
             Log.debug(
                 TAG,
                 "Loaded $count POI records from archive, " +
-                    "grid=${it.cellCount} cells, words=${it.entryCount}",
+                    "grid=${it.cellCount} cells, words=${it.entryCount}, admin=${admin?.count ?: 0}",
             )
         }
     }

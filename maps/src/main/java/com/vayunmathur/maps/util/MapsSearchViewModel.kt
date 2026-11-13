@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.DataStoreUtils
+import java.util.Locale
 
 /** The recency/favorites boost for one search; reads are in-memory, call off the main thread. */
 private fun Application.searchBoost(): Map<String, Double> =
@@ -49,6 +50,12 @@ data class SearchResult(
      * masks without an admin-label upgrade round-trip.
      */
     val regionId: Long = 0L,
+    /**
+     * "City, State, Country" (state only where the archive has one), shown as the row's
+     * trailing text; null when the archive cannot say. From the archive's boundary data,
+     * never the network — see PoiIndexAdmin.kt.
+     */
+    val locality: String? = null,
 )
 
 /**
@@ -88,7 +95,7 @@ internal fun buildSearchBoost(
     return boost
 }
 
-private fun PoiIndex.PoiRecord.toSearchResult() = SearchResult(
+private fun PoiIndex.PoiRecord.toSearchResult(locality: String?) = SearchResult(
     id = "poi:$latE7:$lonE7:${name.hashCode()}",
     title = name,
     subtitle = PoiCategories.label(type),
@@ -96,6 +103,9 @@ private fun PoiIndex.PoiRecord.toSearchResult() = SearchResult(
     lon = lon,
     category = PoiCategories.label(type),
     regionId = regionId,
+    // A place label's locality starts with its own name ("Oakland" -> "Oakland, California, …");
+    // the row already says it.
+    locality = locality?.removePrefix("$name, ")?.takeUnless { it == name },
 )
 
 /**
@@ -201,8 +211,7 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
                 // Offline OSM POI index only (P27). Addresses are not carried by
                 // the index, so they resolve to empty. Any offline failure
                 // (unmapped/poisoned index, decode error) is swallowed to empty.
-                val offline = withContext(searchLane) { offlineSearch(query, nearLat, nearLon) }
-                _results.value = offline.map { it.toSearchResult() }
+                _results.value = withContext(searchLane) { offlineSearch(query, nearLat, nearLon) }
             } finally {
                 // `finally` because cancellation is the normal exit: every keystroke cancels
                 // the previous job, and a cancelled search that never clears this flag leaves
@@ -232,7 +241,6 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             val results = withContext(searchLane) { offlineSearch(query, nearLat, nearLon) }
-                .map { it.toSearchResult() }
             _results.value = results
             onFirst(results.firstOrNull())
         }
@@ -280,22 +288,24 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /**
-     * The offline index search, run on [searchLane]. Any offline failure (unmapped/poisoned
-     * index, decode error) is swallowed to empty; a cancelled caller makes it return early.
+     * The offline index search plus each row's locality, run on [searchLane]. Any offline
+     * failure (unmapped/poisoned index, decode error) is swallowed to empty; a cancelled
+     * caller makes it return early.
      */
     private suspend fun offlineSearch(
         query: String,
         nearLat: Double,
         nearLon: Double,
-    ): List<PoiIndex.PoiRecord> {
+    ): List<SearchResult> {
         val app = getApplication<Application>()
         val context = currentCoroutineContext()
+        val english = Locale.getDefault().language == Locale.ENGLISH.language
         return runCatching {
             PoiIndex.initialize(app)
             PoiIndex.searchByName(
                 query, nearLat, nearLon, limit = 20, boost = app.searchBoost(),
                 cancelled = { !context.isActive },
-            )
+            ).map { it.toSearchResult(PoiIndex.localityAt(it.ordinal, english)) }
         }.getOrDefault(emptyList())
     }
 

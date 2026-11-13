@@ -30,6 +30,9 @@ private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"
 /** Desktop-shaped: exercises the side panel at a width where map and panel sit side by side. */
 private const val EXPANDED = "spec:width=1280dp,height=800dp,dpi=240"
 
+/** The locality line the search preview rows show (from poi_admin on a device). */
+private const val SF_LOCALITY = "San Francisco, California, United States"
+
 /**
  * Store listing images for `:maps`. See `common-conventions-preview-metadata`.
  *
@@ -93,10 +96,10 @@ class MetadataPreviews {
                         SearchUiState(
                             query = "ferry",
                             results = listOf(
-                                SearchResult("1", "Ferry Building Marketplace", "1 Ferry Building, San Francisco", 37.7955, -122.3933, "Marketplace"),
-                                SearchResult("2", "Ferry Plaza Farmers Market", "1 Ferry Building, San Francisco", 37.7959, -122.3937, "Farmers market"),
-                                SearchResult("3", "Golden Gate Ferry Terminal", "Pier 1, San Francisco", 37.7936, -122.3927, "Ferry terminal"),
-                                SearchResult("4", "Oakland Ferry Dock", "Clay St, Oakland", 37.7947, -122.2783, "Ferry terminal"),
+                                SearchResult("1", "Ferry Building Marketplace", "1 Ferry Building, San Francisco", 37.7955, -122.3933, "Marketplace", locality = SF_LOCALITY),
+                                SearchResult("2", "Ferry Plaza Farmers Market", "1 Ferry Building, San Francisco", 37.7959, -122.3937, "Farmers market", locality = SF_LOCALITY),
+                                SearchResult("3", "Golden Gate Ferry Terminal", "Pier 1, San Francisco", 37.7936, -122.3927, "Ferry terminal", locality = SF_LOCALITY),
+                                SearchResult("4", "Oakland Ferry Dock", "Clay St, Oakland", 37.7947, -122.2783, "Ferry terminal", locality = "Oakland, California, United States"),
                             ),
                             // Explicitly not searching: with results present and this left at its
                             // default the state would resolve to Results anyway, but the listing
@@ -210,10 +213,10 @@ class MetadataPreviews {
                         searchState = SearchUiState(
                             query = "ferry",
                             results = listOf(
-                                SearchResult("1", "Ferry Building Marketplace", "1 Ferry Building, San Francisco", 37.7955, -122.3933, "Marketplace"),
-                                SearchResult("2", "Ferry Plaza Farmers Market", "1 Ferry Building, San Francisco", 37.7959, -122.3937, "Farmers market"),
-                                SearchResult("3", "Golden Gate Ferry Terminal", "Pier 1, San Francisco", 37.7936, -122.3927, "Ferry terminal"),
-                                SearchResult("4", "Oakland Ferry Dock", "Clay St, Oakland", 37.7947, -122.2783, "Ferry terminal"),
+                                SearchResult("1", "Ferry Building Marketplace", "1 Ferry Building, San Francisco", 37.7955, -122.3933, "Marketplace", locality = SF_LOCALITY),
+                                SearchResult("2", "Ferry Plaza Farmers Market", "1 Ferry Building, San Francisco", 37.7959, -122.3937, "Farmers market", locality = SF_LOCALITY),
+                                SearchResult("3", "Golden Gate Ferry Terminal", "Pier 1, San Francisco", 37.7936, -122.3927, "Ferry terminal", locality = SF_LOCALITY),
+                                SearchResult("4", "Oakland Ferry Dock", "Clay St, Oakland", 37.7947, -122.2783, "Ferry terminal", locality = "Oakland, California, United States"),
                             ),
                             searching = false,
                         ),

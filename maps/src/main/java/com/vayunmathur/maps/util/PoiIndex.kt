@@ -106,18 +106,8 @@ object PoiIndex {
     private const val NAME_INDEX_ENTRY_COUNT_OFF = 12
     private const val NAME_INDEX_ENTRY_BYTES = 5L
 
-    /**
-     * ASCII-only lowercase, and deliberately not [Char.lowercase].
-     *
-     * `poi_name_index.bin` is sorted by the writer, so the reader has to reproduce that
-     * order byte for byte. Rust's `to_lowercase` and Kotlin's `lowercase` do not agree on
-     * every input, and here a disagreement is a POI that can never be found. See the
-     * cross-language contract in `osm_ingest/src/poi_side.rs`.
-     */
-    // Attribute key constants and record decoding live in PoiIndexAttrs.kt.
-
-    // asciiLower / isAsciiSpace / queryKey moved to PoiIndexWords.kt as shared
-    // internal helpers (asciiLowerW etc. were duplicates of these).
+    // Attribute keys/decoding live in PoiIndexAttrs.kt; the ASCII fold the word index is
+    // sorted by (asciiLowerW, poiQueryKey) in PoiIndexWords.kt.
 
     /** A single POI resolved from the index. */
     data class PoiRecord(
@@ -211,7 +201,12 @@ object PoiIndex {
         internal val entryCount: Int = 0,
         /** The region sidecar, or null when absent or mismatched. */
         internal val region: MappedByteBuffer? = null,
+        /** The boundary hierarchy (`poi_admin.bin`, archive kind 16), or null when absent. */
+        internal val admin: AdminTable? = null,
     ) {
+        /** Locality lines already resolved, per boundary (see PoiIndexAdmin.kt). */
+        internal val localityCache = LocalityCache()
+
         internal fun latE7(i: Int): Int = index.getInt(i * RECORD_BYTES)
         internal fun lonE7(i: Int): Int = index.getInt(i * RECORD_BYTES + LON_FIELD_OFF)
         internal fun nameOff(i: Int): Int = index.getInt(i * RECORD_BYTES + NAME_OFF_FIELD_OFF)
@@ -632,11 +627,9 @@ object PoiIndex {
      *
      * Two implementations, picked by whether `poi_name_index.bin` was mapped:
      *
-     *  * **Indexed** — binary search to each token's range in the word-sorted index, then
-     *    sequential scans of those ranges' ordinal arrays joined against the spatial grid
-     *    around the bias point, so the cost is a few hundred page reads and names are
-     *    decoded only for the rows returned (see PoiSearchEngine.kt). Because every word
-     *    of a name is indexed, "pizza" still finds "Joe's Pizza".
+     *  * **Indexed** — token ranges in the word index, scanned as ordinals and joined with
+     *    the grid around the bias point; names decoded only for returned rows (see
+     *    PoiSearchEngine.kt). Every word is indexed, so "pizza" finds "Joe's Pizza".
      *  * **Scan** — the name pool, then every record. Two passes whose cost is the whole
      *    dataset, kept only because the side file is optional.
      *
@@ -652,9 +645,8 @@ object PoiIndex {
      * recents + saved places — earn distance credit); the scan fallback keeps
      * rank-then-distance. [boost] never resurrects a non-match.
      *
-     * [cancelled] is polled between phases: a caller whose result is no longer wanted (the
-     * user typed another character) gets an empty list back early instead of the lookup
-     * running to completion beside its successor.
+     * [cancelled] is polled during the search: a superseded caller (the user typed another
+     * character) gets an empty list back early rather than running beside its successor.
      */
     @Suppress("LongParameterList") // query + bias point + limit + ranking signal + cancel token
     fun searchByName(

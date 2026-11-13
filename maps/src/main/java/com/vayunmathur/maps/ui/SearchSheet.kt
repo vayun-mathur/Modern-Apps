@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -20,6 +21,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.EmptyState
@@ -51,6 +54,9 @@ import com.vayunmathur.maps.util.SearchUiState
  * give, so filling would let the sheet be dragged to full height over an empty surface.
  */
 private val StatusBlockHeight = 120.dp
+
+/** Widest the trailing locality text may grow before it wraps (two lines, then ellipsis). */
+private val LocalityMaxWidth = 150.dp
 
 /**
  * Search, as a sheet over the live map.
@@ -154,6 +160,22 @@ private fun ResultsList(results: List<SearchResult>, actions: SearchActions) {
                         result.subtitle
                             ?: stringResource(R.string.coordinates, result.lat.round(4), result.lon.round(4))
                     )
+                },
+                // Where the place is, so two same-named rows (every "Starbucks") can be told
+                // apart at a glance. Capped in width and lines so a long "City, State,
+                // Country" never squeezes the name itself.
+                trailingContent = result.locality?.let { locality ->
+                    {
+                        Text(
+                            locality,
+                            modifier = Modifier.widthIn(max = LocalityMaxWidth),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.End,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 },
                 modifier = Modifier.clickable { actions.selectResult(result) },
             )

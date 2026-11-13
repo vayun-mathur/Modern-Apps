@@ -140,6 +140,36 @@ class PoiArchiveTest {
         assertEquals(2, box.size)
     }
 
+    /**
+     * Kinds 15 + 16 together: both records link to Paris (relation 71525), and the admin
+     * table walks Paris up to France, so the archive alone yields the row's locality line.
+     */
+    @Test
+    fun `region and admin sections give a locality line`() {
+        val paris = (71_525L shl 2) or 3L
+        val france = (2_202_162L shl 2) or 3L
+        val region = ByteBuffer.allocate(12 + 16).order(ByteOrder.LITTLE_ENDIAN)
+        region.put("PRG1".toByteArray(Charsets.US_ASCII)).putInt(1).putInt(2).putLong(paris).putLong(paris)
+        val pool = "Paris\u0000France\u0000".toByteArray(Charsets.UTF_8)
+        val admin = ByteBuffer.allocate(16 + 64 + pool.size).order(ByteOrder.LITTLE_ENDIAN)
+        admin.put("PAD1".toByteArray(Charsets.US_ASCII)).putInt(1).putInt(2).putInt(pool.size)
+        // Ascending tagged ids: Paris (smaller id) first.
+        admin.putLong(paris).putLong(france).putInt(0).putInt(-1).put(8.toByte()).put(ByteArray(7))
+        admin.putLong(france).putLong(0L).putInt(6).putInt(-1).put(2.toByte()).put(ByteArray(7))
+        admin.put(pool)
+        val f = writeArchive(
+            listOf(
+                indexPayload(),
+                Triple(PoiArchive.KIND_NAMES, namesBytes(), 0L),
+                Triple(PoiArchive.KIND_REGION, region.array(), 0L),
+                Triple(PoiArchive.KIND_ADMIN, admin.array(), 0L),
+            ),
+        )
+        assertTrue(PoiIndex.reloadArchive(f), "archive did not map")
+        assertEquals("Paris, France", PoiIndex.localityAt(0, english = true))
+        assertEquals("Paris, France", PoiIndex.localityAt(1, english = false))
+    }
+
     @Test
     fun `bad magic is refused`() {
         val bytes = archive(

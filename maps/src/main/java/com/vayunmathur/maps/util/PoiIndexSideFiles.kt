@@ -25,6 +25,7 @@ internal object PoiIndexSideFiles {
         val grid = openSpatial(File(dir, PoiIndex.SPATIAL_FILE), count)
         val words = openNameIndex(File(dir, PoiIndex.NAME_INDEX_FILE), count)
         val region = openRegion(File(dir, REGION_FILE), count)
+        val admin = File(dir, ADMIN_FILE).takeIf { it.isFile }?.let { adminFromBuffer(PoiIndex.mapReadOnly(it)) }
         return PoiIndex.Mapped(
             index = indexBuf,
             names = namesBuf,
@@ -41,6 +42,7 @@ internal object PoiIndexSideFiles {
             nameIdx = words?.first,
             entryCount = words?.second ?: 0,
             region = region,
+            admin = admin,
         )
     }
 

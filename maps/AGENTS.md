@@ -168,6 +168,9 @@ _Install: ./install maps (dev by default)._
 - com/vayunmathur/maps/util/PoiIndexSpatial.kt
 - com/vayunmathur/maps/util/PoiIndexWords.kt
 - com/vayunmathur/maps/util/PoiIndexRegion.kt — `poi_region` (kind 15) boundary links
+- com/vayunmathur/maps/util/PoiIndexAdmin.kt — `poi_admin` (kind 16) hierarchy; search-row locality ("City, State, Country")
+- com/vayunmathur/maps/util/PoiSearchEngine.kt — indexed name search (ordinal scans + grid join, blended text/distance rank)
+- com/vayunmathur/maps/util/PoiSearchHits.kt — ordinal hit table for the search engine
 - com/vayunmathur/maps/util/PoiArchive.kt — POI sections out of the archive (per-section mmaps; planet is ~80 GB)
 - com/vayunmathur/maps/util/PoiCategories.kt
 - com/vayunmathur/maps/util/SpatialKey.kt
