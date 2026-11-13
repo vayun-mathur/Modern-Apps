@@ -42,12 +42,14 @@ import com.vayunmathur.library.ui.Text
  * than squeezing the cells. Tap and long press are handled per cell by [detectTapGestures] rather
  * than by `clickable` + `combinedClickable`, because the flag gesture needs to fire on press-and-hold
  * without also delivering the tap that would open the cell.
+ *
+ * @param onLongPress returns whether a flag actually changed; the press buzzes only then.
  */
 @Composable
 fun MineFieldGrid(
     game: MinesweeperGameState,
     onTap: (Int) -> Unit,
-    onLongPress: (Int) -> Unit,
+    onLongPress: (Int) -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -76,7 +78,7 @@ private fun MineCell(
     game: MinesweeperGameState,
     index: Int,
     onTap: () -> Unit,
-    onLongPress: () -> Unit,
+    onLongPress: () -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -122,8 +124,9 @@ private fun MineCell(
                     onTap = { onTap() },
                     onLongPress = {
                         // Confirms the flag without the player having to look away from the field.
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onLongPress()
+                        // Only for a real change: buzzing for a press that did nothing (an open
+                        // cell, an unstarted field) told the player a flag went in when none did.
+                        if (onLongPress()) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     },
                 )
             }
@@ -134,8 +137,7 @@ private fun MineCell(
                 // tap/long-press split that detectTapGestures above preserves.
                 onClick { onTap(); true }
                 onLongClick {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onLongPress()
+                    if (onLongPress()) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     true
                 }
             },

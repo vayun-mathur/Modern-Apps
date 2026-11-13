@@ -18,8 +18,13 @@ interface MinesweeperActions {
     /** Tap: digs or flags depending on the current [TapMode]; in Dig mode chords an open number. */
     fun tapCell(index: Int) {}
 
-    /** Long press: the other action from whatever the mode is (in Flag mode, digs or chords). */
-    fun flagCell(index: Int) {}
+    /**
+     * Long press: the other action from whatever the mode is (in Flag mode, digs or chords).
+     *
+     * @return true only when a flag was actually placed or removed, so the board buzzes for a
+     * real change and stays quiet for a press that did nothing (an open cell, an unstarted field).
+     */
+    fun flagCell(index: Int): Boolean = false
 
     fun setTapMode(mode: TapMode) {}
     fun restart() {}

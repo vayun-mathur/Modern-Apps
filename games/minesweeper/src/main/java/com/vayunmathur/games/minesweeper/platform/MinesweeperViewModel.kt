@@ -112,14 +112,14 @@ class MinesweeperViewModel(application: Application) :
      * In flag mode that is digging, so a long press on an open number chords — the opening gesture
      * stays available in flag mode, just never on the plain tap.
      */
-    override fun flagCell(index: Int) {
+    override fun flagCell(index: Int): Boolean {
         val state = _uiState.value
-        val game = state.game ?: return
-        if (game.isOver) return
-        when {
+        val game = state.game ?: return false
+        if (game.isOver) return false
+        return when {
             state.tapMode == TapMode.DIG -> toggleFlag(game, index)
-            game.revealed[index] -> chord(game, index)
-            else -> dig(state, game, index)
+            game.revealed[index] -> { chord(game, index); false }
+            else -> { dig(state, game, index); false }
         }
     }
 
@@ -152,12 +152,15 @@ class MinesweeperViewModel(application: Application) :
         publish(chorded)
     }
 
-    private fun toggleFlag(game: MinesweeperGameState, index: Int) {
+    /** Returns whether the flag actually changed; open cells and unstarted fields refuse. */
+    private fun toggleFlag(game: MinesweeperGameState, index: Int): Boolean {
         // Flagging before the first dig would have nothing to flag: the mines are not laid yet.
-        if (!game.started) return
+        if (!game.started) return false
         val next = MinesweeperRules.toggleFlag(game, index)
+        if (next === game) return false
         if (next.flagsPlaced > game.flagsPlaced) placedAnyFlag = true
         publish(next)
+        return true
     }
 
     /** A fresh field with the same settings. */

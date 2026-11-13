@@ -10,6 +10,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.minesweeper.R
@@ -59,7 +63,7 @@ class MinesweeperBoardTest {
     fun gridCellsExposePositionAndStateDescriptions() {
         var tapped = -1
         composeRule.setContent {
-            MineFieldGrid(field(), onTap = { tapped = it }, onLongPress = {})
+            MineFieldGrid(field(), onTap = { tapped = it }, onLongPress = { false })
         }
         // Centre mine stays described as covered during play.
         composeRule.onNodeWithContentDescription("Row 2, column 2, Covered", substring = true)
@@ -74,7 +78,7 @@ class MinesweeperBoardTest {
         var tapped = -1
         var longPressed = -1
         composeRule.setContent {
-            MineFieldGrid(field(), onTap = { tapped = it }, onLongPress = { longPressed = it })
+            MineFieldGrid(field(), onTap = { tapped = it }, onLongPress = { longPressed = it; true })
         }
         // The description alone only lets TalkBack announce the cell; activation
         // needs the click actions too, or the board is heard but not playable.
@@ -87,11 +91,33 @@ class MinesweeperBoardTest {
     }
 
     @Test
+    fun longPressBuzzesOnlyWhenAFlagChanges() {
+        val buzzes = mutableListOf<HapticFeedbackType>()
+        val haptics = object : HapticFeedback {
+            override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+                buzzes += hapticFeedbackType
+            }
+        }
+        var changes = false
+        composeRule.setContent {
+            CompositionLocalProvider(LocalHapticFeedback provides haptics) {
+                MineFieldGrid(field(), onTap = {}, onLongPress = { changes })
+            }
+        }
+        val cell = composeRule.onNodeWithContentDescription("Row 1, column 1, Covered", substring = true)
+        cell.performSemanticsAction(SemanticsActions.OnLongClick)
+        assertEquals(0, buzzes.size, "nothing changed, so no buzz")
+        changes = true
+        cell.performSemanticsAction(SemanticsActions.OnLongClick)
+        assertEquals(listOf(HapticFeedbackType.LongPress), buzzes)
+    }
+
+    @Test
     fun gridRevealedNumberAndFlagDescriptions() {
         val revealed = List(9) { it == 0 }
         val flagged = List(9) { it == 4 }
         composeRule.setContent {
-            MineFieldGrid(field(revealed = revealed, flagged = flagged), onTap = {}, onLongPress = {})
+            MineFieldGrid(field(revealed = revealed, flagged = flagged), onTap = {}, onLongPress = { false })
         }
         // Index 0 touches the centre mine, so it reads as a count of 1.
         composeRule.onNodeWithContentDescription("Row 1, column 1", substring = true).assertIsDisplayed()

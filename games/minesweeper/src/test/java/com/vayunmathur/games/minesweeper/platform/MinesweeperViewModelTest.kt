@@ -120,15 +120,16 @@ class MinesweeperViewModelTest {
     fun flagBeforeStartDoesNothingModeToggleFlagsAfterStart() {
         val vm = vm()
         vm.newGame(GameConfig(BoardSize.SMALL, Difficulty.EASY))
-        vm.flagCell(5)
+        assertFalse(vm.flagCell(5), "no flag before the mines are laid")
         assertEquals(0, vm.uiState.value.game!!.flagsPlaced)
         vm.tapCell(0)
         val started = vm.uiState.value.game!!
         val hidden = started.revealed.indices.first { !started.revealed[it] && !started.mines[it] }
-        vm.flagCell(hidden)
+        assertTrue(vm.flagCell(hidden), "placing a flag reports a change")
         assertEquals(1, vm.uiState.value.game!!.flagsPlaced)
-        vm.flagCell(hidden)
+        assertTrue(vm.flagCell(hidden), "removing it does too")
         assertEquals(0, vm.uiState.value.game!!.flagsPlaced)
+        assertFalse(vm.flagCell(0), "an open cell cannot be flagged")
         // Flag-mode tap also flags (never digs).
         vm.setTapMode(TapMode.FLAG)
         vm.tapCell(hidden)
