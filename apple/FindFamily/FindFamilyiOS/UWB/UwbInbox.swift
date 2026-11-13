@@ -3,8 +3,9 @@ import Combine
 
 /// Process-global UWB envelope inbox.
 ///
-/// Producer: [BackgroundTask] drains `/api/uwb/receive` once per heartbeat
-///   tick (every ~3 s when foregrounded) and forwards each envelope here.
+/// Producer: [BackgroundTask.handleIncomingUwb], fed by relay-socket pushes
+///   ([RelaySocket]) and by the HTTP `/api/uwb/receive_pqc` drain (once per wake,
+///   and every heartbeat tick while the socket is down).
 ///
 /// Consumer: [RangingSession] subscribes while the Precision Finding screen
 ///   is open to drive the WaitingForPeer handshake. When the view isn't alive

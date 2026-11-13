@@ -41,9 +41,10 @@ final class NetworkClient {
 ///     and sealed layout [4B encapLen][encap][aes] (aes = [12B iv][ct||tag]), KDF SHA256(BE32(1)||Z).
 ///   - Server parallel endpoints `/api/pqc/*` store PQC bundles separately from RSA.
 ///
-/// This app is **post-quantum only**: it publishes to and receives from the `_pqc` endpoints
+/// This app is **post-quantum only**: it publishes to and receives from the `_pqc` queues
 /// exclusively and never touches the classic RSA location/UWB queues, and it registers only a
-/// PQC bundle. Android keeps its classic fallback for other peers, but it always prefers PQC
+/// PQC bundle. Publish, receive and peer key lookup ride the relay socket (`RelaySocket`)
+/// when it is up; the HTTP `_pqc` endpoints here remain the fallback. Android keeps its classic fallback for other peers, but it always prefers PQC
 /// when the peer has a bundle registered — which this app does on every launch.
 @MainActor
 final class Networking: ObservableObject {
@@ -55,6 +56,8 @@ final class Networking: ObservableObject {
     private var pqcPublicBundleB64: String = ""
     private var pqcIdentity: PQCIdentity?
     var pqcAvailable: Bool { pqcIdentity != nil }
+    /// Our public PQC bundle, sent with every relay-socket SUB (which doubles as registration).
+    var pqcPublicBundle: Data? { pqcIdentity?.publicBundle }
 
     private var networkIsDown = false
 
@@ -240,7 +243,15 @@ final class Networking: ObservableObject {
     /// Fetches peer PQC bundle, caches to DB, returns Data.
     func getPqcBundle(forUserid id: Int64) async -> Data? {
         guard pqcAvailable else { return nil }
-        if let data = await getPqcKeyRaw(forUserid: id) {
+        // GETKEY on the live relay socket when it is up (no extra connection); otherwise
+        // the HTTP lookup as before.
+        var fetched: Data? = nil
+        if let live = await RelaySocket.shared.getKey(userId: id), live.status == .pqc,
+           let bundle = live.bundle, !bundle.isEmpty {
+            fetched = bundle
+        }
+        if fetched == nil { fetched = await getPqcKeyRaw(forUserid: id) }
+        if let data = fetched {
             // Overwrite rather than fill-only-if-empty, matching Android: this is only
             // reached when there was no cached bundle to prefer, and a stale value here
             // would keep us encrypting to a key the peer has already replaced. Written on
@@ -288,6 +299,11 @@ final class Networking: ObservableObject {
             let json = try JSONEncoder().encode(location.toCompatible(senderPlatform: Self.platformTag))
             // Encrypt via PQC (ML-KEM encaps + AES-GCM), same as Kotlin Pqc.encryptTo
             let sealed = try PQCKeyManager.shared.encryptTo(bundle: bundle, plaintext: json)
+            // Relay socket first (PUB); HTTP when the socket is down or not fresh.
+            if await RelaySocket.shared.publish(recipient: recipientID, isUwb: false, sealed: sealed) {
+                print("publishEncryptedPqc to \(UInt64(bitPattern: recipientID)) via ws encLen=\(sealed.count)")
+                return true
+            }
             let body = encodeJSON([
                 "recipientUserID": .uint64(UInt64(bitPattern: recipientID)),
                 "encryptedLocation": .string(sealed.base64EncodedString()),
@@ -328,19 +344,10 @@ final class Networking: ObservableObject {
                     print("receiveLocationsPqc: skipped non-base64")
                     continue
                 }
-                do {
-                    let plain = try PQCKeyManager.shared.decrypt(sealed: sealed)
-                    let comp = try JSONDecoder().decode(LocationValueCompatible.self, from: plain)
-                    let loc = comp.toLocationValue()
-                    out.append(loc)
-                    if let platform = comp.senderPlatform,
-                       let u = Database.shared.user(id: loc.userid),
-                       u.platform != platform {
-                        Database.shared.setPlatform(id: loc.userid, platform: platform)
-                    }
-                } catch {
-                    print("receiveLocationsPqc: decrypt/parse failure: \(error.localizedDescription)")
-                }
+                // Already taken from the relay socket (a requeued un-ACKed frame).
+                if RelayDedup.shared.contains(sealed) { continue }
+                RelayDedup.shared.insert(sealed)
+                if let loc = decodeLocation(sealed: sealed) { out.append(loc) }
             }
             print("receiveLocationsPqc: \(out.count) location(s) for userid=\(UInt64(bitPattern: userid))")
             return out
@@ -348,6 +355,31 @@ final class Networking: ObservableObject {
             checkNetworkDown(error)
             return nil
         }
+    }
+
+    /// Decrypts one sealed location (HTTP drain or relay-socket push) and records the
+    /// sender's platform tag. Nil on decrypt/parse failure.
+    func decodeLocation(sealed: Data) -> LocationValue? {
+        do {
+            let plain = try PQCKeyManager.shared.decrypt(sealed: sealed)
+            let comp = try JSONDecoder().decode(LocationValueCompatible.self, from: plain)
+            let loc = comp.toLocationValue()
+            if let platform = comp.senderPlatform,
+               let u = Database.shared.user(id: loc.userid),
+               u.platform != platform {
+                Database.shared.setPlatform(id: loc.userid, platform: platform)
+            }
+            return loc
+        } catch {
+            print("decodeLocation: decrypt/parse failure: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Decrypts one sealed UWB envelope (HTTP drain or relay-socket push).
+    func decodeUwb(sealed: Data) -> UwbEnvelope? {
+        guard let plain = try? PQCKeyManager.shared.decrypt(sealed: sealed) else { return nil }
+        return try? JSONDecoder().decode(UwbEnvelope.self, from: plain)
     }
 
     // MARK: - UWB session-setup channel (post-quantum only)
@@ -376,6 +408,10 @@ final class Networking: ObservableObject {
         do {
             let json = try JSONEncoder().encode(envelope)
             let sealed = try PQCKeyManager.shared.encryptTo(bundle: bundle, plaintext: json)
+            if await RelaySocket.shared.publish(recipient: recipientID, isUwb: true, sealed: sealed) {
+                print("publishUwbMessagePqc to \(UInt64(bitPattern: recipientID)) via ws")
+                return true
+            }
             let body = encodeJSON([
                 "recipientUserID": .uint64(UInt64(bitPattern: recipientID)),
                 "encryptedLocation": .string(sealed.base64EncodedString()),
@@ -406,10 +442,9 @@ final class Networking: ObservableObject {
             var out: [UwbEnvelope] = []
             for b64 in arr {
                 guard let sealed = Data(base64Encoded: b64) else { continue }
-                if let plain = try? PQCKeyManager.shared.decrypt(sealed: sealed),
-                   let env = try? JSONDecoder().decode(UwbEnvelope.self, from: plain) {
-                    out.append(env)
-                }
+                if RelayDedup.shared.contains(sealed) { continue }
+                RelayDedup.shared.insert(sealed)
+                if let env = decodeUwb(sealed: sealed) { out.append(env) }
             }
             return out
         } catch {

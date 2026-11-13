@@ -83,6 +83,7 @@ final class LocationsHandler: ObservableObject {
         manager.stopMonitoringVisits()
         manager.allowsBackgroundLocationUpdates = false
         BackgroundTask.shared.stopHeartbeat()
+        RelaySocket.shared.trackingStopped()
         logger.info("Stopped location updates (not sharing with anyone)")
     }
 
@@ -107,6 +108,7 @@ final class LocationsHandler: ObservableObject {
     func startLocationUpdatesIfSharing() {
         if isSharingWithAnyone() {
             BackgroundTask.shared.startHeartbeat()
+            RelaySocket.shared.wake()
             startLocationUpdates()
         } else {
             stopLocationUpdates()
@@ -197,7 +199,13 @@ final class BackgroundTask {
         lastKnownLocation = nil
     }
 
+    /// Whether location tracking (the heartbeat) is running.
+    var isHeartbeatRunning: Bool { heartbeatTask != nil }
+
     func onLocationUpdate(_ loc: CLLocation, sleep: Bool) {
+        // Every location update / heartbeat tick may be the app waking from suspension:
+        // make sure the relay socket is up (no-op when it already is).
+        RelaySocket.shared.wake()
         lastKnownLocation = loc
         let now = Date()
         if !sleep && now.timeIntervalSince(lastUpdateAt) < Self.shareIntervalSeconds { return }
@@ -264,52 +272,67 @@ final class BackgroundTask {
             _ = await Networking.shared.publishLocation(me, toLink: link)
         }
 
-        // 5. Receive incoming peer locations. Any sender we don't already know about
-        // is added as AWAITING_REQUEST (Modern-Apps uses received locations — not a
-        // separate `/api/request_sharing` endpoint — to discover incoming requests).
-        if let incoming = await Networking.shared.receiveLocations() {
-            let knownIds = Set(users.map { $0.id } + [Networking.shared.userid])
-            let newSenderIds = Set(incoming.map { $0.userid }).subtracting(knownIds)
-            for id in newSenderIds {
-                let user = User(
-                    id: id, name: "ID \(Base26.encode(id))", photo: nil,
-                    locationName: "Unknown Location", sendingEnabled: true,
-                    requestStatus: .awaitingRequest, lastLocationChangeTime: Date(),
-                    encryptionKey: nil
-                )
-                Database.shared.upsertUser(user)
-                NotificationsUtil.send(
-                    title: Strings.notifSharingRequestTitle,
-                    body: Strings.notifSharingRequestBody(Base26.encode(id)),
-                    category: "SHARING_REQUEST"
-                )
-            }
-            for loc in incoming {
-                Database.shared.insertLocationValue(loc)
-                await updateUserLocationName(loc)
-                await maybeNotifyBatteryDrop(loc)
-            }
+        // 5. Receive incoming peer locations. The relay socket pushes them as they arrive
+        // (RelaySocket -> handleIncomingLocations); poll HTTP only while it is not
+        // subscribed, so a socket outage degrades to the old per-tick polling.
+        let socketLive = RelaySocket.shared.isSubscribed
+        if !socketLive, let incoming = await Networking.shared.receiveLocations() {
+            await handleIncomingLocations(incoming)
         }
 
         // 6. Trim old locations (>7 days).
         let cutoff = Date().addingTimeInterval(-7 * 24 * 60 * 60)
         Database.shared.deleteLocationValuesOlderThan(cutoff)
 
-        // 7. Drain the UWB session-setup channel. Each envelope is published
-        //    onto UwbInbox so an open Precision Finding view can react; if the
-        //    envelope is a REQUEST and no view is open, post a notification.
-        if let envelopes = await Networking.shared.receiveUwbMessages() {
-            for env in envelopes {
-                UwbInbox.shared.emit(env)
-                if env.kind == UwbEnvelopeKind.request {
-                    let senderId = Int64(bitPattern: env.sender)
-                    let senderName = Database.shared.user(id: senderId)?.name ?? "Someone"
-                    NotificationsUtil.send(
-                        title: "Precision Finding request",
-                        body: "\(senderName) wants to find you with Precision Finding. Tap to begin.",
-                        category: "UWB_REQUEST"
-                    )
-                }
+        // 7. Drain the UWB session-setup channel (same rule: socket pushes, HTTP fallback).
+        if !socketLive, let envelopes = await Networking.shared.receiveUwbMessages() {
+            handleIncomingUwb(envelopes)
+        }
+    }
+
+    /// Stores incoming peer fixes — from the relay socket or an HTTP drain. Any sender we
+    /// don't already know about is added as AWAITING_REQUEST (Modern-Apps uses received
+    /// locations — not a separate `/api/request_sharing` endpoint — to discover incoming
+    /// requests).
+    func handleIncomingLocations(_ incoming: [LocationValue]) async {
+        guard !incoming.isEmpty else { return }
+        let users = Database.shared.usersSubject.value
+        let knownIds = Set(users.map { $0.id } + [Networking.shared.userid])
+        let newSenderIds = Set(incoming.map { $0.userid }).subtracting(knownIds)
+        for id in newSenderIds {
+            let user = User(
+                id: id, name: "ID \(Base26.encode(id))", photo: nil,
+                locationName: "Unknown Location", sendingEnabled: true,
+                requestStatus: .awaitingRequest, lastLocationChangeTime: Date(),
+                encryptionKey: nil
+            )
+            Database.shared.upsertUser(user)
+            NotificationsUtil.send(
+                title: Strings.notifSharingRequestTitle,
+                body: Strings.notifSharingRequestBody(Base26.encode(id)),
+                category: "SHARING_REQUEST"
+            )
+        }
+        for loc in incoming {
+            Database.shared.insertLocationValue(loc)
+            await updateUserLocationName(loc)
+            await maybeNotifyBatteryDrop(loc)
+        }
+    }
+
+    /// Hands incoming UWB envelopes (relay socket or HTTP drain) to UwbInbox so an open
+    /// Precision Finding view can react; a REQUEST with no view open posts a notification.
+    func handleIncomingUwb(_ envelopes: [UwbEnvelope]) {
+        for env in envelopes {
+            UwbInbox.shared.emit(env)
+            if env.kind == UwbEnvelopeKind.request {
+                let senderId = Int64(bitPattern: env.sender)
+                let senderName = Database.shared.user(id: senderId)?.name ?? "Someone"
+                NotificationsUtil.send(
+                    title: "Precision Finding request",
+                    body: "\(senderName) wants to find you with Precision Finding. Tap to begin.",
+                    category: "UWB_REQUEST"
+                )
             }
         }
     }

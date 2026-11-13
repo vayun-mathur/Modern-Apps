@@ -9,11 +9,11 @@ import Foundation
 ///
 /// status: 0 = not registered, 1 = classic key only (outdated app), 2 = PQC bundle follows.
 ///
-/// One request/response per connection, and deliberately **no SUB frame**. SUB is what
-/// makes the relay treat a socket as a live subscriber and fan that user's locations out
-/// to it instead of the queue that `/api/location/receive_pqc` drains — which this app
-/// still polls. Without SUB the socket is inert apart from this exchange, so the HTTP
-/// receive path is untouched.
+/// Asked on the app's live relay socket (`RelaySocket`) when it is subscribed. Otherwise
+/// one request/response on a throwaway connection, deliberately with **no SUB frame**:
+/// SUB is what makes the relay treat a socket as a live subscriber and fan that user's
+/// locations out to it instead of the queue, so a SUB here would steal pushes from the
+/// real socket. Without SUB the throwaway socket is inert apart from this exchange.
 ///
 /// Replaces the two-request HTTP probe (`/api/pqc/getkey` then `/api/getkey`): one frame
 /// returns the status *and* the bundle together, so there is no window between deciding a
@@ -43,6 +43,7 @@ enum RelayKeyLookup {
     /// Looks up `userId`'s key. Returns nil when the socket can't be established or the
     /// reply doesn't arrive in time; callers treat that as "unknown" rather than "absent".
     static func getKey(userId: Int64) async -> KeyResult? {
+        if let live = await RelaySocket.shared.getKey(userId: userId) { return live }
         let session = URLSession(configuration: .ephemeral)
         let task = session.webSocketTask(with: url)
         task.resume()
@@ -83,13 +84,19 @@ enum RelayKeyLookup {
     /// Parses `[0x05][status][u64 target][bundle…]`, or nil if this isn't the KEYRESP for
     /// `target`.
     private static func parse(_ frame: Data, target: Int64) -> KeyResult? {
+        guard let reply = parseAny(frame), reply.target == target else { return nil }
+        return reply.result
+    }
+
+    /// Parses any KEYRESP `[0x05][status][u64 target][bundle…]` into its target and result
+    /// (shared with `RelaySocket`, which matches replies to its pending lookups).
+    static func parseAny(_ frame: Data) -> (target: Int64, result: KeyResult)? {
         let bytes = [UInt8](frame)
         guard bytes.count >= 10, bytes[0] == opGetKeyResponse,
               let status = Status(rawValue: bytes[1]) else { return nil }
         var echoed: UInt64 = 0
         for i in 0..<8 { echoed = (echoed << 8) | UInt64(bytes[2 + i]) }
-        guard Int64(bitPattern: echoed) == target else { return nil }
         let bundle = bytes.count > 10 ? Data(bytes[10...]) : nil
-        return KeyResult(status: status, bundle: bundle)
+        return (Int64(bitPattern: echoed), KeyResult(status: status, bundle: bundle))
     }
 }

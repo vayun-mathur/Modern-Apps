@@ -19,6 +19,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         Task { @MainActor in
             // Kick off the network / identity layer.
             await Networking.shared.start()
+            // One long-lived relay socket: connects now if we're in the foreground and
+            // whenever the app becomes active (tracking and location wakes also start it).
+            RelaySocket.shared.beginLifecycle()
             // Subscribe to sharing-state changes first so a toggle that fires
             // before the DB finishes loading is still picked up, then start
             // location work only when we're actually sharing with someone —
