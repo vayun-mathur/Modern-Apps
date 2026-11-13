@@ -14,6 +14,7 @@ import com.vayunmathur.games.nonogram.data.STARTING_HEARTS
 import com.vayunmathur.games.nonogram.data.StoredBoard
 import com.vayunmathur.games.nonogram.data.sizeForLevel
 import com.vayunmathur.games.nonogram.domain.NonogramGenerator
+import com.vayunmathur.games.nonogram.domain.NonogramMoves
 import com.vayunmathur.games.nonogram.domain.NonogramStrokes
 import com.vayunmathur.games.nonogram.domain.Stroke
 import com.vayunmathur.library.util.AchievementsManager
@@ -169,8 +170,10 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
             val stale = daily && storedDay != day
             (if (stale) StoredBoard() else board) to (lastCompleted == day)
         }.collectLatest { (board, dailyDone) ->
-            val onScreen = _uiState.value.game
-                ?.takeIf { hasPendingWrites && it.isBoardFor(session, puzzle) }
+            val previous = _uiState.value.game
+            // Undo history belongs to one board; a different puzzle, level or mode starts afresh.
+            if (previous?.isBoardFor(session, puzzle) != true) undoStack.clear()
+            val onScreen = previous?.takeIf { hasPendingWrites && it.isBoardFor(session, puzzle) }
             val game = onScreen ?: NonogramGameState(
                 puzzle = puzzle,
                 filled = board.filled,
@@ -184,6 +187,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
                 game = game,
                 generating = false,
                 dailyDone = dailyDone,
+                canUndo = canUndo(game),
             )
             if (game.isWon) onWin(game, daily, day)
         }
@@ -218,7 +222,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     private fun commit(next: NonogramGameState) {
         val previous = _uiState.value.game ?: return
         if (next == previous) return
-        _uiState.value = _uiState.value.copy(game = next)
+        _uiState.value = _uiState.value.copy(game = next, canUndo = canUndo(next))
         persist(next)
         if (next.isWon) onWin(next, next.mode == GameMode.DAILY, boardDay)
     }
@@ -263,6 +267,17 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     /** The stroke in progress, if a finger is down on the grid. See [NonogramStrokes]. */
     private var stroke: Stroke? = null
 
+    /** The board as it was when the current stroke began, pushed to [undoStack] if it changed. */
+    private var strokeBefore: NonogramGameState? = null
+
+    /**
+     * Boards from before each recent stroke, newest last. In memory only, like Arrows' blocked-arrow
+     * flash: it is a convenience for the session in hand, not progress worth persisting.
+     */
+    private val undoStack = ArrayDeque<NonogramGameState>()
+
+    private fun canUndo(game: NonogramGameState) = undoStack.isNotEmpty() && !game.isOver
+
     override fun beginStroke(index: Int, alternate: Boolean) {
         val state = _uiState.value
         val game = state.game ?: return
@@ -273,6 +288,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         }
         val step = NonogramStrokes.begin(game, index, mode)
         stroke = step.stroke
+        strokeBefore = game
         commit(step.game)
     }
 
@@ -285,7 +301,29 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     }
 
     override fun endStroke() {
+        val before = strokeBefore
+        val after = _uiState.value.game
         stroke = null
+        strokeBefore = null
+        // Only strokes that changed a fill or a note are worth undoing; one that only revealed a
+        // mistake has nothing undo could give back.
+        if (before == null || after == null) return
+        if (before.filled == after.filled && before.crossed == after.crossed) return
+        undoStack.addLast(before)
+        while (undoStack.size > MAX_UNDO) undoStack.removeFirst()
+        _uiState.value = _uiState.value.copy(canUndo = canUndo(after))
+    }
+
+    override fun undo() {
+        val game = _uiState.value.game ?: return
+        if (stroke != null || game.isOver) return
+        val before = undoStack.removeLastOrNull() ?: return
+        val next = NonogramMoves.undo(game, before)
+        if (next == game) {
+            _uiState.value = _uiState.value.copy(canUndo = canUndo(game))
+        } else {
+            commit(next)
+        }
     }
 
     override fun setMarkMode(mode: MarkMode) {
@@ -317,6 +355,9 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     /** Clears every mark and restores the hearts, on screen at once and on disk behind it. */
     override fun restartLevel() {
         val game = _uiState.value.game ?: return
+        // A fresh board has nothing to undo; undoing into the pre-restart marks would also hand back
+        // a board with full hearts.
+        undoStack.clear()
         commit(
             game.copy(
                 filled = emptySet(),
@@ -428,5 +469,8 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
          * longer search on every tap of Try again.
          */
         private const val MAX_GENERATION_ROUNDS = 64
+
+        /** Strokes kept for undo. Plenty for "oops", bounded so a long session cannot grow it. */
+        private const val MAX_UNDO = 100
     }
 }

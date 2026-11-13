@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -130,23 +131,24 @@ private fun Modifier.drawCross(color: Color, width: Dp) = drawBehind {
 }
 
 /**
- * Every cell edge, with a heavier stroke every five cells and around the outside.
+ * Every visible cell edge, with a heavier stroke every five cells and around the outside.
  *
  * The five-cell grouping is the standard nonogram aid: it lets a player count along a long line
- * without losing their place. Drawn in one pass over the whole grid so shared edges are painted once.
+ * without losing their place. Drawn in one pass in viewport space, through the zoom, so shared edges
+ * are painted once and the strokes stay hairline-thin however far the grid is zoomed in.
  */
-internal fun Modifier.drawGridLines(size: Int, thin: Color, thick: Color) = drawBehind {
-    val step = this.size.width / size
+internal fun DrawScope.drawGridLines(viewport: GridViewport, thin: Color, thick: Color) {
     val thinPx = 1.dp.toPx()
     val thickPx = 2f * thinPx
-
-    for (i in 0..size) {
-        val offset = i * step
-        val heavy = i % GROUP == 0 || i == size
+    val n = viewport.n
+    for (i in 0..n) {
+        val heavy = i % GROUP == 0 || i == n
         val color = if (heavy) thick else thin
         val width = if (heavy) thickPx else thinPx
-        drawLine(color, Offset(offset, 0f), Offset(offset, this.size.height), width)
-        drawLine(color, Offset(0f, offset), Offset(this.size.width, offset), width)
+        val x = viewport.linePosition(i, viewport.zoom.offsetX)
+        val y = viewport.linePosition(i, viewport.zoom.offsetY)
+        drawLine(color, Offset(x, 0f), Offset(x, size.height), width)
+        drawLine(color, Offset(0f, y), Offset(size.width, y), width)
     }
 }
 

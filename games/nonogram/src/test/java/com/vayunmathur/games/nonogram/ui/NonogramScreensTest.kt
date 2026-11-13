@@ -2,6 +2,14 @@ package com.vayunmathur.games.nonogram.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.pinch
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -45,7 +53,8 @@ class NonogramScreensTest {
     class Recording : NonogramGameActions {
         val taps = mutableListOf<Int>(); val crosses = mutableListOf<Int>()
         val modes = mutableListOf<MarkMode>(); val gameModes = mutableListOf<GameMode>()
-        var next = 0; var restarts = 0; var retries = 0
+        var next = 0; var restarts = 0; var retries = 0; var undos = 0
+        override fun undo() { undos++ }
         /** Every stroke as the gesture handler reported it: begin cell, alternate?, then extensions. */
         val strokes = mutableListOf<MutableList<Any>>(); var openStroke = false
         override fun tapCell(index: Int) { taps += index }
@@ -121,6 +130,42 @@ class NonogramScreensTest {
         assertEquals(listOf(MarkMode.CROSS), a.modes)
         rule.onNodeWithText(str(UiR.string.restart)).performSemanticsAction(SemanticsActions.OnClick)
         assertEquals(1, a.restarts, "untouched board restarts without confirmation")
+    }
+
+    @Test fun undoButtonFollowsCanUndo() {
+        val a = Recording()
+        var state by androidx.compose.runtime.mutableStateOf(NonogramUiState(game = game(filled = setOf(1)), level = 2, canUndo = false))
+        rule.setContent { NonogramGameScreen(state, a, {}, {}) }
+        rule.onNodeWithText(str(UiR.string.undo)).assertIsNotEnabled()
+        state = state.copy(canUndo = true)
+        rule.onNodeWithText(str(UiR.string.undo)).assertIsEnabled().performClick()
+        assertEquals(1, a.undos)
+    }
+
+    @Test fun pinchZoomHitTestsInGridCoordinatesAndDoubleTapResets() {
+        // 5x5 in a 200dp box: about 32dp cells, so this board allows exactly 2x.
+        val p = NonogramPuzzle.from(5, "##.#######.#.#..#.#.#.#.#".map { it == '#' })
+        val g = NonogramGameState(p, emptySet(), emptySet(), emptySet(), STARTING_HEARTS, GameMode.CASUAL, 1)
+        val a = Recording()
+        rule.setContent { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(200.dp)) { NonogramBoard(game = g, actions = a) } }
+        fun node(row: Int, col: Int) = rule.onNodeWithContentDescription(str(R.string.cd_cell_position, row, col))
+        // Unzoomed centre of row 3, column 5 (index 14): the physical point we will keep tapping.
+        val point = node(3, 5).fetchSemanticsNode().boundsInRoot.center
+        val centre = node(3, 3).fetchSemanticsNode().boundsInRoot.center
+        rule.onRoot().performTouchInput {
+            pinch(
+                start0 = centre - androidx.compose.ui.geometry.Offset(10f, 0f), end0 = centre - androidx.compose.ui.geometry.Offset(40f, 0f),
+                start1 = centre + androidx.compose.ui.geometry.Offset(10f, 0f), end1 = centre + androidx.compose.ui.geometry.Offset(40f, 0f),
+            )
+        }
+        assertTrue(a.strokes.isEmpty(), "a pinch never marks a cell")
+        // Zoomed 2x about the centre, that same point is now over row 3, column 4.
+        rule.onRoot().performTouchInput { click(point) }
+        assertEquals(listOf<Any>(13, false), a.strokes.last())
+        // Double-tapping the clues resets the zoom: the point is back over column 5.
+        rule.onAllNodesWithText("5")[0].performTouchInput { doubleClick() }
+        rule.onRoot().performTouchInput { click(point) }
+        assertEquals(listOf<Any>(14, false), a.strokes.last())
     }
 
     @Test fun restartWithProgressAsksConfirmation() {

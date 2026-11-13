@@ -33,6 +33,9 @@ interface NonogramGameActions {
     /** The stroke's finger lifted (or the gesture was cancelled). */
     fun endStroke() {}
 
+    /** Reverts the last stroke's fills and notes. Never refunds a heart or hides a revealed blank. */
+    fun undo() {}
+
     fun setMarkMode(mode: MarkMode) {}
     fun nextLevel() {}
     fun restartLevel() {}
@@ -61,6 +64,8 @@ data class NonogramUiState(
     val generating: Boolean = false,
     /** Set when even a widened seed search found no fair puzzle, so the board can offer a retry. */
     val generationFailed: Boolean = false,
+    /** Whether there is a stroke to undo on the board in play. */
+    val canUndo: Boolean = false,
 )
 
 interface SettingsActions {

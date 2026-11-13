@@ -38,6 +38,20 @@ object NonogramMoves {
         return if (notes == game.crossed) game else game.copy(crossed = notes)
     }
 
+    /**
+     * Takes [current] back to the marks it had at [before], without giving anything back.
+     *
+     * Fills and notes return to how they were, but every blank a mistake revealed stays revealed and
+     * every heart spent stays spent — so undo is for a slip of the finger, never a way to un-make a
+     * wrong guess and try the cell again. A note that sat on a cell the undone move revealed is not
+     * restored, since that cell is settled now.
+     */
+    fun undo(current: NonogramGameState, before: NonogramGameState): NonogramGameState =
+        current.copy(
+            filled = before.filled - current.revealedBlanks,
+            crossed = before.crossed - current.revealedBlanks,
+        )
+
     /** Flips the note on [index]: the single-tap behaviour of cross mode. */
     fun toggleNote(game: NonogramGameState, index: Int): NonogramGameState =
         setNote(game, index, crossed = index !in game.crossed)

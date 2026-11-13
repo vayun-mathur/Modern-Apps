@@ -144,6 +144,33 @@ class NonogramViewModelTest {
         assertEquals(STARTING_HEARTS, vm.uiState.value.game!!.hearts)
     }
 
+    @Test fun undoRevertsTheLastStrokeWithoutRefundingHearts() {
+        val vm = loadedVm()
+        assertFalse(vm.uiState.value.canUndo)
+        val g = vm.uiState.value.game!!
+        val correct = g.puzzle.solution.indices.first { g.puzzle.solution[it] }
+        val wrong = g.puzzle.solution.indices.first { !g.puzzle.solution[it] }
+        vm.tapCell(correct)
+        assertTrue(vm.uiState.value.canUndo)
+        vm.tapCell(wrong) // only reveals: nothing for undo to give back, so not pushed
+        assertEquals(STARTING_HEARTS - 1, vm.uiState.value.game!!.hearts)
+        vm.undo()
+        val s = vm.uiState.value.game!!
+        assertFalse(correct in s.filled, "the fill is undone")
+        assertTrue(wrong in s.revealedBlanks, "the revealed mistake stays")
+        assertEquals(STARTING_HEARTS - 1, s.hearts, "undo never refunds a heart")
+        assertFalse(vm.uiState.value.canUndo)
+        vm.undo() // empty: no-op
+        assertEquals(s, vm.uiState.value.game)
+        // Undo is persisted like any move.
+        await("undo persisted") { runBlocking { vm.dataStore.filledCells.first() }.isEmpty() }
+        // Restart wipes the history.
+        vm.crossCell(correct)
+        assertTrue(vm.uiState.value.canUndo)
+        vm.restartLevel()
+        assertFalse(vm.uiState.value.canUndo)
+    }
+
     @Test fun longPressInFillModeNotesAndRestartClears() {
         val vm = loadedVm()
         val g = vm.uiState.value.game!!

@@ -1,15 +1,27 @@
 package com.vayunmathur.games.nonogram.ui.components
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -62,30 +74,65 @@ fun NonogramBoard(
         // scale back out, which is what pins the rendered height to the slot.
         val density = LocalDensity.current
         val textSize = minOf(clueCell * CLUE_TEXT_FRACTION, ClueTextPreferred * density.fontScale)
-        val fontSize = with(density) { textSize.toSp() }
-        val lineHeight = with(density) { clueCell.toSp() }
+        val metrics = ClueMetrics(
+            cell = cell,
+            clueCell = clueCell,
+            fontSize = with(density) { textSize.toSp() },
+            lineHeight = with(density) { clueCell.toSp() },
+        )
 
-        Column {
+        // Pinch-zoom of the grid, shared with the clue gutters so they stay aligned with it. Kept
+        // across recreation (it is stored in units of the grid side, so it survives the grid changing
+        // size on rotation) and reset by a new puzzle. Only read inside layout, draw and gesture
+        // callbacks, so a pinch never recomposes the board.
+        val zoom = rememberSaveable(game.puzzle, stateSaver = BoardZoomSaver) {
+            mutableStateOf(BoardZoom.Identity)
+        }
+        // Enough zoom to bring a cell up to MaxZoomedCell, within MAX_ZOOM: 4x on a 15x15 phone grid,
+        // about 1.5x on a 5x5 whose cells are already big.
+        val maxZoom = (MaxZoomedCell / cell).coerceIn(1f, MAX_ZOOM)
+        // A zoom saved on a smaller grid can exceed this one's limit; pull it back in.
+        LaunchedEffect(zoom, maxZoom) { zoom.value = zoom.value.clamped(maxZoom) }
+
+        Column(
+            // Double-tapping the clues or the corner resets the zoom. Not the grid itself: grid taps
+            // have to fire immediately, which rules out waiting to see whether a second tap follows.
+            Modifier.pointerInput(zoom) {
+                detectTapGestures(onDoubleTap = { zoom.value = BoardZoom.Identity })
+            }
+        ) {
             Row {
                 // Empty corner where the two gutters meet.
                 Box(Modifier.size(clueCell * rowGutterCells, clueCell * colGutterCells))
-                ColumnClues(game, colGutterCells, cell, clueCell, fontSize, lineHeight)
+                ColumnClues(game, colGutterCells, metrics, zoom)
             }
             Row {
-                RowClues(game, rowGutterCells, cell, clueCell, fontSize, lineHeight)
-                Grid(game, markMode, cell, actions)
+                RowClues(game, rowGutterCells, metrics, zoom)
+                Grid(game, GridStyle(markMode, cell, maxZoom), zoom, actions)
             }
         }
     }
 }
 
+/** How the grid is drawn and labelled: the mark mode (for TalkBack labels), cell size and zoom limit. */
+@Immutable
+private data class GridStyle(val markMode: MarkMode, val cell: Dp, val maxZoom: Float)
+
+/** Saves a [BoardZoom] as its three numbers. */
+private val BoardZoomSaver = listSaver<BoardZoom, Float>(
+    save = { listOf(it.scale, it.offsetX, it.offsetY) },
+    restore = { BoardZoom(it[0], it[1], it[2]) },
+)
+
 @Composable
 private fun Grid(
     game: NonogramGameState,
-    markMode: MarkMode,
-    cell: Dp,
+    style: GridStyle,
+    zoom: MutableState<BoardZoom>,
     actions: NonogramGameActions,
 ) {
+    val markMode = style.markMode
+    val cell = style.cell
     val scheme = MaterialTheme.colorScheme
     // Resolved once per grid rather than once per cell per tap.
     val labels = CellLabels(
@@ -109,9 +156,32 @@ private fun Grid(
     Box(
         Modifier
             .size(cell * n)
-            .strokeGestures(n, rtl, actions = { currentActions }, onLongPress = { haptics.longPress() })
+            .clipToBounds()
+            .boardGestures(
+                input = GridInput(n, rtl, style.maxZoom),
+                zoom = zoom,
+                actions = { currentActions },
+                onLongPress = { haptics.longPress() },
+            )
+            // Lines go over the cells in viewport space, so they stay hairline at any zoom.
+            .drawWithContent {
+                drawContent()
+                val viewport = GridViewport(size.width, n, rtl, zoom.value)
+                drawGridLines(viewport, scheme.outlineVariant, scheme.onSurface)
+            }
     ) {
-        Column {
+        Column(
+            Modifier.graphicsLayer {
+                // Scaled from the top-left corner, which is what BoardZoom's offsets are measured
+                // from; semantics bounds follow the layer, so TalkBack still finds each cell.
+                val z = zoom.value
+                transformOrigin = TransformOrigin(0f, 0f)
+                scaleX = z.scale
+                scaleY = z.scale
+                translationX = z.offsetX * size.width
+                translationY = z.offsetY * size.height
+            }
+        ) {
             for (row in 0 until n) {
                 Row {
                     for (col in 0 until n) {
@@ -137,11 +207,6 @@ private fun Grid(
                 }
             }
         }
-        Box(
-            Modifier
-                .size(cell * n)
-                .drawGridLines(n, scheme.outlineVariant, scheme.onSurface)
-        )
     }
 }
 
@@ -150,6 +215,12 @@ private const val CLUE_TEXT_FRACTION = 0.78f
 
 /** Clue size at 100% font scale on a board roomy enough not to cap it. */
 private val ClueTextPreferred = 13.dp
+
+/** The largest a zoomed cell gets: comfortably above the 48dp touch-target guideline. */
+private val MaxZoomedCell = 64.dp
+
+/** Upper bound on zoom whatever the cell size, so a pinch can never lose the player in one cell. */
+private const val MAX_ZOOM = 4f
 
 /** A clue slot's width as a fraction of a grid cell. Clues are digits, so they need less room. */
 private const val CLUE_CELL_FRACTION = 0.62f

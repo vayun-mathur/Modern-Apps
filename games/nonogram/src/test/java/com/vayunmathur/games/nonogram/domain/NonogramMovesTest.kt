@@ -31,6 +31,23 @@ class NonogramMovesTest {
         assertSame(failed, NonogramMoves.toggleNote(failed, 0))
     }
 
+    @Test fun undoRestoresMarksButNeverRefundsAHeart() {
+        val before = NonogramMoves.setNote(game(), 0, true)
+        // A stroke that filled 1, then hit blank 2: revealed and charged.
+        val after = NonogramMoves.guess(NonogramMoves.guess(before, 1), 2)
+        val undone = NonogramMoves.undo(after, before)
+        assertEquals(emptySet(), undone.filled)
+        assertEquals(setOf(0), undone.crossed)
+        assertEquals(setOf(2), undone.revealedBlanks, "a revealed mistake stays revealed")
+        assertEquals(STARTING_HEARTS - 1, undone.hearts, "undo never refunds a heart")
+    }
+
+    @Test fun undoDoesNotRestoreANoteOnACellThatWasRevealed() {
+        val before = NonogramMoves.setNote(game(), 2, true)
+        val after = NonogramMoves.guess(before, 2)
+        assertEquals(emptySet(), NonogramMoves.undo(after, before).crossed)
+    }
+
     @Test fun toggleNoteFlipsAndNeverCosts() {
         val once = NonogramMoves.toggleNote(game(), 4)
         assertEquals(setOf(4), once.crossed)

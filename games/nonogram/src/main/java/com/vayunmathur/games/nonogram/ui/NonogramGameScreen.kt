@@ -192,9 +192,7 @@ fun NonogramGameScreen(
                             HeartsRow(remaining = game.hearts, total = STARTING_HEARTS)
                             NonogramControls(
                                 game = game,
-                                markMode = state.markMode,
-                                daily = daily,
-                                generating = state.generating,
+                                state = state,
                                 actions = actions,
                             )
                         }
@@ -215,9 +213,7 @@ fun NonogramGameScreen(
 
                     NonogramControls(
                         game = game,
-                        markMode = state.markMode,
-                        daily = daily,
-                        generating = state.generating,
+                        state = state,
                         actions = actions,
                     )
                 }
@@ -235,11 +231,10 @@ fun NonogramGameScreen(
 @Composable
 private fun NonogramControls(
     game: NonogramGameState,
-    markMode: MarkMode,
-    daily: Boolean,
-    generating: Boolean,
+    state: NonogramUiState,
     actions: NonogramGameActions,
 ) {
+    val daily = state.mode == GameMode.DAILY
     var confirmRestart by remember { mutableStateOf(false) }
     // Restart clears every mark, so only ask when there is something to lose:
     // an untouched board restarts into itself.
@@ -262,7 +257,7 @@ private fun NonogramControls(
                 // Disabled while the next puzzle generates, so a double tap cannot advance twice.
                 Button(
                     onClick = { actions.nextLevel() },
-                    enabled = !generating,
+                    enabled = !state.generating,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(UiR.string.next_level)) }
             }
@@ -281,7 +276,7 @@ private fun NonogramControls(
         }
 
         else -> {
-            MarkModeToggle(markMode, actions::setMarkMode)
+            MarkModeToggle(state.markMode, actions::setMarkMode)
             if (game.filled.isEmpty() && game.crossed.isEmpty() &&
                 game.revealedBlanks.isEmpty()
             ) {
@@ -292,8 +287,14 @@ private fun NonogramControls(
                     textAlign = TextAlign.Center,
                 )
             }
-            OutlinedButton(onClick = { if (hasProgress) confirmRestart = true else actions.restartLevel() }) {
-                Text(stringResource(UiR.string.restart))
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                // Undo reverts the last stroke's marks; spent hearts and revealed mistakes stay.
+                OutlinedButton(onClick = { actions.undo() }, enabled = state.canUndo) {
+                    Text(stringResource(UiR.string.undo))
+                }
+                OutlinedButton(onClick = { if (hasProgress) confirmRestart = true else actions.restartLevel() }) {
+                    Text(stringResource(UiR.string.restart))
+                }
             }
         }
     }
