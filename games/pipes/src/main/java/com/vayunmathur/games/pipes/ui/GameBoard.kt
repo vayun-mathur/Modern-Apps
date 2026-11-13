@@ -4,15 +4,21 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import com.vayunmathur.games.pipes.data.CellPos
 import com.vayunmathur.games.pipes.data.LevelData
 import com.vayunmathur.games.pipes.platform.PipesGameState
+
+/** Test tag of the drawing surface, for gesture tests. */
+internal const val GAME_BOARD_TAG = "pipes_game_board"
 
 @Composable
 fun GameBoard(
@@ -38,11 +44,18 @@ fun GameBoard(
     val cellRects = geometry.cellRects
     val isHex = geometry.isHex
     val labelPaint = remember { ColorLabelPaint() }
+    // The gesture coroutine outlives recompositions, so it must never read values captured
+    // at launch: it restarts whenever the geometry changes (rotation, fold, resize), and
+    // reads the callbacks through rememberUpdatedState.
+    val currentStartDraw by rememberUpdatedState(onStartDraw)
+    val currentExtendPath by rememberUpdatedState(onExtendPath)
+    val currentCommitDraw by rememberUpdatedState(onCommitDraw)
 
     Canvas(
         modifier = Modifier
             .size(boardSize)
-            .pointerInput(levelData, isLevelWon) {
+            .testTag(GAME_BOARD_TAG)
+            .pointerInput(geometry, isLevelWon) {
                 if (isLevelWon) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
@@ -52,14 +65,14 @@ fun GameBoard(
                         when {
                             event.changes.any { it.pressed && !it.previousPressed } -> {
                                 val cell = geometry.hitTest(pos)
-                                if (cell != null) onStartDraw(cell)
+                                if (cell != null) currentStartDraw(cell)
                             }
                             event.changes.any { it.pressed } -> {
                                 val cell = geometry.hitTestDrag(pos)
-                                if (cell != null) onExtendPath(cell)
+                                if (cell != null) currentExtendPath(cell)
                             }
                             event.changes.any { !it.pressed && it.previousPressed } -> {
-                                onCommitDraw()
+                                currentCommitDraw()
                             }
                         }
                         event.changes.forEach { it.consume() }
