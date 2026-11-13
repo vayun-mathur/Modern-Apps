@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,7 +64,7 @@ fun LetterChooser(
     onWordSubmitted: suspend CoroutineScope.(String, List<Int>) -> Unit,
     onWordBoxPositioned: (Offset) -> Unit,
     onLetterPositioned: (id: Int, offset: Offset) -> Unit,
-    wordShakeTranslation: Float
+    wordShakeTranslation: Float = 0f
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -77,6 +78,32 @@ fun LetterChooser(
     val formedWord = selectedLettersIndices.map { letters[it].char }.joinToString("")
     var dragStartOffset by remember(letters) { mutableStateOf(Offset.Zero) }
     var currentDragPosition by remember(letters) { mutableStateOf<Offset?>(null) }
+
+    // The word box keeps showing a submitted word while it is judged (a rejected word shakes
+    // for 240-360 ms), but the selection itself is cleared the moment the word is submitted.
+    // Clearing it only after the verdict wiped the first letters and the trail of a swipe the
+    // player had already started in the meantime.
+    var judgedWord by remember(letters) { mutableStateOf<String?>(null) }
+    var submitSerial by remember(letters) { mutableIntStateOf(0) }
+
+    fun submitSelection() {
+        if (selectedLettersIndices.isEmpty()) return
+        val word = selectedLettersIndices.map { letters[it].char }.joinToString("")
+        val ids = selectedLettersIndices.map { letters[it].id }
+        selectedLettersIndices = emptyList()
+        currentDragPosition = null
+        val serial = submitSerial + 1
+        submitSerial = serial
+        judgedWord = word
+        coroutineScope.launch {
+            try {
+                submitWord(word, ids)
+            } finally {
+                // A newer submission owns the word box now; leave it alone.
+                if (submitSerial == serial) judgedWord = null
+            }
+        }
+    }
 
     val density = LocalDensity.current
     val letterCircleRadius = with(density) { 35.dp.toPx() }
@@ -115,16 +142,21 @@ fun LetterChooser(
         return null
     }
 
+    // While a swipe is in progress the box shows it; otherwise it shows the word being judged.
+    val isSpelling = selectedLettersIndices.isNotEmpty()
+    val shownWord = if (isSpelling) formedWord else judgedWord.orEmpty()
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         SurfaceText(
             Modifier
                 .padding(bottom = 20.dp)
                 .graphicsLayer(
-                    alpha = if (selectedLettersIndices.isNotEmpty()) 1f else 0f,
-                    translationX = wordShakeTranslation
+                    alpha = if (shownWord.isNotEmpty()) 1f else 0f,
+                    // The shake belongs to the judged word, never to a new swipe.
+                    translationX = if (isSpelling) 0f else wordShakeTranslation
                 ),
             RoundedCornerShape(8.dp), MaterialTheme.colorScheme.primaryContainer,
-            formedWord.ifEmpty { " " },
+            shownWord.ifEmpty { " " },
             Modifier
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .onGloballyPositioned { onWordBoxPositioned(it.localToRoot(Offset.Zero)) },
@@ -145,16 +177,7 @@ fun LetterChooser(
                         Icon(painterResource(R.drawable.backspace_24px), contentDescription = stringResource(R.string.cd_backspace))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    FilledIconButton(onClick = {
-                        if (selectedLettersIndices.isNotEmpty()) {
-                            val word = selectedLettersIndices.map { letters[it].char }.joinToString("")
-                            val ids = selectedLettersIndices.map { letters[it].id }
-                            coroutineScope.launch {
-                                submitWord(word, ids)
-                                selectedLettersIndices = emptyList()
-                            }
-                        }
-                    }) {
+                    FilledIconButton(onClick = { submitSelection() }) {
                         Icon(painterResource(R.drawable.keyboard_return_24px), contentDescription = stringResource(R.string.cd_submit))
                     }
                 }
@@ -187,16 +210,12 @@ fun LetterChooser(
                                 }
                             },
                             onDragEnd = {
-                                coroutineScope.launch {
-                                    if (selectedLettersIndices.isNotEmpty()) {
-                                        submitWord(
-                                            selectedLettersIndices.map { letters[it].char }.joinToString(""),
-                                            selectedLettersIndices.map { letters[it].id }
-                                        )
-                                    }
-                                    selectedLettersIndices = emptyList()
-                                    currentDragPosition = null
-                                }
+                                currentDragPosition = null
+                                submitSelection()
+                            },
+                            onDragCancel = {
+                                currentDragPosition = null
+                                selectedLettersIndices = emptyList()
                             }
                         )
                     },
