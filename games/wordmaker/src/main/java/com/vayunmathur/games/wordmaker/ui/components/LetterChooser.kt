@@ -4,14 +4,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,7 +78,6 @@ fun LetterChooser(
 
     var selectedLettersIndices by remember(letters) { mutableStateOf(listOf<Int>()) }
     val formedWord = selectedLettersIndices.map { letters[it].char }.joinToString("")
-    var dragStartOffset by remember(letters) { mutableStateOf(Offset.Zero) }
     var currentDragPosition by remember(letters) { mutableStateOf<Offset?>(null) }
 
     // The word box keeps showing a submitted word while it is judged (a rejected word shakes
@@ -105,43 +106,6 @@ fun LetterChooser(
         }
     }
 
-    val density = LocalDensity.current
-    val letterCircleRadius = with(density) { 35.dp.toPx() }
-    val boxSize = wheelSpacing.boxSize
-    val boxSizePx = with(density) { boxSize.toPx() }
-    val boxCenter = Offset(boxSizePx / 2, boxSizePx / 2)
-
-    val angleStep = 2 * Math.PI / letters.size.toDouble()
-    val radius = wheelSpacing.ringRadius
-    val radiusPx = with(density) { radius.toPx() }
-    val letterCenters = remember(letters, boxCenter, radiusPx) {
-        List(letters.size) { index ->
-            val angle = angleStep * index - (Math.PI / 2)
-            boxCenter + Offset(cos(angle).toFloat() * radiusPx, sin(angle).toFloat() * radiusPx)
-        }
-    }
-
-    fun getLetterAtArc(position: Offset): Int {
-        val relative = position - boxCenter
-
-        val angle = atan2(relative.y, relative.x)
-        var normalizedAngle = angle + Math.PI / 2
-        while (normalizedAngle < 0) normalizedAngle += 2 * Math.PI
-        while (normalizedAngle >= 2 * Math.PI) normalizedAngle -= 2 * Math.PI
-
-        return (normalizedAngle / angleStep).roundToInt() % letters.size
-    }
-
-    fun getLetterAtCircle(position: Offset): Int? {
-        for (i in letterCenters.indices) {
-            val center = letterCenters[i]
-            if (distance(position, center) <= letterCircleRadius) {
-                return i
-            }
-        }
-        return null
-    }
-
     // While a swipe is in progress the box shows it; otherwise it shows the word being judged.
     val isSpelling = selectedLettersIndices.isNotEmpty()
     val shownWord = if (isSpelling) formedWord else judgedWord.orEmpty()
@@ -165,9 +129,12 @@ fun LetterChooser(
             null
         )
 
-        Row(verticalAlignment = Alignment.Top) {
+        // The wheel takes the room left between two equal side columns, so the shuffle button
+        // (right column) always stays on screen and the wheel stays centred. Wider spacings
+        // used to push the row past the screen edge on narrow phones, dropping shuffle.
+        Row(Modifier.weight(1f, fill = false), verticalAlignment = Alignment.Top) {
             Column(
-                modifier = Modifier.width(72.dp),
+                modifier = Modifier.width(SIDE_COLUMN_WIDTH),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (tapToSpell && selectedLettersIndices.isNotEmpty()) {
@@ -182,99 +149,138 @@ fun LetterChooser(
                     }
                 }
             }
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
-                    .size(boxSize)
-                    .onGloballyPositioned {
-                        dragStartOffset = it.localToRoot(Offset.Zero)
-                    }
-                    // Keyed on the spacing as well as the letters: the gesture coroutine keeps
-                    // the closures from the composition that started it, and getLetterAtArc /
-                    // getLetterAtCircle capture boxCenter, radiusPx and letterCenters. Without
-                    // the extra key, changing the spacing mid-puzzle redraws the wheel at the
-                    // new radius but keeps hit-testing against the old one.
-                    .pointerInput(letters, wheelSpacing) {
-                        detectDragGestures(
-                            onDragStart = { startOffset ->
-                                currentDragPosition = startOffset
-                                selectedLettersIndices = listOf(getLetterAtArc(startOffset))
-                            },
-                            onDrag = { change, _ ->
-                                currentDragPosition = change.position
-                                getLetterAtCircle(change.position)?.let { idx ->
-                                    if (idx !in selectedLettersIndices) {
-                                        selectedLettersIndices = selectedLettersIndices + idx
-                                    } else if (selectedLettersIndices.size > 1 && idx == selectedLettersIndices[selectedLettersIndices.size - 2]) {
-                                        selectedLettersIndices = selectedLettersIndices.dropLast(1)
-                                    }
-                                }
-                            },
-                            onDragEnd = {
-                                currentDragPosition = null
-                                submitSelection()
-                            },
-                            onDragCancel = {
-                                currentDragPosition = null
-                                selectedLettersIndices = emptyList()
-                            }
-                        )
-                    },
+                    .weight(1f, fill = false)
+                    .sizeIn(maxWidth = wheelSpacing.boxSize, maxHeight = wheelSpacing.boxSize)
+                    .aspectRatio(1f),
                 contentAlignment = Alignment.Center
             ) {
-                val primaryColor = MaterialTheme.colorScheme.primary
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    selectedLettersIndices.zipWithNext { a, b ->
-                        drawLine(primaryColor, letterCenters[a], letterCenters[b], 10f, cap = StrokeCap.Round)
-                    }
-                    val lastLetter = selectedLettersIndices.lastOrNull()
-                    if (lastLetter != null && currentDragPosition != null) {
-                        drawLine(primaryColor, letterCenters[lastLetter], currentDragPosition!!, 10f, cap = StrokeCap.Round)
-                    }
+                // Everything below is laid out from the box's measured size, so the tiles, the
+                // trail and the touch targets agree even when the box got less than it asked for.
+                val density = LocalDensity.current
+                val widthPx = constraints.maxWidth.toFloat()
+                val heightPx = constraints.maxHeight.toFloat()
+                val tilePx = WheelGeometry.tileSize(
+                    side = minOf(widthPx, heightPx),
+                    defaultSide = with(density) { WheelSpacing.DEFAULT.boxSize.toPx() },
+                    nominalTile = with(density) { LETTER_TILE.toPx() },
+                )
+                val geometry = WheelGeometry.fit(
+                    widthPx, heightPx, with(density) { wheelSpacing.ringRadius.toPx() }, tilePx / 2, letters.size
+                )
+                val tileSize = with(density) { tilePx.toDp() }
+                val radiusDp = with(density) { geometry.ringRadius.toDp() }
+                // The gesture coroutine outlives recompositions; it reads the geometry through
+                // updated state, so a size or spacing change mid-puzzle is hit-tested at the new
+                // positions without restarting a swipe in progress.
+                val currentGeometry by rememberUpdatedState(geometry)
+
+                fun getLetterAtArc(position: Offset): Int {
+                    val relative = position - currentGeometry.center
+                    val angleStep = 2 * Math.PI / letters.size.toDouble()
+                    var normalizedAngle = atan2(relative.y, relative.x) + Math.PI / 2
+                    while (normalizedAngle < 0) normalizedAngle += 2 * Math.PI
+                    while (normalizedAngle >= 2 * Math.PI) normalizedAngle -= 2 * Math.PI
+                    return (normalizedAngle / angleStep).roundToInt() % letters.size
                 }
-                Surface(
-                    Modifier.fillMaxSize(0.9f),
-                    CircleShape,
-                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                ) {}
 
-                letters.forEachIndexed { index, chooserLetter ->
-                    key(chooserLetter.id) {
-                        val angle = angleStep * index - (Math.PI / 2)
-                        val targetX = (cos(angle) * radius.value).dp
-                        val targetY = (sin(angle) * radius.value).dp
-
-                        val x = animatedDp(targetX)
-                        val y = animatedDp(targetY)
-
-                        SurfaceText(Modifier
-                            .align(Alignment.Center)
-                            .offset { IntOffset(x.roundToPx(), y.roundToPx()) }
-                            .onGloballyPositioned { coordinates ->
-                                onLetterPositioned(chooserLetter.id, coordinates.localToRoot(Offset.Zero))
-                            }
-                            .then(if (tapToSpell) Modifier.clickable {
-                                if (selectedLettersIndices.lastOrNull() == index) {
-                                    selectedLettersIndices = selectedLettersIndices.dropLast(1)
-                                } else if (index !in selectedLettersIndices) {
-                                    selectedLettersIndices = selectedLettersIndices + index
+                // The tiles' parent handles the swipe, so it sees every move after the tiles
+                // (which only take taps, in tap-to-spell mode).
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .pointerInput(letters) {
+                            detectDragGestures(
+                                onDragStart = { startOffset ->
+                                    currentDragPosition = startOffset
+                                    selectedLettersIndices = listOf(getLetterAtArc(startOffset))
+                                },
+                                onDrag = { change, _ ->
+                                    currentDragPosition = change.position
+                                    currentGeometry.letterAt(change.position)?.let { idx ->
+                                        if (idx !in selectedLettersIndices) {
+                                            selectedLettersIndices = selectedLettersIndices + idx
+                                        } else if (selectedLettersIndices.size > 1 && idx == selectedLettersIndices[selectedLettersIndices.size - 2]) {
+                                            selectedLettersIndices = selectedLettersIndices.dropLast(1)
+                                        }
+                                    }
+                                },
+                                onDragEnd = {
+                                    currentDragPosition = null
+                                    submitSelection()
+                                },
+                                onDragCancel = {
+                                    currentDragPosition = null
+                                    selectedLettersIndices = emptyList()
                                 }
-                            } else Modifier),
-                            CircleShape,
-                            if (index in selectedLettersIndices) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                            chooserLetter.char.toString(),
-                            Modifier.padding(1.dp),
-                            FontWeight.Bold,
-                            42.sp,
-                            70.dp
-                        )
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    val primaryColor = MaterialTheme.colorScheme.primary
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val centers = geometry.centers
+                        selectedLettersIndices.zipWithNext { a, b ->
+                            drawLine(primaryColor, centers[a], centers[b], 10f, cap = StrokeCap.Round)
+                        }
+                        val lastLetter = selectedLettersIndices.lastOrNull()
+                        val dragPosition = currentDragPosition
+                        if (lastLetter != null && dragPosition != null) {
+                            drawLine(primaryColor, centers[lastLetter], dragPosition, 10f, cap = StrokeCap.Round)
+                        }
+                    }
+                    Surface(
+                        Modifier.fillMaxSize(0.9f),
+                        CircleShape,
+                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                    ) {}
+
+                    letters.forEachIndexed { index, chooserLetter ->
+                        key(chooserLetter.id) {
+                            val angle = WheelGeometry.angleOf(index, letters.size)
+                            val x = animatedDp((cos(angle) * radiusDp.value).dp)
+                            val y = animatedDp((sin(angle) * radiusDp.value).dp)
+
+                            SurfaceText(Modifier
+                                .align(Alignment.Center)
+                                .offset { IntOffset(x.roundToPx(), y.roundToPx()) }
+                                .onGloballyPositioned { coordinates ->
+                                    onLetterPositioned(chooserLetter.id, coordinates.localToRoot(Offset.Zero))
+                                }
+                                .then(if (tapToSpell) Modifier.clickable {
+                                    if (selectedLettersIndices.lastOrNull() == index) {
+                                        selectedLettersIndices = selectedLettersIndices.dropLast(1)
+                                    } else if (index !in selectedLettersIndices) {
+                                        selectedLettersIndices = selectedLettersIndices + index
+                                    }
+                                } else Modifier),
+                                CircleShape,
+                                if (index in selectedLettersIndices) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                                chooserLetter.char.toString(),
+                                Modifier.padding(1.dp),
+                                FontWeight.Bold,
+                                42.sp,
+                                tileSize
+                            )
+                        }
                     }
                 }
             }
-            FilledIconButton(onClick = onShuffle) {
-                Icon(painterResource(R.drawable.ic_shuffle), contentDescription = stringResource(R.string.cd_shuffle))
+            Column(
+                modifier = Modifier.width(SIDE_COLUMN_WIDTH),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                FilledIconButton(onClick = onShuffle) {
+                    Icon(painterResource(R.drawable.ic_shuffle), contentDescription = stringResource(R.string.cd_shuffle))
+                }
             }
         }
     }
 }
 
-private fun distance(a: Offset, b: Offset): Float = (a - b).getDistance()
+/** Width of each column beside the wheel: tap-to-spell buttons on one side, shuffle on the other. */
+private val SIDE_COLUMN_WIDTH = 56.dp
+
+/** A letter tile at full size. */
+private val LETTER_TILE = 70.dp

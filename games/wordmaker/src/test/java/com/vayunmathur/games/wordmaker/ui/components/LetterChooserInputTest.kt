@@ -3,6 +3,7 @@ package com.vayunmathur.games.wordmaker.ui.components
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -96,5 +97,18 @@ class LetterChooserInputTest {
         rule.onNodeWithContentDescription("Submit").performClick()
         rule.waitForIdle()
         assertEquals(listOf("CA", "T"), submitted)
+    }
+
+    @Config(qualifiers = "w360dp-h740dp")
+    @Test fun widestSpacingOnANarrowPhoneKeepsShuffleAndAccurateTouches() {
+        val submitted = mutableListOf<String>()
+        setChooser(spacing = WheelSpacing.WIDEST) { submitted += it }
+        // The shuffle button used to be pushed off the right edge here.
+        rule.onNodeWithContentDescription("Shuffle").assertIsDisplayed()
+        val c = centerOf('C'); val a = centerOf('A'); val t = centerOf('T')
+        // Touches aimed at where the letters are drawn land on those letters.
+        rule.onRoot().performTouchInput { down(c); moveTo(c + Offset(0f, 12f)); moveTo(a); moveTo(t); up() }
+        rule.waitForIdle()
+        assertEquals(listOf("CAT"), submitted)
     }
 }
