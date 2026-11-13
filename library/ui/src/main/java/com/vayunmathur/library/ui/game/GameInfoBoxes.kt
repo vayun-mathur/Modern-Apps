@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -90,7 +91,7 @@ fun MovesBox(
             val spoken = if (bestScore == null) {
                 stringResource(R.string.game_moves_no_best_par_description, optimalMoves)
             } else {
-                stringResource(R.string.game_moves_best_par_description, bestScore, optimalMoves)
+                pluralStringResource(R.plurals.game_moves_best_par_description, bestScore, bestScore, optimalMoves)
             }
             // Material's Text directly, for autoSize: the box is a fixed 150 dp and a translated
             // "Best 120 · Par 98" must shrink to fit rather than wrap or clip.

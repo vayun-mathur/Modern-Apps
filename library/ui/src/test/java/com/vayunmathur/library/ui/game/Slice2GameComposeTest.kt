@@ -116,6 +116,9 @@ class Slice2GameComposeTest {
         rule.waitForIdle()
         rule.onNodeWithText("Best 12 · Par 10").assertIsDisplayed()
         rule.onNode(hasContentDescription("Best 12 moves, par 10")).assertExists()
+        bestScore = 1
+        rule.waitForIdle()
+        rule.onNode(hasContentDescription("Best 1 move, par 10")).assertExists()
     }
 
     // --- GameModeChooser ---------------------------------------------------------
