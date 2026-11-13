@@ -19,4 +19,20 @@
     <string name="daily_streak"><xliff:g id="days" example="5">%1$d</xliff:g> day streak</string>
     <!-- GameBoard: Accessibility label for the opening in the board frame the red target block must leave through. Noun -->
     <string name="exit">Exit</string>
+    <!-- GameBoard: Spoken name of the red block that must reach the exit. Noun phrase -->
+    <string name="cd_target_block">Target block</string>
+    <!-- GameBoard: Spoken name of an ordinary sliding block. Noun -->
+    <string name="cd_block">Block</string>
+    <!-- GameBoard: Spoken name of a block that cannot move. Noun -->
+    <string name="cd_wall">Wall</string>
+    <!-- GameBoard: Accessibility description of one block. %1$s = its kind (Target block / Block / Wall). %2$d = width in cells, e.g. 2. %3$d = height in cells, e.g. 1. %4$d = row of its top-left cell starting at 1, e.g. 3. %5$d = column of its top-left cell starting at 1, e.g. 1 -->
+    <string name="cd_block_at"><xliff:g id="kind" example="Target block">%1$s</xliff:g>, <xliff:g id="width" example="2">%2$d</xliff:g> by <xliff:g id="height" example="1">%3$d</xliff:g>, at row <xliff:g id="row" example="3">%4$d</xliff:g>, column <xliff:g id="column" example="1">%5$d</xliff:g></string>
+    <!-- GameBoard: Screen-reader action sliding a block one cell left. Verb phrase -->
+    <string name="action_move_left">Move left</string>
+    <!-- GameBoard: Screen-reader action sliding a block one cell right. Verb phrase -->
+    <string name="action_move_right">Move right</string>
+    <!-- GameBoard: Screen-reader action sliding a block one cell up. Verb phrase -->
+    <string name="action_move_up">Move up</string>
+    <!-- GameBoard: Screen-reader action sliding a block one cell down. Verb phrase -->
+    <string name="action_move_down">Move down</string>
 </resources>

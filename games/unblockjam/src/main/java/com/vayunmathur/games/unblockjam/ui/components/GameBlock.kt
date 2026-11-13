@@ -1,6 +1,9 @@
 package com.vayunmathur.games.unblockjam.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -16,12 +19,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import com.vayunmathur.games.unblockjam.R
 import com.vayunmathur.games.unblockjam.data.Block
 import com.vayunmathur.games.unblockjam.data.LevelData
 import com.vayunmathur.games.unblockjam.platform.BlockPosition
+import com.vayunmathur.games.unblockjam.platform.StepResult
+import com.vayunmathur.games.unblockjam.platform.isHorizontal
+import com.vayunmathur.games.unblockjam.platform.stepBlock
 import com.vayunmathur.games.unblockjam.platform.blockDragGestures
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Motion
@@ -48,6 +57,9 @@ internal fun GameBlock(
         else -> MaterialTheme.colorScheme.primaryContainer
     }
     val markColor = MaterialTheme.colorScheme.onTertiary
+    val focusColor = MaterialTheme.colorScheme.onBackground
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
     val blockWidth = cellWidth * block.dimension.width
     val blockHeight = cellHeight * block.dimension.height
 
@@ -95,7 +107,28 @@ internal fun GameBlock(
         }
         // Tagged before the inset, so tests read the block's cell rather than its painted inset.
         .testTag("block_$index")
+        .blockAccessibility(
+            labels = blockLabels(block, isMainBlock),
+            horizontal = block.isHorizontal(),
+            movable = !block.fixed && !isLevelWon,
+            interactionSource = interactionSource,
+        ) { dx, dy ->
+            when (val step = stepBlock(levelData, index, dx, dy)) {
+                is StepResult.Moved -> onLevelChanged(step.level)
+                StepResult.Won -> onLevelWon()
+                StepResult.Blocked -> Unit
+            }
+            step != StepResult.Blocked
+        }
         .padding(scaling * BLOCK_INSET_SCALE)
+        // Keyboard focus needs to be visible: an outline on the focused block.
+        .then(
+            if (focused) {
+                Modifier.border(FOCUS_OUTLINE, focusColor, RoundedCornerShape(percent = BLOCK_CORNER_PERCENT))
+            } else {
+                Modifier
+            }
+        )
         .background(color, shape = RoundedCornerShape(percent = BLOCK_CORNER_PERCENT))
         // The target block carries the exit's chevrons, so it stands out by shape as well as
         // colour: on several pack palettes it was only red against orange, which colour-blind
@@ -118,9 +151,36 @@ internal fun GameBlock(
     Box(modifier = modifier)
 }
 
+/** What TalkBack calls [block] and its moves: kind, size and top-left cell (1-based). */
+@Composable
+private fun blockLabels(block: Block, isMainBlock: Boolean): BlockLabels {
+    val kind = stringResource(
+        when {
+            isMainBlock -> R.string.cd_target_block
+            block.fixed -> R.string.cd_wall
+            else -> R.string.cd_block
+        }
+    )
+    return BlockLabels(
+        description = stringResource(
+            R.string.cd_block_at,
+            kind,
+            block.dimension.width,
+            block.dimension.height,
+            block.position.y + 1,
+            block.position.x + 1,
+        ),
+        left = stringResource(R.string.action_move_left),
+        right = stringResource(R.string.action_move_right),
+        up = stringResource(R.string.action_move_up),
+        down = stringResource(R.string.action_move_down),
+    )
+}
+
 /** One release: a settle from [from], told apart from the last by [id]. */
 private data class SettleTrip(val id: Int, val from: Offset)
 
 private const val WIN_ANIM_MILLIS = 600
 private const val BLOCK_INSET_SCALE = 4
 private const val BLOCK_CORNER_PERCENT = 10
+private val FOCUS_OUTLINE = 3.dp

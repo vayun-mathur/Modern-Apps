@@ -197,7 +197,7 @@ fun Modifier.blockDragGestures(
     onLevelWon: () -> Unit,
     onLevelChanged: (LevelData) -> Unit,
 ): Modifier {
-    val isHorizontal = block.dimension.width > block.dimension.height
+    val isHorizontal = block.isHorizontal()
     val isMainBlock = index == 0
     val params = DragParams(block, levelData, isHorizontal, isMainBlock, onLevelWon, onLevelChanged, index)
     return pointerInput(block, levelData, isLevelWon, cellSize) {
