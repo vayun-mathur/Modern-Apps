@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -52,8 +55,15 @@ internal fun MapPageScope.MapContentBox(
     // globe detail threshold, where the sphere reads as a sphere): the category
     // chips collapse into it. On the Moon itself the row stays a switch (back to
     // Earth) — there are no POIs to filter up there.
-    val showBodySwitch = globeEnabled && camera.position.zoom < GLOBE_DETAIL_ZOOM ||
-        body == MapBody.Moon
+    //
+    // Derived, not read directly: `camera.position` changes every frame of a gesture, and a
+    // plain read here subscribed this whole box (map surface call included) to it. The derived
+    // flag invalidates this scope only when the answer flips at the detail threshold.
+    val showBodySwitch by remember(camera, globeEnabled, body) {
+        derivedStateOf {
+            globeEnabled && camera.position.zoom < GLOBE_DETAIL_ZOOM || body == MapBody.Moon
+        }
+    }
     // No app bar. The map is the whole screen and every piece of chrome floats over it,
     // which is also what keeps the renderer's surface edge-to-edge — a padded parent here
     // is what used to leave a dead strip along the navigation bar.
@@ -178,11 +188,11 @@ internal fun MapPageScope.MapContentBox(
 
                     // Browse controls, plus the layers and settings buttons, which stay out while
                     // a place is selected and ride above the sheet — see [MapFabStack].
-                    // The compass reads the live camera bearing: the twist gesture rotates the
-                    // whole Compose map with it, and tapping it animates back to north.
+                    // The compass reads the live camera bearing inside the stack (never here, or
+                    // every camera frame would recompose this whole box); tapping it animates
+                    // back to north.
                     MapFabStack(
                         camera = camera,
-                        bearing = camera.position.bearing,
                         browsing = browsing,
                         // Whichever of the three is occupying the bottom: at most one sheet is
                         // ever up, and the search bar is only drawn when neither is.

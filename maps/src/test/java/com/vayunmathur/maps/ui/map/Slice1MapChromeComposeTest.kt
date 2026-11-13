@@ -73,7 +73,6 @@ class Slice1MapChromeComposeTest {
             Box {
                 MapFabStack(
                     camera = camera,
-                    bearing = 0.0,
                     browsing = true,
                     lift = { 0 },
                     onResetNorth = { north++ },
@@ -86,6 +85,45 @@ class Slice1MapChromeComposeTest {
         // Parking + my-location FABs are always present while browsing.
         rule.waitForIdle()
         assertTrue(layers == 0 && parking == 0 && mine == 0 && north == 0)
+    }
+
+    @Test
+    fun `a moving camera does not recompose the host of the fab stack`() {
+        // The host stands in for MapContentBox, which carries the map surface: it must not
+        // subscribe to the camera through the stack, or every frame of a drag recomposes the
+        // whole map box. Only the scale-bar and compass leaves may read `camera.position`.
+        val camera = CameraState(CameraPosition(GeoPoint(-122.4, 37.7), 12.0))
+        var hostCompositions = 0
+        rule.setContent {
+            Box {
+                hostCompositions++
+                MapFabStack(
+                    camera = camera,
+                    browsing = true,
+                    lift = { 0 },
+                    onResetNorth = {},
+                    onLayers = {},
+                    onParking = {},
+                    onMyLocation = {},
+                )
+            }
+        }
+        rule.waitForIdle()
+        val settled = hostCompositions
+        repeat(30) { frame ->
+            rule.runOnIdle {
+                camera.position = camera.position.copy(
+                    target = GeoPoint(-122.4 + frame * 1e-3, 37.7),
+                    zoom = 12.0 + frame * 0.05,
+                    bearing = frame * 3.0,
+                )
+            }
+            rule.waitForIdle()
+        }
+        assertTrue(
+            hostCompositions == settled,
+            "30 camera frames recomposed the host ${hostCompositions - settled} times",
+        )
     }
 
     // --- WaypointList ---------------------------------------------------------

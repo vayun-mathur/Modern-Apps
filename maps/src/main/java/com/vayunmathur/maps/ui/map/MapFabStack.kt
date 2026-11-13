@@ -48,6 +48,21 @@ private fun BoxScope.CameraScaleBar(camera: CameraState, lift: () -> Int = { 0 }
 }
 
 /**
+ * The compass bound to the live camera bearing, scoped like [CameraScaleBar] so a rotate or
+ * pan recomposes only this leaf.
+ *
+ * The bearing used to be read by the caller (`MapContentBox`) and passed in as a `Double`. That
+ * read sat in `MapContentBox`'s own restart scope, so every camera change — every frame of a
+ * drag, pinch or fling — recomposed the whole map box: the map surface call and its overlay
+ * builders, the top bar, the chips, the search bar and this stack. Reading it here confines the
+ * subscription to the one composable that draws it.
+ */
+@Composable
+private fun CameraCompass(camera: CameraState, onResetNorth: () -> Unit) {
+    CompassButton(bearing = camera.position.bearing, onResetNorth = onResetNorth)
+}
+
+/**
  * The map controls: a scale bar bottom-left, a FAB stack bottom-right.
  *
  * Stateless — every action is a lambda, so this file has no idea what a parking spot is or how
@@ -61,8 +76,8 @@ private fun BoxScope.CameraScaleBar(camera: CameraState, lift: () -> Int = { 0 }
  */
 @Composable
 fun BoxScope.MapFabStack(
+    /** Read only inside the scale-bar and compass leaves, never in this body or its caller. */
     camera: CameraState,
-    bearing: Double,
     /** Whether the browse-only controls are shown. Layers is drawn either way. */
     browsing: Boolean,
     /**
@@ -91,7 +106,7 @@ fun BoxScope.MapFabStack(
         // Compass on top and only while the map is rotated; layers in the middle;
         // my-location is the primary action, so it sits closest to the thumb.
         if (browsing) {
-            CompassButton(bearing = bearing, onResetNorth = onResetNorth)
+            CameraCompass(camera = camera, onResetNorth = onResetNorth)
         }
         LayersButton(onClick = onLayers)
         if (browsing) {
