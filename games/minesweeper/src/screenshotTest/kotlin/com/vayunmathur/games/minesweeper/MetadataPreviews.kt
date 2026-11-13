@@ -42,7 +42,7 @@ class MetadataPreviews {
         for (index in game.mines.indices.filter { game.mines[it] }.take(4)) {
             game = MinesweeperRules.toggleFlag(game, index)
         }
-        Board(config, game.copy(elapsedSeconds = 74))
+        Board(config, game, elapsed = 74)
     }
 
     @PreviewTest
@@ -51,7 +51,7 @@ class MetadataPreviews {
     fun Preview2Large() {
         val config = GameConfig(BoardSize.LARGE, Difficulty.HARD)
         val game = opened(config, seed = 77)
-        Board(config, game.copy(elapsedSeconds = 142))
+        Board(config, game, elapsed = 142)
     }
 
     @PreviewTest
@@ -73,17 +73,18 @@ class MetadataPreviews {
         for (index in 0 until game.cellCount) {
             if (!game.mines[index]) game = MinesweeperRules.reveal(game, index)
         }
-        Board(config, game.copy(elapsedSeconds = 53))
+        Board(config, game, elapsed = 53)
     }
 
     @Composable
-    private fun Board(config: GameConfig, game: MinesweeperGameState) {
+    private fun Board(config: GameConfig, game: MinesweeperGameState, elapsed: Int = 0) {
         // Layoutlib has no wallpaper to sample, so Material You falls back to the default palette.
         DynamicTheme(darkTheme = true) {
             GameBoardScreen(
                 state = MinesweeperUiState(config = config, game = game),
                 actions = MinesweeperActions.Noop,
                 onExit = {},
+                elapsedSeconds = { elapsed },
             )
         }
     }

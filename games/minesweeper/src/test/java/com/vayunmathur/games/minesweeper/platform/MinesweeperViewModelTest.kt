@@ -13,6 +13,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -96,8 +97,12 @@ class MinesweeperViewModelTest {
         assertTrue(game.revealed[0])
         assertTrue(game.revealed.count { it } > 1)
         assertEquals(GameOutcome.PLAYING, game.outcome)
+        val beforeTick = vm.uiState.value.game!!
         vm.incrementTimer()
-        assertEquals(1, vm.uiState.value.game!!.elapsedSeconds)
+        assertEquals(1, vm.elapsedSeconds.value)
+        assertSame(beforeTick, vm.uiState.value.game!!, "a tick must not hand the field a new state")
+        vm.restart()
+        assertEquals(0, vm.elapsedSeconds.value, "a new field starts the clock from zero")
     }
 
     @Test
@@ -185,7 +190,7 @@ class MinesweeperViewModelTest {
         val vm = vm()
         vm.newGame(GameConfig())
         vm.incrementTimer()
-        assertEquals(0, vm.uiState.value.game!!.elapsedSeconds)
+        assertEquals(0, vm.elapsedSeconds.value)
         vm.tapCell(40)
         vm.giveUp()
         assertNull(vm.uiState.value.game)

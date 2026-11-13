@@ -51,12 +51,16 @@ private val FieldMaxWidth = 480.dp
 /**
  * The board, with no dependency on the ViewModel so it can be rendered from a `@Preview` — see
  * `src/screenshotTest`.
+ *
+ * @param elapsedSeconds the clock, read lazily so a 1 Hz tick recomposes only the text that
+ * shows it rather than the field.
  */
 @Composable
 fun GameBoardScreen(
     state: MinesweeperUiState,
     actions: MinesweeperActions,
     onExit: () -> Unit,
+    elapsedSeconds: () -> Int = { 0 },
 ) {
     val game = state.game
     val mineCount = state.config.difficulty.mineCount(state.config.size)
@@ -74,13 +78,7 @@ fun GameBoardScreen(
         onNavigateBack = onExit,
         alignment = AppBarAlignment.Center,
         actions = {
-            if (game != null) {
-                Text(
-                    formatDuration(game.elapsedSeconds),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(end = Spacing.lg),
-                )
-            }
+            if (game != null) ClockText(elapsedSeconds)
         },
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
@@ -200,13 +198,23 @@ fun GameBoardScreen(
                     if (won) {
                         Text(
                             "${stringResource(UiR.string.game_time)}: " +
-                                formatDuration(game.elapsedSeconds)
+                                formatDuration(elapsedSeconds())
                         )
                     }
                 }
             }
         }
     }
+}
+
+/** Its own restart scope, so the per-second tick recomposes this text and nothing else. */
+@Composable
+private fun ClockText(elapsedSeconds: () -> Int) {
+    Text(
+        formatDuration(elapsedSeconds()),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(end = Spacing.lg),
+    )
 }
 
 /**

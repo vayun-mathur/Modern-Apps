@@ -92,7 +92,8 @@ data class MinesweeperGameState(
     val outcome: GameOutcome = GameOutcome.PLAYING,
     /** The mine that ended it, so the board can single it out from the ones merely shown. */
     val explodedAt: Int = -1,
-    val elapsedSeconds: Int = 0,
+    // The clock is deliberately not here: it ticks every second, and every tick would hand the
+    // field a new state and redraw all 80-216 cells. MinesweeperViewModel.elapsedSeconds owns it.
     /** False until the first reveal, which is when the mines are laid and the clock starts. */
     val started: Boolean = false,
 ) {

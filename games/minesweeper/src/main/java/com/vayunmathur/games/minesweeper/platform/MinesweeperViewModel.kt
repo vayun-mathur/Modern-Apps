@@ -37,6 +37,16 @@ class MinesweeperViewModel(application: Application) :
 
     private val statsRepository = MinesweeperStatsRepository(application)
 
+    private val _elapsedSeconds = MutableStateFlow(0)
+
+    /**
+     * Seconds on the clock for the field in progress.
+     *
+     * Its own flow rather than a field of [MinesweeperGameState]: the game state feeds every cell,
+     * so a 1 Hz tick inside it redrew the whole field every second. Only the clock text reads this.
+     */
+    val elapsedSeconds: StateFlow<Int> = _elapsedSeconds.asStateFlow()
+
     /**
      * Whether the player has placed a flag this game.
      *
@@ -67,6 +77,7 @@ class MinesweeperViewModel(application: Application) :
      */
     fun newGame(config: GameConfig) {
         placedAnyFlag = false
+        _elapsedSeconds.value = 0
         _uiState.value = MinesweeperUiState(
             config = config,
             game = MinesweeperGameState.empty(config),
@@ -175,13 +186,14 @@ class MinesweeperViewModel(application: Application) :
         if (game.started && !game.isOver) {
             statsRepository.recordGameLost(state.config.size, state.config.difficulty)
         }
+        _elapsedSeconds.value = 0
         _uiState.value = MinesweeperUiState(config = state.config, tapMode = state.tapMode)
     }
 
     fun incrementTimer() {
         val game = _uiState.value.game ?: return
         if (!game.started || game.isOver) return
-        _uiState.update { it.copy(game = game.copy(elapsedSeconds = game.elapsedSeconds + 1)) }
+        _elapsedSeconds.update { it + 1 }
     }
 
     fun dismissAchievementNotification() = achievementsManager.dismissNotification()
@@ -201,22 +213,23 @@ class MinesweeperViewModel(application: Application) :
 
         val config = _uiState.value.config
         when (next.outcome) {
-            GameOutcome.WON -> onWin(next)
+            GameOutcome.WON -> onWin()
             GameOutcome.LOST -> statsRepository.recordGameLost(config.size, config.difficulty)
             GameOutcome.PLAYING -> Unit
         }
     }
 
-    private fun onWin(game: MinesweeperGameState) {
+    private fun onWin() {
         val config = _uiState.value.config
-        statsRepository.recordGameWon(config.size, config.difficulty, game.elapsedSeconds)
+        val elapsed = _elapsedSeconds.value
+        statsRepository.recordGameWon(config.size, config.difficulty, elapsed)
 
         val manager = achievementsManager
         manager.onAchievementUnlocked("first_win")
         if (config.size == BoardSize.LARGE) manager.onAchievementUnlocked("win_large")
         if (config.difficulty == Difficulty.EXPERT) manager.onAchievementUnlocked("win_expert")
         if (!placedAnyFlag) manager.onAchievementUnlocked("no_flags_needed")
-        if (game.elapsedSeconds < FAST_WIN_SECONDS) manager.onAchievementUnlocked("speed_win")
+        if (elapsed < FAST_WIN_SECONDS) manager.onAchievementUnlocked("speed_win")
 
         val totalWins = statsRepository.getTotalGamesWon()
         manager.onProgressUpdated("wins_10", totalWins)
