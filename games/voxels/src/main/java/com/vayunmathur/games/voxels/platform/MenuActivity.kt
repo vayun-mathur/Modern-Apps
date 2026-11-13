@@ -31,11 +31,13 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.rememberIsOnline
+import com.vayunmathur.games.voxels.network.JoinRequests
 import com.vayunmathur.games.voxels.network.VoxelsRoles
 import com.vayunmathur.games.voxels.network.VoxelsSync
 import com.vayunmathur.games.voxels.data.WorldInfo
 import com.vayunmathur.games.voxels.data.WorldManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.io.encoding.Base64
@@ -48,6 +50,8 @@ class MenuActivity : ComponentActivity() {
     // Bumped on each onResume so the world list reloads when returning from the game
     // (keeps last-played ordering fresh).
     private var resumeTick by mutableStateOf(0)
+    // True while the menu is in the foreground; drives the inbox poll.
+    private var menuResumed by mutableStateOf(false)
 
     /**
      * Pending `voxels://join/<worldId>?owner=<id>` link (worldId to ownerId), set on cold start and
@@ -58,6 +62,12 @@ class MenuActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         resumeTick++
+        menuResumed = true
+    }
+
+    override fun onPause() {
+        menuResumed = false
+        super.onPause()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -105,26 +115,16 @@ class MenuActivity : ComponentActivity() {
                 // Pulls the inbox (from 0): folds invites into the shared-world list and surfaces
                 // join requests for worlds this device owns (minus already-approved/denied ones).
                 val refreshInbox: suspend () -> Unit = {
-                    val pending = withContext(Dispatchers.IO) {
-                        runCatching {
-                            VoxelsSync.init(ctx)
-                            val res = VoxelsSync.pullInbox(0)
-                            for (inv in res.invites) {
-                                WorldManager.upsertSharedWorld(
-                                    ctx, inv.name, inv.seed, inv.worldId,
-                                    inv.key, inv.ownerDeviceId, inv.role, System.currentTimeMillis(),
-                                )
-                            }
-                            val owned = WorldManager.onlineWorlds(ctx)
-                                .filter { it.meta.role == VoxelsRoles.OWNER }.map { it.meta.worldId }.toSet()
-                            val handled = WorldManager.handledRequests(ctx)
-                            res.requests
-                                .filter { it.worldId in owned && "${it.worldId}|${it.requesterId}" !in handled }
-                                .distinctBy { "${it.worldId}|${it.requesterId}" }
-                        }.getOrDefault(emptyList())
-                    }
-                    requests = pending
+                    requests = JoinRequests.refresh(ctx, acceptInvites = true)
                     reload()
+                }
+                // Keep pulling while the menu is on screen, so new invites and join requests show up
+                // without pressing Refresh.
+                LaunchedEffect(menuResumed, online) {
+                    while (menuResumed && online) {
+                        delay(JoinRequests.POLL_MS)
+                        runCatching { refreshInbox() }
+                    }
                 }
 
                 LaunchedEffect(resumeTick) {
@@ -203,35 +203,13 @@ class MenuActivity : ComponentActivity() {
                                 requests = requests,
                                 onApprove = { req ->
                                     scope.launch {
-                                        val ok = withContext(Dispatchers.IO) {
-                                            runCatching {
-                                                VoxelsSync.init(ctx)
-                                                val world = WorldManager.onlineWorlds(ctx)
-                                                    .firstOrNull { it.meta.worldId == req.worldId && it.meta.role == VoxelsRoles.OWNER }
-                                                    ?: return@runCatching false
-                                                val key = Base64.decode(world.meta.keyB64)
-                                                val sent = VoxelsSync.sendInvite(
-                                                    req.requesterId, world.meta.worldId, key,
-                                                    world.meta.name, world.meta.seed, VoxelsRoles.EDITOR,
-                                                    Base64.encode(VoxelsSync.publicBundle), world.meta.ownerDeviceId,
-                                                )
-                                                if (sent) VoxelsSync.recordMembers(
-                                                    world.meta.worldId, key,
-                                                    listOf(
-                                                        VoxelsSync.Member(world.meta.ownerDeviceId, "", VoxelsRoles.OWNER),
-                                                        VoxelsSync.Member(req.requesterId, req.name, VoxelsRoles.EDITOR),
-                                                    ),
-                                                )
-                                                sent
-                                            }.getOrDefault(false)
-                                        }
-                                        if (ok) WorldManager.markRequestHandled(ctx, "${req.worldId}|${req.requesterId}")
+                                        val ok = JoinRequests.approve(ctx, req)
                                         requests = requests.filterNot { it.worldId == req.worldId && it.requesterId == req.requesterId }
                                         toast(getString(if (ok) R.string.invite_sent else R.string.invite_failed))
                                     }
                                 },
                                 onDeny = { req ->
-                                    WorldManager.markRequestHandled(ctx, "${req.worldId}|${req.requesterId}")
+                                    JoinRequests.deny(ctx, req)
                                     requests = requests.filterNot { it.worldId == req.worldId && it.requesterId == req.requesterId }
                                 },
                             )

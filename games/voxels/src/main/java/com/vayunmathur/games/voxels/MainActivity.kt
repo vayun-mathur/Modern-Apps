@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
@@ -55,7 +56,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.vayunmathur.games.voxels.data.GameSettingsStore
 import com.vayunmathur.games.voxels.domain.BackTarget
 import com.vayunmathur.games.voxels.domain.NetStatus
+import com.vayunmathur.games.voxels.network.JoinRequests
 import com.vayunmathur.games.voxels.network.MultiplayerPump
+import com.vayunmathur.games.voxels.network.VoxelsSync
 import com.vayunmathur.games.voxels.domain.OverlayFlags
 import com.vayunmathur.games.voxels.domain.backTarget
 import com.vayunmathur.games.voxels.ui.BossBar
@@ -74,6 +77,7 @@ import com.vayunmathur.games.voxels.ui.LoadingOverlay
 import com.vayunmathur.games.voxels.ui.Joystick
 import com.vayunmathur.games.voxels.ui.SettingsSheet
 import com.vayunmathur.games.voxels.ui.StonecutterOverlay
+import com.vayunmathur.games.voxels.ui.JoinRequestChip
 import com.vayunmathur.games.voxels.ui.OnlineHud
 import com.vayunmathur.games.voxels.ui.TradeOverlay
 import com.vayunmathur.games.voxels.ui.UseButton
@@ -92,6 +96,7 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.GameHubComposeHook
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     // Pause-menu state lives on the activity so onStop can pause the game: coming back from Home or
@@ -278,6 +283,19 @@ class MainActivity : ComponentActivity() {
                             } catch (_: Exception) {}
                         }
                         delay(150)
+                    }
+                }
+
+                // Host only: poll for join requests to this world while playing, so the host can let a
+                // friend in without quitting to the menu.
+                val scope = rememberCoroutineScope()
+                var joinRequests by remember { mutableStateOf<List<VoxelsSync.JoinRequest>>(emptyList()) }
+                LaunchedEffect(online, netRole) {
+                    if (!online || netRole != 1) return@LaunchedEffect
+                    while (isActive) {
+                        joinRequests = JoinRequests.refresh(this@MainActivity, acceptInvites = false)
+                            .filter { it.worldId == sharedWorldId }
+                        delay(JoinRequests.POLL_MS)
                     }
                 }
 
@@ -502,12 +520,28 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                            // Online HUD: players here, host presence, connection state, join/leave notices.
+                            // Online HUD: players here, host presence, connection state, join/leave notices,
+                        // and for the host, anyone asking to join right now.
                         if (online) {
-                            OnlineHud(
-                                status = netStatus, peersJson = peersJson, ownerDevice = ownerDevice, isHost = netRole == 1,
-                                modifier = Modifier.align(Alignment.TopEnd).padding(top = 36.dp, end = 12.dp),
-                            )
+                            Column(
+                                Modifier.align(Alignment.TopEnd).padding(top = 36.dp, end = 12.dp),
+                                horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                OnlineHud(status = netStatus, peersJson = peersJson, ownerDevice = ownerDevice, isHost = netRole == 1)
+                                joinRequests.firstOrNull()?.let { req ->
+                                    JoinRequestChip(
+                                        player = req.name.ifBlank { req.requesterId.take(8) },
+                                        onApprove = {
+                                            joinRequests = joinRequests - req
+                                            scope.launch { JoinRequests.approve(this@MainActivity, req) }
+                                        },
+                                        onDeny = {
+                                            joinRequests = joinRequests - req
+                                            JoinRequests.deny(this@MainActivity, req)
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                     }
@@ -605,7 +639,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         com.vayunmathur.games.voxels.platform.MusicFx.stop()
-        com.vayunmathur.games.voxels.network.VoxelsSync.stopLive()
+        VoxelsSync.stopLive()
         if (VoxelsNative.isAvailable) {
             try { VoxelsNative.nativeSetRole(0) } catch (_: Exception) {}
             try { VoxelsNative.nativeOnDestroy() } catch (_: Exception) {}

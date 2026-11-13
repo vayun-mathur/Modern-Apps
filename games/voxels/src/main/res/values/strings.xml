@@ -101,6 +101,8 @@
     <string name="host_here">Host is here</string>
     <string name="host_away">Host isn\'t connected</string>
     <!-- Online HUD notices; %1$s = player name. Sentence fragment -->
+    <!-- In-game host prompt; %1$s = requesting player. Sentence -->
+    <string name="player_wants_to_join">%1$s wants to join</string>
     <string name="player_joined">%1$s joined</string>
     <string name="player_left">%1$s left</string>
     <!-- Online HUD: why multiplayer could not start. Sentences -->
