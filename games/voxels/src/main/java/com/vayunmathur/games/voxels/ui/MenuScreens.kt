@@ -36,6 +36,7 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
+import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDelete
@@ -63,6 +64,19 @@ fun MenuScreen(
     onApprove: (VoxelsSync.JoinRequest) -> Unit = {},
     onDeny: (VoxelsSync.JoinRequest) -> Unit = {},
 ) {
+    // Deleting a world is permanent, so the trash button only asks; the dialog names the world.
+    var pendingDelete by remember { mutableStateOf<WorldInfo?>(null) }
+    pendingDelete?.let { doomed ->
+        ConfirmDialog(
+            title = stringResource(R.string.delete_world_title, doomed.meta.name),
+            message = stringResource(R.string.delete_world_message),
+            confirmLabel = stringResource(UiR.string.delete),
+            dismissLabel = stringResource(UiR.string.cancel),
+            destructive = true,
+            onConfirm = { onDelete(doomed) },
+            onDismiss = { pendingDelete = null },
+        )
+    }
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.TopCenter) {
         Column(
             Modifier.fillMaxWidth().widthIn(max = 560.dp),
@@ -86,7 +100,7 @@ fun MenuScreen(
                 } else {
                     items(worlds, key = { it.id }) { world ->
                         WorldRow(world = world, enabled = true, requiresInternet = false,
-                            onPlay = { onPlay(world) }, onDelete = { onDelete(world) }, onShare = null)
+                            onPlay = { onPlay(world) }, onDelete = { pendingDelete = world }, onShare = null)
                     }
                 }
 
@@ -118,7 +132,7 @@ fun MenuScreen(
                         WorldRow(world = world, enabled = isOnline, requiresInternet = !isOnline,
                             subtitle = if (owner) stringResource(R.string.hosted_by_you) else stringResource(R.string.shared_with_you),
                             onPlay = { if (isOnline) onPlay(world) },
-                            onDelete = { onDelete(world) },
+                            onDelete = { pendingDelete = world },
                             onShare = if (owner) ({ onShare(world) }) else null)
                     }
                 }

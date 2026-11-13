@@ -12,6 +12,10 @@
     <string name="select_a_world">Select a world</string>
     <string name="no_worlds_yet_create_one_to_start">No worlds yet — create one to start.</string>
     <string name="create_new_world">Create New World</string>
+    <!-- Delete-world confirmation title; %1$s = world name. Question -->
+    <string name="delete_world_title">Delete \"%1$s\"?</string>
+    <!-- Delete-world confirmation body. Sentence -->
+    <string name="delete_world_message">This world, its builds, inventory and awards are removed from this device for good.</string>
     <string name="create_world">Create World</string>
     <string name="world_name">World name</string>
     <string name="seed">Seed</string>

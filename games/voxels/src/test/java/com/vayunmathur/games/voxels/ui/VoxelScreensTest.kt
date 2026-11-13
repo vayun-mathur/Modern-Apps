@@ -1,6 +1,7 @@
 package com.vayunmathur.games.voxels.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -98,5 +99,24 @@ class VoxelScreensTest {
     @Test fun `joystick composes and reports no drag initially`() {
         rule.setContent { Joystick(modifier = androidx.compose.ui.Modifier, onMove = { _, _ -> }, onLookDelta = { _, _ -> }) }
         assertTrue(ctx.packageName.isNotBlank())
+    }
+
+    @Test fun `deleting a world asks first, naming it`() {
+        val deleted = mutableListOf<String>()
+        rule.setContent {
+            MenuScreen(
+                worlds = listOf(world("Alpha")), onlineWorlds = emptyList(), deviceId = "d", isOnline = false,
+                onPlay = {}, onDelete = { deleted += it.meta.name }, onCreate = {}, onHostOnline = {},
+                onRefresh = {}, onCopyDeviceId = {}, onShare = {},
+            )
+        }
+        rule.onNodeWithContentDescription("Delete").performClick()
+        assertTrue(deleted.isEmpty(), "one tap deleted the world")
+        rule.onNodeWithText("Delete \"Alpha\"?").assertExists()
+        rule.onNodeWithText("Cancel").performClick()
+        assertTrue(deleted.isEmpty())
+        rule.onNodeWithContentDescription("Delete").performClick()
+        rule.onNodeWithText("Delete").performClick()
+        assertEquals(listOf("Alpha"), deleted)
     }
 }
