@@ -36,6 +36,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -54,6 +57,8 @@ import kotlinx.coroutines.flow.first
  * It keeps clear of the status bar, display cutouts and rounded corners through [windowInsets] (the top
  * and sides of safe drawing by default), plus a small margin. Insets an ancestor has already consumed
  * are not applied twice.
+ *
+ * It is a polite live region, so TalkBack announces the unlock when it appears.
  *
  * [onDismiss] runs once the exit animation has finished, which is when the caller should move on to the
  * next queued unlock. Each [achievement] gets a fresh toast, so a queue that advances in place shows
@@ -103,6 +108,9 @@ private fun AchievementToast(achievement: Achievement, onDismiss: () -> Unit, wi
         Card(
             modifier = Modifier
                 .fillMaxWidth()
+                // TalkBack reads the merged card ("Achievement Unlocked!, <name>, <description>") when it
+                // appears, without interrupting whatever it is already saying.
+                .semantics { liveRegion = LiveRegionMode.Polite }
                 // Tap to dismiss; swipe up past the threshold to dismiss too. Both play the same exit
                 // animation as the timeout.
                 .clickable(onClickLabel = stringResource(R.string.dismiss), onClick = hide)

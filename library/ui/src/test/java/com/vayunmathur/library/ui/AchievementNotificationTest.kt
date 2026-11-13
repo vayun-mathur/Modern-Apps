@@ -11,6 +11,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -120,6 +124,14 @@ class AchievementNotificationTest {
         rule.mainClock.advanceTimeBy(100)
         val inset = rule.onNodeWithText("First win").getUnclippedBoundsInRoot().top
         assertEquals(40f, (inset - flush).value, 0.5f, "the whole card moves down by the inset")
+    }
+
+    @Test
+    fun `TalkBack announces the unlock politely`() {
+        setToastOverScreen()
+        rule.onNodeWithText("First win").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite),
+        )
     }
 
     private companion object {
