@@ -1,6 +1,8 @@
 package com.vayunmathur.games.pipes.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -57,25 +59,25 @@ fun GameBoard(
             .testTag(GAME_BOARD_TAG)
             .pointerInput(geometry, isLevelWon) {
                 if (isLevelWon) return@pointerInput
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val pos = event.changes.firstOrNull()?.position ?: continue
-
-                        when {
-                            event.changes.any { it.pressed && !it.previousPressed } -> {
-                                val cell = geometry.hitTest(pos)
-                                if (cell != null) currentStartDraw(cell)
-                            }
-                            event.changes.any { it.pressed } -> {
-                                val cell = geometry.hitTestDrag(pos)
-                                if (cell != null) currentExtendPath(cell)
-                            }
-                            event.changes.any { !it.pressed && it.previousPressed } -> {
-                                currentCommitDraw()
-                            }
+                // One stroke per gesture, driven only by the first finger: a second finger
+                // used to restart the stroke mid-drag (and re-snapshot undo); now it is ignored.
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    down.consume()
+                    val start = geometry.hitTest(down.position) ?: return@awaitEachGesture
+                    currentStartDraw(start)
+                    try {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            event.changes.forEach { it.consume() }
+                            if (change == null || !change.pressed) break
+                            geometry.hitTestDrag(change.position)?.let { currentExtendPath(it) }
                         }
-                        event.changes.forEach { it.consume() }
+                    } finally {
+                        // Also on cancellation (the board resized mid-stroke): never leave a
+                        // stroke open in the ViewModel.
+                        currentCommitDraw()
                     }
                 }
             }

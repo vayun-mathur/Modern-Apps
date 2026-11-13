@@ -190,10 +190,24 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     override fun startDraw(cell: CellPos) {
+        if (_uiState.value.isLevelWon) return
+        // A stroke still open (its release was lost, or a second finger got through) is
+        // abandoned, not stacked: the new stroke starts from the board as it was before it,
+        // so the undo snapshot stays the real pre-stroke board.
+        _uiState.update { cur ->
+            if (cur.activeColor == null) {
+                cur
+            } else {
+                cur.copy(
+                    gameState = cur.preDrawState ?: cur.gameState,
+                    activeColor = null,
+                    activePath = emptyList(),
+                    preDrawState = null,
+                )
+            }
+        }
         val s = _uiState.value
-        if (s.isLevelWon || s.levelData == null) return
-
-        val levelData = s.levelData
+        val levelData = s.levelData ?: return
         val endpointColor = levelData.endpoints.find { ep -> cell in ep.cells }?.colorIndex
 
         if (endpointColor != null) {
