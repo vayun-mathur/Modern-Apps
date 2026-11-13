@@ -101,10 +101,13 @@ fn entries_are_32_bytes_and_unknown_kinds_parse() {
     assert_eq!(ARCHIVE_KIND_TRANSIT, 13, "transit is kind 13");
     assert_eq!(ARCHIVE_KIND_GRAPH_OVERLAY, 14, "the highway overlay is kind 14");
     assert_eq!(ARCHIVE_KIND_POI_REGION, 15, "the POI region sidecar is kind 15");
+    assert_eq!(ARCHIVE_KIND_POI_ADMIN, 16, "the POI admin hierarchy is kind 16");
+    assert_eq!(ARCHIVE_KIND_MAX_KNOWN, ARCHIVE_KIND_POI_ADMIN);
     let mut future = e.serialize();
     future[0] = 99;
     assert_eq!(ArchiveEntry::parse(&future).expect("a future kind parses").kind, 99);
     assert!(!is_known_kind(99) && is_known_kind(ARCHIVE_KIND_POI_REGION) && !is_known_kind(0));
+    assert!(is_known_kind(ARCHIVE_KIND_POI_ADMIN));
     let mut zero = e.serialize();
     zero[0] = 0;
     assert!(ArchiveEntry::parse(&zero).is_err(), "kind 0 is never a section");

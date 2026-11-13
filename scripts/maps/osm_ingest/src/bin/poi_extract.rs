@@ -89,14 +89,15 @@ fn main() -> ExitCode {
             );
             println!("{} POI(s) with a boundary link", stats.with_region);
             println!(
-                "Wrote {}, {}, {}, {}, {}, {}, {}",
+                "Wrote {}, {}, {}, {}, {}, {}, {}, {}",
                 args.geojson.display(),
                 args.names.display(),
                 args.index.display(),
                 args.attrs.display(),
                 args.spatial.display(),
                 args.name_index.display(),
-                args.region.display()
+                args.region.display(),
+                args.region.with_file_name("poi_admin.bin").display()
             );
             ExitCode::SUCCESS
         }

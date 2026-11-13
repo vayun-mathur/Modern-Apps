@@ -20,7 +20,7 @@
 //!   graph: metadata.bin nodes.bin edges.bin intermediate.bin road_names.bin
 //!          lanes.bin elevation.bin
 //!   poi:   poi_index.bin poi_names.bin poi_attrs.bin poi_spatial.bin
-//!          poi_name_index.bin poi_region.bin
+//!          poi_name_index.bin poi_region.bin poi_admin.bin
 //!   transit: world.transit (one TRIX pack; `<feed>.transit` naming is a
 //!            delivery rename, the bytes are what matter)
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -31,7 +31,7 @@ use tile_build::mamaps::archive::{
     ARCHIVE_KIND_GRAPH_EDGES, ARCHIVE_KIND_GRAPH_ELEVATION, ARCHIVE_KIND_GRAPH_INTERMEDIATE,
     ARCHIVE_KIND_GRAPH_LANES, ARCHIVE_KIND_GRAPH_META, ARCHIVE_KIND_GRAPH_NAMES,
     ARCHIVE_KIND_GRAPH_NODES, ARCHIVE_KIND_GRAPH_OVERLAY, ARCHIVE_KIND_POI_ATTRS, ARCHIVE_KIND_POI_INDEX,
-    ARCHIVE_KIND_POI_NAMES, ARCHIVE_KIND_POI_REGION,
+    ARCHIVE_KIND_POI_ADMIN, ARCHIVE_KIND_POI_NAMES, ARCHIVE_KIND_POI_REGION,
     ARCHIVE_KIND_POI_SPATIAL, ARCHIVE_KIND_POI_WORDS, ARCHIVE_KIND_TRANSIT,
 };
 use tile_build::mamaps::header::Header;
@@ -134,15 +134,21 @@ struct Validated {
     /// rather than in front of it: the id is only needed for the header and footer,
     /// which are written last.
     poi_attrs: Option<PathBuf>,
+    /// `poi_admin.bin` when staged non-empty. Its FNV-1a is appended to the attributes digest
+    /// for the same reason: adding or rebuilding the hierarchy changes the section directory
+    /// with no tile change. Absent, the digest (and so every existing build id) is unchanged.
+    poi_admin: Option<PathBuf>,
 }
 
 impl Validated {
-    /// FNV-1a of `poi_attrs.bin`, or empty without the file.
+    /// FNV-1a of `poi_attrs.bin` followed by FNV-1a of `poi_admin.bin`, each only when that
+    /// file is staged; empty with neither.
     fn poi_attrs_digest(&self) -> Result<Vec<u8>, String> {
-        match &self.poi_attrs {
-            Some(p) => Ok(fnv64_file(p)?.to_vec()),
-            None => Ok(Vec::new()),
+        let mut out = Vec::new();
+        for p in [&self.poi_attrs, &self.poi_admin].into_iter().flatten() {
+            out.extend_from_slice(&fnv64_file(p)?);
         }
+        Ok(out)
     }
 }
 
@@ -237,6 +243,18 @@ fn load_sidecars_impl(
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(format!("cannot stat {}: {e}", poi_region.display())),
     }
+    // The boundary hierarchy (`poi_admin.bin`, kind 16) is optional and sorts after the region
+    // sidecar it describes. Older apps skip the kind; its digest feeds the build id (below).
+    let poi_admin = poi.join("poi_admin.bin");
+    let poi_admin = match std::fs::metadata(&poi_admin) {
+        Ok(m) if m.len() > 0 => {
+            staged.push(Staged::whole(ARCHIVE_KIND_POI_ADMIN, poi_admin.clone(), m.len()));
+            Some(poi_admin)
+        }
+        Ok(_) => None,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(format!("cannot stat {}: {e}", poi_admin.display())),
+    };
     // Validate every sidecar's magic/version/count BEFORE anything is written: each section's
     // check is the same one its loader runs, and a mismatch fails closed with a non-zero exit
     // and no partial output. Only the small files are read whole; the large graph payloads
@@ -244,7 +262,7 @@ fn load_sidecars_impl(
     validate_sidecars(graph, poi, &staged, timer)?;
     // The tile header's own build-id bytes are read by the caller (it holds the tiles prefix);
     // placeholder filled in `main` after the tiles prefix is parsed.
-    Ok(Validated { staged, transit_prefix, osm_id: [0u8; 8], poi_attrs })
+    Ok(Validated { staged, transit_prefix, osm_id: [0u8; 8], poi_attrs, poi_admin })
 }
 
 /// A file's length, with the same "cannot read" wording a whole-file read would give.
@@ -478,6 +496,32 @@ fn validate_sidecars(
                 ));
             }
         }
+    }
+    validate_poi_admin(&poi.join("poi_admin.bin"))
+}
+
+/// `poi_admin.bin`, when present: `PAD1`, version 1, and a length that is exactly the header,
+/// `entry_count` 32-byte entries and `names_len` pool bytes. It is keyed by boundary id, not by
+/// index ordinal, so there is no record count to cross-check.
+fn validate_poi_admin(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let b = read_head(path, 16)?;
+    if b.len() < 16 {
+        return Err("poi_admin.bin ends before its header".to_string());
+    }
+    if &b[0..4] != b"PAD1" {
+        return Err("poi_admin.bin has bad magic".to_string());
+    }
+    let word = |at: usize| u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]) as u64;
+    if word(4) != 1 {
+        return Err(format!("poi_admin.bin is version {}, expected 1", word(4)));
+    }
+    let want = 16 + 32 * word(8) + word(12);
+    let got = file_len(path)?;
+    if got != want {
+        return Err(format!("poi_admin.bin is {got} bytes, its header declares {want}"));
     }
     Ok(())
 }
@@ -1405,6 +1449,52 @@ mod tests {
         // kind 15 stages after the overlay's 14.
         let view = ArchiveView::parse(&packed, &header).expect("packed archive opens");
         assert_eq!(view.section(&packed, ARCHIVE_KIND_POI_REGION), Some(&region[..]));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    /// `poi_admin.bin`: PAD1 + version + one 32-byte entry + a 6-byte name pool.
+    fn admin_payload() -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(b"PAD1");
+        out.extend_from_slice(&1u32.to_le_bytes());
+        out.extend_from_slice(&1u32.to_le_bytes());
+        out.extend_from_slice(&6u32.to_le_bytes());
+        out.extend_from_slice(&((300u64 << 2) | 3).to_le_bytes());
+        out.extend_from_slice(&0u64.to_le_bytes());
+        out.extend_from_slice(&0u32.to_le_bytes());
+        out.extend_from_slice(&u32::MAX.to_le_bytes());
+        out.push(8);
+        out.extend_from_slice(&[0u8; 7]);
+        out.extend_from_slice(b"Paris\0");
+        out
+    }
+    #[test]
+    fn an_admin_sidecar_packs_after_the_region_and_moves_the_build_id() {
+        let (dir, poi) = overlay_fixture("admin");
+        std::fs::write(poi.join("poi_region.bin"), region_payload((300u64 << 2) | 3)).expect("fixture region");
+        let before = load_sidecars(&dir, &poi, None).expect("stage without admin").poi_attrs_digest().unwrap();
+        let admin = admin_payload();
+        std::fs::write(poi.join("poi_admin.bin"), &admin).expect("fixture admin");
+        let validated = load_sidecars(&dir, &poi, None).expect("stage fixtures");
+        assert_eq!(validated.staged.last().map(|s| s.kind), Some(ARCHIVE_KIND_POI_ADMIN));
+        let after = validated.poi_attrs_digest().unwrap();
+        assert_ne!(before, after, "adding the hierarchy moves the build-id digest");
+        assert!(before.is_empty(), "no attrs, no admin: the digest every old archive had");
+        let out = dir.join("packed.mamaps");
+        pack_streaming(&dir.join("tiles.mamaps"), &validated, 0xBEEF, &out).expect("pack");
+        let packed = std::fs::read(&out).expect("read packed");
+        let header = Header::parse(&packed).expect("packed header");
+        // Ascending kinds again: 16 after the region's 15.
+        let view = ArchiveView::parse(&packed, &header).expect("packed archive opens");
+        assert_eq!(view.section(&packed, ARCHIVE_KIND_POI_ADMIN), Some(&admin[..]));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    #[test]
+    fn a_truncated_admin_sidecar_fails_the_pack() {
+        let (dir, poi) = overlay_fixture("admin_short");
+        let admin = admin_payload();
+        std::fs::write(poi.join("poi_admin.bin"), &admin[..admin.len() - 1]).expect("fixture admin");
+        let err = load_sidecars(&dir, &poi, None).expect_err("a short admin table");
+        assert!(err.contains("poi_admin.bin"), "{err}");
         let _ = std::fs::remove_dir_all(&dir);
     }
     #[test]

@@ -415,6 +415,9 @@ poi_job(){
     # --index; mamaps_pack auto-stages it as kind 15. No new flags either end.
     [ -f "$POI/poi_region.bin" ] || bgdie "poi_extract wrote no $POI/poi_region.bin -- fix regressed?"
     log "  poi sidecars done ($(stat -c%s "$POI/poi_region.bin") B region sidecar)"
+    # poi_admin.bin (boundary names/levels/parents) rides beside poi_region.bin the same way;
+    # mamaps_pack auto-stages it as kind 16. Optional: an older poi_extract simply omits it.
+    if [ -f "$POI/poi_admin.bin" ]; then log "  admin hierarchy $(stat -c%s "$POI/poi_admin.bin") B"; fi
 }
 
 # --- background job: hold early mamaps_build at Pass 3 while road_graph runs -

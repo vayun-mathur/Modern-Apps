@@ -40,9 +40,14 @@ pub const ARCHIVE_KIND_GRAPH_OVERLAY: u8 = 14;
 /// POI `poi_region.bin` payload: one tagged OSM boundary id per index ordinal
 /// (`PRG1` + version + count, then `u64` ids; 0 means no boundary).
 pub const ARCHIVE_KIND_POI_REGION: u8 = 15;
+/// POI `poi_admin.bin` payload: the boundary hierarchy behind kind 15 — per
+/// linked boundary and ancestor its name, `name:en`, `admin_level` and parent
+/// (`PAD1` + version + count + names_len, 32 B entries, then a name pool; see
+/// `osm_ingest/src/poi_admin.rs`). Optional.
+pub const ARCHIVE_KIND_POI_ADMIN: u8 = 16;
 /// Highest kind this build writes. Readers accept any non-zero kind and skip
 /// the ones they do not know, so a newer archive still opens in an older app.
-pub const ARCHIVE_KIND_MAX_KNOWN: u8 = ARCHIVE_KIND_POI_REGION;
+pub const ARCHIVE_KIND_MAX_KNOWN: u8 = ARCHIVE_KIND_POI_ADMIN;
 
 /// `metadata.bin` (`MARG`) magic, little-endian `u32`.
 pub const GRAPH_MAGIC: u32 = 0x4752_414D;
