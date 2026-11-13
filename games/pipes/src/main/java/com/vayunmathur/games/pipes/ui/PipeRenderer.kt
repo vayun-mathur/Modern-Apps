@@ -156,11 +156,16 @@ class ColorLabelPaint {
     }
 }
 
-/** Colorblind aid: draw the flow's identifying letter centered in the cell. */
+/**
+ * Colorblind aid: draw the flow's identifying letter, centred on [center] (the cell centre
+ * by default) at [textScale] of the cell size.
+ */
 fun DrawScope.drawColorLabel(
     cellRect: Rect,
     colorIndex: Int,
     labelPaint: ColorLabelPaint = ColorLabelPaint(),
+    center: Offset = cellRect.center,
+    textScale: Float = 0.5f,
 ) {
     val letter = ('A' + (colorIndex % 26)).toString()
     val onColor = PIPE_COLORS[colorIndex % PIPE_COLORS.size]
@@ -169,10 +174,26 @@ fun DrawScope.drawColorLabel(
     val textColor = if (luminance > 0.6f) android.graphics.Color.BLACK else android.graphics.Color.WHITE
     val paint = labelPaint.paint
     paint.color = textColor
-    paint.textSize = cellRect.width * 0.5f
-    val cx = cellRect.center.x
-    val cy = cellRect.center.y - (paint.descent() + paint.ascent()) / 2f
+    paint.textSize = cellRect.width * textScale
+    val cx = center.x
+    val cy = center.y - (paint.descent() + paint.ascent()) / 2f
     drawContext.canvas.nativeCanvas.drawText(letter, cx, cy, paint)
+}
+
+/**
+ * Where a letter sits on a square pipe segment so that it lands in the middle of the
+ * pipe: the cell centre for straight runs and ends, and the middle of the arc for a
+ * corner, whose quarter circle (radius half a cell, centred on the cell corner) only
+ * grazes the cell centre with its outer edge.
+ */
+fun pipeLabelAnchor(cellRect: Rect, connections: Set<Direction>): Offset {
+    if (connections.size != 2) return cellRect.center
+    val dirs = connections.toList()
+    if (areOpposite(dirs[0], dirs[1])) return cellRect.center
+    val inset = cellRect.width * 0.5f / kotlin.math.sqrt(2f)
+    val x = if (Direction.RIGHT in connections) cellRect.right - inset else cellRect.left + inset
+    val y = if (Direction.DOWN in connections) cellRect.bottom - inset else cellRect.top + inset
+    return Offset(x, y)
 }
 
 private fun areOpposite(a: Direction, b: Direction): Boolean =

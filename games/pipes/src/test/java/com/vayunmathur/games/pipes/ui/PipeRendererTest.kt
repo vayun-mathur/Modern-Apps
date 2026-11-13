@@ -116,4 +116,51 @@ class PipeRendererTest {
         assertEquals(24, PIPE_COLORS.size)
         assertEquals(PIPE_COLORS.size, PIPE_COLORS.toSet().size)
     }
+
+    @Test fun pipeLabelAnchorsLandOnThePipe() {
+        val rect = Rect(Offset(10f, 10f), Size(100f, 100f))
+        assertEquals(rect.center, pipeLabelAnchor(rect, setOf(Direction.LEFT, Direction.RIGHT)))
+        assertEquals(rect.center, pipeLabelAnchor(rect, setOf(Direction.UP)))
+        for (corner in listOf(
+            setOf(Direction.UP, Direction.RIGHT), setOf(Direction.UP, Direction.LEFT),
+            setOf(Direction.DOWN, Direction.RIGHT), setOf(Direction.DOWN, Direction.LEFT),
+        )) {
+            val a = pipeLabelAnchor(rect, corner)
+            val bmp = bitmapDraw { drawPipeSegment(rect, corner, Color.Red) }
+            assertEquals(android.graphics.Color.RED, bmp.getPixel(a.x.toInt(), a.y.toInt()), "corner=$corner anchor=$a")
+            // Mid-stroke: half a cell from the arc's corner, i.e. on the arc's centre line.
+            val corner0 = Offset(
+                if (Direction.RIGHT in corner) rect.right else rect.left,
+                if (Direction.DOWN in corner) rect.bottom else rect.top,
+            )
+            assertEquals(50f, (a - corner0).getDistance(), 0.01f)
+        }
+    }
+
+    @Test fun smallLabelDrawsAtAGivenAnchor() {
+        val rect = Rect(Offset(10f, 10f), Size(100f, 100f))
+        val bmp = bitmapDraw { drawColorLabel(rect, 1, ColorLabelPaint(), center = Offset(85f, 35f), textScale = 0.32f) }
+        var ink = 0; var stray = 0
+        for (x in 10 until 110) for (y in 10 until 110) {
+            if (bmp.getPixel(x, y) == android.graphics.Color.TRANSPARENT) continue
+            if (x in 65..105 && y in 15..55) ink++ else stray++
+        }
+        assertTrue(ink > 10, "ink=$ink"); assertEquals(0, stray)
+    }
+
+    @Test fun theColoursLevelsUseAreClearlyApart() {
+        // Levels use up to 17 colours. "Redmean" RGB distance: the old order had Blue and
+        // Light Blue at 54 among the first 17; the reordered palette keeps every pair >= 70.
+        fun dist(a: Color, b: Color): Double {
+            val r1 = a.red * 255; val r2 = b.red * 255; val rm = (r1 + r2) / 2
+            val dr = r1 - r2; val dg = (a.green - b.green) * 255; val db = (a.blue - b.blue) * 255
+            return kotlin.math.sqrt(((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db).toDouble())
+        }
+        val used = PIPE_COLORS.take(17)
+        for (i in used.indices) for (j in i + 1 until used.size) {
+            assertTrue(dist(used[i], used[j]) >= 70.0, "colours $i and $j are too close")
+        }
+        // The classic first four stay put so small boards keep their familiar colours.
+        assertEquals(listOf(Color(0xFFE53935), Color(0xFF43A047), Color(0xFF1E88E5), Color(0xFFFDD835)), PIPE_COLORS.take(4))
+    }
 }

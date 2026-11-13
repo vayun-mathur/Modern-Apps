@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -18,6 +19,9 @@ import androidx.compose.ui.platform.testTag
 import com.vayunmathur.games.pipes.data.CellPos
 import com.vayunmathur.games.pipes.data.LevelData
 import com.vayunmathur.games.pipes.platform.PipesGameState
+
+/** Letter size on pipe segments, as a fraction of the cell: fits inside the half-cell-wide pipe. */
+private const val PIPE_LABEL_SCALE = 0.32f
 
 /** Test tag of the drawing surface, for gesture tests. */
 internal const val GAME_BOARD_TAG = "pipes_game_board"
@@ -106,6 +110,9 @@ fun GameBoard(
         val displayPaths = if (activeColor != null) gameState.paths + (activeColor to activePath) else gameState.paths
 
         val jumpExits = mutableListOf<Triple<CellPos, Direction, androidx.compose.ui.graphics.Color>>()
+        // Colour-blind mode letters every other inner cell of each pipe, not just the dots,
+        // so two similar colours can be told apart anywhere along their lines.
+        val pipeLabels = mutableListOf<Triple<Rect, Offset, Int>>()
 
         for ((colorIndex, path) in displayPaths) {
             if (path.isEmpty()) continue
@@ -120,12 +127,18 @@ fun GameBoard(
                         if (i < path.lastIndex) hexDirOrNull(cellRects, cell, path[i + 1])?.let { add(it) }
                     }
                     drawHexPipeSegment(rect.center, cellSizePx * 0.5f, connections, color)
+                    if (colorblind && i % 2 == 1 && i < path.lastIndex) {
+                        pipeLabels += Triple(rect, rect.center, colorIndex)
+                    }
                 } else {
                     val connections = buildSet {
                         if (i > 0) stepOrJump(levelData, cell, path[i - 1], color, jumpExits)?.let { add(it) }
                         if (i < path.lastIndex) stepOrJump(levelData, cell, path[i + 1], color, jumpExits)?.let { add(it) }
                     }
                     drawPipeSegment(rect, connections, color)
+                    if (colorblind && i % 2 == 1 && i < path.lastIndex) {
+                        pipeLabels += Triple(rect, pipeLabelAnchor(rect, connections), colorIndex)
+                    }
                 }
             }
         }
@@ -148,6 +161,10 @@ fun GameBoard(
             if (over != null) {
                 drawBridgeHump(rect, PIPE_COLORS[over % PIPE_COLORS.size])
             }
+        }
+
+        for ((rect, anchor, colorIndex) in pipeLabels) {
+            drawColorLabel(rect, colorIndex, labelPaint, center = anchor, textScale = PIPE_LABEL_SCALE)
         }
 
         for (ep in levelData.endpoints) {
