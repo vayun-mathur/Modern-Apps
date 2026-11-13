@@ -374,7 +374,10 @@ private fun GameBoardGrid(
         isFlipped = state.isBoardFlipped,
         turn = state.turn,
         onSquareClick = actions::onSquareClick,
-        onSquareDrop = actions::onSquareDrop
+        onSquareDrop = actions::onSquareDrop,
+        // Without it the AI's reply just appears half a second later with nothing to say
+        // which piece moved; the online board already shows it.
+        showLastMove = true,
     )
 }
 

@@ -3,7 +3,11 @@ package com.vayunmathur.games.chess
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
@@ -64,6 +68,28 @@ class GameScreensTest {
         }
         rule.onAllNodes(hasClickAction())[10].performClick()
         assertEquals(listOf(Position(1, 2)), actions.clicks)
+    }
+
+    @Test fun `a new last move slides its piece in from the start square`() {
+        val start = Board.initialState
+        val afterE4 = start.movePiece(Position(6, 4), Position(4, 4))
+        var board by androidx.compose.runtime.mutableStateOf(start)
+        rule.setContent {
+            BoardGrid(board = board, selectedPiece = null, isFlipped = false, turn = PieceColor.BLACK,
+                onSquareClick = {}, showLastMove = true)
+        }
+        val cell = rule.onRoot().fetchSemanticsNode().size.width / 8f
+        rule.onNodeWithTag(SLIDING_PIECE_TAG).assertDoesNotExist()
+        rule.mainClock.autoAdvance = false
+        board = afterE4
+        // A write from the test thread reaches the paused clock's recomposer only once applied.
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        repeat(3) { rule.mainClock.advanceTimeByFrame() }
+        val top0 = rule.onNodeWithTag(SLIDING_PIECE_TAG).fetchSemanticsNode().boundsInRoot.top
+        assertTrue(top0 > 4.5f * cell, "starts near e2 (row 6), was ${top0 / cell} cells down")
+        rule.mainClock.advanceTimeBy(1_000)
+        val top1 = rule.onNodeWithTag(SLIDING_PIECE_TAG).fetchSemanticsNode().boundsInRoot.top
+        assertEquals(4f * cell, top1, 1f, "lands on e4 (row 4)")
     }
 
     @Test fun `board grid tap routes click and never fires drop`() {

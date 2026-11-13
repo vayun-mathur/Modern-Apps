@@ -5,6 +5,7 @@ import com.vayunmathur.games.chess.data.PieceColor
 import com.vayunmathur.games.chess.data.Position
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -33,5 +34,23 @@ class BoardSquaresTest {
     @Test fun `legal destinations of the e2 pawn are e3 and e4`() {
         assertEquals(setOf(sq('e', 3), sq('e', 4)), legalDestinations(Board.initialState, sq('e', 2)))
         assertTrue(legalDestinations(Board.initialState, null).isEmpty())
+    }
+
+    @Test fun `last move is shown only when enabled and never the puzzle's zero-length seed`() {
+        val afterE4 = play(sq('e', 2) to sq('e', 4))
+        assertEquals(afterE4.lastMove, visibleLastMove(afterE4, showLastMove = true))
+        assertNull(visibleLastMove(afterE4, showLastMove = false))
+        val seeded = afterE4.copy(lastMove = afterE4.lastMove!!.copy(end = afterE4.lastMove!!.start))
+        assertNull(visibleLastMove(seeded, showLastMove = true))
+    }
+
+    @Test fun `new moves slide in except the opening position's and a drag drop`() {
+        val e4 = play(sq('e', 2) to sq('e', 4)).lastMove!!
+        val e5 = play(sq('e', 2) to sq('e', 4), sq('e', 7) to sq('e', 5)).lastMove!!
+        assertTrue(shouldSlideIn(e5, initialMove = e4, lastDrop = null), "the AI's reply slides in")
+        assertTrue(shouldSlideIn(e5, initialMove = null, lastDrop = sq('e', 2) to sq('e', 4)))
+        assertFalse(shouldSlideIn(e4, initialMove = e4, lastDrop = null), "already on screen at open")
+        assertFalse(shouldSlideIn(e4, initialMove = null, lastDrop = sq('e', 2) to sq('e', 4)), "just dropped")
+        assertFalse(shouldSlideIn(null, initialMove = null, lastDrop = null))
     }
 }

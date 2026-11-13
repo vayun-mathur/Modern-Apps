@@ -4,15 +4,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
+import com.vayunmathur.library.ui.Motion
+import com.vayunmathur.library.ui.animatedFloat
 import com.vayunmathur.library.ui.rememberHaptics
 import kotlin.math.roundToInt
 import androidx.compose.foundation.border
@@ -52,10 +57,15 @@ private const val DRAG_GHOST_ALPHA = 0.35f
 /** Test tag of the floating piece a drag draws under the finger. */
 internal const val DRAGGED_PIECE_TAG = "chess_dragged_piece"
 
+/** Test tag of the piece sliding in for the last move. */
+internal const val SLIDING_PIECE_TAG = "chess_sliding_piece"
+
 // File-scope so the chess board doesn't allocate 32 Color instances per recomposition.
 private val lightSquareColor = Color(0xFFBBBBBB)
 private val darkSquareColor = Color.Gray
-private val lastMoveColor = Color(0xFF4CAF50)
+// Last move: a translucent fill on both squares, so it reads as a different kind of mark from
+// the yellow selection / red check / white drop-target borders drawn over it.
+private val lastMoveTint = Color(0x699BC700)
 private val moveHintColor = Color(0x66000000)
 private val dropTargetColor = Color(0xCCFFFFFF)
 
@@ -71,6 +81,8 @@ private data class BoardMarks(
     val destinations: Set<Position>,
     val dragSource: Position? = null,
     val hover: Position? = null,
+    /** Whether [lastMove]'s piece slides from its start square instead of just appearing. */
+    val slideIn: Boolean = false,
 ) {
     fun isLastMove(pos: Position): Boolean = lastMove?.let { it.start == pos || it.end == pos } ?: false
 }
@@ -83,7 +95,6 @@ private fun highlightModifier(marks: BoardMarks, pos: Position): Modifier {
         marks.selected == pos -> Modifier.border(2.dp, Color.Yellow)
         marks.checkSquare == pos -> Modifier.border(2.dp, Color.Red)
         marks.hover == pos && marks.dragSource != pos -> Modifier.border(3.dp, dropTargetColor)
-        marks.isLastMove(pos) -> Modifier.border(3.dp, lastMoveColor)
         else -> Modifier
     }
 }
@@ -98,7 +109,7 @@ fun BoardGrid(
     onSquareDrop: (Position, Position) -> Unit = { _, _ -> },
     showLastMove: Boolean = false
 ) {
-    val drag = remember { BoardDragState() }
+    val drag = rememberBoardDrag(board, turn, isFlipped)
     // During a drag the hints follow the dragged piece, otherwise the selection.
     val hintSource = drag.source ?: selectedPiece
     // The squares the selected piece can legally move to (for move-hint dots).
@@ -109,23 +120,16 @@ fun BoardGrid(
     val checkSquare = remember(board, turn) { checkedKingSquare(board, turn) }
     // The square under the finger, re-read only when the finger crosses into a new square.
     val hover by remember(drag) { derivedStateOf { drag.pointer?.let(drag::squareAt) } }
-    val haptics = rememberHaptics()
-    SideEffect {
-        // The drag handler sits outside the 180-degree rotation, so it sees unrotated
-        // coordinates; tell it which way round the board is drawn.
-        drag.flipped = isFlipped
-        // Only the side to move's pieces can be picked up; other presses stay taps/scrolls.
-        drag.canPickUp = { p -> board.pieces[p.row][p.col]?.color == turn }
-        drag.onPickUp = haptics::longPress
-    }
+    val lastMove = visibleLastMove(board, showLastMove)
+    val initialMove = remember { lastMove }
     val marks = BoardMarks(
         selected = hintSource,
         checkSquare = checkSquare,
-        // The puzzle board seeds a synthetic zero-length lastMove to encode turn; skip it.
-        lastMove = board.lastMove?.takeIf { showLastMove && it.start != it.end },
+        lastMove = lastMove,
         destinations = destinations,
         dragSource = drag.source,
         hover = hover,
+        slideIn = shouldSlideIn(lastMove, initialMove, drag.lastDrop),
     )
     // A chessboard never mirrors: a1 stays bottom-left from White's side in every locale. Under
     // RTL the Rows below would otherwise lay files out right-to-left, mirroring the board and
@@ -150,6 +154,26 @@ fun BoardGrid(
             DraggedPiece(drag = drag, board = board)
         }
     }
+}
+
+/** The board's drag state, kept in step with the position, the side to move and the flip. */
+@Composable
+private fun rememberBoardDrag(
+    board: com.vayunmathur.games.chess.data.Board,
+    turn: PieceColor,
+    isFlipped: Boolean,
+): BoardDragState {
+    val drag = remember { BoardDragState() }
+    val haptics = rememberHaptics()
+    SideEffect {
+        // The drag handler sits outside the 180-degree rotation, so it sees unrotated
+        // coordinates; tell it which way round the board is drawn.
+        drag.flipped = isFlipped
+        // Only the side to move's pieces can be picked up; other presses stay taps/scrolls.
+        drag.canPickUp = { p -> board.pieces[p.row][p.col]?.color == turn }
+        drag.onPickUp = haptics::longPress
+    }
+    return drag
 }
 
 /**
@@ -193,7 +217,9 @@ private fun ColumnScope.BoardRow(
     marks: BoardMarks,
     onSquareClick: (Position) -> Unit,
 ) {
-    Row(modifier = Modifier.weight(1f)) {
+    // The row holding a sliding piece draws above the others, so the piece passes over them.
+    val slideEnd = marks.lastMove?.end?.takeIf { marks.slideIn }
+    Row(modifier = Modifier.weight(1f).zIndex(if (slideEnd?.row == row) 1f else 0f)) {
         for (j in board.pieces[row].indices) {
             val piece = board.pieces[row][j]
             val pos = Position(row, j)
@@ -201,18 +227,22 @@ private fun ColumnScope.BoardRow(
                 modifier = Modifier
                     .weight(1f)
                     .aspectRatio(1f)
+                    .zIndex(if (slideEnd == pos) 1f else 0f)
                     .background(squareBaseColor(row, j))
+                    .then(if (marks.isLastMove(pos)) Modifier.background(lastMoveTint) else Modifier)
                     .clickable {
                         onSquareClick(pos)
                     }
                     .then(highlightModifier(marks, pos))
             ) {
                 piece?.let {
-                    // The dragged piece floats under the finger; leave a ghost where it came from.
-                    val alpha = if (marks.dragSource == pos) DRAG_GHOST_ALPHA else 1f
-                    Box(Modifier.fillMaxSize().alpha(alpha)) {
-                        ChessPiece(it, isFlipped = isFlipped)
-                    }
+                    SquarePiece(
+                        piece = it,
+                        isFlipped = isFlipped,
+                        // The dragged piece floats under the finger; leave a ghost where it came from.
+                        alpha = if (marks.dragSource == pos) DRAG_GHOST_ALPHA else 1f,
+                        slideFrom = marks.lastMove?.takeIf { slideEnd == pos },
+                    )
                 }
                 if (pos in marks.destinations) {
                     MoveHintDot(piece != null)
@@ -220,6 +250,44 @@ private fun ColumnScope.BoardRow(
             }
         }
     }
+}
+
+/**
+ * A piece on its square. When [slideFrom] is set (this square is the end of a new move), the
+ * piece travels in from the move's start square on the library's drop curve; the offset is
+ * applied in the draw phase, so only this square recomposes while it moves.
+ */
+@Composable
+private fun SquarePiece(
+    piece: com.vayunmathur.games.chess.data.Piece,
+    isFlipped: Boolean,
+    alpha: Float,
+    slideFrom: com.vayunmathur.games.chess.data.Move?,
+) {
+    val remaining = slideFrom?.let { slideRemaining(it) } ?: 0f
+    val dx = slideFrom?.let { (it.start.col - it.end.col).toFloat() } ?: 0f
+    val dy = slideFrom?.let { (it.start.row - it.end.row).toFloat() } ?: 0f
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                this.alpha = alpha
+                translationX = dx * remaining * size.width
+                translationY = dy * remaining * size.height
+            }
+            // Inside the layer, so the tagged node's bounds travel with the piece.
+            .then(if (slideFrom != null) Modifier.testTag(SLIDING_PIECE_TAG) else Modifier)
+    ) {
+        ChessPiece(piece, isFlipped = isFlipped)
+    }
+}
+
+/** 1 when [move] has just been made, easing to 0 as its piece lands; restarts per move. */
+@Composable
+private fun slideRemaining(move: com.vayunmathur.games.chess.data.Move): Float = key(move) {
+    var landed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { landed = true }
+    1f - animatedFloat(target = if (landed) 1f else 0f, spec = Motion.drop())
 }
 
 @Composable

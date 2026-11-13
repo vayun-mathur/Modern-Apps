@@ -1,6 +1,7 @@
 package com.vayunmathur.games.chess
 
 import com.vayunmathur.games.chess.data.Board
+import com.vayunmathur.games.chess.data.Move
 import com.vayunmathur.games.chess.data.PieceColor
 import com.vayunmathur.games.chess.data.Position
 import com.vayunmathur.games.chess.data.findKing
@@ -32,3 +33,19 @@ internal fun legalDestinations(board: Board, selectedPiece: Position?): Set<Posi
         }
     }
 }
+
+/**
+ * The move to mark as "last move", or null. The puzzle board seeds a synthetic zero-length
+ * lastMove to encode the side to move, which is never shown.
+ */
+internal fun visibleLastMove(board: Board, showLastMove: Boolean): Move? =
+    board.lastMove?.takeIf { showLastMove && it.start != it.end }
+
+/**
+ * Whether [lastMove]'s piece should slide in from its start square: every new move does (the
+ * AI's reply, the opponent's move, a tap-tap move), except the move already on the board when
+ * the screen opened ([initialMove]) and the one the player just dropped by drag ([lastDrop]),
+ * whose piece is already where the finger left it.
+ */
+internal fun shouldSlideIn(lastMove: Move?, initialMove: Move?, lastDrop: Pair<Position, Position>?): Boolean =
+    lastMove != null && lastMove != initialMove && lastDrop != (lastMove.start to lastMove.end)
