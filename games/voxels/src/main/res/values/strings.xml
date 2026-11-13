@@ -138,10 +138,10 @@
     <string name="up">Up</string>
     <string name="sneak">Sneak</string>
     <string name="sneaking">Sneaking</string>
-    <!-- Elytra chip: gliding now. Fragment -->
-    <string name="glide_active">Gliding</string>
-    <!-- Elytra chip: how to start gliding. Instruction -->
-    <string name="glide_hint">Tap ▲ mid-air to glide</string>
+    <!-- Elytra chip while gliding; %1$s = the Jump button's label. Fragment -->
+    <string name="glide_active">Gliding — tap %1$s to fold wings</string>
+    <!-- Elytra chip: how to start gliding; %1$s = the Jump button's label. Instruction -->
+    <string name="glide_hint">Tap %1$s in mid-air to glide</string>
     <!-- Boss bar names. Nouns -->
     <string name="boss_dragon">Ender Dragon</string>
     <string name="boss_wither">The Wither</string>

@@ -14,13 +14,15 @@ import com.vayunmathur.games.voxels.R
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 
-// Small chip shown while an elytra is equipped: prompts to deploy, or confirms gliding.
+// Small chip shown while an elytra is equipped: prompts to deploy, or confirms gliding. It names the
+// on-screen Jump button (a mid-air Jump tap toggles the wings, player.rs glide_armed); it used to
+// say "Tap ▲", a symbol no control shows.
 @Composable
 fun GlideIndicator(healthJson: String, modifier: Modifier = Modifier) {
     val hj = remember(healthJson) { parseHealth(healthJson) }
     if (!hj.elytra) return
     val (label, tint) = if (hj.gliding) R.string.glide_active to Color(0xFF7CE0FF) else R.string.glide_hint to Color.White.copy(0.75f)
     Box(modifier.background(Color.Black.copy(0.45f), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
-        Text(stringResource(label), color = tint, style = MaterialTheme.typography.labelMedium)
+        Text(stringResource(label, stringResource(R.string.jump)), color = tint, style = MaterialTheme.typography.labelMedium)
     }
 }
