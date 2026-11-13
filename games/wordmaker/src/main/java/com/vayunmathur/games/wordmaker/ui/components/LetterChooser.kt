@@ -68,7 +68,8 @@ fun LetterChooser(
     onWordSubmitted: suspend CoroutineScope.(String, List<Int>) -> Unit,
     onWordBoxPositioned: (Offset) -> Unit,
     onLetterPositioned: (id: Int, offset: Offset) -> Unit,
-    wordShakeTranslation: Float = 0f
+    /** Current shake offset of a rejected word, read in the draw layer (no recomposition). */
+    wordShakeTranslation: () -> Float = { 0f }
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -116,11 +117,11 @@ fun LetterChooser(
         SurfaceText(
             Modifier
                 .padding(bottom = 20.dp)
-                .graphicsLayer(
-                    alpha = if (shownWord.isNotEmpty()) 1f else 0f,
+                .graphicsLayer {
+                    alpha = if (shownWord.isNotEmpty()) 1f else 0f
                     // The shake belongs to the judged word, never to a new swipe.
-                    translationX = if (isSpelling) 0f else wordShakeTranslation
-                ),
+                    translationX = if (isSpelling) 0f else wordShakeTranslation()
+                },
             RoundedCornerShape(8.dp), MaterialTheme.colorScheme.primaryContainer,
             shownWord.ifEmpty { " " },
             Modifier

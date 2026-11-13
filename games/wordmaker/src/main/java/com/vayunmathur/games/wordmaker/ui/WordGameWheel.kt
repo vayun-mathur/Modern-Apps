@@ -11,6 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -37,6 +43,7 @@ import com.vayunmathur.library.ui.IconHelp
 import com.vayunmathur.library.ui.IconBook
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
+import kotlinx.coroutines.delay
 
 /**
  * Status bars plus the letter wheel below the board, extracted from
@@ -48,7 +55,8 @@ fun WordGameWheel(
     isCompetitive: Boolean,
     isDaily: Boolean,
     competitiveScore: Int,
-    remainingTimeMs: Long,
+    /** Epoch millis the competitive timer runs out; 0 when no timer runs. */
+    competitiveDeadline: Long,
     dailyStreak: Long,
     wheelHeight: Dp,
     isWon: Boolean,
@@ -67,7 +75,6 @@ fun WordGameWheel(
     wordShakeAnim: Animatable<Float, AnimationVector1D>,
     bonusShakeAnim: Animatable<Float, AnimationVector1D>,
     onWordBoxPositioned: (Offset) -> Unit,
-    letterChooserPositions: Map<Int, Offset>,
     onLetterPositioned: (Int, Offset) -> Unit,
 ) {
     Column(
@@ -75,9 +82,10 @@ fun WordGameWheel(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (isCompetitive) {
-            CompetitiveStatusBar(
+            CompetitiveCountdown(
                 score = competitiveScore,
-                remainingTimeMs = remainingTimeMs
+                deadline = competitiveDeadline,
+                running = !isWon && !timedOut,
             )
         } else if (isDaily) {
             DailyStatusBar(streak = dailyStreak)
@@ -118,12 +126,10 @@ fun WordGameWheel(
                         onAnimateBonus = animations.enqueueBonus,
                     ),
                     onWordBoxPositioned = onWordBoxPositioned,
-                    onLetterPositioned = { id, offset ->
-                        if (letterChooserPositions[id] != offset) {
-                            onLetterPositioned(id, offset)
-                        }
-                    },
-                    wordShakeTranslation = wordShakeAnim.value
+                    onLetterPositioned = onLetterPositioned,
+                    // Read in the word box's graphicsLayer, not here: reading the shake value
+                    // in composition recomposed the whole wheel on every shake frame.
+                    wordShakeTranslation = { wordShakeAnim.value }
                 )
             }
         }
@@ -140,11 +146,13 @@ fun BoxScope.WordGameCornerButtons(
     isWon: Boolean,
     isCompetitive: Boolean,
     bonusWords: Set<String>,
-    bonusShake: Float,
+    /** Current shake offset, read in the draw layer so a shake does not recompose. */
+    bonusShake: () -> Float,
     onOpenBonusWords: () -> Unit,
     /** Receives the bonus button's centre in root coordinates. */
     onBonusButtonPositioned: (Offset) -> Unit,
-    remainingCooldownMs: Long,
+    /** Epoch millis until which the hint is cooling down; 0 means available. */
+    hintCooldownEnd: Long,
     onOpenHint: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
@@ -159,7 +167,7 @@ fun BoxScope.WordGameCornerButtons(
                 onBonusButtonPositioned(it.localToRoot(Offset(it.size.width / 2f, it.size.height / 2f)))
             }
             .graphicsLayer {
-                translationX = bonusShake
+                translationX = bonusShake()
             },
     ) {
         // Badge: how many bonus words this puzzle has so far (#915).
@@ -180,30 +188,77 @@ fun BoxScope.WordGameCornerButtons(
     }
 
     if (!isWon && !isCompetitive) {
-        val hintEnabled = remainingCooldownMs <= 0L
-        androidx.compose.foundation.layout.Box(
+        HintButton(
+            cooldownEnd = hintCooldownEnd,
+            onOpenHint = onOpenHint,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp)
+                .padding(16.dp),
+        )
+    }
+}
+
+/**
+ * The hint button with its cooldown ring. The cooldown clock ticks here, not in the screen:
+ * as screen state it recomposed the whole game ten times a second. Only the enabled flag is
+ * read in composition; the ring reads the clock while drawing.
+ */
+@Composable
+private fun HintButton(cooldownEnd: Long, onOpenHint: () -> Unit, modifier: Modifier) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(cooldownEnd) {
+        while (true) {
+            now = System.currentTimeMillis()
+            if (now >= cooldownEnd) break
+            delay(COOLDOWN_TICK_MS)
+        }
+    }
+    val hintEnabled by remember(cooldownEnd) { derivedStateOf { now >= cooldownEnd } }
+    Box(modifier) {
+        FilledIconButton(
+            onClick = onOpenHint,
+            enabled = hintEnabled
         ) {
-            FilledIconButton(
-                onClick = onOpenHint,
-                enabled = hintEnabled
-            ) {
-                // The button's disabled colours already dim the icon during the cooldown; a
-                // second 0.5 alpha on top made it nearly invisible.
-                IconHelp(contentDescription = stringResource(R.string.cd_hint))
-            }
-            if (!hintEnabled) {
-                CircularProgressIndicator(
-                    progress = { 1f - (remainingCooldownMs / 30_000f) },
-                    modifier = Modifier.size(48.dp).align(Alignment.Center),
-                    strokeWidth = 3.dp
-                )
-            }
+            // The button's disabled colours already dim the icon during the cooldown; a
+            // second 0.5 alpha on top made it nearly invisible.
+            IconHelp(contentDescription = stringResource(R.string.cd_hint))
+        }
+        if (!hintEnabled) {
+            CircularProgressIndicator(
+                progress = { 1f - ((cooldownEnd - now).coerceAtLeast(0L) / HINT_COOLDOWN_MS) },
+                modifier = Modifier.size(48.dp).align(Alignment.Center),
+                strokeWidth = 3.dp
+            )
         }
     }
 }
+
+/**
+ * Competitive score and countdown. The countdown ticks locally, so only this bar recomposes
+ * as the seconds run down, not the screen. It stops (frozen) once the level is over.
+ */
+@Composable
+private fun CompetitiveCountdown(score: Int, deadline: Long, running: Boolean) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(deadline, running) {
+        // One fresh reading even when stopping, so the frozen value is the moment it ended.
+        now = System.currentTimeMillis()
+        while (running && deadline > 0L && now < deadline) {
+            delay(COUNTDOWN_TICK_MS)
+            now = System.currentTimeMillis()
+        }
+    }
+    CompetitiveStatusBar(
+        score = score,
+        remainingTimeMs = if (deadline > 0L) (deadline - now).coerceAtLeast(0L) else 0L,
+    )
+}
+
+private const val COOLDOWN_TICK_MS = 100L
+private const val COUNTDOWN_TICK_MS = 200L
+
+/** Length of the hint cooldown the ring counts down. */
+private const val HINT_COOLDOWN_MS = 30_000f
 
 /** Most bonus words the badge spells out; beyond it shows "99+". */
 private const val BONUS_BADGE_MAX = 99

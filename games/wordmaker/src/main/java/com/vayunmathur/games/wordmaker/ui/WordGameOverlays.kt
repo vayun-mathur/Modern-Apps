@@ -61,13 +61,14 @@ fun WordGameOverlays(
     animatedWord: String?,
     animationProgress: Animatable<Float, AnimationVector1D>,
     /** Root position of the formed-word box's text: where a bonus word takes off. */
-    wordBoxOffset: Offset,
+    wordBoxOffset: () -> Offset,
     /** Root position of the bonus button's centre: where a bonus word lands. */
-    bonusButtonCenter: Offset,
+    bonusButtonCenter: () -> Offset,
     /** Root position of the overlay's own origin; flights are drawn relative to it. */
     rootOffset: Offset,
     animatedLetters: List<AnimatedLetter>,
-    scale: Float,
+    /** Current crossword zoom, for the size of the flying letters. */
+    scale: () -> Float,
 ) {
     if (showHintDialog) {
         AlertDialog(
@@ -108,9 +109,6 @@ fun WordGameOverlays(
     Box(Modifier.fillMaxSize(), contentAlignment = AbsoluteAlignment.TopLeft) {
         animatedWord?.let { word ->
             var wordSize by remember { mutableStateOf(IntSize.Zero) }
-            val progress = animationProgress.value
-            val alpha = 1f - progress
-            val animScale = 1f - (progress * 0.5f)
 
             Text(
                 text = word,
@@ -120,30 +118,38 @@ fun WordGameOverlays(
                     .onSizeChanged { wordSize = it }
                     .absoluteOffset {
                         val offset = bonusFlightOffset(
-                            wordBoxOffset, bonusButtonCenter, rootOffset, wordSize, animationProgress.value
+                            wordBoxOffset(), bonusButtonCenter(), rootOffset, wordSize, animationProgress.value
                         )
                         IntOffset(offset.x.toInt(), offset.y.toInt())
                     }
-                    .graphicsLayer(
-                        scaleX = animScale,
-                        scaleY = animScale,
-                        alpha = alpha
-                    )
+                    // Progress is read in placement and in the layer, never in composition, so a
+                    // flight re-places and redraws the word without recomposing anything.
+                    .graphicsLayer {
+                        val progress = animationProgress.value
+                        val animScale = 1f - (progress * 0.5f)
+                        scaleX = animScale
+                        scaleY = animScale
+                        alpha = 1f - progress
+                    }
             )
         }
-        // Matches the crossword cell it lands in (dp-sized there too, so large fonts do not clip).
-        val size = 35.dp * scale
-        val fontSize = with(LocalDensity.current) { (18.dp * scale).toSp() }
-        animatedLetters.forEach { letter ->
-            val progress = letter.progress.value
-            val offset = lerp(letter.startOffset, letter.endOffset, progress)
-
-            SurfaceText(Modifier.absoluteOffset { IntOffset(offset.x.toInt(), offset.y.toInt()) },
-                RoundedCornerShape(4.dp * scale),
-                MaterialTheme.colorScheme.primary, letter.char.toString(),
-                Modifier, FontWeight.Bold, fontSize, size,
-                textColor = MaterialTheme.colorScheme.onPrimary,
-                lineHeight = TILE_GLYPH_LINE_HEIGHT)
+        if (animatedLetters.isNotEmpty()) {
+            // Matches the crossword cell it lands in (dp-sized there too, so large fonts do
+            // not clip). The zoom is only read while letters are actually flying.
+            val zoom = scale()
+            val size = 35.dp * zoom
+            val fontSize = with(LocalDensity.current) { (18.dp * zoom).toSp() }
+            animatedLetters.forEach { letter ->
+                SurfaceText(Modifier.absoluteOffset {
+                        val offset = lerp(letter.startOffset, letter.endOffset, letter.progress.value)
+                        IntOffset(offset.x.toInt(), offset.y.toInt())
+                    },
+                    RoundedCornerShape(4.dp * zoom),
+                    MaterialTheme.colorScheme.primary, letter.char.toString(),
+                    Modifier, FontWeight.Bold, fontSize, size,
+                    textColor = MaterialTheme.colorScheme.onPrimary,
+                    lineHeight = TILE_GLYPH_LINE_HEIGHT)
+            }
         }
     }
 }

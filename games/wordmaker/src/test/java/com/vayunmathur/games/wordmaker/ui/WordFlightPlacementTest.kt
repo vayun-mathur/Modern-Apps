@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
@@ -43,8 +44,8 @@ class WordFlightPlacementTest {
                             foundWords = emptySet(), revealedHints = emptySet(), actions = WordGameActions.Noop,
                             showBonusWordsDialog = false, onDismissBonusWords = {}, bonusWords = emptySet(),
                             wordWithDefinition = null, onDismissDefinition = {}, animatedWord = null,
-                            animationProgress = Animatable(0f), wordBoxOffset = Offset.Zero, bonusButtonCenter = Offset.Zero, rootOffset = Offset.Zero,
-                            animatedLetters = listOf(letter), scale = 1f,
+                            animationProgress = remember { Animatable(0f) }, wordBoxOffset = { Offset.Zero }, bonusButtonCenter = { Offset.Zero }, rootOffset = Offset.Zero,
+                            animatedLetters = listOf(letter), scale = { 1f },
                         )
                     }
                 }
@@ -93,9 +94,9 @@ class WordFlightPlacementTest {
                         foundWords = emptySet(), revealedHints = emptySet(), actions = WordGameActions.Noop,
                         showBonusWordsDialog = false, onDismissBonusWords = {}, bonusWords = emptySet(),
                         wordWithDefinition = null, onDismissDefinition = {}, animatedWord = "ZOO",
-                        animationProgress = Animatable(1f), wordBoxOffset = Offset(100f, 400f),
-                        bonusButtonCenter = bonusCenterInRoot, rootOffset = rootOffset,
-                        animatedLetters = emptyList(), scale = 1f,
+                        animationProgress = remember { Animatable(1f) }, wordBoxOffset = { Offset(100f, 400f) },
+                        bonusButtonCenter = { bonusCenterInRoot }, rootOffset = rootOffset,
+                        animatedLetters = emptyList(), scale = { 1f },
                     )
                 }
             }

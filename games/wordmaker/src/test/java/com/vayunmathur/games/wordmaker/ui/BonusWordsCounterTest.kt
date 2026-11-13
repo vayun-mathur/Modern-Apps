@@ -60,10 +60,10 @@ class BonusWordsCounterTest {
                         isWon = false,
                         isCompetitive = true,
                         bonusWords = setOf("OWL", "COW"),
-                        bonusShake = 0f,
+                        bonusShake = { 0f },
                         onOpenBonusWords = { opened = true },
                         onBonusButtonPositioned = {},
-                        remainingCooldownMs = 0L,
+                        hintCooldownEnd = 0L,
                         onOpenHint = {},
                     )
                 }
@@ -83,10 +83,10 @@ class BonusWordsCounterTest {
                         isWon = false,
                         isCompetitive = true,
                         bonusWords = emptySet(),
-                        bonusShake = 0f,
+                        bonusShake = { 0f },
                         onOpenBonusWords = {},
                         onBonusButtonPositioned = {},
-                        remainingCooldownMs = 0L,
+                        hintCooldownEnd = 0L,
                         onOpenHint = {},
                     )
                 }

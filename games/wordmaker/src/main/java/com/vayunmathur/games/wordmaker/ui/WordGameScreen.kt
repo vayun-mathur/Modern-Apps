@@ -25,7 +25,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,6 +65,9 @@ import kotlinx.coroutines.delay
 /** Room above the wheel for the formed-word box and its padding. */
 private val WHEEL_HEADROOM = 70.dp
 
+/** Longest single wait of the competitive timer before it re-reads the wall clock. */
+private const val MAX_TIMER_WAIT_MS = 1_000L
+
 @Composable
 fun WordGameScreen(
     state: WordGameUiState,
@@ -94,8 +96,6 @@ fun WordGameScreen(
     }
     var showBonusWordsDialog by remember(levelKey) { mutableStateOf(false) }
     var showHintDialog by remember(levelKey) { mutableStateOf(false) }
-    var remainingCooldown by remember { mutableLongStateOf(0L) }
-    var remainingTime by remember(levelKey) { mutableLongStateOf(0L) }
     var timedOut by remember(levelKey) { mutableStateOf(false) }
     val density = LocalDensity.current
     var rootOffset by remember { mutableStateOf(Offset.Zero) }
@@ -105,16 +105,11 @@ fun WordGameScreen(
     // second word waits for the first flight to finish instead of cancelling it.
     var wordBoxOffset by remember(levelKey) { mutableStateOf(Offset.Zero) }
     var bonusButtonCenter by remember(levelKey) { mutableStateOf(Offset.Zero) }
-    var crosswordCellPositions by remember(levelKey) {
-        mutableStateOf<Map<Pair<Int, Int>, Offset>>(
-            emptyMap()
-        )
-    }
-    var letterChooserPositions by remember(levelKey) {
-        mutableStateOf<Map<Int, Offset>>(
-            emptyMap()
-        )
-    }
+    // Plain maps, not Compose state: every cell reports its position on every frame of a
+    // pinch, and every letter on every frame of a shuffle, but only the start of a flight reads
+    // them. As state, each report copied the whole map and recomposed the screen.
+    val crosswordCellPositions = remember(levelKey) { HashMap<Pair<Int, Int>, Offset>() }
+    val letterChooserPositions = remember(levelKey) { HashMap<Int, Offset>() }
     val wordPlaceAnimations = rememberWordPlaceAnimations(
         levelKey = levelKey,
         crosswordData = crosswordData,
@@ -140,28 +135,18 @@ fun WordGameScreen(
 
     val isWon = crosswordData.winsWith(foundWords)
 
+    // Only waits for the deadline; it writes no state per tick (the countdown text ticks on its
+    // own inside the wheel), so the screen is not recomposed five times a second. Wall-clock
+    // checks at most a second apart, so a device that slept past the deadline times out on wake.
     LaunchedEffect(competitiveDeadline, isCompetitive, isWon, levelKey) {
-        if (!isCompetitive || isWon || competitiveDeadline <= 0L) {
-            if (competitiveDeadline <= 0L && !isWon) remainingTime = 0L
-            return@LaunchedEffect
-        }
+        if (!isCompetitive || isWon || competitiveDeadline <= 0L) return@LaunchedEffect
         while (true) {
-            remainingTime = (competitiveDeadline - System.currentTimeMillis()).coerceAtLeast(0)
-            if (remainingTime <= 0L) break
-            delay(200)
+            val left = competitiveDeadline - System.currentTimeMillis()
+            if (left <= 0L) break
+            delay(left.coerceAtMost(MAX_TIMER_WAIT_MS))
         }
-        if (!isWon) {
-            timedOut = true
-            actions.onCompetitiveTimeout()
-        }
-    }
-
-    LaunchedEffect(hintCooldownEnd) {
-        while (true) {
-            remainingCooldown = (hintCooldownEnd - System.currentTimeMillis()).coerceAtLeast(0)
-            if (remainingCooldown <= 0) break
-            delay(100)
-        }
+        timedOut = true
+        actions.onCompetitiveTimeout()
     }
 
     AppScaffold(
@@ -208,12 +193,7 @@ fun WordGameScreen(
                     revealedHints = revealedHints,
                     crosswordData = crosswordData,
                     hiddenWords = wordPlaceAnimations.flyingSolutionWords,
-                    onCellPositioned = { position, offset ->
-                        if (crosswordCellPositions[position] != offset) {
-                            crosswordCellPositions =
-                                crosswordCellPositions + (position to offset)
-                        }
-                    },
+                    onCellPositioned = { position, offset -> crosswordCellPositions[position] = offset },
                     onCellClicked = { row, col ->
                         val word = crosswordData.getWordAt(row, col, foundWords)
                         if (word != null && word in foundWords) {
@@ -232,7 +212,7 @@ fun WordGameScreen(
                     isCompetitive = isCompetitive,
                     isDaily = isDaily,
                     competitiveScore = competitiveScore,
-                    remainingTimeMs = remainingTime,
+                    competitiveDeadline = competitiveDeadline,
                     dailyStreak = state.dailyStreak,
                     wheelHeight = wheelHeight,
                     isWon = isWon,
@@ -257,10 +237,7 @@ fun WordGameScreen(
                     wordShakeAnim = wordShakeAnim,
                     bonusShakeAnim = bonusShakeAnim,
                     onWordBoxPositioned = { wordBoxOffset = it },
-                    letterChooserPositions = letterChooserPositions,
-                    onLetterPositioned = { id, offset ->
-                        letterChooserPositions = letterChooserPositions + (id to offset)
-                    },
+                    onLetterPositioned = { id, offset -> letterChooserPositions[id] = offset },
                 )
             }
 
@@ -268,10 +245,10 @@ fun WordGameScreen(
                 isWon = isWon,
                 isCompetitive = isCompetitive,
                 bonusWords = bonusWords,
-                bonusShake = bonusShakeAnim.value,
+                bonusShake = { bonusShakeAnim.value },
                 onOpenBonusWords = { showBonusWordsDialog = true },
                 onBonusButtonPositioned = { bonusButtonCenter = it },
-                remainingCooldownMs = remainingCooldown,
+                hintCooldownEnd = hintCooldownEnd,
                 onOpenHint = { showHintDialog = true },
             )
 
@@ -289,11 +266,11 @@ fun WordGameScreen(
                 onDismissDefinition = { wordWithDefinition = null },
                 animatedWord = wordPlaceAnimations.activeBonusWord,
                 animationProgress = wordPlaceAnimations.bonusProgress,
-                wordBoxOffset = wordBoxOffset,
-                bonusButtonCenter = bonusButtonCenter,
+                wordBoxOffset = { wordBoxOffset },
+                bonusButtonCenter = { bonusButtonCenter },
                 rootOffset = rootOffset,
                 animatedLetters = wordPlaceAnimations.animatedLetters,
-                scale = scale,
+                scale = { scale },
             )
         }
         }

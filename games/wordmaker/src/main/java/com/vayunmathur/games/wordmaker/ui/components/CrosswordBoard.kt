@@ -19,7 +19,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -82,12 +84,14 @@ fun CrosswordBoard(
         // zoom is stored relative to this fit and re-clamped to the new size.
         val fit = BoardZoom.fitScale(board, box)
         var zoom by remember(crosswordData) { mutableStateOf(BoardZoom()) }
-        val view = zoom.clampedTo(fit, board, box)
-        val scale = view.scale(fit)
 
-        // Ensure parent knows the current scale, especially the initial one
-        LaunchedEffect(scale) {
-            scaleUpdated(scale)
+        // Tell the parent the current scale, especially the initial one. Observed with
+        // snapshotFlow and applied in the graphicsLayer block below, so the zoom is never read
+        // in composition: a pinch redraws the board instead of recomposing every cell.
+        val currentScaleUpdated by rememberUpdatedState(scaleUpdated)
+        LaunchedEffect(fit, board, box) {
+            snapshotFlow { zoom.clampedTo(fit, board, box).scale(fit) }
+                .collect { currentScaleUpdated(it) }
         }
 
         val state = rememberTransformableState { centroid, zoomChange, offsetChange, _ ->
@@ -120,12 +124,14 @@ fun CrosswordBoard(
                     // Centred even when larger than the box, so the layer's pivot (the board
                     // centre) is the box centre the zoom maths assumes.
                     .wrapContentSize(align = Alignment.Center, unbounded = true)
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = view.pan.x,
+                    .graphicsLayer {
+                        val view = zoom.clampedTo(fit, board, box)
+                        val scale = view.scale(fit)
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = view.pan.x
                         translationY = view.pan.y
-                    )
+                    }
             ) {
                 crosswordData.gridStructure.forEachIndexed { y, rowString ->
                     Row {
