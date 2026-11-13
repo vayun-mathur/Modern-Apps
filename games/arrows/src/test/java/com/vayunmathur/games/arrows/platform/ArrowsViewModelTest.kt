@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.runner.RunWith
@@ -36,6 +37,13 @@ class ArrowsViewModelTest {
 
     @BeforeTest fun setUp() { Dispatchers.setMain(Dispatchers.Unconfined) }
     @AfterTest fun tearDown() { Dispatchers.resetMain() }
+
+    /**
+     * runBlocking with a deadline, so a wedged store fails the test instead of hanging the whole
+     * run (and the shared build slot) forever.
+     */
+    private fun <T> blocking(block: suspend CoroutineScope.() -> T): T =
+        runBlocking { withTimeout(30_000) { block() } }
 
     private fun await(desc: String, cond: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 30_000
@@ -95,12 +103,12 @@ class ArrowsViewModelTest {
         vm.finishMove(firstMove.id)
         assertTrue(vm.uiState.value.moves.none { it.id == firstMove.id })
         val expected = vm.uiState.value.game!!.removed
-        await("store catches up") { runBlocking { vm.dataStore.removedArrows.first() } == expected }
+        await("store catches up") { blocking { vm.dataStore.removedArrows.first() } == expected }
         Thread.sleep(200)
         assertEquals(expected, vm.uiState.value.game!!.removed)
 
         vm.restartLevel()
-        await("restart persisted") { runBlocking { vm.dataStore.removedArrows.first() }.isEmpty() }
+        await("restart persisted") { blocking { vm.dataStore.removedArrows.first() }.isEmpty() }
     }
 
     @Test
@@ -123,7 +131,7 @@ class ArrowsViewModelTest {
             assertEquals(2, vm.uiState.value.game!!.hearts, "double tap costs one heart")
         }
         vm.restartLevel()
-        await("restart persisted") { runBlocking { vm.dataStore.hearts.first() } == 3 }
+        await("restart persisted") { blocking { vm.dataStore.hearts.first() } == 3 }
     }
 
     @Test
@@ -132,10 +140,10 @@ class ArrowsViewModelTest {
         val game = vm.uiState.value.game!!
         val blocked = game.remaining.firstOrNull { ArrowsRules.isBlocked(game, it) } ?: return
         // The store may already be past its first blocked tap if another test got there first.
-        val firstEver = !runBlocking { vm.dataStore.heartHintSeen.first() }
+        val firstEver = !blocking { vm.dataStore.heartHintSeen.first() }
         vm.tapArrow(blocked.id)
         assertEquals(firstEver, vm.uiState.value.showHeartHint)
-        await("hint marked seen") { runBlocking { vm.dataStore.heartHintSeen.first() } }
+        await("hint marked seen") { blocking { vm.dataStore.heartHintSeen.first() } }
 
         // Restart hides it, and a later blocked tap never explains it again.
         vm.restartLevel()
@@ -143,7 +151,7 @@ class ArrowsViewModelTest {
         vm.tapArrow(blocked.id)
         assertEquals(false, vm.uiState.value.showHeartHint)
         vm.restartLevel()
-        await("restart persisted") { runBlocking { vm.dataStore.hearts.first() } == 3 }
+        await("restart persisted") { blocking { vm.dataStore.hearts.first() } == 3 }
     }
 
     @Test
@@ -151,7 +159,7 @@ class ArrowsViewModelTest {
         val vm = loadedViewModel()
         vm.dismissRedirectorHint()
         assertTrue(vm.uiState.value.redirectorHintSeen)
-        await("persisted") { runBlocking { vm.dataStore.redirectorHintSeen.first() } }
+        await("persisted") { blocking { vm.dataStore.redirectorHintSeen.first() } }
     }
 
     @Test
@@ -165,12 +173,12 @@ class ArrowsViewModelTest {
         await("showRoutes true") { vm.uiState.value.showRoutes }
 
         // Winning the board (via persisted progress for every arrow) records the clear.
-        val clearedBefore = runBlocking { vm.dataStore.boardsCleared.first() }
+        val clearedBefore = blocking { vm.dataStore.boardsCleared.first() }
         val allIds = vm.uiState.value.game!!.puzzle.pieces.map { it.id }.toSet()
-        runBlocking { vm.dataStore.saveProgress(allIds, 3, daily = false) }
+        blocking { vm.dataStore.saveProgress(allIds, 3, daily = false) }
         await("board won") { vm.uiState.value.game?.isWon == true }
         await("clear recorded") {
-            runBlocking { vm.dataStore.boardsCleared.first() } > clearedBefore
+            blocking { vm.dataStore.boardsCleared.first() } > clearedBefore
         }
 
         // Next level advances in casual mode, exactly once however fast it is tapped twice;
@@ -184,8 +192,8 @@ class ArrowsViewModelTest {
         vm.nextLevel() // a fresh, unsolved board: ignored
         Thread.sleep(500)
         assertEquals(levelBefore + 1, vm.uiState.value.level, "double tap must not skip a level")
-        assertEquals(levelBefore + 1, runBlocking { vm.dataStore.currentLevel.first() })
-        runBlocking { vm.dataStore.saveLevel(1) }
+        assertEquals(levelBefore + 1, blocking { vm.dataStore.currentLevel.first() })
+        blocking { vm.dataStore.saveLevel(1) }
         await("back to level 1") { vm.uiState.value.level == 1 && vm.uiState.value.game != null }
     }
 
@@ -197,26 +205,26 @@ class ArrowsViewModelTest {
         val vm = ArrowsViewModel(app)
         await("board loads") { vm.uiState.value.game != null && !vm.uiState.value.generating }
         val allIds = vm.uiState.value.game!!.puzzle.pieces.map { it.id }.toSet()
-        runBlocking { vm.dataStore.saveProgress(allIds, 3, daily = false) }
+        blocking { vm.dataStore.saveProgress(allIds, 3, daily = false) }
         await("board won") { vm.uiState.value.game?.isWon == true }
         // A second ViewModel over the same store is a fresh process for guard purposes: its
         // in-memory clear guard starts empty while the won board is already persisted.
         val first = ArrowsViewModel(app)
         await("relaunch loads won board") { first.uiState.value.game?.isWon == true }
         Thread.sleep(2_000)
-        val afterFirst = runBlocking { first.dataStore.boardsCleared.first() }
+        val afterFirst = blocking { first.dataStore.boardsCleared.first() }
 
         val second = ArrowsViewModel(app)
         await("second relaunch loads won board") { second.uiState.value.game?.isWon == true }
         Thread.sleep(2_000)
-        val afterSecond = runBlocking { second.dataStore.boardsCleared.first() }
+        val afterSecond = blocking { second.dataStore.boardsCleared.first() }
 
         assertEquals(
             afterFirst,
             afterSecond,
             "reloading an already-won board must not count it again",
         )
-        runBlocking { second.dataStore.resetBoard(daily = false) }
+        blocking { second.dataStore.resetBoard(daily = false) }
     }
 
     @Test
@@ -245,7 +253,7 @@ class ArrowsViewModelTest {
 
             // Winning the daily board records the daily clear as well.
             val dailyIds = dailyGame.puzzle.pieces.map { it.id }.toSet()
-            runBlocking { vm.dataStore.saveProgress(dailyIds, 3, daily = true) }
+            blocking { vm.dataStore.saveProgress(dailyIds, 3, daily = true) }
             await("daily won") { vm.uiState.value.game?.isWon == true }
             await("daily marked done") { vm.uiState.value.dailyDone }
 

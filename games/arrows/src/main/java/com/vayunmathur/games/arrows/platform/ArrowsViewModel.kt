@@ -47,6 +47,17 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
     ArrowsGameActions, SettingsActions {
 
     val dataStore = ArrowsDataStore(application)
+
+    /**
+     * One lane for every write to the game's stores, in the order they were made.
+     *
+     * DataStore runs an edit's transform in the caller's context while it holds the file lock, so
+     * an edit launched from the main dispatcher holds that lock until the main thread gets round to
+     * it. Writing from a single background lane keeps writes off the main thread, keeps them in tap
+     * order (a later tap's progress can never land before an earlier one's), and means nothing
+     * waiting on the main thread can wedge the store.
+     */
+    private val storeWrites = Dispatchers.IO.limitedParallelism(1)
     private val dailyStore = DailyChallengeStore(application, DAILY_KEY_PREFIX)
     private val reminderSettings = DailyReminderSettings(application, DAILY_KEY_PREFIX)
 
@@ -126,7 +137,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
     private suspend fun load(session: Session) {
         val daily = session.mode == GameMode.DAILY
         val day = dailyStore.todayEpochDay()
-        if (daily) dataStore.ensureDailyDay(day)
+        if (daily) withContext(storeWrites) { dataStore.ensureDailyDay(day) }
 
         _uiState.value = _uiState.value.copy(
             mode = session.mode,
@@ -304,7 +315,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         val daily = state.mode == GameMode.DAILY
         val day = boardDay
         expectedProgress = next.removed to next.hearts
-        viewModelScope.launch {
+        viewModelScope.launch(storeWrites) {
             dataStore.saveProgress(next.removed, next.hearts, daily)
             if (explainHeart) dataStore.markHeartHintSeen()
             if (outcome == TapOutcome.BLOCKED) {
@@ -351,7 +362,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         if (!game.isWon) return
         lastBlockedId = -1
         _uiState.value = state.copy(moves = emptyList(), showHeartHint = false)
-        viewModelScope.launch { dataStore.saveLevel(game.level + 1) }
+        viewModelScope.launch(storeWrites) { dataStore.saveLevel(game.level + 1) }
     }
 
     override fun restartLevel() {
@@ -363,22 +374,22 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         val reset = state.game?.let(ArrowsRules::resetAfterFailure)
         _uiState.value = state.copy(game = reset ?: state.game, moves = emptyList(), showHeartHint = false)
         if (reset != null) expectedProgress = reset.removed to reset.hearts
-        viewModelScope.launch { dataStore.resetBoard(daily) }
+        viewModelScope.launch(storeWrites) { dataStore.resetBoard(daily) }
     }
 
     override fun setGameMode(mode: GameMode) {
         lastBlockedId = -1
         _uiState.value = _uiState.value.copy(moves = emptyList(), showHeartHint = false)
-        viewModelScope.launch { dataStore.setGameMode(mode) }
+        viewModelScope.launch(storeWrites) { dataStore.setGameMode(mode) }
     }
 
     override fun dismissRedirectorHint() {
         _uiState.value = _uiState.value.copy(redirectorHintSeen = true)
-        viewModelScope.launch { dataStore.markRedirectorHintSeen() }
+        viewModelScope.launch(storeWrites) { dataStore.markRedirectorHintSeen() }
     }
 
     override fun setShowRoutes(enabled: Boolean) {
-        viewModelScope.launch { dataStore.setShowRoutes(enabled) }
+        viewModelScope.launch(storeWrites) { dataStore.setShowRoutes(enabled) }
     }
 
     override fun setReminderEnabled(enabled: Boolean) {
@@ -422,7 +433,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         // Daily clears are keyed by day and casual ones by negated level, which cannot collide.
         val key = if (daily) day else -game.level.toLong()
 
-        viewModelScope.launch {
+        viewModelScope.launch(storeWrites) {
             // Null means this board was already banked — a replayed win, not a new clear.
             val total = dataStore.recordClearedOnce(key) ?: return@launch
             val manager = achievementsManager
