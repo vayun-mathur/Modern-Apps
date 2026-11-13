@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -155,13 +156,17 @@ fun ArrowsBoard(
                             piece, flight.move, flight.advance.value, flight.maxAdvance, cols, cellPx, color,
                         )
                     }
-                }
+                },
+            // Absolute top-left, like `absoluteOffset` below: a plain Box aligns children to its
+            // top *start*, which under RTL is the right edge, and that alone mirrors every box.
+            contentAlignment = AbsoluteAlignment.TopLeft,
         ) {
             // Semantics only: invisible, one per arrow, sitting on its head cell. Taps anywhere along an
             // arrow are handled by the board's own pointerInput; these exist so a screen reader has
             // something to find and activate.
             //
-            // `absoluteOffset`, not `offset`: the canvas above paints in absolute coordinates and the
+            // Placed in absolute coordinates (`absoluteOffset` from an absolute top-left), not
+            // start-relative ones: the canvas above paints in absolute coordinates and the
             // pointerInput reads absolute touch positions, so these boxes must not mirror under an
             // RTL locale. A mirrored box sat over the wrong cell and, being clickable, swallowed a tap
             // meant for one arrow and launched whichever arrow's head it had been laid out for.
