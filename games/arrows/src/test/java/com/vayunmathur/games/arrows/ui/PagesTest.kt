@@ -3,6 +3,7 @@ package com.vayunmathur.games.arrows.ui
 import android.app.Application
 import android.content.Context
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -93,12 +94,7 @@ class PagesTest {
         val vm = loadedVm()
         rule.setContent { Navigation(vm) }
         rule.waitUntil(timeoutMillis = 10_000) {
-            try {
-                rule.onNodeWithText(str(R.string.how_to_play)).assertExists()
-                true
-            } catch (e: AssertionError) {
-                false
-            }
+            rule.onAllNodesWithText(str(R.string.how_to_play)).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText(str(R.string.how_to_play)).assertExists()
     }
