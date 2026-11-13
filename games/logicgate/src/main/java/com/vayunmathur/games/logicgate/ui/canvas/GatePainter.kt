@@ -9,25 +9,42 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.domain.model.LevelInput
 import com.vayunmathur.games.logicgate.domain.model.LevelOutput
 import com.vayunmathur.games.logicgate.domain.model.Node
+import com.vayunmathur.games.logicgate.domain.model.NodeId
 import com.vayunmathur.games.logicgate.domain.model.PinRef
 import com.vayunmathur.games.logicgate.domain.model.PinSide
+import com.vayunmathur.games.logicgate.domain.model.Wire
 import com.vayunmathur.games.logicgate.domain.model.formatValue
 
-/** What every paint call needs. Coordinates are world units; the caller has applied the camera. */
+/** A node being carried, drawn [by] world units away from where [CircuitLayout] has it. */
+data class NodeShift(val id: NodeId, val by: Offset)
+
+/**
+ * What every paint call needs. Coordinates are world units; the caller has applied the camera.
+ * [shift] is the node being dragged, applied at draw time so [layout] stays the same all drag.
+ */
 class PaintContext(
     val colors: CircuitColors,
-    val measurer: TextMeasurer,
+    val text: TextCache,
     val layout: CircuitLayout,
     val live: Map<PinRef, Int>,
-)
+    val shift: NodeShift? = null,
+) {
+    /** Re-used for the few wires that change every frame (the live wire, a dragged gate's). */
+    val scratch: Path by lazy { Path() }
+}
+
+/** Runs [block] moved along with node [id] when it is the one being dragged. */
+inline fun DrawScope.shifted(ctx: PaintContext, id: NodeId, block: DrawScope.() -> Unit) {
+    val s = ctx.shift
+    if (s != null && s.id == id) translate(s.by.x, s.by.y) { block() } else block()
+}
 
 /** Per-node highlight state. [expected] is the probed test row's wanted value for an output. */
 data class NodeStyle(val selected: Boolean, val oscillating: Boolean, val expected: Int? = null)
@@ -57,15 +74,28 @@ fun wireStroke(width: Int): Float = when (width) {
     else -> 6f
 }
 
-private fun wirePath(from: Offset, to: Offset) = Path().apply {
+/** Replaces this path with the wire curve from [from] to [to]. */
+fun Path.setWire(from: Offset, to: Offset) {
+    reset()
     val (c1, c2) = GateGeometry.controls(from, to)
     moveTo(from.x, from.y)
     cubicTo(c1.x, c1.y, c2.x, c2.y, to.x, to.y)
 }
 
-/** A wire; 1-bit wires light up when high, buses are colour-coded by width with a hex value. */
-fun DrawScope.drawWire(ctx: PaintContext, ends: Pair<Offset, Offset>, width: Int, value: Int?, selected: Boolean) {
-    val path = wirePath(ends.first, ends.second)
+/**
+ * A wire; 1-bit wires light up when high, buses are colour-coded by width with a hex value. Its
+ * path comes from the layout's cache unless one end is on the node being dragged.
+ */
+fun DrawScope.drawWire(ctx: PaintContext, wire: Wire, selected: Boolean) {
+    val l = ctx.layout
+    val a0 = l.anchors[wire.from] ?: return
+    val b0 = l.anchors[wire.to] ?: return
+    val s = ctx.shift
+    val a = if (s != null && s.id == wire.from.node) a0 + s.by else a0
+    val b = if (s != null && s.id == wire.to.node) b0 + s.by else b0
+    val path = if (a == a0 && b == b0) l.wirePath(wire) ?: return else ctx.scratch.apply { setWire(a, b) }
+    val width = l.pin(wire.from)?.width ?: 1
+    val value = ctx.live[wire.from]
     val stroke = wireStroke(width)
     if (selected) drawPath(path, ctx.colors.selected.copy(alpha = 0.45f), style = Stroke(stroke + 8f, cap = StrokeCap.Round))
     val color = when {
@@ -75,21 +105,21 @@ fun DrawScope.drawWire(ctx: PaintContext, ends: Pair<Offset, Offset>, width: Int
     }
     drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round))
     if (width > 1 && value != null) {
-        val mid = GateGeometry.samples(ends.first, ends.second, 2)[1]
+        val mid = GateGeometry.samples(a, b, 2)[1]
         drawTag(ctx, formatValue(value, width), mid, color)
     }
 }
 
 fun DrawScope.drawGhostWire(ctx: PaintContext, ends: Pair<Offset, Offset>, width: Int) {
     drawPath(
-        wirePath(ends.first, ends.second),
+        ctx.scratch.apply { setWire(ends.first, ends.second) },
         ctx.colors.forWidth(width).copy(alpha = 0.7f),
         style = Stroke(wireStroke(width), cap = StrokeCap.Round),
     )
 }
 
 private fun DrawScope.drawTag(ctx: PaintContext, text: String, center: Offset, color: Color) {
-    val layout = ctx.measurer.measure(text, TextStyle(fontSize = 10f.toSp(), fontWeight = FontWeight.Bold))
+    val layout = ctx.text.measure(this, text, TAG_SIZE, FontWeight.Bold)
     val w = layout.size.width + 8f
     val h = layout.size.height + 2f
     drawRoundRect(ctx.colors.background, Offset(center.x - w / 2, center.y - h / 2), Size(w, h), CornerRadius(h / 2))
@@ -99,7 +129,7 @@ private fun DrawScope.drawTag(ctx: PaintContext, text: String, center: Offset, c
 
 /** Draws [text] centred on [center] at [sizeWorld] world units. */
 fun DrawScope.drawCentered(ctx: PaintContext, text: String, center: Offset, sizeWorld: Float, color: Color) {
-    val layout = ctx.measurer.measure(text, TextStyle(fontSize = sizeWorld.toSp(), fontWeight = FontWeight.SemiBold))
+    val layout = ctx.text.measure(this, text, sizeWorld, FontWeight.SemiBold)
     drawText(layout, color, Offset(center.x - layout.size.width / 2f, center.y - layout.size.height / 2f))
 }
 
@@ -169,12 +199,12 @@ private fun DrawScope.drawPinNames(ctx: PaintContext, gate: Gate) {
 }
 
 private fun DrawScope.drawLeft(ctx: PaintContext, text: String, at: Offset) {
-    val l = ctx.measurer.measure(text, TextStyle(fontSize = PIN_NAME_SIZE.toSp()))
+    val l = ctx.text.measure(this, text, PIN_NAME_SIZE)
     drawText(l, ctx.colors.muted, Offset(at.x, at.y - l.size.height / 2f))
 }
 
 private fun DrawScope.drawRight(ctx: PaintContext, text: String, at: Offset) {
-    val l = ctx.measurer.measure(text, TextStyle(fontSize = PIN_NAME_SIZE.toSp()))
+    val l = ctx.text.measure(this, text, PIN_NAME_SIZE)
     drawText(l, ctx.colors.muted, Offset(at.x - l.size.width, at.y - l.size.height / 2f))
 }
 
@@ -217,6 +247,7 @@ fun DrawScope.drawPins(ctx: PaintContext, node: Node, highlight: Set<PinRef>, sh
     pins.outputs.forEachIndexed { i, p -> pin(PinRef(node.id, PinSide.OUT, i), p.width) }
 }
 
+private const val TAG_SIZE = 10f
 private const val LABEL_SIZE = 14f
 private const val SMALL_LABEL_SIZE = 9f
 private const val PIN_NAME_SIZE = 9f

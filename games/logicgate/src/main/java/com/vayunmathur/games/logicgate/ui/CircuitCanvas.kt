@@ -38,6 +38,7 @@ import com.vayunmathur.games.logicgate.ui.canvas.CircuitLayout
 import com.vayunmathur.games.logicgate.ui.canvas.Drag
 import com.vayunmathur.games.logicgate.ui.canvas.NodeStyle
 import com.vayunmathur.games.logicgate.ui.canvas.PaintContext
+import com.vayunmathur.games.logicgate.ui.canvas.TextCache
 import com.vayunmathur.games.logicgate.ui.canvas.TrashZone
 import com.vayunmathur.games.logicgate.ui.canvas.circuitGestures
 import com.vayunmathur.games.logicgate.ui.canvas.drawGhostWire
@@ -45,6 +46,7 @@ import com.vayunmathur.games.logicgate.ui.canvas.drawGrid
 import com.vayunmathur.games.logicgate.ui.canvas.drawNode
 import com.vayunmathur.games.logicgate.ui.canvas.drawPins
 import com.vayunmathur.games.logicgate.ui.canvas.drawWire
+import com.vayunmathur.games.logicgate.ui.canvas.shifted
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Motion
 import com.vayunmathur.library.ui.rememberHaptics
@@ -78,8 +80,10 @@ fun CircuitCanvas(
     var shakePin by remember { mutableStateOf<PinRef?>(null) }
     var editingInput by remember { mutableStateOf<Int?>(null) }
     val labels = rememberChipLabels()
-    val shown = controller.preview(state.circuit)
-    val layout = remember(shown, lookup, labels) { CircuitLayout(shown, lookup, labels) }
+    val text = remember(measurer) { TextCache(measurer) }
+    // Built from the committed circuit only: a dragged gate is offset at draw time, so a drag
+    // neither recomposes nor rebuilds the layout, its measured text or its wire paths.
+    val layout = remember(state.circuit, lookup, labels) { CircuitLayout(state.circuit, lookup, labels) }
 
     SideEffect {
         controller.bind(state, actions, layout, lookup)
@@ -123,16 +127,12 @@ fun CircuitCanvas(
         drawRect(colors.background)
         val cam = cameraState.camera
         drawGrid(cam, colors.grid)
-        val ctx = PaintContext(colors, measurer, layout, state.live.values)
+        val ctx = PaintContext(colors, text, layout, state.live.values, controller.shift(state.circuit))
         withTransform({
             translate(cam.offset.x, cam.offset.y)
             scale(cam.scale, cam.scale, Offset.Zero)
         }) {
-            for (w in layout.circuit.wires) {
-                val a = layout.anchors[w.from] ?: continue
-                val b = layout.anchors[w.to] ?: continue
-                drawWire(ctx, a to b, layout.pin(w.from)?.width ?: 1, state.live.values[w.from], w == selectedWire)
-            }
+            for (w in layout.circuit.wires) drawWire(ctx, w, w == selectedWire)
             val drag = controller.drag
             if (drag is Drag.Wiring) {
                 layout.anchors[drag.from]?.let { a ->
@@ -143,11 +143,11 @@ fun CircuitCanvas(
             val doomed = (drag as? Drag.Moving)?.id?.takeIf { trash.hovering }
             for (n in layout.circuit.nodes) {
                 val want = (n as? LevelOutput)?.let { expected?.getOrNull(it.index) }
-                drawNode(ctx, n, NodeStyle(n.id == selectedNode, n.id in oscillating || n.id == doomed, want))
+                shifted(ctx, n.id) { drawNode(ctx, n, NodeStyle(n.id == selectedNode, n.id in oscillating || n.id == doomed, want)) }
             }
             val highlight = (drag as? Drag.Wiring)?.compatible.orEmpty()
             val shaking = shakePin?.let { it to shake.value }
-            for (n in layout.circuit.nodes) drawPins(ctx, n, highlight, shaking)
+            for (n in layout.circuit.nodes) shifted(ctx, n.id) { drawPins(ctx, n, highlight, shaking) }
         }
     }
 

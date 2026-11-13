@@ -124,6 +124,20 @@ class CanvasControllerTest {
     }
 
     @Test
+    fun aDraggedGateIsOffsetAtDrawTimeWithoutChangingTheCircuit() {
+        val (controller, _, circuit) = setup()
+        val gate = circuit.nodes.last().id
+        assertEquals(null, controller.shift(circuit))
+        controller.startMove(gate, Offset(240f, 28f))
+        controller.dragMove(Offset(240f + 3 * GateGeometry.GRID, 28f + GateGeometry.GRID))
+        // The gate sits at (200, 0); the preview snaps its new top-left to the grid.
+        val expected = Offset(GateGeometry.snap(200f + 3 * GateGeometry.GRID) - 200f, GateGeometry.snap(GateGeometry.GRID))
+        assertEquals(NodeShift(gate, expected), controller.shift(circuit))
+        controller.cancelDrag()
+        assertEquals(null, controller.shift(circuit))
+    }
+
+    @Test
     fun holdingAWireNearAnEdgeAutoPansAndKeepsTheWireOnTheFinger() {
         val (controller, _, circuit) = setup()
         val camera = CameraState(1f).apply { viewport = Size(1000f, 800f) }

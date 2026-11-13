@@ -3,6 +3,7 @@ package com.vayunmathur.games.logicgate.ui.canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
 import com.vayunmathur.games.logicgate.domain.model.Circuit
 import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.domain.model.LevelInput
@@ -15,6 +16,7 @@ import com.vayunmathur.games.logicgate.domain.model.PinLookup
 import com.vayunmathur.games.logicgate.domain.model.PinRef
 import com.vayunmathur.games.logicgate.domain.model.PinSide
 import com.vayunmathur.games.logicgate.domain.model.Point
+import com.vayunmathur.games.logicgate.domain.model.Wire
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max
@@ -96,6 +98,18 @@ class CircuitLayout(val circuit: Circuit, lookup: PinLookup, private val labels:
     }
 
     fun pin(ref: PinRef): Pin? = pins[ref.node]?.pin(ref.side, ref.index)
+
+    private val wirePaths = HashMap<Wire, Path>()
+
+    /** [wire]'s curve, built on first use and kept for as long as this layout is drawn. */
+    fun wirePath(wire: Wire): Path? = wirePaths[wire] ?: run {
+        val a = anchors[wire.from] ?: return null
+        val b = anchors[wire.to] ?: return null
+        Path().also {
+            it.setWire(a, b)
+            wirePaths[wire] = it
+        }
+    }
 
     val bounds: Rect?
         get() = rects.values.reduceOrNull { a, b ->

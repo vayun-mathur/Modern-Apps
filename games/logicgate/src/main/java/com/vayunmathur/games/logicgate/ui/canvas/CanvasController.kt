@@ -67,9 +67,16 @@ class CanvasController(
         if (m?.releasedOn != null && m.releasedOn != state.circuit) drag = null
     }
 
-    fun preview(circuit: Circuit): Circuit =
-        (drag as? Drag.Moving)?.takeIf { it.releasedOn == null || it.releasedOn == circuit }
-            ?.let { circuit.moveNode(it.id, it.target) } ?: circuit
+    /**
+     * The node being carried and how far it has moved from its place in [circuit]. Read it at
+     * draw time only: reading it in composition would recompose (and re-lay-out) every frame.
+     */
+    fun shift(circuit: Circuit): NodeShift? {
+        val m = (drag as? Drag.Moving)?.takeIf { it.releasedOn == null || it.releasedOn == circuit } ?: return null
+        val node = circuit.node(m.id) ?: return null
+        val to = m.target
+        return NodeShift(m.id, Offset(to.x - node.pos.x, to.y - node.pos.y))
+    }
 
     private fun world(screen: Offset) = camera.camera.toWorld(screen)
 
