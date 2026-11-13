@@ -121,4 +121,19 @@ mod state_tests {
         assert!(!s.player.flying);
         assert!(Inventory::empty().slots.iter().all(|sl| sl.id == 0 && sl.count == 0));
     }) }
+
+    // A thrown snowball flies along the ray it was thrown with (the touch), not the view centre.
+    #[test]
+    fn throwables_follow_the_touch_ray() { big_stack(|| {
+        let mut s = small_state("throw");
+        s.inventory.selected = 0;
+        s.inventory.slots[0] = crate::inventory::InvSlot { id: crate::item::SNOWBALL, count: 4 };
+        s.player.eat_cd = 0.0;
+        let dir = vec3(0.6, 0.2, -0.77).normalize();
+        let eye = s.player.eye_pos();
+        assert!(do_break(&mut s, eye, dir), "the snowball was not thrown");
+        let p = s.projectiles.last().expect("a projectile");
+        assert!(p.vel.normalize().dot(dir) > 0.999, "thrown along {:?}, not the touch ray {:?}", p.vel, dir);
+        assert_eq!(s.inventory.slots[0].count, 3);
+    }) }
 }

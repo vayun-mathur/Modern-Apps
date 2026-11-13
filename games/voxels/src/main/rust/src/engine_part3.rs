@@ -122,14 +122,16 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
         }
         return false;
     }
-    // Throwables: snowball (light damage/knock) and ender pearl (teleport to impact).
-    if (sel == 190 || sel == 191) && state.player.eat_cd <= 0.0 {
+    // Throwables: snowball (light damage/knock) and ender pearl (teleport to impact). They fly along
+    // `dir`, the ray through the touch (or the crosshair, for the Use button), so they land where the
+    // player pointed. These checks used the pre-1024 ids 190/191, so throwables never fired at all.
+    if (sel == item::SNOWBALL || sel == item::ENDER_PEARL) && state.player.eat_cd <= 0.0 {
         // Paris never spends the charge; everyone else does.
         let free = state.player.blessed(Passive::Infinity);
         if free || state.inventory.consume_selected().is_some() {
-            let f = state.player.forward();
+            let f = dir.normalize_or_zero();
             let origin = state.player.eye_pos() + f * 0.5;
-            let (kind, spd) = if sel == 191 { (ProjKind::EnderPearl, 16.0) } else { (ProjKind::Snowball, 20.0) };
+            let (kind, spd) = if sel == item::ENDER_PEARL { (ProjKind::EnderPearl, 16.0) } else { (ProjKind::Snowball, 20.0) };
             // Artemis throws a spread of three; an ender pearl always flies alone so the
             // teleport destination stays predictable.
             let spread: &[f32] = if state.player.blessed(Passive::Multishot) && kind == ProjKind::Snowball {
@@ -137,7 +139,7 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
             } else {
                 &[0.0]
             };
-            let right = state.player.right();
+            let right = { let r = f.cross(Vec3::Y).normalize_or_zero(); if r == Vec3::ZERO { state.player.right() } else { r } };
             for &off in spread {
                 let dir = (f + right * off).normalize_or_zero();
                 state.projectiles.push(Projectile { pos: origin, vel: dir * spd, life: 5.0, kind, from_player: true, damage: 0.0, explosive: false });
@@ -147,9 +149,10 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
         }
     }
     // Deflect an incoming fireball by attacking it — bats it back (now player-owned) at the shooter.
+    // Aimed along the touch ray like everything else here.
     {
         let eye_pos = state.player.eye_pos();
-        let f = state.player.forward();
+        let f = dir.normalize_or_zero();
         let mut best: Option<(usize, f32)> = None;
         for (i, p) in state.projectiles.iter().enumerate() {
             if p.from_player || p.kind != ProjKind::Fireball { continue; }

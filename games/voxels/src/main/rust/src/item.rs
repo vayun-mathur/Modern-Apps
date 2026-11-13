@@ -45,6 +45,9 @@ pub fn is_food(id: Id) -> bool { food_effects(id).is_some() }
 // {helmet,chestplate,leggings,boots}. Matcha's bronze sits between iron and diamond at 1135..1140,
 // and adamant tops the ladder at 1093..1098. Durability is stored in the inventory slot's `count`.
 pub fn is_tool(id: Id) -> bool { (1059..=1066).contains(&id) || matches!(id, 1093 | 1094 | 1135 | 1136 | 1148 | 1149 | 1151) }
+/// Throwables: a snowball (light damage and knockback) and an ender pearl (teleport to impact).
+pub const SNOWBALL: Id = 1086;
+pub const ENDER_PEARL: Id = 1087;
 /// Brushing suspicious sand is the only thing it does.
 pub const BRUSH: Id = 1151;
 /// Shears: used on a sheep rather than on terrain, so they're a tool that mines nothing.
