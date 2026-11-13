@@ -26,6 +26,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -45,6 +50,7 @@ import com.vayunmathur.games.chess.util.GameResult
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
+import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
@@ -393,9 +399,51 @@ private fun GameSidePanel(
     Button(onClick = onNewGame) {
         Text(stringResource(UiR.string.new_game))
     }
-    state.gameStatus?.let {
+    if (state.gameStatus != null || state.gameMode is GameMode.VsAI) {
         Spacer(modifier = Modifier.height(16.dp))
-        Text(it, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+    }
+    GameStatusLine(state)
+}
+
+/**
+ * The status line under the board: the game result / "Check!" text, or, while the AI is working
+ * out its reply, a small "Thinking..." indicator so taps that are ignored during the AI's turn
+ * have a visible reason.
+ *
+ * Against the AI the line keeps one status line's height reserved at all times (an invisible
+ * placeholder sized like the status text), so the indicator coming and going never resizes the
+ * portrait board above it. Two-player games keep the old show-only-when-set behaviour.
+ */
+@Composable
+private fun GameStatusLine(state: ChessUiState) {
+    if (state.gameMode !is GameMode.VsAI) {
+        state.gameStatus?.let { StatusText(it) }
+        return
+    }
+    Box(contentAlignment = Alignment.Center) {
+        StatusText(" ", Modifier.alpha(0f).clearAndSetSemantics { })
+        if (state.aiThinking) {
+            AiThinkingIndicator()
+        } else {
+            state.gameStatus?.let { StatusText(it) }
+        }
+    }
+}
+
+@Composable
+private fun StatusText(text: String, modifier: Modifier = Modifier) {
+    Text(text, modifier, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+}
+
+@Composable
+private fun AiThinkingIndicator() {
+    Row(
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+        Text(stringResource(R.string.ai_thinking), style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -488,9 +536,7 @@ private fun PortraitGameLayout(
             Text(stringResource(UiR.string.new_game))
         }
 
-        state.gameStatus?.let {
-            Text(it, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        }
+        GameStatusLine(state)
     }
 }
 

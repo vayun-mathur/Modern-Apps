@@ -21,6 +21,8 @@
     <string name="promote_pawn">Promote Pawn</string>
     <!-- ChessViewModel: Game status when king in check. Interjection/noun -->
     <string name="check">Check!</string>
+    <!-- ChessGame: Status shown while the AI works out its reply; taps on the board are ignored meanwhile. Verb progressive, short -->
+    <string name="ai_thinking">Thinking…</string>
     <!-- ChessViewModel: Game over when white checkmates black. Sentence -->
     <string name="white_wins">Checkmate! White wins.</string>
     <!-- ChessViewModel: Game over when black checkmates white. Sentence -->

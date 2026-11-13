@@ -129,4 +129,33 @@ class ChessViewModelTest {
         assertEquals(PieceType.QUEEN, vm.uiState.value.board.pieces[sq('g', 8).row][sq('g', 8).col]?.type)
         assertEquals(PieceColor.BLACK, vm.uiState.value.turn)
     }
+
+    private fun await(desc: String, timeoutMs: Long = 15_000, cond: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline && !cond()) Thread.sleep(25)
+        assertTrue(cond(), "timed out: $desc")
+    }
+
+    @Test fun `the AI's turn shows a thinking state until its reply resolves`() {
+        val vm = ChessViewModel(app)
+        vm.onNewGame(GameMode.VsAI(PieceColor.WHITE, Difficulty.BEGINNER))
+        assertFalse(vm.uiState.value.aiThinking)
+        vm.onSquareClick(sq('e', 2)); vm.onSquareClick(sq('e', 4))
+        assertTrue(vm.uiState.value.aiThinking, "thinking as soon as the player has moved")
+        vm.onSquareClick(sq('e', 7)) // the AI's turn: ignored, and the indicator says why
+        assertNull(vm.uiState.value.selectedPiece)
+        // No model in a unit test: the engine returns no move, which must still end the state.
+        await("thinking cleared") { !vm.uiState.value.aiThinking }
+    }
+
+    @Test fun `a new game clears a pending thinking state`() {
+        val vm = ChessViewModel(app)
+        vm.onNewGame(GameMode.VsAI(PieceColor.WHITE, Difficulty.BEGINNER))
+        vm.onSquareClick(sq('e', 2)); vm.onSquareClick(sq('e', 4))
+        assertTrue(vm.uiState.value.aiThinking)
+        vm.onNewGame(GameMode.TwoPlayer)
+        assertFalse(vm.uiState.value.aiThinking)
+        Thread.sleep(700) // past the old game's reply delay: its stale reply must not flip it back
+        assertFalse(vm.uiState.value.aiThinking)
+    }
 }

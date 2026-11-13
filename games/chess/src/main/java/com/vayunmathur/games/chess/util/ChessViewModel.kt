@@ -36,7 +36,9 @@ data class ChessUiState(
     val turn: PieceColor = PieceColor.WHITE,
     val gameStatus: String? = null,
     val gameResult: GameResult? = null,
-    val isBoardFlipped: Boolean = false
+    val isBoardFlipped: Boolean = false,
+    /** True from the player's move until the AI's reply lands (or the AI gives up). */
+    val aiThinking: Boolean = false,
 )
 
 class ChessViewModel(application: Application) : AndroidViewModel(application), ChessActions {
@@ -87,10 +89,8 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
         promotionUndo = null
         gameGeneration++
         val isFlipped = gameMode is GameMode.VsAI && gameMode.playerColor == PieceColor.BLACK
-        _uiState.value = ChessUiState(gameMode = gameMode, isBoardFlipped = isFlipped)
-        if (gameMode is GameMode.VsAI && gameMode.playerColor == PieceColor.BLACK) {
-            makeAiMove(gameGeneration)
-        }
+        _uiState.value = ChessUiState(gameMode = gameMode, isBoardFlipped = isFlipped, aiThinking = isFlipped)
+        if (isFlipped) makeAiMove(gameGeneration)
     }
 
     override fun onSquareClick(position: Position) {
@@ -124,16 +124,18 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
         // one-time win counter early). onPromote computes the real result once the piece is
         // chosen.
         val (result, status) = if (promoting) null to null else statusFor(newBoard, nextTurn)
+        val aiReplies = state.gameMode is GameMode.VsAI && result == null && !promoting
         _uiState.update {
             it.copy(
                 board = newBoard,
                 selectedPiece = null,
                 turn = nextTurn,
                 gameStatus = status,
-                gameResult = result
+                gameResult = result,
+                aiThinking = aiReplies,
             )
         }
-        if (state.gameMode is GameMode.VsAI && result == null && !promoting) scheduleAiReply()
+        if (aiReplies) scheduleAiReply()
     }
 
     private fun scheduleAiReply() {
@@ -165,10 +167,11 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
         val newBoard = board.promotePawn(promotionPosition, pieceType)
         val nextTurn = _uiState.value.turn.opposite
         val (result, status) = statusFor(newBoard, nextTurn)
+        val aiReplies = _uiState.value.gameMode is GameMode.VsAI && result == null
         _uiState.update {
-            it.copy(board = newBoard, turn = nextTurn, gameStatus = status, gameResult = result)
+            it.copy(board = newBoard, turn = nextTurn, gameStatus = status, gameResult = result, aiThinking = aiReplies)
         }
-        if (_uiState.value.gameMode is GameMode.VsAI && result == null) scheduleAiReply()
+        if (aiReplies) scheduleAiReply()
     }
 
     /**
@@ -186,28 +189,34 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
     private fun makeAiMove(generation: Int) {
         val mode = _uiState.value.gameMode as? GameMode.VsAI ?: return
         viewModelScope.launch {
-            if (generation != gameGeneration) return@launch
-            val state = _uiState.value
-            // Only ever move for the AI side of the current, unfinished game.
-            if (state.gameMode != mode || state.gameResult != null) return@launch
-            if (state.turn == mode.playerColor) return@launch
-            // The side to move comes from the UI's own state rather than from the board: the
-            // rules model infers a turn from its last move, which the puzzle path fakes.
-            // Returns null when the engine has no move to make (mate or stalemate against the
-            // AI, or an unavailable model).
-            val bestMove = chessApi.getBestMove(state.board, state.turn, mode.difficulty)
-                ?: return@launch
-            // The engine call suspends: a new game may have started meanwhile.
-            // Never apply a move computed for a stale position.
-            val current = _uiState.value
-            if (generation != gameGeneration) return@launch
-            if (current.board != state.board || current.turn != state.turn) return@launch
-            if (current.gameResult != null) return@launch
-            val newBoard = state.board.movePiece(bestMove.start, bestMove.end, bestMove.promotedTo)
-            val nextTurn = state.turn.opposite
-            val (result, status) = statusFor(newBoard, nextTurn)
-            _uiState.update {
-                it.copy(board = newBoard, turn = nextTurn, gameStatus = status, gameResult = result)
+            try {
+                if (generation != gameGeneration) return@launch
+                val state = _uiState.value
+                // Only ever move for the AI side of the current, unfinished game.
+                if (state.gameMode != mode || state.gameResult != null) return@launch
+                if (state.turn == mode.playerColor) return@launch
+                // The side to move comes from the UI's own state rather than from the board: the
+                // rules model infers a turn from its last move, which the puzzle path fakes.
+                // Returns null when the engine has no move to make (mate or stalemate against the
+                // AI, or an unavailable model).
+                val bestMove = chessApi.getBestMove(state.board, state.turn, mode.difficulty)
+                    ?: return@launch
+                // The engine call suspends: a new game may have started meanwhile.
+                // Never apply a move computed for a stale position.
+                val current = _uiState.value
+                if (generation != gameGeneration) return@launch
+                if (current.board != state.board || current.turn != state.turn) return@launch
+                if (current.gameResult != null) return@launch
+                val newBoard = state.board.movePiece(bestMove.start, bestMove.end, bestMove.promotedTo)
+                val nextTurn = state.turn.opposite
+                val (result, status) = statusFor(newBoard, nextTurn)
+                _uiState.update {
+                    it.copy(board = newBoard, turn = nextTurn, gameStatus = status, gameResult = result)
+                }
+            } finally {
+                // Every way out - reply applied, no legal move, model unavailable, stale game -
+                // ends the "thinking" state of the game this call was made for.
+                if (generation == gameGeneration) _uiState.update { it.copy(aiThinking = false) }
             }
         }
     }

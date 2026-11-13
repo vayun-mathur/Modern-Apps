@@ -197,6 +197,22 @@ class GameScreensTest {
         rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_white_king), substring = true)).assertCountEquals(1)
     }
 
+    @Test fun `vs ai shows a thinking indicator only while the ai is thinking`() {
+        var thinking by androidx.compose.runtime.mutableStateOf(true)
+        rule.setContent {
+            ChessGameScreen(
+                state = ChessUiState(
+                    gameMode = GameMode.VsAI(PieceColor.WHITE, com.vayunmathur.games.chess.util.Difficulty.BEGINNER),
+                    turn = PieceColor.BLACK, aiThinking = thinking,
+                ),
+                actions = ChessActions.Noop, onNewGame = {}, onOpenGameCenter = {})
+        }
+        rule.onNodeWithText(str(R.string.ai_thinking)).assertExists()
+        thinking = false
+        rule.waitForIdle()
+        rule.onNodeWithText(str(R.string.ai_thinking)).assertDoesNotExist()
+    }
+
     @Test fun `chess piece descriptions follow color`() {
         rule.setContent { ChessPiece(Piece(PieceType.KNIGHT, PieceColor.BLACK)) }
         rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_black_knight))).assertCountEquals(1)
