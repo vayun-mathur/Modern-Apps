@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import com.vayunmathur.maps.ui.map.MapSearchBar
 import com.vayunmathur.maps.ui.theme.MapChromeMetrics
+import com.vayunmathur.maps.util.searchBiasPoint
 import com.vayunmathur.maps.util.visibleBoundsOrWorld
 
 /**
@@ -27,12 +28,8 @@ internal fun MapPageScope.MapSearchBarSection(
         MapSearchBar(
             onOpenSearch = { query -> openSearch(query, null) },
             onContactAddress = { address ->
-                val bbox = camera.visibleBoundsOrWorld()
-                searchViewModel.resolveAndSelect(
-                    address,
-                    (bbox.north + bbox.south) / 2.0,
-                    (bbox.east + bbox.west) / 2.0,
-                ) { place ->
+                val near = searchBiasPoint(camera.visibleBoundsOrWorld(), userPosition)
+                searchViewModel.resolveAndSelect(address, near.latitude, near.longitude) { place ->
                     if (place != null) {
                         viewModel.stashRouteSelection()
                         // Fly there and open the peek pane, the same direct-open

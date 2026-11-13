@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.map.CameraState
+import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.ui.FreeHeightSheetState
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.OverlayAction
@@ -19,7 +20,10 @@ import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.util.MapsSearchViewModel
 import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.util.searchBiasPoint
 import com.vayunmathur.maps.util.visibleBoundsOrWorld
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -30,6 +34,7 @@ import kotlinx.coroutines.launch
 internal class MapSearchHost(
     val searchViewModel: MapsSearchViewModel,
     val camera: CameraState,
+    private val userPosition: StateFlow<GeoPoint> = NoFix,
 ) {
     var searchRequest by mutableStateOf<SearchRequest?>(null)
 
@@ -39,9 +44,9 @@ internal class MapSearchHost(
     var searchWasOpen by mutableStateOf(false)
 
     fun openSearch(query: String? = null, waypointIndex: Int? = null) {
-        val bbox = camera.visibleBoundsOrWorld()
-        val nearLat = (bbox.north + bbox.south) / 2.0
-        val nearLon = (bbox.east + bbox.west) / 2.0
+        val near = searchBiasPoint(camera.visibleBoundsOrWorld(), userPosition.value)
+        val nearLat = near.latitude
+        val nearLon = near.longitude
         // The category chips and the voice transcript both arrive as a query to run, which used
         // to be a route argument the destination replayed on arrival. There is no arrival any
         // more, so it runs here.
@@ -50,13 +55,17 @@ internal class MapSearchHost(
     }
 }
 
+/** "No fix yet" for hosts built without a location source (previews, tests). */
+private val NoFix: StateFlow<GeoPoint> = MutableStateFlow(GeoPoint(0.0, 0.0))
+
 /** Remembers a [MapSearchHost] bound to this composition. */
 @Composable
 internal fun rememberMapSearchHost(
     searchViewModel: MapsSearchViewModel,
     camera: CameraState,
-): MapSearchHost = remember(searchViewModel, camera) {
-    MapSearchHost(searchViewModel, camera)
+    userPosition: StateFlow<GeoPoint> = NoFix,
+): MapSearchHost = remember(searchViewModel, camera, userPosition) {
+    MapSearchHost(searchViewModel, camera, userPosition)
 }
 
 /**

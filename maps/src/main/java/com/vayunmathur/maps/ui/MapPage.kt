@@ -217,7 +217,7 @@ fun MapPage(
     // How much of the bottom the collapsed search bar is occupying, so the FAB stack and the
     // scale bar can clear it the same way they clear a sheet. Zero whenever the bar is not drawn.
     var searchBarLiftPx by remember { mutableIntStateOf(0) }
-    val searchHost = rememberMapSearchHost(searchViewModel, camera)
+    val searchHost = rememberMapSearchHost(searchViewModel, camera, viewModel.userPosition)
     val searchRequest = searchHost.searchRequest
     val searchState = SearchUiState(
         query = searchQuery,

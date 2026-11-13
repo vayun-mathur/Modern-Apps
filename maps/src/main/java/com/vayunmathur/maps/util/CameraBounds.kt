@@ -2,6 +2,7 @@ package com.vayunmathur.maps.util
 
 import com.vayunmathur.library.map.CameraState
 import com.vayunmathur.library.map.GeoBounds
+import com.vayunmathur.library.map.GeoPoint
 
 /**
  * The world, used when the camera cannot say what is on screen.
@@ -22,3 +23,28 @@ private val World = GeoBounds(west = -180.0, south = -85.0, east = 180.0, north 
  */
 fun CameraState.visibleBoundsOrWorld(): GeoBounds =
     projection?.queryVisibleBoundingBox() ?: World
+
+/**
+ * Where a search should be centred: the user's own position when they are looking at it,
+ * otherwise the middle of the screen.
+ *
+ * Search used to rank from the screen centre only, so with the map nudged a few km away
+ * (or zoomed out to the metro) "pizza" was ranked from wherever the middle of the screen
+ * happened to be rather than from the person holding the phone. The fix only wins while it
+ * is on screen: a user who pans to another city and searches there means that city. No fix
+ * yet is (0, 0) — the same "unset" the rest of the map uses.
+ */
+fun searchBiasPoint(bounds: GeoBounds, user: GeoPoint): GeoPoint {
+    val hasFix = user.latitude != 0.0 || user.longitude != 0.0
+    val lonInside = if (bounds.west <= bounds.east) {
+        user.longitude in bounds.west..bounds.east
+    } else {
+        // The view straddles the antimeridian.
+        user.longitude >= bounds.west || user.longitude <= bounds.east
+    }
+    return if (hasFix && lonInside && user.latitude in bounds.south..bounds.north) {
+        user
+    } else {
+        GeoPoint((bounds.east + bounds.west) / 2.0, (bounds.north + bounds.south) / 2.0)
+    }
+}
