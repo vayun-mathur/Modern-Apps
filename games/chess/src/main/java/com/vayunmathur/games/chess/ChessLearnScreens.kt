@@ -44,6 +44,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.chess.data.LearnCategory
@@ -375,8 +376,18 @@ fun StageIntroDialog(stage: com.vayunmathur.games.chess.data.LearnStage, onStart
     )
 }
 
+/**
+ * The level picker: one 36dp circle per level, showing its number, or its stars once solved.
+ *
+ * The glyphs inside the fixed-size circles are sized from dp (converted with Dp.toSp, which
+ * cancels the font scale) rather than in sp: in sp, three stars or a two-digit number overflowed
+ * and clipped the circle at large font sizes.
+ */
 @Composable
 fun LevelStepper(count: Int, current: Int, stars: List<Int>, onSelect: (Int) -> Unit) {
+    val density = LocalDensity.current
+    val starSize = with(density) { LevelStarGlyph.toSp() }
+    val numberSize = with(density) { LevelNumberGlyph.toSp() }
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -406,7 +417,7 @@ fun LevelStepper(count: Int, current: Int, stars: List<Int>, onSelect: (Int) -> 
                 if (done && !isCurrent) {
                     Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
                         repeat(starCount) {
-                            Text("★", fontSize = 9.sp, color = fg)
+                            Text("★", fontSize = starSize, lineHeight = starSize, color = fg)
                         }
                     }
                 } else {
@@ -414,6 +425,8 @@ fun LevelStepper(count: Int, current: Int, stars: List<Int>, onSelect: (Int) -> 
                         "${i + 1}",
                         color = fg,
                         style = MaterialTheme.typography.labelMedium,
+                        fontSize = numberSize,
+                        lineHeight = numberSize,
                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
                     )
                 }
@@ -450,6 +463,8 @@ private const val BRUSH_GREEN = 0xCC2F9E52
 private const val STAR_YELLOW = 0xF0FFC107
 private const val MAX_LEARN_STARS = 3
 private const val BOARD_SQUARES = 8
+private val LevelStarGlyph = 9.dp
+private val LevelNumberGlyph = 14.dp
 private const val FLIPPED_ROTATION = 180f
 private const val ARROW_HEAD_WIDTH_FRACTION = 0.9f
 private const val ARROW_HEAD_LEN_FRACTION = 0.8f
