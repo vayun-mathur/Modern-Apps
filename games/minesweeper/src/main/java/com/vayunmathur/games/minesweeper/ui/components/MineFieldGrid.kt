@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -34,7 +35,6 @@ import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.minesweeper.R
 import com.vayunmathur.games.minesweeper.data.GameOutcome
 import com.vayunmathur.games.minesweeper.data.MinesweeperGameState
-import com.vayunmathur.library.ui.ColorScheme
 import com.vayunmathur.library.ui.IconFlag
 import com.vayunmathur.library.ui.IconMine
 import com.vayunmathur.library.ui.MaterialTheme
@@ -169,7 +169,7 @@ private fun MineCell(
 
             revealed && count > 0 -> Text(
                 text = count.toString(),
-                color = countColor(count, scheme),
+                color = countColor(count, dark = scheme.surfaceContainerLowest.luminance() < HALF),
                 fontWeight = FontWeight.Bold,
                 // 15sp follows the font setting only until the digit fills the cell: a Large
                 // field's ~27dp cells overflowed at 200% font, and the number spilled out.
@@ -182,6 +182,9 @@ private fun MineCell(
 
 /** Gap between cells, so the field reads as a grid without needing drawn lines. */
 private val CellGap = 1.dp
+
+/** Luminance below which the revealed-cell background counts as dark. */
+private const val HALF = 0.5f
 
 /** A count never renders taller than this share of its cell. */
 private const val COUNT_CELL_FRACTION = 0.7f
@@ -197,14 +200,24 @@ private fun Density.fitSp(preferred: TextUnit, cap: Dp): TextUnit =
     if (preferred.toPx() > cap.toPx()) cap.toSp() else preferred
 
 /**
- * The traditional per-number colours, mapped onto theme roles so they still work in both light and
- * dark and against a dynamic palette. Beyond four the numbers are rare enough that one shared colour
- * is fine, and the count is bold enough to read regardless.
+ * The traditional per-number colours, as a fixed palette with a light and a dark variant.
+ *
+ * They used to be theme roles (primary, tertiary, error, secondary, then onSurface for 5-8). In the
+ * dark scheme several of those land on near-identical pastel tones, so 1, 2 and 4 were hard to tell
+ * apart, and 5-8 were all one colour. A fixed palette keeps the classic hues - blue, green, red,
+ * purple, amber, cyan, near-black, grey - eight distinct colours, each at least 4:1 against the
+ * revealed-cell background of its variant. The variant follows the cell background rather than the
+ * system setting, so an app-level theme override is respected.
  */
-private fun countColor(count: Int, scheme: ColorScheme): Color = when (count) {
-    1 -> scheme.primary
-    2 -> scheme.tertiary
-    3 -> scheme.error
-    4 -> scheme.secondary
-    else -> scheme.onSurface
-}
+internal fun countColor(count: Int, dark: Boolean): Color =
+    (if (dark) DarkCounts else LightCounts)[(count - 1).coerceIn(0, LightCounts.lastIndex)]
+
+private val LightCounts = listOf(
+    Color(0xFF1565C0), Color(0xFF2E7D32), Color(0xFFC62828), Color(0xFF6A1B9A),
+    Color(0xFFA15C00), Color(0xFF00838F), Color(0xFF212121), Color(0xFF757575),
+)
+
+private val DarkCounts = listOf(
+    Color(0xFF82B1FF), Color(0xFF81C784), Color(0xFFFF8A80), Color(0xFFCE93D8),
+    Color(0xFFFFB74D), Color(0xFF4DD0E1), Color(0xFFF5F5F5), Color(0xFF9E9E9E),
+)
