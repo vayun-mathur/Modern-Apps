@@ -14,6 +14,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
+import com.vayunmathur.games.chess.data.getFileChar
+import com.vayunmathur.games.chess.data.getRankChar
+import com.vayunmathur.library.ui.Text
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
 import com.vayunmathur.library.ui.Motion
@@ -23,6 +30,8 @@ import kotlin.math.roundToInt
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -50,6 +59,7 @@ private const val FLIPPED_ROTATION = 180f
 private const val CAPTURE_HINT_FRACTION = 0.92f
 private const val EMPTY_HINT_FRACTION = 0.30f
 private const val BOARD_SQUARES = 8
+private const val LABEL_FRACTION = 0.22f
 private const val DRAG_PIECE_SCALE = 1.4f
 private const val DRAG_PIECE_LIFT = 0.5f
 private const val DRAG_GHOST_ALPHA = 0.35f
@@ -85,6 +95,8 @@ private data class BoardMarks(
     val hover: Position? = null,
     /** Whether [lastMove]'s piece slides from its start square instead of just appearing. */
     val slideIn: Boolean = false,
+    /** Coordinate label size, derived from the square size (dp), never from the font scale. */
+    val labelSize: TextUnit = TextUnit.Unspecified,
 ) {
     fun isLastMove(pos: Position): Boolean = lastMove?.let { it.start == pos || it.end == pos } ?: false
 }
@@ -137,23 +149,36 @@ fun BoardGrid(
     // RTL the Rows below would otherwise lay files out right-to-left, mirroring the board and
     // desynchronising the squares' own hit-testing from the drag handler's left-origin maths.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Box(
+        BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .onSizeChanged { drag.boardPx = it.width.toFloat() }
                 .boardDragGesture(drag, onSquareDrop)
         ) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
-            ) {
-                for (i in board.pieces.indices) {
-                    BoardRow(board, row = i, isFlipped = isFlipped, marks = marks, onSquareClick = onSquareClick)
-                }
-            }
+            // Square glyphs are sized from the square, not the font scale, so they never clip.
+            val labelSize = with(LocalDensity.current) { (maxWidth / BOARD_SQUARES * LABEL_FRACTION).toSp() }
+            BoardSquares(board, isFlipped, marks.copy(labelSize = labelSize), onSquareClick)
             DraggedPiece(drag = drag, board = board)
+        }
+    }
+}
+
+/** The 8x8 squares, rotated as a block when the board is seen from Black's side. */
+@Composable
+private fun BoardSquares(
+    board: com.vayunmathur.games.chess.data.Board,
+    isFlipped: Boolean,
+    marks: BoardMarks,
+    onSquareClick: (Position) -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
+    ) {
+        for (i in board.pieces.indices) {
+            BoardRow(board, row = i, isFlipped = isFlipped, marks = marks, onSquareClick = onSquareClick)
         }
     }
 }
@@ -246,12 +271,48 @@ private fun ColumnScope.BoardRow(
                         slideFrom = marks.lastMove?.takeIf { slideEnd == pos },
                     )
                 }
+                SquareCoordinates(pos, isFlipped, marks.labelSize)
                 if (pos in marks.destinations) {
                     MoveHintDot(piece != null)
                 }
             }
         }
     }
+}
+
+/**
+ * a-h / 1-8 edge labels, Lichess-style inside the edge squares: ranks in the top corner of the
+ * visual left column, files in the bottom corner of the visual bottom row. Both follow the flip
+ * (from Black's side the left column is the h-file and the bottom row is rank 8) and are drawn
+ * upright. Each takes the other square colour so it reads on either square. Hidden from
+ * accessibility; TalkBack reads each square's full name instead.
+ */
+@Composable
+private fun BoxScope.SquareCoordinates(pos: Position, isFlipped: Boolean, size: TextUnit) {
+    val last = BOARD_SQUARES - 1
+    val showRank = pos.col == (if (isFlipped) last else 0)
+    val showFile = pos.row == (if (isFlipped) 0 else last)
+    if (!showRank && !showFile) return
+    val color = if ((pos.row + pos.col) % 2 == 0) DarkSquareColor else LightSquareColor
+    Box(
+        Modifier
+            .matchParentSize()
+            .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
+            .padding(2.dp)
+            .semantics { hideFromAccessibility() }
+    ) {
+        if (showRank) {
+            CoordinateText(getRankChar(pos.row).toString(), color, size, Modifier.align(Alignment.TopStart))
+        }
+        if (showFile) {
+            CoordinateText(getFileChar(pos.col).toString(), color, size, Modifier.align(Alignment.BottomEnd))
+        }
+    }
+}
+
+@Composable
+private fun CoordinateText(text: String, color: Color, size: TextUnit, modifier: Modifier) {
+    Text(text, modifier, color = color, fontSize = size, lineHeight = size, fontWeight = FontWeight.Bold)
 }
 
 /**
