@@ -59,7 +59,10 @@ fun SudokuGrid(
     val conflicts = remember(game.size, game.givens, game.entries) { game.conflictingIndices() }
 
     BoxWithConstraints(modifier.aspectRatio(1f)) {
-        val cell: Dp = maxWidth / side
+        // The smaller side, not the width: if a caller's constraints ever win over the aspect
+        // ratio (a squashed landscape slot), width-sized cells would overflow the height and the
+        // bottom row would be clipped. Sized this way the whole grid always stays visible.
+        val cell: Dp = minOf(maxWidth, maxHeight) / side
         Column {
             for (row in 0 until side) {
                 Row {

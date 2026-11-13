@@ -56,6 +56,10 @@ import com.vayunmathur.library.ui.isExpandedWidth
 /** Caps the grid on tablets, where a full-width board would put the digits absurdly far apart. */
 private val BoardMaxWidth = 520.dp
 
+/** Padding around the side-by-side (landscape) layout; the board is sized inside it. */
+private val SideBySideHorizontal = Spacing.md
+private val SideBySideVertical = Spacing.sm
+
 /**
  * The board, with no dependency on the ViewModel so it can be rendered from a `@Preview` — see
  * `src/screenshotTest`.
@@ -104,12 +108,18 @@ fun GameBoardScreen(
             val sideBySide = isCompactHeight() || (isExpandedWidth() && maxWidth > maxHeight)
             // Hoisted out of the Row below: RowScope would shadow the
             // BoxWithConstraintsScope receiver and the size would not resolve.
-            val boardSize = minOf(maxWidth * 0.62f, maxHeight)
+            // Measured inside the Row's own padding: sizing from the raw maxHeight made
+            // the square 2 * SideBySideVertical too tall for the space it actually gets,
+            // so the Row squashed its height and the bottom row of cells was clipped.
+            val boardSize = minOf(
+                (maxWidth - SideBySideHorizontal * 2) * 0.62f,
+                maxHeight - SideBySideVertical * 2,
+            )
             if (sideBySide) {
                 Row(
                     Modifier
                         .fillMaxSize()
-                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                        .padding(horizontal = SideBySideHorizontal, vertical = SideBySideVertical),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
