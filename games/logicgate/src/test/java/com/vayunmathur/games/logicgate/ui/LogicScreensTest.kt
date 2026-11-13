@@ -1,13 +1,24 @@
 package com.vayunmathur.games.logicgate.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.domain.levels.Chapter
+import com.vayunmathur.games.logicgate.domain.levels.ChipGroups
 import com.vayunmathur.games.logicgate.domain.levels.LevelRegistry
 import com.vayunmathur.games.logicgate.domain.model.Board
 import com.vayunmathur.games.logicgate.domain.model.ChipCatalog
@@ -24,6 +35,7 @@ import com.vayunmathur.games.logicgate.platform.SandboxUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -33,6 +45,12 @@ class LogicScreensTest {
     @get:Rule val rule = createComposeRule()
     private val ctx get() = ApplicationProvider.getApplicationContext<android.content.Context>()
     private fun str(id: Int, vararg args: Any) = if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)
+
+    /** A chip card in the tray (its description ends with the drag hint). */
+    private val trayCard = hasContentDescription("onto the board", substring = true)
+
+    /** [levelState] with its chips in the tray, as LogicViewModel would group them. */
+    private fun levelStateWithTray(): GameUiState = levelState().let { it.copy(tray = ChipGroups.sections(it.chips, it.catalog)) }
 
     private fun levelState(verify: VerifyResult? = null): GameUiState {
         val level = requireNotNull(LevelRegistry["not"])
@@ -88,6 +106,31 @@ class LogicScreensTest {
         }
         // Chip tray shows NAND at minimum for the NOT level
         rule.onAllNodes(hasText("NAND", substring = true)).assertCountEquals(1)
+    }
+
+    @Config(qualifiers = "w780dp-h360dp-land")
+    @Test fun `a short window puts tests and tray beside the board`() {
+        rule.setContent {
+            Box(Modifier.size(780.dp, 360.dp)) {
+                GameScreen(state = levelStateWithTray(), actions = LogicActions.Noop, onBack = {}, onNext = {}, sideBySide = true)
+            }
+        }
+        val board = rule.onNodeWithTag(BOARD_TAG).getUnclippedBoundsInRoot()
+        val tray = rule.onAllNodes(trayCard).onFirst().getUnclippedBoundsInRoot()
+        assertTrue(board.bottom - board.top > 250.dp, "board keeps the height: $board")
+        assertTrue(board.right - board.left > 400.dp, "board keeps most of the width: $board")
+        assertTrue(tray.left >= board.right, "tray is beside the board: $tray vs $board")
+    }
+
+    @Test fun `tray cards grow with a large font instead of clipping`() {
+        rule.setContent {
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) {
+                GameScreen(state = levelStateWithTray(), actions = LogicActions.Noop, onBack = {}, onNext = {}, sideBySide = false)
+            }
+        }
+        val card = rule.onAllNodes(trayCard).onFirst().getUnclippedBoundsInRoot()
+        assertTrue(card.bottom - card.top > 52.dp, "card grew past its old fixed 52dp: $card")
     }
 
     @Test fun `test panel for sandbox shows live status instead of level tests`() {

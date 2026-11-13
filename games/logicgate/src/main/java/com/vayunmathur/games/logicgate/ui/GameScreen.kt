@@ -5,9 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +25,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
@@ -44,13 +49,15 @@ import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.ui.rememberHaptics
 import kotlin.math.roundToInt
 
 /**
  * The editor, for a level or a sandbox component: the board fills the screen, with tests and the
- * chip tray beneath it. [onNext] opens the following level from the completion overlay;
- * [onDelete] deletes the open component.
+ * chip tray beneath it, or beside it when [sideBySide] (short windows such as a landscape phone).
+ * [onNext] opens the following level from the completion overlay; [onDelete] deletes the open
+ * component.
  */
 @Composable
 fun GameScreen(
@@ -60,6 +67,7 @@ fun GameScreen(
     onNext: (String) -> Unit,
     modifier: Modifier = Modifier,
     onDelete: () -> Unit = {},
+    sideBySide: Boolean = isCompactHeight(),
 ) {
     val density = LocalDensity.current.density
     val lift = with(LocalDensity.current) { GHOST_LIFT.toPx() }
@@ -98,11 +106,10 @@ fun GameScreen(
                 .padding(padding)
                 .onGloballyPositioned { rootOrigin = it.positionInRoot() },
         ) {
-            Column(Modifier.fillMaxSize()) {
+            val board = @Composable { m: Modifier ->
                 Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+                    m
+                        .testTag(BOARD_TAG)
                         .onGloballyPositioned { c ->
                             canvasBounds = Rect(c.positionInRoot(), c.size.toSize())
                             trash.canvasOrigin = canvasBounds.topLeft
@@ -111,8 +118,19 @@ fun GameScreen(
                     CircuitCanvas(state, cameraState, actions, trash)
                     SelectionBar(state, actions, Modifier.align(Alignment.TopCenter).padding(top = Spacing.sm))
                 }
-                Box(Modifier.onGloballyPositioned { trash.bounds = Rect(it.positionInRoot(), it.size.toSize()) }) {
-                    Column {
+            }
+            val controls = @Composable { m: Modifier ->
+                Box(m.onGloballyPositioned { trash.bounds = Rect(it.positionInRoot(), it.size.toSize()) }) {
+                    // Side by side the panel has the full height but not much of it: let it scroll.
+                    val column = if (sideBySide) {
+                        Modifier
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                            .verticalScroll(rememberScrollState())
+                    } else {
+                        Modifier
+                    }
+                    Column(column) {
                         TestPanel(state, actions)
                         ChipTray(
                             sections = state.tray,
@@ -131,6 +149,19 @@ fun GameScreen(
                         )
                     }
                     TrashOverlay(trash, Modifier.matchParentSize())
+                }
+            }
+            if (sideBySide) {
+                // A short window (landscape phone) has no height to stack tests and tray under
+                // the board, so they move to a side panel and the board keeps the full height.
+                Row(Modifier.fillMaxSize()) {
+                    board(Modifier.weight(1f).fillMaxHeight())
+                    controls(Modifier.width(SIDE_PANEL_WIDTH).fillMaxHeight())
+                }
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    board(Modifier.weight(1f).fillMaxWidth())
+                    controls(Modifier)
                 }
             }
             trayDrag?.let { DragGhost(chipLabel(it.chipId), it.previewCenter(lift) - rootOrigin) }
@@ -207,5 +238,9 @@ private fun DragGhost(label: String, center: Offset) {
 }
 
 private val GHOST_LIFT = 48.dp
+private val SIDE_PANEL_WIDTH = 320.dp
+
+/** Test tag of the board area. */
+const val BOARD_TAG = "lg_board"
 private const val TRASH_ALPHA = 0.75f
 private const val TRASH_HOT_ALPHA = 0.95f

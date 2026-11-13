@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
@@ -138,7 +138,9 @@ private fun ChipCard(
     Surface(
         onClick = { onTap(chip.id) },
         modifier = Modifier
-            .height(CARD_HEIGHT)
+            // A minimum, not a fixed height: at large font scales the card grows instead of
+            // clipping its text.
+            .heightIn(min = CARD_HEIGHT)
             .widthIn(min = CARD_MIN_WIDTH)
             .onGloballyPositioned { coords = it }
             .semantics { contentDescription = description }
@@ -169,13 +171,21 @@ private fun ChipCard(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(chipLabel(chip.id), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+            Text(chipLabel(chip.id), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false)
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                Text(chip.nandCost.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    chip.nandCost.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                )
                 if (widest > 1) {
                     Text(
                         stringResource(R.string.lg_bus_badge, widest),
                         style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        softWrap = false,
                         color = if (widest == 4) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                     )
                 }
