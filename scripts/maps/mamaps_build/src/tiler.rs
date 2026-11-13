@@ -353,6 +353,10 @@ pub struct SizeOpts {
     /// `--coord-quant`: snap tile coordinates below z14 to a zoom-scaled grid (2 units at z13,
     /// 4 at z<=12; points and the junction layer untouched). false = today.
     pub coord_quant: bool,
+    /// `--keep-z13-wash`: exempt z13 landtype from `--simplify-scale`. The app draws the z13
+    /// parent's wash under every z14 tile (z14 drops wash areas), so z13 landtype is what users
+    /// see at street zooms and its deviation is magnified 2^(view-13) times.
+    pub keep_z13_wash: bool,
 }
 
 impl SizeOpts {
@@ -363,6 +367,7 @@ impl SizeOpts {
         simplify_scale: 1.0,
         z14_tolerance: 0.0,
         coord_quant: false,
+        keep_z13_wash: false,
     };
     pub fn is_default(&self) -> bool {
         *self == SizeOpts::DEFAULT
@@ -370,8 +375,9 @@ impl SizeOpts {
     /// Stable text for the build id (only hashed when non-default).
     pub fn tag(&self) -> String {
         format!(
-            "size/zstd={};dem={};dempx={};simp={};z14={};q={}",
-            self.zstd_level, self.dem_max_error_m, self.dem_px, self.simplify_scale, self.z14_tolerance, self.coord_quant
+            "size/zstd={};dem={};dempx={};simp={};z14={};q={};kw={}",
+            self.zstd_level, self.dem_max_error_m, self.dem_px, self.simplify_scale, self.z14_tolerance, self.coord_quant,
+            self.keep_z13_wash
         )
     }
     /// The coordinate grid step for zoom `z` under `--coord-quant` (1 = untouched).

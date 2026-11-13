@@ -585,32 +585,12 @@ fn kind_style(name: &str) -> Option<[u8; 3]> {
     })
 }
 
-fn render_body(body: &Body, dict: &Dictionary, z: u8, crop: (f64, f64, f64), size: usize) -> Canvas {
+fn render_body(body: &Body, dict: &Dictionary, z: u8, crop: (f64, f64, f64), size: usize, parent: Option<(&Body, u64, u64)>) -> Canvas {
     let mut cv = Canvas::new(size, size, [242, 239, 233]);
     let (cx, cy, cs) = crop;
     let s = size as f64 / cs;
     let to_px = |p: &(i16, i16)| ((p.0 as f64 - cx) * s, (p.1 as f64 - cy) * s);
     let lid = |n: &str| dict.layers.iter().position(|l| l == n).map(|i| i as u8);
-    // Hillshade first (from the heightmap), as a multiply over the background.
-    if let Some(hm) = &body.heightmap {
-        let d = hm.dim as usize;
-        let mpu_px = 40_075_016.686 / (1u64 << z) as f64 / 4096.0 / s; // ~metres per pixel
-        for py in 0..size {
-            for px in 0..size {
-                let (ux, uy) = ((cx + px as f64 / s) / 4096.0, (cy + py as f64 / s) / 4096.0);
-                if !(0.0..=1.0).contains(&ux) || !(0.0..=1.0).contains(&uy) {
-                    continue;
-                }
-                let e = 1.0 / 4096.0 / s * 2.0;
-                let hx = bilin(&hm.samples, d, uy, (ux + e).min(1.0)) - bilin(&hm.samples, d, uy, (ux - e).max(0.0));
-                let hy = bilin(&hm.samples, d, (uy + e).min(1.0), ux) - bilin(&hm.samples, d, (uy - e).max(0.0), ux);
-                let (gx, gy) = (3.0 * hx / (4.0 * mpu_px), 3.0 * hy / (4.0 * mpu_px));
-                let shade = ((-gx * 0.7 - gy * 0.7 + 1.0) / (1.0 + gx * gx + gy * gy).sqrt()).clamp(0.0, 1.5);
-                let v = (shade * 170.0).clamp(0.0, 255.0) as u8;
-                cv.blend(px as i64, py as i64, [v, v, v], 0.5);
-            }
-        }
-    }
     let draw_polys = |cv: &mut Canvas, l: &Layer, colour: &dyn Fn(u16) -> Option<[u8; 3]>, alpha: f32| {
         for f in &l.features {
             if f.geom_type != GEOM_POLYGON {
@@ -622,6 +602,29 @@ fn render_body(body: &Body, dict: &Dictionary, z: u8, crop: (f64, f64, f64), siz
             cv.fill(&rings, c, alpha);
         }
     };
+    // The app stitches the z13 parent's wash under a z14 tile (z14 drops wash areas the parent
+    // already has): draw the parent's landtype polygons, mapped into this tile's frame.
+    if let Some((pb, qx, qy)) = parent {
+        if let Some(l) = lid("landtype").and_then(|i| pb.layer(i)) {
+            for f in &l.features {
+                if f.geom_type != GEOM_POLYGON {
+                    continue;
+                }
+                let Some(c) = kind_style(dict.kind_name(f.kind).unwrap_or("")) else { continue };
+                let from = f.parts_offset as usize;
+                let rings: Vec<Vec<(f64, f64)>> = l.parts[from..from + f.part_count as usize]
+                    .iter()
+                    .map(|p| {
+                        l.points(p)
+                            .iter()
+                            .map(|q| (((q.0 as f64 * 2.0 - qx as f64 * 4096.0) - cx) * s, ((q.1 as f64 * 2.0 - qy as f64 * 4096.0) - cy) * s))
+                            .collect()
+                    })
+                    .collect();
+                cv.fill(&rings, c, 0.85);
+            }
+        }
+    }
     if let Some(l) = lid("landtype").and_then(|i| body.layer(i)) {
         draw_polys(&mut cv, l, &|k| kind_style(dict.kind_name(k).unwrap_or("")), 0.85);
         for f in &l.features {
@@ -632,6 +635,43 @@ fn render_body(body: &Body, dict: &Dictionary, z: u8, crop: (f64, f64, f64), siz
                         cv.line(to_px(&w[0]), to_px(&w[1]), 1.5, [130, 180, 210]);
                     }
                 }
+            }
+        }
+    }
+    // Hillshade over the fills (from the heightmap): per-node normals by central differences, shade
+    // interpolated across cells (Gouraud-like, as the app lights its terrain mesh per vertex).
+    if let Some(hm) = &body.heightmap {
+        let d = hm.dim as usize;
+        let cell_m = 40_075_016.686 / (1u64 << z) as f64 / (d - 1).max(1) as f64 * 0.75; // ~cos(41deg)
+        let h = |r: usize, c: usize| hm.samples[r.min(d - 1) * d + c.min(d - 1)] as f64;
+        let mut shade = vec![0.0f64; d * d];
+        for r in 0..d {
+            for c in 0..d {
+                let (c0, c1) = (c.saturating_sub(1), (c + 1).min(d - 1));
+                let (r0, r1) = (r.saturating_sub(1), (r + 1).min(d - 1));
+                let gx = (h(r, c1) - h(r, c0)) / ((c1 - c0).max(1) as f64 * cell_m) * 4.0;
+                let gy = (h(r1, c) - h(r0, c)) / ((r1 - r0).max(1) as f64 * cell_m) * 4.0;
+                shade[r * d + c] = ((-gx * 0.7 - gy * 0.7 + 1.0) / (1.0 + gx * gx + gy * gy).sqrt()).clamp(0.0, 1.4);
+            }
+        }
+        for py in 0..size {
+            for px in 0..size {
+                let (ux, uy) = ((cx + px as f64 / s) / 4096.0, (cy + py as f64 / s) / 4096.0);
+                if !(0.0..=1.0).contains(&ux) || !(0.0..=1.0).contains(&uy) {
+                    continue;
+                }
+                let sh = {
+                    let gr = uy * (d - 1) as f64;
+                    let gc = ux * (d - 1) as f64;
+                    let (r0, c0) = ((gr.floor() as usize).min(d - 1), (gc.floor() as usize).min(d - 1));
+                    let (r1, c1) = ((r0 + 1).min(d - 1), (c0 + 1).min(d - 1));
+                    let (fy, fx) = (gr - r0 as f64, gc - c0 as f64);
+                    let t = shade[r0 * d + c0] * (1.0 - fx) + shade[r0 * d + c1] * fx;
+                    let b = shade[r1 * d + c0] * (1.0 - fx) + shade[r1 * d + c1] * fx;
+                    t * (1.0 - fy) + b * fy
+                };
+                let v = (sh * 180.0).clamp(0.0, 255.0) as u8;
+                cv.blend(px as i64, py as i64, [v, v, v], 0.45);
             }
         }
     }
@@ -705,7 +745,11 @@ fn cmd_render(args: &[String]) {
         let ix = TileIndex::build(&a);
         let id = tilecodec::pmtiles::tile_id(z, x, y);
         let cv = match ix.find(id) {
-            Some((off, len)) => render_body(&body_at(&a, off, len), &a.dict, z, crop, size),
+            Some((off, len)) => {
+                let pid = tilecodec::pmtiles::tile_id(z - 1, x / 2, y / 2);
+                let parent = if z == 14 { ix.find(pid).map(|(o, l)| body_at(&a, o, l)) } else { None };
+                render_body(&body_at(&a, off, len), &a.dict, z, crop, size, parent.as_ref().map(|p| (p, x % 2, y % 2)))
+            }
             None => Canvas::new(size, size, [255, 0, 255]),
         };
         panels.push(cv);

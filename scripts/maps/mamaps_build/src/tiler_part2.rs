@@ -439,7 +439,12 @@ fn tolerance_for_layer(layer: u8, z: u8, tolerance: f64) -> f64 {
         // z13 tiles span ~5 km: triple the wash there, keep 1.5x at z14
         // where parks sit under streets.
         if z == 13 {
-            tolerance * LANDTYPE_Z13_SIMPLIFICATION
+            let o = size_opts();
+            if o.keep_z13_wash && o.simplify_scale > 0.0 {
+                tolerance / o.simplify_scale * LANDTYPE_Z13_SIMPLIFICATION
+            } else {
+                tolerance * LANDTYPE_Z13_SIMPLIFICATION
+            }
         } else {
             tolerance * LANDTYPE_SIMPLIFICATION
         }

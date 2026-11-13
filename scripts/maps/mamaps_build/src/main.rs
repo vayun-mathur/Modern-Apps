@@ -204,6 +204,10 @@ fn main() -> ExitCode {
                 size.z14_tolerance = v.parse().map_err(|_| format!("--z14-tolerance: bad '{v}'"))?;
                 Ok(2)
             }),
+            "--keep-z13-wash" => {
+                size.keep_z13_wash = true;
+                Ok(1)
+            }
             "--coord-quant" => {
                 size.coord_quant = true;
                 Ok(1)
