@@ -21,6 +21,7 @@ import com.vayunmathur.games.unblockjam.data.LevelData
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -42,6 +43,7 @@ class GameBlockSettleTest {
     )
 
     @Test
+    @Config(qualifiers = "w400dp-h800dp")
     fun releaseSettlesIntoTheCommittedCellOverAFewFrames() {
         rule.setContent {
             Box(Modifier.size(360.dp).testTag("frame")) {
@@ -54,11 +56,12 @@ class GameBlockSettleTest {
         val board = rule.onNodeWithTag("board").getBoundsInRoot()
         val cell = (board.height / 6).value
         rule.mainClock.autoAdvance = false
-        // Drag the spare block about 1.6 cells left of x = 3 and let go between cells.
+        // Drag the spare block two cells left of x = 3; less the touch slop (about a third of a
+        // cell) it is let go around x = 1.3, between cells, and snaps to x = 1.
         rule.onNodeWithTag("board").performTouchInput {
             down(Offset(height * 4f / 6f, height * 5.5f / 6f))
-            moveBy(Offset(-height * 0.8f / 6f, 0f))
-            moveBy(Offset(-height * 0.8f / 6f, 0f))
+            moveBy(Offset(-height * 1f / 6f, 0f))
+            moveBy(Offset(-height * 1f / 6f, 0f))
             up()
         }
         rule.mainClock.advanceTimeByFrame()

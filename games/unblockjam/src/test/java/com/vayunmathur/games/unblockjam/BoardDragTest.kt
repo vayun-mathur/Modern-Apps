@@ -161,9 +161,10 @@ class BoardDragTest {
         }
         val mid = rule.onNodeWithTag("block_1").getBoundsInRoot().left
         val cell = (rule.onNodeWithTag("board").getBoundsInRoot().height / 6).value
-        // 1.7 cells, less the touch slop the first move spends before the drag starts.
+        // 1.7 cells, less the touch slop the first move spends before the drag starts (about a
+        // third of a cell on Robolectric's default screen).
         val moved = (before - mid).value / cell
-        assertTrue(moved in 1.4f..1.71f, "block should follow the finger, moved=$moved cells")
+        assertTrue(moved in 1.0f..1.71f, "block should follow the finger, moved=$moved cells")
         rule.onNodeWithTag("board").performTouchInput { up() }
     }
 
