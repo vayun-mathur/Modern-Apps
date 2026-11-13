@@ -150,6 +150,17 @@ private fun PoiIndex.Mapped.matchesAt(i: Int, key: ByteArray): Boolean {
     return wordStartsWith(w, key)
 }
 
+/**
+ * Where and how a name search ranks: the bias point, how many results, and the
+ * caller's recency/favorites signal (lowercased name -> weight).
+ */
+internal class SearchBias(
+    val lat: Double,
+    val lon: Double,
+    val limit: Int,
+    val boost: Map<String, Double> = emptyMap(),
+)
+
 private class WordRanked(
     val record: PoiIndex.PoiRecord,
     val boost: Double,
@@ -344,12 +355,14 @@ private fun scanMatchAt(
 internal fun searchByWordIndex(
     m: PoiIndex.Mapped,
     query: String,
-    nearLat: Double,
-    nearLon: Double,
-    limit: Int,
+    bias: SearchBias,
     candidateCap: Int,
-    boost: Map<String, Double> = emptyMap(),
+    cancelled: () -> Boolean = { false },
 ): List<PoiIndex.PoiRecord> {
+    val nearLat = bias.lat
+    val nearLon = bias.lon
+    val limit = bias.limit
+    val boost = bias.boost
     val tokens = splitTokens(query.trim())
     if (tokens.isEmpty()) return emptyList()
     val keys = tokens.map { poiQueryKey(it) }
@@ -371,11 +384,14 @@ internal fun searchByWordIndex(
             m.wordPrefixMatches(key, FUZZY_EXACT_SEED_CAP).associate { it[0] to it[1] }
         }
     }
+    if (cancelled()) return emptyList()
     val local = m.localWordMatches(keys, nearLat, nearLon, limit)
+    if (cancelled()) return emptyList()
     val ordinals: Set<Int> = exactRanks.keys + local.keys
     fun isPhrasePrefix(o: Int): Boolean = (exactRanks[o] ?: local[o]) == 0
 
     val fuzzy = fuzzyMatches(m, tokens, exact, ordinals, candidateCap)
+    if (cancelled()) return emptyList()
     val shortlist = m.shortlist(
         ordinals.map { it to if (isPhrasePrefix(it)) 0 else 1 } + fuzzy.toList(),
         nearLat,

@@ -647,20 +647,26 @@ object PoiIndex {
      * queries matched nothing before); tokens within one edit of a word match
      * too, ranked below exact ones; [boost] (recents + saved places) only
      * breaks ties within a rank — it never resurrects a non-match.
+     *
+     * [cancelled] is polled between phases: a caller whose result is no longer wanted (the
+     * user typed another character) gets an empty list back early instead of the lookup
+     * running to completion beside its successor.
      */
+    @Suppress("LongParameterList") // query + bias point + limit + ranking signal + cancel token
     fun searchByName(
         query: String,
         nearLat: Double,
         nearLon: Double,
         limit: Int = 20,
         boost: Map<String, Double> = emptyMap(),
+        cancelled: () -> Boolean = { false },
     ): List<PoiRecord> {
         val m = mapped ?: return emptyList()
         if (query.isBlank()) return emptyList()
         // Fully-qualified: the package-level search lives in PoiIndexWords.kt.
         if (m.nameIdx != null) {
             return com.vayunmathur.maps.util.searchByWordIndex(
-                m, query, nearLat, nearLon, limit, CANDIDATE_CAP, boost,
+                m, query, SearchBias(nearLat, nearLon, limit, boost), CANDIDATE_CAP, cancelled,
             )
         }
         return searchByScan(m, query, nearLat, nearLon, limit, boost)

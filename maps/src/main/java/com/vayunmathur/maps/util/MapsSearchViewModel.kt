@@ -7,9 +7,12 @@ import com.vayunmathur.maps.data.RecentSearchStore
 import com.vayunmathur.maps.data.SavedPlaceStore
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.osmPlace
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -105,9 +108,29 @@ private fun PoiIndex.PoiRecord.toSearchResult() = SearchResult(
 class MapsSearchViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
-        /** Keystroke debounce (ms) before a query hits the network. */
-        private const val SEARCH_DEBOUNCE_MS = 250L
+        /**
+         * Keystroke coalescing (ms) before a query hits the offline index.
+         *
+         * Was 250 ms, which on its own was a quarter second of dead time on every character:
+         * the search was slow enough that stacking one per keystroke hurt, so typing paid for
+         * it up front. With superseded searches cancelled cooperatively and serialised on
+         * [searchLane] there is nothing left to protect, and the window only has to merge
+         * the bursts an IME delivers (autocorrect replacing a word, a paste).
+         */
+        private const val SEARCH_DEBOUNCE_MS = 50L
     }
+
+    /**
+     * One lane for index searches.
+     *
+     * `searchJob?.cancel()` used to be the only brake, and it does not stop a blocking
+     * lookup: the mapped-file walk ignored cancellation, so every superseded keystroke kept
+     * reading the archive on its own `Dispatchers.IO` thread, in parallel with — and
+     * competing for flash with — the search the user was actually waiting on. Now a
+     * superseded search notices it was cancelled at its next checkpoint (see the `cancelled`
+     * parameter of [PoiIndex.searchByName]) and the next one never runs beside it.
+     */
+    private val searchLane: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1)
 
     private val recentStore = RecentSearchStore.get(application)
 
@@ -142,8 +165,8 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
      * offline OSM POI index, biased toward [nearLat],[nearLon] (the map centre).
      * Queries shorter than two characters clear the results without searching.
      *
-     * Debounced ~250 ms (Decision D7) so fast typists don't stack a search per
-     * keystroke; the previous job is cancelled on every call.
+     * Coalesced over [SEARCH_DEBOUNCE_MS] (Decision D7, shortened); the previous job is
+     * cancelled on every call and stops at its next checkpoint.
      */
     fun setQuery(query: String, nearLat: Double, nearLon: Double) {
         _query.value = query
@@ -178,13 +201,7 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
                 // Offline OSM POI index only (P27). Addresses are not carried by
                 // the index, so they resolve to empty. Any offline failure
                 // (unmapped/poisoned index, decode error) is swallowed to empty.
-                val app = getApplication<Application>()
-                val offline = withContext(Dispatchers.IO) {
-                    runCatching {
-                        PoiIndex.initialize(app)
-                        PoiIndex.searchByName(query, nearLat, nearLon, limit = 20, boost = app.searchBoost())
-                    }.getOrDefault(emptyList())
-                }
+                val offline = withContext(searchLane) { offlineSearch(query, nearLat, nearLon) }
                 _results.value = offline.map { it.toSearchResult() }
             } finally {
                 // `finally` because cancellation is the normal exit: every keystroke cancels
@@ -214,13 +231,8 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
         _query.value = query
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            val app = getApplication<Application>()
-            val results = withContext(Dispatchers.IO) {
-                runCatching {
-                    PoiIndex.initialize(app)
-                    PoiIndex.searchByName(query, nearLat, nearLon, limit = 20, boost = app.searchBoost())
-                }.getOrDefault(emptyList())
-            }.map { it.toSearchResult() }
+            val results = withContext(searchLane) { offlineSearch(query, nearLat, nearLon) }
+                .map { it.toSearchResult() }
             _results.value = results
             onFirst(results.firstOrNull())
         }
@@ -265,6 +277,26 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
                 )
             }
         }
+    }
+
+    /**
+     * The offline index search, run on [searchLane]. Any offline failure (unmapped/poisoned
+     * index, decode error) is swallowed to empty; a cancelled caller makes it return early.
+     */
+    private suspend fun offlineSearch(
+        query: String,
+        nearLat: Double,
+        nearLon: Double,
+    ): List<PoiIndex.PoiRecord> {
+        val app = getApplication<Application>()
+        val context = currentCoroutineContext()
+        return runCatching {
+            PoiIndex.initialize(app)
+            PoiIndex.searchByName(
+                query, nearLat, nearLon, limit = 20, boost = app.searchBoost(),
+                cancelled = { !context.isActive },
+            )
+        }.getOrDefault(emptyList())
     }
 
     /** Resets the search state (keeps recents). */
