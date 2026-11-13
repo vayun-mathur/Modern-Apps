@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.chess.data.PieceColor
-import com.vayunmathur.games.chess.data.PieceType
 import com.vayunmathur.games.chess.data.Position
 
 private const val FLIPPED_ROTATION = 180f
@@ -37,7 +36,6 @@ private val lightSquareColor = Color(0xFFBBBBBB)
 private val darkSquareColor = Color.Gray
 private val lastMoveColor = Color(0xFF4CAF50)
 private val moveHintColor = Color(0x66000000)
-private const val BOARD_SQUARES = 8
 
 private data class SquareHighlight(
     val selected: Boolean,
@@ -46,18 +44,15 @@ private data class SquareHighlight(
 )
 
 private fun squareHighlight(
-    board: com.vayunmathur.games.chess.data.Board,
     selectedPiece: Position?,
+    checkSquare: Position?,
     row: Int,
     col: Int,
-    turn: PieceColor,
     lastMove: com.vayunmathur.games.chess.data.Move?,
 ): SquareHighlight {
-    val piece = board.pieces[row][col]
     return SquareHighlight(
         selected = selectedPiece?.let { it.row == row && it.col == col } ?: false,
-        kingInCheck = board.isKingInCheck(turn) &&
-            piece?.type == PieceType.KING && piece.color == turn,
+        kingInCheck = checkSquare?.let { it.row == row && it.col == col } ?: false,
         lastMove = lastMove?.let {
             (it.start.row == row && it.start.col == col) ||
                 (it.end.row == row && it.end.col == col)
@@ -74,20 +69,6 @@ private fun highlightModifier(highlight: SquareHighlight): Modifier {
         highlight.kingInCheck -> Modifier.border(2.dp, Color.Red)
         highlight.lastMove -> Modifier.border(3.dp, lastMoveColor)
         else -> Modifier
-    }
-}
-
-private fun legalDestinations(
-    board: com.vayunmathur.games.chess.data.Board,
-    selectedPiece: Position?,
-): Set<Position> {
-    val sel = selectedPiece ?: return emptySet()
-    return buildSet {
-        for (i in 0 until BOARD_SQUARES) {
-            for (j in 0 until BOARD_SQUARES) {
-                if (board.isValidMove(sel, Position(i, j))) add(Position(i, j))
-            }
-        }
     }
 }
 
@@ -108,6 +89,8 @@ fun BoardGrid(
     val destinations = remember(board, hintSource) {
         legalDestinations(board, hintSource)
     }
+    // One check scan per position, not one per square per recomposition.
+    val checkSquare = remember(board, turn) { checkedKingSquare(board, turn) }
     // The puzzle board seeds a synthetic zero-length lastMove to encode turn; skip it.
     val lastMove = board.lastMove?.takeIf { showLastMove && it.start != it.end }
     // The drag handler sits outside the 180-degree rotation below, so it sees unrotated
@@ -131,7 +114,7 @@ fun BoardGrid(
                     row = i,
                     selectedPiece = hintSource,
                     isFlipped = isFlipped,
-                    turn = turn,
+                    checkSquare = checkSquare,
                     lastMove = lastMove,
                     destinations = destinations,
                     onSquareClick = onSquareClick
@@ -147,7 +130,7 @@ private fun ColumnScope.BoardRow(
     row: Int,
     selectedPiece: Position?,
     isFlipped: Boolean,
-    turn: PieceColor,
+    checkSquare: Position?,
     lastMove: com.vayunmathur.games.chess.data.Move?,
     destinations: Set<Position>,
     onSquareClick: (Position) -> Unit,
@@ -155,7 +138,7 @@ private fun ColumnScope.BoardRow(
     Row(modifier = Modifier.weight(1f)) {
         for (j in board.pieces[row].indices) {
             val piece = board.pieces[row][j]
-            val highlight = squareHighlight(board, selectedPiece, row, j, turn, lastMove)
+            val highlight = squareHighlight(selectedPiece, checkSquare, row, j, lastMove)
             Box(
                 modifier = Modifier
                     .weight(1f)
