@@ -2,8 +2,8 @@ package com.vayunmathur.games.wordmaker.ui.dialogs
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -15,12 +15,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.wordmaker.R
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Button
+import com.vayunmathur.library.ui.IconInfo
+import com.vayunmathur.library.ui.ListItem
+import com.vayunmathur.library.ui.ListItemDefaults
+import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.R as UiR
 
 @Composable
@@ -62,15 +68,27 @@ fun BonusWordsDialog(
         title = { Text(text = pluralStringResource(R.plurals.bonus_words_title, bonusWords.size, bonusWords.size)) },
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                // Full-height list rows (the old ~28 dp text lines were hard to hit) with a
+                // visible info affordance, so it is clear a tap shows the word's definition.
                 items(bonusWords.toList().sorted()) { word ->
-                    Text(
-                        text = word,
+                    ListItem(
                         modifier = Modifier
-                            .padding(vertical = 4.dp)
                             .fillMaxWidth()
                             .clickable {
                                 definitionDialog = Pair(word, getDefinition(word))
-                            })
+                            },
+                        trailingContent = {
+                            // Decorative: the row itself is the button.
+                            IconInfo(
+                                modifier = Modifier.clearAndSetSemantics {},
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        contentPadding = PaddingValues(vertical = 4.dp),
+                    ) {
+                        Text(text = word)
+                    }
                 }
             }
         },
