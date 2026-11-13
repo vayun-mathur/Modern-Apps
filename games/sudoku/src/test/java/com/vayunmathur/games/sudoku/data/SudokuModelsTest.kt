@@ -80,7 +80,6 @@ class SudokuModelsTest {
         assertEquals(-1, state.selected)
         assertFalse(state.notesMode)
         assertEquals(0, state.moveCount)
-        assertEquals(0, state.elapsedSeconds)
         assertEquals(0, state.hintsUsed)
         assertFalse(state.isWon)
         assertFalse(state.usedUndo)

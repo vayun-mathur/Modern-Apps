@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -52,8 +53,10 @@ fun SudokuGrid(
     val selected = game.selected
     val selectedValue = if (selected >= 0) game.valueAt(selected) else 0
     // Digits repeated within a row, column or box. Computable from the board alone, so
-    // marking them shows the player a mistake without revealing the solution.
-    val conflicts = game.conflictingIndices()
+    // marking them shows the player a mistake without revealing the solution. The scan is
+    // quadratic in the cell count, so it reruns only when the digits change — not on every
+    // selection move.
+    val conflicts = remember(game.size, game.givens, game.entries) { game.conflictingIndices() }
 
     BoxWithConstraints(modifier.aspectRatio(1f)) {
         val cell: Dp = maxWidth / side

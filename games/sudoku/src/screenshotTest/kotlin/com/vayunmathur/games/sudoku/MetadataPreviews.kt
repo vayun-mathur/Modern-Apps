@@ -41,8 +41,8 @@ class MetadataPreviews {
                 seed = 20260824,
                 filled = 14,
                 selected = 40,
-                elapsed = 232,
-            )
+            ),
+            elapsed = 232,
         )
     }
 
@@ -56,9 +56,8 @@ class MetadataPreviews {
             seed = 4711,
             filled = 6,
             selected = 30,
-            elapsed = 96,
         )
-        Board(base.copy(notesMode = true, notes = pencilMarks(base)))
+        Board(base.copy(notesMode = true, notes = pencilMarks(base)), elapsed = 96)
     }
 
     @PreviewTest
@@ -73,8 +72,8 @@ class MetadataPreviews {
                 seed = 1212,
                 filled = 18,
                 selected = 40,
-                elapsed = 604,
-            )
+            ),
+            elapsed = 604,
         )
     }
 
@@ -89,8 +88,8 @@ class MetadataPreviews {
                 seed = 991,
                 filled = 5,
                 selected = 20,
-                elapsed = 41,
-            )
+            ),
+            elapsed = 41,
         )
     }
 
@@ -98,18 +97,19 @@ class MetadataPreviews {
     @Preview(name = "5-solved", device = PHONE, group = "phone", showSystemUi = true)
     @Composable
     fun Preview5Solved() {
-        val base = game(BoardSize.NINE, Difficulty.EXPERT, seed = 2024, filled = 0, elapsed = 511)
-        Board(base.copy(entries = base.blanksFilled(), isWon = true))
+        val base = game(BoardSize.NINE, Difficulty.EXPERT, seed = 2024, filled = 0)
+        Board(base.copy(entries = base.blanksFilled(), isWon = true), elapsed = 511)
     }
 
     @Composable
-    private fun Board(game: SudokuGameState) {
+    private fun Board(game: SudokuGameState, elapsed: Int) {
         // Layoutlib has no wallpaper to sample, so Material You falls back to the default palette.
         DynamicTheme(darkTheme = true) {
             GameBoardScreen(
                 state = SudokuUiState(game = game, canUndo = game.moveCount > 0),
                 actions = SudokuActions.Noop,
                 onExit = {},
+                elapsedSeconds = { elapsed },
             )
         }
     }
@@ -125,7 +125,6 @@ class MetadataPreviews {
         seed: Int,
         filled: Int,
         selected: Int = -1,
-        elapsed: Int = 0,
     ): SudokuGameState {
         val puzzle = SudokuGenerator.generate(size, difficulty, Random(seed))
         val state = SudokuGameState.from(puzzle)
@@ -135,7 +134,6 @@ class MetadataPreviews {
         return state.copy(
             entries = entries,
             selected = selected,
-            elapsedSeconds = elapsed,
             moveCount = filled,
         )
     }

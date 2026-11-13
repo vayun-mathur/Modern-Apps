@@ -57,6 +57,9 @@ private val BoardMaxWidth = 520.dp
 /**
  * The board, with no dependency on the ViewModel so it can be rendered from a `@Preview` — see
  * `src/screenshotTest`.
+ *
+ * @param elapsedSeconds the clock, read lazily so a 1 Hz tick recomposes only the text that
+ * shows it rather than the grid and pad.
  */
 @Composable
 fun GameBoardScreen(
@@ -64,6 +67,7 @@ fun GameBoardScreen(
     actions: SudokuActions,
     onExit: () -> Unit,
     highlightMistakes: Boolean = true,
+    elapsedSeconds: () -> Int = { 0 },
 ) {
     val game = state.game
     AppScaffold(
@@ -72,13 +76,7 @@ fun GameBoardScreen(
         onNavigateBack = onExit,
         alignment = AppBarAlignment.Center,
         actions = {
-            if (game != null) {
-                Text(
-                    formatDuration(game.elapsedSeconds),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(end = Spacing.lg),
-                )
-            }
+            if (game != null) ClockText(elapsedSeconds)
         },
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
@@ -182,7 +180,7 @@ fun GameBoardScreen(
                     onPlayAgain = { actions.playAgain() },
                     onBack = onExit,
                 ) {
-                    Text("${stringResource(UiR.string.game_time)}: ${formatDuration(game.elapsedSeconds)}")
+                    Text("${stringResource(UiR.string.game_time)}: ${formatDuration(elapsedSeconds())}")
                     if (game.hintsUsed > 0) {
                         Text(
                             "${stringResource(R.string.hints_used)}: ${game.hintsUsed}",
@@ -208,6 +206,16 @@ fun GameBoardScreen(
             }
         }
     }
+}
+
+/** Its own restart scope, so the per-second tick recomposes this text and nothing else. */
+@Composable
+private fun ClockText(elapsedSeconds: () -> Int) {
+    Text(
+        formatDuration(elapsedSeconds()),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(end = Spacing.lg),
+    )
 }
 
 @Composable

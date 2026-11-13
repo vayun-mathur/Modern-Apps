@@ -112,7 +112,8 @@ data class SudokuGameState(
     val selected: Int = -1,
     val notesMode: Boolean = false,
     val moveCount: Int = 0,
-    val elapsedSeconds: Int = 0,
+    // The clock is deliberately not here: it ticks every second, and every tick would hand the
+    // grid a new state and redraw all 81-144 cells. SudokuViewModel.elapsedSeconds owns it.
     val hintsUsed: Int = 0,
     val isWon: Boolean = false,
     val usedUndo: Boolean = false,

@@ -25,6 +25,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -281,8 +282,10 @@ class SudokuViewModelTest {
         val original = vm.uiState.value.game!!
         vm.selectCell(cell)
         vm.enterDigit(original.solution[cell])
+        val beforeTicks = vm.uiState.value.game!!
         vm.incrementTimer(); vm.incrementTimer()
-        assertEquals(2, vm.uiState.value.game!!.elapsedSeconds)
+        assertEquals(2, vm.elapsedSeconds.value)
+        assertSame(beforeTicks, vm.uiState.value.game!!, "a tick must not hand the grid a new state")
 
         vm.restart()
         val after = vm.uiState.value.game!!
@@ -290,7 +293,7 @@ class SudokuViewModelTest {
         assertEquals(original.solution, after.solution)
         assertEquals(List(after.size.cellCount) { 0 }, after.entries)
         assertEquals(0, after.moveCount)
-        assertEquals(0, after.elapsedSeconds)
+        assertEquals(0, vm.elapsedSeconds.value)
         assertEquals(0, after.hintsUsed)
         assertEquals(-1, after.selected)
         assertFalse(after.isWon)
@@ -326,9 +329,10 @@ class SudokuViewModelTest {
         assertEquals(-1, won.selected)
         assertFalse(vm.hasActiveGame())
         assertEquals(1, stats.getStats(BoardSize.SIX, Difficulty.EASY).gamesWon)
-        val elapsed = won.elapsedSeconds
+        val elapsed = vm.elapsedSeconds.value
+        assertEquals(1, elapsed)
         vm.incrementTimer()
-        assertEquals(elapsed, vm.uiState.value.game!!.elapsedSeconds, "timer stops after win")
+        assertEquals(elapsed, vm.elapsedSeconds.value, "timer stops after win")
         // Further digits are ignored on a won game.
         vm.selectCell(0)
         val entries = vm.uiState.value.game!!.entries
@@ -462,7 +466,7 @@ class SudokuViewModelTest {
         assertEquals(0, stats.getStats(BoardSize.SIX, Difficulty.EASY).currentWinStreak,
             "losing the last life records a loss")
         vm.incrementTimer()
-        assertEquals(0, after.elapsedSeconds)
+        assertEquals(0, vm.elapsedSeconds.value)
 
         // Correct digits still place in answer mode (before game over this is the path); after
         // game over input is ignored, verified by unchanged entries.

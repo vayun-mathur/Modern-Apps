@@ -69,6 +69,16 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch { settingsStore.setHighlightMistakes(enabled) }
     }
 
+    private val _elapsedSeconds = MutableStateFlow(0)
+
+    /**
+     * Seconds on the clock for the game in progress.
+     *
+     * Its own flow rather than a field of [SudokuGameState]: the game state feeds the whole grid,
+     * so a 1 Hz tick inside it recomposed every cell every second. Only the clock text reads this.
+     */
+    val elapsedSeconds: StateFlow<Int> = _elapsedSeconds.asStateFlow()
+
     /** Undo snapshots, oldest first. Cleared whenever a new puzzle is dealt. */
     private val history = ArrayDeque<SudokuSnapshot>()
 
@@ -115,6 +125,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         madeMistake = false
         winRecorded = false
         rejectionAttempt = 0
+        _elapsedSeconds.value = 0
         _uiState.value = SudokuUiState(generating = true)
         viewModelScope.launch {
             val puzzle = withContext(Dispatchers.Default) {
@@ -308,13 +319,13 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         history.clear()
         madeMistake = false
         rejectionAttempt = 0
+        _elapsedSeconds.value = 0
         _uiState.value = SudokuUiState(
             game = game.copy(
                 entries = List(game.size.cellCount) { 0 },
                 notes = List(game.size.cellCount) { 0 },
                 selected = -1,
                 moveCount = 0,
-                elapsedSeconds = 0,
                 hintsUsed = 0,
                 isWon = false,
                 usedUndo = false,
@@ -342,13 +353,14 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         val game = _uiState.value.game ?: return
         if (!game.isWon) statsRepository.recordGameLost(game.size, game.difficulty)
         history.clear()
+        _elapsedSeconds.value = 0
         _uiState.value = SudokuUiState()
     }
 
     fun incrementTimer() {
         val game = _uiState.value.game ?: return
         if (game.isWon || game.isGameOver) return
-        mutate { it.copy(elapsedSeconds = it.elapsedSeconds + 1) }
+        _elapsedSeconds.update { it + 1 }
     }
 
     fun dismissAchievementNotification() = achievementsManager.dismissNotification()
@@ -365,13 +377,14 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         // The board still shows its win on a restart replay; only the recording is once-only.
         if (winRecorded) return
         winRecorded = true
-        statsRepository.recordGameWon(game.size, game.difficulty, game.elapsedSeconds)
+        val elapsed = _elapsedSeconds.value
+        statsRepository.recordGameWon(game.size, game.difficulty, elapsed)
         val manager = achievementsManager
         manager.onAchievementUnlocked("first_win")
         if (game.size == BoardSize.NINE) {
             manager.onAchievementUnlocked("win_nine")
             if (game.hintsUsed == 0) manager.onAchievementUnlocked("no_hints")
-            if (game.elapsedSeconds < SudokuAchievementsManager.SPEED_SECONDS) {
+            if (elapsed < SudokuAchievementsManager.SPEED_SECONDS) {
                 manager.onAchievementUnlocked("speed_nine")
             }
         }

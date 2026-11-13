@@ -146,11 +146,17 @@ class SudokuScreensTest {
         val actions = RecordingActions()
         val base = freshGame()
         val entries = List(base.size.cellCount) { if (base.isGiven(it)) 0 else base.solution[it] }
-        val won = base.copy(entries = entries, isWon = true, hintsUsed = 2, elapsedSeconds = 65)
+        val won = base.copy(entries = entries, isWon = true, hintsUsed = 2)
         rule.setContent {
-            GameBoardScreen(state = SudokuUiState(game = won), actions = actions, onExit = {})
+            GameBoardScreen(
+                state = SudokuUiState(game = won),
+                actions = actions,
+                onExit = {},
+                elapsedSeconds = { 65 },
+            )
         }
         rule.onNodeWithText(str(R.string.congratulations)).assertExists()
+        rule.onAllNodesWithText("1:05", substring = true).assertCountEquals(2)
         rule.onAllNodesWithText("${str(R.string.hints_used)}: 2").assertCountEquals(2)
         rule.onNodeWithText("Play Again").performClick()
         assertEquals(1, actions.playAgains)
@@ -215,7 +221,7 @@ class SudokuScreensTest {
             val base = freshGame(size, Difficulty.MEDIUM)
             val blank = base.givens.indices.first { base.givens[it] == 0 }
             val notes = base.notes.toMutableList().also { it[blank] = 0b101 }
-            val styled = base.copy(notes = notes, selected = blank, elapsedSeconds = 3661)
+            val styled = base.copy(notes = notes, selected = blank)
             current = SudokuUiState(game = styled)
             rule.onNodeWithText(str(R.string.hint)).assertExists()
         }

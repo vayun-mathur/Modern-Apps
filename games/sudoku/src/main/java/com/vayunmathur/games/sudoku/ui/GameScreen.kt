@@ -25,6 +25,9 @@ fun GameScreen(
     config: GameConfig,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    // Not delegated: the State is read inside the lambda below, so a tick recomposes only the
+    // clock text instead of this whole screen and the grid under it.
+    val elapsedSeconds = viewModel.elapsedSeconds.collectAsState()
     val highlightMistakes by viewModel.highlightMistakes.collectAsState()
 
     LaunchedEffect(config) {
@@ -44,5 +47,6 @@ fun GameScreen(
         actions = viewModel,
         onExit = { backStack.pop() },
         highlightMistakes = highlightMistakes,
+        elapsedSeconds = { elapsedSeconds.value },
     )
 }
