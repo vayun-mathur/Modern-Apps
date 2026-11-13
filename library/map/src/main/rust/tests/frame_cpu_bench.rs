@@ -230,3 +230,65 @@ fn per_frame_label_scan() {
         );
     }
 }
+
+/// What the tile workers' nice value does to a frame thread under a tile burst.
+///
+/// Eight busy "workers" (the native tile-worker count) and one frame thread that needs 4 ms of
+/// CPU every 16.7 ms, squeezed onto two cores so they contend the way a pan's tile burst
+/// contends a phone's cores. Run under `taskset -c 0-1`. Reports the frame thread's wall time
+/// per frame with the workers at nice 0 (before) and nice 10 (after,
+/// `bridge::priority::WORKER_NICE`).
+#[test]
+#[ignore = "scheduler harness; run under `taskset -c 0-1` with --ignored --nocapture"]
+fn worker_priority_vs_frame_time() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    extern "C" {
+        fn setpriority(which: i32, who: u32, prio: i32) -> i32;
+    }
+    fn spin(d: Duration) {
+        let t = Instant::now();
+        while t.elapsed() < d {
+            std::hint::spin_loop();
+        }
+    }
+    for nice in [0, 10] {
+        let stop = Arc::new(AtomicBool::new(false));
+        let workers: Vec<_> = (0..8)
+            .map(|_| {
+                let stop = Arc::clone(&stop);
+                std::thread::spawn(move || {
+                    unsafe { setpriority(0, 0, nice) };
+                    while !stop.load(Ordering::Relaxed) {
+                        spin(Duration::from_millis(1));
+                    }
+                })
+            })
+            .collect();
+        std::thread::sleep(Duration::from_millis(100));
+        let mut walls = Vec::new();
+        let period = Duration::from_micros(16_667);
+        let start = Instant::now();
+        for frame in 0..120u32 {
+            let due = start + period * frame;
+            if let Some(wait) = due.checked_duration_since(Instant::now()) {
+                std::thread::sleep(wait);
+            }
+            let t = Instant::now();
+            // 4 ms of frame work (recording, placement, emission).
+            spin(Duration::from_millis(4));
+            walls.push(t.elapsed());
+        }
+        stop.store(true, Ordering::Relaxed);
+        for w in workers {
+            w.join().unwrap();
+        }
+        walls.sort();
+        let missed = walls.iter().filter(|w| **w > period).count();
+        println!(
+            "workers at nice {nice}: frame work p50 {:.1} ms, p95 {:.1} ms, max {:.1} ms, {missed}/120 over 16.7 ms",
+            ms(walls[60]),
+            ms(walls[114]),
+            ms(walls[119])
+        );
+    }
+}

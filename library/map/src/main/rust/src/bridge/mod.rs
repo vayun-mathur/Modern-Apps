@@ -29,6 +29,7 @@ pub(crate) mod log;
 mod markers;
 mod moon;
 mod pick;
+mod priority;
 mod puck;
 mod region;
 mod route;

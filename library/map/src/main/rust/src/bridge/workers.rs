@@ -54,6 +54,7 @@ pub(crate) fn spawn_worker(
     let started = std::thread::Builder::new()
         .name(format!("map-tiles-{index}"))
         .spawn(move || {
+            super::priority::lower_worker_priority();
             // A pushed local archive wins: when the file is present the reader opens it
             // straight from disk and skips the header fetch, the origin marker and the
             // range cache entirely — the file is the whole archive, so none of the
