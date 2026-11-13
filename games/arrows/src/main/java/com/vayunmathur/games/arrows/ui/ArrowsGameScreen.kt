@@ -135,7 +135,7 @@ fun ArrowsGameScreen(
                         modifier = boardModifier.widthIn(max = BoardMaxWidth),
                     )
                 }
-                val onRestart = { hasProgress: Boolean ->
+                val onRestart: (Boolean) -> Unit = { hasProgress ->
                     if (hasProgress) confirmRestart = true else actions.restartLevel()
                 }
                 // A landscape phone has too little height to stack the status under a tall
