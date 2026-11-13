@@ -125,7 +125,7 @@ class NonogramScreensTest {
     @Test fun inProgressShowsHintToggleAndRestartWithoutConfirm() {
         val a = Recording()
         rule.setContent { NonogramGameScreen(NonogramUiState(game = game(), mode = GameMode.CASUAL, markMode = MarkMode.FILL, level = 2), a, {}, {}) }
-        rule.onNodeWithText(str(R.string.how_to_play)).assertExists()
+        rule.onNodeWithText(str(R.string.how_to_play_fill)).assertExists()
         rule.onNodeWithText(str(R.string.mode_cross)).performSemanticsAction(SemanticsActions.OnClick)
         assertEquals(listOf(MarkMode.CROSS), a.modes)
         rule.onNodeWithText(str(UiR.string.restart)).performSemanticsAction(SemanticsActions.OnClick)
@@ -166,6 +166,15 @@ class NonogramScreensTest {
         rule.onAllNodesWithText("5")[0].performTouchInput { doubleClick() }
         rule.onRoot().performTouchInput { click(point) }
         assertEquals(listOf<Any>(14, false), a.strokes.last())
+    }
+
+    @Test fun hintFollowsTheMarkMode() {
+        var mode by androidx.compose.runtime.mutableStateOf(MarkMode.FILL)
+        rule.setContent { NonogramGameScreen(NonogramUiState(game = game(), level = 2, markMode = mode), Recording(), {}, {}) }
+        rule.onNodeWithText(str(R.string.how_to_play_fill)).assertExists()
+        mode = MarkMode.CROSS
+        rule.onNodeWithText(str(R.string.how_to_play_cross)).assertExists()
+        rule.onNodeWithText(str(R.string.how_to_play_fill)).assertDoesNotExist()
     }
 
     @Test fun restartWithProgressAsksConfirmation() {

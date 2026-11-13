@@ -19,8 +19,10 @@
     <!-- NonogramGameScreen: Celebratory line shown when a level is completed. Declarative -->
     <string name="solved">Solved!</string>
     <!-- NonogramGameScreen: Shown after clearing the daily, since there is only one per day. Sentence -->
-    <!-- NonogramGameScreen: Hint under a fresh board explaining the two gestures. Imperative sentence -->
-    <string name="how_to_play">Tap to fill, long press to cross out</string>
+    <!-- NonogramGameScreen: Hint under a fresh board in Fill mode, explaining the gestures. Imperative sentence -->
+    <string name="how_to_play_fill">Tap or drag to fill, long press to cross out</string>
+    <!-- NonogramGameScreen: Hint under a fresh board in Cross mode, explaining the gestures. Imperative sentence -->
+    <string name="how_to_play_cross">Tap or drag to cross out, long press to fill</string>
     <!-- MarkModeToggle: Tap places part of the picture. Verb, imperative -->
     <string name="mode_fill">Fill</string>
     <!-- MarkModeToggle: Tap crosses a cell off as empty. Verb, imperative -->

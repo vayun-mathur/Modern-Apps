@@ -298,7 +298,11 @@ private fun NonogramControls(
                 game.revealedBlanks.isEmpty()
             ) {
                 Text(
-                    stringResource(R.string.how_to_play),
+                    // Follows the toggle: in Cross mode a tap crosses and a long press fills.
+                    stringResource(
+                        if (state.markMode == MarkMode.CROSS) R.string.how_to_play_cross
+                        else R.string.how_to_play_fill
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

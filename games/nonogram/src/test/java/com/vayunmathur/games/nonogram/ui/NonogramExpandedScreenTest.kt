@@ -34,7 +34,7 @@ class NonogramExpandedScreenTest {
         rule.setContent {
             NonogramGameScreen(NonogramUiState(game = game, level = 2, markMode = MarkMode.FILL), a, {}, {})
         }
-        rule.onNodeWithText(str(R.string.how_to_play)).assertExists()
+        rule.onNodeWithText(str(R.string.how_to_play_fill)).assertExists()
         rule.onNodeWithText(str(R.string.mode_cross)).performSemanticsAction(SemanticsActions.OnClick)
         assertEquals(listOf(MarkMode.CROSS), a.modes)
     }

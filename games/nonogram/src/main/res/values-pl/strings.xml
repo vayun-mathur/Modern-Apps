@@ -18,7 +18,8 @@
     <string name="solved">Rozwiązano!</string>
     <!-- NonogramGameScreen: Shown after clearing the daily, since there is only one per day. Sentence -->
     <!-- NonogramGameScreen: Hint under a fresh board explaining the two gestures. Imperative sentence -->
-    <string name="how_to_play">Stuknij, aby zamalować; przytrzymaj, aby wykreślić</string>
+    <string name="how_to_play_fill">Stuknij lub przeciągnij, aby zamalować; przytrzymaj, aby wykreślić</string>
+    <string name="how_to_play_cross">Stuknij lub przeciągnij, aby wykreślić; przytrzymaj, aby zamalować</string>
     <!-- MarkModeToggle: Tap places part of the picture. Verb, imperative -->
     <string name="mode_fill">Zamaluj</string>
     <!-- MarkModeToggle: Tap crosses a cell off as empty. Verb, imperative -->
