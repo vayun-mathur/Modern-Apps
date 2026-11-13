@@ -2,15 +2,18 @@ package com.vayunmathur.youpipe.util
 import androidx.core.net.toUri
 import androidx.core.text.HtmlCompat
 import com.vayunmathur.library.network.NetworkClient
+import com.vayunmathur.library.network.StaticMirror
 import com.vayunmathur.youpipe.ui.ChannelInfo
 import com.vayunmathur.youpipe.ui.VideoInfo
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.ContentAvailability
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.nio.ByteBuffer
+import java.security.MessageDigest
 import kotlin.io.encoding.Base64
 import kotlin.time.toKotlinInstant
 
@@ -177,7 +180,8 @@ data class DeArrowBranding(
 )
 
 /**
- * SponsorBlock + DeArrow data APIs are mirrored on the self-hosted proxy
+ * SponsorBlock + DeArrow data APIs are mirrored on the self-hosted proxy (and
+ * published as static shards, see [SPONSORBLOCK_STATIC])
  * (see location_share_server `sb_build.sh` + handlers/sponsorblock.rs), served
  * from a local copy of the SponsorBlock database. DeArrow thumbnail *frames*
  * are now self-hosted via the same origin (yt-dlp + ffmpeg renderer implemented
@@ -191,10 +195,66 @@ data class DeArrowBranding(
 internal var SPONSORBLOCK_MIRROR = "https://api.maproj.org"
 internal var DEARROW_THUMB_MIRROR = "https://api.maproj.org/api/dearrow/thumbnail"
 
+/**
+ * The same SponsorBlock/DeArrow data as static shards on R2
+ * (location_share_server `src/static_r2/sb_shards.rs`): one file per first
+ * [SB_SHARD_PREFIX_HEX] hex digits of sha256(videoID), holding every video in
+ * that range. Read first; the endpoints above are the fallback. A shard that
+ * loads is authoritative (a video missing from it has no data), and since only
+ * the hash prefix is requested, nobody learns which video is being watched.
+ */
+internal var SPONSORBLOCK_STATIC = "${StaticMirror.BASE}/sb/v1"
+
+/** Must match the server's `PREFIX_HEX`. */
+private const val SB_SHARD_PREFIX_HEX = 4
+
+private val sbShardJson = Json { ignoreUnknownKeys = true }
+
+/** First [SB_SHARD_PREFIX_HEX] lowercase hex digits of sha256([videoId]). */
+internal fun sbShardPrefix(videoId: String): String =
+    MessageDigest.getInstance("SHA-256").digest(videoId.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
+        .take(SB_SHARD_PREFIX_HEX)
+
+@Serializable
+internal data class SbShardVideo(
+    val videoID: String,
+    val segments: List<SbShardSegment> = emptyList(),
+)
+
+@Serializable
+internal data class SbShardSegment(
+    val category: String,
+    val segment: List<Float>,
+    @SerialName("UUID") val uuid: String,
+    val actionType: String = "skip",
+)
+
+/**
+ * [videoId]'s segments out of a segments shard, limited to the action types the
+ * endpoint returns by default (skip, mute); the shard carries every type.
+ */
+internal fun segmentsFromShard(body: String, videoId: String): List<SponsorSegment> =
+    sbShardJson.decodeFromString<List<SbShardVideo>>(body)
+        .firstOrNull { it.videoID == videoId }
+        ?.segments.orEmpty()
+        .filter { it.actionType == "skip" || it.actionType == "mute" }
+        .map { SponsorSegment(it.category, it.segment, it.uuid) }
+
+/** [videoId]'s branding out of a branding shard; absent = no branding (empty, as the endpoint answers). */
+internal fun brandingFromShard(body: String, videoId: String): DeArrowBranding =
+    sbShardJson.decodeFromString<Map<String, DeArrowBranding>>(body)[videoId]
+        ?: DeArrowBranding(titles = emptyList(), thumbnails = emptyList(), randomTime = 0.0)
+
+/** The shard body for [videoId] under [kind] (`segments` / `branding`), or null when not published. */
+private suspend fun sbShard(kind: String, videoId: String): String? =
+    StaticMirror.getStatic("$SPONSORBLOCK_STATIC/$kind/${sbShardPrefix(videoId)}.json")?.text
+
 suspend fun getDeArrowBranding(videoId: Long): DeArrowBranding? {
     val idString = decodeVideoID(videoId)
     return try {
-        NetworkClient.getJson<DeArrowBranding>("$SPONSORBLOCK_MIRROR/api/branding?videoID=$idString")
+        sbShard("branding", idString)?.let { runCatching { brandingFromShard(it, idString) }.getOrNull() }
+            ?: NetworkClient.getJson<DeArrowBranding>("$SPONSORBLOCK_MIRROR/api/branding?videoID=$idString")
     } catch (_: Exception) {
         // Best-effort enrichment: branding is optional, feed plays fine without it.
         null
@@ -220,7 +280,8 @@ fun DeArrowBranding.trustedThumbnailUrl(videoId: Long): String? {
 suspend fun getSponsorSegments(videoId: Long): List<SponsorSegment> {
     val idString = decodeVideoID(videoId)
     return try {
-        NetworkClient.getJson("$SPONSORBLOCK_MIRROR/api/skipSegments?videoID=$idString")
+        sbShard("segments", idString)?.let { runCatching { segmentsFromShard(it, idString) }.getOrNull() }
+            ?: NetworkClient.getJson("$SPONSORBLOCK_MIRROR/api/skipSegments?videoID=$idString")
     } catch (_: Exception) {
         // Best-effort enrichment: no segments simply means no auto-skip for this video.
         emptyList()

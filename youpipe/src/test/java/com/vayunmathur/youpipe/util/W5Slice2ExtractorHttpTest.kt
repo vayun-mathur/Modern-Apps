@@ -18,18 +18,21 @@ import kotlin.test.assertNull
 class W5Slice2ExtractorHttpTest {
 
     private val realSponsor = SPONSORBLOCK_MIRROR
+    private val realStatic = SPONSORBLOCK_STATIC
     private val realThumb = DEARROW_THUMB_MIRROR
 
     @BeforeTest
     fun pointAtClosedPort() {
         // Port 1 is never bound: connect() fails fast with "refused".
         SPONSORBLOCK_MIRROR = "http://127.0.0.1:1"
+        SPONSORBLOCK_STATIC = "http://127.0.0.1:1/sb/v1"
         DEARROW_THUMB_MIRROR = "http://127.0.0.1:1/api/dearrow/thumbnail"
     }
 
     @AfterTest
     fun restoreMirrors() {
         SPONSORBLOCK_MIRROR = realSponsor
+        SPONSORBLOCK_STATIC = realStatic
         DEARROW_THUMB_MIRROR = realThumb
     }
 
