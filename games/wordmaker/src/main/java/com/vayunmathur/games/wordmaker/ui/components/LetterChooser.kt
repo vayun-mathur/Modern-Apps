@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,7 +42,6 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -52,6 +50,9 @@ import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.wordmaker.R
 import com.vayunmathur.games.wordmaker.data.WheelSpacing
 import com.vayunmathur.games.wordmaker.ui.ChooserLetter
+import com.vayunmathur.library.ui.IconBackspace
+import com.vayunmathur.library.ui.IconReturn
+import com.vayunmathur.library.ui.IconShuffle
 import com.vayunmathur.library.ui.animatedDp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -142,11 +143,11 @@ fun LetterChooser(
                     FilledIconButton(onClick = {
                         selectedLettersIndices = selectedLettersIndices.dropLast(1)
                     }) {
-                        Icon(painterResource(R.drawable.backspace_24px), contentDescription = stringResource(R.string.cd_backspace))
+                        IconBackspace(contentDescription = stringResource(R.string.cd_backspace))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     FilledIconButton(onClick = { submitSelection() }) {
-                        Icon(painterResource(R.drawable.keyboard_return_24px), contentDescription = stringResource(R.string.cd_submit))
+                        IconReturn(contentDescription = stringResource(R.string.cd_submit))
                     }
                 }
             }
@@ -290,7 +291,7 @@ fun LetterChooser(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 FilledIconButton(onClick = onShuffle) {
-                    Icon(painterResource(R.drawable.ic_shuffle), contentDescription = stringResource(R.string.cd_shuffle))
+                    IconShuffle(contentDescription = stringResource(R.string.cd_shuffle))
                 }
             }
         }

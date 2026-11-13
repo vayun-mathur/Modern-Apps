@@ -1911,3 +1911,60 @@ fun IconGameCenterTrophy(
     modifier: Modifier = Modifier,
     tint: Color = LocalContentColor.current,
 ) = AppIcon(Icons.Filled.EmojiEvents, contentDescription, modifier, tint)
+
+// --- wordmaker ---
+
+/**
+ * Help: a "?" in a circle (Material help_outline, auto-mirrored) - e.g. a hint button.
+ * [contentDescription] defaults to "Help"; pass the control's own label.
+ */
+@Composable
+fun IconHelp(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+    contentDescription: String? = "Help",
+) = AppIcon(HelpOutlineVector, contentDescription, modifier, tint)
+
+/** [IconShuffle] labelled with the caller's own (localized) [contentDescription]. */
+@Composable
+fun IconShuffle(
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+) = AppIcon(Icons.Filled.Shuffle, contentDescription, modifier, tint)
+
+/** [IconBackspace] labelled with the caller's own (localized) [contentDescription]. */
+@Composable
+fun IconBackspace(
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+) = AppIcon(Icons.AutoMirrored.Filled.Backspace, contentDescription, modifier, tint)
+
+/** [IconReturn] labelled with the caller's own (localized) [contentDescription], e.g. "Submit". */
+@Composable
+fun IconReturn(
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+) = AppIcon(Icons.AutoMirrored.Filled.KeyboardReturn, contentDescription, modifier, tint)
+
+/** Material help_outline, built from its path data (auto-mirrored, like the extended set's). */
+private val HelpOutlineVector: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "HelpOutline",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+        autoMirror = true,
+    ).addPath(
+        pathData = addPathNodes(
+            "M11,18h2v-2h-2v2zM12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2z" +
+                "M12,20c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8z" +
+                "M12,6c-2.21,0 -4,1.79 -4,4h2c0,-1.1 0.9,-2 2,-2s2,0.9 2,2c0,2 -3,1.75 -3,5h2" +
+                "c0,-2.25 3,-2.5 3,-5 0,-2.21 -1.79,-4 -4,-4z"
+        ),
+        fill = SolidColor(Color.Black),
+    ).build()
+}

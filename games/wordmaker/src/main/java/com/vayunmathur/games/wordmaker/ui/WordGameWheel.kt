@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
@@ -34,7 +33,7 @@ import com.vayunmathur.library.ui.BadgedBox
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FilledIconButton
-import com.vayunmathur.library.ui.Icon
+import com.vayunmathur.library.ui.IconHelp
 import com.vayunmathur.library.ui.IconBook
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
@@ -150,8 +149,9 @@ fun BoxScope.WordGameCornerButtons(
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
             .align(Alignment.BottomStart)
+            // Same 16 dp inset as the hint button opposite, so the two corner buttons line up
+            // (the extra 32 dp bottom padding left the bonus button floating higher).
             .padding(16.dp)
-            .padding(bottom = 32.dp)
             .onGloballyPositioned { onBonusButtonPositioned(it.localToRoot(Offset.Zero)) }
             .graphicsLayer {
                 translationX = bonusShake
@@ -185,11 +185,9 @@ fun BoxScope.WordGameCornerButtons(
                 onClick = onOpenHint,
                 enabled = hintEnabled
             ) {
-                Icon(
-                    painterResource(android.R.drawable.ic_menu_help),
-                    contentDescription = stringResource(R.string.cd_hint),
-                    modifier = Modifier.graphicsLayer { alpha = if (hintEnabled) 1f else 0.5f }
-                )
+                // The button's disabled colours already dim the icon during the cooldown; a
+                // second 0.5 alpha on top made it nearly invisible.
+                IconHelp(contentDescription = stringResource(R.string.cd_hint))
             }
             if (!hintEnabled) {
                 CircularProgressIndicator(
