@@ -194,6 +194,7 @@ fun NonogramGameScreen(
                                 game = game,
                                 markMode = state.markMode,
                                 daily = daily,
+                                generating = state.generating,
                                 actions = actions,
                             )
                         }
@@ -216,6 +217,7 @@ fun NonogramGameScreen(
                         game = game,
                         markMode = state.markMode,
                         daily = daily,
+                        generating = state.generating,
                         actions = actions,
                     )
                 }
@@ -235,6 +237,7 @@ private fun NonogramControls(
     game: NonogramGameState,
     markMode: MarkMode,
     daily: Boolean,
+    generating: Boolean,
     actions: NonogramGameActions,
 ) {
     var confirmRestart by remember { mutableStateOf(false) }
@@ -256,8 +259,10 @@ private fun NonogramControls(
                     textAlign = TextAlign.Center,
                 )
             } else {
+                // Disabled while the next puzzle generates, so a double tap cannot advance twice.
                 Button(
                     onClick = { actions.nextLevel() },
+                    enabled = !generating,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(UiR.string.next_level)) }
             }

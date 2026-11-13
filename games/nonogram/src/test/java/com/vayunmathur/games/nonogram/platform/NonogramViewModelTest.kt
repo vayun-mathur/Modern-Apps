@@ -87,8 +87,41 @@ class NonogramViewModelTest {
         await("restart clears") { vm.uiState.value.game?.crossed?.isEmpty() == true }
     }
 
+    private fun winBoard(vm: NonogramViewModel) {
+        val g = vm.uiState.value.game!!
+        for (i in g.puzzle.solution.indices.filter { g.puzzle.solution[it] }) vm.tapCell(i)
+        await("won") { vm.uiState.value.game?.isWon == true }
+    }
+
+    @Test fun nextLevelIgnoresAnUnsolvedBoard() {
+        val vm = loadedVm()
+        vm.nextLevel()
+        Thread.sleep(200)
+        assertEquals(1, vm.uiState.value.level, "Next only exists on a solved board")
+        assertEquals(1, runBlocking { vm.dataStore.currentLevel.first() })
+    }
+
+    @Test fun doubleTappingNextAdvancesExactlyOneLevel() {
+        val vm = loadedVm()
+        winBoard(vm)
+        vm.nextLevel()
+        // The first tap flags the load straight away, so the second is refused rather than
+        // reading the already-raised level counter and writing level 3.
+        assertTrue(vm.uiState.value.generating)
+        vm.nextLevel()
+        await("level 2 loaded") {
+            vm.uiState.value.game?.level == 2 && !vm.uiState.value.generating
+        }
+        // A late tap that lands on the fresh, unsolved board is ignored too.
+        vm.nextLevel()
+        Thread.sleep(200)
+        assertEquals(2, runBlocking { vm.dataStore.currentLevel.first() })
+        assertEquals(2, vm.uiState.value.level)
+    }
+
     @Test fun nextLevelAdvancesAndDailyModeLoads() {
         val vm = loadedVm()
+        winBoard(vm)
         vm.nextLevel()
         await("level 2") { vm.uiState.value.level == 2 && vm.uiState.value.game != null && !vm.uiState.value.generating }
         vm.setGameMode(GameMode.DAILY)

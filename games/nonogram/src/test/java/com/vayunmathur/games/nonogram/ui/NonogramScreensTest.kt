@@ -1,6 +1,7 @@
 package com.vayunmathur.games.nonogram.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -104,6 +105,13 @@ class NonogramScreensTest {
         rule.onNodeWithText(str(R.string.solved)).assertExists()
         rule.onNodeWithText(str(UiR.string.next_level)).performClick()
         assertEquals(1, a.next)
+    }
+
+    @Test fun nextLevelIsDisabledWhileTheNextPuzzleGenerates() {
+        val a = Recording()
+        rule.setContent { NonogramGameScreen(NonogramUiState(game = game(filled = answer()), level = 3, generating = true), a, {}, {}) }
+        rule.onNodeWithText(str(UiR.string.next_level)).assertIsNotEnabled().performClick()
+        assertEquals(0, a.next, "a second tap while generating must not advance again")
     }
 
     @Test fun wonDailyShowsComeBack() {

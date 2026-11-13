@@ -255,10 +255,23 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { dataStore.setMarkMode(mode) }
     }
 
+    /**
+     * Advances from the solved board on screen to the level after it.
+     *
+     * The target comes from the loaded game's own level, not [NonogramUiState.level]: `load()` raises
+     * that counter as soon as the stored level changes, before the next puzzle exists, so a second
+     * tap on Next used to read the already-raised number and skip a level. Marking the state as
+     * generating straight away disables the button for the rest of the load, and the solved-board
+     * guard means a stray tap that lands after the new puzzle appears does nothing.
+     */
     override fun nextLevel() {
         val state = _uiState.value
-        if (state.mode == GameMode.DAILY) return
-        viewModelScope.launch { dataStore.saveLevel(state.level + 1) }
+        val game = state.game ?: return
+        if (state.mode == GameMode.DAILY || game.mode == GameMode.DAILY) return
+        if (state.generating || !game.isWon) return
+        val target = game.level + 1
+        _uiState.value = state.copy(generating = true)
+        viewModelScope.launch { dataStore.saveLevel(target) }
     }
 
     override fun restartLevel() {
