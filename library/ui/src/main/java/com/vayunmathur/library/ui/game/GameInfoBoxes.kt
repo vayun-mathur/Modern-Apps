@@ -24,6 +24,8 @@ import com.vayunmathur.library.ui.Text
  * one higher. Arrows disable at the ends rather than wrapping, so the player can tell where the pack
  * stops.
  *
+ * A finished level is marked "Completed" in the primary colour.
+ *
  * [title] is a parameter because the games do not agree on the noun — unblockjam calls them puzzles — and
  * sharing the mechanism should not flatten their wording.
  */
@@ -55,7 +57,8 @@ fun LevelPickerBox(
         if (isCompleted) {
             Text(
                 text = stringResource(R.string.game_completed),
-                color = MaterialTheme.colorScheme.error,
+                // An accomplishment, so the accent colour - never error red, which reads as a failure.
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
