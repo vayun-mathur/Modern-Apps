@@ -61,8 +61,10 @@ internal const val DRAGGED_PIECE_TAG = "chess_dragged_piece"
 internal const val SLIDING_PIECE_TAG = "chess_sliding_piece"
 
 // File-scope so the chess board doesn't allocate 32 Color instances per recomposition.
-private val lightSquareColor = Color(0xFFBBBBBB)
-private val darkSquareColor = Color.Gray
+// The classic wood palette: warm enough that the two-tone pieces' outlines carry them on both
+// squares (the old flat greys left white pieces at about 1.9:1 on the light squares).
+internal val LightSquareColor = Color(0xFFF0D9B5)
+internal val DarkSquareColor = Color(0xFFB58863)
 // Last move: a translucent fill on both squares, so it reads as a different kind of mark from
 // the yellow selection / red check / white drop-target borders drawn over it.
 private val lastMoveTint = Color(0x699BC700)
@@ -88,7 +90,7 @@ private data class BoardMarks(
 }
 
 private fun squareBaseColor(row: Int, col: Int): Color =
-    if ((row + col) % 2 == 0) lightSquareColor else darkSquareColor
+    if ((row + col) % 2 == 0) LightSquareColor else DarkSquareColor
 
 private fun highlightModifier(marks: BoardMarks, pos: Position): Modifier {
     return when {
