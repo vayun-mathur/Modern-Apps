@@ -91,7 +91,8 @@ fun DashboardScreen(
                         }
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(text = state.playerName ?: stringResource(R.string.player), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text(text = state.title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            // No separate title line: XpProgressBar's header already reads
+                            // "Level N • <title>", so a second copy only repeated it (#ux-audit).
                             XpProgressBar(totalXp = state.totalXp, modifier = Modifier.fillMaxWidth())
                         }
                     }

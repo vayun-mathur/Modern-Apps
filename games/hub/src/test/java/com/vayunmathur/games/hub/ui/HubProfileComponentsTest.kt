@@ -1,6 +1,8 @@
 package com.vayunmathur.games.hub.ui
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,7 +36,7 @@ class HubProfileComponentsTest {
         composeRule.setContent {
             ProfileScreen(
                 ProfileUiState(
-                    playerName = "Grace", level = 5, title = "Enthusiast", totalXp = 1700,
+                    playerName = "Grace", level = 5, title = "Casual Gamer", totalXp = 1700,
                     stats = CrossGameStats(
                         totalPlaytimeMs = 7_200_000, totalSessions = 42, totalGames = 6,
                         totalAchievementsUnlocked = 11, totalAchievements = 30, longestStreak = 14,
@@ -44,7 +46,10 @@ class HubProfileComponentsTest {
             )
         }
         composeRule.onNodeWithText("Grace").assertIsDisplayed()
-        composeRule.onNodeWithText("Enthusiast").assertIsDisplayed()
+        // Title and level show once, in the XP bar header - not again as their own lines.
+        composeRule.onNodeWithText("Level 5 • Casual Gamer").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Casual Gamer").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Level 5").assertCountEquals(0)
         composeRule.onNodeWithText("Grace", substring = true).assertIsDisplayed()
     }
 

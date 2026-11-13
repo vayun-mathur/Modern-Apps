@@ -108,8 +108,8 @@ fun ProfileScreen(
                             AvatarBadge(symbol = state.avatarSymbol, large = true)
                         }
                         Text(text = state.playerName ?: stringResource(R.string.player), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Text(text = state.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                        Text(stringResource(R.string.level_1, state.level), style = MaterialTheme.typography.labelLarge)
+                        // Level and title are shown once, in XpProgressBar's "Level N • <title>"
+                        // header; separate title and "Level N" lines repeated both (#ux-audit).
                         XpProgressBar(totalXp = state.totalXp, modifier = Modifier.fillMaxWidth())
                     }
                 }

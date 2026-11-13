@@ -1,6 +1,8 @@
 package com.vayunmathur.games.hub.ui
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -51,7 +53,7 @@ class HubScreensTest {
         composeRule.setContent {
             DashboardScreen(
                 DashboardUiState(
-                    playerName = "Ada", level = 3, title = "Casual Gamer", totalXp = 450,
+                    playerName = "Ada", level = 4, title = "Casual Gamer", totalXp = 900,
                     stats = CrossGameStats(
                         totalPlaytimeMs = 5_400_000, totalGames = 4,
                         totalAchievementsUnlocked = 7, totalAchievements = 20,
@@ -63,7 +65,9 @@ class HubScreensTest {
             )
         }
         composeRule.onNodeWithText("Ada").assertIsDisplayed()
-        composeRule.onNodeWithText("Casual Gamer").assertIsDisplayed()
+        // Level and title appear exactly once, in the XP bar header.
+        composeRule.onNodeWithText("Level 4 • Casual Gamer").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Casual Gamer", substring = true).assertCountEquals(1)
         composeRule.onNodeWithText("1h 30m").assertIsDisplayed()
         composeRule.onNodeWithText("7/20").assertIsDisplayed()
         composeRule.onNodeWithText("Ada").performClick()
@@ -76,7 +80,7 @@ class HubScreensTest {
             DashboardScreen(DashboardUiState(), DashboardActions.Noop)
         }
         composeRule.onNodeWithText(str(R.string.player)).assertIsDisplayed()
-        composeRule.onNodeWithText("Beginner").assertIsDisplayed()
+        composeRule.onNodeWithText("Level 1 • Beginner").assertIsDisplayed()
     }
 
     @Test
