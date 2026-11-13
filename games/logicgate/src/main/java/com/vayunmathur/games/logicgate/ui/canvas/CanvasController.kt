@@ -50,6 +50,9 @@ class CanvasController(
     private var layout: CircuitLayout? = null
     private var lookup: PinLookup? = null
 
+    /** Where the carried node was grabbed, in world units. */
+    private var grab = Offset.Zero
+
     var onReject: (PinRef, ConnectCheck) -> Unit = { _, _ -> }
     var onEditBus: (Int) -> Unit = {}
     var onPickup: () -> Unit = {}
@@ -137,16 +140,20 @@ class CanvasController(
         }
     }
 
-    override fun startMove(id: NodeId) {
+    override fun startMove(id: NodeId, screen: Offset) {
         val node = state?.circuit?.node(id) ?: return
+        grab = world(screen)
         drag = Drag.Moving(id, node.pos, Offset.Zero)
         trash.armed = node is Gate || state?.sandbox != null
         onPickup()
     }
 
-    override fun dragMove(delta: Offset, screen: Offset) {
+    override fun dragMove(screen: Offset) {
         val m = drag as? Drag.Moving ?: return
-        drag = m.copy(delta = m.delta + delta / camera.camera.scale)
+        if (m.releasedOn != null) return
+        // Relative to the grab point in world units, so the node stays under the finger even
+        // when the camera pans or zooms beneath it.
+        drag = m.copy(delta = world(screen) - grab)
         val over = trash.armed && trash.contains(screen)
         if (over && !trash.hovering) onTrashEnter()
         trash.hovering = over
@@ -172,6 +179,16 @@ class CanvasController(
 
     override fun pan(delta: Offset) = camera.pan(delta)
 
+    override fun autoPan(screen: Offset, dtMs: Float): Boolean {
+        val d = drag ?: return false
+        if (d is Drag.Moving && (d.releasedOn != null || trash.hovering)) return false
+        val v = AutoPan.velocity(screen, camera.viewport, AUTO_PAN_EDGE_DP * density, AUTO_PAN_SPEED_DP * density)
+        if (v == Offset.Zero) return false
+        camera.pan(v * dtMs)
+        if (d is Drag.Wiring) dragWire(screen) else dragMove(screen)
+        return true
+    }
+
     override fun zoom(centroid: Offset, factor: Float) = camera.zoom(centroid, factor)
 
     override fun cancelDrag() {
@@ -189,5 +206,9 @@ class CanvasController(
         const val INNER_PIN_TOUCH_DP = 14f
         const val INNER_PIN_MAX_FRACTION = 0.3f
         const val WIRE_TOUCH_DP = 12f
+        const val AUTO_PAN_EDGE_DP = 40f
+
+        /** Peak edge auto-pan speed, dp per millisecond. */
+        const val AUTO_PAN_SPEED_DP = 0.6f
     }
 }
