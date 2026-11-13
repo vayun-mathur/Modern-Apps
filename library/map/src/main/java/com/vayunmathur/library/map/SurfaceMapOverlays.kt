@@ -78,8 +78,9 @@ private const val RGB_MASK = 0x00FFFFFF
  * cleared. The convenience path for a host that wants one line in one colour — Android
  * Auto, which has no view hierarchy to hang a Compose overlay in.
  *
- * Main thread, like everything else here. Not free, but paid once per route rather
- * than once per frame: the native side tessellates the polyline and uploads it here,
+ * Main thread, like everything else here (the stroke and upload run on the render thread).
+ * Not free, but paid once per route rather than once per frame: the native side tessellates
+ * the polyline and uploads it,
  * and never rebuilds it — the mesh is zoom-independent, so a navigation session costs
  * one tessellation however long the drive or however much the driver zooms. Setting
  * the same route again does re-tessellate, so drive this from a state change rather
@@ -153,15 +154,17 @@ internal fun SurfaceMapRenderer.dropTraffic() {
  * own feature. `internal` because it is wired through [Projection.pickMarker] like the label
  * pick, so a caller without a live renderer gets `0` rather than a dead handle.
  */
-internal fun SurfaceMapRenderer.tapMarkerAt(xDp: Float, yDp: Float): Long {
-    val h = handle
-    if (h == 0L) return 0L
-    return try {
-        MapNative.pickAt(h, xDp, yDp)
-    } catch (_: Throwable) {
-        0L
+internal fun SurfaceMapRenderer.tapMarkerAt(xDp: Float, yDp: Float): Long =
+    // The native pick renders the id buffer and waits for the GPU, so it runs on the render
+    // thread; the tap handler waits for it, bounded, and falls back to "no pin" past the bound
+    // (the host's CPU hit-test then takes over) rather than freezing the main thread.
+    queryRenderThread(PICK_TIMEOUT_MILLIS, 0L) { h ->
+        try {
+            MapNative.pickAt(h, xDp, yDp)
+        } catch (_: Throwable) {
+            0L
+        }
     }
-}
 
 /**
  * One native pick row as a [PlacedLabel], or null when the row is malformed.
@@ -191,10 +194,17 @@ private const val LABEL_FIELDS = 7
 private const val LABEL_FIELDS_LEGACY = 6
 private const val LABEL_REGION_INDEX = 6
 internal fun SurfaceMapRenderer.tapLabelsIn(box: DpRect, layerIds: Set<String>): List<PlacedLabel> {
-    val h = handle
-    if (h == 0L) return emptyList()
+    // The placed-label snapshot is native state the frame rewrites, so it is read on the
+    // render thread; parsing the rows happens back here.
+    val rows = queryRenderThread(PICK_TIMEOUT_MILLIS, emptyArray<String>()) { h ->
+        try {
+            MapNative.pickLabels(h, box.left.value, box.top.value, box.right.value, box.bottom.value)
+        } catch (_: Throwable) {
+            emptyArray()
+        }
+    }
     return try {
-        MapNative.pickLabels(h, box.left.value, box.top.value, box.right.value, box.bottom.value)
+        rows
             .asSequence()
             .map { row -> parseLabelRow(row.split('')) }
             .filter { label -> label != null && (layerIds.isEmpty() || label.layerId in layerIds) }
@@ -206,12 +216,11 @@ internal fun SurfaceMapRenderer.tapLabelsIn(box: DpRect, layerIds: Set<String>):
 }
 
 internal fun SurfaceMapRenderer.applyRoute() {
-    if (handle == 0L) return
     // Drawable segments only: fewer than two points strokes nothing, and dropping them
     // here keeps the native side's per-segment ranges aligned with the colours.
     val drawable = routeSegments?.filter { it.points.size >= 2 }
     if (drawable.isNullOrEmpty()) {
-        MapNative.clearRoute(handle)
+        onRenderThread { h -> MapNative.clearRoute(h) }
         return
     }
     // Flat lon/lat pairs across every segment, plus a point count and colour per
@@ -231,24 +240,19 @@ internal fun SurfaceMapRenderer.applyRoute() {
             at++
         }
     }
-    MapNative.setRoute(
-        handle,
-        flat,
-        lengths,
-        colors,
-        routeStyle.width.value,
-        routeStyle.casingWidth.value,
-        routeStyle.casingColor.toArgb(),
-    )
+    val width = routeStyle.width.value
+    val casingWidth = routeStyle.casingWidth.value
+    val casingColor = routeStyle.casingColor.toArgb()
+    // Packed here, stroked and uploaded on the render thread.
+    onRenderThread { h -> MapNative.setRoute(h, flat, lengths, colors, width, casingWidth, casingColor) }
 }
 
 internal fun SurfaceMapRenderer.applyRailLines() {
-    if (handle == 0L) return
     // Drawable segments only, like the route: fewer than two points strokes
     // nothing, and dropping them keeps the native per-segment ranges aligned.
     val drawable = railSegments?.filter { it.points.size >= 2 }
     if (drawable.isNullOrEmpty()) {
-        MapNative.clearRailLines(handle)
+        onRenderThread { h -> MapNative.clearRailLines(h) }
         return
     }
     val flat = FloatArray(drawable.sumOf { it.points.size } * 2)
@@ -264,26 +268,65 @@ internal fun SurfaceMapRenderer.applyRailLines() {
             at++
         }
     }
-    MapNative.setRailLines(
-        handle,
-        flat,
-        lengths,
-        colors,
-        railStyle.width.value,
-        railStyle.casingWidth.value,
-        railStyle.casingColor.toArgb(),
-    )
+    val width = railStyle.width.value
+    val casingWidth = railStyle.casingWidth.value
+    val casingColor = railStyle.casingColor.toArgb()
+    onRenderThread { h -> MapNative.setRailLines(h, flat, lengths, colors, width, casingWidth, casingColor) }
 }
 
 internal fun SurfaceMapRenderer.applyTraffic() {
-    if (handle == 0L) return
     val speeds = trafficSpeeds
-    if (speeds == null) {
-        MapNative.clearTraffic(handle)
-    } else {
-        MapNative.setTrafficSpeeds(handle, speeds.first, speeds.second)
+    onRenderThread { h ->
+        if (speeds == null) {
+            MapNative.clearTraffic(h)
+        } else {
+            MapNative.setTrafficSpeeds(h, speeds.first, speeds.second)
+        }
     }
 }
+
+internal fun SurfaceMapRenderer.applyUserPuck() {
+    val puck = userPuck
+    onRenderThread { h ->
+        if (puck == null) {
+            MapNative.clearUserPuck(h)
+        } else {
+            MapNative.setUserPuck(
+                h,
+                puck.position.longitude.toFloat(),
+                puck.position.latitude.toFloat(),
+                puck.bearing ?: 0f,
+                puck.bearing != null,
+            )
+        }
+    }
+}
+
+internal fun SurfaceMapRenderer.applyMarkers() {
+    val pins = markers
+    if (pins.isEmpty()) {
+        onRenderThread { h -> MapNative.clearMarkers(h) }
+        return
+    }
+    val packed = packMapMarkers(pins)
+    onRenderThread { h -> MapNative.setMarkers(h, packed.ids, packed.lonLat, packed.icons, packed.labels) }
+}
+
+internal fun SurfaceMapRenderer.applyVehicles() {
+    val vs = vehicles
+    if (vs.isEmpty()) {
+        onRenderThread { h -> MapNative.clearVehicles(h) }
+        return
+    }
+    val packed = packVehicles(vs)
+    onRenderThread { h -> MapNative.setVehicles(h, packed.ids, packed.lonLat, packed.icons, packed.colors) }
+}
+
+/**
+ * How long a tap waits for the render thread's pick: one in-flight frame plus the pick's own
+ * one-shot render. Past it the tap resolves as a miss and the host's fallbacks run.
+ */
+internal const val PICK_TIMEOUT_MILLIS = 250L
 
 /**
  * The fill the single-colour [setSingleRoute] convenience paints: the car's `#1A73E8`,

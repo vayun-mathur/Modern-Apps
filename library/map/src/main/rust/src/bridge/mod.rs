@@ -8,8 +8,11 @@
 //!
 //! # Threading
 //!
-//! `render` is called from Kotlin's `Choreographer` callback, so on the main thread; every
-//! Vulkan call happens there and the renderer is never driven from two threads at once.
+//! Every entry point is called from one Kotlin thread, `MapRenderThread` — a dedicated
+//! display-priority thread, never the main thread (the Kotlin side's Choreographer loop only
+//! schedules frames and hands them over). Every Vulkan call happens there and the renderer is
+//! never driven from two threads at once, which is what lets `handle_mut` hand out a plain
+//! `&mut` with no lock.
 //! Tile work — the range fetch, the gzip inflate, the MVT decode and the tessellation —
 //! runs on a worker thread and hands finished meshes back through a channel, which
 //! `render` drains. That is the split the plan asks for: the expensive half off the

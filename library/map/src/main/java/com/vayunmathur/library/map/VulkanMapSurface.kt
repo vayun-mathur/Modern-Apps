@@ -51,6 +51,10 @@ import kotlinx.coroutines.flow.StateFlow
  * [TextureView.SurfaceTextureListener.onSurfaceTextureDestroyed] means we release it, so
  * the renderer is torn down — device idle, buffers freed, `ANativeWindow` released —
  * exactly when the window goes away.
+ *
+ * Drawing into a TextureView from a thread other than the UI thread is the supported
+ * configuration (the view only consumes the `SurfaceTexture`'s buffers), which is what lets
+ * every frame run on the renderer's own render thread rather than the main thread.
  */
 @Composable
 @Suppress("LongMethod")
@@ -178,7 +182,8 @@ internal fun VulkanMapSurface(
     }
 
     // The renderer holds tens of MB of GPU tile buffers; hand them back when the system asks.
-    // Callbacks arrive on the main thread, which is the renderer's thread.
+    // Callbacks arrive on the main thread, the renderer's API thread; the trim itself (a GPU
+    // idle wait) runs on its render thread.
     DisposableEffect(context, host) {
         val callbacks = object : ComponentCallbacks2 {
             override fun onTrimMemory(level: Int) = renderer.trimMemory(level)
@@ -354,6 +359,9 @@ private class MapSurfaceHost(
     val renderer = SurfaceMapRenderer(context, density, onFrame).apply {
         composeCamera = cameraState
         this.tileSource = tileSource
+        // Native creation runs on the render thread, so a failure is reported after
+        // attachSurface returned: give the Surface back then, as the synchronous path does.
+        onStartFailed = { releaseSurface() }
     }
 
     private var surface: Surface? = null

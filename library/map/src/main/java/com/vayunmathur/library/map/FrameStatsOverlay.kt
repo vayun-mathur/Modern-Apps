@@ -42,7 +42,7 @@ private val COUNT_STEPS = setOf("eout", "phit", "cull", "bind", "fcan", "uall")
  * last frame's ms, polled from [MapNative.lastFrameStepTimesNanos].
  *
  * Off by default ([enabled]) so release pays nothing: no poll, no composition, no JNI. The
- * poll runs at ~3 Hz through [renderer]'s live handle and never touches the frame loop — it
+ * poll runs at ~3 Hz through [renderer]'s render thread and never touches the frame loop — it
  * reads the native copy rather than asking for a frame, so the overlay cannot keep the map
  * awake or change its pacing.
  *
@@ -58,16 +58,8 @@ fun FrameStatsOverlay(
     var times by remember { mutableStateOf(LongArray(0)) }
     LaunchedEffect(renderer) {
         while (isActive) {
-            val handle = renderer.handle
-            times = if (handle != 0L) {
-                try {
-                    MapNative.lastFrameStepTimesNanos(handle)
-                } catch (_: Throwable) {
-                    LongArray(0)
-                }
-            } else {
-                LongArray(0)
-            }
+            // Native state is read on the render thread; the answer lands back on main.
+            renderer.queryStepTimes { times = it }
             delay(POLL_MILLIS)
         }
     }

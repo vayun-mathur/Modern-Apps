@@ -8,8 +8,6 @@ import android.view.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpRect
 import java.io.File
 
@@ -24,16 +22,16 @@ import java.io.File
  * ## Threading
  *
  * **Every method on this class, and every property set on it, must be called on the main
- * thread**, including construction. The renderer is not safe to drive from two threads at
- * once, and the frame loop runs on the main thread's [Choreographer], so a call from
- * anywhere else races the frame currently being recorded. This is a hard requirement, not a
- * convention — there is no lock behind it.
+ * thread**, including construction. The class itself has no lock: its state, the on-demand
+ * frame loop on the main thread's [Choreographer] and the camera read are all main-thread.
  *
- * That costs less than it sounds like: the expensive work (range fetch, inflate, MVT decode,
- * tessellation) happens on worker threads inside the native side, so a frame on this side
- * only uploads finished meshes and records a command buffer. Android Auto's
- * `SurfaceCallback` is dispatched on the main thread, so the car path satisfies this without
- * doing anything.
+ * The *native* renderer, though, never runs on the main thread. Every [MapNative] call — the
+ * frame, `create`/`destroy`, every setter, picks — is handed to [MapRenderThread] in call order,
+ * so the main thread only decides when to draw and what camera to draw from, and is never
+ * blocked by a frame, a GPU wait or a swapchain rebuild. Results that feed main-thread state
+ * (the render state, the tilt pivot, "draw again when") come back through a main-thread post.
+ * Android Auto's `SurfaceCallback` is dispatched on the main thread, so the car path satisfies
+ * this without doing anything.
  *
  * ## Lifecycle
  *
@@ -52,19 +50,18 @@ import java.io.File
  *
  * The surface is deliberately not owned here: [detachSurface] destroys the native renderer
  * (which waits for the GPU to go idle and drops the `ANativeWindow`) but never calls
- * [Surface.release]. Whoever created the `Surface` releases it, and only after
- * [detachSurface] has returned.
+ * [Surface.release]. Whoever created the `Surface` releases it, after [detachSurface] returns.
  *
  * ## State set before the surface exists
  *
  * [MapNative.create] deliberately takes no layer, puck or connectivity arguments, so
  * everything set through [setPalette], [setLayers], [setOnline], [setUserPuck],
  * [setRoute] and [setRegionMask] is remembered and replayed into the native renderer
- * inside [attachSurface], **before the first frame**. Without that the first resident set
- * is tessellated with the wrong layers and immediately thrown away, the puck is missing
- * until the next fix arrives a second later, the route is missing until the host happens
- * to set it again, and a surface created while offline stays pinned to cache. Setting any
- * of them while a surface is attached applies immediately.
+ * right after it is created, **before the first frame** — the render thread runs them in
+ * order behind `create`. Without that the first resident set is tessellated with the wrong
+ * layers and immediately thrown away, the puck is missing until the next fix, the route is
+ * missing until the host happens to set it again, and a surface created while offline stays
+ * pinned to cache. Setting any of them while a surface is attached applies immediately.
  *
  * @param context any [Context]; only the application context is retained.
  * @param density pixels per dp for [surface][attachSurface]'s display — `dpi / 160f` on
@@ -75,8 +72,9 @@ import java.io.File
  *
  * Public setters mirror the render-state surface one-for-one (palette, layers, puck,
  * markers, vehicles, route, rail, traffic, region, connectivity, Moon textures); the
- * route/traffic/picking halves live as extensions in SurfaceMapOverlays.kt, so this
- * file holds only frame-loop, surface-lifecycle and attach-replay logic.
+ * route/traffic/picking halves live as extensions in SurfaceMapOverlays.kt and the
+ * render-thread frame in SurfaceMapFrame.kt, so this file holds only frame-loop,
+ * surface-lifecycle and attach-replay logic.
  */
 @Suppress("TooManyFunctions")
 class SurfaceMapRenderer(
@@ -87,8 +85,7 @@ class SurfaceMapRenderer(
 
     /**
      * Convenience for a host whose surface already exists at construction time: identical to
-     * building the renderer and immediately calling [attachSurface]. Check [renderState]
-     * afterwards — creation is synchronous, so it is already final when this returns.
+     * building the renderer and immediately calling [attachSurface].
      *
      * The frame loop is *not* started; call [start].
      */
@@ -104,7 +101,27 @@ class SurfaceMapRenderer(
     }
 
     private val appContext = context.applicationContext
+
+    /**
+     * The native handle as last reported to the main thread: nonzero once `create` succeeded,
+     * zero before, after a failure and after [detachSurface]. Informational on this side;
+     * native calls go through [link], which owns the render thread's own copy.
+     */
     internal var handle = 0L
+        private set
+
+    /** The native renderer on [MapRenderThread]: every native call goes through it. */
+    private val link = MapNativeLink()
+
+    /** Whether a native renderer exists or is being created (see [MapNativeLink.attached]). */
+    private val attached: Boolean get() = link.attached
+
+    /** A frame is on the render thread; the loop does not queue a second behind it. */
+    private var frameInFlight = false
+
+    /** A vsync arrived while [frameInFlight]: draw again the moment the current frame lands. */
+    private var frameOwed = false
+
     private var widthPx = 0
     private var heightPx = 0
 
@@ -130,7 +147,7 @@ class SurfaceMapRenderer(
     /**
      * The camera and viewport the last frame was actually drawn from, so a change that reaches
      * the renderer without passing through a setter is still noticed. The Compose path *pulls*
-     * its camera out of [composeCamera] inside [renderFrame] and nothing tells us when a
+     * its camera out of [composeCamera] when a frame is dispatched and nothing tells us when a
      * gesture or animation moves it, so this is the backstop under the push channel
      * `VulkanMapSurface` installs.
      */
@@ -155,7 +172,7 @@ class SurfaceMapRenderer(
         }
 
     /**
-     * Compose reads its camera out of a [CameraState] inside the frame callback, so that a
+     * Compose reads its camera out of a [CameraState] when each frame is dispatched, so that a
      * gesture or animation lands in the very next frame rather than a snapshot-propagation
      * later. Setting this makes the loop take both the camera and the dp viewport from that
      * state (skipping any frame whose viewport is not measured yet) instead of from [camera]
@@ -175,20 +192,26 @@ class SurfaceMapRenderer(
     /**
      * Whether this surface is drawing, or why it is not.
      *
-     * Backed by Compose state so [VulkanMapSurface] can show a fallback without polling;
-     * non-Compose hosts can just read it after [attachSurface] returns, since the native
-     * renderer is created synchronously there. Written only on the main thread, so it needs
-     * no synchronisation.
+     * Backed by Compose state so [VulkanMapSurface] can show a fallback without polling.
+     * Native creation runs on the render thread, so after [attachSurface] this reads
+     * [MapRenderState.Initialising] until the create lands a moment later and flips it to
+     * [MapRenderState.Rendering] or [MapRenderState.Unavailable]; only a missing renderer
+     * library is reported synchronously. Written only on the main thread.
      */
     var renderState: MapRenderState by mutableStateOf(MapRenderState.Initialising)
         private set
 
     /**
+     * Called on the main thread when native creation fails after [attachSurface] returned, so
+     * a host holding the [Surface] only for this renderer can release it (nothing will draw
+     * into it). Internal: [VulkanMapSurface] is the one host that needs it.
+     */
+    internal var onStartFailed: (() -> Unit)? = null
+
+    /**
      * Whether the host wants frames. Owned here rather than split across a `pause()`/
      * `resume()` pair so there is exactly one writer per input and one reconciler
-     * ([syncFrameLoop]) deciding whether the callback should be posted. The orderings that
-     * pair gets wrong — stopped before the surface arrives, surface destroyed while stopped,
-     * [start] before the handle exists — all collapse into "recompute the predicate" here.
+     * ([syncFrameLoop]) deciding whether the callback should be posted.
      */
     private var started = false
 
@@ -203,83 +226,64 @@ class SurfaceMapRenderer(
     private var online = true
 
     /** Remembered so a fix taken before the surface existed is drawn in the first frame. */
-    private var userPuck: UserPuck? = null
+    internal var userPuck: UserPuck? = null
+        private set
 
     /**
      * The app pins to draw, remembered so a set pushed before the surface existed — or one that
-     * outlives a surface being recreated — is still there in the first frame, the same way
-     * [userPuck] and [routeSegments] are.
+     * outlives a surface being recreated — is still there in the first frame.
      */
-    private var markers: List<MapMarker> = emptyList()
+    internal var markers: List<MapMarker> = emptyList()
+        private set
 
     /**
-     * The simulated transit vehicles to draw, remembered on the same terms as [markers] so a set
-     * pushed before the surface existed — or one that outlives a surface being recreated — is still
-     * there in the first frame. Kept apart from [markers] because the host pushes the two on
-     * different cadences (vehicles at ~1 Hz, pins on a tap/search).
+     * The simulated transit vehicles to draw, remembered on the same terms as [markers]. Kept
+     * apart from [markers] because the host pushes the two on different cadences (vehicles at
+     * ~1 Hz, pins on a tap/search).
      */
-    private var vehicles: List<MapMarker> = emptyList()
+    internal var vehicles: List<MapMarker> = emptyList()
+        private set
 
     /**
      * The route to draw, and how, remembered so a route set before the surface existed —
      * or one that outlives a surface being recreated — is still there in the first frame.
-     *
-     * Kept as the coloured segments rather than as anything native, because the native mesh
-     * dies with the renderer and this has to be able to rebuild it.
      */
     internal var routeSegments: List<RouteSegment>? = null
     internal var routeStyle = RouteStyle()
 
     /**
-     * The pack-driven rail-lines network to draw, and how — a second coloured
-     * overlay beside the navigation route so the network and a selected route
-     * coexist. Remembered on the same terms as [routeSegments] so a push that
-     * arrived before the surface existed is re-applied in the first frame.
+     * The pack-driven rail-lines network to draw, and how — a second coloured overlay beside
+     * the navigation route. Remembered on the same terms as [routeSegments].
      */
     internal var railSegments: List<RouteSegment>? = null
     internal var railStyle = RouteStyle()
 
-    /**
-     * The Moon raster pair, remembered so a surface attached after the push —
-     * or re-attached after a recreate — still starts with the Moon available,
-     * the same way [userPuck] and [routeSegments] are.
-     */
-    private var moonTextures: MoonTextures? = null
+    /** The Moon raster pair, remembered so a surface attached after the push still has it. */
+    internal var moonTextures: MoonTextures? = null
+        private set
 
     /**
      * The last-pushed live-traffic colour table (`component_id`s and their ARGB), remembered so
-     * a push that arrived before the surface existed — or that has to outlive the surface being
-     * recreated — is re-applied in the first frame, the same way [route] is. `null` means the
-     * overlay has nothing to draw (never pushed, or cleared).
+     * a push that arrived before the surface existed is re-applied in the first frame. `null`
+     * means the overlay has nothing to draw (never pushed, or cleared).
      */
     internal var trafficSpeeds: Pair<LongArray, IntArray>? = null
 
     /**
-     * Whether to draw the orthographic-sphere globe rather than the flat map.
-     *
-     * Pulled per frame out of the Compose `CameraState` (see [composeCamera]), like
-     * the camera itself — a `LaunchedEffect` in `VulkanMapSurface` invalidates on
-     * change, so flipping the toggle while idle still redraws. Read alongside the
-     * camera in [renderFrame] and handed to the native frame as its `globe` flag.
-     * Plain `var` (not Compose state): only ever written from effects, read on the
-     * frame callback. Default-off; the car path never sets it.
+     * Whether to draw the orthographic-sphere globe rather than the flat map. Read alongside
+     * [camera] when a frame is dispatched (the Compose path reads `CameraState.globeEnabled`
+     * instead). Default-off; the car path never sets it.
      */
     var globeEnabled: Boolean = false
 
-    /**
-     * Which body the globe draws. Earth (default) is the vector basemap; Moon is
-     * the maps-pushed raster pair (see [SurfaceMapRenderer.setMoonTextures]).
-     * Plain `var` like [globeEnabled]: written from effects, read on the frame
-     * callback. Only read while the globe is active.
-     */
+    /** Which body the globe draws: Earth (default) or the maps-pushed Moon raster pair. */
     var body: MapBody = MapBody.Earth
 
     /**
-     * Upload the Moon raster pair after attach (and after any re-attach — the
-     * native textures die with the renderer like every other GPU state, so this
-     * must be replayed; see `attachSurface`). [colorRgba] is `width x height`
-     * RGBA8, [demRg] is `demWidth x demHeight` RG8 packed uint16. Remembered so
-     * a surface attached after the push still starts with the Moon available.
+     * Upload the Moon raster pair after attach (and after any re-attach — the native textures
+     * die with the renderer like every other GPU state). [colorRgba] is `width x height`
+     * RGBA8, [demRg] is `demWidth x demHeight` RG8 packed uint16. The ~36 MB upload runs on
+     * the render thread.
      */
     fun setMoonTextures(
         colorRgba: ByteArray,
@@ -290,9 +294,7 @@ class SurfaceMapRenderer(
         demHeight: Int,
     ) {
         moonTextures = MoonTextures(colorRgba, width, height, demRg, demWidth, demHeight)
-        if (handle != 0L) {
-            MapNative.setMoonTextures(handle, colorRgba, width, height, demRg, demWidth, demHeight)
-        }
+        applyMoonTextures()
         invalidate()
     }
 
@@ -300,18 +302,20 @@ class SurfaceMapRenderer(
     fun clearMoonTextures() {
         if (moonTextures == null) return
         moonTextures = null
-        if (handle != 0L) MapNative.clearMoonTextures(handle)
+        onRenderThread { h -> MapNative.clearMoonTextures(h) }
         invalidate()
     }
 
     /**
      * Release memory for [ComponentCallbacks2.onTrimMemory]. From
      * [ComponentCallbacks2.TRIM_MEMORY_BACKGROUND] up every resident tile goes (the next frame
-     * refetches what it needs); below it only off-screen tiles do.
+     * refetches what it needs); below it only off-screen tiles do. The native trim waits for
+     * the GPU to go idle, which is why it runs on the render thread.
      */
     fun trimMemory(level: Int) {
-        if (handle == 0L) return
-        MapNative.trimMemory(handle, keepVisible = level < ComponentCallbacks2.TRIM_MEMORY_BACKGROUND)
+        if (!attached) return
+        val keepVisible = level < ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
+        onRenderThread { h -> MapNative.trimMemory(h, keepVisible) }
         invalidate()
     }
 
@@ -319,23 +323,16 @@ class SurfaceMapRenderer(
     private var selectedRegionId: Long? = null
 
     /**
-     * Whether [selectedRegionId] has been matched to resident tiles yet.
-     *
-     * The match needs the region's tiles to be resident, and a selection usually arrives before
-     * they are - tapping a city label recentres the map, so the tiles under the new camera are
-     * still in flight. So an unresolved id is retried each frame until it lands rather than
-     * being dropped, which is the difference between the mask appearing and the mask silently
-     * never appearing.
+     * Whether [selectedRegionId] has been matched to resident tiles yet, as last reported by a
+     * frame. Only the loop's retry cadence reads it; the retry itself runs on the render thread
+     * right after each frame (see [NativeRegionMask]).
      */
     private var regionResolved = true
 
     /**
-     * Where cached byte ranges live: the app cache dir, so "Clear cache" in
-     * system settings reclaims them like any other cache. Previously external
-     * files, where only "Clear storage" could reach them.
-     *
-     * The platform may evict this first under storage pressure, which is fine:
-     * every entry re-streams on demand, and offline areas simply re-download.
+     * Where cached byte ranges live: the app cache dir, so "Clear cache" in system settings
+     * reclaims them like any other cache. Resolved on the render thread (first use deletes a
+     * stale legacy directory recursively, which is disk work the main thread must not do).
      */
     private val cacheDir: File by lazy {
         deleteStaleExternalCache()
@@ -343,10 +340,9 @@ class SurfaceMapRenderer(
     }
 
     /**
-     * One-time reclaim: older builds kept the range cache at
-     * externalFilesDir/vectortilecache/, invisible to "Clear cache". The
-     * entries are keyed by URL + range, so nothing here can be confused for
-     * the new location's — delete the whole stale directory.
+     * One-time reclaim: older builds kept the range cache at externalFilesDir/vectortilecache/,
+     * invisible to "Clear cache". The entries are keyed by URL + range, so nothing here can be
+     * confused for the new location's — delete the whole stale directory.
      */
     private fun deleteStaleExternalCache() {
         val external = appContext.getExternalFilesDir(null) ?: return
@@ -363,30 +359,44 @@ class SurfaceMapRenderer(
     var tileSource: TileSource = TileSource.Server
 
     /**
-     * A `.mamaps` archive pushed to the device's external files dir, if present and
-     * [tileSource] is [TileSource.LocalFile]. When it exists the renderer opens it
-     * directly and does no networking; otherwise this is `null` and the renderer uses
-     * the built-in URL and its range cache unchanged (including the LocalFile fallback
-     * when no archive was pushed).
+     * A `.mamaps` archive pushed to the device's external files dir, if present and [source]
+     * is [TileSource.LocalFile]; otherwise `null` and the renderer uses the built-in URL and
+     * its range cache. Disk work, so called on the render thread.
      */
-    private val localArchivePath: String?
-        get() {
-            if (tileSource != TileSource.LocalFile) return null
-            val root = appContext.getExternalFilesDir(null) ?: appContext.filesDir
-            val local = File(root, LOCAL_ARCHIVE_NAME)
-            return if (local.exists()) local.absolutePath else null
-        }
+    private fun localArchivePath(source: TileSource): String? {
+        if (source != TileSource.LocalFile) return null
+        val root = appContext.getExternalFilesDir(null) ?: appContext.filesDir
+        val local = File(root, LOCAL_ARCHIVE_NAME)
+        return if (local.exists()) local.absolutePath else null
+    }
+
+    /**
+     * Run [block] with the live native handle on the render thread, after every native call
+     * issued before it. Dropped when no surface is attached (the state it would apply is
+     * remembered and replayed on the next attach) and skipped on the render thread when the
+     * create failed. The single funnel for native calls from this class and its extensions.
+     */
+    internal fun onRenderThread(block: (Long) -> Unit) = link.post(block)
+
+    /**
+     * Run [block] on the render thread and wait for its answer, at most [timeoutMillis]; [fallback]
+     * with no surface, after a failed create, or past the bound. For the synchronous queries
+     * (picks) only — everything else posts.
+     */
+    internal fun <T> queryRenderThread(timeoutMillis: Long, fallback: T, block: (Long) -> T): T =
+        link.query(timeoutMillis, fallback, block)
 
     /**
      * Bring the native renderer up on [surface] at [widthPx] x [heightPx] pixels, replaying
      * the deferred theme, layers, connectivity, puck and region mask before any frame is
-     * drawn. [renderState] is final when this returns.
+     * drawn. Creation runs on the render thread: [renderState] reads
+     * [MapRenderState.Initialising] until it lands (see [renderState], [onStartFailed]).
      *
      * Any previously attached surface is torn down first. The caller keeps ownership of
      * [surface] and must not release it until after [detachSurface] or [destroy].
      */
     fun attachSurface(surface: Surface, widthPx: Int, heightPx: Int) {
-        if (handle != 0L) detachSurface()
+        if (attached) detachSurface()
         this.widthPx = widthPx
         this.heightPx = heightPx
         // A new native renderer has drawn nothing, so the previous surface's snapshot must not
@@ -397,18 +407,29 @@ class SurfaceMapRenderer(
             renderState = MapRenderState.Unavailable(MapRenderState.Reason.RendererLibraryMissing)
             return
         }
-        handle = MapNative.create(surface, cacheDir.absolutePath, localArchivePath, widthPx, heightPx, dark, muted)
-        if (handle == 0L) {
-            Log.error(TAG, "the Vulkan renderer failed to start; see MapRenderer in logcat")
-            renderState = MapRenderState.Unavailable(MapRenderState.Reason.RendererStartFailed)
-            return
+        val source = tileSource
+        link.create(
+            surface, { cacheDir.absolutePath }, { localArchivePath(source) }, widthPx, heightPx, dark, muted,
+            ::onCreated,
+        )
+        // Queued behind `create`, so the very first resident set is tessellated with the
+        // layers the host asked for instead of being built and then invalidated.
+        replayDeferredState()
+        syncFrameLoop()
+        // The whole deferred set was just replayed into a brand-new native renderer, and the
+        // resident set is empty, so this surface owes a frame whatever the loop was doing.
+        invalidate()
+    }
+
+    private fun replayDeferredState() {
+        val online = online
+        val layers = layers
+        onRenderThread { h ->
+            MapNative.setOnline(h, online)
+            MapNative.setLayers(h, layers.poi, layers.transit, layers.poiKinds.joinToString(","))
+            MapNative.setTrafficEnabled(h, layers.traffic)
+            MapNative.setSafetyEnabled(h, layers.safety)
         }
-        MapNative.setOnline(handle, online)
-        // Before the first frame, so the very first resident set is tessellated with
-        // the layers the host asked for instead of being built and then invalidated.
-        MapNative.setLayers(handle, layers.poi, layers.transit, layers.poiKinds.joinToString(","))
-        MapNative.setTrafficEnabled(handle, layers.traffic)
-        MapNative.setSafetyEnabled(handle, layers.safety)
         applyUserPuck()
         applyRoute()
         applyRailLines()
@@ -417,10 +438,20 @@ class SurfaceMapRenderer(
         applyMarkers()
         applyVehicles()
         applyMoonTextures()
+    }
+
+    /** The create result, back on the main thread. Ignored when the surface already moved on. */
+    private fun onCreated(nativeHandle: Long) {
+        if (nativeHandle == 0L) {
+            Log.error(TAG, "the Vulkan renderer failed to start; see MapRenderer in logcat")
+            link.createFailed()
+            renderState = MapRenderState.Unavailable(MapRenderState.Reason.RendererStartFailed)
+            syncFrameLoop()
+            onStartFailed?.invoke()
+            return
+        }
+        handle = nativeHandle
         renderState = MapRenderState.Rendering
-        syncFrameLoop()
-        // The whole deferred set was just replayed into a brand-new native renderer, and the
-        // resident set is empty, so this surface owes a frame whatever the loop was doing.
         invalidate()
     }
 
@@ -428,7 +459,7 @@ class SurfaceMapRenderer(
     fun resize(widthPx: Int, heightPx: Int) {
         this.widthPx = widthPx
         this.heightPx = heightPx
-        if (handle != 0L) MapNative.resize(handle, widthPx, heightPx)
+        onRenderThread { h -> MapNative.resize(h, widthPx, heightPx) }
         invalidate()
     }
 
@@ -436,18 +467,18 @@ class SurfaceMapRenderer(
      * Destroy the native renderer and stop drawing, leaving this instance reusable: a later
      * [attachSurface] brings it back up with all the deferred state intact.
      *
-     * Does not release the [Surface] — that is the caller's, and releasing it before this
-     * returns would pull the window out from under a GPU that has not gone idle yet.
+     * Waits (bounded, [DETACH_WAIT_MILLIS]) for the render thread to destroy the native side,
+     * which waits for the GPU and drops the `ANativeWindow` (see [MapNativeLink.destroy]).
      */
     fun detachSurface() {
-        if (handle != 0L) {
-            MapNative.destroy(handle)
-            handle = 0L
-        }
+        link.destroy(DETACH_WAIT_MILLIS)
+        handle = 0L
+        frameInFlight = false
+        frameOwed = false
         // Back to Initialising, not sticky-Unavailable: the surface is gone, and a surface
         // that is recreated (navigation, backgrounding) gets a fresh attempt.
         renderState = MapRenderState.Initialising
-        // handle is now 0, so this is what removes the callback.
+        // Not attached any more, so this is what removes the callback.
         syncFrameLoop()
     }
 
@@ -462,10 +493,7 @@ class SurfaceMapRenderer(
 
     /**
      * Stop driving frames without tearing the renderer down, for a host that is off screen.
-     * Idempotent.
-     *
-     * This stops *rendering* only. In-flight tile fetches on the native side are not paused,
-     * and that is where the data cost is, so this does not fully quiesce the map.
+     * Idempotent. In-flight tile fetches on the native side are not paused.
      */
     fun stop() {
         started = false
@@ -481,70 +509,31 @@ class SurfaceMapRenderer(
     /**
      * Draw exactly one frame, for a host driving its own loop instead of using
      * [start]/[stop]. Returns whether a frame was actually presented — false when there is
-     * no renderer, no measured viewport, or the swapchain needed rebuilding.
+     * no renderer, no measured viewport, the swapchain needed rebuilding, or the render thread
+     * did not answer within [FRAME_CALL_TIMEOUT_MILLIS].
      *
-     * Uses `System.nanoTime()` as the animation clock; the Choreographer loop passes its own
-     * `frameTimeNanos` through the [renderFrame]`(Long)` overload instead.
+     * Uses `System.nanoTime()` as the animation clock; see the overload for a supplied clock.
      */
     fun renderFrame(): Boolean = renderFrame(System.nanoTime())
 
     /**
-     * As [renderFrame], but with the frame clock supplied by the caller — the Choreographer's
-     * `frameTimeNanos`, which the renderer forwards to shaders so animation is tied to the
+     * As [renderFrame], but with the frame clock supplied by the caller (a Choreographer
+     * `frameTimeNanos`), which the renderer forwards to shaders so animation is tied to the
      * presented frame rather than to wall-clock jitter.
      */
     fun renderFrame(frameTimeNanos: Long): Boolean {
         val snapshot = readFrameSnapshot() ?: return false
         trackFrameChange(snapshot)
-        refreshTiltPivot(snapshot)
-        val drawn = renderSnapshot(snapshot, frameTimeNanos)
-        if (drawn) onFrame()
-        if (!regionResolved) applyRegionMask()
-        return drawn
+        val result = link.frameNow(snapshot, density, frameTimeNanos, wantsPivot(snapshot), FRAME_CALL_TIMEOUT_MILLIS)
+        applyFrameResult(result, snapshot)
+        if (result.drawn) onFrame()
+        return result.drawn
     }
 
-    /**
-     * Refresh the Compose camera's tilt pivot from the resident heightmaps, so overlays
-     * positioned through [Projection] pivot on the same terrain the basemap draws with.
-     *
-     * Only under pitch on the flat path — the renderer's own gate (`Renderer::render`
-     * resolves its pivot exactly when `pitch > 0` off-globe) — and only on the Compose
-     * path, which is the sole reader of the pivot state. Writes only on change, so a
-     * settled pivot costs no recomposition; while tiles stream in the pivot converges and
-     * overlays track it a frame behind the basemap. A dead handle cannot reach here
-     * (`readFrameSnapshot` returns null first), and the native side answers 0.0 — the
-     * legacy sea-level pivot — wherever no resident tile has DEM.
-     */
-    private fun refreshTiltPivot(snapshot: FrameSnapshot) {
-        val state = composeCamera ?: return
-        val position = snapshot.position
-        if (position.pitch <= 0.0 || snapshot.globe) {
-            if (state.pivotDp != 0.0) state.pivotDp = 0.0
-            return
-        }
-        val pivot = MapNative.tiltPivotDp(
-            handle,
-            position.target.longitude.toFloat(),
-            position.target.latitude.toFloat(),
-            position.zoom.toFloat(),
-        )
-        if (pivot != state.pivotDp) state.pivotDp = pivot
-    }
-
-    /** Camera + viewport + globe state for one frame, or null when nothing can draw. */
-    private data class FrameSnapshot(
-        val position: CameraPosition,
-        val widthDp: Float,
-        val heightDp: Float,
-        val globe: Boolean,
-        val moon: Boolean
-    ) {
-        /** True when this frame would draw anything different from [previous]. */
-        fun hasChangedSince(previous: FrameSnapshot?): Boolean = previous == null || this != previous
-    }
+    private fun wantsPivot(snapshot: FrameSnapshot): Boolean = composeCamera != null && snapshot.wantsPivot
 
     private fun readFrameSnapshot(): FrameSnapshot? {
-        if (handle == 0L) return null
+        if (!attached) return null
         val state = composeCamera
         if (state != null) {
             val viewport = state.viewportDp ?: return null
@@ -555,7 +544,7 @@ class SurfaceMapRenderer(
                 widthDp = viewport.width,
                 heightDp = viewport.height,
                 globe = globe,
-                moon = globe && state.body == MapBody.Moon
+                moon = globe && state.body == MapBody.Moon,
             )
         }
         if (widthPx <= 0 || heightPx <= 0 || density <= 0f) return null
@@ -565,7 +554,7 @@ class SurfaceMapRenderer(
             widthDp = widthPx / density,
             heightDp = heightPx / density,
             globe = globe,
-            moon = globe && body == MapBody.Moon
+            moon = globe && body == MapBody.Moon,
         )
     }
 
@@ -578,41 +567,31 @@ class SurfaceMapRenderer(
         lastChangeNanos = System.nanoTime()
     }
 
-    private fun renderSnapshot(snapshot: FrameSnapshot, frameTimeNanos: Long): Boolean {
-        // The Compose path carries the twist-gesture bearing end to end: `CameraState`
-        // holds it, `Projection` rotates overlays with it, and the native frame below draws
-        // the basemap with it — so the basemap and everything positioned through the
-        // projection turn together. Tilt is honoured the same way on both paths.
-        val position = snapshot.position
-        return MapNative.render(
-            handle,
-            position.target.longitude.toFloat(),
-            position.target.latitude.toFloat(),
-            position.zoom.toFloat(),
-            position.bearing.toFloat(),
-            position.pitch.toFloat(),
-            snapshot.widthDp,
-            snapshot.heightDp,
-            density,
-            frameTimeNanos,
-            snapshot.globe,
-            snapshot.moon,
-        )
+    /**
+     * Fold a frame's main-thread-visible results back in: the region retry state and the
+     * Compose camera's tilt pivot, so overlays positioned through [Projection] pivot on the
+     * same terrain the basemap draws with. Writes the pivot only on change, so a settled pivot
+     * costs no recomposition; off the tilted flat path it resets to the sea-level 0.0.
+     */
+    private fun applyFrameResult(result: FrameResult, snapshot: FrameSnapshot) {
+        regionResolved = !result.regionPending
+        val state = composeCamera ?: return
+        val pivot = if (snapshot.wantsPivot) result.pivotDp else 0.0
+        if (!pivot.isNaN() && pivot != state.pivotDp) state.pivotDp = pivot
     }
 
     private fun syncFrameLoop() {
-        if (started && handle != 0L) requestFrame() else cancelFrame()
+        if (started && attached) requestFrame() else cancelFrame()
     }
 
     /**
      * Ask for a frame because something changed, and re-arm the idle grace.
      *
      * The renderer draws **on demand**, not every vsync: rendering a still map at 60 Hz did
-     * full Vulkan work on the main thread for an identical picture, which is what made the
-     * device hot. Every setter here calls this, and so must anything outside that mutates what
-     * the renderer would draw. It is public and cheap for that reason — a host that is unsure
-     * whether a change is already covered should call it, because the cost of a wasted frame
-     * is one frame and the cost of a missed one is a map that has silently stopped updating.
+     * full Vulkan work for an identical picture, which is what made the device hot. Every
+     * setter here calls this, and so must anything outside that mutates what the renderer
+     * would draw. It is public and cheap for that reason — the cost of a wasted frame is one
+     * frame and the cost of a missed one is a map that has silently stopped updating.
      *
      * Main thread, like everything else here. Idempotent within a frame.
      *
@@ -627,14 +606,13 @@ class SurfaceMapRenderer(
 
     /**
      * How many times the loop has been woken. Test seam for the on-demand contract: every
-     * public mutator must wake the loop, and [FrameLoopWakeTest] asserts each one does. A
-     * setter that stops calling [invalidate] fails there instead of freezing the map on device.
+     * public mutator must wake the loop, and [FrameLoopWakeTest] asserts each one does.
      */
     internal var wakeCount = 0
         private set
 
     private fun requestFrame() {
-        if (!started || handle == 0L) return
+        if (!started || !attached) return
         if (posted) {
             // Already scheduled for the next vsync — nothing to do.
             if (!postedDelayed) return
@@ -650,14 +628,10 @@ class SurfaceMapRenderer(
 
     /**
      * Ask for one frame [delayMillis] from now, for work that is pending but not yet due —
-     * today, a failed tile waiting out its retry backoff.
-     *
-     * Posting it immediately would spin through the whole backoff at 60fps, and not posting it
-     * at all would leave the tile missing until the user happened to move the camera. Any
-     * [invalidate] in the meantime supersedes it.
+     * today, a failed tile waiting out its retry backoff. Any [invalidate] supersedes it.
      */
     private fun requestFrameDelayed(delayMillis: Long) {
-        if (posted || !started || handle == 0L) return
+        if (posted || !started || !attached) return
         posted = true
         postedDelayed = true
         Choreographer.getInstance().postFrameCallbackDelayed(frameCallback, delayMillis)
@@ -677,11 +651,49 @@ class SurfaceMapRenderer(
         postedDelayed = false
         // stop() and detachSurface() cannot un-post a callback Choreographer has already
         // dispatched for this frame, so the predicate is re-checked here rather than trusted.
-        if (!started || handle == 0L) return
-        val drawn = renderFrame(frameTimeNanos)
+        if (!started || !attached) return
+        // The render thread is still on the previous frame. Queueing a second behind it would
+        // draw a stale camera late; instead the current frame's completion draws the newest
+        // camera immediately (see onFrameDone), so a slow frame costs latency, never a backlog.
+        if (frameInFlight) {
+            frameOwed = true
+            return
+        }
+        dispatchFrame(frameTimeNanos)
+    }
+
+    /**
+     * Read this frame's camera on the main thread and hand the frame to the render thread.
+     * The main thread's share of a frame is this read plus one queue post.
+     */
+    private fun dispatchFrame(frameTimeNanos: Long) {
+        val snapshot = readFrameSnapshot()
+        if (snapshot == null) {
+            // No measured viewport yet: try again next vsync, as a frame that did not draw.
+            requestFrame()
+            return
+        }
+        trackFrameChange(snapshot)
+        frameInFlight = true
+        link.frame(snapshot, density, frameTimeNanos, wantsPivot(snapshot)) { result -> onFrameDone(snapshot, result) }
+    }
+
+    /** A render-thread frame landed: apply its results and decide when the next one runs. */
+    private fun onFrameDone(snapshot: FrameSnapshot, result: FrameResult) {
+        frameInFlight = false
+        applyFrameResult(result, snapshot)
+        if (result.drawn) onFrame()
+        if (!started || !attached) return
+        // A vsync came and went while this frame was drawing: the camera has likely moved
+        // again, so draw the newest one now rather than waiting out another vsync.
+        if (frameOwed) {
+            frameOwed = false
+            dispatchFrame(System.nanoTime())
+            return
+        }
         // A frame that did not present has not shown the change that asked for it: the
-        // swapchain was rebuilt, or the viewport is not measured yet. Either way, try again.
-        if (!drawn) {
+        // swapchain was rebuilt, no image was free, or the viewport is not measured yet.
+        if (!result.drawn) {
             requestFrame()
             return
         }
@@ -693,7 +705,7 @@ class SurfaceMapRenderer(
         // An unresolved region mask retries once its tiles land, which is a frame the native
         // side already asks for; with nothing pending (offline, say) it polls on a slow cadence
         // rather than spinning the loop at 60 fps.
-        val delay = MapNative.nextFrameDelayMillis(handle)
+        val delay = result.nextDelayMillis
         when {
             delay == 0L -> requestFrame()
             delay > 0L -> requestFrameDelayed(if (regionResolved) delay else minOf(delay, REGION_RETRY_MILLIS))
@@ -705,7 +717,7 @@ class SurfaceMapRenderer(
     fun setPalette(dark: Boolean, muted: Boolean) {
         this.dark = dark
         this.muted = muted
-        if (handle != 0L) MapNative.setPalette(handle, dark, muted)
+        onRenderThread { h -> MapNative.setPalette(h, dark, muted) }
         invalidate()
     }
 
@@ -715,10 +727,11 @@ class SurfaceMapRenderer(
      */
     fun setLayers(options: LayerOptions) {
         this.layers = options
-        if (handle != 0L) {
-            MapNative.setLayers(handle, options.poi, options.transit, options.poiKinds.joinToString(","))
-            MapNative.setTrafficEnabled(handle, options.traffic)
-            MapNative.setSafetyEnabled(handle, options.safety)
+        val kinds = options.poiKinds.joinToString(",")
+        onRenderThread { h ->
+            MapNative.setLayers(h, options.poi, options.transit, kinds)
+            MapNative.setTrafficEnabled(h, options.traffic)
+            MapNative.setSafetyEnabled(h, options.safety)
         }
         invalidate()
     }
@@ -736,7 +749,7 @@ class SurfaceMapRenderer(
      */
     fun setOnline(online: Boolean) {
         this.online = online
-        if (handle != 0L) MapNative.setOnline(handle, online)
+        onRenderThread { h -> MapNative.setOnline(h, online) }
         invalidate()
     }
 
@@ -752,9 +765,8 @@ class SurfaceMapRenderer(
 
     /**
      * Replace the app's pins with [markers], drawn by the renderer as billboarded sprites so they
-     * pan and tilt in lock-step with the basemap instead of trailing it the way a Compose overlay
-     * does. An empty list clears them. Cheap: the geometry is the shared unit quad, so this is a
-     * pure state push, no tessellation.
+     * pan and tilt in lock-step with the basemap. An empty list clears them. Cheap: the geometry
+     * is the shared unit quad, so this is a pure state push, no tessellation.
      */
     fun setMarkers(markers: List<MapMarker>) {
         this.markers = markers
@@ -763,13 +775,9 @@ class SurfaceMapRenderer(
     }
 
     /**
-     * Replace the simulated transit vehicles with [vehicles], drawn by the renderer as billboarded
-     * sprites through the same path as [setMarkers]. An empty list clears them. Cheap: the geometry
-     * is the shared unit quad, so this is a pure state push, no tessellation.
-     *
-     * Separate from [setMarkers] so the host's ~1 Hz vehicle recompute replaces only the vehicles
-     * and leaves the app pins untouched; drive it from the vehicle ticker rather than merging it
-     * into the pin set.
+     * Replace the simulated transit vehicles with [vehicles], drawn through the same path as
+     * [setMarkers]. An empty list clears them. Separate from [setMarkers] so the host's ~1 Hz
+     * vehicle recompute replaces only the vehicles and leaves the app pins untouched.
      */
     fun setVehicles(vehicles: List<MapMarker>) {
         this.vehicles = vehicles
@@ -783,7 +791,7 @@ class SurfaceMapRenderer(
     fun setRegionMask(mask: Long?) {
         Log.dev("RegionDbg", "setRegionMask mask=$mask")
         this.selectedRegionId = mask
-        this.regionResolved = false
+        this.regionResolved = mask == null || mask == 0L
         applyRegionMask()
         invalidate()
     }
@@ -796,103 +804,25 @@ class SurfaceMapRenderer(
     internal fun pickLabels(box: DpRect, layerIds: Set<String>): List<PlacedLabel> =
         tapLabelsIn(box, layerIds)
 
-    private fun applyRegionMask() {
-        if (handle == 0L) return
-        val id = selectedRegionId
-        if (id == null || id == 0L) {
-            MapNative.clearRegionMask(handle)
-            regionResolved = true
-            return
-        }
-        // `0` clears above; a nonzero id returns nonzero once a resident tile carries it.
-        // `0` back means the tiles have not landed yet — retried next frame, not a miss.
-        val resolved = MapNative.setRegionMask(handle, id) != 0L
-        // Logged on the transition only: this runs every retry frame while unresolved.
-        if (resolved) Log.dev("RegionDbg", "applyRegionMask id=$id resolved")
-        regionResolved = resolved
-    }
+    /**
+     * The native per-step frame times (see [MapNative.lastFrameStepTimesNanos]), delivered to
+     * [onResult] on the main thread; empty with no live renderer. For the debug overlay, which
+     * must not read native state from the main thread.
+     */
+    internal fun queryStepTimes(onResult: (LongArray) -> Unit) = link.stepTimes(onResult)
 
-    private fun applyUserPuck() {
-        if (handle == 0L) return
-        val puck = userPuck
-        if (puck == null) {
-            MapNative.clearUserPuck(handle)
-        } else {
-            MapNative.setUserPuck(
-                handle,
-                puck.position.longitude.toFloat(),
-                puck.position.latitude.toFloat(),
-                puck.bearing ?: 0f,
-                puck.bearing != null,
+    private fun applyRegionMask() = link.selectRegion(selectedRegionId)
+
+    private fun applyMoonTextures() {
+        val moon = moonTextures ?: return
+        onRenderThread { h ->
+            MapNative.setMoonTextures(
+                h,
+                moon.colorRgba, moon.width, moon.height,
+                moon.demRg, moon.demWidth, moon.demHeight,
             )
         }
     }
-
-    private fun applyMarkers() {
-        if (handle == 0L) return
-        val pins = markers
-        if (pins.isEmpty()) {
-            MapNative.clearMarkers(handle)
-            return
-        }
-        val packed = packMapMarkers(pins)
-        MapNative.setMarkers(handle, packed.ids, packed.lonLat, packed.icons, packed.labels)
-    }
-
-    private fun applyVehicles() {
-        if (handle == 0L) return
-        val vs = vehicles
-        if (vs.isEmpty()) {
-            MapNative.clearVehicles(handle)
-            return
-        }
-        val packed = packVehicles(vs)
-        MapNative.setVehicles(handle, packed.ids, packed.lonLat, packed.icons, packed.colors)
-    }
-
-    private fun applyMoonTextures() {
-        if (handle == 0L) return
-        val moon = moonTextures ?: return
-        MapNative.setMoonTextures(
-            handle,
-            moon.colorRgba, moon.width, moon.height,
-            moon.demRg, moon.demWidth, moon.demHeight,
-        )
-    }
-
-/**
- * The Moon raster pair the host pushes for the lunar globe: converted LROC
- * color (RGBA8) + converted LDEM (RG8 packed uint16). Plain holder so the
- * renderer can remember and replay it across re-attach like every other
- * deferred state.
- */
-data class MoonTextures(
-    val colorRgba: ByteArray,
-    val width: Int,
-    val height: Int,
-    val demRg: ByteArray,
-    val demWidth: Int,
-    val demHeight: Int,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is MoonTextures) return false
-        return width == other.width && height == other.height &&
-            demWidth == other.demWidth && demHeight == other.demHeight &&
-            colorRgba.contentEquals(other.colorRgba) && demRg.contentEquals(other.demRg)
-    }
-
-    override fun hashCode(): Int {
-        var result = width
-        result = 31 * result + height
-        result = 31 * result + demWidth
-        result = 31 * result + demHeight
-        result = 31 * result + colorRgba.contentHashCode()
-        result = 31 * result + demRg.contentHashCode()
-        return result
-    }
-}
-
 
     // `internal` (not `private`) so the frame-loop contract is testable: `IDLE_GRACE_NANOS`
     // is pinned by `FrameLoopWakeTest`.
@@ -909,53 +839,25 @@ data class MoonTextures(
          *
          * The renderer stops drawing when nothing is changing, so the cost of failing to
          * notice a change is a map that has frozen — far worse than the frames this wastes.
-         * A quarter of a second is long enough to cover an invalidation that arrives a frame
-         * or two late (the `snapshotFlow` push channel is one such) and short enough that an
-         * idle map settles to zero frames while the user is still looking at it. It costs
-         * nothing during an interaction, where every frame re-arms it.
-         *
-         * `internal` rather than `private` so [FrameLoopWakeTest] can pin the quarter-second:
-         * a grace of zero freezes the map whenever the push channel is one frame late, and an
-         * unbounded one re-heats the phone this loop exists to cool.
+         * A quarter of a second covers an invalidation that arrives a frame or two late (the
+         * `snapshotFlow` push channel is one such) and is short enough that an idle map
+         * settles to zero frames while the user is still looking at it.
          */
         internal val IDLE_GRACE_NANOS = java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(250)
 
         /** Retry cadence for an unresolved region mask while no tile work is pending. */
         const val REGION_RETRY_MILLIS = 500L
 
-        // DEFAULT_ROUTE_COLOR lives in SurfaceMapOverlays.kt.
-    }
-}
+        /**
+         * Upper bound on [detachSurface]'s wait for the native teardown. A frame on the render
+         * thread is bounded by the 100 ms swapchain-acquire cap plus its own few ms, and the
+         * teardown by one GPU idle; a second is far past both and still well inside an ANR.
+         */
+        const val DETACH_WAIT_MILLIS = 1_000L
 
-/**
- * The Moon raster pair the host pushes for the lunar globe: converted LROC
- * color (RGBA8) + converted LDEM (RG8 packed uint16). Plain holder so the
- * renderer can remember and replay it across re-attach like every other
- * deferred state.
- */
-data class MoonTextures(
-    val colorRgba: ByteArray,
-    val width: Int,
-    val height: Int,
-    val demRg: ByteArray,
-    val demWidth: Int,
-    val demHeight: Int,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is MoonTextures) return false
-        return width == other.width && height == other.height &&
-            demWidth == other.demWidth && demHeight == other.demHeight &&
-            colorRgba.contentEquals(other.colorRgba) && demRg.contentEquals(other.demRg)
-    }
+        /** Upper bound on [renderFrame]'s synchronous wait for one render-thread frame. */
+        const val FRAME_CALL_TIMEOUT_MILLIS = 500L
 
-    override fun hashCode(): Int {
-        var result = width
-        result = 31 * result + height
-        result = 31 * result + demWidth
-        result = 31 * result + demHeight
-        result = 31 * result + colorRgba.contentHashCode()
-        result = 31 * result + demRg.contentHashCode()
-        return result
+        // DEFAULT_ROUTE_COLOR and the pick timeout live in SurfaceMapOverlays.kt.
     }
 }
