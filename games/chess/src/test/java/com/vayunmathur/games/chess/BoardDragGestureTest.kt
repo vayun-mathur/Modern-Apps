@@ -50,4 +50,74 @@ class BoardDragGestureTest {
             "a8 must stay on the left in an RTL locale, or the drag maths would hit the mirrored file"
         )
     }
+
+    private class BoardRecorder : HapticFeedback {
+        val clicks = mutableListOf<Position>()
+        val drops = mutableListOf<Pair<Position, Position>>()
+        val haptics = mutableListOf<HapticFeedbackType>()
+        override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+            haptics += hapticFeedbackType
+        }
+    }
+
+    private fun showBoard(rec: BoardRecorder, flipped: Boolean = false) {
+        rule.setContent {
+            CompositionLocalProvider(LocalHapticFeedback provides rec) {
+                BoardGrid(
+                    board = Board.initialState, selectedPiece = null, isFlipped = flipped,
+                    turn = PieceColor.WHITE, onSquareClick = { rec.clicks += it },
+                    onSquareDrop = { from, to -> rec.drops += from to to },
+                )
+            }
+        }
+    }
+
+    /** Centre of the square drawn at visual row/column [vr]/[vc]; the board fills the root's width. */
+    private fun TouchInjectionScope.cell(vr: Int, vc: Int): Offset {
+        val side = width / 8f
+        return Offset((vc + 0.5f) * side, (vr + 0.5f) * side)
+    }
+
+    @Test fun quickFlickMovesWithoutALongPress() {
+        val rec = BoardRecorder()
+        showBoard(rec)
+        // e2 is drawn at visual (6, 4), e4 at (4, 4). No dwell before moving.
+        rule.onRoot().performTouchInput { down(cell(6, 4)); moveTo(cell(4, 4)); up() }
+        rule.waitForIdle()
+        assertEquals(listOf(sq('e', 2) to sq('e', 4)), rec.drops)
+        assertTrue(rec.clicks.isEmpty(), "a drag must not also fire the square's tap")
+    }
+
+    @Test fun flickOnAFlippedBoardMovesTheRealSquares() {
+        val rec = BoardRecorder()
+        showBoard(rec, flipped = true)
+        // Seen from Black, e2 is drawn at visual (1, 3) and e4 at (3, 3).
+        rule.onRoot().performTouchInput { down(cell(1, 3)); moveTo(cell(3, 3)); up() }
+        rule.waitForIdle()
+        assertEquals(listOf(sq('e', 2) to sq('e', 4)), rec.drops)
+    }
+
+    @Test fun dragDrawsTheFloatingPieceAndBuzzesOnPickUp() {
+        val rec = BoardRecorder()
+        showBoard(rec)
+        rule.onNodeWithTag(DRAGGED_PIECE_TAG).assertDoesNotExist()
+        rule.onRoot().performTouchInput { down(cell(6, 4)); moveTo(cell(5, 4)) }
+        rule.waitForIdle()
+        rule.onNodeWithTag(DRAGGED_PIECE_TAG).assertExists()
+        assertEquals(listOf(HapticFeedbackType.LongPress), rec.haptics, "one pickup haptic")
+        rule.onRoot().performTouchInput { up() }
+        rule.waitForIdle()
+        rule.onNodeWithTag(DRAGGED_PIECE_TAG).assertDoesNotExist()
+        assertEquals(listOf(sq('e', 2) to sq('e', 3)), rec.drops)
+    }
+
+    @Test fun swipeFromAnEmptySquareIsNotADrag() {
+        val rec = BoardRecorder()
+        showBoard(rec)
+        // e4 is empty: the press is left to taps and enclosing scrolls.
+        rule.onRoot().performTouchInput { down(cell(4, 4)); moveTo(cell(2, 4)); up() }
+        rule.waitForIdle()
+        assertTrue(rec.drops.isEmpty())
+        assertTrue(rec.haptics.isEmpty())
+    }
 }

@@ -79,7 +79,7 @@ class GameScreensTest {
         assertTrue(actions.drops.isEmpty(), "a quick tap must not start a drag")
     }
 
-    @Test fun `board grid long-press drag commits drop from e2 to e4`() {
+    @Test fun `board grid press-and-drag (even after a dwell) commits drop from e2 to e4`() {
         val actions = RecordingActions()
         rule.setContent {
             BoardGrid(board = Board.initialState, selectedPiece = null,
