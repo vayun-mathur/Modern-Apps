@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.games.voxels.data.WorldInfo
+import com.vayunmathur.games.voxels.data.WorldMode
 import com.vayunmathur.games.voxels.network.VoxelsRoles
 import com.vayunmathur.games.voxels.network.VoxelsSync
 import com.vayunmathur.library.ui.R as UiR
@@ -282,13 +285,16 @@ fun ShareOnlineDialog(
 @Composable
 fun WorldCreatorScreen(
     onBack: () -> Unit,
-    onCreate: (name: String, seedText: String) -> Unit,
+    onCreate: (name: String, seedText: String, mode: String) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var seed by remember { mutableStateOf("") }
+    // Creative is preselected: it's how every world played before modes existed.
+    var mode by remember { mutableStateOf(WorldMode.CREATIVE) }
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.TopCenter) {
+        // Scrolls: with the mode picker the form no longer fits a landscape phone's height.
         Column(
-            Modifier.fillMaxWidth().widthIn(max = 480.dp),
+            Modifier.fillMaxWidth().widthIn(max = 480.dp).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(stringResource(R.string.create_world), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
@@ -312,10 +318,22 @@ fun WorldCreatorScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(Modifier.height(12.dp))
+            Text(stringResource(R.string.game_mode), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                for ((m, label) in listOf(WorldMode.CREATIVE to R.string.mode_creative, WorldMode.SURVIVAL to R.string.mode_survival)) {
+                    if (mode == m) Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(stringResource(label)) }
+                    else OutlinedButton(onClick = { mode = m }, modifier = Modifier.weight(1f)) { Text(stringResource(label)) }
+                }
+            }
+            Text(
+                stringResource(if (mode == WorldMode.SURVIVAL) R.string.mode_survival_hint else R.string.mode_creative_hint),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            )
             Spacer(Modifier.height(24.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text(stringResource(UiR.string.cancel)) }
-                Button(onClick = { onCreate(name, seed) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.create_play)) }
+                Button(onClick = { onCreate(name, seed, mode) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.create_play)) }
             }
         }
     }

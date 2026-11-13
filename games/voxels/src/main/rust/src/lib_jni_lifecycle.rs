@@ -111,3 +111,14 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativ
 ) {
     engine::set_paused(paused);
 }
+
+/// JNI bridge for `VoxelsNative#nativeSetCreative`: the world's mode (creative allows flight and the
+/// free catalog; survival doesn't). Call before `nativeInit`.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativeSetCreative<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+    creative: jboolean,
+) {
+    engine::set_creative(creative);
+}

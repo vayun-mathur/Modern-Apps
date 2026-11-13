@@ -71,6 +71,8 @@ internal fun inventorySlotSize(width: Dp): Dp = ((width - SLOT_GAP * 8) / 9).coe
 fun InventoryOverlay(
     inventoryJson: String, recipesJson: String, blessingsJson: String, blessingCatalogJson: String,
     onClose: () -> Unit, startTab: Int = 0,
+    // Survival worlds have no free catalog.
+    creative: Boolean = true,
     // This world's achievement tier. Null until the manager has loaded from assets.
     worldAchievements: AchievementsManager? = null,
 ) {
@@ -130,6 +132,7 @@ fun InventoryOverlay(
                 }
             }
 
+            if (creative) {
             // Right catalog (creative): tap a block to add a stack. Eight 96 dp tabs don't fit the
             // 236 dp column, so the tab strip scrolls sideways.
             Column(Modifier.width(if (narrow) 160.dp else 236.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -146,6 +149,7 @@ fun InventoryOverlay(
                 Spacer(Modifier.height(8.dp))
                 val cat = when (catTab) { 0 -> catalogNatural; 1 -> catalogOres; 3 -> catalogOcean; 4 -> catalogItems; 5 -> catalogBlessings; 6 -> catalogGear; 7 -> catalogMusic; else -> catalogBuilding }
                 CatalogGrid(cat, columns = if (narrow) 3 else 4) { id -> try { VoxelsNative.giveBlock(id) } catch (_: Exception) {} }
+            }
             }
         }
         }

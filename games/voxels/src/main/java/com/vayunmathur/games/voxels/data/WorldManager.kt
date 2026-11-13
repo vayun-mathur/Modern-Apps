@@ -25,7 +25,18 @@ data class WorldMeta(
     val ownerDeviceId: String = "",
     val role: String = "",
     val keyB64: String = "",
+    // Game mode, picked at creation. Worlds saved before modes existed have no field and load as
+    // creative, which is exactly how they always played.
+    val mode: String = WorldMode.CREATIVE,
 )
+
+/** World game modes ([WorldMeta.mode]). */
+object WorldMode {
+    /** Flight and the free block catalog. */
+    const val CREATIVE = "creative"
+    /** No flight, no catalog, and a new world starts with an empty inventory. */
+    const val SURVIVAL = "survival"
+}
 
 // A world plus its resolved id (directory name) and absolute save path. Not persisted directly.
 data class WorldInfo(
@@ -63,7 +74,7 @@ object WorldManager {
         return t.hashCode()
     }
 
-    fun createWorld(ctx: Context, name: String, seed: Int, now: Long): WorldInfo {
+    fun createWorld(ctx: Context, name: String, seed: Int, now: Long, mode: String = WorldMode.CREATIVE): WorldInfo {
         val root = worldsRoot(ctx)
         // Unique directory id derived from the creation time (worlds can share display names).
         var id = "w_$now"
@@ -71,7 +82,7 @@ object WorldManager {
         while (File(root, id).exists()) { id = "w_${now}_$i"; i++ }
         val dir = File(root, id).apply { mkdirs() }
         val displayName = name.trim().ifEmpty { "New World" }
-        val meta = WorldMeta(name = displayName, seed = seed, created = now, lastPlayed = now)
+        val meta = WorldMeta(name = displayName, seed = seed, created = now, lastPlayed = now, mode = mode)
         File(dir, "world.json").writeText(json.encodeToString(WorldMeta.serializer(), meta))
         return WorldInfo(id = id, dir = dir.absolutePath, meta = meta)
     }

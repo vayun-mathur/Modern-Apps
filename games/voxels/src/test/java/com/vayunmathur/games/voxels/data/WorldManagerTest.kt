@@ -76,4 +76,12 @@ class WorldManagerTest {
         File(ctx.filesDir, "voxels_handled_requests.json").writeText("broken")
         assertTrue(WorldManager.handledRequests(ctx).isEmpty())
     }
+
+    @Test fun `game mode is saved, and worlds from before modes load as creative`() {
+        val s = WorldManager.createWorld(ctx, "Hard", 3, now = 50, mode = WorldMode.SURVIVAL)
+        assertEquals(WorldMode.SURVIVAL, WorldManager.listWorlds(ctx).first { it.id == s.id }.meta.mode)
+        val legacy = File(ctx.filesDir, "worlds/w_legacy").apply { mkdirs() }
+        File(legacy, "world.json").writeText("""{"name":"Old","seed":1,"created":1,"lastPlayed":1}""")
+        assertEquals(WorldMode.CREATIVE, WorldManager.listWorlds(ctx).first { it.id == "w_legacy" }.meta.mode)
+    }
 }

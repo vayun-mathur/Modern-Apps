@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.voxels.data.WorldInfo
 import com.vayunmathur.games.voxels.data.WorldMeta
@@ -118,5 +119,13 @@ class VoxelScreensTest {
         rule.onNodeWithContentDescription("Delete").performClick()
         rule.onNodeWithText("Delete").performClick()
         assertEquals(listOf("Alpha"), deleted)
+    }
+
+    @Test fun `the world creator offers creative and survival`() {
+        var mode = ""
+        rule.setContent { WorldCreatorScreen(onBack = {}, onCreate = { _, _, m -> mode = m }) }
+        rule.onNodeWithText("Survival").performScrollTo().performClick()
+        rule.onNodeWithText("Create & Play").performScrollTo().performClick()
+        assertEquals(com.vayunmathur.games.voxels.data.WorldMode.SURVIVAL, mode)
     }
 }

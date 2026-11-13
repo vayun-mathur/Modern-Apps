@@ -54,6 +54,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.vayunmathur.games.voxels.data.GameSettingsStore
+import com.vayunmathur.games.voxels.data.WorldMode
 import com.vayunmathur.games.voxels.domain.BackTarget
 import com.vayunmathur.games.voxels.domain.NetStatus
 import com.vayunmathur.games.voxels.network.JoinRequests
@@ -129,9 +130,12 @@ class MainActivity : ComponentActivity() {
         val worldKeyB64 = intent.getStringExtra("world_key") ?: ""
         val ownerDevice = intent.getStringExtra("owner_device") ?: ""
         val worldName = intent.getStringExtra("world_name") ?: ""
+        // Absent for worlds launched by older menus: those are creative, as they always were.
+        val creative = intent.getStringExtra("world_mode") != WorldMode.SURVIVAL
         if (VoxelsNative.isAvailable) {
             // Put the engine in host/client mode before the engine thread starts ticking.
             if (online) try { VoxelsNative.nativeSetRole(netRole) } catch (_: Exception) {}
+            try { VoxelsNative.nativeSetCreative(creative) } catch (_: Exception) {}
             // Returns immediately: the world is generated and meshed on the engine thread behind
             // the loading overlay, never on the main thread.
             initEngine(worldDir, worldSeed)
@@ -430,8 +434,8 @@ class MainActivity : ComponentActivity() {
                         // start. This Box has no pointer input, so touches still reach the look layer.
                         Box(Modifier.align(Alignment.CenterEnd).width(40.dp).height(200.dp).systemGestureExclusion())
 
-                        // Right-hand action cluster: Use beside two stacked buttons (walking: Jump / Sneak,
-                        // flying: Up / Down; double-tap the top one to toggle flying). It sits above the
+                        // Right-hand action cluster: Fly (creative) over Use, beside two stacked buttons
+                        // (walking: Jump / Sneak, flying: Up / Down). It sits above the
                         // hotbar (8 dp slot padding + 52 dp slots + 12 dp offset) so Sneak no longer
                         // covers the last hotbar slots.
                         Row(
@@ -439,13 +443,30 @@ class MainActivity : ComponentActivity() {
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            // Use/attack whatever is under the crosshair, repeating while held.
-                            UseButton(label = stringResource(R.string.use)) {
-                                if (VoxelsNative.isAvailable && !paused && worldSize.width > 0) try {
-                                    if (VoxelsNative.breakBlockAt(worldSize.width / 2f, worldSize.height / 2f)) {
-                                        com.vayunmathur.games.voxels.platform.SoundFx.playBreak()
-                                    }
-                                } catch (_: Exception) {}
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                // Creative only: flight has its own toggle (it used to hide behind a double-tap on Jump,
+                                // which also fired by accident when jumping repeatedly).
+                                if (creative) {
+                                    HoldButton(
+                                        label = stringResource(if (flying) R.string.land else R.string.fly),
+                                        onPress = {
+                                            if (VoxelsNative.isAvailable) try { VoxelsNative.toggleFly() } catch (_: Exception) {}
+                                            flying = !flying
+                                            if (flying) {
+                                                sneaking = false
+                                                if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(false) } catch (_: Exception) {}
+                                            }
+                                        },
+                                    )
+                                }
+                                // Use/attack whatever is under the crosshair, repeating while held.
+                                UseButton(label = stringResource(R.string.use)) {
+                                    if (VoxelsNative.isAvailable && !paused && worldSize.width > 0) try {
+                                        if (VoxelsNative.breakBlockAt(worldSize.width / 2f, worldSize.height / 2f)) {
+                                            com.vayunmathur.games.voxels.platform.SoundFx.playBreak()
+                                        }
+                                    } catch (_: Exception) {}
+                                }
                             }
                             Column(
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -456,14 +477,6 @@ class MainActivity : ComponentActivity() {
                                     dimmed = !flying && sneaking,
                                     onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(true) } catch (_: Exception) {} },
                                     onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(false) } catch (_: Exception) {} },
-                                    onDoubleTap = {
-                                        if (VoxelsNative.isAvailable) try { VoxelsNative.toggleFly() } catch (_: Exception) {}
-                                        flying = !flying
-                                        if (flying) {
-                                            sneaking = false
-                                            if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(false) } catch (_: Exception) {}
-                                        }
-                                    }
                                 )
                                 if (flying) {
                                     HoldButton(
@@ -550,7 +563,7 @@ class MainActivity : ComponentActivity() {
                         InventoryOverlay(
                             inventoryJson = inventoryJson, recipesJson = recipesJson,
                             blessingsJson = blessingsJson, blessingCatalogJson = blessingCatalogJson,
-                            onClose = { inventoryOpen = false }, startTab = invStartTab,
+                            onClose = { inventoryOpen = false }, startTab = invStartTab, creative = creative,
                             worldAchievements = achievements?.world,
                         )
                     }

@@ -160,9 +160,9 @@ class MenuActivity : ComponentActivity() {
                         if (creating) {
                             WorldCreatorScreen(
                                 onBack = { creating = false },
-                                onCreate = { name, seedText ->
+                                onCreate = { name, seedText, mode ->
                                     val seed = WorldManager.resolveSeed(seedText)
-                                    val world = WorldManager.createWorld(this@MenuActivity, name, seed, System.currentTimeMillis())
+                                    val world = WorldManager.createWorld(this@MenuActivity, name, seed, System.currentTimeMillis(), mode)
                                     reload()
                                     creating = false
                                     play(world)
@@ -267,6 +267,7 @@ class MenuActivity : ComponentActivity() {
             putExtra("world_dir", world.dir)
             putExtra("world_seed", world.meta.seed)
             putExtra("world_name", world.meta.name)
+            putExtra("world_mode", world.meta.mode)
             if (world.meta.online) {
                 putExtra("online", true)
                 putExtra("world_id", world.meta.worldId)

@@ -5,7 +5,8 @@ pub fn inventory_move(from: usize, to: usize) {
         s.inventory.move_item(from, to)
     });
 }
-pub fn inventory_give(id: Id) { with_engine(|s| s.inventory.give(id)); }
+/// The creative catalog: a free stack of `id`. Refused in survival worlds.
+pub fn inventory_give(id: Id) { if is_creative() { with_engine(|s| s.inventory.give(id)); } }
 pub fn inventory_craft(recipe: usize) -> bool {
     with_engine(|s| {
         if !s.inventory.craft(recipe, &s.crafted_recipes) { return false; }

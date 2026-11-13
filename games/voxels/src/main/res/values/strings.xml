@@ -22,6 +22,15 @@
     <string name="leave_blank_for_random">Leave blank for random</string>
     <string name="a_number_or_any_text_hashed_to_a_seed">A number, or any text (hashed to a seed).</string>
     <string name="create_play">Create &amp; Play</string>
+    <!-- World creator: game mode picker label and options. -->
+    <string name="game_mode">Game mode</string>
+    <string name="mode_creative">Creative</string>
+    <string name="mode_survival">Survival</string>
+    <string name="mode_creative_hint">Fly, and take any block from the catalog.</string>
+    <string name="mode_survival_hint">Start with nothing: mine, craft and trade for everything. No flying.</string>
+    <!-- HUD toggle (creative only): start / stop flying. Verb, keep short -->
+    <string name="fly">Fly</string>
+    <string name="land">Land</string>
     <string name="villager_trades">Villager Trades</string>
     <string name="tap_a_trade_to_exchange_need_the_cost_it">Tap a trade to exchange (need the cost items).</string>
     <string name="villager_level">Level %1$d of %2$d</string>

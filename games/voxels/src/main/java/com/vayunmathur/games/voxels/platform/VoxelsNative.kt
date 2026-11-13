@@ -32,6 +32,8 @@ object VoxelsNative {
     external fun nativeSave()
     // Pause menu: stops single-player simulation (frames keep drawing) and releases held input.
     external fun nativeSetPaused(paused: Boolean)
+    // World mode: creative (flight + catalog) or survival. Call before nativeInit.
+    external fun nativeSetCreative(creative: Boolean)
     external fun onMoveInput(moveX: Float, moveY: Float)
     external fun onLookInput(lookYawRate: Float, lookPitchRate: Float)
     // Camera turn-speed multiplier from the settings sheet (0.25..3).

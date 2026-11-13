@@ -1,3 +1,20 @@
+// World mode, chosen when the world was created. Creative (the default, and what every world
+// created before modes existed gets) allows flight and the free block catalog; survival doesn't.
+static CREATIVE: AtomicBool = AtomicBool::new(true);
+
+/// Sets the world mode for this session (JNI `nativeSetCreative`, called before the world loads).
+pub fn set_creative(creative: bool) { CREATIVE.store(creative, Ordering::SeqCst); }
+
+/// Whether this session is creative.
+pub fn is_creative() -> bool { CREATIVE.load(Ordering::SeqCst) }
+
+/// Flight is a creative-only ability: honour a toggle request in creative, and in survival make sure
+/// the player is never left flying (e.g. a creative save opened as survival).
+fn apply_fly_toggle(state: &mut EngineState, toggle: bool, creative: bool) {
+    if !creative { state.player.flying = false; return; }
+    if toggle { state.player.flying = !state.player.flying; }
+}
+
 // Set by the pause menu. While set, single-player worlds stop simulating (no physics, mobs, clock,
 // smelting or autosave) but keep drawing frames so the world stays visible behind the menu.
 static PAUSED: AtomicBool = AtomicBool::new(false);
@@ -36,7 +53,7 @@ fn simulate(state: &mut EngineState, dt: f32) {
         // The world clock only moves with simulated time: not while paused, not in the background.
         state.world_secs = wrap_world_secs(state.world_secs + dt);
         let input = crate::input::snapshot_and_clear_look();
-        if input.toggle_fly { state.player.flying = !state.player.flying; }
+        apply_fly_toggle(state, input.toggle_fly, is_creative());
 
         // Rate-based look: (curved) stick displacement -> angular velocity (rad/s at full deflection).
         let look_speed = 3.2 * crate::input::look_sensitivity();

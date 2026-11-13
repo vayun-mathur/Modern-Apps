@@ -104,4 +104,21 @@ mod state_tests {
         let back = new_state(dir, 1234, 2);
         assert!((back.world_secs - 777.0).abs() < 1e-3);
     }) }
+
+    // Survival has no flight (even a flying creative save is grounded) and creative toggles freely.
+    #[test]
+    fn flight_is_creative_only() { big_stack(|| {
+        let mut s = small_state("fly");
+        s.player.flying = false;
+        apply_fly_toggle(&mut s, true, false);
+        assert!(!s.player.flying, "survival toggled flight on");
+        s.player.flying = true;
+        apply_fly_toggle(&mut s, false, false);
+        assert!(!s.player.flying, "survival left a player flying");
+        apply_fly_toggle(&mut s, true, true);
+        assert!(s.player.flying, "creative toggle didn't fly");
+        apply_fly_toggle(&mut s, true, true);
+        assert!(!s.player.flying);
+        assert!(Inventory::empty().slots.iter().all(|sl| sl.id == 0 && sl.count == 0));
+    }) }
 }

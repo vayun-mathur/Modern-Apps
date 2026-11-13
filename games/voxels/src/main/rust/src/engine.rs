@@ -203,7 +203,9 @@ pub fn new_state(files_dir: String, seed: u32, render_distance: i32) -> EngineSt
         };
         (ps.x, ps.y, ps.z, ps.yaw, ps.pitch, inv)
     } else {
-        (0.0, 80.0, 0.0, 0.0, 0.0, Inventory::default())
+        // A new creative world starts with the building kit; a new survival world starts empty.
+        let inv = if crate::engine::is_creative() { Inventory::default() } else { Inventory::empty() };
+        (0.0, 80.0, 0.0, 0.0, 0.0, inv)
     };
 
     let mut player = Player::new(px, py, pz);
