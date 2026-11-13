@@ -139,14 +139,20 @@ class HubUxAuditTest {
     }
 
     @Test
-    fun achievementRowIconSpeaksItsState() {
+    fun achievementRowStateIsNotColourOnly() {
         rule.setContent {
             Column {
                 AchievementRow(achievement("u", unlocked = true))
                 AchievementRow(achievement("l", unlocked = false))
             }
         }
+        // Unlocked: the star icon speaks its state; no "Locked" anywhere on that row.
         rule.onNodeWithContentDescription("Unlocked", useUnmergedTree = true).assertExists()
-        rule.onNodeWithContentDescription("Locked", useUnmergedTree = true).assertExists()
+        // Locked: a visible "Locked" label (once), and the lock icon does not repeat it to TalkBack.
+        rule.onAllNodesWithText("Locked").assertCountEquals(1)
+        rule.onNodeWithText("Locked").assertIsDisplayed()
+        // Merged tree = what TalkBack sees (clearAndSetSemantics hides the icon there).
+        rule.onAllNodesWithContentDescription("Locked").assertCountEquals(0)
+        rule.onAllNodesWithContentDescription("Lock").assertCountEquals(0)
     }
 }

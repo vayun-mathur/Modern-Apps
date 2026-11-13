@@ -85,7 +85,8 @@ class HubScreensPass3Test {
         rule.setContent { DynamicTheme { AchievementsScreen(vm) } }
         rule.onNodeWithText("First Win").assertIsDisplayed()
         rule.onNodeWithText("Master").assertIsDisplayed()
-        rule.onNodeWithText("Locked").performClick()
+        // Locked rows carry their own "Locked" label now; the filter chip is the first match.
+        rule.onAllNodesWithText("Locked")[0].performClick()
         rule.onNodeWithText("Master").assertIsDisplayed()
         rule.onNodeWithText("First Win").assertDoesNotExist()
         rule.onNodeWithText("Unlocked").performClick()

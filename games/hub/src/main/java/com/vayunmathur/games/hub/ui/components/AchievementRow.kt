@@ -19,6 +19,7 @@ import com.vayunmathur.games.hub.data.dao.AchievementWithProgress
 import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
+import com.vayunmathur.library.ui.IconLock
 import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
@@ -50,13 +51,20 @@ fun AchievementRow(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val stateLabel = stringResource(if (item.isUnlocked) R.string.achievement_unlocked else R.string.achievement_locked)
-            Box(Modifier.size(40.dp).clearAndSetSemantics { contentDescription = stateLabel }) {
-                IconStar(
-                    modifier = Modifier.size(40.dp),
-                    tint = if (item.isUnlocked) MaterialTheme.colorScheme.onSecondaryContainer
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                )
+            // Locked vs unlocked must not rest on colour/alpha alone: a locked row gets a lock
+            // glyph and a visible "Locked" label (which TalkBack reads, so the icon stays silent);
+            // an unlocked row keeps the star and speaks "Unlocked".
+            val unlockedLabel = stringResource(R.string.achievement_unlocked)
+            Box(
+                Modifier.size(40.dp).clearAndSetSemantics {
+                    if (item.isUnlocked) contentDescription = unlockedLabel
+                },
+            ) {
+                if (item.isUnlocked) {
+                    IconStar(modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                } else {
+                    IconLock(modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             Column(
                 modifier = Modifier
@@ -71,6 +79,14 @@ fun AchievementRow(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f, fill = false)
                     )
+                    if (isLocked) {
+                        Text(
+                            text = stringResource(R.string.achievement_locked),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Text(
                         text = stringResource(R.string.xp_1, item.xpReward),
                         style = MaterialTheme.typography.labelSmall,
