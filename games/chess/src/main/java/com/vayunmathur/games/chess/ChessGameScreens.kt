@@ -321,7 +321,7 @@ fun ChessGameScreen(
     onOpenGameCenter: () -> Unit
 ) {
     if (state.board.promotionPosition != null) {
-        PawnPromotionDialog(state.turn, onPromote = actions::onPromote)
+        PawnPromotionDialog(state.turn, onPromote = actions::onPromote, onDismiss = actions::onCancelPromotion)
     }
 
     // No title: the tab is already identified by the bottom bar, so the app bar exists only to

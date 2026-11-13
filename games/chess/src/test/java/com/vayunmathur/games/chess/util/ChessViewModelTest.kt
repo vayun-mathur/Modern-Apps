@@ -99,4 +99,34 @@ class ChessViewModelTest {
         assertEquals(before, vm.uiState.value.board)
         assertEquals(PieceColor.WHITE, vm.uiState.value.turn)
     }
+
+    /** 1. h4 g5 2. hxg5 h6 3. gxh6 Nc6 4. h7 Nb8, then 5. hxg8 needs a promotion choice. */
+    private fun reachPromotion(vm: ChessViewModel) {
+        fun move(f1: Char, r1: Int, f2: Char, r2: Int) { vm.onSquareClick(sq(f1, r1)); vm.onSquareClick(sq(f2, r2)) }
+        move('h', 2, 'h', 4); move('g', 7, 'g', 5)
+        move('h', 4, 'g', 5); move('h', 7, 'h', 6)
+        move('g', 5, 'h', 6); move('b', 8, 'c', 6)
+        move('h', 6, 'h', 7); move('c', 6, 'b', 8)
+    }
+
+    @Test fun `cancelling the promotion picker takes the pawn's step back`() {
+        val vm = ChessViewModel(app)
+        reachPromotion(vm)
+        val before = vm.uiState.value
+        vm.onSquareClick(sq('h', 7)); vm.onSquareClick(sq('g', 8))
+        assertEquals(sq('g', 8), vm.uiState.value.board.promotionPosition, "picker is up")
+        vm.onCancelPromotion()
+        val after = vm.uiState.value
+        assertNull(after.board.promotionPosition)
+        assertEquals(before.board, after.board, "pawn back on h7, knight back on g8")
+        assertEquals(PieceColor.WHITE, after.turn)
+        assertNull(after.selectedPiece)
+        vm.onCancelPromotion() // nothing pending: no-op
+        assertEquals(after, vm.uiState.value)
+        // The step can be replayed and promoted normally afterwards.
+        vm.onSquareClick(sq('h', 7)); vm.onSquareClick(sq('g', 8))
+        vm.onPromote(PieceType.QUEEN)
+        assertEquals(PieceType.QUEEN, vm.uiState.value.board.pieces[sq('g', 8).row][sq('g', 8).col]?.type)
+        assertEquals(PieceColor.BLACK, vm.uiState.value.turn)
+    }
 }

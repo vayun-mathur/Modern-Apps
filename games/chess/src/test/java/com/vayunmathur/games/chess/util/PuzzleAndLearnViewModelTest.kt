@@ -120,4 +120,28 @@ class PuzzleAndLearnViewModelTest {
         // Failed load leaves current stage in place (launch returns early)
         assertEquals(stage.key, vm.uiState.value.stage?.key)
     }
+
+    @Test fun `learn cancelling a promotion puts the pawn back uncounted`() {
+        val vm = LearnViewModel(app)
+        vm.loadStage("chessPieces", "pawn")
+        await("pawn stage") { vm.uiState.value.level != null }
+        vm.goToLevel(0) // a lone pawn on a5
+        await("level 0") { vm.uiState.value.levelIndex == 0 && vm.uiState.value.level != null }
+        fun sq(file: Char, rank: Int) = com.vayunmathur.games.chess.data.Position(8 - rank, file - 'a')
+        // Learn keeps the moved piece selected, so only tap the piece when it isn't already.
+        fun move(from: com.vayunmathur.games.chess.data.Position, to: com.vayunmathur.games.chess.data.Position) {
+            if (vm.uiState.value.selectedPiece != from) vm.onSquareClick(from)
+            vm.onSquareClick(to)
+        }
+        move(sq('a', 5), sq('a', 6))
+        move(sq('a', 6), sq('a', 7))
+        val before = vm.uiState.value
+        move(sq('a', 7), sq('a', 8))
+        assertNotNull(vm.uiState.value.board.promotionPosition, "picker is up")
+        vm.onCancelPromotion()
+        assertNull(vm.uiState.value.board.promotionPosition)
+        assertEquals(before.board, vm.uiState.value.board, "pawn back on a7")
+        assertEquals(before.nbMoves, vm.uiState.value.nbMoves, "the cancelled step is not counted")
+        assertEquals(LearnStatus.Playing, vm.uiState.value.status)
+    }
 }

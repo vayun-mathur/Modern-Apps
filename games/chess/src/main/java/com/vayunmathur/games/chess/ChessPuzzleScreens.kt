@@ -60,7 +60,7 @@ fun PuzzleScreen(viewModel: PuzzleViewModel) {
 @Composable
 fun PuzzleBoardScreen(state: PuzzleUiState, actions: PuzzleActions) {
     if (state.board.promotionPosition != null) {
-        PawnPromotionDialog(state.playerColor, onPromote = actions::onPromote)
+        PawnPromotionDialog(state.playerColor, onPromote = actions::onPromote, onDismiss = actions::onCancelPromotion)
     }
 
     // No app bar: the tab has no title worth showing and no actions, so the content gets the space.

@@ -40,6 +40,7 @@ class OnlineChessViewModelTest {
         val vm = OnlineChessViewModel(app)
         vm.onSquareClick(Position(6, 4))
         vm.onPromote(PieceType.QUEEN)
+        vm.onCancelPromotion()
         vm.onResignConfirm(); vm.onAbortConfirm()
         vm.backToLobby()
         assertEquals(OnlineConnection.Idle, vm.uiState.value.connection)

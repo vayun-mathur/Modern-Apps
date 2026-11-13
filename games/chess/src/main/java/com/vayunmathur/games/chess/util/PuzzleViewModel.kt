@@ -77,6 +77,9 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application),
         private const val REPLAY_STEP_DELAY_MS = 600L
     }
 
+    // The board before the pawn stepped onto the last rank, while its promotion is pending.
+    private var promotionUndo: Board? = null
+
     /** Loads a fresh random puzzle from the given [difficulty] band. */
     override fun loadRandom(difficulty: PuzzleDifficulty) {
         _uiState.value = PuzzleUiState(status = PuzzleStatus.Loading, difficulty = difficulty)
@@ -182,6 +185,7 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application),
             // Apply the move so the board exposes a promotionPosition; the UI shows
             // the promotion dialog and onPromote finalizes it.
             val newBoard = board.movePiece(from, to)
+            promotionUndo = board
             _uiState.update { it.copy(board = newBoard, selectedPiece = null) }
             return
         }
@@ -209,12 +213,24 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application),
         val promoPos = state.board.promotionPosition ?: return
         val expected = puzzle.solution.getOrNull(state.solutionIndex) ?: return
 
+        promotionUndo = null
         val newBoard = state.board.promotePawn(promoPos, pieceType)
         if (pieceType != expected.promotion) {
             _uiState.update { it.copy(board = newBoard, status = PuzzleStatus.Failed) }
             return
         }
         advanceAfterPlayerMove(newBoard)
+    }
+
+    /**
+     * The promotion picker was dismissed: put the pawn back. Nothing was judged yet (only the
+     * chosen piece decides right or wrong), so the puzzle simply continues from before the step.
+     */
+    override fun onCancelPromotion() {
+        val undo = promotionUndo ?: return
+        if (_uiState.value.board.promotionPosition == null) return
+        promotionUndo = null
+        _uiState.update { it.copy(board = undo, selectedPiece = null) }
     }
 
     /** After a correct player move, advance the index and auto-play any reply. */

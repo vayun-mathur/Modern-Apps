@@ -190,7 +190,11 @@ fun LearnStageScreen(
 
         // Pawn promotion picker (supports underpromotion lessons).
         if (ui.board.promotionPosition != null) {
-            PawnPromotionDialog(ui.playerColor, onPromote = viewModel::onPromote)
+            PawnPromotionDialog(
+                ui.playerColor,
+                onPromote = viewModel::onPromote,
+                onDismiss = viewModel::onCancelPromotion,
+            )
         }
 
         // Stage-complete overlay after the final level (Lichess "Stage N complete").

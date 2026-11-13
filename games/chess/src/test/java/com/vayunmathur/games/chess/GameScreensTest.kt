@@ -138,6 +138,20 @@ class GameScreensTest {
         assertEquals(listOf(PieceType.QUEEN), actions.promotes)
     }
 
+    @Test fun `promotion dialog can be cancelled`() {
+        var cancelled = 0
+        val promotes = mutableListOf<PieceType>()
+        rule.setContent {
+            PawnPromotionDialog(PieceColor.BLACK, onPromote = { promotes += it }, onDismiss = { cancelled++ })
+        }
+        // The four choices are outlined buttons that name their piece.
+        rule.onAllNodes(hasClickAction() and androidx.compose.ui.test.hasContentDescription(str(R.string.piece_black_knight)))
+            .assertCountEquals(1)
+        rule.onNodeWithText(ctx.getString(com.vayunmathur.library.ui.R.string.cancel)).performClick()
+        assertEquals(1, cancelled)
+        assertTrue(promotes.isEmpty())
+    }
+
     @Test fun `captured pieces row renders pieces`() {
         rule.setContent {
             CapturedPiecesRow(listOf(Piece(PieceType.QUEEN, PieceColor.BLACK), Piece(PieceType.PAWN, PieceColor.WHITE)))

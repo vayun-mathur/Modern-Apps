@@ -18,6 +18,9 @@ interface ChessActions {
     fun onSquareClick(position: Position) {}
     fun onPromote(pieceType: PieceType) {}
 
+    /** The promotion picker was dismissed: undo the pawn's step onto the last rank. */
+    fun onCancelPromotion() {}
+
     /**
      * Drag-and-drop: the press started on [from] and lifted on [to]. A drop is the tap flow
      * in one gesture — pressing the piece selects it, releasing on a square taps that
@@ -35,6 +38,9 @@ interface ChessActions {
 interface PuzzleActions {
     fun onSquareClick(position: Position) {}
     fun onPromote(pieceType: PieceType) {}
+
+    /** The promotion picker was dismissed: undo the pawn's step onto the last rank. */
+    fun onCancelPromotion() {}
 
     /**
      * Drag-and-drop: the press started on [from] and lifted on [to]. Same two-taps-in-one

@@ -64,6 +64,9 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
     // (the engine call suspends) must never be applied to the current one.
     private var gameGeneration = 0
 
+    // The state before a pawn stepped onto the last rank, while its promotion choice is pending.
+    private var promotionUndo: ChessUiState? = null
+
     companion object {
         private const val AI_REPLY_DELAY_MS = 500L
     }
@@ -81,6 +84,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
 
     fun onNewGame(gameMode: GameMode) {
         winScored = false
+        promotionUndo = null
         gameGeneration++
         val isFlipped = gameMode is GameMode.VsAI && gameMode.playerColor == PieceColor.BLACK
         _uiState.value = ChessUiState(gameMode = gameMode, isBoardFlipped = isFlipped)
@@ -91,59 +95,52 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
 
     override fun onSquareClick(position: Position) {
         val state = _uiState.value
-        val board = state.board
-        val pieceAtPosition = board.pieces[position.row][position.col]
-
         if (state.gameResult != null) return
-
         val mode = state.gameMode
         if (mode is GameMode.VsAI && state.turn != mode.playerColor) return
 
+        val pieceAtPosition = state.board.pieces[position.row][position.col]
         val selectedPiece = state.selectedPiece
-        if (selectedPiece == null) {
-            if (pieceAtPosition != null && pieceAtPosition.color == state.turn) {
-                _uiState.update { it.copy(selectedPiece = position) }
-            }
-        } else if (position != selectedPiece && pieceAtPosition != null &&
-            pieceAtPosition.color == state.turn
-        ) {
-            // Tapping another of the player's own pieces reselects it,
+        val ownPiece = pieceAtPosition != null && pieceAtPosition.color == state.turn
+        when {
+            // Selecting a piece, or tapping another of the player's own pieces to reselect it,
             // matching PuzzleViewModel and LearnViewModel.
-            _uiState.update { it.copy(selectedPiece = position) }
-        } else {
-            if (board.isValidMove(selectedPiece, position)) {
-                val newBoard = board.movePiece(selectedPiece, position)
-                val nextTurn = if (newBoard.promotionPosition != null) state.turn else state.turn.opposite
-                // While a promotion choice is pending the move is not
-                // complete: the pawn sits unpromoted on the last rank, so a
-                // check/checkmate verdict computed now can be wrong for the
-                // piece the player is about to pick (and would fire the
-                // win achievements + one-time win counter early). onPromote
-                // computes the real result once the piece is chosen.
-                val (result, status) = if (newBoard.promotionPosition != null) {
-                    null to null
-                } else {
-                    statusFor(newBoard, nextTurn)
-                }
-                _uiState.update {
-                    it.copy(
-                        board = newBoard,
-                        selectedPiece = null,
-                        turn = nextTurn,
-                        gameStatus = status,
-                        gameResult = result
-                    )
-                }
-                if (mode is GameMode.VsAI && result == null && newBoard.promotionPosition == null) {
-                    val generation = gameGeneration
-                    viewModelScope.launch {
-                        delay(AI_REPLY_DELAY_MS)
-                        if (generation == gameGeneration) makeAiMove(generation)
-                    }
-                }
-            } else {
-                _uiState.update { it.copy(selectedPiece = null) }
-            }
+            ownPiece && position != selectedPiece -> _uiState.update { it.copy(selectedPiece = position) }
+            selectedPiece == null -> Unit
+            state.board.isValidMove(selectedPiece, position) -> commitPlayerMove(state, selectedPiece, position)
+            else -> _uiState.update { it.copy(selectedPiece = null) }
+        }
+    }
+
+    private fun commitPlayerMove(state: ChessUiState, from: Position, to: Position) {
+        val newBoard = state.board.movePiece(from, to)
+        val promoting = newBoard.promotionPosition != null
+        // Kept so a cancelled promotion can put the pawn back exactly as it was.
+        promotionUndo = if (promoting) state else null
+        val nextTurn = if (promoting) state.turn else state.turn.opposite
+        // While a promotion choice is pending the move is not complete: the pawn sits
+        // unpromoted on the last rank, so a check/checkmate verdict computed now can be wrong
+        // for the piece the player is about to pick (and would fire the win achievements +
+        // one-time win counter early). onPromote computes the real result once the piece is
+        // chosen.
+        val (result, status) = if (promoting) null to null else statusFor(newBoard, nextTurn)
+        _uiState.update {
+            it.copy(
+                board = newBoard,
+                selectedPiece = null,
+                turn = nextTurn,
+                gameStatus = status,
+                gameResult = result
+            )
+        }
+        if (state.gameMode is GameMode.VsAI && result == null && !promoting) scheduleAiReply()
+    }
+
+    private fun scheduleAiReply() {
+        val generation = gameGeneration
+        viewModelScope.launch {
+            delay(AI_REPLY_DELAY_MS)
+            if (generation == gameGeneration) makeAiMove(generation)
         }
     }
 
@@ -164,19 +161,26 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
     override fun onPromote(pieceType: PieceType) {
         val board = _uiState.value.board
         val promotionPosition = board.promotionPosition ?: return
+        promotionUndo = null
         val newBoard = board.promotePawn(promotionPosition, pieceType)
         val nextTurn = _uiState.value.turn.opposite
         val (result, status) = statusFor(newBoard, nextTurn)
         _uiState.update {
             it.copy(board = newBoard, turn = nextTurn, gameStatus = status, gameResult = result)
         }
-        if (_uiState.value.gameMode is GameMode.VsAI && result == null) {
-            val generation = gameGeneration
-            viewModelScope.launch {
-                delay(AI_REPLY_DELAY_MS)
-                if (generation == gameGeneration) makeAiMove(generation)
-            }
-        }
+        if (_uiState.value.gameMode is GameMode.VsAI && result == null) scheduleAiReply()
+    }
+
+    /**
+     * The promotion picker was dismissed: take the pawn's step back. The whole pre-move state
+     * is restored (board, turn, status line), minus the selection, so the player can choose a
+     * different move.
+     */
+    override fun onCancelPromotion() {
+        val undo = promotionUndo ?: return
+        if (_uiState.value.board.promotionPosition == null) return
+        promotionUndo = null
+        _uiState.value = undo.copy(selectedPiece = null)
     }
 
     private fun makeAiMove(generation: Int) {

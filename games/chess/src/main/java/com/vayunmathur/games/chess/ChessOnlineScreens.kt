@@ -72,6 +72,7 @@ fun ChessOnlineScreens(viewModel: OnlineChessViewModel) {
                 onSquareClick = viewModel::onSquareClick,
                 onSquareDrop = viewModel::onSquareDrop,
                 onPromote = viewModel::onPromote,
+                onCancelPromotion = viewModel::onCancelPromotion,
                 onResignConfirm = viewModel::onResignConfirm,
                 onAbortConfirm = viewModel::onAbortConfirm,
                 onBackToLobby = viewModel::backToLobby,
@@ -319,6 +320,7 @@ private fun ChessOnlineGame(
     onSquareClick: (com.vayunmathur.games.chess.data.Position) -> Unit,
     onSquareDrop: (com.vayunmathur.games.chess.data.Position, com.vayunmathur.games.chess.data.Position) -> Unit,
     onPromote: (com.vayunmathur.games.chess.data.PieceType) -> Unit,
+    onCancelPromotion: () -> Unit,
     onResignConfirm: () -> Unit,
     onAbortConfirm: () -> Unit,
     onBackToLobby: () -> Unit,
@@ -327,7 +329,7 @@ private fun ChessOnlineGame(
     var confirmAbort by remember { mutableStateOf(false) }
 
     if (playing.pendingPromotion != null) {
-        PawnPromotionDialog(playing.localColor, onPromote = onPromote)
+        PawnPromotionDialog(playing.localColor, onPromote = onPromote, onDismiss = onCancelPromotion)
     }
     if (confirmResign) {
         ConfirmDialog(
@@ -519,6 +521,7 @@ fun ChessOnlineScreen(state: OnlineChessUiState) {
                 onSquareClick = {},
                 onSquareDrop = { _, _ -> },
                 onPromote = {},
+                onCancelPromotion = {},
                 onResignConfirm = {},
                 onAbortConfirm = {},
                 onBackToLobby = {},

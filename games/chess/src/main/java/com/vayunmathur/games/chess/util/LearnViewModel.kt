@@ -64,6 +64,9 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
 
     private val opponentDelayMs = 700L
 
+    // The board before the pawn stepped onto the last rank, while its promotion is pending.
+    private var promotionUndo: Board? = null
+
     // Lichess-style scoring (see LearnRules.kt): apple/capture/scenario points,
     // completion bonus by move count, and piece values for value levels.
     private val applePoints = SCORE_APPLE
@@ -192,6 +195,7 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
         // (some lessons need underpromotion). The dialog then calls onPromote.
         if (moving.type == PieceType.PAWN && isLastRank(to)) {
             val promoBoard = board.movePiece(from, to)
+            promotionUndo = board
             _uiState.update { it.copy(board = promoBoard, selectedPiece = null) }
             return
         }
@@ -208,11 +212,23 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         val level = state.level ?: return
         val promoPos = state.board.promotionPosition ?: return
+        promotionUndo = null
         val newBoard = state.board.promotePawn(promoPos, pieceType)
         val newMoves = state.nbMoves + 1
         val newApples = state.apples - promoPos
         addMovePoints(level, state.apples, promoPos, state.board, state.playerColor)
         finishPlayerMove(level, newBoard, newApples, newMoves, promoPos, state.playerColor)
+    }
+
+    /**
+     * The promotion picker was dismissed: put the pawn back. The step was never counted (moves,
+     * apples and points are only scored in [onPromote]), so the level continues as before it.
+     */
+    fun onCancelPromotion() {
+        val undo = promotionUndo ?: return
+        if (_uiState.value.board.promotionPosition == null) return
+        promotionUndo = null
+        _uiState.update { it.copy(board = undo, selectedPiece = null) }
     }
 
     /**

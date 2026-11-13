@@ -442,8 +442,9 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
         val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
         if (playing.resultText != null) return
         if (playing.turn != playing.localColor) return
-        // The promotion dialog owns input while a choice is pending; the dialog has no dismiss
-        // affordance (mirrors offline PawnPromotionDialog), so squares stay dead until then.
+        // The promotion dialog owns input while a choice is pending (it is modal); dismissing it
+        // goes through onCancelPromotion, so squares stay dead until a piece is chosen or the
+        // step is cancelled.
         if (playing.pendingPromotion != null) return
         val board = playing.board
         val selectedPiece = playing.selectedPiece
@@ -480,6 +481,16 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
         val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
         val pending = playing.pendingPromotion ?: return
         sendLocalMove(pending.copy(promotion = pieceType))
+    }
+
+    /**
+     * The promotion picker was dismissed. The step was only a local choice (the board never
+     * moved and nothing was sent), so dropping the pending choice is the whole undo.
+     */
+    fun onCancelPromotion() {
+        val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
+        if (playing.pendingPromotion == null) return
+        _uiState.update { it.copy(connection = playing.copy(pendingPromotion = null, selectedPiece = null)) }
     }
 
     /**
