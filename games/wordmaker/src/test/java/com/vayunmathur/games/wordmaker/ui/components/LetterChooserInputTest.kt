@@ -137,4 +137,14 @@ class LetterChooserInputTest {
         rule.waitForIdle()
         assertEquals(listOf("CA"), submitted)
     }
+
+    @Test fun rtlSwipeSelectsTheLetterUnderTheFinger() {
+        val submitted = mutableListOf<String>()
+        setChooser(layoutDirection = LayoutDirection.Rtl) { submitted += it }
+        val c = centerOf('C'); val a = centerOf('A'); val t = centerOf('T')
+        rule.onRoot().performTouchInput { down(c); moveTo(c + Offset(0f, 12f)); moveTo(a); moveTo(t); up() }
+        rule.waitForIdle()
+        // Was "CST": tiles were drawn mirrored while hit-testing was not.
+        assertEquals(listOf("CAT"), submitted)
+    }
 }

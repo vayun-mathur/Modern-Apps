@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
@@ -238,9 +238,12 @@ fun LetterChooser(
                             val x = animatedDp((cos(angle) * radiusDp.value).dp)
                             val y = animatedDp((sin(angle) * radiusDp.value).dp)
 
+                            // absoluteOffset, not offset: offset {} mirrors x in RTL while the
+                            // trail and hit-testing work in unmirrored pointer coordinates, so an
+                            // RTL swipe selected the letter opposite the one under the finger.
                             SurfaceText(Modifier
                                 .align(Alignment.Center)
-                                .offset { IntOffset(x.roundToPx(), y.roundToPx()) }
+                                .absoluteOffset { IntOffset(x.roundToPx(), y.roundToPx()) }
                                 .onGloballyPositioned { coordinates ->
                                     onLetterPositioned(chooserLetter.id, coordinates.localToRoot(Offset.Zero))
                                 }

@@ -5,9 +5,12 @@ package com.vayunmathur.games.wordmaker.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
@@ -86,34 +89,40 @@ fun WordGameOverlays(
         }
     }
 
-    animatedWord?.let { word ->
-        val progress = animationProgress.value
-        val currentOffset = lerp(wordBoxOffset, bonusButtonOffset, progress)
-        val alpha = 1f - progress
-        val animScale = 1f - (progress * 0.5f)
+    // Flight positions are root coordinates (localToRoot), which never mirror. Place the
+    // flights from the absolute top-left with absoluteOffset: offset {} and a TopStart parent
+    // both mirror in RTL, which sent every flight to the opposite side of the screen.
+    if (animatedWord == null && animatedLetters.isEmpty()) return
+    Box(Modifier.fillMaxSize(), contentAlignment = AbsoluteAlignment.TopLeft) {
+        animatedWord?.let { word ->
+            val progress = animationProgress.value
+            val currentOffset = lerp(wordBoxOffset, bonusButtonOffset, progress)
+            val alpha = 1f - progress
+            val animScale = 1f - (progress * 0.5f)
 
-        Text(
-            text = word,
-            fontWeight = FontWeight.Bold,
-            fontSize = 32.sp,
-            modifier = Modifier
-                .offset { IntOffset(currentOffset.x.toInt(), currentOffset.y.toInt()) }
-                .graphicsLayer(
-                    scaleX = animScale,
-                    scaleY = animScale,
-                    alpha = alpha
-                )
-        )
-    }
-    val (size, fontSize) = Pair(35.dp * scale, 18.sp * scale)
-    animatedLetters.forEach { letter ->
-        val progress = letter.progress.value
-        val offset = lerp(letter.startOffset, letter.endOffset, progress)
+            Text(
+                text = word,
+                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp,
+                modifier = Modifier
+                    .absoluteOffset { IntOffset(currentOffset.x.toInt(), currentOffset.y.toInt()) }
+                    .graphicsLayer(
+                        scaleX = animScale,
+                        scaleY = animScale,
+                        alpha = alpha
+                    )
+            )
+        }
+        val (size, fontSize) = Pair(35.dp * scale, 18.sp * scale)
+        animatedLetters.forEach { letter ->
+            val progress = letter.progress.value
+            val offset = lerp(letter.startOffset, letter.endOffset, progress)
 
-        SurfaceText(Modifier.offset { IntOffset(offset.x.toInt(), offset.y.toInt()) },
-            RoundedCornerShape(4.dp * scale),
-            MaterialTheme.colorScheme.primary, letter.char.toString(),
-            Modifier, FontWeight.Bold, fontSize, size,
-            textColor = MaterialTheme.colorScheme.onPrimary)
+            SurfaceText(Modifier.absoluteOffset { IntOffset(offset.x.toInt(), offset.y.toInt()) },
+                RoundedCornerShape(4.dp * scale),
+                MaterialTheme.colorScheme.primary, letter.char.toString(),
+                Modifier, FontWeight.Bold, fontSize, size,
+                textColor = MaterialTheme.colorScheme.onPrimary)
+        }
     }
 }
