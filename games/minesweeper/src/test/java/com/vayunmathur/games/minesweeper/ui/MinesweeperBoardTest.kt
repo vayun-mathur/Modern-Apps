@@ -138,6 +138,31 @@ class MinesweeperBoardTest {
     }
 
     @Test
+    fun lossMarksWrongFlagsButNotCorrectOnes() {
+        // Flag on the centre mine (right) and on corner 0 (wrong), then the game is lost.
+        val flagged = List(9) { it == 4 || it == 0 }
+        composeRule.setContent {
+            MineFieldGrid(
+                field(flagged = flagged, outcome = GameOutcome.LOST),
+                onTap = {},
+                onLongPress = { false },
+            )
+        }
+        composeRule.onNodeWithContentDescription("Row 1, column 1, ${str(R.string.cd_wrong_flag)}")
+            .assertExists()
+        composeRule.onNodeWithContentDescription("Row 2, column 2, ${str(R.string.cd_mine)}")
+            .assertExists()
+    }
+
+    @Test
+    fun wrongFlagsAreNotRevealedDuringPlay() {
+        val flagged = List(9) { it == 0 }
+        composeRule.setContent { MineFieldGrid(field(flagged = flagged), onTap = {}, onLongPress = { false }) }
+        composeRule.onNodeWithContentDescription("Row 1, column 1, ${str(R.string.cd_flagged)}")
+            .assertExists()
+    }
+
+    @Test
     fun gridRevealedNumberAndFlagDescriptions() {
         val revealed = List(9) { it == 0 }
         val flagged = List(9) { it == 4 }

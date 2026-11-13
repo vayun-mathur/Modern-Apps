@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.minesweeper.R
 import com.vayunmathur.games.minesweeper.data.GameOutcome
 import com.vayunmathur.games.minesweeper.data.MinesweeperGameState
+import com.vayunmathur.library.ui.IconClear
 import com.vayunmathur.library.ui.IconFlag
 import com.vayunmathur.library.ui.IconMine
 import com.vayunmathur.library.ui.MaterialTheme
@@ -110,6 +111,9 @@ private fun MineCell(
     // up; on a win the mines are shown as the flags the player earned rather than as bare mines.
     val showMine = isMine && (revealed || lost)
     val showFlag = flagged && !showMine
+    // On a loss the field is opened up, so a flag on a safe cell is now known to be wrong: crossed
+    // out, as in classic Minesweeper, so the player can see which deductions failed.
+    val wrongFlag = showFlag && lost && !isMine
 
     val background = when {
         index == game.explodedAt -> scheme.error
@@ -124,6 +128,7 @@ private fun MineCell(
     )
     val stateWord = when {
         showMine -> stringResource(R.string.cd_mine)
+        wrongFlag -> stringResource(R.string.cd_wrong_flag)
         showFlag -> stringResource(R.string.cd_flagged)
         !revealed -> stringResource(R.string.cd_covered)
         count == 0 -> stringResource(R.string.cd_empty)
@@ -165,6 +170,11 @@ private fun MineCell(
                 tint = if (index == game.explodedAt) scheme.onError else scheme.onSurfaceVariant,
             )
 
+            wrongFlag -> Box(Modifier.fillMaxSize(0.65f), contentAlignment = Alignment.Center) {
+                IconFlag(Modifier.fillMaxSize(), tint = scheme.error.copy(alpha = WRONG_FLAG_ALPHA))
+                IconClear(Modifier.fillMaxSize(), tint = scheme.onSurface, contentDescription = null)
+            }
+
             showFlag -> IconFlag(Modifier.fillMaxSize(0.65f), tint = scheme.error)
 
             revealed && count > 0 -> Text(
@@ -182,6 +192,9 @@ private fun MineCell(
 
 /** Gap between cells, so the field reads as a grid without needing drawn lines. */
 private val CellGap = 1.dp
+
+/** A disproved flag is dimmed under its cross, so the cross reads first. */
+private const val WRONG_FLAG_ALPHA = 0.45f
 
 /** Luminance below which the revealed-cell background counts as dark. */
 private const val HALF = 0.5f

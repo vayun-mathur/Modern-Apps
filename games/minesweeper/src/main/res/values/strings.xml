@@ -54,6 +54,8 @@
     <string name="cd_covered">Covered</string>
     <!-- GameBoardScreen: Content description of a flagged cell. Verb past participle -->
     <string name="cd_flagged">Flagged</string>
+    <!-- GameBoardScreen: Content description, after a loss, of a flag the player put on a cell with no mine. Noun phrase -->
+    <string name="cd_wrong_flag">Wrong flag, no mine</string>
     <!-- GameBoardScreen: Content description of a revealed mine. Noun -->
     <string name="cd_mine">Mine</string>
     <!-- GameBoardScreen: Content description of an open cell touching no mines. Adjective -->
