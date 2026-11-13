@@ -353,14 +353,14 @@ class NavigationScreensTest {
     @Test
     fun popToPacksReturnsToThePackList() {
         val stack = com.vayunmathur.library.util.NavBackStack<Route>(
-            arrayOf(Route.PackSelector, Route.LevelSelector(2), Route.Game(2, 9))
+            arrayOf<Route>(Route.PackSelector, Route.LevelSelector(2), Route.Game(2, 9))
         )
         stack.popToPacks()
-        assertEquals(listOf<Route>(Route.PackSelector), stack.backStack)
+        assertEquals(listOf<Route>(Route.PackSelector), stack.backStack.toList())
         val daily = com.vayunmathur.library.util.NavBackStack<Route>(
-            arrayOf(Route.PackSelector, Route.DailySelector, Route.DailyGame(4))
+            arrayOf<Route>(Route.PackSelector, Route.DailySelector, Route.DailyGame(4))
         )
         daily.popToPacks()
-        assertEquals(listOf<Route>(Route.PackSelector), daily.backStack)
+        assertEquals(listOf<Route>(Route.PackSelector), daily.backStack.toList())
     }
 }
