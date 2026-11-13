@@ -113,7 +113,8 @@ internal fun GameBlock(
             movable = !block.fixed && !isLevelWon,
             interactionSource = interactionSource,
         ) { dx, dy ->
-            when (val step = stepBlock(levelData, index, dx, dy)) {
+            val step = stepBlock(levelData, index, dx, dy)
+            when (step) {
                 is StepResult.Moved -> onLevelChanged(step.level)
                 StepResult.Won -> onLevelWon()
                 StepResult.Blocked -> Unit
@@ -121,7 +122,8 @@ internal fun GameBlock(
             step != StepResult.Blocked
         }
         .padding(scaling * BLOCK_INSET_SCALE)
-        // Keyboard focus needs to be visible: an outline on the focused block.
+        .background(color, shape = RoundedCornerShape(percent = BLOCK_CORNER_PERCENT))
+        // Keyboard focus needs to be visible: an outline on the focused block, over its fill.
         .then(
             if (focused) {
                 Modifier.border(FOCUS_OUTLINE, focusColor, RoundedCornerShape(percent = BLOCK_CORNER_PERCENT))
@@ -129,7 +131,6 @@ internal fun GameBlock(
                 Modifier
             }
         )
-        .background(color, shape = RoundedCornerShape(percent = BLOCK_CORNER_PERCENT))
         // The target block carries the exit's chevrons, so it stands out by shape as well as
         // colour: on several pack palettes it was only red against orange, which colour-blind
         // players cannot tell apart.
