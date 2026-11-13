@@ -1,6 +1,7 @@
 package com.vayunmathur.globalesim.data.api
 
 import com.vayunmathur.library.network.NetworkClient
+import com.vayunmathur.library.network.StaticMirror
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 
@@ -56,7 +57,23 @@ object EsimApi {
     private suspend inline fun <reified Res> get(path: String): Res =
         wrapApiErrors { NetworkClient.getJson(url(path)) }
 
-    suspend fun rates(): RatesResponse = get("/esim/v1/rates")
+    /**
+     * The rate card is the same for every account, so the server keeps an hourly
+     * copy on R2; read it first and fall back to the endpoint when it is missing or
+     * more than two days old. With [baseUrlOverride] set (tests) the static copy is
+     * looked up under the override too, so nothing leaves the test sandbox.
+     */
+    suspend fun rates(): RatesResponse = wrapApiErrors {
+        StaticMirror.getJson(
+            staticUrl = (baseUrlOverride ?: StaticMirror.BASE) + STATIC_RATES_PATH,
+            fallbackUrl = url("/esim/v1/rates"),
+            deserializer = serializer<RatesResponse>(),
+            maxAgeMs = STATIC_RATES_MAX_AGE_MS,
+        )
+    }
+
+    private const val STATIC_RATES_PATH = "/rates/v1/esim.json"
+    private const val STATIC_RATES_MAX_AGE_MS = 2L * 24 * 60 * 60 * 1000
 
     suspend fun status(accountId: String): StatusResponse =
         post("/esim/v1/status", AccountRequest(accountId))
