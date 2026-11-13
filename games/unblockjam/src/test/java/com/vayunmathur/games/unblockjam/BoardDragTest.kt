@@ -164,4 +164,26 @@ class BoardDragTest {
         assertTrue(moved in 80f..103f, "block should follow the finger, moved=$moved")
         rule.onNodeWithTag("board").performTouchInput { up() }
     }
+
+    @Test
+    fun cancelledDragSnapsBackToTheCommittedCell() {
+        var changed: LevelData? = null
+        val lvl = level(
+            listOf(
+                Block(Coord(0, 2), Dimension(2, 1), false),
+                Block(Coord(3, 5), Dimension(2, 1), false),
+            )
+        )
+        setBoard(lvl, false, { changed = it }, {})
+        val before = rule.onNodeWithTag("block_1").getBoundsInRoot()
+        // The system (a back gesture, say) takes the pointer mid-drag.
+        rule.onNodeWithTag("board").performTouchInput {
+            down(Offset(width * 4f / 6f, height * 5.5f / 6f))
+            moveBy(Offset(-width * 1.5f / 6f, 0f))
+            cancel()
+        }
+        rule.waitForIdle()
+        assertNull(changed, "a cancelled drag is not a move")
+        assertEquals(before, rule.onNodeWithTag("block_1").getBoundsInRoot(), "block must not be left floating")
+    }
 }

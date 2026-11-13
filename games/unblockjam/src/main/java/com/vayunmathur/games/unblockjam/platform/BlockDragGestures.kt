@@ -205,21 +205,39 @@ fun Modifier.blockDragGestures(
         val cellWidthPx = cellSize.width.toPx()
         val cellHeightPx = cellSize.height.toPx()
 
-        detectDragGestures(
-            onDragStart = {
-                val range = findMovementRange(block, levelData.blocks - block, levelData, isMainBlock, isHorizontal)
-                minOffset = range.first.toFloat()
-                maxOffset = range.last.toFloat()
-            },
-            onDragEnd = { settleAfterDrag(params, offset) },
-            onDrag = { change, dragAmount ->
-                change.consume()
-                handleDragDelta(
-                    params, minOffset, maxOffset, offset,
-                    dragAmount.x / cellWidthPx, dragAmount.y / cellHeightPx,
-                )
-            }
-        )
+        var dragging = false
+
+        // A drag that does not end with the finger lifting - the system taking the pointer for a
+        // back gesture, a second finger, the app losing focus, or this detector restarting under
+        // it after a resize - goes back to the last committed cell. Before, the block was left
+        // floating wherever the finger had got to, half-way between cells.
+        try {
+            detectDragGestures(
+                onDragStart = {
+                    dragging = true
+                    val range = findMovementRange(block, levelData.blocks - block, levelData, isMainBlock, isHorizontal)
+                    minOffset = range.first.toFloat()
+                    maxOffset = range.last.toFloat()
+                },
+                onDragEnd = {
+                    dragging = false
+                    settleAfterDrag(params, offset)
+                },
+                onDragCancel = {
+                    dragging = false
+                    resetOffsets(params, offset)
+                },
+                onDrag = { change, dragAmount ->
+                    change.consume()
+                    handleDragDelta(
+                        params, minOffset, maxOffset, offset,
+                        dragAmount.x / cellWidthPx, dragAmount.y / cellHeightPx,
+                    )
+                }
+            )
+        } finally {
+            if (dragging) resetOffsets(params, offset)
+        }
     }
 }
 

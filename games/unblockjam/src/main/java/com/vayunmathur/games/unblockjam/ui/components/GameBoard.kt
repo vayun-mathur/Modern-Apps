@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -63,6 +64,10 @@ fun GameBoard(
         Box(
             Modifier
                 .size(boardSize)
+                // A horizontal drag that starts near the screen edge would otherwise be taken by
+                // the system back gesture and cancel the move. Android honours up to 200 dp of
+                // exclusion per edge, which covers most of a phone-sized board.
+                .systemGestureExclusion()
                 .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(scaling * BOARD_CORNER_SCALE))
         ) {
 
