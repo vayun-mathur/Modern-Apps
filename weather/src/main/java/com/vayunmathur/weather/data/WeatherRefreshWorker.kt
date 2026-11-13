@@ -11,6 +11,7 @@ import androidx.work.WorkerParameters
 import com.vayunmathur.weather.widget.glance.WeatherBlobGlanceWidget
 import com.vayunmathur.weather.widget.glance.WeatherGlanceWidget
 import com.vayunmathur.weather.network.WeatherApi
+import com.vayunmathur.weather.network.WxStatic
 import com.vayunmathur.weather.network.toAirQuality
 import com.vayunmathur.weather.network.toForecastResponse
 import java.util.concurrent.TimeUnit
@@ -26,6 +27,7 @@ class WeatherRefreshWorker(
     override suspend fun doWork(): Result {
         return try {
             val repo = WeatherRepository.get(context)
+            WxStatic.init(context)
             val locations = repo.getLocations()
             for (location in locations) {
                 try {

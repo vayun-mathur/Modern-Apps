@@ -1,5 +1,6 @@
 package com.vayunmathur.weather.network
 
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.weather.data.GeoDatabase
 
@@ -16,6 +17,7 @@ import com.vayunmathur.weather.data.GeoDatabase
 object WeatherApi {
 
     private const val BUNDLE_BASE = "https://api.maproj.org/wx/v1"
+    private const val TAG = "WeatherApi"
 
     // Test seam: point the bundle API at an unroutable address so the
     // failure-path tests are hermetic on boxes that have internet.
@@ -30,6 +32,19 @@ object WeatherApi {
      * — callers wrap in try/catch and fall back to cache.
      */
     suspend fun bundle(latitude: Double, longitude: Double, fields: String = "all"): WxBundle {
+        // Full bundles come from the static R2 tiles first (computed on
+        // device, identical to the server's); any failure there — ocean
+        // point, no network to R2, a format change — falls back to the API.
+        // Tests that point the API somewhere (bundleBaseOverride) skip it.
+        if (fields == "all" && bundleBaseOverride == null && WxStatic.enabled) {
+            try {
+                return WxStatic.bundle(latitude, longitude)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (@Suppress("TooGenericExceptionCaught", "SwallowedException") e: Exception) {
+                Log.status(TAG, "static weather unavailable (${e.javaClass.simpleName}: ${e.message}); using the API")
+            }
+        }
         val url = buildString {
             append(bundleBase).append("/bundle")
             append("?lat=").append(latitude)

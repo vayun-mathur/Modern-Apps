@@ -31,24 +31,33 @@ import java.util.zip.GZIPInputStream
  * produces the same bundle, value for value.
  */
 class WxParityTest {
-    private val json = Json { ignoreUnknownKeys = true }
+    // encodeDefaults: the server always writes v/model/step; a missing key
+    // and an explicit null compare equal below (serde omits None sections).
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
 
     private fun res(path: String): ByteArray =
         javaClass.classLoader!!.getResourceAsStream("wx/$path")?.use { it.readBytes() }
             ?: error("missing fixture wx/$path")
+
+    private fun isNumber(e: JsonElement) = e is JsonPrimitive && e !is JsonNull && !e.isString
 
     /** First difference between two JSON trees (numbers compared as doubles). */
     private fun diff(path: String, a: JsonElement, b: JsonElement): String? = when {
         a is JsonObject && b is JsonObject -> (a.keys + b.keys).firstNotNullOfOrNull { k ->
             diff("$path.$k", a[k] ?: JsonNull, b[k] ?: JsonNull)
         }
-        a is JsonArray && b is JsonArray ->
-            if (a.size != b.size) "$path: len ${a.size} != ${b.size}"
-            else a.indices.firstNotNullOfOrNull { k -> diff("$path[$k]", a[k], b[k]) }
-        a is JsonPrimitive && b is JsonPrimitive && !a.isString && !b.isString && a !is JsonNull && b !is JsonNull ->
-            if (a.doubleOrNull == b.doubleOrNull) null else "$path: $a != $b"
+        a is JsonArray && b is JsonArray -> diffArrays(path, a, b)
+        isNumber(a) && isNumber(b) ->
+            if (a.jsonPrimitive.doubleOrNull == b.jsonPrimitive.doubleOrNull) null else "$path: $a != $b"
         else -> if (a == b) null else "$path: $a != $b"
     }
+
+    private fun diffArrays(path: String, a: JsonArray, b: JsonArray): String? =
+        if (a.size != b.size) "$path: len ${a.size} != ${b.size}"
+        else a.indices.firstNotNullOfOrNull { k -> diff("$path[$k]", a[k], b[k]) }
 
     @Test
     fun `every fixture bundle computed on device equals the server bundle`() {
