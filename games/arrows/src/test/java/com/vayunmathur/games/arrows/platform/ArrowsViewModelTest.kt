@@ -145,12 +145,18 @@ class ArrowsViewModelTest {
             runBlocking { vm.dataStore.boardsCleared.first() } > clearedBefore
         }
 
-        // Next level advances in casual mode; restore level 1 for any later class sharing the store.
+        // Next level advances in casual mode, exactly once however fast it is tapped twice;
+        // restore level 1 for any later class sharing the store.
         val levelBefore = vm.uiState.value.level
+        vm.nextLevel()
         vm.nextLevel()
         await("level advances") {
             vm.uiState.value.level == levelBefore + 1 && vm.uiState.value.game != null && !vm.uiState.value.generating
         }
+        vm.nextLevel() // a fresh, unsolved board: ignored
+        Thread.sleep(500)
+        assertEquals(levelBefore + 1, vm.uiState.value.level, "double tap must not skip a level")
+        assertEquals(levelBefore + 1, runBlocking { vm.dataStore.currentLevel.first() })
         runBlocking { vm.dataStore.saveLevel(1) }
         await("back to level 1") { vm.uiState.value.level == 1 && vm.uiState.value.game != null }
     }

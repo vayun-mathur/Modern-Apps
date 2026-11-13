@@ -312,12 +312,24 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         retryCount.value += 1
     }
 
+    /**
+     * Moves on from the cleared board on screen.
+     *
+     * The next level is worked out from the board actually loaded ([ArrowsGameState.level]), not
+     * from [ArrowsUiState.level]: [load] bumps the latter as soon as the new level is requested,
+     * while the cleared board — and its button — are still showing, so a quick second tap used to
+     * read the already-advanced level and skip one. Counting from the loaded board makes a repeat
+     * tap write the same level again, and the guard ignores taps once loading has started or the
+     * board on screen is not a cleared one.
+     */
     override fun nextLevel() {
         val state = _uiState.value
-        if (state.mode == GameMode.DAILY) return
+        if (state.mode == GameMode.DAILY || state.generating) return
+        val game = state.game ?: return
+        if (!game.isWon) return
         lastBlockedId = -1
         _uiState.value = state.copy(moves = emptyList())
-        viewModelScope.launch { dataStore.saveLevel(state.level + 1) }
+        viewModelScope.launch { dataStore.saveLevel(game.level + 1) }
     }
 
     override fun restartLevel() {

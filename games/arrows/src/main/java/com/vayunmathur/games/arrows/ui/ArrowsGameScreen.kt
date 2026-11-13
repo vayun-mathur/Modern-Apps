@@ -154,8 +154,11 @@ fun ArrowsGameScreen(
                                     textAlign = TextAlign.Center,
                                 )
                             } else {
+                                // Disabled while the next board is loading, so a second tap
+                                // cannot land on a button that has already done its job.
                                 Button(
                                     onClick = { actions.nextLevel() },
+                                    enabled = !state.generating,
                                     modifier = Modifier.fillMaxWidth(),
                                 ) { Text(stringResource(UiR.string.next_level)) }
                             }

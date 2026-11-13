@@ -1,7 +1,12 @@
 package com.vayunmathur.games.arrows.ui
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,6 +22,7 @@ import com.vayunmathur.games.arrows.platform.ArrowsGameActions
 import com.vayunmathur.games.arrows.platform.ArrowsUiState
 import com.vayunmathur.games.arrows.platform.SettingsActions
 import com.vayunmathur.games.arrows.platform.SettingsUiState
+import com.vayunmathur.library.ui.R as UiR
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -204,5 +210,16 @@ class ArrowsScreensTest {
         }
         rule.onNodeWithText(str(R.string.show_routes)).performClick()
         assertEquals(listOf(true), actions.routes)
+    }
+
+    @Test
+    fun nextLevelButtonIsDisabledWhileTheNextBoardLoads() {
+        val won = game(removed = setOf(0, 1))
+        var state by mutableStateOf(ArrowsUiState(game = won, level = 3))
+        rule.setContent { ArrowsGameScreen(state, RecordingActions(), {}, {}) }
+        rule.onNodeWithText(str(UiR.string.next_level)).assertIsEnabled()
+        // Tapped: the level is requested and the cleared board stays up while the next generates.
+        state = state.copy(level = 4, generating = true)
+        rule.onNodeWithText(str(UiR.string.next_level)).assertIsNotEnabled()
     }
 }
