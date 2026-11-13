@@ -42,7 +42,12 @@ data class PipesUiState(
     val isLevelWon: Boolean = false,
     val activeColor: Int? = null,
     val activePath: List<CellPos> = emptyList(),
-    val preDrawState: PipesGameState? = null
+    val preDrawState: PipesGameState? = null,
+    /**
+     * Whether the open stroke's finger has left the cell it touched down on. Until it has,
+     * the board is left exactly as it was: a stray tap on a dot or a line changes nothing.
+     */
+    val leftStart: Boolean = false,
 )
 
 class PipesViewModel(application: Application) : AndroidViewModel(application), PipesActions {
@@ -204,6 +209,7 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
                     activeColor = null,
                     activePath = emptyList(),
                     preDrawState = null,
+                    leftStart = false,
                 )
             }
         }
@@ -213,9 +219,8 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
 
         val base = s.gameState
         val (color, stroke) = if (endpointColor != null) {
-            // Grabbing an endpoint always restarts that color: its current line breaks
-            // right away (like grabbing a line partway does) so the drag is free to take
-            // a different route. Releasing without drawing leaves the line cleared.
+            // Grabbing an endpoint restarts that color, but its current line only breaks
+            // once the drag leaves the dot (see extendPath), so a stray tap is harmless.
             endpointColor to listOf(cell)
         } else {
             val ownerColor = base.cellOwner[cell] ?: return
@@ -227,8 +232,9 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
             it.copy(
                 activeColor = color,
                 activePath = stroke,
-                gameState = BoardEdits.applyStroke(levelData, base, color, stroke),
+                gameState = base,
                 preDrawState = base,
+                leftStart = false,
             )
         }
     }
@@ -243,11 +249,17 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
         val activeColor = s.activeColor ?: return
         val levelData = s.levelData ?: return
         if (s.isLevelWon) return
+        // Jitter inside the touched cell is not a drag yet.
+        if (!s.leftStart && cell == s.activePath.lastOrNull()) return
         val base = s.preDrawState ?: s.gameState
         val next = StrokeRules.extend(levelData, base.cellOwner, activeColor, s.activePath, cell)
-        if (next == s.activePath) return
+        if (next == s.activePath && s.leftStart) return
         _uiState.update {
-            it.copy(activePath = next, gameState = BoardEdits.applyStroke(levelData, base, activeColor, next))
+            it.copy(
+                activePath = next,
+                gameState = BoardEdits.applyStroke(levelData, base, activeColor, next),
+                leftStart = true,
+            )
         }
     }
 
@@ -259,10 +271,14 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
 
         val newPath = s.activePath
         val preDrawState = s.preDrawState ?: s.gameState
-        val newGameState = BoardEdits.applyStroke(levelData, preDrawState, activeColor, newPath)
-        // A stroke that only broke a line (released on its own start cell) counts as a move
-        // only when it actually removed something.
-        val counts = newPath.size >= 2 || newGameState != preDrawState
+        val newGameState = if (s.leftStart) {
+            BoardEdits.applyStroke(levelData, preDrawState, activeColor, newPath)
+        } else {
+            preDrawState
+        }
+        // Only a stroke that changed the board is a move: a tap, or a redraw of the same
+        // line, leaves the move count and the undo history alone.
+        val counts = newGameState != preDrawState
 
         _uiState.update {
             it.copy(
@@ -270,10 +286,11 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
                 history = if (counts) it.history + preDrawState else it.history,
                 activeColor = null,
                 activePath = emptyList(),
-                preDrawState = null
+                preDrawState = null,
+                leftStart = false,
             )
         }
-        if (newPath.size < 2) return
+        if (!counts || newPath.size < 2) return
 
         viewModelScope.launch(Dispatchers.IO) {
             repository.incrementTotalPipesPlaced()

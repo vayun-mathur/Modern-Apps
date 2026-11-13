@@ -122,12 +122,13 @@ class PipesViewModelTest {
         assertEquals(listOf(start, next), vm.uiState.value.gameState.paths[ep.colorIndex])
         assertEquals(1, vm.getCurrentMoves())
         assertNull(vm.uiState.value.activeColor)
-        // Grabbing the drawn line partway truncates it
+        // Grabbing the drawn line and releasing without moving changes nothing and is not a move
         vm.startDraw(next)
         assertEquals(listOf(start, next), vm.uiState.value.activePath)
         vm.commitDraw()
-        // Each commit pushed one undo step: first undo restores the drawn line, second the empty board
-        vm.onUndo(); assertEquals(listOf(start, next), vm.uiState.value.gameState.paths[ep.colorIndex])
+        assertEquals(listOf(start, next), vm.uiState.value.gameState.paths[ep.colorIndex])
+        assertEquals(1, vm.getCurrentMoves())
+        // The single real move undoes back to the empty board
         vm.onUndo(); assertTrue(vm.uiState.value.gameState.paths.isEmpty()); assertEquals(0, vm.getCurrentMoves())
         vm.onRestart(); assertTrue(vm.uiState.value.gameState.paths.isEmpty())
         // Draw again then restart clears
@@ -136,16 +137,26 @@ class PipesViewModelTest {
         assertTrue(vm.uiState.value.gameState.paths.isEmpty()); assertEquals(0, vm.getCurrentMoves())
     }
 
-    @Test fun tappingEndpointWithoutDrawingBreaksLineUndoably() {
+    @Test fun strayTapOnEndpointKeepsLineAndIsNotAMove() {
         val vm = vm(); vm.loadLevel(0, 0)
         val level = vm.uiState.value.levelData!!
         val ep = level.endpoints[0]
         val next = (level.adjacency[ep.cells[0]] ?: emptyList()).first { n -> level.endpoints.all { n !in it.cells } }
         draw(vm, listOf(ep.cells[0], next))
-        assertEquals(1, vm.uiState.value.gameState.paths.size)
-        vm.startDraw(ep.cells[0]) // grabs endpoint: line breaks immediately
+        assertEquals(1, vm.getCurrentMoves())
+        // Touching the dot keeps the line while the finger stays on it (jitter included)
+        vm.startDraw(ep.cells[0])
+        vm.extendPath(ep.cells[0])
+        assertEquals(listOf(ep.cells[0], next), vm.uiState.value.gameState.paths[ep.colorIndex])
+        vm.commitDraw()
+        assertEquals(listOf(ep.cells[0], next), vm.uiState.value.gameState.paths[ep.colorIndex])
+        assertEquals(1, vm.getCurrentMoves())
+        // Dragging off the dot and back clears the line: that is a real, undoable move
+        vm.startDraw(ep.cells[0])
+        vm.extendPath(next)
+        vm.extendPath(ep.cells[0])
         assertTrue(vm.uiState.value.gameState.paths.isEmpty())
-        vm.commitDraw() // released without drawing: break stays, and is undoable
+        vm.commitDraw()
         assertTrue(vm.uiState.value.gameState.paths.isEmpty())
         assertEquals(2, vm.getCurrentMoves())
         vm.onUndo()
