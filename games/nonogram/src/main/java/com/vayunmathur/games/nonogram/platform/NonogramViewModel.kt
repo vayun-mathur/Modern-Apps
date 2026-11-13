@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -170,11 +171,9 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
             val stale = daily && storedDay != day
             (if (stale) StoredBoard() else board) to (lastCompleted == day)
         }.collectLatest { (board, dailyDone) ->
-            val previous = _uiState.value.game
             // Undo history belongs to one board; a different puzzle, level or mode starts afresh.
-            if (previous?.isBoardFor(session, puzzle) != true) undoStack.clear()
-            val onScreen = previous?.takeIf { hasPendingWrites && it.isBoardFor(session, puzzle) }
-            val game = onScreen ?: NonogramGameState(
+            if (_uiState.value.game?.isBoardFor(session, puzzle) != true) undoStack.clear()
+            val stored = NonogramGameState(
                 puzzle = puzzle,
                 filled = board.filled,
                 crossed = board.crossed,
@@ -183,12 +182,13 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
                 mode = session.mode,
                 level = session.level,
             )
-            _uiState.value = _uiState.value.copy(
-                game = game,
-                generating = false,
-                dailyDone = dailyDone,
-                canUndo = canUndo(game),
-            )
+            var game = stored
+            // Compare-and-set, so a move committed while this emission was in flight is never
+            // overwritten by the older stored board: the retry sees it, and its pending write.
+            _uiState.update { state ->
+                game = state.game?.takeIf { hasPendingWrites && it.isBoardFor(session, puzzle) } ?: stored
+                state.copy(game = game, generating = false, dailyDone = dailyDone, canUndo = canUndo(game))
+            }
             if (game.isWon) onWin(game, daily, day)
         }
     }
@@ -222,7 +222,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     private fun commit(next: NonogramGameState) {
         val previous = _uiState.value.game ?: return
         if (next == previous) return
-        _uiState.value = _uiState.value.copy(game = next, canUndo = canUndo(next))
+        _uiState.update { it.copy(game = next, canUndo = canUndo(next)) }
         persist(next)
         if (next.isWon) onWin(next, next.mode == GameMode.DAILY, boardDay)
     }
@@ -232,7 +232,9 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         val board = StoredBoard(game.filled, game.crossed, game.revealedBlanks, game.hearts)
         val daily = game.mode == GameMode.DAILY
         val day = boardDay
-        viewModelScope.launch {
+        // Off the main thread: the board is already on screen, so nothing waits for this, and the
+        // store's write transform then never needs the main looper.
+        viewModelScope.launch(Dispatchers.IO) {
             writeLock.withLock {
                 if (ticket == requestedWrite.get()) dataStore.saveBoard(board, daily, game.level, day)
             }
@@ -349,7 +351,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         val target = game.level + 1
         _uiState.value = state.copy(generating = true)
         // Behind the write lock so the winning move's snapshot lands first.
-        viewModelScope.launch { writeLock.withLock { dataStore.saveLevel(target) } }
+        viewModelScope.launch(Dispatchers.IO) { writeLock.withLock { dataStore.saveLevel(target) } }
     }
 
     /** Clears every mark and restores the hearts, on screen at once and on disk behind it. */

@@ -44,7 +44,9 @@ data class BoardZoom(
         return BoardZoom(s, offsetX.coerceIn(least, 0f), offsetY.coerceIn(least, 0f))
     }
 
+    /** Holds [Identity]. */
     companion object {
+        /** Unzoomed: the whole grid, exactly filling its viewport. */
         val Identity = BoardZoom()
     }
 }

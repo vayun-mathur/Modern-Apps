@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.runner.RunWith
@@ -31,12 +32,19 @@ class NonogramViewModelTest {
 
     private fun await(desc: String, cond: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 20_000
-        while (System.currentTimeMillis() < deadline) { if (cond()) return; Thread.sleep(25) }
+        while (System.currentTimeMillis() < deadline && !cond()) Thread.sleep(25)
         assertTrue(cond(), "timed out: $desc")
     }
-    private fun loadedVm(): NonogramViewModel {
+
+    /**
+     * runBlocking with a deadline. The DataStore outlives each test, so if one test ever leaves it
+     * wedged the rest fail fast with a timeout instead of hanging the whole suite.
+     */
+    private fun <T> blocking(block: suspend () -> T): T = runBlocking { withTimeout(15_000) { block() } }
+
+    private fun loadedVm(level: Int = 1): NonogramViewModel {
         val vm = NonogramViewModel(app)
-        runBlocking { vm.dataStore.saveLevel(1); vm.dataStore.setGameMode(GameMode.CASUAL); vm.dataStore.setMarkMode(MarkMode.FILL) }
+        blocking { vm.dataStore.saveLevel(level); vm.dataStore.setGameMode(GameMode.CASUAL); vm.dataStore.setMarkMode(MarkMode.FILL) }
         await("game loads") { vm.uiState.value.game != null && !vm.uiState.value.generating }
         return vm
     }
@@ -92,8 +100,8 @@ class NonogramViewModelTest {
         assertFalse(note in vm.uiState.value.game!!.crossed, "second quick tap must clear the X, not add it again")
         // And the store catches up to what is on screen.
         await("persisted") {
-            runBlocking { vm.dataStore.filledCells.first() } == setOf(correct) &&
-                runBlocking { vm.dataStore.crossedCells.first() }.isEmpty()
+            blocking { vm.dataStore.filledCells.first() } == setOf(correct) &&
+                blocking { vm.dataStore.crossedCells.first() }.isEmpty()
         }
         assertTrue(correct in vm.uiState.value.game!!.filled)
         assertFalse(note in vm.uiState.value.game!!.crossed)
@@ -106,7 +114,7 @@ class NonogramViewModelTest {
         val target = picture.take(picture.size - 1)
         for (i in target) vm.tapCell(i)
         assertEquals(target.toSet(), vm.uiState.value.game!!.filled)
-        await("last snapshot wins") { runBlocking { vm.dataStore.filledCells.first() } == target.toSet() }
+        await("last snapshot wins") { blocking { vm.dataStore.filledCells.first() } == target.toSet() }
         // A fresh ViewModel (a relaunch) loads exactly what was played.
         val again = NonogramViewModel(app)
         await("reload") { again.uiState.value.game?.filled == target.toSet() }
@@ -163,7 +171,7 @@ class NonogramViewModelTest {
         vm.undo() // empty: no-op
         assertEquals(s, vm.uiState.value.game)
         // Undo is persisted like any move.
-        await("undo persisted") { runBlocking { vm.dataStore.filledCells.first() }.isEmpty() }
+        await("undo persisted") { blocking { vm.dataStore.filledCells.first() }.isEmpty() }
         // Restart wipes the history.
         vm.crossCell(correct)
         assertTrue(vm.uiState.value.canUndo)
@@ -193,7 +201,7 @@ class NonogramViewModelTest {
         vm.nextLevel()
         Thread.sleep(200)
         assertEquals(1, vm.uiState.value.level, "Next only exists on a solved board")
-        assertEquals(1, runBlocking { vm.dataStore.currentLevel.first() })
+        assertEquals(1, blocking { vm.dataStore.currentLevel.first() })
     }
 
     @Test fun doubleTappingNextAdvancesExactlyOneLevel() {
@@ -210,7 +218,7 @@ class NonogramViewModelTest {
         // A late tap that lands on the fresh, unsolved board is ignored too.
         vm.nextLevel()
         Thread.sleep(200)
-        assertEquals(2, runBlocking { vm.dataStore.currentLevel.first() })
+        assertEquals(2, blocking { vm.dataStore.currentLevel.first() })
         assertEquals(2, vm.uiState.value.level)
     }
 
@@ -229,12 +237,14 @@ class NonogramViewModelTest {
     }
 
     @Test fun winningBoardRecordsCompletionOnce() {
-        val vm = loadedVm()
-        val before = runBlocking { vm.dataStore.puzzlesCompleted.first() }
+        // A level no other test wins: win keys are banked in the store, which outlives each test,
+        // so reusing level 1 would find this win already counted.
+        val vm = loadedVm(level = 7)
+        val before = blocking { vm.dataStore.puzzlesCompleted.first() }
         val g = vm.uiState.value.game!!
         for (i in g.puzzle.solution.indices.filter { g.puzzle.solution[it] }) vm.tapCell(i)
         await("won") { vm.uiState.value.game?.isWon == true }
-        await("completion recorded") { runBlocking { vm.dataStore.puzzlesCompleted.first() } == before + 1 }
+        await("completion recorded") { blocking { vm.dataStore.puzzlesCompleted.first() } == before + 1 }
         // Taps after game over are ignored.
         val hearts = vm.uiState.value.game!!.hearts
         vm.tapCell(g.puzzle.solution.indices.first { !g.puzzle.solution[it] })
@@ -245,11 +255,17 @@ class NonogramViewModelTest {
         val vm = loadedVm()
         vm.setGameMode(GameMode.DAILY)
         await("daily ready") { vm.uiState.value.mode == GameMode.DAILY && vm.uiState.value.game != null && !vm.uiState.value.generating }
-        val before = runBlocking { vm.dataStore.puzzlesCompleted.first() }
+        val before = blocking { vm.dataStore.puzzlesCompleted.first() }
         val g = vm.uiState.value.game!!
         for (i in g.puzzle.solution.indices.filter { g.puzzle.solution[it] }) vm.tapCell(i)
         await("daily won") { vm.uiState.value.game?.isWon == true }
-        await("daily completion recorded") { runBlocking { vm.dataStore.puzzlesCompleted.first() } > before }
+        await("daily completion recorded") { blocking { vm.dataStore.puzzlesCompleted.first() } > before }
+        // Let the rest of the win land before the test ends: the streak write reloads every live
+        // ViewModel, and a store edit still in flight when Dispatchers.Main is reset would wait on
+        // the paused Robolectric main looper and wedge the store for the following tests.
+        await("daily streak recorded") {
+            vm.uiState.value.dailyDone && vm.uiState.value.dailyStreak >= 1 && !vm.uiState.value.generating
+        }
     }
 
     @Test fun retryGenerationReloadsBoard() {
