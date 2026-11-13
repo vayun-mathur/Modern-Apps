@@ -89,4 +89,8 @@
     <string name="join_request_sent">Requested to join — you\'ll get access once the host approves.</string>
     <string name="connection_lost">Connection lost — waiting to reconnect…</string>
     <string name="players_online">%1$d online</string>
+    <!-- Loading overlay while the engine generates the world around the player. Sentence fragment -->
+    <string name="loading_generating">Generating world…</string>
+    <!-- Loading overlay while terrain meshes are being built. Sentence fragment -->
+    <string name="loading_building">Building terrain…</string>
 </resources>

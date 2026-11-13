@@ -69,6 +69,9 @@ pub struct VulkanRenderer {
     pub pass_ms: [f32; 4],
     pub drawn_sections: u32,
     pub dim: u8, // active dimension (0 overworld, 1 nether, 2 end) — gates sky/cloud passes
+    // The window went away (app backgrounded). The swapchain and surface are gone, but the device,
+    // pipelines, textures and every chunk mesh are kept so coming back only rebuilds the swapchain.
+    pub suspended: bool,
 }
 
 impl VulkanRenderer {
@@ -106,18 +109,49 @@ impl VulkanRenderer {
         let img_count = swapchain.images.len();
         let query_pool = device.create_query_pool(&vk::QueryPoolCreateInfo::default().query_type(vk::QueryType::TIMESTAMP).query_count(img_count as u32 * 5), None).map_err(|e| format!("query pool {e:?}"))?;
         let ts_period = ctx.device_properties.limits.timestamp_period;
-        Ok(Self { ctx, swapchain, atlas, entity_atlas, entity_vbuf, entity_ibuf, entity_index_count: 0, shadow, postfx, pipelines, command_pool, command_buffers, image_available, render_finished, in_flight_fences, ubo_buffer, ubo_data: UboData::default(), queued_meshes: HashMap::new(), gpu_meshes: HashMap::new(), current_frame: 0, frame_count: 0, width, height, query_pool, ts_period, ts_written: vec![false; img_count], pass_ms: [0.0;4], drawn_sections: 0, dim: 0 })
+        Ok(Self { ctx, swapchain, atlas, entity_atlas, entity_vbuf, entity_ibuf, entity_index_count: 0, shadow, postfx, pipelines, command_pool, command_buffers, image_available, render_finished, in_flight_fences, ubo_buffer, ubo_data: UboData::default(), queued_meshes: HashMap::new(), gpu_meshes: HashMap::new(), current_frame: 0, frame_count: 0, width, height, query_pool, ts_period, ts_written: vec![false; img_count], pass_ms: [0.0;4], drawn_sections: 0, dim: 0, suspended: false })
     }
     pub unsafe fn resize(&mut self, width: u32, height: u32) -> Result<(), String> {
-        if width==0 || height==0 { return Ok(()); }
+        if width==0 || height==0 || self.suspended { return Ok(()); }
         self.ctx.device.device_wait_idle().map_err(|e| format!("wait {e:?}"))?;
         self.swapchain.cleanup(&self.ctx.device);
-        self.swapchain = Swapchain::new(&self.ctx, width, height)?;
-        self.postfx.resize(&self.ctx.instance, &self.ctx.device, self.ctx.physical_device, &self.swapchain)?;
+        unsafe { self.build_swapchain(width, height) }
+    }
+    // (Re)creates the swapchain and everything sized by it on the current surface.
+    unsafe fn build_swapchain(&mut self, width: u32, height: u32) -> Result<(), String> {
+        self.swapchain = Swapchain::new(&self.ctx, width.max(1), height.max(1))?;
+        unsafe { self.postfx.resize(&self.ctx.instance, &self.ctx.device, self.ctx.physical_device, &self.swapchain)?; }
         self.width = width; self.height = height;
-        self.ctx.device.free_command_buffers(self.command_pool, &self.command_buffers);
+        unsafe { self.ctx.device.free_command_buffers(self.command_pool, &self.command_buffers); }
         let alloc_info = vk::CommandBufferAllocateInfo::default().command_pool(self.command_pool).level(vk::CommandBufferLevel::PRIMARY).command_buffer_count(self.swapchain.images.len() as u32);
-        self.command_buffers = self.ctx.device.allocate_command_buffers(&alloc_info).map_err(|e| format!("alloc resize {e:?}"))?;
+        self.command_buffers = unsafe { self.ctx.device.allocate_command_buffers(&alloc_info) }.map_err(|e| format!("alloc resize {e:?}"))?;
+        Ok(())
+    }
+    /// The window is being destroyed: drop the swapchain and surface, keep everything else.
+    ///
+    /// # Safety
+    /// Must be called before the native window is released, from the thread that owns the renderer.
+    pub unsafe fn suspend(&mut self) {
+        if self.suspended { return; }
+        unsafe {
+            self.ctx.device.device_wait_idle().ok();
+            self.swapchain.cleanup(&self.ctx.device);
+            self.ctx.drop_surface();
+        }
+        self.suspended = true;
+    }
+    /// A new window arrived after `suspend`: bind it and rebuild only the swapchain. Meshes, textures
+    /// and pipelines are reused, so resuming costs milliseconds instead of re-meshing the world.
+    ///
+    /// # Safety
+    /// `window` must be a live, acquired `ANativeWindow` that outlives the renderer's use of it.
+    pub unsafe fn resume(&mut self, window: *mut crate::vulkan::context::ANativeWindow, width: u32, height: u32) -> Result<(), String> {
+        if !self.suspended { return Ok(()); }
+        unsafe {
+            self.ctx.replace_surface(window)?;
+            self.build_swapchain(width, height)?;
+        }
+        self.suspended = false;
         Ok(())
     }
     pub unsafe fn enqueue_mesh(&mut self, chunk_x: i32, sec_y: i32, chunk_z: i32, mesh: Option<MeshData>) {
@@ -145,11 +179,14 @@ impl VulkanRenderer {
         self.entity_ibuf.upload(&self.ctx.device, ibytes);
         self.entity_index_count = ni as u32;
     }
-    pub unsafe fn process_pending_uploads(&mut self) -> Result<(), String> {
+    /// Uploads up to `budget` queued section meshes, nearest to chunk (`cx`, `cz`) first so the
+    /// ground around the player fills in before the horizon.
+    pub unsafe fn process_pending_uploads(&mut self, cx: i32, cz: i32, budget: usize) -> Result<(), String> {
         let mut processed=0;
-        let keys: Vec<_> = self.queued_meshes.keys().copied().collect();
+        let mut keys: Vec<_> = self.queued_meshes.keys().copied().collect();
+        keys.sort_by_key(|k| (k.0 - cx).pow(2) + (k.2 - cz).pow(2));
         for key in keys {
-            if processed>=12 { break; }
+            if processed>=budget { break; }
             if let Some(opt) = self.queued_meshes.remove(&key) {
                 if let Some(mut old) = self.gpu_meshes.remove(&key) {
                     self.ctx.device.device_wait_idle().ok();
@@ -240,10 +277,18 @@ impl VulkanRenderer {
         let bytes=unsafe { std::slice::from_raw_parts((&self.ubo_data as *const UboData) as *const u8, std::mem::size_of::<UboData>()) };
         self.ubo_buffer.upload(&self.ctx.device, bytes);
     }
-    pub unsafe fn draw_frame(&mut self) -> Result<bool, String> {
+    /// Queued section meshes whose chunk lies within `r` chunks of (`cx`, `cz`).
+    pub fn queued_near(&self, cx: i32, cz: i32, r: i32) -> usize {
+        self.queued_meshes.keys().filter(|k| (k.0 - cx).abs() <= r && (k.2 - cz).abs() <= r).count()
+    }
+    pub unsafe fn draw_frame(&mut self, cx: i32, cz: i32, upload_budget: usize) -> Result<bool, String> {
+        if self.suspended { return Ok(false); }
         let device=self.ctx.device.clone();
         let fence=self.in_flight_fences[self.current_frame];
-        unsafe { device.wait_for_fences(std::slice::from_ref(&fence), true, u64::MAX).map_err(|e| format!("wait {e:?}"))?; device.reset_fences(std::slice::from_ref(&fence)).map_err(|e| format!("reset {e:?}"))?; }
+        // Wait, but only reset the fence once an image was actually acquired: resetting it and then
+        // bailing out on OUT_OF_DATE left a fence nothing would ever signal, and the next frame on
+        // this slot waited on it forever.
+        unsafe { device.wait_for_fences(std::slice::from_ref(&fence), true, u64::MAX).map_err(|e| format!("wait {e:?}"))?; }
         // Read last frame's GPU timestamps for this slot (its fence just signaled) -> per-pass ms.
         let ts_base = (self.current_frame * 5) as u32;
         if self.ts_written[self.current_frame] && self.ts_period > 0.0 {
@@ -260,7 +305,8 @@ impl VulkanRenderer {
             Err(vk::Result::ERROR_OUT_OF_DATE_KHR)=>{ if self.width>0 && self.height>0 { self.resize(self.width,self.height)?; } return Ok(false); }
             Err(e)=>return Err(format!("acquire {e:?}")),
         };
-        unsafe { self.process_pending_uploads()?; }
+        unsafe { device.reset_fences(std::slice::from_ref(&fence)).map_err(|e| format!("reset {e:?}"))?; }
+        unsafe { self.process_pending_uploads(cx, cz, upload_budget)?; }
         let cmd=self.command_buffers[image_index as usize];
         let begin_info=vk::CommandBufferBeginInfo::default().flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
         unsafe {
@@ -428,6 +474,6 @@ impl VulkanRenderer {
         self.pipelines.destroy(&self.ctx.device);
         self.postfx.destroy(&self.ctx.device);
         self.ubo_buffer.destroy(&self.ctx.device);
-        self.swapchain.cleanup(&self.ctx.device);
+        if !self.suspended { self.swapchain.cleanup(&self.ctx.device); }
     }
 }

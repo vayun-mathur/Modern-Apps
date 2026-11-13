@@ -162,18 +162,9 @@ impl EngineState {
 unsafe impl Send for EngineState {}
 
 static ENGINE: OnceLock<Mutex<Option<EngineState>>> = OnceLock::new();
-static INIT_DONE: AtomicBool = AtomicBool::new(false);
 
 fn engine_lock() -> &'static Mutex<Option<EngineState>> {
     ENGINE.get_or_init(|| Mutex::new(None))
-}
-
-pub fn init_engine(files_dir: String, seed: u32) -> bool {
-    let Ok(mut guard) = engine_lock().lock() else { return false; };
-    if guard.is_some() { return true; }
-    *guard = Some(new_state(files_dir, seed, DEFAULT_RENDER_DISTANCE));
-    INIT_DONE.store(true, Ordering::SeqCst);
-    true
 }
 
 /// Chunk radius kept loaded around the player.
@@ -398,48 +389,6 @@ fn tick_autosave(state: &mut EngineState, dt: f32) {
 /// JNI `nativeSave`: saves now (the activity calls it from `onStop`). No-op before the engine exists.
 pub fn save_now() { with_engine(save_world); }
 
-pub fn destroy_engine() {
-    let mut guard = match engine_lock().lock() { Ok(g) => g, Err(_) => return, };
-    if let Some(mut state) = guard.take() {
-        save_world(&mut state);
-        if let Some(mut renderer) = state.renderer.take() {
-            unsafe {
-                renderer.destroy();
-                renderer.ctx.destroy();
-            }
-            if let Some(win) = state.window_ptr {
-                unsafe { crate::vulkan::context::ANativeWindow_release(win); }
-            }
-        }
-        INIT_DONE.store(false, Ordering::SeqCst);
-    }
-}
-
-pub fn create_renderer(window: *mut ANativeWindow, width: i32, height: i32) -> Result<(), String> {
-    let w = width.max(1) as u32;
-    let h = height.max(1) as u32;
-    with_engine(|state| {
-        state.window_ptr = Some(window);
-        state.width = w;
-        state.height = h;
-        let ctx = unsafe { VulkanContext::new(window, width, height)? };
-        let renderer = unsafe { VulkanRenderer::new(ctx, w, h)? };
-        state.renderer = Some(renderer);
-        state.chunks.ensure_radius(state.player.pos.x as i32, state.player.pos.z as i32);
-        Ok::<(), String>(())
-    }).unwrap_or(Err("engine not init".into()))?;
-    rebuild_all_meshes();
-    Ok(())
-}
-
-pub fn rebuild_all_meshes() {
-    with_engine(|state| {
-        if state.renderer.is_none() { return; }
-        let positions: Vec<_> = state.chunks.chunks_iter().map(|(pos, _)| *pos).collect();
-        for pos in positions { rebuild_chunk_meshes(state, pos); }
-    });
-}
-
 pub fn rebuild_chunk_meshes(state: &mut EngineState, chunk_pos: crate::world::chunk::ChunkPos) {
     if state.chunks.get(chunk_pos).is_none() { return; }
     let meshes = {
@@ -465,25 +414,7 @@ pub fn rebuild_chunk_meshes(state: &mut EngineState, chunk_pos: crate::world::ch
     }
 }
 
-pub fn resize_renderer(width: i32, height: i32) {
-    with_engine(|state| {
-        state.width = width.max(1) as u32;
-        state.height = height.max(1) as u32;
-        state.needs_resize = true;
-    });
-}
-
-pub fn destroy_renderer() {
-    with_engine(|state| {
-        if let Some(mut r) = state.renderer.take() {
-            unsafe { r.destroy(); r.ctx.destroy(); }
-        }
-        if let Some(win) = state.window_ptr.take() {
-            unsafe { crate::vulkan::context::ANativeWindow_release(win); }
-        }
-    });
-}
-
+include!("engine_lifecycle.rs");
 include!("engine_part1.rs");
 include!("engine_part2.rs");
 include!("engine_part3.rs");

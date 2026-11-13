@@ -84,6 +84,39 @@ impl VulkanContext {
         let queue = device.get_device_queue(qfi, 0);
         Ok(Self { entry, instance, surface_loader, android_surface_loader, surface, physical_device, device, queue_family_index: qfi, queue, device_properties: props })
     }
+    /// Binds the context to a new native window after the old surface was lost (app backgrounded,
+    /// screen off). The instance, device and everything allocated on it survive; only the
+    /// `VkSurfaceKHR` is recreated. Fails if the device can't present to the new surface, in which
+    /// case the caller rebuilds the whole renderer.
+    ///
+    /// # Safety
+    /// `window` must be a live, acquired `ANativeWindow`, and no swapchain may still reference the
+    /// previous surface.
+    pub unsafe fn replace_surface(&mut self, window: *mut ANativeWindow) -> Result<(), String> {
+        unsafe { self.drop_surface(); }
+        let ci = vk::AndroidSurfaceCreateInfoKHR::default().window(window as *mut _);
+        let surface = unsafe { self.android_surface_loader.create_android_surface(&ci, None) }
+            .map_err(|e| format!("create_android_surface {e:?}"))?;
+        let ok = unsafe {
+            self.surface_loader.get_physical_device_surface_support(self.physical_device, self.queue_family_index, surface)
+        }.unwrap_or(false);
+        if !ok {
+            unsafe { self.surface_loader.destroy_surface(surface, None); }
+            return Err("device cannot present to the new surface".into());
+        }
+        self.surface = surface;
+        Ok(())
+    }
+    /// Destroys the window surface (the window is going away) but keeps the device.
+    ///
+    /// # Safety
+    /// The swapchain built on this surface must already be destroyed.
+    pub unsafe fn drop_surface(&mut self) {
+        if self.surface != vk::SurfaceKHR::null() {
+            unsafe { self.surface_loader.destroy_surface(self.surface, None); }
+            self.surface = vk::SurfaceKHR::null();
+        }
+    }
     fn required_instance_extensions() -> Vec<CString> {
         vec![ash::khr::surface::NAME.to_owned(), ash::khr::android_surface::NAME.to_owned()]
     }
@@ -91,7 +124,7 @@ impl VulkanContext {
         unsafe {
             self.device.device_wait_idle().ok();
             self.device.destroy_device(None);
-            self.surface_loader.destroy_surface(self.surface, None);
+            self.drop_surface();
             self.instance.destroy_instance(None);
         }
     }

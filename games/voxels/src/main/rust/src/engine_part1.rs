@@ -12,16 +12,14 @@ pub fn set_paused(paused: bool) {
 /// Whether the pause menu is up.
 pub fn is_paused() -> bool { PAUSED.load(Ordering::SeqCst) }
 
-pub fn tick_and_render() {
-    let now = Instant::now();
-    with_engine(|state| {
-        let dt = (now - state.last_tick).as_secs_f32().clamp(0.0, 0.05);
-        state.last_tick = now;
-        if !state.running { return; }
-        // Online worlds keep running for everyone else, so the local pause menu only stops input.
-        let paused = is_paused() && !crate::net::is_networked();
-        step(state, dt, paused);
-    });
+/// One engine-thread frame at time `now` (the caller holds the engine lock).
+fn tick_and_render_state(state: &mut EngineState, now: Instant) {
+    let dt = (now - state.last_tick).as_secs_f32().clamp(0.0, 0.05);
+    state.last_tick = now;
+    if !state.running { return; }
+    // Online worlds keep running for everyone else, so the local pause menu only stops input.
+    let paused = is_paused() && !crate::net::is_networked();
+    step(state, dt, paused);
 }
 
 /// One frame: simulate (unless paused), then draw and publish UI state.
@@ -147,11 +145,6 @@ fn simulate(state: &mut EngineState, dt: f32) {
         let pz = state.player.pos.z as i32;
         state.chunks.ensure_radius(px, pz);
 
-        let dirty_positions: Vec<_> = state.chunks.chunks_iter().filter(|(_, c)| c.mesh_dirty).map(|(p,_)| *p).take(4).collect();
-        for pos in dirty_positions {
-            if let Some(ch) = state.chunks.get_mut(pos) { ch.mesh_dirty = false; }
-            rebuild_chunk_meshes(state, pos);
-        }
 
         // --- Mobs: AI/physics tick, spawn/despawn near the player. ---
         let player_pos = state.player.pos;
@@ -318,6 +311,9 @@ fn simulate(state: &mut EngineState, dt: f32) {
 /// Builds the entity/particle meshes, draws the frame (if a surface is attached) and refreshes the
 /// UI and network caches.
 fn render_frame(state: &mut EngineState) {
+        // Meshing runs even while paused, so a world that finishes loading behind the pause menu
+        // (or a dimension switch) still fills in.
+        mesh_dirty_chunks(state);
         let (mut entity_verts, mut entity_indices) = build_entity_mesh(&state.mobs);
         {
             let right = state.player.right();
@@ -328,7 +324,9 @@ fn render_frame(state: &mut EngineState) {
 
         // Start at midday (day_t=0.5 -> sun overhead) so the world is lit when the app opens.
         let time = state.world_time();
-        if let Some(renderer) = state.renderer.as_mut() {
+        let (pcx, pcz) = { let c = crate::world::chunk::ChunkPos::from_world(state.player.pos.x as i32, state.player.pos.z as i32); (c.0, c.1) };
+        let uploads = upload_budget();
+        if let Some(renderer) = state.renderer.as_mut().filter(|r| !r.suspended) {
             if state.needs_resize {
                 let w = state.width; let h = state.height;
                 unsafe { let _ = renderer.resize(w, h); }
@@ -357,7 +355,7 @@ fn render_frame(state: &mut EngineState) {
             unsafe {
                 renderer.update_ubo(view_proj, state.player.pos, time, underwater, nv, dim, rain);
                 renderer.upload_entity_mesh(&entity_verts, &entity_indices);
-                let _ = renderer.draw_frame();
+                let _ = renderer.draw_frame(pcx, pcz, uploads);
             }
         }
         crate::net::publish(state);

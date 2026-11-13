@@ -1,5 +1,5 @@
-/// JNI bridge for `VoxelsNative#nativeInit`: creates the engine with the app
-/// files directory and world seed. Returns true on success.
+/// JNI bridge for `VoxelsNative#nativeInit`: starts loading the world (save directory + seed) on
+/// the engine thread and returns immediately; poll `nativeLoadState` for progress.
 #[no_mangle]
 pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativeInit<'l>(
     mut env: EnvUnowned<'l>,
@@ -12,13 +12,31 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativ
             Some(d) => d,
             None => return Ok(false),
         };
-        Ok(engine::init_engine(dir, seed as u32))
+        Ok(engine::init_engine_async(dir, seed as u32))
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
 
-/// JNI bridge for `VoxelsNative#surfaceCreated`: attaches the Android native
-/// window, creates the renderer, and starts the tick-and-render thread.
+/// JNI bridge for `VoxelsNative#nativeLoadState`: 0 idle, 1 generating, 2 meshing, 3 ready.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativeLoadState<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+) -> jint {
+    jint::from(engine::load_phase())
+}
+
+/// JNI bridge for `VoxelsNative#nativeLoadProgress`: meshing progress, 0..1.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativeLoadProgress<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+) -> jfloat {
+    engine::load_progress()
+}
+
+/// JNI bridge for `VoxelsNative#surfaceCreated`: acquires the Android native window and hands it to
+/// the engine thread, which builds (or resumes) the renderer off the main thread.
 #[no_mangle]
 pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_surfaceCreated<'l>(
     env: EnvUnowned<'l>,
@@ -34,27 +52,7 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_surfa
             return;
         }
         unsafe { vulkan::context::ANativeWindow_acquire(window) };
-        let _ = engine::create_renderer(window, 1280, 720);
-        std::thread::spawn(|| {
-            let mut last = std::time::Instant::now();
-            loop {
-                let has_renderer = engine::with_engine(|s| s.renderer.is_some()).unwrap_or(false);
-                if !has_renderer {
-                    break;
-                }
-                engine::tick_and_render();
-                let elapsed = last.elapsed();
-                let target = std::time::Duration::from_millis(16);
-                if elapsed < target {
-                    std::thread::sleep(target - elapsed);
-                }
-                last = std::time::Instant::now();
-                let running = engine::with_engine(|s| s.running).unwrap_or(false);
-                if !running {
-                    break;
-                }
-            }
-        });
+        engine::surface_created(window);
     }
     #[cfg(not(target_os = "android"))]
     {
@@ -74,13 +72,14 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_surfa
     engine::resize_renderer(width, height);
 }
 
-/// JNI bridge for `VoxelsNative#surfaceDestroyed`: tears down the renderer.
+/// JNI bridge for `VoxelsNative#surfaceDestroyed`: releases the window, keeping the renderer's
+/// device and meshes for when the surface comes back.
 #[no_mangle]
 pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_surfaceDestroyed<'l>(
     _env: EnvUnowned<'l>,
     _class: JClass<'l>,
 ) {
-    engine::destroy_renderer();
+    engine::surface_destroyed();
 }
 
 /// JNI bridge for `VoxelsNative#nativeOnDestroy`: destroys the whole engine.

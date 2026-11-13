@@ -166,8 +166,10 @@ fn switch_dimension(state: &mut EngineState, target: u8) {
     }
 
     if let Some(r) = state.renderer.as_mut() { unsafe { r.clear_meshes(); } }
+    // Re-mesh the new dimension over the next frames, nearest first (see mesh_dirty_chunks), instead
+    // of all ~450 chunks inside this one frame.
     let positions: Vec<_> = state.chunks.chunks_iter().map(|(p, _)| *p).collect();
-    for pos in positions { rebuild_chunk_meshes(state, pos); }
+    for pos in positions { if let Some(ch) = state.chunks.get_mut(pos) { ch.mesh_dirty = true; } }
 }
 
 // Build a small obsidian nether-portal frame (interior filled with portal blocks) in the X-Y plane.

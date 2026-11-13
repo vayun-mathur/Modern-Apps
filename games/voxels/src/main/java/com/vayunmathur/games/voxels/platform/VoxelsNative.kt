@@ -18,7 +18,12 @@ object VoxelsNative {
         Log.error("VoxelsNative", "System.loadLibrary(voxels_engine) failed", t)
         false
     }
+    // Starts loading the world on the engine thread and returns at once; poll nativeLoadState.
     external fun nativeInit(filesDir: String, seed: Int): Boolean
+    // 0 idle, 1 generating, 2 meshing, 3 ready (see ui/LoadingOverlay.kt LoadPhase).
+    external fun nativeLoadState(): Int
+    // Meshing progress 0..1 for the loading overlay.
+    external fun nativeLoadProgress(): Float
     external fun surfaceCreated(surface: Surface)
     external fun surfaceChanged(width: Int, height: Int)
     external fun surfaceDestroyed()

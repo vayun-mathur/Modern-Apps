@@ -30,6 +30,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,6 +58,8 @@ import com.vayunmathur.games.voxels.ui.HoldButton
 import com.vayunmathur.games.voxels.ui.Hotbar
 import com.vayunmathur.games.voxels.ui.InventoryOverlay
 import com.vayunmathur.games.voxels.ui.InventoryState
+import com.vayunmathur.games.voxels.ui.LoadPhase
+import com.vayunmathur.games.voxels.ui.LoadingOverlay
 import com.vayunmathur.games.voxels.ui.Joystick
 import com.vayunmathur.games.voxels.ui.StonecutterOverlay
 import com.vayunmathur.games.voxels.ui.TradeOverlay
@@ -114,9 +118,11 @@ class MainActivity : ComponentActivity() {
         val ownerDevice = intent.getStringExtra("owner_device") ?: ""
         val worldName = intent.getStringExtra("world_name") ?: ""
         if (VoxelsNative.isAvailable) {
-            initEngine(worldDir, worldSeed)
-            // Put the engine in host/client mode before the render thread starts ticking.
+            // Put the engine in host/client mode before the engine thread starts ticking.
             if (online) try { VoxelsNative.nativeSetRole(netRole) } catch (_: Exception) {}
+            // Returns immediately: the world is generated and meshed on the engine thread behind
+            // the loading overlay, never on the main thread.
+            initEngine(worldDir, worldSeed)
         }
         com.vayunmathur.games.voxels.platform.SoundFx.init(this)
         setContent {
@@ -147,6 +153,19 @@ class MainActivity : ComponentActivity() {
                 var netConnected by remember { mutableStateOf(false) }
                 var peersJson by remember { mutableStateOf("[]") }
                 LaunchedEffect(Unit) { if (VoxelsNative.isAvailable) try { recipesJson = VoxelsNative.getRecipesJson(); smeltingJson = VoxelsNative.getSmeltingJson(); blessingCatalogJson = VoxelsNative.getBlessingCatalogJson(); cutsJson = VoxelsNative.getCutsJson() } catch (_: Exception) {} }
+                // World loading runs on the engine thread; poll it for the loading overlay. The phase
+                // can drop back to meshing if the renderer ever has to be rebuilt.
+                var loadPhase by remember { mutableIntStateOf(if (VoxelsNative.isAvailable) LoadPhase.GENERATING else LoadPhase.READY) }
+                var loadProgress by remember { mutableFloatStateOf(0f) }
+                LaunchedEffect(Unit) {
+                    while (isActive && VoxelsNative.isAvailable) {
+                        try {
+                            loadPhase = VoxelsNative.nativeLoadState()
+                            loadProgress = VoxelsNative.nativeLoadProgress()
+                        } catch (_: Exception) {}
+                        delay(if (loadPhase == LoadPhase.READY) 500 else 100)
+                    }
+                }
                 var achievements by remember { mutableStateOf<VoxelsAchievements?>(null) }
                 val newAchievement by (achievements?.newAchievement?.collectAsState() ?: remember { mutableStateOf(null) })
 
@@ -599,6 +618,10 @@ class MainActivity : ComponentActivity() {
                     if (stonecutterOpen && VoxelsNative.isAvailable) {
                         StonecutterOverlay(cutsJson = cutsJson, inventoryJson = inventoryJson,
                             onClose = { stonecutterOpen = false })
+                    }
+
+                    if (loadPhase != LoadPhase.READY && VoxelsNative.isAvailable) {
+                        LoadingOverlay(phase = loadPhase, progress = loadProgress)
                     }
 
                     if (paused) {
