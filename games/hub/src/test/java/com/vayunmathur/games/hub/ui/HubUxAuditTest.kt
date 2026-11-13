@@ -9,7 +9,9 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -22,12 +24,15 @@ import com.vayunmathur.games.hub.ui.components.AchievementRow
 import com.vayunmathur.games.hub.ui.components.ActivityItemCard
 import com.vayunmathur.games.hub.ui.components.GameCard
 import com.vayunmathur.games.hub.ui.components.StatCard
+import com.vayunmathur.games.hub.ui.components.activityTypeLabel
 import com.vayunmathur.games.hub.ui.components.profileTabAvatarSymbol
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.games.hub.R
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -105,5 +110,43 @@ class HubUxAuditTest {
         rule.onNodeWithText("Logic Gates Deluxe").assertIsDisplayed()
         rule.onAllNodesWithText("unblockjam", substring = true).assertCountEquals(0)
         rule.onAllNodesWithText("logicgate").assertCountEquals(0)
+    }
+
+    private fun achievement(id: String, unlocked: Boolean) = AchievementWithProgress(
+        gameId = "chess", achievementId = id, name = "Ach $id", description = "Do $id",
+        xpReward = 25, targetProgress = 1, isSecret = false, tier = "BRONZE", iconResName = null,
+        progress = if (unlocked) 1 else 0, isUnlocked = unlocked, unlockedAt = if (unlocked) 1L else null,
+    )
+
+    @Test
+    fun activityTypesHaveSpokenLabelsNotConstants() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val types = listOf(
+            ActivityEventEntity.TYPE_ACHIEVEMENT_UNLOCKED, ActivityEventEntity.TYPE_SESSION_COMPLETED,
+            ActivityEventEntity.TYPE_LEVEL_UP, ActivityEventEntity.TYPE_GAME_REGISTERED,
+            ActivityEventEntity.TYPE_FIRST_PLAY, ActivityEventEntity.TYPE_GAME_LAUNCHED,
+        )
+        val labels = types.map { context.getString(activityTypeLabel(it)) }
+        assertEquals(types.size, labels.toSet().size, "each known type gets its own label: $labels")
+        labels.forEach { assertTrue(it.none { c -> c == '_' }, "label looks like a constant: $it") }
+        assertEquals(context.getString(R.string.activity_type_other), context.getString(activityTypeLabel("SOMETHING_NEW")))
+
+        val event = ActivityEventEntity(id = 1, type = ActivityEventEntity.TYPE_ACHIEVEMENT_UNLOCKED, gameId = "chess", title = "First Win")
+        rule.setContent { ActivityItemCard(event = event) }
+        rule.onNodeWithContentDescription("Achievement unlocked", useUnmergedTree = true).assertExists()
+        rule.onAllNodesWithContentDescription(ActivityEventEntity.TYPE_ACHIEVEMENT_UNLOCKED, useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun achievementRowIconSpeaksItsState() {
+        rule.setContent {
+            Column {
+                AchievementRow(achievement("u", unlocked = true))
+                AchievementRow(achievement("l", unlocked = false))
+            }
+        }
+        rule.onNodeWithContentDescription("Unlocked", useUnmergedTree = true).assertExists()
+        rule.onNodeWithContentDescription("Locked", useUnmergedTree = true).assertExists()
     }
 }

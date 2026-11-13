@@ -95,6 +95,18 @@
     <!-- StreakIndicator: Longest streak display. %1$s = longest days count as string e.g. 12. Noun phrase -->
     <string name="longest_days">Longest: <xliff:g id="days" example="12">%1$s</xliff:g> days</string>
 
+    <!-- AchievementRow: Spoken state of an achievement's icon / visible badge on locked rows. Adjective -->
+    <string name="achievement_unlocked">Unlocked</string>
+    <string name="achievement_locked">Locked</string>
+    <!-- ActivityItem: Spoken name of an activity-feed entry's icon (TalkBack). Noun phrases -->
+    <string name="activity_type_achievement">Achievement unlocked</string>
+    <string name="activity_type_level_up">Level up</string>
+    <string name="activity_type_game_added">Game added</string>
+    <string name="activity_type_session">Play session</string>
+    <string name="activity_type_first_play">First play</string>
+    <string name="activity_type_launched">Game launched</string>
+    <string name="activity_type_other">Activity</string>
+
     <!-- AchievementRow: Badge showing XP reward for achievement. %1$s = XP amount as string e.g. 50. Noun phrase -->
     <string name="xp_1">+<xliff:g id="xp" example="50">%1$s</xliff:g> XP</string>
     <!-- AchievementRow: Hint for secret achievement hidden. Imperative sentence encouraging play -->

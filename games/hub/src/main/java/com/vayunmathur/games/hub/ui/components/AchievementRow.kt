@@ -1,6 +1,7 @@
 package com.vayunmathur.games.hub.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,15 +11,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.hub.data.dao.AchievementWithProgress
 import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
-import com.vayunmathur.library.ui.Icon
+import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -49,13 +50,14 @@ fun AchievementRow(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = painterResource(id = android.R.drawable.btn_star_big_on),
-                contentDescription = null,
-                modifier = Modifier.size(40.dp),
-                tint = if (item.isUnlocked) MaterialTheme.colorScheme.onSecondaryContainer
-                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-            )
+            val stateLabel = stringResource(if (item.isUnlocked) R.string.achievement_unlocked else R.string.achievement_locked)
+            Box(Modifier.size(40.dp).clearAndSetSemantics { contentDescription = stateLabel }) {
+                IconStar(
+                    modifier = Modifier.size(40.dp),
+                    tint = if (item.isUnlocked) MaterialTheme.colorScheme.onSecondaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                )
+            }
             Column(
                 modifier = Modifier
                     .padding(start = 12.dp)

@@ -1,6 +1,8 @@
 package com.vayunmathur.games.hub.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,14 +10,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.games.hub.R
 import com.vayunmathur.games.hub.data.entities.ActivityEventEntity
 import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.games.hub.util.formatRelativeTime
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.Icon
+import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.IconEmojiEvents
+import com.vayunmathur.library.ui.IconInfo
+import com.vayunmathur.library.ui.IconPlay
+import com.vayunmathur.library.ui.IconPlayCircle
+import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 
@@ -36,11 +46,11 @@ fun ActivityItemCard(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                painter = painterResource(id = iconForType(event.type)),
-                contentDescription = event.type,
-                modifier = Modifier.padding(top = 2.dp)
-            )
+            // The icon speaks the event kind ("Achievement unlocked"), not the stored constant.
+            val typeLabel = stringResource(activityTypeLabel(event.type))
+            Box(Modifier.padding(top = 2.dp).clearAndSetSemantics { contentDescription = typeLabel }) {
+                ActivityTypeIcon(event.type)
+            }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(text = displayTitle(event, gameNames), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 event.description?.let { Text(text = it, style = MaterialTheme.typography.bodySmall) }
@@ -55,12 +65,27 @@ fun ActivityItemCard(
     }
 }
 
-private fun iconForType(type: String): Int = when (type) {
-    ActivityEventEntity.TYPE_ACHIEVEMENT_UNLOCKED -> android.R.drawable.btn_star_big_on
-    ActivityEventEntity.TYPE_LEVEL_UP -> android.R.drawable.ic_menu_slideshow
-    ActivityEventEntity.TYPE_GAME_REGISTERED -> android.R.drawable.ic_menu_add
-    ActivityEventEntity.TYPE_SESSION_COMPLETED -> android.R.drawable.ic_media_play
-    else -> android.R.drawable.ic_menu_info_details
+/** The spoken name of an activity [type]; unknown types read as plain "Activity". */
+@StringRes
+internal fun activityTypeLabel(type: String): Int = when (type) {
+    ActivityEventEntity.TYPE_ACHIEVEMENT_UNLOCKED -> R.string.activity_type_achievement
+    ActivityEventEntity.TYPE_LEVEL_UP -> R.string.activity_type_level_up
+    ActivityEventEntity.TYPE_GAME_REGISTERED -> R.string.activity_type_game_added
+    ActivityEventEntity.TYPE_SESSION_COMPLETED -> R.string.activity_type_session
+    ActivityEventEntity.TYPE_FIRST_PLAY -> R.string.activity_type_first_play
+    ActivityEventEntity.TYPE_GAME_LAUNCHED -> R.string.activity_type_launched
+    else -> R.string.activity_type_other
+}
+
+/** Icons.kt wrappers only - no framework drawables, no raw Icon(). */
+@Composable
+private fun ActivityTypeIcon(type: String) = when (type) {
+    ActivityEventEntity.TYPE_ACHIEVEMENT_UNLOCKED -> IconEmojiEvents()
+    ActivityEventEntity.TYPE_LEVEL_UP -> IconStar()
+    ActivityEventEntity.TYPE_GAME_REGISTERED -> IconAdd()
+    ActivityEventEntity.TYPE_SESSION_COMPLETED -> IconPlay()
+    ActivityEventEntity.TYPE_FIRST_PLAY, ActivityEventEntity.TYPE_GAME_LAUNCHED -> IconPlayCircle()
+    else -> IconInfo()
 }
 
 /**
