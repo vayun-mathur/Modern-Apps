@@ -29,14 +29,20 @@ data class SearchUiState(
      * and after it found nothing — so a running search rendered "No results found". Naming the
      * phases makes the distinction impossible to collapse again, and makes the ordering
      * (searching wins over empty) a property of the state instead of the order of `when` branches.
+     *
+     * Searching only wins over an EMPTY list. While the user types, every keystroke starts a new
+     * search, and the list used to collapse to a spinner for each one and come back a moment
+     * later — the results visibly blinked on every character, and the sheet re-keyed its height
+     * on every flip (the phase is its content key). The previous query's rows are almost always
+     * a superset of the next one's, so they stay up until the new rows replace them.
      */
     val phase: SearchPhase
         get() = when {
             query.length < 2 && recents.isNotEmpty() -> SearchPhase.Recents
             query.length < 2 -> SearchPhase.Idle
+            results.isNotEmpty() -> SearchPhase.Results
             searching -> SearchPhase.Searching
-            results.isEmpty() -> SearchPhase.Empty
-            else -> SearchPhase.Results
+            else -> SearchPhase.Empty
         }
 }
 
@@ -48,13 +54,13 @@ enum class SearchPhase {
     /** Nothing typed, but there are recent queries worth offering. */
     Recents,
 
-    /** A search is in flight — including its debounce window. */
+    /** A search is in flight — including its debounce window — and nothing is listed yet. */
     Searching,
 
     /** The search finished and found nothing. */
     Empty,
 
-    /** The search finished and found something. */
+    /** There are rows to list: the finished search's, or the previous query's while the next runs. */
     Results,
 }
 

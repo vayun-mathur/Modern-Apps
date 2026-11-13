@@ -39,13 +39,14 @@ class SearchUiStateTest {
     }
 
     /**
-     * Stale results from the previous query are still on screen while the next one runs. Showing
-     * them beats blanking the list, but the phase must say a search is in flight.
+     * Stale results from the previous query stay on screen while the next one runs. Blanking the
+     * list to a spinner on every keystroke made the results blink per character and re-keyed the
+     * sheet's height each time; the new rows simply replace the old ones when they arrive.
      */
     @Test
-    fun `searching wins over stale results`() {
+    fun `stale results stay listed while the next search runs`() {
         val state = SearchUiState(query = "ferry b", results = results, searching = true)
-        assertEquals(SearchPhase.Searching, state.phase)
+        assertEquals(SearchPhase.Results, state.phase)
     }
 
     /** Below the two-character floor nothing is searched, so recents are the useful thing. */
