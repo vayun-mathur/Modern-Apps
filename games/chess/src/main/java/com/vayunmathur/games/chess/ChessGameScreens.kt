@@ -1,17 +1,11 @@
 package com.vayunmathur.games.chess
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,10 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,27 +26,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import com.vayunmathur.games.chess.data.Move
-import com.vayunmathur.games.chess.data.Piece
 import com.vayunmathur.games.chess.data.PieceColor
-import com.vayunmathur.games.chess.data.PieceType
-import com.vayunmathur.games.chess.data.Position
 import com.vayunmathur.games.chess.util.ChessAchievementsManager
-import com.vayunmathur.games.chess.util.AppBackupAgent
 import com.vayunmathur.games.chess.util.ChessActions
 import com.vayunmathur.games.chess.util.ChessUiState
 import com.vayunmathur.games.chess.util.ChessViewModel
@@ -65,7 +45,6 @@ import com.vayunmathur.games.chess.util.GameResult
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
@@ -75,7 +54,6 @@ import com.vayunmathur.library.ui.SegmentedButton
 import com.vayunmathur.library.ui.SegmentedButtonDefaults
 import com.vayunmathur.library.ui.SingleChoiceSegmentedButtonRow
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.VerticalDivider
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.AchievementsManager
@@ -91,9 +69,6 @@ private const val NEW_GAME_DIALOG_WIDTH_FRACTION = 0.9f
 private const val DIFFICULTY_OPTION_COUNT = 4
 private const val COLOR_OPTION_COUNT = 2
 private const val FAST_WIN_MAX_MOVES = 40
-private const val FLIPPED_ROTATION = 180f
-private const val CAPTURE_HINT_FRACTION = 0.92f
-private const val EMPTY_HINT_FRACTION = 0.30f
 
 /**
  * The new-game picker.
@@ -514,274 +489,6 @@ private fun PortraitGameLayout(
             Text(it, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
     }
-}
-
-@Composable
-fun MovesList(moves: List<Move>, turn: PieceColor) {
-    Box(Modifier.height(100.dp)) {
-        LazyColumn(
-            Modifier
-                .fillMaxHeight()
-                .border(2.dp, Color.Gray)
-        ) {
-            item {
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
-                    val whiteBold = turn == PieceColor.WHITE
-                    val blackBold = turn == PieceColor.BLACK
-                    Text(
-                        stringResource(R.string.color_white),
-                        fontWeight = if (whiteBold) FontWeight.Bold else FontWeight.Normal
-                    )
-                    VerticalDivider(color = MaterialTheme.colorScheme.primary)
-                    Text(
-                        stringResource(R.string.color_black),
-                        fontWeight = if (blackBold) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-            }
-            items(moves.chunked(2)) { move ->
-                Row(Modifier.fillMaxWidth()) {
-                    Text(move[0].toString(), Modifier.weight(1f), textAlign = TextAlign.Center)
-                    if (move.size == 2) {
-                        VerticalDivider(color = MaterialTheme.colorScheme.primary)
-                        Text(move[1].toString(), Modifier.weight(1f), textAlign = TextAlign.Center)
-                    } else {
-                        VerticalDivider()
-                        Text("", Modifier.weight(1f), textAlign = TextAlign.Center)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun PawnPromotionDialog(color: PieceColor, onPromote: (PieceType) -> Unit) {
-    AlertDialog(
-        onDismissRequest = { },
-        title = { Text(text = stringResource(R.string.promote_pawn)) },
-        text = {
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
-                for (pieceType in listOf(PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT)) {
-                    Box(Modifier.clickable { onPromote(pieceType) }) {
-                        ChessPiece(Piece(pieceType, color), 64.dp)
-                    }
-                }
-            }
-        },
-        confirmButton = {}
-    )
-}
-
-@Composable
-fun CapturedPiecesRow(pieces: List<Piece>) {
-    Box(
-        Modifier
-            .height(48.dp)
-            .padding(8.dp), Alignment.Center) {
-        if (pieces.isNotEmpty()) {
-            Card {
-                Row(
-                    Modifier.padding(4.dp),
-                ) {
-                    pieces.forEach { ChessPiece(it, 32.dp) }
-                }
-            }
-        }
-    }
-}
-
-// File-scope so the chess board doesn't allocate 32 Color instances per recomposition.
-private val lightSquareColor = Color(0xFFBBBBBB)
-private val darkSquareColor = Color.Gray
-private val lastMoveColor = Color(0xFF4CAF50)
-private val moveHintColor = Color(0x66000000)
-private const val BOARD_SQUARES = 8
-
-private data class SquareHighlight(
-    val selected: Boolean,
-    val kingInCheck: Boolean,
-    val lastMove: Boolean,
-)
-
-private fun squareHighlight(
-    board: com.vayunmathur.games.chess.data.Board,
-    selectedPiece: Position?,
-    row: Int,
-    col: Int,
-    turn: PieceColor,
-    lastMove: com.vayunmathur.games.chess.data.Move?,
-): SquareHighlight {
-    val piece = board.pieces[row][col]
-    return SquareHighlight(
-        selected = selectedPiece?.let { it.row == row && it.col == col } ?: false,
-        kingInCheck = board.isKingInCheck(turn) &&
-            piece?.type == PieceType.KING && piece.color == turn,
-        lastMove = lastMove?.let {
-            (it.start.row == row && it.start.col == col) ||
-                (it.end.row == row && it.end.col == col)
-        } ?: false,
-    )
-}
-
-private fun squareBaseColor(row: Int, col: Int): Color =
-    if ((row + col) % 2 == 0) lightSquareColor else darkSquareColor
-
-private fun highlightModifier(highlight: SquareHighlight): Modifier {
-    return when {
-        highlight.selected -> Modifier.border(2.dp, Color.Yellow)
-        highlight.kingInCheck -> Modifier.border(2.dp, Color.Red)
-        highlight.lastMove -> Modifier.border(3.dp, lastMoveColor)
-        else -> Modifier
-    }
-}
-
-private fun legalDestinations(
-    board: com.vayunmathur.games.chess.data.Board,
-    selectedPiece: Position?,
-): Set<Position> {
-    val sel = selectedPiece ?: return emptySet()
-    return buildSet {
-        for (i in 0 until BOARD_SQUARES) {
-            for (j in 0 until BOARD_SQUARES) {
-                if (board.isValidMove(sel, Position(i, j))) add(Position(i, j))
-            }
-        }
-    }
-}
-
-@Composable
-fun BoardGrid(
-    board: com.vayunmathur.games.chess.data.Board,
-    selectedPiece: Position?,
-    isFlipped: Boolean,
-    turn: PieceColor,
-    onSquareClick: (Position) -> Unit,
-    onSquareDrop: (Position, Position) -> Unit = { _, _ -> },
-    showLastMove: Boolean = false
-) {
-    val drag = remember { BoardDragState() }
-    // During a drag the hints follow the dragged piece, otherwise the selection.
-    val hintSource = drag.source ?: selectedPiece
-    // The squares the selected piece can legally move to (for move-hint dots).
-    val destinations = remember(board, hintSource) {
-        legalDestinations(board, hintSource)
-    }
-    // The puzzle board seeds a synthetic zero-length lastMove to encode turn; skip it.
-    val lastMove = board.lastMove?.takeIf { showLastMove && it.start != it.end }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .onSizeChanged { drag.boardPx = it.width.toFloat() }
-            .boardDragGesture(drag, onSquareDrop)
-            .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
-    ) {
-        for (i in board.pieces.indices) {
-            BoardRow(
-                board = board,
-                row = i,
-                selectedPiece = hintSource,
-                isFlipped = isFlipped,
-                turn = turn,
-                lastMove = lastMove,
-                destinations = destinations,
-                onSquareClick = onSquareClick
-            )
-        }
-    }
-}
-
-@Composable
-private fun ColumnScope.BoardRow(
-    board: com.vayunmathur.games.chess.data.Board,
-    row: Int,
-    selectedPiece: Position?,
-    isFlipped: Boolean,
-    turn: PieceColor,
-    lastMove: com.vayunmathur.games.chess.data.Move?,
-    destinations: Set<Position>,
-    onSquareClick: (Position) -> Unit,
-) {
-    Row(modifier = Modifier.weight(1f)) {
-        for (j in board.pieces[row].indices) {
-            val piece = board.pieces[row][j]
-            val highlight = squareHighlight(board, selectedPiece, row, j, turn, lastMove)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f)
-                    .background(squareBaseColor(row, j))
-                    .clickable {
-                        onSquareClick(Position(row, j))
-                    }
-                    .then(highlightModifier(highlight))
-            ) {
-                piece?.let {
-                    ChessPiece(it, isFlipped = isFlipped)
-                }
-                if (Position(row, j) in destinations) {
-                    MoveHintDot(piece != null)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MoveHintDot(occupied: Boolean) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        if (occupied) {
-            // Capturable square: a ring around the piece.
-            Box(
-                Modifier
-                    .fillMaxSize(CAPTURE_HINT_FRACTION)
-                    .border(3.dp, moveHintColor, CircleShape)
-            )
-        } else {
-            // Empty square: a centered dot.
-            Box(
-                Modifier
-                    .fillMaxSize(EMPTY_HINT_FRACTION)
-                    .clip(CircleShape)
-                    .background(moveHintColor)
-            )
-        }
-    }
-}
-
-@Composable
-fun ChessPiece(piece: Piece, size: Dp? = null, isFlipped: Boolean = false) {
-    val description = stringResource(pieceDescriptionRes(piece))
-    Image(
-        painterResource(id = piece.type.resID),
-        description,
-        (if (size != null) Modifier.size(size) else Modifier.fillMaxSize())
-            .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION },
-        colorFilter = ColorFilter.tint(if (piece.color == PieceColor.WHITE) Color.White else Color.Black)
-    )
-}
-
-private fun pieceDescriptionRes(piece: Piece): Int {
-    return if (piece.color == PieceColor.WHITE) whitePieceRes(piece.type) else blackPieceRes(piece.type)
-}
-
-private fun whitePieceRes(type: PieceType): Int = when (type) {
-    PieceType.KING -> R.string.piece_white_king
-    PieceType.QUEEN -> R.string.piece_white_queen
-    PieceType.ROOK -> R.string.piece_white_rook
-    PieceType.BISHOP -> R.string.piece_white_bishop
-    PieceType.KNIGHT -> R.string.piece_white_knight
-    PieceType.PAWN -> R.string.piece_white_pawn
-}
-
-private fun blackPieceRes(type: PieceType): Int = when (type) {
-    PieceType.KING -> R.string.piece_black_king
-    PieceType.QUEEN -> R.string.piece_black_queen
-    PieceType.ROOK -> R.string.piece_black_rook
-    PieceType.BISHOP -> R.string.piece_black_bishop
-    PieceType.KNIGHT -> R.string.piece_black_knight
-    PieceType.PAWN -> R.string.piece_black_pawn
 }
 
 @Composable
