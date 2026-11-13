@@ -28,6 +28,8 @@ interface ArrowsGameActions {
     /** Rebuilds the board after generation failed. Restarting cannot do this: it only resets progress. */
     fun retryGeneration() {}
     fun setGameMode(mode: GameMode) {}
+    /** Hides the one-time redirector explanation for good. */
+    fun dismissRedirectorHint() {}
 
     companion object { val Noop: ArrowsGameActions = object : ArrowsGameActions {} }
 }
@@ -67,6 +69,17 @@ data class ArrowsUiState(
     val generating: Boolean = false,
     /** Set when even a widened seed search found no clearable board, so the board can offer a retry. */
     val generationFailed: Boolean = false,
+    /**
+     * Whether the player has already been told what redirectors do. The explanation shows on any
+     * board with redirectors until then — the first one is level [com.vayunmathur.games.arrows.data.MIRROR_FIRST_LEVEL],
+     * or the first daily.
+     */
+    val redirectorHintSeen: Boolean = true,
+    /**
+     * Set by the first blocked tap the player ever makes, to explain the lost heart, and cleared
+     * when they restart or move on. Never set again once shown.
+     */
+    val showHeartHint: Boolean = false,
     /** Taps still being animated, oldest first. Already applied to [game]. */
     val moves: List<ArrowMove> = emptyList(),
 )

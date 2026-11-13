@@ -41,6 +41,18 @@ class ArrowsDataStoreTest {
     }
 
     @Test
+    fun oneTimeHintFlagsLatch() = runBlocking {
+        val s = store()
+        s.markRedirectorHintSeen()
+        s.markHeartHintSeen()
+        assertEquals(true, s.redirectorHintSeen.first())
+        assertEquals(true, s.heartHintSeen.first())
+        // Marking again is harmless.
+        s.markHeartHintSeen()
+        assertEquals(true, s.heartHintSeen.first())
+    }
+
+    @Test
     fun saveLevelResetsBoardProgress() = runBlocking {
         val s = store()
         s.saveProgress(setOf(1, 3), 1, daily = false)

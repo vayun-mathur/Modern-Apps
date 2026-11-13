@@ -57,6 +57,8 @@ class ArrowsScreensTest {
         override fun restartLevel() { restarts++ }
         override fun retryGeneration() { retries++ }
         override fun setGameMode(mode: GameMode) { modes += mode }
+        var hintDismissals = 0
+        override fun dismissRedirectorHint() { hintDismissals++ }
     }
 
     private class RecordingSettings : SettingsActions {
@@ -266,5 +268,31 @@ class ArrowsScreensTest {
         val board = rule.onNodeWithTag(BOARD_TEST_TAG).getBoundsInRoot()
         val restart = rule.onNodeWithText(str(UiR.string.restart)).getBoundsInRoot()
         assertTrue(restart.top >= board.bottom)
+    }
+
+    @Test
+    fun redirectorHintShowsOnAMirrorBoardUntilDismissed() {
+        val actions = RecordingActions()
+        val withMirror = game().let {
+            it.copy(puzzle = it.puzzle.copy(mirrors = mapOf(at(4, 0) to com.vayunmathur.games.arrows.data.Mirror.BACK)))
+        }
+        var state by mutableStateOf(ArrowsUiState(game = withMirror, redirectorHintSeen = false))
+        rule.setContent { ArrowsGameScreen(state, actions, {}, {}) }
+        rule.onNodeWithText(str(R.string.redirector_hint)).assertIsDisplayed()
+        rule.onNodeWithText(str(R.string.got_it)).performClick()
+        assertEquals(1, actions.hintDismissals)
+        state = state.copy(redirectorHintSeen = true)
+        rule.onNodeWithText(str(R.string.redirector_hint)).assertDoesNotExist()
+        // Never on a board without redirectors.
+        state = state.copy(game = game(), redirectorHintSeen = false)
+        rule.onNodeWithText(str(R.string.redirector_hint)).assertDoesNotExist()
+    }
+
+    @Test
+    fun heartHintExplainsTheLostHeart() {
+        rule.setContent {
+            ArrowsGameScreen(ArrowsUiState(game = game(hearts = 2, blockedId = 0), showHeartHint = true), RecordingActions(), {}, {})
+        }
+        rule.onNodeWithText(ctx.getString(R.string.heart_hint, STARTING_HEARTS)).assertIsDisplayed()
     }
 }

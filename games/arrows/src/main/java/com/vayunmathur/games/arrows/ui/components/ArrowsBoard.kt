@@ -68,7 +68,8 @@ fun ArrowsBoard(
     val scheme = MaterialTheme.colorScheme
     val arrowColor = scheme.onSurface
     val blockedColor = scheme.error
-    val mirrorColor = scheme.tertiary
+    val mirrorColor = scheme.onTertiaryContainer
+    val mirrorTileColor = scheme.tertiaryContainer
     val dotColor = scheme.outlineVariant
     val cols = game.puzzle.cols
 
@@ -134,7 +135,7 @@ fun ArrowsBoard(
                     val cellPx = size.width / cols
                     drawDots(game, cellPx, dotColor)
                     for ((index, mirror) in game.puzzle.mirrors) {
-                        drawMirror(index, mirror, cols, cellPx, mirrorColor)
+                        drawMirror(index, mirror, cols, cellPx, mirrorColor, mirrorTileColor)
                     }
                     if (blockedRoute.isNotEmpty()) {
                         drawRoute(blockedRoute, cols, cellPx, blockedColor)

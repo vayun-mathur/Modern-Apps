@@ -38,6 +38,7 @@ import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.game.DailyStreakText
 import com.vayunmathur.library.ui.game.GameModeChooser
@@ -264,6 +265,17 @@ private fun GameStatus(state: ArrowsUiState, actions: ArrowsGameActions, onResta
         }
 
         else -> {
+            if (state.showHeartHint) {
+                Text(
+                    stringResource(R.string.heart_hint, STARTING_HEARTS),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            if (game.puzzle.mirrors.isNotEmpty() && !state.redirectorHintSeen) {
+                RedirectorHint(onDismiss = actions::dismissRedirectorHint)
+            }
             if (game.removed.isEmpty() && game.hearts == STARTING_HEARTS) {
                 Text(
                     stringResource(R.string.how_to_play),
@@ -279,5 +291,22 @@ private fun GameStatus(state: ArrowsUiState, actions: ArrowsGameActions, onResta
                 Text(stringResource(UiR.string.restart))
             }
         }
+    }
+}
+
+/**
+ * The one-time explanation of redirectors, shown on the first board that has them until the
+ * player dismisses it or clears that board.
+ */
+@Composable
+private fun RedirectorHint(onDismiss: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            stringResource(R.string.redirector_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.tertiary,
+            textAlign = TextAlign.Center,
+        )
+        TextButton(onClick = onDismiss) { Text(stringResource(R.string.got_it)) }
     }
 }

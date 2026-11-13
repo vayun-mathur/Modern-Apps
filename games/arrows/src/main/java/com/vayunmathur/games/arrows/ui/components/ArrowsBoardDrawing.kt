@@ -3,7 +3,9 @@
 // depend on how far the arrow actually got, which no declarative target value can express.
 package com.vayunmathur.games.arrows.ui.components
 
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -38,10 +40,31 @@ internal fun DrawScope.drawDots(game: ArrowsGameState, cell: Float, color: Color
     }
 }
 
-/** The tile's diagonal, drawn as the mirror it is named for. */
-internal fun DrawScope.drawMirror(cell: Int, mirror: Mirror, cols: Int, size: Float, color: Color) {
+/**
+ * The tile's diagonal, drawn as the mirror it is named for, on a filled tile.
+ *
+ * The tile and the heavier stroke are what make a redirector read as a fixed piece of the board
+ * rather than one more thin line among the arrows: [tileColor] and [color] are a container and its
+ * on-colour, so the diagonal has full contrast against its own tile whatever the theme, and the tile
+ * stands out from the board around it.
+ */
+internal fun DrawScope.drawMirror(
+    cell: Int,
+    mirror: Mirror,
+    cols: Int,
+    size: Float,
+    color: Color,
+    tileColor: Color = Color.Transparent,
+) {
     val row = cell / cols
     val col = cell % cols
+    val tileInset = size * 0.08f
+    drawRoundRect(
+        color = tileColor,
+        topLeft = Offset(col * size + tileInset, row * size + tileInset),
+        size = Size(size - 2 * tileInset, size - 2 * tileInset),
+        cornerRadius = CornerRadius(size * 0.18f),
+    )
     val inset = size * 0.22f
     val left = col * size + inset
     val right = (col + 1) * size - inset
@@ -51,8 +74,11 @@ internal fun DrawScope.drawMirror(cell: Int, mirror: Mirror, cols: Int, size: Fl
         Mirror.FORWARD -> Offset(left, bottom) to Offset(right, top)
         Mirror.BACK -> Offset(left, top) to Offset(right, bottom)
     }
-    drawLine(color, start, end, strokeWidth = size * 0.09f, cap = StrokeCap.Round)
+    drawLine(color, start, end, strokeWidth = size * MIRROR_STROKE, cap = StrokeCap.Round)
 }
+
+/** Redirector stroke, as a fraction of a cell: heavier than an arrow's so it is never mistaken for one. */
+private const val MIRROR_STROKE = 0.15f
 
 /**
  * How far each trailing segment waits for the one ahead of it, in cells of travel.

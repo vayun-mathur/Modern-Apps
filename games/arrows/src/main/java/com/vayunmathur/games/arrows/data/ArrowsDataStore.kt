@@ -36,6 +36,13 @@ class ArrowsDataStore(private val context: Context) {
     /** Whether tapping a blocked arrow should preview why it cannot leave. */
     val showRoutes: Flow<Boolean> = context.dataStore.data.map { it[SHOW_ROUTES_KEY] ?: true }
 
+    /** Whether the one-time explanation of redirectors has been seen (dismissed or a board cleared). */
+    val redirectorHintSeen: Flow<Boolean> =
+        context.dataStore.data.map { it[REDIRECTOR_HINT_SEEN_KEY] ?: false }
+
+    /** Whether the one-time explanation of why a blocked tap costs a heart has been shown. */
+    val heartHintSeen: Flow<Boolean> = context.dataStore.data.map { it[HEART_HINT_SEEN_KEY] ?: false }
+
     /** Lifetime count of cleared boards, which survives [saveLevel] resetting the current one. */
     val boardsCleared: Flow<Int> = context.dataStore.data.map { it[CLEARED_KEY] ?: 0 }
 
@@ -52,6 +59,14 @@ class ArrowsDataStore(private val context: Context) {
 
     suspend fun setShowRoutes(enabled: Boolean) {
         context.dataStore.edit { it[SHOW_ROUTES_KEY] = enabled }
+    }
+
+    suspend fun markRedirectorHintSeen() {
+        context.dataStore.edit { it[REDIRECTOR_HINT_SEEN_KEY] = true }
+    }
+
+    suspend fun markHeartHintSeen() {
+        context.dataStore.edit { it[HEART_HINT_SEEN_KEY] = true }
     }
 
     /**
@@ -128,6 +143,8 @@ class ArrowsDataStore(private val context: Context) {
         val GAME_MODE_KEY = stringPreferencesKey("game_mode")
         val SHOW_ROUTES_KEY = booleanPreferencesKey("show_routes")
         val CLEARED_KEY = intPreferencesKey("boards_cleared")
+        val REDIRECTOR_HINT_SEEN_KEY = booleanPreferencesKey("redirector_hint_seen")
+        val HEART_HINT_SEEN_KEY = booleanPreferencesKey("heart_hint_seen")
 
         val DAILY_DAY_KEY = longPreferencesKey("daily_day")
         val DAILY_REMOVED_KEY = stringSetPreferencesKey("daily_removed_arrows")

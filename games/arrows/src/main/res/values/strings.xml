@@ -25,6 +25,13 @@
     <!-- ArrowsGameScreen: Hint under a fresh board explaining the one gesture. Imperative sentence -->
     <string name="how_to_play">Tap an arrow to send it off the board</string>
 
+    <!-- ArrowsGameScreen: One-time explanation on the first board with redirector tiles (the diagonal tiles that turn arrows). Sentence -->
+    <string name="redirector_hint">New: redirectors turn any arrow that passes through them, so follow its path around the bend.</string>
+    <!-- ArrowsGameScreen: Dismisses the one-time redirector explanation. Short verb phrase -->
+    <string name="got_it">Got it</string>
+    <!-- ArrowsGameScreen: Shown once, the first time a blocked arrow costs a heart. %1$d = hearts per board, e.g. 3. Sentence -->
+    <string name="heart_hint">That arrow was blocked, so it cost a heart. Lose all <xliff:g id="hearts" example="3">%1$d</xliff:g> and the board starts over.</string>
+
     <!-- ArrowsGameScreen: Shown when no clearable board could be generated for this level. Sentence -->
     <string name="generation_failed">Could not build a board for this level.</string>
 

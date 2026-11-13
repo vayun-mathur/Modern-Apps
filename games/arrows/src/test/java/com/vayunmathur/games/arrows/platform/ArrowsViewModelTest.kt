@@ -127,6 +127,34 @@ class ArrowsViewModelTest {
     }
 
     @Test
+    fun firstBlockedTapEverExplainsTheLostHeartOnce() {
+        val vm = loadedViewModel()
+        val game = vm.uiState.value.game!!
+        val blocked = game.remaining.firstOrNull { ArrowsRules.isBlocked(game, it) } ?: return
+        // The store may already be past its first blocked tap if another test got there first.
+        val firstEver = !runBlocking { vm.dataStore.heartHintSeen.first() }
+        vm.tapArrow(blocked.id)
+        assertEquals(firstEver, vm.uiState.value.showHeartHint)
+        await("hint marked seen") { runBlocking { vm.dataStore.heartHintSeen.first() } }
+
+        // Restart hides it, and a later blocked tap never explains it again.
+        vm.restartLevel()
+        assertEquals(false, vm.uiState.value.showHeartHint)
+        vm.tapArrow(blocked.id)
+        assertEquals(false, vm.uiState.value.showHeartHint)
+        vm.restartLevel()
+        await("restart persisted") { runBlocking { vm.dataStore.hearts.first() } == 3 }
+    }
+
+    @Test
+    fun dismissingTheRedirectorHintSticks() {
+        val vm = loadedViewModel()
+        vm.dismissRedirectorHint()
+        assertTrue(vm.uiState.value.redirectorHintSeen)
+        await("persisted") { runBlocking { vm.dataStore.redirectorHintSeen.first() } }
+    }
+
+    @Test
     fun casualRestartWinNextLevelAndSettings() {
         val vm = loadedViewModel()
 

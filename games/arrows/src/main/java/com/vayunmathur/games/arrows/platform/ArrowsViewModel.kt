@@ -83,6 +83,12 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
      */
     private val retryCount = MutableStateFlow(0)
 
+    /**
+     * Mirrors [ArrowsDataStore.heartHintSeen], read when a tap is blocked. Declared before `init`,
+     * whose collector writes it, so its initializer cannot run after the first stored value lands.
+     */
+    private var heartHintSeen = true
+
     init {
         achievementsManager.checkExistingAchievements()
 
@@ -97,6 +103,14 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
                 Session(mode, level, showRoutes, streak, retries)
             }
                 .collectLatest { session -> load(session) }
+        }
+        viewModelScope.launch {
+            dataStore.redirectorHintSeen.collect { seen ->
+                _uiState.value = _uiState.value.copy(redirectorHintSeen = seen)
+            }
+        }
+        viewModelScope.launch {
+            dataStore.heartHintSeen.collect { heartHintSeen = it }
         }
     }
 
@@ -271,6 +285,9 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         if (outcome == TapOutcome.IGNORED) return
 
         lastBlockedId = next.blockedId
+        // The first heart ever lost is explained once; nothing else on the board says why it went.
+        val explainHeart = outcome == TapOutcome.BLOCKED && !heartHintSeen
+        if (explainHeart) heartHintSeen = true
         val move = ArrowMove(
             pieceId = pieceId,
             route = travel.route,
@@ -278,13 +295,18 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
             clears = travel.clears,
             id = nextMoveId++,
         )
-        _uiState.value = state.copy(game = next, moves = state.moves + move)
+        _uiState.value = state.copy(
+            game = next,
+            moves = state.moves + move,
+            showHeartHint = state.showHeartHint || explainHeart,
+        )
 
         val daily = state.mode == GameMode.DAILY
         val day = boardDay
         expectedProgress = next.removed to next.hearts
         viewModelScope.launch {
             dataStore.saveProgress(next.removed, next.hearts, daily)
+            if (explainHeart) dataStore.markHeartHintSeen()
             if (outcome == TapOutcome.BLOCKED) {
                 achievementsManager.onAchievementUnlocked("first_block")
             }
@@ -328,7 +350,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         val game = state.game ?: return
         if (!game.isWon) return
         lastBlockedId = -1
-        _uiState.value = state.copy(moves = emptyList())
+        _uiState.value = state.copy(moves = emptyList(), showHeartHint = false)
         viewModelScope.launch { dataStore.saveLevel(game.level + 1) }
     }
 
@@ -339,15 +361,20 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         // Reset on screen now rather than waiting for the store to echo it, for the same reason
         // taps are applied at once: a tap made in between must be judged against the fresh board.
         val reset = state.game?.let(ArrowsRules::resetAfterFailure)
-        _uiState.value = state.copy(game = reset ?: state.game, moves = emptyList())
+        _uiState.value = state.copy(game = reset ?: state.game, moves = emptyList(), showHeartHint = false)
         if (reset != null) expectedProgress = reset.removed to reset.hearts
         viewModelScope.launch { dataStore.resetBoard(daily) }
     }
 
     override fun setGameMode(mode: GameMode) {
         lastBlockedId = -1
-        _uiState.value = _uiState.value.copy(moves = emptyList())
+        _uiState.value = _uiState.value.copy(moves = emptyList(), showHeartHint = false)
         viewModelScope.launch { dataStore.setGameMode(mode) }
+    }
+
+    override fun dismissRedirectorHint() {
+        _uiState.value = _uiState.value.copy(redirectorHintSeen = true)
+        viewModelScope.launch { dataStore.markRedirectorHintSeen() }
     }
 
     override fun setShowRoutes(enabled: Boolean) {
@@ -401,7 +428,11 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
             val manager = achievementsManager
             manager.onAchievementUnlocked("first_board")
             if (game.hearts == STARTING_HEARTS) manager.onAchievementUnlocked("flawless")
-            if (game.puzzle.mirrors.isNotEmpty()) manager.onAchievementUnlocked("through_the_looking_glass")
+            if (game.puzzle.mirrors.isNotEmpty()) {
+                manager.onAchievementUnlocked("through_the_looking_glass")
+                // Clearing a board with redirectors shows they are understood; stop explaining.
+                dataStore.markRedirectorHintSeen()
+            }
             manager.onProgressUpdated("boards_10", total)
             manager.onProgressUpdated("boards_50", total)
 
