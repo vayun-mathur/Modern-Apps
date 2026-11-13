@@ -115,7 +115,6 @@ class MainActivity : ComponentActivity() {
             if (online) try { VoxelsNative.nativeSetRole(netRole) } catch (_: Exception) {}
         }
         com.vayunmathur.games.voxels.platform.SoundFx.init(this)
-        com.vayunmathur.games.voxels.platform.MusicFx.startAmbient(this)
         setContent {
             VoxelsTheme {
                 var inventoryJson by remember { mutableStateOf("""{"selected":0,"slots":[{"id":3,"count":64},{"id":2,"count":64},{"id":1,"count":64},{"id":4,"count":16},{"id":10,"count":32},{"id":6,"count":32},{"id":7,"count":16},{"id":8,"count":16},{"id":9,"count":16}]}""") }
@@ -620,8 +619,16 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) hideSystemBars()
     }
 
+    // Music follows the screen: it starts/resumes when the game is visible and pauses on Home,
+    // the lock screen or another app (calls are handled by audio focus inside MusicFx).
+    override fun onStart() {
+        super.onStart()
+        com.vayunmathur.games.voxels.platform.MusicFx.onForeground(this)
+    }
+
     // A backgrounded game can be killed at any moment without onDestroy, so persist on every stop.
     override fun onStop() {
+        com.vayunmathur.games.voxels.platform.MusicFx.onBackground()
         if (VoxelsNative.isAvailable) try { VoxelsNative.nativeSave() } catch (_: Exception) {}
         super.onStop()
     }
