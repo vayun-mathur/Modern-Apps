@@ -17,6 +17,13 @@ pub fn set_look_rate(rx: f32, ry: f32) { if let Ok(mut g)=mutex().lock() { g.loo
 pub fn set_jump(held: bool) { if let Ok(mut g)=mutex().lock() { g.jump_held=held; } }
 pub fn set_down(held: bool) { if let Ok(mut g)=mutex().lock() { g.down_held=held; } }
 pub fn set_sneak(on: bool) { if let Ok(mut g)=mutex().lock() { g.sneak=on; } }
+/// Drops every held control (move, look, jump, descend). Used when the game pauses.
+pub fn release_all() {
+    if let Ok(mut g)=mutex().lock() {
+        g.move_forward=0.0; g.move_right=0.0; g.look_yaw_rate=0.0; g.look_pitch_rate=0.0;
+        g.jump_held=false; g.down_held=false; g.toggle_fly=false;
+    }
+}
 pub fn request_toggle_fly() { if let Ok(mut g)=mutex().lock() { g.toggle_fly=true; } }
 pub fn snapshot_and_clear_look() -> InputState {
     // Held/persistent values (move, look, jump, down, sneak) stay set until the UI reports a change;

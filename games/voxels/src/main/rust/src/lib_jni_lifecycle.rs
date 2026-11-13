@@ -101,3 +101,14 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativ
 ) {
     engine::save_now();
 }
+
+/// JNI bridge for `VoxelsNative#nativeSetPaused`: the pause menu opened or closed. Single-player
+/// worlds stop simulating but keep rendering; held input is released.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativeSetPaused<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+    paused: jboolean,
+) {
+    engine::set_paused(paused);
+}

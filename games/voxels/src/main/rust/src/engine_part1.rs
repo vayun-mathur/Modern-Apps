@@ -1,14 +1,40 @@
+// Set by the pause menu. While set, single-player worlds stop simulating (no physics, mobs, clock,
+// smelting or autosave) but keep drawing frames so the world stays visible behind the menu.
+static PAUSED: AtomicBool = AtomicBool::new(false);
+
+/// Pause or resume the simulation. Pausing also drops any held move/look/jump input so the player
+/// doesn't keep walking when the menu closes.
+pub fn set_paused(paused: bool) {
+    PAUSED.store(paused, Ordering::SeqCst);
+    if paused { crate::input::release_all(); }
+}
+
+/// Whether the pause menu is up.
+pub fn is_paused() -> bool { PAUSED.load(Ordering::SeqCst) }
+
 pub fn tick_and_render() {
     let now = Instant::now();
     with_engine(|state| {
         let dt = (now - state.last_tick).as_secs_f32().clamp(0.0, 0.05);
         state.last_tick = now;
         if !state.running { return; }
+        // Online worlds keep running for everyone else, so the local pause menu only stops input.
+        let paused = is_paused() && !crate::net::is_networked();
+        step(state, dt, paused);
+    });
+}
 
+/// One frame: simulate (unless paused), then draw and publish UI state.
+fn step(state: &mut EngineState, dt: f32, paused: bool) {
         // Drain any decrypted, already-authorized network messages before simulating this frame, so
         // the net thread never contends for the engine lock (mirrors the publish_ui/CACHE pattern).
         crate::net::apply_inbound(state);
+        if !paused { simulate(state, dt); }
+        render_frame(state);
+}
 
+/// Advances the world by `dt` seconds: input, physics, mobs, weather, farming, autosave.
+fn simulate(state: &mut EngineState, dt: f32) {
         let input = crate::input::snapshot_and_clear_look();
         if input.toggle_fly { state.player.flying = !state.player.flying; }
 
@@ -287,6 +313,11 @@ pub fn tick_and_render() {
         tick_fishing(state, dt, player_pos);
         tick_farmland(state, dt, player_pos);
         tick_autosave(state, dt);
+}
+
+/// Builds the entity/particle meshes, draws the frame (if a surface is attached) and refreshes the
+/// UI and network caches.
+fn render_frame(state: &mut EngineState) {
         let (mut entity_verts, mut entity_indices) = build_entity_mesh(&state.mobs);
         {
             let right = state.player.right();
@@ -331,7 +362,6 @@ pub fn tick_and_render() {
         }
         crate::net::publish(state);
         publish_ui(state);
-    });
 }
 
 // UI state caches. The render thread PUBLISHES fresh JSON into these every tick (while it holds the

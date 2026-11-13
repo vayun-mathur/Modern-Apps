@@ -25,6 +25,8 @@ object VoxelsNative {
     external fun nativeOnDestroy()
     // Writes player, chests and edited chunks now (called from onStop; the engine also autosaves).
     external fun nativeSave()
+    // Pause menu: stops single-player simulation (frames keep drawing) and releases held input.
+    external fun nativeSetPaused(paused: Boolean)
     external fun onMoveInput(moveX: Float, moveY: Float)
     external fun onLookInput(lookYawRate: Float, lookPitchRate: Float)
     external fun setJump(held: Boolean)

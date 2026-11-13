@@ -70,4 +70,21 @@ mod state_tests {
         fresh.ensure_radius(0, 0);
         assert_eq!(fresh.get_block_world(2, 100, 2), 9);
     }) }
+
+    // The pause menu freezes a single-player world: nothing moves and the autosave clock stops,
+    // while unpausing resumes exactly where it left off.
+    #[test]
+    fn a_paused_world_does_not_simulate() { big_stack(|| {
+        let mut s = small_state("paused");
+        s.player.flying = false;
+        s.player.pos = vec3(0.5, 120.0, 0.5);
+        s.player.vel = Vec3::ZERO;
+        let (pos, cd) = (s.player.pos, s.autosave_cd);
+        for _ in 0..10 { step(&mut s, 0.05, true); }
+        assert_eq!(s.player.pos, pos, "the player moved while paused");
+        assert!((s.autosave_cd - cd).abs() < 1e-6, "the autosave clock ran while paused");
+        for _ in 0..10 { step(&mut s, 0.05, false); }
+        assert!(s.player.pos.y < pos.y, "gravity resumes after unpausing");
+        assert!(s.autosave_cd < cd);
+    }) }
 }

@@ -83,6 +83,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
+    // Pause-menu state lives on the activity so onStop can pause the game: coming back from Home or
+    // the lock screen lands on the pause menu instead of straight into whatever was attacking.
+    private var paused by mutableStateOf(false)
+
     // JNI boundary: native throws unchecked exceptions, all logged here.
     @Suppress("TooGenericExceptionCaught")
     private fun initEngine(worldDir: String, worldSeed: Int) {
@@ -124,7 +128,6 @@ class MainActivity : ComponentActivity() {
                 var flying by remember { mutableStateOf(false) }
                 var sneaking by remember { mutableStateOf(false) }
                 var inventoryOpen by remember { mutableStateOf(false) }
-                var paused by remember { mutableStateOf(false) }
                 val activity = LocalActivity.current
                 var invStartTab by remember { mutableStateOf(0) }
                 var recipesJson by remember { mutableStateOf("[]") }
@@ -364,6 +367,21 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // "Paused" is real: the engine stops simulating and every held control is released,
+                // so closing the menu never resumes a walk or a turn that was in progress.
+                LaunchedEffect(paused) {
+                    if (!VoxelsNative.isAvailable) return@LaunchedEffect
+                    try {
+                        VoxelsNative.nativeSetPaused(paused)
+                        if (paused) {
+                            VoxelsNative.onMoveInput(0f, 0f)
+                            VoxelsNative.onLookInput(0f, 0f)
+                            VoxelsNative.setJump(false)
+                            VoxelsNative.setFlyDown(false)
+                        }
+                    } catch (_: Exception) {}
+                }
+
                 // Back closes the top-most overlay or opens the pause menu; it never quits the world.
                 BackHandler {
                     val open = OverlayFlags(
@@ -406,7 +424,7 @@ class MainActivity : ComponentActivity() {
                     if (VoxelsNative.isAvailable) {
                         FloatingLookJoystick(
                             modifier = Modifier.fillMaxSize(),
-                            onLookRate = { ry, rp -> try { VoxelsNative.onLookInput(ry, rp) } catch (_: Exception) {} },
+                            onLookRate = { ry, rp -> if (!paused) try { VoxelsNative.onLookInput(ry, rp) } catch (_: Exception) {} },
                             onPlace = { off -> try {
                                 val code = VoxelsNative.placeBlockAt(off.x, off.y)
                                 when (code) {
@@ -447,7 +465,7 @@ class MainActivity : ComponentActivity() {
                     // the game, not to the system Back gesture.
                     Box(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 96.dp).systemGestureExclusion()) {
                         Joystick(modifier = Modifier, isLook = false,
-                            onMove = { x, y -> if (VoxelsNative.isAvailable) try { VoxelsNative.onMoveInput(x, y) } catch (_: Exception) {} },
+                            onMove = { x, y -> if (VoxelsNative.isAvailable && !paused) try { VoxelsNative.onMoveInput(x, y) } catch (_: Exception) {} },
                             onLookDelta = { _, _ -> })
                     }
 
@@ -628,6 +646,7 @@ class MainActivity : ComponentActivity() {
 
     // A backgrounded game can be killed at any moment without onDestroy, so persist on every stop.
     override fun onStop() {
+        paused = true
         com.vayunmathur.games.voxels.platform.MusicFx.onBackground()
         if (VoxelsNative.isAvailable) try { VoxelsNative.nativeSave() } catch (_: Exception) {}
         super.onStop()
