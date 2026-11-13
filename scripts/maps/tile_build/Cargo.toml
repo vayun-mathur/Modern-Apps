@@ -55,3 +55,13 @@ sha2.workspace = true
 memmap2.workspace = true
 [profile.release]
 opt-level = 3
+
+# Size-lab experiment (examples/size_lab.rs) only: the C zstd reference
+# encoder + dictionary trainer, and the two pure-Rust codecs the shipping
+# path uses (zstd-rs encode, ruzstd decode), measured side by side. Never
+# linked into the shipping binaries.
+[dev-dependencies]
+zstd.workspace = true
+zstd-rs.workspace = true
+ruzstd.workspace = true
+png.workspace = true
