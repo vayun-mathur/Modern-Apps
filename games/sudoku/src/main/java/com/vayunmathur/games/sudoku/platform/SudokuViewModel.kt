@@ -78,10 +78,11 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     /**
      * Set once the dealt puzzle's win has been written to stats and achievements.
      *
-     * Restarting a solved puzzle (the win overlay's play-again) keeps the same givens
-     * and solution, so without this the player could re-enter a solution they already
-     * know and farm wins, streaks and progress achievements off one puzzle. Cleared
-     * only by [newGame]: a fresh deal is a fresh record, a restart is not.
+     * [restart] keeps the same givens and solution, so without this a player could
+     * re-enter a solution they already know and farm wins, streaks and progress
+     * achievements off one puzzle. The win overlay deals a fresh puzzle through
+     * [playAgain] instead, so this only guards restart paths. Cleared only by
+     * [newGame]: a fresh deal is a fresh record, a restart is not.
      */
     private var winRecorded = false
 
@@ -320,6 +321,20 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 livesRemaining = ANSWER_MODE_LIVES,
             )
         )
+    }
+
+    /**
+     * Deals a new puzzle with the settings the current one was dealt with.
+     *
+     * This is the win overlay's "Play again". It used to call [restart], which re-dealt the same
+     * grid; because a puzzle's win is recorded once (see [winRecorded]) the replay could never
+     * count, so a player chaining games after a win silently stopped earning wins and streaks.
+     * The game's own answer-mode snapshot is reused rather than the home-screen default, so the
+     * next puzzle follows the same rules as the one just finished.
+     */
+    override fun playAgain() {
+        val game = _uiState.value.game ?: return
+        newGame(GameConfig(game.size, game.difficulty, game.answerMode))
     }
 
     /** Abandons an unfinished puzzle, which breaks the win streak for that variant. */

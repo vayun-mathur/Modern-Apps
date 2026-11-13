@@ -19,7 +19,11 @@ interface SudokuActions {
     fun toggleNotesMode() {}
     fun hint() {}
     fun undo() {}
+    /** Same puzzle again, work cleared: the out-of-lives "Try again". */
     fun restart() {}
+
+    /** A fresh puzzle with the finished game's size, difficulty and answer mode. */
+    fun playAgain() {}
     fun giveUp() {}
 
     companion object { val Noop: SudokuActions = object : SudokuActions {} }

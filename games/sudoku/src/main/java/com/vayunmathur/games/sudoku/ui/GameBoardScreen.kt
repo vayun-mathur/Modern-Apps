@@ -178,7 +178,8 @@ fun GameBoardScreen(
                 GameResultOverlay(
                     title = stringResource(R.string.congratulations),
                     won = true,
-                    onPlayAgain = { actions.restart() },
+                    // A fresh puzzle: replaying the solved grid could never count as a win.
+                    onPlayAgain = { actions.playAgain() },
                     onBack = onExit,
                 ) {
                     Text("${stringResource(UiR.string.game_time)}: ${formatDuration(game.elapsedSeconds)}")

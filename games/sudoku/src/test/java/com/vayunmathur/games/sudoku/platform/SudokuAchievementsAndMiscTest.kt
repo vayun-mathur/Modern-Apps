@@ -85,7 +85,7 @@ class SudokuAchievementsAndMiscTest {
     fun noopActionsDoNothing() {
         val actions = SudokuActions.Noop
         actions.selectCell(1); actions.enterDigit(1); actions.clearCell()
-        actions.toggleNotesMode(); actions.hint(); actions.undo(); actions.restart(); actions.giveUp()
+        actions.toggleNotesMode(); actions.hint(); actions.undo(); actions.restart(); actions.playAgain(); actions.giveUp()
         // Reaching here without effect or crash is the contract; state is the caller's.
         assertTrue(actions === SudokuActions.Noop)
     }

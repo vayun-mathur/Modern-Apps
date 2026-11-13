@@ -45,6 +45,7 @@ class SudokuScreensTest {
         var hints = 0
         var undos = 0
         var restarts = 0
+        var playAgains = 0
         var giveUps = 0
         override fun selectCell(index: Int) { cells += index }
         override fun enterDigit(digit: Int) { digits += digit }
@@ -53,6 +54,7 @@ class SudokuScreensTest {
         override fun hint() { hints++ }
         override fun undo() { undos++ }
         override fun restart() { restarts++ }
+        override fun playAgain() { playAgains++ }
         override fun giveUp() { giveUps++ }
     }
 
@@ -140,7 +142,7 @@ class SudokuScreensTest {
     }
 
     @Test
-    fun wonBoardShowsOverlayStatsAndPlayAgainRestarts() {
+    fun wonBoardShowsOverlayStatsAndPlayAgainDealsNewPuzzle() {
         val actions = RecordingActions()
         val base = freshGame()
         val entries = List(base.size.cellCount) { if (base.isGiven(it)) 0 else base.solution[it] }
@@ -151,7 +153,8 @@ class SudokuScreensTest {
         rule.onNodeWithText(str(R.string.congratulations)).assertExists()
         rule.onAllNodesWithText("${str(R.string.hints_used)}: 2").assertCountEquals(2)
         rule.onNodeWithText("Play Again").performClick()
-        assertEquals(1, actions.restarts)
+        assertEquals(1, actions.playAgains)
+        assertEquals(0, actions.restarts, "the win overlay must not replay the same grid")
     }
 
     @Test
@@ -187,6 +190,7 @@ class SudokuScreensTest {
         rule.onNodeWithText(str(R.string.out_of_lives_message)).assertExists()
         rule.onNodeWithText(str(R.string.try_again)).performClick()
         assertEquals(1, actions.restarts)
+        assertEquals(0, actions.playAgains, "out of lives retries the same puzzle")
     }
 
     @Test

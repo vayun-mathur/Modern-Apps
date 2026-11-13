@@ -77,7 +77,7 @@ class SudokuViewModelTest {
         assertNull(vm.uiState.value.game)
         assertFalse(vm.hasActiveGame())
         vm.selectCell(0); vm.enterDigit(1); vm.clearCell(); vm.toggleNotesMode()
-        vm.hint(); vm.undo(); vm.restart(); vm.giveUp(); vm.incrementTimer()
+        vm.hint(); vm.undo(); vm.restart(); vm.playAgain(); vm.giveUp(); vm.incrementTimer()
         vm.dismissAchievementNotification()
         assertNull(vm.uiState.value.game)
         assertFalse(vm.uiState.value.canUndo)
@@ -393,13 +393,45 @@ class SudokuViewModelTest {
         solve()
         assertEquals(1, stats.getStats(BoardSize.SIX, Difficulty.EASY).gamesWon)
 
-        // Play-again on the win overlay restarts the same puzzle; solving it again
-        // shows the win but must not count it twice.
+        // A restart keeps the same puzzle; solving it again shows the win but must
+        // not count it twice.
         vm.restart()
         solve()
         val statsAfter = stats.getStats(BoardSize.SIX, Difficulty.EASY)
         assertEquals(1, statsAfter.gamesWon, "the same puzzle records one win")
         assertEquals(1, statsAfter.currentWinStreak)
+    }
+
+    @Test
+    fun playAgainDealsANewPuzzleWithTheSameSettingsAndItsWinCounts() {
+        val vm = startedVm(GameConfig(BoardSize.SIX, Difficulty.EASY, answerMode = true))
+        fun solve() {
+            var guard = 0
+            while (guard++ < 100) {
+                val game = vm.uiState.value.game!!
+                val next = game.blankIndices().firstOrNull() ?: break
+                vm.selectCell(next)
+                vm.enterDigit(game.solution[next])
+            }
+            assertTrue(vm.uiState.value.game!!.isWon)
+        }
+        solve()
+        val first = vm.uiState.value.game!!
+
+        vm.playAgain()
+        await("next puzzle dealt") { vm.uiState.value.game != null }
+        val next = vm.uiState.value.game!!
+        assertEquals(first.size, next.size)
+        assertEquals(first.difficulty, next.difficulty)
+        assertTrue(next.answerMode, "keeps the finished game's answer mode")
+        assertFalse(next.isWon)
+        assertEquals(List(next.size.cellCount) { 0 }, next.entries)
+        assertEquals(2, stats.getStats(BoardSize.SIX, Difficulty.EASY).gamesPlayed)
+
+        solve()
+        val statsAfter = stats.getStats(BoardSize.SIX, Difficulty.EASY)
+        assertEquals(2, statsAfter.gamesWon, "the replayed game's win is recorded")
+        assertEquals(2, statsAfter.currentWinStreak)
     }
 
     @Test
