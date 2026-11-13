@@ -570,6 +570,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // A backgrounded game can be killed at any moment without onDestroy, so persist on every stop.
+    override fun onStop() {
+        if (VoxelsNative.isAvailable) try { VoxelsNative.nativeSave() } catch (_: Exception) {}
+        super.onStop()
+    }
+
     override fun onDestroy() {
         com.vayunmathur.games.voxels.platform.MusicFx.stop()
         VoxelsSync.stopLive()

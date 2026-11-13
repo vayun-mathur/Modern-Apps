@@ -78,6 +78,8 @@ pub struct EngineState {
     pub did_brush: bool,
     pub did_harvest: bool,
     pub did_rest: bool,
+    /// Seconds of simulated play until the next autosave.
+    pub autosave_cd: f32,
 }
 
 // One furnace job at a time, owned by the world rather than by a specific furnace block: the player
@@ -167,8 +169,19 @@ fn engine_lock() -> &'static Mutex<Option<EngineState>> {
 }
 
 pub fn init_engine(files_dir: String, seed: u32) -> bool {
-    let mut guard = engine_lock().lock().unwrap();
+    let Ok(mut guard) = engine_lock().lock() else { return false; };
     if guard.is_some() { return true; }
+    *guard = Some(new_state(files_dir, seed, DEFAULT_RENDER_DISTANCE));
+    INIT_DONE.store(true, Ordering::SeqCst);
+    true
+}
+
+/// Chunk radius kept loaded around the player.
+pub const DEFAULT_RENDER_DISTANCE: i32 = 12;
+
+/// Loads (or creates) a world and generates the chunks around the player. Pure construction: it
+/// touches no globals, so it can run off the main thread and in tests.
+pub fn new_state(files_dir: String, seed: u32, render_distance: i32) -> EngineState {
     let save_dir = files_dir.clone();
     let player_save = crate::world::save::load_player(&save_dir);
     let had_save = player_save.is_some();
@@ -204,6 +217,7 @@ pub fn init_engine(files_dir: String, seed: u32) -> bool {
 
     let dim = if progress.dim < 3 { progress.dim } else { 0 };
     let mut chunks = ChunkMap::new_dim(seed, dim_dir(&save_dir, dim), dim);
+    chunks.render_distance = render_distance;
     chunks.ensure_radius(px as i32, pz as i32);
 
     if !had_save {
@@ -235,7 +249,7 @@ pub fn init_engine(files_dir: String, seed: u32) -> bool {
         .checked_sub(std::time::Duration::from_secs_f32(progress.world_secs.clamp(0.0, 86_400.0)))
         .unwrap_or_else(Instant::now);
 
-    *guard = Some(EngineState {
+    EngineState {
         chunks,
         player,
         inventory: inv,
@@ -285,9 +299,8 @@ pub fn init_engine(files_dir: String, seed: u32) -> bool {
         farm_cd: 0.0,
         crafted_recipes,
         did_shear: false, did_fish: false, did_brush: false, did_harvest: false, did_rest: false,
-    });
-    INIT_DONE.store(true, Ordering::SeqCst);
-    true
+        autosave_cd: AUTOSAVE_SECS,
+    }
 }
 
 pub fn with_engine<F, R>(f: F) -> Option<R>
@@ -307,59 +320,88 @@ where F: FnOnce(&mut EngineState) -> R {
     Some(f(state))
 }
 
+/// Seconds between autosaves while the world is being simulated.
+pub const AUTOSAVE_SECS: f32 = 60.0;
+
+/// Snapshot of everything `player.json` holds.
+fn player_save(state: &EngineState) -> crate::world::save::PlayerSave {
+    use crate::world::save::{InvSlotSave, InventorySave, PlayerSave, ProgressSave, StatsSave};
+    PlayerSave {
+        x: state.player.pos.x,
+        y: state.player.pos.y,
+        z: state.player.pos.z,
+        yaw: state.player.yaw,
+        pitch: state.player.pitch,
+        inventory: InventorySave {
+            selected: state.inventory.selected,
+            slots: state.inventory.slots.iter().map(|s| InvSlotSave { id: s.id, count: s.count }).collect(),
+        },
+        stats: StatsSave {
+            placed: state.inventory.placed,
+            broken: state.inventory.broken,
+            walked: state.player.walk_dist as i32,
+            night_seen: state.night_survived,
+        },
+        progress: ProgressSave {
+            armor: state.inventory.armor.iter().map(|s| InvSlotSave { id: s.id, count: s.count }).collect(),
+            max_health: state.player.max_health,
+            dim: state.dim,
+            dim_pos: state.dim_pos.iter().map(|p| [p.x, p.y, p.z]).collect(),
+            dim_visited: state.dim_visited.to_vec(),
+            respawn: state.respawn.map(|p| [p.x, p.y, p.z]),
+            end_dragon_dead: state.end_dragon_dead,
+            nether_wither_dead: state.nether_wither_dead,
+            world_secs: state.start_time.elapsed().as_secs_f32(),
+            best_beacon: state.best_beacon,
+            deepest_y: state.deepest_y,
+            blessings: state.player.blessings,
+            trades_done: state.trades_done.to_vec(),
+            weather: state.weather,
+            weather_cd: state.weather_cd,
+            crafted_recipes: {
+                let mut bits = vec![0u8; state.crafted_recipes.len().div_ceil(8)];
+                for (i, c) in state.crafted_recipes.iter().enumerate() {
+                    if *c { bits[i / 8] |= 1 << (i % 8); }
+                }
+                bits
+            },
+        },
+    }
+}
+
+/// Persists the whole world in one consistent pass: every edited chunk (all dimensions, including
+/// ones that already scrolled out of range), then the chests, then the player. Called on autosave,
+/// from `onStop`, and on teardown, so a background kill or crash loses at most one autosave
+/// interval and never leaves chunk edits on disk without the inventory changes that went with them.
+pub fn save_world(state: &mut EngineState) {
+    state.autosave_cd = AUTOSAVE_SECS;
+    // Only the host persists an online world; clients are transient mirrors of host state.
+    if crate::net::role() == crate::net::ROLE_CLIENT {
+        state.chunks.discard_pending();
+        for m in state.stored.iter_mut().flatten() { m.discard_pending(); }
+        return;
+    }
+    state.dim_pos[state.dim as usize] = state.player.pos;
+    state.chunks.save_dirty();
+    // The stashed dimensions too (each writes to its own save subdir).
+    for m in state.stored.iter_mut().flatten() { m.save_dirty(); }
+    let _ = state.containers.save(&state.save_dir);
+    let _ = crate::world::save::save_player(&state.save_dir, &player_save(state));
+}
+
+/// Counts down the autosave timer by one simulated frame and saves when it runs out.
+fn tick_autosave(state: &mut EngineState, dt: f32) {
+    state.autosave_cd -= dt;
+    if state.autosave_cd <= 0.0 { save_world(state); }
+}
+
+/// JNI `nativeSave`: saves now (the activity calls it from `onStop`). No-op before the engine exists.
+pub fn save_now() { with_engine(save_world); }
+
 pub fn destroy_engine() {
     let mut guard = match engine_lock().lock() { Ok(g) => g, Err(_) => return, };
     if let Some(mut state) = guard.take() {
-        state.dim_pos[state.dim as usize] = state.player.pos;
-        // Only the host persists an online world; clients are transient mirrors of host state.
-        if crate::net::role() != crate::net::ROLE_CLIENT {
-        let ps = crate::world::save::PlayerSave {
-            x: state.player.pos.x,
-            y: state.player.pos.y,
-            z: state.player.pos.z,
-            yaw: state.player.yaw,
-            pitch: state.player.pitch,
-            inventory: crate::world::save::InventorySave {
-                selected: state.inventory.selected,
-                slots: state.inventory.slots.iter().map(|s| crate::world::save::InvSlotSave{ id: s.id, count: s.count }).collect(),
-            },
-            stats: crate::world::save::StatsSave {
-                placed: state.inventory.placed,
-                broken: state.inventory.broken,
-                walked: state.player.walk_dist as i32,
-                night_seen: state.night_survived,
-            },
-            progress: crate::world::save::ProgressSave {
-                armor: state.inventory.armor.iter().map(|s| crate::world::save::InvSlotSave{ id: s.id, count: s.count }).collect(),
-                max_health: state.player.max_health,
-                dim: state.dim,
-                dim_pos: state.dim_pos.iter().map(|p| [p.x, p.y, p.z]).collect(),
-                dim_visited: state.dim_visited.to_vec(),
-                respawn: state.respawn.map(|p| [p.x, p.y, p.z]),
-                end_dragon_dead: state.end_dragon_dead,
-                nether_wither_dead: state.nether_wither_dead,
-                world_secs: state.start_time.elapsed().as_secs_f32(),
-                best_beacon: state.best_beacon,
-                deepest_y: state.deepest_y,
-                blessings: state.player.blessings,
-                trades_done: state.trades_done.to_vec(),
-                weather: state.weather,
-                weather_cd: state.weather_cd,
-                crafted_recipes: {
-                    let mut bits = vec![0u8; state.crafted_recipes.len().div_ceil(8)];
-                    for (i, c) in state.crafted_recipes.iter().enumerate() {
-                        if *c { bits[i / 8] |= 1 << (i % 8); }
-                    }
-                    bits
-                },
-            },
-        };
-        let _ = crate::world::save::save_player(&state.save_dir, &ps);
-        let _ = state.containers.save(&state.save_dir);
-        state.chunks.save_all();
-        // Persist the stashed dimensions too (each writes to its own save subdir).
-        for m in state.stored.iter().flatten() { m.save_all(); }
-        }
+        save_world(&mut state);
         if let Some(mut renderer) = state.renderer.take() {
             unsafe {
                 renderer.destroy();
@@ -446,4 +488,4 @@ include!("engine_part1.rs");
 include!("engine_part2.rs");
 include!("engine_part3.rs");
 include!("engine_part4.rs");
-include!("engine_part5.rs");
+include!("engine_part5.rs");include!("engine_part6.rs");

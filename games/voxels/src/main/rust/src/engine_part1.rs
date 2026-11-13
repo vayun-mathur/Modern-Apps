@@ -286,6 +286,7 @@ pub fn tick_and_render() {
         tick_ambience(state, dt, player_pos);
         tick_fishing(state, dt, player_pos);
         tick_farmland(state, dt, player_pos);
+        tick_autosave(state, dt);
         let (mut entity_verts, mut entity_indices) = build_entity_mesh(&state.mobs);
         {
             let right = state.player.right();

@@ -40,9 +40,12 @@ pub struct Chunk {
     pub pos: ChunkPos,
     pub sections: [Option<BlockSection>; SECTIONS_PER_CHUNK],
     pub generated: bool, pub dirty: bool, pub mesh_dirty: bool,
+    /// Changed by play (a block placed or broken) since it was last saved, as opposed to merely
+    /// generated. Only edited chunks have to be saved together with the player; see `ChunkMap`.
+    pub edited: bool,
 }
 impl Chunk {
-    pub fn new(pos: ChunkPos) -> Self { Self { pos, sections: std::array::from_fn(|_| None), generated:false, dirty:false, mesh_dirty:true } }
+    pub fn new(pos: ChunkPos) -> Self { Self { pos, sections: std::array::from_fn(|_| None), generated:false, dirty:false, mesh_dirty:true, edited:false } }
     pub fn get_block(&self, x: usize, y: usize, z: usize) -> Id {
         if y>=CHUNK_HEIGHT { return 0; } let sec=y/SECTION_SIZE; let ly=y%SECTION_SIZE;
         if let Some(s)=&self.sections[sec] { s.get(x,ly,z) } else { 0 }

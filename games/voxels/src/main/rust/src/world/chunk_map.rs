@@ -6,6 +6,11 @@ use hashbrown::HashMap;
 
 pub struct ChunkMap {
     chunks: HashMap<ChunkPos, Chunk>,
+    // Player-edited chunks that scrolled out of range since the last save. They are held here instead of
+    // being written on unload so that chunk files only ever reach disk together with the player and
+    // chest saves (see `engine::save_world`): writing a broken block's chunk while the inventory that
+    // received the drop is still unsaved is what let a crash duplicate items.
+    pending: HashMap<ChunkPos, Chunk>,
     gen: TerrainGen,
     save_dir: String,
     pub render_distance: i32,
@@ -14,7 +19,7 @@ pub struct ChunkMap {
 impl ChunkMap {
     pub fn new(seed: u32, save_dir: String) -> Self { Self::new_dim(seed, save_dir, 0) }
     pub fn new_dim(seed: u32, save_dir: String, dim: u8) -> Self {
-        Self { chunks: HashMap::new(), gen: TerrainGen::new_dim(seed, dim), save_dir, render_distance: 12 }
+        Self { chunks: HashMap::new(), pending: HashMap::new(), gen: TerrainGen::new_dim(seed, dim), save_dir, render_distance: 12 }
     }
     pub fn dim(&self) -> u8 { self.gen.dim }
     pub fn get_block_world(&self, wx: i32, wy: i32, wz: i32) -> Id {
@@ -46,11 +51,17 @@ impl ChunkMap {
             let lx = wx.rem_euclid(CHUNK_SIZE as i32) as usize;
             let lz = wz.rem_euclid(CHUNK_SIZE as i32) as usize;
             chunk.set_block_meta(lx, wy as usize, lz, id, meta);
+            chunk.edited = true;
             true
         } else { false }
     }
     pub fn load_or_gen(&mut self, pos: ChunkPos) {
         if self.chunks.contains_key(&pos) { return; }
+        // An edited chunk that left range and came back before the next save is newer than its file.
+        if let Some(chunk) = self.pending.remove(&pos) {
+            self.chunks.insert(pos, chunk);
+            return;
+        }
         let mut chunk = Chunk::new(pos);
         let loaded = save::load_chunk(&self.save_dir, pos, &mut chunk).is_ok() && chunk.generated;
         if !loaded {
@@ -73,7 +84,10 @@ impl ChunkMap {
             .collect();
         for pos in to_unload {
             if let Some(ch) = self.chunks.remove(&pos) {
-                if ch.dirty { let _ = save::save_chunk(&self.save_dir, &ch); }
+                // Freshly generated terrain can be cached right away (it is a pure function of the
+                // seed); a chunk the player changed waits for the next consistent save.
+                if ch.edited { self.pending.insert(pos, ch); }
+                else if ch.dirty { let _ = save::save_chunk(&self.save_dir, &ch); }
             }
         }
     }
@@ -118,9 +132,19 @@ impl ChunkMap {
     }
     pub fn get(&self, pos: ChunkPos) -> Option<&Chunk> { self.chunks.get(&pos) }
     pub fn get_mut(&mut self, pos: ChunkPos) -> Option<&mut Chunk> { self.chunks.get_mut(&pos) }
-    pub fn save_all(&self) {
-        for (_, ch) in self.chunks.iter() { if ch.dirty { let _ = save::save_chunk(&self.save_dir, ch); } }
+    /// Writes every edited chunk, resident or already unloaded, and marks it clean. A chunk whose
+    /// write fails stays dirty (or pending) so the next save retries it.
+    pub fn save_dirty(&mut self) {
+        let dir = &self.save_dir;
+        for ch in self.chunks.values_mut() {
+            if ch.dirty && save::save_chunk(dir, ch).is_ok() { ch.dirty = false; ch.edited = false; }
+        }
+        self.pending.retain(|_, ch| save::save_chunk(dir, ch).is_err());
     }
+    /// Drops unloaded edits without writing them: online clients mirror the host and never persist.
+    pub fn discard_pending(&mut self) { self.pending.clear(); }
+    /// Edited chunks waiting for the next save after leaving range.
+    pub fn pending_len(&self) -> usize { self.pending.len() }
     pub fn len(&self) -> usize { self.chunks.len() }
     pub fn grass_tint(&self, wx: i32, wz: i32) -> [f32; 3] { self.gen.grass_tint(wx as f64, wz as f64) }
 }

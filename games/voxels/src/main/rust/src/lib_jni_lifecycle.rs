@@ -91,3 +91,13 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativ
 ) {
     engine::destroy_engine();
 }
+
+/// JNI bridge for `VoxelsNative#nativeSave`: writes player, chests and edited chunks now. The
+/// activity calls it from `onStop`, so a background kill loses nothing.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_nativeSave<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+) {
+    engine::save_now();
+}
