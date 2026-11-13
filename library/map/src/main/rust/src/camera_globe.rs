@@ -75,4 +75,16 @@ impl Camera {
             self.height_dp as f64 / 2.0 - y * r,
         ))
     }
+
+    /// Whether the globe disc covers the whole viewport, corners included.
+    ///
+    /// The disc is centred on the viewport with radius [`globe_radius`](crate::camera::globe_radius),
+    /// so it covers everything exactly when the half-diagonal fits inside it. While it does,
+    /// no space shows around the ball and the frame can clear straight to water.
+    pub fn globe_covers_viewport(&self) -> bool {
+        let r = crate::camera::globe_radius(self.zoom, self.center_lat);
+        let hw = self.width_dp as f64 / 2.0;
+        let hh = self.height_dp as f64 / 2.0;
+        hw * hw + hh * hh <= r * r
+    }
 }

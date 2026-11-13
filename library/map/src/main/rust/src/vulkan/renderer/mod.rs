@@ -26,6 +26,7 @@ mod record_extra;
 mod record_extra2;
 mod record_extra3;
 mod record_extra4;
+mod record_globe;
 mod record_markers;
 mod record_moon;
 mod record_symbol;

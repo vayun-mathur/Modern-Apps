@@ -69,7 +69,8 @@ pub use self::layer::{kind_id, Layer};
 #[cfg(test)]
 pub use self::palette::layers_with_lane_rendering;
 pub use self::palette::{
-    background, layers, road_carriageway_layer, Palette, LANE_RENDERING, MUTED_BLEND,
+    background, clear_color, layers, road_carriageway_layer, space, Palette, LANE_RENDERING,
+    MUTED_BLEND,
 };
 // Private: restores the original `fn detail_id`'s scope (visible to `style` and its
 // children, e.g. `paint` via `super::detail_id`) without widening it crate-wide.

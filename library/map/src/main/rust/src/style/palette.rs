@@ -45,6 +45,35 @@ pub fn background(variant: Variant) -> u32 {
     }
 }
 
+/// The empty space around the globe: pure black in the dark palette, pure white in the light.
+///
+/// The globe is a ball floating in space, so what surrounds it must not read as sea. It used
+/// to: the frame cleared to [`background`] (water) on globe frames too, so the area outside
+/// the sphere was ocean-coloured and the planet's edge dissolved into it. Space is a fixed
+/// colour rather than a style entry — it is not part of the map, and muting it would only
+/// make the limb harder to see. The globe's own ocean is drawn as a disc in [`background`]
+/// (see `Renderer::record_globe_backdrop`), so the sea on the ball is unchanged.
+pub fn space(variant: Variant) -> u32 {
+    match variant {
+        Variant::Light => 0xFFFF_FFFF,
+        Variant::Dark => 0xFF00_0000,
+    }
+}
+
+/// The colour a frame clears to: [`space`] when the globe leaves part of the viewport
+/// uncovered, [`background`] (water) otherwise.
+///
+/// When the sphere covers every corner (zoomed in past the point where its limb leaves the
+/// screen) there is no space visible at all, so the frame clears straight to water and the
+/// renderer skips the ocean disc — the zoomed-in globe pays exactly what the flat map does.
+pub fn clear_color(camera: &crate::camera::Camera, variant: Variant) -> u32 {
+    if crate::camera::globe_active(camera) && !camera.globe_covers_viewport() {
+        space(variant)
+    } else {
+        background(variant)
+    }
+}
+
 /// Whether the lane-level road rendering is built and drawn at all.
 ///
 /// The one switch for the whole feature set: the `roads-carriageway` asphalt surface and its

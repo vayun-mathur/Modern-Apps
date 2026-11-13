@@ -335,7 +335,8 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
         &camera,
         &map.layers,
         map.palette,
-        style::background(map.palette.variant),
+        // Globe frames with space around the ball clear to space (black/white), not sea.
+        style::clear_color(&camera, map.palette.variant),
         &kinds,
     );
     // The JNI-entry sample closes here: it covers drain + select + render, which is the whole

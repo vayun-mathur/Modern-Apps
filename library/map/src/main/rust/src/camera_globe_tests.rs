@@ -193,4 +193,36 @@ mod tests {
         assert!((sx_dp - 256.0).abs() < 1e-9, "sx {sx_dp}");
         assert!((sy_dp - 256.0).abs() < 1e-9, "sy {sy_dp}");
     }
+
+    #[test]
+    fn a_zoomed_out_globe_leaves_space_around_it_and_a_zoomed_in_one_does_not() {
+        // z0 on a 512 dp square: the radius is half the 512 dp world, so the limb touches the
+        // edges' midpoints and the corners are space.
+        assert!(!globe_camera(0.0, 0.0, 0.0).globe_covers_viewport());
+        // z3: radius 2048 dp, far past the 362 dp half-diagonal.
+        assert!(globe_camera(0.0, 0.0, 3.0).globe_covers_viewport());
+    }
+
+    #[test]
+    fn space_is_black_in_dark_and_white_in_light_and_only_on_an_uncovered_globe() {
+        use crate::style::{background, clear_color, space, Variant};
+        assert_eq!(space(Variant::Dark), 0xFF00_0000);
+        assert_eq!(space(Variant::Light), 0xFFFF_FFFF);
+        for variant in [Variant::Light, Variant::Dark] {
+            // Globe with space visible: clears to space, never to the sea.
+            let out = globe_camera(0.0, 0.0, 0.0);
+            assert_eq!(clear_color(&out, variant), space(variant));
+            assert_ne!(clear_color(&out, variant), background(variant));
+            // Globe filling the screen: no space visible, so water exactly as before.
+            assert_eq!(clear_color(&globe_camera(0.0, 0.0, 4.0), variant), background(variant));
+            // Flat map (globe off, or past the flat threshold): unchanged water clear.
+            let mut flat = globe_camera(0.0, 0.0, 0.0);
+            flat.globe = false;
+            assert_eq!(clear_color(&flat, variant), background(variant));
+            assert_eq!(
+                clear_color(&globe_camera(0.0, 0.0, GLOBE_FLAT_THRESHOLD + 1.0), variant),
+                background(variant)
+            );
+        }
+    }
 }

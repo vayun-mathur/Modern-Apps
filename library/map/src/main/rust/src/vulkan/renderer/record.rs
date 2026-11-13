@@ -96,6 +96,9 @@ impl Renderer {
         // without reordering any draw): every pass below binds through this instead of
         // issuing raw binds, so repeated binds of the same state collapse to one.
         let mut binds = BindState::new();
+        // Globe frames clear to space; the sea on the ball is this disc (`record_globe.rs`).
+        let ocean = crate::style::background(palette.variant);
+        self.record_globe_backdrop(command_buffer, camera, ocean, &mut binds, &mut submitted);
         // One tile-layer's draws, reused across the whole frame — and across frames: the
         // buffer lives on the renderer (`scratch_draws`) and is only cleared per tile below,
         // so a frame pays no allocation for it. Each draw carries its pool's bind offsets
