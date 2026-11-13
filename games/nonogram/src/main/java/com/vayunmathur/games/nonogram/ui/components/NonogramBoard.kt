@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
@@ -41,7 +42,7 @@ import com.vayunmathur.library.ui.rememberHaptics
  * Laid out as a two-by-two arrangement: an empty corner, the column clues across the top, the row
  * clues down the left, and the grid itself. The clue gutters are sized from the longest clue on that
  * axis so nothing is ever clipped, and everything scales off the cell size so a 5x5 and a 15x15 both
- * fill the available width.
+ * fill the available space — width or height, whichever runs out first — centred within it.
  *
  * Touch goes through one handler on the whole grid ([strokeGestures]): taps, drags and long presses
  * all become strokes on [actions]. TalkBack's per-cell actions call [NonogramGameActions.tapCell] and
@@ -59,9 +60,17 @@ fun NonogramBoard(
     val rowGutterCells = game.puzzle.rowClues.maxOf { it.size }.coerceAtLeast(1)
     val colGutterCells = game.puzzle.colClues.maxOf { it.size }.coerceAtLeast(1)
 
-    BoxWithConstraints(modifier) {
+    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         // The clue gutters are narrower than a cell: they only ever hold a one or two digit number.
-        val cell: Dp = maxWidth / (size + rowGutterCells * CLUE_CELL_FRACTION)
+        // Fitted to both axes: sizing from width alone overflowed a landscape phone, where the board
+        // is far wider than it is tall. Unbounded height (a scrolling parent) falls back to width.
+        val fromWidth = maxWidth / (size + rowGutterCells * CLUE_CELL_FRACTION)
+        val fromHeight = if (constraints.hasBoundedHeight) {
+            maxHeight / (size + colGutterCells * CLUE_CELL_FRACTION)
+        } else {
+            fromWidth
+        }
+        val cell: Dp = minOf(fromWidth, fromHeight)
         val clueCell = cell * CLUE_CELL_FRACTION
         // Sized from the clue slot, not the grid cell, and paired with a line height equal to the
         // slot. Without that a 15x15's slots are shorter than the text's natural line box, the clue

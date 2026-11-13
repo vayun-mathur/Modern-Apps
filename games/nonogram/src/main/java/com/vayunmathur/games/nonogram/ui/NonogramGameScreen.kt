@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +49,7 @@ import com.vayunmathur.library.ui.game.DailyStreakText
 import com.vayunmathur.library.ui.game.GameModeChooser
 import com.vayunmathur.library.ui.game.GameTopBarActions
 import com.vayunmathur.library.ui.game.HeartsRow
+import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.ui.isExpandedWidth
 
 /** Caps the board on tablets, where a full-width grid would give absurdly large cells. */
@@ -95,7 +98,9 @@ fun NonogramGameScreen(
     val daily = state.mode == GameMode.DAILY
     // Wide windows put the hearts and controls beside the board instead of
     // stretching the grid across the window; the board itself never splits.
-    val expanded = isExpandedWidth()
+    // Short windows (a landscape phone) split too: stacking board over controls
+    // cannot fit in ~360dp of height, and pushed Next level off-screen.
+    val sidePanel = isExpandedWidth() || isCompactHeight()
     AppScaffold(
         title = {
             GameModeChooser(
@@ -162,7 +167,7 @@ fun NonogramGameScreen(
                     contentAlignment = Alignment.Center,
                 ) { CircularProgressIndicator() }
 
-                expanded -> {
+                sidePanel -> {
                     Row(
                         Modifier.weight(1f).fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -182,7 +187,12 @@ fun NonogramGameScreen(
                             )
                         }
                         Column(
-                            Modifier.width(NonogramSidePanelWidth).fillMaxHeight(),
+                            Modifier
+                                .width(NonogramSidePanelWidth)
+                                .fillMaxHeight()
+                                // A last resort for very short windows or huge fonts:
+                                // the controls scroll rather than clip.
+                                .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(
                                 Spacing.md,
@@ -202,14 +212,21 @@ fun NonogramGameScreen(
                 else -> {
                     HeartsRow(remaining = game.hearts, total = STARTING_HEARTS)
 
-                    NonogramBoard(
-                        game = game,
-                        actions = actions,
-                        markMode = state.markMode,
-                        modifier = Modifier
-                            .widthIn(max = BoardMaxWidth)
-                            .fillMaxWidth(),
-                    )
+                    // The board takes whatever height the hearts and controls leave and
+                    // sizes itself to fit it, so the controls are never pushed off-screen.
+                    Box(
+                        Modifier.weight(1f).fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        NonogramBoard(
+                            game = game,
+                            actions = actions,
+                            markMode = state.markMode,
+                            modifier = Modifier
+                                .widthIn(max = BoardMaxWidth)
+                                .fillMaxWidth(),
+                        )
+                    }
 
                     NonogramControls(
                         game = game,
