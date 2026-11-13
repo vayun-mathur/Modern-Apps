@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -25,6 +26,7 @@ import com.vayunmathur.games.wordmaker.data.CrosswordData
 import com.vayunmathur.games.wordmaker.platform.WordGameActions
 import com.vayunmathur.games.wordmaker.ui.components.AnimatedLetter
 import com.vayunmathur.games.wordmaker.ui.components.SurfaceText
+import com.vayunmathur.games.wordmaker.ui.components.TILE_GLYPH_LINE_HEIGHT
 import com.vayunmathur.games.wordmaker.ui.dialogs.BonusWordsDialog
 import com.vayunmathur.games.wordmaker.ui.dialogs.DefinitionDialog
 import com.vayunmathur.library.ui.AlertDialog
@@ -113,7 +115,9 @@ fun WordGameOverlays(
                     )
             )
         }
-        val (size, fontSize) = Pair(35.dp * scale, 18.sp * scale)
+        // Matches the crossword cell it lands in (dp-sized there too, so large fonts do not clip).
+        val size = 35.dp * scale
+        val fontSize = with(LocalDensity.current) { (18.dp * scale).toSp() }
         animatedLetters.forEach { letter ->
             val progress = letter.progress.value
             val offset = lerp(letter.startOffset, letter.endOffset, progress)
@@ -122,7 +126,8 @@ fun WordGameOverlays(
                 RoundedCornerShape(4.dp * scale),
                 MaterialTheme.colorScheme.primary, letter.char.toString(),
                 Modifier, FontWeight.Bold, fontSize, size,
-                textColor = MaterialTheme.colorScheme.onPrimary)
+                textColor = MaterialTheme.colorScheme.onPrimary,
+                lineHeight = TILE_GLYPH_LINE_HEIGHT)
         }
     }
 }

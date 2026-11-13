@@ -171,6 +171,9 @@ fun LetterChooser(
                     widthPx, heightPx, with(density) { wheelSpacing.ringRadius.toPx() }, tilePx / 2, letters.size
                 )
                 val tileSize = with(density) { tilePx.toDp() }
+                // Sized from the tile, not in sp: the glyph is part of the tile graphic, and at
+                // 200% font a 42 sp letter no longer fit its 70 dp tile and was clipped.
+                val glyphSize = with(density) { (tilePx * LETTER_GLYPH_FRACTION).toSp() }
                 val radiusDp = with(density) { geometry.ringRadius.toDp() }
                 // The gesture coroutine outlives recompositions; it reads the geometry through
                 // updated state, so a size or spacing change mid-puzzle is hit-tested at the new
@@ -259,8 +262,9 @@ fun LetterChooser(
                                 chooserLetter.char.toString(),
                                 Modifier.padding(1.dp),
                                 FontWeight.Bold,
-                                42.sp,
-                                tileSize
+                                glyphSize,
+                                tileSize,
+                                lineHeight = TILE_GLYPH_LINE_HEIGHT,
                             )
                         }
                     }
@@ -298,3 +302,6 @@ private val SIDE_COLUMN_WIDTH = 56.dp
 
 /** A letter tile at full size. */
 private val LETTER_TILE = 70.dp
+
+/** Letter glyph size as a fraction of its tile (42 at the full 70). */
+private const val LETTER_GLYPH_FRACTION = 0.6f

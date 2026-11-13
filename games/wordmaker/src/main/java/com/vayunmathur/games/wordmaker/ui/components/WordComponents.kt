@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 data class AnimatedLetter(
@@ -32,13 +33,20 @@ data class AnimatedLetter(
 
 data class WordToAnimate(val word: String, val letterIds: List<Int>)
 
+/**
+ * Line height for a letter drawn on a tile, relative to its glyph. The theme's body line height
+ * is in sp and grows with the user's font size on its own, which overflows a dp-sized tile at
+ * large font scales even when the glyph itself is dp-sized.
+ */
+internal val TILE_GLYPH_LINE_HEIGHT = 1.2.em
+
 
 @Composable
-fun SurfaceText(modifier: Modifier, surfaceShape: Shape, surfaceColor: Color, text: String, textModifier: Modifier, fontWeight: FontWeight? = null, fontSize: TextUnit = TextUnit.Unspecified, surfaceSize: Dp?, textColor: Color = Color.Unspecified) {
+fun SurfaceText(modifier: Modifier, surfaceShape: Shape, surfaceColor: Color, text: String, textModifier: Modifier, fontWeight: FontWeight? = null, fontSize: TextUnit = TextUnit.Unspecified, surfaceSize: Dp?, textColor: Color = Color.Unspecified, lineHeight: TextUnit = TextUnit.Unspecified) {
     val modifier2 = if(surfaceSize != null) modifier.size(surfaceSize) else modifier
     Surface(modifier2, surfaceShape, surfaceColor) {
         Box(if(surfaceSize == null) Modifier else Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text, textModifier, color = textColor, fontWeight = fontWeight, fontSize = fontSize)
+            Text(text, textModifier, color = textColor, fontWeight = fontWeight, fontSize = fontSize, lineHeight = lineHeight)
         }
     }
 }

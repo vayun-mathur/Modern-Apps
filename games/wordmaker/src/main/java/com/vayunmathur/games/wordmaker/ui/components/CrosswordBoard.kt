@@ -28,9 +28,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.wordmaker.data.CrosswordData
 
 @Composable
@@ -55,7 +55,10 @@ fun CrosswordBoard(
             }
         }
     }
-    val (size, fontSize) = Pair(35.dp, 18.sp)
+    // The board is a fixed-size graphic that pinch-zoom scales as a whole, so the letters are
+    // sized in dp: 18 sp clipped inside the 35 dp cells at large font scales.
+    val size = CELL_SIZE
+    val fontSize = with(LocalDensity.current) { CELL_GLYPH.toSp() }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -127,7 +130,8 @@ fun CrosswordBoard(
                                     letter?.toString() ?: " ",
                                     Modifier,
                                     FontWeight.Bold, fontSize, size,
-                                    textColor = if (letter != null) MaterialTheme.colorScheme.onPrimary else Color.Unspecified
+                                    textColor = if (letter != null) MaterialTheme.colorScheme.onPrimary else Color.Unspecified,
+                                    lineHeight = TILE_GLYPH_LINE_HEIGHT,
                                 )
                             } else {
                                 Box(Modifier.padding(1.dp).size(size))
@@ -139,3 +143,9 @@ fun CrosswordBoard(
         }
     }
 }
+
+/** A crossword cell (excluding its 1 dp margin). */
+private val CELL_SIZE = 35.dp
+
+/** A cell's letter. */
+private val CELL_GLYPH = 18.dp
