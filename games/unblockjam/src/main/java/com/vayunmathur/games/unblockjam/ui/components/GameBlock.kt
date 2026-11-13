@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
@@ -22,7 +23,7 @@ import com.vayunmathur.games.unblockjam.platform.BlockOffset
 import com.vayunmathur.games.unblockjam.platform.blockDragGestures
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Motion
-import com.vayunmathur.library.ui.animatedFloat
+import com.vayunmathur.library.ui.travelledOffset
 import kotlin.math.roundToInt
 
 /** One block on the board, draggable along its long axis unless it is a fixed wall. */
@@ -52,19 +53,25 @@ internal fun GameBlock(
     var offsetX by remember(block, levelData) { mutableFloatStateOf(block.position.x.toFloat()) }
     var offsetY by remember(block, levelData) { mutableFloatStateOf(block.position.y.toFloat()) }
 
-    val targetOffsetX = if (isMainBlock && isLevelWon) levelData.dimension.width + 1f else offsetX
-    val currentOffsetX = animatedFloat(
-        targetOffsetX,
-        Motion.over(if (isMainBlock && isLevelWon) WIN_ANIM_MILLIS else 0),
-    )
+    // The won target block slides out past the exit. Read only in the offset lambda below, like
+    // the drag offsets: a drag then only re-runs layout for this block instead of recomposing it
+    // on every pointer event, which reading the position here in composition used to do.
+    val winSlide = if (isMainBlock && isLevelWon) {
+        travelledOffset(
+            key = levelData.id,
+            from = Offset(offsetX, offsetY),
+            to = Offset(levelData.dimension.width + 1f, offsetY),
+            spec = Motion.over(WIN_ANIM_MILLIS),
+        )
+    } else {
+        null
+    }
 
     var modifier = Modifier
         .size(blockWidth, blockHeight)
         .offset {
-            IntOffset(
-                (currentOffsetX * cellWidth.toPx()).roundToInt(),
-                (offsetY * cellHeight.toPx()).roundToInt(),
-            )
+            val x = winSlide?.value?.x ?: offsetX
+            IntOffset((x * cellWidth.toPx()).roundToInt(), (offsetY * cellHeight.toPx()).roundToInt())
         }
         // Tagged before the inset, so tests read the block's cell rather than its painted inset.
         .testTag("block_$index")

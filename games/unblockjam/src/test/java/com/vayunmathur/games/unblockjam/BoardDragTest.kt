@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
@@ -138,5 +139,29 @@ class BoardDragTest {
         val result = assertNotNull(changed)
         assertEquals(Coord(1, 5), result.blocks[1].position)
         assertEquals(1, result.lastMovedBlockIndex)
+    }
+
+    @Test
+    fun blockFollowsTheFingerMidDrag() {
+        val lvl = level(
+            listOf(
+                Block(Coord(0, 2), Dimension(2, 1), false),
+                Block(Coord(3, 5), Dimension(2, 1), false),
+            )
+        )
+        setBoard(lvl, false, {}, {})
+        val before = rule.onNodeWithTag("block_1").getBoundsInRoot().left
+        // Finger still down: the position is applied in layout, not by recomposition, and must
+        // still track the drag frame by frame.
+        rule.onNodeWithTag("board").performTouchInput {
+            down(Offset(width * 4f / 6f, height * 5.5f / 6f))
+            moveBy(Offset(-width * 1.5f / 6f, 0f))
+            moveBy(Offset(-width * 0.2f / 6f, 0f))
+        }
+        val mid = rule.onNodeWithTag("block_1").getBoundsInRoot().left
+        // 1.7 of 6 cells of a 360 dp board is 102 dp; touch slop eats a little of the first move.
+        val moved = (before - mid).value
+        assertTrue(moved in 80f..103f, "block should follow the finger, moved=$moved")
+        rule.onNodeWithTag("board").performTouchInput { up() }
     }
 }
