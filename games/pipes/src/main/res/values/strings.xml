@@ -13,4 +13,11 @@
     <string name="restart_confirm_title">Restart level?</string>
     <!-- GameBoardScreen: Restart confirmation dialog message. Sentence -->
     <string name="restart_confirm_message">This will clear your current progress on this level.</string>
+    <!-- GameBoardScreen: Message shown when the level is solved, with the number of moves used. Sentence, exclamation -->
+    <plurals name="level_solved_moves">
+        <item quantity="one">Solved in <xliff:g id="moves" example="1">%d</xliff:g> move!</item>
+        <item quantity="other">Solved in <xliff:g id="moves" example="7">%d</xliff:g> moves!</item>
+    </plurals>
+    <!-- GameBoardScreen: Button shown after solving the last level of a pack; returns to the pack list. Verb phrase -->
+    <string name="back_to_packs">Back to packs</string>
 </resources>

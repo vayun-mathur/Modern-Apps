@@ -168,15 +168,21 @@ class PipesScreensTest {
         }
         rule.onNodeWithText(str(UiR.string.next_level)).performClick()
         assertEquals(2, levelChange)
-        // Won on the last level: no next button
+        rule.onNodeWithText(ctx.resources.getQuantityString(R.plurals.level_solved_moves, 0, 0)).assertIsDisplayed()
+        // Won on the last level: no next button, but a solved message and a way back to the packs
+        var toPacks = 0
         screen.value = {
             PipesTheme {
                 GameBoardScreen(
-                    GameBoardUiState(level, levelIndex = 3, maxLevelIndex = 3, isLevelWon = true),
-                    actions, onBack = {}, onLevelChange = {})
+                    GameBoardUiState(level, levelIndex = 3, maxLevelIndex = 3, isLevelWon = true, moves = 7),
+                    actions, onBack = {}, onLevelChange = {}, onBackToPacks = { toPacks++ })
             }
         }
         rule.onNodeWithText(str(UiR.string.next_level)).assertDoesNotExist()
+        rule.onNodeWithText(str(UiR.string.undo)).assertDoesNotExist()
+        rule.onNodeWithText("Solved in 7 moves!").assertIsDisplayed()
+        rule.onNodeWithText(str(R.string.back_to_packs)).assertIsDisplayed().performClick()
+        assertEquals(1, toPacks)
         assertEquals(0, backs)
     }
 
