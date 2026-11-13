@@ -100,7 +100,7 @@ class SudokuViewModelTest {
     }
 
     @Test
-    fun selectCellTogglesAndDigitPlacementEraseAndUndo() {
+    fun selectCellKeepsSelectionAndDigitPlacementEraseAndUndo() {
         val vm = startedVm()
         val cell = blank(vm)
         val game = vm.uiState.value.game!!
@@ -109,8 +109,7 @@ class SudokuViewModelTest {
         vm.selectCell(cell)
         assertEquals(cell, vm.uiState.value.game!!.selected)
         vm.selectCell(cell)
-        assertEquals(-1, vm.uiState.value.game!!.selected, "re-selecting deselects")
-        vm.selectCell(cell)
+        assertEquals(cell, vm.uiState.value.game!!.selected, "re-tapping keeps the selection")
 
         vm.enterDigit(correct)
         var after = vm.uiState.value.game!!

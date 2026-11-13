@@ -124,8 +124,15 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
+    /**
+     * Moves the cursor to [index].
+     *
+     * Re-tapping the selected cell keeps it selected. It used to toggle the selection off, so a
+     * player double-checking a cell (or a slightly bouncy tap) lost their place and the next
+     * number-pad press silently did nothing.
+     */
     override fun selectCell(index: Int) {
-        mutate { it.copy(selected = if (it.selected == index) -1 else index) }
+        mutate { it.copy(selected = index) }
     }
 
     override fun toggleNotesMode() {
