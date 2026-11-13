@@ -25,7 +25,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.interactionBarrier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -53,11 +52,11 @@ import com.vayunmathur.library.ui.TextButton
  * The scrim is also a touch barrier: it swallows every pointer event that lands outside the card, so a
  * tap meant to dismiss nothing cannot fall through to a cell or a number-pad key on the finished board.
  *
- * It is modal for assistive technology and keyboards too. The overlay is a pane titled [title], announced
- * when it appears, and the scrim is an interaction barrier: the board it covers drops out of the tree
- * TalkBack sees, so swiping cannot reach a cell whose click action would bypass the touch barrier, and
- * keyboard focus cannot land on it. Focus moves onto the overlay when it appears and cannot leave it, so
- * Tab and the D-pad stay on the card's buttons.
+ * It is modal for assistive technology and keyboards too. The overlay is a pane titled [title]: it is
+ * announced when it appears, and because a pane is important for accessibility and covers the board,
+ * Compose leaves the covered board out of the tree TalkBack sees, so swiping cannot reach a cell whose
+ * click action would bypass the touch barrier. Focus moves onto the overlay when it appears and cannot
+ * leave it, so Tab and the D-pad stay on the card's buttons.
  *
  * [won] only picks the title colour; the caller supplies the words, because "Solved", "Field Cleared"
  * and "Congratulations" all mean the same thing in different games and none of them belongs here.
@@ -105,11 +104,10 @@ fun GameResultOverlay(
         Box(
             Modifier
                 .matchParentSize()
-                .interactionBarrier()
                 .swallowPointerInput(),
         )
-        // Where focus rests while the overlay shows. Drawn above the barrier, so the barrier does not
-        // count it as covered, and inside the pane, so the pane's exit guard holds it.
+        // Where focus rests while the overlay shows: inside the pane, so the pane's exit guard holds it.
+        // The guard only runs for a group whose descendant has focus, never for a focused node itself.
         Box(
             Modifier
                 .matchParentSize()
@@ -186,8 +184,11 @@ fun GameResultOverlay(
 }
 
 /**
- * The pane half of being modal: announced by [title], and a focus group that will not let focus leave.
- * Hiding the board itself is the scrim's interaction barrier.
+ * The accessibility and focus half of being modal.
+ *
+ * A pane title makes the node important for accessibility, and Compose leaves out of the accessibility
+ * tree any node wholly covered by an important node drawn above it — that is what hides the board from
+ * TalkBack. The node is also a focus group that refuses to let focus leave it.
  */
 private fun Modifier.modalPane(title: String): Modifier = this
     .semantics { paneTitle = title }

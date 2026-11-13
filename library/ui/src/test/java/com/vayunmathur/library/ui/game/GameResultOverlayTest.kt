@@ -27,7 +27,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.printToString
 import androidx.compose.foundation.text.BasicText
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.R as UiR
@@ -111,7 +113,11 @@ class GameResultOverlayTest {
         val titleId = rule.onNodeWithText("Solved").fetchSemanticsNode().id
         val reachable = reachableIds(view)
         assertTrue(titleId in reachable, "the card itself stays reachable")
-        assertFalse(behindId in reachable, "the covered board is out of the accessibility tree")
+        assertFalse(
+            behindId in reachable,
+            "the covered board is out of the accessibility tree; reachable=$reachable behind=$behindId\n" +
+                rule.onRoot(useUnmergedTree = true).printToString(),
+        )
     }
 
     @Test
