@@ -22,4 +22,12 @@
     <string name="back_to_packs">Back to packs</string>
     <!-- GameBoardScreen: Hint shown when every pair of dots is connected but some cells are still empty, so the level is not solved yet. Sentence -->
     <string name="fill_every_cell_hint">Every pair is connected. Fill every cell to finish.</string>
+    <!-- GameBoard: TalkBack summary of the whole board. %1$d rows by %2$d columns; %3$d of %4$d colour pairs joined; %5$d of %6$d cells covered by pipes. Sentences -->
+    <string name="board_summary">Board, <xliff:g id="rows" example="5">%1$d</xliff:g> by <xliff:g id="cols" example="5">%2$d</xliff:g>. Pairs connected: <xliff:g id="connected" example="2">%3$d</xliff:g> of <xliff:g id="pairs" example="4">%4$d</xliff:g>. Cells filled: <xliff:g id="filled" example="12">%5$d</xliff:g> of <xliff:g id="cells" example="25">%6$d</xliff:g>.</string>
+    <!-- GameBoard: TalkBack label of a board cell holding a dot. %3$s is the colour's letter (A, B, C...), as drawn in colorblind mode -->
+    <string name="board_cell_dot">Row <xliff:g id="row" example="2">%1$d</xliff:g>, column <xliff:g id="column" example="3">%2$d</xliff:g>, dot <xliff:g id="letter" example="B">%3$s</xliff:g></string>
+    <!-- GameBoard: TalkBack label of a board cell covered by a pipe. %3$s is the colour's letter (A, B, C...), as drawn in colorblind mode -->
+    <string name="board_cell_pipe">Row <xliff:g id="row" example="2">%1$d</xliff:g>, column <xliff:g id="column" example="3">%2$d</xliff:g>, pipe <xliff:g id="letter" example="B">%3$s</xliff:g></string>
+    <!-- GameBoard: TalkBack label of an empty board cell -->
+    <string name="board_cell_empty">Row <xliff:g id="row" example="2">%1$d</xliff:g>, column <xliff:g id="column" example="3">%2$d</xliff:g>, empty</string>
 </resources>

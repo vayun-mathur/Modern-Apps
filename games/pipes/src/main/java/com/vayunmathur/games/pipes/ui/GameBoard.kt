@@ -17,8 +17,13 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.vayunmathur.games.pipes.R
 import com.vayunmathur.games.pipes.data.CellPos
 import com.vayunmathur.games.pipes.data.LevelData
+import com.vayunmathur.games.pipes.domain.StrokeRules
 import com.vayunmathur.games.pipes.platform.PipesGameState
 
 /** Letter size on pipe segments, as a fraction of the cell: fits inside the half-cell-wide pipe. */
@@ -57,6 +62,13 @@ fun GameBoard(
     val currentStartDraw by rememberUpdatedState(onStartDraw)
     val currentExtendPath by rememberUpdatedState(onExtendPath)
     val currentCommitDraw by rememberUpdatedState(onCommitDraw)
+    val connected = levelData.endpoints.count {
+        StrokeRules.isComplete(levelData, it.colorIndex, gameState.paths[it.colorIndex].orEmpty())
+    }
+    val summary = stringResource(
+        R.string.board_summary, levelData.rows, levelData.cols,
+        connected, levelData.endpoints.size, gameState.cellOwner.size, levelData.cells.size,
+    )
 
     Canvas(
         modifier = Modifier
@@ -65,6 +77,7 @@ fun GameBoard(
             // Strokes start at the board's edge cells, which on a full-width board sit in
             // the system back-gesture zone; claim the board so they draw instead of exiting.
             .systemGestureExclusion()
+            .semantics { contentDescription = summary }
             .pointerInput(geometry, isLevelWon) {
                 if (isLevelWon) return@pointerInput
                 // One stroke per gesture, driven only by the first finger: a second finger
@@ -180,6 +193,7 @@ fun GameBoard(
             }
         }
     }
+    BoardCellSemantics(geometry, gameState, boardSize)
     }
 }
 

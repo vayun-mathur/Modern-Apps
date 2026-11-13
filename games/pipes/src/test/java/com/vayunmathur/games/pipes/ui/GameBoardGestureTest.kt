@@ -9,6 +9,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.LayoutDirection
@@ -124,5 +127,29 @@ class GameBoardGestureTest {
         val rects = view!!.systemGestureExclusionRects
         assertTrue(rects.isNotEmpty(), "no gesture exclusion rects")
         assertTrue(rects.any { it.width() > 0 && it.height() > 0 })
+    }
+
+    @Test fun talkBackSeesABoardSummaryAndEveryCell() {
+        val paths = mapOf(0 to listOf(CellPos(0, 0), CellPos(0, 1)))
+        val state = PipesGameState(paths, com.vayunmathur.games.pipes.domain.BoardEdits.owners(level, paths))
+        rule.setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                GameBoard(
+                    level, state, null, emptyList(),
+                    onStartDraw = {}, onExtendPath = {}, onCommitDraw = {},
+                    isLevelWon = false, modifier = Modifier.size(300.dp),
+                )
+            }
+        }
+        rule.onNodeWithContentDescription("Board, 5 by 5. Pairs connected: 0 of 1. Cells filled: 2 of 25.").assertExists()
+        rule.onNodeWithContentDescription("Row 1, column 1, dot A").assertExists()
+        rule.onNodeWithContentDescription("Row 1, column 2, pipe A").assertExists()
+        rule.onNodeWithContentDescription("Row 5, column 5, dot A").assertExists()
+        rule.onAllNodes(hasContentDescription("empty", substring = true)).assertCountEquals(22)
+        // Cell nodes sit over their cells even in RTL (the canvas never mirrors).
+        val board = rule.onNodeWithTag(GAME_BOARD_TAG).fetchSemanticsNode().boundsInRoot
+        val first = rule.onNodeWithContentDescription("Row 1, column 1, dot A").fetchSemanticsNode().boundsInRoot
+        assertEquals(board.left, first.left, 1f)
+        assertEquals(board.top, first.top, 1f)
     }
 }
