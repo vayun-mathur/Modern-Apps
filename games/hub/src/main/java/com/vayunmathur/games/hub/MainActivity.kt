@@ -8,6 +8,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.games.hub.ui.components.AvatarIcon
+import com.vayunmathur.games.hub.ui.components.profileTabAvatarSymbol
 import com.vayunmathur.library.ui.IconDashboard
 import com.vayunmathur.library.ui.IconEmoji
 import com.vayunmathur.library.ui.IconEmojiEvents
@@ -152,7 +153,10 @@ private fun HubTabs(
         PagerTab(stringResource(R.string.tab_achievements), { IconEmojiEvents() }) {
             AchievementsScreen(viewModel = viewModel)
         },
-        PagerTab(stringResource(R.string.tab_profile), { AvatarIcon(symbol = profile?.avatarSymbol) }) {
+        PagerTab(
+            stringResource(R.string.tab_profile),
+            { AvatarIcon(symbol = profileTabAvatarSymbol(profile?.avatarSymbol)) },
+        ) {
             ProfilePage(viewModel = viewModel)
         },
         // Dev-only: the Yuu avatar plaza is still experimental. R8 strips the

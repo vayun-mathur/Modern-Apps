@@ -48,3 +48,18 @@ fun AvatarIcon(
         else -> IconPerson(modifier, tint)
     }
 }
+
+/**
+ * Avatar symbols whose glyph is already a sibling bottom-tab icon: the gamepad (Games tab),
+ * the trophy (Achievements tab) and the face (Yuu tab on dev builds).
+ */
+private val TAB_COLLIDING_SYMBOLS = setOf("stadia_controller", "sports_esports", "emoji_events", "psychology")
+
+/**
+ * The symbol the Profile bottom tab draws with [AvatarIcon]. The tab keeps mirroring the
+ * player's avatar, except when that avatar would render the same glyph as another tab -
+ * then it falls back to null, i.e. [AvatarIcon]'s person icon, so two tabs never share
+ * an icon (#ux-audit).
+ */
+internal fun profileTabAvatarSymbol(symbol: String?): String? =
+    symbol?.takeUnless { it in TAB_COLLIDING_SYMBOLS }

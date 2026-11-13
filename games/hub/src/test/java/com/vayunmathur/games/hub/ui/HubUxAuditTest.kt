@@ -16,8 +16,11 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.hub.data.entities.HubGameEntity
 import com.vayunmathur.games.hub.ui.components.GameCard
 import com.vayunmathur.games.hub.ui.components.StatCard
+import com.vayunmathur.games.hub.ui.components.profileTabAvatarSymbol
 import kotlin.math.abs
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -60,5 +63,17 @@ class HubUxAuditTest {
         rule.onNodeWithText("Achievements: 3/10").assertIsDisplayed()
         rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
             .assertCountEquals(0)
+    }
+
+    @Test
+    fun profileTabNeverReusesASiblingTabIcon() {
+        // Default profile and ordinary avatars: unchanged (person / the avatar itself).
+        assertNull(profileTabAvatarSymbol(null))
+        assertEquals("star", profileTabAvatarSymbol("star"))
+        assertEquals("rocket", profileTabAvatarSymbol("rocket"))
+        // Avatars that render the Games, Achievements or Yuu tab glyph fall back to the person icon.
+        for (symbol in listOf("stadia_controller", "sports_esports", "emoji_events", "psychology")) {
+            assertNull(profileTabAvatarSymbol(symbol), symbol)
+        }
     }
 }
