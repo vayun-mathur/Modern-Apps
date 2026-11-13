@@ -27,8 +27,30 @@ import kotlin.test.assertTrue
 @RunWith(RobolectricTestRunner::class)
 class NonogramViewModelTest {
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
-    @BeforeTest fun setUp() { Dispatchers.setMain(Dispatchers.Unconfined) }
-    @AfterTest fun tearDown() { Dispatchers.resetMain() }
+    @BeforeTest fun setUp() { retrying { Dispatchers.setMain(Dispatchers.Unconfined) } }
+
+    /**
+     * Drains the store before Main is reset.
+     *
+     * The DataStore outlives each test, and runs an edit's transform in the caller's context: an edit
+     * a ViewModel issued on Main that is still queued when Main goes back to the paused Robolectric
+     * looper never runs, and every later edit queues behind it. A same-value write is a barrier —
+     * edits are applied in order — and the second catches anything the first one's echo set off.
+     */
+    @AfterTest fun tearDown() {
+        val store = com.vayunmathur.games.nonogram.data.NonogramDataStore(app)
+        repeat(2) {
+            runCatching { blocking { store.setMarkMode(store.markMode.first()) } }
+            Thread.sleep(50)
+        }
+        retrying { Dispatchers.resetMain() }
+    }
+
+    /** set/resetMain throw if a background coroutine happens to be using Main at that instant. */
+    private fun retrying(action: () -> Unit) {
+        repeat(20) { if (runCatching(action).isSuccess) return; Thread.sleep(10) }
+        action()
+    }
 
     private fun await(desc: String, cond: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 20_000

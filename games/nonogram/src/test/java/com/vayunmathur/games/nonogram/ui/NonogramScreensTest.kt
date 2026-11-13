@@ -315,10 +315,12 @@ class NonogramScreensTest {
             node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
             val r = results.single()
             val text = r.layoutInput.text.text
+            // The slot is the Text's max height; allow 1px for rounding the slot to whole pixels.
+            val slotPx = r.layoutInput.constraints.maxHeight + 1f
             val fontPx = with(r.layoutInput.density) { r.layoutInput.style.fontSize.toPx() }
-            val linePx = with(r.layoutInput.density) { r.layoutInput.style.lineHeight.toPx() }
-            assertTrue(fontPx <= linePx + 0.5f, "clue '$text' is ${fontPx}px in a ${linePx}px slot")
-            assertTrue(!r.hasVisualOverflow, "clue '$text' clips at 200% font scale")
+            assertTrue(fontPx <= slotPx, "clue '$text' is ${fontPx}px in a ${slotPx}px slot")
+            assertTrue(r.multiParagraph.height <= slotPx, "clue '$text' line box ${r.multiParagraph.height}px overflows its ${slotPx}px slot")
+            assertTrue(!r.didOverflowWidth, "clue '$text' is cut off at the sides at 200% font scale")
         }
     }
 
