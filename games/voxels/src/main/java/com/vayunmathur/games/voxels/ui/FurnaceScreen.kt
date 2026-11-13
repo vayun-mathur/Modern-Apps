@@ -228,8 +228,10 @@ fun ChestOverlay(containerJson: String, inventoryJson: String, onClose: () -> Un
         Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f))
             .pointerInput(Unit) { detectTapGestures { onClose() } }
     ) {
+        // ~490 dp of slots don't fit a ~400 dp landscape screen: the panel is capped to the screen
+        // (minus a margin) and its slot grids scroll under a fixed title row.
         Column(
-            Modifier.align(Alignment.Center).fillMaxWidth(0.88f)
+            Modifier.align(Alignment.Center).padding(vertical = 8.dp).fillMaxWidth(0.88f)
                 .clip(RoundedCornerShape(14.dp)).background(Color(0xF01A1E1A))
                 .pointerInput(Unit) { detectTapGestures { } }
                 .padding(14.dp),
@@ -244,6 +246,11 @@ fun ChestOverlay(containerJson: String, inventoryJson: String, onClose: () -> Un
                         .clickable { onClose() }.padding(horizontal = 18.dp, vertical = 8.dp)
                 ) { Text(stringResource(UiR.string.close), color = Color.White, fontSize = 14.sp) }
             }
+            Column(
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             Text(stringResource(R.string.chest_tap_hint), color = Color.White.copy(0.55f), fontSize = 11.sp)
 
             for (row in 0 until 3) {
@@ -275,6 +282,7 @@ fun ChestOverlay(containerJson: String, inventoryJson: String, onClose: () -> Un
                         try { VoxelsNative.containerPut(col) } catch (_: Exception) {}
                     }
                 }
+            }
             }
         }
     }
