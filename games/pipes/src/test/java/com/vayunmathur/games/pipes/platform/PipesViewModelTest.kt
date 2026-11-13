@@ -162,8 +162,9 @@ class PipesViewModelTest {
         vm.onUndo()
         assertEquals(listOf(ep.cells[0], next), vm.uiState.value.gameState.paths[ep.colorIndex])
         // Tap an endpoint with no line drawn: nothing becomes undoable
-        val vm2 = vm(); vm2.loadLevel(0, 0)
-        vm2.startDraw(ep.cells[0]); vm2.commitDraw()
+        val vm2 = vm(); vm2.loadLevel(0, 1)
+        val dot = vm2.uiState.value.levelData!!.endpoints[0].cells[0]
+        vm2.startDraw(dot); vm2.commitDraw()
         assertEquals(0, vm2.getCurrentMoves())
     }
 

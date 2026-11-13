@@ -2,7 +2,8 @@
 <!--
   Pipes. Audited state: the "level_stats" and "daily_stats" SharedPreferences
   files (AppBackupAgent.prefNames) holding per-level completion and daily
-  streaks, plus filesDir/datastore_default.preferences_pb, the shared
+  streaks, the "pipes_progress" file holding unfinished boards (at most 30
+  levels), plus filesDir/datastore_default.preferences_pb, the shared
   DataStoreUtils file holding the DailyChallengeStore("pipes_daily") streak and
   the AchievementsManager unlocks. No Room database, nothing written to external
   storage - every packs/*.json and achievements.json is a read-only APK asset.
@@ -12,7 +13,7 @@
   SCOPE: pipes declares android:backupAgent=".platform.AppBackupAgent" and does
   NOT set android:fullBackupOnly, so Android uses key/value backup and the
   <cloud-backup> section below is NOT consulted. Cloud content is exactly
-  AppBackupAgent's prefNames = ["level_stats", "daily_stats"] plus
+  AppBackupAgent's prefNames = ["level_stats", "daily_stats", "pipes_progress"] plus
   datastoreNames = ["datastore_default"], which is the same data this file would
   have sent. <device-transfer> IS governed here, and these rules become the
   cloud control too if the backupAgent is ever removed.

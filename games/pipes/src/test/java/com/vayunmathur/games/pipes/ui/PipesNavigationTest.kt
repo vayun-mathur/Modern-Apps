@@ -136,7 +136,7 @@ class PipesNavigationTest {
         show { Navigation(vm) }
         rule.onNodeWithText("5×5").assertIsDisplayed()
         val agent = com.vayunmathur.games.pipes.platform.AppBackupAgent()
-        assertEquals(listOf("level_stats", "daily_stats"), agent.prefNames)
+        assertEquals(listOf("level_stats", "daily_stats", "pipes_progress"), agent.prefNames)
         assertEquals(listOf("datastore_default"), agent.datastoreNames)
         // Route value semantics used by the back stack
         assertEquals(Route.Game(1, 2), Route.Game(1, 2))

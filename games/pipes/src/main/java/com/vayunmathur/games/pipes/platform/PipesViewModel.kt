@@ -8,9 +8,12 @@ import com.vayunmathur.games.pipes.data.CompletedLevelsRepository
 import com.vayunmathur.games.pipes.domain.BoardEdits
 import com.vayunmathur.games.pipes.domain.BoardState
 import com.vayunmathur.games.pipes.domain.DailyLevels
+import com.vayunmathur.games.pipes.domain.ProgressCodec
+import com.vayunmathur.games.pipes.domain.SavedProgress
 import com.vayunmathur.games.pipes.domain.StrokeRules
 import com.vayunmathur.games.pipes.data.LevelData
 import com.vayunmathur.games.pipes.data.LevelPack
+import com.vayunmathur.games.pipes.data.ProgressRepository
 import com.vayunmathur.library.util.LevelStats
 import com.vayunmathur.library.util.AchievementsManager
 import com.vayunmathur.library.util.DailyChallengeStore
@@ -53,6 +56,8 @@ data class PipesUiState(
 class PipesViewModel(application: Application) : AndroidViewModel(application), PipesActions {
 
     val repository: CompletedLevelsRepository = CompletedLevelsRepository(application)
+
+    private val progress = ProgressRepository(application)
 
     val achievementsManager: AchievementsManager = run {
         val json = application.assets.open("achievements.json")
@@ -187,12 +192,27 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
             current.levelIndex == levelIndex &&
             current.levelData == levelData
         ) return
+        // Resume where the player left this level (Back, level arrows, process death).
+        val saved = progress.load(levelData.id)?.let { ProgressCodec.decode(it, levelData) }
         _uiState.value = PipesUiState(
             packIndex = packIndex,
             levelIndex = levelIndex,
             levelData = levelData,
-            gameState = PipesGameState(),
+            gameState = saved?.state ?: PipesGameState(),
+            history = saved?.history.orEmpty(),
         )
+    }
+
+    /** Saves the level's board after a move, or forgets it once it is empty again or won. */
+    private fun persistProgress() {
+        val s = _uiState.value
+        val level = s.levelData ?: return
+        if (s.packIndex == NO_PACK_INDEX) return
+        if (s.isLevelWon || s.history.isEmpty()) {
+            progress.clear(level.id)
+        } else {
+            progress.save(level.id, ProgressCodec.encode(SavedProgress(s.gameState, s.history)))
+        }
     }
 
     override fun startDraw(cell: CellPos) {
@@ -290,14 +310,16 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
                 leftStart = false,
             )
         }
-        if (!counts || newPath.size < 2) return
+        if (!counts) return
 
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.incrementTotalPipesPlaced()
-            achievementsManager.onProgressUpdated("pipes_1000", repository.getTotalPipesPlaced())
+        if (newPath.size >= 2) {
+            viewModelScope.launch(Dispatchers.IO) {
+                repository.incrementTotalPipesPlaced()
+                achievementsManager.onProgressUpdated("pipes_1000", repository.getTotalPipesPlaced())
+            }
+            checkWin()
         }
-
-        checkWin()
+        persistProgress()
     }
 
     private fun checkWin() {
@@ -391,6 +413,7 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
                 activePath = emptyList()
             )
         }
+        persistProgress()
     }
 
     override fun onRestart() {
@@ -405,6 +428,7 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
                 activePath = emptyList()
             )
         }
+        persistProgress()
     }
 
     fun dismissAchievementNotification() {

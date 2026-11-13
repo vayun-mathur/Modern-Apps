@@ -115,4 +115,35 @@ class PipesStrokeTest {
         assertEquals(green, vm.uiState.value.gameState.paths[2])
         assertNull(vm.uiState.value.gameState.paths[0])
     }
+
+    @Test fun progressSurvivesLeavingTheLevelAndANewViewModel() {
+        val vm = vm()
+        val green = listOf(CellPos(1, 2), CellPos(1, 3), CellPos(1, 4), CellPos(0, 4))
+        draw(vm, green)
+        draw(vm, listOf(CellPos(0, 2), CellPos(0, 3)))
+        val board = vm.uiState.value.gameState
+        // Level arrows: switch away and back in the same ViewModel.
+        vm.loadLevel(0, 1)
+        assertTrue(vm.uiState.value.gameState.paths.isEmpty())
+        vm.loadLevel(0, 0)
+        assertEquals(board, vm.uiState.value.gameState)
+        assertEquals(2, vm.getCurrentMoves())
+        // Process death: a brand-new ViewModel restores the board, the move count and undo.
+        val restored = vm(0, 0)
+        assertEquals(board, restored.uiState.value.gameState)
+        assertEquals(2, restored.getCurrentMoves())
+        restored.onUndo()
+        assertEquals(mapOf(2 to green), restored.uiState.value.gameState.paths)
+        // Undoing back to an empty board forgets the save.
+        restored.onUndo()
+        assertNull(vm(0, 0).uiState.value.gameState.paths[2])
+        assertEquals(0, vm(0, 0).getCurrentMoves())
+    }
+
+    @Test fun restartForgetsTheSavedBoard() {
+        val vm = vm()
+        draw(vm, listOf(CellPos(1, 2), CellPos(1, 3)))
+        vm.onRestart()
+        assertTrue(vm(0, 0).uiState.value.gameState.paths.isEmpty())
+    }
 }
