@@ -71,8 +71,8 @@ data class ArrowsUiState(
     val generationFailed: Boolean = false,
     /**
      * Whether the player has already been told what redirectors do. The explanation shows on any
-     * board with redirectors until then — the first one is level [com.vayunmathur.games.arrows.data.MIRROR_FIRST_LEVEL],
-     * or the first daily.
+     * board with redirectors until then: the first is level
+     * [com.vayunmathur.games.arrows.data.MIRROR_FIRST_LEVEL], or the first daily.
      */
     val redirectorHintSeen: Boolean = true,
     /**
