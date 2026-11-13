@@ -9,7 +9,6 @@ use crate::camera::Camera;
 use crate::style::{Layer, LayerKind, Palette};
 use crate::vulkan::pipeline::Push;
 use ash::vk;
-use std::collections::HashMap;
 
 impl Renderer {
     /// Build the icon + text push blocks for one tile's symbol batches and draw
@@ -160,7 +159,7 @@ impl Renderer {
         layer: &Layer,
         camera: &Camera,
         palette: Palette,
-        accepted: &HashMap<u64, (bool, u32)>,
+        accepted: &super::AcceptSet,
         submitted: &mut usize,
         bound: &mut Option<LayerKind>,
         binds: &mut BindState,
@@ -237,11 +236,8 @@ impl Renderer {
         // The style declares at most two arms, so this is at most two. Buffers are
         // pre-sized from the label count rather than grown geometrically: the frame's
         // label set is known up front, so the push loop below pays no realloc.
-        let label_count = tile
-            .labels
-            .iter()
-            .filter(|l| l.layer_index == layer_index)
-            .count();
+        let layer_labels: &[u32] = tile.labels_by_layer.get(&layer_index).map_or(&[], Vec::as_slice);
+        let label_count = layer_labels.len();
         let mut batches: Vec<(f32, Vec<f32>, Vec<u32>)> = Vec::with_capacity(2);
         // Icons take one batch of their own however many sizes the text has: they are a
         // constant screen size, and they sample a different atlas through a different
@@ -262,12 +258,7 @@ impl Renderer {
         // `String`, every shaped line, every curved centreline — once per symbol layer per
         // resident tile per frame, purely to release the `self.tiles` borrow before the uploads
         // further down. Nothing in this loop needs `&mut self`, so the borrow simply ends here.
-        for (label_idx, label) in tile
-            .labels
-            .iter()
-            .enumerate()
-            .filter(|(_, l)| l.layer_index == layer_index)
-        {
+        for (label_idx, label) in layer_labels.iter().map(|&i| (i as usize, &tile.labels[i as usize])) {
             let id = placement::candidate_id(tz, tx, ty, layer_index, label_idx);
             let Some(&(flipped, _)) = accepted.get(&id) else {
                 continue;

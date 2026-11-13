@@ -149,12 +149,8 @@ impl Renderer {
                 // the UI zoom now that the tile grid is 512, so selection
                 // matches MapLibre's per-zoom set directly.
                 let min_pop = placement::locality_min_pop(camera.zoom);
-                for (label_idx, label) in tile
-                    .labels
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, l)| l.layer_index == index)
-                {
+                let layer_labels = tile.labels_by_layer.get(&index).map_or(&[][..], Vec::as_slice);
+                for (label_idx, label) in layer_labels.iter().map(|&i| (i as usize, &tile.labels[i as usize])) {
                     if label.rank == 2 && label.pop < min_pop {
                         continue;
                     }
@@ -393,7 +389,7 @@ impl Renderer {
         &self,
         camera: &Camera,
         layers: &[Layer],
-        accepted: &HashMap<u64, (bool, u32)>,
+        accepted: &super::AcceptSet,
         extent: vk::Extent2D,
     ) {
         use crate::tile::placement;

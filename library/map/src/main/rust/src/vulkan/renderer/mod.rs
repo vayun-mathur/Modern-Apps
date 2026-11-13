@@ -142,6 +142,9 @@ pub(crate) struct ResidentTile {
     /// Shaped symbol candidates (CPU-side): the renderer emits quads per frame
     /// at the frame's text size. Shaped once on the worker thread.
     labels: Vec<geometry::ShapedLabel>,
+    /// `labels` indexed by symbol layer ([`geometry::labels_by_layer`]), built at upload so the
+    /// per-frame placement and emission walk one layer's labels instead of filtering them all.
+    labels_by_layer: HashMap<usize, Vec<u32>>,
     /// The tile's heightmap (CPU-side): per-frame label emission samples ground height
     /// under anchors from it. Cloned at upload like `labels`; `None` with no DEM.
     heightmap: Option<tilecodec::mamaps::body::Heightmap>,
@@ -242,7 +245,7 @@ struct TransientBuffers {
 
 /// What the symbol placer accepted: candidate id → (it took its alternate anchor, where in
 /// acceptance order it landed).
-type AcceptSet = HashMap<u64, (bool, u32)>;
+type AcceptSet = crate::tile::placement::CandidateMap<(bool, u32)>;
 
 /// Per-frame synchronisation and its command buffer.
 struct Frame {

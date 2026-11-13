@@ -281,6 +281,7 @@ pub(super) fn assemble_tile(
         traffic,
         carriageways,
         yellow_centre: mesh.yellow_centre,
+        labels_by_layer: crate::tile::geometry::labels_by_layer(&mesh.labels),
         labels: std::mem::take(&mut mesh.labels),
         arrows: std::mem::take(&mut mesh.arrows),
         heightmap: mesh.heightmap.take(),

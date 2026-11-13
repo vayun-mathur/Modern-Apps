@@ -122,6 +122,36 @@ fn overlaps(a: (f32, f32, f32, f32), b: (f32, f32, f32, f32)) -> bool {
     a.0 < b.2 && b.0 < a.2 && a.1 < b.3 && b.1 < a.3
 }
 
+/// Hasher for maps keyed by [`candidate_id`]: the id passes straight through.
+///
+/// A candidate id is already a splitmix64-avalanched hash of its tile, layer and label, so
+/// running it through std's SipHash again buys nothing and costs a SipHash per lookup — and the
+/// frame path looks up every symbol-layer label of every resident tile in the accept-set on
+/// every frame (thousands of lookups a frame at city zooms).
+#[derive(Default, Clone, Copy)]
+pub struct CandidateIdHasher(u64);
+
+impl std::hash::Hasher for CandidateIdHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write_u64(&mut self, id: u64) {
+        self.0 = id;
+    }
+
+    /// Only `u64` keys are expected; anything else still hashes (FNV-1a), just not for free.
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.0 = (self.0 ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+}
+
+/// A map keyed by [`candidate_id`], hashed with [`CandidateIdHasher`].
+pub type CandidateMap<V> =
+    std::collections::HashMap<u64, V, std::hash::BuildHasherDefault<CandidateIdHasher>>;
+
 /// Stable id for one label of one tile in one frame, so the accept-set the
 /// renderer computes in its pre-pass names the same labels `record_symbol`
 /// later filters by.
@@ -399,3 +429,21 @@ include!("placement_part1.rs");
 include!("placement_part2.rs");
 include!("placement_part3.rs");
 include!("placement_globe.rs");
+
+#[cfg(test)]
+mod candidate_map_tests {
+    use super::{candidate_id, CandidateMap};
+
+    #[test]
+    fn an_id_keyed_map_finds_exactly_the_ids_put_in() {
+        let mut map: CandidateMap<u32> = CandidateMap::default();
+        for label in 0..5_000usize {
+            map.insert(candidate_id(14, 2620, 6332, label % 14, label), label as u32);
+        }
+        assert_eq!(map.len(), 5_000, "candidate ids must stay distinct under the identity hash");
+        for label in 0..5_000usize {
+            assert_eq!(map.get(&candidate_id(14, 2620, 6332, label % 14, label)), Some(&(label as u32)));
+        }
+        assert!(!map.contains_key(&candidate_id(14, 2620, 6333, 0, 0)));
+    }
+}

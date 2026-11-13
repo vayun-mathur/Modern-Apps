@@ -60,7 +60,7 @@ pub use build::{build, build_toggled};
 pub const TRUST_RINGS_VALIDATED: bool = false;
 pub use wash_overzoom::{needs_wash_underlay, parent_of, stitch_parent_wash, WASH_CAP_ZOOM};
 pub use mesh::{
-    BuildingMesh, CarriagewayMesh, LayerMesh, RegionMesh, ShapedLabel, TerrainMesh, TileMesh,
-    TrafficMesh, ROAD_LANE_MIN_ZOOM, TRAFFIC_MIN_ZOOM,
+    labels_by_layer, BuildingMesh, CarriagewayMesh, LayerMesh, RegionMesh, ShapedLabel, TerrainMesh,
+    TileMesh, TrafficMesh, ROAD_LANE_MIN_ZOOM, TRAFFIC_MIN_ZOOM,
 };
 pub(crate) use terrain::{sample_ground_metres, tile_ground_width_m};

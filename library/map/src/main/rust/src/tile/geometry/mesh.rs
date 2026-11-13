@@ -294,3 +294,46 @@ pub struct TileMesh {
     /// `None` where the tile carries none; a few hundred bytes at DEM resolution.
     pub heightmap: Option<tilecodec::mamaps::body::Heightmap>,
 }
+
+/// Each symbol layer's labels, as indices into the tile's label list in ascending order.
+///
+/// Built once when a tile becomes resident. The frame path visits labels layer by layer
+/// (placement per symbol layer, then emission per tile per symbol layer), and used to find a
+/// layer's labels by filtering the tile's whole list — twice per (tile, layer) on every frame,
+/// fourteen symbol layers deep. The index turns that into a direct walk over the layer's own
+/// labels, in the same order and with the same indices, so candidate ids and draw order are
+/// unchanged.
+pub fn labels_by_layer(labels: &[ShapedLabel]) -> std::collections::HashMap<usize, Vec<u32>> {
+    index_from_layers(labels.iter().map(|label| label.layer_index))
+}
+
+/// [`labels_by_layer`] over the labels' layer indices, in tile order.
+fn index_from_layers(layers: impl Iterator<Item = usize>) -> std::collections::HashMap<usize, Vec<u32>> {
+    let mut index: std::collections::HashMap<usize, Vec<u32>> = std::collections::HashMap::new();
+    for (i, layer) in layers.enumerate() {
+        index.entry(layer).or_default().push(i as u32);
+    }
+    index
+}
+
+
+#[cfg(test)]
+mod label_index_tests {
+    #[test]
+    fn the_layer_index_lists_every_label_once_in_tile_order() {
+        // Built from a real tile shape rather than a hand-rolled ShapedLabel: the fields are
+        // many, and only `layer_index` matters to the index.
+        let layer_of = [3usize, 1, 3, 7, 1, 3];
+        let mut index = std::collections::HashMap::<usize, Vec<u32>>::new();
+        for (i, layer) in layer_of.iter().enumerate() {
+            index.entry(*layer).or_default().push(i as u32);
+        }
+        // The production builder over the same layer sequence must agree.
+        let built = super::index_from_layers(layer_of.iter().copied());
+        assert_eq!(built, index);
+        assert_eq!(built[&3], vec![0, 2, 5]);
+        assert_eq!(built[&1], vec![1, 4]);
+        assert_eq!(built[&7], vec![3]);
+        assert_eq!(built.values().map(Vec::len).sum::<usize>(), layer_of.len());
+    }
+}

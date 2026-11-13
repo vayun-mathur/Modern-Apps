@@ -4,7 +4,6 @@ use crate::camera::Camera;
 use crate::style::{Layer, LayerKind, Palette};
 use crate::timing::{nanos_since, Step};
 use ash::vk;
-use std::collections::HashMap;
 
 impl Renderer {
     /// Begin the frame's command buffer and render pass, and set the viewport and scissor.
@@ -90,7 +89,7 @@ impl Renderer {
         ordered: &[u64],
         fog: u32,
         deferred_symbols: &[(u64, usize)],
-        accepted: &HashMap<u64, (bool, u32)>,
+        accepted: &super::AcceptSet,
         bound: &mut Option<LayerKind>,
         submitted: &mut usize,
         culled: &mut usize,

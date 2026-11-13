@@ -141,3 +141,92 @@ fn viewport_tile_build() {
         );
     }
 }
+
+/// The per-frame label bookkeeping in `record_symbol`: for every symbol layer, every tile's
+/// whole label list is scanned for that layer's labels (once to count, once to emit), and each
+/// of those pays a `candidate_id` + accept-set lookup before any glyph is emitted.
+#[test]
+#[ignore = "needs MAMAPS_REAL_ARCHIVE; timing harness"]
+fn per_frame_label_scan() {
+    use map_renderer::style::LayerKind;
+    use map_renderer::tile::placement::candidate_id;
+    use std::collections::HashMap;
+    let Some(path) = archive_path() else { return };
+    let archive = MamapsArchive::open_with_cache(
+        FileRangeReader::open(&path).expect("open"),
+        Arc::new(LeafCache::new()),
+    )
+    .expect("archive");
+    let layers = style::layers();
+    let symbol_layers: Vec<usize> =
+        (0..layers.len()).filter(|&i| layers[i].kind == LayerKind::Symbol).collect();
+    let toggles = LayerToggles { poi: true, transit: true, traffic: true, safety: true };
+    for (name, lon, lat, zoom) in [("SF", -122.4194, 37.7749, 14.0), ("London", -0.1278, 51.5074, 11.0)] {
+        let cam = camera(lon, lat, zoom);
+        let tiles: Vec<_> = select::visible(&cam, archive.header.min_zoom, archive.header.max_zoom)
+            .into_iter()
+            .filter_map(|t| {
+                let body = archive.tile(t.z, t.x, t.y).ok()??;
+                Some(geometry::build_toggled(&body, layers, t.z, t.x, t.y, false, toggles, &KindFilter::all(), 1))
+            })
+            .collect();
+        let total: usize = tiles.iter().map(|m| m.labels.len()).sum();
+        // ~1 label in 20 survives placement at these zooms; the accept set is what is looked up.
+        let mut accepted: HashMap<u64, (bool, u32)> = HashMap::new();
+        for m in &tiles {
+            for (i, l) in m.labels.iter().enumerate() {
+                if i % 20 == 0 {
+                    accepted.insert(candidate_id(m.z, m.x, m.y, l.layer_index, i), (false, 0));
+                }
+            }
+        }
+        let frames = 200;
+        let t = Instant::now();
+        let mut hits = 0usize;
+        for _ in 0..frames {
+            for &layer_index in &symbol_layers {
+                for m in &tiles {
+                    let count = m.labels.iter().filter(|l| l.layer_index == layer_index).count();
+                    std::hint::black_box(count);
+                    for (i, l) in m.labels.iter().enumerate().filter(|(_, l)| l.layer_index == layer_index) {
+                        if accepted.contains_key(&candidate_id(m.z, m.x, m.y, layer_index, i)) {
+                            hits += 1;
+                        }
+                        std::hint::black_box(l);
+                    }
+                }
+            }
+        }
+        let scan_ms = ms(t.elapsed()) / frames as f64;
+        // The same walk through the per-tile layer index the renderer now builds at upload,
+        // against the accept-set as the renderer now keys it (ids pass straight through).
+        let indexed: Vec<_> = tiles.iter().map(|m| geometry::labels_by_layer(&m.labels)).collect();
+        let accepted: map_renderer::tile::placement::CandidateMap<(bool, u32)> =
+            accepted.iter().map(|(k, v)| (*k, *v)).collect();
+        let t = Instant::now();
+        let mut hits_indexed = 0usize;
+        for _ in 0..frames {
+            for &layer_index in &symbol_layers {
+                for (m, index) in tiles.iter().zip(&indexed) {
+                    let own = index.get(&layer_index).map_or(&[][..], Vec::as_slice);
+                    std::hint::black_box(own.len());
+                    for &i in own {
+                        let l = &m.labels[i as usize];
+                        if accepted.contains_key(&candidate_id(m.z, m.x, m.y, layer_index, i as usize)) {
+                            hits_indexed += 1;
+                        }
+                        std::hint::black_box(l);
+                    }
+                }
+            }
+        }
+        let indexed_ms = ms(t.elapsed()) / frames as f64;
+        assert_eq!(hits, hits_indexed, "the index must visit exactly the same labels");
+        println!(
+            "{name} z{zoom}: {total} labels x {} symbol layers: filter scan {scan_ms:.3} ms/frame, \
+             layer index + id-keyed set {indexed_ms:.3} ms/frame ({} accepted)",
+            symbol_layers.len(),
+            hits / frames
+        );
+    }
+}
