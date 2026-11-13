@@ -1,3 +1,6 @@
+/// Chunks generated per frame while exploring (beyond the player's immediate neighbourhood).
+const CHUNK_GEN_BUDGET: usize = 2;
+
 // World mode, chosen when the world was created. Creative (the default, and what every world
 // created before modes existed gets) allows flight and the free block catalog; survival doesn't.
 static CREATIVE: AtomicBool = AtomicBool::new(true);
@@ -44,6 +47,7 @@ fn step(state: &mut EngineState, dt: f32, paused: bool) {
         // Drain any decrypted, already-authorized network messages before simulating this frame, so
         // the net thread never contends for the engine lock (mirrors the publish_ui/CACHE pattern).
         crate::net::apply_inbound(state);
+        process_actions(state);
         if !paused { simulate(state, dt); }
         render_frame(state);
 }
@@ -165,7 +169,8 @@ fn simulate(state: &mut EngineState, dt: f32) {
 
         let px = state.player.pos.x as i32;
         let pz = state.player.pos.z as i32;
-        state.chunks.ensure_radius(px, pz);
+        // A few new chunks per frame (nearest first); the player's own neighbourhood always loads.
+        state.chunks.ensure_radius_budget(px, pz, CHUNK_GEN_BUDGET, 1);
 
 
         // --- Mobs: AI/physics tick, spawn/despawn near the player. ---

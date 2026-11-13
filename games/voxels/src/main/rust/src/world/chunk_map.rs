@@ -78,7 +78,10 @@ impl ChunkMap {
             if dx*dx + dz*dz > rd*rd + 2 { continue; }
             self.load_or_gen(ChunkPos(cpos.0 + dx, cpos.1 + dz));
         }}
-        let unload_dist = rd + 2;
+        self.unload_beyond(cpos);
+    }
+    fn unload_beyond(&mut self, cpos: ChunkPos) {
+        let unload_dist = self.render_distance + 2;
         let to_unload: Vec<ChunkPos> = self.chunks.keys().copied()
             .filter(|p| (p.0 - cpos.0).abs() > unload_dist || (p.1 - cpos.1).abs() > unload_dist)
             .collect();
@@ -90,6 +93,41 @@ impl ChunkMap {
                 else if ch.dirty { let _ = save::save_chunk(&self.save_dir, &ch); }
             }
         }
+    }
+    /// Like `ensure_radius`, but generates at most `max_new` missing chunks per call (nearest first),
+    /// so walking into new terrain spreads generation over frames instead of generating a whole arc
+    /// of chunks inside one frame. Chunks within `always` of the centre are loaded regardless, so the
+    /// ground under the player is never missing.
+    pub fn ensure_radius_budget(&mut self, center_x: i32, center_z: i32, max_new: usize, always: i32) -> usize {
+        let cpos = ChunkPos::from_world(center_x, center_z);
+        let rd = self.render_distance;
+        let mut missing: Vec<(i32, i32, ChunkPos)> = Vec::new();
+        for dz in -rd..=rd { for dx in -rd..=rd {
+            let d2 = dx*dx + dz*dz;
+            if d2 > rd*rd + 2 { continue; }
+            let p = ChunkPos(cpos.0 + dx, cpos.1 + dz);
+            if !self.chunks.contains_key(&p) { missing.push((d2, dx.abs().max(dz.abs()), p)); }
+        }}
+        missing.sort_by_key(|(d2, _, _)| *d2);
+        let mut made = 0;
+        for (_, ring, p) in missing {
+            if made >= max_new && ring > always { continue; }
+            self.load_or_gen(p);
+            made += 1;
+        }
+        self.unload_beyond(cpos);
+        made
+    }
+    /// Chunks that are in range but not loaded yet.
+    pub fn missing_in_radius(&self, center_x: i32, center_z: i32) -> usize {
+        let cpos = ChunkPos::from_world(center_x, center_z);
+        let rd = self.render_distance;
+        let mut n = 0;
+        for dz in -rd..=rd { for dx in -rd..=rd {
+            if dx*dx + dz*dz > rd*rd + 2 { continue; }
+            if !self.chunks.contains_key(&ChunkPos(cpos.0 + dx, cpos.1 + dz)) { n += 1; }
+        }}
+        n
     }
     pub fn chunks_iter(&self) -> impl Iterator<Item=(&ChunkPos, &Chunk)> { self.chunks.iter() }
 

@@ -256,16 +256,20 @@ fn do_place(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
     false
 }
 
-pub fn break_block_at(px: f32, py: f32) -> bool {
-    with_engine(|state| {
-        let (o, d) = screen_ray(state, px, py);
-        do_break(state, o, d)
-    }).unwrap_or(false)
+pub fn break_block_at(px: f32, py: f32) -> bool { with_engine(|state| break_at(state, px, py)).unwrap_or(false) }
+
+/// Mine / attack / use along the ray through screen pixel (`px`, `py`).
+fn break_at(state: &mut EngineState, px: f32, py: f32) -> bool {
+    let (o, d) = screen_ray(state, px, py);
+    do_break(state, o, d)
 }
 
 // Returns: 0 = nothing, 1 = placed a block, 10+menu = tapped an interactive block (open its menu).
-pub fn place_block_at(px: f32, py: f32) -> i32 {
-    with_engine(|state| {
+pub fn place_block_at(px: f32, py: f32) -> i32 { with_engine(|state| place_at(state, px, py)).unwrap_or(0) }
+
+/// Place / interact along the ray through screen pixel (`px`, `py`); see `place_block_at`.
+fn place_at(state: &mut EngineState, px: f32, py: f32) -> i32 {
+    {
         let (o, d) = screen_ray(state, px, py);
         // Tapping a villager opens trade; tapping an interactive block opens its menu — unless
         // sneaking, which places instead.
@@ -321,5 +325,5 @@ pub fn place_block_at(px: f32, py: f32) -> i32 {
             }
         }
         if do_place(state, o, d) { 1 } else { 0 }
-    }).unwrap_or(0)
+    }
 }

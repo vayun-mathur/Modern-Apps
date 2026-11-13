@@ -138,4 +138,36 @@ mod state_tests {
         assert!(p.vel.normalize().dot(dir) > 0.999, "thrown along {:?}, not the touch ray {:?}", p.vel, dir);
         assert_eq!(s.inventory.slots[0].count, 3);
     }) }
+
+    // Walking into new terrain generates a few chunks per frame, nearest first, never the ground
+    // under the player late.
+    #[test]
+    fn chunk_generation_is_budgeted_per_frame() { big_stack(|| {
+        let mut s = small_state("budget");
+        s.chunks.render_distance = 4;
+        let far_x = 16 * 40;
+        let made = s.chunks.ensure_radius_budget(far_x, 0, 2, 1);
+        // The 3x3 around the player always loads (9), nothing beyond the budget.
+        assert!((9..=11).contains(&made), "generated {made} chunks in one frame");
+        assert!(s.chunks.get(crate::world::chunk::ChunkPos::from_world(far_x, 0)).is_some(), "the player's chunk is missing");
+        let mut frames = 1;
+        while s.chunks.missing_in_radius(far_x, 0) > 0 { s.chunks.ensure_radius_budget(far_x, 0, 2, 1); frames += 1; assert!(frames < 100); }
+        assert!(frames > 5, "everything arrived at once ({frames} frames)");
+    }) }
+
+    // Taps are queued and answered on the next frame instead of blocking the UI thread on the lock.
+    #[test]
+    fn queued_taps_are_answered_next_frame() { big_stack(|| {
+        let _serial = GLOBAL_ENGINE_TEST.lock();
+        let mut s = small_state("taps");
+        s.width = 800; s.height = 400;
+        let _ = drain_action_results();
+        queue_action(ACTION_PLACE, 400.0, 200.0);
+        queue_action(ACTION_ACT, 400.0, 200.0);
+        assert_eq!(drain_action_results(), "[]", "answered before the frame ran");
+        step(&mut s, 0.016, true);
+        let r: Vec<(i32, i32)> = serde_json::from_str(&drain_action_results()).unwrap_or_default();
+        assert_eq!(r.iter().map(|(k, _)| *k).collect::<Vec<_>>(), vec![ACTION_PLACE, ACTION_ACT]);
+        assert_eq!(drain_action_results(), "[]", "results are delivered once");
+    }) }
 }

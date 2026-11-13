@@ -45,6 +45,11 @@ object VoxelsNative {
     external fun setSneak(on: Boolean)
     external fun toggleFly()
     external fun breakBlockAt(x: Float, y: Float): Boolean
+    // Queue a world tap for the engine's next frame (never blocks): kind 0 place/interact, 1 mine/
+    // attack/use; results come back from drainActionResults as [[kind, code], ...] (place codes as
+    // for placeBlockAt below, act 1 = something happened).
+    external fun queueAction(kind: Int, x: Float, y: Float)
+    external fun drainActionResults(): String
     // 0 = nothing, 1 = placed, 11 crafting table, 12 furnace, 13 jukebox, 14 blast furnace,
     // 20 villager trade, 30 chest opened, 41 portal lit.
     external fun placeBlockAt(x: Float, y: Float): Int

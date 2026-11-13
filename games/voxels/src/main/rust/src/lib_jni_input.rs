@@ -105,3 +105,33 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_onLoo
 ) {
     input::add_look_delta(dyaw, dpitch);
 }
+
+/// JNI bridge for `VoxelsNative#queueAction`: queue a world tap (0 place/interact, 1 mine/attack/
+/// use) at screen pixel (`x`, `y`) for the next frame. Never blocks on the engine.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_queueAction<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+    kind: jint,
+    x: jfloat,
+    y: jfloat,
+) {
+    engine::queue_action(kind, x, y);
+}
+
+/// JNI bridge for `VoxelsNative#drainActionResults`: `[[kind, code], ...]` for taps handled since the
+/// last call.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_drainActionResults<'l>(
+    mut env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+) -> jstring {
+    env.with_env(|env| -> jni::errors::Result<jstring> {
+        let null = std::ptr::null_mut();
+        match env.new_string(engine::drain_action_results()) {
+            Ok(s) => Ok(s.into_raw()),
+            Err(_) => Ok(null),
+        }
+    })
+    .resolve::<jni::errors::LogErrorAndDefault>()
+}

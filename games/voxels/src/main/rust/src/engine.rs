@@ -426,6 +426,7 @@ pub fn rebuild_chunk_meshes(state: &mut EngineState, chunk_pos: crate::world::ch
 
 include!("engine_lifecycle.rs");
 include!("engine_part1.rs");
+include!("engine_actions.rs");
 include!("engine_part2.rs");
 include!("engine_part3.rs");
 include!("engine_part4.rs");

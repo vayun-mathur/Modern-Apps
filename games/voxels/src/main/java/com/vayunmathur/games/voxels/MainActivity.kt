@@ -98,7 +98,12 @@ import com.vayunmathur.library.util.GameHubComposeHook
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import kotlin.math.PI
+
+// Queued world-tap kinds (engine_part1.rs ACTION_*).
+private const val ACTION_PLACE = 0
+private const val ACTION_ACT = 1
 
 class MainActivity : ComponentActivity() {
     // Pause-menu state lives on the activity so onStop can pause the game: coming back from Home or
@@ -193,6 +198,50 @@ class MainActivity : ComponentActivity() {
                 }
                 // Size of the world view in px; the Use button aims at its centre (the crosshair).
                 var worldSize by remember { mutableStateOf(IntSize.Zero) }
+                // Results of queued world taps: sounds, and the menus an interactive block opens.
+                LaunchedEffect(Unit) {
+                    while (isActive && VoxelsNative.isAvailable) {
+                        val results = try { JSONArray(VoxelsNative.drainActionResults()) } catch (_: Exception) { JSONArray() }
+                        for (i in 0 until results.length()) {
+                            val r = results.optJSONArray(i) ?: continue
+                            val kind = r.optInt(0)
+                            val code = r.optInt(1)
+                            // Mine/attack/use: a sound when something happened. Place/interact below.
+                            if (kind == ACTION_ACT) {
+                                if (code == 1) com.vayunmathur.games.voxels.platform.SoundFx.playBreak()
+                            } else when (code) {
+                                1 -> com.vayunmathur.games.voxels.platform.SoundFx.playPlace()
+                                11 -> { invStartTab = 2; inventoryOpen = true } // crafting table
+                                12, 14 -> { // furnace / blast furnace
+                                    furnaceIsBlast = code == 14
+                                    smeltJson = try { VoxelsNative.getSmeltJson() } catch (_: Exception) { "{}" }
+                                    furnaceOpen = true
+                                }
+                                13 -> { // jukebox: play the held disc (or stop)
+                                    val inv = try { com.vayunmathur.games.voxels.ui.voxelsJson.decodeFromString<com.vayunmathur.games.voxels.ui.InventoryState>(inventoryJson) } catch (_: Exception) { null }
+                                    val held = inv?.slots?.getOrNull(inv.selected)?.id ?: 0
+                                    com.vayunmathur.games.voxels.platform.MusicFx.toggle(this@MainActivity, com.vayunmathur.games.voxels.ui.discTrack[held])
+                                }
+                                15 -> stonecutterOpen = true // stonecutter
+                                // Every villager has its own profession and level, so the stall is
+                                // read fresh from the one that was tapped.
+                                20 -> {
+                                    tradesJson = try { VoxelsNative.getTradesJson() } catch (_: Exception) { "{}" }
+                                    tradeOpen = true
+                                }
+                                30 -> { // chest
+                                    containerJson = try { VoxelsNative.getContainerJson() } catch (_: Exception) { """{"slots":[]}""" }
+                                    chestOpen = true
+                                    // Online clients mirror host state: ask for the real contents.
+                                    if (online) try { VoxelsNative.netRequestContainer() } catch (_: Exception) {}
+                                    com.vayunmathur.games.voxels.platform.SoundFx.playPlace()
+                                }
+                                41 -> com.vayunmathur.games.voxels.platform.SoundFx.playPlace() // ignited a portal
+                            }
+                        }
+                        delay(16)
+                    }
+                }
                 var achievements by remember { mutableStateOf<VoxelsAchievements?>(null) }
                 val newAchievement by (achievements?.newAchievement?.collectAsState() ?: remember { mutableStateOf(null) })
 
@@ -389,39 +438,10 @@ class MainActivity : ComponentActivity() {
                                     VoxelsNative.onLookDelta(-dx * k, (if (settings.invertY) -dy else dy) * k)
                                 } catch (_: Exception) {}
                             },
-                            onPlace = { off -> if (!paused) try {
-                                val code = VoxelsNative.placeBlockAt(off.x, off.y)
-                                when (code) {
-                                    1 -> com.vayunmathur.games.voxels.platform.SoundFx.playPlace()
-                                    11 -> { invStartTab = 2; inventoryOpen = true } // crafting table
-                                    12, 14 -> { // furnace / blast furnace
-                                        furnaceIsBlast = code == 14
-                                        smeltJson = try { VoxelsNative.getSmeltJson() } catch (_: Exception) { "{}" }
-                                        furnaceOpen = true
-                                    }
-                                    13 -> { // jukebox: play the held disc (or stop)
-                                        val inv = try { com.vayunmathur.games.voxels.ui.voxelsJson.decodeFromString<com.vayunmathur.games.voxels.ui.InventoryState>(inventoryJson) } catch (_: Exception) { null }
-                                        val held = inv?.slots?.getOrNull(inv.selected)?.id ?: 0
-                                        com.vayunmathur.games.voxels.platform.MusicFx.toggle(this@MainActivity, com.vayunmathur.games.voxels.ui.discTrack[held])
-                                    }
-                                    15 -> stonecutterOpen = true // stonecutter
-                                    // Every villager has its own profession and level, so the stall is
-                                    // read fresh from the one that was tapped.
-                                    20 -> {
-                                        tradesJson = try { VoxelsNative.getTradesJson() } catch (_: Exception) { "{}" }
-                                        tradeOpen = true
-                                    }
-                                    30 -> { // chest
-                                        containerJson = try { VoxelsNative.getContainerJson() } catch (_: Exception) { """{"slots":[]}""" }
-                                        chestOpen = true
-                                        // Online clients mirror host state: ask for the real contents.
-                                        if (online) try { VoxelsNative.netRequestContainer() } catch (_: Exception) {}
-                                        com.vayunmathur.games.voxels.platform.SoundFx.playPlace()
-                                    }
-                                    41 -> com.vayunmathur.games.voxels.platform.SoundFx.playPlace() // ignited a portal
-                                }
-                            } catch (_: Exception) {} },
-                            onBreak = { off -> if (!paused) try { if (VoxelsNative.breakBlockAt(off.x, off.y)) com.vayunmathur.games.voxels.platform.SoundFx.playBreak() } catch (_: Exception) {} }
+                            // Taps are queued for the engine's next frame (never blocking on its lock);
+                            // results come back through the drain loop below.
+                            onPlace = { off -> if (!paused) try { VoxelsNative.queueAction(ACTION_PLACE, off.x, off.y) } catch (_: Exception) {} },
+                            onBreak = { off -> if (!paused) try { VoxelsNative.queueAction(ACTION_ACT, off.x, off.y) } catch (_: Exception) {} }
                         )
                     }
 
@@ -474,9 +494,7 @@ class MainActivity : ComponentActivity() {
                                 // Use/attack whatever is under the crosshair, repeating while held.
                                 UseButton(label = stringResource(R.string.use)) {
                                     if (VoxelsNative.isAvailable && !paused && worldSize.width > 0) try {
-                                        if (VoxelsNative.breakBlockAt(worldSize.width / 2f, worldSize.height / 2f)) {
-                                            com.vayunmathur.games.voxels.platform.SoundFx.playBreak()
-                                        }
+                                        VoxelsNative.queueAction(ACTION_ACT, worldSize.width / 2f, worldSize.height / 2f)
                                     } catch (_: Exception) {}
                                 }
                             }
