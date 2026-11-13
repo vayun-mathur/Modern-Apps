@@ -158,9 +158,9 @@ struct TemporaryLinkCard: View {
                 // send just the 32-byte ML-KEM seed (`#s=`) with a Base26 id, which fits in an
                 // SMS; links minted before that still carry their full private bundle.
                 if let seed = link.pqcSeed {
-                    Platform.copy("https://findfamily.cc/view/\(Base26.encode(link.id))#s=\(seed)")
+                    Platform.copy("https://api.maproj.org/view/\(Base26.encode(link.id))#s=\(seed)")
                 } else if let pqcKey = link.pqcKey {
-                    Platform.copy("https://findfamily.cc/view/\(UInt64(bitPattern: link.id))#pqc_key=\(pqcKey)")
+                    Platform.copy("https://api.maproj.org/view/\(UInt64(bitPattern: link.id))#pqc_key=\(pqcKey)")
                 }
             } label: { Image(systemName: "doc.on.doc") }
             Button(role: .destructive) {

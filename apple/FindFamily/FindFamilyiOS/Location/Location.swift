@@ -51,14 +51,16 @@ final class LocationsHandler: ObservableObject {
                     if let loc = update.location {
                         BackgroundTask.shared.onLocationUpdate(loc, sleep: false)
                     }
-                    if update.authorizationDenied { Task { await Networking.shared.problem("Auth denied") } }
-                    if update.authorizationDeniedGlobally { Task { await Networking.shared.problem("Auth denied globally") } }
-                    if update.authorizationRequestInProgress { Task { await Networking.shared.problem("Auth in progress") } }
-                    if update.authorizationRestricted { Task { await Networking.shared.problem("Auth restricted") } }
-                    if update.insufficientlyInUse { Task { await Networking.shared.problem("Insufficient Use") } }
-                    if update.locationUnavailable { Task { await Networking.shared.problem("Location Unavailable") } }
-                    if update.serviceSessionRequired { Task { await Networking.shared.problem("Service Session required") } }
-                    if update.stationary { Task { await Networking.shared.problem("Stationary") } }
+                    // Diagnostic flags are logged on the device only (the old /api/problem
+                    // report endpoint is gone).
+                    if update.authorizationDenied { logger.notice("Location update: Auth denied") }
+                    if update.authorizationDeniedGlobally { logger.notice("Location update: Auth denied globally") }
+                    if update.authorizationRequestInProgress { logger.notice("Location update: Auth in progress") }
+                    if update.authorizationRestricted { logger.notice("Location update: Auth restricted") }
+                    if update.insufficientlyInUse { logger.notice("Location update: Insufficient Use") }
+                    if update.locationUnavailable { logger.notice("Location update: Location Unavailable") }
+                    if update.serviceSessionRequired { logger.notice("Location update: Service Session required") }
+                    if update.stationary { logger.notice("Location update: Stationary") }
                 }
             } catch {
                 logger.error("Could not start location updates: \(error.localizedDescription)")

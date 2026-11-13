@@ -7,7 +7,7 @@ enum NetworkError: Error {
 
 /// Thin URLSession wrapper for JSON POST endpoints.
 final class NetworkClient {
-    let baseURL = URL(string: "https://findfamily.cc")!
+    let baseURL = URL(string: "https://api.maproj.org")!
     private let session: URLSession
 
     init() {
@@ -350,33 +350,6 @@ final class Networking: ObservableObject {
         }
     }
 
-    func sendSharingRequest(to requestedID: Int64) async -> Bool {
-        let body = encodeJSON([
-            "requester": .uint64(UInt64(bitPattern: userid)),
-            "requested": .uint64(UInt64(bitPattern: requestedID)),
-        ])
-        return await postBool("/api/request_sharing/send", body: body)
-    }
-
-    func retrieveSharingRequests() async -> [Int64] {
-        let body = Data(#"{"requester": \#(UInt64(bitPattern: userid))}"#.utf8)
-        do {
-            let (data, http) = try await client.postJSON(path: "/api/request_sharing/retrieve", jsonBody: body)
-            networkIsDown = false
-            guard http.statusCode == 200 else { return [] }
-            let arr = (try? JSONDecoder().decode([String].self, from: data)) ?? []
-            return arr.compactMap { UInt64($0).map { Int64(bitPattern: $0) } }
-        } catch {
-            checkNetworkDown(error)
-            return []
-        }
-    }
-
-    func problem(_ message: String) async {
-        let body = encodeJSON(["problem": .string(message)])
-        _ = await postBool("/api/problem", body: body)
-    }
-
     // MARK: - UWB session-setup channel (post-quantum only)
 
     /// Publishes [envelope] to [recipientID] via the peer's PQC bundle. Returns false if the peer
@@ -451,7 +424,7 @@ final class Networking: ObservableObject {
         do {
             let (_, http) = try await client.postJSON(path: path, jsonBody: body)
             networkIsDown = false
-            // Server returns 200 *or* 204 No Content on success for register/publish/problem.
+            // Server returns 200 *or* 204 No Content on success for register/publish.
             return (200..<300).contains(http.statusCode)
         } catch {
             checkNetworkDown(error)

@@ -32,7 +32,7 @@ enum RelayKeyLookup {
         let bundle: Data?
     }
 
-    private static let url = URL(string: "wss://findfamily.cc/api/ws")!
+    private static let url = URL(string: "wss://api.maproj.org/api/ws")!
 
     /// Matches the Android client's GETKEY timeout.
     private static let timeout: TimeInterval = 5
