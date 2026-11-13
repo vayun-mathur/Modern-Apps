@@ -54,6 +54,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.vayunmathur.games.voxels.data.GameSettingsStore
 import com.vayunmathur.games.voxels.domain.BackTarget
+import com.vayunmathur.games.voxels.domain.NetStatus
+import com.vayunmathur.games.voxels.network.MultiplayerPump
 import com.vayunmathur.games.voxels.domain.OverlayFlags
 import com.vayunmathur.games.voxels.domain.backTarget
 import com.vayunmathur.games.voxels.ui.BossBar
@@ -72,14 +74,13 @@ import com.vayunmathur.games.voxels.ui.LoadingOverlay
 import com.vayunmathur.games.voxels.ui.Joystick
 import com.vayunmathur.games.voxels.ui.SettingsSheet
 import com.vayunmathur.games.voxels.ui.StonecutterOverlay
+import com.vayunmathur.games.voxels.ui.OnlineHud
 import com.vayunmathur.games.voxels.ui.TradeOverlay
 import com.vayunmathur.games.voxels.ui.UseButton
 import com.vayunmathur.games.voxels.ui.VoxelSurfaceView
 import com.vayunmathur.games.voxels.ui.VoxelsTheme
 import com.vayunmathur.games.voxels.platform.VoxelsAchievements
 import com.vayunmathur.games.voxels.util.VoxelsNative
-import com.vayunmathur.games.voxels.network.VoxelsSync
-import com.vayunmathur.e2ee.Pqc
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ui.AchievementNotification
 import com.vayunmathur.library.ui.Button
@@ -90,12 +91,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.GameHubComposeHook
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlin.io.encoding.Base64
-import org.json.JSONArray
-import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
     // Pause-menu state lives on the activity so onStop can pause the game: coming back from Home or
@@ -169,7 +165,7 @@ class MainActivity : ComponentActivity() {
                 var tradesJson by remember { mutableStateOf("{}") }
                 var tradeOpen by remember { mutableStateOf(false) }
                 // Online multiplayer HUD state.
-                var netConnected by remember { mutableStateOf(false) }
+                var netStatus by remember { mutableStateOf<NetStatus>(NetStatus.Connecting) }
                 var peersJson by remember { mutableStateOf("[]") }
                 LaunchedEffect(Unit) { if (VoxelsNative.isAvailable) try { recipesJson = VoxelsNative.getRecipesJson(); smeltingJson = VoxelsNative.getSmeltingJson(); blessingCatalogJson = VoxelsNative.getBlessingCatalogJson(); cutsJson = VoxelsNative.getCutsJson() } catch (_: Exception) {} }
                 // World loading runs on the engine thread; poll it for the loading overlay. The phase
@@ -285,126 +281,16 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // --- Online multiplayer pump: bridge the Rust net queues to the encrypted relay. ---
-                // World-log ops are signed (SignedOp{author,sig,ops}) so peers can authenticate them;
-                // player transforms ride ephemeral, unsigned presence. Confidentiality comes from the
-                // world AES key (only members hold it); the relay only ever sees ciphertext.
+                // --- Online multiplayer pump (network/MultiplayerPump.kt): bridges the Rust net
+                // queues to the encrypted relay and reports connection state + who is here. ---
                 LaunchedEffect(online) {
                     if (!online || !VoxelsNative.isAvailable) return@LaunchedEffect
-                    if (!VoxelsSync.init(this@MainActivity)) return@LaunchedEffect
-                    val pumpScope = this
-                    val myId = VoxelsSync.deviceId
-                    try { VoxelsNative.nativeSetDevice(myId) } catch (_: Exception) {}
-                    val key = runCatching { Base64.decode(worldKeyB64) }.getOrNull() ?: return@LaunchedEffect
-                    val channel = "world:$sharedWorldId"
-                    // Owner bundle: the host is the owner; a client fetches it once to verify host ops.
-                    val ownerBundle: ByteArray? = if (netRole == 1) VoxelsSync.publicBundle else VoxelsSync.getKey(ownerDevice)
-                    // Host: the authorized member set (all editors — no viewers) + each member's public
-                    // bundle, so every client op is signature-verified, not just role-gated by id.
-                    val roster = java.util.Collections.synchronizedSet(HashSet<String>())
-                    val bundles = java.util.concurrent.ConcurrentHashMap<String, ByteArray>()
-                    roster.add(ownerDevice); roster.add(myId)
-                    VoxelsSync.publicBundle.let { bundles[myId] = it; bundles[ownerDevice] = it }
-                    suspend fun refreshRoster() {
-                        runCatching { VoxelsSync.fetchRoster(sharedWorldId, key, VoxelsSync.publicBundle) }.getOrNull()?.forEach { (id, _) ->
-                            roster.add(id)
-                            if (!bundles.containsKey(id)) VoxelsSync.getKey(id)?.let { bundles[id] = it }
-                        }
-                    }
-                    if (netRole == 1) refreshRoster()
-                    // Verify + gate an incoming signed op, then hand the inner NetMsg to the engine.
-                    // Signed-op validation: each early return rejects one distinct
-                    // failure (bad author, bad roster, bad signature). Splitting
-                    // would scatter a single security check.
-                    @Suppress("ReturnCount")
-                    fun handleSignedOp(plain: String) {
-                        try {
-                            val so = JSONObject(plain)
-                            val author = so.optString("author")
-                            val sig = so.optString("sig")
-                            val ops = so.optString("ops")
-                            if (author.isEmpty() || ops.isEmpty() || author == myId) return
-                            if (netRole == 2) {
-                                // Client applies only owner-signed authoritative state.
-                                if (author != ownerDevice) return
-                                val ob = ownerBundle ?: return
-                                val ok = runCatching { Pqc.verify(ob, ops.encodeToByteArray(), Base64.decode(sig)) }.getOrDefault(false)
-                                if (!ok) return
-                            } else {
-                                // Host: author must be a rostered member AND the op must carry a valid
-                                // signature from that member's bundle. On a cache miss, fetch it for
-                                // next time and drop this op (the client resends as chunks stay dirty).
-                                if (!roster.contains(author)) return
-                                val ab = bundles[author]
-                                if (ab == null) {
-                                    pumpScope.launch(Dispatchers.IO) { runCatching { VoxelsSync.getKey(author) }.getOrNull()?.let { bundles[author] = it } }
-                                    return
-                                }
-                                val ok = runCatching { Pqc.verify(ab, ops.encodeToByteArray(), Base64.decode(sig)) }.getOrDefault(false)
-                                if (!ok) return
-                            }
-                            VoxelsNative.netPushInbound(ops)
-                        } catch (_: Exception) {}
-                    }
-                    fun handlePresence(plain: String) {
-                        try {
-                            val e = JSONObject(plain)
-                            if (e.optString("from") == myId) return
-                            VoxelsNative.netPushInbound(e.getJSONObject("m").toString())
-                        } catch (_: Exception) {}
-                    }
-                    VoxelsSync.startLive(
-                        scope = this,
-                        channel = channel,
-                        onConnected = {
-                            // A client announces itself (signed) so the host streams the world + snapshot.
-                            if (netRole == 2) {
-                                val joinOps = JSONObject().put("type", "Join").put("device", myId).put("name", worldName).toString()
-                                val sig = Base64.encode(VoxelsSync.sign(joinOps.encodeToByteArray()))
-                                val signed = JSONObject().put("author", myId).put("sig", sig).put("ops", joinOps).toString()
-                                VoxelsSync.liveAppend(channel, key, listOf(signed))
-                            }
-                        },
-                        onMessage = { raw ->
-                            val msg = VoxelsSync.parseLive(raw)
-                            if (msg != null) when (msg.t) {
-                                "actions" -> for (b in msg.actions) {
-                                    val plain = VoxelsSync.decrypt(key, b)
-                                    if (plain != null) handleSignedOp(plain)
-                                }
-                                "presence" -> {
-                                    val plain = VoxelsSync.decrypt(key, msg.data)
-                                    if (plain != null) handlePresence(plain)
-                                }
-                            }
-                        },
+                    MultiplayerPump.run(
+                        context = this@MainActivity,
+                        params = MultiplayerPump.Params(sharedWorldId, worldKeyB64, ownerDevice, netRole, worldName),
+                        onStatus = { netStatus = it },
+                        onPeers = { peersJson = it },
                     )
-                    var rosterTick = 0
-                    while (isActive) {
-                        // Periodically re-read the roster so newly-invited editors are accepted mid-session.
-                        rosterTick++
-                        if (netRole == 1 && rosterTick % 125 == 0) refreshRoster()
-                        val out = try { VoxelsNative.netDrainOutbound() } catch (_: Exception) { "[]" }
-                        try {
-                            val arr = JSONArray(out)
-                            val ops = ArrayList<String>()
-                            for (i in 0 until arr.length()) {
-                                val o = arr.getJSONObject(i)
-                                if (o.optString("type") == "PlayerTransform") {
-                                    val env = JSONObject().put("from", myId).put("m", o).toString()
-                                    VoxelsSync.sendPresence(channel, key, env)
-                                } else {
-                                    val opsJson = o.toString()
-                                    val sig = Base64.encode(VoxelsSync.sign(opsJson.encodeToByteArray()))
-                                    ops.add(JSONObject().put("author", myId).put("sig", sig).put("ops", opsJson).toString())
-                                }
-                            }
-                            if (ops.isNotEmpty()) VoxelsSync.liveAppend(channel, key, ops)
-                        } catch (_: Exception) {}
-                        netConnected = VoxelsSync.isLive
-                        peersJson = try { VoxelsNative.getPeersJson() } catch (_: Exception) { "[]" }
-                        delay(80)
-                    }
                 }
 
                 // "Paused" is real: the engine stops simulating and every held control is released,
@@ -616,25 +502,12 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // Online HUD: how many players are here, plus a connection-lost indicator.
+                            // Online HUD: players here, host presence, connection state, join/leave notices.
                         if (online) {
-                            val peerCount = remember(peersJson) { runCatching { JSONArray(peersJson).length() }.getOrDefault(0) }
-                            Box(Modifier.align(Alignment.TopEnd).padding(top = 36.dp, end = 12.dp)) {
-                                Text(
-                                    stringResource(R.string.players_online, peerCount + 1),
-                                    color = Color.White,
-                                    modifier = Modifier.background(Color(0x66000000)).padding(horizontal = 8.dp, vertical = 4.dp),
-                                )
-                            }
-                            if (!netConnected) {
-                                Box(Modifier.align(Alignment.TopCenter).padding(top = 8.dp)) {
-                                    Text(
-                                        stringResource(R.string.connection_lost),
-                                        color = Color.White,
-                                        modifier = Modifier.background(Color(0xCCB00020)).padding(horizontal = 12.dp, vertical = 6.dp),
-                                    )
-                                }
-                            }
+                            OnlineHud(
+                                status = netStatus, peersJson = peersJson, ownerDevice = ownerDevice, isHost = netRole == 1,
+                                modifier = Modifier.align(Alignment.TopEnd).padding(top = 36.dp, end = 12.dp),
+                            )
                         }
                     }
                     }
@@ -732,7 +605,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         com.vayunmathur.games.voxels.platform.MusicFx.stop()
-        VoxelsSync.stopLive()
+        com.vayunmathur.games.voxels.network.VoxelsSync.stopLive()
         if (VoxelsNative.isAvailable) {
             try { VoxelsNative.nativeSetRole(0) } catch (_: Exception) {}
             try { VoxelsNative.nativeOnDestroy() } catch (_: Exception) {}

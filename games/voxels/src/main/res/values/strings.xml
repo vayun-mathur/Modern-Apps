@@ -95,6 +95,18 @@
     <string name="join_request_sent">Requested to join — you\'ll get access once the host approves.</string>
     <string name="connection_lost">Connection lost — waiting to reconnect…</string>
     <string name="players_online">%1$d online</string>
+    <!-- Online HUD while the first connection to a shared world is being made. Sentence fragment -->
+    <string name="online_connecting">Connecting…</string>
+    <!-- Online HUD for joiners: the host is (not) connected right now. Sentence fragment -->
+    <string name="host_here">Host is here</string>
+    <string name="host_away">Host isn\'t connected</string>
+    <!-- Online HUD notices; %1$s = player name. Sentence fragment -->
+    <string name="player_joined">%1$s joined</string>
+    <string name="player_left">%1$s left</string>
+    <!-- Online HUD: why multiplayer could not start. Sentences -->
+    <string name="online_failed_server">Couldn\'t reach the Voxels server — playing offline.</string>
+    <string name="online_failed_invite">This world\'s invite is damaged — ask the host to invite you again.</string>
+    <string name="online_failed_host">Couldn\'t verify the host, so their changes can\'t be shown.</string>
     <!-- Settings sheet title. Noun -->
     <string name="settings">Settings</string>
     <string name="settings_look_sensitivity">Look sensitivity</string>
