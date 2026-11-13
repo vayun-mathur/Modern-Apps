@@ -205,8 +205,8 @@ object PoiCategories {
     private const val TYPE_HOTEL = 8
     private const val TYPE_BANK = 9
     private const val TYPE_SCHOOL = 11
-    private const val TYPE_PARK = 12
-    private const val TYPE_ATTRACTION = 15
+    internal const val TYPE_PARK = 12
+    internal const val TYPE_ATTRACTION = 15
     private const val TYPE_THEATRE = 18
     private const val TYPE_LIBRARY = 19
     private const val TYPE_POST_OFFICE = 20
@@ -217,7 +217,7 @@ object PoiCategories {
     private const val TYPE_BOOKS = 30
     private const val TYPE_SPORTS = 32
     private const val TYPE_VETERINARY = 36
-    private const val TYPE_MUSEUM = 38
+    internal const val TYPE_MUSEUM = 38
 
     /**
      * The station type, whose taps open a departure board rather than a place sheet.

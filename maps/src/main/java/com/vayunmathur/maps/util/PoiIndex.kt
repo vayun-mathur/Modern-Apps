@@ -645,10 +645,12 @@ object PoiIndex {
      * indexed path matches a prefix *of any word*. That is a deliberate narrowing —
      * mid-word matches are lost, whole-word ones are not.
      *
-     * Ranking, same on both paths: every query token must match (multi-word
+     * Matching, same on both paths: every query token must match (multi-word
      * queries matched nothing before); tokens within one edit of a word match
-     * too, ranked below exact ones; [boost] (recents + saved places) only
-     * breaks ties within a rank — it never resurrects a non-match.
+     * too, ranked below exact ones. The indexed path ranks by one blended score
+     * of text match and log distance (place labels, landmarks and [boost] —
+     * recents + saved places — earn distance credit); the scan fallback keeps
+     * rank-then-distance. [boost] never resurrects a non-match.
      *
      * [cancelled] is polled between phases: a caller whose result is no longer wanted (the
      * user typed another character) gets an empty list back early instead of the lookup

@@ -220,6 +220,49 @@ class PoiIndexSmartTest {
         assertEquals(listOf("Pizza Hut", "Piza Kitchen"), got)
     }
 
+    /**
+     * The "places super far away" bug: an exact-name place label used to be a tier above every
+     * distance, so from San Francisco "museum" opened on a village called Museum on the other
+     * side of the world.
+     */
+    @Test
+    fun `a far exact place label does not outrank a nearby match`() {
+        load(
+            listOf(
+                Poi(377_749_000, -1_224_194_000, 38, "Museum of Modern Art"),
+                Poi(-338_688_000, 1_512_093_000, PoiCategories.TYPE_PLACE, "Museum"),
+            )
+        )
+        val got = PoiIndex.searchByName("museum", 37.7749, -122.4194).map { it.name }
+        assertEquals(listOf("Museum of Modern Art", "Museum"), got)
+    }
+
+    /** Distance is part of the score, not a tie-break under the text tier. */
+    @Test
+    fun `a nearby word match outranks a phrase match on another continent`() {
+        load(
+            listOf(
+                Poi(515_074_000, -1_278_000, 1, "Pizza Palace"),
+                Poi(377_749_000, -1_224_194_000, 2, "Joe's Pizza"),
+            )
+        )
+        val got = PoiIndex.searchByName("pizza", 37.7749, -122.4194).map { it.name }
+        assertEquals(listOf("Joe's Pizza", "Pizza Palace"), got)
+    }
+
+    /** A city searched for by name from nearby still opens on the city. */
+    @Test
+    fun `a nearby exact place label leads the shops named after it`() {
+        load(
+            listOf(
+                Poi(378_044_557, -1_222_713_560, PoiCategories.TYPE_PLACE, "Oakland"),
+                Poi(377_960_000, -1_222_750_000, 4, "Oakland Grill"),
+            )
+        )
+        val got = PoiIndex.searchByName("oakland", 37.7879, -122.4075).map { it.name }
+        assertEquals(listOf("Oakland", "Oakland Grill"), got)
+    }
+
     @Test
     fun `buildSearchBoost favors saved places over recents`() {
         val boost = buildSearchBoost(

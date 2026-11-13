@@ -52,10 +52,10 @@ data class SearchResult(
 )
 
 /**
- * Weight a saved (starred) place carries in search ranking: large enough that
- * a favorite always outranks an equally-matching unvisited place (boost only
- * breaks ties within a text-match rank, so an exact match still beats a
- * familiar typo), but still only a reorder — [PoiIndex.searchByName] never
+ * Weight a saved (starred) place carries in search ranking: the indexed search turns a
+ * weight into distance credit capped just below a text-tier step from a typo, so a
+ * favorite outranks an equally-matching place several times nearer while an exact match
+ * still beats a familiar typo. Still only a reorder — [PoiIndex.searchByName] never
  * returns a non-match.
  */
 internal const val SAVED_SEARCH_BOOST = 1_000_000.0

@@ -25,7 +25,8 @@ package com.vayunmathur.maps.util
  *  4. **Fallbacks only when short of results:** a name scan of the few thousand records
  *     closest to the bias point (mid-word substrings, typos, punctuation), then the
  *     index-wide typo lookup.
- *  5. **Rank and decode** at most [SHORTLIST] names.
+ *  5. **Rank and decode** at most [SHORTLIST] names ([rankCandidates]: one blended score of
+ *     text match and distance).
  *
  * Every scan polls the caller's cancel token, so a superseded keystroke stops promptly.
  */
@@ -41,7 +42,14 @@ private const val MATERIALIZE_CAP = 250_000
 private const val GLOBAL_ALL_CAP = 1_500
 
 /** Half-sizes of the boxes around the bias point the grid join grows through. */
-private val RING_HALF_KM = doubleArrayOf(1.5, 6.0, 25.0)
+private val RING_HALF_KM = doubleArrayOf(1.5, 8.0, 25.0)
+
+/**
+ * Boxes always joined, even when the first already filled the page: a city's landmark a
+ * few km out ("golden gate" -> the bridge, 6.5 km from Union Square) must get to compete
+ * with the dozen "Golden Gate …" shops next door. The join is a sequential grid read.
+ */
+private const val MIN_RINGS = 2
 
 /** Survivors nearest the bias point in file order read when the boxes come up short. */
 private const val REGIONAL_WINDOW = 1_500
@@ -52,10 +60,6 @@ private const val NAME_SCAN_BUDGET = 5_000
 
 /** Candidates whose names are decoded for the final ranking. */
 private const val SHORTLIST = 30
-
-/** Place-label candidates decoded besides the shortlist (a city's exact name is wanted
- *  from anywhere). */
-private const val PLACE_SHORTLIST = 20
 
 /** Shortest token allowed to drive the candidate scan. */
 private const val MIN_DRIVER_LEN = 2
@@ -162,13 +166,13 @@ internal class CandidateSearch(
         // Near first: the grid's ordinals are a sequential read, a survivor's coordinates a
         // random one, so even a small survivor set is only placed whole when the boxes
         // around the bias point did not already fill the page.
-        for (half in RING_HALF_KM) {
+        RING_HALF_KM.forEachIndexed { ring, half ->
             forEachOrdinalNear(half) { o ->
                 val i = table.indexOf(o)
                 if (i >= 0 && survivors[i]) addIndexed(o, table, i)
                 true
             }
-            if (found.size >= bias.limit || cancelled()) return
+            if ((ring + 1 >= MIN_RINGS && found.size >= bias.limit) || cancelled()) return
         }
         if (count <= GLOBAL_ALL_CAP) {
             for (i in 0 until table.size) if (survivors[i]) addIndexed(table.ordinals[i], table, i)
@@ -318,29 +322,80 @@ private fun lowerBoundPacked(packed: LongArray, ordinal: Int): Int {
     return lo
 }
 
-private class RankedRow(
-    val record: PoiIndex.PoiRecord,
-    val rank: Int,
-    val exact: Boolean,
-    val boost: Double,
-    val distKm: Double,
-)
-
-/** "Local" for the exact-name tier: ~0.5° (≈55 km) from the centre. */
-private const val EXACT_LOCAL_KM = 55.0
-
-/** The pre-planet rank buckets: phrase, every word (or a substring), typo. */
-private fun rankOf(tier: Int): Int = when (tier) {
-    PoiSearch.TIER_EXACT, PoiSearch.TIER_PREFIX -> 0
-    PoiSearch.TIER_TOKENS, PoiSearch.TIER_SUBSTRING, PoiSearch.TIER_CATEGORY -> 1
-    else -> 2
+/**
+ * Text-match penalty per [PoiSearch] tier, in the same units as [distancePenalty] (one unit
+ * = doubling the distance past [DIST_SCALE_KM]). A step between tiers is worth roughly a
+ * 2-3x difference in distance: a "Pizza Hut" a few hundred metres away still beats a
+ * "Joe's Pizza" next door, but not one across town.
+ */
+private fun tierPenalty(tier: Int): Double = when (tier) {
+    PoiSearch.TIER_EXACT -> 0.0
+    PoiSearch.TIER_PREFIX -> PENALTY_PREFIX
+    PoiSearch.TIER_TOKENS -> PENALTY_TOKENS
+    PoiSearch.TIER_SUBSTRING, PoiSearch.TIER_CATEGORY -> PENALTY_SUBSTRING
+    else -> PENALTY_FUZZY
 }
 
+private const val PENALTY_PREFIX = 1.0
+private const val PENALTY_TOKENS = 2.0
+private const val PENALTY_SUBSTRING = 3.5
+private const val PENALTY_FUZZY = 4.5
+
+/** Distance below which places count as equally near (walking distance), in km. */
+private const val DIST_SCALE_KM = 1.0
+
 /**
- * Rank, then decode only the rows that can be returned: the [SHORTLIST] best by (rank,
- * distance) plus the nearest phrase-matching place labels. Within a rank a name that IS
- * the query comes first when it is a place label or local, then the user's signal, then
- * distance.
+ * A place label whose name IS the query (a city, a neighbourhood) is searched for from
+ * afar, and its point stands for a whole area: it gets this much distance credit (~8x).
+ * It used to be a tier of its own above every distance, so from San Francisco "museum"
+ * opened on a village called Museum 16,987 km away and "coffee" on a hamlet 370 km away.
+ */
+private const val PLACE_EXACT_BONUS = 3.0
+
+/**
+ * The most a recency/favorites weight can buy: just under a tier step from a typo, so a
+ * familiar typo never outranks an exact match, while a saved place still wins over a
+ * same-tier match several times nearer.
+ */
+private const val MAX_BOOST_BONUS = 2.9
+
+/**
+ * Distance credit for kinds people search for by name from across a city — landmarks,
+ * parks, museums, stations, place labels — over the shops that borrow their names.
+ */
+private const val NOTABLE_BONUS = 1.0
+
+private val NOTABLE_TYPES = setOf(
+    PoiCategories.TYPE_PARK, PoiCategories.TYPE_ATTRACTION, PoiCategories.TYPE_MUSEUM,
+    PoiCategories.STATION_TYPE, PoiCategories.TYPE_PLACE,
+)
+
+private fun typeBonus(type: Int): Double = if (type in NOTABLE_TYPES) NOTABLE_BONUS else 0.0
+
+private fun distancePenalty(km: Double): Double = log2(1.0 + km / DIST_SCALE_KM)
+
+private fun boostBonus(weight: Double): Double =
+    if (weight <= 0.0) 0.0 else minOf(log2(1.0 + weight), MAX_BOOST_BONUS)
+
+private fun log2(x: Double): Double = Math.log(x) / LN2
+
+private val LN2 = Math.log(2.0)
+
+private class RankedRow(val record: PoiIndex.PoiRecord, val score: Double, val distKm: Double)
+
+/**
+ * Rank by one blended score — text-match penalty + log distance - place/notable/boost credit — and
+ * decode only the rows that can be returned.
+ *
+ * Distance used to be a tie-break: rank buckets first, then "is it exactly the name", and
+ * only then distance, so any exact or phrase match anywhere on earth beat a word match
+ * across the street ("it constantly finds places super far away instead of right here").
+ * Now distance is part of the score, logarithmically: within walking distance the text
+ * decides, beyond it each doubling of distance costs as much as a weaker match.
+ *
+ * Shortlisting uses the most optimistic score a candidate could reach once its name is
+ * read (a phrase match may turn out to be the exact name, a place label may earn the place
+ * credit), so the decode cannot drop a row that would have ranked.
  */
 internal fun rankCandidates(
     m: PoiIndex.Mapped,
@@ -348,17 +403,25 @@ internal fun rankCandidates(
     candidates: Collection<Candidate>,
     bias: SearchBias,
 ): List<PoiIndex.PoiRecord> {
-    val byRank = candidates.sortedWith(compareBy<Candidate> { rankOf(it.tier) }.thenBy { it.distKm })
-    val places = byRank.filter { it.type == PoiCategories.TYPE_PLACE && rankOf(it.tier) == 0 }.take(PLACE_SHORTLIST)
-    val shortlist = (byRank.take(SHORTLIST) + places).distinctBy { it.ordinal }
-    val whole = query.trim()
-    val out = shortlist.map { c ->
+    val queryNorm = PoiSearch.normalize(query)
+    val queryWords = PoiSearch.tokens(query)
+    val shortlist = candidates.sortedBy { optimisticScore(it) }.take(SHORTLIST)
+    return shortlist.map { c ->
         val record = m.record(c.ordinal)
-        val exact = record.name.equals(whole, ignoreCase = true) &&
-            (record.type == PoiCategories.TYPE_PLACE || c.distKm <= EXACT_LOCAL_KM)
-        RankedRow(record, rankOf(c.tier), exact, boostWeight(bias.boost, record.name), c.distKm)
-    }
-    return out.sortedWith(
-        compareBy<RankedRow> { it.rank }.thenBy { !it.exact }.thenByDescending { it.boost }.thenBy { it.distKm },
-    ).take(bias.limit).map { it.record }
+        val tier = PoiSearch.matchTier(record.name, queryNorm, queryWords)
+            .takeIf { it != PoiSearch.NO_MATCH } ?: c.tier
+        val place = if (tier == PoiSearch.TIER_EXACT && record.type == PoiCategories.TYPE_PLACE) PLACE_EXACT_BONUS else 0.0
+        val score = tierPenalty(tier) + distancePenalty(c.distKm) - place - typeBonus(record.type) -
+            boostBonus(boostWeight(bias.boost, record.name))
+        RankedRow(record, score, c.distKm)
+    }.sortedWith(compareBy<RankedRow> { it.score }.thenBy { it.distKm })
+        .take(bias.limit)
+        .map { it.record }
+}
+
+/** The best score [c] can reach once its name is known (see [rankCandidates]). */
+private fun optimisticScore(c: Candidate): Double {
+    val tier = if (c.tier == PoiSearch.TIER_PREFIX) PoiSearch.TIER_EXACT else c.tier
+    val place = if (c.tier == PoiSearch.TIER_PREFIX && c.type == PoiCategories.TYPE_PLACE) PLACE_EXACT_BONUS else 0.0
+    return tierPenalty(tier) + distancePenalty(c.distKm) - place - typeBonus(c.type)
 }
