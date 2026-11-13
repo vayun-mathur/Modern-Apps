@@ -15,6 +15,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.hub.data.dao.AchievementWithProgress
+import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
 import com.vayunmathur.library.ui.Icon
@@ -28,7 +29,9 @@ import com.vayunmathur.games.hub.R
 fun AchievementRow(
     item: AchievementWithProgress,
     modifier: Modifier = Modifier,
-    showGameTag: Boolean = true
+    showGameTag: Boolean = true,
+    /** gameId -> registered display name; ids missing here resolve through [KnownGames]. */
+    gameNames: Map<String, String> = emptyMap(),
 ) {
     val isLocked = !item.isUnlocked
 
@@ -80,7 +83,7 @@ fun AchievementRow(
                 )
                 if (showGameTag) {
                     Text(
-                        text = item.gameId,
+                        text = KnownGames.displayName(item.gameId, gameNames[item.gameId]),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )

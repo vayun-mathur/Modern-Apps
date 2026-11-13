@@ -54,6 +54,8 @@ fun DashboardPage(
             .take(10)
     }
 
+    val gameNames = remember(games) { games.associate { it.gameId to it.displayName } }
+
     val achievementProgressByGame = remember(allAchievements) {
         allAchievements.groupBy { it.gameId }.mapValues { (_, list) -> list.count { it.isUnlocked } to list.size }
     }
@@ -72,6 +74,7 @@ fun DashboardPage(
             achievementProgressByGame = achievementProgressByGame,
             dailyStreakByGame = dailyStreaks,
             installedGameIds = installedGameIds,
+            gameNames = gameNames,
         ),
         actions = object : DashboardActions {
             override fun openGame(gameId: String) = onGameClick(gameId)

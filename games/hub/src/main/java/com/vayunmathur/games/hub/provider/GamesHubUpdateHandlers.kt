@@ -5,6 +5,7 @@ import android.net.Uri
 import com.vayunmathur.games.hub.data.GamesHubRepository
 import com.vayunmathur.games.hub.data.entities.AchievementProgressEntity
 import com.vayunmathur.games.hub.data.entities.ActivityEventEntity
+import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.sdk.games.GameHubContract
 
 internal suspend fun GamesHubProvider.updateProgressItem(
@@ -94,11 +95,16 @@ internal suspend fun GamesHubProvider.updateSession(
     val duration = (endTime - existing.startTime).coerceAtLeast(0L)
     repo.sessions.endSession(sessionId, endTime, duration)
     database.gameDao().addPlaytime(existing.gameId, duration)
+    // Name the game, not its report id ("Played Unblock Jam", not "Played unblockjam").
+    val gameName = KnownGames.displayName(
+        existing.gameId,
+        database.gameDao().getById(existing.gameId)?.displayName,
+    )
     repo.activity.upsertActivity(
         ActivityEventEntity(
             type = ActivityEventEntity.TYPE_SESSION_COMPLETED,
             gameId = existing.gameId,
-            title = "Played ${existing.gameId}",
+            title = "${ActivityEventEntity.SESSION_TITLE_PREFIX}$gameName",
             description = "Session ${duration / GamesHubProvider.MILLIS_PER_SECOND}s"
         )
     )

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.games.hub.MainRoute
+import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.games.hub.ui.components.AchievementRow
 import com.vayunmathur.games.hub.ui.components.ActivityItemCard
 import com.vayunmathur.games.hub.ui.components.StatCard
@@ -75,7 +76,7 @@ fun GameDetailScreen(
     }
 
     AppScaffold(
-        title = game?.displayName ?: gameId,
+        title = KnownGames.displayName(gameId, game?.displayName),
         backStack = backStack,
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
@@ -99,7 +100,6 @@ fun GameDetailScreen(
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(text = g.displayName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         g.description?.let { Text(text = it, style = MaterialTheme.typography.bodySmall) }
-                        Text(text = g.packageName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -134,7 +134,7 @@ fun GameDetailScreen(
             }
             if (activity.isNotEmpty()) {
                 item { Text(stringResource(R.string.tab_activity), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                items(activity, key = { "activity-${it.id}" }) { event -> ActivityItemCard(event = event) }
+                items(activity, key = { "activity-${it.id}" }) { event -> ActivityItemCard(event = event, gameNames = mapOf(g.gameId to g.displayName)) }
             }
         }
     }

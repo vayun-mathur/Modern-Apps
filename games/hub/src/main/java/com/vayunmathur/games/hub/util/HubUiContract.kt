@@ -37,6 +37,8 @@ data class DashboardUiState(
     val dailyStreakByGame: Map<String, Pair<Int, Int>> = emptyMap(),
     /** Games whose package is actually present on the device. */
     val installedGameIds: Set<String> = emptySet(),
+    /** gameId -> registered display name, so the activity feed never shows a raw id. */
+    val gameNames: Map<String, String> = emptyMap(),
 )
 
 /** What the games list draws; the search/sort of it is the screen's own state. */

@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -33,6 +34,8 @@ fun ActivityFeedScreen(
     onGameClick: ((String) -> Unit)? = null
 ) {
     val activity by viewModel.allActivityFlow.collectAsStateWithLifecycle()
+    val games by viewModel.gamesFlow.collectAsStateWithLifecycle()
+    val gameNames = remember(games) { games.associate { it.gameId to it.displayName } }
 
     AppScaffold(
         title = stringResource(R.string.tab_activity),
@@ -45,7 +48,7 @@ fun ActivityFeedScreen(
             }
         } else {
             LazyColumn(modifier = modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(activity, key = { it.id }) { event -> ActivityItemCard(event = event, onGameClick = onGameClick) }
+                items(activity, key = { it.id }) { event -> ActivityItemCard(event = event, onGameClick = onGameClick, gameNames = gameNames) }
             }
         }
     }

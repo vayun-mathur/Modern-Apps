@@ -1,6 +1,7 @@
 package com.vayunmathur.games.hub.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -8,12 +9,17 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.games.hub.data.dao.AchievementWithProgress
+import com.vayunmathur.games.hub.data.entities.ActivityEventEntity
 import com.vayunmathur.games.hub.data.entities.HubGameEntity
+import com.vayunmathur.games.hub.ui.components.AchievementRow
+import com.vayunmathur.games.hub.ui.components.ActivityItemCard
 import com.vayunmathur.games.hub.ui.components.GameCard
 import com.vayunmathur.games.hub.ui.components.StatCard
 import com.vayunmathur.games.hub.ui.components.profileTabAvatarSymbol
@@ -75,5 +81,29 @@ class HubUxAuditTest {
         for (symbol in listOf("stadia_controller", "sports_esports", "emoji_events", "psychology")) {
             assertNull(profileTabAvatarSymbol(symbol), symbol)
         }
+    }
+
+    @Test
+    fun activityAndAchievementRowsShowGameNamesNotIds() {
+        // A legacy row stored before names were resolved: its title carried the id too.
+        val event = ActivityEventEntity(id = 1, type = ActivityEventEntity.TYPE_SESSION_COMPLETED, gameId = "unblockjam", title = "Played unblockjam")
+        val ach = AchievementWithProgress(
+            gameId = "logicgate", achievementId = "a1", name = "Wired", description = "Build a gate",
+            xpReward = 25, targetProgress = 1, isSecret = false, tier = "BRONZE", iconResName = null,
+            progress = 0, isUnlocked = false, unlockedAt = null,
+        )
+        rule.setContent {
+            Column {
+                // No registered rows: the catalog name is used.
+                ActivityItemCard(event = event)
+                // A registered row's own name wins.
+                AchievementRow(ach, gameNames = mapOf("logicgate" to "Logic Gates Deluxe"))
+            }
+        }
+        rule.onNodeWithText("Unblock Jam").assertIsDisplayed()
+        rule.onNodeWithText("Played Unblock Jam").assertIsDisplayed()
+        rule.onNodeWithText("Logic Gates Deluxe").assertIsDisplayed()
+        rule.onAllNodesWithText("unblockjam", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithText("logicgate").assertCountEquals(0)
     }
 }

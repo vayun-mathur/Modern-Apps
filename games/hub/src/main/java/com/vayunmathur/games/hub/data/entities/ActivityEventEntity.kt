@@ -20,5 +20,8 @@ data class ActivityEventEntity(
         const val TYPE_GAME_REGISTERED = "GAME_REGISTERED"
         const val TYPE_FIRST_PLAY = "FIRST_PLAY"
         const val TYPE_GAME_LAUNCHED = "GAME_LAUNCHED"
+
+        /** Title prefix of a [TYPE_SESSION_COMPLETED] row: "Played <game name>". */
+        const val SESSION_TITLE_PREFIX = "Played "
     }
 }

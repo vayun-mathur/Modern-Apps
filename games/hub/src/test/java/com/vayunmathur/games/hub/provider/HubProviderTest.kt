@@ -174,10 +174,13 @@ class HubProviderTest {
         )
         assertEquals(1, ended)
         assertEquals(60_000, repo.games.getGame("chess")?.totalPlaytimeMs)
-        assertTrue(
-            repo.activity.allActivityFlow().first()
-                .any { it.type == ActivityEventEntity.TYPE_SESSION_COMPLETED && it.gameId == "chess" },
-        )
+        val completed = repo.activity.allActivityFlow().first()
+            .filter { it.type == ActivityEventEntity.TYPE_SESSION_COMPLETED && it.gameId == "chess" }
+        assertTrue(completed.isNotEmpty())
+        // The feed title names the game, never the raw report id.
+        val expectedName = com.vayunmathur.games.hub.domain.KnownGames
+            .displayName("chess", repo.games.getGame("chess")?.displayName)
+        assertTrue(completed.all { it.title == "Played $expectedName" }, completed.joinToString { it.title })
         // Ending an unknown session is a no-op.
         assertEquals(
             0,

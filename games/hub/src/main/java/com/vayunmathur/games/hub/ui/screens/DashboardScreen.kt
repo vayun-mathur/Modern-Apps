@@ -158,7 +158,7 @@ fun DashboardScreen(
                         TextButton(onClick = actions::openActivity) { Text(stringResource(R.string.see_all)) }
                     }
                 }
-                items(state.recentActivity.take(5), key = { it.id }) { event -> ActivityItemCard(event = event, onGameClick = actions::openGame) }
+                items(state.recentActivity.take(5), key = { it.id }) { event -> ActivityItemCard(event = event, onGameClick = actions::openGame, gameNames = state.gameNames) }
             } else {
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {

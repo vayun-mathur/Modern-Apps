@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.games.hub.data.dao.AchievementWithProgress
+import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.games.hub.ui.components.AchievementRow
 import com.vayunmathur.games.hub.viewmodel.GameHubViewModel
 import com.vayunmathur.library.ui.AppScaffold
@@ -43,14 +44,21 @@ fun AchievementsScreen(
     var statusFilter by remember { mutableStateOf(AchievementFilter.ALL) }
     var gameFilter by remember { mutableStateOf<String?>(initialGameFilter) }
 
+    val gameNames = remember(games) { games.associate { it.gameId to it.displayName } }
+    fun nameOf(gameId: String) = KnownGames.displayName(gameId, gameNames[gameId])
+
     val gameIds = remember(games, allAchievements) {
-        (games.map { it.gameId } + allAchievements.map { it.gameId }).distinct().sorted()
+        (games.map { it.gameId } + allAchievements.map { it.gameId }).distinct()
+            .sortedBy { KnownGames.displayName(it, gameNames[it]).lowercase() }
     }
 
-    val filtered = remember(allAchievements, search, statusFilter, gameFilter) {
+    val filtered = remember(allAchievements, search, statusFilter, gameFilter, gameNames) {
         var list = allAchievements
         if (search.isNotBlank()) {
-            list = list.filter { it.name.contains(search, true) || it.description.contains(search, true) || it.gameId.contains(search, true) }
+            list = list.filter {
+                it.name.contains(search, true) || it.description.contains(search, true) ||
+                    nameOf(it.gameId).contains(search, true)
+            }
         }
         list = when (statusFilter) {
             AchievementFilter.LOCKED -> list.filter { !it.isUnlocked }
@@ -75,7 +83,7 @@ fun AchievementsScreen(
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         item { FilterChip(selected = gameFilter == null, onClick = { gameFilter = null }, label = { Text(stringResource(R.string.all_games)) }) }
                         items(gameIds, key = { it }) { gid ->
-                            FilterChip(selected = gameFilter == gid, onClick = { gameFilter = if (gameFilter == gid) null else gid }, label = { Text(gid) })
+                            FilterChip(selected = gameFilter == gid, onClick = { gameFilter = if (gameFilter == gid) null else gid }, label = { Text(nameOf(gid)) })
                         }
                     }
                 }
@@ -83,7 +91,7 @@ fun AchievementsScreen(
             if (filtered.isEmpty()) {
                 item { Text(stringResource(R.string.no_matching_achievements), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(16.dp)) }
             }
-            items(filtered, key = { "${it.gameId}:${it.achievementId}" }) { ach -> AchievementRow(item = ach, showGameTag = true) }
+            items(filtered, key = { "${it.gameId}:${it.achievementId}" }) { ach -> AchievementRow(item = ach, showGameTag = true, gameNames = gameNames) }
         }
     }
 }

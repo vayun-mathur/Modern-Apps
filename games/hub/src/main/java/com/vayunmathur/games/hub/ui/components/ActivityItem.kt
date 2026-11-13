@@ -12,6 +12,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.hub.data.entities.ActivityEventEntity
+import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.games.hub.util.formatRelativeTime
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.Icon
@@ -22,7 +23,9 @@ import com.vayunmathur.library.ui.Text
 fun ActivityItemCard(
     event: ActivityEventEntity,
     modifier: Modifier = Modifier,
-    onGameClick: ((String) -> Unit)? = null
+    onGameClick: ((String) -> Unit)? = null,
+    /** gameId -> registered display name; ids missing here resolve through [KnownGames]. */
+    gameNames: Map<String, String> = emptyMap(),
 ) {
     Card(
         onClick = { event.gameId?.let { onGameClick?.invoke(it) } },
@@ -39,11 +42,11 @@ fun ActivityItemCard(
                 modifier = Modifier.padding(top = 2.dp)
             )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(text = event.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(text = displayTitle(event, gameNames), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 event.description?.let { Text(text = it, style = MaterialTheme.typography.bodySmall) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     event.gameId?.let {
-                        Text(text = it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Text(text = KnownGames.displayName(it, gameNames[it]), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                     Text(text = formatRelativeTime(event.timestamp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -58,4 +61,18 @@ private fun iconForType(type: String): Int = when (type) {
     ActivityEventEntity.TYPE_GAME_REGISTERED -> android.R.drawable.ic_menu_add
     ActivityEventEntity.TYPE_SESSION_COMPLETED -> android.R.drawable.ic_media_play
     else -> android.R.drawable.ic_menu_info_details
+}
+
+/**
+ * Session rows written before game names were resolved stored "Played <gameId>"; show those
+ * with the game's name so old feed entries do not leak the id either.
+ */
+private fun displayTitle(event: ActivityEventEntity, gameNames: Map<String, String>): String {
+    val id = event.gameId ?: return event.title
+    val prefix = ActivityEventEntity.SESSION_TITLE_PREFIX
+    return if (event.type == ActivityEventEntity.TYPE_SESSION_COMPLETED && event.title == "$prefix$id") {
+        prefix + KnownGames.displayName(id, gameNames[id])
+    } else {
+        event.title
+    }
 }
