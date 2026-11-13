@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -169,17 +173,36 @@ private fun Grid(
     onLongPress: (Int) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    // Resolved once per grid rather than once per cell per tap.
+    val labels = CellLabels(
+        filled = stringResource(R.string.cd_filled),
+        crossed = stringResource(R.string.cd_crossed),
+        revealed = stringResource(R.string.cd_revealed),
+        blank = stringResource(R.string.cd_blank),
+    )
+    // Stable callbacks: the cells get the same lambda instance every recomposition, so a cell whose
+    // mark did not change is skipped outright instead of being recomposed for a new closure.
+    val currentTap by rememberUpdatedState(onTap)
+    val currentLongPress by rememberUpdatedState(onLongPress)
+    val tap = remember { { index: Int -> currentTap(index) } }
+    val longPress = remember { { index: Int -> currentLongPress(index) } }
     Box {
         Column {
             for (row in 0 until game.size) {
                 Row {
                     for (col in 0 until game.size) {
                         val index = row * game.size + col
+                        // Each cell sees only its own mark, so one tap recomposes one cell, not all
+                        // 225 of a 15x15.
+                        val mark = game.markAt(index)
                         NonogramCell(
-                            game = game,
+                            mark = mark,
                             index = index,
-                            onTap = { onTap(index) },
-                            onLongPress = { onLongPress(index) },
+                            row = row,
+                            col = col,
+                            stateWord = labels.wordFor(mark),
+                            onTap = tap,
+                            onLongPress = longPress,
                             modifier = Modifier.size(cell),
                         )
                     }
@@ -194,17 +217,35 @@ private fun Grid(
     }
 }
 
+/** The four state words TalkBack reads, looked up once per grid. */
+@Immutable
+private data class CellLabels(
+    val filled: String,
+    val crossed: String,
+    val revealed: String,
+    val blank: String,
+) {
+    fun wordFor(mark: CellMark): String = when (mark) {
+        CellMark.FILLED -> filled
+        CellMark.CROSSED -> crossed
+        CellMark.REVEALED -> revealed
+        CellMark.BLANK -> blank
+    }
+}
+
 @Composable
 private fun NonogramCell(
-    game: NonogramGameState,
+    mark: CellMark,
     index: Int,
-    onTap: () -> Unit,
-    onLongPress: () -> Unit,
+    row: Int,
+    col: Int,
+    stateWord: String,
+    onTap: (Int) -> Unit,
+    onLongPress: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
     val haptics = LocalHapticFeedback.current
-    val mark = game.markAt(index)
 
     // A fill only ever lands on a cell that belongs to the picture, because a wrong guess is turned
     // into a revealed blank instead. That revealed blank gets a tinted cell and an error-coloured X so
@@ -215,29 +256,19 @@ private fun NonogramCell(
         CellMark.REVEALED -> scheme.errorContainer
         else -> Color.Transparent
     }
-
-    val stateWord = when (mark) {
-        CellMark.FILLED -> stringResource(R.string.cd_filled)
-        CellMark.CROSSED -> stringResource(R.string.cd_crossed)
-        CellMark.REVEALED -> stringResource(R.string.cd_revealed)
-        CellMark.BLANK -> stringResource(R.string.cd_blank)
-    }
-    val description = stringResource(
-        R.string.cd_cell,
-        index / game.size + 1,
-        index % game.size + 1,
-        stateWord,
-    )
+    val description = stringResource(R.string.cd_cell, row + 1, col + 1, stateWord)
 
     Box(
         modifier
             .background(background)
-            .pointerInput(index, game.isOver, game.isLocked(index)) {
+            .pointerInput(index) {
+                // The ViewModel ignores taps on settled cells and finished boards, so the handler
+                // does not need to restart whenever those change.
                 detectTapGestures(
-                    onTap = { onTap() },
+                    onTap = { onTap(index) },
                     onLongPress = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onLongPress()
+                        onLongPress(index)
                     },
                 )
             }
