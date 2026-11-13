@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,11 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.domain.levels.LevelRegistry
@@ -62,6 +62,7 @@ fun GameScreen(
     onDelete: () -> Unit = {},
 ) {
     val density = LocalDensity.current.density
+    val lift = with(LocalDensity.current) { GHOST_LIFT.toPx() }
     val cameraState = remember { CameraState(density) }
     val lookup = remember(state.catalog, state.io) { state.catalog.lookup(state.io) }
     val labels = rememberChipLabels()
@@ -119,11 +120,12 @@ fun GameScreen(
                             onTap = { id -> state.chips.firstOrNull { it.id == id }?.let(actions::showChipInfo) },
                             onDragUpdate = { drag ->
                                 trayDrag = drag
-                                if (trash.carry(drag?.root)) haptics.tick()
+                                if (trash.carry(drag?.previewCenter(lift))) haptics.tick()
                             },
                             onDrop = { drop ->
-                                if (canvasBounds.contains(drop.root)) {
-                                    placeNear(drop.chipId, cameraState.camera.toWorld(drop.root - canvasBounds.topLeft))
+                                val at = drop.previewCenter(lift)
+                                if (canvasBounds.contains(at)) {
+                                    placeNear(drop.chipId, cameraState.camera.toWorld(at - canvasBounds.topLeft))
                                 }
                             },
                         )
@@ -131,9 +133,9 @@ fun GameScreen(
                     TrashOverlay(trash, Modifier.matchParentSize())
                 }
             }
-            trayDrag?.let { DragGhost(chipLabel(it.chipId), it.root - rootOrigin) }
+            trayDrag?.let { DragGhost(chipLabel(it.chipId), it.previewCenter(lift) - rootOrigin) }
             // A board gate carried over the tray leaves the (clipped) board; keep it in sight.
-            trash.carried?.let { DragGhost(it.label, it.root - rootOrigin) }
+            trash.carried?.let { DragGhost(it.label, it.root - Offset(0f, lift) - rootOrigin) }
             if (state.won && level != null) {
                 LevelCompleteOverlay(
                     state = state,
@@ -187,10 +189,16 @@ private fun TrashOverlay(trash: TrashZone, modifier: Modifier) {
     }
 }
 
+/** A chip's name card centred on [center] (pixels in the screen box). */
 @Composable
-private fun DragGhost(label: String, at: Offset) {
+private fun DragGhost(label: String, center: Offset) {
     Surface(
-        modifier = Modifier.offset { IntOffset(at.x.roundToInt() - GHOST_OFFSET, at.y.roundToInt() - GHOST_OFFSET * 2) },
+        modifier = Modifier.layout { measurable, constraints ->
+            val card = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+            layout(card.width, card.height) {
+                card.place((center.x - card.width / 2f).roundToInt(), (center.y - card.height / 2f).roundToInt())
+            }
+        },
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.primaryContainer,
     ) {
@@ -198,6 +206,6 @@ private fun DragGhost(label: String, at: Offset) {
     }
 }
 
-private const val GHOST_OFFSET = 48
+private val GHOST_LIFT = 48.dp
 private const val TRASH_ALPHA = 0.75f
 private const val TRASH_HOT_ALPHA = 0.95f

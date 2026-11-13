@@ -45,8 +45,14 @@ import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import kotlin.math.abs
 
-/** A chip being dragged out of the tray, at [root] in root coordinates. */
-data class TrayDrag(val chipId: String, val root: Offset)
+/** A chip being dragged out of the tray, with the finger at [root] in root coordinates. */
+data class TrayDrag(val chipId: String, val root: Offset) {
+    /**
+     * Where its preview is centred: [liftPx] above the finger, so the finger never hides it.
+     * The chip is placed and trash-tested here, exactly where the player sees it.
+     */
+    fun previewCenter(liftPx: Float): Offset = root - Offset(0f, liftPx)
+}
 
 /**
  * The chip palette, one tab per [TraySection] (opening on [defaultGroup]). Pull a card up onto the
