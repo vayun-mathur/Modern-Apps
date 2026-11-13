@@ -16,6 +16,22 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!--
+      The 15-minute active location check (#895 follow-up) has to run in Doze, where the
+      heartbeat coroutine does not: an exact allow-while-idle alarm wakes the CPU and a short
+      partial wake lock covers the fix. USE_EXACT_ALARM is install-granted (non-revocable) on
+      API 33+; SCHEDULE_EXACT_ALARM covers 31-32, where it is granted by default.
+      FixCeilingAlarm still checks canScheduleExactAlarms() and falls back to an inexact
+      allow-while-idle alarm armed early enough to stay inside 15 minutes. Distributed via
+      F-Droid and its own store, so Play's alarm-app-only USE_EXACT_ALARM policy does not
+      apply (same declaration as calendar and todo).
+    -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+
+    <!--
       Powered-off finding, finder half. Arming a beacon needs BLUETOOTH_PRIVILEGED, which is
       signature|privileged and so only ever available to a preinstalled build — but *hearing* one
       is ordinary BLE, and the network is only worth anything if plenty of phones are listening.
@@ -118,6 +134,11 @@
                 android:value=".MainActivity" />
         </service>
 
+
+        <receiver
+            android:name=".platform.FixCeilingReceiver"
+            android:directBootAware="true"
+            android:exported="false" />
 
         <receiver
             android:name=".util.BootReceiver"

@@ -13,6 +13,7 @@ import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.DirectBootStore
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.platform.keepAliveTick
+import com.vayunmathur.findfamily.platform.refreshFixCeiling
 import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +72,8 @@ internal fun LocationTrackingService.startDirectBootTracking() {
             "running pre-unlock, sharing=$sharing targets=${targets.size}"
         )
         while (isActive) {
-            // Same sender keep-alive as the unlocked heartbeat (#895).
+            // Same sender keep-alive and 15-minute ceiling as the unlocked heartbeat (#895).
+            refreshFixCeiling()
             withContext(Dispatchers.Main) { keepAliveTick() }
             publishDirectBoot(targets)
             delay(30.seconds)

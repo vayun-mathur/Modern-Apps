@@ -6,10 +6,13 @@ import android.os.CancellationSignal
 import android.os.SystemClock
 import com.vayunmathur.findfamily.domain.FixSample
 import com.vayunmathur.findfamily.domain.ForcedFixPolicy
+import com.vayunmathur.findfamily.domain.ForcedFixReason
+import com.vayunmathur.findfamily.domain.NoShowPolicy
 import com.vayunmathur.findfamily.util.LocationTrackingService
 import com.vayunmathur.findfamily.util.recordFix
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -28,7 +31,9 @@ import kotlin.coroutines.resume
  * 1. An always-on low-power NETWORK request (minutes apart, displacement-filtered) and a
  *    PASSIVE request, so leaving by any means delivers a fix that flips the phone back to
  *    moving through [onLocationFix].
- * 2. A periodic forced fix ([ForcedFixPolicy]) when the held fix gets old.
+ * 2. A periodic forced fix ([ForcedFixPolicy]) when the held fix gets old, plus a 15-minute
+ *    ceiling on active current-location requests while sharing, kept alive through Doze by
+ *    an AlarmManager wake-up (FixCeilingAlarm.kt).
  * 3. A single fix intake that lets every fix, however coarse, reach the movement detector
  *    before the display accuracy gate in [recordFix] decides whether it is held.
  *
@@ -49,6 +54,13 @@ internal const val LOW_POWER_INTERVAL_POWER_SAVE_MS = 5 * 60_000L
  * (the forced fix keeps it fresh), a phone that has left gets one within minutes.
  */
 internal const val LOW_POWER_MIN_DISTANCE_METERS = 75f
+
+/**
+ * Wake-lock bound on one forced fix: the network and GPS timeouts plus time to publish.
+ * Released as soon as the fix and the publish finish; the timeout is only a backstop.
+ */
+internal const val FORCED_FIX_WAKE_LOCK_TIMEOUT_MS =
+    ForcedFixPolicy.NETWORK_TIMEOUT_MS + ForcedFixPolicy.GPS_TIMEOUT_MS + 30_000L
 
 /** PASSIVE costs nothing (other apps' fixes); the interval only bounds callback rate. */
 internal const val PASSIVE_MIN_INTERVAL_MS = 30_000L
@@ -106,9 +118,9 @@ internal fun LocationTrackingService.onLocationFix(location: Location) {
 }
 
 /**
- * Runs on every heartbeat tick (30 s while the CPU is awake) on the main thread:
- * re-checks stillness, keeps the low-power requests registered, and starts a forced
- * fix when one is due.
+ * Runs on every heartbeat tick (30 s while the CPU is awake) and on every ceiling alarm
+ * (which also wakes a dozing CPU), on the main thread: re-checks stillness, keeps the
+ * low-power requests registered, and starts a forced fix when one is due.
  */
 internal fun LocationTrackingService.keepAliveTick() {
     applyMotionTransition(motion.onTick(SystemClock.elapsedRealtime()))
@@ -173,34 +185,61 @@ internal fun LocationTrackingService.stopLowPowerUpdates() {
 private fun LocationTrackingService.isCharging(): Boolean = runCatching { bm.isCharging }.getOrDefault(false)
 
 /**
- * True (and the attempt recorded) when the held fix is stale enough for a forced fix.
- * See [ForcedFixPolicy.isDue]; never while a previous forced fix is still running.
+ * Why a forced fix is due now (and the attempt recorded), or null when none is. See
+ * [ForcedFixPolicy.dueReason]; never while a previous forced fix is still running.
  */
-internal fun LocationTrackingService.forcedFixDue(nowMs: Long): Boolean {
-    if (forcedFixJob?.isActive == true) return false
+internal fun LocationTrackingService.forcedFixDue(nowMs: Long): ForcedFixReason? {
+    if (forcedFixJob?.isActive == true) return null
     val interval = ForcedFixPolicy.intervalMs(isCharging(), powerManager.isPowerSaveMode)
     val heldMs = lastKnownLocation?.let { it.elapsedRealtimeNanos / NANOS_PER_MILLI }
-    if (!ForcedFixPolicy.isDue(nowMs, heldMs, lastForcedFixAttemptMs, interval)) return false
+    val reason = ForcedFixPolicy.dueReason(nowMs, heldMs, lastForcedFixAttemptMs, interval, fixCeilingEnabled)
+        ?: return null
     lastForcedFixAttemptMs = nowMs
-    return true
-}
-
-/** Starts a forced fix in the background when [forcedFixDue]. */
-internal fun LocationTrackingService.maybeRequestForcedFix() {
-    if (!forcedFixDue(SystemClock.elapsedRealtime())) return
-    forcedFixJob = serviceScope.launch { runForcedFix() }
+    return reason
 }
 
 /**
- * One forced fix: network first; GPS after it only when network gave nothing fine
- * enough to display ([ForcedFixPolicy.shouldFallBackToGps]). Each result goes through
- * [onLocationFix], so a coarse network answer can still wake movement detection.
+ * Starts a forced fix in the background when [forcedFixDue], and moves the ceiling alarm
+ * to one ceiling after this attempt. Returns the forced fix in flight, if any.
  */
-internal suspend fun LocationTrackingService.runForcedFix() {
+internal fun LocationTrackingService.maybeRequestForcedFix(): Job? {
+    val reason = forcedFixDue(SystemClock.elapsedRealtime())
+        ?: return forcedFixJob?.takeIf { it.isActive }
+    val job = serviceScope.launch { runForcedFix(reason) }
+    forcedFixJob = job
+    rearmFixCeiling()
+    return job
+}
+
+/**
+ * One forced fix, under a partial wake lock so a screen-off CPU cannot sleep halfway
+ * through it. When it produced a fix fine enough to display, that fix is published at
+ * once through the normal heartbeat path, even if the phone has not moved: the
+ * receivers' "last updated" must reflect the check, not wait for the next heartbeat
+ * (which does not run while the CPU sleeps).
+ */
+internal suspend fun LocationTrackingService.runForcedFix(reason: ForcedFixReason = ForcedFixReason.STALE_HELD_FIX) {
+    val wakeLock = forcedFixWakeLock()
+    wakeLock?.acquire(FORCED_FIX_WAKE_LOCK_TIMEOUT_MS)
+    try {
+        if (requestCurrentFix(reason)) publishCheckedFix()
+    } finally {
+        if (wakeLock?.isHeld == true) wakeLock.release()
+    }
+}
+
+/**
+ * Network first; GPS after it only when network gave nothing fine enough to display
+ * ([ForcedFixPolicy.shouldFallBackToGps]). Each result goes through [onLocationFix], so a
+ * coarse network answer can still wake movement detection. Always a current-location
+ * request, never a last-known read. True when some answer was fine enough to display.
+ */
+private suspend fun LocationTrackingService.requestCurrentFix(reason: ForcedFixReason): Boolean {
     val source = currentLocationSourceOverride ?: PlatformCurrentLocationSource(locationManager, mainExecutor)
     val hasNetwork = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     val hasGps = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
     val powerSave = powerManager.isPowerSaveMode
+    val ceiling = reason == ForcedFixReason.ACTIVE_CHECK_CEILING
     val network = if (hasNetwork) {
         source.current(LocationManager.NETWORK_PROVIDER, ForcedFixPolicy.NETWORK_TIMEOUT_MS)
     } else {
@@ -208,14 +247,18 @@ internal suspend fun LocationTrackingService.runForcedFix() {
     }
     network?.let { deliverForcedFix(it) }
     val networkAccuracy = network?.takeIf { it.hasAccuracy() }?.accuracy?.toDouble()
-    if (ForcedFixPolicy.shouldFallBackToGps(hasGps, hasNetwork, networkAccuracy, powerSave)) {
+    var displayable = networkAccuracy != null && NoShowPolicy.isAccurateEnough(networkAccuracy)
+    if (ForcedFixPolicy.shouldFallBackToGps(hasGps, hasNetwork, networkAccuracy, powerSave, ceiling)) {
         val gps = source.current(LocationManager.GPS_PROVIDER, ForcedFixPolicy.GPS_TIMEOUT_MS)
         gps?.let { deliverForcedFix(it) }
-        val gpsResult = if (gps != null) "ok" else "none"
-        Log.status(TAG_KEEP_ALIVE, "forced fix: network acc=$networkAccuracy, gps $gpsResult")
+        val gpsAccuracy = gps?.takeIf { it.hasAccuracy() }?.accuracy?.toDouble()
+        displayable = displayable || (gpsAccuracy != null && NoShowPolicy.isAccurateEnough(gpsAccuracy))
+        val gpsResult = if (gps != null) "acc=$gpsAccuracy" else "none"
+        Log.status(TAG_KEEP_ALIVE, "forced fix ($reason): network acc=$networkAccuracy, gps $gpsResult")
     } else {
-        Log.status(TAG_KEEP_ALIVE, "forced fix: network acc=$networkAccuracy")
+        Log.status(TAG_KEEP_ALIVE, "forced fix ($reason): network acc=$networkAccuracy")
     }
+    return displayable
 }
 
 private suspend fun LocationTrackingService.deliverForcedFix(location: Location) {

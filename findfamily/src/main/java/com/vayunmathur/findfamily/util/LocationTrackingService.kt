@@ -56,6 +56,9 @@ import com.vayunmathur.findfamily.domain.MotionTransition
 import com.vayunmathur.findfamily.domain.MovementDetector
 import com.vayunmathur.findfamily.platform.CurrentLocationSource
 import com.vayunmathur.findfamily.platform.FinalLocationReporter
+import com.vayunmathur.findfamily.platform.FixCeilingAlarm
+import com.vayunmathur.findfamily.platform.onFixCeilingAlarm
+import com.vayunmathur.findfamily.platform.refreshFixCeiling
 import com.vayunmathur.findfamily.platform.onLocationFix
 import com.vayunmathur.findfamily.platform.keepAliveTick
 import com.vayunmathur.findfamily.platform.stopLowPowerUpdates
@@ -145,9 +148,24 @@ class LocationTrackingService : Service(), SensorEventListener {
     internal var lowPowerIntervalMs = 0L
     internal var passiveRequested = false
 
-    /** elapsedRealtime of the last forced-fix attempt, or null before the first one. */
+    /**
+     * elapsedRealtime of the last forced-fix attempt, or null before the first one. Every
+     * attempt is an active getCurrentLocation request, so this is also what the 15-minute
+     * ceiling measures from (see ForcedFixPolicy.isCeilingDue).
+     */
+    @Volatile
     internal var lastForcedFixAttemptMs: Long? = null
     internal var forcedFixJob: Job? = null
+
+    /**
+     * True while the phone shares with someone: the 15-minute active-check ceiling applies
+     * and its Doze-proof alarm is armed (platform/FixCeilingAlarm.kt). Main thread writes.
+     */
+    @Volatile
+    internal var fixCeilingEnabled = false
+
+    /** The forced fix's partial wake lock, created on first use. */
+    internal var forcedFixWakeLockHolder: PowerManager.WakeLock? = null
 
     /** Test seam: replaces LocationManager.getCurrentLocation for the forced fix. */
     internal var currentLocationSourceOverride: CurrentLocationSource? = null
@@ -175,7 +193,7 @@ class LocationTrackingService : Service(), SensorEventListener {
     internal var networkRequested = false
     private var networkWatchdogJob: Job? = null
     private var heartbeatJob: Job? = null
-    private var trackingInitialized = false
+    internal var trackingInitialized = false
 
     /** The pre-unlock publish loop; null once the user unlocks and the normal path takes over. */
     internal var directBootJob: Job? = null
@@ -299,6 +317,16 @@ class LocationTrackingService : Service(), SensorEventListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // The 15-minute ceiling alarm (#895 follow-up). Only meaningful for a service that
+        // is already tracking in the foreground; anything else takes the normal start path.
+        if (intent?.action == FixCeilingAlarm.ACTION_CHECK) {
+            val tracking = trackingInitialized || directBootJob?.isActive == true
+            if (tracking && LocationServiceController.hasFineLocationPermission(this)) {
+                onFixCeilingAlarm()
+                return START_STICKY
+            }
+            FixCeilingAlarm.releaseWakeLock()
+        }
         // Defensive: never run location tracking without fine-location permission.
         // The service can be (re)started by the OS, WorkManager, or BootReceiver,
         // and the permission may have been revoked since it was scheduled
@@ -408,8 +436,10 @@ class LocationTrackingService : Service(), SensorEventListener {
                         withContext(Dispatchers.Main) { stopSelf() }
                         break
                     }
-                    // Stillness re-check, low-power request upkeep and the periodic
+                    // Arm or cancel the 15-minute ceiling as sharing changes, then the
+                    // stillness re-check, low-power request upkeep and the periodic
                     // forced fix (#895). Main thread: it owns the motion state.
+                    refreshFixCeiling()
                     withContext(Dispatchers.Main) { keepAliveTick() }
                     syncHeartbeat()
                     try {
@@ -641,6 +671,8 @@ class LocationTrackingService : Service(), SensorEventListener {
     override fun onDestroy() {
         super.onDestroy()
         FinalLocationReporter.stop(this)
+        FixCeilingAlarm.cancel(this)
+        FixCeilingAlarm.releaseWakeLock()
         if (unlockReceiverRegistered) {
             runCatching { unregisterReceiver(unlockReceiver) }
             unlockReceiverRegistered = false

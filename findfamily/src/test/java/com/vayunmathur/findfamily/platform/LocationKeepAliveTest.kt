@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.findfamily.data.FFDatabase
 import com.vayunmathur.findfamily.data.FindFamilyRepository
 import com.vayunmathur.findfamily.domain.ForcedFixPolicy
+import com.vayunmathur.findfamily.domain.ForcedFixReason
 import com.vayunmathur.findfamily.domain.MotionTransition
 import com.vayunmathur.findfamily.domain.MovementDetector
 import com.vayunmathur.findfamily.util.LocationTrackingService
@@ -28,6 +29,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -152,19 +154,19 @@ class LocationKeepAliveTest {
 
     @Test
     fun staleHeldFixRequestsAForcedFixOncePerInterval() {
-        assertFalse(service.forcedFixDue(SystemClock.elapsedRealtime()), "fresh fix: nothing due")
+        assertNull(service.forcedFixDue(SystemClock.elapsedRealtime()), "fresh fix: nothing due")
         advance(ForcedFixPolicy.INTERVAL_DEFAULT_MS)
-        assertTrue(service.forcedFixDue(SystemClock.elapsedRealtime()))
+        assertEquals(ForcedFixReason.STALE_HELD_FIX, service.forcedFixDue(SystemClock.elapsedRealtime()))
         // The attempt is recorded: the next heartbeat tick does not retry.
         advance(30_000L)
-        assertFalse(service.forcedFixDue(SystemClock.elapsedRealtime()))
+        assertNull(service.forcedFixDue(SystemClock.elapsedRealtime()))
     }
 
     @Test
     fun chargingTightensTheForcedFixInterval() {
         shadowOf(service.bm).setIsCharging(true)
         advance(ForcedFixPolicy.INTERVAL_CHARGING_MS)
-        assertTrue(service.forcedFixDue(SystemClock.elapsedRealtime()))
+        assertEquals(ForcedFixReason.STALE_HELD_FIX, service.forcedFixDue(SystemClock.elapsedRealtime()))
     }
 
     @Test
