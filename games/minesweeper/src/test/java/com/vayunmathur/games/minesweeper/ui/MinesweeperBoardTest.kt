@@ -1,5 +1,8 @@
 package com.vayunmathur.games.minesweeper.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -106,6 +109,18 @@ class MinesweeperBoardTest {
         }
         composeRule.onNodeWithText(str(R.string.new_field)).assertExists()
         assertEquals(null, mode)
+    }
+
+    @Test
+    fun howToPlayHintFollowsTheTapMode() {
+        val config = GameConfig(BoardSize.SMALL, Difficulty.EASY)
+        val game = MinesweeperGameState.empty(config)
+        var state by mutableStateOf(MinesweeperUiState(config = config, game = game))
+        composeRule.setContent { GameBoardScreen(state, MinesweeperActions.Noop, onExit = {}) }
+        composeRule.onNodeWithText(str(R.string.how_to_play)).assertExists()
+        state = state.copy(tapMode = TapMode.FLAG)
+        composeRule.onNodeWithText(str(R.string.how_to_play_flag)).assertExists()
+        composeRule.onNodeWithText(str(R.string.how_to_play)).assertDoesNotExist()
     }
 
     @Test

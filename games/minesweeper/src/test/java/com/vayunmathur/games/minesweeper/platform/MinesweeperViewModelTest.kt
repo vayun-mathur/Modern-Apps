@@ -69,12 +69,12 @@ class MinesweeperViewModelTest {
     }
 
     @Test
-    fun newGameDealsBlankFieldAndKeepsTapMode() {
+    fun newGameDealsBlankFieldInDigMode() {
         val vm = vm()
         vm.setTapMode(TapMode.FLAG)
         vm.newGame(GameConfig(BoardSize.SMALL, Difficulty.EASY))
         val state = vm.uiState.value
-        assertEquals(TapMode.FLAG, state.tapMode)
+        assertEquals(TapMode.DIG, state.tapMode, "a fresh field always starts in dig mode")
         val game = state.game!!
         assertEquals(80, game.cellCount)
         assertTrue(game.mines.none { it })
@@ -98,6 +98,22 @@ class MinesweeperViewModelTest {
         assertEquals(GameOutcome.PLAYING, game.outcome)
         vm.incrementTimer()
         assertEquals(1, vm.uiState.value.game!!.elapsedSeconds)
+    }
+
+    @Test
+    fun firstTapDigsEvenInFlagModeAndRestartResetsToDig() {
+        val vm = vm()
+        vm.newGame(GameConfig(BoardSize.SMALL, Difficulty.EASY))
+        vm.setTapMode(TapMode.FLAG)
+        vm.tapCell(0)
+        val game = vm.uiState.value.game!!
+        assertTrue(game.started, "the opening tap digs whatever the mode")
+        assertTrue(game.revealed[0])
+        assertEquals(0, game.flagsPlaced)
+        assertEquals(TapMode.FLAG, vm.uiState.value.tapMode, "the chosen mode stays for this field")
+
+        vm.restart()
+        assertEquals(TapMode.DIG, vm.uiState.value.tapMode)
     }
 
     @Test

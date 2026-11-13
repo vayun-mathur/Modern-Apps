@@ -20,6 +20,8 @@
 
     <!-- GameBoardScreen: Hint under the field explaining the two gestures. Imperative sentence -->
     <string name="how_to_play">Tap to open, long press to flag</string>
+    <!-- GameBoardScreen: Hint under the field while flag mode is selected, before the first move. Imperative sentence -->
+    <string name="how_to_play_flag">First tap opens the field, then tap to flag, long press to open</string>
     <!-- TapModeToggle: Tap uncovers a cell. Verb, imperative -->
     <string name="mode_dig">Dig</string>
     <!-- TapModeToggle: Tap plants a flag on a suspected mine. Noun used as a verb, imperative -->

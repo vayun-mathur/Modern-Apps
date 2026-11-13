@@ -58,14 +58,19 @@ class MinesweeperViewModel(application: Application) :
 
     fun getSizeStats(size: BoardSize) = statsRepository.getSizeStats(size)
 
-    /** Deals a blank field for [config]. Mines are not laid until the first dig. */
+    /**
+     * Deals a blank field for [config]. Mines are not laid until the first dig.
+     *
+     * Every field starts in dig mode. Flag mode used to carry over from the previous field, so a
+     * player who finished in flag mode met a fresh field where the first tap did nothing at all —
+     * there is nothing to flag before the mines are laid — while the hint said "Tap to open".
+     */
     fun newGame(config: GameConfig) {
         placedAnyFlag = false
         _uiState.value = MinesweeperUiState(
             config = config,
             game = MinesweeperGameState.empty(config),
-            // Carried over: a player who prefers flag mode should not have to re-pick it every field.
-            tapMode = _uiState.value.tapMode,
+            tapMode = TapMode.DIG,
         )
     }
 
@@ -75,11 +80,18 @@ class MinesweeperViewModel(application: Application) :
      * In flag mode a tap can never uncover anything, which is the whole point — clearing a run of
      * suspected mines should not risk ending the game on a mis-tap. Chording still works in flag mode,
      * because tapping an already-open number is unambiguous whichever mode is active.
+     *
+     * The opening tap always digs, whatever the mode: before it no mines exist, so a flag-mode tap
+     * could only be a silent no-op, and the opening is guaranteed safe anyway.
      */
     override fun tapCell(index: Int) {
         val state = _uiState.value
         val game = state.game ?: return
         if (game.isOver) return
+        if (!game.started) {
+            dig(state, game, index)
+            return
+        }
 
         if (game.started && game.revealed[index]) {
             chord(game, index)

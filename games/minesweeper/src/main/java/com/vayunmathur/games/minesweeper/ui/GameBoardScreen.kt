@@ -126,8 +126,12 @@ fun GameBoardScreen(
                 )
 
                 if (!game.started) {
+                    // Follows the mode, so the hint never describes a gesture the toggle has swapped.
                     Text(
-                        stringResource(R.string.how_to_play),
+                        stringResource(
+                            if (state.tapMode == TapMode.FLAG) R.string.how_to_play_flag
+                            else R.string.how_to_play
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
