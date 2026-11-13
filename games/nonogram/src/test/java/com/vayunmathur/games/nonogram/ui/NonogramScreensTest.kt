@@ -27,6 +27,8 @@ import com.vayunmathur.library.ui.R as UiR
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -165,6 +167,34 @@ class NonogramScreensTest {
         val g = NonogramGameState(p, setOf(0), setOf(1), emptySet(), 2, GameMode.CASUAL, 25)
         rule.setContent { NonogramBoard(game = g, onTap = {}, onLongPress = {}) }
         rule.onNodeWithContentDescription(str(R.string.cd_cell, 15, 15, str(R.string.cd_blank))).assertExists()
+    }
+
+    @Test fun cluesFitTheirSlotsAtLargeFontScale() {
+        val p = requireNotNull(com.vayunmathur.games.nonogram.domain.NonogramGenerator.generateSeeded(15, 25L))
+        val g = NonogramGameState(p, emptySet(), emptySet(), emptySet(), STARTING_HEARTS, GameMode.CASUAL, 25)
+        rule.setContent {
+            val base = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density, fontScale = 2f),
+            ) {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(360.dp)) {
+                    NonogramBoard(game = g, onTap = {}, onLongPress = {})
+                }
+            }
+        }
+        val clues = rule.onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult))
+            .fetchSemanticsNodes()
+        assertTrue(clues.isNotEmpty())
+        for (node in clues) {
+            val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+            val r = results.single()
+            val text = r.layoutInput.text.text
+            val fontPx = with(r.layoutInput.density) { r.layoutInput.style.fontSize.toPx() }
+            val linePx = with(r.layoutInput.density) { r.layoutInput.style.lineHeight.toPx() }
+            assertTrue(fontPx <= linePx + 0.5f, "clue '$text' is ${fontPx}px in a ${linePx}px slot")
+            assertTrue(!r.hasVisualOverflow, "clue '$text' clips at 200% font scale")
+        }
     }
 
     @Test fun settingsPageWithRealViewModelRenders() {

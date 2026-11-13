@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -27,7 +28,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.nonogram.R
 import com.vayunmathur.games.nonogram.data.CellMark
 import com.vayunmathur.games.nonogram.data.NonogramGameState
@@ -62,8 +62,16 @@ fun NonogramBoard(
         // Sized from the clue slot, not the grid cell, and paired with a line height equal to the
         // slot. Without that a 15x15's slots are shorter than the text's natural line box, the clue
         // column overflows its fixed height, and the row nearest the grid is clipped in half.
-        val fontSize = (clueCell.value * 0.78f).coerceIn(6f, 13f).sp
-        val lineHeight = clueCell.value.sp
+        //
+        // The slot is laid out in dp, so the text is too: the user's font scale raises the preferred
+        // size (ClueTextPreferred * fontScale) but never past what the slot can hold. Plain `.sp`
+        // values here were multiplied by the font scale *after* fitting, so at 200% text the digits
+        // were twice the height of their slot and clipped. Converting with toSp() divides the font
+        // scale back out, which is what pins the rendered height to the slot.
+        val density = LocalDensity.current
+        val textSize = minOf(clueCell * CLUE_TEXT_FRACTION, ClueTextPreferred * density.fontScale)
+        val fontSize = with(density) { textSize.toSp() }
+        val lineHeight = with(density) { clueCell.toSp() }
 
         Column {
             Row {
@@ -289,6 +297,12 @@ private fun Modifier.drawGridLines(size: Int, thin: Color, thick: Color) = drawB
 
 /** Cells per heavy guide line. */
 private const val GROUP = 5
+
+/** Clue digit height as a fraction of its slot, leaving room for the side bearings of "15". */
+private const val CLUE_TEXT_FRACTION = 0.78f
+
+/** Clue size at 100% font scale on a board roomy enough not to cap it. */
+private val ClueTextPreferred = 13.dp
 
 /** A clue slot's width as a fraction of a grid cell. Clues are digits, so they need less room. */
 private const val CLUE_CELL_FRACTION = 0.62f
