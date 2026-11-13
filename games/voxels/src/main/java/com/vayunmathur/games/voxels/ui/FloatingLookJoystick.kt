@@ -125,9 +125,8 @@ fun FloatingLookJoystick(
                 drawLine(col, c - Offset(0f, arm), c + Offset(0f, arm), strokeWidth = w)
             }
             if (active) {
-                drawCircle(color = Color.White.copy(alpha = 0.18f), radius = 70.dp.toPx(), center = origin)
-                drawCircle(color = Color.White.copy(alpha = 0.08f), radius = 65.dp.toPx(), center = origin)
-                drawCircle(color = Color.White.copy(alpha = 0.5f), radius = 30.dp.toPx(), center = origin + knob)
+                drawStickBase(origin, 70.dp.toPx())
+                drawStickKnob(origin + knob, 30.dp.toPx(), active = true)
             }
             hold?.let { h ->
                 // Progress ring around the held finger: fills toward the next mine/attack.

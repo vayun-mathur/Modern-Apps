@@ -1,6 +1,7 @@
 package com.vayunmathur.games.voxels.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,7 +40,8 @@ fun HoldButton(
             .width(96.dp)
             .height(52.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = if (dimmed) 0.12f else 0.24f))
+            .background(if (dimmed) HudFillDim else HudFill)
+            .border(1.5.dp, HudOutline.copy(alpha = if (dimmed) 0.4f else 0.7f), RoundedCornerShape(12.dp))
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = { press(); tryAwaitRelease(); release() },
@@ -47,6 +50,9 @@ fun HoldButton(
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = Color.White.copy(alpha = if (dimmed) 0.5f else 0.95f), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        Text(
+            label, color = Color.White.copy(alpha = if (dimmed) 0.6f else 1f), fontWeight = FontWeight.SemiBold, fontSize = 16.sp,
+            style = TextStyle(shadow = HudTextShadow),
+        )
     }
 }

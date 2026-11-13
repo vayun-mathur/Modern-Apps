@@ -12,7 +12,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlin.math.sqrt
@@ -69,14 +68,8 @@ fun Joystick(
                 }
         ) {
             val c = Offset(size.width / 2f, size.height / 2f)
-            drawCircle(color = Color.White.copy(alpha = 0.18f), radius = 65.dp.toPx(), center = c)
-            drawCircle(color = Color.White.copy(alpha = 0.08f), radius = 60.dp.toPx(), center = c)
-            val knobAbs = c + knob
-            drawCircle(
-                color = if (dragging) Color.White.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.3f),
-                radius = 27.dp.toPx(),
-                center = knobAbs
-            )
+            drawStickBase(c, 63.dp.toPx())
+            drawStickKnob(c + knob, 27.dp.toPx(), active = dragging)
         }
     }
 }

@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -550,8 +551,10 @@ class MainActivity : ComponentActivity() {
                             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    IconButton(onClick = { paused = true }) { IconMenu() }
-                                    IconButton(onClick = { settingsOpen = true }) { IconSettings() }
+                                    // Dark disc + white glyph so the buttons read over bright snow or sky too.
+                                    val hudButton = Modifier.background(Color.Black.copy(alpha = 0.38f), CircleShape)
+                                    IconButton(onClick = { paused = true }, modifier = hudButton) { IconMenu(tint = Color.White) }
+                                    IconButton(onClick = { settingsOpen = true }, modifier = hudButton) { IconSettings(tint = Color.White) }
                                 }
                             }
                             if (settings.showDebug) { DebugOverlay(debugJson = debugJson) }
