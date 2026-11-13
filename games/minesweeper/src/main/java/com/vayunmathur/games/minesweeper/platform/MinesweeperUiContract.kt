@@ -15,10 +15,10 @@ import com.vayunmathur.games.minesweeper.data.TapMode
  * Every member has a no-op default, so [Noop] is the whole implementation a preview needs.
  */
 interface MinesweeperActions {
-    /** Tap: digs or flags depending on the current [TapMode]; chords an already-open number. */
+    /** Tap: digs or flags depending on the current [TapMode]; in Dig mode chords an open number. */
     fun tapCell(index: Int) {}
 
-    /** Long press: the other action from whatever the mode is. */
+    /** Long press: the other action from whatever the mode is (in Flag mode, digs or chords). */
     fun flagCell(index: Int) {}
 
     fun setTapMode(mode: TapMode) {}

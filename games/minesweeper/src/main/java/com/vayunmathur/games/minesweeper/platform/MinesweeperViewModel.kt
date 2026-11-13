@@ -78,8 +78,10 @@ class MinesweeperViewModel(application: Application) :
      * Tap: digs, flags, or chords, depending on the mode and what is under the finger.
      *
      * In flag mode a tap can never uncover anything, which is the whole point — clearing a run of
-     * suspected mines should not risk ending the game on a mis-tap. Chording still works in flag mode,
-     * because tapping an already-open number is unambiguous whichever mode is active.
+     * suspected mines should not risk ending the game on a mis-tap. That includes chording: a chord
+     * opens cells (and trusts flags that may be wrong), so a flag-mode tap on an open number used to
+     * uncover a mine and end the game in the one mode promising it cannot. In flag mode the chord
+     * moves to the long press, the mode's dig gesture.
      *
      * The opening tap always digs, whatever the mode: before it no mines exist, so a flag-mode tap
      * could only be a silent no-op, and the opening is guaranteed safe anyway.
@@ -93,8 +95,8 @@ class MinesweeperViewModel(application: Application) :
             return
         }
 
-        if (game.started && game.revealed[index]) {
-            chord(game, index)
+        if (game.revealed[index]) {
+            if (state.tapMode == TapMode.DIG) chord(game, index)
             return
         }
         if (state.tapMode == TapMode.FLAG) {
@@ -104,12 +106,21 @@ class MinesweeperViewModel(application: Application) :
         dig(state, game, index)
     }
 
-    /** Long press: the other action from whatever the mode is. */
+    /**
+     * Long press: the other action from whatever the mode is.
+     *
+     * In flag mode that is digging, so a long press on an open number chords — the opening gesture
+     * stays available in flag mode, just never on the plain tap.
+     */
     override fun flagCell(index: Int) {
         val state = _uiState.value
         val game = state.game ?: return
         if (game.isOver) return
-        if (state.tapMode == TapMode.FLAG) dig(state, game, index) else toggleFlag(game, index)
+        when {
+            state.tapMode == TapMode.DIG -> toggleFlag(game, index)
+            game.revealed[index] -> chord(game, index)
+            else -> dig(state, game, index)
+        }
     }
 
     override fun setTapMode(mode: TapMode) {

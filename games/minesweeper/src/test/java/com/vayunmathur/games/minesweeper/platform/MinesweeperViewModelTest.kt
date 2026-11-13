@@ -135,6 +135,50 @@ class MinesweeperViewModelTest {
         assertEquals(1, vm.uiState.value.game!!.flagsPlaced)
     }
 
+    /**
+     * A started field with an open number whose mines are all flagged and which still has a covered
+     * safe neighbour, i.e. a legal chord that would open something.
+     */
+    private fun chordReady(vm: MinesweeperViewModel): Int {
+        repeat(200) {
+            vm.newGame(GameConfig(BoardSize.MEDIUM, Difficulty.MEDIUM))
+            vm.tapCell(70)
+            val game = vm.uiState.value.game!!
+            if (game.isOver) return@repeat
+            val number = game.revealed.indices.firstOrNull { i ->
+                game.revealed[i] && game.neighbourCounts[i] > 0 &&
+                    game.neighbours(i).any { !game.revealed[it] && !game.mines[it] }
+            } ?: return@repeat
+            game.neighbours(number).filter { game.mines[it] }.forEach { vm.flagCell(it) }
+            return number
+        }
+        error("no chordable field in 200 deals")
+    }
+
+    @Test
+    fun flagModeTapNeverChordsButLongPressDoes() {
+        val vm = vm()
+        val number = chordReady(vm)
+        vm.setTapMode(TapMode.FLAG)
+        val before = vm.uiState.value.game!!
+        vm.tapCell(number)
+        assertEquals(before.revealed, vm.uiState.value.game!!.revealed, "a flag-mode tap opens nothing")
+        assertEquals(before.flagged, vm.uiState.value.game!!.flagged, "and flags nothing on an open cell")
+
+        vm.flagCell(number)
+        val after = vm.uiState.value.game!!
+        assertTrue(after.revealed.count { it } > before.revealed.count { it }, "long press chords")
+    }
+
+    @Test
+    fun digModeTapStillChords() {
+        val vm = vm()
+        val number = chordReady(vm)
+        val before = vm.uiState.value.game!!
+        vm.tapCell(number)
+        assertTrue(vm.uiState.value.game!!.revealed.count { it } > before.revealed.count { it })
+    }
+
     @Test
     fun giveUpClearsGameTimerStopsWhenOverOrUnstarted() {
         val vm = vm()
