@@ -28,7 +28,6 @@ import com.vayunmathur.games.hub.util.GameIconResolver
 import com.vayunmathur.games.hub.util.formatPlaytime
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.ui.MaterialTheme
@@ -112,13 +111,8 @@ fun GameCard(
                 )
             }
 
-            if (achievementProgress != null && achievementProgress.second > 0) {
-                val (unlocked, total) = achievementProgress
-                val denom = total.toFloat().coerceAtLeast(1f)
-                val frac = (unlocked.toFloat() / denom).coerceIn(0f, 1f)
-                CircularProgressIndicator(progress = { frac }, modifier = Modifier.size(32.dp))
-            }
-
+            // No achievement ring here: the "Achievements: x/y" line above already says it,
+            // and a small trackless circular indicator read as a loading spinner (#ux-audit).
             IconButton(onClick = onPlay) {
                 IconPlay()
             }

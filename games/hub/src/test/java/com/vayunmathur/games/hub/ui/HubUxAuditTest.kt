@@ -3,12 +3,18 @@ package com.vayunmathur.games.hub.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.games.hub.data.entities.HubGameEntity
+import com.vayunmathur.games.hub.ui.components.GameCard
 import com.vayunmathur.games.hub.ui.components.StatCard
 import kotlin.math.abs
 import kotlin.test.Test
@@ -40,5 +46,19 @@ class HubUxAuditTest {
             val centre = (b.left + b.right) / 2
             assertTrue(abs((centre - cardCentre).value) < 1f, "$text centre $centre != card centre $cardCentre")
         }
+    }
+
+    private fun game(id: String, name: String) = HubGameEntity(
+        gameId = id, packageName = "com.example.$id", displayName = name,
+    )
+
+    @Test
+    fun gameCardShowsAchievementCountAsTextWithoutASpinnerLikeRing() {
+        rule.setContent {
+            GameCard(game("chess", "Chess"), isInstalled = true, achievementProgress = 3 to 10, onClick = {}, onPlay = {})
+        }
+        rule.onNodeWithText("Achievements: 3/10").assertIsDisplayed()
+        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assertCountEquals(0)
     }
 }
