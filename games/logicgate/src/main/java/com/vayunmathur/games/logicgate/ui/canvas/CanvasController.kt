@@ -74,8 +74,16 @@ class CanvasController(
 
     override fun hit(screen: Offset): Hit {
         val l = layout ?: return Hit.Empty
-        return HitTest.hit(l, world(screen), worldDp(PIN_TOUCH_DP), worldDp(INNER_PIN_TOUCH_DP), worldDp(WIRE_TOUCH_DP))
+        return HitTest.hit(l, world(screen), worldDp(PIN_TOUCH_DP), innerPinRadius(), worldDp(WIRE_TOUCH_DP))
     }
+
+    /**
+     * How close to a pin a touch inside a gate body must be to grab the pin, in world units:
+     * 14 dp on screen, but never more than [INNER_PIN_MAX_FRACTION] of the narrowest gate, so
+     * zoomed far out a gate's middle still picks it up instead of always hitting a pin.
+     */
+    internal fun innerPinRadius(): Float =
+        minOf(worldDp(INNER_PIN_TOUCH_DP), GateGeometry.GATE_WIDTH * INNER_PIN_MAX_FRACTION)
 
     override fun tap(hit: Hit) {
         when (hit) {
@@ -179,6 +187,7 @@ class CanvasController(
     private companion object {
         const val PIN_TOUCH_DP = 24f
         const val INNER_PIN_TOUCH_DP = 14f
+        const val INNER_PIN_MAX_FRACTION = 0.3f
         const val WIRE_TOUCH_DP = 12f
     }
 }

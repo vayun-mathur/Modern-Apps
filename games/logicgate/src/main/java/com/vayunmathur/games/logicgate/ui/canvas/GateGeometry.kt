@@ -25,7 +25,8 @@ object GateGeometry {
     const val PIN_SPACING = 28f
     const val GRID = 14f
     private const val MIN_HEIGHT = 56f
-    private const val GATE_WIDTH = 80f
+    /** The narrowest a gate is drawn, in world units. */
+    const val GATE_WIDTH = 80f
     private const val IO_WIDTH = 64f
     private const val IO_BUS_WIDTH = 88f
     private const val IO_HEIGHT = 48f

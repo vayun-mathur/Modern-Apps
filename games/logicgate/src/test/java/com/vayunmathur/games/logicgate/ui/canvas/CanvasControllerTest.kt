@@ -16,6 +16,7 @@ import com.vayunmathur.games.logicgate.platform.LogicActions
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class CanvasControllerTest {
@@ -79,6 +80,32 @@ class CanvasControllerTest {
         trash.carry(null)
         assertFalse(trash.armed)
         assertFalse(trash.hovering)
+    }
+
+    @Test
+    fun innerPinRadiusIsCappedToAFractionOfTheGateWhenZoomedOut() {
+        val (controller, _, _) = setup()
+        assertEquals(14f, controller.innerPinRadius(), 0.01f, "14 dp at 1x")
+        val camera = CameraState(1f)
+        camera.zoom(Offset.Zero, 0.01f) // clamps to the minimum zoom
+        val zoomedOut = CanvasController(camera, 1f, TrashZone())
+        assertEquals(GateGeometry.GATE_WIDTH * 0.3f, zoomedOut.innerPinRadius(), 0.01f)
+    }
+
+    @Test
+    fun atMinimumZoomTheMiddleOfAGatePicksItUp() {
+        val (circuit, _) = Circuit.forLevel(level.io).addGate(Chips.NAND, Point(200f, 0f))
+        val gate = circuit.nodes.last().id
+        val camera = CameraState(1f).apply { zoom(Offset.Zero, 0.01f) }
+        val controller = CanvasController(camera, 1f, TrashZone())
+        val state = GameUiState(EditorMode.Level(level), Board(circuit, level.io), ChipCatalog.Builtin, emptyList(), listOf(0, 0))
+        val layout = CircuitLayout(circuit, lookup, emptyMap())
+        controller.bind(state, Recorder(), layout, lookup)
+        val center = camera.camera.toScreen(layout.rects.getValue(gate).center)
+        assertEquals(Hit.OnNode(gate), controller.hit(center))
+        // The pins themselves are still reachable.
+        val pin = layout.anchors.keys.first { it.node == gate }
+        assertIs<Hit.OnPin>(controller.hit(camera.camera.toScreen(layout.anchors.getValue(pin))))
     }
 
     @Test
