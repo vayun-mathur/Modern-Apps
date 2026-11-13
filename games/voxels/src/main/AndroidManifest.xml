@@ -44,6 +44,7 @@
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:name=".MainActivity"
             android:exported="false"
+            android:screenOrientation="sensorLandscape"
             android:theme="@style/Theme.General" />
     </application>
 </manifest>

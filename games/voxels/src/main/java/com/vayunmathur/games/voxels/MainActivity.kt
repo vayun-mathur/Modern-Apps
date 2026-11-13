@@ -497,12 +497,14 @@ class MainActivity : ComponentActivity() {
                     // start. This Box has no pointer input, so touches still reach the look layer.
                     Box(Modifier.align(Alignment.CenterEnd).width(40.dp).height(200.dp).systemGestureExclusion())
 
-                    // Two stacked action buttons where the look joystick used to be. Walking: Jump / Sneak.
-                    // Flying: Up / Down. Double-tap the top button to toggle flying.
-                    Column(
-                        Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 40.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    // Right-hand action cluster: Use beside two stacked buttons (walking: Jump / Sneak,
+                    // flying: Up / Down; double-tap the top one to toggle flying). It sits above the
+                    // hotbar (8 dp slot padding + 52 dp slots + 12 dp offset) so Sneak no longer
+                    // covers the last hotbar slots.
+                    Row(
+                        Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 88.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         // Use/attack whatever is under the crosshair, repeating while held.
                         UseButton(label = stringResource(R.string.use)) {
@@ -512,35 +514,40 @@ class MainActivity : ComponentActivity() {
                                 }
                             } catch (_: Exception) {}
                         }
-                        HoldButton(
-                            label = if (flying) "Up" else "Jump",
-                            dimmed = !flying && sneaking,
-                            onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(true) } catch (_: Exception) {} },
-                            onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(false) } catch (_: Exception) {} },
-                            onDoubleTap = {
-                                if (VoxelsNative.isAvailable) try { VoxelsNative.toggleFly() } catch (_: Exception) {}
-                                flying = !flying
-                                if (flying) {
-                                    sneaking = false
-                                    if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(false) } catch (_: Exception) {}
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            HoldButton(
+                                label = if (flying) "Up" else "Jump",
+                                dimmed = !flying && sneaking,
+                                onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(true) } catch (_: Exception) {} },
+                                onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(false) } catch (_: Exception) {} },
+                                onDoubleTap = {
+                                    if (VoxelsNative.isAvailable) try { VoxelsNative.toggleFly() } catch (_: Exception) {}
+                                    flying = !flying
+                                    if (flying) {
+                                        sneaking = false
+                                        if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(false) } catch (_: Exception) {}
+                                    }
                                 }
+                            )
+                            if (flying) {
+                                HoldButton(
+                                    label = stringResource(R.string.down),
+                                    onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setFlyDown(true) } catch (_: Exception) {} },
+                                    onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setFlyDown(false) } catch (_: Exception) {} }
+                                )
+                            } else {
+                                HoldButton(
+                                    label = if (sneaking) "Sneaking" else "Sneak",
+                                    dimmed = sneaking,
+                                    onPress = {
+                                        sneaking = !sneaking
+                                        if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(sneaking) } catch (_: Exception) {}
+                                    }
+                                )
                             }
-                        )
-                        if (flying) {
-                            HoldButton(
-                                label = stringResource(R.string.down),
-                                onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setFlyDown(true) } catch (_: Exception) {} },
-                                onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setFlyDown(false) } catch (_: Exception) {} }
-                            )
-                        } else {
-                            HoldButton(
-                                label = if (sneaking) "Sneaking" else "Sneak",
-                                dimmed = sneaking,
-                                onPress = {
-                                    sneaking = !sneaking
-                                    if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(sneaking) } catch (_: Exception) {}
-                                }
-                            )
                         }
                     }
 
