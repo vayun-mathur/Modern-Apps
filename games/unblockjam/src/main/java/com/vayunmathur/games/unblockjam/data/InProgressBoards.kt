@@ -9,8 +9,9 @@ import kotlinx.serialization.json.Json
  * The board a player has left part-way through, one per level, so a puzzle picks up where it was
  * after Back, a switch to another puzzle, or the process being killed.
  *
- * Only block positions are stored (see [SavedStep]), for the current board and for every undo step; the level itself always comes from the shipped (or generated) data. A save that
- * no longer fits its level - a pack update moved a wall, say - is ignored rather than trusted.
+ * Only block positions are stored (see [SavedStep]), for the current board and for every undo
+ * step; the level itself always comes from the shipped (or generated) data. A save that no longer
+ * fits its level - a pack update moved a wall, say - is ignored rather than trusted.
  */
 class InProgressBoards(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.unblockjam.R
 import com.vayunmathur.games.unblockjam.data.Block

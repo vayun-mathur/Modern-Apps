@@ -183,9 +183,9 @@ private fun handleDragDelta(params: DragParams, min: Float, max: Float, position
 /**
  * Drags [block] along its long axis, reading and writing its position through [position] in cells.
  *
- * [cellWidth] and [cellHeight] only convert finger movement into cells. They are part of the
- * gesture's key, so a resize mid-game restarts the detector with the new cell size rather than
- * keeping the size the board had when it was first laid out, which snapped drags to the wrong cell.
+ * [cellSize] only converts finger movement into cells. It is part of the gesture's key, so a
+ * resize mid-game restarts the detector with the new cell size rather than keeping the size the
+ * board had when it was first laid out, which snapped drags to the wrong cell.
  */
 fun Modifier.blockDragGestures(
     block: Block,

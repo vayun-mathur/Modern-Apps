@@ -13,6 +13,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
 import com.vayunmathur.games.unblockjam.data.Block
 import com.vayunmathur.games.unblockjam.data.Coord
 import com.vayunmathur.games.unblockjam.data.Dimension
