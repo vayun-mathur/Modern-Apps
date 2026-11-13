@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.nonogram.data.GameMode
 import com.vayunmathur.games.nonogram.data.MarkMode
 import com.vayunmathur.games.nonogram.data.STARTING_HEARTS
+import java.util.concurrent.locks.LockSupport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -55,11 +56,20 @@ class NonogramViewModelTest {
 
     private companion object {
         const val RETRIES = 20
+        const val AWAIT_STEPS = 800
+        const val AWAIT_STEP_NANOS = 25_000_000L
     }
 
+    /**
+     * Polls [cond] for up to ~20s of real time.
+     *
+     * Counted in steps rather than against System.currentTimeMillis(): Robolectric substitutes its
+     * own clock for test code, which can run far ahead of real time, so a clock-based deadline could
+     * give up within milliseconds while a background write was still landing. parkNanos is real.
+     */
     private fun await(desc: String, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 20_000
-        while (System.currentTimeMillis() < deadline && !cond()) Thread.sleep(25)
+        var steps = 0
+        while (steps++ < AWAIT_STEPS && !cond()) LockSupport.parkNanos(AWAIT_STEP_NANOS)
         assertTrue(cond(), "timed out: $desc")
     }
 
