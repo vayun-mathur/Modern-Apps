@@ -125,8 +125,12 @@
     <string name="session_in_progress">In progress</string>
     <!-- GamesListScreen: Empty state when search query matches no games. Sentence -->
     <string name="no_matching_games">No matching games</string>
-    <!-- GamesListScreen: Empty hub message with line break. Two sentences: no games registered + instruction. Noun phrase with explanation -->
-    <string name="no_games_registered_yet_nplay_a_game_to">No games registered yet.\nPlay a game to see it here.</string>
+    <!-- GamesListScreen: First-run message above the list of games to install. Two sentences: no games registered + instruction. Keep "No games registered" first (UI tests match it) -->
+    <string name="no_games_registered_yet_install">No games registered yet. Install a game below, then play it to track it here.</string>
+    <!-- DashboardScreen: First-run button that opens the Games tab's install list. Verb phrase -->
+    <string name="browse_games">Browse games</string>
+    <!-- DiscoverGameCard: Short button label to install a missing game (Play reuses library/ui's "play"). Verb -->
+    <string name="install">Install</string>
     <!-- ProfileScreen: Suffix when showing own level in table. Includes leading space, e.g. (you). Pronoun marker -->
     <string name="you"> (you)</string>
     <!-- XpProgressBar: Level header with title. %1$s = level number as string e.g. 5, %2$s = level title e.g. Adventurer. Noun phrase -->

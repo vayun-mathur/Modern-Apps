@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.games.hub.data.entities.HubGameEntity
+import com.vayunmathur.games.hub.domain.KnownGame
+import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.games.hub.util.GameIconResolver
 import com.vayunmathur.games.hub.util.GamesListActions
 import com.vayunmathur.games.hub.util.GamesListUiState
@@ -32,7 +34,11 @@ fun GamesListPage(
     // Until the first check lands, registered games count as installed - they were when they
     // registered - so cards do not flash "Not installed"; Play re-checks at tap time anyway.
     val packagesByGameId = remember(games) { games.associate { it.gameId to it.packageName } }
-    val installedGameIds = rememberInstalledGameIds(packagesByGameId) ?: packagesByGameId.keys
+    // Also check the first-party catalog so the empty first-run state can say Play vs Install.
+    val candidates = remember(packagesByGameId) {
+        KnownGames.all.associate { it.gameId to it.packageName } + packagesByGameId
+    }
+    val installedGameIds = rememberInstalledGameIds(candidates) ?: packagesByGameId.keys
     val openGame = rememberGameOpener()
 
     val achievementProgressByGame = remember(allAchievements) {
@@ -49,6 +55,7 @@ fun GamesListPage(
         actions = object : GamesListActions {
             override fun openGame(gameId: String) = onGameClick(gameId)
             override fun playGame(game: HubGameEntity) = openGame(game.packageName, game.displayName)
+            override fun openSuggestedGame(game: KnownGame) = openGame(game.packageName, game.displayName)
         },
         iconFor = { game -> iconCache.getOrPut(game.packageName) { GameIconResolver.resolveAppIcon(context, game.packageName) } },
         ownsGameMorphKeys = ownsGameMorphKeys,

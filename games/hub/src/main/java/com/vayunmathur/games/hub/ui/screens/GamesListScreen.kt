@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.hub.R
 import com.vayunmathur.games.hub.data.entities.HubGameEntity
+import com.vayunmathur.games.hub.ui.components.DiscoverGameCard
 import com.vayunmathur.games.hub.ui.components.GameCard
 import com.vayunmathur.games.hub.util.GamesListActions
 import com.vayunmathur.games.hub.util.GamesListUiState
@@ -92,8 +93,26 @@ fun GamesListScreen(
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(modifier = modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (filteredSorted.isEmpty()) {
-                item { Text(text = if (search.isNotEmpty()) stringResource(R.string.no_matching_games) else stringResource(R.string.no_games_registered_yet_nplay_a_game_to), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 32.dp)) }
+            if (filteredSorted.isEmpty() && search.isNotEmpty()) {
+                item { Text(text = stringResource(R.string.no_matching_games), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 32.dp)) }
+            }
+            // First run: nothing has registered yet. Rather than a bare sentence, offer every
+            // first-party game (the manifest <queries> list) with Play or Install.
+            if (state.games.isEmpty() && search.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.no_games_registered_yet_install),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+                    )
+                }
+                items(state.suggestedGames, key = { "suggested-${it.gameId}" }) { game ->
+                    DiscoverGameCard(
+                        game = game,
+                        isInstalled = game.gameId in state.installedGameIds,
+                        onOpen = { actions.openSuggestedGame(game) },
+                    )
+                }
             }
             items(filteredSorted, key = { it.gameId }) { game ->
                 GameCard(

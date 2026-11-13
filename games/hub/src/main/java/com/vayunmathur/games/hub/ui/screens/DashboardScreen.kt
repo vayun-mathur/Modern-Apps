@@ -162,6 +162,12 @@ fun DashboardScreen(
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.no_activity_yet_play_a_game), modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        // First run: point at the Games tab, which lists games to install.
+                        if (state.stats.totalGames == 0) {
+                            TextButton(onClick = actions::openGamesList, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)) {
+                                Text(stringResource(R.string.browse_games))
+                            }
+                        }
                     }
                 }
             }

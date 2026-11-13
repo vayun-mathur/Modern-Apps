@@ -3,6 +3,8 @@ package com.vayunmathur.games.hub.util
 import com.vayunmathur.games.hub.data.YuuUiModel
 import com.vayunmathur.games.hub.data.entities.ActivityEventEntity
 import com.vayunmathur.games.hub.data.entities.HubGameEntity
+import com.vayunmathur.games.hub.domain.KnownGame
+import com.vayunmathur.games.hub.domain.KnownGames
 import com.vayunmathur.games.hub.viewmodel.CrossGameStats
 
 /**
@@ -44,11 +46,13 @@ data class DashboardUiState(
 /** What the games list draws; the search/sort of it is the screen's own state. */
 data class GamesListUiState(
     val games: List<HubGameEntity> = emptyList(),
+    /** First-party games offered in the empty first-run state (see [KnownGames]). */
+    val suggestedGames: List<KnownGame> = KnownGames.all,
     /** gameId -> (unlocked, total). */
     val achievementProgressByGame: Map<String, Pair<Int, Int>> = emptyMap(),
     /** gameId -> (current, longest) daily-puzzle streak. */
     val dailyStreakByGame: Map<String, Pair<Int, Int>> = emptyMap(),
-    /** Games whose package is actually present on the device. */
+    /** Games (registered or suggested) whose package is actually present on the device. */
     val installedGameIds: Set<String> = emptySet(),
 )
 
@@ -85,6 +89,8 @@ interface DashboardActions {
 interface GamesListActions {
     fun openGame(gameId: String) {}
     fun playGame(game: HubGameEntity) {}
+    /** Play a suggested game if installed, else open its store listing. */
+    fun openSuggestedGame(game: KnownGame) {}
 
     companion object {
         val Noop: GamesListActions = object : GamesListActions {}

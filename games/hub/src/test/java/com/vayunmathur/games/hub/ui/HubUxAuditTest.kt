@@ -9,8 +9,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import com.vayunmathur.games.hub.domain.KnownGame
+import com.vayunmathur.games.hub.ui.screens.DashboardScreen
 import com.vayunmathur.games.hub.ui.screens.GamesListScreen
+import com.vayunmathur.games.hub.util.DashboardActions
+import com.vayunmathur.games.hub.util.DashboardUiState
 import com.vayunmathur.games.hub.util.GamesListActions
 import com.vayunmathur.games.hub.util.GamesListUiState
 import com.vayunmathur.library.ui.Text
@@ -213,5 +219,43 @@ class HubUxAuditTest {
         rule.onNodeWithContentDescription("Install Sudoku").assertExists().performClick()
         assertEquals(1, played)
         rule.onAllNodesWithContentDescription("Play Sudoku").assertCountEquals(0)
+    }
+
+    @Test
+    fun firstRunGamesListOffersEveryGameWithPlayOrInstall() {
+        var opened: KnownGame? = null
+        val actions = object : GamesListActions {
+            override fun openSuggestedGame(game: KnownGame) { opened = game }
+        }
+        rule.setContent {
+            GamesListScreen(GamesListUiState(games = emptyList(), installedGameIds = setOf("chess")), actions)
+        }
+        rule.onNodeWithText("No games registered yet", substring = true).assertIsDisplayed()
+        // Installed but never opened -> Play; missing -> Install (opens the store listing).
+        rule.onNodeWithContentDescription("Play Chess").assertExists()
+        rule.onAllNodesWithContentDescription("Install Chess").assertCountEquals(0)
+        rule.onNodeWithContentDescription("Install Arrows").assertExists().performClick()
+        assertEquals("arrows", opened?.gameId)
+        assertEquals("com.vayunmathur.games.arrows", opened?.packageName)
+    }
+
+    @Test
+    fun searchWithNoGamesShowsNoMatchNotSuggestions() {
+        rule.setContent { GamesListScreen(GamesListUiState(games = emptyList()), GamesListActions.Noop) }
+        rule.onNode(hasSetTextAction()).performTextInput("zzz")
+        rule.onNodeWithText("No matching games").assertIsDisplayed()
+        rule.onAllNodesWithContentDescription("Install Arrows").assertCountEquals(0)
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "w411dp-h1600dp") // tall enough that the empty-activity card is laid out
+    fun firstRunDashboardPointsToTheGamesTab() {
+        var openedList = false
+        val actions = object : DashboardActions {
+            override fun openGamesList() { openedList = true }
+        }
+        rule.setContent { DashboardScreen(DashboardUiState(), actions) }
+        rule.onNodeWithText("Browse games").assertIsDisplayed().performClick()
+        assertTrue(openedList)
     }
 }
