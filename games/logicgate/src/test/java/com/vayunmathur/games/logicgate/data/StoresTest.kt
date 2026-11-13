@@ -20,7 +20,10 @@ class StoresTest {
 
     private fun await(desc: String, cond: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 15_000
-        while (System.currentTimeMillis() < deadline) { if (cond()) return; Thread.sleep(50) }
+        while (System.currentTimeMillis() < deadline) {
+            if (cond()) return
+            Thread.sleep(50)
+        }
         assertTrue(cond(), "timed out: $desc")
     }
 
