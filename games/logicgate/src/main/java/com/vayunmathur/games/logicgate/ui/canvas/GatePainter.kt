@@ -6,6 +6,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -38,6 +39,9 @@ class PaintContext(
 ) {
     /** Re-used for the few wires that change every frame (the live wire, a dragged gate's). */
     val scratch: Path by lazy { Path() }
+
+    /** Dashing for a low (0) 1-bit wire, so high and low differ in more than colour. */
+    val lowDash: PathEffect by lazy { PathEffect.dashPathEffect(floatArrayOf(LOW_DASH_ON, LOW_DASH_OFF)) }
 }
 
 /** Runs [block] moved along with node [id] when it is the one being dragged. */
@@ -83,8 +87,10 @@ fun Path.setWire(from: Offset, to: Offset) {
 }
 
 /**
- * A wire; 1-bit wires light up when high, buses are colour-coded by width with a hex value. Its
- * path comes from the layout's cache unless one end is on the node being dragged.
+ * A wire. A 1-bit wire is bright, thick and solid when high, and dim, thin and dashed when low
+ * (or not yet known), so its state does not rest on colour. Buses are colour-coded by width
+ * with a hex value. Its path comes from the layout's cache unless one end is on the node being
+ * dragged.
  */
 fun DrawScope.drawWire(ctx: PaintContext, wire: Wire, selected: Boolean) {
     val l = ctx.layout
@@ -96,14 +102,16 @@ fun DrawScope.drawWire(ctx: PaintContext, wire: Wire, selected: Boolean) {
     val path = if (a == a0 && b == b0) l.wirePath(wire) ?: return else ctx.scratch.apply { setWire(a, b) }
     val width = l.pin(wire.from)?.width ?: 1
     val value = ctx.live[wire.from]
-    val stroke = wireStroke(width)
+    val high = width == 1 && value == 1
+    val low = width == 1 && !high
+    val stroke = wireStroke(width) + if (high) HIGH_EXTRA_STROKE else 0f
     if (selected) drawPath(path, ctx.colors.selected.copy(alpha = 0.45f), style = Stroke(stroke + 8f, cap = StrokeCap.Round))
     val color = when {
-        width == 1 && value == 1 -> ctx.colors.wireOn
-        width == 1 -> ctx.colors.wireOff
+        high -> ctx.colors.wireOn
+        low -> ctx.colors.wireOff
         else -> ctx.colors.forWidth(width)
     }
-    drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round))
+    drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round, pathEffect = if (low) ctx.lowDash else null))
     if (width > 1 && value != null) {
         val mid = GateGeometry.samples(a, b, 2)[1]
         drawTag(ctx, formatValue(value, width), mid, color)
@@ -232,7 +240,10 @@ private fun DrawScope.drawIo(ctx: PaintContext, rect: Rect, pin: PinRef, stroke:
     }
 }
 
-/** Pins, with a ring on every pin a dragged wire could land on and a sideways shake on a rejected one. */
+/**
+ * Pins, with a ring on every pin a dragged wire could land on and a sideways shake on a rejected
+ * one. A 1-bit output that is high is filled solid, a second non-colour cue for its state.
+ */
 fun DrawScope.drawPins(ctx: PaintContext, node: Node, highlight: Set<PinRef>, shake: Pair<PinRef, Float>?) {
     val pins = ctx.layout.pins[node.id] ?: return
     fun pin(ref: PinRef, width: Int) {
@@ -240,7 +251,8 @@ fun DrawScope.drawPins(ctx: PaintContext, node: Node, highlight: Set<PinRef>, sh
         val at = if (shake?.first == ref) base + Offset(shake.second, 0f) else base
         val r = if (width == 1) PIN_R else BUS_PIN_R
         if (ref in highlight) drawCircle(ctx.colors.wireOn, r + RING_GAP, at, style = Stroke(2.5f))
-        drawCircle(ctx.colors.background, r, at)
+        val high = width == 1 && ref.side == PinSide.OUT && ctx.live[ref] == 1
+        drawCircle(if (high) ctx.colors.wireOn else ctx.colors.background, r, at)
         drawCircle(if (shake?.first == ref) ctx.colors.error else ctx.colors.forWidth(width), r, at, style = Stroke(2.5f))
     }
     pins.inputs.forEachIndexed { i, p -> pin(PinRef(node.id, PinSide.IN, i), p.width) }
@@ -248,6 +260,9 @@ fun DrawScope.drawPins(ctx: PaintContext, node: Node, highlight: Set<PinRef>, sh
 }
 
 private const val TAG_SIZE = 10f
+private const val HIGH_EXTRA_STROKE = 1.5f
+private const val LOW_DASH_ON = 7f
+private const val LOW_DASH_OFF = 5f
 private const val LABEL_SIZE = 14f
 private const val SMALL_LABEL_SIZE = 9f
 private const val PIN_NAME_SIZE = 9f
