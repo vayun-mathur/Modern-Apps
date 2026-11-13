@@ -10,6 +10,7 @@ import com.vayunmathur.games.voxels.R
 import androidx.compose.ui.res.stringResource
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,7 +23,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,6 +39,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.vayunmathur.games.voxels.domain.BackTarget
+import com.vayunmathur.games.voxels.domain.OverlayFlags
+import com.vayunmathur.games.voxels.domain.backTarget
 import com.vayunmathur.games.voxels.ui.BossBar
 import com.vayunmathur.games.voxels.ui.ChestOverlay
 import com.vayunmathur.games.voxels.ui.DebugOverlay
@@ -85,6 +94,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        hideSystemBars()
         // World to load: passed by MenuActivity. Fall back to a default world if launched directly.
         val worldDir = intent.getStringExtra("world_dir")
             ?: java.io.File(filesDir, "worlds/default").apply { mkdirs() }.absolutePath
@@ -355,6 +365,26 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Back closes the top-most overlay or opens the pause menu; it never quits the world.
+                BackHandler {
+                    val open = OverlayFlags(
+                        chest = chestOpen, trade = tradeOpen, furnace = furnaceOpen,
+                        stonecutter = stonecutterOpen, inventory = inventoryOpen, paused = paused,
+                    )
+                    when (backTarget(open)) {
+                        BackTarget.CHEST -> {
+                            chestOpen = false
+                            try { VoxelsNative.closeContainer() } catch (_: Exception) {}
+                        }
+                        BackTarget.TRADE -> tradeOpen = false
+                        BackTarget.FURNACE -> furnaceOpen = false
+                        BackTarget.STONECUTTER -> stonecutterOpen = false
+                        BackTarget.INVENTORY -> inventoryOpen = false
+                        BackTarget.RESUME -> paused = false
+                        BackTarget.PAUSE -> paused = true
+                    }
+                }
+
                 // The Hub only ever sees the app-level tier: its contract is (gameId, achievementId)
                 // with no room for a world.
                 GameHubComposeHook("voxels", achievements?.app)
@@ -414,11 +444,17 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    Box(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 96.dp)) {
+                    // Edge swipes over the stick (and over the right-hand look strip below) belong to
+                    // the game, not to the system Back gesture.
+                    Box(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 96.dp).systemGestureExclusion()) {
                         Joystick(modifier = Modifier, isLook = false,
                             onMove = { x, y -> if (VoxelsNative.isAvailable) try { VoxelsNative.onMoveInput(x, y) } catch (_: Exception) {} },
                             onLookDelta = { _, _ -> })
                     }
+
+                    // Android honours at most 200 dp of exclusion per edge; spend it where look swipes
+                    // start. This Box has no pointer input, so touches still reach the look layer.
+                    Box(Modifier.align(Alignment.CenterEnd).width(40.dp).height(200.dp).systemGestureExclusion())
 
                     // Two stacked action buttons where the look joystick used to be. Walking: Jump / Sneak.
                     // Flying: Up / Down. Double-tap the top button to toggle flying.
@@ -568,6 +604,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // Immersive sticky: the game owns the whole screen; a swipe from an edge peeks the bars briefly.
+    private fun hideSystemBars() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Dialogs, the shade and app switching bring the bars back; hide them again on return.
+        if (hasFocus) hideSystemBars()
     }
 
     // A backgrounded game can be killed at any moment without onDestroy, so persist on every stop.
