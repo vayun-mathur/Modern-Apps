@@ -100,11 +100,22 @@ class Slice2GameComposeTest {
         var moves by mutableStateOf(12)
         rule.setContent { MovesBox(moves = moves, bestScore = bestScore, optimalMoves = 10) }
         rule.onNodeWithText("12").assertIsDisplayed()
-        rule.onNodeWithText("- / 10").assertIsDisplayed()
+        rule.onNodeWithText("Best – · Par 10").assertIsDisplayed()
         moves = 9
         bestScore = 8
         rule.waitForIdle()
-        rule.onNodeWithText("8 / 10").assertIsDisplayed()
+        rule.onNodeWithText("Best 8 · Par 10").assertIsDisplayed()
+    }
+
+    @Test
+    fun `moves box labels best and par for TalkBack too`() {
+        var bestScore: Int? by mutableStateOf<Int?>(null)
+        rule.setContent { MovesBox(moves = 3, bestScore = bestScore, optimalMoves = 10) }
+        rule.onNode(hasContentDescription("No best yet, par 10")).assertExists()
+        bestScore = 12
+        rule.waitForIdle()
+        rule.onNodeWithText("Best 12 · Par 10").assertIsDisplayed()
+        rule.onNode(hasContentDescription("Best 12 moves, par 10")).assertExists()
     }
 
     // --- GameModeChooser ---------------------------------------------------------

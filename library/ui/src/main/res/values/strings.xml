@@ -224,6 +224,12 @@
     <string name="game_level">Level</string>
     <!-- Shared library: UI - MovesBox: title over the move counter. Noun, plural -->
     <string name="game_moves">Moves</string>
+    <!-- Shared library: UI - MovesBox: the player's fewest moves on this level against the level's par (optimal move count), e.g. Best 12 · Par 10. %1$s = best move count, or a dash when the level has not been finished yet; %2$d = par. Keep short: shown in a small fixed-width box -->
+    <string name="game_moves_best_par">Best <xliff:g id="best" example="12">%1$s</xliff:g> · Par <xliff:g id="par" example="10">%2$d</xliff:g></string>
+    <!-- Shared library: UI - MovesBox: what TalkBack reads for the best/par line. %1$d = best move count, %2$d = par (optimal move count) -->
+    <string name="game_moves_best_par_description">Best <xliff:g id="best" example="12">%1$d</xliff:g> moves, par <xliff:g id="par" example="10">%2$d</xliff:g></string>
+    <!-- Shared library: UI - MovesBox: what TalkBack reads for the best/par line before the level has ever been finished. %1$d = par (optimal move count) -->
+    <string name="game_moves_no_best_par_description">No best yet, par <xliff:g id="par" example="10">%1$d</xliff:g></string>
     <!-- Shared library: UI - LevelPickerBox: shown under the level number once that level has been finished. Verb past participle -->
     <string name="game_completed">Completed</string>
     <!-- Shared library: UI - DailyChallengeCard: title of the card opening today's challenge. Noun phrase -->

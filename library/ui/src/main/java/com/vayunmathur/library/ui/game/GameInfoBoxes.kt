@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.ui.IconArrowForward
@@ -67,10 +70,12 @@ fun LevelPickerBox(
 }
 
 /**
- * The move counter, with the player's best against the known optimum.
+ * The move counter, with the player's best against the known optimum, labelled as such:
+ * "Best 12 · Par 10". A bare "12 / 10" read as a fraction or a score out of ten.
  *
  * [bestScore] is null until the level has been finished once, and shows as a dash rather than a zero —
- * "no best yet" and "a best of nothing" are different facts.
+ * "no best yet" and "a best of nothing" are different facts. TalkBack hears the line spelled out
+ * ("Best 12 moves, par 10" / "No best yet, par 10") rather than the dash and the middle dot.
  */
 @Composable
 fun MovesBox(
@@ -82,11 +87,23 @@ fun MovesBox(
     GameInfoBox(title = stringResource(R.string.game_moves), modifier = modifier) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "$moves", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Text(
-                text = "${bestScore ?: "-"} / $optimalMoves",
-                fontSize = 18.sp,
+            val spoken = if (bestScore == null) {
+                stringResource(R.string.game_moves_no_best_par_description, optimalMoves)
+            } else {
+                stringResource(R.string.game_moves_best_par_description, bestScore, optimalMoves)
+            }
+            // Material's Text directly, for autoSize: the box is a fixed 150 dp and a translated
+            // "Best 120 · Par 98" must shrink to fit rather than wrap or clip.
+            androidx.compose.material3.Text(
+                text = stringResource(R.string.game_moves_best_par, bestScore?.toString() ?: NO_BEST, optimalMoves),
+                modifier = Modifier.semantics { contentDescription = spoken },
+                autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 18.sp),
                 fontWeight = FontWeight.Bold,
+                maxLines = 1,
             )
         }
     }
 }
+
+/** Shown for a best score that does not exist yet. */
+private const val NO_BEST = "–"
