@@ -422,13 +422,14 @@ class SurfaceMapRenderer(
     }
 
     private fun replayDeferredState() {
-        val online = online
-        val layers = layers
+        val onlineNow = online
+        val options = layers
+        val kinds = options.poiKinds.joinToString(",")
         onRenderThread { h ->
-            MapNative.setOnline(h, online)
-            MapNative.setLayers(h, layers.poi, layers.transit, layers.poiKinds.joinToString(","))
-            MapNative.setTrafficEnabled(h, layers.traffic)
-            MapNative.setSafetyEnabled(h, layers.safety)
+            MapNative.setOnline(h, onlineNow)
+            MapNative.setLayers(h, options.poi, options.transit, kinds)
+            MapNative.setTrafficEnabled(h, options.traffic)
+            MapNative.setSafetyEnabled(h, options.safety)
         }
         applyUserPuck()
         applyRoute()
