@@ -9,7 +9,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -163,6 +163,11 @@ fun ArrowsBoard(
             // arrow are handled by the board's own pointerInput; these exist so a screen reader has
             // something to find and activate.
             //
+            // `absoluteOffset`, not `offset`: the canvas above paints in absolute coordinates and the
+            // pointerInput reads absolute touch positions, so these boxes must not mirror under an
+            // RTL locale. A mirrored box sat over the wrong cell and, being clickable, swallowed a tap
+            // meant for one arrow and launched whichever arrow's head it had been laid out for.
+            //
             // `key` matters: without it, clearing an arrow shifts every later Box's identity onto a
             // different arrow, and any interaction state they hold - a half-finished ripple - replays on
             // an unrelated head. `indication = null` then makes sure there is no ripple to leak, since
@@ -177,7 +182,7 @@ fun ArrowsBoard(
                     )
                     Box(
                         Modifier
-                            .offset(x = cell * (piece.head % cols), y = cell * (piece.head / cols))
+                            .absoluteOffset(x = cell * (piece.head % cols), y = cell * (piece.head / cols))
                             .size(cell)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
@@ -193,7 +198,7 @@ fun ArrowsBoard(
                 key(index) {
                     Box(
                         Modifier
-                            .offset(x = cell * (index % cols), y = cell * (index / cols))
+                            .absoluteOffset(x = cell * (index % cols), y = cell * (index / cols))
                             .size(cell)
                             .clearAndSetSemantics { contentDescription = redirector }
                     )
