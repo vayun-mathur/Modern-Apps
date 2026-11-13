@@ -2,6 +2,7 @@ package com.vayunmathur.maps.util
 
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.network.NetworkClient
+import com.vayunmathur.library.network.StaticMirror
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -22,6 +23,22 @@ internal object OfflineRouterTrafficFetch {
     private const val TRAFFIC_RECORD_BYTES = 9L
     /** Mask for one unsigned 32-bit count read out of the payload. */
     private const val U32_MASK = 0xFFFF_FFFFL
+
+    /**
+     * Oldest R2 copy of a square still used. HERE flow moves every 1-2 min; the
+     * server itself serves a square's match for up to 5 min (stale-while-revalidate).
+     */
+    private const val TRAFFIC_STATIC_MAX_AGE_MS = 5L * 60 * 1000
+
+    /**
+     * The R2 copy of a whole 1° square (`traffic/v1/<lat>_<lon>.bin`, named by its
+     * south-west corner, as the server writes it), or null for any other bbox.
+     */
+    internal fun staticSquareUrl(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double): String? {
+        val whole = minLat == Math.floor(minLat) && minLon == Math.floor(minLon)
+        if (!whole || maxLat != minLat + 1.0 || maxLon != minLon + 1.0) return null
+        return "${StaticMirror.BASE}/traffic/v1/${minLat.toInt()}_${minLon.toInt()}.bin"
+    }
 
     fun fetchTrafficData(
         minLat: Double,
@@ -75,10 +92,19 @@ internal object OfflineRouterTrafficFetch {
         maxLon: Double,
         packedSquare: Int,
     ): TrafficPayload? {
-        val (status, bytes) = NetworkClient.performRequestBytes(
-            url = "https://api.maproj.org/maps/traffic" +
-                "?min_lat=$minLat&min_lon=$minLon&max_lat=$maxLat&max_lon=$maxLon",
-        )
+        // The server copies every fresh match of a whole 1° square to R2; read that
+        // first and ask the server (which re-matches and re-copies) only when the
+        // copy is missing or older than TRAFFIC_STATIC_MAX_AGE_MS.
+        val static = staticSquareUrl(minLat, minLon, maxLat, maxLon)
+            ?.let { StaticMirror.getStatic(it, TRAFFIC_STATIC_MAX_AGE_MS) }
+        val (status, bytes) = if (static != null) {
+            static.status to static.bytes
+        } else {
+            NetworkClient.performRequestBytes(
+                url = "https://api.maproj.org/maps/traffic" +
+                    "?min_lat=$minLat&min_lon=$minLon&max_lat=$maxLat&max_lon=$maxLon",
+            )
+        }
         Log.dev(
             "TRAFFIC_DATA",
             "fetchTrafficData NETWORK DONE: status=$status, size=${bytes.size}",
