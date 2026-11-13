@@ -28,6 +28,9 @@
 //!    member link first, else the smallest containing administrative boundary —
 //!    so the app can mask search results to a region. Zero where the POI
 //!    matched nothing. See [`crate::poi_side`].
+//! 8. **`poi_admin.bin`** the hierarchy behind those links: name, `name:en`,
+//!    `admin_level` and parent of every linked boundary and its ancestors,
+//!    written beside `poi_region.bin`. See [`crate::poi_admin`].
 //!
 //! A POI is any node, or closed-way / multipolygon area, carrying BOTH a `name`
 //! and one of the recognised POI keys (see [`crate::tags::classify`]). Area
@@ -86,6 +89,8 @@ pub struct Stats {
     pub with_reviews: usize,
     /// POIs stamped with a non-zero boundary link in `poi_region.bin`.
     pub with_region: usize,
+    /// Boundaries written to `poi_admin.bin` (linked ones plus their ancestors).
+    pub admin_entries: usize,
 }
 
 struct Poi {
@@ -126,6 +131,9 @@ struct RelArea {
 struct BoundaryRel {
     id: i64,
     admin_level: u8,
+    /// `name` and `name:en`, for `poi_admin.bin` (empty when untagged).
+    name: Vec<u8>,
+    name_en: Vec<u8>,
     /// `(way id, outer)` — empty-role ways count as outer per OSM convention.
     member_ways: Vec<(i64, bool)>,
     /// Node members with a `label`/`admin_centre` role.
@@ -541,6 +549,13 @@ fn build_inner(
     crate::par::install(|| pois.par_sort_by_key(|p| (p.morton, p.osm_id)));
 
     let written = write_outputs(&pois, geojson, names, index, attrs, spatial, name_index, region, &mut timer)?;
+    // `poi_admin.bin` rides beside `poi_region.bin` (no new flag, so every caller emits it).
+    timer.switch("admin");
+    let admin = admin_table(&boundaries, &assembled, &pois);
+    let admin_entries = write_with(&region.with_file_name("poi_admin.bin"), |out| {
+        crate::poi_admin::write_admin(out, &admin)
+    })?;
+    println!("Wrote {admin_entries} administrative boundar(ies) to poi_admin.bin");
     timer.finish();
     Ok(Stats {
         records: written.records,
@@ -556,6 +571,7 @@ fn build_inner(
         name_entries: written.name_entries,
         with_reviews,
         with_region,
+        admin_entries,
     })
 }
 
@@ -644,6 +660,8 @@ fn relation_blob(state: &mut RelPass, block: &pbf::PrimitiveBlock) -> Result<u8>
                 state.boundaries.push(BoundaryRel {
                     id: r.id,
                     admin_level,
+                    name: r.tags.get("name").map(|v| v.to_vec()).unwrap_or_default(),
+                    name_en: r.tags.get("name:en").map(|v| v.to_vec()).unwrap_or_default(),
                     member_ways: r
                         .members
                         .iter()
@@ -834,3 +852,4 @@ where
 include!("poi_build_part1.rs");
 include!("poi_build_part2.rs");
 include!("poi_build_part3.rs");
+include!("poi_build_part4.rs");

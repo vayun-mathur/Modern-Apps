@@ -6,7 +6,7 @@ Maps app's offline artifacts. Three binaries share one library:
 | Binary | Replaces | Emits |
 |---|---|---|
 | `road_graph` | `scripts/maps/generator.cpp` | `metadata.bin`, `nodes.bin`, `edges.bin`, `lanes.bin`, `intermediate.bin`, `road_names.bin` |
-| `poi_extract` | `scripts/maps/poi_extract.cpp` | `<name>.geojsonseq`, `poi_names.bin`, `poi_index.bin`, `poi_attrs.bin`, `poi_spatial.bin`, `poi_name_index.bin` |
+| `poi_extract` | `scripts/maps/poi_extract.cpp` | `<name>.geojsonseq`, `poi_names.bin`, `poi_index.bin`, `poi_attrs.bin`, `poi_spatial.bin`, `poi_name_index.bin`, `poi_region.bin`, `poi_admin.bin` |
 | `osm_extract` | `osmium tags-filter \| osmium export \| normalize_*.py` | one `<layer>.geojsonseq` per baked vector layer |
 
 ## Why Rust (LANGUAGE RULE)
@@ -138,6 +138,8 @@ changing its reader produces a graph that loads as garbage, which is why
 | `poi_attrs.bin` | attribute sidecar keyed by `poi_index.bin` record ordinal; layout in `src/poi_attrs.rs` | `PoiIndex.kt` |
 | `poi_spatial.bin` | sparse CSR lat/lon grid over record ordinals, so a bbox query is cell-local; layout in `src/poi_side.rs` | `PoiIndex.kt` |
 | `poi_name_index.bin` | one `(record, word)` entry per word of every name, sorted by word; layout in `src/poi_side.rs` | `PoiIndex.kt` |
+| `poi_region.bin` | one tagged OSM boundary id per record ordinal (label link, else smallest containing admin); layout in `src/poi_side.rs` | `PoiIndexRegion.kt` |
+| `poi_admin.bin` | the hierarchy behind those ids: per linked boundary and ancestor, `name`, `name:en`, `admin_level` and parent, sorted by tagged id; written beside `poi_region.bin`, layout in `src/poi_admin.rs` | `PoiIndexAdmin.kt` (archive kind 16) |
 
 `GRAPH_VERSION` is **5**. Version 1 stored a 16-byte node record and a dense
 `u64` offset per edge in both blob files; version 2 fixed that, and version 3 gave

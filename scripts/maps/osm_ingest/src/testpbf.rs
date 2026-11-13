@@ -552,4 +552,5 @@ const ADMIN_NODES: [(i64, i32, i32); 8] = [
 /// One node in the vector-layer fixture: `(id, lat_e7, lon_e7, tags)`.
 type FixtureNode = (i64, i32, i32, Vec<(u32, u32)>);
 
+include!("testpbf_part2.rs");
 include!("testpbf_part1.rs");
