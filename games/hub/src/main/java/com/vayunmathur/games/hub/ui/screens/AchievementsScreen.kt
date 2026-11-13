@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -40,9 +41,11 @@ fun AchievementsScreen(
     val allAchievements by viewModel.allAchievementsFlow.collectAsStateWithLifecycle()
     val games by viewModel.gamesFlow.collectAsStateWithLifecycle()
 
-    var search by remember { mutableStateOf("") }
-    var statusFilter by remember { mutableStateOf(AchievementFilter.ALL) }
-    var gameFilter by remember { mutableStateOf<String?>(initialGameFilter) }
+    // Saveable so search and filters survive the tab pager disposing this page on a swipe
+    // (see GamesListScreen), plus rotation and process death.
+    var search by rememberSaveable { mutableStateOf("") }
+    var statusFilter by rememberSaveable { mutableStateOf(AchievementFilter.ALL) }
+    var gameFilter by rememberSaveable { mutableStateOf(initialGameFilter) }
 
     val gameNames = remember(games) { games.associate { it.gameId to it.displayName } }
     fun nameOf(gameId: String) = KnownGames.displayName(gameId, gameNames[gameId])

@@ -3,6 +3,16 @@ package com.vayunmathur.games.hub.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import com.vayunmathur.games.hub.ui.screens.GamesListScreen
+import com.vayunmathur.games.hub.util.GamesListActions
+import com.vayunmathur.games.hub.util.GamesListUiState
+import com.vayunmathur.library.ui.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -12,6 +22,7 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -154,5 +165,38 @@ class HubUxAuditTest {
         // Merged tree = what TalkBack sees (clearAndSetSemantics hides the icon there).
         rule.onAllNodesWithContentDescription("Locked").assertCountEquals(0)
         rule.onAllNodesWithContentDescription("Lock").assertCountEquals(0)
+    }
+
+    @Test
+    fun gamesListSortSurvivesSwipingAwayAndBack() {
+        // Last played puts Sudoku first; Name puts Chess first.
+        val games = listOf(
+            game("chess", "Chess").copy(lastPlayedAt = 100L),
+            game("sudoku", "Sudoku").copy(lastPlayedAt = 200L),
+        )
+        var page by mutableIntStateOf(0)
+        rule.setContent {
+            val pager = rememberPagerState(pageCount = { 3 })
+            LaunchedEffect(page) { pager.scrollToPage(page) }
+            HorizontalPager(pager) { p ->
+                if (p == 0) GamesListScreen(GamesListUiState(games = games), GamesListActions.Noop) else Text("Tab $p")
+            }
+        }
+        fun chessAboveSudoku() =
+            rule.onNodeWithText("Chess").getBoundsInRoot().top < rule.onNodeWithText("Sudoku").getBoundsInRoot().top
+        assertTrue(!chessAboveSudoku(), "default sort is last played")
+        rule.onNodeWithContentDescription("More").performClick()
+        rule.onNodeWithText("Name").performClick()
+        rule.waitForIdle()
+        assertTrue(chessAboveSudoku(), "sorted by name")
+
+        page = 2 // two tabs away: the pager disposes the games list page
+        rule.waitForIdle()
+        rule.onNodeWithText("Tab 2").assertIsDisplayed()
+        rule.onAllNodesWithText("Chess").assertCountEquals(0)
+
+        page = 0
+        rule.waitForIdle()
+        assertTrue(chessAboveSudoku(), "sort order survived the swipe")
     }
 }

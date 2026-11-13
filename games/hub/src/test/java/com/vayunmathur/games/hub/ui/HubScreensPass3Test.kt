@@ -1,6 +1,12 @@
 package com.vayunmathur.games.hub.ui
 
 import android.app.Application
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -94,6 +100,33 @@ class HubScreensPass3Test {
         rule.onNodeWithText("Master").assertDoesNotExist()
         rule.onNodeWithText("All").performClick()
         rule.onNodeWithText("Master").assertIsDisplayed()
+    }
+
+    @Test
+    fun achievementsStatusFilterSurvivesSwipingAwayAndBack() {
+        seedLibrary()
+        var page by mutableIntStateOf(0)
+        rule.setContent {
+            DynamicTheme {
+                val pager = rememberPagerState(pageCount = { 3 })
+                LaunchedEffect(page) { pager.scrollToPage(page) }
+                HorizontalPager(pager) { p ->
+                    if (p == 0) AchievementsScreen(vm) else com.vayunmathur.library.ui.Text("Tab $p")
+                }
+            }
+        }
+        rule.onAllNodesWithText("Locked")[0].performClick() // the filter chip
+        rule.onNodeWithText("Master").assertIsDisplayed()
+        rule.onNodeWithText("First Win").assertDoesNotExist()
+
+        page = 2 // two tabs away: the pager disposes the achievements page
+        rule.waitForIdle()
+        rule.onNodeWithText("Master").assertDoesNotExist()
+
+        page = 0
+        rule.waitForIdle()
+        rule.onNodeWithText("Master").assertIsDisplayed()
+        rule.onNodeWithText("First Win").assertDoesNotExist()
     }
 
     @Test

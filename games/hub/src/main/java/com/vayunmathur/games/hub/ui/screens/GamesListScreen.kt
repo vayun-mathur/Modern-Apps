@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -50,8 +51,11 @@ fun GamesListScreen(
     iconFor: (HubGameEntity) -> Drawable? = { null },
     ownsGameMorphKeys: Boolean = true,
 ) {
-    var search by remember { mutableStateOf("") }
-    var sort by remember { mutableStateOf(GameSort.LAST_PLAYED) }
+    // rememberSaveable, not remember: the tab pager disposes this page when the user swipes
+    // two tabs away, and plain remember would come back with an empty search and default sort.
+    // The pager's saveable-state holder keeps these across that, and across process death.
+    var search by rememberSaveable { mutableStateOf("") }
+    var sort by rememberSaveable { mutableStateOf(GameSort.LAST_PLAYED) }
     var showSortMenu by remember { mutableStateOf(false) }
 
     val filteredSorted = remember(state.games, search, sort, state.achievementProgressByGame) {
