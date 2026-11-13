@@ -67,8 +67,9 @@ import kotlinx.coroutines.flow.first
 @Composable
 fun AchievementNotification(
     achievement: Achievement,
-    onDismiss: () -> Unit,
+    // Before onDismiss, which every caller passes as a trailing lambda.
     windowInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+    onDismiss: () -> Unit,
 ) {
     key(achievement) { AchievementToast(achievement, onDismiss, windowInsets) }
 }
