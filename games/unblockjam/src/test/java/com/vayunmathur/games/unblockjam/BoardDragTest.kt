@@ -14,6 +14,7 @@ import com.vayunmathur.games.unblockjam.data.Block
 import com.vayunmathur.games.unblockjam.data.Coord
 import com.vayunmathur.games.unblockjam.data.Dimension
 import com.vayunmathur.games.unblockjam.data.LevelData
+import com.vayunmathur.games.unblockjam.ui.components.GameBoard
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

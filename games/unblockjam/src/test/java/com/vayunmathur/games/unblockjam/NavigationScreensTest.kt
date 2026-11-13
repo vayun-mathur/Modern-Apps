@@ -26,6 +26,7 @@ import com.vayunmathur.games.unblockjam.platform.SettingsActions
 import com.vayunmathur.games.unblockjam.platform.SettingsUiState
 import com.vayunmathur.games.unblockjam.platform.UnblockJamViewModel
 import com.vayunmathur.games.unblockjam.ui.UnblockJamTheme
+import com.vayunmathur.games.unblockjam.ui.components.GameBoard
 import com.vayunmathur.library.util.LevelStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

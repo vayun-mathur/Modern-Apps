@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
@@ -22,26 +21,16 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import com.vayunmathur.games.unblockjam.data.Block
 import com.vayunmathur.games.unblockjam.data.DailyLevelGenerator
-import com.vayunmathur.games.unblockjam.data.LevelData
 import com.vayunmathur.games.unblockjam.data.LevelPack
 import com.vayunmathur.games.unblockjam.platform.DailyProgress
 import com.vayunmathur.games.unblockjam.platform.GameActions
@@ -49,8 +38,8 @@ import com.vayunmathur.games.unblockjam.platform.GameUiState
 import com.vayunmathur.games.unblockjam.platform.SettingsActions
 import com.vayunmathur.games.unblockjam.platform.SettingsUiState
 import com.vayunmathur.games.unblockjam.platform.UnblockJamViewModel
-import com.vayunmathur.games.unblockjam.platform.blockDragGestures
 import com.vayunmathur.games.unblockjam.ui.UnblockJamTheme
+import com.vayunmathur.games.unblockjam.ui.components.GameBoard
 import com.vayunmathur.library.ui.AchievementNotification
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
@@ -64,12 +53,10 @@ import com.vayunmathur.library.ui.GameCenterScreen
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Motion
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
-import com.vayunmathur.library.ui.animatedDp
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import com.vayunmathur.library.ui.game.DailyChallengeCard
 import com.vayunmathur.library.ui.game.GameTopBarActions
@@ -544,149 +531,3 @@ private fun PortraitGameLayout(state: GameUiState, actions: GameActions) {
         }
     }
 }
-
-@Composable
-fun GameBoard(
-    levelData: LevelData,
-    onLevelChanged: (LevelData) -> Unit,
-    onLevelWon: () -> Unit,
-    isLevelWon: Boolean,
-    modifier: Modifier = Modifier
-) {
-    BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
-    val boardSize = minOf(maxWidth, maxHeight)
-    val cellWidth = boardSize / levelData.dimension.width
-    val cellHeight = boardSize / levelData.dimension.height
-
-    // scale values based on the level's dimensions for consistent visuals
-    val scaling = boardSize / minOf(levelData.dimension.width, levelData.dimension.height) / 100
-
-    // make sure the exit can cover the whole main block
-    val exitWidthMult = 1 + levelData.blocks[0].dimension.width
-
-    Box {
-        ExitOverlay(
-            boardSize = boardSize,
-            cellWidth = cellWidth,
-            cellHeight = cellHeight,
-            exitRow = levelData.exit.y,
-            exitWidthMult = exitWidthMult,
-        )
-
-        Box(
-            Modifier
-                .size(boardSize)
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(scaling * BOARD_CORNER_SCALE))
-        ) {
-
-            levelData.blocks.forEachIndexed { index, block ->
-                GameBlock(
-                    block = block,
-                    index = index,
-                    levelData = levelData,
-                    isLevelWon = isLevelWon,
-                    boardSize = boardSize,
-                    cellWidth = cellWidth,
-                    cellHeight = cellHeight,
-                    scaling = scaling,
-                    onLevelChanged = onLevelChanged,
-                    onLevelWon = onLevelWon,
-                )
-            }
-        }
-    }
-    }
-}
-
-@Composable
-private fun ExitOverlay(
-    boardSize: Dp,
-    cellWidth: Dp,
-    cellHeight: Dp,
-    exitRow: Int,
-    exitWidthMult: Int,
-) {
-    Box(
-        Modifier
-            .size(cellWidth * exitWidthMult + 1.dp, cellHeight)
-            .offset(boardSize - 1.dp, cellHeight * exitRow)
-            .background(MaterialTheme.colorScheme.primary)
-    )
-    Box(
-        Modifier
-            .size(cellWidth * exitWidthMult, cellHeight)
-            .offset(boardSize, cellHeight * exitRow)
-            .zIndex(1f)
-            .background(
-                brush = Brush.horizontalGradient(
-                    colorStops = arrayOf(
-                        0f to Color.Transparent,
-                        1f / exitWidthMult to MaterialTheme.colorScheme.background
-                    )
-                )
-            )
-    )
-}
-
-@Composable
-private fun GameBlock(
-    block: Block,
-    index: Int,
-    levelData: LevelData,
-    isLevelWon: Boolean,
-    boardSize: Dp,
-    cellWidth: Dp,
-    cellHeight: Dp,
-    scaling: Dp,
-    onLevelChanged: (LevelData) -> Unit,
-    onLevelWon: () -> Unit,
-) {
-    val isMainBlock = index == 0
-    val color = when {
-        isMainBlock -> MaterialTheme.colorScheme.tertiary
-        block.fixed -> MaterialTheme.colorScheme.secondaryContainer
-        else -> MaterialTheme.colorScheme.primaryContainer
-    }
-    val blockWidth = cellWidth * block.dimension.width
-    val blockHeight = cellHeight * block.dimension.height
-
-    var offsetX by remember(block, levelData) { mutableStateOf(cellWidth * block.position.x) }
-    var offsetY by remember(block, levelData) { mutableStateOf(cellHeight * block.position.y) }
-
-    val targetOffsetX = if (isMainBlock && isLevelWon) boardSize + cellWidth else offsetX
-    val currentOffsetX = animatedDp(
-        targetOffsetX,
-        Motion.over(if (isMainBlock && isLevelWon) WIN_ANIM_MILLIS else 0),
-    )
-
-    var modifier = Modifier
-        .size(blockWidth, blockHeight)
-        .offset { IntOffset(currentOffsetX.roundToPx(), offsetY.roundToPx()) }
-        .padding(scaling * BLOCK_INSET_SCALE)
-        .background(color, shape = RoundedCornerShape(percent = BLOCK_CORNER_PERCENT))
-
-    if (!block.fixed) {
-        modifier = modifier.blockDragGestures(
-            block = block,
-            levelData = levelData,
-            isLevelWon = isLevelWon,
-            cellWidth = cellWidth,
-            cellHeight = cellHeight,
-            isMainBlock = isMainBlock,
-            onLevelWon = onLevelWon,
-            onLevelChanged = onLevelChanged,
-            index = index,
-            offsetXProvider = { offsetX },
-            offsetYProvider = { offsetY },
-            offsetXUpdater = { offsetX = it },
-            offsetYUpdater = { offsetY = it }
-        )
-    }
-
-    Box(modifier = modifier)
-}
-
-private const val WIN_ANIM_MILLIS = 600
-private const val BLOCK_INSET_SCALE = 4
-private const val BLOCK_CORNER_PERCENT = 10
-private const val BOARD_CORNER_SCALE = 12
