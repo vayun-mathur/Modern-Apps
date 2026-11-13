@@ -80,8 +80,15 @@ fun ArrowsBoard(
                 game.puzzle.pieces.firstOrNull { it.id == move.pieceId }?.cells?.size ?: 1
             val flight = remember { Flight(move, segmentCount) }
             LaunchedEffect(Unit) {
-                flight.fly()
-                finished(move.id)
+                // `finally`, so a flight cut short is settled too. The move was applied at tap
+                // time, so all that is left is to stop drawing it in the air; without this, a
+                // board that left composition mid-flight (Settings opened, Game Center pushed)
+                // kept the move pending and replayed the whole flight from the start on return.
+                try {
+                    flight.fly()
+                } finally {
+                    finished(move.id)
+                }
             }
             flight
         }

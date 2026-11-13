@@ -1,6 +1,9 @@
 package com.vayunmathur.games.arrows.ui.components
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -153,6 +156,31 @@ class ArrowsBoardTest {
         }
         rule.waitUntil(timeoutMillis = 10_000) { finished.size == 2 }
         assertEquals(setOf(1L, 2L), finished.toSet())
+    }
+
+    @Test
+    fun boardLeavingCompositionMidFlightSettlesTheMove() {
+        val finished = mutableListOf<Long>()
+        val g = game(removed = setOf(0))
+        val piece = g.puzzle.pieces[0]
+        val move = ArrowMove(piece.id, piece.cells + listOf(at(2, 3), at(2, 4)), 2, true, id = 7L)
+        var shown by mutableStateOf(true)
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            if (shown) {
+                ArrowsBoard(g, showRoutes = true, moves = listOf(move), onTapArrow = {}, onMoveFinished = { finished += it })
+            }
+        }
+        // Two frames in: well short of the shortest flight, so the arrow is still in the air.
+        rule.mainClock.advanceTimeByFrame()
+        rule.mainClock.advanceTimeByFrame()
+        assertTrue(finished.isEmpty())
+        // Navigating away (Settings) disposes the board; the move must be retired rather than
+        // left pending to replay from the start when the board comes back.
+        shown = false
+        rule.mainClock.advanceTimeByFrame()
+        rule.waitForIdle()
+        assertEquals(listOf(7L), finished)
     }
 
     @Test
