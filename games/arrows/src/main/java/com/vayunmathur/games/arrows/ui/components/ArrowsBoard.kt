@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -108,12 +110,17 @@ fun ArrowsBoard(
         }.orEmpty()
     }
 
-    BoxWithConstraints(modifier) {
-        val cell = maxWidth / cols
+    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+        // Fit both ways when the height is bounded, so a tall board on a landscape phone shrinks
+        // its cells instead of overflowing into a scroll. Unbounded (inside a scrolling parent)
+        // only the width can decide.
+        val byWidth = maxWidth / cols
+        val cell = if (constraints.hasBoundedHeight) minOf(byWidth, maxHeight / game.puzzle.rows) else byWidth
 
         Box(
             Modifier
                 .size(cell * cols, cell * game.puzzle.rows)
+                .testTag(BOARD_TEST_TAG)
                 .pointerInput(game.puzzle, game.removed, game.isOver) {
                     detectTapGestures { offset ->
                         val cellPx = size.width.toFloat() / cols
@@ -237,6 +244,9 @@ private class Flight(val move: ArrowMove, private val segmentCount: Int) {
         }
     }
 }
+
+/** Tags the painted board itself, as opposed to the space it is centred in. */
+internal const val BOARD_TEST_TAG = "arrows_board"
 
 /** How far past the head cell's centre the tip reaches, as a fraction of a cell. */
 private const val HEAD_REACH = 0.34f

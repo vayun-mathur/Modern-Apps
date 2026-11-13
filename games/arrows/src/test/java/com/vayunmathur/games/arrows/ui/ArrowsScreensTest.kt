@@ -4,7 +4,15 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.dp
+import com.vayunmathur.games.arrows.ui.components.BOARD_TEST_TAG
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -221,5 +229,42 @@ class ArrowsScreensTest {
         // Tapped: the level is requested and the cleared board stays up while the next generates.
         state = state.copy(level = 4, generating = true)
         rule.onNodeWithText(str(UiR.string.next_level)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun tallBoardFitsALandscapePhoneWithoutScrolling() {
+        // The largest ladder board, 9 x 12, with an arrow on the bottom row.
+        val cols = 9
+        val big = ArrowsGameState(
+            ArrowsPuzzle(cols, 12, listOf(ArrowPiece(0, listOf(at(11, 0, cols), at(11, 1, cols)), Direction.RIGHT))),
+            emptySet(), STARTING_HEARTS, 70, GameMode.CASUAL,
+        )
+        rule.setContent {
+            Box(Modifier.requiredSize(800.dp, 360.dp).testTag("frame")) {
+                ArrowsGameScreen(ArrowsUiState(game = big, level = 70), RecordingActions(), {}, {})
+            }
+        }
+        // Measured against the frame, which Robolectric's smaller default screen may offset.
+        val frame = rule.onNodeWithTag("frame").getBoundsInRoot()
+        val board = rule.onNodeWithTag(BOARD_TEST_TAG).getBoundsInRoot()
+        assertTrue(board.bottom <= frame.bottom, "board must fit the height: $board in $frame")
+        // Square cells: the board keeps its 9:12 shape rather than being squashed to fit.
+        assertEquals((board.width / cols).value, (board.height / 12).value, 0.5f)
+        // The status sits beside the board, still on screen.
+        rule.onNodeWithText(str(UiR.string.restart)).assertIsDisplayed()
+        val restart = rule.onNodeWithText(str(UiR.string.restart)).getBoundsInRoot()
+        assertTrue(restart.left >= board.right, "landscape status belongs beside the board")
+    }
+
+    @Test
+    fun portraitBoardStillStacksAboveTheStatus() {
+        rule.setContent {
+            Box(Modifier.requiredSize(400.dp, 800.dp)) {
+                ArrowsGameScreen(ArrowsUiState(game = game(), level = 3), RecordingActions(), {}, {})
+            }
+        }
+        val board = rule.onNodeWithTag(BOARD_TEST_TAG).getBoundsInRoot()
+        val restart = rule.onNodeWithText(str(UiR.string.restart)).getBoundsInRoot()
+        assertTrue(restart.top >= board.bottom)
     }
 }

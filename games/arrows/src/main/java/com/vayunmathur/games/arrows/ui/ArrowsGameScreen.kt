@@ -2,7 +2,10 @@ package com.vayunmathur.games.arrows.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,6 +46,12 @@ import com.vayunmathur.library.ui.game.HeartsRow
 
 /** Caps the board on tablets, where a full-width grid would give absurdly large cells. */
 private val BoardMaxWidth = 420.dp
+
+/** Below this height (a landscape phone) the status moves beside the board. */
+private val CompactHeight = 480.dp
+
+/** The landscape status panel only needs room for a button and a line of text. */
+private val SidePanelMaxWidth = 280.dp
 
 /**
  * The board, with no dependency on the ViewModel so it can be rendered from a `@Preview` — see
@@ -89,113 +98,89 @@ fun ArrowsGameScreen(
         },
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = Spacing.md),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
-        ) {
-            if (daily) {
-                DailyStreakText(state.dailyStreak)
-            }
-
-            val game = state.game
-            when {
-                state.generationFailed -> Column(
-                    Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    Text(
-                        stringResource(R.string.generation_failed),
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                    )
-                    Button(onClick = { actions.retryGeneration() }) {
-                        Text(stringResource(R.string.try_again))
-                    }
-                }
-
-                game == null -> Box(
+        val game = state.game
+        when {
+            state.generationFailed || game == null -> Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = Spacing.md),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                if (daily) DailyStreakText(state.dailyStreak)
+                if (state.generationFailed) GenerationFailed(actions) else Box(
                     Modifier
                         .fillMaxWidth()
                         .padding(Spacing.xxl),
                     contentAlignment = Alignment.Center,
                 ) { CircularProgressIndicator() }
+            }
 
-                else -> {
-                    HeartsRow(remaining = game.hearts, total = STARTING_HEARTS)
-
+            else -> BoxWithConstraints(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = Spacing.md),
+            ) {
+                val board: @Composable (Modifier) -> Unit = { boardModifier ->
                     ArrowsBoard(
                         game = game,
                         showRoutes = state.showRoutes,
                         moves = state.moves,
                         onTapArrow = actions::tapArrow,
                         onMoveFinished = actions::finishMove,
-                        modifier = Modifier
-                            .widthIn(max = BoardMaxWidth)
-                            .fillMaxWidth(),
+                        modifier = boardModifier.widthIn(max = BoardMaxWidth),
                     )
-
-                    when {
-                        game.isWon -> {
-                            Text(
-                                stringResource(R.string.board_cleared),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            if (daily) {
-                                Text(
-                                    stringResource(R.string.daily_come_back_tomorrow),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                )
-                            } else {
-                                // Disabled while the next board is loading, so a second tap
-                                // cannot land on a button that has already done its job.
-                                Button(
-                                    onClick = { actions.nextLevel() },
-                                    enabled = !state.generating,
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) { Text(stringResource(UiR.string.next_level)) }
-                            }
+                }
+                val onRestart = { hasProgress: Boolean ->
+                    if (hasProgress) confirmRestart = true else actions.restartLevel()
+                }
+                // A landscape phone has too little height to stack the status under a tall
+                // board, so the status moves to a panel beside it and the board gets the full
+                // height. The board itself sizes its cells to fit both ways, so it never scrolls.
+                if (maxWidth > maxHeight && maxHeight < CompactHeight) {
+                    Row(
+                        Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(vertical = Spacing.sm),
+                            contentAlignment = Alignment.Center,
+                        ) { board(Modifier.fillMaxSize()) }
+                        Column(
+                            Modifier
+                                .widthIn(max = SidePanelMaxWidth)
+                                .fillMaxHeight()
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(Spacing.md, Alignment.CenterVertically),
+                        ) {
+                            GameHeader(state, game.hearts)
+                            GameStatus(state, actions, onRestart)
                         }
-
-                        game.isFailed -> {
-                            Text(
-                                stringResource(R.string.out_of_hearts),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                            Button(
-                                onClick = { actions.restartLevel() },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) { Text(stringResource(R.string.try_again)) }
-                        }
-
-                        else -> {
-                            if (game.removed.isEmpty() && game.hearts == STARTING_HEARTS) {
-                                Text(
-                                    stringResource(R.string.how_to_play),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                            // Restart puts every arrow back, so only ask when the
-                            // board has moved: a fresh board restarts into itself.
-                            val hasProgress = game.removed.isNotEmpty() ||
-                                game.hearts != STARTING_HEARTS
-                            OutlinedButton(onClick = {
-                                if (hasProgress) confirmRestart = true
-                                else actions.restartLevel()
-                            }) {
-                                Text(stringResource(UiR.string.restart))
-                            }
-                        }
+                    }
+                } else {
+                    Column(
+                        Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                    ) {
+                        GameHeader(state, game.hearts)
+                        // Takes whatever height the header and status leave, but no more, so a
+                        // board that fits keeps the status right under it.
+                        Box(
+                            Modifier
+                                .weight(1f, fill = false)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) { board(Modifier.fillMaxWidth()) }
+                        GameStatus(state, actions, onRestart)
                     }
                 }
             }
@@ -212,5 +197,87 @@ fun ArrowsGameScreen(
             onConfirm = { actions.restartLevel() },
             onDismiss = { confirmRestart = false },
         )
+    }
+}
+
+@Composable
+private fun GenerationFailed(actions: ArrowsGameActions) {
+    Text(
+        stringResource(R.string.generation_failed),
+        color = MaterialTheme.colorScheme.error,
+        textAlign = TextAlign.Center,
+    )
+    Button(onClick = { actions.retryGeneration() }) {
+        Text(stringResource(R.string.try_again))
+    }
+}
+
+/** The streak (daily only) and the hearts, above the board or at the top of the side panel. */
+@Composable
+private fun GameHeader(state: ArrowsUiState, hearts: Int) {
+    if (state.mode == GameMode.DAILY) DailyStreakText(state.dailyStreak)
+    HeartsRow(remaining = hearts, total = STARTING_HEARTS)
+}
+
+/**
+ * What to do next: the cleared or failed message with its button, or the hint and Restart while
+ * playing. [onRestart] gets whether the board has progress worth confirming before it is lost.
+ */
+@Composable
+private fun GameStatus(state: ArrowsUiState, actions: ArrowsGameActions, onRestart: (Boolean) -> Unit) {
+    val game = state.game ?: return
+    val daily = state.mode == GameMode.DAILY
+    when {
+        game.isWon -> {
+            Text(
+                stringResource(R.string.board_cleared),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            if (daily) {
+                Text(
+                    stringResource(R.string.daily_come_back_tomorrow),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
+            } else {
+                // Disabled while the next board is loading, so a second tap
+                // cannot land on a button that has already done its job.
+                Button(
+                    onClick = { actions.nextLevel() },
+                    enabled = !state.generating,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(UiR.string.next_level)) }
+            }
+        }
+
+        game.isFailed -> {
+            Text(
+                stringResource(R.string.out_of_hearts),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Button(
+                onClick = { actions.restartLevel() },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(stringResource(R.string.try_again)) }
+        }
+
+        else -> {
+            if (game.removed.isEmpty() && game.hearts == STARTING_HEARTS) {
+                Text(
+                    stringResource(R.string.how_to_play),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            // Restart puts every arrow back, so only ask when the
+            // board has moved: a fresh board restarts into itself.
+            val hasProgress = game.removed.isNotEmpty() || game.hearts != STARTING_HEARTS
+            OutlinedButton(onClick = { onRestart(hasProgress) }) {
+                Text(stringResource(UiR.string.restart))
+            }
+        }
     }
 }
