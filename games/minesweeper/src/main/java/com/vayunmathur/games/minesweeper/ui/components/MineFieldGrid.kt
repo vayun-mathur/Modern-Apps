@@ -25,7 +25,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.minesweeper.R
 import com.vayunmathur.games.minesweeper.data.GameOutcome
@@ -73,6 +77,7 @@ fun MineFieldGrid(
                             index = index,
                             onTap = { onTap(index) },
                             onLongPress = { onLongPress(index) },
+                            cell = cell,
                             modifier = Modifier.size(cell),
                         )
                     }
@@ -88,9 +93,11 @@ private fun MineCell(
     index: Int,
     onTap: () -> Unit,
     onLongPress: () -> Boolean,
+    cell: Dp,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
 
     val revealed = game.revealed[index]
@@ -164,7 +171,10 @@ private fun MineCell(
                 text = count.toString(),
                 color = countColor(count, scheme),
                 fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
+                // 15sp follows the font setting only until the digit fills the cell: a Large
+                // field's ~27dp cells overflowed at 200% font, and the number spilled out.
+                fontSize = density.fitSp(15.sp, (cell - CellGap * 2) * COUNT_CELL_FRACTION),
+                lineHeight = COUNT_LINE_EM.em,
             )
         }
     }
@@ -172,6 +182,19 @@ private fun MineCell(
 
 /** Gap between cells, so the field reads as a grid without needing drawn lines. */
 private val CellGap = 1.dp
+
+/** A count never renders taller than this share of its cell. */
+private const val COUNT_CELL_FRACTION = 0.7f
+
+/** Line box of a count relative to its size, so the line cannot outgrow the cell. */
+private const val COUNT_LINE_EM = 1.15f
+
+/**
+ * [preferred], unless at the current font scale it would render taller than [cap] — then [cap].
+ * Compared in pixels, so Android 14's non-linear font scaling is handled.
+ */
+private fun Density.fitSp(preferred: TextUnit, cap: Dp): TextUnit =
+    if (preferred.toPx() > cap.toPx()) cap.toSp() else preferred
 
 /**
  * The traditional per-number colours, mapped onto theme roles so they still work in both light and

@@ -10,7 +10,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -110,6 +117,24 @@ class MinesweeperBoardTest {
         changes = true
         cell.performSemanticsAction(SemanticsActions.OnLongClick)
         assertEquals(listOf(HapticFeedbackType.LongPress), buzzes)
+    }
+
+    @Test
+    fun countsStayInsideLargeFieldCellsAtDoubleFontScale() {
+        // A Large-field-sized cell (~27dp) with a revealed count, at 200% font.
+        val revealed = List(9) { it == 0 }
+        composeRule.setContent {
+            val current = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(current.density, fontScale = 2f)) {
+                Box(Modifier.size(81.dp)) {
+                    MineFieldGrid(field(revealed = revealed), onTap = {}, onLongPress = { false })
+                }
+            }
+        }
+        val cell = composeRule.onNodeWithContentDescription("Row 1, column 1", substring = true)
+            .getUnclippedBoundsInRoot()
+        val digit = composeRule.onNodeWithText("1", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue(digit.bottom - digit.top <= cell.bottom - cell.top, "count fits its cell: $digit in $cell")
     }
 
     @Test
