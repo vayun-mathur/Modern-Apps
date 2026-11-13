@@ -226,18 +226,6 @@ fun LetterChooser(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    val primaryColor = MaterialTheme.colorScheme.primary
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val centers = geometry.centers
-                        selectedLettersIndices.zipWithNext { a, b ->
-                            drawLine(primaryColor, centers[a], centers[b], 10f, cap = StrokeCap.Round)
-                        }
-                        val lastLetter = selectedLettersIndices.lastOrNull()
-                        val dragPosition = currentDragPosition
-                        if (lastLetter != null && dragPosition != null) {
-                            drawLine(primaryColor, centers[lastLetter], dragPosition, 10f, cap = StrokeCap.Round)
-                        }
-                    }
                     Surface(
                         Modifier.fillMaxSize(0.9f),
                         CircleShape,
@@ -271,6 +259,21 @@ fun LetterChooser(
                                 42.sp,
                                 tileSize
                             )
+                        }
+                    }
+
+                    // The trail goes on top of the tiles: drawn first, it vanished under them and
+                    // under the wheel backdrop, so the live segment to the finger was hidden.
+                    val primaryColor = MaterialTheme.colorScheme.primary
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val centers = geometry.centers
+                        selectedLettersIndices.zipWithNext { a, b ->
+                            drawLine(primaryColor, centers[a], centers[b], 10f, cap = StrokeCap.Round)
+                        }
+                        val lastLetter = selectedLettersIndices.lastOrNull()
+                        val dragPosition = currentDragPosition
+                        if (lastLetter != null && dragPosition != null) {
+                            drawLine(primaryColor, centers[lastLetter], dragPosition, 10f, cap = StrokeCap.Round)
                         }
                     }
                 }
