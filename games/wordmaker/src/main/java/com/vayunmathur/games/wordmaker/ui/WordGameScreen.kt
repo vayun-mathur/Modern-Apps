@@ -104,7 +104,7 @@ fun WordGameScreen(
     // Animation state: solution and bonus word-place flights queue up (#807) so a fast
     // second word waits for the first flight to finish instead of cancelling it.
     var wordBoxOffset by remember(levelKey) { mutableStateOf(Offset.Zero) }
-    var bonusButtonOffset by remember(levelKey) { mutableStateOf(Offset.Zero) }
+    var bonusButtonCenter by remember(levelKey) { mutableStateOf(Offset.Zero) }
     var crosswordCellPositions by remember(levelKey) {
         mutableStateOf<Map<Pair<Int, Int>, Offset>>(
             emptyMap()
@@ -270,7 +270,7 @@ fun WordGameScreen(
                 bonusWords = bonusWords,
                 bonusShake = bonusShakeAnim.value,
                 onOpenBonusWords = { showBonusWordsDialog = true },
-                onBonusButtonPositioned = { bonusButtonOffset = it },
+                onBonusButtonPositioned = { bonusButtonCenter = it },
                 remainingCooldownMs = remainingCooldown,
                 onOpenHint = { showHintDialog = true },
             )
@@ -290,7 +290,8 @@ fun WordGameScreen(
                 animatedWord = wordPlaceAnimations.activeBonusWord,
                 animationProgress = wordPlaceAnimations.bonusProgress,
                 wordBoxOffset = wordBoxOffset,
-                bonusButtonOffset = bonusButtonOffset,
+                bonusButtonCenter = bonusButtonCenter,
+                rootOffset = rootOffset,
                 animatedLetters = wordPlaceAnimations.animatedLetters,
                 scale = scale,
             )

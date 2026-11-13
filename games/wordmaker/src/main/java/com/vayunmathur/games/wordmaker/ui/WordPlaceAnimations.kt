@@ -13,7 +13,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.wordmaker.data.CrosswordData
 import com.vayunmathur.games.wordmaker.platform.WordGameActions
@@ -126,3 +128,24 @@ fun rememberWordPlaceAnimations(
 
 private const val LETTER_FLIGHT_MILLIS = 800
 private const val BONUS_FLIGHT_MILLIS = 800
+
+/**
+ * Top-left of the flying bonus word at [progress], in the overlay's coordinate space.
+ *
+ * Both ends arrive as root coordinates (localToRoot), so [rootOffset] - where the overlay itself
+ * sits in the root - is subtracted, exactly as the solution flights do; without it the word landed
+ * that far below the button, off the bottom of the screen. It ends centred on the bonus button
+ * ([bonusCenter]) rather than with its top-left corner there, so as it shrinks around its own
+ * centre it disappears into the button.
+ */
+internal fun bonusFlightOffset(
+    wordBox: Offset,
+    bonusCenter: Offset,
+    rootOffset: Offset,
+    wordSize: IntSize,
+    progress: Float,
+): Offset {
+    val start = wordBox - rootOffset
+    val end = bonusCenter - rootOffset - Offset(wordSize.width / 2f, wordSize.height / 2f)
+    return lerp(start, end, progress)
+}

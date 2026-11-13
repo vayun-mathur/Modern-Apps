@@ -10,15 +10,21 @@ import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,8 +60,12 @@ fun WordGameOverlays(
     onDismissDefinition: () -> Unit,
     animatedWord: String?,
     animationProgress: Animatable<Float, AnimationVector1D>,
+    /** Root position of the formed-word box's text: where a bonus word takes off. */
     wordBoxOffset: Offset,
-    bonusButtonOffset: Offset,
+    /** Root position of the bonus button's centre: where a bonus word lands. */
+    bonusButtonCenter: Offset,
+    /** Root position of the overlay's own origin; flights are drawn relative to it. */
+    rootOffset: Offset,
     animatedLetters: List<AnimatedLetter>,
     scale: Float,
 ) {
@@ -97,8 +107,8 @@ fun WordGameOverlays(
     if (animatedWord == null && animatedLetters.isEmpty()) return
     Box(Modifier.fillMaxSize(), contentAlignment = AbsoluteAlignment.TopLeft) {
         animatedWord?.let { word ->
+            var wordSize by remember { mutableStateOf(IntSize.Zero) }
             val progress = animationProgress.value
-            val currentOffset = lerp(wordBoxOffset, bonusButtonOffset, progress)
             val alpha = 1f - progress
             val animScale = 1f - (progress * 0.5f)
 
@@ -107,7 +117,13 @@ fun WordGameOverlays(
                 fontWeight = FontWeight.Bold,
                 fontSize = 32.sp,
                 modifier = Modifier
-                    .absoluteOffset { IntOffset(currentOffset.x.toInt(), currentOffset.y.toInt()) }
+                    .onSizeChanged { wordSize = it }
+                    .absoluteOffset {
+                        val offset = bonusFlightOffset(
+                            wordBoxOffset, bonusButtonCenter, rootOffset, wordSize, animationProgress.value
+                        )
+                        IntOffset(offset.x.toInt(), offset.y.toInt())
+                    }
                     .graphicsLayer(
                         scaleX = animScale,
                         scaleY = animScale,

@@ -142,6 +142,7 @@ fun BoxScope.WordGameCornerButtons(
     bonusWords: Set<String>,
     bonusShake: Float,
     onOpenBonusWords: () -> Unit,
+    /** Receives the bonus button's centre in root coordinates. */
     onBonusButtonPositioned: (Offset) -> Unit,
     remainingCooldownMs: Long,
     onOpenHint: () -> Unit,
@@ -152,7 +153,11 @@ fun BoxScope.WordGameCornerButtons(
             // Same 16 dp inset as the hint button opposite, so the two corner buttons line up
             // (the extra 32 dp bottom padding left the bonus button floating higher).
             .padding(16.dp)
-            .onGloballyPositioned { onBonusButtonPositioned(it.localToRoot(Offset.Zero)) }
+            // Report the button's centre, the bonus flight's landing point. Measured outside
+            // the shake layer, so a shake does not move the target.
+            .onGloballyPositioned {
+                onBonusButtonPositioned(it.localToRoot(Offset(it.size.width / 2f, it.size.height / 2f)))
+            }
             .graphicsLayer {
                 translationX = bonusShake
             },

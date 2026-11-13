@@ -316,7 +316,7 @@ class WordMakerComposeTest {
                         showHintDialog = true, onDismissHint = {}, crosswordData = board(), foundWords = emptySet(), revealedHints = emptySet(),
                         actions = actions, showBonusWordsDialog = false, onDismissBonusWords = {}, bonusWords = emptySet(),
                         wordWithDefinition = null, onDismissDefinition = {}, animatedWord = "CAT", animationProgress = progress,
-                        wordBoxOffset = Offset.Zero, bonusButtonOffset = Offset(100f, 100f),
+                        wordBoxOffset = Offset.Zero, bonusButtonCenter = Offset(100f, 100f), rootOffset = Offset.Zero,
                         animatedLetters = listOf(AnimatedLetter('C', Offset.Zero, Offset(50f, 50f), letterProgress)), scale = 1f,
                     )
                 }
@@ -334,7 +334,7 @@ class WordMakerComposeTest {
                     showHintDialog = false, onDismissHint = {}, crosswordData = board(), foundWords = emptySet(), revealedHints = emptySet(),
                     actions = WordGameActions.Noop, showBonusWordsDialog = true, onDismissBonusWords = {}, bonusWords = setOf("DOG"),
                     wordWithDefinition = null, onDismissDefinition = {}, animatedWord = null, animationProgress = animationProgress,
-                    wordBoxOffset = Offset.Zero, bonusButtonOffset = Offset.Zero, animatedLetters = emptyList(), scale = 1f,
+                    wordBoxOffset = Offset.Zero, bonusButtonCenter = Offset.Zero, rootOffset = Offset.Zero, animatedLetters = emptyList(), scale = 1f,
                 )
             }
         }
