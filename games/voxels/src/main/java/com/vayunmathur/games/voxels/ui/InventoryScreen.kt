@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,6 +47,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,6 +58,14 @@ import com.vayunmathur.library.ui.Text
 import kotlin.math.roundToInt
 
 private data class DragState(val from: Int, val pos: Offset, val id: Int, val count: Int)
+
+private val NARROW_PANEL = 700.dp
+private val SLOT_GAP = 4.dp
+private val SLOT_MAX = 46.dp
+private val SLOT_MIN = 26.dp
+
+/** Slot edge for a 9-wide grid in [width]: as big as fits, between [SLOT_MIN] and [SLOT_MAX]. */
+internal fun inventorySlotSize(width: Dp): Dp = ((width - SLOT_GAP * 8) / 9).coerceIn(SLOT_MIN, SLOT_MAX)
 
 @Composable
 fun InventoryOverlay(
@@ -79,13 +89,15 @@ fun InventoryOverlay(
         Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f))
             .pointerInput(Unit) { detectTapGestures { onClose() } }
     ) {
-        Row(
+        BoxWithConstraints(
             Modifier.align(Alignment.Center).fillMaxWidth(0.94f).fillMaxHeight(0.86f)
                 .clip(RoundedCornerShape(14.dp)).background(Color(0xF01A1E1A))
                 .pointerInput(Unit) { detectTapGestures { } } // swallow taps on the panel
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(12.dp)
         ) {
+        // Narrow landscape phones: a 3-wide catalog leaves the 9-wide grid room for usable slots.
+        val narrow = maxWidth < NARROW_PANEL
+        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             // Left tabs (top→bottom: Crafting, Outfit, Inventory).
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TabButton(stringResource(R.string.crafting), leftTab == 2) { leftTab = 2 }
@@ -120,7 +132,7 @@ fun InventoryOverlay(
 
             // Right catalog (creative): tap a block to add a stack. Eight 96 dp tabs don't fit the
             // 236 dp column, so the tab strip scrolls sideways.
-            Column(Modifier.width(236.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.width(if (narrow) 160.dp else 236.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TabButton("Natural", catTab == 0) { catTab = 0 }
                     TabButton("Ores", catTab == 1) { catTab = 1 }
@@ -133,8 +145,9 @@ fun InventoryOverlay(
                 }
                 Spacer(Modifier.height(8.dp))
                 val cat = when (catTab) { 0 -> catalogNatural; 1 -> catalogOres; 3 -> catalogOcean; 4 -> catalogItems; 5 -> catalogBlessings; 6 -> catalogGear; 7 -> catalogMusic; else -> catalogBuilding }
-                CatalogGrid(cat) { id -> try { VoxelsNative.giveBlock(id) } catch (_: Exception) {} }
+                CatalogGrid(cat, columns = if (narrow) 3 else 4) { id -> try { VoxelsNative.giveBlock(id) } catch (_: Exception) {} }
             }
+        }
         }
 
         // Floating dragged item.
@@ -160,12 +173,12 @@ private fun TabButton(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SlotBox(index: Int, slot: InvSlot, bounds: MutableMap<Int, Rect>,
+private fun SlotBox(index: Int, slot: InvSlot, bounds: MutableMap<Int, Rect>, slotSize: Dp,
                     onDragStart: (Int, Offset) -> Unit, onDragMove: (Offset) -> Unit,
                     onDragEnd: () -> Unit, onDragCancel: () -> Unit) {
     val icon = rememberBlockIcon(slot.id)
     Box(
-        Modifier.size(46.dp).onGloballyPositioned { bounds[index] = it.boundsInWindow() }
+        Modifier.size(slotSize).onGloballyPositioned { bounds[index] = it.boundsInWindow() }
             .clip(RoundedCornerShape(6.dp)).background(Color.Black.copy(alpha = 0.45f))
             .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
             .pointerInput(index) {
@@ -179,7 +192,7 @@ private fun SlotBox(index: Int, slot: InvSlot, bounds: MutableMap<Int, Rect>,
         contentAlignment = Alignment.Center
     ) {
         if (slot.id != 0) {
-            if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(30.dp), filterQuality = FilterQuality.None)
+            if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(slotSize * 0.65f), filterQuality = FilterQuality.None)
             else Text(blockNames[slot.id]?.take(2) ?: "", color = Color.White, fontSize = 10.sp)
             if (slot.count > 1 && !isDurabilityItem(slot.id)) Box(Modifier.align(Alignment.BottomEnd)) { Text("${slot.count}", color = Color.White, fontSize = 10.sp) }
             if (isDurabilityItem(slot.id)) DurabilityBar(slot.id, slot.count, Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp))
@@ -191,7 +204,10 @@ private fun SlotBox(index: Int, slot: InvSlot, bounds: MutableMap<Int, Rect>,
 private fun InventoryGrid(slots: List<InvSlot>, bounds: MutableMap<Int, Rect>,
                           onDragStart: (Int, Offset) -> Unit, onDragMove: (Offset) -> Unit,
                           onDragEnd: () -> Unit, onDragCancel: () -> Unit) {
-    fun cell(i: Int) = @Composable { SlotBox(i, slots.getOrNull(i) ?: InvSlot(0, 0), bounds, onDragStart, onDragMove, onDragEnd, onDragCancel) }
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+    // Size the slots from the space this grid actually has, so 9 columns never clip.
+    val slotSize = inventorySlotSize(maxWidth)
+    fun cell(i: Int) = @Composable { SlotBox(i, slots.getOrNull(i) ?: InvSlot(0, 0), bounds, slotSize, onDragStart, onDragMove, onDragEnd, onDragCancel) }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(stringResource(R.string.inventory_drag_to_rearrange), color = Color.White.copy(0.6f), fontSize = 12.sp)
         Spacer(Modifier.height(4.dp))
@@ -205,15 +221,16 @@ private fun InventoryGrid(slots: List<InvSlot>, bounds: MutableMap<Int, Rect>,
             for (col in 0 until 9) { cell(col)() } // hotbar
         }
     }
+    }
 }
 
 @Composable
-private fun CatalogGrid(ids: List<Int>, onPick: (Int) -> Unit) {
+private fun CatalogGrid(ids: List<Int>, columns: Int, onPick: (Int) -> Unit) {
     Column(
         Modifier.fillMaxHeight().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ids.chunked(4).forEach { rowIds ->
+        ids.chunked(columns).forEach { rowIds ->
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 rowIds.forEach { id ->
                     val icon = rememberBlockIcon(id)
