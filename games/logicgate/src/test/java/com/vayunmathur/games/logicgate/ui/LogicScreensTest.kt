@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onFirst
@@ -24,6 +27,7 @@ import com.vayunmathur.games.logicgate.domain.model.Board
 import com.vayunmathur.games.logicgate.domain.model.ChipCatalog
 import com.vayunmathur.games.logicgate.domain.model.Circuit
 import com.vayunmathur.games.logicgate.domain.model.Pin
+import com.vayunmathur.games.logicgate.domain.sim.CaseResult
 import com.vayunmathur.games.logicgate.domain.sim.VerifyResult
 import com.vayunmathur.games.logicgate.platform.ComponentCard
 import com.vayunmathur.games.logicgate.platform.EditorMode
@@ -131,6 +135,41 @@ class LogicScreensTest {
         }
         val card = rule.onAllNodes(trayCard).onFirst().getUnclippedBoundsInRoot()
         assertTrue(card.bottom - card.top > 52.dp, "card grew past its old fixed 52dp: $card")
+    }
+
+    @Test fun `talkback can read the board and flip an input`() {
+        val set = mutableListOf<Pair<Int, Int>>()
+        val actions = object : LogicActions {
+            override fun setInput(index: Int, value: Int) {
+                set += index to value
+            }
+        }
+        rule.setContent { GameScreen(state = levelState(), actions = actions, onBack = {}, onNext = {}, sideBySide = false) }
+        val board = rule.onNode(hasContentDescription(
+            str(
+                R.string.lg_cd_board,
+                ctx.resources.getQuantityString(R.plurals.lg_cd_board_gates, 0, 0),
+                ctx.resources.getQuantityString(R.plurals.lg_cd_board_wires, 0, 0),
+            ),
+            substring = true,
+        )).fetchSemanticsNode()
+        val description = board.config[SemanticsProperties.ContentDescription].joinToString()
+        assertTrue("Inputs:" in description && "Outputs:" in description, description)
+        val flip = board.config[SemanticsActions.CustomActions].single()
+        assertTrue(flip.label.startsWith("Flip input"), flip.label)
+        flip.action()
+        assertEquals(listOf(0 to 1), set)
+    }
+
+    @Test fun `test rows say whether they passed`() {
+        val cases = listOf(
+            CaseResult("NOT 0 = 1", listOf(0), listOf(1), listOf(1), ok = true),
+            CaseResult("NOT 1 = 0", listOf(1), listOf(0), listOf(1), ok = false),
+        )
+        rule.setContent { TestPanel(levelState(VerifyResult(cases)), LogicActions.Noop) }
+        rule.onNodeWithText(str(R.string.lg_cost, 0)).performClick() // expand
+        rule.onNode(hasContentDescription(str(R.string.lg_cd_case_pass, "NOT 0 = 1", "1"))).assertExists()
+        rule.onNode(hasContentDescription(str(R.string.lg_cd_case_fail, "NOT 1 = 0", "1"))).assertExists()
     }
 
     @Test fun `test panel for sandbox shows live status instead of level tests`() {

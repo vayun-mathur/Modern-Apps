@@ -23,6 +23,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -178,12 +184,26 @@ private fun CaseList(state: GameUiState, cases: List<CaseResult>, actions: Logic
                 !c.ok -> MaterialTheme.colorScheme.error.copy(alpha = 0.18f)
                 else -> Color.Transparent
             }
+            val actual = c.actual?.let { format(it, state.io.outputs) } ?: "–"
+            // Pass/fail is otherwise only a tint; say it.
+            val described = stringResource(if (c.ok) R.string.lg_cd_case_pass else R.string.lg_cd_case_fail, c.title, actual)
+            val toggleProbe = { actions.probe(if (state.probeCase == i) null else i) }
             CaseRow(
                 title = c.title,
-                actual = c.actual?.let { format(it, state.io.outputs) } ?: "–",
+                actual = actual,
                 background = background,
                 actualColor = if (c.ok) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
-                modifier = Modifier.clickable { actions.probe(if (state.probeCase == i) null else i) },
+                modifier = Modifier
+                    .clickable(onClick = toggleProbe)
+                    .clearAndSetSemantics {
+                        contentDescription = described
+                        selected = state.probeCase == i
+                        role = Role.Button
+                        onClick {
+                            toggleProbe()
+                            true
+                        }
+                    },
             )
         }
     }

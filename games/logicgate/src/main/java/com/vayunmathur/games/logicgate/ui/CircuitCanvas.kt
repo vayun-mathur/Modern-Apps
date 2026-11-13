@@ -125,7 +125,8 @@ fun CircuitCanvas(
                 cameraState.viewport = it.toSize()
                 fitIfRequested()
             }
-            .pointerInput(controller) { circuitGestures(controller) },
+            .pointerInput(controller) { circuitGestures(controller) }
+            .boardSemantics(state, resources, onToggle = actions::setInput, onEditBus = { editingInput = it }),
     ) {
         drawRect(colors.background)
         val cam = cameraState.camera

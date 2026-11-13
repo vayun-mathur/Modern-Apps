@@ -511,4 +511,30 @@
     <string name="lg_chip_output_info">An output of your component. On the finished chip it becomes an output pin.</string>
     <!-- Chip info sheet: shown for a component the player built. Sentence -->
     <string name="lg_chip_custom_info">A component you built in the sandbox, filed under <xliff:g id="group" example="Adders">%1$s</xliff:g>.</string>
+    <!-- Editor: TalkBack description of the circuit board. %1$s = gate count e.g. "3 gates", %2$s = wire count e.g. "4 wires" -->
+    <string name="lg_cd_board">Circuit board, <xliff:g id="gates" example="3 gates">%1$s</xliff:g> and <xliff:g id="wires" example="4 wires">%2$s</xliff:g>.</string>
+    <!-- Editor: TalkBack, number of gates on the board. %d = count -->
+    <plurals name="lg_cd_board_gates">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> gate</item>
+        <item quantity="other"><xliff:g id="count" example="3">%d</xliff:g> gates</item>
+    </plurals>
+    <!-- Editor: TalkBack, number of wires on the board. %d = count -->
+    <plurals name="lg_cd_board_wires">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> wire</item>
+        <item quantity="other"><xliff:g id="count" example="4">%d</xliff:g> wires</item>
+    </plurals>
+    <!-- Editor: TalkBack list of the board inputs and their values. %1$s = list e.g. "a = 0, b = 1" -->
+    <string name="lg_cd_board_inputs">Inputs: <xliff:g id="list" example="a = 0, b = 1">%1$s</xliff:g>.</string>
+    <!-- Editor: TalkBack list of the board outputs and their values. %1$s = list e.g. "out = 1" -->
+    <string name="lg_cd_board_outputs">Outputs: <xliff:g id="list" example="out = 1">%1$s</xliff:g>.</string>
+    <!-- Editor: TalkBack, one pin and its value. %1$s = pin name e.g. a, %2$s = value e.g. 1 or 0x3F -->
+    <string name="lg_cd_pin_value"><xliff:g id="name" example="a">%1$s</xliff:g> = <xliff:g id="value" example="1">%2$s</xliff:g></string>
+    <!-- Editor: TalkBack action flipping a 1-bit input. %1$s = pin name e.g. a, %2$s = current value e.g. 0 -->
+    <string name="lg_action_toggle_input">Flip input <xliff:g id="name" example="a">%1$s</xliff:g> (now <xliff:g id="value" example="0">%2$s</xliff:g>)</string>
+    <!-- Editor: TalkBack action opening the value dialog of a bus input. %1$s = pin name e.g. a, %2$s = current value e.g. 0x3F -->
+    <string name="lg_action_set_input">Set input <xliff:g id="name" example="a">%1$s</xliff:g> (now <xliff:g id="value" example="0x3F">%2$s</xliff:g>)</string>
+    <!-- Test panel: TalkBack description of a passing test row. %1$s = row title e.g. "1 OR 1 = 1", %2$s = outputs the circuit gave e.g. 1 -->
+    <string name="lg_cd_case_pass"><xliff:g id="title" example="1 OR 1 = 1">%1$s</xliff:g>: passed, got <xliff:g id="actual" example="1">%2$s</xliff:g></string>
+    <!-- Test panel: TalkBack description of a failing test row. %1$s = row title e.g. "1 OR 1 = 1", %2$s = outputs the circuit gave e.g. 0 -->
+    <string name="lg_cd_case_fail"><xliff:g id="title" example="1 OR 1 = 1">%1$s</xliff:g>: failed, got <xliff:g id="actual" example="0">%2$s</xliff:g></string>
 </resources>
