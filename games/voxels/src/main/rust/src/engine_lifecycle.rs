@@ -276,6 +276,6 @@ mod lifecycle_tests {
     }) }
 }
 
-/// Serialises tests that touch the global engine / load-phase statics.
+/// Serialises tests that touch global statics (engine, load phase, the shared input state).
 #[cfg(test)]
-static GLOBAL_ENGINE_TEST: Mutex<()> = Mutex::new(());
+pub(crate) static GLOBAL_ENGINE_TEST: Mutex<()> = Mutex::new(());

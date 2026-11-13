@@ -98,6 +98,7 @@ import com.vayunmathur.library.util.GameHubComposeHook
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.PI
 
 class MainActivity : ComponentActivity() {
     // Pause-menu state lives on the activity so onStop can pause the game: coming back from Home or
@@ -369,13 +370,24 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Fullscreen world interaction + floating look: drag on the right half looks around;
-                    // tap places a block, hold mines/attacks (repeating) — on either half of the screen.
+                    // Fullscreen world interaction: a drag that starts on the right half looks around
+                    // (swipe by default, or the floating stick); tap places a block, hold mines/attacks
+                    // (repeating) — on either half of the screen, with any finger, even while looking.
                     if (VoxelsNative.isAvailable) {
                         FloatingLookJoystick(
                             modifier = Modifier.fillMaxSize().onSizeChanged { worldSize = it },
                             onLookRate = { ry, rp ->
                                 if (!paused) try { VoxelsNative.onLookInput(ry, if (settings.invertY) -rp else rp) } catch (_: Exception) {}
+                            },
+                            // Swipe-look: the camera follows the finger; a swipe across the whole
+                            // view width turns 180 degrees (before the sensitivity setting).
+                            swipeLook = !settings.stickLook,
+                            onLookDelta = { dx, dy ->
+                                val w = worldSize.width.coerceAtLeast(1).toFloat()
+                                val k = PI.toFloat() / w
+                                if (!paused) try {
+                                    VoxelsNative.onLookDelta(-dx * k, (if (settings.invertY) -dy else dy) * k)
+                                } catch (_: Exception) {}
                             },
                             onPlace = { off -> if (!paused) try {
                                 val code = VoxelsNative.placeBlockAt(off.x, off.y)

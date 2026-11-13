@@ -75,6 +75,7 @@ mod state_tests {
     // while unpausing resumes exactly where it left off.
     #[test]
     fn a_paused_world_does_not_simulate() { big_stack(|| {
+        let _serial = GLOBAL_ENGINE_TEST.lock();
         let mut s = small_state("paused");
         s.player.flying = false;
         s.player.pos = vec3(0.5, 120.0, 0.5);
@@ -92,6 +93,7 @@ mod state_tests {
     // and the clock persists through a save.
     #[test]
     fn the_world_clock_only_advances_with_simulation() { big_stack(|| {
+        let _serial = GLOBAL_ENGINE_TEST.lock();
         let mut s = small_state("clock");
         let t0 = s.world_secs;
         for _ in 0..20 { step(&mut s, 0.05, true); }

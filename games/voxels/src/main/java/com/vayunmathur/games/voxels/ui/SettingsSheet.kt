@@ -53,6 +53,7 @@ fun SettingsSheet(settings: GameSettings, onChange: (GameSettings) -> Unit, onCl
             SliderRow(stringResource(R.string.settings_look_sensitivity), settings.lookSensitivity,
                 GameSettings.MIN_SENSITIVITY..GameSettings.MAX_SENSITIVITY) { onChange(settings.copy(lookSensitivity = it)) }
             SwitchRow(stringResource(R.string.settings_invert_y), settings.invertY) { onChange(settings.copy(invertY = it)) }
+            SwitchRow(stringResource(R.string.settings_stick_look), settings.stickLook) { onChange(settings.copy(stickLook = it)) }
             SliderRow(stringResource(R.string.settings_music_volume), settings.musicVolume, 0f..1f) { onChange(settings.copy(musicVolume = it)) }
             SliderRow(stringResource(R.string.settings_sfx_volume), settings.sfxVolume, 0f..1f) { onChange(settings.copy(sfxVolume = it)) }
             SliderRow(stringResource(R.string.settings_hud_scale), settings.hudScale,

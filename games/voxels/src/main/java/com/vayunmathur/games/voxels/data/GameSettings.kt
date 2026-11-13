@@ -1,6 +1,7 @@
 package com.vayunmathur.games.voxels.data
 
 import android.content.Context
+import androidx.core.content.edit
 
 /** Player preferences from the in-game settings sheet. */
 data class GameSettings(
@@ -16,6 +17,8 @@ data class GameSettings(
     val hudScale: Float = 1f,
     /** Show the engine's debug readout (fps, position, chunk counts). Off by default. */
     val showDebug: Boolean = false,
+    /** Look with the old floating rate stick instead of swiping (swipe-to-look is the default). */
+    val stickLook: Boolean = false,
 ) {
     /** Bounds for the sliders. */
     companion object {
@@ -53,19 +56,21 @@ object GameSettingsStore {
             sfxVolume = p.getFloat("sfx_volume", d.sfxVolume),
             hudScale = p.getFloat("hud_scale", d.hudScale),
             showDebug = p.getBoolean("show_debug", d.showDebug),
+            stickLook = p.getBoolean("stick_look", d.stickLook),
         ).sanitized()
     }
 
     /** Saves [s] (asynchronously). */
     fun save(ctx: Context, s: GameSettings) {
         val v = s.sanitized()
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
-            .putFloat("look_sensitivity", v.lookSensitivity)
-            .putBoolean("invert_y", v.invertY)
-            .putFloat("music_volume", v.musicVolume)
-            .putFloat("sfx_volume", v.sfxVolume)
-            .putFloat("hud_scale", v.hudScale)
-            .putBoolean("show_debug", v.showDebug)
-            .apply()
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit {
+            putFloat("look_sensitivity", v.lookSensitivity)
+            putBoolean("invert_y", v.invertY)
+            putFloat("music_volume", v.musicVolume)
+            putFloat("sfx_volume", v.sfxVolume)
+            putFloat("hud_scale", v.hudScale)
+            putBoolean("show_debug", v.showDebug)
+            putBoolean("stick_look", v.stickLook)
+        }
     }
 }

@@ -19,13 +19,14 @@ class GameSettingsTest {
     @get:Rule val rule = createComposeRule()
     private val ctx get() = ApplicationProvider.getApplicationContext<Context>()
 
-    @Test fun `the debug readout is off by default`() {
+    @Test fun `the debug readout is off and swipe-look is on by default`() {
         assertFalse(GameSettings().showDebug)
+        assertFalse(GameSettings().stickLook)
         assertFalse(GameSettingsStore.load(ctx).showDebug)
     }
 
     @Test fun `settings round-trip and are clamped`() {
-        val s = GameSettings(lookSensitivity = 2f, invertY = true, musicVolume = 0.3f, sfxVolume = 0.6f, hudScale = 1.25f, showDebug = true)
+        val s = GameSettings(lookSensitivity = 2f, invertY = true, musicVolume = 0.3f, sfxVolume = 0.6f, hudScale = 1.25f, showDebug = true, stickLook = true)
         GameSettingsStore.save(ctx, s)
         assertEquals(s, GameSettingsStore.load(ctx))
         GameSettingsStore.save(ctx, GameSettings(lookSensitivity = 99f, hudScale = 0f, musicVolume = -1f))

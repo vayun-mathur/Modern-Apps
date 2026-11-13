@@ -122,6 +122,7 @@
     <string name="settings">Settings</string>
     <string name="settings_look_sensitivity">Look sensitivity</string>
     <string name="settings_invert_y">Invert look up/down</string>
+    <string name="settings_stick_look">Look with a stick instead of swiping</string>
     <string name="settings_music_volume">Music volume</string>
     <string name="settings_sfx_volume">Sound effects volume</string>
     <string name="settings_hud_scale">Controls size</string>

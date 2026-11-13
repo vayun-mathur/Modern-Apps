@@ -94,3 +94,14 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_setLo
 ) {
     input::set_look_sensitivity(sensitivity);
 }
+
+/// JNI bridge for `VoxelsNative#onLookDelta`: swipe-look rotation in radians since the last call.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_onLookDelta<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+    dyaw: jfloat,
+    dpitch: jfloat,
+) {
+    input::add_look_delta(dyaw, dpitch);
+}

@@ -44,8 +44,14 @@ fun FloatingLookJoystick(
     onLookRate: (Float, Float) -> Unit,
     onPlace: (Offset) -> Unit,
     onBreak: (Offset) -> Unit,
+    // Swipe-to-look (default): the camera follows the finger, reported as pixel deltas. Off: the
+    // classic floating rate stick that keeps turning while held off-centre.
+    swipeLook: Boolean = true,
+    onLookDelta: (dx: Float, dy: Float) -> Unit = { _, _ -> },
 ) {
     val look by rememberUpdatedState(onLookRate)
+    val lookDelta by rememberUpdatedState(onLookDelta)
+    val swipe by rememberUpdatedState(swipeLook)
     val place by rememberUpdatedState(onPlace)
     val act by rememberUpdatedState(onBreak)
     var origin by remember { mutableStateOf(Offset.Zero) }
@@ -63,8 +69,10 @@ fun FloatingLookJoystick(
                     is WorldTouch.Tap -> place(Offset(e.x, e.y))
                     is WorldTouch.Act -> act(Offset(e.x, e.y))
                     WorldTouch.ActEnd -> hold = null
-                    is WorldTouch.LookStart -> { origin = Offset(e.x, e.y); knob = Offset.Zero; active = true; look(0f, 0f) }
-                    is WorldTouch.LookMove -> {
+                    is WorldTouch.LookStart -> {
+                        origin = Offset(e.x, e.y); knob = Offset.Zero; active = !swipe; look(0f, 0f)
+                    }
+                    is WorldTouch.LookMove -> if (swipe) lookDelta(e.dx, e.dy) else {
                         val nk = Offset(e.x, e.y) - origin
                         val dist = hypot(nk.x, nk.y)
                         knob = if (dist > maxR && dist > 0.001f) nk * (maxR / dist) else nk

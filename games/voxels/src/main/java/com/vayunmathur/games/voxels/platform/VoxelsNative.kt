@@ -36,6 +36,8 @@ object VoxelsNative {
     external fun nativeSetCreative(creative: Boolean)
     external fun onMoveInput(moveX: Float, moveY: Float)
     external fun onLookInput(lookYawRate: Float, lookPitchRate: Float)
+    // Swipe-look: rotation in radians since the last call (scaled by the look sensitivity natively).
+    external fun onLookDelta(dyaw: Float, dpitch: Float)
     // Camera turn-speed multiplier from the settings sheet (0.25..3).
     external fun setLookSensitivity(sensitivity: Float)
     external fun setJump(held: Boolean)
