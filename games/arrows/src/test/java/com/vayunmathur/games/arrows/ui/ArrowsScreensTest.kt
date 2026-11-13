@@ -36,6 +36,7 @@ import com.vayunmathur.library.ui.R as UiR
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -236,6 +237,7 @@ class ArrowsScreensTest {
     }
 
     @Test
+    @Config(qualifiers = "w900dp-h420dp")
     fun tallBoardFitsALandscapePhoneWithoutScrolling() {
         // The largest ladder board, 9 x 12, with an arrow on the bottom row.
         val cols = 9
@@ -261,6 +263,7 @@ class ArrowsScreensTest {
     }
 
     @Test
+    @Config(qualifiers = "w420dp-h900dp")
     fun portraitBoardStillStacksAboveTheStatus() {
         rule.setContent {
             Box(Modifier.requiredSize(400.dp, 800.dp)) {
