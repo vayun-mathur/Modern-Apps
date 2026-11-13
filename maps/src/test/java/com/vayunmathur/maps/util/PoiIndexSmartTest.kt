@@ -263,6 +263,29 @@ class PoiIndexSmartTest {
         assertEquals(listOf("Oakland", "Oakland Grill"), got)
     }
 
+    /**
+     * The index folds ASCII case only, so a typed spelling and the OSM one used to miss each
+     * other: "mcdonalds" found no "McDonald's", "cafe" no "Café", "ecole" no "École".
+     */
+    @Test
+    fun `possessives and accents match either way round`() {
+        load(
+            listOf(
+                Poi(377_749_000, -1_224_194_000, 2, "McDonald's"),
+                Poi(377_749_100, -1_224_194_100, 1, "Café Rito"),
+                Poi(377_749_200, -1_224_194_200, 11, "École du Louvre"),
+                Poi(377_749_300, -1_224_194_300, 1, "Cafe Mason"),
+                Poi(377_749_400, -1_224_194_400, 1, "Joes Diner"),
+            )
+        )
+        fun names(q: String) = PoiIndex.searchByName(q, 37.7749, -122.4194).map { it.name }.toSet()
+        assertEquals(setOf("McDonald's"), names("mcdonalds"))
+        assertEquals(setOf("Café Rito", "Cafe Mason"), names("cafe"))
+        assertEquals(setOf("Café Rito", "Cafe Mason"), names("café"))
+        assertEquals(setOf("École du Louvre"), names("ecole"))
+        assertEquals(setOf("Joes Diner"), names("joe's"))
+    }
+
     @Test
     fun `buildSearchBoost favors saved places over recents`() {
         val boost = buildSearchBoost(

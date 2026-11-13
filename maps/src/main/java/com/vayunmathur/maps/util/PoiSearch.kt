@@ -14,8 +14,9 @@ import java.text.Normalizer
  * that fold exists only to reproduce the Rust writer's sort order for
  * binary search. Matching (this file) folds case AND diacritics and drops
  * punctuation, so "Café" finds "Cafe" and "joe's" finds "Joes". Candidate
- * *lookup* in the word index still uses the writer's fold per token; the
- * scan fallback applies this normalisation to the name pool directly.
+ * *lookup* in the word index uses the writer's fold per token, looked up under
+ * several spellings (tokenKeyVariants: possessives, accents); the ranking
+ * re-matches each returned name with this normalisation.
  */
 object PoiSearch {
 
@@ -29,14 +30,22 @@ object PoiSearch {
     const val NO_MATCH = -1
 
     private val MARKS = Regex("\\p{Mn}+")
+    private val APOSTROPHES = Regex("['\u2019]")
     private val NON_WORD = Regex("[^a-z0-9]+")
 
-    /** Lowercase, strip diacritics, and reduce punctuation to spaces. */
+    /**
+     * Lowercase, strip diacritics, drop apostrophes, and reduce other punctuation to
+     * spaces. Apostrophes are deleted rather than spaced so a possessive stays one word:
+     * "McDonald's" and "mcdonalds" normalise alike.
+     */
     fun normalize(text: String): String {
-        val decomposed = Normalizer.normalize(text, Normalizer.Form.NFD)
-        val withoutMarks = MARKS.replace(decomposed, "")
-        return NON_WORD.replace(withoutMarks.lowercase(), " ").trim()
+        val withoutApostrophes = APOSTROPHES.replace(foldDiacritics(text), "")
+        return NON_WORD.replace(withoutApostrophes.lowercase(), " ").trim()
     }
+
+    /** [text] with combining marks removed ("Café" -> "Cafe"); case and punctuation kept. */
+    fun foldDiacritics(text: String): String =
+        MARKS.replace(Normalizer.normalize(text, Normalizer.Form.NFD), "")
 
     /** The normalised word tokens of [text], in order, empties removed. */
     fun tokens(text: String): List<String> =

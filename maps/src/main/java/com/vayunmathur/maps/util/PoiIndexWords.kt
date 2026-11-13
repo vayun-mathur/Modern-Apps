@@ -108,10 +108,10 @@ internal fun PoiIndex.Mapped.wordStartsWith(range: IntRange, key: ByteArray): Bo
     return true
 }
 
-/** First entry whose word is >= [key], or [entryCount]. */
-internal fun PoiIndex.Mapped.lowerBoundWord(key: ByteArray): Int {
-    var lo = 0
-    var hi = entryCount
+/** First entry in `[from, to)` whose word is >= [key], or [to]. */
+internal fun PoiIndex.Mapped.lowerBoundWord(key: ByteArray, from: Int = 0, to: Int = entryCount): Int {
+    var lo = from
+    var hi = to
     while (lo < hi) {
         val mid = (lo + hi) ushr 1
         val w = entryWord(mid)
