@@ -66,13 +66,19 @@ fun GameBoard(
                     down.consume()
                     val start = geometry.hitTest(down.position) ?: return@awaitEachGesture
                     currentStartDraw(start)
+                    var last = down.position
                     try {
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == down.id }
                             event.changes.forEach { it.consume() }
                             if (change == null || !change.pressed) break
-                            geometry.hitTestDrag(change.position)?.let { currentExtendPath(it) }
+                            // Walk every sample since the last event (batched historical
+                            // points too), cell by cell, so fast strokes never skip cells.
+                            for (p in change.historical.map { it.position } + change.position) {
+                                geometry.cellsAlong(last, p).forEach { currentExtendPath(it) }
+                                last = p
+                            }
                         }
                     } finally {
                         // Also on cancellation (the board resized mid-stroke): never leave a

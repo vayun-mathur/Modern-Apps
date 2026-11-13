@@ -68,4 +68,23 @@ class PipesStrokeTest {
         vm.onUndo()
         assertTrue(vm.uiState.value.gameState.paths.isEmpty())
     }
+
+    @Test fun skippedAndBacktrackedCellsAreHandledInOneEvent() {
+        val vm = vm()
+        val level = vm.level
+        val ep = level.endpoints[0]
+        val a = level.freeNeighbour(ep.cells[0])
+        val b = level.freeNeighbour(a, setOf(ep.cells[0]))
+        vm.startDraw(ep.cells[0])
+        // The finger landed two cells away in one event: the cell in between is filled in.
+        vm.extendPath(b)
+        val stroke = vm.uiState.value.activePath
+        assertEquals(3, stroke.size)
+        assertEquals(b, stroke.last())
+        assertTrue(stroke[1] in level.adjacency.getValue(ep.cells[0]) && b in level.adjacency.getValue(stroke[1]))
+        // A fast swipe straight back to the dot cuts the whole stroke back at once.
+        vm.extendPath(ep.cells[0])
+        assertEquals(listOf(ep.cells[0]), vm.uiState.value.activePath)
+        vm.commitDraw()
+    }
 }

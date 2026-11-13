@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.games.pipes.data.CellPos
 import com.vayunmathur.games.pipes.data.CompletedLevelsRepository
 import com.vayunmathur.games.pipes.domain.DailyLevels
+import com.vayunmathur.games.pipes.domain.StrokeRules
 import com.vayunmathur.games.pipes.data.LevelData
 import com.vayunmathur.games.pipes.data.LevelPack
 import com.vayunmathur.library.util.LevelStats
@@ -263,89 +264,9 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
         val s = _uiState.value
         val activeColor = s.activeColor ?: return
         val levelData = s.levelData ?: return
-        if (s.isLevelWon || cell !in levelData.cells) return
-        val currentPath = s.activePath
-        if (currentPath.isEmpty() || isAtPairedEndpoint(levelData, activeColor, currentPath)) return
-        if (tryBacktrack(currentPath, cell)) return
-        if (isValidStep(s, levelData, activeColor, currentPath, cell)) {
-            _uiState.update { it.copy(activePath = currentPath + cell) }
-        }
-    }
-
-    private fun isAtPairedEndpoint(
-        levelData: LevelData,
-        activeColor: Int,
-        path: List<CellPos>,
-    ): Boolean {
-        val endpointCells = levelData.endpoints.find { it.colorIndex == activeColor }?.cells
-            ?: return false
-        if (path.first() !in endpointCells || path.last() !in endpointCells) return false
-        if (path.first() == path.last()) return false
-        // Pairs: the other end. Triplets (chain): all dots visited, ending on a dot.
-        return if (endpointCells.size == 2) {
-            val paired = if (path.first() == endpointCells[0]) endpointCells[1] else endpointCells[0]
-            path.last() == paired
-        } else {
-            endpointCells.all { it in path }
-        }
-    }
-
-    private fun tryBacktrack(currentPath: List<CellPos>, cell: CellPos): Boolean {
-        if (currentPath.size < BACKTRACK_MIN_LENGTH || cell != currentPath[currentPath.size - 2]) {
-            return false
-        }
-        _uiState.update { it.copy(activePath = currentPath.dropLast(1)) }
-        return true
-    }
-
-    private fun isValidStep(
-        s: PipesUiState,
-        levelData: LevelData,
-        activeColor: Int,
-        path: List<CellPos>,
-        cell: CellPos,
-    ): Boolean {
-        if (cell in path) return false
-        val neighbors = levelData.adjacency[path.last()] ?: return false
-        if (cell !in neighbors || isForeignEndpoint(levelData, activeColor, cell)) return false
-        if (!isStraightThroughBridge(levelData, path, cell)) return false
-        return isFreeForColor(s, levelData, activeColor, cell)
-    }
-
-    private fun isForeignEndpoint(levelData: LevelData, activeColor: Int, cell: CellPos): Boolean =
-        levelData.endpoints.filter { it.colorIndex != activeColor }
-            .flatMap { it.cells }
-            .contains(cell)
-
-    /**
-     * Bridges read as an overpass only when both pipes run straight through. When the path
-     * leaves a bridge cell, the exit must continue the entry line, so a pipe cannot corner
-     * on the crossing. Long-range exits (portal/wrap jumps) are not grid lines and skip
-     * the check.
-     */
-    private fun isStraightThroughBridge(
-        levelData: LevelData,
-        path: List<CellPos>,
-        cell: CellPos,
-    ): Boolean {
-        val origin = path.lastOrNull() ?: return true
-        if (origin !in levelData.bridges || path.size < 2) return true
-        if (kotlin.math.abs(cell.row - origin.row) + kotlin.math.abs(cell.col - origin.col) != 1) {
-            return true
-        }
-        val entry = path[path.size - 2]
-        return (entry.row == origin.row && origin.row == cell.row) ||
-            (entry.col == origin.col && origin.col == cell.col)
-    }
-
-    private fun isFreeForColor(
-        s: PipesUiState,
-        levelData: LevelData,
-        activeColor: Int,
-        cell: CellPos,
-    ): Boolean {
-        val owner = s.gameState.cellOwner[cell] ?: return true
-        return owner == activeColor || cell in levelData.bridges
+        if (s.isLevelWon) return
+        val next = StrokeRules.extend(levelData, s.gameState.cellOwner, activeColor, s.activePath, cell)
+        if (next != s.activePath) _uiState.update { it.copy(activePath = next) }
     }
 
     override fun commitDraw() {
@@ -539,8 +460,5 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
 
         /** Sentinel [PipesUiState.packIndex] for "no level loaded". */
         private const val NO_PACK_INDEX = -1
-
-        /** Minimum path length for a backtrack step (needs a cell to step back from). */
-        private const val BACKTRACK_MIN_LENGTH = 2
     }
 }

@@ -106,7 +106,9 @@ class PipesViewModelTest {
         assertEquals(ep.colorIndex, vm.uiState.value.activeColor)
         assertEquals(listOf(start), vm.uiState.value.activePath)
         // Non-adjacent and foreign-endpoint steps are rejected
-        val far = level.cells.first { it != start && it !in (level.adjacency[start] ?: emptyList()) && level.endpoints.none { e -> it in e.cells } }
+        // Far = not adjacent and not two steps away either (two-step moves route through the shared neighbour)
+        val startAdj = level.adjacency[start] ?: emptyList()
+        val far = level.cells.first { c -> c != start && c !in startAdj && (level.adjacency[c] ?: emptyList()).none { it in startAdj } && level.endpoints.none { e -> c in e.cells } }
         vm.extendPath(far); assertEquals(listOf(start), vm.uiState.value.activePath)
         val foreign = level.endpoints[1].cells[0]
         if (foreign !in (level.adjacency[start] ?: emptyList())) { /* adjacency guard also covers */ }

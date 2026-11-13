@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import com.vayunmathur.games.pipes.data.CellPos
 import com.vayunmathur.games.pipes.data.LevelData
+import kotlin.math.ceil
 
 /**
  * The board's layout in cell units, independent of the pixel size it is drawn at.
@@ -126,8 +127,31 @@ class BoardGeometry(val layout: BoardLayout, val cellSizePx: Float) {
         )?.key
     }
 
+    /**
+     * Every cell a straight finger movement from [from] to [to] passes over, in order and
+     * without consecutive repeats (the cell under [from] itself is not included unless the
+     * path returns to it). Touch events arrive far apart on a fast swipe; feeding only
+     * their end points to the stroke skipped cells and stalled it.
+     */
+    fun cellsAlong(from: Offset, to: Offset): List<CellPos> {
+        if (cellSizePx <= 0f) return listOfNotNull(hitTestDrag(to))
+        val distance = (to - from).getDistance()
+        val steps = ceil(distance / (cellSizePx * SAMPLE_FRACTION)).toInt().coerceIn(1, MAX_SAMPLES)
+        val out = ArrayList<CellPos>()
+        val start = hitTestDrag(from)
+        for (i in 1..steps) {
+            val cell = hitTestDrag(from + (to - from) * (i / steps.toFloat())) ?: continue
+            if (cell != (out.lastOrNull() ?: start)) out += cell
+        }
+        return out
+    }
+
     private companion object {
         const val HEX_HIT_RADIUS = 0.62f
+
+        /** Sample spacing along a movement, as a fraction of a cell: fine enough to never jump a cell. */
+        const val SAMPLE_FRACTION = 0.25f
+        const val MAX_SAMPLES = 4096
     }
 }
 
