@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.CompositionLocalProvider
@@ -150,7 +151,9 @@ class MainActivity : ComponentActivity() {
         com.vayunmathur.games.voxels.platform.SoundFx.init(this)
         setContent {
             VoxelsTheme {
-                var inventoryJson by remember { mutableStateOf("""{"selected":0,"slots":[{"id":3,"count":64},{"id":2,"count":64},{"id":1,"count":64},{"id":4,"count":16},{"id":10,"count":32},{"id":6,"count":32},{"id":7,"count":16},{"id":8,"count":16},{"id":9,"count":16}]}""") }
+                // Empty until the engine publishes the real inventory (it used to show a fake starter
+                // kit that didn't match a loaded save for the first frames).
+                var inventoryJson by remember { mutableStateOf("{}") }
                 var debugJson by remember { mutableStateOf("Voxels Engine\nInitializing Vulkan...\nMatcha Atlas 64x64") }
                 var healthJson by remember { mutableStateOf("{}") }
                 // Player settings (gear button). The debug readout is now one of them, off by default.
@@ -528,17 +531,15 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // Health/effects HUD just above the hotbar.
-                        Box(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 78.dp)) {
-                            HealthOverlay(healthJson)
-                        }
-                        // Boss health bar (Ender Dragon) at the top.
-                        Box(Modifier.align(Alignment.TopCenter).padding(top = 70.dp)) {
-                            BossBar(healthJson)
-                        }
-                        // Elytra glide indicator, above the hotbar.
-                        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 92.dp)) {
+                        // Above the hotbar, centred between the stick and the action buttons: the glide
+                        // chip, then effects, then hearts, stacked so they can't overlap each other or
+                        // the stick (effect chips used to grow up into it from the bottom-left corner).
+                        Column(
+                            Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp).widthIn(max = 260.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
                             GlideIndicator(healthJson)
+                            HealthOverlay(healthJson)
                         }
 
                         Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)) {
@@ -556,12 +557,19 @@ class MainActivity : ComponentActivity() {
                                     IconButton(onClick = { paused = true }, modifier = hudButton) { IconMenu(tint = Color.White) }
                                     IconButton(onClick = { settingsOpen = true }, modifier = hudButton) { IconSettings(tint = Color.White) }
                                 }
+                                // Debug readout under the buttons (left), clear of the online chips (right).
+                                if (settings.showDebug) { DebugOverlay(debugJson = debugJson, modifier = Modifier.widthIn(max = 280.dp)) }
                             }
-                            if (settings.showDebug) { DebugOverlay(debugJson = debugJson) }
                         }
 
-                        newAchievement?.let { ach ->
-                            Box(Modifier.align(Alignment.TopCenter).padding(top = 80.dp)) {
+                        // Boss bar and achievement toast share one top-centre column so they stack
+                        // instead of drawing over each other.
+                        Column(
+                            Modifier.align(Alignment.TopCenter).padding(top = 70.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            BossBar(healthJson)
+                            newAchievement?.let { ach ->
                                 AchievementNotification(ach) { achievements?.dismissNotification() }
                             }
                         }

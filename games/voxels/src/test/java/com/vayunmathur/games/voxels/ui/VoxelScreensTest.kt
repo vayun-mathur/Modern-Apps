@@ -3,6 +3,13 @@ package com.vayunmathur.games.voxels.ui
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
@@ -127,5 +134,21 @@ class VoxelScreensTest {
         rule.onNodeWithText("Survival").performScrollTo().performClick()
         rule.onNodeWithText("Create & Play").performScrollTo().performClick()
         assertEquals(com.vayunmathur.games.voxels.data.WorldMode.SURVIVAL, mode)
+    }
+
+    @Test fun `taps in the hotbar's gaps don't reach the world`() {
+        var worldTaps = 0
+        rule.setContent {
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { worldTaps++ } }
+                )
+                Hotbar(inventoryJson = "{}", onSelect = {}, modifier = androidx.compose.ui.Modifier.testTag("hotbar"))
+            }
+        }
+        // The padding corner of the row is not on any slot.
+        rule.onNodeWithTag("hotbar").performTouchInput { click(androidx.compose.ui.geometry.Offset(2f, 2f)) }
+        rule.waitForIdle()
+        assertEquals(0, worldTaps)
     }
 }

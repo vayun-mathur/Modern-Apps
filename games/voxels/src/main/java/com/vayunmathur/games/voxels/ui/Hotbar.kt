@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.MaterialTheme
@@ -184,8 +186,10 @@ fun Hotbar(
         InventoryState()
     }
     val ctx = LocalContext.current
+    // The row is only as wide as its slots, and swallows taps on its padding and in the gaps between
+    // slots: a slightly-missed slot tap used to fall through and place a block in the world.
     Row(
-        modifier = modifier.fillMaxWidth().padding(8.dp),
+        modifier = modifier.pointerInput(Unit) { detectTapGestures { } }.padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
     ) {
         state.slots.take(9).forEachIndexed { idx, slot ->
