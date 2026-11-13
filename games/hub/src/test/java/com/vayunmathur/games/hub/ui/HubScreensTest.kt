@@ -103,10 +103,14 @@ class HubScreensTest {
     fun gameCardStatCardAndXpBarRender() {
         var clicked = false
         composeRule.setContent {
-            GameCard(game("chess", "Chess"), isInstalled = true, onClick = { clicked = true }, onPlay = {})
-            StatCard(label = "Playtime", value = "2h 0m")
-            XpProgressBar(totalXp = 250)
-            LevelBadge(level = 4)
+            // Stacked in a Column: StatCard now fills its width, so laid over the GameCard (the
+            // old overlapping layout) it would intercept the tap aimed at "Chess".
+            androidx.compose.foundation.layout.Column {
+                GameCard(game("chess", "Chess"), isInstalled = true, onClick = { clicked = true }, onPlay = {})
+                StatCard(label = "Playtime", value = "2h 0m")
+                XpProgressBar(totalXp = 250)
+                LevelBadge(level = 4)
+            }
         }
         composeRule.onNodeWithText("Chess").assertIsDisplayed()
         composeRule.onNodeWithText("Playtime").assertIsDisplayed()
