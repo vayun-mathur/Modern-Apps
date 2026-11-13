@@ -193,7 +193,7 @@ class WordMakerComposeTest {
         rule.setContent {
             DynamicTheme {
                 CrosswordBoard(
-                    foundWords = setOf("CAT"), revealedHints = setOf(2 to 1), crosswordData = board(), wordToAnimate = null,
+                    foundWords = setOf("CAT"), revealedHints = setOf(2 to 1), crosswordData = board(), hiddenWords = emptySet(),
                     onCellPositioned = { _, _ -> }, onCellClicked = { r, c -> clicked = r to c }, scaleUpdated = {},
                 )
             }
@@ -206,7 +206,7 @@ class WordMakerComposeTest {
         rule.setContent {
             DynamicTheme {
                 CrosswordBoard(
-                    foundWords = setOf("CAT"), revealedHints = emptySet(), crosswordData = board(), wordToAnimate = "CAT",
+                    foundWords = setOf("CAT"), revealedHints = emptySet(), crosswordData = board(), hiddenWords = setOf("CAT"),
                     onCellPositioned = { _, _ -> }, onCellClicked = { _, _ -> }, scaleUpdated = {},
                 )
             }
@@ -366,6 +366,8 @@ class WordMakerComposeTest {
         )
         runBlocking { withContext(frameClock) { with(CoroutineScope(Dispatchers.Unconfined + frameClock)) { handler("CAT", listOf(0, 1, 2)) } } }
         assertEquals("CAT", solution); assertEquals("CAT", solutionCallback)
+        // credited on submit, not when the (cosmetic) flight lands
+        assertEquals("CAT", added)
         // bonus word (in dictionary, not a solution on this board is ACT - it IS a solution; use a dict word not solution)
         val actions2 = object : WordGameActions { override fun isInDictionary(word: String) = word == "ZZTOP" }
         val handler2 = wordSubmitHandler(
@@ -430,7 +432,9 @@ class WordMakerComposeTest {
         }
         rule.runOnUiThread { anims!!.enqueueSolution(com.vayunmathur.games.wordmaker.ui.components.WordToAnimate("CAT", listOf(0, 1, 2))) }
         rule.waitForIdle()
-        assertEquals("CAT", added)
+        // the solution flight is cosmetic: the submit handler already credited the word
+        assertEquals(null, added)
+        assertTrue(anims!!.flyingSolutionWords.isEmpty())
         rule.runOnUiThread { anims!!.enqueueBonus("DOG") }
         rule.waitForIdle()
         assertEquals("DOG", bonusAdded)

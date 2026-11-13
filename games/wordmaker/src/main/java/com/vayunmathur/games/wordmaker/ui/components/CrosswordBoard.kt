@@ -38,7 +38,8 @@ fun CrosswordBoard(
     foundWords: Set<String>,
     revealedHints: Set<Pair<Int, Int>>,
     crosswordData: CrosswordData,
-    wordToAnimate: String?,
+    /** Found words to leave blank for now: their letters are still flying in. */
+    hiddenWords: Set<String>,
     onCellPositioned: (position: Pair<Int, Int>, offset: Offset) -> Unit,
     onCellClicked: (row: Int, col: Int) -> Unit,
     scaleUpdated: (Float) -> Unit
@@ -46,7 +47,7 @@ fun CrosswordBoard(
     val allCharPositions = mutableMapOf<Pair<Int, Int>, Char>()
     crosswordData.letterPositions.forEach { (word, occurrences) ->
         for (positions in occurrences) {
-            val isFound = word in foundWords && word != wordToAnimate
+            val isFound = word in foundWords && word !in hiddenWords
             word.forEachIndexed { index, char ->
                 val pos = positions[index]
                 if (isFound || (pos in revealedHints && pos !in allCharPositions)) {

@@ -207,7 +207,7 @@ fun WordGameScreen(
                     foundWords = foundWords,
                     revealedHints = revealedHints,
                     crosswordData = crosswordData,
-                    wordToAnimate = wordPlaceAnimations.activeSolutionWord,
+                    hiddenWords = wordPlaceAnimations.flyingSolutionWords,
                     onCellPositioned = { position, offset ->
                         if (crosswordCellPositions[position] != offset) {
                             crosswordCellPositions =

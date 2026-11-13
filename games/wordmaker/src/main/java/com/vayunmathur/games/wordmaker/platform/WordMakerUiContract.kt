@@ -57,9 +57,9 @@ interface WordGameActions {
     fun onCompetitiveTimeout() {}
 
     /**
-     * A solution word was just traced. Separate from [addFoundWord] because the word only
-     * counts once its letters have flown into the grid, but the achievement fires straight
-     * away — and achievements belong to the activity, not the ViewModel.
+     * A solution word was just traced (and credited through [addFoundWord] in the same step;
+     * its letter flight into the grid is cosmetic). Separate from [addFoundWord] because
+     * achievements belong to the activity, not the ViewModel.
      */
     fun onSolutionWordFound(word: String) {}
 

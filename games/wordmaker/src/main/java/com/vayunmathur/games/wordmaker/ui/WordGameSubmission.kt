@@ -55,7 +55,11 @@ fun wordSubmitHandler(
             j.join()
         }
         isSolution && word !in foundWords -> {
+            // Credit the word now; the letter flight is cosmetic. Crediting it only when the
+            // 800 ms flight landed let the competitive timer run out first, so a word entered in
+            // the last ~0.8 s did not count and the player lost points.
             onAnimateSolution(WordToAnimate(word, ids))
+            actions.addFoundWord(word)
             actions.onSolutionWordFound(word)
         }
         // #807: only enqueue — the screen drains the bonus queue one flight at a

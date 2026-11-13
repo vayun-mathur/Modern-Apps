@@ -85,7 +85,7 @@ class LargeFontTest {
         setAtDoubleFont {
             CrosswordBoard(
                 foundWords = setOf("CAT"), revealedHints = emptySet(),
-                crosswordData = CrosswordData.fromString("CAT\n C \n T ")!!, wordToAnimate = null,
+                crosswordData = CrosswordData.fromString("CAT\n C \n T ")!!, hiddenWords = emptySet(),
                 onCellPositioned = { _, _ -> }, onCellClicked = { _, _ -> }, scaleUpdated = {},
             )
         }

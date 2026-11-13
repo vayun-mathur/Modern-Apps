@@ -28,12 +28,15 @@ import kotlinx.coroutines.launch
  * Live state of the queued word-place flights, drained by [rememberWordPlaceAnimations].
  */
 class WordPlaceAnimations(
-    /** Solution words accepted but not yet visible in the found-words flow. */
+    /**
+     * Solution words already credited but possibly not yet visible in the found-words flow
+     * (a DataStore round-trip), for the duplicate check.
+     */
     val pendingSolutionWords: Set<String>,
     /** Bonus words accepted but not yet visible in the bonus-words flow. */
     val queuedBonusWords: Set<String>,
-    /** Solution word currently flying into the grid, for the board's hide-while-flying slot. */
-    val activeSolutionWord: String?,
+    /** Credited solution words whose letters have not landed yet; the board hides them. */
+    val flyingSolutionWords: Set<String>,
     /** Bonus word currently flying toward the bonus button. */
     val activeBonusWord: String?,
     val bonusProgress: Animatable<Float, AnimationVector1D>,
@@ -45,8 +48,10 @@ class WordPlaceAnimations(
 /**
  * FIFO word-place flights for the letter wheel (#807), extracted from [WordGameScreen]
  * to keep that file under the length limit. Every submitted word finishes its full flight:
- * a fast second word queues behind the first instead of cancelling it (which used to drop
- * the first word's grid/bonus credit entirely).
+ * a fast second word queues behind the first instead of cancelling it.
+ *
+ * Solution flights are purely cosmetic: the submit handler credits the word before it is
+ * enqueued here. Bonus words are still recorded when their flight lands.
  */
 @Composable
 fun rememberWordPlaceAnimations(
@@ -60,8 +65,7 @@ fun rememberWordPlaceAnimations(
     crosswordCellPositions: Map<Pair<Int, Int>, Offset>,
 ): WordPlaceAnimations {
     var solutionQueue by remember(levelKey) { mutableStateOf<List<WordToAnimate>>(emptyList()) }
-    var activeSolutionWord by remember(levelKey) { mutableStateOf<String?>(null) }
-    var flushedSolutions by remember(levelKey) { mutableStateOf<Set<String>>(emptySet()) }
+    var awaitingFlow by remember(levelKey) { mutableStateOf<Set<String>>(emptySet()) }
     var bonusQueue by remember(levelKey) { mutableStateOf<List<String>>(emptyList()) }
     var activeBonusWord by remember(levelKey) { mutableStateOf<String?>(null) }
     val bonusProgress = remember(levelKey) { Animatable(0f) }
@@ -78,7 +82,6 @@ fun rememberWordPlaceAnimations(
             solutionQueue = solutionQueue.drop(1)
             return@LaunchedEffect
         }
-        activeSolutionWord = word
         val letters = word.mapIndexed { index, char ->
             val id = animationInfo.letterIds[index]
             val start = (letterChooserPositions[id] ?: Offset.Zero) - rootOffset
@@ -89,17 +92,14 @@ fun rememberWordPlaceAnimations(
         }
         animatedLetters = letters
         letters.map { launch { it.progress.animateTo(1f, tween(LETTER_FLIGHT_MILLIS)) } }.joinAll()
-        actions.addFoundWord(word)
         animatedLetters = emptyList()
-        activeSolutionWord = null
-        flushedSolutions = flushedSolutions + word
         solutionQueue = solutionQueue.drop(1)
     }
 
-    // A finished flight takes a DataStore round-trip to show up in the found-words flow;
+    // A credited word takes a DataStore round-trip to show up in the found-words flow;
     // keep it in the dedup set until then so re-entering it shakes instead of replaying.
     LaunchedEffect(foundWords) {
-        if (flushedSolutions.isNotEmpty()) flushedSolutions = flushedSolutions - foundWords
+        if (awaitingFlow.isNotEmpty()) awaitingFlow = awaitingFlow - foundWords
     }
 
     // Bonus flights share one progress Animatable, so they fly one at a time too: a fast
@@ -115,13 +115,16 @@ fun rememberWordPlaceAnimations(
     }
 
     return WordPlaceAnimations(
-        pendingSolutionWords = (solutionQueue.map { it.word } + flushedSolutions).toSet(),
+        pendingSolutionWords = (solutionQueue.map { it.word } + awaitingFlow).toSet(),
         queuedBonusWords = bonusQueue.toSet(),
-        activeSolutionWord = activeSolutionWord,
+        flyingSolutionWords = solutionQueue.mapTo(mutableSetOf()) { it.word },
         activeBonusWord = activeBonusWord,
         bonusProgress = bonusProgress,
         animatedLetters = animatedLetters,
-        enqueueSolution = { solutionQueue = solutionQueue + it },
+        enqueueSolution = {
+            solutionQueue = solutionQueue + it
+            awaitingFlow = awaitingFlow + it.word
+        },
         enqueueBonus = { bonusQueue = bonusQueue + it },
     )
 }
