@@ -2,8 +2,10 @@ package com.vayunmathur.games.minesweeper.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -46,9 +48,14 @@ import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.game.GameResultOverlay
 import com.vayunmathur.library.ui.game.formatDuration
+import com.vayunmathur.library.ui.isCompactHeight
+import com.vayunmathur.library.ui.isExpandedWidth
 
 /** Caps the field on tablets, where a full-width board would give absurdly large cells. */
 private val FieldMaxWidth = 480.dp
+
+/** The field's share of a side-by-side row, against 1 for the controls. */
+private const val SIDE_FIELD_WEIGHT = 1.6f
 
 /**
  * The board, with no dependency on the ViewModel so it can be rendered from a `@Preview` — see
@@ -90,7 +97,7 @@ fun GameBoardScreen(
         },
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
-        Box(
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -100,70 +107,78 @@ fun GameBoardScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-                return@Box
+                return@BoxWithConstraints
             }
 
-            Column(
-                Modifier
-                    .widthIn(max = FieldMaxWidth)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Spacing.md),
-            ) {
+            val onNewField: () -> Unit = {
+                if (hasProgress) confirmRestart = true else actions.restart()
+            }
+            val onGiveUp: () -> Unit = {
+                if (hasProgress) {
+                    confirmGiveUp = true
+                } else {
+                    actions.giveUp()
+                    onExit()
+                }
+            }
+            // The field is never inside a scroll container: cells are fitted to whichever of the
+            // width or height runs out first (see MineFieldGrid), so the whole field is always on
+            // screen. In the old scrolling column a landscape field was ~670dp tall, and a slow
+            // scroll that rested on a cell long enough fired the long press and planted a flag.
+            // Short windows (landscape phones) and wide landscape windows put the controls beside
+            // the field rather than under it, so the field gets the full height.
+            val sideBySide = isCompactHeight() || (isExpandedWidth() && maxWidth > maxHeight)
+            if (sideBySide) {
                 Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconFlag(tint = MaterialTheme.colorScheme.error)
-                    Text(
-                        " ${game.minesRemaining}",
-                        style = MaterialTheme.typography.titleMedium,
+                    // Controls first (start side), as in sudoku; they scroll on their own if a
+                    // large font makes them taller than the window.
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                    ) {
+                        MinesRemaining(game.minesRemaining)
+                        FieldControls(state, actions, onNewField, onGiveUp)
+                    }
+                    MineFieldGrid(
+                        game = game,
+                        onTap = actions::tapCell,
+                        onLongPress = actions::flagCell,
+                        modifier = Modifier
+                            .weight(SIDE_FIELD_WEIGHT)
+                            .fillMaxHeight(),
                     )
                 }
-
-                MineFieldGrid(
-                    game = game,
-                    onTap = actions::tapCell,
-                    onLongPress = actions::flagCell,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                if (!game.started) {
-                    // Follows the mode, so the hint never describes a gesture the toggle has swapped.
-                    Text(
-                        stringResource(
-                            if (state.tapMode == TapMode.FLAG) R.string.how_to_play_flag
-                            else R.string.how_to_play
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                TapModeToggle(state.tapMode, actions::setTapMode)
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            } else {
+                Column(
+                    Modifier
+                        .widthIn(max = FieldMaxWidth)
+                        .fillMaxSize()
+                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
-                    Button(
-                        onClick = { if (hasProgress) confirmRestart = true else actions.restart() },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.new_field)) }
-                    TextButton(
-                        onClick = {
-                            if (hasProgress) {
-                                confirmGiveUp = true
-                            } else {
-                                actions.giveUp()
-                                onExit()
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.give_up)) }
+                    MinesRemaining(game.minesRemaining)
+                    // Whatever height the counter and controls leave; fill = false so a field
+                    // that fits by width wraps to its own height and the controls sit right under
+                    // it, exactly as before on fields that already fitted.
+                    MineFieldGrid(
+                        game = game,
+                        onTap = actions::tapCell,
+                        onLongPress = actions::flagCell,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .fillMaxWidth(),
+                    )
+                    FieldControls(state, actions, onNewField, onGiveUp)
                 }
             }
 
@@ -210,6 +225,58 @@ fun GameBoardScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/** The flag counter above the field: mines left to find, negative when over-flagged. */
+@Composable
+private fun MinesRemaining(count: Int) {
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconFlag(tint = MaterialTheme.colorScheme.error)
+        Text(" $count", style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+/** The hint (before the first move), the tap-mode toggle, and the New Field / Give Up buttons. */
+@Composable
+private fun FieldControls(
+    state: MinesweeperUiState,
+    actions: MinesweeperActions,
+    onNewField: () -> Unit,
+    onGiveUp: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        if (state.game?.started == false) {
+            // Follows the mode, so the hint never describes a gesture the toggle has swapped.
+            Text(
+                stringResource(
+                    if (state.tapMode == TapMode.FLAG) R.string.how_to_play_flag
+                    else R.string.how_to_play
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        TapModeToggle(state.tapMode, actions::setTapMode)
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            Button(onClick = onNewField, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.new_field))
+            }
+            TextButton(onClick = onGiveUp, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.give_up))
             }
         }
     }

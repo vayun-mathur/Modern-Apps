@@ -2,12 +2,12 @@ package com.vayunmathur.games.minesweeper.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.pluralStringResource
@@ -38,10 +39,14 @@ import com.vayunmathur.library.ui.Text
 /**
  * The mine field.
  *
- * Cells are square and sized from the available width, so a taller field simply gets taller rather
- * than squeezing the cells. Tap and long press are handled per cell by [detectTapGestures] rather
- * than by `clickable` + `combinedClickable`, because the flag gesture needs to fire on press-and-hold
- * without also delivering the tap that would open the cell.
+ * Cells are square and sized to the smaller of `width / cols` and `height / rows`, so the whole
+ * field always fits the space it is given — never wider or taller, never scrolled. Width-only sizing
+ * made a landscape field far taller than the screen. With unbounded height (a scrolling parent) this
+ * falls back to width sizing. The grid is centred in any space it does not fill.
+ *
+ * Tap and long press are handled per cell by [detectTapGestures] rather than by `clickable` +
+ * `combinedClickable`, because the flag gesture needs to fire on press-and-hold without also
+ * delivering the tap that would open the cell.
  *
  * @param onLongPress returns whether a flag actually changed; the press buzzes only then.
  */
@@ -52,21 +57,25 @@ fun MineFieldGrid(
     onLongPress: (Int) -> Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier) {
-        for (row in 0 until game.rows) {
-            Row(Modifier.fillMaxWidth()) {
-                for (col in 0 until game.cols) {
-                    val index = row * game.cols + col
-                    MineCell(
-                        game = game,
-                        index = index,
-                        onTap = { onTap(index) },
-                        onLongPress = { onLongPress(index) },
-                        // weight + aspectRatio keeps the cells square whatever the column count.
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f),
-                    )
+    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+        // Whole pixels: a fractional dp cell rounds up per cell, and 18 rounded-up rows overflow
+        // the height they were fitted to, squashing the last rows.
+        val heightPx = if (constraints.hasBoundedHeight) constraints.maxHeight / game.rows else Int.MAX_VALUE
+        val cellPx = minOf(constraints.maxWidth / game.cols, heightPx)
+        val cell = with(LocalDensity.current) { cellPx.toDp() }
+        Column(Modifier.size(cell * game.cols, cell * game.rows)) {
+            for (row in 0 until game.rows) {
+                Row {
+                    for (col in 0 until game.cols) {
+                        val index = row * game.cols + col
+                        MineCell(
+                            game = game,
+                            index = index,
+                            onTap = { onTap(index) },
+                            onLongPress = { onLongPress(index) },
+                            modifier = Modifier.size(cell),
+                        )
+                    }
                 }
             }
         }
