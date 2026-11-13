@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.games.pipes.data.CellPos
 import com.vayunmathur.games.pipes.data.CompletedLevelsRepository
+import com.vayunmathur.games.pipes.domain.BoardEdits
+import com.vayunmathur.games.pipes.domain.BoardState
 import com.vayunmathur.games.pipes.domain.DailyLevels
 import com.vayunmathur.games.pipes.domain.StrokeRules
 import com.vayunmathur.games.pipes.data.LevelData
@@ -28,10 +30,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class PipesGameState(
-    val paths: Map<Int, List<CellPos>> = emptyMap(),
-    val cellOwner: Map<CellPos, Int> = emptyMap()
-)
+/** The board position the screens draw; the pure model lives in domain/. */
+typealias PipesGameState = BoardState
 
 data class PipesUiState(
     val packIndex: Int = -1,
@@ -211,122 +211,69 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
         val levelData = s.levelData ?: return
         val endpointColor = levelData.endpoints.find { ep -> cell in ep.cells }?.colorIndex
 
-        if (endpointColor != null) {
+        val base = s.gameState
+        val (color, stroke) = if (endpointColor != null) {
             // Grabbing an endpoint always restarts that color: its current line breaks
             // right away (like grabbing a line partway does) so the drag is free to take
             // a different route. Releasing without drawing leaves the line cleared.
-            val brokenState = clearColor(s.gameState, endpointColor)
-            _uiState.update {
-                it.copy(
-                    activeColor = endpointColor,
-                    activePath = listOf(cell),
-                    gameState = brokenState,
-                    preDrawState = it.gameState
-                )
-            }
-            return
+            endpointColor to listOf(cell)
+        } else {
+            val ownerColor = base.cellOwner[cell] ?: return
+            val idx = base.paths[ownerColor]?.indexOf(cell) ?: -1
+            if (idx < 0) return
+            ownerColor to base.paths.getValue(ownerColor).take(idx + 1)
         }
-
-        val ownerColor = s.gameState.cellOwner[cell] ?: return
-        val path = s.gameState.paths[ownerColor] ?: return
-        val idx = path.indexOf(cell)
-        if (idx >= 0) {
-            _uiState.update {
-                it.copy(
-                    activeColor = ownerColor,
-                    activePath = path.take(idx + 1),
-                    preDrawState = it.gameState,
-                )
-            }
+        _uiState.update {
+            it.copy(
+                activeColor = color,
+                activePath = stroke,
+                gameState = BoardEdits.applyStroke(levelData, base, color, stroke),
+                preDrawState = base,
+            )
         }
     }
 
-    /** Removes [color]'s line from the board, leaving every other color untouched. */
-    private fun clearColor(state: PipesGameState, color: Int): PipesGameState {
-        val remaining = state.paths - color
-        // Rebuild ownership so a bridge shared with the cleared color falls back to its
-        // remaining crosser instead of being orphaned (single-owner map caveat).
-        val newCellOwner = mutableMapOf<CellPos, Int>()
-        for ((c, path) in remaining) {
-            for (cell in path) {
-                val current = newCellOwner[cell]
-                if (current == null || current == c) {
-                    newCellOwner[cell] = c
-                }
-            }
-        }
-        // Non-bridge cells keep first-writer wins implicitly via path order; bridges allow sharing
-        // so last-writer fallback above is fine — commitDraw preserves first owner on redraw.
-        return PipesGameState(remaining, newCellOwner)
-    }
-
+    /**
+     * While a stroke is open, [PipesUiState.gameState] is a preview: the board from before
+     * the stroke with the stroke applied, so other colours it crosses show as cut and come
+     * back intact if the finger backs out again. Undo returns to [PipesUiState.preDrawState].
+     */
     override fun extendPath(cell: CellPos) {
         val s = _uiState.value
         val activeColor = s.activeColor ?: return
         val levelData = s.levelData ?: return
         if (s.isLevelWon) return
-        val next = StrokeRules.extend(levelData, s.gameState.cellOwner, activeColor, s.activePath, cell)
-        if (next != s.activePath) _uiState.update { it.copy(activePath = next) }
+        val base = s.preDrawState ?: s.gameState
+        val next = StrokeRules.extend(levelData, base.cellOwner, activeColor, s.activePath, cell)
+        if (next == s.activePath) return
+        _uiState.update {
+            it.copy(activePath = next, gameState = BoardEdits.applyStroke(levelData, base, activeColor, next))
+        }
     }
 
     override fun commitDraw() {
         val s = _uiState.value
         val activeColor = s.activeColor ?: return
+        val levelData = s.levelData ?: return
         if (s.isLevelWon) return
 
         val newPath = s.activePath
         val preDrawState = s.preDrawState ?: s.gameState
-
-        if (newPath.size < 2) {
-            if (s.gameState != preDrawState) {
-                // Tapped an endpoint without drawing: keep the line broken, but make it undoable.
-                _uiState.update {
-                    it.copy(
-                        history = it.history + preDrawState,
-                        activeColor = null,
-                        activePath = emptyList(),
-                        preDrawState = null
-                    )
-                }
-            } else {
-                _uiState.update {
-                    it.copy(
-                        activeColor = null,
-                        activePath = emptyList(),
-                        gameState = preDrawState,
-                        preDrawState = null,
-                    )
-                }
-            }
-            return
-        }
-
-        val currentState = s.gameState
-        val newCellOwner = currentState.cellOwner.toMutableMap()
-
-        currentState.paths[activeColor]?.forEach { c ->
-            if (newCellOwner[c] == activeColor) newCellOwner.remove(c)
-        }
-
-        val newPaths = currentState.paths.toMutableMap()
-        newPaths[activeColor] = newPath
-        val bridges = s.levelData?.bridges ?: emptySet()
-        for (cell in newPath) {
-            if (cell in bridges && newCellOwner[cell] != null && newCellOwner[cell] != activeColor) continue
-            newCellOwner[cell] = activeColor
-        }
-
-        val newGameState = PipesGameState(newPaths, newCellOwner)
+        val newGameState = BoardEdits.applyStroke(levelData, preDrawState, activeColor, newPath)
+        // A stroke that only broke a line (released on its own start cell) counts as a move
+        // only when it actually removed something.
+        val counts = newPath.size >= 2 || newGameState != preDrawState
 
         _uiState.update {
             it.copy(
                 gameState = newGameState,
-                history = it.history + preDrawState,
+                history = if (counts) it.history + preDrawState else it.history,
                 activeColor = null,
                 activePath = emptyList(),
                 preDrawState = null
             )
         }
+        if (newPath.size < 2) return
 
         viewModelScope.launch(Dispatchers.IO) {
             repository.incrementTotalPipesPlaced()

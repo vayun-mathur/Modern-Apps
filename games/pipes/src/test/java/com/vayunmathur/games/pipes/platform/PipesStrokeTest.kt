@@ -87,4 +87,32 @@ class PipesStrokeTest {
         assertEquals(listOf(ep.cells[0]), vm.uiState.value.activePath)
         vm.commitDraw()
     }
+
+    @Test fun drawingIntoAnotherColourCutsItAndUndoRestoresIt() {
+        // 5x5_001:  . 0 1 . 2 / . . 2 . . / . . 1 . . / . . . . . / . . . . 0
+        val vm = vm()
+        assertEquals("5×5_001", vm.level.id)
+        val green = listOf(CellPos(1, 2), CellPos(1, 3), CellPos(1, 4), CellPos(0, 4))
+        draw(vm, green)
+        assertEquals(green, vm.uiState.value.gameState.paths[2])
+        // Red climbs column 4 into green's line at (1,4).
+        vm.startDraw(CellPos(4, 4))
+        vm.extendPath(CellPos(3, 4)); vm.extendPath(CellPos(2, 4)); vm.extendPath(CellPos(1, 4))
+        assertEquals(CellPos(1, 4), vm.uiState.value.activePath.last())
+        // The preview already shows green cut just before the crossing...
+        assertEquals(green.take(2), vm.uiState.value.gameState.paths[2])
+        // ...and backing out restores it while the stroke is still open.
+        vm.extendPath(CellPos(2, 4))
+        assertEquals(green, vm.uiState.value.gameState.paths[2])
+        vm.extendPath(CellPos(1, 4))
+        vm.commitDraw()
+        assertEquals(green.take(2), vm.uiState.value.gameState.paths[2])
+        assertEquals(0, vm.uiState.value.gameState.cellOwner[CellPos(1, 4)])
+        assertNull(vm.uiState.value.gameState.cellOwner[CellPos(0, 4)])
+        assertEquals(2, vm.getCurrentMoves())
+        // The cut is part of the same move: one undo brings green back whole.
+        vm.onUndo()
+        assertEquals(green, vm.uiState.value.gameState.paths[2])
+        assertNull(vm.uiState.value.gameState.paths[0])
+    }
 }

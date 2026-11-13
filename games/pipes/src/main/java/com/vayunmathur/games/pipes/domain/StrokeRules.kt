@@ -7,8 +7,9 @@ import kotlin.math.abs
 /**
  * Pure rules for growing one colour's stroke as the finger moves.
  *
- * [owners] is the board's cell ownership the stroke is checked against (the committed
- * board with the stroke's own colour already lifted when it was grabbed by an endpoint).
+ * [owners] is the ownership of the board as it was before the stroke. A stroke may run
+ * into another colour's line (that line is cut there, see [BoardEdits.applyStroke]) but
+ * never onto another colour's dot.
  */
 object StrokeRules {
 
@@ -19,7 +20,8 @@ object StrokeRules {
      *   back it is, so a fast backtrack never stalls.
      * - An adjacent free cell is appended.
      * - A cell two steps away through a shared neighbour (a diagonal move, or a sample that
-     *   skipped a cell) is reached through that neighbour.
+     *   skipped a cell) is reached through that neighbour, preferring one that cuts no
+     *   other colour's line.
      * - A finished stroke (it reached its partner dot) stays put.
      */
     fun extend(
@@ -32,13 +34,13 @@ object StrokeRules {
         if (path.isEmpty() || cell !in level.cells || isComplete(level, color, path)) return path
         val idx = path.indexOf(cell)
         if (idx >= 0) return path.subList(0, idx + 1).toList()
-        if (isValidStep(level, owners, color, path, cell)) return path + cell
-        val via = level.adjacency[path.last()].orEmpty().firstOrNull { n ->
+        if (isValidStep(level, color, path, cell)) return path + cell
+        val via = level.adjacency[path.last()].orEmpty().filter { n ->
             cell in level.adjacency[n].orEmpty() &&
-                isValidStep(level, owners, color, path, n) &&
+                isValidStep(level, color, path, n) &&
                 !isComplete(level, color, path + n) &&
-                isValidStep(level, owners, color, path + n, cell)
-        }
+                isValidStep(level, color, path + n, cell)
+        }.minByOrNull { n -> if (owners[n].let { it == null || it == color }) 0 else 1 }
         return if (via != null) path + via + cell else path
     }
 
@@ -55,10 +57,12 @@ object StrokeRules {
         }
     }
 
-    /** Whether [cell] may follow [path] directly. */
+    /**
+     * Whether [cell] may follow [path] directly. Cells owned by other colours are allowed:
+     * the crossing cuts that line.
+     */
     fun isValidStep(
         level: LevelData,
-        owners: Map<CellPos, Int>,
         color: Int,
         path: List<CellPos>,
         cell: CellPos,
@@ -66,9 +70,7 @@ object StrokeRules {
         if (cell in path) return false
         val neighbors = level.adjacency[path.last()] ?: return false
         if (cell !in neighbors || isForeignEndpoint(level, color, cell)) return false
-        if (!isStraightThroughBridge(level, path, cell)) return false
-        val owner = owners[cell] ?: return true
-        return owner == color || cell in level.bridges
+        return isStraightThroughBridge(level, path, cell)
     }
 
     private fun isForeignEndpoint(level: LevelData, color: Int, cell: CellPos): Boolean =

@@ -35,8 +35,8 @@ class StrokeRulesTest {
         assertTrue(via == p(1, 2) || via == p(2, 1), "via=$via")
     }
 
-    @Test fun diagonalAvoidsABlockedNeighbour() {
-        // (2,1) belongs to blue, so the route must go through (1,2).
+    @Test fun diagonalPrefersTheNeighbourThatCutsNothing() {
+        // (2,1) belongs to blue, so the route goes through (1,2) and cuts nothing.
         val out = ext(listOf(p(0, 0), p(1, 0), p(1, 1)), p(2, 2), owners = mapOf(p(2, 1) to 1))
         assertEquals(listOf(p(0, 0), p(1, 0), p(1, 1), p(1, 2), p(2, 2)), out)
     }
@@ -56,11 +56,11 @@ class StrokeRulesTest {
         assertEquals(path, ext(path, p(2, 2)))
     }
 
-    @Test fun foreignEndpointsAndOwnedCellsBlock() {
+    @Test fun foreignEndpointsBlockButOtherLinesDoNot() {
         assertEquals(listOf(p(0, 3)), StrokeRules.extend(level, emptyMap(), 0, listOf(p(0, 3)), p(0, 4)))
-        assertEquals(listOf(p(0, 0)), ext(listOf(p(0, 0)), p(0, 1), owners = mapOf(p(0, 1) to 1)))
-        // No route around through a blocked neighbour either
-        assertEquals(listOf(p(0, 0)), ext(listOf(p(0, 0)), p(0, 2), owners = mapOf(p(0, 1) to 1)))
+        // Running into blue's line is allowed: BoardEdits.applyStroke cuts blue there.
+        assertEquals(listOf(p(0, 0), p(0, 1)), ext(listOf(p(0, 0)), p(0, 1), owners = mapOf(p(0, 1) to 1)))
+        assertEquals(listOf(p(0, 0), p(0, 1), p(0, 2)), ext(listOf(p(0, 0)), p(0, 2), owners = mapOf(p(0, 1) to 1)))
     }
 
     @Test fun completedStrokeStaysPut() {
