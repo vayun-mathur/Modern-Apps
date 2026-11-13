@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.games.hub.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.games.hub.MainRoute
 import com.vayunmathur.games.hub.network.PlayOnTvSession
@@ -46,7 +48,7 @@ fun PlayOnTvScreen(
     LaunchedEffect(Unit) { requestLocalNetwork() }
 
     AppScaffold(
-        title = "Play on TV",
+        title = stringResource(R.string.play_on_tv),
         backStack = backStack,
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->

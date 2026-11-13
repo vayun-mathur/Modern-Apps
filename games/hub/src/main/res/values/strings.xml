@@ -158,6 +158,47 @@
 
     <!-- MainActivity / YuuScreen: Tab label and screen title for the Yuu avatar plaza (dev builds). Noun -->
     <string name="tab_yuu">Yuu</string>
+    <!-- ControllerPad ("Play on TV", phone as a TV game controller). -->
+    <!-- Error after a failed connection to a TV. Sentence -->
+    <string name="pad_connect_failed">Couldn\'t reach that TV. Check you\'re on the same Wi-Fi and try again.</string>
+    <!-- Error when the local-network permission is denied. Sentences -->
+    <string name="pad_local_network_blocked">Local-network access is off, so no TVs can be found. Allow it when asked, or turn it on in system settings, then rescan.</string>
+    <!-- Status while searching for TVs. Sentence -->
+    <string name="pad_looking">Looking for TVs on this Wi-Fi…</string>
+    <!-- Under a found TV's name. %1$s = game name e.g. Kart. Phrase -->
+    <string name="pad_hosting">Hosting <xliff:g id="game_name" example="Kart">%1$s</xliff:g></string>
+    <!-- Button to connect to a found TV. Verb -->
+    <string name="pad_connect">Connect</string>
+    <!-- Button to search for TVs again. Verb -->
+    <string name="pad_rescan">Rescan</string>
+    <!-- Pairing prompt. %1$d = number of digits e.g. 6. Imperative sentence -->
+    <plurals name="pad_pin_prompt">
+        <item quantity="one">Type the <xliff:g id="digits" example="1">%1$d</xliff:g> digit showing on the TV.</item>
+        <item quantity="other">Type the <xliff:g id="digits" example="6">%1$d</xliff:g> digits showing on the TV.</item>
+    </plurals>
+    <!-- Button to submit the pairing code. Verb -->
+    <string name="pad_pair">Pair</string>
+    <!-- After pairing: pick a lobby name. %1$d = seats already taken e.g. 2. Sentences -->
+    <plurals name="pad_paired_seats_taken">
+        <item quantity="one">Paired. Pick the name the lobby shows — <xliff:g id="seats" example="1">%1$d</xliff:g> seat taken.</item>
+        <item quantity="other">Paired. Pick the name the lobby shows — <xliff:g id="seats" example="2">%1$d</xliff:g> seats taken.</item>
+    </plurals>
+    <!-- Button to take a seat in the lobby. Verb phrase -->
+    <string name="pad_join">Join game</string>
+    <!-- Lobby roster. %1$s = comma-separated player names e.g. Ada, Grace. Phrase -->
+    <string name="pad_lobby">Lobby: <xliff:g id="players" example="Ada, Grace">%1$s</xliff:g></string>
+    <!-- Shown while a race is running. Sentence -->
+    <string name="pad_race_live">Race is live — joins are locked until it ends.</string>
+    <!-- Debug-ish readout of the last rumble. %1$d = milliseconds e.g. 120. Phrase -->
+    <string name="pad_rumble">Rumble: <xliff:g id="ms" example="120">%1$d</xliff:g> ms</string>
+    <!-- Button to leave the lobby. Verb -->
+    <string name="pad_leave">Leave</string>
+    <!-- TalkBack names of the arrow-glyph D-pad buttons. Directions -->
+    <string name="pad_dpad_up">Up</string>
+    <string name="pad_dpad_left">Left</string>
+    <string name="pad_dpad_down">Down</string>
+    <string name="pad_dpad_right">Right</string>
+
     <!-- YuuScreen: Empty state title when no Yuus exist yet. Sentence -->
     <string name="yuu_empty_title">No Yuus yet</string>
     <!-- YuuScreen: Empty state body inviting creation. Sentence -->
