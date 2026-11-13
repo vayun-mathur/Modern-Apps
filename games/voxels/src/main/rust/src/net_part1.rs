@@ -14,7 +14,7 @@ fn on_join(state: &mut EngineState) {
 }
 
 fn world_clock_msg(state: &EngineState) -> NetMsg {
-    let world_secs = (Instant::now() - state.start_time).as_secs_f32();
+    let world_secs = state.world_secs;
     NetMsg::WorldClock { world_secs, weather: state.weather, weather_cd: state.weather_cd, rain: state.rain }
 }
 

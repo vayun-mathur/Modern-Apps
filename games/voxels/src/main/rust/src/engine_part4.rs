@@ -297,7 +297,7 @@ pub fn place_block_at(px: f32, py: f32) -> i32 {
                 if id == 81 {
                     if !state.is_night() { return 0; }
                     let skip = secs_until_dawn(state.day_t());
-                    state.start_time -= std::time::Duration::from_secs_f32(skip);
+                    state.world_secs = wrap_world_secs(state.world_secs + skip);
                     state.did_rest = true;
                     state.player.heal(state.player.max_health);
                     // You wake to whatever weather the night left behind, but never mid-downpour.

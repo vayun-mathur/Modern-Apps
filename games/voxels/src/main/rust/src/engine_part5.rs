@@ -38,17 +38,19 @@ mod tests {
         assert!((240.0..600.0).contains(&night_secs), "night lasts {night_secs}s, outside the playable range");
     }
 
-    // world_secs is stored as elapsed-since-start and load rewinds start_time by it, so a save taken
-    // at some time of day reopens at that same time of day. The clamp is the part that can bite: a
-    // session past the clamp silently jumps, so the ceiling has to be a whole number of days.
+    // world_secs is saved as-is and wrapped on load and as it advances, so a save taken at some time
+    // of day reopens at that same time of day. The wrap must be a whole number of days or it would
+    // silently shift the clock.
     #[test]
     fn a_saved_clock_resumes_at_the_same_time_of_day() {
-        const CLAMP: f32 = 86_400.0;
-        for elapsed in [0.0f32, 37.5, DAY_CYCLE * 0.3, DAY_CYCLE * 1.7, CLAMP - 1.0] {
-            let resumed = day_t_at(elapsed.clamp(0.0, CLAMP));
-            assert!((day_t_at(elapsed) - resumed).abs() < 1e-4, "{elapsed}s round-tripped to a different phase");
+        for elapsed in [0.0f32, 37.5, DAY_CYCLE * 0.3, DAY_CYCLE * 1.7, WORLD_SECS_WRAP - 1.0, WORLD_SECS_WRAP + 123.0] {
+            let resumed = day_t_at(wrap_world_secs(elapsed));
+            let d = (day_t_at(elapsed) - resumed).abs();
+            assert!(!(1e-3..=0.999).contains(&d), "{elapsed}s round-tripped to a different phase");
         }
-        assert!((CLAMP / DAY_CYCLE).fract() < 1e-6, "the world_secs clamp must be a whole number of days");
+        assert!((WORLD_SECS_WRAP / DAY_CYCLE).fract() < 1e-6, "the world_secs wrap must be a whole number of days");
+        assert_eq!(wrap_world_secs(f32::NAN), 0.0);
+        assert_eq!(wrap_world_secs(-5.0), WORLD_SECS_WRAP - 5.0);
     }
 
     // Resting always moves the clock forward to the same point in the morning, never backwards and

@@ -18,7 +18,11 @@ pub struct EngineState {
     pub renderer: Option<VulkanRenderer>,
     pub width: u32,
     pub height: u32,
+    // Wall-clock session start; only used for the debug fps readout.
     pub start_time: Instant,
+    /// World clock in seconds of simulated play (since noon of day 0, wrapped every WORLD_SECS_WRAP).
+    /// Advanced by `dt` in the simulation, so it stands still while paused or backgrounded.
+    pub world_secs: f32,
     pub last_tick: Instant,
     pub window_ptr: Option<*mut ANativeWindow>,
     pub needs_resize: bool,
@@ -105,6 +109,11 @@ pub fn day_t_at(elapsed: f32) -> f32 { ((NOON_OFFSET + elapsed) / DAY_CYCLE) % 1
 // The sun is below the horizon at both ends of the cycle (day_t = 0 is midnight). This band is not
 // arbitrary: renderer.rs derives sun height as -cos(day_t * TAU), which is negative exactly here.
 pub fn is_night_at(day_t: f32) -> bool { day_t < 0.25 || day_t > 0.75 }
+/// The world clock wraps after this many seconds: a whole number of days (96), so wrapping never
+/// shifts the time of day, while keeping f32 precision fine over endless sessions.
+pub const WORLD_SECS_WRAP: f32 = 86_400.0;
+/// Brings a (saved or advanced) world clock back into 0..WORLD_SECS_WRAP; garbage reads as noon.
+pub fn wrap_world_secs(secs: f32) -> f32 { if secs.is_finite() { secs.rem_euclid(WORLD_SECS_WRAP) } else { 0.0 } }
 
 // ---- Weather ----
 // Matcha drives rain and clear weather explicitly from its mechanics. Here it's a slow random walk
@@ -152,8 +161,8 @@ pub fn secs_until_dawn(day_t: f32) -> f32 {
 }
 
 impl EngineState {
-    pub fn world_time(&self) -> f32 { NOON_OFFSET + self.start_time.elapsed().as_secs_f32() }
-    pub fn day_t(&self) -> f32 { day_t_at(self.start_time.elapsed().as_secs_f32()) }
+    pub fn world_time(&self) -> f32 { NOON_OFFSET + self.world_secs }
+    pub fn day_t(&self) -> f32 { day_t_at(self.world_secs) }
     pub fn is_night(&self) -> bool { is_night_at(self.day_t()) }
     /// Whether hostile mobs may spawn: after dark, or under heavy rain.
     pub fn mobs_can_spawn_hostile(&self) -> bool { self.is_night() || self.rain >= RAIN_SPAWN_THRESHOLD }
@@ -235,10 +244,8 @@ pub fn new_state(files_dir: String, seed: u32, render_distance: i32) -> EngineSt
     let mut trades_done = [0u32; crate::villager::ALL.len()];
     for (i, n) in progress.trades_done.iter().enumerate().take(trades_done.len()) { trades_done[i] = *n; }
 
-    // Rewind the clock so the world resumes at the time of day it was saved at.
-    let start_time = Instant::now()
-        .checked_sub(std::time::Duration::from_secs_f32(progress.world_secs.clamp(0.0, 86_400.0)))
-        .unwrap_or_else(Instant::now);
+    // Resume at the time of day the world was saved at.
+    let world_secs = wrap_world_secs(progress.world_secs);
 
     EngineState {
         chunks,
@@ -248,7 +255,8 @@ pub fn new_state(files_dir: String, seed: u32, render_distance: i32) -> EngineSt
         renderer: None,
         width: 0,
         height: 0,
-        start_time,
+        start_time: Instant::now(),
+        world_secs,
         last_tick: Instant::now(),
         window_ptr: None,
         needs_resize: false,
@@ -342,7 +350,7 @@ fn player_save(state: &EngineState) -> crate::world::save::PlayerSave {
             respawn: state.respawn.map(|p| [p.x, p.y, p.z]),
             end_dragon_dead: state.end_dragon_dead,
             nether_wither_dead: state.nether_wither_dead,
-            world_secs: state.start_time.elapsed().as_secs_f32(),
+            world_secs: state.world_secs,
             best_beacon: state.best_beacon,
             deepest_y: state.deepest_y,
             blessings: state.player.blessings,

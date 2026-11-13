@@ -33,6 +33,8 @@ fn step(state: &mut EngineState, dt: f32, paused: bool) {
 
 /// Advances the world by `dt` seconds: input, physics, mobs, weather, farming, autosave.
 fn simulate(state: &mut EngineState, dt: f32) {
+        // The world clock only moves with simulated time: not while paused, not in the background.
+        state.world_secs = wrap_world_secs(state.world_secs + dt);
         let input = crate::input::snapshot_and_clear_look();
         if input.toggle_fly { state.player.flying = !state.player.flying; }
 
@@ -386,7 +388,7 @@ fn publish_ui(state: &EngineState) {
         "chunks": state.chunks.len(),
         "flying": state.player.flying,
         "on_ground": state.player.on_ground,
-        "time": format!("{:.1}s", (Instant::now() - state.start_time).as_secs_f32()),
+        "time": format!("{:.1}s", state.world_secs),
         "meshes": state.renderer.as_ref().map(|r| r.gpu_meshes.len()).unwrap_or(0),
         "mobs": state.mobs.len(),
         "drawn": state.renderer.as_ref().map(|r| r.drawn_sections).unwrap_or(0),

@@ -87,4 +87,21 @@ mod state_tests {
         assert!(s.player.pos.y < pos.y, "gravity resumes after unpausing");
         assert!(s.autosave_cd < cd);
     }) }
+
+    // Day/night follows simulated time only: a paused (or backgrounded) world keeps its time of day,
+    // and the clock persists through a save.
+    #[test]
+    fn the_world_clock_only_advances_with_simulation() { big_stack(|| {
+        let mut s = small_state("clock");
+        let t0 = s.world_secs;
+        for _ in 0..20 { step(&mut s, 0.05, true); }
+        assert_eq!(s.world_secs, t0, "time of day moved while paused");
+        for _ in 0..20 { step(&mut s, 0.05, false); }
+        assert!((s.world_secs - t0 - 1.0).abs() < 1e-3, "20 frames of 50 ms should be one second");
+        s.world_secs = 777.0;
+        let dir = s.save_dir.clone();
+        save_world(&mut s);
+        let back = new_state(dir, 1234, 2);
+        assert!((back.world_secs - 777.0).abs() < 1e-3);
+    }) }
 }

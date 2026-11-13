@@ -426,9 +426,7 @@ pub fn apply_inbound(state: &mut EngineState) {
                 state.containers.insert(k, slots);
             }
             NetMsg::WorldClock { world_secs, weather, weather_cd, rain } if r == ROLE_CLIENT => {
-                state.start_time = Instant::now()
-                    .checked_sub(std::time::Duration::from_secs_f32(world_secs.clamp(0.0, 86_400.0)))
-                    .unwrap_or_else(Instant::now);
+                state.world_secs = crate::engine::wrap_world_secs(world_secs);
                 state.weather = weather;
                 state.weather_cd = weather_cd;
                 state.rain = rain;
