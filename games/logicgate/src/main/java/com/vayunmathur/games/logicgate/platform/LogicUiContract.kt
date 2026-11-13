@@ -11,6 +11,7 @@ import com.vayunmathur.games.logicgate.domain.model.ChipSpec
 import com.vayunmathur.games.logicgate.domain.model.Circuit
 import com.vayunmathur.games.logicgate.domain.model.LevelIo
 import com.vayunmathur.games.logicgate.domain.model.NodeId
+import com.vayunmathur.games.logicgate.domain.model.PinLookup
 import com.vayunmathur.games.logicgate.domain.model.PinRef
 import com.vayunmathur.games.logicgate.domain.model.Point
 import com.vayunmathur.games.logicgate.domain.model.Wire
@@ -111,6 +112,12 @@ data class GameUiState(
 /** Editor callbacks. Every method has a no-op default so a preview needs only [Noop]. */
 interface LogicActions {
     fun placeChip(chipId: String, at: Point) {}
+
+    /**
+     * Places [chipId] where [spot] says, asked against the board as it is when the placement
+     * lands (not as the caller last saw it), so quick successive drops never stack.
+     */
+    fun placeChipNear(chipId: String, spot: (Circuit, PinLookup) -> Point) {}
     fun moveNode(id: NodeId, to: Point) {}
     fun connect(a: PinRef, b: PinRef) {}
     fun select(selection: Selection?) {}

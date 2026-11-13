@@ -7,6 +7,7 @@ import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.domain.model.LevelInput
 import com.vayunmathur.games.logicgate.domain.model.NodeId
 import com.vayunmathur.games.logicgate.domain.model.PinChips
+import com.vayunmathur.games.logicgate.domain.model.PinLookup
 import com.vayunmathur.games.logicgate.domain.model.PinRef
 import com.vayunmathur.games.logicgate.domain.model.Point
 import com.vayunmathur.games.logicgate.domain.sim.Probe
@@ -66,6 +67,11 @@ class EditorSession(
                 commit(s.board.addPin(PinChips.isInput(chipId), PinChips.width(chipId), at))
             s.chips.any { it.id == chipId } -> commit(s.board.copy(circuit = s.circuit.addGate(chipId, at).first))
         }
+    }
+
+    override fun placeChipNear(chipId: String, spot: (Circuit, PinLookup) -> Point) {
+        val s = _state.value ?: return
+        placeChip(chipId, spot(s.circuit, s.catalog.lookup(s.io)))
     }
 
     override fun moveNode(id: NodeId, to: Point) {

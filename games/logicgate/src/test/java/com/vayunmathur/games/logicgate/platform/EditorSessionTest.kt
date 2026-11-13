@@ -1,12 +1,15 @@
 package com.vayunmathur.games.logicgate.platform
 
+import androidx.compose.ui.geometry.Offset
 import com.vayunmathur.games.logicgate.domain.ReferenceCircuits
 import com.vayunmathur.games.logicgate.domain.levels.LevelRegistry
 import com.vayunmathur.games.logicgate.domain.model.Board
 import com.vayunmathur.games.logicgate.domain.model.ChipCatalog
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Circuit
+import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.domain.model.Point
+import com.vayunmathur.games.logicgate.ui.canvas.CircuitLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -83,6 +86,27 @@ class EditorSessionTest {
         assertNull(session.state.value!!.selection)
         session.undo() // gate returns
         assertTrue(session.state.value!!.circuit.nodes.any { it.id == gateId })
+    }
+
+    @Test fun `successive tray drops near one spot each pick a free spot`() {
+        val session = session()
+        session.open(levelState())
+        val target = Offset(300f, 300f)
+        // The same resolver a tray drop sends; it must see the board including earlier drops,
+        // even when the caller has not seen a new state between the drops.
+        repeat(3) {
+            session.placeChipNear(Chips.NAND) { circuit, lookup ->
+                CircuitLayout(circuit, lookup, emptyMap()).freeSpot(Chips.NAND, target, lookup)
+            }
+        }
+        val s = session.state.value!!
+        val gates = s.circuit.nodes.filterIsInstance<Gate>()
+        assertEquals(3, gates.size)
+        val rects = CircuitLayout(s.circuit, s.catalog.lookup(s.io), emptyMap()).rects
+        val gateRects = gates.map { rects.getValue(it.id) }
+        for (i in gateRects.indices) for (j in i + 1 until gateRects.size) {
+            assertFalse(gateRects[i].overlaps(gateRects[j]), "gates $i and $j overlap: ${gateRects[i]} ${gateRects[j]}")
+        }
     }
 
     @Test fun `inputs probe brief info and win flags update state`() {

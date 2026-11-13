@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -122,6 +123,10 @@ private fun ChipCard(
     onDrop: (TrayDrag) -> Unit,
 ) {
     var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    // The gesture below is keyed on the chip only, so it must read the latest callbacks rather
+    // than the ones captured when the card was first composed.
+    val dragUpdate by rememberUpdatedState(onDragUpdate)
+    val drop by rememberUpdatedState(onDrop)
     val description = stringResource(R.string.lg_cd_chip, chipLabel(chip.id), chip.nandCost)
     val widest = (chip.inputs + chip.outputs).maxOfOrNull { it.width } ?: 1
     Surface(
@@ -140,14 +145,14 @@ private fun ChipCard(
                         if (over.y < 0 && abs(over.y) > abs(over.x)) change.consume()
                     } ?: return@awaitEachGesture
                     var current = TrayDrag(chip.id, coords?.localToRoot(start.position) ?: return@awaitEachGesture)
-                    onDragUpdate(current)
+                    dragUpdate(current)
                     val finished = drag(start.id) { change ->
                         current = current.copy(root = current.root + change.positionChange())
                         change.consume()
-                        onDragUpdate(current)
+                        dragUpdate(current)
                     }
-                    if (finished) onDrop(current)
-                    onDragUpdate(null)
+                    if (finished) drop(current)
+                    dragUpdate(null)
                 }
             },
         shape = MaterialTheme.shapes.medium,

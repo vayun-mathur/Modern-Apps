@@ -73,8 +73,11 @@ fun GameScreen(
     var rootOrigin by remember { mutableStateOf(Offset.Zero) }
     var canvasBounds by remember { mutableStateOf(Rect.Zero) }
 
-    fun placeNear(chipId: String, world: Offset) =
-        actions.placeChip(chipId, CircuitLayout(state.circuit, lookup, labels).freeSpot(chipId, world, lookup))
+    // The free spot is resolved by the session against the board as it is when the drop lands,
+    // never against this composition's (possibly stale) state.
+    fun placeNear(chipId: String, world: Offset) = actions.placeChipNear(chipId) { circuit, lk ->
+        CircuitLayout(circuit, lk, labels).freeSpot(chipId, world, lk)
+    }
 
     AppScaffold(
         title = level?.let { stringResource(R.string.lg_level_title, number, stringResource(it.title)) } ?: state.sandbox?.name.orEmpty(),
