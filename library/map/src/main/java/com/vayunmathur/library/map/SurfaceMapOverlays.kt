@@ -215,18 +215,23 @@ internal fun SurfaceMapRenderer.tapLabelsIn(box: DpRect, layerIds: Set<String>):
     }
 }
 
-internal fun SurfaceMapRenderer.applyRoute() {
-    // Drawable segments only: fewer than two points strokes nothing, and dropping them
-    // here keeps the native side's per-segment ranges aligned with the colours.
-    val drawable = routeSegments?.filter { it.points.size >= 2 }
-    if (drawable.isNullOrEmpty()) {
-        onRenderThread { h -> MapNative.clearRoute(h) }
-        return
-    }
-    // Flat lon/lat pairs across every segment, plus a point count and colour per
-    // segment: three bulk arrays cross JNI instead of one call per point, which for a
-    // cross-city route is thousands of crossings saved. Built here rather than held,
-    // because a route is set once and this is not a per-frame path.
+/**
+ * A route-like overlay flattened for JNI: lon/lat pairs across every segment, plus a point
+ * count and colour per segment — three bulk arrays cross JNI instead of one call per point.
+ */
+internal class PackedPolylines(val flat: FloatArray, val lengths: IntArray, val colors: IntArray)
+
+/**
+ * Flatten the drawable segments (two or more points; fewer strokes nothing, and dropping them
+ * keeps the native per-segment ranges aligned with the colours), or `null` when none are.
+ *
+ * O(points), so it runs inside the render-thread task rather than on the main thread: during
+ * navigation the phone re-pushes the whole route every 5 m of travel (the travelled split
+ * moves), and a cross-country route is tens of thousands of points.
+ */
+internal fun packPolylines(segments: List<RouteSegment>?): PackedPolylines? {
+    val drawable = segments?.filter { it.points.size >= 2 }
+    if (drawable.isNullOrEmpty()) return null
     val flat = FloatArray(drawable.sumOf { it.points.size } * 2)
     val lengths = IntArray(drawable.size)
     val colors = IntArray(drawable.size)
@@ -240,38 +245,39 @@ internal fun SurfaceMapRenderer.applyRoute() {
             at++
         }
     }
+    return PackedPolylines(flat, lengths, colors)
+}
+
+// The segment lists are handed to the render thread as they are: hosts build a fresh list
+// per push (RouteOverlay is an immutable value) and never mutate one after passing it.
+internal fun SurfaceMapRenderer.applyRoute() {
+    val segments = routeSegments
     val width = routeStyle.width.value
     val casingWidth = routeStyle.casingWidth.value
     val casingColor = routeStyle.casingColor.toArgb()
-    // Packed here, stroked and uploaded on the render thread.
-    onRenderThread { h -> MapNative.setRoute(h, flat, lengths, colors, width, casingWidth, casingColor) }
+    onRenderThread { h ->
+        val packed = packPolylines(segments)
+        if (packed == null) {
+            MapNative.clearRoute(h)
+        } else {
+            MapNative.setRoute(h, packed.flat, packed.lengths, packed.colors, width, casingWidth, casingColor)
+        }
+    }
 }
 
 internal fun SurfaceMapRenderer.applyRailLines() {
-    // Drawable segments only, like the route: fewer than two points strokes
-    // nothing, and dropping them keeps the native per-segment ranges aligned.
-    val drawable = railSegments?.filter { it.points.size >= 2 }
-    if (drawable.isNullOrEmpty()) {
-        onRenderThread { h -> MapNative.clearRailLines(h) }
-        return
-    }
-    val flat = FloatArray(drawable.sumOf { it.points.size } * 2)
-    val lengths = IntArray(drawable.size)
-    val colors = IntArray(drawable.size)
-    var at = 0
-    drawable.forEachIndexed { i, segment ->
-        lengths[i] = segment.points.size
-        colors[i] = segment.color.toArgb()
-        for (point in segment.points) {
-            flat[at * 2] = point.longitude.toFloat()
-            flat[at * 2 + 1] = point.latitude.toFloat()
-            at++
-        }
-    }
+    val segments = railSegments
     val width = railStyle.width.value
     val casingWidth = railStyle.casingWidth.value
     val casingColor = railStyle.casingColor.toArgb()
-    onRenderThread { h -> MapNative.setRailLines(h, flat, lengths, colors, width, casingWidth, casingColor) }
+    onRenderThread { h ->
+        val packed = packPolylines(segments)
+        if (packed == null) {
+            MapNative.clearRailLines(h)
+        } else {
+            MapNative.setRailLines(h, packed.flat, packed.lengths, packed.colors, width, casingWidth, casingColor)
+        }
+    }
 }
 
 internal fun SurfaceMapRenderer.applyTraffic() {
