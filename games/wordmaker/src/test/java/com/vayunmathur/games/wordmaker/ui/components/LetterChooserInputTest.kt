@@ -111,4 +111,30 @@ class LetterChooserInputTest {
         rule.waitForIdle()
         assertEquals(listOf("CAT"), submitted)
     }
+
+    @Test fun dragStartingInTheCentreOrACornerSelectsNoLetterUntilItReachesOne() {
+        val submitted = mutableListOf<String>()
+        setChooser { submitted += it }
+        val c = centerOf('C'); val a = centerOf('A'); val t = centerOf('T'); val s = centerOf('S')
+        val wheelCentre = Offset(c.x, s.y)
+        val topLeftCorner = Offset(s.x, c.y)
+
+        // Starting in the centre and heading up used to select C by angle alone.
+        rule.onRoot().performTouchInput { down(wheelCentre); moveTo(wheelCentre + Offset(0f, -12f)); moveTo(t); up() }
+        rule.waitForIdle()
+        // Same from the empty top-left corner of the wheel box.
+        rule.onRoot().performTouchInput { down(topLeftCorner); moveTo(topLeftCorner + Offset(12f, 0f)); moveTo(a); up() }
+        rule.waitForIdle()
+        assertEquals(listOf("T", "A"), submitted)
+    }
+
+    @Test fun dragStartingOnATileKeepsThatTileEvenIfTheSlopEndsElsewhere() {
+        val submitted = mutableListOf<String>()
+        setChooser { submitted += it }
+        val c = centerOf('C'); val a = centerOf('A')
+        // One big move: the slop is only crossed at A, but the finger went down on C.
+        rule.onRoot().performTouchInput { down(c); moveTo(a); up() }
+        rule.waitForIdle()
+        assertEquals(listOf("CA"), submitted)
+    }
 }

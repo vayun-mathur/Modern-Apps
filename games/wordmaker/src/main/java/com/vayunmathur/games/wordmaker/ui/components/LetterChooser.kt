@@ -2,6 +2,8 @@ package com.vayunmathur.games.wordmaker.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,6 +39,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -52,9 +55,7 @@ import com.vayunmathur.games.wordmaker.ui.ChooserLetter
 import com.vayunmathur.library.ui.animatedDp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlin.math.atan2
 import kotlin.math.cos
-import kotlin.math.roundToInt
 import kotlin.math.sin
 
 @Composable
@@ -176,25 +177,32 @@ fun LetterChooser(
                 // positions without restarting a swipe in progress.
                 val currentGeometry by rememberUpdatedState(geometry)
 
-                fun getLetterAtArc(position: Offset): Int {
-                    val relative = position - currentGeometry.center
-                    val angleStep = 2 * Math.PI / letters.size.toDouble()
-                    var normalizedAngle = atan2(relative.y, relative.x) + Math.PI / 2
-                    while (normalizedAngle < 0) normalizedAngle += 2 * Math.PI
-                    while (normalizedAngle >= 2 * Math.PI) normalizedAngle -= 2 * Math.PI
-                    return (normalizedAngle / angleStep).roundToInt() % letters.size
-                }
+                // Where the finger went down. The drag detector only reports the point where the
+                // touch slop was crossed, which can already be past the first letter.
+                var dragDown by remember { mutableStateOf<Offset?>(null) }
 
                 // The tiles' parent handles the swipe, so it sees every move after the tiles
                 // (which only take taps, in tap-to-spell mode).
                 Box(
                     Modifier
                         .fillMaxSize()
+                        .pointerInput(Unit) {
+                            awaitEachGesture {
+                                dragDown = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position
+                            }
+                        }
                         .pointerInput(letters) {
                             detectDragGestures(
                                 onDragStart = { startOffset ->
                                     currentDragPosition = startOffset
-                                    selectedLettersIndices = listOf(getLetterAtArc(startOffset))
+                                    // Only a touch on a tile selects it. A drag that starts in the
+                                    // middle of the wheel or in a corner used to pick a letter by
+                                    // angle alone; now it selects nothing until it reaches a tile.
+                                    val geometry = currentGeometry
+                                    selectedLettersIndices = listOfNotNull(
+                                        dragDown?.let(geometry::letterAt),
+                                        geometry.letterAt(startOffset),
+                                    ).distinct()
                                 },
                                 onDrag = { change, _ ->
                                     currentDragPosition = change.position
