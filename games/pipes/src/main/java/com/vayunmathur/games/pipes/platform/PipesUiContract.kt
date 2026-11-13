@@ -46,6 +46,8 @@ data class GameBoardUiState(
     val moves: Int = 0,
     val bestScore: Int? = null,
     val canUndo: Boolean = false,
+    /** Every pair is connected but cells are still empty: show the "fill every cell" hint. */
+    val showFillHint: Boolean = false,
 )
 
 /**

@@ -7,6 +7,7 @@ import com.vayunmathur.games.pipes.data.CellPos
 import com.vayunmathur.games.pipes.data.CompletedLevelsRepository
 import com.vayunmathur.games.pipes.domain.BoardEdits
 import com.vayunmathur.games.pipes.domain.BoardState
+import com.vayunmathur.games.pipes.domain.BoardStatus
 import com.vayunmathur.games.pipes.domain.DailyLevels
 import com.vayunmathur.games.pipes.domain.ProgressCodec
 import com.vayunmathur.games.pipes.domain.SavedProgress
@@ -325,18 +326,7 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
     private fun checkWin() {
         val s = _uiState.value
         val levelData = s.levelData ?: return
-        val gameState = s.gameState
-
-        if (gameState.cellOwner.size != levelData.cells.size) return
-
-        val allConnected = levelData.endpoints.all { ep ->
-            val path = gameState.paths[ep.colorIndex] ?: return
-            path.size >= 2 && path.first() in ep.cells &&
-                (if (ep.cells.size == 2) path.last() in ep.cells - path.first()
-                else ep.cells.all { it in path } && path.last() in ep.cells)
-        }
-
-        if (allConnected) onLevelWon()
+        if (BoardStatus.isSolved(levelData, s.gameState)) onLevelWon()
     }
 
     private fun onLevelWon() {

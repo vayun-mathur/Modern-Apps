@@ -20,4 +20,6 @@
     </plurals>
     <!-- GameBoardScreen: Button shown after solving the last level of a pack; returns to the pack list. Verb phrase -->
     <string name="back_to_packs">Back to packs</string>
+    <!-- GameBoardScreen: Hint shown when every pair of dots is connected but some cells are still empty, so the level is not solved yet. Sentence -->
+    <string name="fill_every_cell_hint">Every pair is connected. Fill every cell to finish.</string>
 </resources>

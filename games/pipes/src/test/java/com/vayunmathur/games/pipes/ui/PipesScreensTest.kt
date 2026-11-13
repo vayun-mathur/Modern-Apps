@@ -169,6 +169,16 @@ class PipesScreensTest {
         rule.onNodeWithText(str(UiR.string.next_level)).performClick()
         assertEquals(2, levelChange)
         rule.onNodeWithText(ctx.resources.getQuantityString(R.plurals.level_solved_moves, 0, 0)).assertIsDisplayed()
+        rule.onNodeWithText(str(R.string.fill_every_cell_hint)).assertDoesNotExist()
+        // Every pair joined but cells left empty: the hint replaces the silence
+        screen.value = {
+            PipesTheme {
+                GameBoardScreen(
+                    GameBoardUiState(level, levelIndex = 1, maxLevelIndex = 3, showFillHint = true, canUndo = true),
+                    actions, onBack = {}, onLevelChange = {})
+            }
+        }
+        rule.onNodeWithText(str(R.string.fill_every_cell_hint)).assertIsDisplayed()
         // Won on the last level: no next button, but a solved message and a way back to the packs
         var toPacks = 0
         screen.value = {

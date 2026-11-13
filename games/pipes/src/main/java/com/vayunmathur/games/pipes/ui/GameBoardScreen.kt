@@ -93,10 +93,24 @@ fun GameBoardScreen(
     }
 }
 
-/** The solved message once the level is won; announced by TalkBack as it appears. */
+/**
+ * The solved message once the level is won, or the "fill every cell" hint when every pair
+ * is joined but the board is not full. Both are announced by TalkBack as they appear.
+ */
 @Composable
 private fun StatusLine(state: GameBoardUiState) {
-    if (!state.isLevelWon) return
+    if (!state.isLevelWon) {
+        if (state.showFillHint) {
+            Text(
+                text = stringResource(R.string.fill_every_cell_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        return
+    }
     Text(
         text = pluralStringResource(R.plurals.level_solved_moves, state.moves, state.moves),
         style = MaterialTheme.typography.titleMedium,

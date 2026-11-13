@@ -65,3 +65,21 @@ object BoardEdits {
         return out
     }
 }
+
+/** Pure questions about how far a [BoardState] is from solved. */
+object BoardStatus {
+    /** Every colour's line joins its dots (all of them, for triplets). */
+    fun everyPairConnected(level: LevelData, state: BoardState): Boolean =
+        level.endpoints.all { StrokeRules.isComplete(level, it.colorIndex, state.paths[it.colorIndex].orEmpty()) }
+
+    /** Solved: every pair connected and every cell covered. */
+    fun isSolved(level: LevelData, state: BoardState): Boolean =
+        state.cellOwner.size == level.cells.size && everyPairConnected(level, state)
+
+    /**
+     * Every pair is connected but some cells are still empty: the one state where the
+     * board looks finished yet does not count, so the player needs telling.
+     */
+    fun needsFill(level: LevelData, state: BoardState): Boolean =
+        state.cellOwner.size < level.cells.size && everyPairConnected(level, state)
+}

@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.vayunmathur.games.pipes.Route
 import com.vayunmathur.games.pipes.data.LevelPack
+import com.vayunmathur.games.pipes.domain.BoardStatus
 import com.vayunmathur.games.pipes.platform.GameBoardUiState
 import com.vayunmathur.games.pipes.platform.PipesGameState
 import com.vayunmathur.games.pipes.platform.PipesViewModel
@@ -32,5 +33,5 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: PipesViewModel, packIn
     if (levels == null || levelData == null) { Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }; return }
     val isReady = uiState.packIndex == packIndex && uiState.levelIndex == levelIndex && uiState.levelData != null
     val currentLevelStats = levelStats[levelData.id]
-    GameBoardScreen(state = GameBoardUiState(levelData = if (isReady) uiState.levelData!! else levelData, levelIndex = levelIndex, maxLevelIndex = levels.lastIndex, gameState = if (isReady) uiState.gameState else PipesGameState(), activeColor = if (isReady && uiState.leftStart) uiState.activeColor else null, activePath = if (isReady) uiState.activePath else emptyList(), isLevelWon = isReady && uiState.isLevelWon, isCompleted = currentLevelStats != null, colorblind = colorblind, moves = if (isReady) viewModel.getCurrentMoves() else 0, bestScore = currentLevelStats?.bestScore, canUndo = isReady && uiState.history.isNotEmpty()), actions = viewModel, onBack = { backStack.pop() }, onBackToPacks = { while (backStack.backStack.size > 1 && backStack.last() !is Route.PackSelector) backStack.pop() }, onLevelChange = { newIndex -> val clamped = newIndex.coerceIn(0, levels.lastIndex); backStack.setLast(if (isDaily) Route.DailyGame(clamped) else Route.Game(packIndex, clamped)) })
+    GameBoardScreen(state = GameBoardUiState(levelData = if (isReady) uiState.levelData!! else levelData, levelIndex = levelIndex, maxLevelIndex = levels.lastIndex, gameState = if (isReady) uiState.gameState else PipesGameState(), activeColor = if (isReady && uiState.leftStart) uiState.activeColor else null, activePath = if (isReady) uiState.activePath else emptyList(), isLevelWon = isReady && uiState.isLevelWon, isCompleted = currentLevelStats != null, colorblind = colorblind, moves = if (isReady) viewModel.getCurrentMoves() else 0, bestScore = currentLevelStats?.bestScore, canUndo = isReady && uiState.history.isNotEmpty(), showFillHint = isReady && !uiState.isLevelWon && uiState.activeColor == null && BoardStatus.needsFill(levelData, uiState.gameState)), actions = viewModel, onBack = { backStack.pop() }, onBackToPacks = { while (backStack.backStack.size > 1 && backStack.last() !is Route.PackSelector) backStack.pop() }, onLevelChange = { newIndex -> val clamped = newIndex.coerceIn(0, levels.lastIndex); backStack.setLast(if (isDaily) Route.DailyGame(clamped) else Route.Game(packIndex, clamped)) })
 }
