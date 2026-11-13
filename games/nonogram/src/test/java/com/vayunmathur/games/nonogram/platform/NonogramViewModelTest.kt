@@ -48,8 +48,13 @@ class NonogramViewModelTest {
 
     /** set/resetMain throw if a background coroutine happens to be using Main at that instant. */
     private fun retrying(action: () -> Unit) {
-        repeat(20) { if (runCatching(action).isSuccess) return; Thread.sleep(10) }
-        action()
+        var attempts = 0
+        while (attempts++ < RETRIES && runCatching(action).isFailure) Thread.sleep(10)
+        if (attempts > RETRIES) action()
+    }
+
+    private companion object {
+        const val RETRIES = 20
     }
 
     private fun await(desc: String, cond: () -> Boolean) {

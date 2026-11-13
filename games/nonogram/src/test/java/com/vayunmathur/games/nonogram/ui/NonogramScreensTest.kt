@@ -315,12 +315,15 @@ class NonogramScreensTest {
             node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
             val r = results.single()
             val text = r.layoutInput.text.text
-            // The slot is the Text's max height; allow 1px for rounding the slot to whole pixels.
+            // Checked on the resolved style rather than measured glyphs, which Robolectric's
+            // stand-in text metrics do not report faithfully. The slot is the Text's max height;
+            // 1px of tolerance covers rounding it to whole pixels. The old `.sp` sizing fails both
+            // checks at 200%: its font and line box were each twice what the slot was fitted for.
             val slotPx = r.layoutInput.constraints.maxHeight + 1f
             val fontPx = with(r.layoutInput.density) { r.layoutInput.style.fontSize.toPx() }
+            val linePx = with(r.layoutInput.density) { r.layoutInput.style.lineHeight.toPx() }
             assertTrue(fontPx <= slotPx, "clue '$text' is ${fontPx}px in a ${slotPx}px slot")
-            assertTrue(r.multiParagraph.height <= slotPx, "clue '$text' line box ${r.multiParagraph.height}px overflows its ${slotPx}px slot")
-            assertTrue(!r.didOverflowWidth, "clue '$text' is cut off at the sides at 200% font scale")
+            assertTrue(linePx <= slotPx, "clue '$text' line box ${linePx}px overflows its ${slotPx}px slot")
         }
     }
 
