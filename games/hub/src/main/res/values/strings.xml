@@ -1,8 +1,14 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <!-- DashboardScreen / launcher: App name. Noun, proper, displayed in TopAppBar -->
     <string name="app_name" translatable="false">GameHub</string>
+    <!-- MainActivity: Bottom-navigation tab label for the dashboard. Noun -->
+    <string name="tab_home">Home</string>
     <!-- MainActivity / GamesListScreen: Tab title and content description for Games list. Noun -->
     <string name="tab_games">Games</string>
+    <!-- MainActivity: Bottom-navigation tab label for the achievements list. Noun -->
+    <string name="tab_achievements">Achievements</string>
+    <!-- MainActivity: Bottom-navigation tab label for the player profile. Noun -->
+    <string name="tab_profile">Profile</string>
     <!-- ActivityFeedScreen / GameDetailScreen: Tab title for activity feed section. Noun -->
     <string name="tab_activity">Activity</string>
     <!-- StreakIndicator: Content description for streak icon. Noun -->
@@ -130,7 +136,7 @@
     <!-- Dashboard: explains the generic controller entry. -->
     <string name="connect_to_tv_subtitle">Use this phone as a controller for games on your TV</string>
 
-    <!-- YuuScreen: Tab title for the Yuu avatar plaza. Noun -->
+    <!-- MainActivity / YuuScreen: Tab label and screen title for the Yuu avatar plaza (dev builds). Noun -->
     <string name="tab_yuu">Yuu</string>
     <!-- YuuScreen: Empty state title when no Yuus exist yet. Sentence -->
     <string name="yuu_empty_title">No Yuus yet</string>

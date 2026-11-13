@@ -5,6 +5,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.games.hub.ui.components.AvatarIcon
 import com.vayunmathur.library.ui.IconDashboard
@@ -130,7 +131,7 @@ private fun HubTabs(
     // have two live origins. settledPage rather than currentPage: currentPage flips at the halfway
     // point of a scroll, which would leave both pages claiming the key mid-swipe.
     val tabs = listOf(
-        PagerTab("Home", { IconDashboard() }) {
+        PagerTab(stringResource(R.string.tab_home), { IconDashboard() }) {
             DashboardPage(
                 viewModel = viewModel,
                 onGameClick = { gameId -> backStack.add(MainRoute.GameDetail(gameId)) },
@@ -141,23 +142,23 @@ private fun HubTabs(
                 ownsGameMorphKeys = pagerState.settledPage == 0
             )
         },
-        PagerTab("Games", { IconSportsEsports() }) {
+        PagerTab(stringResource(R.string.tab_games), { IconSportsEsports() }) {
             GamesListPage(
                 viewModel = viewModel,
                 onGameClick = { gameId -> backStack.add(MainRoute.GameDetail(gameId)) },
                 ownsGameMorphKeys = pagerState.settledPage == 1
             )
         },
-        PagerTab("Achievements", { IconEmojiEvents() }) {
+        PagerTab(stringResource(R.string.tab_achievements), { IconEmojiEvents() }) {
             AchievementsScreen(viewModel = viewModel)
         },
-        PagerTab("Profile", { AvatarIcon(symbol = profile?.avatarSymbol) }) {
+        PagerTab(stringResource(R.string.tab_profile), { AvatarIcon(symbol = profile?.avatarSymbol) }) {
             ProfilePage(viewModel = viewModel)
         },
         // Dev-only: the Yuu avatar plaza is still experimental. R8 strips the
         // block from release builds via the repo-wide BuildConfig.DEV_BUILD flag.
         if (BuildConfig.DEV_BUILD) {
-            PagerTab("Yuu", { IconEmoji() }) {
+            PagerTab(stringResource(R.string.tab_yuu), { IconEmoji() }) {
                 YuuPage(
                     viewModel = viewModel,
                     onCreateYuu = { backStack.add(MainRoute.YuuEditorNew) },
