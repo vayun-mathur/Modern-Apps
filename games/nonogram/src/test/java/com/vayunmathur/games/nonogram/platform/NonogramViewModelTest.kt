@@ -76,6 +76,42 @@ class NonogramViewModelTest {
         await("long press fills") { vm.uiState.value.game?.filled?.contains(noteCell) == true }
     }
 
+    @Test fun movesUpdateTheBoardBeforeAnyWriteLands() {
+        val vm = loadedVm()
+        val g = vm.uiState.value.game!!
+        val correct = g.puzzle.solution.indices.first { g.puzzle.solution[it] }
+        // No await: the board on screen changes in the same call as the tap.
+        vm.tapCell(correct)
+        assertTrue(correct in vm.uiState.value.game!!.filled, "fill must show before DataStore echoes it")
+        vm.setMarkMode(MarkMode.CROSS)
+        assertEquals(MarkMode.CROSS, vm.uiState.value.markMode, "mode switch applies at once")
+        val note = g.puzzle.solution.indices.first { it != correct }
+        vm.tapCell(note)
+        assertTrue(note in vm.uiState.value.game!!.crossed)
+        vm.tapCell(note)
+        assertFalse(note in vm.uiState.value.game!!.crossed, "second quick tap must clear the X, not add it again")
+        // And the store catches up to what is on screen.
+        await("persisted") {
+            runBlocking { vm.dataStore.filledCells.first() } == setOf(correct) &&
+                runBlocking { vm.dataStore.crossedCells.first() }.isEmpty()
+        }
+        assertTrue(correct in vm.uiState.value.game!!.filled)
+        assertFalse(note in vm.uiState.value.game!!.crossed)
+    }
+
+    @Test fun rapidMovesAllPersistInOrder() {
+        val vm = loadedVm()
+        val g = vm.uiState.value.game!!
+        val picture = g.puzzle.solution.indices.filter { g.puzzle.solution[it] }
+        val target = picture.take(picture.size - 1)
+        for (i in target) vm.tapCell(i)
+        assertEquals(target.toSet(), vm.uiState.value.game!!.filled)
+        await("last snapshot wins") { runBlocking { vm.dataStore.filledCells.first() } == target.toSet() }
+        // A fresh ViewModel (a relaunch) loads exactly what was played.
+        val again = NonogramViewModel(app)
+        await("reload") { again.uiState.value.game?.filled == target.toSet() }
+    }
+
     @Test fun longPressInFillModeNotesAndRestartClears() {
         val vm = loadedVm()
         val g = vm.uiState.value.game!!

@@ -1,6 +1,7 @@
 package com.vayunmathur.games.nonogram.platform
 
 import android.app.Application
+import java.util.concurrent.atomic.AtomicLong
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.games.nonogram.data.DAILY_SIZE
@@ -10,8 +11,10 @@ import com.vayunmathur.games.nonogram.data.NonogramDataStore
 import com.vayunmathur.games.nonogram.data.NonogramGameState
 import com.vayunmathur.games.nonogram.data.NonogramPuzzle
 import com.vayunmathur.games.nonogram.data.STARTING_HEARTS
+import com.vayunmathur.games.nonogram.data.StoredBoard
 import com.vayunmathur.games.nonogram.data.sizeForLevel
 import com.vayunmathur.games.nonogram.domain.NonogramGenerator
+import com.vayunmathur.games.nonogram.domain.NonogramMoves
 import com.vayunmathur.library.util.AchievementsManager
 import com.vayunmathur.library.util.DailyChallengeStore
 import com.vayunmathur.library.util.DailyStreakReporter
@@ -26,6 +29,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -142,59 +147,93 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * Streams the player's marks onto [puzzle].
+     * Streams the stored marks onto [puzzle].
+     *
+     * This is how a board is *loaded*; after that the ViewModel's own copy is the source of truth and
+     * moves are applied to it directly (see [commit]). While any write is still queued, an emission
+     * for the board already on screen is a lagging echo of an earlier move and is ignored — applying
+     * it would briefly roll the board back, and judging the next tap against it is how two quick
+     * cross taps used to both add an X.
      *
      * Daily marks are blanked whenever the stored day is not the day being played, so a stale write
      * from yesterday can never show up on today's board even if the rollover edit was interrupted.
      */
     private suspend fun observeMarks(session: Session, puzzle: NonogramPuzzle, day: Long) {
         val daily = session.mode == GameMode.DAILY
-        val filledFlow = if (daily) dataStore.dailyFilledCells else dataStore.filledCells
-        val crossedFlow = if (daily) dataStore.dailyCrossedCells else dataStore.crossedCells
-        val revealedFlow = if (daily) dataStore.dailyRevealedBlanks else dataStore.revealedBlanks
-        val heartsFlow = if (daily) dataStore.dailyHearts else dataStore.hearts
+        boardDay = day
 
-        // Two stages because the typed `combine` overloads stop at five flows.
-        val boardFlow = combine(filledFlow, crossedFlow, revealedFlow, heartsFlow) {
-            filled, crossed, revealed, hearts ->
-            Marks(filled, crossed, revealed, hearts, dailyDone = false)
-        }
-
-        combine(boardFlow, dataStore.dailyDay, dailyStore.lastCompletedDayFlow) {
-            marks, storedDay, lastCompleted ->
+        combine(dataStore.board(daily), dataStore.dailyDay, dailyStore.lastCompletedDayFlow) {
+            board, storedDay, lastCompleted ->
             // Anything stored against a different day is yesterday's work and must not be shown.
             val stale = daily && storedDay != day
-            if (stale) {
-                Marks(emptySet(), emptySet(), emptySet(), STARTING_HEARTS, lastCompleted == day)
-            } else {
-                marks.copy(dailyDone = lastCompleted == day)
-            }
-        }.collectLatest { marks ->
-            val game = NonogramGameState(
+            (if (stale) StoredBoard() else board) to (lastCompleted == day)
+        }.collectLatest { (board, dailyDone) ->
+            val onScreen = _uiState.value.game
+                ?.takeIf { hasPendingWrites && it.isBoardFor(session, puzzle) }
+            val game = onScreen ?: NonogramGameState(
                 puzzle = puzzle,
-                filled = marks.filled,
-                crossed = marks.crossed,
-                revealedBlanks = marks.revealed,
-                hearts = marks.hearts,
+                filled = board.filled,
+                crossed = board.crossed,
+                revealedBlanks = board.revealed,
+                hearts = board.hearts,
                 mode = session.mode,
                 level = session.level,
             )
             _uiState.value = _uiState.value.copy(
                 game = game,
                 generating = false,
-                dailyDone = marks.dailyDone,
+                dailyDone = dailyDone,
             )
             if (game.isWon) onWin(game, daily, day)
         }
     }
 
-    private data class Marks(
-        val filled: Set<Int>,
-        val crossed: Set<Int>,
-        val revealed: Set<Int>,
-        val hearts: Int,
-        val dailyDone: Boolean,
-    )
+    private fun NonogramGameState.isBoardFor(session: Session, puzzle: NonogramPuzzle): Boolean =
+        this.puzzle == puzzle && mode == session.mode && level == session.level
+
+    /** The daily the board on screen belongs to, so a queued write cannot land on the next day's. */
+    private var boardDay: Long = Long.MIN_VALUE
+
+    /**
+     * Serialises every board write, so snapshots land in the order the moves were made and a level
+     * change queued after them is never overtaken.
+     */
+    private val writeLock = Mutex()
+
+    /** Tickets for queued and finished board writes; equal when nothing is waiting to be persisted. */
+    private val requestedWrite = AtomicLong(0)
+    private val completedWrite = AtomicLong(0)
+
+    private val hasPendingWrites: Boolean get() = completedWrite.get() != requestedWrite.get()
+
+    /**
+     * Shows [next] at once and persists it in the background.
+     *
+     * The board on screen updates in the same frame as the tap instead of after a DataStore round
+     * trip, and every later move is judged against this state. Writes are queued behind [writeLock];
+     * one that has been superseded by a newer snapshot before it starts is skipped, so a burst of taps
+     * costs one or two disk writes rather than one each.
+     */
+    private fun commit(next: NonogramGameState) {
+        val previous = _uiState.value.game ?: return
+        if (next == previous) return
+        _uiState.value = _uiState.value.copy(game = next)
+        persist(next)
+        if (next.isWon) onWin(next, next.mode == GameMode.DAILY, boardDay)
+    }
+
+    private fun persist(game: NonogramGameState) {
+        val ticket = requestedWrite.incrementAndGet()
+        val board = StoredBoard(game.filled, game.crossed, game.revealedBlanks, game.hearts)
+        val daily = game.mode == GameMode.DAILY
+        val day = boardDay
+        viewModelScope.launch {
+            writeLock.withLock {
+                if (ticket == requestedWrite.get()) dataStore.saveBoard(board, daily, game.level, day)
+            }
+            completedWrite.accumulateAndGet(ticket, ::maxOf)
+        }
+    }
 
     /**
      * Tap: places whichever mark [MarkMode] selects.
@@ -204,21 +243,12 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
      * point of the mode: crossing off a long run of cells should not be a gamble.
      */
     override fun tapCell(index: Int) {
-        val game = _uiState.value.game ?: return
-        if (game.isOver || game.isLocked(index)) return
-        if (_uiState.value.markMode == MarkMode.CROSS) {
-            toggleNote(game, index)
-            return
-        }
-
-        val daily = game.mode == GameMode.DAILY
-        viewModelScope.launch {
-            if (game.belongsToPicture(index)) {
-                dataStore.fillCell(index, daily)
-            } else {
-                dataStore.revealBlank(index, daily)
-            }
-        }
+        val state = _uiState.value
+        val game = state.game ?: return
+        commit(
+            if (state.markMode == MarkMode.CROSS) NonogramMoves.toggleNote(game, index)
+            else NonogramMoves.guess(game, index)
+        )
     }
 
     /**
@@ -229,29 +259,17 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
      * is the player's own working, and being wrong in a note is not a guess the game should punish.
      */
     override fun crossCell(index: Int) {
-        val game = _uiState.value.game ?: return
-        if (game.isOver || game.isLocked(index)) return
-        if (_uiState.value.markMode == MarkMode.CROSS) {
-            val daily = game.mode == GameMode.DAILY
-            viewModelScope.launch {
-                if (game.belongsToPicture(index)) {
-                    dataStore.fillCell(index, daily)
-                } else {
-                    dataStore.revealBlank(index, daily)
-                }
-            }
-        } else {
-            toggleNote(game, index)
-        }
-    }
-
-    private fun toggleNote(game: NonogramGameState, index: Int) {
-        val daily = game.mode == GameMode.DAILY
-        val alreadyNoted = index in game.crossed
-        viewModelScope.launch { dataStore.setNote(index, !alreadyNoted, daily) }
+        val state = _uiState.value
+        val game = state.game ?: return
+        commit(
+            if (state.markMode == MarkMode.CROSS) NonogramMoves.guess(game, index)
+            else NonogramMoves.toggleNote(game, index)
+        )
     }
 
     override fun setMarkMode(mode: MarkMode) {
+        // In memory first, so a tap straight after switching uses the new mode.
+        _uiState.value = _uiState.value.copy(markMode = mode)
         viewModelScope.launch { dataStore.setMarkMode(mode) }
     }
 
@@ -271,12 +289,21 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         if (state.generating || !game.isWon) return
         val target = game.level + 1
         _uiState.value = state.copy(generating = true)
-        viewModelScope.launch { dataStore.saveLevel(target) }
+        // Behind the write lock so the winning move's snapshot lands first.
+        viewModelScope.launch { writeLock.withLock { dataStore.saveLevel(target) } }
     }
 
+    /** Clears every mark and restores the hearts, on screen at once and on disk behind it. */
     override fun restartLevel() {
-        val daily = _uiState.value.mode == GameMode.DAILY
-        viewModelScope.launch { dataStore.clearMarks(daily) }
+        val game = _uiState.value.game ?: return
+        commit(
+            game.copy(
+                filled = emptySet(),
+                crossed = emptySet(),
+                revealedBlanks = emptySet(),
+                hearts = STARTING_HEARTS,
+            )
+        )
     }
 
     /**

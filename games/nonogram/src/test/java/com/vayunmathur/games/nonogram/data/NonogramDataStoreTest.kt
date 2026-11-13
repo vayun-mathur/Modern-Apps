@@ -29,9 +29,12 @@ class NonogramDataStoreTest {
         s.setMarkMode(MarkMode.FILL)
     }
 
+    private fun board(filled: Set<Int> = emptySet(), crossed: Set<Int> = emptySet(), revealed: Set<Int> = emptySet(), hearts: Int = STARTING_HEARTS) =
+        StoredBoard(filled, crossed, revealed, hearts)
+
     @Test fun saveLevelWipesBoardAndRestoresHearts() = runBlocking {
-        val s = store()
-        s.fillCell(3, daily = false); s.setNote(4, true, daily = false); s.revealBlank(5, daily = false)
+        val s = store(); s.saveLevel(6)
+        s.saveBoard(board(setOf(3), setOf(4), setOf(5), STARTING_HEARTS - 1), daily = false, level = 6, day = 0L)
         assertEquals(STARTING_HEARTS - 1, s.hearts.first())
         s.saveLevel(7)
         assertEquals(7, s.currentLevel.first())
@@ -41,35 +44,33 @@ class NonogramDataStoreTest {
         assertEquals(STARTING_HEARTS, s.hearts.first())
     }
 
-    @Test fun fillRemovesNoteAndNotesToggle() = runBlocking {
+    @Test fun saveBoardRoundTripsAsOneSnapshot() = runBlocking {
         val s = store(); s.saveLevel(2)
-        s.setNote(10, true, daily = false); assertEquals(setOf(10), s.crossedCells.first())
-        s.fillCell(10, daily = false)
-        assertEquals(setOf(10), s.filledCells.first()); assertEquals(emptySet(), s.crossedCells.first())
-        s.setNote(11, true, daily = false); s.setNote(11, false, daily = false)
-        assertEquals(emptySet(), s.crossedCells.first())
+        val b = board(setOf(1, 2), setOf(7), setOf(9), 1)
+        s.saveBoard(b, daily = false, level = 2, day = 0L)
+        assertEquals(b, s.board(daily = false).first())
+        assertEquals(setOf(1, 2), s.filledCells.first()); assertEquals(1, s.hearts.first())
     }
 
-    @Test fun revealBlankChargesOnceAndClearsNote() = runBlocking {
+    @Test fun saveBoardIsDroppedOnceTheLevelHasMovedOn() = runBlocking {
         val s = store(); s.saveLevel(3)
-        s.setNote(20, true, daily = false)
-        s.revealBlank(20, daily = false)
-        assertEquals(setOf(20), s.revealedBlanks.first()); assertEquals(emptySet(), s.crossedCells.first())
-        assertEquals(STARTING_HEARTS - 1, s.hearts.first())
-        s.revealBlank(20, daily = false)
-        assertEquals(STARTING_HEARTS - 1, s.hearts.first(), "second reveal must not charge again")
-        s.revealBlank(21, daily = false); s.revealBlank(22, daily = false)
-        assertEquals(0, s.hearts.first())
-        s.revealBlank(23, daily = false); assertEquals(0, s.hearts.first(), "hearts floor at zero")
+        s.saveLevel(4)
+        // A snapshot of level 3 queued behind "Next level" must not land on level 4.
+        s.saveBoard(board(filled = setOf(1)), daily = false, level = 3, day = 0L)
+        assertEquals(StoredBoard(), s.board(daily = false).first())
     }
 
-    @Test fun clearMarksCasualAndDailyAreIndependent() = runBlocking {
+    @Test fun saveBoardCasualAndDailyAreIndependent() = runBlocking {
         val s = store(); s.saveLevel(4); s.ensureDailyDay(19_000L)
-        s.fillCell(1, daily = false); s.fillCell(2, daily = true)
-        s.clearMarks(daily = false)
+        s.saveBoard(board(filled = setOf(1)), daily = false, level = 4, day = 19_000L)
+        s.saveBoard(board(filled = setOf(2)), daily = true, level = 4, day = 19_000L)
+        assertEquals(setOf(1), s.filledCells.first()); assertEquals(setOf(2), s.dailyFilledCells.first())
+        s.saveBoard(StoredBoard(), daily = false, level = 4, day = 19_000L)
         assertEquals(emptySet(), s.filledCells.first()); assertEquals(setOf(2), s.dailyFilledCells.first())
-        s.clearMarks(daily = true)
-        assertEquals(emptySet(), s.dailyFilledCells.first()); assertEquals(STARTING_HEARTS, s.dailyHearts.first())
+        // Yesterday's daily snapshot is dropped after the rollover.
+        s.ensureDailyDay(19_001L)
+        s.saveBoard(board(filled = setOf(3)), daily = true, level = 4, day = 19_000L)
+        assertEquals(emptySet(), s.dailyFilledCells.first())
     }
 
     @Test fun recordCompletedOnceBanksEachWinKeyOnce() = runBlocking {
@@ -85,7 +86,8 @@ class NonogramDataStoreTest {
 
     @Test fun dailyRolloverClearsOnlyOnDayChange() = runBlocking {
         val s = store()
-        s.ensureDailyDay(20_000L); s.fillCell(5, daily = true); s.revealBlank(6, daily = true)
+        s.ensureDailyDay(20_000L)
+        s.saveBoard(board(setOf(5), revealed = setOf(6), hearts = 2), daily = true, level = 1, day = 20_000L)
         s.ensureDailyDay(20_000L)
         assertEquals(setOf(5), s.dailyFilledCells.first(), "same day must keep work")
         s.ensureDailyDay(20_001L)

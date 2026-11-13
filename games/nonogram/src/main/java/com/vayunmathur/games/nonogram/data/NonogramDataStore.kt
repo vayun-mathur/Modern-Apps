@@ -79,55 +79,39 @@ class NonogramDataStore(private val context: Context) {
         }
     }
 
-    /** Clears the current level's marks and restores its hearts, for restart and for a failed board. */
-    suspend fun clearMarks(daily: Boolean) {
-        context.dataStore.edit { prefs ->
-            prefs[if (daily) DAILY_FILLED_KEY else FILLED_KEY] = emptySet()
-            prefs[if (daily) DAILY_CROSSED_KEY else CROSSED_KEY] = emptySet()
-            prefs[if (daily) DAILY_REVEALED_KEY else REVEALED_KEY] = emptySet()
-            prefs[if (daily) DAILY_HEARTS_KEY else HEARTS_KEY] = STARTING_HEARTS
-        }
-    }
-
-    /** Marks [index] as part of the picture. */
-    suspend fun fillCell(index: Int, daily: Boolean) {
-        val filledKey = if (daily) DAILY_FILLED_KEY else FILLED_KEY
-        val crossedKey = if (daily) DAILY_CROSSED_KEY else CROSSED_KEY
-        context.dataStore.edit { prefs ->
-            prefs[filledKey] = prefs[filledKey].toCells().plus(index).toStrings()
-            // A confirmed fill makes any note on the same cell meaningless.
-            prefs[crossedKey] = prefs[crossedKey].toCells().minus(index).toStrings()
-        }
-    }
-
-    /** Adds or removes the player's own "looks empty" note on [index]. Never touches hearts. */
-    suspend fun setNote(index: Int, crossed: Boolean, daily: Boolean) {
-        val crossedKey = if (daily) DAILY_CROSSED_KEY else CROSSED_KEY
-        context.dataStore.edit { prefs ->
-            val notes = prefs[crossedKey].toCells()
-            prefs[crossedKey] = (if (crossed) notes + index else notes - index).toStrings()
-        }
+    /**
+     * The whole board for one mode, read from a single preferences snapshot.
+     *
+     * One flow rather than combining the per-set flows above: each of those collects the store
+     * separately, so a combine of them can briefly pair the fills of one write with the hearts of the
+     * previous one.
+     */
+    fun board(daily: Boolean): Flow<StoredBoard> = context.dataStore.data.map { prefs ->
+        StoredBoard(
+            filled = prefs[if (daily) DAILY_FILLED_KEY else FILLED_KEY].toCells(),
+            crossed = prefs[if (daily) DAILY_CROSSED_KEY else CROSSED_KEY].toCells(),
+            revealed = prefs[if (daily) DAILY_REVEALED_KEY else REVEALED_KEY].toCells(),
+            hearts = prefs[if (daily) DAILY_HEARTS_KEY else HEARTS_KEY] ?: STARTING_HEARTS,
+        )
     }
 
     /**
-     * Records that [index] turned out to be empty, and spends the heart it cost.
+     * Writes the board the ViewModel holds in memory, in one edit.
      *
-     * The heart is decremented from the stored value *inside* the transaction rather than written as a
-     * number worked out beforehand. Two wrong taps in quick succession would otherwise both read the
-     * same heart count and write the same result, so only one would be charged - and a later write
-     * carrying a stale count could put a spent heart back.
+     * The ViewModel is the source of truth while a puzzle is open — it applies each move to its own
+     * state first and persists afterwards — so this stores a whole snapshot rather than replaying a
+     * delta against whatever is on disk. The write is dropped if the store has since moved on to a
+     * different casual [level] or daily [day]: a snapshot that was queued behind "Next level" or a
+     * daily rollover must not paint the previous puzzle's marks onto the new one.
      */
-    suspend fun revealBlank(index: Int, daily: Boolean) {
-        val revealedKey = if (daily) DAILY_REVEALED_KEY else REVEALED_KEY
-        val crossedKey = if (daily) DAILY_CROSSED_KEY else CROSSED_KEY
-        val heartsKey = if (daily) DAILY_HEARTS_KEY else HEARTS_KEY
+    suspend fun saveBoard(board: StoredBoard, daily: Boolean, level: Int, day: Long) {
         context.dataStore.edit { prefs ->
-            val revealed = prefs[revealedKey].toCells()
-            // Already revealed means already paid for; re-tapping must not charge again.
-            if (index in revealed) return@edit
-            prefs[revealedKey] = (revealed + index).toStrings()
-            prefs[crossedKey] = prefs[crossedKey].toCells().minus(index).toStrings()
-            prefs[heartsKey] = ((prefs[heartsKey] ?: STARTING_HEARTS) - 1).coerceAtLeast(0)
+            if (daily && prefs[DAILY_DAY_KEY] != day) return@edit
+            if (!daily && (prefs[LEVEL_KEY] ?: 1) != level) return@edit
+            prefs[if (daily) DAILY_FILLED_KEY else FILLED_KEY] = board.filled.toStrings()
+            prefs[if (daily) DAILY_CROSSED_KEY else CROSSED_KEY] = board.crossed.toStrings()
+            prefs[if (daily) DAILY_REVEALED_KEY else REVEALED_KEY] = board.revealed.toStrings()
+            prefs[if (daily) DAILY_HEARTS_KEY else HEARTS_KEY] = board.hearts
         }
     }
 
@@ -194,6 +178,14 @@ class NonogramDataStore(private val context: Context) {
         const val NO_DAY = Long.MIN_VALUE
     }
 }
+
+/** One mode's stored marks and hearts; see [NonogramDataStore.board]. */
+data class StoredBoard(
+    val filled: Set<Int> = emptySet(),
+    val crossed: Set<Int> = emptySet(),
+    val revealed: Set<Int> = emptySet(),
+    val hearts: Int = STARTING_HEARTS,
+)
 
 /** Cell indices are stored as strings because DataStore has no int-set type. */
 private fun Set<String>?.toCells(): Set<Int> =
