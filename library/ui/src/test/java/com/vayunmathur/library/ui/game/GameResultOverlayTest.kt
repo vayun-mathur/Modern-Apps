@@ -37,6 +37,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.GraphicsMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -91,6 +92,10 @@ class GameResultOverlayTest {
         assertEquals(0, behindTaps)
     }
 
+    // Compose decides what a cover hides with android.graphics.Region arithmetic, which Robolectric's
+    // legacy graphics shadows do not implement: under them nothing is ever covered, even by a full-size
+    // node with a content description. Native graphics runs the real Region code, as a device does.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test
     fun `TalkBack cannot reach the board while the overlay shows`() {
         val am = appContext.getSystemService(AccessibilityManager::class.java)
