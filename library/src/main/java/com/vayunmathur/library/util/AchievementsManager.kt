@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -36,17 +37,23 @@ abstract class AchievementsManager(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * Unlocks not yet shown, oldest first. Unlocks often land together — a win can complete "first win"
+     * and "ten wins" in one move — and each deserves its own toast, so they wait their turn here instead
+     * of overwriting one another.
+     */
+    private val pending = ArrayDeque<Achievement>()
     private val _newAchievement = MutableStateFlow<Achievement?>(null)
-    val newAchievement = _newAchievement.asStateFlow()
+
+    /** The unlock to show now: the oldest one not yet dismissed, or null when none is waiting. */
+    val newAchievement: StateFlow<Achievement?> = _newAchievement.asStateFlow()
 
     abstract fun checkExistingAchievements()
 
     fun onAchievementUnlocked(id: String) {
         val achievement = achievements.find { it.id == id } ?: return
         scope.launch {
-            if (ds.addStringToSetIfAbsent(unlockedKey, id)) {
-                _newAchievement.value = achievement
-            }
+            if (ds.addStringToSetIfAbsent(unlockedKey, id)) enqueue(achievement)
         }
     }
 
@@ -75,8 +82,19 @@ abstract class AchievementsManager(
         }
     }
 
+    /** The current toast is done: drop it and move the next waiting unlock, if any, into [newAchievement]. */
     fun dismissNotification() {
-        _newAchievement.value = null
+        synchronized(pending) {
+            pending.removeFirstOrNull()
+            _newAchievement.value = pending.firstOrNull()
+        }
+    }
+
+    private fun enqueue(achievement: Achievement) {
+        synchronized(pending) {
+            pending.addLast(achievement)
+            _newAchievement.value = pending.first()
+        }
     }
 
     /** Forget everything stored under [keyPrefix]. Used when the save it belongs to is deleted. */
