@@ -31,6 +31,8 @@
     <string name="seed_2">Seed: %1$s  •  %2$s</string>
     <string name="estus">Estus ×%1$s</string>
     <string name="down">Down</string>
+    <!-- HUD button: use the held item or attack what is under the crosshair. Verb, keep short -->
+    <string name="use">Use</string>
     <string name="furnace">Furnace</string>
     <string name="blast_furnace">Blast Furnace</string>
     <string name="smelt">Smelt</string>

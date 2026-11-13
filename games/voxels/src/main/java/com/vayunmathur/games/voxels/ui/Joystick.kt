@@ -1,32 +1,20 @@
 package com.vayunmathur.games.voxels.ui
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontWeight
-import com.vayunmathur.library.ui.Text
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlin.math.hypot
 import kotlin.math.sqrt
 
 @Composable
@@ -115,92 +103,8 @@ private fun emit(
     }
 }
 
-private fun lookCurve(v: Float): Float {
+internal fun lookCurve(v: Float): Float {
     val a = kotlin.math.abs(v)
     val shaped = 0.2f * a + 0.8f * a * a * a
     return if (v < 0f) -shaped else shaped
-}
-
-// Fullscreen world-interaction + floating look stick. A drag that STARTS on the right half spawns a
-// look joystick at the touch origin; taps place a block and long-presses break one — anywhere on the
-// screen (so build/break works on both halves). Move joystick / buttons sit above this and take their
-// own touches.
-@Composable
-fun FloatingLookJoystick(
-    modifier: Modifier,
-    onLookRate: (Float, Float) -> Unit,
-    onPlace: (Offset) -> Unit,
-    onBreak: (Offset) -> Unit,
-) {
-    var origin by remember { mutableStateOf(Offset.Zero) }
-    var knob by remember { mutableStateOf(Offset.Zero) }
-    var active by remember { mutableStateOf(false) }
-    Box(modifier
-        .pointerInput(Unit) {
-            val maxR = 70.dp.toPx()
-            detectDragGestures(
-                onDragStart = { off -> if (off.x > size.width / 2f) { origin = off; knob = Offset.Zero; active = true; onLookRate(0f, 0f) } },
-                onDrag = { change, drag ->
-                    if (active) {
-                        change.consume()
-                        val nk = knob + drag
-                        val dist = hypot(nk.x, nk.y)
-                        knob = if (dist > maxR && dist > 0.001f) nk * (maxR / dist) else nk
-                        val nx = knob.x / maxR
-                        val ny = knob.y / maxR
-                        val mag = sqrt(nx * nx + ny * ny)
-                        if (mag < 0.1f) onLookRate(0f, 0f) else onLookRate(lookCurve(-nx), lookCurve(ny))
-                    }
-                },
-                onDragEnd = { if (active) { active = false; knob = Offset.Zero; onLookRate(0f, 0f) } },
-                onDragCancel = { if (active) { active = false; knob = Offset.Zero; onLookRate(0f, 0f) } }
-            )
-        }
-        .pointerInput(Unit) {
-            detectTapGestures(
-                onTap = { off -> onPlace(off) },
-                onLongPress = { off -> onBreak(off) }
-            )
-        }
-    ) {
-        if (active) {
-            Canvas(Modifier.fillMaxSize()) {
-                drawCircle(color = Color.White.copy(alpha = 0.18f), radius = 70.dp.toPx(), center = origin)
-                drawCircle(color = Color.White.copy(alpha = 0.08f), radius = 65.dp.toPx(), center = origin)
-                drawCircle(color = Color.White.copy(alpha = 0.5f), radius = 30.dp.toPx(), center = origin + knob)
-            }
-        }
-    }
-}
-
-// A control that reports press/release (for hold-to-repeat actions like jump/ascend/descend) and an
-// optional double-tap. Styled as a translucent rounded button; `dimmed` shows a disabled look while
-// still accepting gestures.
-@Composable
-fun HoldButton(
-    label: String,
-    dimmed: Boolean = false,
-    onPress: () -> Unit = {},
-    onRelease: () -> Unit = {},
-    onDoubleTap: (() -> Unit)? = null,
-) {
-    val press by rememberUpdatedState(onPress)
-    val release by rememberUpdatedState(onRelease)
-    val dtap by rememberUpdatedState(onDoubleTap)
-    Box(
-        Modifier
-            .width(96.dp)
-            .height(52.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = if (dimmed) 0.12f else 0.24f))
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = { press(); tryAwaitRelease(); release() },
-                    onDoubleTap = { dtap?.invoke() }
-                )
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, color = Color.White.copy(alpha = if (dimmed) 0.5f else 0.95f), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-    }
 }

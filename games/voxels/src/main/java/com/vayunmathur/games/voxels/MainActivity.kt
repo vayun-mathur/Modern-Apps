@@ -39,6 +39,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
@@ -63,6 +65,7 @@ import com.vayunmathur.games.voxels.ui.LoadingOverlay
 import com.vayunmathur.games.voxels.ui.Joystick
 import com.vayunmathur.games.voxels.ui.StonecutterOverlay
 import com.vayunmathur.games.voxels.ui.TradeOverlay
+import com.vayunmathur.games.voxels.ui.UseButton
 import com.vayunmathur.games.voxels.ui.VoxelSurfaceView
 import com.vayunmathur.games.voxels.ui.VoxelsTheme
 import com.vayunmathur.games.voxels.platform.VoxelsAchievements
@@ -166,6 +169,8 @@ class MainActivity : ComponentActivity() {
                         delay(if (loadPhase == LoadPhase.READY) 500 else 100)
                     }
                 }
+                // Size of the world view in px; the Use button aims at its centre (the crosshair).
+                var worldSize by remember { mutableStateOf(IntSize.Zero) }
                 var achievements by remember { mutableStateOf<VoxelsAchievements?>(null) }
                 val newAchievement by (achievements?.newAchievement?.collectAsState() ?: remember { mutableStateOf(null) })
 
@@ -439,12 +444,12 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // Fullscreen world interaction + floating look: drag on the right half looks around;
-                    // tap places a block and long-press breaks one — on either half of the screen.
+                    // tap places a block, hold mines/attacks (repeating) — on either half of the screen.
                     if (VoxelsNative.isAvailable) {
                         FloatingLookJoystick(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().onSizeChanged { worldSize = it },
                             onLookRate = { ry, rp -> if (!paused) try { VoxelsNative.onLookInput(ry, rp) } catch (_: Exception) {} },
-                            onPlace = { off -> try {
+                            onPlace = { off -> if (!paused) try {
                                 val code = VoxelsNative.placeBlockAt(off.x, off.y)
                                 when (code) {
                                     1 -> com.vayunmathur.games.voxels.platform.SoundFx.playPlace()
@@ -476,7 +481,7 @@ class MainActivity : ComponentActivity() {
                                     41 -> com.vayunmathur.games.voxels.platform.SoundFx.playPlace() // ignited a portal
                                 }
                             } catch (_: Exception) {} },
-                            onBreak = { off -> try { if (VoxelsNative.breakBlockAt(off.x, off.y)) com.vayunmathur.games.voxels.platform.SoundFx.playBreak() } catch (_: Exception) {} }
+                            onBreak = { off -> if (!paused) try { if (VoxelsNative.breakBlockAt(off.x, off.y)) com.vayunmathur.games.voxels.platform.SoundFx.playBreak() } catch (_: Exception) {} }
                         )
                     }
 
@@ -499,6 +504,14 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Use/attack whatever is under the crosshair, repeating while held.
+                        UseButton(label = stringResource(R.string.use)) {
+                            if (VoxelsNative.isAvailable && !paused && worldSize.width > 0) try {
+                                if (VoxelsNative.breakBlockAt(worldSize.width / 2f, worldSize.height / 2f)) {
+                                    com.vayunmathur.games.voxels.platform.SoundFx.playBreak()
+                                }
+                            } catch (_: Exception) {}
+                        }
                         HoldButton(
                             label = if (flying) "Up" else "Jump",
                             dimmed = !flying && sneaking,
