@@ -54,6 +54,22 @@
     <string name="piece_black_knight">Black Knight</string>
     <!-- ChessBoard: Accessibility description for black pawn. Noun -->
     <string name="piece_black_pawn">Black Pawn</string>
+    <!-- ChessBoard: TalkBack label for an occupied square. %1$s = square in chess notation (e.g. e4), %2$s = piece (e.g. White Bishop). Noun phrase -->
+    <string name="square_with_piece"><xliff:g id="square" example="e4">%1$s</xliff:g>, <xliff:g id="piece" example="White Bishop">%2$s</xliff:g></string>
+    <!-- ChessBoard: TalkBack label for an empty square. %1$s = square in chess notation (e.g. e4). Noun phrase -->
+    <string name="square_empty"><xliff:g id="square" example="e4">%1$s</xliff:g>, empty</string>
+    <!-- ChessBoard: TalkBack state of a square the selected piece can move to. Short noun phrase, lowercase -->
+    <string name="square_state_legal_move">legal move</string>
+    <!-- ChessBoard: TalkBack state of an occupied square the selected piece can capture on. Short phrase, lowercase -->
+    <string name="square_state_capture">can capture</string>
+    <!-- ChessBoard: TalkBack state of a square that was part of the last move. Short noun phrase, lowercase -->
+    <string name="square_state_last_move">last move</string>
+    <!-- ChessBoard: TalkBack state of the square of a king that is in check. Short phrase, lowercase -->
+    <string name="square_state_check">in check</string>
+    <!-- ChessBoard: TalkBack double-tap action on a square holding a piece. Verb -->
+    <string name="square_action_select">Select</string>
+    <!-- ChessBoard: TalkBack double-tap action on a square the selected piece can move to. Verb phrase -->
+    <string name="square_action_move_here">Move here</string>
 
     <!-- MainActivity: Bottom navigation tab for offline (local + AI) play. Noun phrase -->
     <string name="tab_offline">Offline Play</string>

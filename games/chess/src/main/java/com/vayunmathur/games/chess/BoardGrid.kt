@@ -12,9 +12,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -101,6 +107,69 @@ private data class BoardMarks(
     fun isLastMove(pos: Position): Boolean = lastMove?.let { it.start == pos || it.end == pos } ?: false
 }
 
+/** TalkBack wording for the squares, resolved once per board composition. */
+private class SquareSpeech(
+    val resources: android.content.res.Resources,
+    val legalMove: String,
+    val capture: String,
+    val lastMove: String,
+    val check: String,
+    val select: String,
+    val moveHere: String,
+    val pieceNames: Map<com.vayunmathur.games.chess.data.Piece, String>,
+) {
+    /** "e4, White Bishop" or "e4, empty". */
+    fun describe(pos: Position, piece: com.vayunmathur.games.chess.data.Piece?): String {
+        val name = squareName(pos)
+        val pieceName = piece?.let { pieceNames[it.copy(hasMoved = false)] }
+        return if (pieceName == null) {
+            resources.getString(R.string.square_empty, name)
+        } else {
+            resources.getString(R.string.square_with_piece, name, pieceName)
+        }
+    }
+
+    /** Selection is its own semantics flag; everything else that marks the square is spoken here. */
+    fun state(marks: BoardMarks, pos: Position, occupied: Boolean): String? = listOfNotNull(
+        when {
+            pos !in marks.destinations -> null
+            occupied -> capture
+            else -> legalMove
+        },
+        check.takeIf { marks.checkSquare == pos },
+        lastMove.takeIf { marks.isLastMove(pos) },
+    ).joinToString(", ").ifEmpty { null }
+
+    /** What a double-tap does here, or null when it does nothing useful. */
+    fun action(marks: BoardMarks, pos: Position, occupied: Boolean): String? = when {
+        pos in marks.destinations -> moveHere
+        occupied -> select
+        else -> null
+    }
+}
+
+@Composable
+private fun rememberSquareSpeech(): SquareSpeech {
+    val pieceNames = buildMap {
+        for (color in PieceColor.entries) {
+            for (type in com.vayunmathur.games.chess.data.PieceType.entries) {
+                val piece = com.vayunmathur.games.chess.data.Piece(type, color)
+                put(piece, stringResource(pieceDescriptionRes(piece)))
+            }
+        }
+    }
+    return SquareSpeech(
+        resources = LocalResources.current,
+        legalMove = stringResource(R.string.square_state_legal_move),
+        capture = stringResource(R.string.square_state_capture),
+        lastMove = stringResource(R.string.square_state_last_move),
+        check = stringResource(R.string.square_state_check),
+        select = stringResource(R.string.square_action_select),
+        moveHere = stringResource(R.string.square_action_move_here),
+        pieceNames = pieceNames,
+    )
+}
+
 private fun squareBaseColor(row: Int, col: Int): Color =
     if ((row + col) % 2 == 0) LightSquareColor else DarkSquareColor
 
@@ -172,13 +241,14 @@ private fun BoardSquares(
     marks: BoardMarks,
     onSquareClick: (Position) -> Unit,
 ) {
+    val speech = rememberSquareSpeech()
     Column(
         Modifier
             .fillMaxSize()
             .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
     ) {
         for (i in board.pieces.indices) {
-            BoardRow(board, row = i, isFlipped = isFlipped, marks = marks, onSquareClick = onSquareClick)
+            BoardRow(board, i, isFlipped, marks, speech, onSquareClick)
         }
     }
 }
@@ -242,6 +312,7 @@ private fun ColumnScope.BoardRow(
     row: Int,
     isFlipped: Boolean,
     marks: BoardMarks,
+    speech: SquareSpeech,
     onSquareClick: (Position) -> Unit,
 ) {
     // The row holding a sliding piece draws above the others, so the piece passes over them.
@@ -257,7 +328,15 @@ private fun ColumnScope.BoardRow(
                     .zIndex(if (slideEnd == pos) 1f else 0f)
                     .background(squareBaseColor(row, j))
                     .then(if (marks.isLastMove(pos)) Modifier.background(lastMoveTint) else Modifier)
-                    .clickable {
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = speech.describe(pos, piece)
+                        speech.state(marks, pos, piece != null)?.let { stateDescription = it }
+                        selected = marks.selected == pos
+                    }
+                    .clickable(
+                        onClickLabel = speech.action(marks, pos, piece != null),
+                        role = Role.Button,
+                    ) {
                         onSquareClick(pos)
                     }
                     .then(highlightModifier(marks, pos))
@@ -299,7 +378,6 @@ private fun BoxScope.SquareCoordinates(pos: Position, isFlipped: Boolean, size: 
             .matchParentSize()
             .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
             .padding(2.dp)
-            .semantics { hideFromAccessibility() }
     ) {
         if (showRank) {
             CoordinateText(getRankChar(pos.row).toString(), color, size, Modifier.align(Alignment.TopStart))
@@ -312,7 +390,15 @@ private fun BoxScope.SquareCoordinates(pos: Position, isFlipped: Boolean, size: 
 
 @Composable
 private fun CoordinateText(text: String, color: Color, size: TextUnit, modifier: Modifier) {
-    Text(text, modifier, color = color, fontSize = size, lineHeight = size, fontWeight = FontWeight.Bold)
+    Text(
+        text,
+        // Its own merge boundary, so the label never merges into (or hides) the square's node.
+        modifier.semantics(mergeDescendants = true) { hideFromAccessibility() },
+        color = color,
+        fontSize = size,
+        lineHeight = size,
+        fontWeight = FontWeight.Bold,
+    )
 }
 
 /**
@@ -341,7 +427,7 @@ private fun SquarePiece(
             // Inside the layer, so the tagged node's bounds travel with the piece.
             .then(if (slideFrom != null) Modifier.testTag(SLIDING_PIECE_TAG) else Modifier)
     ) {
-        ChessPiece(piece, isFlipped = isFlipped)
+        ChessPiece(piece, isFlipped = isFlipped, described = false)
     }
 }
 

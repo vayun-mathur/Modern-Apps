@@ -58,10 +58,14 @@ private val blackOutlineFilter = ColorFilter.tint(BlackPieceOutline)
  * A chess piece glyph, drawn as a two-tone silhouette: the glyph tinted with the outline ink and
  * nudged a few percent in eight directions, then the body ink on top. The vector is rasterised
  * once by its painter and only re-tinted per pass, so the nine passes are cheap.
+ *
+ * [described] = false leaves the piece out of accessibility, for callers whose container already
+ * names it.
  */
 @Composable
-fun ChessPiece(piece: Piece, size: Dp? = null, isFlipped: Boolean = false) {
-    val description = stringResource(pieceDescriptionRes(piece))
+fun ChessPiece(piece: Piece, size: Dp? = null, isFlipped: Boolean = false, described: Boolean = true) {
+    // On the board the square speaks for its piece ("e4, White Bishop"), so it passes false.
+    val description = if (described) stringResource(pieceDescriptionRes(piece)) else null
     val painter = painterResource(id = piece.type.resID)
     val white = piece.color == PieceColor.WHITE
     val fill = if (white) whiteFillFilter else blackFillFilter
@@ -69,10 +73,12 @@ fun ChessPiece(piece: Piece, size: Dp? = null, isFlipped: Boolean = false) {
     Canvas(
         (if (size != null) Modifier.size(size) else Modifier.fillMaxSize())
             .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
-            .semantics {
-                contentDescription = description
-                role = Role.Image
-            }
+            .then(
+                if (description == null) Modifier else Modifier.semantics {
+                    contentDescription = description
+                    role = Role.Image
+                }
+            )
     ) {
         val box = this.size
         val stroke = box.minDimension * OUTLINE_FRACTION

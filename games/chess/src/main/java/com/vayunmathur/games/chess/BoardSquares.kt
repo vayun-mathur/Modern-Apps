@@ -5,6 +5,8 @@ import com.vayunmathur.games.chess.data.Move
 import com.vayunmathur.games.chess.data.PieceColor
 import com.vayunmathur.games.chess.data.Position
 import com.vayunmathur.games.chess.data.findKing
+import com.vayunmathur.games.chess.data.getFileChar
+import com.vayunmathur.games.chess.data.getRankChar
 
 // File-local copy of the board dimension, matching the other chess files' convention.
 private const val BOARD_SQUARES = 8
@@ -49,3 +51,6 @@ internal fun visibleLastMove(board: Board, showLastMove: Boolean): Move? =
  */
 internal fun shouldSlideIn(lastMove: Move?, initialMove: Move?, lastDrop: Pair<Position, Position>?): Boolean =
     lastMove != null && lastMove != initialMove && lastDrop != (lastMove.start to lastMove.end)
+
+/** The square's name in chess notation, e.g. "e4" for row 4, col 4. */
+internal fun squareName(pos: Position): String = "${getFileChar(pos.col)}${getRankChar(pos.row)}"

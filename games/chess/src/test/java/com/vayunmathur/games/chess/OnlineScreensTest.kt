@@ -65,7 +65,7 @@ class OnlineScreensTest {
         assertEquals(PieceColor.WHITE, state.turn)
         assertTrue(playing.canAbort)
         rule.setContent { ChessOnlineScreen(state) }
-        rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_white_pawn))).assertCountEquals(8)
+        rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_white_pawn), substring = true)).assertCountEquals(8)
     }
 
     @Test fun `viewmodel selects time control and challenge name`() {

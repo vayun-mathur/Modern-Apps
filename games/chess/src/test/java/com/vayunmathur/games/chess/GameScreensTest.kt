@@ -49,8 +49,9 @@ class GameScreensTest {
             ChessGameScreen(state = ChessUiState(), actions = actions,
                 onNewGame = { newGame++ }, onOpenGameCenter = { gameCenter++ })
         }
-        rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_white_pawn))).assertCountEquals(8)
-        rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_black_king))).assertCountEquals(1)
+        // Squares speak for their pieces: "e2, White Pawn".
+        rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_white_pawn), substring = true)).assertCountEquals(8)
+        rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_black_king), substring = true)).assertCountEquals(1)
         // First clickable nodes are board squares (the app-bar action follows in semantics order may vary);
         // click a square by counting: 64 squares exist
         val squares = rule.onAllNodes(hasClickAction())
@@ -79,16 +80,16 @@ class GameScreensTest {
                 onSquareClick = {}, showLastMove = true)
         }
         val cell = rule.onRoot().fetchSemanticsNode().size.width / 8f
-        rule.onNodeWithTag(SLIDING_PIECE_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(SLIDING_PIECE_TAG, useUnmergedTree = true).assertDoesNotExist()
         rule.mainClock.autoAdvance = false
         board = afterE4
         // A write from the test thread reaches the paused clock's recomposer only once applied.
         androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
         repeat(3) { rule.mainClock.advanceTimeByFrame() }
-        val top0 = rule.onNodeWithTag(SLIDING_PIECE_TAG).fetchSemanticsNode().boundsInRoot.top
+        val top0 = rule.onNodeWithTag(SLIDING_PIECE_TAG, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
         assertTrue(top0 > 4.5f * cell, "starts near e2 (row 6), was ${top0 / cell} cells down")
         rule.mainClock.advanceTimeBy(1_000)
-        val top1 = rule.onNodeWithTag(SLIDING_PIECE_TAG).fetchSemanticsNode().boundsInRoot.top
+        val top1 = rule.onNodeWithTag(SLIDING_PIECE_TAG, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
         assertEquals(4f * cell, top1, 1f, "lands on e4 (row 4)")
     }
 
@@ -179,7 +180,7 @@ class GameScreensTest {
                 state = ChessUiState(gameResult = GameResult.Checkmate(PieceColor.WHITE), gameStatus = "White wins"),
                 actions = actions, onNewGame = {}, onOpenGameCenter = {})
         }
-        rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_white_king))).assertCountEquals(1)
+        rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(str(R.string.piece_white_king), substring = true)).assertCountEquals(1)
     }
 
     @Test fun `chess piece descriptions follow color`() {
