@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -61,6 +62,9 @@ fun GameBoard(
         modifier = Modifier
             .size(boardSize)
             .testTag(GAME_BOARD_TAG)
+            // Strokes start at the board's edge cells, which on a full-width board sit in
+            // the system back-gesture zone; claim the board so they draw instead of exiting.
+            .systemGestureExclusion()
             .pointerInput(geometry, isLevelWon) {
                 if (isLevelWon) return@pointerInput
                 // One stroke per gesture, driven only by the first finger: a second finger

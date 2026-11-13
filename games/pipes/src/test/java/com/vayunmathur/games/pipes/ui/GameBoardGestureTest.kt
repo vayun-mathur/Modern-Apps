@@ -109,4 +109,20 @@ class GameBoardGestureTest {
         assertTrue(CellPos(0, 2) in extends, "extends=$extends")
         assertEquals(1, commits)
     }
+
+    @Test fun boardOptsOutOfSystemBackGestures() {
+        var view: android.view.View? = null
+        rule.setContent {
+            view = androidx.compose.ui.platform.LocalView.current
+            GameBoard(
+                level, PipesGameState(), null, emptyList(),
+                onStartDraw = {}, onExtendPath = {}, onCommitDraw = {},
+                isLevelWon = false, modifier = Modifier.size(300.dp),
+            )
+        }
+        rule.waitForIdle()
+        val rects = view!!.systemGestureExclusionRects
+        assertTrue(rects.isNotEmpty(), "no gesture exclusion rects")
+        assertTrue(rects.any { it.width() > 0 && it.height() > 0 })
+    }
 }
