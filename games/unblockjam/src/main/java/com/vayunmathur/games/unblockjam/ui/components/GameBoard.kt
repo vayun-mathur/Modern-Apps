@@ -72,7 +72,6 @@ fun GameBoard(
                     index = index,
                     levelData = levelData,
                     isLevelWon = isLevelWon,
-                    boardSize = boardSize,
                     cellWidth = cellWidth,
                     cellHeight = cellHeight,
                     scaling = scaling,

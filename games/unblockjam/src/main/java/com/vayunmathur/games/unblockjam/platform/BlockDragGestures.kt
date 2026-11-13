@@ -2,9 +2,7 @@ package com.vayunmathur.games.unblockjam.platform
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.DpSize
 import kotlin.math.roundToInt
 import com.vayunmathur.games.unblockjam.data.Block
 import com.vayunmathur.games.unblockjam.data.Coord
@@ -110,38 +108,40 @@ private class DragParams(
     val levelData: LevelData,
     val isHorizontal: Boolean,
     val isMainBlock: Boolean,
-    val cellWidth: Dp,
-    val cellHeight: Dp,
     val onLevelWon: () -> Unit,
     val onLevelChanged: (LevelData) -> Unit,
     val index: Int,
 )
 
-private fun settleAfterDrag(
-    params: DragParams,
-    offsetXProvider: () -> Dp,
-    offsetYProvider: () -> Dp,
-    offsetXUpdater: (Dp) -> Unit,
-    offsetYUpdater: (Dp) -> Unit,
-) {
-    val (newX, newY) = snappedPosition(params, offsetXProvider, offsetYProvider)
+/**
+ * Where a dragged block is, in cells: `x`/`y` of its top-left corner, fractional mid-drag.
+ *
+ * Cells rather than dp so the position means the same thing at any board size: a rotation or a
+ * window resize changes how big a cell is drawn, not which cell a block is in.
+ */
+class BlockOffset(
+    val x: () -> Float,
+    val y: () -> Float,
+    val setX: (Float) -> Unit,
+    val setY: (Float) -> Unit,
+)
+
+private fun settleAfterDrag(params: DragParams, offset: BlockOffset) {
+    val (newX, newY) = snappedPosition(params, offset)
     val newBlock = params.block.copy(position = Coord(newX, newY))
     when {
         isWinningMove(params, newX) -> params.onLevelWon()
         isValidRelocation(params, newBlock) -> applyRelocation(params, newBlock)
-        else -> resetOffsets(params, offsetXUpdater, offsetYUpdater)
+        else -> resetOffsets(params, offset)
     }
 }
 
-private fun snappedPosition(
-    params: DragParams,
-    offsetXProvider: () -> Dp,
-    offsetYProvider: () -> Dp,
-): Pair<Int, Int> = if (params.isHorizontal) {
-    (offsetXProvider() / params.cellWidth).roundToInt() to params.block.position.y
-} else {
-    params.block.position.x to (offsetYProvider() / params.cellHeight).roundToInt()
-}
+private fun snappedPosition(params: DragParams, offset: BlockOffset): Pair<Int, Int> =
+    if (params.isHorizontal) {
+        offset.x().roundToInt() to params.block.position.y
+    } else {
+        params.block.position.x to offset.y().roundToInt()
+    }
 
 private fun isWinningMove(params: DragParams, newX: Int): Boolean =
     params.isMainBlock &&
@@ -158,100 +158,65 @@ private fun applyRelocation(params: DragParams, newBlock: Block) {
     params.onLevelChanged(params.levelData.copy(blocks = newBlocks, lastMovedBlockIndex = params.index))
 }
 
-private fun resetOffsets(
-    params: DragParams,
-    offsetXUpdater: (Dp) -> Unit,
-    offsetYUpdater: (Dp) -> Unit,
-) {
-    offsetXUpdater(params.cellWidth * params.block.position.x)
-    offsetYUpdater(params.cellHeight * params.block.position.y)
+private fun resetOffsets(params: DragParams, offset: BlockOffset) {
+    offset.setX(params.block.position.x.toFloat())
+    offset.setY(params.block.position.y.toFloat())
 }
 
-private fun Density.handleDragDelta(
-    params: DragParams,
-    minOffset: Dp,
-    maxOffset: Dp,
-    offsetXProvider: () -> Dp,
-    offsetYProvider: () -> Dp,
-    offsetXUpdater: (Dp) -> Unit,
-    offsetYUpdater: (Dp) -> Unit,
-    dragX: Float,
-    dragY: Float,
-) {
+/** Moves the block by a drag of ([dx], [dy]) cells along its axis, within [min]..[max]. */
+private fun handleDragDelta(params: DragParams, min: Float, max: Float, offset: BlockOffset, dx: Float, dy: Float) {
     if (!params.isHorizontal) {
-        val newOffsetY = (offsetYProvider() + dragY.toDp()).coerceIn(minOffset, maxOffset)
-        offsetYUpdater(newOffsetY)
+        offset.setY((offset.y() + dy).coerceIn(min, max))
         return
     }
-    val newOffsetX = (offsetXProvider() + dragX.toDp()).coerceIn(minOffset, maxOffset)
-    offsetXUpdater(newOffsetX)
-    val reachedExit = (newOffsetX / params.cellWidth).roundToInt() +
-        params.block.dimension.width - 1 >= params.levelData.exit.x
+    val newX = (offset.x() + dx).coerceIn(min, max)
+    offset.setX(newX)
+    val reachedExit = newX.roundToInt() + params.block.dimension.width - 1 >= params.levelData.exit.x
     if (params.isMainBlock && params.block.position.y == params.levelData.exit.y && reachedExit) {
         params.onLevelWon()
     }
 }
+
+/**
+ * Drags [block] along its long axis, reading and writing its position through [offset] in cells.
+ *
+ * [cellWidth] and [cellHeight] only convert finger movement into cells. They are part of the
+ * gesture's key, so a resize mid-game restarts the detector with the new cell size rather than
+ * keeping the size the board had when it was first laid out, which snapped drags to the wrong cell.
+ */
 fun Modifier.blockDragGestures(
     block: Block,
     levelData: LevelData,
+    index: Int,
     isLevelWon: Boolean,
-    cellWidth: Dp,
-    cellHeight: Dp,
-    isMainBlock: Boolean,
+    cellSize: DpSize,
+    offset: BlockOffset,
     onLevelWon: () -> Unit,
     onLevelChanged: (LevelData) -> Unit,
-    index: Int,
-    offsetXProvider: () -> Dp,
-    offsetYProvider: () -> Dp,
-    offsetXUpdater: (Dp) -> Unit,
-    offsetYUpdater: (Dp) -> Unit
 ): Modifier {
     val isHorizontal = block.dimension.width > block.dimension.height
-    val params = DragParams(
-        block,
-        levelData,
-        isHorizontal,
-        isMainBlock,
-        cellWidth,
-        cellHeight,
-        onLevelWon,
-        onLevelChanged,
-        index,
-    )
-    return pointerInput(block, levelData, isLevelWon) {
+    val isMainBlock = index == 0
+    val params = DragParams(block, levelData, isHorizontal, isMainBlock, onLevelWon, onLevelChanged, index)
+    return pointerInput(block, levelData, isLevelWon, cellSize) {
         if (isLevelWon || block.fixed) return@pointerInput
 
-        var minOffset = 0.dp
-        var maxOffset = 0.dp
+        var minOffset = 0f
+        var maxOffset = 0f
+        val cellWidthPx = cellSize.width.toPx()
+        val cellHeightPx = cellSize.height.toPx()
 
         detectDragGestures(
             onDragStart = {
-                val range = findMovementRange(
-                    block,
-                    levelData.blocks - block,
-                    levelData,
-                    isMainBlock,
-                    isHorizontal,
-                )
-                val cellSize = if (isHorizontal) cellWidth else cellHeight
-                minOffset = cellSize * range.first
-                maxOffset = cellSize * range.last
+                val range = findMovementRange(block, levelData.blocks - block, levelData, isMainBlock, isHorizontal)
+                minOffset = range.first.toFloat()
+                maxOffset = range.last.toFloat()
             },
-            onDragEnd = {
-                settleAfterDrag(params, offsetXProvider, offsetYProvider, offsetXUpdater, offsetYUpdater)
-            },
+            onDragEnd = { settleAfterDrag(params, offset) },
             onDrag = { change, dragAmount ->
                 change.consume()
                 handleDragDelta(
-                    params,
-                    minOffset,
-                    maxOffset,
-                    offsetXProvider,
-                    offsetYProvider,
-                    offsetXUpdater,
-                    offsetYUpdater,
-                    dragAmount.x,
-                    dragAmount.y,
+                    params, minOffset, maxOffset, offset,
+                    dragAmount.x / cellWidthPx, dragAmount.y / cellHeightPx,
                 )
             }
         )
