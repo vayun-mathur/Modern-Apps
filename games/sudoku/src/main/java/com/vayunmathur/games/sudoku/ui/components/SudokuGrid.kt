@@ -18,12 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.sudoku.R
 import com.vayunmathur.games.sudoku.data.BoardSize
@@ -80,6 +82,7 @@ fun SudokuGrid(
                                 game.valueAt(index) == selectedValue,
                             isConflict = index in conflicts,
                             highlightMistakes = highlightMistakes,
+                            cell = cell,
                             modifier = Modifier
                                 .size(cell)
                                 .clickable { onSelect(index) },
@@ -111,9 +114,11 @@ private fun SudokuCell(
     isSameValue: Boolean,
     isConflict: Boolean,
     highlightMistakes: Boolean,
+    cell: Dp,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val density = LocalDensity.current
     val value = game.valueAt(index)
     val given = game.isGiven(index)
 
@@ -154,13 +159,15 @@ private fun SudokuCell(
             value != 0 -> Text(
                 text = sudokuSymbol(value),
                 color = digitColor,
-                // Sized from the cell so a 4x4 does not render tiny digits in large squares.
-                fontSize = (game.size.digitScale * 22).sp,
+                // Scaled per board so a 6x6 does not render tiny digits in large squares, and
+                // capped by the cell so a large font scale cannot push it past the cell edges.
+                fontSize = density.fitSp((game.size.digitScale * 22).sp, cell * DIGIT_CELL_FRACTION),
+                lineHeight = LINE_HEIGHT_EM.em,
                 fontWeight = if (given) FontWeight.Bold else FontWeight.Medium,
                 textAlign = TextAlign.Center,
             )
 
-            game.notes[index] != 0 -> NoteMarks(game.size, game.notes[index])
+            game.notes[index] != 0 -> NoteMarks(game.size, game.notes[index], cell)
         }
     }
 }
@@ -173,7 +180,19 @@ private fun SudokuCell(
  * rows of three for 6x6, 2x2 for 4x4.
  */
 @Composable
-private fun NoteMarks(size: BoardSize, mask: Int) {
+private fun NoteMarks(size: BoardSize, mask: Int, cell: Dp) {
+    // Each mark's slot is a fixed fraction of the cell, so the cap is too: the narrower of
+    // the slot's height (one line) and its width (one glyph, 12x12 slots are tall and thin).
+    val slotHeight = cell / size.boxRows
+    val slotWidth = cell / size.boxCols
+    val density = LocalDensity.current
+    val markSize = density.fitSp(
+        (size.digitScale * 8).sp,
+        minOf(slotHeight * MARK_SLOT_HEIGHT_FRACTION, slotWidth * MARK_SLOT_WIDTH_FRACTION),
+    )
+    // The slot height in non-scaling sp: an sp line height grows with the font setting and
+    // overflowed the slot at 200%, clipping the bottom row of marks.
+    val markLine = with(density) { slotHeight.toSp() }
     // Weighted rows and columns rather than laid-out text: a space is narrower than a digit, so
     // padding absent marks with " " would let the columns drift out of line.
     Column(Modifier.fillMaxSize()) {
@@ -195,8 +214,8 @@ private fun NoteMarks(size: BoardSize, mask: Int) {
                             Text(
                                 text = sudokuSymbol(digit),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = (size.digitScale * 8).sp,
-                                lineHeight = (size.digitScale * 9).sp,
+                                fontSize = markSize,
+                                lineHeight = markLine,
                                 textAlign = TextAlign.Center,
                             )
                         }
@@ -241,6 +260,16 @@ private fun Modifier.drawGridLines(
         )
     }
 }
+
+/** A cell digit never renders taller than this share of the cell. */
+private const val DIGIT_CELL_FRACTION = 0.62f
+
+/** Line box of a cell digit, relative to its size, so the line cannot outgrow the cell. */
+private const val LINE_HEIGHT_EM = 1.15f
+
+/** A pencil mark's size cap, as shares of its slot's height and width. */
+private const val MARK_SLOT_HEIGHT_FRACTION = 0.8f
+private const val MARK_SLOT_WIDTH_FRACTION = 1.1f
 
 /** Scales type with the board: a 6x6 cell is twice the width of a 12x12 cell. */
 private val BoardSize.digitScale: Float

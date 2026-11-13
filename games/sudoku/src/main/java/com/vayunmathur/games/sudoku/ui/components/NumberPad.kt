@@ -19,12 +19,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.sudoku.R
 import com.vayunmathur.games.sudoku.data.BoardSize
@@ -158,6 +160,11 @@ private fun DigitKey(
         else -> scheme.onSurfaceVariant
     }
     val label = sudokuSymbol(digit)
+    val density = LocalDensity.current
+    // The key is a fixed 50dp, so the digit and the badge stacked under it are capped by the key:
+    // at 200% font they used to total ~66sp of line boxes and both clipped.
+    val digitSize = density.fitSp(FullFontSize, KeySize * KEY_DIGIT_FRACTION)
+    val badgeSize = density.fitSp(BadgeFontSize, KeySize * KEY_BADGE_FRACTION)
     val description = stringResource(
         if (notesMode) R.string.cd_note_key else R.string.cd_digit_key,
         label,
@@ -178,9 +185,9 @@ private fun DigitKey(
                 Text(
                     text = label,
                     color = contentColor,
-                    fontSize = FullFontSize,
+                    fontSize = digitSize,
                     // Tight line boxes: the badge below must fit the 50dp key with the digit.
-                    lineHeight = FullFontSize * 1.1f,
+                    lineHeight = TIGHT_LINE_EM.em,
                     textAlign = TextAlign.Center,
                 )
                 // Unspoken: the key's clearAndSetSemantics replaces the whole subtree, so the
@@ -189,8 +196,8 @@ private fun DigitKey(
                 Text(
                     text = remaining.toString(),
                     color = contentColor,
-                    fontSize = BadgeFontSize,
-                    lineHeight = BadgeFontSize * 1.1f,
+                    fontSize = badgeSize,
+                    lineHeight = TIGHT_LINE_EM.em,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -210,6 +217,15 @@ private fun DigitKey(
 @Composable
 private fun NoteSlot(digit: Int, label: String, size: BoardSize, contentColor: Color) {
     val slotHeight = KeySize / size.boxRows
+    val slotWidth = KeySize / size.boxCols
+    val density = LocalDensity.current
+    // Capped by the slot, and the line box in non-scaling sp: an sp line height grew with the
+    // font setting and overflowed the slot, clipping the 3x4 pad's bottom row at 200%.
+    val noteSize = density.fitSp(
+        NoteFontSize,
+        minOf(slotHeight * NOTE_SLOT_HEIGHT_FRACTION, slotWidth * NOTE_SLOT_WIDTH_FRACTION),
+    )
+    val noteLine = with(density) { slotHeight.toSp() }
     val target = digit - 1
     Column(Modifier.fillMaxSize()) {
         for (row in 0 until size.boxRows) {
@@ -229,10 +245,10 @@ private fun NoteSlot(digit: Int, label: String, size: BoardSize, contentColor: C
                             Text(
                                 text = label,
                                 color = contentColor,
-                                fontSize = NoteFontSize,
+                                fontSize = noteSize,
                                 // Matched to the slot, or the glyph's own line box overflows it and the
                                 // bottom row of a 3x4 pad is clipped.
-                                lineHeight = slotHeight.value.sp,
+                                lineHeight = noteLine,
                                 fontWeight = FontWeight.Medium,
                                 textAlign = TextAlign.Center,
                             )
@@ -254,6 +270,17 @@ private val FullFontSize = 19.sp
 
 /** Remaining-count badge under the digit: small enough to share the 50dp key with it. */
 private val BadgeFontSize = 11.sp
+
+/** Line box relative to font size for the digit and badge stacked in a key. */
+private const val TIGHT_LINE_EM = 1.1f
+
+/** Caps, as shares of the key, so digit + badge always fit: (0.42 + 0.22) * 1.1 < 1. */
+private const val KEY_DIGIT_FRACTION = 0.42f
+private const val KEY_BADGE_FRACTION = 0.22f
+
+/** A notes-mode preview digit's cap, as shares of its slot's height and width. */
+private const val NOTE_SLOT_HEIGHT_FRACTION = 0.8f
+private const val NOTE_SLOT_WIDTH_FRACTION = 1.1f
 
 /** How long a refused key stays red before settling back, in milliseconds. */
 private const val FLASH_MILLIS = 450L
