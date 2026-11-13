@@ -5,7 +5,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -176,6 +179,69 @@ class SudokuComponentsTest {
         rule.onNodeWithContentDescription(cellDesc(game, blank)).assertExists()
         highlight = false
         rule.onNodeWithContentDescription(cellDesc(game, blank)).assertExists()
+    }
+
+    @Test
+    fun cellsAnnounceSelectionGivenEnteredWrongConflictAndNotes() {
+        // 9x9 so some blank surely has a wrong digit that duplicates nothing.
+        val base = game(BoardSize.NINE)
+        val side = base.size.side
+        val blanks = base.givens.indices.filter { base.givens[it] == 0 }
+        val givenCell = base.givens.indices.first { base.givens[it] != 0 }
+        // A wrong entry that duplicates nothing in its row, column or box.
+        val (wrongCell, wrongDigit) = blanks.firstNotNullOf { cell ->
+            (1..side).firstOrNull { d ->
+                d != base.solution[cell] && base.copy(
+                    entries = base.entries.toMutableList().also { it[cell] = d }
+                ).conflictingIndices().isEmpty()
+            }?.let { cell to it }
+        }
+        val correctCell = blanks.first { it != wrongCell }
+        val notesCell = blanks.first { it != wrongCell && it != correctCell }
+        val entries = base.entries.toMutableList().also {
+            it[wrongCell] = wrongDigit
+            it[correctCell] = base.solution[correctCell]
+        }
+        val notes = base.notes.toMutableList().also { it[notesCell] = 0b101 }
+        val game = base.copy(entries = entries, notes = notes, selected = correctCell)
+        var highlight by mutableStateOf(true)
+        rule.setContent { SudokuGrid(game = game, onSelect = {}, highlightMistakes = highlight) }
+
+        fun state(index: Int) = rule.onNodeWithContentDescription(cellDesc(game, index))
+            .fetchSemanticsNode().config.getOrElse(SemanticsProperties.StateDescription) { "" }
+
+        assertEquals(ctx.getString(R.string.cd_given), state(givenCell))
+        rule.onNodeWithContentDescription(cellDesc(game, correctCell)).assertIsSelected()
+        rule.onNodeWithContentDescription(cellDesc(game, givenCell)).assertIsNotSelected()
+        assertEquals(ctx.getString(R.string.cd_entered), state(correctCell))
+        assertEquals(
+            "${ctx.getString(R.string.cd_entered)}, ${ctx.getString(R.string.cd_wrong)}",
+            state(wrongCell),
+        )
+        assertEquals(ctx.getString(R.string.cd_notes, "1 3"), state(notesCell))
+
+        // With highlighting off the board hides the mistake, so TalkBack must too.
+        highlight = false
+        assertEquals(ctx.getString(R.string.cd_entered), state(wrongCell))
+    }
+
+    @Test
+    fun duplicatedDigitIsAnnouncedAsAConflict() {
+        val base = game()
+        val side = base.size.side
+        // Copy a given into a blank of the same row: a duplicate visible from the board alone.
+        val (blank, given) = base.givens.indices.firstNotNullOf { cell ->
+            if (base.givens[cell] != 0) return@firstNotNullOf null
+            val row = cell / side
+            (row * side until row * side + side).firstOrNull { base.givens[it] != 0 }
+                ?.let { cell to it }
+        }
+        val entries = base.entries.toMutableList().also { it[blank] = base.givens[given] }
+        val game = base.copy(entries = entries)
+        rule.setContent { SudokuGrid(game = game, onSelect = {}) }
+        val state = rule.onNodeWithContentDescription(cellDesc(game, blank))
+            .fetchSemanticsNode().config.getOrElse(SemanticsProperties.StateDescription) { "" }
+        assertTrue(ctx.getString(R.string.cd_conflict) in state, state)
     }
 
     @Test

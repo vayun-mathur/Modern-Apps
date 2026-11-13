@@ -64,4 +64,14 @@
     <string name="cd_note_key">Note <xliff:g id="digit" example="7">%1$s</xliff:g></string>
     <!-- GameBoardScreen: Spoken in place of a digit for a cell with nothing in it. Adjective -->
     <string name="cd_empty">empty</string>
+    <!-- GameBoardScreen: Spoken state of a cell whose digit was printed by the puzzle and cannot be changed. Adjective -->
+    <string name="cd_given">given</string>
+    <!-- GameBoardScreen: Spoken state of a cell whose digit the player typed. Verb past participle -->
+    <string name="cd_entered">entered</string>
+    <!-- GameBoardScreen: Spoken state of an entered digit that disagrees with the solution, only while mistakes are highlighted. Adjective -->
+    <string name="cd_wrong">incorrect</string>
+    <!-- GameBoardScreen: Spoken state of a digit repeated in the same row, column or box. Phrase -->
+    <string name="cd_conflict">repeated in row, column or box</string>
+    <!-- GameBoardScreen: Spoken pencil marks in an empty cell. %1$s = the pencilled digits separated by spaces, e.g. 1 4 7 -->
+    <string name="cd_notes">notes <xliff:g id="digits" example="1 4 7">%1$s</xliff:g></string>
 </resources>

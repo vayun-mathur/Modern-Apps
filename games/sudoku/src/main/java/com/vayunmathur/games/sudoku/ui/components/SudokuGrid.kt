@@ -21,8 +21,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -138,9 +141,10 @@ private fun SudokuCell(
     // apply. A conflicting given keeps its own colour, because the given is never the copy
     // that is misplaced. Answer mode never has wrong entries to draw, since a wrong digit is
     // refused rather than written.
+    val shownWrong = !given && highlightMistakes && game.isWrong(index)
+    val flagged = (isConflict && !given) || shownWrong
     val digitColor = when {
-        isConflict && !given -> scheme.error
-        !given && highlightMistakes && game.isWrong(index) -> scheme.error
+        flagged -> scheme.error
         given -> scheme.onSurface
         else -> scheme.primary
     }
@@ -149,10 +153,24 @@ private fun SudokuCell(
     val side = game.size.side
     val description =
         stringResource(R.string.cd_cell, index / side + 1, index % side + 1, spoken)
+    val state = cellStateDescription(
+        given = given,
+        hasValue = value != 0,
+        shownWrong = shownWrong,
+        isConflict = isConflict,
+        notes = if (value == 0) game.notes[index] else 0,
+        size = game.size,
+    )
     Box(
         modifier
             .background(background)
-            .clearAndSetSemantics { contentDescription = description },
+            .clearAndSetSemantics {
+                contentDescription = description
+                // TalkBack hears what sighted players see from colour and weight alone: the
+                // cursor, given vs entered, the mistake markers, and the pencil marks.
+                selected = isSelected
+                if (state.isNotEmpty()) stateDescription = state
+            },
         contentAlignment = Alignment.Center,
     ) {
         when {
@@ -164,12 +182,44 @@ private fun SudokuCell(
                 fontSize = density.fitSp((game.size.digitScale * 22).sp, cell * DIGIT_CELL_FRACTION),
                 lineHeight = LINE_HEIGHT_EM.em,
                 fontWeight = if (given) FontWeight.Bold else FontWeight.Medium,
+                // A shape cue as well as the error colour, so a wrong or duplicated entry is
+                // visible to colour-blind players and in greyscale, not by hue alone.
+                textDecoration = if (flagged) TextDecoration.Underline else null,
                 textAlign = TextAlign.Center,
             )
 
             game.notes[index] != 0 -> NoteMarks(game.size, game.notes[index], cell)
         }
     }
+}
+
+/**
+ * The spoken state of one cell, beyond its position and digit.
+ *
+ * "Incorrect" follows the highlight-mistakes setting, exactly like the red digit, so TalkBack never
+ * reveals a wrong entry the board is hiding; a duplicate is derivable from the board, so it is always
+ * announced.
+ */
+@Composable
+private fun cellStateDescription(
+    given: Boolean,
+    hasValue: Boolean,
+    shownWrong: Boolean,
+    isConflict: Boolean,
+    notes: Int,
+    size: BoardSize,
+): String {
+    val parts = buildList {
+        if (hasValue) add(stringResource(if (given) R.string.cd_given else R.string.cd_entered))
+        if (shownWrong) add(stringResource(R.string.cd_wrong))
+        if (isConflict) add(stringResource(R.string.cd_conflict))
+        if (notes != 0) {
+            val marks = (1..size.side).filter { notes and (1 shl (it - 1)) != 0 }
+                .joinToString(" ") { sudokuSymbol(it) }
+            add(stringResource(R.string.cd_notes, marks))
+        }
+    }
+    return parts.joinToString(", ")
 }
 
 /**
