@@ -21,10 +21,18 @@ private const val BOARD_SQUARES = 8
 
 /**
  * Drag-to-move state for [BoardGrid]. The board is square, so one measured width maps
- * any touch offset to a square; flip needs no adjustment because the board rotation
- * flips hit-testing with it (layout coordinates already name the intended square).
+ * any touch offset to a square.
+ *
+ * The gesture modifier sits *outside* the board's 180-degree `graphicsLayer` rotation, so
+ * it receives unrotated coordinates: on a flipped board the top-left corner the finger
+ * touches is h1 (row 7, col 7), not a8. [squareAt] therefore mirrors both axes when
+ * [flipped] is set. The board also forces LTR, so x always grows towards the h-file
+ * (or the a-file when flipped) regardless of the locale's layout direction.
  */
 internal class BoardDragState {
+    /** Whether the board is drawn rotated 180 degrees (the player sits on Black). */
+    var flipped: Boolean by mutableStateOf(false)
+
     /** Press square of the in-progress long-press drag; null when idle. Drives hint dots. */
     var source: Position? by mutableStateOf(null)
 
@@ -39,7 +47,8 @@ internal class BoardDragState {
         val col = (offset.x / cell).toInt()
         val row = (offset.y / cell).toInt()
         if (row !in 0 until BOARD_SQUARES || col !in 0 until BOARD_SQUARES) return null
-        return Position(row, col)
+        val last = BOARD_SQUARES - 1
+        return if (flipped) Position(last - row, last - col) else Position(row, col)
     }
 }
 

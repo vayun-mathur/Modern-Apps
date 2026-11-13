@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +21,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.chess.data.PieceColor
 import com.vayunmathur.games.chess.data.PieceType
@@ -106,25 +110,33 @@ fun BoardGrid(
     }
     // The puzzle board seeds a synthetic zero-length lastMove to encode turn; skip it.
     val lastMove = board.lastMove?.takeIf { showLastMove && it.start != it.end }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .onSizeChanged { drag.boardPx = it.width.toFloat() }
-            .boardDragGesture(drag, onSquareDrop)
-            .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
-    ) {
-        for (i in board.pieces.indices) {
-            BoardRow(
-                board = board,
-                row = i,
-                selectedPiece = hintSource,
-                isFlipped = isFlipped,
-                turn = turn,
-                lastMove = lastMove,
-                destinations = destinations,
-                onSquareClick = onSquareClick
-            )
+    // The drag handler sits outside the 180-degree rotation below, so it sees unrotated
+    // coordinates; tell it which way round the board is drawn.
+    SideEffect { drag.flipped = isFlipped }
+    // A chessboard never mirrors: a1 stays bottom-left from White's side in every locale. Under
+    // RTL the Rows below would otherwise lay files out right-to-left, mirroring the board and
+    // desynchronising the squares' own hit-testing from the drag handler's left-origin maths.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .onSizeChanged { drag.boardPx = it.width.toFloat() }
+                .boardDragGesture(drag, onSquareDrop)
+                .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
+        ) {
+            for (i in board.pieces.indices) {
+                BoardRow(
+                    board = board,
+                    row = i,
+                    selectedPiece = hintSource,
+                    isFlipped = isFlipped,
+                    turn = turn,
+                    lastMove = lastMove,
+                    destinations = destinations,
+                    onSquareClick = onSquareClick
+                )
+            }
         }
     }
 }
