@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +62,8 @@ private val BoardMaxWidth = 520.dp
  *
  * @param elapsedSeconds the clock, read lazily so a 1 Hz tick recomposes only the text that
  * shows it rather than the grid and pad.
+ * @param onDialogShownChange told whenever a dialog over the board opens or closes, so the
+ * stateful caller can pause the clock while the board is covered.
  */
 @Composable
 fun GameBoardScreen(
@@ -68,6 +72,7 @@ fun GameBoardScreen(
     onExit: () -> Unit,
     highlightMistakes: Boolean = true,
     elapsedSeconds: () -> Int = { 0 },
+    onDialogShownChange: (Boolean) -> Unit = {},
 ) {
     val game = state.game
     AppScaffold(
@@ -129,7 +134,7 @@ fun GameBoardScreen(
                             rejected = state.rejectedDigit,
                         )
 
-                        ActionBar(state, actions, onExit)
+                        ActionBar(state, actions, onExit, onDialogShownChange)
                     }
                     // Height-sized square: the board is what the height allows.
                     // Capped at a share of the width so a narrow-but-short window
@@ -168,7 +173,7 @@ fun GameBoardScreen(
                         rejected = state.rejectedDigit,
                     )
 
-                    ActionBar(state, actions, onExit)
+                    ActionBar(state, actions, onExit, onDialogShownChange)
                 }
             }
 
@@ -267,9 +272,12 @@ private fun ActionBar(
     state: SudokuUiState,
     actions: SudokuActions,
     onExit: () -> Unit,
+    onDialogShownChange: (Boolean) -> Unit,
 ) {
     val game = state.game ?: return
     var confirmGiveUp by remember { mutableStateOf(false) }
+    val dialogShownChange by rememberUpdatedState(onDialogShownChange)
+    LaunchedEffect(confirmGiveUp) { dialogShownChange(confirmGiveUp) }
     // Won or out of lives: the board takes no more input, so erase, undo and hint go quiet too.
     // Undo in particular would otherwise restore pre-win entries under a board still marked won.
     val ended = game.isWon || game.isGameOver
