@@ -37,6 +37,7 @@ import com.vayunmathur.games.logicgate.ui.canvas.CanvasController
 import com.vayunmathur.games.logicgate.ui.canvas.CircuitColors
 import com.vayunmathur.games.logicgate.ui.canvas.CircuitLayout
 import com.vayunmathur.games.logicgate.ui.canvas.Drag
+import com.vayunmathur.games.logicgate.ui.canvas.LabelSizing
 import com.vayunmathur.games.logicgate.ui.canvas.NodeStyle
 import com.vayunmathur.games.logicgate.ui.canvas.PaintContext
 import com.vayunmathur.games.logicgate.ui.canvas.TextCache
@@ -68,6 +69,7 @@ fun CircuitCanvas(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current.density
+    val fontScale = LocalDensity.current.fontScale
     val scheme = MaterialTheme.colorScheme
     val colors = remember(scheme) { CircuitColors.from(scheme) }
     val measurer = rememberTextMeasurer()
@@ -128,7 +130,8 @@ fun CircuitCanvas(
         drawRect(colors.background)
         val cam = cameraState.camera
         drawGrid(cam, colors.grid)
-        val ctx = PaintContext(colors, text, layout, state.live.values, controller.shift(state.circuit))
+        val sizing = LabelSizing(cam.scale / density, fontScale)
+        val ctx = PaintContext(colors, text, layout, state.live.values, controller.shift(state.circuit), sizing)
         withTransform({
             translate(cam.offset.x, cam.offset.y)
             scale(cam.scale, cam.scale, Offset.Zero)

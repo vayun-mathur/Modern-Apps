@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.domain.model.LevelInput
@@ -36,6 +35,7 @@ class PaintContext(
     val layout: CircuitLayout,
     val live: Map<PinRef, Int>,
     val shift: NodeShift? = null,
+    val sizing: LabelSizing = LabelSizing.Default,
 ) {
     /** Re-used for the few wires that change every frame (the live wire, a dragged gate's). */
     val scratch: Path by lazy { Path() }
@@ -127,18 +127,18 @@ fun DrawScope.drawGhostWire(ctx: PaintContext, ends: Pair<Offset, Offset>, width
 }
 
 private fun DrawScope.drawTag(ctx: PaintContext, text: String, center: Offset, color: Color) {
-    val layout = ctx.text.measure(this, text, TAG_SIZE, FontWeight.Bold)
-    val w = layout.size.width + 8f
-    val h = layout.size.height + 2f
+    val l = label(ctx, text, TAG_SIZE, FontWeight.Bold) ?: return
+    val w = l.width + 8f
+    val h = l.height + 2f
     drawRoundRect(ctx.colors.background, Offset(center.x - w / 2, center.y - h / 2), Size(w, h), CornerRadius(h / 2))
     drawRoundRect(color, Offset(center.x - w / 2, center.y - h / 2), Size(w, h), CornerRadius(h / 2), style = Stroke(1.5f))
-    drawText(layout, color, Offset(center.x - layout.size.width / 2f, center.y - layout.size.height / 2f))
+    drawLabel(l, color, Offset(center.x - l.width / 2f, center.y - l.height / 2f))
 }
 
-/** Draws [text] centred on [center] at [sizeWorld] world units. */
+/** Draws [text] centred on [center], designed at [sizeWorld] world units (see [LabelSizing]). */
 fun DrawScope.drawCentered(ctx: PaintContext, text: String, center: Offset, sizeWorld: Float, color: Color) {
-    val layout = ctx.text.measure(this, text, sizeWorld, FontWeight.SemiBold)
-    drawText(layout, color, Offset(center.x - layout.size.width / 2f, center.y - layout.size.height / 2f))
+    val l = label(ctx, text, sizeWorld, FontWeight.SemiBold) ?: return
+    drawLabel(l, color, Offset(center.x - l.width / 2f, center.y - l.height / 2f))
 }
 
 fun DrawScope.drawNode(ctx: PaintContext, node: Node, style: NodeStyle) {
@@ -207,13 +207,13 @@ private fun DrawScope.drawPinNames(ctx: PaintContext, gate: Gate) {
 }
 
 private fun DrawScope.drawLeft(ctx: PaintContext, text: String, at: Offset) {
-    val l = ctx.text.measure(this, text, PIN_NAME_SIZE)
-    drawText(l, ctx.colors.muted, Offset(at.x, at.y - l.size.height / 2f))
+    val l = label(ctx, text, PIN_NAME_SIZE) ?: return
+    drawLabel(l, ctx.colors.muted, Offset(at.x, at.y - l.height / 2f))
 }
 
 private fun DrawScope.drawRight(ctx: PaintContext, text: String, at: Offset) {
-    val l = ctx.text.measure(this, text, PIN_NAME_SIZE)
-    drawText(l, ctx.colors.muted, Offset(at.x - l.size.width, at.y - l.size.height / 2f))
+    val l = label(ctx, text, PIN_NAME_SIZE) ?: return
+    drawLabel(l, ctx.colors.muted, Offset(at.x - l.width, at.y - l.height / 2f))
 }
 
 /** A level input or output: its pin name and current value; outputs also show a probed mismatch. */
