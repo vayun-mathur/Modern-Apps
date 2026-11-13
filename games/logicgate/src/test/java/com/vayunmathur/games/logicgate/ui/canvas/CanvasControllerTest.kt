@@ -60,6 +60,25 @@ class CanvasControllerTest {
     }
 
     @Test
+    fun aGateHeldOverTheTrayStaysVisibleAboveIt() {
+        val (circuit, _) = Circuit.forLevel(level.io).addGate(Chips.NAND, Point(200f, 0f))
+        val trash = TrashZone().apply {
+            bounds = Rect(0f, trayTop, 2000f, 1400f)
+            canvasOrigin = Offset(0f, 100f)
+        }
+        val controller = CanvasController(CameraState(1f), 1f, trash)
+        val state = GameUiState(EditorMode.Level(level), Board(circuit, level.io), ChipCatalog.Builtin, emptyList(), listOf(0, 0))
+        controller.bind(state, Recorder(), CircuitLayout(circuit, lookup, mapOf(Chips.NAND to "NAND")), lookup)
+        controller.startMove(circuit.nodes.last().id, Offset(240f, 28f))
+        controller.dragMove(Offset(300f, 400f))
+        assertEquals(null, trash.carried, "over the board the board itself draws it")
+        controller.dragMove(Offset(300f, trayTop))
+        assertEquals(TrashZone.Carried("NAND", Offset(300f, trayTop + 100f)), trash.carried)
+        controller.endMove(Offset(300f, trayTop))
+        assertEquals(null, trash.carried)
+    }
+
+    @Test
     fun aGateDroppedOnTheBoardJustMoves() {
         val (controller, actions, circuit) = setup()
         val gate = circuit.nodes.last().id

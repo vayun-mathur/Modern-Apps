@@ -26,6 +26,7 @@ import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.ConnectCheck
 import com.vayunmathur.games.logicgate.domain.model.LevelOutput
+import com.vayunmathur.games.logicgate.domain.model.Node
 import com.vayunmathur.games.logicgate.domain.model.PinRef
 import com.vayunmathur.games.logicgate.domain.model.PinSide
 import com.vayunmathur.games.logicgate.platform.GameUiState
@@ -134,20 +135,28 @@ fun CircuitCanvas(
         }) {
             for (w in layout.circuit.wires) drawWire(ctx, w, w == selectedWire)
             val drag = controller.drag
+            val carried = ctx.shift?.id
+            val doomed = carried?.takeIf { trash.hovering }
+            val highlight = (drag as? Drag.Wiring)?.compatible.orEmpty()
+            val shaking = shakePin?.let { it to shake.value }
+            fun drawOne(n: Node) {
+                val want = (n as? LevelOutput)?.let { expected?.getOrNull(it.index) }
+                shifted(ctx, n.id) { drawNode(ctx, n, NodeStyle(n.id == selectedNode, n.id in oscillating || n.id == doomed, want)) }
+            }
+            // The carried gate and the live wire go on top of everything else, so neither is
+            // ever hidden under a gate it passes over.
+            for (n in layout.circuit.nodes) if (n.id != carried) drawOne(n)
+            for (n in layout.circuit.nodes) if (n.id != carried) drawPins(ctx, n, highlight, shaking)
             if (drag is Drag.Wiring) {
                 layout.anchors[drag.from]?.let { a ->
                     val ends = if (drag.from.side == PinSide.OUT) a to drag.world else drag.world to a
                     drawGhostWire(ctx, ends, layout.pin(drag.from)?.width ?: 1)
                 }
             }
-            val doomed = (drag as? Drag.Moving)?.id?.takeIf { trash.hovering }
-            for (n in layout.circuit.nodes) {
-                val want = (n as? LevelOutput)?.let { expected?.getOrNull(it.index) }
-                shifted(ctx, n.id) { drawNode(ctx, n, NodeStyle(n.id == selectedNode, n.id in oscillating || n.id == doomed, want)) }
+            carried?.let { layout.circuit.node(it) }?.let { n ->
+                drawOne(n)
+                shifted(ctx, n.id) { drawPins(ctx, n, highlight, shaking) }
             }
-            val highlight = (drag as? Drag.Wiring)?.compatible.orEmpty()
-            val shaking = shakePin?.let { it to shake.value }
-            for (n in layout.circuit.nodes) shifted(ctx, n.id) { drawPins(ctx, n, highlight, shaking) }
         }
     }
 

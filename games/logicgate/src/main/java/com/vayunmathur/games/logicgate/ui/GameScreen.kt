@@ -132,6 +132,8 @@ fun GameScreen(
                 }
             }
             trayDrag?.let { DragGhost(chipLabel(it.chipId), it.root - rootOrigin) }
+            // A board gate carried over the tray leaves the (clipped) board; keep it in sight.
+            trash.carried?.let { DragGhost(it.label, it.root - rootOrigin) }
             if (state.won && level != null) {
                 LevelCompleteOverlay(
                     state = state,

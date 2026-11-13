@@ -9,6 +9,7 @@ import com.vayunmathur.games.logicgate.domain.model.Circuit
 import com.vayunmathur.games.logicgate.domain.model.ConnectCheck
 import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.domain.model.LevelInput
+import com.vayunmathur.games.logicgate.domain.model.LevelOutput
 import com.vayunmathur.games.logicgate.domain.model.NodeId
 import com.vayunmathur.games.logicgate.domain.model.PinLookup
 import com.vayunmathur.games.logicgate.domain.model.PinRef
@@ -164,6 +165,17 @@ class CanvasController(
         val over = trash.armed && trash.contains(screen)
         if (over && !trash.hovering) onTrashEnter()
         trash.hovering = over
+        trash.carried = if (over) TrashZone.Carried(carriedLabel(m.id), screen + trash.canvasOrigin) else null
+    }
+
+    private fun carriedLabel(id: NodeId): String {
+        val s = state ?: return ""
+        return when (val node = s.circuit.node(id)) {
+            is Gate -> layout?.label(node.chipId) ?: node.chipId
+            is LevelInput -> s.io.inputs.getOrNull(node.index)?.name.orEmpty()
+            is LevelOutput -> s.io.outputs.getOrNull(node.index)?.name.orEmpty()
+            null -> ""
+        }
     }
 
     override fun endMove(screen: Offset) {
@@ -206,6 +218,7 @@ class CanvasController(
     private fun disarm() {
         trash.armed = false
         trash.hovering = false
+        trash.carried = null
     }
 
     private companion object {

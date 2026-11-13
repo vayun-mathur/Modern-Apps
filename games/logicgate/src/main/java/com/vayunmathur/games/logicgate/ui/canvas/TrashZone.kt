@@ -23,6 +23,15 @@ class TrashZone {
     var armed by mutableStateOf(false)
     var hovering by mutableStateOf(false)
 
+    /**
+     * The board node carried over the zone, if any. The board clips to its own bounds, so the
+     * screen draws this above the tray to keep what is about to be deleted in sight.
+     */
+    var carried by mutableStateOf<Carried?>(null)
+
+    /** A node held over the zone: its [label] and the finger at [root] (root coordinates). */
+    data class Carried(val label: String, val root: Offset)
+
     fun contains(canvasPoint: Offset): Boolean = bounds.contains(canvasPoint + canvasOrigin)
 
     /**
