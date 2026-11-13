@@ -70,6 +70,8 @@ class AchievementNotificationTest {
     fun `a tap on the card dismisses it early`() {
         setToastOverScreen()
         rule.onNodeWithText("First win").performClick()
+        // Let the click's state write reach the composition before the clock moves on.
+        rule.waitForIdle()
         rule.mainClock.advanceTimeBy(1_000)
         rule.waitForIdle()
         assertEquals(1, dismissed)
@@ -121,7 +123,9 @@ class AchievementNotificationTest {
         val flush = rule.onNodeWithText("First win").getUnclippedBoundsInRoot().top
 
         insets = WindowInsets(top = 40.dp)
+        rule.waitForIdle()
         rule.mainClock.advanceTimeBy(100)
+        rule.waitForIdle()
         val inset = rule.onNodeWithText("First win").getUnclippedBoundsInRoot().top
         assertEquals(40f, (inset - flush).value, 0.5f, "the whole card moves down by the inset")
     }
