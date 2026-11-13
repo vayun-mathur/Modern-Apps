@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -16,6 +17,7 @@ import com.vayunmathur.library.map.MapBody
 import com.vayunmathur.library.map.MapOptions
 import com.vayunmathur.library.map.MoonTextures
 import com.vayunmathur.library.map.TileSource
+import com.vayunmathur.library.map.TrafficColorTable
 import com.vayunmathur.library.map.UserPuck
 import com.vayunmathur.library.map.VectorMap
 import com.vayunmathur.library.ui.FreeHeightSheetState
@@ -38,7 +40,9 @@ import com.vayunmathur.maps.util.RouteService
 import com.vayunmathur.maps.util.SearchResult
 import com.vayunmathur.maps.util.SelectedFeatureViewModel
 import com.vayunmathur.maps.util.TransitStopsViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The map surface: the renderer, its overlay layers, and what a tap on it means.
@@ -113,9 +117,15 @@ fun MapSurface(
     // toggle is off or there is nothing to draw, which clears the overlay on the next frame —
     // the accumulated data stays cached in OfflineRouter so re-enabling is instant.
     val tokens = remember(darkBasemap) { mapTokens(darkBasemap) }
+    // Built off the main thread: the table spans every component fetched this session (one
+    // entry per road piece in every 1-degree square visited), and it is rebuilt whenever a
+    // square lands, which is while the user is panning. The previous table keeps drawing until
+    // the new one is ready.
     val components by OfflineRouterTraffic.trafficComponents.collectAsState()
-    val trafficColors = remember(components, tokens, trafficEnabled) {
-        if (trafficEnabled) buildTrafficColorTable(components, tokens) else null
+    val trafficColors by produceState<TrafficColorTable?>(null, components, tokens, trafficEnabled) {
+        value = if (!trafficEnabled) null else withContext(Dispatchers.Default) {
+            buildTrafficColorTable(components, tokens)
+        }
     }
 
     // The route, drawn inside the renderer's frame so it pans in lock-step with the basemap

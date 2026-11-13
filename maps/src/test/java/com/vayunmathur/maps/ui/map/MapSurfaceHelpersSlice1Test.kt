@@ -63,6 +63,45 @@ class MapSurfaceHelpersSlice1Test {
     }
 
     @Test
+    fun `a session-sized traffic table builds identically to the per-component reference`() {
+        // One entry per road piece in every square visited: a metro session reaches the
+        // hundreds of thousands. Rebuilt on every landing fetch, so it now runs off the main
+        // thread (MapSurface's produceState) with its three colours resolved once.
+        val n = 600_000
+        val big = OfflineRouterTraffic.TrafficComponents(
+            LongArray(n) { it.toLong() },
+            ByteArray(n) { ((it * 37) % 101).toByte() },
+        )
+        fun reference(c: OfflineRouterTraffic.TrafficComponents): Pair<List<Long>, List<Int>> {
+            val ids = ArrayList<Long>()
+            val argb = ArrayList<Int>()
+            for (i in c.ids.indices) {
+                val pct = c.ratioPct[i].toInt() and 0xFF
+                if (pct == 0) continue
+                val ratio = pct / 100.0
+                ids += c.ids[i]
+                argb += when {
+                    ratio < 0.5 -> tokens.traffic.jam
+                    ratio < 0.9 -> tokens.traffic.slow
+                    else -> tokens.traffic.free
+                }.toArgb()
+            }
+            return ids to argb
+        }
+        val (refIds, refArgb) = reference(big)
+        val table = assertNotNull(buildTrafficColorTable(big, tokens))
+        assertEquals(refIds, table.ids.toList())
+        assertEquals(refArgb, table.argb.toList())
+        // Timing for the report (best of five, after the warm-up above).
+        val millis = (1..5).minOf {
+            val t = System.nanoTime()
+            buildTrafficColorTable(big, tokens)
+            (System.nanoTime() - t) / 1e6
+        }
+        println("traffic table: $n components built in ${"%.2f".format(millis)} ms (now off the main thread)")
+    }
+
+    @Test
     fun `pin features cover every pin kind in probe order`() {
         val pins = pinFeatures(
             searchResults = listOf(SearchResult("s", "Cafe", null, 37.71, -122.41, null)),

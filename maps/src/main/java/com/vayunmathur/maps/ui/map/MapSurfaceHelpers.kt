@@ -101,6 +101,7 @@ internal fun buildTrafficColorTable(
 ): TrafficColorTable? {
     val n = components.ids.size
     if (n == 0) return null
+    val (jam, slow, free) = with(tokens.traffic) { Triple(jam.toArgb(), slow.toArgb(), free.toArgb()) }
     val outIds = LongArray(n)
     val outArgb = IntArray(n)
     var k = 0
@@ -108,13 +109,12 @@ internal fun buildTrafficColorTable(
         val pct = components.ratioPct[i].toInt() and BYTE_MASK
         if (pct == 0) continue
         val ratio = pct / TRAFFIC_RATIO_SCALE
-        val color = when {
-            ratio < TRAFFIC_JAM_BELOW -> tokens.traffic.jam
-            ratio < TRAFFIC_SLOW_BELOW -> tokens.traffic.slow
-            else -> tokens.traffic.free
-        }
         outIds[k] = components.ids[i]
-        outArgb[k] = color.toArgb()
+        outArgb[k] = when {
+            ratio < TRAFFIC_JAM_BELOW -> jam
+            ratio < TRAFFIC_SLOW_BELOW -> slow
+            else -> free
+        }
         k++
     }
     if (k == 0) return null
