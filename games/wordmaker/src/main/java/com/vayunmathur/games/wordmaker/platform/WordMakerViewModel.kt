@@ -174,7 +174,9 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     val bonusWords: StateFlow<Set<String>> =
-        combine(gameMode, casualBonusWords, _competitiveBonusWords, dailyBonusWords) { mode, casual, competitive, daily ->
+        combine(
+            gameMode, casualBonusWords, _competitiveBonusWords, dailyBonusWords,
+        ) { mode, casual, competitive, daily ->
             when (mode) {
                 GameMode.COMPETITIVE -> competitive
                 GameMode.DAILY -> daily
