@@ -48,22 +48,25 @@ class GameBlockSettleTest {
                 GameBoard(level, { level = it }, {}, isLevelWon = false, modifier = Modifier.testTag("board"))
             }
         }
-        val frame = rule.onNodeWithTag("frame").getBoundsInRoot()
+        // Cells are square and the board keeps a one-cell exit lane on its right, so a cell is a
+        // sixth of the board's height.
+        val board = rule.onNodeWithTag("board").getBoundsInRoot()
+        val cell = (board.height / 6).value
         rule.mainClock.autoAdvance = false
         // Drag the spare block about 1.6 cells left of x = 3 and let go between cells.
         rule.onNodeWithTag("board").performTouchInput {
-            down(Offset(width * 4f / 6f, height * 5.5f / 6f))
-            moveBy(Offset(-width * 0.8f / 6f, 0f))
-            moveBy(Offset(-width * 0.8f / 6f, 0f))
+            down(Offset(height * 4f / 6f, height * 5.5f / 6f))
+            moveBy(Offset(-height * 0.8f / 6f, 0f))
+            moveBy(Offset(-height * 0.8f / 6f, 0f))
             up()
         }
         rule.mainClock.advanceTimeByFrame()
         rule.mainClock.advanceTimeByFrame()
         assertEquals(Coord(1, 5), level.blocks[1].position, "the move commits on release")
-        val mid = (rule.onNodeWithTag("block_1").getBoundsInRoot().left - frame.left).value
+        val mid = (rule.onNodeWithTag("block_1").getBoundsInRoot().left - board.left).value
         rule.mainClock.advanceTimeBy(1_000)
-        val rest = (rule.onNodeWithTag("block_1").getBoundsInRoot().left - frame.left).value
-        assertEquals(60f, rest, 1f) // x = 1 of 6 on a 360 dp board
+        val rest = (rule.onNodeWithTag("block_1").getBoundsInRoot().left - board.left).value
+        assertEquals(cell, rest, 1f) // x = 1
         assertTrue(mid > rest + 1f, "just after release the block is still on its way: mid=$mid rest=$rest")
     }
 }

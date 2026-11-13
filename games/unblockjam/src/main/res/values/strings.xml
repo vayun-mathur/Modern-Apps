@@ -17,4 +17,6 @@
     <string name="moves">Moves</string>
     <!-- PackScreen daily card: Consecutive days the player has cleared the daily pack. %1$d = streak length e.g. 5. Noun phrase with number -->
     <string name="daily_streak"><xliff:g id="days" example="5">%1$d</xliff:g> day streak</string>
+    <!-- GameBoard: Accessibility label for the opening in the board frame the red target block must leave through. Noun -->
+    <string name="exit">Exit</string>
 </resources>

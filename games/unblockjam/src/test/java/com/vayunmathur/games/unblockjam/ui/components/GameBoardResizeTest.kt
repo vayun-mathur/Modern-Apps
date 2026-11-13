@@ -24,6 +24,7 @@ import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /** A rotation or window resize changes the cell size mid-level; positions and drags must follow. */
 @RunWith(RobolectricTestRunner::class)
@@ -54,11 +55,13 @@ class GameBoardResizeTest {
         setBoard {}
         side = 240.dp
         rule.waitForIdle()
-        val frame = rule.onNodeWithTag("frame").getBoundsInRoot()
+        val board = rule.onNodeWithTag("board").getBoundsInRoot()
+        val cell = (board.height / 6).value
+        assertTrue(cell < 40f, "the board did shrink: cell=$cell")
         val block = rule.onNodeWithTag("block_1").getBoundsInRoot()
-        // x = 3 of 6 on a 240 dp board is 120 dp in, whatever size the board started at.
-        assertEquals(120f, (block.left - frame.left).value, 1f)
-        assertEquals(200f, (block.top - frame.top).value, 1f)
+        // (3, 5) in cells of the new size, whatever size the board started at.
+        assertEquals(3 * cell, (block.left - board.left).value, 1f)
+        assertEquals(5 * cell, (block.top - board.top).value, 1f)
     }
 
     @Test
@@ -69,7 +72,7 @@ class GameBoardResizeTest {
         rule.waitForIdle()
         // One cell to the left at the new size (40 dp), from the block's centre.
         rule.onNodeWithTag("board").performTouchInput {
-            swipe(Offset(width * 4f / 6f, height * 5.5f / 6f), Offset(width * 3f / 6f, height * 5.5f / 6f), 300)
+            swipe(Offset(height * 4f / 6f, height * 5.5f / 6f), Offset(height * 3f / 6f, height * 5.5f / 6f), 300)
         }
         val result = assertNotNull(changed)
         assertEquals(Coord(2, 5), result.blocks[1].position)

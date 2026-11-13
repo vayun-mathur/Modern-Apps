@@ -58,7 +58,7 @@ class BoardDragTest {
         setBoard(openLevel(), false, { changed = it }, { won++ })
         // vertical blocker occupies x=2, y=1..3: centre (2.5/6, 2.5/6); drag down one cell
         rule.onNodeWithTag("board").performTouchInput {
-            swipe(Offset(width * 2.5f / 6f, height * 2.5f / 6f), Offset(width * 2.5f / 6f, height * 3.5f / 6f), 300)
+            swipe(Offset(height * 2.5f / 6f, height * 2.5f / 6f), Offset(height * 2.5f / 6f, height * 3.5f / 6f), 300)
         }
         val result = assertNotNull(changed, "vertical drag should report a moved level")
         assertEquals(Coord(2, 2), result.blocks[1].position)
@@ -79,7 +79,7 @@ class BoardDragTest {
         setBoard(free, false, { changed = it }, { won++ })
         // main centre (1/6, 2.5/6); drag far right toward the exit
         rule.onNodeWithTag("board").performTouchInput {
-            swipe(Offset(width / 6f, height * 2.5f / 6f), Offset(width * 0.97f, height * 2.5f / 6f), 400)
+            swipe(Offset(height / 6f, height * 2.5f / 6f), Offset(width * 0.97f, height * 2.5f / 6f), 400)
         }
         assertTrue(won >= 1, "dragging main block out should win, won=$won changed=$changed")
     }
@@ -91,7 +91,7 @@ class BoardDragTest {
         setBoard(openLevel(), false, { changed = it }, { won++ })
         // tiny drag on the spare horizontal block: snaps back to its own cell
         rule.onNodeWithTag("board").performTouchInput {
-            swipe(Offset(width / 6f, height * 5.5f / 6f), Offset(width / 6f + 5f, height * 5.5f / 6f), 200)
+            swipe(Offset(height / 6f, height * 5.5f / 6f), Offset(height / 6f + 5f, height * 5.5f / 6f), 200)
         }
         assertNull(changed)
         assertEquals(0, won)
@@ -104,7 +104,7 @@ class BoardDragTest {
         setBoard(openLevel(), false, { changed = it }, { won++ })
         // main is blocked by the vertical blocker at x=2: rightward drag goes nowhere
         rule.onNodeWithTag("board").performTouchInput {
-            swipe(Offset(width / 6f, height * 2.5f / 6f), Offset(width * 3f / 6f, height * 2.5f / 6f), 300)
+            swipe(Offset(height / 6f, height * 2.5f / 6f), Offset(height * 3f / 6f, height * 2.5f / 6f), 300)
         }
         assertNull(changed)
         assertEquals(0, won)
@@ -116,7 +116,7 @@ class BoardDragTest {
         var won = 0
         setBoard(openLevel(), true, { changed = it }, { won++ })
         rule.onNodeWithTag("board").performTouchInput {
-            swipe(Offset(width * 2.5f / 6f, height * 2.5f / 6f), Offset(width * 2.5f / 6f, height * 3.5f / 6f), 300)
+            swipe(Offset(height * 2.5f / 6f, height * 2.5f / 6f), Offset(height * 2.5f / 6f, height * 3.5f / 6f), 300)
         }
         assertNull(changed)
         assertEquals(0, won)
@@ -134,7 +134,7 @@ class BoardDragTest {
         setBoard(lvl, false, { changed = it }, {})
         // spare block centre (4/6, 5.5/6); drag left two cells
         rule.onNodeWithTag("board").performTouchInput {
-            swipe(Offset(width * 4f / 6f, height * 5.5f / 6f), Offset(width * 2f / 6f, height * 5.5f / 6f), 300)
+            swipe(Offset(height * 4f / 6f, height * 5.5f / 6f), Offset(height * 2f / 6f, height * 5.5f / 6f), 300)
         }
         val result = assertNotNull(changed)
         assertEquals(Coord(1, 5), result.blocks[1].position)
@@ -154,14 +154,15 @@ class BoardDragTest {
         // Finger still down: the position is applied in layout, not by recomposition, and must
         // still track the drag frame by frame.
         rule.onNodeWithTag("board").performTouchInput {
-            down(Offset(width * 4f / 6f, height * 5.5f / 6f))
-            moveBy(Offset(-width * 1.5f / 6f, 0f))
-            moveBy(Offset(-width * 0.2f / 6f, 0f))
+            down(Offset(height * 4f / 6f, height * 5.5f / 6f))
+            moveBy(Offset(-height * 1.5f / 6f, 0f))
+            moveBy(Offset(-height * 0.2f / 6f, 0f))
         }
         val mid = rule.onNodeWithTag("block_1").getBoundsInRoot().left
-        // 1.7 of 6 cells of a 360 dp board is 102 dp; touch slop eats a little of the first move.
-        val moved = (before - mid).value
-        assertTrue(moved in 80f..103f, "block should follow the finger, moved=$moved")
+        val cell = (rule.onNodeWithTag("board").getBoundsInRoot().height / 6).value
+        // 1.7 cells, less the touch slop the first move spends before the drag starts.
+        val moved = (before - mid).value / cell
+        assertTrue(moved in 1.4f..1.71f, "block should follow the finger, moved=$moved cells")
         rule.onNodeWithTag("board").performTouchInput { up() }
     }
 
@@ -178,8 +179,8 @@ class BoardDragTest {
         val before = rule.onNodeWithTag("block_1").getBoundsInRoot()
         // The system (a back gesture, say) takes the pointer mid-drag.
         rule.onNodeWithTag("board").performTouchInput {
-            down(Offset(width * 4f / 6f, height * 5.5f / 6f))
-            moveBy(Offset(-width * 1.5f / 6f, 0f))
+            down(Offset(height * 4f / 6f, height * 5.5f / 6f))
+            moveBy(Offset(-height * 1.5f / 6f, 0f))
             cancel()
         }
         rule.waitForIdle()

@@ -57,7 +57,7 @@ class GameBoardRtlTest {
         )
         // The spare block sits at x 3..4 of row 5 in physical coordinates; drag it two cells left.
         rule.onNodeWithTag("board").performTouchInput {
-            swipe(Offset(width * 4f / 6f, height * 5.5f / 6f), Offset(width * 2f / 6f, height * 5.5f / 6f), 300)
+            swipe(Offset(height * 4f / 6f, height * 5.5f / 6f), Offset(height * 2f / 6f, height * 5.5f / 6f), 300)
         }
         val result = assertNotNull(changed, "the block under the finger should move")
         assertEquals(Coord(1, 5), result.blocks[1].position)
@@ -72,7 +72,7 @@ class GameBoardRtlTest {
             { won++ },
         )
         rule.onNodeWithTag("board").performTouchInput {
-            swipe(Offset(width / 6f, height * 2.5f / 6f), Offset(width * 0.97f, height * 2.5f / 6f), 400)
+            swipe(Offset(height / 6f, height * 2.5f / 6f), Offset(width * 0.97f, height * 2.5f / 6f), 400)
         }
         assertTrue(won >= 1, "dragging the target block right, toward the exit, should win")
     }

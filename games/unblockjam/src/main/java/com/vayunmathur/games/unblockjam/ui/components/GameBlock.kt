@@ -60,7 +60,8 @@ internal fun GameBlock(
     // moves - a committed drag, an undo, a restart, the win - the block glides there from wherever
     // it is rather than jumping, on a short settle (or the longer win slide-out).
     val won = isMainBlock && isLevelWon
-    val rest = if (won) Offset(levelData.dimension.width + 1f, committed.y) else committed
+    // Two cells past the board: through the one-cell exit lane and under the fade beyond it.
+    val rest = if (won) Offset(levelData.dimension.width + 2f, committed.y) else committed
     val settled = travelledOffset(
         key = levelData.id to trip.id,
         from = trip.from,
