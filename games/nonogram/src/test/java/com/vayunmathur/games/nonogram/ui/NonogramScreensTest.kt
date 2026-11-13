@@ -46,8 +46,13 @@ class NonogramScreensTest {
         val taps = mutableListOf<Int>(); val crosses = mutableListOf<Int>()
         val modes = mutableListOf<MarkMode>(); val gameModes = mutableListOf<GameMode>()
         var next = 0; var restarts = 0; var retries = 0
+        /** Every stroke as the gesture handler reported it: begin cell, alternate?, then extensions. */
+        val strokes = mutableListOf<MutableList<Any>>(); var openStroke = false
         override fun tapCell(index: Int) { taps += index }
         override fun crossCell(index: Int) { crosses += index }
+        override fun beginStroke(index: Int, alternate: Boolean) { strokes += mutableListOf<Any>(index, alternate); openStroke = true }
+        override fun extendStroke(index: Int) { strokes.last() += index }
+        override fun endStroke() { openStroke = false }
         override fun setMarkMode(mode: MarkMode) { modes += mode }
         override fun nextLevel() { next++ }
         override fun restartLevel() { restarts++ }
@@ -69,9 +74,9 @@ class NonogramScreensTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, str(state)))
 
     @Test fun talkBackCanFillAndCrossThroughNamedActions() {
-        val taps = mutableListOf<Int>(); val longs = mutableListOf<Int>()
+        val a = Recording()
         rule.setContent {
-            NonogramBoard(game = game(filled = setOf(1), crossed = setOf(0)), onTap = { taps += it }, onLongPress = { longs += it }, markMode = MarkMode.FILL)
+            NonogramBoard(game = game(filled = setOf(1), crossed = setOf(0)), actions = a, markMode = MarkMode.FILL)
         }
         // Fill mode: double tap fills, double-tap-and-hold crosses (or removes an existing cross).
         cell(2, 2, R.string.cd_blank)
@@ -83,11 +88,11 @@ class NonogramScreensTest {
             .assert(SemanticsMatcher("uncross label") { it.config[SemanticsActions.OnLongClick].label == str(R.string.action_uncross) })
         // A settled cell offers nothing to do.
         cell(1, 2, R.string.cd_filled).assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
-        assertEquals(listOf(4), taps); assertEquals(listOf(4), longs)
+        assertEquals(listOf(4), a.taps); assertEquals(listOf(4), a.crosses)
     }
 
     @Test fun talkBackActionsFollowCrossMode() {
-        rule.setContent { NonogramBoard(game = game(crossed = setOf(0)), onTap = {}, onLongPress = {}, markMode = MarkMode.CROSS) }
+        rule.setContent { NonogramBoard(game = game(crossed = setOf(0)), actions = NonogramGameActions.Noop, markMode = MarkMode.CROSS) }
         cell(1, 1, R.string.cd_crossed)
             .assert(SemanticsMatcher("uncross on tap") { it.config[SemanticsActions.OnClick].label == str(R.string.action_uncross) })
             .assert(SemanticsMatcher("fill on hold") { it.config[SemanticsActions.OnLongClick].label == str(R.string.action_fill) })
@@ -164,33 +169,66 @@ class NonogramScreensTest {
     }
 
     @Test fun boardCellsReportDescriptionsAndTaps() {
-        val taps = mutableListOf<Int>()
-        rule.setContent { NonogramBoard(game = game(filled = setOf(1), crossed = setOf(0)), onTap = { taps += it }, onLongPress = {}) }
+        val a = Recording()
+        rule.setContent { NonogramBoard(game = game(filled = setOf(1), crossed = setOf(0)), actions = a) }
         cell(1, 2, R.string.cd_filled).assertExists()
         cell(1, 1, R.string.cd_crossed).assertExists()
         cell(1, 3, R.string.cd_blank).performClick()
-        assertEquals(listOf(2), taps)
+        // A tap is a one-cell stroke in the current mode.
+        assertEquals(listOf(listOf<Any>(2, false)), a.strokes)
+        assertTrue(!a.openStroke)
+    }
+
+    @Test fun dragAcrossTheGridIsOneStroke() {
+        val a = Recording()
+        rule.setContent { NonogramBoard(game = game(), actions = a) }
+        // From the middle of row 2, column 1 to column 3, all in one gesture.
+        val first = rule.onNodeWithContentDescription(str(R.string.cd_cell_position, 2, 1)).fetchSemanticsNode().boundsInRoot
+        val last = rule.onNodeWithContentDescription(str(R.string.cd_cell_position, 2, 3)).fetchSemanticsNode().boundsInRoot
+        rule.onNodeWithContentDescription(str(R.string.cd_cell_position, 2, 1)).performTouchInput {
+            down(center)
+            moveBy(androidx.compose.ui.geometry.Offset(last.center.x - first.center.x, 0f), delayMillis = 50)
+            up()
+        }
+        assertEquals(1, a.strokes.size, "one gesture, one stroke")
+        assertEquals(listOf<Any>(3, false), a.strokes[0].take(2))
+        assertEquals(5, a.strokes[0].last(), "the stroke reaches the cell under the finger")
+        assertTrue(!a.openStroke)
+    }
+
+    @Test fun rtlGridMapsTouchesToMirroredColumns() {
+        val a = Recording()
+        rule.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl,
+            ) { NonogramBoard(game = game(), actions = a) }
+        }
+        // Column 1 sits on the right under RTL; touching it must report column 1 (index 0).
+        rule.onNodeWithContentDescription(str(R.string.cd_cell_position, 1, 1)).performClick()
+        rule.onNodeWithContentDescription(str(R.string.cd_cell_position, 1, 3)).performClick()
+        assertEquals(listOf(listOf<Any>(0, false), listOf<Any>(2, false)), a.strokes)
     }
 
     @Test fun boardTellsARevealedBlankApartFromANote() {
-        rule.setContent { NonogramBoard(game = game(crossed = setOf(0), revealed = setOf(2)), onTap = {}, onLongPress = {}) }
+        rule.setContent { NonogramBoard(game = game(crossed = setOf(0), revealed = setOf(2)), actions = NonogramGameActions.Noop) }
         cell(1, 1, R.string.cd_crossed).assertExists()
         cell(1, 3, R.string.cd_revealed).assertExists()
     }
 
-    @Test fun boardLongPressFiresCross() {
-        val crosses = mutableListOf<Int>()
-        rule.setContent { NonogramBoard(game = game(), onTap = {}, onLongPress = { crosses += it }) }
+    @Test fun boardLongPressStartsAnAlternateStroke() {
+        val a = Recording()
+        rule.setContent { NonogramBoard(game = game(), actions = a) }
         cell(2, 2, R.string.cd_blank)
             .performTouchInput { longClick() }
-        assertEquals(listOf(4), crosses)
+        assertEquals(listOf(listOf<Any>(4, true)), a.strokes)
+        assertTrue(!a.openStroke)
     }
 
     @Test fun boardWithEmptyLinesRendersZeroClues() {
         val p = com.vayunmathur.games.nonogram.data.NonogramPuzzle.from(4, listOf(
             true,true,false,false, false,false,false,false, false,false,true,false, false,false,false,true))
         val g = NonogramGameState(p, emptySet(), emptySet(), emptySet(), STARTING_HEARTS, GameMode.CASUAL, 1)
-        rule.setContent { NonogramBoard(game = g, onTap = {}, onLongPress = {}) }
+        rule.setContent { NonogramBoard(game = g, actions = NonogramGameActions.Noop) }
         cell(2, 1, R.string.cd_blank).assertExists()
         rule.onNodeWithText("0").assertExists()
     }
@@ -198,7 +236,7 @@ class NonogramScreensTest {
     @Test fun boardLargeGeneratedPuzzleRenders() {
         val p = requireNotNull(com.vayunmathur.games.nonogram.domain.NonogramGenerator.generateSeeded(15, 99L))
         val g = NonogramGameState(p, setOf(0), setOf(1), emptySet(), 2, GameMode.CASUAL, 25)
-        rule.setContent { NonogramBoard(game = g, onTap = {}, onLongPress = {}) }
+        rule.setContent { NonogramBoard(game = g, actions = NonogramGameActions.Noop) }
         cell(15, 15, R.string.cd_blank).assertExists()
     }
 
@@ -211,7 +249,7 @@ class NonogramScreensTest {
                 androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density, fontScale = 2f),
             ) {
                 androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(360.dp)) {
-                    NonogramBoard(game = g, onTap = {}, onLongPress = {})
+                    NonogramBoard(game = g, actions = NonogramGameActions.Noop)
                 }
             }
         }

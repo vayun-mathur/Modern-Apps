@@ -14,7 +14,8 @@ import com.vayunmathur.games.nonogram.data.STARTING_HEARTS
 import com.vayunmathur.games.nonogram.data.StoredBoard
 import com.vayunmathur.games.nonogram.data.sizeForLevel
 import com.vayunmathur.games.nonogram.domain.NonogramGenerator
-import com.vayunmathur.games.nonogram.domain.NonogramMoves
+import com.vayunmathur.games.nonogram.domain.NonogramStrokes
+import com.vayunmathur.games.nonogram.domain.Stroke
 import com.vayunmathur.library.util.AchievementsManager
 import com.vayunmathur.library.util.DailyChallengeStore
 import com.vayunmathur.library.util.DailyStreakReporter
@@ -243,12 +244,8 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
      * point of the mode: crossing off a long run of cells should not be a gamble.
      */
     override fun tapCell(index: Int) {
-        val state = _uiState.value
-        val game = state.game ?: return
-        commit(
-            if (state.markMode == MarkMode.CROSS) NonogramMoves.toggleNote(game, index)
-            else NonogramMoves.guess(game, index)
-        )
+        beginStroke(index, alternate = false)
+        endStroke()
     }
 
     /**
@@ -259,12 +256,36 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
      * is the player's own working, and being wrong in a note is not a guess the game should punish.
      */
     override fun crossCell(index: Int) {
+        beginStroke(index, alternate = true)
+        endStroke()
+    }
+
+    /** The stroke in progress, if a finger is down on the grid. See [NonogramStrokes]. */
+    private var stroke: Stroke? = null
+
+    override fun beginStroke(index: Int, alternate: Boolean) {
         val state = _uiState.value
         val game = state.game ?: return
-        commit(
-            if (state.markMode == MarkMode.CROSS) NonogramMoves.guess(game, index)
-            else NonogramMoves.toggleNote(game, index)
-        )
+        val mode = when {
+            !alternate -> state.markMode
+            state.markMode == MarkMode.FILL -> MarkMode.CROSS
+            else -> MarkMode.FILL
+        }
+        val step = NonogramStrokes.begin(game, index, mode)
+        stroke = step.stroke
+        commit(step.game)
+    }
+
+    override fun extendStroke(index: Int) {
+        val current = stroke ?: return
+        val game = _uiState.value.game ?: return
+        val step = NonogramStrokes.extend(game, current, index)
+        stroke = step.stroke
+        commit(step.game)
+    }
+
+    override fun endStroke() {
+        stroke = null
     }
 
     override fun setMarkMode(mode: MarkMode) {

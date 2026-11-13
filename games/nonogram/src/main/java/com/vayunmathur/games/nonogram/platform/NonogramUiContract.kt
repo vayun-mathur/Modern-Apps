@@ -15,11 +15,23 @@ import com.vayunmathur.games.nonogram.data.NonogramGameState
  * Every member has a no-op default, so `Noop` is the whole implementation a preview needs.
  */
 interface NonogramGameActions {
-    /** Tap: places whichever mark the current [MarkMode] selects. */
+    /** Tap: places whichever mark the current [MarkMode] selects. A one-cell stroke. */
     fun tapCell(index: Int) {}
 
-    /** Long press: places the other mark, whatever the mode is. */
+    /** Long press: places the other mark, whatever the mode is. A one-cell alternate stroke. */
     fun crossCell(index: Int) {}
+
+    /**
+     * A finger went down on [index] and the gesture became a stroke: a tap, a drag, or (with
+     * [alternate]) a long press, which paints with the other mark for the rest of the stroke.
+     */
+    fun beginStroke(index: Int, alternate: Boolean) {}
+
+    /** The stroke's finger is now over [index]. */
+    fun extendStroke(index: Int) {}
+
+    /** The stroke's finger lifted (or the gesture was cancelled). */
+    fun endStroke() {}
 
     fun setMarkMode(mode: MarkMode) {}
     fun nextLevel() {}

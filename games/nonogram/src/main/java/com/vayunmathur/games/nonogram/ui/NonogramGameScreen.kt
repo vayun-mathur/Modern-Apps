@@ -174,8 +174,7 @@ fun NonogramGameScreen(
                         ) {
                             NonogramBoard(
                                 game = game,
-                                onTap = actions::tapCell,
-                                onLongPress = actions::crossCell,
+                                actions = actions,
                                 markMode = state.markMode,
                                 modifier = Modifier
                                     .widthIn(max = BoardMaxWidth)
@@ -207,8 +206,7 @@ fun NonogramGameScreen(
 
                     NonogramBoard(
                         game = game,
-                        onTap = actions::tapCell,
-                        onLongPress = actions::crossCell,
+                        actions = actions,
                         markMode = state.markMode,
                         modifier = Modifier
                             .widthIn(max = BoardMaxWidth)

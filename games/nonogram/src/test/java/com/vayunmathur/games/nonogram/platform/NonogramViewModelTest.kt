@@ -112,6 +112,38 @@ class NonogramViewModelTest {
         await("reload") { again.uiState.value.game?.filled == target.toSet() }
     }
 
+    @Test fun dragStrokeFillsALineAndChargesOneHeartForAMistake() {
+        val vm = loadedVm()
+        val g = vm.uiState.value.game!!
+        val n = g.size
+        // Pick a row with a blank somewhere after a picture cell, and drag across the whole row.
+        val row = (0 until n).first { r ->
+            val line = (0 until n).map { g.puzzle.solution[r * n + it] }
+            line.indexOf(true).let { it >= 0 && line.drop(it).contains(false) }
+        }
+        val line = (0 until n).map { row * n + it }
+        val firstPicture = line.first { g.puzzle.solution[it] }
+        vm.beginStroke(firstPicture, alternate = false)
+        for (i in line.filter { it > firstPicture }) vm.extendStroke(i)
+        vm.endStroke()
+        val after = vm.uiState.value.game!!
+        val firstWrong = line.first { it > firstPicture && !g.puzzle.solution[it] }
+        assertEquals(line.filter { it in firstPicture until firstWrong }.toSet(), after.filled)
+        assertEquals(setOf(firstWrong), after.revealedBlanks)
+        assertEquals(STARTING_HEARTS - 1, after.hearts, "a stroke costs at most one heart")
+    }
+
+    @Test fun longPressStrokeUsesTheOtherMark() {
+        val vm = loadedVm()
+        val n = vm.uiState.value.game!!.size
+        vm.beginStroke(0, alternate = true)
+        vm.extendStroke(n - 1)
+        vm.endStroke()
+        // Fill mode + long press = a cross stroke: the whole first row is crossed, for free.
+        assertEquals((0 until n).toSet(), vm.uiState.value.game!!.crossed)
+        assertEquals(STARTING_HEARTS, vm.uiState.value.game!!.hearts)
+    }
+
     @Test fun longPressInFillModeNotesAndRestartClears() {
         val vm = loadedVm()
         val g = vm.uiState.value.game!!
