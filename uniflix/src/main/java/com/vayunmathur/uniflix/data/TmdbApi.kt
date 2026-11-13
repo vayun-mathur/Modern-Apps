@@ -1,5 +1,7 @@
 package com.vayunmathur.uniflix.data
 
+import com.vayunmathur.library.network.RawResponse
+import com.vayunmathur.library.network.StaticMirror
 import com.vayunmathur.uniflix.domain.Episode
 import com.vayunmathur.uniflix.domain.MediaDetail
 import com.vayunmathur.uniflix.domain.MediaItem
@@ -9,44 +11,60 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** TMDB catalog client via the self-hosted proxy. Keyless: the server holds the TMDB API key. */
+/**
+ * TMDB catalog client via the self-hosted proxy. Keyless: the server holds the TMDB API key.
+ *
+ * Catalog pages are the same for every user, so the server also publishes them to R2
+ * (location_share_server `src/handlers/tmdb.rs`): lists hourly, title pages whenever
+ * someone fetches them. Every page except search is read from that static copy first
+ * ([STATIC_BASE] + the same path + `.json`) and from the proxy when the copy is missing
+ * or older than the page's freshness window.
+ */
 class TmdbApi {
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun url(path: String): String = "$BASE$path"
 
-    private suspend fun getItems(requestUrl: String): List<MediaItem> {
-        val resp = uniflixGet(requestUrl)
+    /** Static copy of [path] when present and fresh, else the proxy's answer. */
+    private suspend fun catalogGet(path: String, maxAgeMs: Long): RawResponse {
+        val static = runCatching { uniflixGet("$STATIC_BASE$path.json") }.getOrNull()
+        if (static != null && StaticMirror.accept(static, maxAgeMs, System.currentTimeMillis())) return static
+        return uniflixGet(url(path))
+    }
+
+    private fun decodeItems(resp: RawResponse): List<MediaItem> {
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         return json.decodeFromString(TmdbList.serializer(), resp.text).results.map { it.toMediaItem() }
     }
 
+    private suspend fun getList(path: String): List<MediaItem> = decodeItems(catalogGet(path, LIST_MAX_AGE_MS))
+
     suspend fun trendingMovies(): List<MediaItem> =
-        getItems(url("/trending/movie"))
+        getList("/trending/movie")
 
     suspend fun trendingTv(): List<MediaItem> =
-        getItems(url("/trending/tv"))
+        getList("/trending/tv")
 
     suspend fun topRatedMovies(): List<MediaItem> =
-        getItems(url("/top/movie"))
+        getList("/top/movie")
 
     suspend fun topRatedTv(): List<MediaItem> =
-        getItems(url("/top/tv"))
+        getList("/top/tv")
 
     suspend fun discoverMovies(): List<MediaItem> =
-        getItems(url("/discover/movie"))
+        getList("/discover/movie")
 
     suspend fun discoverTv(): List<MediaItem> =
-        getItems(url("/discover/tv"))
+        getList("/discover/tv")
 
+    /** Free-text search has unbounded keys: always the proxy. */
     suspend fun search(query: String): List<MediaItem> {
         val encoded = java.net.URLEncoder.encode(query, Charsets.UTF_8.name())
-        return getItems(url("/search?query=$encoded"))
+        return decodeItems(uniflixGet(url("/search?query=$encoded")))
     }
 
     suspend fun movieDetail(tmdbId: Int): MediaDetail {
-        val requestUrl = url("/movie/$tmdbId")
-        val resp = uniflixGet(requestUrl)
+        val resp = catalogGet("/movie/$tmdbId", DETAIL_MAX_AGE_MS)
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         val dto = json.decodeFromString(TmdbMovieDetail.serializer(), resp.text)
         val recs = runCatching { movieRecommendations(tmdbId) }.getOrDefault(emptyList())
@@ -65,8 +83,7 @@ class TmdbApi {
     }
 
     suspend fun tvDetail(tmdbId: Int): MediaDetail {
-        val requestUrl = url("/tv/$tmdbId")
-        val resp = uniflixGet(requestUrl)
+        val resp = catalogGet("/tv/$tmdbId", DETAIL_MAX_AGE_MS)
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         val dto = json.decodeFromString(TmdbTvDetail.serializer(), resp.text)
         return MediaDetail(
@@ -85,7 +102,7 @@ class TmdbApi {
     }
 
     suspend fun seasonEpisodes(tmdbId: Int, season: Int): List<Episode> {
-        val resp = uniflixGet(url("/tv/$tmdbId/season/$season"))
+        val resp = catalogGet("/tv/$tmdbId/season/$season", DETAIL_MAX_AGE_MS)
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         return json.decodeFromString(TmdbSeason.serializer(), resp.text).episodes.map {
             Episode(season, it.episodeNumber, it.name, it.overview, it.stillPath)
@@ -93,10 +110,17 @@ class TmdbApi {
     }
 
     private suspend fun movieRecommendations(tmdbId: Int): List<MediaItem> =
-        getItems(url("/movie/$tmdbId/recommendations"))
+        decodeItems(catalogGet("/movie/$tmdbId/recommendations", DETAIL_MAX_AGE_MS))
 
     companion object {
         private const val BASE = "https://api.maproj.org/api/tmdb"
+        private const val STATIC_BASE = "${StaticMirror.BASE}/tmdb/v1"
+
+        /** Lists are republished hourly; older means the server stopped. */
+        private const val LIST_MAX_AGE_MS = 6L * 60 * 60 * 1000
+
+        /** Title pages are rewritten when fetched after 3 days; refresh weekly. */
+        private const val DETAIL_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
     }
 }
 

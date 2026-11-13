@@ -69,18 +69,23 @@ class AddonModelsImageUrlTest {
         assertEquals("Ep", Episode(1, 1, "Ep").name)
     }
 
-    @Test fun imageUrlsUseProxyAndSizes() {
+    @Test fun imageUrlsUseStaticCopyAndSizesWithProxyFallback() {
         assertNull(TmdbImageUrl.poster(null))
         assertNull(TmdbImageUrl.backdrop(null))
         assertNull(TmdbImageUrl.still(null))
         assertEquals(
-            "https://api.maproj.org/api/tmdb/image/w342/p.jpg", TmdbImageUrl.poster("/p.jpg"))
+            "https://static.maproj.org/tmdb/v1/image/w342/p.jpg", TmdbImageUrl.poster("/p.jpg"))
         assertEquals(
-            "https://api.maproj.org/api/tmdb/image/w500/p.jpg", TmdbImageUrl.poster("/p.jpg", "w500"))
+            "https://static.maproj.org/tmdb/v1/image/w500/p.jpg", TmdbImageUrl.poster("/p.jpg", "w500"))
         assertEquals(
-            "https://api.maproj.org/api/tmdb/image/original/b.jpg", TmdbImageUrl.backdrop("/b.jpg"))
+            "https://static.maproj.org/tmdb/v1/image/original/b.jpg", TmdbImageUrl.backdrop("/b.jpg"))
         assertEquals(
-            "https://api.maproj.org/api/tmdb/image/w185/s.jpg", TmdbImageUrl.still("/s.jpg"))
+            "https://static.maproj.org/tmdb/v1/image/w185/s.jpg", TmdbImageUrl.still("/s.jpg"))
+        // Fallback: same size + file on the image proxy; other URLs have none.
+        assertEquals(
+            "https://api.maproj.org/api/tmdb/image/w342/p.jpg",
+            TmdbImageUrl.proxyFor(TmdbImageUrl.poster("/p.jpg")!!))
+        assertNull(TmdbImageUrl.proxyFor("https://addons.example.com/poster.jpg"))
     }
 
     @Test fun normalizeBaseUrlAcceptsBareAndManifestForms() {

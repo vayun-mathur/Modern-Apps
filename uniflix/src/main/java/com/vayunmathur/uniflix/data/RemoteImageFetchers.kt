@@ -29,11 +29,18 @@ object RemoteImageFetchers {
         }
         if (!url.startsWith("http://") && !url.startsWith("https://")) return null
         return withContext(Dispatchers.IO) {
-            val resp = NetworkClient.execute(url)
-            if (!resp.isSuccess) {
-                throw java.io.IOException("HTTP ${resp.status} for $url")
+            var resp = runCatching { NetworkClient.execute(url) }
+            // TMDB artwork is read from its static R2 copy first; one that does not
+            // exist yet (or an unreachable static host) falls back to the image proxy.
+            val proxy = TmdbImageUrl.proxyFor(url)
+            if (proxy != null && resp.getOrNull()?.isSuccess != true) {
+                resp = runCatching { NetworkClient.execute(proxy) }
             }
-            FetchResult.Bytes(resp.bytes)
+            val ok = resp.getOrThrow()
+            if (!ok.isSuccess) {
+                throw java.io.IOException("HTTP ${ok.status} for ${proxy ?: url}")
+            }
+            FetchResult.Bytes(ok.bytes)
         }
     }
 }
