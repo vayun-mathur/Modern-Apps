@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -502,12 +505,15 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // HUD layer, scaled by the HUD-size setting (a density override scales every dp in it).
+                    // HUD layer, scaled by the HUD-size setting (a density override scales every dp in it)
+                    // and kept inside the safe area, so display cutouts, rounded corners and transient
+                    // system bars never cover the stick, buttons, hotbar or readouts. The hard-coded
+                    // offsets below are now relative to that safe area.
                     val baseDensity = LocalDensity.current
                     CompositionLocalProvider(
                         LocalDensity provides Density(baseDensity.density * settings.hudScale, baseDensity.fontScale)
                     ) {
-                    Box(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                         // Edge swipes over the stick (and over the right-hand look strip below) belong to
                         // the game, not to the system Back gesture.
                         Box(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 96.dp).systemGestureExclusion()) {
