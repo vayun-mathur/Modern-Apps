@@ -25,6 +25,9 @@ object SoundFx {
     private val stepIds = IntArray(6)
     private var caveId = 0
     private var stalkId = 0
+    /** Effects volume from the settings sheet, 0..1. */
+    @Volatile var volume = 1f
+        set(v) { field = v.coerceIn(0f, 1f) }
 
     fun init(ctx: Context) {
         if (pool != null) return
@@ -47,23 +50,25 @@ object SoundFx {
         } catch (_: Throwable) {}
     }
 
-    fun playBreak() { try { pool?.play(breakId, 0.6f, 0.6f, 1, 0, 1f) } catch (_: Throwable) {} }
-    fun playPlace() { try { pool?.play(placeId, 0.6f, 0.6f, 1, 0, 1f) } catch (_: Throwable) {} }
-    fun playHurt() { try { pool?.play(hurtId, 0.7f, 0.7f, 1, 0, 1f) } catch (_: Throwable) {} }
-    fun playEat() { try { pool?.play(eatId, 0.5f, 0.5f, 1, 0, 1f) } catch (_: Throwable) {} }
-    fun playExplode() { try { pool?.play(explodeId, 0.9f, 0.9f, 1, 0, 1f) } catch (_: Throwable) {} }
+    fun playBreak() { try { pool?.play(breakId, 0.6f * volume, 0.6f * volume, 1, 0, 1f) } catch (_: Throwable) {} }
+    fun playPlace() { try { pool?.play(placeId, 0.6f * volume, 0.6f * volume, 1, 0, 1f) } catch (_: Throwable) {} }
+    fun playHurt() { try { pool?.play(hurtId, 0.7f * volume, 0.7f * volume, 1, 0, 1f) } catch (_: Throwable) {} }
+    fun playEat() { try { pool?.play(eatId, 0.5f * volume, 0.5f * volume, 1, 0, 1f) } catch (_: Throwable) {} }
+    fun playExplode() { try { pool?.play(explodeId, 0.9f * volume, 0.9f * volume, 1, 0, 1f) } catch (_: Throwable) {} }
     /// `mat` is an ambience.rs STEP_* class. Each footfall is pitched slightly differently so a walk
     /// doesn't turn into a metronome.
     fun playStep(mat: Int) {
         val id = stepIds.getOrNull(mat) ?: return
         val rate = 0.92f + Random.nextFloat() * 0.16f
-        try { pool?.play(id, 0.22f, 0.22f, 0, 0, rate) } catch (_: Throwable) {}
+        try { pool?.play(id, 0.22f * volume, 0.22f * volume, 0, 0, rate) } catch (_: Throwable) {}
     }
     fun playCave() {
-        try { pool?.play(caveId, 0.35f, 0.35f, 0, 0, 0.9f + Random.nextFloat() * 0.2f) } catch (_: Throwable) {}
+        val v = 0.35f * volume
+        try { pool?.play(caveId, v, v, 0, 0, 0.9f + Random.nextFloat() * 0.2f) } catch (_: Throwable) {}
     }
     fun playStalk() {
-        try { pool?.play(stalkId, 0.5f, 0.5f, 0, 0, 0.85f + Random.nextFloat() * 0.3f) } catch (_: Throwable) {}
+        val v = 0.5f * volume
+        try { pool?.play(stalkId, v, v, 0, 0, 0.85f + Random.nextFloat() * 0.3f) } catch (_: Throwable) {}
     }
 
     // Per-surface footstep timbre: (base frequency, duration, amplitude, envelope decay). Hard

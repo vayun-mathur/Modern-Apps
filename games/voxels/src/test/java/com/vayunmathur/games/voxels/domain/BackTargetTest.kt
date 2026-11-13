@@ -15,6 +15,7 @@ class BackTargetTest {
     @Test fun `back closes the top-most overlay first`() {
         assertEquals(BackTarget.CHEST, backTarget(OverlayFlags(chest = true, inventory = true, paused = true)))
         assertEquals(BackTarget.INVENTORY, backTarget(OverlayFlags(inventory = true, paused = true)))
+        assertEquals(BackTarget.SETTINGS, backTarget(OverlayFlags(settings = true, chest = true)))
         assertEquals(BackTarget.TRADE, backTarget(OverlayFlags(trade = true)))
         assertEquals(BackTarget.FURNACE, backTarget(OverlayFlags(furnace = true)))
         assertEquals(BackTarget.STONECUTTER, backTarget(OverlayFlags(stonecutter = true)))

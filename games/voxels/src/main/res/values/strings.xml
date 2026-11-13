@@ -91,6 +91,16 @@
     <string name="join_request_sent">Requested to join — you\'ll get access once the host approves.</string>
     <string name="connection_lost">Connection lost — waiting to reconnect…</string>
     <string name="players_online">%1$d online</string>
+    <!-- Settings sheet title. Noun -->
+    <string name="settings">Settings</string>
+    <string name="settings_look_sensitivity">Look sensitivity</string>
+    <string name="settings_invert_y">Invert look up/down</string>
+    <string name="settings_music_volume">Music volume</string>
+    <string name="settings_sfx_volume">Sound effects volume</string>
+    <string name="settings_hud_scale">Controls size</string>
+    <string name="settings_show_debug">Show debug info</string>
+    <!-- Settings sheet: close button. Verb -->
+    <string name="settings_done">Done</string>
     <!-- Loading overlay while the engine generates the world around the player. Sentence fragment -->
     <string name="loading_generating">Generating world…</string>
     <!-- Loading overlay while terrain meshes are being built. Sentence fragment -->

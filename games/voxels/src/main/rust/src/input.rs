@@ -1,4 +1,4 @@
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock, atomic::{AtomicU32, Ordering}};
 #[derive(Debug, Clone, Copy, Default)]
 pub struct InputState {
     pub move_forward: f32, pub move_right: f32,
@@ -30,4 +30,25 @@ pub fn snapshot_and_clear_look() -> InputState {
     // only the edge-triggered fly toggle is consumed here.
     if let Ok(mut g)=mutex().lock() { let c=*g; g.toggle_fly=false; return c; }
     InputState::default()
+}
+// Camera turn-speed multiplier from the settings sheet (f32 bits; 1.0 by default).
+static LOOK_SENS: AtomicU32 = AtomicU32::new(0x3F80_0000);
+/// Sets the look-sensitivity multiplier (clamped to 0.25..3).
+pub fn set_look_sensitivity(s: f32) {
+    let v = if s.is_finite() { s.clamp(0.25, 3.0) } else { 1.0 };
+    LOOK_SENS.store(v.to_bits(), Ordering::Relaxed);
+}
+/// The look-sensitivity multiplier.
+pub fn look_sensitivity() -> f32 { f32::from_bits(LOOK_SENS.load(Ordering::Relaxed)) }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn look_sensitivity_defaults_to_one_and_clamps() {
+        assert!((super::look_sensitivity() - 1.0).abs() < 1e-6 || (0.25..=3.0).contains(&super::look_sensitivity()));
+        super::set_look_sensitivity(10.0);
+        assert!((super::look_sensitivity() - 3.0).abs() < 1e-6);
+        super::set_look_sensitivity(f32::NAN);
+        assert!((super::look_sensitivity() - 1.0).abs() < 1e-6);
+    }
 }

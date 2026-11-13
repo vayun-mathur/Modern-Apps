@@ -34,6 +34,8 @@ object VoxelsNative {
     external fun nativeSetPaused(paused: Boolean)
     external fun onMoveInput(moveX: Float, moveY: Float)
     external fun onLookInput(lookYawRate: Float, lookPitchRate: Float)
+    // Camera turn-speed multiplier from the settings sheet (0.25..3).
+    external fun setLookSensitivity(sensitivity: Float)
     external fun setJump(held: Boolean)
     external fun setFlyDown(held: Boolean)
     external fun setSneak(on: Boolean)

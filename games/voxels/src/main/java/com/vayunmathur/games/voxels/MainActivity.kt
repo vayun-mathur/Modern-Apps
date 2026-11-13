@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.systemGestureExclusion
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,12 +41,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.vayunmathur.games.voxels.data.GameSettingsStore
 import com.vayunmathur.games.voxels.domain.BackTarget
 import com.vayunmathur.games.voxels.domain.OverlayFlags
 import com.vayunmathur.games.voxels.domain.backTarget
@@ -63,6 +67,7 @@ import com.vayunmathur.games.voxels.ui.InventoryState
 import com.vayunmathur.games.voxels.ui.LoadPhase
 import com.vayunmathur.games.voxels.ui.LoadingOverlay
 import com.vayunmathur.games.voxels.ui.Joystick
+import com.vayunmathur.games.voxels.ui.SettingsSheet
 import com.vayunmathur.games.voxels.ui.StonecutterOverlay
 import com.vayunmathur.games.voxels.ui.TradeOverlay
 import com.vayunmathur.games.voxels.ui.UseButton
@@ -133,7 +138,15 @@ class MainActivity : ComponentActivity() {
                 var inventoryJson by remember { mutableStateOf("""{"selected":0,"slots":[{"id":3,"count":64},{"id":2,"count":64},{"id":1,"count":64},{"id":4,"count":16},{"id":10,"count":32},{"id":6,"count":32},{"id":7,"count":16},{"id":8,"count":16},{"id":9,"count":16}]}""") }
                 var debugJson by remember { mutableStateOf("Voxels Engine\nInitializing Vulkan...\nMatcha Atlas 64x64") }
                 var healthJson by remember { mutableStateOf("{}") }
-                var showDebug by remember { mutableStateOf(true) }
+                // Player settings (gear button). The debug readout is now one of them, off by default.
+                var settings by remember { mutableStateOf(GameSettingsStore.load(this@MainActivity)) }
+                var settingsOpen by remember { mutableStateOf(false) }
+                LaunchedEffect(settings) {
+                    com.vayunmathur.games.voxels.platform.MusicFx.setVolume(settings.musicVolume)
+                    com.vayunmathur.games.voxels.platform.SoundFx.volume = settings.sfxVolume
+                    if (VoxelsNative.isAvailable) try { VoxelsNative.setLookSensitivity(settings.lookSensitivity) } catch (_: Exception) {}
+                    GameSettingsStore.save(this@MainActivity, settings)
+                }
                 var flying by remember { mutableStateOf(false) }
                 var sneaking by remember { mutableStateOf(false) }
                 var inventoryOpen by remember { mutableStateOf(false) }
@@ -393,10 +406,11 @@ class MainActivity : ComponentActivity() {
 
                 // "Paused" is real: the engine stops simulating and every held control is released,
                 // so closing the menu never resumes a walk or a turn that was in progress.
-                LaunchedEffect(paused) {
+                // The settings sheet also holds the world still while it's open.
+                LaunchedEffect(paused, settingsOpen) {
                     if (!VoxelsNative.isAvailable) return@LaunchedEffect
                     try {
-                        VoxelsNative.nativeSetPaused(paused)
+                        VoxelsNative.nativeSetPaused(paused || settingsOpen)
                         if (paused) {
                             VoxelsNative.onMoveInput(0f, 0f)
                             VoxelsNative.onLookInput(0f, 0f)
@@ -410,7 +424,7 @@ class MainActivity : ComponentActivity() {
                 BackHandler {
                     val open = OverlayFlags(
                         chest = chestOpen, trade = tradeOpen, furnace = furnaceOpen,
-                        stonecutter = stonecutterOpen, inventory = inventoryOpen, paused = paused,
+                        stonecutter = stonecutterOpen, inventory = inventoryOpen, settings = settingsOpen, paused = paused,
                     )
                     when (backTarget(open)) {
                         BackTarget.CHEST -> {
@@ -421,6 +435,7 @@ class MainActivity : ComponentActivity() {
                         BackTarget.FURNACE -> furnaceOpen = false
                         BackTarget.STONECUTTER -> stonecutterOpen = false
                         BackTarget.INVENTORY -> inventoryOpen = false
+                        BackTarget.SETTINGS -> settingsOpen = false
                         BackTarget.RESUME -> paused = false
                         BackTarget.PAUSE -> paused = true
                     }
@@ -448,7 +463,9 @@ class MainActivity : ComponentActivity() {
                     if (VoxelsNative.isAvailable) {
                         FloatingLookJoystick(
                             modifier = Modifier.fillMaxSize().onSizeChanged { worldSize = it },
-                            onLookRate = { ry, rp -> if (!paused) try { VoxelsNative.onLookInput(ry, rp) } catch (_: Exception) {} },
+                            onLookRate = { ry, rp ->
+                                if (!paused) try { VoxelsNative.onLookInput(ry, if (settings.invertY) -rp else rp) } catch (_: Exception) {}
+                            },
                             onPlace = { off -> if (!paused) try {
                                 val code = VoxelsNative.placeBlockAt(off.x, off.y)
                                 when (code) {
@@ -485,127 +502,135 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Edge swipes over the stick (and over the right-hand look strip below) belong to
-                    // the game, not to the system Back gesture.
-                    Box(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 96.dp).systemGestureExclusion()) {
-                        Joystick(modifier = Modifier, isLook = false,
-                            onMove = { x, y -> if (VoxelsNative.isAvailable && !paused) try { VoxelsNative.onMoveInput(x, y) } catch (_: Exception) {} },
-                            onLookDelta = { _, _ -> })
-                    }
-
-                    // Android honours at most 200 dp of exclusion per edge; spend it where look swipes
-                    // start. This Box has no pointer input, so touches still reach the look layer.
-                    Box(Modifier.align(Alignment.CenterEnd).width(40.dp).height(200.dp).systemGestureExclusion())
-
-                    // Right-hand action cluster: Use beside two stacked buttons (walking: Jump / Sneak,
-                    // flying: Up / Down; double-tap the top one to toggle flying). It sits above the
-                    // hotbar (8 dp slot padding + 52 dp slots + 12 dp offset) so Sneak no longer
-                    // covers the last hotbar slots.
-                    Row(
-                        Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 88.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    // HUD layer, scaled by the HUD-size setting (a density override scales every dp in it).
+                    val baseDensity = LocalDensity.current
+                    CompositionLocalProvider(
+                        LocalDensity provides Density(baseDensity.density * settings.hudScale, baseDensity.fontScale)
                     ) {
-                        // Use/attack whatever is under the crosshair, repeating while held.
-                        UseButton(label = stringResource(R.string.use)) {
-                            if (VoxelsNative.isAvailable && !paused && worldSize.width > 0) try {
-                                if (VoxelsNative.breakBlockAt(worldSize.width / 2f, worldSize.height / 2f)) {
-                                    com.vayunmathur.games.voxels.platform.SoundFx.playBreak()
-                                }
-                            } catch (_: Exception) {}
+                    Box(Modifier.fillMaxSize()) {
+                        // Edge swipes over the stick (and over the right-hand look strip below) belong to
+                        // the game, not to the system Back gesture.
+                        Box(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 96.dp).systemGestureExclusion()) {
+                            Joystick(modifier = Modifier, isLook = false,
+                                onMove = { x, y -> if (VoxelsNative.isAvailable && !paused) try { VoxelsNative.onMoveInput(x, y) } catch (_: Exception) {} },
+                                onLookDelta = { _, _ -> })
                         }
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+
+                        // Android honours at most 200 dp of exclusion per edge; spend it where look swipes
+                        // start. This Box has no pointer input, so touches still reach the look layer.
+                        Box(Modifier.align(Alignment.CenterEnd).width(40.dp).height(200.dp).systemGestureExclusion())
+
+                        // Right-hand action cluster: Use beside two stacked buttons (walking: Jump / Sneak,
+                        // flying: Up / Down; double-tap the top one to toggle flying). It sits above the
+                        // hotbar (8 dp slot padding + 52 dp slots + 12 dp offset) so Sneak no longer
+                        // covers the last hotbar slots.
+                        Row(
+                            Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 88.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            HoldButton(
-                                label = if (flying) "Up" else "Jump",
-                                dimmed = !flying && sneaking,
-                                onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(true) } catch (_: Exception) {} },
-                                onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(false) } catch (_: Exception) {} },
-                                onDoubleTap = {
-                                    if (VoxelsNative.isAvailable) try { VoxelsNative.toggleFly() } catch (_: Exception) {}
-                                    flying = !flying
-                                    if (flying) {
-                                        sneaking = false
-                                        if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(false) } catch (_: Exception) {}
+                            // Use/attack whatever is under the crosshair, repeating while held.
+                            UseButton(label = stringResource(R.string.use)) {
+                                if (VoxelsNative.isAvailable && !paused && worldSize.width > 0) try {
+                                    if (VoxelsNative.breakBlockAt(worldSize.width / 2f, worldSize.height / 2f)) {
+                                        com.vayunmathur.games.voxels.platform.SoundFx.playBreak()
                                     }
+                                } catch (_: Exception) {}
+                            }
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                HoldButton(
+                                    label = if (flying) "Up" else "Jump",
+                                    dimmed = !flying && sneaking,
+                                    onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(true) } catch (_: Exception) {} },
+                                    onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setJump(false) } catch (_: Exception) {} },
+                                    onDoubleTap = {
+                                        if (VoxelsNative.isAvailable) try { VoxelsNative.toggleFly() } catch (_: Exception) {}
+                                        flying = !flying
+                                        if (flying) {
+                                            sneaking = false
+                                            if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(false) } catch (_: Exception) {}
+                                        }
+                                    }
+                                )
+                                if (flying) {
+                                    HoldButton(
+                                        label = stringResource(R.string.down),
+                                        onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setFlyDown(true) } catch (_: Exception) {} },
+                                        onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setFlyDown(false) } catch (_: Exception) {} }
+                                    )
+                                } else {
+                                    HoldButton(
+                                        label = if (sneaking) "Sneaking" else "Sneak",
+                                        dimmed = sneaking,
+                                        onPress = {
+                                            sneaking = !sneaking
+                                            if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(sneaking) } catch (_: Exception) {}
+                                        }
+                                    )
                                 }
-                            )
-                            if (flying) {
-                                HoldButton(
-                                    label = stringResource(R.string.down),
-                                    onPress = { if (VoxelsNative.isAvailable) try { VoxelsNative.setFlyDown(true) } catch (_: Exception) {} },
-                                    onRelease = { if (VoxelsNative.isAvailable) try { VoxelsNative.setFlyDown(false) } catch (_: Exception) {} }
-                                )
-                            } else {
-                                HoldButton(
-                                    label = if (sneaking) "Sneaking" else "Sneak",
-                                    dimmed = sneaking,
-                                    onPress = {
-                                        sneaking = !sneaking
-                                        if (VoxelsNative.isAvailable) try { VoxelsNative.setSneak(sneaking) } catch (_: Exception) {}
-                                    }
-                                )
                             }
                         }
-                    }
 
-                    // Health/effects HUD just above the hotbar.
-                    Box(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 78.dp)) {
-                        HealthOverlay(healthJson)
-                    }
-                    // Boss health bar (Ender Dragon) at the top.
-                    Box(Modifier.align(Alignment.TopCenter).padding(top = 70.dp)) {
-                        BossBar(healthJson)
-                    }
-                    // Elytra glide indicator, above the hotbar.
-                    Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 92.dp)) {
-                        GlideIndicator(healthJson)
-                    }
+                        // Health/effects HUD just above the hotbar.
+                        Box(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 78.dp)) {
+                            HealthOverlay(healthJson)
+                        }
+                        // Boss health bar (Ender Dragon) at the top.
+                        Box(Modifier.align(Alignment.TopCenter).padding(top = 70.dp)) {
+                            BossBar(healthJson)
+                        }
+                        // Elytra glide indicator, above the hotbar.
+                        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 92.dp)) {
+                            GlideIndicator(healthJson)
+                        }
 
-                    Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)) {
-                        Hotbar(inventoryJson = inventoryJson,
-                            onSelect = { slot -> if (VoxelsNative.isAvailable) try { VoxelsNative.selectSlot(slot) } catch (_: Exception) {} },
-                            onOpenInventory = { invStartTab = 0; inventoryOpen = true })
-                    }
+                        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)) {
+                            Hotbar(inventoryJson = inventoryJson,
+                                onSelect = { slot -> if (VoxelsNative.isAvailable) try { VoxelsNative.selectSlot(slot) } catch (_: Exception) {} },
+                                onOpenInventory = { invStartTab = 0; inventoryOpen = true })
+                        }
 
-                    Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = 36.dp, start = 12.dp, end = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                IconButton(onClick = { paused = true }) { IconMenu() }
-                                IconButton(onClick = { showDebug = !showDebug }) { IconSettings() }
+                        Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = 36.dp, start = 12.dp, end = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    IconButton(onClick = { paused = true }) { IconMenu() }
+                                    IconButton(onClick = { settingsOpen = true }) { IconSettings() }
+                                }
+                            }
+                            if (settings.showDebug) { DebugOverlay(debugJson = debugJson) }
+                        }
+
+                        newAchievement?.let { ach ->
+                            Box(Modifier.align(Alignment.TopCenter).padding(top = 80.dp)) {
+                                AchievementNotification(ach) { achievements?.dismissNotification() }
                             }
                         }
-                        if (showDebug) { DebugOverlay(debugJson = debugJson) }
-                    }
 
-                    newAchievement?.let { ach ->
-                        Box(Modifier.align(Alignment.TopCenter).padding(top = 80.dp)) {
-                            AchievementNotification(ach) { achievements?.dismissNotification() }
-                        }
-                    }
-
-                    // Online HUD: how many players are here, plus a connection-lost indicator.
-                    if (online) {
-                        val peerCount = remember(peersJson) { runCatching { JSONArray(peersJson).length() }.getOrDefault(0) }
-                        Box(Modifier.align(Alignment.TopEnd).padding(top = 36.dp, end = 12.dp)) {
-                            Text(
-                                stringResource(R.string.players_online, peerCount + 1),
-                                color = Color.White,
-                                modifier = Modifier.background(Color(0x66000000)).padding(horizontal = 8.dp, vertical = 4.dp),
-                            )
-                        }
-                        if (!netConnected) {
-                            Box(Modifier.align(Alignment.TopCenter).padding(top = 8.dp)) {
+                        // Online HUD: how many players are here, plus a connection-lost indicator.
+                        if (online) {
+                            val peerCount = remember(peersJson) { runCatching { JSONArray(peersJson).length() }.getOrDefault(0) }
+                            Box(Modifier.align(Alignment.TopEnd).padding(top = 36.dp, end = 12.dp)) {
                                 Text(
-                                    stringResource(R.string.connection_lost),
+                                    stringResource(R.string.players_online, peerCount + 1),
                                     color = Color.White,
-                                    modifier = Modifier.background(Color(0xCCB00020)).padding(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.background(Color(0x66000000)).padding(horizontal = 8.dp, vertical = 4.dp),
                                 )
                             }
+                            if (!netConnected) {
+                                Box(Modifier.align(Alignment.TopCenter).padding(top = 8.dp)) {
+                                    Text(
+                                        stringResource(R.string.connection_lost),
+                                        color = Color.White,
+                                        modifier = Modifier.background(Color(0xCCB00020)).padding(horizontal = 12.dp, vertical = 6.dp),
+                                    )
+                                }
+                            }
                         }
+                    }
                     }
 
                     if (inventoryOpen && VoxelsNative.isAvailable) {
@@ -638,6 +663,10 @@ class MainActivity : ComponentActivity() {
                     if (stonecutterOpen && VoxelsNative.isAvailable) {
                         StonecutterOverlay(cutsJson = cutsJson, inventoryJson = inventoryJson,
                             onClose = { stonecutterOpen = false })
+                    }
+
+                    if (settingsOpen) {
+                        SettingsSheet(settings = settings, onChange = { settings = it.sanitized() }, onClose = { settingsOpen = false })
                     }
 
                     if (loadPhase != LoadPhase.READY && VoxelsNative.isAvailable) {

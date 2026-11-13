@@ -12,6 +12,8 @@ enum class BackTarget {
     STONECUTTER,
     /** Close the inventory / crafting screen. */
     INVENTORY,
+    /** Close the settings sheet. */
+    SETTINGS,
     /** Leave the pause menu and resume. */
     RESUME,
     /** Nothing is open: open the pause menu instead of quitting the world. */
@@ -25,6 +27,7 @@ data class OverlayFlags(
     val furnace: Boolean = false,
     val stonecutter: Boolean = false,
     val inventory: Boolean = false,
+    val settings: Boolean = false,
     val paused: Boolean = false,
 )
 
@@ -34,6 +37,7 @@ data class OverlayFlags(
  * looking around can no longer drop the player out of their world.
  */
 fun backTarget(open: OverlayFlags): BackTarget = when {
+    open.settings -> BackTarget.SETTINGS
     open.chest -> BackTarget.CHEST
     open.trade -> BackTarget.TRADE
     open.furnace -> BackTarget.FURNACE

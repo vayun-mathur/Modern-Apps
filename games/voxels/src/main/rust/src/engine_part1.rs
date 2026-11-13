@@ -37,7 +37,7 @@ fn simulate(state: &mut EngineState, dt: f32) {
         if input.toggle_fly { state.player.flying = !state.player.flying; }
 
         // Rate-based look: (curved) stick displacement -> angular velocity (rad/s at full deflection).
-        let look_speed = 3.2;
+        let look_speed = 3.2 * crate::input::look_sensitivity();
         state.player.yaw += input.look_yaw_rate * look_speed * dt;
         state.player.pitch += input.look_pitch_rate * look_speed * dt;
         state.player.pitch = state.player.pitch.clamp(-1.55, 1.55);
