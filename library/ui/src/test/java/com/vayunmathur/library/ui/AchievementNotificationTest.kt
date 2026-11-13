@@ -3,17 +3,23 @@ package com.vayunmathur.library.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.Achievement
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -100,6 +106,20 @@ class AchievementNotificationTest {
         rule.mainClock.advanceTimeBy(4_000)
         rule.waitForIdle()
         assertEquals(0, queue.size)
+    }
+
+    @Test
+    fun `the toast keeps clear of the status bar inset`() {
+        var insets by mutableStateOf(WindowInsets(0.dp))
+        rule.mainClock.autoAdvance = false
+        rule.setContent { AchievementNotification(achievement = first, onDismiss = {}, windowInsets = insets) }
+        rule.mainClock.advanceTimeBy(ENTER_SETTLED)
+        val flush = rule.onNodeWithText("First win").getUnclippedBoundsInRoot().top
+
+        insets = WindowInsets(top = 40.dp)
+        rule.mainClock.advanceTimeBy(100)
+        val inset = rule.onNodeWithText("First win").getUnclippedBoundsInRoot().top
+        assertEquals(40f, (inset - flush).value, 0.5f, "the whole card moves down by the inset")
     }
 
     private companion object {

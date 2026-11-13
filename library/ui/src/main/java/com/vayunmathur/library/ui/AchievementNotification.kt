@@ -10,9 +10,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -46,6 +51,10 @@ import kotlinx.coroutines.flow.first
  * time — and goes early on a tap or an upward swipe. Only the card itself takes touches: the rest of
  * the screen keeps working under and around it.
  *
+ * It keeps clear of the status bar, display cutouts and rounded corners through [windowInsets] (the top
+ * and sides of safe drawing by default), plus a small margin. Insets an ancestor has already consumed
+ * are not applied twice.
+ *
  * [onDismiss] runs once the exit animation has finished, which is when the caller should move on to the
  * next queued unlock. Each [achievement] gets a fresh toast, so a queue that advances in place shows
  * the next one from the start.
@@ -54,12 +63,13 @@ import kotlinx.coroutines.flow.first
 fun AchievementNotification(
     achievement: Achievement,
     onDismiss: () -> Unit,
+    windowInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
 ) {
-    key(achievement) { AchievementToast(achievement, onDismiss) }
+    key(achievement) { AchievementToast(achievement, onDismiss, windowInsets) }
 }
 
 @Composable
-private fun AchievementToast(achievement: Achievement, onDismiss: () -> Unit) {
+private fun AchievementToast(achievement: Achievement, onDismiss: () -> Unit, windowInsets: WindowInsets) {
     // Starts hidden with a visible target, so it slides in on first composition.
     val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
     val currentOnDismiss by rememberUpdatedState(onDismiss)
@@ -86,12 +96,13 @@ private fun AchievementToast(achievement: Achievement, onDismiss: () -> Unit) {
         visibleState = visibleState,
         enter = slideInVertically { -it } + fadeIn(),
         exit = slideOutVertically { -it } + fadeOut(),
-        modifier = Modifier.padding(16.dp)
+        modifier = Modifier
+            .windowInsetsPadding(windowInsets)
+            .padding(16.dp)
     ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 24.dp)
                 // Tap to dismiss; swipe up past the threshold to dismiss too. Both play the same exit
                 // animation as the timeout.
                 .clickable(onClickLabel = stringResource(R.string.dismiss), onClick = hide)
