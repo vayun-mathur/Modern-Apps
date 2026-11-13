@@ -39,7 +39,7 @@ impl Renderer {
             let frame = &self.frames[self.frame_index];
             match self.swapchain.loader.acquire_next_image(
                 self.swapchain.swapchain,
-                u64::MAX,
+                super::ACQUIRE_TIMEOUT_NANOS,
                 frame.image_available,
                 vk::Fence::null(),
             ) {
@@ -48,6 +48,7 @@ impl Renderer {
                     self.needs_rebuild = true;
                     return Ok(false);
                 }
+                Err(vk::Result::TIMEOUT | vk::Result::NOT_READY) => return Ok(false),
                 Err(e) => return Err(format!("acquire_next_image {e:?}")),
             }
         };

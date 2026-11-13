@@ -45,6 +45,17 @@ pub(crate) use quad::{Quad, QUAD_INDICES, QUAD_VERTICES};
 /// without adding latency the user can feel when panning.
 const FRAMES_IN_FLIGHT: usize = 2;
 
+/// How long a frame may wait for a swapchain image before it is skipped, in nanoseconds.
+///
+/// Was `u64::MAX`. The map draws into a `TextureView`'s `SurfaceTexture`, whose buffers are
+/// only released when the UI thread composites the next frame; an image that cannot come back
+/// until the UI thread runs must never be waited on without a bound, or a busy UI thread and a
+/// waiting frame stall each other — on the main thread, that was a frozen app and the "Maps
+/// isn't responding" dialog. 100 ms is six vsyncs: a healthy present loop never comes close,
+/// and a starved one skips the frame (`render` answers "not drawn", the host asks again on the
+/// next vsync) instead of blocking its thread.
+const ACQUIRE_TIMEOUT_NANOS: u64 = 100_000_000;
+
 /// One layer's geometry, resident on the GPU.
 ///
 /// The mesh lives in its format pool on the tile ([`ResidentTile::flat`] for fills,
