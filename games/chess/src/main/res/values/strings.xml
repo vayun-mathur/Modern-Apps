@@ -21,6 +21,8 @@
     <string name="promote_pawn">Promote Pawn</string>
     <!-- ChessViewModel: Game status when king in check. Interjection/noun -->
     <string name="check">Check!</string>
+    <!-- ChessGame: Accessibility label of the app-bar button that opens the achievements screen. Noun, plural -->
+    <string name="achievements">Achievements</string>
     <!-- ChessGame: Status shown while the AI works out its reply; taps on the board are ignored meanwhile. Verb progressive, short -->
     <string name="ai_thinking">Thinking…</string>
     <!-- ChessViewModel: Game over when white checkmates black. Sentence -->

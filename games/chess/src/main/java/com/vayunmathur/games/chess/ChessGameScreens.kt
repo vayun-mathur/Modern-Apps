@@ -32,7 +32,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -52,8 +51,8 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
-import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
+import com.vayunmathur.library.ui.IconGameCenterTrophy
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.SegmentedButton
@@ -336,7 +335,7 @@ fun ChessGameScreen(
         title = {},
         actions = {
             IconButton(onClick = onOpenGameCenter) {
-                Icon(painterResource(id = android.R.drawable.btn_star_big_on), "Achievements")
+                IconGameCenterTrophy(stringResource(R.string.achievements))
             }
         },
         scrollBehavior = appBarScrollBehavior(),

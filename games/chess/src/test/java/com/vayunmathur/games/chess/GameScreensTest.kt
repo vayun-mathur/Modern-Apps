@@ -3,6 +3,7 @@ package com.vayunmathur.games.chess
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -211,6 +212,16 @@ class GameScreensTest {
         thinking = false
         rule.waitForIdle()
         rule.onNodeWithText(str(R.string.ai_thinking)).assertDoesNotExist()
+    }
+
+    @Test fun `achievements button is a labelled trophy that opens the game center`() {
+        var gameCenter = 0
+        rule.setContent {
+            ChessGameScreen(state = ChessUiState(), actions = ChessActions.Noop,
+                onNewGame = {}, onOpenGameCenter = { gameCenter++ })
+        }
+        rule.onNodeWithContentDescription(str(R.string.achievements)).performClick()
+        assertEquals(1, gameCenter)
     }
 
     @Test fun `chess piece descriptions follow color`() {

@@ -1898,3 +1898,16 @@ fun IconClear(
     tint: Color = LocalContentColor.current,
     contentDescription: String? = "Clear",
 ) = AppIcon(Icons.Filled.Close, contentDescription, modifier, tint)
+
+// --- games/chess ---
+
+/**
+ * The achievements (game center) trophy, the same glyph as [IconEmojiEvents] but labelled by the
+ * caller, so an app-bar button can pass a localised label instead of the hard-coded English one.
+ */
+@Composable
+fun IconGameCenterTrophy(
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+) = AppIcon(Icons.Filled.EmojiEvents, contentDescription, modifier, tint)
