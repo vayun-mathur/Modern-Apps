@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -60,6 +61,11 @@ class MusicLibraryTree(context: Context) {
                 repo.playlists,
                 repo.matchings,
             ) { m, al, ar, pl, mt -> Snapshot(m, al, ar, pl, mt) }
+                // A dead store (e.g. SQLCipher native missing on a host
+                // JVM) must leave the tree empty, not escape as an
+                // uncaught exception on Dispatchers.Default that then
+                // poisons unrelated coroutines/tests sharing the process.
+                .catch { }
                 .collect { snap ->
                     songs = snap.songs
                     albums = snap.albums
