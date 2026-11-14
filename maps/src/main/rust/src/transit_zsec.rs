@@ -10,12 +10,14 @@
 
 static NEXT_TRANSIT_UID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
-/// Decoded blocks a thread keeps across all indexes (64 KiB each: 16 MiB per thread).
-const TRANSIT_BLOCK_CACHE: usize = 256;
+/// Decoded bytes a thread keeps across all indexes (16 MiB per thread, whatever the block size).
+const TRANSIT_CACHE_BYTES: usize = 16 << 20;
 
 struct TransitBlockCache {
     map: std::collections::HashMap<(u64, u8, u32), std::rc::Rc<Vec<u8>>>,
     order: std::collections::VecDeque<(u64, u8, u32)>,
+    /// Decoded bytes held in `map`.
+    bytes: usize,
     /// The last block each section touched: sequential walks (a varint stream, a polyline)
     /// stay in one block for thousands of reads, interleaved across sections.
     last: Vec<Option<((u64, u8, u32), std::rc::Rc<Vec<u8>>)>>,
@@ -25,6 +27,7 @@ thread_local! {
     static TRANSIT_BLOCKS: std::cell::RefCell<TransitBlockCache> = std::cell::RefCell::new(TransitBlockCache {
         map: std::collections::HashMap::new(),
         order: std::collections::VecDeque::new(),
+        bytes: 0,
         last: vec![None; 32],
     });
 }
@@ -47,13 +50,13 @@ impl TransitIndex {
             let (off, len, _) = self.zsec[section].expect("a ZSEC section");
             let bytes = unsafe { std::slice::from_raw_parts(self.base.add(off), len) };
             // Validated at open; a decode failure here is corruption the open could not see.
-            let block = tilecodec::zsec::ZSec::parse(bytes)
-                .and_then(|z| z.block(b as usize))
-                .unwrap_or_default();
+            let block = tilecodec::zsec::block_of(bytes, b as usize).unwrap_or_default();
             let v = std::rc::Rc::new(block);
-            if c.order.len() >= TRANSIT_BLOCK_CACHE {
-                if let Some(old) = c.order.pop_front() {
-                    c.map.remove(&old);
+            c.bytes += v.len();
+            while c.bytes > TRANSIT_CACHE_BYTES {
+                let Some(old) = c.order.pop_front() else { break };
+                if let Some(o) = c.map.remove(&old) {
+                    c.bytes -= o.len();
                 }
             }
             c.order.push_back(key);

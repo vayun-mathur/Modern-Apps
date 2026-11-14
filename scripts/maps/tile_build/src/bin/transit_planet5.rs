@@ -84,11 +84,17 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     let mut tol = 1.0f64;
     let mut zsec: Vec<usize> = COLD_SECTIONS.to_vec();
+    let mut block = tilecodec::zsec::ZSEC_BLOCK;
     let mut pos = Vec::new();
     let mut i = 1;
     while i < args.len() {
         if args[i] == "--shape-tol-m" {
             tol = args[i + 1].parse().expect("--shape-tol-m M");
+            i += 2;
+            continue;
+        }
+        if args[i] == "--zsec-block" {
+            block = args[i + 1].parse().expect("--zsec-block BYTES");
             i += 2;
             continue;
         }
@@ -109,7 +115,7 @@ fn main() -> ExitCode {
         eprintln!("usage: transit_planet5 IN.transit OUT.transit [--shape-tol-m M] [--zsec cold|all|none|i,j,..]");
         return ExitCode::from(2);
     }
-    match run(&pos[0], &pos[1], tol, &zsec) {
+    match run(&pos[0], &pos[1], tol, &zsec, block) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("transit_planet5: {e}");
@@ -118,7 +124,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn run(input: &str, output: &str, tol: f64, zsec: &[usize]) -> Result<(), String> {
+fn run(input: &str, output: &str, tol: f64, zsec: &[usize], block: usize) -> Result<(), String> {
     let f = File::open(input).map_err(|e| format!("open {input}: {e}"))?;
     let m = unsafe { memmap2::Mmap::map(&f) }.map_err(|e| e.to_string())?;
     if m.len() < HEADER_LEN || u32_at(&m, 0) != tilecodec::mamaps::archive::TRANSIT_MAGIC {
@@ -293,7 +299,7 @@ fn run(input: &str, output: &str, tol: f64, zsec: &[usize]) -> Result<(), String
             if s.is_empty() || !zsec.contains(&i) {
                 (s.clone(), false)
             } else {
-                (tilecodec::zsec::write_zsec(s, tilecodec::zsec::ZSEC_BLOCK, 19), true)
+                (tilecodec::zsec::write_zsec(s, block, 19), true)
             }
         })
         .collect();
