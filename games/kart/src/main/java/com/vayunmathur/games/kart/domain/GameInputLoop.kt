@@ -21,6 +21,7 @@ data class KartControl(
     val drift: Boolean = false,
     val itemUse: Boolean = false,
 ) {
+    /** Shared constants and helpers for KartControl. */
     companion object {
         val NEUTRAL = KartControl()
     }

@@ -132,7 +132,7 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             for (count in COUNTDOWN_SECONDS downTo 1) {
                 _racePhase.value = RacePhase.Countdown(count)
-                delay(1_000)
+                delay(COUNTDOWN_STEP_MS)
             }
             beginRace(seat)
         }
@@ -398,6 +398,7 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
         kartHost.stop()
     }
 
+    /** Shared constants and helpers for KartViewModel. */
     companion object {
         /** Ticks per second for the placeholder race loop. */
         private const val TICK_MS = 50L
@@ -413,5 +414,8 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
 
         /** Seconds of 3-2-1 before controls go live. */
         private const val COUNTDOWN_SECONDS = 3
+
+        /** One countdown tick: a single second. */
+        private const val COUNTDOWN_STEP_MS = 1_000L
     }
 }

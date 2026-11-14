@@ -10,6 +10,7 @@ import com.vayunmathur.sdk.controller.ControllerHost
 import com.vayunmathur.sdk.controller.ControllerInput
 import com.vayunmathur.sdk.controller.ControllerSocket
 import com.vayunmathur.sdk.controller.LobbyState
+import java.io.IOException
 import java.net.ServerSocket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -108,7 +109,7 @@ class KartHost(
     private fun acceptLoop(hostId: String, host: ControllerHost) {
         val server = try {
             ServerSocket(0).also { this.server = it }
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             Log.status(TAG, "cannot bind a lobby port", e)
             return
         }

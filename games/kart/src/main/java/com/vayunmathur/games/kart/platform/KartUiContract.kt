@@ -20,6 +20,7 @@ interface KartGameActions {
     /** Back to the lobby from the results screen. */
     fun backToLobby() {}
 
+    /** Shared constants and helpers for KartGameActions. */
     companion object { val Noop: KartGameActions = object : KartGameActions {} }
 }
 

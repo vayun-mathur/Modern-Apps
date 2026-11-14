@@ -27,8 +27,12 @@ object KartNative {
         nativeInit()
         Log.status("KartNative", "libkart_engine loaded")
         true
-    } catch (t: Throwable) {
-        Log.status("KartNative", "libkart_engine absent - running the placeholder race")
+    } catch (e: UnsatisfiedLinkError) {
+        // Library not packaged in this build: fall back to the placeholder race.
+        Log.status("KartNative", "libkart_engine absent - running the placeholder race", e)
+        false
+    } catch (e: SecurityException) {
+        Log.status("KartNative", "libkart_engine load denied - running the placeholder race", e)
         false
     }
         // Internal so host tests can force the placeholder race on machines with the engine.

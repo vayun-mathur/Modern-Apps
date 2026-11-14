@@ -2,6 +2,7 @@ package com.vayunmathur.games.kart.platform
 
 import com.vayunmathur.library.util.BaseBackupAgent
 
+/** App Backup Agent: a base backup agent implementation for app backup agent. */
 class AppBackupAgent : BaseBackupAgent() {
     /**
      * The "settings" file alone: it holds the cup pointer and the lifetime

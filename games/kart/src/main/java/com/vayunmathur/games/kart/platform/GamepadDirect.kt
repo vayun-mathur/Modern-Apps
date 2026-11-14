@@ -203,6 +203,7 @@ class GamepadDirect(
         onSeat(playerId, "", false)
     }
 
+    /** Shared constants and helpers for GamepadDirect. */
     companion object {
         /**
          * True for gamepads and joysticks only: keyboards, mice and remotes never take a seat, so
@@ -217,25 +218,27 @@ class GamepadDirect(
             if (kotlin.math.abs(this) <= flat) 0f else this
 
         /** `KeyEvent` buttons onto the same bitmask the phones send. */
-        fun keyCodeToBit(keyCode: Int): Long? = when (keyCode) {
-            KeyEvent.KEYCODE_BUTTON_A -> ControllerButton.A.bit
-            KeyEvent.KEYCODE_BUTTON_B -> ControllerButton.B.bit
-            KeyEvent.KEYCODE_BUTTON_X -> ControllerButton.X.bit
-            KeyEvent.KEYCODE_BUTTON_Y -> ControllerButton.Y.bit
-            KeyEvent.KEYCODE_BUTTON_L1 -> ControllerButton.LEFT_SHOULDER.bit
-            KeyEvent.KEYCODE_BUTTON_R1 -> ControllerButton.RIGHT_SHOULDER.bit
-            KeyEvent.KEYCODE_BUTTON_L2 -> ControllerButton.LEFT_TRIGGER.bit
-            KeyEvent.KEYCODE_BUTTON_R2 -> ControllerButton.RIGHT_TRIGGER.bit
-            KeyEvent.KEYCODE_BUTTON_START -> ControllerButton.START.bit
-            KeyEvent.KEYCODE_BUTTON_SELECT -> ControllerButton.SELECT.bit
-            KeyEvent.KEYCODE_BUTTON_THUMBL -> ControllerButton.LEFT_STICK.bit
-            KeyEvent.KEYCODE_BUTTON_THUMBR -> ControllerButton.RIGHT_STICK.bit
-            KeyEvent.KEYCODE_DPAD_UP -> ControllerButton.DPAD_UP.bit
-            KeyEvent.KEYCODE_DPAD_DOWN -> ControllerButton.DPAD_DOWN.bit
-            KeyEvent.KEYCODE_DPAD_LEFT -> ControllerButton.DPAD_LEFT.bit
-            KeyEvent.KEYCODE_DPAD_RIGHT -> ControllerButton.DPAD_RIGHT.bit
-            else -> null
-        }
+        fun keyCodeToBit(keyCode: Int): Long? = KEY_CODE_BITS[keyCode]
+
+        /** Button key codes onto the same bitmask the phones send. */
+        private val KEY_CODE_BITS: Map<Int, Long> = mapOf(
+            KeyEvent.KEYCODE_BUTTON_A to ControllerButton.A.bit,
+            KeyEvent.KEYCODE_BUTTON_B to ControllerButton.B.bit,
+            KeyEvent.KEYCODE_BUTTON_X to ControllerButton.X.bit,
+            KeyEvent.KEYCODE_BUTTON_Y to ControllerButton.Y.bit,
+            KeyEvent.KEYCODE_BUTTON_L1 to ControllerButton.LEFT_SHOULDER.bit,
+            KeyEvent.KEYCODE_BUTTON_R1 to ControllerButton.RIGHT_SHOULDER.bit,
+            KeyEvent.KEYCODE_BUTTON_L2 to ControllerButton.LEFT_TRIGGER.bit,
+            KeyEvent.KEYCODE_BUTTON_R2 to ControllerButton.RIGHT_TRIGGER.bit,
+            KeyEvent.KEYCODE_BUTTON_START to ControllerButton.START.bit,
+            KeyEvent.KEYCODE_BUTTON_SELECT to ControllerButton.SELECT.bit,
+            KeyEvent.KEYCODE_BUTTON_THUMBL to ControllerButton.LEFT_STICK.bit,
+            KeyEvent.KEYCODE_BUTTON_THUMBR to ControllerButton.RIGHT_STICK.bit,
+            KeyEvent.KEYCODE_DPAD_UP to ControllerButton.DPAD_UP.bit,
+            KeyEvent.KEYCODE_DPAD_DOWN to ControllerButton.DPAD_DOWN.bit,
+            KeyEvent.KEYCODE_DPAD_LEFT to ControllerButton.DPAD_LEFT.bit,
+            KeyEvent.KEYCODE_DPAD_RIGHT to ControllerButton.DPAD_RIGHT.bit,
+        )
 
         /** Axis slots in [ControllerInput.axes], mirroring the SDK's fixed order. */
         @Suppress("unused")

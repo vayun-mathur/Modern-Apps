@@ -19,6 +19,7 @@ class PlaceholderRace(
     val laps: Int = 3,
     private val aiCount: Int = 3,
 ) {
+    /** Shared constants and helpers for PlaceholderRace. */
     companion object {
         /** Units per lap. Arbitrary: only ratios matter until the 3D track defines meters. */
         const val TRACK_LENGTH = 1000f

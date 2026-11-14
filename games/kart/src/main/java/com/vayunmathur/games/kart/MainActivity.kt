@@ -9,6 +9,7 @@ import com.vayunmathur.games.kart.platform.GamepadDirect
 import com.vayunmathur.games.kart.platform.KartViewModel
 import com.vayunmathur.library.ui.MaActivity
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private var gamepad: GamepadDirect? = null
 
