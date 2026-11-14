@@ -3,6 +3,7 @@ package com.vayunmathur.library.ui.odf
 import androidx.compose.ui.text.style.TextAlign
 import java.util.Locale
 
+/** Serializes the ODF model to package XML (content, styles, manifest, meta). */
 object OdfSerializer {
 
     /** Extra package parts generated during serialization (inline images promoted to the package,

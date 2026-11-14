@@ -22,6 +22,7 @@ data class PanoramaCrop(
     val croppedLeft: Int,
     val croppedTop: Int,
 ) {
+    /** Factory for a [PanoramaCrop] covering the whole image. */
     companion object {
         /** An image that covers the whole sphere, so the crop is the image itself. */
         fun full(width: Int, height: Int) = PanoramaCrop(

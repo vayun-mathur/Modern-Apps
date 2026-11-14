@@ -19,6 +19,7 @@ import androidx.core.text.HtmlCompat
 fun rememberHtmlEditorController(initialHtml: String = ""): HtmlEditorController =
     remember { HtmlEditorController(initialHtml) }
 
+/** EditText backing the HTML editor; reports selection changes and handles Tab as input. */
 class RichEditText(context: Context) : EditText(context) {
     var onSelectionChange: ((Int, Int) -> Unit)? = null
     var richController: HtmlEditorController? = null

@@ -45,6 +45,7 @@ class PanoramaCameraState {
         fovState = fovDeg
     }
 
+    /** Default panorama field of view, in degrees. */
     companion object {
         const val DEFAULT_FOV_DEG = 75f
     }

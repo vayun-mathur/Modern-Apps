@@ -110,6 +110,7 @@ class OdfTextEditorState(initial: OdfDocument.TextDocument) {
     }
     fun deleteParagraph(blockIndex: Int) = commit(current.deleteParagraph(blockIndex))
 
+    /** Undo-history depth for [OdfTextEditorState]. */
     companion object {
         private const val MAX_UNDO = 30
     }

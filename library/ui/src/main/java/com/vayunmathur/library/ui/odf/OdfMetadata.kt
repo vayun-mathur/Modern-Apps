@@ -1,5 +1,6 @@
 package com.vayunmathur.library.ui.odf
 
+/** Document properties from meta.xml: titles, authors, dates and statistics. */
 data class OdfMetadata(
     val title: String? = null,
     val author: String? = null,

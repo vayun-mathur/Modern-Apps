@@ -6,6 +6,7 @@ import android.text.Editable
 import android.text.Layout
 import android.text.style.LeadingMarginSpan
 
+/** Leading-margin span that draws an ordered-list number in the margin. */
 class OrderedListSpan(var number: Int, private val gapWidth: Int = 48) : LeadingMarginSpan {
     override fun getLeadingMargin(first: Boolean): Int = gapWidth
     override fun drawLeadingMargin(
@@ -25,7 +26,9 @@ class OrderedListSpan(var number: Int, private val gapWidth: Int = 48) : Leading
     }
 }
 
+/** Leading-margin span indenting a paragraph by [level] steps. */
 class IndentSpan(val level: Int) : LeadingMarginSpan.Standard(level * INDENT_PER_LEVEL) {
+    /** Pixels of indent per [IndentSpan] level. */
     companion object {
         const val INDENT_PER_LEVEL = 48
         const val MAX_LEVEL = 6

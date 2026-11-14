@@ -91,6 +91,7 @@ sealed interface PermissionRequirement {
             HealthConnectGrantCache.granted?.containsAll(permissions) == true
     }
 
+    /** Factories for the common permission requirements. */
     companion object {
         /**
          * Runtime POST_NOTIFICATIONS, or nothing on releases where it is not

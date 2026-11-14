@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 
 data class ReorderableItemInfo(val index: Int, val key: Any = Unit)
 
+/** Drag-reorder state for a lazy list: the dragged key, its offset and the move callback. */
 @Stable
 class ReorderableLazyListState(
     val listState: LazyListState,

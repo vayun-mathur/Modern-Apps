@@ -23,6 +23,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @Stable
+/** Drag-reorder state for a lazy grid: the dragged key, its offset and the move callback. */
 class ReorderableLazyGridState(
     val gridState: LazyGridState,
     private val onMoveInternal: (from: Int, to: Int) -> Unit,

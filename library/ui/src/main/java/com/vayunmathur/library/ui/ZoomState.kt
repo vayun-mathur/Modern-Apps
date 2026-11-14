@@ -56,6 +56,7 @@ data class ZoomState(val scale: Float = 1f, val offset: Offset = Offset.Zero) {
             ZoomState().transformed(zoomedScale, Offset.Zero, tap, containerSize, zoomedScale)
         }
 
+    /** Default zoom limits for [ZoomState]. */
     companion object {
         /** Pinch ceiling: enough to read small UI text in a phone screenshot or photo. */
         const val DEFAULT_MAX_SCALE = 5f

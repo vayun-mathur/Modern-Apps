@@ -1,5 +1,6 @@
 package com.vayunmathur.library.ui.odf
 
+/** One presentation slide: elements, background, notes and transition. */
 data class OdfSlide(
     val name: String,
     val elements: List<OdfSlideElement> = emptyList(),
@@ -13,8 +14,11 @@ data class OdfSlide(
     val masterName: String? = null
 )
 
+/** One element placed on a slide: a frame or a shape. */
 sealed class OdfSlideElement {
+    /** A placed frame holding paragraphs, an image or a chart. */
     data class Frame(val frame: OdfFrame) : OdfSlideElement()
+    /** A placed vector shape. */
     data class Shape(val shape: OdfShape) : OdfSlideElement()
 }
 
@@ -44,6 +48,7 @@ fun setElementBounds(el: OdfSlideElement, x: Float, y: Float, w: Float, h: Float
     })
 }
 
+/** Geometry and content of a frame placed on a slide. */
 data class OdfFrame(
     val x: Float,
     val y: Float,
@@ -60,6 +65,7 @@ data class OdfFrame(
     val rotationDegrees: Float = 0f
 )
 
+/** A vector shape on a slide: geometry, fill, stroke and text. */
 sealed class OdfShape {
     abstract val x: Float
     abstract val y: Float
@@ -79,6 +85,7 @@ sealed class OdfShape {
     open val markerStart: Boolean get() = false
     open val markerEnd: Boolean get() = false
 
+    /** A rectangle, optionally rounded. */
     data class Rect(
         override val x: Float, override val y: Float,
         override val width: Float, override val height: Float,
@@ -92,6 +99,7 @@ sealed class OdfShape {
         override val strokeDashed: Boolean = false
     ) : OdfShape()
 
+    /** An ellipse. */
     data class Ellipse(
         override val x: Float, override val y: Float,
         override val width: Float, override val height: Float,
@@ -104,6 +112,7 @@ sealed class OdfShape {
         override val strokeDashed: Boolean = false
     ) : OdfShape()
 
+    /** A straight line between two endpoints, with optional arrow markers. */
     data class Line(
         override val x: Float, override val y: Float,
         override val width: Float, override val height: Float,
@@ -118,6 +127,7 @@ sealed class OdfShape {
         override val markerEnd: Boolean = false
     ) : OdfShape()
 
+    /** A preset/custom geometry shape defined by the document. */
     data class CustomShape(
         override val x: Float, override val y: Float,
         override val width: Float, override val height: Float,

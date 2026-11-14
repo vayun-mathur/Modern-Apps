@@ -28,10 +28,12 @@ annotation class ExperimentalMaterial3Api
 
 @RequiresOptIn
 @Retention(AnnotationRetention.BINARY)
+/** Local stand-in for Material 3's expressive opt-in marker; see the file header. */
 annotation class ExperimentalMaterial3ExpressiveApi
 
 @RequiresOptIn
 @Retention(AnnotationRetention.BINARY)
+/** Local stand-in for Material 3's adaptive opt-in marker; see the file header. */
 annotation class ExperimentalMaterial3AdaptiveApi
 
 // --- Theme ---

@@ -3,6 +3,7 @@ package com.vayunmathur.library.ui.odf
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 
+/** A styled paragraph: spans plus alignment, margins, list and border properties. */
 data class OdfParagraph(
     val spans: List<OdfSpan>,
     val style: ParagraphStyle = ParagraphStyle.BODY,
@@ -53,6 +54,7 @@ data class OdfParagraph(
     val outlineNumber: String? = null
 )
 
+/** The named paragraph roles: headings, body, list items and table headers. */
 enum class ParagraphStyle { HEADING1, HEADING2, HEADING3, HEADING4, BODY, LIST_ITEM, TABLE_HEADER }
 
 /**
@@ -66,6 +68,7 @@ data class OdfTabStop(
     val leaderChar: String? = null
 )
 
+/** The list renderings a paragraph can belong to. */
 enum class ListType { BULLET, NUMBERED, CHECKBOX }
 
 /** Formats a 1-based list item index using an ODF number-format token ("1","a","A","i","I"). (F42) */
@@ -103,6 +106,7 @@ private fun toRoman(n: Int): String {
     return sb.toString()
 }
 
+/** A run of text sharing one character format, link, field or change marker. */
 data class OdfSpan(
     val text: String,
     val bold: Boolean = false,
@@ -137,18 +141,21 @@ data class OdfSpan(
     val country: String? = null
 )
 
+/** A footnote or endnote: its citation marker and body paragraphs. */
 data class OdfFootnote(
     val citation: String,
     val body: List<OdfParagraph>,
     val isEndnote: Boolean = false
 )
 
+/** A comment annotation: author, date and body paragraphs. */
 data class OdfAnnotation(
     val author: String? = null,
     val date: String? = null,
     val paragraphs: List<OdfParagraph> = emptyList()
 )
 
+/** A named bookmark anchored at a content-block index. */
 data class OdfBookmark(
     val name: String,
     val contentIndex: Int

@@ -2,6 +2,7 @@ package com.vayunmathur.library.ui.odf
 
 import androidx.compose.ui.text.style.TextAlign
 
+/** A text-document table: columns, rows and header-row count. */
 data class OdfTable(
     val name: String = "",
     val columns: List<OdfTableColumn> = emptyList(),
@@ -10,10 +11,13 @@ data class OdfTable(
     val headerRowCount: Int = 0
 )
 
+/** One table column and its optional width. */
 data class OdfTableColumn(val width: Float? = null)
 
+/** One row of a text-document table. */
 data class OdfTableRow(val cells: List<OdfTableCell>)
 
+/** One text-document table cell: paragraphs, spans, borders and alignment. */
 data class OdfTableCell(
     val paragraphs: List<OdfParagraph> = emptyList(),
     val colSpan: Int = 1,
@@ -29,6 +33,7 @@ data class OdfTableCell(
     val verticalAlign: String? = null
 )
 
+/** One spreadsheet sheet: rows, column widths, freeze panes and print settings. */
 data class OdfSheet(
     val name: String,
     val rows: List<OdfRow>,
@@ -70,8 +75,10 @@ data class OdfDataValidation(
     }
 }
 
+/** One spreadsheet row. */
 data class OdfRow(val cells: List<OdfCell>)
 
+/** One spreadsheet cell: text, spans, colours and formula presentation. */
 data class OdfCell(
     val text: String,
     val spannedColumns: Int = 1,
@@ -161,6 +168,7 @@ data class OdfBorders(
 ) {
     fun isEmpty(): Boolean = top == null && right == null && bottom == null && left == null
 
+    /** Border-string parsing helpers for [OdfBorders]. */
     companion object {
         /** Extracts the first #RRGGBB color from a raw fo:border value as 0xFFRRGGBB. */
         fun renderColor(border: String?): Long? {

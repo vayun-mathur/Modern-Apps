@@ -1,9 +1,11 @@
 package com.vayunmathur.library.ui.odf
 
+/** An in-memory ODF document: a text document, spreadsheet, presentation or drawing. */
 sealed class OdfDocument {
     abstract val title: String
     abstract val metadata: OdfMetadata
 
+    /** A word-processing document: content blocks, images, notes and page setup. */
     data class TextDocument(
         override val title: String,
         val content: List<OdfContentBlock>,
@@ -17,6 +19,7 @@ sealed class OdfDocument {
         val pageSetup: OdfPageSetup? = null
     ) : OdfDocument()
 
+    /** A spreadsheet document: sheets plus named ranges and validations. */
     data class Spreadsheet(
         override val title: String,
         val sheets: List<OdfSheet>,
@@ -26,6 +29,7 @@ sealed class OdfDocument {
         val validations: List<OdfDataValidation> = emptyList()
     ) : OdfDocument()
 
+    /** A presentation: an ordered list of slides. */
     data class Presentation(
         override val title: String,
         val slides: List<OdfSlide>,
@@ -33,6 +37,7 @@ sealed class OdfDocument {
         val images: Map<String, ByteArray> = emptyMap()
     ) : OdfDocument()
 
+    /** A drawing document: pages of placed frames and shapes. */
     data class Drawing(
         override val title: String,
         val pages: List<OdfSlide>,
@@ -68,22 +73,32 @@ data class OdfPageSetup(
     val isLandscape: Boolean get() = widthPx > heightPx
 }
 
+/** One block of text-document content: paragraph, table, image, chart or formula. */
 sealed class OdfContentBlock {
+    /** A text paragraph block. */
     data class Paragraph(val paragraph: OdfParagraph) : OdfContentBlock()
+    /** A table block inside a text document. */
     data class Table(val table: OdfTable) : OdfContentBlock()
+    /** An embedded image block. */
     data class Image(val image: OdfImage) : OdfContentBlock()
+    /** An embedded chart block. */
     data class Chart(val chart: OdfChart) : OdfContentBlock()
+    /** A MathML formula block. */
     data class Formula(val mathml: String) : OdfContentBlock()
     /** Live table of contents (text:table-of-content). Entries are the generated heading lines. */
     data class TableOfContents(val title: String, val entries: List<OdfParagraph>) : OdfContentBlock()
     /** Start of a text:section (round-trip). [columnCount] > 1 means a multi-column section. (Round 3) */
     data class SectionStart(val name: String, val columnCount: Int = 1) : OdfContentBlock()
+    /** End of a text:section. */
     data object SectionEnd : OdfContentBlock()
+    /** An explicit page break. */
     data object PageBreak : OdfContentBlock()
 }
 
+/** The chart kinds an [OdfChart] can render. */
 enum class ChartType { BAR, LINE, PIE, AREA, DONUT, SCATTER, STACKED_BAR, RADAR, BUBBLE }
 
+/** One named data series of an [OdfChart], with optional fill and label settings. */
 data class OdfChartSeries(
     val name: String,
     val values: List<Float>,
@@ -93,6 +108,7 @@ data class OdfChartSeries(
     val dataLabels: Boolean = false
 )
 
+/** A chart: type, categories, series and axis/legend presentation. */
 data class OdfChart(
     val type: ChartType,
     val categories: List<String>,
@@ -107,6 +123,7 @@ data class OdfChart(
 )
 
 @Suppress("ArrayInDataClass")
+/** An embedded image: package path, bytes, geometry, crop and effects. */
 data class OdfImage(
     val path: String,
     val imageData: ByteArray,
