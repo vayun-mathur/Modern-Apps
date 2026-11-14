@@ -56,7 +56,7 @@ internal object PoiIndexSideFiles {
      *
      * @return the mapped buffer and the byte offset of the blob, or null.
      */
-    private fun openAttrs(file: File, count: Int): Pair<MappedByteBuffer, Int>? {
+    private fun openAttrs(file: File, count: Int): Pair<PoiBytes, Int>? {
         if (!file.isFile) {
             Log.debug(TAG, "POI attribute sidecar absent")
             return null
@@ -89,7 +89,7 @@ internal object PoiIndexSideFiles {
      * others: the sidecar joins purely by ordinal, so a region file from a
      * different build would hand every place someone else's boundary.
      */
-    private fun openRegion(file: File, count: Int): MappedByteBuffer? {
+    private fun openRegion(file: File, count: Int): PoiBytes? {
         if (!file.isFile) return null
         return regionFromBuffer(PoiIndex.mapReadOnly(file), count)
     }

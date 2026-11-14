@@ -1,6 +1,5 @@
 package com.vayunmathur.maps.util
 
-import java.nio.MappedByteBuffer
 
 /**
  * The attribute-decode half of [PoiIndex]: reading `poi_attrs.bin` records.
@@ -43,7 +42,7 @@ private const val ATTR_HEADER_LEN = 3
  * length-prefixed: a device on an older build must still read the keys it does
  * understand out of a newer file.
  */
-internal fun decodeAttrRecord(buf: MappedByteBuffer, from: Int, to: Int): PoiIndex.PoiAttributes? {
+internal fun decodeAttrRecord(buf: PoiBytes, from: Int, to: Int): PoiIndex.PoiAttributes? {
     val fields = AttrFields()
     var i = from
     while (i + ATTR_HEADER_LEN <= to) {
@@ -110,12 +109,8 @@ private class AttrFields {
     }
 }
 
-private fun stringAt(buf: MappedByteBuffer, off: Int, len: Int): String? {
+private fun stringAt(buf: PoiBytes, off: Int, len: Int): String? {
     if (len <= 0) return null
-    val bytes = ByteArray(len)
-    // Absolute reads via a duplicate, so the shared buffer's position is untouched.
-    val dup = buf.duplicate()
-    dup.position(off)
-    dup.get(bytes, 0, len)
-    return String(bytes, Charsets.UTF_8)
+    // An absolute copy ([PoiBytes.bytes]): a shared mapping's position never moves.
+    return String(buf.bytes(off, len), Charsets.UTF_8)
 }

@@ -170,6 +170,47 @@ class PoiArchiveTest {
         assertEquals("Paris, France", PoiIndex.localityAt(1, english = false))
     }
 
+    /**
+     * planet5: the attrs (kind 10) and region (kind 15) sidecars block-compressed (DEFLATE ZSEC,
+     * tiny blocks so records straddle block edges) read exactly like their raw planet4 forms.
+     */
+    @Test
+    fun `block compressed attrs and region read like raw ones`() {
+        val paris = (71_525L shl 2) or 3L
+        val france = (2_202_162L shl 2) or 3L
+        val region = ByteBuffer.allocate(12 + 16).order(ByteOrder.LITTLE_ENDIAN)
+        region.put("PRG1".toByteArray(Charsets.US_ASCII)).putInt(1).putInt(2).putLong(paris).putLong(paris)
+        val pool = "Paris\u0000France\u0000".toByteArray(Charsets.UTF_8)
+        val admin = ByteBuffer.allocate(16 + 64 + pool.size).order(ByteOrder.LITTLE_ENDIAN)
+        admin.put("PAD1".toByteArray(Charsets.US_ASCII)).putInt(1).putInt(2).putInt(pool.size)
+        admin.putLong(paris).putLong(france).putInt(0).putInt(-1).put(8.toByte()).put(ByteArray(7))
+        admin.putLong(france).putLong(0L).putInt(6).putInt(-1).put(2.toByte()).put(ByteArray(7))
+        admin.put(pool)
+        val phone = "+1-555-CAFE".toByteArray(Charsets.UTF_8)
+        val body = 3 + phone.size
+        val attrs = ByteBuffer.allocate(12 + 8 + 2 + body).order(ByteOrder.LITTLE_ENDIAN)
+        attrs.put("MAPA".toByteArray(Charsets.US_ASCII)).put(1.toByte()).put(ByteArray(3)).putInt(2)
+        attrs.putInt(0).putInt(-1) // record 0 has a body at blob offset 0, record 1 none
+        attrs.putShort(body.toShort()).put(KEY_PHONE.toByte()).putShort(phone.size.toShort()).put(phone)
+        val f = writeArchive(
+            listOf(
+                indexPayload(),
+                Triple(PoiArchive.KIND_NAMES, namesBytes(), 0L),
+                Triple(PoiArchive.KIND_ATTRS, zsecDeflate(attrs.array(), 5), 0L),
+                Triple(PoiArchive.KIND_REGION, zsecDeflate(region.array(), 5), 0L),
+                Triple(PoiArchive.KIND_ADMIN, admin.array(), 0L),
+            ),
+        )
+        assertTrue(PoiIndex.reloadArchive(f), "archive did not map")
+        val m = kotlin.test.assertNotNull(PoiIndex.mappedForQuery())
+        assertTrue(m.attrs is PoiBlockSection, "attrs should open as a block section")
+        assertTrue(m.region is PoiBlockSection, "region should open as a block section")
+        assertEquals(paris, m.regionId(1))
+        assertEquals("Paris, France", PoiIndex.localityAt(0, english = true))
+        assertEquals("+1-555-CAFE", PoiIndex.attributesAt(0)?.phone)
+        assertEquals(null, PoiIndex.attributesAt(1))
+    }
+
     @Test
     fun `bad magic is refused`() {
         val bytes = archive(

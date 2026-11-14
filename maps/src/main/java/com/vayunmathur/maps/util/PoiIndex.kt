@@ -185,8 +185,8 @@ object PoiIndex {
         val names: MappedByteBuffer,
         val namesLen: Int,
         val count: Int,
-        /** The attribute sidecar, or null when it is absent or does not match. */
-        val attrs: MappedByteBuffer?,
+        /** The attribute sidecar (raw or planet5 block-compressed), or null when absent or mismatched. */
+        val attrs: PoiBytes?,
         /** Byte offset of the attribute blob, i.e. just past the offset array. */
         val attrsBlobStart: Int,
         /** The CSR spatial grid, or null when absent or mismatched. */
@@ -199,8 +199,8 @@ object PoiIndex {
         /** The word index, or null when absent or mismatched. */
         internal val nameIdx: MappedByteBuffer? = null,
         internal val entryCount: Int = 0,
-        /** The region sidecar, or null when absent or mismatched. */
-        internal val region: MappedByteBuffer? = null,
+        /** The region sidecar (raw or planet5 block-compressed), or null when absent or mismatched. */
+        internal val region: PoiBytes? = null,
         /** The boundary hierarchy (`poi_admin.bin`, archive kind 16), or null when absent. */
         internal val admin: AdminTable? = null,
     ) {
@@ -466,15 +466,22 @@ object PoiIndex {
         }
     }
 
-    /** Buffer core of the attrs sidecar, reused by the single-archive path. */
-    internal fun attrsFromBuffer(buf: MappedByteBuffer, count: Int): Pair<MappedByteBuffer, Int>? {
-        buf.order(ByteOrder.LITTLE_ENDIAN)
-        return runCatching { readAttrs(buf, count) }
-            .getOrElse { bufferFailure(it, ATTRS_FILE) }
+    /**
+     * Buffer core of the attrs sidecar, reused by the single-archive path. A planet5 archive
+     * stores it block-compressed ([PoiBlockSection]); [PoiBytes.of] reads either form.
+     */
+    internal fun attrsFromBuffer(buf: MappedByteBuffer, count: Int): Pair<PoiBytes, Int>? {
+        return runCatching {
+            val bytes = PoiBytes.of(buf) ?: run {
+                Log.status(TAG, "$ATTRS_FILE block table is malformed; ignoring it")
+                return null
+            }
+            readAttrs(bytes, count)
+        }.getOrElse { bufferFailure(it, ATTRS_FILE) }
     }
 
-    private fun readAttrs(buf: MappedByteBuffer, count: Int): Pair<MappedByteBuffer, Int>? {
-        if (buf.capacity() < ATTRS_HEADER_BYTES) {
+    private fun readAttrs(buf: PoiBytes, count: Int): Pair<PoiBytes, Int>? {
+        if (buf.size < ATTRS_HEADER_BYTES) {
             Log.status(TAG, "$ATTRS_FILE is truncated")
             return null
         }
@@ -497,7 +504,7 @@ object PoiIndex {
             return null
         }
         val blobStart = ATTRS_HEADER_BYTES + ATTR_OFFSET_BYTES * attrCount
-        if (blobStart > buf.capacity()) {
+        if (blobStart > buf.size) {
             Log.status(TAG, "$ATTRS_FILE offset array runs past the file")
             return null
         }
@@ -703,7 +710,7 @@ object PoiIndex {
     /** (bodyStart, bodyEnd) of the [ordinal]th record's attribute blob, or null. */
     private fun attrBodyAt(
         m: Mapped,
-        buf: MappedByteBuffer,
+        buf: PoiBytes,
         ordinal: Int,
     ): Pair<Int, Int>? {
         if (ordinal < 0 || ordinal >= m.count) return null
@@ -712,12 +719,12 @@ object PoiIndex {
         // Bounded before the add, not after: `attrsBlobStart + off` can wrap negative
         // for a large positive off, and a negative index passes an `at + 2 > capacity`
         // test on its way to an IndexOutOfBoundsException.
-        val blobLen = buf.capacity() - m.attrsBlobStart
+        val blobLen = buf.size - m.attrsBlobStart
         if (off > blobLen - ATTR_BODY_HEADER_LEN) return null
         val at = m.attrsBlobStart + off
         val bodyLen = buf.getShort(at).toInt() and U16_MASK
         val body = at + ATTR_BODY_HEADER_LEN
-        if (bodyLen > buf.capacity() - body) return null
+        if (bodyLen > buf.size - body) return null
         return body to body + bodyLen
     }
 

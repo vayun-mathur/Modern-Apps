@@ -201,10 +201,10 @@ object PoiArchive {
         indexBuf: MappedByteBuffer,
         namesBuf: MappedByteBuffer,
         count: Int,
-        attrs: Pair<MappedByteBuffer, Int>?,
+        attrs: Pair<PoiBytes, Int>?,
         grid: PoiIndex.Grid?,
         words: Pair<MappedByteBuffer, Int>?,
-        region: MappedByteBuffer?,
+        region: PoiBytes?,
         admin: AdminTable?,
     ): PoiIndex.Mapped {
         return PoiIndex.Mapped(

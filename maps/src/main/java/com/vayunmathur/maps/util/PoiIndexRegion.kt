@@ -1,7 +1,6 @@
 package com.vayunmathur.maps.util
 
 import com.vayunmathur.library.log.Log
-import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 
 /**
@@ -35,15 +34,22 @@ internal const val REGION_NONE = 0L
 internal fun PoiIndex.Mapped.regionId(i: Int): Long =
     region?.getLong(REGION_HEADER_BYTES + i * REGION_ID_BYTES) ?: REGION_NONE
 
-/** Buffer core of the region sidecar, reused by the single-archive path. */
-internal fun regionFromBuffer(buf: MappedByteBuffer, count: Int): MappedByteBuffer? {
-    buf.order(ByteOrder.LITTLE_ENDIAN)
-    return runCatching { readRegion(buf, count) }
-        .getOrElse { PoiIndex.bufferFailure(it, REGION_FILE) }
+/**
+ * Buffer core of the region sidecar, reused by the single-archive path. A planet5 archive
+ * stores it block-compressed ([PoiBlockSection]: 0.25 GB -> 7 MB); [PoiBytes.of] reads either.
+ */
+internal fun regionFromBuffer(buf: MappedByteBuffer, count: Int): PoiBytes? {
+    return runCatching {
+        val bytes = PoiBytes.of(buf) ?: run {
+            Log.status(TAG, "$REGION_FILE block table is malformed; ignoring it")
+            return null
+        }
+        readRegion(bytes, count)
+    }.getOrElse { PoiIndex.bufferFailure(it, REGION_FILE) }
 }
 
-private fun readRegion(buf: MappedByteBuffer, count: Int): MappedByteBuffer? {
-    if (buf.capacity() < REGION_HEADER_BYTES) return null
+private fun readRegion(buf: PoiBytes, count: Int): PoiBytes? {
+    if (buf.size < REGION_HEADER_BYTES) return null
     for (i in REGION_MAGIC.indices) {
         if (buf.get(i) != REGION_MAGIC[i]) {
             Log.status(TAG, "$REGION_FILE has the wrong magic; ignoring it")
@@ -59,7 +65,7 @@ private fun readRegion(buf: MappedByteBuffer, count: Int): MappedByteBuffer? {
         Log.status(TAG, "$REGION_FILE covers $records record(s), index has $count; ignoring it")
         return null
     }
-    if (REGION_HEADER_BYTES + REGION_ID_BYTES.toLong() * records > buf.capacity().toLong()) {
+    if (REGION_HEADER_BYTES + REGION_ID_BYTES.toLong() * records > buf.size.toLong()) {
         Log.status(TAG, "$REGION_FILE is truncated; ignoring it")
         return null
     }
