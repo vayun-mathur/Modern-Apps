@@ -28,15 +28,18 @@ data class RateDto(
     @SerialName("networks") val networks: List<NetworkDto> = emptyList(),
 )
 
+/** Immutable value describing network dto. */
 @Serializable
 data class NetworkDto(
     @SerialName("operator") val operator: String,
     @SerialName("price_per_gb_usd_cents") val pricePerGbUsdCents: Long,
 )
 
+/** Immutable value describing rates response; carries rates. */
 @Serializable
 data class RatesResponse(@SerialName("rates") val rates: List<RateDto> = emptyList())
 
+/** Immutable value describing account request; carries accountId. */
 @Serializable
 data class AccountRequest(@SerialName("account_id") val accountId: String)
 
@@ -51,6 +54,7 @@ data class ProfileDto(
     @SerialName("wallet_usd_cents") val walletUsdCents: Long = 0,
 )
 
+/** Immutable value describing status response. */
 @Serializable
 data class StatusResponse(
     @SerialName("profile") val profile: ProfileDto? = null,
@@ -62,6 +66,7 @@ data class StatusResponse(
     @SerialName("balance_stale") val balanceStale: Boolean = false,
 )
 
+/** Immutable value describing ok response; carries ok. */
 @Serializable
 data class OkResponse(@SerialName("ok") val ok: Boolean = false)
 
@@ -72,24 +77,29 @@ data class TransferInRequest(
     @SerialName("new_account_id") val newAccountId: String,
 )
 
+/** Immutable value describing stripe key response; carries publishableKey. */
 @Serializable
 data class StripeKeyResponse(@SerialName("publishable_key") val publishableKey: String = "")
 
+/** Immutable value describing stripe intent request. */
 @Serializable
 data class StripeIntentRequest(
     @SerialName("account_id") val accountId: String,
     @SerialName("amount_cents") val amountCents: Long,
 )
 
+/** Immutable value describing stripe intent response; carries clientSecret. */
 @Serializable
 data class StripeIntentResponse(@SerialName("client_secret") val clientSecret: String = "")
 
+/** Immutable value describing now pay invoice request. */
 @Serializable
 data class NowPayInvoiceRequest(
     @SerialName("account_id") val accountId: String,
     @SerialName("amount_cents") val amountCents: Long,
 )
 
+/** Immutable value describing now pay invoice response. */
 @Serializable
 data class NowPayInvoiceResponse(
     @SerialName("invoice_url") val invoiceUrl: String = "",

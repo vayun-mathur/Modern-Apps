@@ -42,6 +42,7 @@ data class EsimUiState(
     val message: String? = null,
 )
 
+/** Esim View Model: a application implementation for esim view model. */
 class EsimViewModel(app: Application) : AndroidViewModel(app) {
     private val idStore = AnonymousIdStore(app.applicationContext)
     private val keyStore = StripeKeyStore(app.applicationContext)
@@ -159,19 +160,8 @@ class EsimViewModel(app: Application) : AndroidViewModel(app) {
         creditWatch = viewModelScope.launch {
             try {
                 val started = TimeSource.Monotonic.markNow()
-                while (true) {
-                    if (started.elapsedNow() >= CREDIT_WATCH_TIMEOUT) {
-                        state = state.copy(message = "Payment not detected yet. Pull down to check again later.")
-                        break
-                    }
-                    delay(if (started.elapsedNow() < FAST_POLL_WINDOW) FAST_POLL else SLOW_POLL)
-                    val status = runCatching { EsimApi.status(accountId()) }.getOrNull() ?: continue
-                    // Data usage can drain the wallet mid-watch; track the low so a
-                    // top-up still reads as a rise. Stale reads say nothing.
-                    status.profile?.takeIf { !status.balanceStale }?.let {
-                        creditBaselineCents = minOf(creditBaselineCents, it.walletUsdCents)
-                    }
-                    if (applyStatus(status)) break
+                while (!pollCreditOnce(started)) {
+                    // Keep polling until the credit lands or the watch times out.
                 }
             } finally {
                 // A replacement watch may already own the flag.
@@ -300,19 +290,39 @@ class EsimViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+
+    /** One credit-watch poll; returns true when the watch should stop. */
+    private suspend fun pollCreditOnce(started: TimeSource.Monotonic.ValueTimeMark): Boolean {
+        if (started.elapsedNow() >= CREDIT_WATCH_TIMEOUT) {
+            state = state.copy(message = "Payment not detected yet. Pull down to check again later.")
+            return true
+        }
+        delay(if (started.elapsedNow() < FAST_POLL_WINDOW) FAST_POLL else SLOW_POLL)
+        val status = runCatching { EsimApi.status(accountId()) }.getOrNull() ?: return false
+        // Data usage can drain the wallet mid-watch; track the low so a
+        // top-up still reads as a rise. Stale reads say nothing.
+        status.profile?.takeIf { !status.balanceStale }?.let {
+            creditBaselineCents = minOf(creditBaselineCents, it.walletUsdCents)
+        }
+        return applyStatus(status)
+    }
     private fun paymentError(t: Throwable): String = when ((t as? EsimApi.ApiError)?.statusCode) {
-        400 -> "Payments must be between $5 and $20."
+        HTTP_BAD_REQUEST -> "Payments must be between $5 and $20."
         else -> friendly(t)
     }
 
     private fun friendly(t: Throwable): String = when (val code = (t as? EsimApi.ApiError)?.statusCode) {
         null -> if (t is IOException) "No connection. Check your internet and try again." else "Something went wrong."
-        429 -> "Too many requests. Try again in a minute."
-        in 500..599 -> "Service unavailable. Try again shortly."
+        HTTP_TOO_MANY_REQUESTS -> "Too many requests. Try again in a minute."
+        in HTTP_SERVER_ERROR_FIRST..HTTP_SERVER_ERROR_LAST -> "Service unavailable. Try again shortly."
         else -> "Request failed ($code)."
     }
 
     private companion object {
+        const val HTTP_BAD_REQUEST = 400
+        const val HTTP_TOO_MANY_REQUESTS = 429
+        const val HTTP_SERVER_ERROR_FIRST = 500
+        const val HTTP_SERVER_ERROR_LAST = 599
         val FAST_POLL = 2.seconds
         val SLOW_POLL = 10.seconds
         val FAST_POLL_WINDOW = 2.minutes

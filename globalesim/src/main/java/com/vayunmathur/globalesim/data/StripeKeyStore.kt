@@ -20,6 +20,7 @@ class StripeKeyStore(private val context: Context) {
         prefs().edit().putString(KEY, key).apply()
     }
 
+    /** Shared constants and helpers for StripeKeyStore. */
     companion object {
         private const val NAME = "stripe_key"
         private const val KEY = "publishable_key"

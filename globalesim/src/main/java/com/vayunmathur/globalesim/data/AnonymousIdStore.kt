@@ -34,6 +34,7 @@ class AnonymousIdStore(private val context: Context) {
         context.esimAccountStore.edit { it[KEY_ACCOUNT_ID] = newId }
     }
 
+    /** Shared constants and helpers for AnonymousIdStore. */
     companion object {
         private val KEY_ACCOUNT_ID = stringPreferencesKey("account_id")
     }
