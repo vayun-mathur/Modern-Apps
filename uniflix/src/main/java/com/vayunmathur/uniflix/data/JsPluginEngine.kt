@@ -25,6 +25,7 @@ import javax.crypto.spec.SecretKeySpec
  * backstop for it, and socket timeouts in [NetworkClientBridge] bound network.
  */
 private const val ENGINE_TIMEOUT_MS = 15_000L
+private const val MAX_RANDOM_BYTES = 1024
 private const val BRIDGE_CONNECT_TIMEOUT_MS = 10_000L
 private const val BRIDGE_READ_TIMEOUT_MS = 15_000L
 private const val GCM_TAG_BITS = 128
@@ -172,20 +173,23 @@ class JsPluginEngine(
                 val raw = runCatching {
                     qjs.evaluate<String>(expression, "${manifest.id}.js")
                 }.getOrElse {
-                    throw mapError(it)
+                    failCall(mapError(it))
                 }
                 if (raw.startsWith("Promise {")) {
-                    throw mapError("$function() must be sync and return a JSON string (no promises)")
+                    failCall(mapError("$function() must be sync and return a JSON string (no promises)"))
                 }
                 raw
             }
         } catch (e: TimeoutCancellationException) {
             qjs.interruptEvaluation()
-            throw IllegalStateException("'${manifest.name}' timed out after ${timeoutMs}ms")
+            throw IllegalStateException("'${manifest.name}' timed out after ${timeoutMs}ms", e)
         } finally {
             runCatching { qjs.close() }
         }
     }
+
+    /** Throws [t]; keeps throw sites out of the JS call path. */
+    private fun failCall(t: Throwable): Nothing = throw t
 
     private fun mapError(cause: Throwable): Throwable {
         // Structured cancellation (outer withTimeout) must propagate as-is so
@@ -295,7 +299,7 @@ class JsPluginEngine(
         }
         qjs.function("__urand") { args ->
             val n = args.int(0, "__urand")
-            if (n < 0 || n > 1024) error("__urand: byte count out of range")
+            if (n < 0 || n > MAX_RANDOM_BYTES) error("__urand: byte count out of range")
             ByteArray(n).also { SecureRandom().nextBytes(it) }.asUByteArray()
         }
     }

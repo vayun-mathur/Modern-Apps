@@ -17,6 +17,7 @@ data class BrowseUiState(
     val items: List<MediaItem> = emptyList(),
 )
 
+/** Browse View Model: a application implementation for browse view model. */
 class BrowseViewModel(app: Application) : AndroidViewModel(app) {
     private val api = TmdbApi()
 

@@ -246,7 +246,7 @@ private fun BodyPane(
                                 stringResource(R.string.season_name, season.seasonNumber)
                             },
                             selected = season.seasonNumber == state.selectedSeason,
-                            onClick = { vm.selectSeason(type, tmdbId, season.seasonNumber) },
+                            onClick = { vm.selectSeason(tmdbId, season.seasonNumber) },
                         )
                     }
                 }

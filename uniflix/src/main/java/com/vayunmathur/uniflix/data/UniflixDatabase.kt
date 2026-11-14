@@ -72,6 +72,7 @@ data class TitleNote(
     val createdAt: Long = 0L,
 )
 
+/** Contract for watchlist dao. */
 @Dao
 interface WatchlistDao {
     @Query("SELECT * FROM WatchlistEntry ORDER BY addedAt DESC")
@@ -87,6 +88,7 @@ interface WatchlistDao {
     suspend fun deleteByKey(key: String)
 }
 
+/** Contract for continue watching dao. */
 @Dao
 interface ContinueWatchingDao {
     @Query("SELECT * FROM ContinueWatchingEntry ORDER BY updatedAt DESC")
@@ -102,6 +104,7 @@ interface ContinueWatchingDao {
     suspend fun deleteByKey(key: String)
 }
 
+/** Contract for user list dao. */
 @Dao
 interface UserListDao {
     @Query("SELECT * FROM UserList ORDER BY createdAt ASC")
@@ -152,6 +155,7 @@ abstract class UniflixDatabase : RoomDatabase() {
     abstract fun userListDao(): UserListDao
     abstract fun addonDao(): AddonDao
 
+    /** Shared constants and helpers for UniflixDatabase. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations = listOf(
             object : Migration(1, 2) {

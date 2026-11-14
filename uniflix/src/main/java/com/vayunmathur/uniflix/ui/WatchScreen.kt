@@ -65,7 +65,6 @@ private const val CUES_BOTTOM_LIFT_DP = 132
 @Composable
 fun WatchScreen(
     state: DetailUiState,
-    mediaType: MediaType,
     season: Int,
     episode: Int,
     onBack: () -> Unit,

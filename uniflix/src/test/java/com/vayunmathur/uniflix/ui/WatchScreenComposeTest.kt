@@ -26,7 +26,6 @@ class WatchScreenComposeTest {
             DynamicTheme {
                 WatchScreen(
                     state = state,
-                    mediaType = MediaType.MOVIE,
                     season = 0, episode = 0,
                     onBack = onBack,
                     onRetry = onRetry,

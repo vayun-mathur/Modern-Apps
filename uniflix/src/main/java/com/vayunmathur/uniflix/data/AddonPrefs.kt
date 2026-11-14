@@ -23,6 +23,7 @@ class AddonPrefs(private val context: Context) {
         }
     }
 
+    /** Shared constants and helpers for AddonPrefs. */
     companion object {
         private val KEY_DEFAULT_ADDON = longPreferencesKey("default_addon_db_id")
     }

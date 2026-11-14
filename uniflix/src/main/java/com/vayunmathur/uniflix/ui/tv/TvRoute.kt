@@ -18,9 +18,11 @@ sealed interface TvRoute : NavKey {
     @Serializable
     data class Main(val initialTab: Int = TV_TAB_HOME) : TvRoute
 
+    /** Immutable value describing detail; carries mediaType, tmdbId. */
     @Serializable
     data class Detail(val mediaType: String, val tmdbId: Int) : TvRoute
 
+    /** Immutable value describing watch. */
     @Serializable
     data class Watch(
         val mediaType: String,
@@ -29,6 +31,7 @@ sealed interface TvRoute : NavKey {
         val episode: Int = 0,
     ) : TvRoute
 
+    /** Immutable value describing addon detail; carries addonDbId. */
     @Serializable
     data class AddonDetail(val addonDbId: Long) : TvRoute
 

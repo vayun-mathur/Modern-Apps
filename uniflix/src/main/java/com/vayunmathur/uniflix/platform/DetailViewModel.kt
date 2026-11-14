@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 fun interface RegistryFactory {
     suspend fun current(repository: UniflixRepository, prefs: AddonPrefs): PluginRegistry
 
+    /** Shared constants and helpers for RegistryFactory. */
     companion object {
         val HttpAddons = RegistryFactory { repository, prefs ->
             val entities = repository.enabledAddons.first()
@@ -115,11 +116,13 @@ data class DetailUiState(
     val startPositionMs: Long = 0L,
 )
 
+/** Detail View Model: a application implementation for detail view model. */
 class DetailViewModel(app: Application) : AndroidViewModel(app) {
     private val api = TmdbApi()
     private val repository = UniflixRepository.get(app)
     private val addonPrefs = AddonPrefs(app)
 
+    /** Shared constants and helpers for DetailViewModel. */
     companion object {
         private const val TAG = "DetailViewModel"
     }
@@ -168,7 +171,7 @@ class DetailViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun selectSeason(mediaType: MediaType, tmdbId: Int, season: Int) {
+    fun selectSeason(tmdbId: Int, season: Int) {
         viewModelScope.launch {
             runCatching {
                 state = state.copy(selectedSeason = season, episodes = api.seasonEpisodes(tmdbId, season))

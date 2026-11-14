@@ -22,6 +22,7 @@ data class HomeUiState(
     val topTv: List<MediaItem> = emptyList(),
 )
 
+/** Home View Model: a application implementation for home view model. */
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val api = TmdbApi()
     val repository = UniflixRepository.get(app)

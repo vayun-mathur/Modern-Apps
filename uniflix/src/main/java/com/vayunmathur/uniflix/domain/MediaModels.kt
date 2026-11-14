@@ -34,6 +34,7 @@ data class MediaDetail(
     val recommendations: List<MediaItem> = emptyList(),
 )
 
+/** Immutable value describing season summary. */
 @Serializable
 data class SeasonSummary(
     val seasonNumber: Int,
@@ -42,6 +43,7 @@ data class SeasonSummary(
     val stillPath: String? = null,
 )
 
+/** Immutable value describing episode. */
 @Serializable
 data class Episode(
     val seasonNumber: Int,

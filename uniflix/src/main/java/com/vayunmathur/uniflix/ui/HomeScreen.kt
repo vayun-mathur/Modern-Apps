@@ -28,7 +28,6 @@ import com.vayunmathur.uniflix.platform.HomeUiState
 @Composable
 fun HomeScreen(
     state: HomeUiState,
-    onRefresh: () -> Unit,
     onOpenDetail: (MediaItem) -> Unit,
     onOpenSearch: () -> Unit,
     onOpenMovies: () -> Unit,

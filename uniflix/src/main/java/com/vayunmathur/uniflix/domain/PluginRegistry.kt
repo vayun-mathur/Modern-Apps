@@ -71,6 +71,7 @@ class PluginRegistry(
         return out.toList()
     }
 
+    /** Shared constants and helpers for PluginRegistry. */
     companion object {
         /**
          * Orders enabled addon entities: the default id first, then priority.

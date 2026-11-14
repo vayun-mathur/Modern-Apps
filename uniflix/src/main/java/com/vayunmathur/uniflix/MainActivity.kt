@@ -7,6 +7,7 @@ import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.uniflix.data.RemoteImageFetchers
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     override fun onCreateBeforeContent() {
         // Catalog + artwork go through the self-hosted proxy; player streams

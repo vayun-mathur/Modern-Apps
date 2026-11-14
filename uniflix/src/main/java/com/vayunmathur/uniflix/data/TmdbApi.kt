@@ -20,6 +20,9 @@ import kotlinx.serialization.json.Json
  * ([STATIC_BASE] + the same path + `.json`) and from the proxy when the copy is missing
  * or older than the page's freshness window.
  */
+/** Length of the yyyy prefix of an ISO date. */
+private const val YEAR_LENGTH = 4
+
 class TmdbApi {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -72,7 +75,7 @@ class TmdbApi {
             tmdbId = dto.id,
             mediaType = MediaType.MOVIE,
             title = dto.title,
-            year = dto.releaseDate?.take(4)?.toIntOrNull(),
+            year = dto.releaseDate?.take(YEAR_LENGTH)?.toIntOrNull(),
             overview = dto.overview,
             posterPath = dto.posterPath,
             backdropPath = dto.backdropPath,
@@ -90,7 +93,7 @@ class TmdbApi {
             tmdbId = dto.id,
             mediaType = MediaType.TV,
             title = dto.name,
-            year = dto.firstAirDate?.take(4)?.toIntOrNull(),
+            year = dto.firstAirDate?.take(YEAR_LENGTH)?.toIntOrNull(),
             overview = dto.overview,
             posterPath = dto.posterPath,
             backdropPath = dto.backdropPath,
@@ -112,6 +115,7 @@ class TmdbApi {
     private suspend fun movieRecommendations(tmdbId: Int): List<MediaItem> =
         decodeItems(catalogGet("/movie/$tmdbId/recommendations", DETAIL_MAX_AGE_MS))
 
+    /** Shared constants and helpers for TmdbApi. */
     companion object {
         private const val BASE = "https://api.maproj.org/api/tmdb"
         private const val STATIC_BASE = "${StaticMirror.BASE}/tmdb/v1"
@@ -147,7 +151,7 @@ private data class TmdbItem(
             tmdbId = id,
             mediaType = type,
             title = title ?: name ?: "",
-            year = date?.take(4)?.toIntOrNull(),
+            year = date?.take(YEAR_LENGTH)?.toIntOrNull(),
             overview = overview,
             posterPath = posterPath,
             backdropPath = backdropPath,

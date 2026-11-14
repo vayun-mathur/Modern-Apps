@@ -37,7 +37,6 @@ class DetailHomeSearchComposeTest {
                     state = HomeUiState(
                         trendingMovies = listOf(item(1, "Trending Film")),
                         trendingTv = listOf(item(2, "Trending Show", MediaType.TV))),
-                    onRefresh = {},
                     onOpenDetail = { opened = it },
                     onOpenSearch = {}, onOpenMovies = { movies++ },
                     onOpenSeries = {}, onOpenLists = {}, onOpenContinue = {},
@@ -58,7 +57,7 @@ class DetailHomeSearchComposeTest {
             DynamicTheme {
                 HomeScreen(
                     state = HomeUiState(loading = true),
-                    onRefresh = {}, onOpenDetail = {}, onOpenSearch = {},
+                    onOpenDetail = {}, onOpenSearch = {},
                     onOpenMovies = {}, onOpenSeries = {}, onOpenLists = {},
                     onOpenContinue = {}, onOpenAddons = {})
             }

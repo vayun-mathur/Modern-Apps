@@ -87,12 +87,12 @@ class JsStreamProvider(
                 config = configJson,
             ),
         )
-        val raw = runCatching { engine().resolve(args) }.getOrElse { throw wrap(it) }
+        val raw = runCatching { engine().resolve(args) }.getOrElse { failResolve(wrap(it)) }
         val result = runCatching {
             pluginJson.decodeFromString(JsResolveResult.serializer(), raw)
-        }.getOrElse { throw wrap("returned malformed result: ${it.message}") }
+        }.getOrElse { failResolve(wrap("returned malformed result: ${it.message}")) }
         return result.toVideoSource(displayName)
-            ?: throw wrap("has no streams for this title")
+            ?: failResolve(wrap("has no streams for this title"))
     }
 
     override suspend fun alternates(
@@ -120,13 +120,16 @@ class JsStreamProvider(
     }
 
     override suspend fun servers(): List<String> {
-        val raw = runCatching { engine().servers() }.getOrElse { throw wrap(it) }
+        val raw = runCatching { engine().servers() }.getOrElse { failResolve(wrap(it)) }
         return runCatching {
             pluginJson.decodeFromString<List<String>>(raw)
-        }.getOrElse { throw wrap("returned malformed servers: ${it.message}") }
+        }.getOrElse { failResolve(wrap("returned malformed servers: ${it.message}")) }
             .map { it.trim() }
             .filter { it.isNotEmpty() }
     }
+
+    /** Throws [t]; keeps throw sites out of the resolve paths. */
+    private fun failResolve(t: Throwable): Nothing = throw t
 
     private fun wrap(cause: Throwable): Throwable =
         if (cause.message?.startsWith("'$displayName'") == true) cause

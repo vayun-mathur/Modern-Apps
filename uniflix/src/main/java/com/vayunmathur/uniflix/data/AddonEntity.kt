@@ -31,6 +31,7 @@ data class AddonEntity(
     val jsSource: String = "",
 )
 
+/** Contract for addon dao. */
 @Dao
 interface AddonDao {
     @Query("SELECT * FROM AddonEntity ORDER BY priority ASC, dbId ASC")

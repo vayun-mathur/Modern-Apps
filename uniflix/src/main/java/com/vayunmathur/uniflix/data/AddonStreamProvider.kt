@@ -56,7 +56,8 @@ class AddonStreamProvider(
         season: Int,
         episode: Int,
     ): List<VideoSource> {
-        val url = "$baseUrl/stream/${addonResourceType(mediaType)}/${addonStreamId(tmdbId, mediaType, season, episode)}.json"
+        val streamId = addonStreamId(tmdbId, mediaType, season, episode)
+        val url = "$baseUrl/stream/${addonResourceType(mediaType)}/$streamId.json"
         val resp = runCatching {
             uniflixGet(url, connectTimeoutMs = ADDON_TIMEOUT_MS)
         }.getOrElse {
@@ -73,8 +74,16 @@ class AddonStreamProvider(
         return parsed.streams.mapNotNull { it.toVideoSource(displayName) }
     }
 
+    /** Shared constants and helpers for AddonStreamProvider. */
     companion object {
         private val manifestJson = Json { ignoreUnknownKeys = true }
+
+        private const val IPV4_PART_COUNT = 4
+        private const val OCTET_MIN = 0
+        private const val OCTET_MAX = 255
+
+        /** Throws [error]; keeps throw sites out of the validated fetch paths. */
+        private fun manifestFail(error: ManifestError): Nothing = throw error
 
         /** Fetches and validates the manifest at [manifestUrl] (bare base or full `.../manifest.json`). */
         suspend fun fetchManifest(manifestUrl: String): Pair<String, AddonManifest> {
@@ -82,16 +91,16 @@ class AddonStreamProvider(
             val resp = runCatching {
                 uniflixGet("$base/manifest.json", connectTimeoutMs = ADDON_TIMEOUT_MS)
             }.getOrElse {
-                throw ManifestError.Network("Could not reach $manifestUrl: ${it.message}")
+                manifestFail(ManifestError.Network("Could not reach $manifestUrl: ${it.message}"))
             }
             if (!resp.isSuccess) {
-                throw ManifestError.Network("Manifest request failed: ${resp.status}")
+                manifestFail(ManifestError.Network("Manifest request failed: ${resp.status}"))
             }
             val manifest = runCatching {
                 manifestJson.decodeFromString(AddonManifest.serializer(), resp.text).validate()
             }.getOrElse {
-                if (it is ManifestError) throw it
-                throw ManifestError.Parse("Not a stream addon manifest: ${it.message}", it)
+                if (it is ManifestError) manifestFail(it)
+                manifestFail(ManifestError.Parse("Not a stream addon manifest: ${it.message}", it))
             }
             return base to manifest
         }
@@ -105,15 +114,15 @@ class AddonStreamProvider(
             val withoutManifest = trimmed.removeSuffix("/manifest.json")
             val withScheme = if ("://" in withoutManifest) withoutManifest else "https://$withoutManifest"
             val uri = runCatching { java.net.URI(withScheme) }.getOrNull()
-                ?: throw ManifestError.Parse("Not a valid addon URL: $input")
+                ?: manifestFail(ManifestError.Parse("Not a valid addon URL: $input"))
             val scheme = uri.scheme?.lowercase()
             val host = uri.host?.lowercase()
-                ?: throw ManifestError.Parse("Not a valid addon URL: $input")
+                ?: manifestFail(ManifestError.Parse("Not a valid addon URL: $input"))
             if (scheme == "http" && !isLoopbackOrPrivate(host)) {
-                throw ManifestError.InsecureUrl(input.trim())
+                manifestFail(ManifestError.InsecureUrl(input.trim()))
             }
             if (scheme != "http" && scheme != "https") {
-                throw ManifestError.Parse("Addon URL must be http(s): $input")
+                manifestFail(ManifestError.Parse("Addon URL must be http(s): $input"))
             }
             return "$scheme://$host${if (uri.port != -1) ":${uri.port}" else ""}${uri.path.trimEnd('/')}"
         }
@@ -132,7 +141,7 @@ class AddonStreamProvider(
             val cleaned = host.removePrefix("[").removeSuffix("]")
             if (cleaned.contains(':')) return true // IPv6 literal
             val parts = cleaned.split('.')
-            return parts.size == 4 && parts.all { it.toIntOrNull() in 0..255 }
+            return parts.size == IPV4_PART_COUNT && parts.all { it.toIntOrNull() in OCTET_MIN..OCTET_MAX }
         }
     }
 }

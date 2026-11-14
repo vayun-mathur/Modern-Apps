@@ -41,6 +41,7 @@ data class JsPluginManifest(
         return result
     }
 
+    /** Shared constants and helpers for JsPluginManifest. */
     companion object {
         /** Parses and validates a plugin file; throws [ManifestError.Parse] when invalid. */
         fun parse(source: String): JsPluginManifest {

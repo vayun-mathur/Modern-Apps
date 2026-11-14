@@ -46,23 +46,24 @@ class C9TmdbSuccessTest {
             .allowMainThreadQueries().build()
         com.vayunmathur.library.util.databases[UniflixDatabase::class] = db
         UniflixRepository.resetInstanceForTest()
+        val routes: List<Pair<String, String>> = listOf(
+            "/trending/movie" to """{"results":[{"id":1,"title":"Trending Film","release_date":"2025-03-04","vote_average":8.1}]}""",
+            "/trending/tv" to """{"results":[{"id":2,"name":"Trending Show","first_air_date":"2024-01-02","media_type":"tv"}]}""",
+            "/top/movie" to """{"results":[{"id":3,"title":"Top Film"}]}""",
+            "/top/tv" to """{"results":[]}""",
+            "/discover/movie" to """{"results":[{"id":4,"title":"Discovered"}]}""",
+            "/discover/tv" to """{"results":[]}""",
+            "/search?" to """{"results":[{"id":5,"title":"Search Hit"}]}""",
+            "/movie/10/recommendations" to """{"results":[{"id":11,"title":"Rec Film"}]}""",
+            "/movie/10" to """{"id":10,"title":"Detail Film","release_date":"2023-05-06","overview":"A film.","runtime":121,"vote_average":7.5}""",
+            "/season/" to """{"episodes":[{"episode_number":1,"name":"Pilot","overview":"First."},{"episode_number":2,"name":"Second"}]}""",
+            "/tv/20" to """{"id":20,"name":"Detail Show","first_air_date":"2022-02-02","seasons":[{"season_number":0,"name":"Specials","episode_count":1},{"season_number":1,"name":"Season 1","episode_count":2}]}""",
+            "/stream/" to """{"streams":[{"url":"https://cdn.example.invalid/v.m3u8","name":"HD"}]}""",
+            "/manifest.json" to """{"id":"demo","name":"Demo Addon","version":"1.0.0","resources":["stream"],"types":["movie","series"]}""",
+        )
         uniflixTransport = { url ->
-            when {
-                url.contains("/trending/movie") -> fakeHttpResponse(200, """{"results":[{"id":1,"title":"Trending Film","release_date":"2025-03-04","vote_average":8.1}]}""")
-                url.contains("/trending/tv") -> fakeHttpResponse(200, """{"results":[{"id":2,"name":"Trending Show","first_air_date":"2024-01-02","media_type":"tv"}]}""")
-                url.contains("/top/movie") -> fakeHttpResponse(200, """{"results":[{"id":3,"title":"Top Film"}]}""")
-                url.contains("/top/tv") -> fakeHttpResponse(200, """{"results":[]}""")
-                url.contains("/discover/movie") -> fakeHttpResponse(200, """{"results":[{"id":4,"title":"Discovered"}]}""")
-                url.contains("/discover/tv") -> fakeHttpResponse(200, """{"results":[]}""")
-                url.contains("/search?") -> fakeHttpResponse(200, """{"results":[{"id":5,"title":"Search Hit"}]}""")
-                url.contains("/movie/10/recommendations") -> fakeHttpResponse(200, """{"results":[{"id":11,"title":"Rec Film"}]}""")
-                url.contains("/movie/10") -> fakeHttpResponse(200, """{"id":10,"title":"Detail Film","release_date":"2023-05-06","overview":"A film.","runtime":121,"vote_average":7.5}""")
-                url.contains("/season/") -> fakeHttpResponse(200, """{"episodes":[{"episode_number":1,"name":"Pilot","overview":"First."},{"episode_number":2,"name":"Second"}]}""")
-                url.contains("/tv/20") -> fakeHttpResponse(200, """{"id":20,"name":"Detail Show","first_air_date":"2022-02-02","seasons":[{"season_number":0,"name":"Specials","episode_count":1},{"season_number":1,"name":"Season 1","episode_count":2}]}""")
-                url.contains("/stream/") -> fakeHttpResponse(200, """{"streams":[{"url":"https://cdn.example.invalid/v.m3u8","name":"HD"}]}""")
-                url.contains("/manifest.json") -> fakeHttpResponse(200, """{"id":"demo","name":"Demo Addon","version":"1.0.0","resources":["stream"],"types":["movie","series"]}""")
-                else -> fakeHttpResponse(404, """{"status_message":"missing"}""")
-            }
+            val body = routes.firstOrNull { url.contains(it.first) }?.second
+            if (body != null) fakeHttpResponse(200, body) else fakeHttpResponse(404, "{}")
         }
     }
 
@@ -140,7 +141,7 @@ class C9TmdbSuccessTest {
         vm.load(MediaType.TV, 20)
         assertTrue(await { vm.state.detail?.title == "Detail Show" }, "state=${vm.state}")
         assertEquals(2, vm.state.episodes.size)
-        vm.selectSeason(MediaType.TV, 20, 1)
+        vm.selectSeason(20, 1)
         assertTrue(await { vm.state.selectedSeason == 1 && vm.state.episodes.size == 2 })
     }
 

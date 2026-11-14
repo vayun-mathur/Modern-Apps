@@ -129,7 +129,7 @@ class UniflixViewModelsTest {
 
     @Test fun detailSeasonAndGuardsOffline() = runTest {
         val vm = DetailViewModel(app).also { goOffline() }
-        vm.selectSeason(MediaType.TV, 7, 3)
+        vm.selectSeason(7, 3)
         assertTrue(await { vm.state.episodes.isEmpty() })
         assertEquals(1, vm.state.selectedSeason)
         // No detail loaded: watchlist toggle is a no-op.

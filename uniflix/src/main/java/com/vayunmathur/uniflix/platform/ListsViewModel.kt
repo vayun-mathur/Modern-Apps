@@ -45,6 +45,7 @@ class ListsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { repository.deleteListItem(item) }
     }
 
+    /** Shared constants and helpers for ListsViewModel. */
     companion object {
         fun listsFor(context: Context) = UniflixRepository.get(context).userLists
     }

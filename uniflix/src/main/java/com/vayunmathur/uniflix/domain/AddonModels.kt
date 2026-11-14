@@ -31,11 +31,13 @@ data class AddonStream(
     }
 }
 
+/** Immutable value describing addon behavior hints. */
 @Serializable
 data class AddonBehaviorHints(
     @SerialName("notWebReady") val notWebReady: Boolean = false,
 )
 
+/** Immutable value describing addon subtitle. */
 @Serializable
 data class AddonSubtitle(
     val url: String,

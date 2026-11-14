@@ -187,7 +187,12 @@ class AddonsViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             refreshing = false
-            AppMessages.show(if (failures == 0) "Refreshed ${rows.size} addons" else "$failures of ${rows.size} addons failed to refresh")
+            val message = if (failures == 0) {
+                "Refreshed ${rows.size} addons"
+            } else {
+                "$failures of ${rows.size} addons failed to refresh"
+            }
+            AppMessages.show(message)
         }
     }
 

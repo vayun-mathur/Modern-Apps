@@ -62,6 +62,7 @@ class UniflixRepository private constructor(context: Context) :
     suspend fun setAddonError(dbId: Long, error: String?) = addonDao.setError(dbId, error)
     suspend fun setAddonConfig(dbId: Long, config: String) = addonDao.setConfig(dbId, config)
 
+    /** Shared constants and helpers for UniflixRepository. */
     companion object {
         @Volatile
         private var instance: UniflixRepository? = null
