@@ -258,7 +258,11 @@ fn every_layer_decodes_and_tessellates_in_four_cities() {
     assert!(regions > 0, "no region-mask shapes (boundaries)");
     assert!(extra.contains_key("heightmap"), "no heightmap on any city tile");
     assert!(extra.contains_key("region_links"), "no region-link tables decoded");
-    assert!(versions.keys().all(|&v| v == 10), "expected v10 bodies only, got {versions:?}");
+    // planet4 carries v10 bodies, planet5 v11 (MED-residual heightmaps); never a mix.
+    assert!(
+        versions.len() == 1 && versions.keys().all(|&v| v == 10 || v == 11),
+        "expected v10 (planet4) or v11 (planet5) bodies only, got {versions:?}"
+    );
 }
 
 #[test]
