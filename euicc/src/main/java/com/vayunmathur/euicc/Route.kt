@@ -3,6 +3,7 @@ package com.vayunmathur.euicc
 import com.vayunmathur.library.util.NavKey
 import kotlinx.serialization.Serializable
 
+/** Navigation destinations for the eSIM manager (LPA) flow, from the profile list into a download. */
 @Serializable
 sealed interface Route : NavKey {
     /** The profile list - the LUI's landing screen. */

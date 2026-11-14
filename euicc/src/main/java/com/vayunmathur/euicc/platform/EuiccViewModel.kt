@@ -75,6 +75,10 @@ private fun isConfirmationCodeRefusal(message: String?): Boolean =
             "Confirmation Code is missing" in message
         )
 
+/**
+ * Drives the LPA screens: mirrors eUICC profiles and notifications into [state] and runs the
+ * split-phase SM-DP+ download (authenticate, confirm, install) tracked separately in [download].
+ */
 class EuiccViewModel(app: Application) : AndroidViewModel(app) {
     private val channelManager = EuiccChannelManager(app)
     private val json = Json { ignoreUnknownKeys = true }

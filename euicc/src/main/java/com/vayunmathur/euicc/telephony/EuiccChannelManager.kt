@@ -196,6 +196,7 @@ class EuiccChannelManager(context: Context) {
         throw EuiccException("${method.name} is not accessible: $e")
     }
 
+    /** APDU framing constants, the process-wide ISD-R lock, and the reflective `@SystemApi` telephony methods. */
     companion object {
         /** Process-wide ISD-R session lock; see [withIsdrChannel]. */
         private val CHANNEL_LOCK = Any()

@@ -86,6 +86,7 @@ class DownloadService : Service() {
         }
     }
 
+    /** Notification and wake-lock constants plus the start/stop entry points for the install guard. */
     companion object {
         private const val CHANNEL_ID = "esim_install"
         private const val FOREGROUND_ID = 1001

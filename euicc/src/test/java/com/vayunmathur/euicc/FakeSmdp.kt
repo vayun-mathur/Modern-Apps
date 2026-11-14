@@ -68,6 +68,12 @@ class FakeEuicc {
     }
 
     private fun respond(dataHex: String): String {
+        bppSegmentResponse(dataHex)?.let { return it }
+        return bodyFor(dataHex).toHex() + "9000"
+    }
+
+    /** Response for a Bound Profile Package segment, or null when [dataHex] is not one. */
+    private fun bppSegmentResponse(dataHex: String): String? {
         when {
             dataHex.startsWith("BF36") -> {
                 // Our BPP segments into 6 STORE DATA calls; this is the first.
@@ -82,28 +88,38 @@ class FakeEuicc {
                 }
                 return "9000"
             }
+            else -> return null
         }
-        val body: ByteArray = when {
-            dataHex.startsWith("BF2E") ->
-                tlv2(0xBF, 0x2E, tlv1(0x80, ByteArray(16) { (it + 1).toByte() }))
-            dataHex.startsWith("BF20") -> info1()
-            dataHex.startsWith("BF3E") ->
-                tlv2(0xBF, 0x3E, tlv1(0x5A, hexBytes("89044022444301000000000000012345".take(32))))
-            dataHex.startsWith("BF2D") ->
-                tlv2(0xBF, 0x2D, tlv1(0xA0, cat(*profileSet.toTypedArray())))
-            dataHex.startsWith("BF28") -> notifications()
-            dataHex.startsWith("BF30") -> tlv2(0xBF, 0x30, tlv1(0x80, byteArrayOf(0)))
-            dataHex.startsWith("BF31") -> tlv2(0xBF, 0x31, tlv1(0x80, byteArrayOf(0)))
-            dataHex.startsWith("BF32") -> tlv2(0xBF, 0x32, tlv1(0x80, byteArrayOf(0)))
-            dataHex.startsWith("BF33") -> tlv2(0xBF, 0x33, tlv1(0x80, byteArrayOf(0)))
-            dataHex.startsWith("BF29") -> tlv2(0xBF, 0x29, tlv1(0x80, byteArrayOf(0)))
-            dataHex.startsWith("BF38") -> tlv2(0xBF, 0x38, ByteArray(0))
-            dataHex.startsWith("BF21") -> tlv2(0xBF, 0x21, ByteArray(0))
-            dataHex.startsWith("BF41") -> tlv2(0xBF, 0x41, ByteArray(0))
-            dataHex.startsWith("BF2B") -> tlv2(0xBF, 0x2B, ByteArray(0))
-            else -> ByteArray(0)
-        }
-        return body.toHex() + "9000"
+    }
+
+    private fun bodyFor(dataHex: String): ByteArray =
+        profileBodyFor(dataHex) ?: simpleBodyFor(dataHex) ?: ByteArray(0)
+
+    /** Bodies for the ES10 reads that carry profile, info, or notification data. */
+    private fun profileBodyFor(dataHex: String): ByteArray? = when {
+        dataHex.startsWith("BF2E") ->
+            tlv2(0xBF, 0x2E, tlv1(0x80, ByteArray(16) { (it + 1).toByte() }))
+        dataHex.startsWith("BF20") -> info1()
+        dataHex.startsWith("BF3E") ->
+            tlv2(0xBF, 0x3E, tlv1(0x5A, hexBytes("89044022444301000000000000012345".take(32))))
+        dataHex.startsWith("BF2D") ->
+            tlv2(0xBF, 0x2D, tlv1(0xA0, cat(*profileSet.toTypedArray())))
+        dataHex.startsWith("BF28") -> notifications()
+        else -> null
+    }
+
+    /** Bodies for the remaining ES10 operations: a success word or an empty payload. */
+    private fun simpleBodyFor(dataHex: String): ByteArray? = when {
+        dataHex.startsWith("BF30") -> tlv2(0xBF, 0x30, tlv1(0x80, byteArrayOf(0)))
+        dataHex.startsWith("BF31") -> tlv2(0xBF, 0x31, tlv1(0x80, byteArrayOf(0)))
+        dataHex.startsWith("BF32") -> tlv2(0xBF, 0x32, tlv1(0x80, byteArrayOf(0)))
+        dataHex.startsWith("BF33") -> tlv2(0xBF, 0x33, tlv1(0x80, byteArrayOf(0)))
+        dataHex.startsWith("BF29") -> tlv2(0xBF, 0x29, tlv1(0x80, byteArrayOf(0)))
+        dataHex.startsWith("BF38") -> tlv2(0xBF, 0x38, ByteArray(0))
+        dataHex.startsWith("BF21") -> tlv2(0xBF, 0x21, ByteArray(0))
+        dataHex.startsWith("BF41") -> tlv2(0xBF, 0x41, ByteArray(0))
+        dataHex.startsWith("BF2B") -> tlv2(0xBF, 0x2B, ByteArray(0))
+        else -> null
     }
 
     private fun info1(): ByteArray = tlv2(
@@ -187,7 +203,7 @@ class FakeSmdp {
                 "initiateAuthentication" -> 200 to initiate()
                 "authenticateClient" -> 200 to authenticateClient()
                 "getBoundProfilePackage" ->
-                    if (refuseBoundProfilePackage) 200 to failedStatus()
+                    if (refuseBoundProfilePackage) 200 to failedStatus
                     else 200 to boundProfilePackage()
                 "cancelSession" -> 204 to ""
                 "handleNotification" -> 204 to ""
@@ -208,13 +224,13 @@ class FakeSmdp {
 
     fun stop() = server.stop(0)
 
-    private fun successHeader(): String =
+    private val successHeader: String =
         """"header":{"functionExecutionStatus":{"status":"Executed-Success"}}"""
 
     private fun initiate(): String {
         val txBin = "txbin123".toByteArray()
         val serverSigned1 = der(byteArrayOf(0x30), tlv1(0x80, txBin))
-        return """{${successHeader()},"transactionId":"tx-123","serverSigned1":"${b64(serverSigned1)}","serverSignature1":"${b64(byteArrayOf(1, 2, 3))}","euiccCiPKIdToBeUsed":"${b64(hexBytes("1122"))}","serverCertificate":"${b64(byteArrayOf(0x30, 0))}"}"""
+        return """{${successHeader},"transactionId":"tx-123","serverSigned1":"${b64(serverSigned1)}","serverSignature1":"${b64(byteArrayOf(1, 2, 3))}","euiccCiPKIdToBeUsed":"${b64(hexBytes("1122"))}","serverCertificate":"${b64(byteArrayOf(0x30, 0))}"}"""
     }
 
     private fun authenticateClient(): String {
@@ -234,10 +250,10 @@ class FakeSmdp {
                 tlv1(0x01, byteArrayOf(if (ccRequired) 1 else 0)),
             ),
         )
-        return """{${successHeader()},"profileMetadata":"${b64(metadata)}","smdpSigned2":"${b64(signed2)}","smdpSignature2":"${b64(byteArrayOf(4, 5))}","smdpCertificate":"${b64(byteArrayOf(0x30, 0))}"}"""
+        return """{${successHeader},"profileMetadata":"${b64(metadata)}","smdpSigned2":"${b64(signed2)}","smdpSignature2":"${b64(byteArrayOf(4, 5))}","smdpCertificate":"${b64(byteArrayOf(0x30, 0))}"}"""
     }
 
-    private fun failedStatus(): String =
+    private val failedStatus: String =
         """{"header":{"functionExecutionStatus":{"status":"Failed","statusCodeData":{"subjectCode":"8.2.7","reasonCode":"3.8"}}}}"""
 
     private fun boundProfilePackage(): String {
@@ -248,6 +264,6 @@ class FakeSmdp {
             tlv1(0xA3, tlv1(0x86, byteArrayOf(0x55))),
         )
         val bpp = tlv2(0xBF, 0x36, body)
-        return """{${successHeader()},"boundProfilePackage":"${b64(bpp)}"}"""
+        return """{${successHeader},"boundProfilePackage":"${b64(bpp)}"}"""
     }
 }
