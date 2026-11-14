@@ -10,6 +10,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
+/** Singleton holding odf writer state and operations. */
 object OdfWriter {
 
     /** Copies one zip entry verbatim from [zipIn] to [zipOut]. */
@@ -237,7 +238,10 @@ object OdfWriter {
         val mime = documentMime(document)
         val sb = StringBuilder()
         sb.append("""<?xml version="1.0" encoding="UTF-8"?>""")
-        sb.append("""<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3">""")
+        sb.append(
+            """<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" """ +
+                """manifest:version="1.3">""",
+        )
         sb.append("""<manifest:file-entry manifest:full-path="/" manifest:media-type="$mime"/>""")
         // Embedded-object directory entries (declared first so readers register the sub-documents).
         for ((path, type) in extra) {

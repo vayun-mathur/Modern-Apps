@@ -4,6 +4,9 @@ import com.vayunmathur.library.ui.odf.OdfBorders
 import com.vayunmathur.library.ui.odf.OdfTabStop
 import org.xmlpull.v1.XmlPullParser
 
+/** First non-null of the overlay value and the base value. */
+private fun <T> T?.orElse(fallback: T?): T? = this ?: fallback
+
 /**
  * DOCX style/numbering model and property parsers (extracted from [OoxmlDocx]
  * to keep files under the repo file-length limit; behavior identical).
@@ -49,23 +52,23 @@ internal object OoxmlDocxStyles {
     ) {
         /** Returns a new RPr with [o]'s non-null values overriding this one's. */
         fun overlay(o: RPr) = RPr(
-            bold = o.bold ?: bold,
-            italic = o.italic ?: italic,
-            underline = o.underline ?: underline,
-            underlineColor = o.underlineColor ?: underlineColor,
-            strike = o.strike ?: strike,
-            color = o.color ?: color,
-            sizeHalfPt = o.sizeHalfPt ?: sizeHalfPt,
-            font = o.font ?: font,
-            vertAlign = o.vertAlign ?: vertAlign,
-            caps = o.caps ?: caps,
-            smallCaps = o.smallCaps ?: smallCaps,
-            spacingTwips = o.spacingTwips ?: spacingTwips,
-            highlight = o.highlight ?: highlight,
-            shdFill = o.shdFill ?: shdFill,
-            vanish = o.vanish ?: vanish,
-            lang = o.lang ?: lang,
-            styleId = o.styleId ?: styleId,
+            bold = o.bold.orElse(bold),
+            italic = o.italic.orElse(italic),
+            underline = o.underline.orElse(underline),
+            underlineColor = o.underlineColor.orElse(underlineColor),
+            strike = o.strike.orElse(strike),
+            color = o.color.orElse(color),
+            sizeHalfPt = o.sizeHalfPt.orElse(sizeHalfPt),
+            font = o.font.orElse(font),
+            vertAlign = o.vertAlign.orElse(vertAlign),
+            caps = o.caps.orElse(caps),
+            smallCaps = o.smallCaps.orElse(smallCaps),
+            spacingTwips = o.spacingTwips.orElse(spacingTwips),
+            highlight = o.highlight.orElse(highlight),
+            shdFill = o.shdFill.orElse(shdFill),
+            vanish = o.vanish.orElse(vanish),
+            lang = o.lang.orElse(lang),
+            styleId = o.styleId.orElse(styleId),
         )
     }
 
@@ -96,28 +99,28 @@ internal object OoxmlDocxStyles {
     ) {
         /** Returns a new PPr with [o]'s non-null values overriding this one's. */
         fun overlay(o: PPr) = PPr(
-            styleId = o.styleId ?: styleId,
-            jc = o.jc ?: jc,
-            indLeft = o.indLeft ?: indLeft,
-            indRight = o.indRight ?: indRight,
-            indFirstLine = o.indFirstLine ?: indFirstLine,
-            indHanging = o.indHanging ?: indHanging,
-            spacingBefore = o.spacingBefore ?: spacingBefore,
-            spacingAfter = o.spacingAfter ?: spacingAfter,
-            lineRule = o.lineRule ?: lineRule,
-            line = o.line ?: line,
-            bidi = o.bidi ?: bidi,
-            shdFill = o.shdFill ?: shdFill,
-            borders = o.borders ?: borders,
-            keepNext = o.keepNext ?: keepNext,
-            keepLines = o.keepLines ?: keepLines,
-            widowControl = o.widowControl ?: widowControl,
-            pageBreakBefore = o.pageBreakBefore ?: pageBreakBefore,
-            tabs = o.tabs ?: tabs,
-            numId = o.numId ?: numId,
-            ilvl = o.ilvl ?: ilvl,
-            outlineLvl = o.outlineLvl ?: outlineLvl,
-            dropCapLines = o.dropCapLines ?: dropCapLines,
+            styleId = o.styleId.orElse(styleId),
+            jc = o.jc.orElse(jc),
+            indLeft = o.indLeft.orElse(indLeft),
+            indRight = o.indRight.orElse(indRight),
+            indFirstLine = o.indFirstLine.orElse(indFirstLine),
+            indHanging = o.indHanging.orElse(indHanging),
+            spacingBefore = o.spacingBefore.orElse(spacingBefore),
+            spacingAfter = o.spacingAfter.orElse(spacingAfter),
+            lineRule = o.lineRule.orElse(lineRule),
+            line = o.line.orElse(line),
+            bidi = o.bidi.orElse(bidi),
+            shdFill = o.shdFill.orElse(shdFill),
+            borders = o.borders.orElse(borders),
+            keepNext = o.keepNext.orElse(keepNext),
+            keepLines = o.keepLines.orElse(keepLines),
+            widowControl = o.widowControl.orElse(widowControl),
+            pageBreakBefore = o.pageBreakBefore.orElse(pageBreakBefore),
+            tabs = o.tabs.orElse(tabs),
+            numId = o.numId.orElse(numId),
+            ilvl = o.ilvl.orElse(ilvl),
+            outlineLvl = o.outlineLvl.orElse(outlineLvl),
+            dropCapLines = o.dropCapLines.orElse(dropCapLines),
             rPr = overlayRun(o),
         )
 

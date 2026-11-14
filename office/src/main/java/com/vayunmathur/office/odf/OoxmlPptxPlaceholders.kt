@@ -15,7 +15,10 @@ internal object OoxmlPptxPlaceholders {
         val w: Float,
         val h: Float)
 
-    internal class PlaceholderMap(private val layout: List<PlaceholderInfo>, private val master: List<PlaceholderInfo>) {
+    internal class PlaceholderMap(
+        private val layout: List<PlaceholderInfo>,
+        private val master: List<PlaceholderInfo>,
+    ) {
         /** Geometry [x,y,w,h] for a placeholder: idx match first, then type; layout overrides master. */
         fun geom(type: String?, idx: String?): FloatArray? =
             match(layout, type, idx) ?: match(master, type, idx)

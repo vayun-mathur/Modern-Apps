@@ -186,7 +186,7 @@ internal object ExcelFormula {
     /** Returns an Excel-style formula ("=…") for the given OpenFormula ("of:=…"). */
     fun fromOdf(of: String): String {
         var body = of.trim()
-        if (body.startsWith("of:", ignoreCase = true)) body = body.substring(3)
+        if (body.startsWith("of:", ignoreCase = true)) body = body.substring(OF_PREFIX_LENGTH)
         body = body.trim().removePrefix("=")
         val sb = StringBuilder("=")
         var i = 0
@@ -265,9 +265,15 @@ internal object ExcelFormula {
         val m = Regex("^(\\$?)([A-Za-z]{1,3})(\\$?)([0-9]+)$").matchEntire(cell.trim()) ?: return null
         return Endpoint(
             sheet, sheetPrefix, sheet.lowercase(),
-            m.groupValues[2], m.groupValues[1], m.groupValues[4],
-            m.groupValues[3] == "$")
+            m.groupValues[GROUP_COLUMN], m.groupValues[GROUP_COLUMN_DOLLAR], m.groupValues[GROUP_ROW],
+            m.groupValues[GROUP_ROW_DOLLAR] == "$")
     }
+
+    private const val OF_PREFIX_LENGTH = 3
+    private const val GROUP_COLUMN_DOLLAR = 1
+    private const val GROUP_COLUMN = 2
+    private const val GROUP_ROW_DOLLAR = 3
+    private const val GROUP_ROW = 4
 
     private val CELL_TOKEN = Regex("^(\\$?)([A-Za-z]{1,3})(\\$?)([0-9]+)$")
 

@@ -33,9 +33,13 @@ import com.vayunmathur.office.R
 
 /** What the shared bottom bar is currently formatting. (Phase 2) */
 sealed interface FormatTarget {
+    /** Singleton holding none state and operations. */
     data object None : FormatTarget
+    /** Immutable value describing text run; carries runStart, runEnd, selStart, selEnd. */
     data class TextRun(val runStart: Int, val runEnd: Int, val selStart: Int, val selEnd: Int) : FormatTarget
+    /** Immutable value describing cell; carries sheet, row, col. */
     data class Cell(val sheet: Int, val row: Int, val col: Int) : FormatTarget
+    /** Immutable value describing element; carries slide, element. */
     data class Element(val slide: Int, val element: Int) : FormatTarget
 }
 
@@ -47,6 +51,7 @@ data class DocCaps(
     val insertTable: Boolean = false
 )
 
+/** Kinds of shape kind. */
 enum class ShapeKind { RECT, ELLIPSE, LINE }
 
 /** Callbacks the shared bottom bar may invoke. */

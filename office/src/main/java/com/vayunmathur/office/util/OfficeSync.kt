@@ -28,6 +28,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.io.encoding.Base64
 
+/** Singleton holding office sync state and operations. */
 object OfficeSync {
     // Cloudflare-fronted; covered by the FIRST_PARTY pins.
     private const val URL = "https://api.maproj.org/office"
@@ -281,6 +282,8 @@ object OfficeSync {
     @Serializable internal data class PullResp(val actions: List<String> = emptyList(), val seq: Int = 0)
 
     @Serializable data class DocAction(val type: String = "snapshot", val flat: String = "")
+
+    /** A document-sharing invite: the doc, its key and the invited role. */
     @Serializable data class Invite(
         val docId: String,
         val key: String,
@@ -302,8 +305,11 @@ object OfficeSync {
     /** Peeks the discriminator on an inbox blob so invites and requests can share the channel. */
     @Serializable private data class InboxEnvelope(val kind: String = "")
 
+    /** Invites Result: a list implementation for invites result. */
     class InvitesResult(val invites: List<Invite>, val seq: Int)
+    /** Inbox Result: a list implementation for inbox result. */
     class InboxResult(val invites: List<Invite>, val requests: List<JoinRequest>, val seq: Int)
+    /** Doc Actions Result: a list implementation for doc actions result. */
     class DocActionsResult(val items: List<String>, val seq: Int)
 
     @Serializable private data class SubMsg(val t: String, val channel: String)

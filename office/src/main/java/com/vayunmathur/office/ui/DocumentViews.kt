@@ -4,6 +4,7 @@ import com.vayunmathur.library.ui.odf.OdfContentBlock
 import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.library.ui.odf.ParagraphStyle
 
+/** Immutable value describing heading item; carries text, level, contentIndex. */
 data class HeadingItem(val text: String, val level: Int, val contentIndex: Int)
 
 fun extractHeadings(doc: OdfDocument.TextDocument): List<HeadingItem> {

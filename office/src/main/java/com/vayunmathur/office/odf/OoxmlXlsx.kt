@@ -31,7 +31,8 @@ internal object OoxmlXlsx {
     fun import(pkg: OoxmlPackage, fileName: String): OdfDocument.Spreadsheet {
         val theme = OoxmlTheme.parse(pkg.entries["xl/theme/theme1.xml"])
         val shared = pkg.entries["xl/sharedStrings.xml"]?.let { parseSharedStrings(it) } ?: emptyList()
-        val styles = pkg.entries["xl/styles.xml"]?.let { OoxmlXlsxStyles.parseStyles(it, theme) } ?: OoxmlXlsxStyles.StyleTable()
+        val styles = pkg.entries["xl/styles.xml"]?.let { OoxmlXlsxStyles.parseStyles(it, theme) }
+            ?: OoxmlXlsxStyles.StyleTable()
         val wbRels = pkg.relsFor("xl/workbook.xml")
         val wb = pkg.entries["xl/workbook.xml"]?.let { parseWorkbook(it) } ?: Workbook(emptyList(), emptyList())
         val ctx = XlsxImportCtx(theme, shared, styles, wbRels, wb)
@@ -443,7 +444,11 @@ internal object OoxmlXlsx {
     }
 
     private fun styleCell(
-        base: OdfCell, xf: OoxmlXlsxStyles.Xf?, styles: OoxmlXlsxStyles.StyleTable, cellStyle: CellStyle, formula: String?,
+        base: OdfCell,
+        xf: OoxmlXlsxStyles.Xf?,
+        styles: OoxmlXlsxStyles.StyleTable,
+        cellStyle: CellStyle,
+        formula: String?,
     ): OdfCell {
         val resolvedFmt = xf?.let {
             if (it.applyNumberFormat || it.numFmtId != 0) styles.numberFormat(it.numFmtId) else null
@@ -483,7 +488,9 @@ internal object OoxmlXlsx {
     /** Best-effort number/date rendering without the native engine. */
     private fun kotlinFormat(value: Double, fmt: OdfNumberFormat, raw: String): String {
         if (fmt.isDate || fmt.isTime) return excelSerialToIso(value) ?: raw
-        if (fmt.isScientific) return "%.${fmt.decimals ?: DEFAULT_SCIENTIFIC_DECIMALS}E".format(java.util.Locale.ROOT, value)
+        if (fmt.isScientific) {
+            return "%.${fmt.decimals ?: DEFAULT_SCIENTIFIC_DECIMALS}E".format(java.util.Locale.ROOT, value)
+        }
         if (fmt.isFraction) return raw
         val scaled = if (fmt.percent) value * 100 else value
         val decimals = fmt.decimals ?: 0
@@ -512,8 +519,14 @@ internal object OoxmlXlsx {
         val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
         cal.timeInMillis = millis
         fun p(field: Int, digits: Int = 2) = cal.get(field).toString().padStart(digits, '0')
-        val date = "${p(java.util.Calendar.YEAR, 4)}-${(cal.get(java.util.Calendar.MONTH) + 1).toString().padStart(2, '0')}-${p(java.util.Calendar.DAY_OF_MONTH)}"
-        return if (serial % 1 != 0.0) "$date ${p(java.util.Calendar.HOUR_OF_DAY)}:${p(java.util.Calendar.MINUTE)}" else date
+        val date = "${p(java.util.Calendar.YEAR, 4)}-" +
+            "${(cal.get(java.util.Calendar.MONTH) + 1).toString().padStart(2, '0')}-" +
+            p(java.util.Calendar.DAY_OF_MONTH)
+        return if (serial % 1 != 0.0) {
+            "$date ${p(java.util.Calendar.HOUR_OF_DAY)}:${p(java.util.Calendar.MINUTE)}"
+        } else {
+            date
+        }
     }
 
     /** Raw cell content (value/inline/formula). */

@@ -131,7 +131,11 @@ internal object OoxmlXlsxPost {
         else -> "value()=${formulas.getOrElse(0) { "0" }}"
     }
 
-    fun applyCondFormats(sheet: OdfSheet, cfs: List<Pair<String, List<CfRule>>>, styles: OoxmlXlsxStyles.StyleTable): OdfSheet {
+    fun applyCondFormats(
+        sheet: OdfSheet,
+        cfs: List<Pair<String, List<CfRule>>>,
+        styles: OoxmlXlsxStyles.StyleTable,
+    ): OdfSheet {
         if (cfs.isEmpty()) return sheet
         val grid = sheet.rows.map { it.cells.toMutableList() }.toMutableList()
         for ((sqref, rules) in cfs) {

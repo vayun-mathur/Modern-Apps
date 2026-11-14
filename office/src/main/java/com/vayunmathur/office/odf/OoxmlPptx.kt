@@ -102,7 +102,8 @@ internal object OoxmlPptx {
         val part: String,
         val theme: OoxmlTheme,
         val rels: Map<String, OoxmlPackage.Rel>,
-        val placeholders: OoxmlPptxPlaceholders.PlaceholderMap = OoxmlPptxPlaceholders.PlaceholderMap(emptyList(), emptyList()),
+        val placeholders: OoxmlPptxPlaceholders.PlaceholderMap =
+            OoxmlPptxPlaceholders.PlaceholderMap(emptyList(), emptyList()),
         var autoY: Float = 36f
     )
 

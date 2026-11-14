@@ -122,6 +122,7 @@ private fun OfficeAppTheme(content: @Composable () -> Unit) {
 /** Top-level navigation routes for the Office app (shared nav framework). */
 @Serializable
 sealed interface OfficeRoute : NavKey {
+    /** Singleton holding main state and operations. */
     @Serializable data object Main : OfficeRoute
     /** Editing a local/offline document (optionally identified by its source uri). */
     @Serializable data class OfflineEditor(val uri: String? = null) : OfficeRoute
@@ -129,6 +130,7 @@ sealed interface OfficeRoute : NavKey {
     @Serializable data class OnlineEditor(val docId: String) : OfficeRoute
 }
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private val viewModel: OfficeViewModel by viewModels()
     private var intentDocumentUri: Uri? = null

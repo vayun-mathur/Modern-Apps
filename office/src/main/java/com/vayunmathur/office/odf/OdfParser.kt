@@ -10,6 +10,7 @@ import java.util.zip.ZipInputStream
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 
+/** Singleton holding odf parser state and operations. */
 object OdfParser {
 
     fun parse(context: Context, uri: Uri, fileName: String): OdfDocument {

@@ -14,19 +14,33 @@ import org.xmlpull.v1.XmlPullParserFactory
 
 /** Parsed MathML presentation tree for layout rendering (D34). */
 sealed class MathNode {
+    /** Immutable value describing row; carries children. */
     data class Row(val children: List<MathNode>) : MathNode()
+    /** Immutable value describing token; carries text, isOperator. */
     data class Token(val text: String, val isOperator: Boolean = false) : MathNode()
+    /** Immutable value describing frac; carries numerator, denominator. */
     data class Frac(val numerator: MathNode, val denominator: MathNode) : MathNode()
+    /** Immutable value describing sup; carries base, exponent. */
     data class Sup(val base: MathNode, val exponent: MathNode) : MathNode()
+    /** Immutable value describing sub; carries base, subscript. */
     data class Sub(val base: MathNode, val subscript: MathNode) : MathNode()
+    /** Immutable value describing sub sup; carries base, subscript, superscript. */
     data class SubSup(val base: MathNode, val subscript: MathNode, val superscript: MathNode) : MathNode()
+    /** Immutable value describing sqrt; carries radicand. */
     data class Sqrt(val radicand: MathNode) : MathNode()
+    /** Immutable value describing root; carries radicand, index. */
     data class Root(val radicand: MathNode, val index: MathNode) : MathNode()
+    /** Immutable value describing fenced; carries open, close, body. */
     data class Fenced(val open: String, val close: String, val body: MathNode) : MathNode()
+    /** Immutable value describing under; carries base, under. */
     data class Under(val base: MathNode, val under: MathNode) : MathNode()
+    /** Immutable value describing over; carries base, over. */
     data class Over(val base: MathNode, val over: MathNode) : MathNode()
+    /** Immutable value describing under over; carries base, under, over. */
     data class UnderOver(val base: MathNode, val under: MathNode, val over: MathNode) : MathNode()
+    /** Immutable value describing table; carries rows. */
     data class Table(val rows: List<TableRow>) : MathNode()
+    /** Immutable value describing table row; carries cells. */
     data class TableRow(val cells: List<MathNode>) : MathNode()
     /** mmultiscripts (best-effort): pre/post sub/sup scripts flattened around the base. */
     data class Multiscripts(
@@ -37,6 +51,7 @@ sealed class MathNode {
         val preSup: MathNode?) : MathNode()
 }
 
+/** Singleton holding odf math state and operations. */
 object OdfMath {
 
     /** Parses an embedded math object's content.xml (MathML). Returns null if unparseable. */

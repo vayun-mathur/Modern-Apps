@@ -38,6 +38,7 @@ import kotlinx.serialization.json.Json
 internal const val MAX_UNDO = 30
 internal const val MAX_RECENT = 20
 
+/** Immutable value describing office doc meta. */
 @Serializable
 data class OfficeDocMeta(
     val docId: String,
@@ -126,6 +127,7 @@ data class OwnerTransfer(val newOwnerId: String, val newOwnerKey: String, val si
 @Serializable
 data class SignedOp(val author: String, val sig: String, val ops: String)
 
+/** Office View Model: a application implementation for office view model. */
 class OfficeViewModel(application: Application) : AndroidViewModel(application) {
     internal val stateMutable = MutableStateFlow<ViewState>(ViewState.Empty)
     val state: StateFlow<ViewState> = stateMutable
@@ -148,12 +150,14 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
     internal val nightModeMutable = MutableStateFlow(false)
     val nightMode: StateFlow<Boolean> = nightModeMutable
 
+    /** Kinds of document theme mode. */
     enum class DocumentThemeMode {
         UNCHANGED,
         FOLLOW_SYSTEM;
 
         fun toggled(): DocumentThemeMode = if (this == UNCHANGED) FOLLOW_SYSTEM else UNCHANGED
 
+        /** Shared constants and helpers for DocumentThemeMode. */
         companion object {
             fun parse(name: String?): DocumentThemeMode = try {
                 valueOf(name ?: UNCHANGED.name)
@@ -442,10 +446,15 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
     /** This device's sync id. Empty until [initSync] has run. */
     val syncDeviceId: String get() = OfficeSync.deviceId
 
+    /** State for view. */
     sealed class ViewState {
+        /** Singleton holding empty state and operations. */
         data object Empty : ViewState()
+        /** Singleton holding loading state and operations. */
         data object Loading : ViewState()
+        /** Immutable value describing loaded; carries document. */
         data class Loaded(val document: OdfDocument) : ViewState()
+        /** Immutable value describing error; carries message. */
         data class Error(val message: String) : ViewState()
     }
 
