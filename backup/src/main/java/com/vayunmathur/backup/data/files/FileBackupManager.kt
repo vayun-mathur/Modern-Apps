@@ -145,6 +145,7 @@ class FileBackupManager(
 
     private data class Collection(val uri: Uri, val type: String)
 
+    /** Manifest path and media collections backed up by [FileBackupManager]. */
     companion object {
         private const val INDEX = "${BackupRepository.FILES_DIR}/index.json"
 

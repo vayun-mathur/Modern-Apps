@@ -42,6 +42,7 @@ class FileBackupWorker(
         }
     }
 
+    /** Work name and scheduling entry point for [FileBackupWorker]. */
     companion object {
         private const val WORK_NAME = "backup_file_backup"
 

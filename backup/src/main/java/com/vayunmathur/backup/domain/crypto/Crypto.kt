@@ -62,37 +62,62 @@ class Crypto(private val masterKey: ByteArray) {
     }
 
     fun decrypt(input: InputStream, output: OutputStream) {
+        val version = readVersion(input)
+        decryptSegments(input, output, version)
+        output.flush()
+    }
+
+    private fun readVersion(input: InputStream): Int {
         val version = input.read()
         if (version < 0) throw IOException("empty backup stream")
         require(version == VERSION || version == VERSION_V1) {
             "unsupported backup version: $version"
         }
+        return version
+    }
+
+    private fun decryptSegments(input: InputStream, output: OutputStream, version: Int) {
         var expectedIndex = 0
         while (true) {
-            val length = readIntFrom(input) ?: run {
-                // Clean EOF between segments. Only a legacy v1 stream may end
-                // here; a v2 stream must end with its terminator segment.
-                if (version == VERSION) throw IOException("truncated backup stream: missing terminator")
-                break
-            }
-            if (length <= 0 || length > MAX_SEGMENT_BLOB) throw IOException("invalid segment length: $length")
-            val segment = ByteArray(length)
-            if (fill(input, segment) != length) throw IOException("truncated segment")
-            val plain = E2ee.aesDecrypt(masterKey, segment)
-            if (plain.size < 4) throw IOException("corrupt segment")
+            val length = nextSegmentLength(input, version) ?: return
+            val plain = decryptSegment(input, length)
             val index = readIntBE(plain, 0)
-            if (index != expectedIndex) throw IOException("segment out of order: $index != $expectedIndex")
+            if (index != expectedIndex) {
+                throw IOException("segment out of order: $index != $expectedIndex")
+            }
             if (plain.size == 4) {
-                // Terminator segment (v2 only; a v1 writer never emitted one).
-                if (version == VERSION_V1) throw IOException("corrupt segment")
-                if (readIntFrom(input) != null) throw IOException("trailing data after terminator")
-                output.flush()
+                checkTerminator(input, version)
                 return
             }
             output.write(plain, 4, plain.size - 4)
             expectedIndex++
         }
-        output.flush()
+    }
+
+    /** Next segment length, or null for a clean legacy-v1 EOF between segments. */
+    private fun nextSegmentLength(input: InputStream, version: Int): Int? {
+        val length = readIntFrom(input) ?: run {
+            // Clean EOF between segments. Only a legacy v1 stream may end
+            // here; a v2 stream must end with its terminator segment.
+            if (version == VERSION) throw IOException("truncated backup stream: missing terminator")
+            return null
+        }
+        if (length <= 0 || length > MAX_SEGMENT_BLOB) throw IOException("invalid segment length: $length")
+        return length
+    }
+
+    private fun decryptSegment(input: InputStream, length: Int): ByteArray {
+        val segment = ByteArray(length)
+        if (fill(input, segment) != length) throw IOException("truncated segment")
+        val plain = E2ee.aesDecrypt(masterKey, segment)
+        if (plain.size < 4) throw IOException("corrupt segment")
+        return plain
+    }
+
+    private fun checkTerminator(input: InputStream, version: Int) {
+        // Terminator segment (v2 only; a v1 writer never emitted one).
+        if (version == VERSION_V1) throw IOException("corrupt segment")
+        if (readIntFrom(input) != null) throw IOException("trailing data after terminator")
     }
 
     fun encrypt(plain: ByteArray): ByteArray =
@@ -101,6 +126,7 @@ class Crypto(private val masterKey: ByteArray) {
     fun decrypt(blob: ByteArray): ByteArray =
         ByteArrayOutputStream().also { decrypt(ByteArrayInputStream(blob), it) }.toByteArray()
 
+    /** Format versions, segment sizing and stream helpers for [Crypto]. */
     companion object {
         const val VERSION = 2
         private const val VERSION_V1 = 1

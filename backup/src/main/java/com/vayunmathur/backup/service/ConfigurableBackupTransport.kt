@@ -364,6 +364,7 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
     private fun decodeKey(keyId: String): String =
         String(Base64.decode(keyId, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING), Charsets.UTF_8)
 
+    /** Transport component name and streaming constants for [ConfigurableBackupTransport]. */
     companion object {
         private const val COMPONENT = "com.vayunmathur.backup/.service.ConfigurableBackupTransportService"
         private const val CHUNK = 32 * 1024

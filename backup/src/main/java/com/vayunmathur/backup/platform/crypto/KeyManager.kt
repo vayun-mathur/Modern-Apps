@@ -30,6 +30,7 @@ class KeyManager(context: Context) : DatabaseHelper(context) {
 
     fun clear() = deleteKey()
 
+    /** Key-derivation constants for [KeyManager]. */
     companion object {
         private val MASTER_KEY_INFO =
             "com.vayunmathur.backup/master-key".toByteArray(Charsets.UTF_8)

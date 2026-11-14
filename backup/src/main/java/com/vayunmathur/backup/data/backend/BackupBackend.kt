@@ -44,6 +44,7 @@ interface BackupBackend {
     suspend fun loadOrNull(path: String): ByteArray? =
         if (exists(path)) load(path) else null
 
+    /** Stream helpers shared by [BackupBackend] implementations and callers. */
     companion object {
         fun bytesWriter(bytes: ByteArray): suspend (OutputStream) -> Unit =
             { it.write(bytes); it.flush() }

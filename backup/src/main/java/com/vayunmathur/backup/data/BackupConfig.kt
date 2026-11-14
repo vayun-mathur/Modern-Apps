@@ -84,6 +84,7 @@ class BackupConfig(private val context: Context) {
         context.backupDataStore.edit { it.clear() }
     }
 
+    /** DataStore preference keys for [BackupConfig]. */
     companion object {
         private val KEY_BACKEND = stringPreferencesKey("backend_type")
         private val KEY_SAF_URI = stringPreferencesKey("saf_tree_uri")

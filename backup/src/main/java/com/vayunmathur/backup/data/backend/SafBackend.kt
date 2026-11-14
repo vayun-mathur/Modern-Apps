@@ -147,6 +147,7 @@ class SafBackend(
     private fun segments(path: String): List<String> =
         path.split('/').filter { it.isNotEmpty() }
 
+    /** MIME type used when creating backup blobs in the SAF tree. */
     companion object {
         private const val MIME_OCTET = "application/octet-stream"
     }

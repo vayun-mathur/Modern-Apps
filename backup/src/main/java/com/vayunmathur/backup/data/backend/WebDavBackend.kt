@@ -114,6 +114,7 @@ class WebDavBackend(
         return resp.status == HTTP_MULTI_STATUS || resp.isSuccess
     }
 
+    /** HTTP status constants used by [WebDavBackend]. */
     companion object {
         private const val HTTP_OK = 200
         private const val HTTP_CREATED = 201

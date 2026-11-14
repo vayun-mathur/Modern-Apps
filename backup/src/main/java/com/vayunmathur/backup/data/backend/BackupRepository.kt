@@ -42,6 +42,7 @@ class BackupRepository(
 
     suspend fun list(dir: String) = backend.list(dir)
 
+    /** Backend path constants and path builders for the backup layout. */
     companion object {
         const val METADATA = "metadata.json"
         const val KV_DIR = "kv"

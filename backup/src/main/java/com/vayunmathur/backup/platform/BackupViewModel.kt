@@ -35,6 +35,7 @@ data class BackupUiState(
     val onboarded: Boolean get() = hasKey && settings.isConfigured
 }
 
+/** ViewModel holding backup configuration, key state and one-shot UI messages. */
 class BackupViewModel(app: Application) : AndroidViewModel(app) {
     private val config = BackupConfig(app)
     private val keyManager = KeyManager(app)
