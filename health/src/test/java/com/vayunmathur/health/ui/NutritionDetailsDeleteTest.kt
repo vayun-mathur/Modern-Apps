@@ -63,7 +63,8 @@ class NutritionDetailsDeleteTest {
             metadata = "Details Delete Bowl",
         )))
         val backStack = NavBackStack<Route>(arrayOf(Route.Today, Route.NutritionFullBreakdown))
-        rule.setContent { NutritionDetailsPage(backStack, HealthViewModel(context, repo)) }
+        val viewModel = HealthViewModel(context, repo)
+        rule.setContent { NutritionDetailsPage(backStack, viewModel) }
         rule.waitForIdle()
         rule.onNodeWithText("Logged today").assertExists()
         rule.onNodeWithText("Details Delete Bowl").assertExists()

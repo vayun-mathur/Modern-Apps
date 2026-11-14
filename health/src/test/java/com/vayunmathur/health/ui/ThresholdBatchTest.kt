@@ -6,8 +6,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
@@ -164,7 +166,27 @@ class ThresholdBatchTest {
         rule.setContent { RecipeManagementPage(backStack, vm()) }
         rule.waitForIdle()
         rule.onNodeWithText("Ingredients").performClick()
-        rule.waitForIdle()
+        // Ingredients arrive via a Room flow resumed on the paused main
+        // looper; waitForIdle alone does not pump it under Robolectric.
+        // The food-database card above the list also has to finish
+        // preparing before the first lazy row composes, which in a
+        // full-module run can take a while.
+        val deadline = System.currentTimeMillis() + 60_000
+        var found = false
+        while (!found && System.currentTimeMillis() < deadline) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            // In a full-module run the shared in-memory DB already
+            // holds other classes' ingredients, so this row can be
+            // far down the lazy list and never compose until scrolled
+            // to; a targeted run starts empty and finds it at once.
+            runCatching {
+                rule.onNode(androidx.compose.ui.test.hasScrollAction())
+                    .performScrollToNode(androidx.compose.ui.test.hasText("Toggle Beans", substring = true))
+            }
+            found = rule.onAllNodesWithText("Toggle Beans", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+            if (!found) Thread.sleep(20)
+        }
         rule.onNodeWithText("Toggle Beans", substring = true).assertExists()
         // Card + fire-toggle + delete are the clickables; fire is the middle one on the row.
         val clickables = rule.onAllNodes(hasClickAction()).fetchSemanticsNodes()
