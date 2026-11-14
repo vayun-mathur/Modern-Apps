@@ -139,9 +139,11 @@ class InstallCoordinatorDownloadTest {
         assertFalse(outcome.started)
         val rejected = outcome.verification as VerificationResult.Rejected
         assertTrue(rejected.reason.contains("expected"), rejected.reason)
-        // The path downloads once up front, again inside the size check,
-        // and exactly once more as the truncation retry.
-        assertEquals(before + 3, apkHits.get())
+        // downloadVerified downloads once, size-checks, and retries
+        // exactly once on truncation: two requests in total. (A third,
+        // redundant up-front download was removed by the fix that
+        // stopped downloading the base APK twice per install.)
+        assertEquals(before + 2, apkHits.get())
     }
 
     @Test
