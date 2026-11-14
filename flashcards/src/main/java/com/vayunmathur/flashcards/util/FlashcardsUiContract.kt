@@ -35,6 +35,7 @@ data class DeckListUiState(
     val decks: List<DeckSummary> = emptyList(),
 )
 
+/** Callbacks for the deck list: opening, adding, deleting, reviewing, and reordering decks. */
 interface DeckListActions {
     fun openDeck(id: Long) {}
     fun addDeck(name: String) {}
@@ -42,6 +43,7 @@ interface DeckListActions {
     fun startReview(deckId: Long) {}
     fun reorder(decks: List<Deck>) {}
 
+    /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: DeckListActions = object : DeckListActions {}
     }
@@ -70,6 +72,7 @@ data class NoteListUiState(
     val decks: List<DeckOption> = emptyList(),
 )
 
+/** Callbacks for a deck's note list, including bulk selection actions. */
 interface NoteListActions {
     fun back() {}
     fun openNote(id: Long) {}
@@ -89,6 +92,7 @@ interface NoteListActions {
     fun setSuspended(ids: List<Long>, suspended: Boolean) {}
     fun resetScheduling(ids: List<Long>) {}
 
+    /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: NoteListActions = object : NoteListActions {}
     }
@@ -118,6 +122,7 @@ data class NoteEditUiState(
     val decks: List<DeckOption> = emptyList(),
 )
 
+/** Callbacks for the note editor: saving, deleting, suspension, and image insertion. */
 interface NoteEditActions {
     fun back() {}
     fun save(noteTypeId: Long, deckId: Long, fieldValues: List<String>, tags: String) {}
@@ -125,6 +130,7 @@ interface NoteEditActions {
     fun setSuspended(suspended: Boolean) {}
     fun insertImage(fieldIndex: Int) {}
 
+    /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: NoteEditActions = object : NoteEditActions {}
     }
@@ -144,16 +150,19 @@ data class NoteTypeSummary(
     val isCloze: Boolean,
 )
 
+/** Everything the note-type management list draws. */
 data class NoteTypeListUiState(
     val noteTypes: List<NoteTypeSummary> = emptyList(),
 )
 
+/** Callbacks for the note-type management list. */
 interface NoteTypeListActions {
     fun back() {}
     fun openNoteType(id: Long) {}
     fun addNoteType() {}
     fun deleteNoteType(id: Long) {}
 
+    /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: NoteTypeListActions = object : NoteTypeListActions {}
     }
@@ -178,11 +187,13 @@ data class NoteTypeEditUiState(
     val isNew: Boolean = true,
 )
 
+/** Callbacks for the note-type editor: saving and deleting the note type. */
 interface NoteTypeEditActions {
     fun back() {}
     fun save(name: String, css: String, type: Int, fields: List<String>, templates: List<TemplateDraft>) {}
     fun delete() {}
 
+    /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: NoteTypeEditActions = object : NoteTypeEditActions {}
     }
@@ -252,6 +263,7 @@ data class ReviewUiState(
     fun label(grade: Grade): String = intervalLabels[grade] ?: ""
 }
 
+/** Callbacks for a review session: grading, undo, suspension, and speech. */
 interface ReviewActions {
     fun back() {}
     fun grade(grade: Grade) {}
@@ -259,6 +271,7 @@ interface ReviewActions {
     fun suspend() {}
     fun speak(text: String) {}
 
+    /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: ReviewActions = object : ReviewActions {}
     }
@@ -274,6 +287,7 @@ data class DeckOption(val id: Long?, val name: String)
 /** One day of review history. [epochDay] is days since the Unix epoch (local). */
 data class DailyStat(val epochDay: Long, val count: Int)
 
+/** Everything the statistics screen draws, including history, forecast, and retention. */
 data class StatsUiState(
     val deckOptions: List<DeckOption> = emptyList(),
     val selectedDeckId: Long? = null,
@@ -292,10 +306,12 @@ data class StatsUiState(
     val heatmap: List<DailyStat> = emptyList(),
 )
 
+/** Callbacks for the statistics screen. */
 interface StatsActions {
     fun back() {}
     fun selectDeck(id: Long?) {}
 
+    /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: StatsActions = object : StatsActions {}
     }
@@ -305,6 +321,7 @@ interface StatsActions {
 // Settings
 // ---------------------------------------------------------------------------
 
+/** Theme-mode values stored in settings: system, light, or dark. */
 object ThemeMode {
     const val SYSTEM = 0
     const val LIGHT = 1
@@ -319,6 +336,7 @@ data class DeckPreset(
     val desiredRetention: Double,
 )
 
+/** Everything the settings screen draws, including study limits and reminders. */
 data class SettingsUiState(
     val desiredRetention: Double = 0.9,
     val newPerDay: Int = 20,
@@ -333,6 +351,7 @@ data class SettingsUiState(
     val canOptimize: Boolean = false,
 )
 
+/** Callbacks for the settings screen, including FSRS optimisation and exports. */
 interface SettingsActions {
     fun back() {}
     fun setDesiredRetention(value: Double) {}
@@ -349,6 +368,7 @@ interface SettingsActions {
     fun manageNoteTypes() {}
     fun exportCollection() {}
 
+    /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }

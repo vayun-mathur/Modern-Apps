@@ -36,6 +36,7 @@ import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
 
+/** Entry activity that owns the [FlashcardsViewModel] and applies the theme from its settings. */
 class MainActivity : MaActivity() {
     private val viewModel: FlashcardsViewModel by viewModels {
         FlashcardsViewModelFactory(application, FlashcardsRepository.get(application))
@@ -58,26 +59,34 @@ class MainActivity : MaActivity() {
     }
 }
 
+/** Navigation destinations for decks, notes, note types, review, and stats. */
 @Serializable
 sealed interface Route : NavKey {
+    /** The deck-list main screen. */
     @Serializable
     data object Main : Route
 
+    /** The review-statistics screen. */
     @Serializable
     data object Stats : Route
 
+    /** The note-type management list. */
     @Serializable
     data object NoteTypeList : Route
 
+    /** The editor for the note type identified by [noteTypeId]. */
     @Serializable
     data class NoteTypeEdit(val noteTypeId: Long) : Route
 
+    /** The note list for the deck identified by [deckId]. */
     @Serializable
     data class CardList(val deckId: Long) : Route
 
+    /** The editor for note [noteId] in deck [deckId]. */
     @Serializable
     data class NoteEdit(val deckId: Long, val noteId: Long) : Route
 
+    /** A review session for deck [deckId] with its study mode and limits. */
     @Serializable
     data class Review(
         val deckId: Long,

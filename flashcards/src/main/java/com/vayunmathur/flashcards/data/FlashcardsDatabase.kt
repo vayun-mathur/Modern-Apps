@@ -20,6 +20,7 @@ const val DB_NAME = "flashcards-db"
 fun flashcardsDbConfigs(context: Context): List<Pair<String, String>> =
     listOf(DB_NAME to DatabaseHelper(context).getPassphrase())
 
+/** Room access for decks. */
 @Dao
 interface DeckDao {
     @Query("SELECT * FROM Deck")
@@ -38,6 +39,7 @@ interface DeckDao {
     suspend fun delete(value: Deck): Int
 }
 
+/** Room access for note types. */
 @Dao
 interface NoteTypeDao {
     @Query("SELECT * FROM NoteType")
@@ -56,6 +58,7 @@ interface NoteTypeDao {
     suspend fun delete(value: NoteType): Int
 }
 
+/** Room access for the fields of note types. */
 @Dao
 interface NoteTypeFieldDao {
     @Query("SELECT * FROM NoteTypeField")
@@ -77,6 +80,7 @@ interface NoteTypeFieldDao {
     suspend fun deleteByNoteType(noteTypeId: Long)
 }
 
+/** Room access for card templates. */
 @Dao
 interface CardTemplateDao {
     @Query("SELECT * FROM CardTemplate")
@@ -98,6 +102,7 @@ interface CardTemplateDao {
     suspend fun deleteByNoteType(noteTypeId: Long)
 }
 
+/** Room access for notes. */
 @Dao
 interface NoteDao {
     @Query("SELECT * FROM Note")
@@ -140,6 +145,7 @@ interface NoteDao {
     suspend fun deleteByDeck(deckId: Long)
 }
 
+/** Room access for generated cards. */
 @Dao
 interface CardDao {
     @Query("SELECT * FROM Card")
@@ -200,6 +206,7 @@ interface CardDao {
     suspend fun deleteRemovedTemplates(noteId: Long, keepOrds: List<Int>)
 }
 
+/** Room access for review-log entries. */
 @Dao
 interface ReviewLogDao {
     @Query("SELECT * FROM ReviewLog")
@@ -243,6 +250,7 @@ interface ReviewLogDao {
     version = 4,
     exportSchema = false,
 )
+/** Room database holding decks, notes, cards, and review history. */
 abstract class FlashcardsDatabase : RoomDatabase() {
     abstract fun deckDao(): DeckDao
     abstract fun cardDao(): CardDao
@@ -252,6 +260,7 @@ abstract class FlashcardsDatabase : RoomDatabase() {
     abstract fun cardTemplateDao(): CardTemplateDao
     abstract fun noteDao(): NoteDao
 
+    /** Migration definitions upgrading the flashcards database schema. */
     companion object : DatabaseMigrations {
         override val migrations = listOf(
             Migration(1, 2) { db ->

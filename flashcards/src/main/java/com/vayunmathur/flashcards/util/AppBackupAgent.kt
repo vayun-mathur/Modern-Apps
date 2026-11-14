@@ -5,6 +5,7 @@ import com.vayunmathur.library.util.BaseBackupAgent
 import com.vayunmathur.flashcards.data.flashcardsDbConfigs
 import java.io.File
 
+/** Backup agent that backs up the encrypted flashcards database and its DataStore settings. */
 class AppBackupAgent : BaseBackupAgent() {
     override val dbCodec = SqlCipherDbCodec
 

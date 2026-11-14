@@ -142,6 +142,7 @@ class ReviewSession(
         }
     }
 
+    /** How many cards ahead a failed card is re-queued in a session. */
     companion object {
         private const val RE_QUEUE_GAP = 3
     }

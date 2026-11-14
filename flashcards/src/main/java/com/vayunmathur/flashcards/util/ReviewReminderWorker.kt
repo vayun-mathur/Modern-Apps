@@ -105,6 +105,7 @@ class ReviewReminderWorker(
         NotificationManagerCompat.from(context).notify(REMINDER_NOTIFICATION_ID, notification)
     }
 
+    /** Notification id for the review reminder. */
     companion object {
         private const val REMINDER_NOTIFICATION_ID = 4201
     }

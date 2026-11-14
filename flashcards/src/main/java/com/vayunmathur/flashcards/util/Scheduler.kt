@@ -17,6 +17,7 @@ private const val GRADE_HARD = 2
 private const val GRADE_GOOD = 3
 private const val GRADE_EASY = 4
 
+/** The four review grades, mapped onto the FSRS 1..4 scale. */
 enum class Grade(val value: Int) {
     AGAIN(GRADE_AGAIN),
     HARD(GRADE_HARD),

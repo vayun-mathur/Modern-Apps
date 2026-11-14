@@ -26,6 +26,7 @@ import java.util.zip.ZipInputStream
  * `collection.anki2`) are detected and rejected with a clear message.
  */
 object ApkgImport {
+    /** Thrown when an imported .apkg file is not in the supported Anki format. */
     class ApkgFormatException(message: String) : Exception(message)
 
     /** Cursor columns of `SELECT id, nid, did, ord FROM cards`. */

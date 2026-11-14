@@ -44,6 +44,7 @@ class FlashcardsRepository private constructor(context: Context) :
     suspend fun importApkg(context: Context, uri: Uri): String =
         ApkgImport.import(context, uri, deckDao, noteTypeDao, noteTypeFieldDao, cardTemplateDao, noteDao, cardDao)
 
+    /** Holds the process-wide [FlashcardsRepository] singleton. */
     companion object {
         @Volatile
         private var instance: FlashcardsRepository? = null

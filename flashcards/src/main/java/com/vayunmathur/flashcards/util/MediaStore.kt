@@ -83,6 +83,7 @@ class MediaStore(context: Context) {
         }
     }
 
+    /** Media directory name and the markdown image-reference pattern. */
     companion object {
         private const val DIR = "media"
 
