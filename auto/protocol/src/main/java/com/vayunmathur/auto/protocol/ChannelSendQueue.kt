@@ -99,6 +99,7 @@ class ChannelSendQueue {
         channelOrder.clear()
     }
 
+    /** Well-known channel ids for the send queue's priority order. */
     companion object {
         /** The control channel: its queue always drains ahead of every service channel. */
         const val CONTROL_CHANNEL_ID = 0

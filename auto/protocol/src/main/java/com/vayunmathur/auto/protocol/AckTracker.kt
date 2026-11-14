@@ -52,6 +52,7 @@ class AckTracker {
         lastUnwrapped = null
     }
 
+    /** Wire constants for the mod-256 `ack` frame counter. */
     companion object {
         /** Modulus of the 0x8004 `ack` frame counter. */
         const val MOD = 256L

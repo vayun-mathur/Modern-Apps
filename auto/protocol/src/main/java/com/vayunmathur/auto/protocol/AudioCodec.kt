@@ -25,6 +25,7 @@ enum class AudioSinkRole(val serviceId: Int) {
     MEDIA(GalService.AUDIO_SINK_MEDIA.id),
     ;
 
+    /** Lookup of a sink role by the GAL service id it is bound to. */
     companion object {
         fun forServiceId(id: Int): AudioSinkRole? = entries.firstOrNull { it.serviceId == id }
     }

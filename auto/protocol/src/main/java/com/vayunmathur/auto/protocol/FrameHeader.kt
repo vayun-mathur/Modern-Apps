@@ -65,6 +65,7 @@ data class FrameHeader(
         if (totalLength != null) buffer.putInt(totalLength)
     }
 
+    /** Header sizes, field limits, and the factory that reads a header off the wire. */
     companion object {
         const val SHORT_HEADER_SIZE = 4
         const val LONG_HEADER_SIZE = 8

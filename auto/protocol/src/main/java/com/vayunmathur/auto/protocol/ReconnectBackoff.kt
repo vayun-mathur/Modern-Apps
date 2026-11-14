@@ -38,6 +38,7 @@ class ReconnectBackoff(
         failures = 0
     }
 
+    /** Default reconnect delays and the shift cap that keeps long failure streaks from overflowing. */
     companion object {
         /** First retry waits up to half a second. */
         const val DEFAULT_BASE_DELAY_MS = 500L

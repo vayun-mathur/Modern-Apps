@@ -526,6 +526,7 @@ class GalControlSession(
         return emptyList()
     }
 
+    /** Formatting constants for control-session failure messages. */
     companion object {
         /** Radix for rendering unexpected wire types in failure messages. */
         private const val HEX_RADIX = 16

@@ -187,6 +187,7 @@ private const val CAR_LOCAL_MEDIA_ID = 20
 private const val BUFFERED_MEDIA_SINK_ID = 21
 private const val CAR_INTENT_ID = 22
 
+/** A GAL service as advertised in discovery; its [id] doubles as the channel id for its traffic. */
 enum class GalService(val id: Int) {
     CONTROL(1),
     VIDEO_SINK(2),
@@ -212,6 +213,7 @@ enum class GalService(val id: Int) {
     CAR_INTENT(CAR_INTENT_ID),
     ;
 
+    /** Lookup of a service by its wire (and channel) id. */
     companion object {
         private val byId = entries.associateBy(GalService::id)
 
