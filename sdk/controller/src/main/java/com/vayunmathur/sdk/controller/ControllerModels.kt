@@ -32,24 +32,19 @@ data class ControllerInput(
     fun isPressed(button: ControllerButton): Boolean = buttons and button.bit != 0L
 }
 
-/** Button bit positions in [ControllerInput.buttons]. A `Long` so games can add their own. */
-enum class ControllerButton(val bit: Long) {
-    A(1L shl 0),
-    B(1L shl 1),
-    X(1L shl 2),
-    Y(1L shl 3),
-    LEFT_SHOULDER(1L shl 4),
-    RIGHT_SHOULDER(1L shl 5),
-    LEFT_TRIGGER(1L shl 6),
-    RIGHT_TRIGGER(1L shl 7),
-    START(1L shl 8),
-    SELECT(1L shl 9),
-    LEFT_STICK(1L shl 10),
-    RIGHT_STICK(1L shl 11),
-    DPAD_UP(1L shl 12),
-    DPAD_DOWN(1L shl 13),
-    DPAD_LEFT(1L shl 14),
-    DPAD_RIGHT(1L shl 15),
+/**
+ * Button bit positions in [ControllerInput.buttons]. A `Long` so games can add their own.
+ *
+ * Declaration order is the wire format: each button owns bit `1L shl ordinal`.
+ */
+enum class ControllerButton {
+    A, B, X, Y,
+    LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_TRIGGER, RIGHT_TRIGGER,
+    START, SELECT, LEFT_STICK, RIGHT_STICK,
+    DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT;
+
+    /** This button's bit in [ControllerInput.buttons]. */
+    val bit: Long get() = 1L shl ordinal
 }
 
 /** Axis slots in [ControllerInput.axes], in fixed order. */

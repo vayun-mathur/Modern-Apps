@@ -49,6 +49,7 @@ class ControllerKeys private constructor(secret: ByteArray) {
     fun deviceProof(deviceKey: ByteArray, transcript: ByteArray): ByteArray =
         hmac(deviceKeyProofKey, deviceKey + transcript)
 
+    /** Secret sizes, the HKDF namespace and the [of] factory for [ControllerKeys]. */
     companion object {
         const val SECRET_BYTES = 32
         private const val CONTROL_KEY_BYTES = 32
@@ -158,6 +159,7 @@ class ControllerPairingGate(private val newCode: () -> String = { ControllerPair
         attemptsLeft = ControllerPairCode.MAX_ATTEMPTS
     }
 
+    /** Device-key size and generation for [ControllerPairingGate]. */
     companion object {
         const val DEVICE_KEY_BYTES = 32
 

@@ -139,6 +139,7 @@ class ControllerSocket {
         output = null
     }
 
+    /** One decoded message plus the raw body bytes it arrived as (for transcript binding). */
     data class Received(val message: ControllerMessage, val body: ByteArray) {
         override fun equals(other: Any?): Boolean =
             other is Received && message == other.message && body.contentEquals(other.body)

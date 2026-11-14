@@ -53,15 +53,6 @@ class ControllerHostProtocolErrorsTest {
         }
     }
 
-    private fun awaitServerSeat(harness: Harness, desc: String, condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 10_000
-        while (System.currentTimeMillis() < deadline) {
-            if (condition()) return
-            Thread.sleep(10)
-        }
-        throw AssertionError("timed out: $desc")
-    }
-
     @Test
     fun wrongVersionHelloIsRefused() {
         val harness = Harness()

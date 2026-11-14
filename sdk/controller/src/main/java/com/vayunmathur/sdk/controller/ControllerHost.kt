@@ -163,73 +163,86 @@ class ControllerHost(
 
     private fun runSession(socket: ControllerSocket) {
         val transcript = ControllerTranscript()
-        // HELLO
-        val hello = socket.receive() ?: run { socket.close(); return }
+        val hello = receiveHello(socket, transcript) ?: return
+        val keys = negotiateSecret(socket, transcript) ?: return
+        runPairing(socket, hello, keys, transcript)
+    }
+
+    /** HELLO: reads and version-checks the phone's greeting, or closes and returns null. */
+    private fun receiveHello(
+        socket: ControllerSocket,
+        transcript: ControllerTranscript,
+    ): ControllerHello? {
+        val hello = socket.receive() ?: run { socket.close(); return null }
         transcript.add(hello.body)
-        val helloMsg = hello.message as? ControllerHello ?: run { socket.close(); return }
+        val helloMsg = hello.message as? ControllerHello
+            ?: run { socket.close(); return null }
         if (helloMsg.version != ControllerContract.CONTROLLER_PROTOCOL_VERSION) {
             Log.status(TAG, "refusing version ${helloMsg.version} from ${helloMsg.senderName}")
             socket.close()
-            return
+            return null
         }
-        // HOST_HELLO
-        val bundle = providePublicBundle() ?: run { socket.close(); return }
+        return helloMsg
+    }
+
+    /** HOST_HELLO → SEALED_SECRET: unseals the session secret and installs its control key. */
+    private fun negotiateSecret(
+        socket: ControllerSocket,
+        transcript: ControllerTranscript,
+    ): ControllerKeys? {
+        val bundle = providePublicBundle() ?: run { socket.close(); return null }
         val hostHello = ControllerHostHello(
             hostName = hostName,
             hostId = hostId,
             publicBundle = HostBase64.encode(bundle),
             gameId = gameId,
         )
-        val hostHelloBody = socket.send(hostHello) ?: run { socket.close(); return }
+        val hostHelloBody = socket.send(hostHello) ?: run { socket.close(); return null }
         transcript.add(hostHelloBody)
-        // SEALED_SECRET
-        val sealed = socket.receive() ?: run { socket.close(); return }
+        val sealed = socket.receive() ?: run { socket.close(); return null }
         transcript.add(sealed.body)
-        val sealedMsg = sealed.message as? ControllerSealedSecret ?: run { socket.close(); return }
+        val sealedMsg = sealed.message as? ControllerSealedSecret
+            ?: run { socket.close(); return null }
         val secretBytes = HostBase64.decode(sealedMsg.sealed)?.let { unsealSecret(it) }
-            ?: run { socket.close(); return }
+            ?: run { socket.close(); return null }
         val keys = ControllerKeys.of(secretBytes)
         socket.codec.useSessionKey(keys.control)
-        // PAIR_REQUIRED
-        val remembered = loadDeviceKey(helloMsg.senderId)
-        val wantsCode = remembered == null || !helloMsg.paired
+        return keys
+    }
+
+    /** PAIR_REQUIRED → PAIR_PROOF → PAIR_OK/PAIR_FAILED, then the joined loop on success. */
+    private fun runPairing(
+        socket: ControllerSocket,
+        hello: ControllerHello,
+        keys: ControllerKeys,
+        transcript: ControllerTranscript,
+    ) {
+        val remembered = loadDeviceKey(hello.senderId)
+        val wantsCode = remembered == null || !hello.paired
         val gate = ControllerPairingGate()
         synchronized(lock) { pairingGates[socket] = gate }
         if (wantsCode) pairingCode = gate.code
-        socket.send(ControllerPairRequired(code = wantsCode)) ?: run {
-            finishPairing(socket); socket.close(); return
+        if (socket.send(ControllerPairRequired(code = wantsCode)) == null) {
+            finishPairing(socket)
+            socket.close()
+            return
         }
-        // PAIR_PROOF
-        val proof = socket.receive() ?: run { finishPairing(socket); socket.close(); return }
-        val proofMsg = proof.message as? ControllerPairProof ?: run {
-            finishPairing(socket); socket.close(); return
-        }
-        val proofBytes = HostBase64.decode(proofMsg.proof) ?: run {
-            finishPairing(socket); socket.close(); return
-        }
-        val transcriptValue = transcript.value()
-        val result = if (wantsCode) {
-            gate.verifyCode(keys, transcriptValue, proofBytes)
-        } else {
-            // The no-code path is reached only when the TV holds a key for this phone
-            // (`wantsCode` is `remembered == null || !paired`), so `remembered` is present.
-            // Checked rather than asserted: a null here is a confused host, and failing closed
-            // beats crashing the session thread.
-            val rememberedKey = remembered
-                ?: return run {
-                    socket.send(ControllerPairFailed(ControllerPairCode.MAX_ATTEMPTS))
-                    finishPairing(socket)
-                    socket.close()
-                }
-            gate.verifyDevice(keys, transcriptValue, rememberedKey, proofBytes)
-        }
+        val proofBytes = receiveProof(socket) ?: return
+        val result = verifyProof(socket, gate, wantsCode, keys, transcript.value(), remembered, proofBytes)
+            ?: return
         when (result) {
             is ControllerPairResult.Ok -> {
-                result.deviceKey?.let { saveDeviceKey(helloMsg.senderId, it) }
-                socket.send(ControllerPairOk(result.deviceKey?.let { HostBase64.encode(it) }))
-                    ?: run { finishPairing(socket); socket.close(); return }
+                result.deviceKey?.let { saveDeviceKey(hello.senderId, it) }
+                val sent = socket.send(
+                    ControllerPairOk(result.deviceKey?.let { HostBase64.encode(it) }),
+                )
+                if (sent == null) {
+                    finishPairing(socket)
+                    socket.close()
+                    return
+                }
                 finishPairing(socket)
-                runJoined(socket, helloMsg, keys, result.deviceKey ?: remembered)
+                runJoined(socket, hello, keys, result.deviceKey ?: remembered)
             }
             is ControllerPairResult.Wrong -> {
                 socket.send(ControllerPairFailed(result.attemptsLeft))
@@ -237,6 +250,46 @@ class ControllerHost(
                 socket.close()
             }
         }
+    }
+
+    /** Reads and decodes PAIR_PROOF, finishing pairing and closing on any failure. */
+    private fun receiveProof(socket: ControllerSocket): ByteArray? {
+        val proof = socket.receive() ?: run {
+            finishPairing(socket); socket.close(); return null
+        }
+        val proofMsg = proof.message as? ControllerPairProof ?: run {
+            finishPairing(socket); socket.close(); return null
+        }
+        return HostBase64.decode(proofMsg.proof) ?: run {
+            finishPairing(socket); socket.close(); return null
+        }
+    }
+
+    /**
+     * Checks a proof against the on-screen code or the remembered device key.
+     * Returns null only for the confused-host case, already failed closed inside.
+     */
+    private fun verifyProof(
+        socket: ControllerSocket,
+        gate: ControllerPairingGate,
+        wantsCode: Boolean,
+        keys: ControllerKeys,
+        transcriptValue: ByteArray,
+        remembered: ByteArray?,
+        proofBytes: ByteArray,
+    ): ControllerPairResult? {
+        if (wantsCode) return gate.verifyCode(keys, transcriptValue, proofBytes)
+        // The no-code path is reached only when the TV holds a key for this phone
+        // (`wantsCode` is `remembered == null || !paired`), so `remembered` is present.
+        // Checked rather than asserted: a null here is a confused host, and failing closed
+        // beats crashing the session thread.
+        val rememberedKey = remembered ?: run {
+            socket.send(ControllerPairFailed(ControllerPairCode.MAX_ATTEMPTS))
+            finishPairing(socket)
+            socket.close()
+            return null
+        }
+        return gate.verifyDevice(keys, transcriptValue, rememberedKey, proofBytes)
     }
 
     private fun finishPairing(socket: ControllerSocket) {
@@ -254,16 +307,7 @@ class ControllerHost(
         val join = socket.receive() ?: run { socket.close(); return }
         val joinMsg = join.message as? ControllerJoin ?: run { socket.close(); return }
         val playerId = hello.senderId
-        val admitted = synchronized(lock) {
-            if (_lobby.value.racing || players.size >= ControllerContract.MAX_PLAYERS) false
-            else {
-                val slot = PlayerSlot(playerId, joinMsg.displayName, remote = true)
-                players[playerId] = RemotePlayer(slot, socket, keys, deviceKey = deviceKey)
-                publishLobbyLocked()
-                true
-            }
-        }
-        if (!admitted) {
+        if (!admitPlayer(socket, playerId, joinMsg, keys, deviceKey)) {
             socket.send(ControllerBye("lobby full or racing"))
             socket.close()
             return
@@ -271,16 +315,7 @@ class ControllerHost(
         broadcastLobby()
         startHeartbeat()
         try {
-            while (true) {
-                val received = socket.receive() ?: break
-                when (val msg = received.message) {
-                    is ControllerInputFrame -> onRemoteInput(playerId, msg.input)
-                    is ControllerLeave -> break
-                    is ControllerPing -> socket.send(ControllerPing)
-                    is ControllerBye -> break
-                    else -> Log.status(TAG, "unexpected ${msg::class.simpleName} from $playerId")
-                }
-            }
+            runInputLoop(socket, playerId)
         } finally {
             synchronized(lock) {
                 players.remove(playerId)
@@ -289,6 +324,39 @@ class ControllerHost(
             }
             broadcastLobby()
             socket.close()
+        }
+    }
+
+    /** Seats a joined phone unless the lobby is full or already racing. */
+    private fun admitPlayer(
+        socket: ControllerSocket,
+        playerId: String,
+        joinMsg: ControllerJoin,
+        keys: ControllerKeys,
+        deviceKey: ByteArray?,
+    ): Boolean = synchronized(lock) {
+        if (_lobby.value.racing || players.size >= ControllerContract.MAX_PLAYERS) {
+            false
+        } else {
+            val slot = PlayerSlot(playerId, joinMsg.displayName, remote = true)
+            players[playerId] = RemotePlayer(slot, socket, keys, deviceKey = deviceKey)
+            publishLobbyLocked()
+            true
+        }
+    }
+
+    /** The joined session's message loop: input, leave, and ping echo until it ends. */
+    private fun runInputLoop(socket: ControllerSocket, playerId: String) {
+        var open = true
+        while (open) {
+            val received = socket.receive() ?: break
+            when (val msg = received.message) {
+                is ControllerInputFrame -> onRemoteInput(playerId, msg.input)
+                is ControllerLeave -> open = false
+                is ControllerPing -> socket.send(ControllerPing)
+                is ControllerBye -> open = false
+                else -> Log.status(TAG, "unexpected ${msg::class.simpleName} from $playerId")
+            }
         }
     }
 

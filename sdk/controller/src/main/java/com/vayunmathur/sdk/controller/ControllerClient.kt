@@ -139,7 +139,7 @@ class ControllerClient(
         this.socket = socket
         try {
             socket.connect(host.host, host.port)
-        } catch (e: Exception) {
+        } catch (e: java.io.IOException) {
             Log.status(TAG, "connect to ${host.friendlyName} failed", e)
             _state.value = ClientState.FAILED
             return
@@ -148,51 +148,94 @@ class ControllerClient(
         pendingTranscript = transcript
         pendingHostId = host.id
         val remembered = loadDeviceKey(host.id)
+        val keys = negotiateSecret(socket, transcript, remembered) ?: return
+        pendingKeys = keys
+        if (!pendingWantsCode && remembered != null) {
+            proveRemembered(socket, keys, transcript, remembered)
+        } else {
+            _state.value = ClientState.AWAITING_CODE
+        }
+    }
+
+    /**
+     * HELLO → HOST_HELLO → SEALED_SECRET → PAIR_REQUIRED. Returns the session keys
+     * after recording [pendingWantsCode], or null after failing the attempt.
+     */
+    private fun negotiateSecret(
+        socket: ControllerSocket,
+        transcript: ControllerTranscript,
+        remembered: ByteArray?,
+    ): ControllerKeys? {
+        val hostHello = exchangeHello(socket, transcript, remembered) ?: return null
+        return sealSecret(socket, transcript, hostHello)
+    }
+
+    /** HELLO → HOST_HELLO with the protocol-version check. */
+    private fun exchangeHello(
+        socket: ControllerSocket,
+        transcript: ControllerTranscript,
+        remembered: ByteArray?,
+    ): ControllerHostHello? {
         val helloBody = socket.send(
             ControllerHello(
                 senderName = senderName,
                 senderId = senderId,
                 paired = remembered != null,
             ),
-        ) ?: return failed(socket)
+        ) ?: run { failed(socket); return null }
         transcript.add(helloBody)
-        val hostHello = socket.receive() ?: return failed(socket)
+        val hostHello = socket.receive() ?: run { failed(socket); return null }
         transcript.add(hostHello.body)
-        val hostHelloMsg = hostHello.message as? ControllerHostHello ?: return failed(socket)
+        val hostHelloMsg = hostHello.message as? ControllerHostHello
+            ?: run { failed(socket); return null }
         if (hostHelloMsg.version != ControllerContract.CONTROLLER_PROTOCOL_VERSION) {
             Log.status(TAG, "refusing version ${hostHelloMsg.version} from ${hostHelloMsg.hostName}")
-            return failed(socket)
+            failed(socket)
+            return null
         }
-        val bundle = ClientBase64.decode(hostHelloMsg.publicBundle) ?: return failed(socket)
+        return hostHelloMsg
+    }
+
+    /** Seals a fresh secret to the host bundle and reads PAIR_REQUIRED. */
+    private fun sealSecret(
+        socket: ControllerSocket,
+        transcript: ControllerTranscript,
+        hostHelloMsg: ControllerHostHello,
+    ): ControllerKeys? {
+        val bundle = ClientBase64.decode(hostHelloMsg.publicBundle)
+            ?: run { failed(socket); return null }
         val secret = ControllerKeys.newSecret()
-        val sealed = sealToBundle(bundle, secret) ?: return failed(socket)
+        val sealed = sealToBundle(bundle, secret) ?: run { failed(socket); return null }
         val keys = ControllerKeys.of(secret)
-        pendingKeys = keys
         val sealedBody = socket.send(ControllerSealedSecret(ClientBase64.encode(sealed)))
-            ?: return failed(socket)
+            ?: run { failed(socket); return null }
         transcript.add(sealedBody)
         socket.codec.useSessionKey(keys.control)
-        val required = socket.receive() ?: return failed(socket)
-        val requiredMsg = required.message as? ControllerPairRequired ?: return failed(socket)
+        val required = socket.receive() ?: run { failed(socket); return null }
+        val requiredMsg = required.message as? ControllerPairRequired
+            ?: run { failed(socket); return null }
         pendingWantsCode = requiredMsg.code
-        if (!requiredMsg.code && remembered != null) {
-            // Remembered device: prove it now, no code on screen.
-            val proof = keys.deviceProof(remembered, transcript.value())
-            socket.send(ControllerPairProof(ClientBase64.encode(proof))) ?: return failed(socket)
-            val ok = socket.receive() ?: return failed(socket)
-            if (ok.message !is ControllerPairOk) return failed(socket)
-            _state.value = ClientState.PAIRED
-        } else {
-            _state.value = ClientState.AWAITING_CODE
-        }
+        return keys
+    }
+
+    /** Proves possession of the remembered device key; no code is shown on the TV. */
+    private fun proveRemembered(
+        socket: ControllerSocket,
+        keys: ControllerKeys,
+        transcript: ControllerTranscript,
+        remembered: ByteArray,
+    ) {
+        val proof = keys.deviceProof(remembered, transcript.value())
+        socket.send(ControllerPairProof(ClientBase64.encode(proof))) ?: return failed(socket)
+        val ok = socket.receive() ?: return failed(socket)
+        if (ok.message !is ControllerPairOk) return failed(socket)
+        _state.value = ClientState.PAIRED
     }
 
     private fun runCodeProof(code: String) {
         if (_state.value != ClientState.AWAITING_CODE) return
         if (!ControllerPairCode.isWellFormed(code)) return
-        val socket = socket ?: return failed()
-        val keys = pendingKeys ?: return failed()
-        val transcript = pendingTranscript ?: return failed()
+        val (socket, keys, transcript) = pendingSession() ?: return failed()
         val proof = keys.pairProof(code, transcript.value())
         socket.send(ControllerPairProof(ClientBase64.encode(proof))) ?: return failed()
         val ok = socket.receive() ?: return failed()
@@ -200,10 +243,25 @@ class ControllerClient(
             _state.value = ClientState.AWAITING_CODE
             return
         }
-        okMsg.deviceKey?.let { ClientBase64.decode(it)?.let { key ->
-            pendingHostId?.let { saveDeviceKey(it, key) }
-        } }
+        saveProvedDeviceKey(okMsg)
         _state.value = ClientState.PAIRED
+    }
+
+    /** The in-flight pairing pieces, or null when any of them is gone. */
+    private fun pendingSession(): Triple<ControllerSocket, ControllerKeys, ControllerTranscript>? {
+        val s = socket ?: return null
+        val k = pendingKeys ?: return null
+        val tr = pendingTranscript ?: return null
+        return Triple(s, k, tr)
+    }
+
+    /** Persists the fresh device key from a successful code pairing, when one was issued. */
+    private fun saveProvedDeviceKey(okMsg: ControllerPairOk) {
+        okMsg.deviceKey?.let { encoded ->
+            ClientBase64.decode(encoded)?.let { key ->
+                pendingHostId?.let { saveDeviceKey(it, key) }
+            }
+        }
     }
 
     private fun runLoop(socket: ControllerSocket) {
@@ -217,13 +275,14 @@ class ControllerClient(
                     if (_state.value == ClientState.JOINED) socket.send(ControllerPing)
                 }
             }
-            while (true) {
+            var open = true
+            while (open) {
                 val received = socket.receive() ?: break
                 when (val msg = received.message) {
                     is ControllerLobby -> _lobby.value = msg.lobby
                     is ControllerRumble -> onRumble(msg.rumble)
                     is ControllerPing -> socket.send(ControllerPing)
-                    is ControllerBye -> break
+                    is ControllerBye -> open = false
                     else -> Log.status(TAG, "unexpected ${msg::class.simpleName} from host")
                 }
             }

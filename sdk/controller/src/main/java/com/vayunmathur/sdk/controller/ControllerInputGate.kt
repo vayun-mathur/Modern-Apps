@@ -1,5 +1,8 @@
 package com.vayunmathur.sdk.controller
 
+/** Length of the rolling rate-limit window, in milliseconds. */
+private const val RATE_WINDOW_MS = 1_000L
+
 /**
  * The per-player inbound policy: replay window plus rate limit.
  *
@@ -29,7 +32,7 @@ class ControllerInputGate(
      */
     fun offer(seq: Long, nowMs: Long): Boolean {
         if (seq <= lastSeq) return false
-        while (window.isNotEmpty() && nowMs - window.first() > 1_000) window.removeFirst()
+        while (window.isNotEmpty() && nowMs - window.first() > RATE_WINDOW_MS) window.removeFirst()
         if (window.size >= maxPerSecond) return false
         window.addLast(nowMs)
         lastSeq = seq

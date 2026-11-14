@@ -7,6 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -128,7 +129,7 @@ class ControllerSocketTest {
         assertEquals(a.hashCode(), same.hashCode())
         assertFalse(a == differentBody)
         assertFalse(a == differentMsg)
-        assertFalse(a.equals(null))
+        assertNotEquals(a, null as Any?)
         assertTrue(a.toString().contains("Ping") || a.toString().isNotEmpty())
     }
 }
