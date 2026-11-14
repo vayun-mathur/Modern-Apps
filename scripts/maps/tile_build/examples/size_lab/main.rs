@@ -543,6 +543,8 @@ struct Arch {
     map: memmap2::Mmap,
     hdr: header::Header,
     dict: Dictionary,
+    /// Planet5 archives' trained dictionaries.
+    zd: Option<tile_build::mamaps::zdict::ZDicts>,
 }
 
 fn open(path: &str) -> Arch {
@@ -550,7 +552,8 @@ fn open(path: &str) -> Arch {
     let map = unsafe { memmap2::Mmap::map(&f).expect("mmap") };
     let hdr = header::Header::parse(&map[..tilecodec::stream::OPEN_PREFIX_BYTES as usize]).expect("header");
     let dict = Dictionary::parse(&map[hdr.dict_offset as usize..hdr.dict_offset as usize + hdr.dict_len as usize]).expect("dict");
-    Arch { map, hdr, dict }
+    let zd = tile_build::mamaps::read::zdicts_in(&hdr, &map).expect("dictionaries");
+    Arch { map, hdr, dict, zd }
 }
 
 fn entries(a: &Arch) -> Vec<Ent> {
@@ -627,7 +630,7 @@ impl Acc {
 
 fn raw_of(a: &Arch, e: &Ent) -> Vec<u8> {
     let stored = &a.map[e.off as usize..e.off as usize + e.len as usize];
-    tile_build::mamaps::read::decompress(a.hdr.compression, stored).expect("inflate")
+    tile_build::mamaps::read::decompress_with(a.hdr.compression, stored, a.zd.as_ref()).expect("inflate")
 }
 
 fn cmd_bodies(path: &str, per_zoom: usize, out_dir: &str) {
@@ -708,7 +711,7 @@ fn cmd_bodies(path: &str, per_zoom: usize, out_dir: &str) {
             // Copied first so the timing below measures decode, not a page fault on the mmap.
             let stored = a.map[e.off as usize..e.off as usize + e.len as usize].to_vec();
             let ti = Instant::now();
-            let raw = tile_build::mamaps::read::decompress(a.hdr.compression, &stored).expect("inflate");
+            let raw = tile_build::mamaps::read::decompress_with(a.hdr.compression, &stored, a.zd.as_ref()).expect("inflate");
             let t_inf = ti.elapsed().as_nanos() as u64;
             let tp = Instant::now();
             let body = Body::parse(&raw).expect("parse");

@@ -42,7 +42,7 @@ impl TileIndex {
 
 fn body_at(a: &Arch, off: u64, len: u32) -> Body {
     let stored = &a.map[off as usize..off as usize + len as usize];
-    let raw = tile_build::mamaps::read::decompress(a.hdr.compression, stored).expect("inflate");
+    let raw = tile_build::mamaps::read::decompress_with(a.hdr.compression, stored, a.zd.as_ref()).expect("inflate");
     Body::parse(&raw).expect("parse")
 }
 
@@ -99,7 +99,7 @@ fn cmd_recompress(path: &str, out_dir: &str) {
         for e in chunk {
             let stored = a.map[e.off as usize..e.off as usize + e.len as usize].to_vec();
             let t = Instant::now();
-            let raw = tile_build::mamaps::read::decompress(a.hdr.compression, &stored).expect("inflate");
+            let raw = tile_build::mamaps::read::decompress_with(a.hdr.compression, &stored, a.zd.as_ref()).expect("inflate");
             let _ = Body::parse(&raw).expect("parse");
             let t_now = t.elapsed().as_nanos() as u64;
             let p = &raw[H..];

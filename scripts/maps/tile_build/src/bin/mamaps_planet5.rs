@@ -96,7 +96,22 @@ fn to_v11(map: &[u8], hdr: &Header, off: u64, len: u32) -> Result<(Vec<u8>, Body
     let raw = decompress(hdr.compression, stored).map_err(|e| e.0)?;
     let body = Body::parse(&raw).map_err(|e| e.0)?;
     let mut s = Scratch::default();
-    let v11 = serialize_into_v11(&body, &mut s).map_err(|e| e.0)?.to_vec();
+    // A v10 sparse carriageway table whose rows are all default is written as a convention with
+    // zero entries, and parses back as `convention: Some` with no rows -- a model the serializer
+    // refuses. Re-supply the all-default rows for the roads layer so the v11 body carries the
+    // identical table (zero entries + the convention) and parses back to the same `Body`.
+    let v11 = if body.convention.is_some() && body.carriageways.is_empty() {
+        let mut b = body.clone();
+        let roads = tile_build::mamaps::dict::LAYER_ROADS;
+        let n = b
+            .layer(roads)
+            .map(|l| l.features.len())
+            .ok_or("a body with a marking convention and no roads layer")?;
+        b.carriageways = vec![(roads, vec![tile_build::mamaps::body::Carriageway::default(); n])];
+        serialize_into_v11(&b, &mut s).map_err(|e| e.0)?.to_vec()
+    } else {
+        serialize_into_v11(&body, &mut s).map_err(|e| e.0)?.to_vec()
+    };
     Ok((v11, body))
 }
 
