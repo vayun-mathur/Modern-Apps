@@ -981,6 +981,7 @@ fn cmd_sidecars(path: &str, windows: usize, out_dir: &str) {
 }
 
 include!("more.rs");
+include!("p50.rs");
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -1002,6 +1003,11 @@ fn main() {
         "transit" => cmd_transit(path, &out_dir),
         "zblk" => cmd_zblk(path),
         "zooms" => cmd_zooms(path),
+        "p50-layers" => cmd_p50_layers(path, args[3].parse().unwrap()),
+        "p50-pyramid" => cmd_p50_pyramid(path, args[3].parse().unwrap()),
+        "p50-buildings" => cmd_p50_buildings(path, args[3].parse().unwrap()),
+        "p50-super" => cmd_p50_super(path, args[3].parse().unwrap(), args[4].parse().unwrap()),
+        "p50-arcs" => cmd_p50_arcs(path, args[3].parse().unwrap()),
         "recompress" => cmd_recompress(path, args.get(3).map(String::as_str).unwrap_or(".")),
         "dem-pyramid" => cmd_dem_pyramid(path, args[3].parse().unwrap(), &out_dir),
         _ => eprintln!("usage: size_lab bodies|sidecars IN.mamaps [N] [OUT_DIR]"),
