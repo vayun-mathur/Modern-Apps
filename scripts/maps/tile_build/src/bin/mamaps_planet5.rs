@@ -17,6 +17,12 @@
 //! dedup are rebuilt exactly as the generator builds them, and the content-derived build id is
 //! re-derived over the new bodies (seeded with the input's id).
 //!
+//! * **superblocks** (header v11, `--no-superblocks` to disable) — the bodies of an aligned 8x8
+//!   block of z10-z13 tiles (4x4 at z14) compressed as one frame (`tilecodec::mamaps::superblock`):
+//!   neighbours share landuse, roads and terrain that a per-tile frame cannot. Only tiles whose
+//!   body no other tile references (and that are not part of a run) join a block; shared bodies
+//!   (ocean, empty land) stay single deduplicated frames. A block of one stays a plain body.
+//!
 //! Lossless: `--verify` decodes every output body and compares the parsed `Body` with the
 //! input's. Deterministic: the training sample is a fixed stride and the encoder is a pure
 //! function of input + dictionary, so the output does not depend on the thread count.
@@ -119,6 +125,7 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     let mut pos = Vec::new();
     let (mut dict_bytes, mut per_band, mut verify) = (112 * 1024usize, 20_000usize, false);
+    let mut superblocks = true;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -131,15 +138,16 @@ fn main() -> ExitCode {
                 i += 1;
             }
             "--verify" => verify = true,
+            "--no-superblocks" => superblocks = false,
             a => pos.push(a.to_string()),
         }
         i += 1;
     }
     if pos.len() != 2 {
-        eprintln!("usage: mamaps_planet5 IN.mamaps OUT.mamaps [--dict-bytes N] [--train-per-band N] [--verify]");
+        eprintln!("usage: mamaps_planet5 IN.mamaps OUT.mamaps [--dict-bytes N] [--train-per-band N] [--verify] [--no-superblocks]");
         return ExitCode::from(2);
     }
-    match run(&pos[0], &pos[1], dict_bytes, per_band, verify) {
+    match run(&pos[0], &pos[1], dict_bytes, per_band, verify, superblocks) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("mamaps_planet5: {e}");
@@ -148,7 +156,57 @@ fn main() -> ExitCode {
     }
 }
 
-fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bool) -> Result<(), String> {
+/// Superblock side of a tile at zoom `z`: 2^3 (8x8) for z10-z13, 2^2 (4x4) at z14 (bigger
+/// bodies: a 4x4 block already holds as much as an 8x8 z13 one). None below z10.
+fn superblock_shift(z: u8) -> Option<u32> {
+    match z {
+        10..=13 => Some(3),
+        14.. => Some(2),
+        _ => None,
+    }
+}
+
+/// Group index per entry (None = not in a superblock): consecutive candidate entries -- run 1,
+/// a body no other tile references -- in the same aligned block at one zoom. Hilbert order
+/// keeps an aligned block contiguous, so a block is one stretch of entries.
+fn superblock_groups(ents: &[Ent]) -> Vec<Option<u32>> {
+    let mut refs: HashMap<u64, u64> = HashMap::with_capacity(ents.len());
+    for e in ents {
+        *refs.entry(e.off).or_default() += e.run as u64;
+    }
+    let mut group = vec![None; ents.len()];
+    let mut cur: Option<((u8, u64, u64), Vec<usize>)> = None;
+    let mut next = 0u32;
+    let mut close = |cur: &mut Option<((u8, u64, u64), Vec<usize>)>, group: &mut Vec<Option<u32>>| {
+        if let Some((_, members)) = cur.take() {
+            if members.len() >= 2 {
+                for i in members {
+                    group[i] = Some(next);
+                }
+                next += 1;
+            }
+        }
+    };
+    for (i, e) in ents.iter().enumerate() {
+        let (z, x, y) = tile_zxy(e.id);
+        let Some(g) = superblock_shift(z) else { continue };
+        if e.run != 1 || refs[&e.off] != 1 {
+            continue;
+        }
+        let key = (z, x >> g, y >> g);
+        match &mut cur {
+            Some((k, members)) if *k == key => members.push(i),
+            _ => {
+                close(&mut cur, &mut group);
+                cur = Some((key, vec![i]));
+            }
+        }
+    }
+    close(&mut cur, &mut group);
+    group
+}
+
+fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bool, superblocks: bool) -> Result<(), String> {
     let t0 = Instant::now();
     let f = File::open(input).map_err(|e| format!("open {input}: {e}"))?;
     let map = unsafe { memmap2::Mmap::map(&f) }.map_err(|e| format!("mmap {input}: {e}"))?;
@@ -215,6 +273,7 @@ fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bo
         rings_validated: hdr.flags & FLAG_RINGS_VALIDATED != 0,
         leaf_entry_capacity: hdr.leaf_entry_capacity,
         spill_dir: out_path.parent().map(|p| p.to_path_buf()),
+        superblocks,
         min_lon_e7: hdr.min_lon_e7,
         min_lat_e7: hdr.min_lat_e7,
         max_lon_e7: hdr.max_lon_e7,
@@ -225,9 +284,85 @@ fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bo
     let cfg = zstd_rs::CompressionConfig { level: 19, ..zstd_rs::CompressionConfig::DEFAULT };
     let (mut raw_in, mut stored_out) = (0u64, 0u64);
     const BATCH: usize = 1 << 21;
-    for (bi, batch) in ents.chunks(BATCH).enumerate() {
-        // Distinct (offset, band) pairs in this batch, encoded in parallel.
-        let mut keys: Vec<(u64, u32, usize)> = batch.iter().map(|e| (e.off, e.len, band(tile_zxy(e.id).0))).collect();
+    let groups = if superblocks { superblock_groups(&ents) } else { vec![None; ents.len()] };
+    let (mut sb_count, mut sb_members) = (0u64, 0u64);
+    // Batches end only between superblocks, so a block is encoded within one batch.
+    let mut ranges: Vec<(usize, usize)> = Vec::new();
+    let mut start = 0usize;
+    for i in 1..=ents.len() {
+        if i == ents.len() || (i - start >= BATCH && (groups[i].is_none() || groups[i] != groups[i - 1])) {
+            ranges.push((start, i));
+            start = i;
+        }
+    }
+    for (bi, &(lo, hi)) in ranges.iter().enumerate() {
+        let batch = &ents[lo..hi];
+        let bgroups = &groups[lo..hi];
+        // Superblocks of this batch: members' v11 bodies assembled, compressed with the band
+        // dictionary, in parallel.
+        let mut blocks: Vec<(u32, Vec<usize>)> = Vec::new();
+        for (k, g) in bgroups.iter().enumerate() {
+            if let Some(g) = g {
+                match blocks.last_mut() {
+                    Some((lg, m)) if lg == g => m.push(k),
+                    _ => blocks.push((*g, vec![k])),
+                }
+            }
+        }
+        let sb_encoded: Vec<Result<(u32, Arc<(Vec<u8>, u64)>, u64), String>> = blocks
+            .par_iter()
+            .map_init(
+                || zstd_rs::Compressor::new(cfg).expect("zstd level"),
+                |enc, (g, members)| {
+                    let b = band(tile_zxy(batch[members[0]].id).0);
+                    let mut bodies: Vec<(u64, Vec<u8>)> = Vec::with_capacity(members.len());
+                    let mut models = Vec::with_capacity(members.len());
+                    for &k in members {
+                        let e = batch[k];
+                        let (v11, body) = to_v11(&map, &hdr, e.off, e.len)?;
+                        bodies.push((e.id, v11));
+                        models.push(body);
+                    }
+                    let raw = tile_build::mamaps::superblock::assemble(&bodies);
+                    let mut stored = Vec::with_capacity(raw.len() / 2);
+                    stored.extend_from_slice(&raw[..BODY_HEADER_LEN]);
+                    enc.compress(&raw[BODY_HEADER_LEN..], enc_dicts[b].as_ref(), &mut stored)
+                        .map_err(|e| format!("zstd: {e:?}"))?;
+                    if verify {
+                        let back = tile_build::mamaps::read::decompress_with(
+                            tile_build::mamaps::header::COMPRESSION_ZSTD_DICT,
+                            &stored,
+                            Some(&verify_dicts),
+                        )
+                        .map_err(|e| e.0)?;
+                        let m = tile_build::mamaps::superblock::members(&back).map_err(|e| e.0)?;
+                        for ((id, bytes), model) in m.iter().zip(models.iter()) {
+                            if Body::parse(bytes).map_err(|e| e.0)? != *model {
+                                return Err(format!("superblock member {id} does not round-trip"));
+                            }
+                        }
+                    }
+                    let h = hash64(&stored);
+                    Ok((*g, Arc::new((stored, h)), raw.len() as u64))
+                },
+            )
+            .collect();
+        let mut by_group: HashMap<u32, Arc<(Vec<u8>, u64)>> = HashMap::with_capacity(sb_encoded.len());
+        for r in sb_encoded {
+            let (g, v, raw) = r?;
+            raw_in += raw;
+            stored_out += v.0.len() as u64;
+            by_group.insert(g, v);
+        }
+        sb_count += blocks.len() as u64;
+        sb_members += blocks.iter().map(|b| b.1.len() as u64).sum::<u64>();
+        // Distinct (offset, band) pairs of the other entries, encoded in parallel.
+        let mut keys: Vec<(u64, u32, usize)> = batch
+            .iter()
+            .zip(bgroups)
+            .filter(|(_, g)| g.is_none())
+            .map(|(e, _)| (e.off, e.len, band(tile_zxy(e.id).0)))
+            .collect();
         keys.sort_unstable();
         keys.dedup();
         let encoded: Vec<Result<((u64, usize), Arc<(Vec<u8>, u64)>, u64), String>> = keys
@@ -262,7 +397,12 @@ fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bo
             raw_in += raw;
             by_key.insert(k, v);
         }
-        for e in batch {
+        for (e, g) in batch.iter().zip(bgroups) {
+            if let Some(g) = g {
+                let s = &by_group[g];
+                writer.append_stored_with_hash(e.id, &s.0, s.1).map_err(|e| e.0)?;
+                continue;
+            }
             let s = &by_key[&(e.off, band(tile_zxy(e.id).0))];
             for k in 0..e.run as u64 {
                 writer.append_stored_with_hash(e.id + k, &s.0, s.1).map_err(|e| e.0)?;
@@ -275,6 +415,9 @@ fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bo
             by_key.len(),
             t0.elapsed().as_secs_f64()
         );
+    }
+    if superblocks {
+        println!("superblocks: {sb_count} blocks holding {sb_members} tiles");
     }
     writer.finish_to_path(&out_path).map_err(|e| e.0)?;
     let len = std::fs::metadata(&out_path).map_err(|e| e.to_string())?.len();
