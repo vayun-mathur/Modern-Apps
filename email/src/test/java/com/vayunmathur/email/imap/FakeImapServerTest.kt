@@ -90,46 +90,82 @@ class FakeImapServer(
             var done = false
             while (!done) {
                 val line = readLine(input) ?: return
-                synchronized(receivedCommands) { receivedCommands.add(line) }
-                if (line == "DONE") {
-                    send("${lastIdleTag} OK IDLE terminated\r\n")
-                    continue
-                }
-                val parts = line.split(" ", limit = 3)
-                if (parts.size < 2) continue
-                val tag = parts[0]
-                when (parts[1].uppercase()) {
-                    "CAPABILITY" -> send("* CAPABILITY $caps\r\n$tag OK CAPABILITY done\r\n")
-                    "LOGIN" -> send(if (failLogin) "$tag NO LOGIN failed\r\n" else "$tag OK LOGIN done\r\n")
-                    "AUTHENTICATE" -> handleAuth(line, tag, input, ::send)
-                    "LIST" -> send(
-                        "* LIST (\\HasNoChildren) \"/\" INBOX\r\n" +
-                            "* LIST (\\HasNoChildren) \"/\" Sent\r\n" +
-                            "* LIST (\\Noselect) \"/\" Archive\r\n" +
-                            "$tag OK LIST done\r\n",
-                    )
-                    "SELECT", "EXAMINE" -> send(
-                        "* 2 EXISTS\r\n* 1 RECENT\r\n* OK [UIDVALIDITY 12345] UIDs valid\r\n" +
-                            "* OK [UIDNEXT 103] next\r\n* FLAGS (\\Seen \\Deleted)\r\n$tag OK [READ-WRITE] done\r\n",
-                    )
-                    "FETCH" -> handleFetch(line, tag, ::send, full = line.contains("BODY.PEEK[]") || line.contains(" BODY[]"))
-                    "UID" -> handleUid(line, tag, input, ::send)
-                    "EXPUNGE" -> send("$tag OK EXPUNGE done\r\n")
-                    "IDLE" -> {
-                        lastIdleTag = tag
-                        send("+ idling\r\n")
-                        idlePushLine?.let { send("$it\r\n") }
-                    }
-                    "LOGOUT" -> {
-                        send("* BYE bye\r\n$tag OK LOGOUT done\r\n"); done = true
-                    }
-                    else -> send("$tag OK done\r\n")
-                }
+                done = dispatchCommand(line, input, ::send)
             }
         }
     }
 
     private var lastIdleTag: String = "A0000"
+
+    /** Handles one client command; returns true when the session should end. */
+    private fun dispatchCommand(line: String, input: BufferedInputStream, send: (String) -> Unit): Boolean {
+        synchronized(receivedCommands) { receivedCommands.add(line) }
+        if (line == "DONE") {
+            send("${lastIdleTag} OK IDLE terminated\r\n")
+            return false
+        }
+        val parts = line.split(" ", limit = 3)
+        if (parts.size < 2) return false
+        val tag = parts[0]
+        val verb = parts[1].uppercase()
+        if (dispatchSessionCommand(verb, line, tag, input, send)) return false
+        return dispatchMailboxCommand(verb, line, tag, send)
+    }
+
+    /** Session and auth verbs; returns true when the verb was handled. */
+    private fun dispatchSessionCommand(
+        verb: String,
+        line: String,
+        tag: String,
+        input: BufferedInputStream,
+        send: (String) -> Unit,
+    ): Boolean {
+        when (verb) {
+            "CAPABILITY" -> send("* CAPABILITY $caps\r\n$tag OK CAPABILITY done\r\n")
+            "LOGIN" -> send(if (failLogin) "$tag NO LOGIN failed\r\n" else "$tag OK LOGIN done\r\n")
+            "AUTHENTICATE" -> handleAuth(line, tag, input, send)
+            "LIST" -> sendList(tag, send)
+            "SELECT", "EXAMINE" -> sendSelect(tag, send)
+            else -> return false
+        }
+        return true
+    }
+
+    /** Mailbox verbs; returns true when the session should end (LOGOUT). */
+    private fun dispatchMailboxCommand(verb: String, line: String, tag: String, send: (String) -> Unit): Boolean {
+        when (verb) {
+            "FETCH" -> handleFetch(line, tag, send)
+            "UID" -> handleUid(line, tag, send)
+            "EXPUNGE" -> send("$tag OK EXPUNGE done\r\n")
+            "IDLE" -> {
+                lastIdleTag = tag
+                send("+ idling\r\n")
+                idlePushLine?.let { send("$it\r\n") }
+            }
+            "LOGOUT" -> {
+                send("* BYE bye\r\n$tag OK LOGOUT done\r\n")
+                return true
+            }
+            else -> send("$tag OK done\r\n")
+        }
+        return false
+    }
+
+    private fun sendList(tag: String, send: (String) -> Unit) {
+        send(
+            "* LIST (\\HasNoChildren) \"/\" INBOX\r\n" +
+                "* LIST (\\HasNoChildren) \"/\" Sent\r\n" +
+                "* LIST (\\Noselect) \"/\" Archive\r\n" +
+                "$tag OK LIST done\r\n",
+        )
+    }
+
+    private fun sendSelect(tag: String, send: (String) -> Unit) {
+        send(
+            "* 2 EXISTS\r\n* 1 RECENT\r\n* OK [UIDVALIDITY 12345] UIDs valid\r\n" +
+                "* OK [UIDNEXT 103] next\r\n* FLAGS (\\Seen \\Deleted)\r\n$tag OK [READ-WRITE] done\r\n",
+        )
+    }
 
     private fun handleAuth(line: String, tag: String, input: BufferedInputStream, send: (String) -> Unit) {
         // Bad credentials fail every mechanism, not just LOGIN.
@@ -158,16 +194,16 @@ class FakeImapServer(
         }
     }
 
-    private fun handleUid(line: String, tag: String, input: BufferedInputStream, send: (String) -> Unit) {
+    private fun handleUid(line: String, tag: String, send: (String) -> Unit) {
         when {
-            line.contains("FETCH") -> handleFetch(line, tag, send, full = line.contains("BODY.PEEK[]"))
+            line.contains("FETCH") -> handleFetch(line, tag, send)
             line.contains("STORE") -> send("$tag OK STORE done\r\n")
             line.contains("EXPUNGE") -> send("$tag OK EXPUNGE done\r\n")
             else -> send("$tag OK done\r\n")
         }
     }
 
-    private fun handleFetch(line: String, tag: String, send: (String) -> Unit, full: Boolean) {
+    private fun handleFetch(line: String, tag: String, send: (String) -> Unit) {
         when {
             line.contains("HEADER.FIELDS") -> {
                 fetchEntry(send, 1, 101, header1, header = true)

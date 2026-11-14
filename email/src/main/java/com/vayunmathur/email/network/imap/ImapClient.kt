@@ -186,25 +186,46 @@ object ImapClient {
         // messages between syncs stranded the oldest of the burst forever,
         // because every later sync re-fetched the same newest window.
         val assembler = MessageAssembler(user, storedFolderName, fetchBodies, context)
+        collectPages(conn, sel.exists, limit, offset, skipUids, assembler)
+        return Pair(assembler.messages, assembler.attachments)
+    }
+
+    private fun collectPages(
+        conn: RawImapConnection,
+        total: Int,
+        limit: Int,
+        offset: Int,
+        skipUids: Set<Long>,
+        assembler: MessageAssembler,
+    ) {
         val collected = mutableSetOf<Long>()
         var pageOffset = offset
         while (assembler.messages.size < limit) {
-            val seqSet = sequenceSet(sel.exists, limit, pageOffset) ?: break
+            val seqSet = sequenceSet(total, limit, pageOffset) ?: return
             val page = conn.fetch.fetchHeadersForSeq(seqSet)
-            if (page.isEmpty()) break
-            for (result in page.filter { it.uid !in skipUids }.reversed()) {
-                if (!collected.add(result.uid)) continue
-                assembler.absorb(result)
-                if (assembler.messages.size >= limit) break
-            }
+            if (page.isEmpty()) return
+            absorbPage(page, skipUids, collected, assembler, limit)
             // sequenceSet() clamps the window start at 1; reaching it means
             // the oldest message has been offered and paging must stop
             // (this also terminates against servers that ignore the set).
             val windowStart = seqSet.substringBefore(':').toIntOrNull() ?: 1
-            if (windowStart <= 1) break
+            if (windowStart <= 1) return
             pageOffset += limit
         }
-        return Pair(assembler.messages, assembler.attachments)
+    }
+
+    private fun absorbPage(
+        page: List<ImapFetchResult>,
+        skipUids: Set<Long>,
+        collected: MutableSet<Long>,
+        assembler: MessageAssembler,
+        limit: Int,
+    ) {
+        page.filter { it.uid !in skipUids }.reversed().forEach { result ->
+            if (assembler.messages.size < limit && collected.add(result.uid)) {
+                assembler.absorb(result)
+            }
+        }
     }
 
     private fun sequenceSet(total: Int, limit: Int, offset: Int): String? {

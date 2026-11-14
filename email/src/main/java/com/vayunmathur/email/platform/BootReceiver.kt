@@ -58,6 +58,7 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Holds preference keys used to restart IMAP IDLE after boot. */
     companion object {
         private const val TAG = "EmailBoot"
         const val PREFS = "email_idle_state"

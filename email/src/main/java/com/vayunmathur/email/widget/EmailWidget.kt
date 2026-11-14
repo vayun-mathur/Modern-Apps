@@ -44,8 +44,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.vayunmathur.email.R
 
+/** Home-screen widget showing recent email previews. */
 class EmailWidget : MaWidget<List<EmailPreview>>() {
 
+    /** Holds preview count and snippet length constants for the widget. */
     companion object {
         private const val WIDGET_MESSAGE_COUNT = 100
         private const val WIDGET_PEEK_LEN = 50

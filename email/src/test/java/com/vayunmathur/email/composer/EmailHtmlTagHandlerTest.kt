@@ -178,7 +178,7 @@ class EmailHtmlTagHandlerTest {
         override fun setFeature(name: String, value: Boolean) {}
     }
 
-    private fun styled(style: String, block: EmailHtmlTagHandler.(SpannableStringBuilder) -> Unit): SpannableStringBuilder {
+    private fun styled(block: EmailHtmlTagHandler.(SpannableStringBuilder) -> Unit): SpannableStringBuilder {
         val handler = EmailHtmlTagHandler()
         val out = SpannableStringBuilder()
         handler.block(out)
@@ -188,7 +188,7 @@ class EmailHtmlTagHandlerTest {
     @Test
     fun `span color and background restore color spans`() {
         val styleReader = StyledReader("color:#FF0000; background-color:#00FF00")
-        val out = styled("color:#FF0000; background-color:#00FF00") {
+        val out = styled {
             handleTag(true, "span", it, styleReader)
             it.append("colored")
             handleTag(false, "span", it, styleReader)
@@ -204,7 +204,7 @@ class EmailHtmlTagHandlerTest {
     @Test
     fun `span font size and family restore spans, rgb color parses`() {
         val styleReader = StyledReader("font-size:1.5em; font-family:'serif'; color:rgb(1,2,3)")
-        val out = styled("font-size:1.5em; font-family:'serif'; color:rgb(1,2,3)") {
+        val out = styled {
             handleTag(true, "span", it, styleReader)
             it.append("sized")
             handleTag(false, "span", it, styleReader)
@@ -222,7 +222,7 @@ class EmailHtmlTagHandlerTest {
     @Test
     fun `div text align restores alignment span and invalid align does not`() {
         val centerReader = StyledReader("text-align:center")
-        val out = styled("text-align:center") {
+        val out = styled {
             handleTag(true, "div", it, centerReader)
             it.append("centered")
             handleTag(false, "div", it, centerReader)
@@ -232,7 +232,7 @@ class EmailHtmlTagHandlerTest {
         assertEquals("center", aligns.single().cssAlign)
 
         val bogusReader = StyledReader("text-align:sideways")
-        val out2 = styled("text-align:sideways") {
+        val out2 = styled {
             handleTag(true, "div", it, bogusReader)
             it.append("plain")
             handleTag(false, "div", it, bogusReader)

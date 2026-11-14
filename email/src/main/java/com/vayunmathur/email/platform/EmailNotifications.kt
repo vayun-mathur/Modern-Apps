@@ -12,6 +12,7 @@ import com.vayunmathur.email.R
 import com.vayunmathur.email.data.EmailMessage
 import com.vayunmathur.library.util.ensureNotificationChannel
 
+/** Posts and manages new-mail notifications and their channels. */
 object EmailNotifications {
 
     private const val CHANNEL_PREFIX = "new_mail::"

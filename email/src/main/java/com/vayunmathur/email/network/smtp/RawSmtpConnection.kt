@@ -22,6 +22,7 @@ class RawSmtpConnection(
     val trustAll: Boolean = false,
 ) : AutoCloseable {
 
+    /** Holds socket timeout and buffer constants for SMTP connections. */
     companion object {
         private const val TAG = "RawSmtp"
         private const val TIMEOUT_MS = 30_000

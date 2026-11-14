@@ -6,6 +6,7 @@ import com.vayunmathur.library.intents.email.EmailSearchQuery
 import com.vayunmathur.library.util.AssistantIntent
 import kotlinx.serialization.serializer
 
+/** Assistant intent searching stored emails for the given query. */
 class SearchIntent : AssistantIntent<EmailSearchQuery, List<EmailData>>(
     serializer<EmailSearchQuery>(),
     serializer<List<EmailData>>(),

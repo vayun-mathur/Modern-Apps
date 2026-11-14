@@ -40,6 +40,7 @@ class EmailSettings private constructor(context: Context) {
         _loadRemoteImages.value = enabled
     }
 
+    /** Holds preference keys and defaults for email settings. */
     companion object {
         private const val PREFS = "email_settings"
         private const val KEY_LOAD_REMOTE_IMAGES = "load_remote_images"

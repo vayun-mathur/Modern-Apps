@@ -50,6 +50,7 @@ interface MessageListActions {
     fun refresh(context: Context) {}
     fun requestAiSummary(messages: List<EmailPreview>) {}
 
+    /** Provides a no-op MessageListActions for previews and defaults. */
     companion object {
         val Noop: MessageListActions = object : MessageListActions {}
     }
@@ -87,6 +88,7 @@ interface MessageThreadActions {
         onResult: (Boolean, String?) -> Unit,
     ) {}
 
+    /** Provides a no-op MessageThreadActions for previews and defaults. */
     companion object {
         val Noop: MessageThreadActions = object : MessageThreadActions {}
     }

@@ -46,6 +46,7 @@ object MimeBuilder {
         return "${System.currentTimeMillis()}.$random@$domain"
     }
 
+    /** The built raw RFC 822 message text ready for SMTP submission. */
     data class BuildResult(val rawMessage: String)
 
     fun buildMessage(
@@ -56,14 +57,13 @@ object MimeBuilder {
         body: String,
         asHtml: Boolean,
         cc: String? = null,
-        bcc: String? = null,
         attachments: List<Uri> = emptyList(),
         inlineImages: List<InlineAttachment> = emptyList(),
         inReplyTo: String? = null,
         references: String? = null,
     ): String {
         val sb = StringBuilder()
-        appendHeaders(sb, from, to, subject, cc, bcc, inReplyTo, references)
+        appendHeaders(sb, from, to, subject, cc, inReplyTo, references)
 
         if (inlineImages.isEmpty() && attachments.isEmpty()) {
             appendSingleTextPart(sb, body, asHtml)
@@ -90,7 +90,6 @@ object MimeBuilder {
         to: String,
         subject: String,
         cc: String?,
-        bcc: String?,
         inReplyTo: String?,
         references: String?,
     ) {
@@ -102,10 +101,9 @@ object MimeBuilder {
             sb.append("Cc: ${splitAddresses(it).joinToString(", ")}\r\n")
         }
         // Deliberately no Bcc header: blind-copy recipients travel only in
-        // the SMTP envelope (SmtpClient.collectRecipients). Writing them
-        // into the DATA headers would disclose every blind recipient to
-        // all other recipients. The bcc parameter is kept so callers can
-        // pass the full recipient set through one entry point.
+        // the SMTP envelope (SmtpClient.collectRecipients), so this builder
+        // never receives them. Writing them into the DATA headers would
+        // disclose every blind recipient to all other recipients.
         sb.append("Subject: ${encodeHeaderIfNeeded(subject)}\r\n")
         val dateFormat = java.text.SimpleDateFormat(RFC_2822_DATE_PATTERN, java.util.Locale.US)
         sb.append("Date: ${dateFormat.format(java.util.Date())}\r\n")

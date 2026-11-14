@@ -19,8 +19,10 @@ import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.widgets.updateWidgetPreviews
 
+/** Entry activity that wires the email UI, navigation and background sync startup. */
 class MainActivity : MaActivity() {
 
+    /** Holds activity-level constants such as the notification permission request code. */
     companion object {
         private const val REQUEST_POST_NOTIFICATIONS = 7331
     }

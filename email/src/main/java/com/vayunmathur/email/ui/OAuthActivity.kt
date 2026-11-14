@@ -82,5 +82,6 @@ class OAuthActivity : ComponentActivity() {
         }
     }
 
+    /** Holds the logging tag for the OAuth redirect activity. */
     companion object { private const val TAG = "OAuthActivity" }
 }

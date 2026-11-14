@@ -9,6 +9,7 @@ import com.vayunmathur.email.network.imap.MimeParser
 
 @Serializable
 @Entity(primaryKeys = ["accountEmail", "fullName"])
+/** A mail folder belonging to an account, keyed by account and full folder name. */
 data class EmailFolder(
     val accountEmail: String,
     val fullName: String,
@@ -20,6 +21,7 @@ data class EmailFolder(
 
 @Serializable
 @Entity(primaryKeys = ["accountEmail", "folderName", "id"])
+/** A stored email message keyed by account, folder and IMAP UID. */
 data class EmailMessage(
     val accountEmail: String,
     val folderName: String,
@@ -85,6 +87,7 @@ data class EmailPreview(
 )
 
 @Entity
+/** A sender address the user has blocked. */
 data class BlockedSender(
     @PrimaryKey val address: String,
 )
@@ -104,6 +107,7 @@ data class DeletedUid(
 
 @Serializable
 @Entity(primaryKeys = ["accountEmail", "messageId", "partId"])
+/** A stored attachment part belonging to a message. */
 data class Attachment(
     val accountEmail: String,
     val folderName: String,
@@ -117,6 +121,7 @@ data class Attachment(
 
 @Serializable
 @Entity
+/** A configured mail account identified by its email address. */
 data class EmailAccount(
     @PrimaryKey val email: String,
     /**
@@ -384,6 +389,7 @@ private fun EmailMessage.findUnsubscribeLinkInBody(): String? {
 /// absolute file paths. [inlineImageJson] stores JSON array of {cid,path,mime,name}.
 @Serializable
 @Entity
+/** A queued outgoing message awaiting SMTP delivery. */
 data class OutboxEntry(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val accountEmail: String,
@@ -406,6 +412,7 @@ data class OutboxEntry(
 )
 
 @Entity
+/** A saved draft message awaiting further editing or sending. */
 data class DraftEntry(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val accountEmail: String,

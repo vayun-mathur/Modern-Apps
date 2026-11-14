@@ -23,6 +23,7 @@ class SnoozeWorker(
         return Result.success()
     }
 
+    /** Schedules the one-shot worker that un-snoozes messages at the requested time. */
     companion object {
         fun scheduleNext(context: Context, atMillis: Long) {
             val delay = (atMillis - System.currentTimeMillis()).coerceAtLeast(1_000L)

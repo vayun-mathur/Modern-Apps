@@ -161,6 +161,7 @@ class EmailHtmlEditorController(
         }
     }
 
+    /** Provides sampled-bitmap decoding helpers for inline composer images. */
     companion object {
         private fun decodeSampledBitmap(context: Context, uri: Uri, reqWidth: Int): Bitmap? {
             return try {

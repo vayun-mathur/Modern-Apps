@@ -22,6 +22,7 @@ fun FolderList(folders: List<EmailFolder>, selectedFolder: String, onSelect: (St
     }
 }
 
+/** A folder node in the hierarchical folder tree with its child folders. */
 data class FolderNode(val folder: EmailFolder, val children: List<FolderNode>)
 
 fun buildFolderTree(folders: List<EmailFolder>): List<FolderNode> {

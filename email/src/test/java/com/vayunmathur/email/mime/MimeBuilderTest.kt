@@ -31,7 +31,6 @@ class MimeBuilderTest {
         body: String = "World",
         asHtml: Boolean = false,
         cc: String? = null,
-        bcc: String? = null,
         inReplyTo: String? = null,
         references: String? = null,
     ) = MimeBuilder.buildMessage(
@@ -42,7 +41,6 @@ class MimeBuilderTest {
         body = body,
         asHtml = asHtml,
         cc = cc,
-        bcc = bcc,
         inReplyTo = inReplyTo,
         references = references,
     )
@@ -84,12 +82,11 @@ class MimeBuilderTest {
         assertFalse(bare.contains("Bcc:"), bare)
         assertFalse(bare.contains("In-Reply-To:"), bare)
         assertFalse(bare.contains("References:"), bare)
-        val full = simple(cc = "c@x.com", bcc = "d@x.com", inReplyTo = "<m1>", references = "<m1> <m0>")
+        val full = simple(cc = "c@x.com", inReplyTo = "<m1>", references = "<m1> <m0>")
         assertTrue(full.contains("Cc: c@x.com\r\n"), full)
         // Bcc must never appear in the wire headers (envelope-only); the
         // previous assertion pinned the disclosure bug this guards.
         assertFalse(full.contains("Bcc:"), full)
-        assertFalse(full.contains("d@x.com"), full)
         assertTrue(full.contains("In-Reply-To: <m1>\r\n"), full)
         assertTrue(full.contains("References: <m1> <m0>\r\n"), full)
     }

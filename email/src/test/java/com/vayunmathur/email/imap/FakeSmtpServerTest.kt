@@ -36,6 +36,10 @@ class FakeSmtpServer(
     val received = mutableListOf<String>()
     val dataBodies = mutableListOf<String>()
 
+    private companion object {
+        val BASE64_LINE = Regex("[A-Za-z0-9+/=]+")
+    }
+
     fun start() {
         thread(isDaemon = true) {
             try {
@@ -54,54 +58,84 @@ class FakeSmtpServer(
             }
             send(greeting)
             if (!greeting.startsWith("220")) return
-            var inData = false
-            val body = StringBuilder()
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                val current = line!!
-                if (inData) {
-                    if (current == ".") {
-                        inData = false
-                        synchronized(dataBodies) { dataBodies.add(body.toString()) }
-                        send("250 queued")
-                    } else {
-                        body.append(current).append("\n")
-                    }
-                    continue
-                }
-                synchronized(received) { received.add(current) }
-                when {
-                    current.startsWith("EHLO") -> {
-                        send("250-localhost")
-                        send("250 AUTH PLAIN LOGIN XOAUTH2")
-                    }
-                    current.startsWith("AUTH PLAIN") -> send(if (failAuth) "535 nope" else "235 authenticated")
-                    current.startsWith("AUTH XOAUTH2") && current.split(" ").size > 3 ->
-                        send(if (failAuth) "535 nope" else "235 authenticated")
-                    current == "AUTH XOAUTH2" -> send("334 ")
-                    current.startsWith("AUTH LOGIN") -> send("334 VXNlcm5hbWU6")
-                    // Bare Base64 lines during AUTH LOGIN challenge/response.
-                    current.matches(Regex("[A-Za-z0-9+/=]+")) && received.count { it.startsWith("AUTH LOGIN") } > 0 &&
-                        received.takeLast(2).any { it.startsWith("AUTH LOGIN") || it.matches(Regex("[A-Za-z0-9+/=]+")) } -> {
-                        // First bare line is the username, second is the password.
-                        val bareCount = received.count { it.matches(Regex("[A-Za-z0-9+/=]+")) }
-                        if (bareCount <= 1) send("334 UGFzc3dvcmQ6") else send("235 authenticated")
-                    }
-                    current.startsWith("MAIL FROM") -> send("250 sender ok")
-                    current.startsWith("RCPT TO") -> send("250 recipient ok")
-                    current == "DATA" -> {
-                        inData = true
-                        send("354 end with dot")
-                    }
-                    current == "QUIT" -> {
-                        send("221 bye")
-                        return
-                    }
-                    current.startsWith("STARTTLS") -> send("454 not here")
-                    else -> send("250 ok")
-                }
+            val session = SmtpSession(::send)
+            var line: String? = null
+            var quit = false
+            while (!quit && reader.readLine().also { line = it } != null) {
+                quit = session.handleLine(line!!)
             }
         }
+    }
+
+    /** Per-connection SMTP state: DATA-mode buffering plus command replies. */
+    private inner class SmtpSession(private val send: (String) -> Unit) {
+        private var inData = false
+        private val body = StringBuilder()
+
+        /** Handles one wire line; returns true on QUIT. */
+        fun handleLine(current: String): Boolean {
+            if (inData) {
+                handleDataLine(current)
+                return false
+            }
+            synchronized(received) { received.add(current) }
+            return handleCommand(current)
+        }
+
+        private fun handleDataLine(current: String) {
+            if (current == ".") {
+                inData = false
+                synchronized(dataBodies) { dataBodies.add(body.toString()) }
+                send("250 queued")
+            } else {
+                body.append(current).append("\n")
+            }
+        }
+
+        private fun handleCommand(current: String): Boolean {
+            if (handleAuthCommand(current)) return false
+            when {
+                current.startsWith("EHLO") -> {
+                    send("250-localhost")
+                    send("250 AUTH PLAIN LOGIN XOAUTH2")
+                }
+                current.startsWith("MAIL FROM") -> send("250 sender ok")
+                current.startsWith("RCPT TO") -> send("250 recipient ok")
+                current == "DATA" -> {
+                    inData = true
+                    send("354 end with dot")
+                }
+                current == "QUIT" -> {
+                    send("221 bye")
+                    return true
+                }
+                current.startsWith("STARTTLS") -> send("454 not here")
+                else -> send("250 ok")
+            }
+            return false
+        }
+
+        /** Handles AUTH and bare AUTH LOGIN lines; returns true when handled. */
+        private fun handleAuthCommand(current: String): Boolean {
+            when {
+                current.startsWith("AUTH PLAIN") -> send(if (failAuth) "535 nope" else "235 authenticated")
+                current.startsWith("AUTH XOAUTH2") && current.split(" ").size > 3 ->
+                    send(if (failAuth) "535 nope" else "235 authenticated")
+                current == "AUTH XOAUTH2" -> send("334 ")
+                current.startsWith("AUTH LOGIN") -> send("334 VXNlcm5hbWU6")
+                isBareAuthLoginLine(current) -> {
+                    // First bare line is the username, second is the password.
+                    val bareCount = received.count { it.matches(BASE64_LINE) }
+                    if (bareCount <= 1) send("334 UGFzc3dvcmQ6") else send("235 authenticated")
+                }
+                else -> return false
+            }
+            return true
+        }
+
+        private fun isBareAuthLoginLine(current: String): Boolean =
+            current.matches(BASE64_LINE) && received.count { it.startsWith("AUTH LOGIN") } > 0 &&
+                received.takeLast(2).any { it.startsWith("AUTH LOGIN") || it.matches(BASE64_LINE) }
     }
 
     override fun close() {

@@ -44,7 +44,6 @@ object SmtpClient {
             body = body,
             asHtml = asHtml,
             cc = cc,
-            bcc = bcc,
             attachments = attachments,
             inlineImages = inlineImages,
             inReplyTo = inReplyTo,

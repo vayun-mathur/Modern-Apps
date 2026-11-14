@@ -32,6 +32,7 @@ object MimeParser {
     private const val HEADER_SNIFF_LEN = 1024
     private const val EMPTY_BODY_SIZE = 0
 
+    /** A parsed MIME Content-Type header with its type, subtype and parameters. */
     data class ContentTypeInfo(val mainType: String, val subType: String, val params: Map<String, String>) {
         val fullType: String get() = "$mainType/$subType"
         val isMultipart: Boolean get() = mainType.equals("multipart", ignoreCase = true)
@@ -39,12 +40,14 @@ object MimeParser {
         val isImage: Boolean get() = mainType.equals("image", ignoreCase = true)
     }
 
+    /** A parsed MIME Content-Disposition header with its type and parameters. */
     data class DispositionInfo(val type: String, val params: Map<String, String>) {
         val isAttachment: Boolean get() = type.equals("attachment", ignoreCase = true)
         val isInline: Boolean get() = type.equals("inline", ignoreCase = true)
         val filename: String? get() = params["filename"] ?: params["name"]
     }
 
+    /** One parsed MIME part with its headers, content type and decoded body data. */
     data class ParsedPart(
         val headers: Map<String, String>,
         val rawHeaderBlock: String,

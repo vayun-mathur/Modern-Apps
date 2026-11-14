@@ -49,13 +49,18 @@ suspend fun EmailAccount.resolveAuth(context: Context): EmailManager.AuthType {
     return EmailManager.AuthType.Password(CredentialCrypto.decrypt(cipher, iv))
 }
 
+/** Coordinates mail operations across IMAP and SMTP for configured accounts. */
 class EmailManager {
 
+    /** How an account authenticates to its mail servers. */
     sealed class AuthType {
+        /** Password authentication carrying the account password. */
         data class Password(val value: String) : AuthType()
+        /** OAuth authentication carrying the current access token. */
         data class OAuth(val token: String) : AuthType()
     }
 
+    /** A fetched message body together with its HTML flag and attachments. */
     data class FullFetchResult(val contentTriple: Triple<String?, Boolean, List<Attachment>>)
 
     suspend fun fetchFolders(
@@ -77,7 +82,9 @@ class EmailManager {
         skipUids: Set<Long> = emptySet(),
         accountEmail: String = user,
     ): Pair<List<EmailMessage>, List<Attachment>> =
-        ImapClient.fetchMessages(server, user, auth, folderName, limit, offset, fetchBodies, skipUids, null, accountEmail)
+        ImapClient.fetchMessages(
+            server, user, auth, folderName, limit, offset, fetchBodies, skipUids, null, accountEmail,
+        )
 
     suspend fun fetchMessageBody(
         server: ServerConfig,

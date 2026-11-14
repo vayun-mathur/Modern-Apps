@@ -24,6 +24,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.concurrent.TimeUnit
 
+/** WorkManager worker that attempts delivery of queued outbox messages. */
 class OutboxSendWorker(
     appContext: Context,
     workerParams: WorkerParameters,
@@ -155,6 +156,7 @@ class OutboxSendWorker(
         return "${t.javaClass.simpleName}: $msg"
     }
 
+    /** Holds WorkManager names and retry constants for outbox delivery. */
     companion object {
         private const val TAG = "OutboxSender"
         const val WORK_NAME = "OutboxSendWorker"
@@ -164,6 +166,7 @@ class OutboxSendWorker(
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
         @Serializable
+        /** A serializable inline-image reference stored with an outbox entry. */
         data class InlineJsonEntry(val cid: String, val path: String, val mime: String, val name: String)
 
         fun encodePaths(paths: List<String>): String = json.encodeToString(paths)
@@ -207,6 +210,7 @@ class OutboxSendWorker(
     }
 }
 
+/** Enqueues outbox messages for background SMTP delivery. */
 object OutboxManager {
 
     suspend fun enqueue(

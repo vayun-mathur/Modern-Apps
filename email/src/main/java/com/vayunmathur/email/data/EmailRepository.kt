@@ -35,6 +35,7 @@ class EmailRepository private constructor(context: Context) :
     suspend fun updateOutboxAttempt(id: Long, error: String?, attempts: Int, at: Long) =
         outbox.updateOutboxAttempt(id, error, attempts, at)
 
+    /** Provides the singleton EmailRepository instance. */
     companion object {
         @Volatile private var instance: EmailRepository? = null
         fun get(context: Context): EmailRepository =

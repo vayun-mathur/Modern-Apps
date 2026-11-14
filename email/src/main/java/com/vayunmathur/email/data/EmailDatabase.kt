@@ -29,12 +29,14 @@ import com.vayunmathur.email.data.Attachment
     version = 20,
     exportSchema = false,
 )
+/** Room database holding email folders, messages, accounts and outbox state. */
 abstract class EmailDatabase : RoomDatabase() {
     abstract fun accountDao(): EmailAccountDao
     abstract fun messageDao(): EmailMessageDao
     abstract fun queryDao(): EmailQueryDao
     abstract fun outboxDao(): EmailOutboxDao
 
+    /** Provides the singleton EmailDatabase instance and its migrations. */
     companion object : DatabaseMigrations {
         @Volatile
         private var instance: EmailDatabase? = null

@@ -43,6 +43,7 @@ class ImapIdleRetryWorker(appContext: Context, params: WorkerParameters) : Corou
         }
     }
 
+    /** Holds WorkManager names and logging tags for the IMAP IDLE retry worker. */
     companion object {
         private const val TAG = "ImapIdleRetry"
         private const val WORK_NAME = "ImapIdleRetryWorker"

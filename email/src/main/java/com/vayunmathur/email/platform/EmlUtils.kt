@@ -6,18 +6,21 @@ import com.vayunmathur.email.data.EmailMessage
 import com.vayunmathur.email.network.imap.MimeParser
 import java.io.File
 
+/** An attachment extracted from a parsed .eml file. */
 data class EmlAttachment(
     val fileName: String,
     val mimeType: String,
     val bytes: ByteArray,
 )
 
+/** A parsed .eml file as a message plus its attachments and inline images. */
 data class ParsedEml(
     val message: EmailMessage,
     val emlAttachments: List<EmlAttachment>,
     val inlineCidMap: Map<String, File> = emptyMap(),
 )
 
+/** Parses .eml files into messages and extracted attachments. */
 object EmlUtils {
 
     private const val EML_EXTENSION_LEN = 4

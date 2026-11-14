@@ -26,8 +26,10 @@ data class ImapCapabilities(val caps: Set<String>) {
     fun has(cap: String): Boolean = caps.contains(cap.uppercase())
 }
 
+/** One mailbox entry returned by an IMAP LIST response. */
 data class ImapListEntry(val flags: List<String>, val delimiter: String?, val mailbox: String)
 
+/** Result of selecting a mailbox, including its message counts and UID validity. */
 data class ImapSelectResult(
     val exists: Int,
     val recent: Int = 0,
@@ -36,6 +38,7 @@ data class ImapSelectResult(
     val flags: List<String> = emptyList(),
 )
 
+/** One message result returned by an IMAP FETCH response. */
 data class ImapFetchResult(
     val uid: Long,
     val flags: List<String>,
@@ -45,11 +48,13 @@ data class ImapFetchResult(
     val size: Int = 0,
 )
 
+/** A raw socket-level IMAP connection to a single mail server. */
 class RawImapConnection(
     val server: ServerConfig,
     val trustAll: Boolean = false,
 ) : AutoCloseable {
 
+    /** Holds socket timeout and buffer constants for IMAP connections. */
     companion object {
         private const val TAG = "RawImap"
         private const val SOCKET_TIMEOUT_MS = 30_000

@@ -221,6 +221,7 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
         }
     }
 
+    /** Holds WorkManager names and input keys for periodic email sync. */
     companion object {
         private const val SYNC_WORK_NAME = "EmailSyncWorker"
         private const val HOURLY_NON_INBOX_WORK_NAME = "EmailNonInboxHourlySync"

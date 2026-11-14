@@ -127,8 +127,11 @@ object OutlookOAuth {
         }
     }
 
+    /** Result of an Outlook OAuth sign-in attempt. */
     sealed class OAuthResult {
+        /** Successful OAuth sign-in carrying the account email address. */
         data class Success(val email: String) : OAuthResult()
+        /** Failed OAuth sign-in carrying the failure reason and provider error details. */
         data class Failure(
             val reason: String,
             val error: String? = null,

@@ -74,6 +74,7 @@ class EmailNotificationActionReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Holds broadcast action and extra keys for notification actions. */
     companion object {
         const val ACTION_MARK_READ = "com.vayunmathur.email.MARK_READ"
         const val ACTION_DELETE = "com.vayunmathur.email.DELETE"

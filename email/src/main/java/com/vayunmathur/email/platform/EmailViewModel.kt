@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalCoroutinesApi::class)
+/** ViewModel backing the email screens with list, thread and composer state. */
 class EmailViewModel(application: Application) :
     AndroidViewModel(application), MessageListActions, MessageThreadActions {
     private val repository = EmailRepository.get(application)

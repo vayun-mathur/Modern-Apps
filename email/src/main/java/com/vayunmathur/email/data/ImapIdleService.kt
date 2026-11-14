@@ -438,6 +438,7 @@ class ImapIdleService : Service() {
         } else 0
     }
 
+    /** Holds notification and logging constants for the IMAP IDLE service. */
     companion object {
         private const val TAG = "ImapIdle"
         private const val CHANNEL_ID = "imap_idle"

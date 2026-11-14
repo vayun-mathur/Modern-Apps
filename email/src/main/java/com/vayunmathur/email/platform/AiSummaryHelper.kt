@@ -76,6 +76,7 @@ class AiSummaryHelper(private val appContext: Context) {
         }
     }
 
+    /** Holds the OpenAssistant inference service coordinates used for summaries. */
     companion object {
         private const val OA_PACKAGE = "com.vayunmathur.openassistant"
         private const val OA_SERVICE = "$OA_PACKAGE.util.InferenceService"
