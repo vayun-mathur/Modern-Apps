@@ -339,9 +339,12 @@ log "  memory: MemAvailable $(mem_avail_gb)G, headroom ${MEM_HEADROOM_GB}G, scop
 MB_ARGS=(--input "$IN/planet.osm.pbf" --out "$TILES"
     --coastline "$IN/coastline.shp" --graph "$GRAPH"
     --transit-routes "$ROUTES" --dem "$IN/world.mdem" --region world
-    # planet5 "balanced": DEM error <= 0.5 ground pixel per zoom, 2x simplification below z14,
-    # a 1-unit z14 floor for washable layers, zoom-adaptive coordinate grid, z13 wash kept.
-    --dem-px 0.5 --simplify-scale 2 --z14-tolerance 1 --coord-quant --keep-z13-wash)
+    # planet5 "aggressive" (owner, ~50 GB revision): DEM error <= 1 ground pixel per zoom, 4x
+    # simplification below z14, a 2-unit z14 floor for washable layers, zoom-adaptive coordinate
+    # grid, z13 wash kept. Error table in the planet-size / planet50 reports.
+    # No junction layer: lane connectors are drawn only by carriageway layers, which the release
+    # style drops (library/map style::LANE_RENDERING = false).
+    --dem-px 1 --simplify-scale 4 --z14-tolerance 2 --coord-quant --keep-z13-wash --no-junction-layer)
 
 # Pressure log: user.slice memory PSI (what fb-oomd watches), MemAvailable and
 # each build scope's anon/file, every 30 s, for the life of the build.
@@ -594,7 +597,9 @@ TILES5=$TMP/tiles5.mamaps
 rm -rf "$GRAPH5" "$TRANSIT5" "$TILES5"
 # Three independent conversions, run together (graph_thin is one thread, ~48 GB; the others
 # use the pool). All read their inputs only.
-run_tool g5 60 0 1 -- nice -n 10 "$BIN/examples/graph_thin" "$GRAPH" "$GRAPH5" 100 25 --v8 \
+# Graph v9 (column ZBLK, zstd-block shape points / names / name offsets). Thinning stays 1 m: the
+# aggressive preset's 2 m changed the step list of ~half of all routes on US West.
+run_tool g5 60 0 1 -- nice -n 10 "$BIN/examples/graph_thin" "$GRAPH" "$GRAPH5" 100 25 --v9 \
     >"$TMP/graph5.log" 2>&1 & G5_PID=$!
 run_tool t5 24 0 1 -- nice -n 10 "$BIN/transit_planet5" "$WT" "$TRANSIT5" --shape-tol-m 1 \
     >"$TMP/transit5.log" 2>&1 & T5_PID=$!
