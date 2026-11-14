@@ -215,6 +215,7 @@ class UnitConverterTab(
         }
     }
 
+    /** Stand-in currency category used before live rates load. */
     companion object {
         /** The Currency tab's stand-in before rates load: present so the tab shows, but empty. */
         private val EMPTY_CURRENCY_CATEGORY =

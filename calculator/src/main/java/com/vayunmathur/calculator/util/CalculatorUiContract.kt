@@ -125,6 +125,7 @@ interface CalculatorActions {
     /** Show the result in the compatible unit identified by [token]. */
     fun selectOutputUnit(token: String) {}
 
+    /** No-op CalculatorActions for previews and tests. */
     companion object {
         val Noop: CalculatorActions = object : CalculatorActions {}
     }
@@ -148,6 +149,7 @@ interface GraphActions {
     /** Reveal or dismiss the notable point nearest [at], within [radius] graph units. */
     fun tapGraph(at: GraphPoint, radius: Double) {}
 
+    /** No-op GraphActions for previews and tests. */
     companion object {
         val Noop: GraphActions = object : GraphActions {}
     }
@@ -179,6 +181,7 @@ interface UnitConverterActions {
     /** Re-fetch live currency exchange rates after a failure. */
     fun retryCurrency() {}
 
+    /** No-op UnitConverterActions for previews and tests. */
     companion object {
         val Noop: UnitConverterActions = object : UnitConverterActions {}
     }

@@ -216,6 +216,7 @@ class UnitsGlanceWidget : MaWidget<UnitsWidgetData>() {
         }
     }
 
+    /** Intent extras, Glance state keys and preview sample for [UnitsGlanceWidget]. */
     companion object {
         private const val TAG = "UnitsGlanceWidget"
 

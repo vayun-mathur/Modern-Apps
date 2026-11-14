@@ -24,6 +24,7 @@ class Dimension private constructor(val exponents: Map<BaseDim, Int>) {
     override fun toString() =
         if (isDimensionless) "1" else exponents.entries.joinToString("·") { "${it.key}^${it.value}" }
 
+    /** Shared dimensionless value and factories for [Dimension]. */
     companion object {
         val NONE = Dimension(emptyMap())
 
@@ -174,6 +175,7 @@ class Quantity(
 
     fun abs(): Quantity = Quantity(kotlin.math.abs(value), dimension, tempOffsetK)
 
+    /** Factory for dimensionless [Quantity] values. */
     companion object {
         fun scalar(value: Double) = Quantity(value, Dimension.NONE)
     }

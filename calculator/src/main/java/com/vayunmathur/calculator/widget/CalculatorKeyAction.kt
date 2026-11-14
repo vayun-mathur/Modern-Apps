@@ -132,7 +132,10 @@ class CalculatorKeyAction : ActionCallback {
         CalculatorGlanceWidget().update(context, glanceId)
     }
 
+    /** Haptics helper for widget key taps. */
     companion object {
+        /** Fallback tick duration on pre-Q devices without predefined effects. */
+        private const val LEGACY_TICK_DURATION_MS = 10L
         /**
          * Best-effort key tick. Never throws: every branch is guarded because this runs
          * before the widget state write, and a haptics failure must not swallow the tap.
@@ -152,7 +155,7 @@ class CalculatorKeyAction : ActionCallback {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
                 } else {
-                    vibrator.vibrate(10L)
+                    vibrator.vibrate(LEGACY_TICK_DURATION_MS)
                 }
             } catch (_: Throwable) {
                 // Haptics are cosmetic; the tap has already been queued for handling.

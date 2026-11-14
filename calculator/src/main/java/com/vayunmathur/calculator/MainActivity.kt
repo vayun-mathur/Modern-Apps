@@ -40,6 +40,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.library.widgets.updateWidgetPreviews
 import kotlinx.serialization.Serializable
 
+/** Entry activity hosting the calculator, graph and unit-converter pages. */
 class MainActivity : MaActivity() {
     private val viewModel: CalculatorViewModel by viewModels()
 
@@ -77,14 +78,18 @@ private fun Intent?.opensUnits(): Boolean =
     this?.getBooleanExtra(UnitsGlanceWidget.EXTRA_OPEN_UNITS, false) == true
 
 @Serializable
+/** Navigation destinations for the calculator app. */
 sealed interface Route : NavKey {
     @Serializable
+    /** The main calculator keypad page. */
     data object Calculator : Route
 
     @Serializable
+    /** The function-graphing page. */
     data object Graph : Route
 
     @Serializable
+    /** The unit-converter page. */
     data object Units : Route
 }
 

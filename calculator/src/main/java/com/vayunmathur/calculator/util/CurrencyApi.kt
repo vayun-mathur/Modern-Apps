@@ -24,6 +24,7 @@ object CurrencyApi {
 }
 
 @Serializable
+/** Exchange-rate payload from the currency proxy: rates per one [base] unit. */
 data class CurrencyRatesDto(
     val base: String = "USD",
     val updated: Long = 0L,

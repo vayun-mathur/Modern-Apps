@@ -42,6 +42,7 @@ class SelectUnitsCategoryAction : ActionCallback {
         UnitsGlanceWidget().update(context, glanceId)
     }
 
+    /** Action parameter keys for the units widget actions. */
     companion object {
         val CATEGORY_NAME = ActionParameters.Key<String>("categoryName")
     }

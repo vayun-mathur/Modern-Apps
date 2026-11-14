@@ -97,6 +97,7 @@ class Expression private constructor(private val root: Node) {
     fun evalQuantity(variable: Double = 0.0, angle: AngleMode = AngleMode.RADIANS, ans: Double = 0.0): Quantity =
         root.eval(EvalContext(variable, angle, ans))
 
+    /** Parses expression text into an [Expression]. */
     companion object {
         fun parse(input: String): Expression = Expression(Parser(input).parse())
     }
