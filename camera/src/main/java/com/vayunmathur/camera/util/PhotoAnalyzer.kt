@@ -46,6 +46,7 @@ internal const val QR_DECODE_INTERVAL_MS = 400L
  */
 internal const val MOTION_FRAME_INTERVAL_MS = 125L
 
+/** Combined luminance, QR and Motion-Photo frame analyzer for the photo stream. */
 class PhotoAnalyzer(
     private val onLuminance: (Float) -> Unit,
     private val onQrDetected: (String) -> Unit,

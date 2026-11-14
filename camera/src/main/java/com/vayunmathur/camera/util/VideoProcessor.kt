@@ -8,6 +8,7 @@ import android.media.MediaMuxer
 import java.io.File
 import java.nio.ByteBuffer
 
+/** Offline video post-processing helpers, such as timelapse speed adjustment. */
 object VideoProcessor {
     /** Sample buffer size (2MB); no-video-track sentinel. */
     private const val SAMPLE_BUFFER_BYTES = 2 * 1024 * 1024

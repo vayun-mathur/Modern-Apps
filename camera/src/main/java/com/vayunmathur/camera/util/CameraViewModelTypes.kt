@@ -9,7 +9,9 @@ import androidx.lifecycle.LifecycleRegistry
 import com.vayunmathur.camera.R
 import kotlin.math.roundToInt
 
+/** Capture modes selectable in the camera UI. */
 enum class CameraMode { PHOTO, PORTRAIT, PANORAMA, PHOTOSPHERE, VIDEO, SLOW_MO, TIMELAPSE, CINEMATIC }
+/** Flash behaviour for still capture. */
 enum class FlashMode { ON, OFF, AUTO }
 
 /** Shutter-timer durations (seconds). */
@@ -17,6 +19,7 @@ private const val TIMER_ONE_SECOND = 1
 private const val TIMER_THREE_SECONDS = 3
 private const val TIMER_FIVE_SECONDS = 5
 private const val TIMER_TEN_SECONDS = 10
+/** Shutter-timer delay options. */
 enum class TimerDuration(val seconds: Int) {
     NONE(0),
     ONE(TIMER_ONE_SECOND),
@@ -24,23 +27,31 @@ enum class TimerDuration(val seconds: Int) {
     FIVE(TIMER_FIVE_SECONDS),
     TEN(TIMER_TEN_SECONDS)
 }
+/** Viewfinder and capture aspect-ratio options. */
 enum class AspectRatioOption(val label: String) {
     RATIO_16_9("16:9"),
     RATIO_4_3("4:3"),
     RATIO_3_2("3:2"),
     RATIO_1_1("1:1")
 }
+/** Video codecs selectable for recording, with display text. */
 enum class VideoCodec(@StringRes val labelRes: Int, @StringRes val descriptionRes: Int) {
     AVC(R.string.codec_avc_label, R.string.codec_avc_description),
     HEVC(R.string.codec_hevc_label, R.string.codec_hevc_description),
     AV1(R.string.codec_av1_label, R.string.codec_av1_description),
 }
+/** Motion-Photo clip durations (seconds). */
+private const val MOTION_ONE_SECOND = 1
+private const val MOTION_THREE_SECONDS = 3
+private const val MOTION_FIVE_SECONDS = 5
+
 /** Motion-Photo clip length (issue #712): how far back the ring buffer reaches. */
 enum class MotionPhotoDuration(val seconds: Int) {
-    ONE(1),
-    THREE(3),
-    FIVE(5),
+    ONE(MOTION_ONE_SECOND),
+    THREE(MOTION_THREE_SECONDS),
+    FIVE(MOTION_FIVE_SECONDS),
 }
+/** Audio input sources selectable for video recording. */
 enum class AudioInputSource(
     @StringRes val labelRes: Int,
     @StringRes val descriptionRes: Int,
@@ -82,6 +93,7 @@ fun formatZoomLabel(ratio: Float): String = when {
     }
 }
 
+/** One selectable exposure-time stop for manual capture. */
 data class ExposureTimeStop(val label: String, val nanos: Long?)
 
 /**

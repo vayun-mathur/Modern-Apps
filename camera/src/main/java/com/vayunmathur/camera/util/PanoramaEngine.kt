@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
+/** Alignment state of one panorama guide dot. */
 enum class GuideDotState {
     PENDING,
     ALIGNING,
@@ -23,6 +24,7 @@ enum class GuideDotState {
     CAPTURED
 }
 
+/** A panorama sweep target at a given angle and pitch. */
 data class GuideDot(
     val index: Int,
     val targetAngle: Float,
@@ -140,6 +142,7 @@ class PanoramaEngine(private val context: Context) : SensorEventListener {
      */
     var onSweepComplete: (() -> Unit)? = null
 
+    /** Sweep thresholds and capture constants for the panorama engine. */
     companion object {
         /** Sweep-direction detection threshold; angle wrap half/full circle. */
         private const val SWEEP_DIRECTION_MIN_ANGLE = 10f

@@ -112,7 +112,10 @@ internal fun CameraViewModel.readManualControlRanges() {
             Log.dev("NightPreview", "readManualControlRanges() filtered stops=$filtered")
             filtered
         } else {
-            Log.status("NightPreview", "readManualControlRanges() isoRange null, emitting emptyList -> ISO bar notAvailable")
+            Log.status(
+                "NightPreview",
+                "readManualControlRanges() isoRange null, emitting emptyList -> ISO bar notAvailable",
+            )
             emptyList()
         }
         // The stop list is per-lens: a new lens can be shorter, so re-clamp the persisted

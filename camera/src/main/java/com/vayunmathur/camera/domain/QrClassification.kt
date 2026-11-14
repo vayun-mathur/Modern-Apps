@@ -103,22 +103,41 @@ private fun appendLittleEndian(out: MutableList<Byte>, value: Long, byteCount: I
  * small ints are stepped over; anything else aborts to null.
  */
 private fun readRequestHint(cbor: ByteArray): String? {
-    val r = CborCursor(cbor) ?: return null
-    // Top level must be a map; key 5 must be a text string.
-    if (r.major() != 5) return null
-    val entries = r.argument() ?: return null
-    if (entries < 0 || entries > cbor.size) return null
-    repeat(entries.toInt()) {
-        val keyMajor = r.major() ?: return null
-        val key = r.argument() ?: return null
-        if (keyMajor == 0 && key == 5L) {
-            if (r.major() != 3) return null
-            val len = r.argument() ?: return null
-            return r.text(len)
+    val r = CborCursor(cbor)
+    var result: String? = null
+    if (r.major() == 5) {
+        // Top level must be a map; key 5 must be a text string.
+        val entries = r.argument()
+        if (entries != null && entries >= 0 && entries <= cbor.size) {
+            result = findRequestHint(r, entries)
         }
-        if (!r.skip()) return null
     }
-    return null
+    return result
+}
+
+private fun findRequestHint(r: CborCursor, entries: Long): String? {
+    var result: String? = null
+    var index = 0L
+    var searching = true
+    while (searching && index < entries) {
+        val keyMajor = r.major()
+        val key = if (keyMajor != null) r.argument() else null
+        if (key == null) {
+            searching = false
+        } else if (keyMajor == 0 && key == 5L) {
+            result = readTextValue(r)
+            searching = false
+        } else if (!r.skip()) {
+            searching = false
+        }
+        index++
+    }
+    return result
+}
+
+private fun readTextValue(r: CborCursor): String? {
+    val len = if (r.major() == 3) r.argument() else null
+    return len?.let { r.text(it) }
 }
 
 /** Tiny CBOR cursor over definite-length items only. */
@@ -177,7 +196,7 @@ private class CborCursor(private val bytes: ByteArray) {
     }
 
     private fun byte(): Byte {
-        if (pos >= bytes.size) throw IndexOutOfBoundsException()
+        if (pos >= bytes.size) throw IndexOutOfBoundsException("CBOR cursor past end at $pos of ${bytes.size}")
         return bytes[pos++]
     }
 

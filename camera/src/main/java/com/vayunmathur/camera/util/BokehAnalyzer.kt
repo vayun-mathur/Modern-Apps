@@ -18,6 +18,7 @@ private const val MIN_SEGMENT_INTERVAL_MS = 66L
 // before feeding the 256x256 model to cut toBitmap -> orient allocations.
 private const val MAX_PREVIEW_SIDE = 512
 
+/** ImageAnalysis analyzer producing portrait bokeh masks from on-device segmentation. */
 class BokehAnalyzer(
     context: Context,
     private val isFrontFacing: Boolean = false,

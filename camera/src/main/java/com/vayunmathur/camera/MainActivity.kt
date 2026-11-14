@@ -26,13 +26,17 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
 
 @Serializable
+/** Navigation destinations for the camera app. */
 sealed interface Route : NavKey {
     @Serializable
+    /** The main camera capture screen. */
     data object Camera : Route
     @Serializable
+    /** Camera settings screen. */
     data object Settings : Route
 }
 
+/** Entry activity hosting the camera and settings screens. */
 class MainActivity : MaActivity() {
     private val viewModel: CameraViewModel by viewModels()
     private var captureForResult: Boolean = false
