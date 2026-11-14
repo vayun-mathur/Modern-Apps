@@ -133,7 +133,8 @@ impl StreamWriter {
         // The dictionary starts where the 128-byte v8 header ends.
         let dict_offset = HEADER_LEN as u64;
         let root_offset = dict_offset + dictionary.len() as u64;
-        let leaf_offset = root_offset + root_bytes.len() as u64;
+        let zdict_bytes: &[u8] = self.options.zdicts.as_deref().unwrap_or(&[]);
+        let leaf_offset = root_offset + root_bytes.len() as u64 + zdict_bytes.len() as u64;
         let data_offset = leaf_offset + leaf_bytes.len() as u64;
         let data_len = self.data.len();
 
@@ -141,6 +142,8 @@ impl StreamWriter {
             flags,
             compression: if !self.options.compress {
                 COMPRESSION_NONE
+            } else if self.options.zdicts.is_some() {
+                crate::mamaps::header::COMPRESSION_ZSTD_DICT
             } else if self.options.zstd {
                 crate::mamaps::header::COMPRESSION_ZSTD
             } else {
@@ -174,6 +177,7 @@ impl StreamWriter {
         prefix.extend_from_slice(&header.serialize());
         prefix.extend_from_slice(&dictionary);
         prefix.extend_from_slice(&root_bytes);
+        prefix.extend_from_slice(zdict_bytes);
         prefix.extend_from_slice(&leaf_bytes);
         debug_assert_eq!(prefix.len() as u64, data_offset);
         Ok((Header::parse(&prefix)?, prefix))

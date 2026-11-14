@@ -7,8 +7,9 @@
 use crate::proto::{err, Result};
 
 use super::consts::{
-    COMPRESSION_DEFLATE, COMPRESSION_NONE, COMPRESSION_ZSTD, FLAG_LEAF_LEN_64, FORMAT_VERSION,
-    FORMAT_VERSION_V9, HEADER_LEN, KNOWN_FLAGS, MAGIC, MAX_ZOOM,
+    COMPRESSION_DEFLATE, COMPRESSION_NONE, COMPRESSION_ZSTD, COMPRESSION_ZSTD_DICT, FLAG_LEAF_LEN_64,
+    FORMAT_VERSION, FORMAT_VERSION_HEADER_V10, FORMAT_VERSION_V9, HEADER_LEN, KNOWN_FLAGS, MAGIC,
+    MAX_ZOOM,
 };
 use super::types::Header;
 
@@ -32,9 +33,18 @@ impl Header {
             return err("not a .mamaps archive (bad magic)");
         }
         let version = buf[7];
-        if version != FORMAT_VERSION && version != FORMAT_VERSION_V9 {
+        if version != FORMAT_VERSION && version != FORMAT_VERSION_V9 && version != FORMAT_VERSION_HEADER_V10 {
             return err(format!(
-                "unsupported .mamaps format version {version} (this reader speaks v{FORMAT_VERSION} and v{FORMAT_VERSION_V9})",
+                "unsupported .mamaps format version {version} (this reader speaks v{FORMAT_VERSION}, \
+                 v{FORMAT_VERSION_V9} and v{FORMAT_VERSION_HEADER_V10})",
+            ));
+        }
+        // Dictionary compression is exactly what makes a header v10, both ways.
+        if (version == FORMAT_VERSION_HEADER_V10) != (buf[12] == COMPRESSION_ZSTD_DICT) {
+            return err(format!(
+                "a .mamaps v{version} header with compression {} (v{FORMAT_VERSION_HEADER_V10} means \
+                 dictionary-zstd bodies and nothing else)",
+                buf[12]
             ));
         }
         let u16_at = |o: usize| u16::from_le_bytes([buf[o], buf[o + 1]]);
@@ -134,7 +144,7 @@ impl Header {
     pub(super) fn check(&self) -> Result<()> {
         if !matches!(
             self.compression,
-            COMPRESSION_NONE | COMPRESSION_DEFLATE | COMPRESSION_ZSTD
+            COMPRESSION_NONE | COMPRESSION_DEFLATE | COMPRESSION_ZSTD | COMPRESSION_ZSTD_DICT
         ) {
             return err(format!("unknown .mamaps compression {}", self.compression));
         }
@@ -194,6 +204,11 @@ impl Header {
                 self.root_len,
                 crate::mamaps::index::ROOT_ENTRY_LEN,
             ));
+        }
+        if self.compression == COMPRESSION_ZSTD_DICT
+            && self.root_offset + self.root_len as u64 > self.leaf_offset
+        {
+            return err("a .mamaps v10 header leaves no room for its dictionary section");
         }
         if self.bodies_written > self.tiles_addressed {
             return err("a .mamaps header stores more bodies than it addresses tiles");

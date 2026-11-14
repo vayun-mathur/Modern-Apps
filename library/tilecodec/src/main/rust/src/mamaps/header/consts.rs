@@ -82,6 +82,20 @@ pub const FORMAT_VERSION_V9: u8 = 9;
 /// body, not the header — but builders ship v10 bodies under v9+ headers.
 pub const FORMAT_VERSION_V10: u8 = 10;
 
+/// The planet5 *header* version: bodies are zstd frames that reference trained dictionaries
+/// ([`COMPRESSION_ZSTD_DICT`]), stored in a section between the root index and the leaves.
+///
+/// Planet5 size work. Shares the number 10 with the v10 *body* version but lives in a different
+/// byte (header byte 7 vs body byte 3); the two never meet. A v8/v9-only reader refuses a v10
+/// header cleanly, which is what keeps planet4 apps on planet4. This reader still speaks v8 and
+/// v9 headers unchanged.
+pub const FORMAT_VERSION_HEADER_V10: u8 = 10;
+
+/// Body version 11: a v10 body whose heightmap samples are MED-predicted (LOCO-I) zigzag
+/// residuals rather than raw `u16`s. Lossless (mod 2^16 arithmetic); only the entropy of the
+/// heightmap section changes, which is what makes it compress. Planet5 only.
+pub const FORMAT_VERSION_V11: u8 = 11;
+
 pub const HEADER_LEN: usize = 128;
 
 /// Bodies are compressed frames; clear means the body is stored raw.
@@ -131,6 +145,10 @@ pub const COMPRESSION_DEFLATE: u8 = 1;
 /// `ruzstd`) so the aarch64-linux-android cdylib keeps its no-C-toolchain
 /// property — see the crate docs in `Cargo.toml`.
 pub const COMPRESSION_ZSTD: u8 = 2;
+/// zstd frames that may reference a trained dictionary by the dictionary id in their frame header
+/// (planet5, header version [`FORMAT_VERSION_HEADER_V10`] only). The dictionaries live in the
+/// section between the root index and the leaves (see [`crate::mamaps::zdict`]).
+pub const COMPRESSION_ZSTD_DICT: u8 = 3;
 
 /// The deepest zoom a `tile_id_lo` can span inside one leaf. See [`crate::mamaps::index`].
 pub const MAX_ZOOM: u8 = 22;

@@ -111,10 +111,12 @@ impl Body {
         if version != crate::mamaps::header::FORMAT_VERSION
             && version != crate::mamaps::header::FORMAT_VERSION_V9
             && version != crate::mamaps::header::FORMAT_VERSION_V10
+            && version != crate::mamaps::header::FORMAT_VERSION_V11
         {
             return err(format!("unsupported .mamaps body version {version}"));
         }
-        let v10 = version == crate::mamaps::header::FORMAT_VERSION_V10;
+        let v11 = version == crate::mamaps::header::FORMAT_VERSION_V11;
+        let v10 = version == crate::mamaps::header::FORMAT_VERSION_V10 || v11;
         let raw_len = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]) as usize;
         if raw_len != buf.len() {
             return err(format!(
@@ -264,7 +266,10 @@ impl Body {
                 buildings = table;
             }
             if has_heightmap {
-                let (grid, used) = parse_heightmap(&buf[at..])?;
+                let (mut grid, used) = parse_heightmap(&buf[at..])?;
+                if v11 {
+                    super::tables::unresidual_heightmap(&mut grid);
+                }
                 at += used;
                 heightmap = Some(grid);
             }

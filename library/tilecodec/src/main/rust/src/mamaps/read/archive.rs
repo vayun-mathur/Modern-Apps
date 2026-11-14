@@ -1,4 +1,4 @@
-use super::helpers::decompress;
+use super::helpers::{decompress_with, zdict_extent};
 use super::leaf_cache::LeafCache;
 use crate::mamaps::body::Body;
 use crate::mamaps::dict::Dictionary;
@@ -29,6 +29,8 @@ pub struct MamapsArchive<R: RangeReader> {
     pub dictionary: Dictionary,
     root: Vec<RootEntry>,
     leaves: Arc<LeafCache>,
+    /// The archive's trained dictionaries (planet5 v10 headers), fetched once on open.
+    zdicts: Option<Arc<crate::mamaps::zdict::ZDicts>>,
 }
 
 /// Where one tile's bytes live, decided from the root index plus the shared leaf cache.
@@ -44,6 +46,11 @@ enum TileAddress {
 }
 
 impl<R: RangeReader> MamapsArchive<R> {
+    /// The archive's trained dictionaries, when its bodies use them (planet5).
+    pub fn zdicts(&self) -> Option<&crate::mamaps::zdict::ZDicts> {
+        self.zdicts.as_deref()
+    }
+
     /// The reader this archive was opened on.
     ///
     /// So a caller can act on something it only learns from the header — the `build_id`, which
@@ -99,7 +106,22 @@ impl<R: RangeReader> MamapsArchive<R> {
                 root.len(),
             ));
         }
-        Ok(MamapsArchive { reader, header, dictionary, root, leaves })
+        // Planet5: one more read on open for the dictionaries, never one per tile.
+        let zdicts = if header.compression == crate::mamaps::header::COMPRESSION_ZSTD_DICT {
+            let (start, end) = zdict_extent(&header)?;
+            let bytes = if end <= prefix.len() as u64 {
+                prefix[start as usize..end as usize].to_vec()
+            } else {
+                reader.read(start, (end - start) as u32)?
+            };
+            if bytes.len() as u64 != end - start {
+                return err("a .mamaps dictionary section was cut short");
+            }
+            Some(Arc::new(crate::mamaps::zdict::ZDicts::parse(&bytes)?))
+        } else {
+            None
+        };
+        Ok(MamapsArchive { reader, header, dictionary, root, leaves, zdicts })
     }
 
     /// The decoded body for a tile, or `None` when the archive does not hold it.
@@ -265,7 +287,7 @@ impl<R: RangeReader> MamapsArchive<R> {
                 let (offset, length) = body_requests[i];
                 match found.get(i) {
                     Some(Ok(stored)) if stored.len() == length as usize => {
-                        match decompress(self.header.compression, stored) {
+                        match decompress_with(self.header.compression, stored, self.zdicts.as_deref()) {
                             Ok(raw) => match Body::parse(&raw) {
                                 Ok(body) => done[*slot] = Some(Ok(Some(body))),
                                 Err(e) => done[*slot] = Some(Err(e)),
@@ -397,7 +419,7 @@ impl<R: RangeReader> MamapsArchive<R> {
             return err("a .mamaps leaf entry runs past the tile data section");
         }
         let stored = self.exact(self.header.data_offset + at, entry.length, "a tile body")?;
-        Ok(Some(decompress(self.header.compression, &stored)?))
+        Ok(Some(decompress_with(self.header.compression, &stored, self.zdicts.as_deref())?))
     }
 
     /// The parsed leaf a root entry addresses, from the shared cache or over the wire.

@@ -564,3 +564,62 @@ pub fn serialize_heightmap(grid: &Heightmap, out: &mut Vec<u8>) {
         out.push(0);
     }
 }
+
+/// The MED (LOCO-I) prediction for sample `(r, c)` of a `d x d` grid from already-known
+/// neighbours: left, up and up-left. First row predicts from the left, first column from above,
+/// the first sample from sea level (32768). Shared by the encoder and the decoder so they agree.
+#[inline]
+fn med_predict(s: &[u16], d: usize, r: usize, c: usize) -> u16 {
+    if r == 0 && c == 0 {
+        return 32768;
+    }
+    if r == 0 {
+        return s[c - 1];
+    }
+    if c == 0 {
+        return s[(r - 1) * d];
+    }
+    let (l, u, ul) = (s[r * d + c - 1] as i32, s[(r - 1) * d + c] as i32, s[(r - 1) * d + c - 1] as i32);
+    let (lo, hi) = (l.min(u), l.max(u));
+    let p = if ul >= hi {
+        lo
+    } else if ul <= lo {
+        hi
+    } else {
+        l + u - ul
+    };
+    p as u16
+}
+
+/// Serialise a heightmap as v11 MED residuals: the same `dim` + `dim*dim` u16 layout as
+/// [`serialize_heightmap`], each sample replaced by `zigzag((sample - prediction) mod 2^16)`.
+/// Flat or smoothly sloping ground becomes runs of tiny values, which is what zstd needs.
+pub fn serialize_heightmap_residual(grid: &Heightmap, out: &mut Vec<u8>) {
+    let d = grid.dim as usize;
+    out.extend_from_slice(&grid.dim.to_le_bytes());
+    for r in 0..d {
+        for c in 0..d {
+            let v = grid.samples[r * d + c];
+            let e = v.wrapping_sub(med_predict(&grid.samples, d, r, c)) as i16;
+            let zz = ((e << 1) ^ (e >> 15)) as u16;
+            out.extend_from_slice(&zz.to_le_bytes());
+        }
+    }
+    while out.len() % 4 != 0 {
+        out.push(0);
+    }
+}
+
+/// Undo [`serialize_heightmap_residual`] in place, in raster order so every prediction reads
+/// samples already reconstructed.
+pub(crate) fn unresidual_heightmap(grid: &mut Heightmap) {
+    let d = grid.dim as usize;
+    for r in 0..d {
+        for c in 0..d {
+            let zz = grid.samples[r * d + c];
+            let e = ((zz >> 1) as i16) ^ -((zz & 1) as i16);
+            let p = med_predict(&grid.samples, d, r, c);
+            grid.samples[r * d + c] = p.wrapping_add(e as u16);
+        }
+    }
+}

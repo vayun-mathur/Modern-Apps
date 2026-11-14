@@ -45,6 +45,12 @@ pub fn serialize_into_v10<'s>(body: &Body, scratch: &'s mut Scratch) -> Result<&
     serialize_into_version(body, scratch, crate::mamaps::header::FORMAT_VERSION_V10)
 }
 
+/// Serialise a planet5 v11 body: v10 records and side tables, with the heightmap stored as MED
+/// residuals (see [`crate::mamaps::header::FORMAT_VERSION_V11`]). Lossless; same model back.
+pub fn serialize_into_v11<'s>(body: &Body, scratch: &'s mut Scratch) -> Result<&'s [u8]> {
+    serialize_into_version(body, scratch, crate::mamaps::header::FORMAT_VERSION_V11)
+}
+
 fn serialize_into_version<'s>(
     body: &Body,
     scratch: &'s mut Scratch,
@@ -281,7 +287,9 @@ fn serialize_into_version<'s>(
         }
         let out = &mut payloads[i];
         out.clear();
-        if version == crate::mamaps::header::FORMAT_VERSION_V10 {
+        if version == crate::mamaps::header::FORMAT_VERSION_V10
+            || version == crate::mamaps::header::FORMAT_VERSION_V11
+        {
             write_v10_layer_payload(layer, out)?;
         } else {
             write_full_layer_payload(layer, out);
@@ -311,7 +319,9 @@ fn serialize_into_version<'s>(
     if !body.buildings.is_empty() {
         body_flags |= BODY_FLAG_BUILDING_TABLE;
     }
-    let v10 = version == crate::mamaps::header::FORMAT_VERSION_V10;
+    let v10 = version == crate::mamaps::header::FORMAT_VERSION_V10
+        || version == crate::mamaps::header::FORMAT_VERSION_V11;
+    let v11 = version == crate::mamaps::header::FORMAT_VERSION_V11;
     if body.heightmap.is_some() {
         body_flags |= BODY_FLAG_HEIGHTMAP;
     }
@@ -386,7 +396,11 @@ fn serialize_into_version<'s>(
         }
     }
     if let Some(grid) = &body.heightmap {
-        serialize_heightmap(grid, assembled);
+        if v11 {
+            super::tables::serialize_heightmap_residual(grid, assembled);
+        } else {
+            serialize_heightmap(grid, assembled);
+        }
     }
     if !body.carriageways.is_empty() {
         // The convention only reaches the wire alongside a table, so a body that sets one without

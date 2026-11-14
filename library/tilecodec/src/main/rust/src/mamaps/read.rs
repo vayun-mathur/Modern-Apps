@@ -55,6 +55,6 @@ use crate::stream::{RangeReader, OPEN_PREFIX_BYTES};
 use std::cell::RefCell;
 
 pub use archive::MamapsArchive;
-pub use helpers::{decompress, open_prefix, read_all, MIN_FILE_LEN};
+pub use helpers::{decompress, decompress_with, open_prefix, read_all, zdict_extent, zdicts_in, MIN_FILE_LEN};
 pub use leaf_cache::{LeafCache, DEFAULT_LEAF_CACHE_BYTES, DEFAULT_LEAF_CACHE_CAPACITY};
 pub use overlay::{OverlayArchive, TileSource, base_matches, prune_tombstones};

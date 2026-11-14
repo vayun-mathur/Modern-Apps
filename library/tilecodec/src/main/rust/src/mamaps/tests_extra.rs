@@ -385,3 +385,65 @@ fn a_leaf_whose_data_span_would_exceed_u32_max_is_split_and_common_case_stays_by
     assert_eq!(hdr.leaf_count as usize, (5000+4096-1)/4096);
     eprintln!("end-to-end: 5000 tiles → leaf_count={} leaf_len={}", hdr.leaf_count, hdr.leaf_len);
 }
+
+/// Planet5 v11 bodies: the heightmap is stored as MED residuals and reads back exactly,
+/// including a cliff that wraps the residual past i16 (mod 2^16 arithmetic).
+#[test]
+fn a_v11_heightmap_round_trips_through_its_residuals() {
+    use crate::mamaps::body::{serialize_into_v10, serialize_into_v11, Heightmap, Scratch};
+    let mut body = body_for(3);
+    let dim = 9u16;
+    let samples: Vec<u16> = (0..81u32)
+        .map(|i| match i {
+            40 => 0,           // a pit at the bottom of the u16 range
+            41 => u16::MAX,    // beside a spike at the top: residual wraps
+            _ => (32768 + (i % 9) * 7 + (i / 9) * 3) as u16,
+        })
+        .collect();
+    body.heightmap = Some(Heightmap { dim, samples });
+    let mut s = Scratch::default();
+    let v11 = serialize_into_v11(&body, &mut s).expect("v11").to_vec();
+    assert_eq!(v11[3], crate::mamaps::header::FORMAT_VERSION_V11);
+    assert_eq!(Body::parse(&v11).expect("parse v11"), body);
+    let mut s = Scratch::default();
+    let v10 = serialize_into_v10(&body, &mut s).expect("v10").to_vec();
+    assert_eq!(v10.len(), v11.len(), "same layout, only the sample values differ");
+    assert_eq!(Body::parse(&v10).expect("parse v10"), body);
+}
+
+/// Planet5 v10 headers: bodies are zstd frames decoded through the archive's dictionary section,
+/// which sits between the root and the leaves. Opens in one prefix read when the section fits,
+/// reads back every tile through both the range reader and `read_all`, and a v8/v9-only header
+/// version check would see byte 10 and refuse it.
+#[test]
+fn a_dictionary_archive_round_trips() {
+    use crate::mamaps::body::serialize;
+    use crate::mamaps::write::compress_body_zstd;
+    use crate::mamaps::zdict::ZDicts;
+    // No trained dictionary here (tilecodec carries no trainer): an empty section, frames without
+    // a dictionary id. The tile_build planet5 transcoder tests the trained path end to end.
+    let section = ZDicts::serialize(&[]);
+    let mut writer =
+        StreamWriter::new(Options { zdicts: Some(section.clone()), ..Options::default() }).expect("options");
+    let tiles = [(0u8, 0u64, 0u64, 1i16), (1, 0, 0, 2), (1, 1, 1, 3), (2, 3, 1, 2)];
+    for &(z, x, y, seed) in &tiles {
+        let raw = serialize(&body_for(seed)).expect("serialize");
+        writer.append_stored(tile_id(z, x, y), &compress_body_zstd(&raw)).expect("append");
+    }
+    let bytes = writer.finish().expect("finish");
+    assert_eq!(bytes[7], crate::mamaps::header::FORMAT_VERSION_HEADER_V10, "header v10");
+    let a = MamapsArchive::open(Counting { bytes: bytes.clone(), requests: RefCell::new(Vec::new()) })
+        .expect("open");
+    assert_eq!(a.header.compression, crate::mamaps::header::COMPRESSION_ZSTD_DICT);
+    assert_eq!(a.zdicts().expect("dicts").dictionaries().len(), 0);
+    assert_eq!(a.reader().requests.borrow().len(), 1, "the section fits the prefix: no extra read");
+    for &(z, x, y, seed) in &tiles {
+        let got = a.tile(z, x as u32, y as u32).expect("tile").expect("present");
+        assert_eq!(got, body_for(seed));
+    }
+    let all = crate::mamaps::read::read_all(&bytes).expect("read_all");
+    assert_eq!(all.len(), tiles.len(), "one entry per tile (no run: the ids are not consecutive)");
+    // The section is exactly where the header implies it.
+    let (start, end) = crate::mamaps::read::zdict_extent(&a.header).expect("extent");
+    assert_eq!(&bytes[start as usize..end as usize], &section[..]);
+}

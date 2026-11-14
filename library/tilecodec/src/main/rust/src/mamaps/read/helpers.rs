@@ -1,7 +1,7 @@
 use crate::mamaps::body::Body;
 use crate::mamaps::dict::Dictionary;
 use crate::mamaps::header::{
-    COMPRESSION_DEFLATE, COMPRESSION_NONE, COMPRESSION_ZSTD, Header, HEADER_LEN,
+    COMPRESSION_DEFLATE, COMPRESSION_NONE, COMPRESSION_ZSTD, COMPRESSION_ZSTD_DICT, Header, HEADER_LEN,
 };
 use crate::mamaps::index::{self, RootEntry};
 use crate::proto::{Error, Result, err};
@@ -13,7 +13,37 @@ use std::io::Read as _;
 /// frame precisely so this is possible: the length is known before the first byte is inflated, so
 /// there is no grow-and-copy and no guess.
 pub fn decompress(compression: u8, stored: &[u8]) -> Result<Vec<u8>> {
+    decompress_with(compression, stored, None)
+}
+
+/// [`decompress`] for an archive that may carry trained dictionaries (planet5,
+/// [`COMPRESSION_ZSTD_DICT`]): `dicts` is that archive's section.
+pub fn decompress_with(
+    compression: u8,
+    stored: &[u8],
+    dicts: Option<&crate::mamaps::zdict::ZDicts>,
+) -> Result<Vec<u8>> {
     match compression {
+        COMPRESSION_ZSTD_DICT => {
+            let Some(dicts) = dicts else {
+                return err("a dictionary-zstd .mamaps body was read without its dictionaries");
+            };
+            let raw_len = Body::raw_len(stored)? as usize;
+            let header_len = crate::mamaps::body::BODY_HEADER_LEN;
+            if raw_len < header_len {
+                return err("a .mamaps body frame declares a length shorter than a body header");
+            }
+            let mut out = vec![0u8; raw_len];
+            out[..header_len].copy_from_slice(&stored[..header_len]);
+            let n = dicts.decode_into(&stored[header_len..], &mut out[header_len..])?;
+            if header_len + n != raw_len {
+                return err(format!(
+                    "a .mamaps body declared {raw_len} bytes but decoded to {}",
+                    header_len + n
+                ));
+            }
+            Ok(out)
+        }
         COMPRESSION_NONE => Ok(stored.to_vec()),
         COMPRESSION_DEFLATE => {
             let raw_len = Body::raw_len(stored)? as usize;
@@ -105,6 +135,7 @@ pub fn open_prefix(bytes: &[u8]) -> Result<(Header, Dictionary, Vec<RootEntry>)>
 pub fn read_all(bytes: &[u8]) -> Result<Vec<(u64, u32, Vec<u8>)>> {
     let (header, dictionary, root) = open_prefix(bytes)?;
     dictionary.check_matches_schema()?;
+    let zdicts = zdicts_in(&header, bytes)?;
     let mut out = Vec::new();
     for entry in &root {
         let raw_len = entry.leaf_entry_count as usize * index::LEAF_ENTRY_LEN;
@@ -128,7 +159,7 @@ pub fn read_all(bytes: &[u8]) -> Result<Vec<(u64, u32, Vec<u8>)>> {
             out.push((
                 entry.base_tile_id + tile.tile_id_lo as u64,
                 tile.run_length,
-                decompress(header.compression, &bytes[start..end])?,
+                decompress_with(header.compression, &bytes[start..end], zdicts.as_ref())?,
             ));
         }
     }
@@ -141,3 +172,26 @@ pub fn read_all(bytes: &[u8]) -> Result<Vec<(u64, u32, Vec<u8>)>> {
 /// A sanity bound so a reader can reject a prefix that is not a `.mamaps` file at all before
 /// allocating anything, without depending on the reader's own constant.
 pub const MIN_FILE_LEN: usize = HEADER_LEN;
+
+/// The dictionary section of an archive held whole in memory, or `None` when its bodies use none.
+pub fn zdicts_in(header: &Header, bytes: &[u8]) -> Result<Option<crate::mamaps::zdict::ZDicts>> {
+    if header.compression != COMPRESSION_ZSTD_DICT {
+        return Ok(None);
+    }
+    let (start, end) = zdict_extent(header)?;
+    if end as usize > bytes.len() {
+        return err("a .mamaps dictionary section runs past the file");
+    }
+    Ok(Some(crate::mamaps::zdict::ZDicts::parse(&bytes[start as usize..end as usize])?))
+}
+
+/// Where a v10 archive's dictionary section lives: from the end of the root index to the start
+/// of the leaves (see [`crate::mamaps::zdict`]).
+pub fn zdict_extent(header: &Header) -> Result<(u64, u64)> {
+    let start = header.root_offset + header.root_len as u64;
+    let end = header.leaf_offset;
+    if end < start || end - start > crate::mamaps::zdict::ZDICT_MAX_BYTES {
+        return err("a .mamaps dictionary section has an impossible extent");
+    }
+    Ok((start, end))
+}

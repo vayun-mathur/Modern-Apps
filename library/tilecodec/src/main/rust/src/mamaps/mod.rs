@@ -47,6 +47,7 @@ pub mod dict;
 pub mod header;
 pub mod index;
 pub mod read;
+pub mod zdict;
 
 // The archive section index (ArchiveView + kind consts) is read-side: Android reads the
 // graph/transit/poi sidecars bundled in a .mamaps. Only the writer below is write-gated.
