@@ -4,17 +4,20 @@ import kotlin.math.max
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** Generic backend envelope carrying a [message] and an optional [data] payload. */
 @Serializable
 data class ApiResponse<T>(
     val message: String = "",
     val data: T? = null,
 )
 
+/** Backend response wrapping the list of available merchants. */
 @Serializable
 data class MerchantsWrapper(
     val merchants: List<Merchant> = emptyList(),
 )
 
+/** A restaurant listing with its address, opening state, ratings, and fulfilment options. */
 @Serializable
 data class Merchant(
     val id: Int = 0,
@@ -59,6 +62,7 @@ data class Merchant(
     val displayRewardsPercentage: Double get() = rewardsPercentage ?: 0.0
 }
 
+/** Brand artwork and visibility for a merchant. */
 @Serializable
 data class Brand(
     val logoUrl: String? = null,
@@ -66,6 +70,7 @@ data class Brand(
     val showOnApp: Boolean = false,
 )
 
+/** A summary menu item shown on a merchant listing, priced in cents. */
 @Serializable
 data class MerchantItem(
     val id: Int = 0,
@@ -77,6 +82,7 @@ data class MerchantItem(
     val priceDollars: Double get() = price / 100.0
 }
 
+/** A merchant's full detail, including its menu categories, items, deals, and promotions. */
 @Serializable
 data class MerchantDetail(
     val id: Int = 0,
@@ -109,6 +115,7 @@ data class MerchantDetail(
     val promotions: List<Promotion> = emptyList(),
 )
 
+/** A section of a merchant's menu, grouping items by [itemIds]. */
 @Serializable
 data class MenuCategory(
     val id: Int = 0,
@@ -119,6 +126,7 @@ data class MenuCategory(
     val merchantId: Int = 0,
 )
 
+/** A menu item with pricing, availability, imagery, and modifier groups, priced in cents. */
 @Serializable
 data class MenuItem(
     val id: Int = 0,
@@ -143,6 +151,7 @@ data class MenuItem(
     val doordashPriceDollars: Double? get() = doordashPrice?.let { it / 100.0 }
 }
 
+/** A group of selectable modifiers for a menu item, with selection limits. */
 @Serializable
 data class ModifierGroup(
     val id: Int = 0,
@@ -153,6 +162,7 @@ data class ModifierGroup(
     val modifiers: List<Modifier> = emptyList(),
 )
 
+/** One selectable modifier option, priced in cents. */
 @Serializable
 data class Modifier(
     val id: Int = 0,
@@ -162,6 +172,7 @@ data class Modifier(
     val priceDollars: Double get() = price / 100.0
 }
 
+/** A merchant deal, with its discount and minimum-order threshold. */
 @Serializable
 data class Deal(
     val id: Int = 0,
@@ -179,6 +190,7 @@ data class Deal(
     val discountAmountDollars: Double get() = discountAmount / 100.0
 }
 
+/** A named promotional offer for a merchant. */
 @Serializable
 data class Promotion(
     val id: Int = 0,
@@ -186,6 +198,7 @@ data class Promotion(
     val description: String = "",
 )
 
+/** The merchant summary embedded in an order. */
 @Serializable
 data class OrderMerchant(
     val id: Int = 0,
@@ -254,6 +267,7 @@ data class OrderRewards(
     val rewardsAvailableDollars: Double get() = rewardsAvailable / 100.0
 }
 
+/** A placed order with its totals, fulfilment state, and live-tracking data. */
 @Serializable
 data class Order(
     val id: Int = 0,
@@ -388,6 +402,7 @@ data class Order(
         }
 }
 
+/** One line of a placed order, with its chosen modifiers. */
 @Serializable
 data class OrderItem(
     val id: Int = 0,
@@ -400,6 +415,7 @@ data class OrderItem(
     val priceDollars: Double get() = price / 100.0
 }
 
+/** A modifier recorded on a placed order line. */
 @Serializable
 data class OrderItemModifier(
     val name: String? = null,
@@ -408,6 +424,7 @@ data class OrderItemModifier(
     val modifierGroupName: String? = null,
 )
 
+/** A customer's saved delivery address. */
 @Serializable
 data class SavedAddress(
     val id: String = "",
@@ -442,6 +459,7 @@ data class SelectedModifier(
     val priceDollars: Double get() = price / 100.0
 }
 
+/** A cart line: a menu item, its quantity, and its selected modifiers. */
 @Serializable
 data class CartItem(
     val menuItem: MenuItem,
@@ -462,6 +480,7 @@ data class CartItem(
         get() = (menuItem.price + selectedModifiers.sumOf { it.price * it.quantity }) * quantity / 100.0
 }
 
+/** The signed-in customer's profile and rewards summary. */
 @Serializable
 data class Customer(
     val id: Int = 0,
@@ -478,6 +497,7 @@ data class Customer(
     val savingsDollars: Double get() = totalCustomerSavings / 100.0
 }
 
+/** OAuth tokens returned by the backend for an authenticated session. */
 @Serializable
 data class AuthToken(
     @SerialName("access_token") val accessToken: String = "",
@@ -495,6 +515,7 @@ data class FeedbackRequest(
     val tips: Int = 0,
 )
 
+/** Feedback submitted for an order, with its rating and optional tip. */
 @Serializable
 data class Feedback(
     val id: Int = 0,
@@ -584,6 +605,7 @@ data class MerchantRewards(
     val balanceDollars: Double get() = balance / 100.0
 }
 
+/** A redeemable reward and the points it requires. */
 @Serializable
 data class Reward(
     val id: Int = 0,
@@ -609,6 +631,7 @@ data class CustomerSavings(
         get() = (if (customerSavings != 0) customerSavings else totalCustomerSavings) / 100.0
 }
 
+/** One cart line in the checkout request payload. */
 @Serializable
 data class CheckoutCartItem(
     val itemId: Int,
@@ -617,6 +640,7 @@ data class CheckoutCartItem(
     val modifiers: List<SelectedModifier> = emptyList(),
 )
 
+/** The delivery address in the checkout request payload. */
 @Serializable
 data class CheckoutAddress(
     val addressStreet: String = "",
@@ -670,6 +694,7 @@ data class CheckoutRequest(
     val isDriveThru: Boolean? = null,
 )
 
+/** Checkout result carrying the Stripe client secret and the created order. */
 @Serializable
 data class CheckoutResponse(
     val clientSecret: String = "",

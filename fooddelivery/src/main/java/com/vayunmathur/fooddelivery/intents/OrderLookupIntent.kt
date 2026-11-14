@@ -86,6 +86,7 @@ class OrderLookupIntent : AssistantIntent<OrderLookupRequest, OrderLookupResult>
         return r * 2 * atan2(sqrt(a), sqrt(1 - a))
     }
 
+        /** Matching radius used to identify the merchant at a queried location. */
     companion object {
         /** How close a merchant must be to the queried point to be the same place. */
         private const val MATCH_RADIUS_METERS = 800.0

@@ -75,14 +75,21 @@ internal fun List<CartItem>.canAddFromSameMerchant(item: CartItem): Boolean {
     return cartMerchant == 0 || item.merchantId == 0 || cartMerchant == item.merchantId
 }
 
+/** Navigation destinations for browsing, checkout, order tracking, and email verification. */
 sealed interface Route : NavKey {
+    /** The tabbed main screen, opening on [initialTab]. */
     @Serializable data class Main(val initialTab: Int = 0) : Route
+    /** The menu page for the restaurant identified by [id]. */
     @Serializable data class Restaurant(val id: Int) : Route
+    /** The checkout flow for the current cart. */
     @Serializable data object Checkout : Route
+    /** Live tracking for the order identified by [orderId]. */
     @Serializable data class OrderTracking(val orderId: Int) : Route
+    /** Email-verification screen for [customerId] carrying its verification [token]. */
     @Serializable data class EmailVerification(val customerId: String, val token: String) : Route
 }
 
+/** Entry activity that initialises Stripe and app state and routes notification and deep-link intents into the UI. */
 class MainActivity : MaActivity() {
     // The order to open on the tracking screen, set from a notification tap. Held as
     // Compose state so onNewIntent can push a new deep link into the running UI.
@@ -98,6 +105,7 @@ class MainActivity : MaActivity() {
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+        /** Holds the Stripe publishable key used to initialise payments. */
     companion object {
         private const val STRIPE_PUBLISHABLE_KEY =
             "pk_live_51NQy7lFJFBMK4hv9KubgZcyH2Wy0MsXn9BtrtM7moEi762WE7pcmZ1JL9BrCKPRKw6ZJdGo9YJSA1pidb0KUthlJ00Wr4bcpVD"
@@ -212,28 +220,15 @@ private fun FoodDeliveryApp(
     // replaces the cart they already have (checkout can only order from one).
     var pendingCartItem by remember { mutableStateOf<CartItem?>(null) }
     pendingCartItem?.let { pending ->
-        val currentName = cart.firstOrNull()?.merchantName?.ifBlank { "another restaurant" }
-            ?: "another restaurant"
-        val newName = pending.merchantName.ifBlank { "a different restaurant" }
-        AlertDialog(
-            onDismissRequest = { pendingCartItem = null },
-            title = { Text("Start a new cart?") },
-            text = {
-                Text(
-                    "Your cart has items from $currentName. Ordering is from one " +
-                        "restaurant at a time, so adding from $newName will clear it."
-                )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    cart.clear()
-                    cart.add(pending)
-                    CartStore.save(context, cart)
-                    pendingCartItem = null
-                }) { Text("Start new cart") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingCartItem = null }) { Text("Keep my cart") }
+        PendingCartDialog(
+            cart = cart,
+            pending = pending,
+            onDismiss = { pendingCartItem = null },
+            onConfirm = {
+                cart.clear()
+                cart.add(pending)
+                CartStore.save(context, cart)
+                pendingCartItem = null
             },
         )
     }
@@ -245,6 +240,49 @@ private fun FoodDeliveryApp(
         if (addedMeanwhile) CartStore.save(context, cart)
     }
 
+    FoodDeliveryNavigation(
+        backStack = backStack,
+        cart = cart,
+        onPendingCartItem = { pendingCartItem = it },
+    )
+
+}
+
+@Composable
+private fun PendingCartDialog(
+    cart: androidx.compose.runtime.snapshots.SnapshotStateList<CartItem>,
+    pending: CartItem,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val currentName = cart.firstOrNull()?.merchantName?.ifBlank { "another restaurant" }
+        ?: "another restaurant"
+    val newName = pending.merchantName.ifBlank { "a different restaurant" }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Start a new cart?") },
+        text = {
+            Text(
+                "Your cart has items from $currentName. Ordering is from one " +
+                    "restaurant at a time, so adding from $newName will clear it."
+            )
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) { Text("Start new cart") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Keep my cart") }
+        },
+    )
+}
+
+@Composable
+private fun FoodDeliveryNavigation(
+    backStack: NavBackStack<Route>,
+    cart: androidx.compose.runtime.snapshots.SnapshotStateList<CartItem>,
+    onPendingCartItem: (CartItem) -> Unit,
+) {
+    val context = LocalContext.current
     MainNavigation(backStack) {
         entry<Route.Main>(metadata = ListPage()) { route ->
             FoodDeliveryTabs(
@@ -262,7 +300,7 @@ private fun FoodDeliveryApp(
                         cart.add(item)
                         CartStore.save(context, cart)
                     } else {
-                        pendingCartItem = item
+                        onPendingCartItem(item)
                     }
                 }
             )

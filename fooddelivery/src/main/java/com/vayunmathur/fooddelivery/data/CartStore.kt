@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/** Persists the single-merchant cart as JSON in SharedPreferences, with writes serialised on one dispatcher. */
 @OptIn(ExperimentalCoroutinesApi::class)
 object CartStore {
 

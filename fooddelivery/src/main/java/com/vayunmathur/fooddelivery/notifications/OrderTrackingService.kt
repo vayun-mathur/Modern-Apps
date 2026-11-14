@@ -139,6 +139,7 @@ class OrderTrackingService : Service() {
         super.onDestroy()
     }
 
+        /** Polling timings, intent extras, and start/stop helpers for order tracking. */
     companion object {
         private const val TAG = "OrderTrackingService"
 
