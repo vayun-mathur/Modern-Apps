@@ -41,6 +41,12 @@ class FDroidFetchRepoIndexTest {
     private fun indexJson(): String = """
         {
           "packages": {
+""" + alphaPackageJson() + otherPackagesJson() + """
+          }
+        }
+    """.trimIndent()
+
+    private fun alphaPackageJson(): String = """
             "com.example.alpha": {
               "metadata": {
                 "name": {"en-US": "Alpha"},
@@ -75,6 +81,9 @@ class FDroidFetchRepoIndexTest {
                 }
               }
             },
+"""
+
+    private fun otherPackagesJson(): String = """
             "com.example.lowtarget": {
               "metadata": {"name": {"en-US": "Low Target"}},
               "versions": {
@@ -122,7 +131,7 @@ class FDroidFetchRepoIndexTest {
             "com.example.broken": "not-a-package-object"
           }
         }
-    """.trimIndent()
+    """
 
     private fun runTool(tool: String, vararg args: String) {
         val exe = File(System.getProperty("java.home"), "bin/$tool")

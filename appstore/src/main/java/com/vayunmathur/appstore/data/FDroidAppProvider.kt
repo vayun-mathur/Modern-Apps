@@ -52,7 +52,7 @@ class FDroidAppProvider(
         Log.status(
             TAG,
             "sync of ${descriptor.displayName}: fetched ${result.apps.size} " +
-                "apps (signer ${result.signerSha256.take(16)}…)"
+                "apps (signer ${result.signerSha256.take(SIGNER_PREFIX_LENGTH)}…)"
         )
         // A verified-but-empty index is a bad publish window, not an empty store: keep the
         // previous rows so one bad sync cannot wipe the catalogue (issue: "catalogue
@@ -109,6 +109,7 @@ class FDroidAppProvider(
 
     private companion object {
         const val TAG = "FDroidAppProvider"
+        const val SIGNER_PREFIX_LENGTH = 16
     }
 }
 

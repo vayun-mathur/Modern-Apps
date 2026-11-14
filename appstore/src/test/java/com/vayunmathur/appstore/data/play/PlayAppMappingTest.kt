@@ -6,6 +6,7 @@ import com.aurora.gplayapi.data.models.ContentRating
 import com.aurora.gplayapi.data.models.EncodedCertificateSet
 import com.aurora.gplayapi.data.models.Rating
 import com.vayunmathur.appstore.data.AppSource
+import com.vayunmathur.appstore.data.UnifiedApp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -25,69 +26,76 @@ class PlayAppMappingTest {
 
     @Test
     fun `a fully populated play app maps every shown field`() {
-        val app = App(
-            packageName = "com.example.play",
-            displayName = "Play App",
-            shortDescription = "Short summary",
-            description = "Long description",
-            iconArtwork = Artwork(url = "https://example.org/icon.png"),
-            coverArtwork = Artwork(url = "https://example.org/cover.png"),
-            screenshots = listOf(
-                Artwork(url = "https://example.org/1.png"),
-                Artwork(url = ""),
-                Artwork(url = "https://example.org/2.png"),
-            ),
-            developerName = "Play Dev",
-            categoryName = "Tools",
-            versionName = "3.1",
-            versionCode = 31L,
-            size = 5_000_000L,
-            changes = "What's new text",
-            targetSdk = 35,
-            rating = Rating(
-                average = 4.2f,
-                oneStar = 1L, twoStar = 2L, threeStar = 3L, fourStar = 4L, fiveStar = 5L,
-            ),
-            installs = 9000L,
-            updatedOn = "Nov 1, 2026",
-            contentRating = ContentRating(title = "Everyone"),
-            permissions = listOf("android.permission.CAMERA"),
-            containsAds = true,
-            certificateSetList = listOf(
-                EncodedCertificateSet(certificateSet = "", sha256 = "AB".repeat(32)),
-            ),
-        )
+        val unified = fullyPopulatedPlayApp().toUnifiedApp()
+        assertFullyPopulatedMapping(unified)
+    }
 
-        val unified = app.toUnifiedApp()
-        assertEquals("com.example.play", unified.packageName)
-        assertEquals(AppSource.PLAYSTORE, unified.source)
-        assertEquals("Play App", unified.name)
-        assertEquals("Short summary", unified.summary)
-        assertEquals("Long description", unified.description)
-        assertEquals("https://example.org/icon.png", unified.iconUrl)
-        assertEquals("https://example.org/cover.png", unified.featureGraphic)
-        assertEquals(
-            listOf("https://example.org/1.png", "https://example.org/2.png"),
-            unified.screenshots,
-        )
-        assertEquals("Play Dev", unified.author)
-        assertEquals(listOf("Tools"), unified.categories)
-        assertEquals("3.1", unified.versionName)
-        assertEquals(31L, unified.versionCode)
-        assertEquals(5_000_000L, unified.sizeBytes)
-        assertEquals("What's new text", unified.whatsNew)
-        assertEquals(35, unified.targetSdk)
-        assertEquals(4.2f, unified.rating)
-        assertEquals(15L, unified.ratingCount)
-        assertEquals(9000L, unified.installs)
-        assertEquals("Everyone", unified.contentRating)
-        assertEquals(listOf("android.permission.CAMERA"), unified.permissions)
-        assertTrue(unified.containsAds)
-        assertEquals(
-            "https://play.google.com/store/apps/details?id=com.example.play",
-            unified.website,
-        )
-        assertEquals(listOf("ab".repeat(32)), unified.expectedSigners)
+    private fun fullyPopulatedPlayApp(): App {
+    return App(
+        packageName = "com.example.play",
+        displayName = "Play App",
+        shortDescription = "Short summary",
+        description = "Long description",
+        iconArtwork = Artwork(url = "https://example.org/icon.png"),
+        coverArtwork = Artwork(url = "https://example.org/cover.png"),
+        screenshots = listOf(
+            Artwork(url = "https://example.org/1.png"),
+            Artwork(url = ""),
+            Artwork(url = "https://example.org/2.png"),
+        ),
+        developerName = "Play Dev",
+        categoryName = "Tools",
+        versionName = "3.1",
+        versionCode = 31L,
+        size = 5_000_000L,
+        changes = "What's new text",
+        targetSdk = 35,
+        rating = Rating(
+            average = 4.2f,
+            oneStar = 1L, twoStar = 2L, threeStar = 3L, fourStar = 4L, fiveStar = 5L,
+        ),
+        installs = 9000L,
+        updatedOn = "Nov 1, 2026",
+        contentRating = ContentRating(title = "Everyone"),
+        permissions = listOf("android.permission.CAMERA"),
+        containsAds = true,
+        certificateSetList = listOf(
+            EncodedCertificateSet(certificateSet = "", sha256 = "AB".repeat(32)),
+        ),
+    )
+
+    }
+
+    private fun assertFullyPopulatedMapping(unified: UnifiedApp) {
+    assertEquals("com.example.play", unified.packageName)
+    assertEquals(AppSource.PLAYSTORE, unified.source)
+    assertEquals("Play App", unified.name)
+    assertEquals("Short summary", unified.summary)
+    assertEquals("Long description", unified.description)
+    assertEquals("https://example.org/icon.png", unified.iconUrl)
+    assertEquals("https://example.org/cover.png", unified.featureGraphic)
+    assertEquals(
+        listOf("https://example.org/1.png", "https://example.org/2.png"),
+        unified.screenshots,
+    )
+    assertEquals("Play Dev", unified.author)
+    assertEquals(listOf("Tools"), unified.categories)
+    assertEquals("3.1", unified.versionName)
+    assertEquals(31L, unified.versionCode)
+    assertEquals(5_000_000L, unified.sizeBytes)
+    assertEquals("What's new text", unified.whatsNew)
+    assertEquals(35, unified.targetSdk)
+    assertEquals(4.2f, unified.rating)
+    assertEquals(15L, unified.ratingCount)
+    assertEquals(9000L, unified.installs)
+    assertEquals("Everyone", unified.contentRating)
+    assertEquals(listOf("android.permission.CAMERA"), unified.permissions)
+    assertTrue(unified.containsAds)
+    assertEquals(
+        "https://play.google.com/store/apps/details?id=com.example.play",
+        unified.website,
+    )
+    assertEquals(listOf("ab".repeat(32)), unified.expectedSigners)
     }
 
     @Test

@@ -20,8 +20,10 @@ import java.util.jar.JarFile
  */
 object SignedJarIndex {
 
+    /** Signals that signed-jar index verification failed. */
     class VerificationException(message: String) : Exception(message)
 
+    /** Verified signed content together with its signer certificate hash. */
     data class Verified(
         val content: ByteArray,
         /** Lowercase-hex SHA-256 of the signing certificate. */

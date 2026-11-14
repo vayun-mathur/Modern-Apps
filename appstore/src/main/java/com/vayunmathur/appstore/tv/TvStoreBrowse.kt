@@ -34,7 +34,6 @@ fun TvStoreBrowse(
     TvStoreBrowseScreen(
         state = state,
         onAppClick = onAppClick,
-        onBack = onBack,
         modifier = modifier,
     )
 }
@@ -44,7 +43,6 @@ internal fun TvStoreBrowseScreen(
     state: TvBrowseUiState,
     modifier: Modifier = Modifier,
     onAppClick: (UnifiedApp) -> Unit = {},
-    onBack: () -> Unit = {},
 ) {
     when {
         state.isLoading && state.apps.isEmpty() ->

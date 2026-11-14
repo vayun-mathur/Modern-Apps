@@ -38,9 +38,13 @@ import javax.net.ssl.HttpsURLConnection
  * nothing at all, and a rejected APK looked identical to a finished one.
  */
 sealed interface InstallStage {
+    /** Stage of an in-progress app install shown to the user. */
     data object Preparing : InstallStage
+    /** Install stage preparing the download and verification work. */
     data class Downloading(val fraction: Float) : InstallStage
+    /** Install stage downloading the package, reporting its progress fraction. */
     data object Verifying : InstallStage
+    /** Install stage verifying the downloaded package before installing it. */
     data object Installing : InstallStage
 
     /** The install is over and did not start. Cleared when the row is next touched. */
@@ -128,6 +132,9 @@ class InstallCoordinator(
      * Returns the outcome so a caller updating several apps in a row can wait for each
      * rather than poll a progress map, which is what the old "update all" did.
      */
+    // Last-resort catch-all: specific failures are handled above, and any other
+    // failure from gRPC, auth dispensers or Room must fail the row, never crash (#812).
+    @Suppress("TooGenericExceptionCaught")
     suspend fun install(app: UnifiedApp): SessionInstaller.Outcome {
         if (isBusy(app.packageName)) {
             return SessionInstaller.Outcome(false, VerificationResult.Rejected("already installing"))

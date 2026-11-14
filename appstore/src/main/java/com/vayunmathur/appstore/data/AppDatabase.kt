@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 const val DB_NAME = "appstore-db"
 
 @Entity
+/** A configured app repository stored by its URL. */
 data class RepoEntity(
     @PrimaryKey val url: String,
     val name: String,
@@ -26,6 +27,7 @@ data class RepoEntity(
 )
 
 @Entity
+/** A cached catalog app entry keyed by package name. */
 data class CachedAppEntity(
     @PrimaryKey val packageName: String,
     val source: String, // MODERN_APPS, FDROID, PLAYSTORE
@@ -196,6 +198,7 @@ data class PinnedStampEntity(
 )
 
 @Dao
+/** DAO for pinned source-stamp records per package. */
 interface PinnedStampDao {
     @Query("SELECT * FROM PinnedStampEntity WHERE packageName = :pkg LIMIT 1")
     suspend fun byPackage(pkg: String): PinnedStampEntity?
@@ -224,6 +227,7 @@ data class AccrescentTrustEntity(
 )
 
 @Dao
+/** DAO for Accrescent trust records per app. */
 interface AccrescentTrustDao {
     @Query("SELECT * FROM AccrescentTrustEntity WHERE appId = :appId LIMIT 1")
     suspend fun byId(appId: String): AccrescentTrustEntity?
@@ -250,6 +254,7 @@ interface AccrescentTrustDao {
 }
 
 @Dao
+/** DAO for configured repository rows. */
 interface RepoDao {
     @Query("SELECT * FROM RepoEntity ORDER BY name ASC")
     fun allFlow(): Flow<List<RepoEntity>>
@@ -282,6 +287,7 @@ data class PackageIndexRow(
 )
 
 @Dao
+/** DAO for cached catalog app rows. */
 interface CachedAppDao {
     @Query("SELECT * FROM CachedAppEntity ORDER BY name ASC")
     fun allFlow(): Flow<List<CachedAppEntity>>
@@ -394,12 +400,14 @@ interface CachedAppDao {
     version = 9,
     exportSchema = false
 )
+/** Room database holding repositories, cached apps and trust records. */
 abstract class AppDatabase : RoomDatabase() {
     abstract fun repoDao(): RepoDao
     abstract fun cachedAppDao(): CachedAppDao
     abstract fun pinnedStampDao(): PinnedStampDao
     abstract fun accrescentTrustDao(): AccrescentTrustDao
 
+    /** Defines database migrations for AppDatabase. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations = listOf(
             object : Migration(1, 2) {

@@ -26,6 +26,7 @@ class SessionInstaller(
     private val context: Context,
 ) {
 
+    /** Holds the logging tag for the session-based installer. */
     companion object {
         private const val TAG = "SessionInstaller"
     }

@@ -3,6 +3,7 @@ package com.vayunmathur.appstore.data.play
 import android.content.Context
 import android.content.pm.PackageManager
 
+/** Google services and vending version codes reported to Play. */
 data class GsfVersion(
     val gsfVersionCode: Int,
     val vendingVersionCode: Int,

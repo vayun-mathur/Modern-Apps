@@ -30,6 +30,7 @@ data class RepoData(
 )
 
 @Serializable
+/** One app entry in Accrescent repository data with its signing requirements. */
 data class RepoApp(
     @SerialName("min_version_code") val minVersionCode: Long,
     @SerialName("signing_cert_hash") val signingCertHash: String,

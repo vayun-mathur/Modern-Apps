@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -117,32 +118,7 @@ internal fun TvStoreHomeScreen(
                     )
                 }
             }
-            state.sections.forEachIndexed { index, section ->
-                tvGridHeader(
-                    key = "${section.id}-header",
-                    title = section.title,
-                    subtitle = section.subtitle,
-                    first = index == 0 && state.updateCount == 0 &&
-                        state.categories.isEmpty() && state.statusMessage.isBlank(),
-                    action = {
-                        TvButton(
-                            text = stringResource(R.string.action_browse),
-                            onClick = { onOpenBrowse(section) },
-                        )
-                    },
-                )
-                val cards = section.apps.take(HOME_CARDS_PER_SECTION)
-                items(cards, key = { "${section.id}-${it.packageName}" }) { app ->
-                    TvStoreAppCard(
-                        app = app,
-                        onClick = { onAppClick(app) },
-                        installedIcon = state.installedIcons[app.packageName],
-                        isInstalled = app.packageName in state.installedPackages,
-                        hasUpdate = app.packageName in state.updatePackages,
-                        stage = state.stages[app.packageName],
-                    )
-                }
-            }
+            tvHomeSections(state = state, onAppClick = onAppClick, onOpenBrowse = onOpenBrowse)
         }
     }
 }
@@ -205,3 +181,37 @@ private fun TvCategoryChips(
 private const val HOME_CARDS_PER_SECTION = 6
 private const val CATEGORY_CHIPS_PER_ROW = 6
 private const val CATEGORY_CHIP_LIMIT = 23
+
+/** One home section header plus its card row inside the home grid. */
+private fun LazyGridScope.tvHomeSections(
+    state: TvHomeUiState,
+    onAppClick: (UnifiedApp) -> Unit,
+    onOpenBrowse: (TvSection) -> Unit,
+) {
+    state.sections.forEachIndexed { index, section ->
+        tvGridHeader(
+            key = "${section.id}-header",
+            title = section.title,
+            subtitle = section.subtitle,
+            first = index == 0 && state.updateCount == 0 &&
+                state.categories.isEmpty() && state.statusMessage.isBlank(),
+            action = {
+                TvButton(
+                    text = stringResource(R.string.action_browse),
+                    onClick = { onOpenBrowse(section) },
+                )
+            },
+        )
+        val cards = section.apps.take(HOME_CARDS_PER_SECTION)
+        items(cards, key = { "${section.id}-${it.packageName}" }) { app ->
+            TvStoreAppCard(
+                app = app,
+                onClick = { onAppClick(app) },
+                installedIcon = state.installedIcons[app.packageName],
+                isInstalled = app.packageName in state.installedPackages,
+                hasUpdate = app.packageName in state.updatePackages,
+                stage = state.stages[app.packageName],
+            )
+        }
+    }
+}

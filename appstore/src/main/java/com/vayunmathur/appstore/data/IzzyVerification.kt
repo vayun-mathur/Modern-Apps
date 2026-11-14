@@ -95,42 +95,56 @@ object IzzyReproducibleBuilds {
             r.skipValue()
             return
         }
+        val record = try {
+            readRecordFields(r)
+        } catch (_: Exception) {
+            resyncRecord(r)
+            return
+        }
+        if (record.reproducible && record.appid != null && record.versionCode != null) {
+            into.add("${record.appid}:${record.versionCode}")
+        }
+    }
+
+    private data class IzzyRecord(val appid: String?, val versionCode: Long?, val reproducible: Boolean)
+
+    private fun readRecordFields(r: JsonReader): IzzyRecord {
         var appid: String? = null
         var versionCode: Long? = null
         var reproducible = false
-        try {
-            r.beginObject()
-            while (r.hasNext()) {
-                when (r.nextName()) {
-                    "appid" -> appid = nextStringOrNull(r)
-                    "version_code" -> versionCode = nextLongOrNull(r)
-                    // The schema allows null (not yet attempted): only an explicit
-                    // true counts, so a missing or failed rebuild never admits.
-                    // A non-boolean must still be consumed, or the reader desyncs
-                    // and every record after this one misparses.
-                    "reproducible" -> reproducible = if (r.peek() == JsonToken.BOOLEAN) {
-                        r.nextBoolean()
-                    } else {
-                        r.skipValue()
-                        false
-                    }
-                    else -> r.skipValue()
-                }
+        r.beginObject()
+        while (r.hasNext()) {
+            when (r.nextName()) {
+                "appid" -> appid = nextStringOrNull(r)
+                "version_code" -> versionCode = nextLongOrNull(r)
+                // The schema allows null (not yet attempted): only an explicit
+                // true counts, so a missing or failed rebuild never admits.
+                // A non-boolean must still be consumed, or the reader desyncs
+                // and every record after this one misparses.
+                "reproducible" -> reproducible = readReproducibleFlag(r)
+                else -> r.skipValue()
             }
-            r.endObject()
-        } catch (_: Exception) {
-            // Best-effort resync: consume to the end of this record so one corrupt
-            // entry cannot take down every record after it in the array.
-            runCatching {
-                while (r.peek() != JsonToken.END_OBJECT && r.peek() != JsonToken.END_DOCUMENT) {
-                    r.skipValue()
-                }
-                if (r.peek() == JsonToken.END_OBJECT) r.endObject()
-            }
-            return
         }
-        if (reproducible && appid != null && versionCode != null) {
-            into.add("$appid:$versionCode")
+        r.endObject()
+        return IzzyRecord(appid, versionCode, reproducible)
+    }
+
+    private fun readReproducibleFlag(r: JsonReader): Boolean =
+        if (r.peek() == JsonToken.BOOLEAN) {
+            r.nextBoolean()
+        } else {
+            r.skipValue()
+            false
+        }
+
+    private fun resyncRecord(r: JsonReader) {
+        // Best-effort resync: consume to the end of this record so one corrupt
+        // entry cannot take down every record after it in the array.
+        runCatching {
+            while (r.peek() != JsonToken.END_OBJECT && r.peek() != JsonToken.END_DOCUMENT) {
+                r.skipValue()
+            }
+            if (r.peek() == JsonToken.END_OBJECT) r.endObject()
         }
     }
 }

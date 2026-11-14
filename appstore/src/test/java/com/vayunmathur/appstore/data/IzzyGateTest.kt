@@ -47,7 +47,27 @@ class IzzyGateTest {
     fun setUp() {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         work = File.createTempFile("izzy-gate", "dir").let { it.delete(); it.mkdirs(); it }
-        val index = """
+        val index = izzyIndexBytes()
+        val (signedBytes, fingerprint) = createSignedEntryJar(index)
+        val repoUrl = startIzzyServer(index, signedBytes)
+        db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
+            .setDriver(BundledSQLiteDriver())
+            .allowMainThreadQueries()
+            .build()
+        provider = FDroidAppProvider(
+            db,
+            ctx,
+            RepoDescriptor(
+                url = repoUrl,
+                displayName = "Izzy Test",
+                pinnedFingerprint = fingerprint,
+                source = AppSource.IZZY,
+                supportsReproducibilityFeed = false,
+            ),
+        )
+    }
+
+    private fun izzyIndexBytes(): ByteArray = """
             {"packages": {"com.example.izzyapp": {
               "metadata": {"name": {"en-US": "Izzy App"}},
               "versions": {"v1": {
@@ -58,6 +78,8 @@ class IzzyGateTest {
               }}
             }}}
         """.trimIndent().toByteArray()
+
+    private fun createSignedEntryJar(index: ByteArray): Pair<ByteArray, String> {
         val entryJson =
             """{"index": {"name": "index-v2.json", "sha256": "${ApkCertificates.sha256(index)}"}}"""
         val entryJar = File(work, "entry-unsigned.jar")
@@ -80,8 +102,10 @@ class IzzyGateTest {
         val ks = KeyStore.getInstance(KeyStore.getDefaultType())
         keystore.inputStream().use { ks.load(it, "changeit".toCharArray()) }
         val fingerprint = ApkCertificates.sha256(ks.getCertificate("test").encoded)
-        val signedBytes = signedJar.readBytes()
+        return signedJar.readBytes() to fingerprint
+    }
 
+    private fun startIzzyServer(index: ByteArray, signedBytes: ByteArray): String {
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/repo/entry.jar") { exchange ->
             exchange.sendResponseHeaders(200, signedBytes.size.toLong())
@@ -92,23 +116,7 @@ class IzzyGateTest {
             exchange.responseBody.use { it.write(index) }
         }
         server.start()
-        val repoUrl = "http://127.0.0.1:${server.address.port}/repo"
-
-        db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
-            .setDriver(BundledSQLiteDriver())
-            .allowMainThreadQueries()
-            .build()
-        provider = FDroidAppProvider(
-            db,
-            ctx,
-            RepoDescriptor(
-                url = repoUrl,
-                displayName = "Izzy Test",
-                pinnedFingerprint = fingerprint,
-                source = AppSource.IZZY,
-                supportsReproducibilityFeed = false,
-            ),
-        )
+        return "http://127.0.0.1:${server.address.port}/repo"
     }
 
     @AfterTest

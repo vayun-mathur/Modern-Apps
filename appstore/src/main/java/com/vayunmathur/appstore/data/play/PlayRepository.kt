@@ -40,10 +40,15 @@ private val PLAY_AUTH_DISPENSED_AT_KEY = longPreferencesKey("play_auth_dispensed
  */
 private const val PLAY_AUTH_MAX_AGE_MS = 12L * 60 * 60 * 1000
 
+/** Authentication state for the anonymous Play session. */
 sealed interface PlayAuthState {
+    /** Play authentication has not started yet. */
     data object Idle : PlayAuthState
+    /** Play authentication is currently in progress. */
     data object Authenticating : PlayAuthState
+    /** Play authentication succeeded with the acquired auth data. */
     data class Authenticated(val authData: AuthData) : PlayAuthState
+    /** Play authentication failed with a user-visible message. */
     data class Error(val message: String) : PlayAuthState
 }
 

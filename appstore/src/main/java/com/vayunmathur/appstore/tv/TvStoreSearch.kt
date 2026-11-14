@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -107,35 +108,7 @@ internal fun TvStoreSearchScreen(
                 )
             }
         }
-        when {
-            state.query.isBlank() -> tvFullWidth(key = "prompt") {
-                TvEmptyState(
-                    title = stringResource(R.string.search_prompt_title),
-                    body = stringResource(R.string.tv_search_prompt_tv),
-                    icon = { IconSearch() },
-                )
-            }
-            state.results.isEmpty() && (state.isSearching || !state.hasSearched) ->
-                tvFullWidth(key = "loading") {
-                    TvLoading(label = stringResource(R.string.sync_in_progress))
-                }
-            state.results.isEmpty() -> tvFullWidth(key = "no-results") {
-                TvEmptyState(
-                    title = stringResource(R.string.search_no_results_title, state.query),
-                    body = stringResource(R.string.search_no_results_message),
-                    icon = { IconPackage() },
-                )
-            }
-            else -> items(state.results, key = { it.packageName }) { app ->
-                TvStoreAppCard(
-                    app = app,
-                    onClick = { onAppClick(app) },
-                    installedIcon = state.installedIcons[app.packageName],
-                    isInstalled = app.packageName in state.installedPackages,
-                    stage = state.stages[app.packageName],
-                )
-            }
-        }
+        tvSearchResults(state = state, onAppClick = onAppClick)
     }
 }
 
@@ -155,6 +128,42 @@ private fun TvStoreSearchFilters(
                 label = stringResource(entry.labelRes()),
                 selected = filter == entry,
                 onClick = { onFilterChange(entry) },
+            )
+        }
+    }
+}
+
+/** Prompt, loading, empty and result states inside the search grid. */
+private fun LazyGridScope.tvSearchResults(
+    state: TvSearchUiState,
+    onAppClick: (UnifiedApp) -> Unit,
+) {
+    when {
+        state.query.isBlank() -> tvFullWidth(key = "prompt") {
+            TvEmptyState(
+                title = stringResource(R.string.search_prompt_title),
+                body = stringResource(R.string.tv_search_prompt_tv),
+                icon = { IconSearch() },
+            )
+        }
+        state.results.isEmpty() && (state.isSearching || !state.hasSearched) ->
+            tvFullWidth(key = "loading") {
+                TvLoading(label = stringResource(R.string.sync_in_progress))
+            }
+        state.results.isEmpty() -> tvFullWidth(key = "no-results") {
+            TvEmptyState(
+                title = stringResource(R.string.search_no_results_title, state.query),
+                body = stringResource(R.string.search_no_results_message),
+                icon = { IconPackage() },
+            )
+        }
+        else -> items(state.results, key = { it.packageName }) { app ->
+            TvStoreAppCard(
+                app = app,
+                onClick = { onAppClick(app) },
+                installedIcon = state.installedIcons[app.packageName],
+                isInstalled = app.packageName in state.installedPackages,
+                stage = state.stages[app.packageName],
             )
         }
     }

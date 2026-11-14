@@ -51,6 +51,8 @@ import com.vayunmathur.library.ui.R as UiR
  * body — summary, description, What's new, chips, the security card, screenshots,
  * links. Same order and same strings as the phone's detail page.
  */
+private const val DETAIL_IDENTITY_WEIGHT = 0.65f
+
 @Composable
 fun TvStoreDetail(
     viewModel: TvStoreViewModel,
@@ -115,7 +117,7 @@ internal fun TvStoreDetailScreen(
                 onOpen = { onOpen(app.packageName) },
                 onUninstall = { showUninstallConfirm = true },
                 onDismissFailure = { onDismissFailure(app.packageName) },
-                modifier = Modifier.weight(0.65f).fillMaxHeight(),
+                modifier = Modifier.weight(DETAIL_IDENTITY_WEIGHT).fillMaxHeight(),
             )
             TvStoreDetailBody(
                 state = state,
@@ -126,26 +128,40 @@ internal fun TvStoreDetailScreen(
         }
     }
     if (showUninstallConfirm) {
-        TvDialog(
-            title = stringResource(R.string.uninstall_3, app.name),
-            body = stringResource(
-                R.string.this_will_uninstall_you_can_reinstall_la, app.packageName
-            ),
-            onDismissRequest = { showUninstallConfirm = false },
-        ) {
-            TvButton(
-                text = stringResource(UiR.string.cancel),
-                onClick = { showUninstallConfirm = false },
-            )
-            TvButton(
-                text = stringResource(R.string.uninstall),
-                onClick = {
-                    showUninstallConfirm = false
-                    onUninstall(app.packageName)
-                },
-                primary = true,
-            )
-        }
+        TvUninstallConfirm(
+            app = app,
+            onDismiss = { showUninstallConfirm = false },
+            onConfirm = {
+                showUninstallConfirm = false
+                onUninstall(app.packageName)
+            },
+        )
+    }
+}
+
+/** Uninstall confirmation dialog for the detail screen. */
+@Composable
+private fun TvUninstallConfirm(
+    app: UnifiedApp,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    TvDialog(
+        title = stringResource(R.string.uninstall_3, app.name),
+        body = stringResource(
+            R.string.this_will_uninstall_you_can_reinstall_la, app.packageName
+        ),
+        onDismissRequest = onDismiss,
+    ) {
+        TvButton(
+            text = stringResource(UiR.string.cancel),
+            onClick = onDismiss,
+        )
+        TvButton(
+            text = stringResource(R.string.uninstall),
+            onClick = onConfirm,
+            primary = true,
+        )
     }
 }
 
@@ -192,72 +208,105 @@ private fun TvStoreDetailIdentity(
                 )
             }
         }
-        // Primary action: exactly the phone's AppInstallActions logic.
-        when {
-            busy -> TvButton(
-                text = stage.tvStageLabel(),
-                onClick = {},
-                enabled = false,
-                modifier = Modifier.focusRequester(focusRequester),
-            )
-            state.hasUpdate -> {
-                TvButton(
-                    text = stringResource(R.string.action_update),
-                    onClick = onInstall,
-                    primary = true,
-                    icon = { IconDownload() },
-                    modifier = Modifier.focusRequester(focusRequester),
-                )
-                TvButton(
-                    text = stringResource(UiR.string.open),
-                    onClick = onOpen,
-                )
-            }
-            state.isInstalled -> {
-                TvButton(
-                    text = stringResource(UiR.string.open),
-                    onClick = onOpen,
-                    primary = true,
-                    modifier = Modifier.focusRequester(focusRequester),
-                )
-                TvButton(
-                    text = stringResource(R.string.uninstall),
-                    onClick = onUninstall,
-                    icon = { IconDelete() },
-                )
-            }
-            else -> TvButton(
-                text = stringResource(R.string.action_install),
-                onClick = onInstall,
-                primary = true,
-                icon = { IconDownload() },
-                modifier = Modifier.focusRequester(focusRequester),
-            )
-        }
-        if (state.isInstalled && state.installedInfo?.versionName != null && !state.hasUpdate) {
-            Text(
-                text = stringResource(R.string.installed_2, state.installedInfo.versionName),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (stage is InstallStage.Failed) {
-            Text(
-                text = stringResource(R.string.stage_failed, stage.reason),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-            )
-            TvButton(
-                text = stringResource(R.string.action_dismiss),
-                onClick = onDismissFailure,
-            )
-        }
+        TvDetailPrimaryActions(
+            state = state,
+            busy = busy,
+            stage = stage,
+            focusRequester = focusRequester,
+            onInstall = onInstall,
+            onOpen = onOpen,
+            onUninstall = onUninstall,
+        )
+        TvDetailInstallStatus(state = state, stage = stage, onDismissFailure = onDismissFailure)
         // Stats row: Size / Rated / Version, like the phone's facts row.
         TvStoreDetailStats(app = app)
         TvStoreVerificationLine(state = state)
     }
 }
 
+
+
+/** Installed-version line and install-failure line for the identity pane. */
+@Composable
+private fun TvDetailInstallStatus(
+    state: TvDetailUiState,
+    stage: InstallStage?,
+    onDismissFailure: () -> Unit,
+) {
+    if (state.isInstalled && state.installedInfo?.versionName != null && !state.hasUpdate) {
+        Text(
+            text = stringResource(R.string.installed_2, state.installedInfo.versionName),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (stage is InstallStage.Failed) {
+        Text(
+            text = stringResource(R.string.stage_failed, stage.reason),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+        )
+        TvButton(
+            text = stringResource(R.string.action_dismiss),
+            onClick = onDismissFailure,
+        )
+    }
+}
+
+/** Primary Install/Update/Open/Uninstall actions for the detail identity pane. */
+@Composable
+private fun TvDetailPrimaryActions(
+    state: TvDetailUiState,
+    busy: Boolean,
+    stage: InstallStage?,
+    focusRequester: FocusRequester,
+    onInstall: () -> Unit,
+    onOpen: () -> Unit,
+    onUninstall: () -> Unit,
+) {
+// Primary action: exactly the phone's AppInstallActions logic.
+when {
+    busy -> TvButton(
+        text = stage?.tvStageLabel().orEmpty(),
+        onClick = {},
+        enabled = false,
+        modifier = Modifier.focusRequester(focusRequester),
+    )
+    state.hasUpdate -> {
+        TvButton(
+            text = stringResource(R.string.action_update),
+            onClick = onInstall,
+            primary = true,
+            icon = { IconDownload() },
+            modifier = Modifier.focusRequester(focusRequester),
+        )
+        TvButton(
+            text = stringResource(UiR.string.open),
+            onClick = onOpen,
+        )
+    }
+    state.isInstalled -> {
+        TvButton(
+            text = stringResource(UiR.string.open),
+            onClick = onOpen,
+            primary = true,
+            modifier = Modifier.focusRequester(focusRequester),
+        )
+        TvButton(
+            text = stringResource(R.string.uninstall),
+            onClick = onUninstall,
+            icon = { IconDelete() },
+        )
+    }
+    else -> TvButton(
+        text = stringResource(R.string.action_install),
+        onClick = onInstall,
+        primary = true,
+        icon = { IconDownload() },
+        modifier = Modifier.focusRequester(focusRequester),
+    )
+}
+}
 
 /** Size / Rated / Version in whatever subset the source published. Like the phone. */
 @Composable

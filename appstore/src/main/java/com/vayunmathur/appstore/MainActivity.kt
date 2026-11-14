@@ -54,6 +54,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.launch
 
+/** Entry activity that wires the store UI, navigation and catalog startup. */
 class MainActivity : MaActivity() {
 
     private var factoryState by mutableStateOf<AppStoreViewModelFactory?>(null)
@@ -112,10 +113,15 @@ class MainActivity : MaActivity() {
 }
 
 @Serializable
+/** Navigation destinations for the phone store UI. */
 sealed interface Route : NavKey {
+    /** Destination showing the store home page. */
     @Serializable data object Main : Route
+    /** Destination showing source trust information. */
     @Serializable data object Trust : Route
+    /** Destination showing one app's detail page. */
     @Serializable data object Detail : Route
+    /** Destination browsing one home-page section by its ID. */
     @Serializable data class Browse(val sectionId: String) : Route
 
     /**

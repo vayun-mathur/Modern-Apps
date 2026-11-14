@@ -54,6 +54,7 @@ open class AnonymousAuthRepository(
     },
 ) {
 
+    /** Holds dispenser URLs and constants for anonymous Play authentication. */
     companion object {
         private const val TAG = "AnonAuthRepo"
         const val DEFAULT_DISPENSER_URL = "https://auroraoss.com/api/auth"
@@ -120,18 +121,27 @@ open class AnonymousAuthRepository(
     }
 
     @Serializable
+    /** An anonymous-auth dispenser response carrying the account email and token. */
     data class AuthResponse(
         val email: String,
         @SerialName("authToken") val auth: String
     )
 
+    /** Failure modes returned by anonymous Play authentication dispensers. */
     sealed class AuthError : Exception() {
+        /** Authentication failed because the dispenser rate-limited the request. */
         object RateLimited : AuthError()
+        /** Authentication failed because the dispenser rejected the request. */
         object BadRequest : AuthError()
+        /** Authentication requires routing through a VPN endpoint. */
         object VpnRequired : AuthError()
+        /** Authentication failed because the dispenser endpoint was not found. */
         object NotFound : AuthError()
+        /** Authentication is unavailable while the dispenser is under maintenance. */
         object Maintenance : AuthError()
+        /** Authentication failed with an unexpected status code and response body. */
         data class Unknown(val code: Int, val body: String?) : AuthError()
+        /** Authentication failed because the dispenser could not be reached. */
         data class Network(override val message: String?) : AuthError()
     }
 

@@ -2,6 +2,7 @@ package com.vayunmathur.appstore.tv
 
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,17 +69,7 @@ internal fun TvStoreUpdatesScreen(
     val primaryFocus = remember { FocusRequester() }
     val anyInstalling = state.stages.values.any { it !is InstallStage.Failed }
     val total = state.updates.size + state.foreignUpdates.size
-    val status = state.statusMessage.takeIf { it.isNotBlank() }
-        ?: state.lastCheckedAt.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.updates_last_checked,
-                DateUtils.getRelativeTimeSpanString(
-                    it,
-                    System.currentTimeMillis(),
-                    DateUtils.MINUTE_IN_MILLIS,
-                ),
-            )
-        }
+    val status = updatesStatusText(state)
     // Unkeyed: runs once per visit. Keying on the count would yank focus back to
     // "Update all" every time a check completes or an update installs and drops off.
     TvInitialFocus(primaryFocus)
@@ -101,59 +92,111 @@ internal fun TvStoreUpdatesScreen(
     val foreignTitle = stringResource(R.string.updates_foreign_title)
     val foreignSubtitle = stringResource(R.string.updates_foreign_subtitle)
     TvGrid(columns = 3, modifier = modifier.fillMaxSize()) {
-        tvFullWidth(key = "header") {
-            TvScreenHeader(
-                title = stringResource(R.string.nav_updates),
-                subtitle = status,
-                actions = {
-                    if (state.updates.isNotEmpty()) {
-                        TvButton(
-                            text = stringResource(R.string.update_all, state.updates.size),
-                            onClick = onUpdateAll,
-                            primary = true,
-                            enabled = !anyInstalling,
-                            icon = { IconDownload() },
-                        )
-                    }
-                    TvButton(
-                        text = if (state.isChecking) {
-                            stringResource(R.string.updates_checking)
-                        } else {
-                            stringResource(R.string.action_check_again)
-                        },
-                        onClick = onCheckForUpdates,
-                        enabled = !state.isChecking,
-                    )
-                },
+        tvUpdatesHeader(
+            state = state,
+            status = status,
+            anyInstalling = anyInstalling,
+            onUpdateAll = onUpdateAll,
+            onCheckForUpdates = onCheckForUpdates,
+        )
+        tvUpdateItems(
+            state = state,
+            countTitle = countTitle,
+            foreignTitle = foreignTitle,
+            foreignSubtitle = foreignSubtitle,
+            onAppClick = onAppClick,
+            onInstall = onInstall,
+        )
+    }
+}
+
+
+/** Last-checked status line for the updates screen, or null when never checked. */
+@Composable
+private fun updatesStatusText(state: TvUpdatesUiState): String? =
+    state.statusMessage.takeIf { it.isNotBlank() }
+        ?: state.lastCheckedAt.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.updates_last_checked,
+                DateUtils.getRelativeTimeSpanString(
+                    it,
+                    System.currentTimeMillis(),
+                    DateUtils.MINUTE_IN_MILLIS,
+                ),
             )
         }
-        tvGridHeader(
-            key = "count",
-            title = countTitle,
-            first = true,
+
+/** Updates screen header with Update All and Check Again actions. */
+private fun LazyGridScope.tvUpdatesHeader(
+    state: TvUpdatesUiState,
+    status: String?,
+    anyInstalling: Boolean,
+    onUpdateAll: () -> Unit,
+    onCheckForUpdates: () -> Unit,
+) {
+    tvFullWidth(key = "header") {
+        TvScreenHeader(
+            title = stringResource(R.string.nav_updates),
+            subtitle = status,
+            actions = {
+                if (state.updates.isNotEmpty()) {
+                    TvButton(
+                        text = stringResource(R.string.update_all, state.updates.size),
+                        onClick = onUpdateAll,
+                        primary = true,
+                        enabled = !anyInstalling,
+                        icon = { IconDownload() },
+                    )
+                }
+                TvButton(
+                    text = if (state.isChecking) {
+                        stringResource(R.string.updates_checking)
+                    } else {
+                        stringResource(R.string.action_check_again)
+                    },
+                    onClick = onCheckForUpdates,
+                    enabled = !state.isChecking,
+                )
+            },
         )
-        items(state.updates, key = { it.packageName }) { app ->
+    }
+}
+
+/** Eligible and foreign update rows inside the updates grid. */
+private fun LazyGridScope.tvUpdateItems(
+    state: TvUpdatesUiState,
+    countTitle: String,
+    foreignTitle: String,
+    foreignSubtitle: String,
+    onAppClick: (UnifiedApp) -> Unit,
+    onInstall: (UnifiedApp) -> Unit,
+) {
+    tvGridHeader(
+        key = "count",
+        title = countTitle,
+        first = true,
+    )
+    items(state.updates, key = { it.packageName }) { app ->
+        TvUpdateCard(
+            app = app,
+            state = state,
+            onAppClick = onAppClick,
+            onInstall = { onInstall(app) },
+        )
+    }
+    if (state.foreignUpdates.isNotEmpty()) {
+        tvGridHeader(
+            key = "foreign",
+            title = foreignTitle,
+            subtitle = foreignSubtitle,
+        )
+        items(state.foreignUpdates, key = { "foreign-${it.packageName}" }) { app ->
             TvUpdateCard(
                 app = app,
                 state = state,
                 onAppClick = onAppClick,
                 onInstall = { onInstall(app) },
             )
-        }
-        if (state.foreignUpdates.isNotEmpty()) {
-            tvGridHeader(
-                key = "foreign",
-                title = foreignTitle,
-                subtitle = foreignSubtitle,
-            )
-            items(state.foreignUpdates, key = { "foreign-${it.packageName}" }) { app ->
-                TvUpdateCard(
-                    app = app,
-                    state = state,
-                    onAppClick = onAppClick,
-                    onInstall = { onInstall(app) },
-                )
-            }
         }
     }
 }

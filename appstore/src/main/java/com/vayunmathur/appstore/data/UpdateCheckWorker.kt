@@ -439,6 +439,7 @@ class UpdateCheckWorker(
         )
     }
 
+    /** Holds WorkManager and notification constants for update checks. */
     companion object {
         private const val TAG = "UpdateCheckWorker"
         private const val CHANNEL_ID = "appstore-updates"

@@ -2,6 +2,7 @@ package com.vayunmathur.appstore.data
 
 import com.vayunmathur.appstore.domain.SearchRanking
 
+/** The catalog source an app listing came from. */
 enum class AppSource {
     /** This monorepo's own repository, signed with the same key as this app. */
     MODERN_APPS,
@@ -35,6 +36,7 @@ enum class AppSource {
      */
     PROPRIETARY;
 
+    /** Provides defaults for a fresh install, including its enabled sources. */
     companion object {
         /**
          * Sources switched on for a fresh install. Only the two first-party
@@ -68,6 +70,7 @@ enum class AppSource {
 val AppSource.priority: Int
     get() = AppSource.PRIORITY.indexOf(this).takeIf { it >= 0 } ?: AppSource.PRIORITY.size
 
+/** One app unified across catalog sources for display and install. */
 data class UnifiedApp(
     val packageName: String,
     val source: AppSource,
@@ -188,6 +191,7 @@ fun UnifiedApp.searchCandidate(): SearchRanking.Candidate = SearchRanking.Candid
     popularity = installs,
 )
 
+/** Information about an app currently installed on the device. */
 data class InstalledInfo(
     val packageName: String,
     val name: String,

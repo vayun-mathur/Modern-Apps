@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.asSharedFlow
  */
 class InstallStatusReceiver : BroadcastReceiver() {
 
+    /** Holds broadcast actions and constants for install-status callbacks. */
     companion object {
         const val ACTION_INSTALL_STATUS = "com.vayunmathur.appstore.INSTALL_STATUS"
         private const val TAG = "InstallStatusReceiver"

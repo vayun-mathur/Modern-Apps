@@ -169,6 +169,7 @@ interface AppActions {
     fun install(app: UnifiedApp) {}
     fun openApp(packageName: String) {}
 
+    /** Provides a no-op AppActions for previews and defaults. */
     companion object {
         val Noop: AppActions = object : AppActions {}
     }
@@ -179,6 +180,7 @@ interface HomeActions : AppActions {
     fun selectCategory(category: String?) {}
     fun refresh() {}
 
+    /** Provides a no-op HomeActions for previews and defaults. */
     companion object {
         val Noop: HomeActions = object : HomeActions {}
     }
@@ -189,6 +191,7 @@ interface SearchActions : AppActions {
     fun setSearch(query: String) {}
     fun setSearchFilter(filter: SourceFilter) {}
 
+    /** Provides a no-op SearchActions for previews and defaults. */
     companion object {
         val Noop: SearchActions = object : SearchActions {}
     }
@@ -202,6 +205,7 @@ interface AppDetailActions : AppActions {
     fun shareApp(app: UnifiedApp) {}
     fun dismissInstallFailure(packageName: String) {}
 
+    /** Provides a no-op AppDetailActions for previews and defaults. */
     companion object {
         val Noop: AppDetailActions = object : AppDetailActions {}
     }
@@ -212,6 +216,7 @@ interface UpdatesActions : AppActions {
     fun checkForUpdates() {}
     fun updateAll() {}
 
+    /** Provides a no-op UpdatesActions for previews and defaults. */
     companion object {
         val Noop: UpdatesActions = object : UpdatesActions {}
     }
@@ -221,6 +226,7 @@ interface UpdatesActions : AppActions {
 interface LibraryActions : AppActions {
     fun setLibraryFilter(filter: SourceFilter) {}
 
+    /** Provides a no-op LibraryActions for previews and defaults. */
     companion object {
         val Noop: LibraryActions = object : LibraryActions {}
     }

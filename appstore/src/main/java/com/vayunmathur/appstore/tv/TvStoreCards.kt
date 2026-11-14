@@ -40,6 +40,8 @@ import java.util.Locale
  * One card everywhere — home, browse, search, updates, library — so the whole TV
  * store reads the same from the couch.
  */
+private const val PERCENT_MAX = 100
+
 @Composable
 fun TvStoreAppCard(
     app: UnifiedApp,
@@ -179,7 +181,7 @@ internal fun UnifiedApp.tvSourceLabel(): String = stringResource(
 @Composable
 internal fun InstallStage.tvStageLabel(): String = when (this) {
     InstallStage.Preparing -> stringResource(R.string.stage_preparing)
-    is InstallStage.Downloading -> stringResource(R.string.stage_downloading, (fraction * 100).toInt())
+    is InstallStage.Downloading -> stringResource(R.string.stage_downloading, (fraction * PERCENT_MAX).toInt())
     InstallStage.Verifying -> stringResource(R.string.stage_verifying)
     InstallStage.Installing -> stringResource(R.string.stage_installing)
     is InstallStage.Failed -> stringResource(R.string.stage_failed, reason)

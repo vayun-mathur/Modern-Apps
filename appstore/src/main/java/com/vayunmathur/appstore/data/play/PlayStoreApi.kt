@@ -195,6 +195,7 @@ class PlayStoreApi(
         AppProvider.filterTargetSdk(clusterAppList.map { it.toUnifiedApp() })
             .distinctBy { it.packageName }
 
+    /** Holds Play API batching limits that keep requests under server caps. */
     companion object {
         /**
          * Play rejects very long batches, and a rejected chunk loses every package in it,

@@ -53,6 +53,7 @@ data class InstallRequirement(
     val requireTvCompatible: Boolean = false,
 )
 
+/** Outcome of verifying a downloaded package before installation. */
 sealed class VerificationResult {
     /** Every check that could be run, passed. */
     data class Verified(

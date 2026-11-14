@@ -211,6 +211,7 @@ enum class TrustProfile {
             PROPRIETARY -> R.string.trust_proprietary_limits
         }
 
+    /** Maps each app source to the trust profile shown for its apps. */
     companion object {
         fun of(source: AppSource): TrustProfile = when (source) {
             AppSource.MODERN_APPS -> MODERN_APPS

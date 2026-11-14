@@ -114,6 +114,7 @@ class SettingsRepository(
         }
     }
 
+    /** Holds DataStore keys and defaults for store settings. */
     companion object {
         const val DEFAULT_AUTO_INSTALL_UPDATES = false
         private val KEY_AUTO_INSTALL_UPDATES =

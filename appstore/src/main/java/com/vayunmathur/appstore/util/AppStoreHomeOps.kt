@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.DefaultRepos
+import com.vayunmathur.appstore.data.SyncReport
 import com.vayunmathur.appstore.data.SyncStep
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.library.util.AppMessages
@@ -25,46 +26,28 @@ import kotlinx.coroutines.launch
  */
 internal suspend fun AppStoreViewModel.loadHome(enabled: Set<AppSource> = enabledSources.value) {
     isLoadingHomeFlow.value = true
-    val modernEnabled = AppSource.MODERN_APPS in enabled
-    val fdroidEnabled = AppSource.FDROID in enabled
-    val izzyEnabled = AppSource.IZZY in enabled
-    val proprietaryEnabled = AppSource.PROPRIETARY in enabled
-    if (modernEnabled || fdroidEnabled || izzyEnabled || proprietaryEnabled) {
-        modernRecentFlow.value = if (modernEnabled) {
-            catalog.recentlyUpdatedBySource(AppSource.MODERN_APPS, RECENT_PER_SOURCE_LIMIT)
-        } else {
-            emptyList()
-        }
-        fdroidRecentFlow.value = if (fdroidEnabled) {
-            catalog.recentlyUpdatedBySource(AppSource.FDROID, RECENT_PER_SOURCE_LIMIT)
-        } else {
-            emptyList()
-        }
-        izzyRecentFlow.value = if (izzyEnabled) {
-            catalog.recentlyUpdatedBySource(AppSource.IZZY, RECENT_PER_SOURCE_LIMIT)
-        } else {
-            emptyList()
-        }
-        proprietaryRecentFlow.value = if (proprietaryEnabled) {
-            catalog.recentlyUpdatedBySource(AppSource.PROPRIETARY, RECENT_PER_SOURCE_LIMIT)
-        } else {
-            emptyList()
-        }
-    } else {
-        modernRecentFlow.value = emptyList()
-        fdroidRecentFlow.value = emptyList()
-        izzyRecentFlow.value = emptyList()
-        proprietaryRecentFlow.value = emptyList()
-    }
-    recentlyUpdatedFlow.value =
-        modernRecentFlow.value + proprietaryRecentFlow.value + fdroidRecentFlow.value +
-            izzyRecentFlow.value
-
+    loadOfflineRecents(enabled)
     if (AppSource.PLAYSTORE !in enabled) {
         isLoadingHomeFlow.value = false
         return
     }
+    loadPlayHomeSections()
+    isLoadingHomeFlow.value = false
+}
 
+private suspend fun AppStoreViewModel.loadOfflineRecents(enabled: Set<AppSource>) {
+    suspend fun recentOrEmpty(source: AppSource): List<UnifiedApp> =
+        if (source in enabled) catalog.recentlyUpdatedBySource(source, RECENT_PER_SOURCE_LIMIT) else emptyList()
+    modernRecentFlow.value = recentOrEmpty(AppSource.MODERN_APPS)
+    fdroidRecentFlow.value = recentOrEmpty(AppSource.FDROID)
+    izzyRecentFlow.value = recentOrEmpty(AppSource.IZZY)
+    proprietaryRecentFlow.value = recentOrEmpty(AppSource.PROPRIETARY)
+    recentlyUpdatedFlow.value =
+        modernRecentFlow.value + proprietaryRecentFlow.value + fdroidRecentFlow.value +
+            izzyRecentFlow.value
+}
+
+private suspend fun AppStoreViewModel.loadPlayHomeSections() {
     val clusters = play.homeClusters()
     playFullClustersFlow.value = clusters
         .filter { it.apps.isNotEmpty() }
@@ -74,15 +57,12 @@ internal suspend fun AppStoreViewModel.loadHome(enabled: Set<AppSource> = enable
         .filter { it.apps.isNotEmpty() }
         .take(PLAY_CLUSTER_LIMIT)
         .map { AppSection("play-${it.title}", it.title, it.apps.take(CAROUSEL_LIMIT)) }
-
     if (playSectionsFlow.value.isEmpty()) {
         // No account, or Play changed its stream shape. A top chart is one request and
         // still gives the screen something beyond this repo's own dozen apps.
         val chart = play.topChart()
         if (chart.isNotEmpty()) {
-            playFullClustersFlow.value = mapOf(
-                "play-top" to chart,
-            )
+            playFullClustersFlow.value = mapOf("play-top" to chart)
             playSectionsFlow.value = listOf(
                 AppSection(
                     id = "play-top",
@@ -92,7 +72,6 @@ internal suspend fun AppStoreViewModel.loadHome(enabled: Set<AppSource> = enable
             )
         }
     }
-    isLoadingHomeFlow.value = false
 }
 
 internal fun AppStoreViewModel.buildSections(
@@ -105,11 +84,11 @@ internal fun AppStoreViewModel.buildSections(
     accrescent: List<UnifiedApp>,
     categoryApps: List<UnifiedApp>,
     category: String?,
-): List<AppSection> = buildList {
+): List<AppSection> {
     // A chosen category replaces the browsing rows: the user asked a narrow question
     // and a wall of unrelated carousels underneath it is just noise.
     if (category != null) {
-        add(
+        return listOf(
             AppSection(
                 id = "category",
                 title = category,
@@ -118,70 +97,54 @@ internal fun AppStoreViewModel.buildSections(
                 subtitle = context.getString(R.string.section_category_subtitle),
             )
         )
-        return@buildList
     }
     // Each offline repo gets its own row — Modern Apps, the proprietary mirror and
     // F-Droid are never mixed into one "recent" list.
-    if (modernRecent.isNotEmpty()) {
-        add(
-            AppSection(
-                id = "modern-recent",
-                title = context.getString(R.string.section_modern_apps_recent),
-                apps = modernRecent,
-                subtitle = context.getString(R.string.section_modern_apps_recent_subtitle),
-            )
-        )
-    } else if (modern.isNotEmpty()) {
-        add(
-            AppSection(
-                id = "modern",
-                title = context.getString(R.string.section_modern_apps),
-                apps = modern,
-                subtitle = context.getString(R.string.section_modern_apps_subtitle),
-            )
-        )
-    }
-    if (proprietaryRecent.isNotEmpty()) {
-        add(
-            AppSection(
-                id = "proprietary-recent",
-                title = context.getString(R.string.section_proprietary_recent),
-                apps = proprietaryRecent,
-                subtitle = context.getString(R.string.section_proprietary_recent_subtitle),
-            )
-        )
-    }
-    addAll(playSections)
-    if (accrescent.isNotEmpty()) {
-        add(
-            AppSection(
-                id = "accrescent",
-                title = context.getString(R.string.section_accrescent),
-                apps = accrescent,
-                subtitle = context.getString(R.string.section_accrescent_subtitle),
-            )
-        )
-    }
-    if (fdroidRecent.isNotEmpty()) {
-        add(
-            AppSection(
-                id = "fdroid-recent",
-                title = context.getString(R.string.section_fdroid_recent),
-                apps = fdroidRecent,
-                subtitle = context.getString(R.string.section_fdroid_recent_subtitle),
-            )
-        )
-    }
-    if (izzyRecent.isNotEmpty()) {
-        add(
-            AppSection(
-                id = "izzy-recent",
-                title = context.getString(R.string.section_izzy_recent),
-                apps = izzyRecent,
-                subtitle = context.getString(R.string.section_izzy_recent_subtitle),
-            )
-        )
-    }
+    return listOfNotNull(
+        modernSection(modern, modernRecent),
+        recentSection("proprietary-recent", R.string.section_proprietary_recent, proprietaryRecent),
+    ) + playSections + listOfNotNull(
+        recentSection(
+            "accrescent", R.string.section_accrescent, accrescent,
+            subtitleRes = R.string.section_accrescent_subtitle,
+        ),
+        recentSection("fdroid-recent", R.string.section_fdroid_recent, fdroidRecent),
+        recentSection("izzy-recent", R.string.section_izzy_recent, izzyRecent),
+    )
+}
+
+private fun AppStoreViewModel.modernSection(
+    modern: List<UnifiedApp>,
+    modernRecent: List<UnifiedApp>,
+): AppSection? = when {
+    modernRecent.isNotEmpty() -> AppSection(
+        id = "modern-recent",
+        title = context.getString(R.string.section_modern_apps_recent),
+        apps = modernRecent,
+        subtitle = context.getString(R.string.section_modern_apps_recent_subtitle),
+    )
+    modern.isNotEmpty() -> AppSection(
+        id = "modern",
+        title = context.getString(R.string.section_modern_apps),
+        apps = modern,
+        subtitle = context.getString(R.string.section_modern_apps_subtitle),
+    )
+    else -> null
+}
+
+private fun AppStoreViewModel.recentSection(
+    id: String,
+    titleRes: Int,
+    apps: List<UnifiedApp>,
+    subtitleRes: Int? = null,
+): AppSection? {
+    if (apps.isEmpty()) return null
+    return AppSection(
+        id = id,
+        title = context.getString(titleRes),
+        apps = apps,
+        subtitle = subtitleRes?.let { context.getString(it) },
+    )
 }
 
 /**
@@ -255,41 +218,36 @@ fun AppStoreViewModel.syncSources() {
         val enabled = settings.readEnabledSources()
         isSyncingFlow.value = true
         val report = catalog.sync(enabled) { step ->
-            statusMessageFlow.value = context.getString(
-                when (step) {
-                    SyncStep.FDROID -> R.string.sync_step_fdroid
-                    SyncStep.IZZY -> R.string.sync_step_izzy
-                    SyncStep.MODERN_APPS -> R.string.sync_step_modern_apps
-                    SyncStep.PROPRIETARY -> R.string.sync_step_proprietary
-                }
-            )
+            statusMessageFlow.value = context.getString(syncStepStringRes(step))
         }
         statusMessageFlow.value = ""
         isSyncingFlow.value = false
-
-        AppMessages.show(
-            when {
-                report.allSkipped -> context.getString(R.string.sync_all_sources_off)
-                !report.anyFailed -> context.getString(
-                    R.string.sync_done,
-                    (report.fdroidCount ?: 0) + (report.modernCount ?: 0) +
-                        (report.proprietaryCount ?: 0) + (report.izzyCount ?: 0),
-                )
-                report.fdroidCount == null && report.modernCount == null &&
-                    report.proprietaryCount == null && report.izzyCount == null ->
-                    context.getString(R.string.sync_failed_all)
-                report.fdroidCount == null -> context.getString(R.string.sync_failed_fdroid)
-                report.izzyCount == null && AppSource.IZZY in enabled ->
-                    context.getString(R.string.sync_failed_izzy)
-                report.proprietaryCount == null ->
-                    context.getString(R.string.sync_failed_proprietary)
-                else -> context.getString(R.string.sync_failed_modern_apps)
-            }
-        )
+        AppMessages.show(syncReportMessage(report, enabled))
 
         categoriesFlow.value = catalog.categories()
         loadHome(enabled)
         loadAccrescent(enabled)
         installedRepo.refresh()
+    }
+}
+
+private fun syncStepStringRes(step: SyncStep): Int = when (step) {
+    SyncStep.FDROID -> R.string.sync_step_fdroid
+    SyncStep.IZZY -> R.string.sync_step_izzy
+    SyncStep.MODERN_APPS -> R.string.sync_step_modern_apps
+    SyncStep.PROPRIETARY -> R.string.sync_step_proprietary
+}
+
+private fun AppStoreViewModel.syncReportMessage(report: SyncReport, enabled: Set<AppSource>): String {
+    val counts = listOf(report.fdroidCount, report.modernCount, report.proprietaryCount, report.izzyCount)
+    return when {
+        report.allSkipped -> context.getString(R.string.sync_all_sources_off)
+        !report.anyFailed -> context.getString(R.string.sync_done, counts.sumOf { it ?: 0 })
+        counts.all { it == null } -> context.getString(R.string.sync_failed_all)
+        report.fdroidCount == null -> context.getString(R.string.sync_failed_fdroid)
+        report.izzyCount == null && AppSource.IZZY in enabled ->
+            context.getString(R.string.sync_failed_izzy)
+        report.proprietaryCount == null -> context.getString(R.string.sync_failed_proprietary)
+        else -> context.getString(R.string.sync_failed_modern_apps)
     }
 }

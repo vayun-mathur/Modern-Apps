@@ -26,7 +26,7 @@ class InstallVerifierStampAndTvFeatureTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
-    private fun signingInfo(cert: String): SigningInfo {
+    private fun signingInfo(): SigningInfo {
         val der = android.util.Base64.decode(CERT_A, android.util.Base64.DEFAULT)
         val info = SigningInfo()
         val shadow = Shadows.shadowOf(info)
@@ -52,7 +52,7 @@ class InstallVerifierStampAndTvFeatureTest {
                 sourceDir = file.absolutePath
                 targetSdkVersion = 35
             }
-            signingInfo = signingInfo("a")
+            signingInfo = signingInfo()
             if (features.isNotEmpty()) {
                 reqFeatures = features.map { name ->
                     FeatureInfo().apply { this.name = name }

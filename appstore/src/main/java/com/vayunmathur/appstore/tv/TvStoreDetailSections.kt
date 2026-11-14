@@ -127,11 +127,9 @@ private fun TvStoreDetailBlock(title: String, content: @Composable () -> Unit) {
 /** Categories, reproducible badge, ads and anti-features. Like the phone's chips row. */
 @Composable
 private fun TvStoreDetailChips(app: UnifiedApp, modifier: Modifier = Modifier) {
-    if (app.categories.isEmpty() && app.antiFeatures.isEmpty() &&
-        !app.containsAds && !app.reproducible
-    ) {
-        return
-    }
+    val hasCategories = app.categories.isNotEmpty() || app.antiFeatures.isNotEmpty()
+    val hasFlags = app.containsAds || app.reproducible
+    if (!hasCategories && !hasFlags) return
     Row(
         modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

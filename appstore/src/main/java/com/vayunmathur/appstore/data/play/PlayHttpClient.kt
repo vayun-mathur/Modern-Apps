@@ -29,6 +29,7 @@ import kotlin.random.Random
  */
 class PlayHttpClient : IHttpClient {
 
+    /** Holds HTTP timeout and status constants for Play requests. */
     companion object {
         private const val CONNECT_TIMEOUT = 30_000
         private const val READ_TIMEOUT = 30_000

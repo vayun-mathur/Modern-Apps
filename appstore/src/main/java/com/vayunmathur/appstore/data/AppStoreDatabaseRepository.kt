@@ -30,6 +30,7 @@ class AppStoreDatabaseRepository private constructor(context: Context) :
     fun cachedAppsFlow(): Flow<List<CachedAppEntity>> = db.cachedAppDao().allFlow()
     suspend fun cachedAppByPackage(pkg: String): CachedAppEntity? = db.cachedAppDao().byPackage(pkg)
 
+    /** Provides the singleton AppStoreDatabaseRepository instance. */
     companion object {
         @Volatile
         private var instance: AppStoreDatabaseRepository? = null

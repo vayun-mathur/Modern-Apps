@@ -21,6 +21,7 @@ import java.net.URL
 class PlayDownloader(
     private val context: Context
 ) {
+    /** Holds download timeout constants for Play package downloads. */
     companion object {
         private const val TAG = "PlayDownloader"
         private const val CONNECT_TIMEOUT_MS = 30_000
@@ -37,6 +38,7 @@ class PlayDownloader(
             existingBytes > 0 && responseCode == HTTP_PARTIAL
     }
 
+    /** Signals that a Play download URL expired before the download finished. */
     class ExpiredUrlException(message: String) : java.io.IOException(message)
 
     /**

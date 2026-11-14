@@ -321,7 +321,7 @@ class TvStoreViewModel(
             installedRepo.refresh()
             if (AppSource.PLAYSTORE in enabledSourcesFlow.value) play.restore()
             refreshPlayInstalledPackages(enabledSourcesFlow.value)
-            syncIfNeverSynced()
+            syncIfNeverSyncedImpl()
             categoriesFlow.value = catalog.categories()
             loadHome()
         }
@@ -348,177 +348,13 @@ class TvStoreViewModel(
     }
 
     /**
-     * Populate the offline catalogues the first time the TV store is opened.
-     *
-     * Same contract as the phone's `syncIfNeverSynced`: keyed off the catalogue being
-     * empty rather than a first-run flag, so it also recovers a store whose first sync
-     * failed or whose data was cleared — and stays quiet on every later launch, when
-     * re-fetching full catalogues would be a poor trade for at-most-hours-stale data.
-     * Progress reports through the existing status line the browse screen already shows.
-     */
-    private suspend fun syncIfNeverSynced() {
-        val enabled = enabledSourcesFlow.value
-        val offlineSources = setOf(
-            DefaultRepos.FDROID.source, DefaultRepos.MODERN_APPS.source,
-            DefaultRepos.PROPRIETARY.source, DefaultRepos.IZZY.source,
-        )
-        if (enabled.intersect(offlineSources).isEmpty()) return
-        if (catalog.recentlyUpdatedBySource(AppSource.FDROID, 1).isNotEmpty() ||
-            catalog.recentlyUpdatedBySource(AppSource.MODERN_APPS, 1).isNotEmpty() ||
-            catalog.recentlyUpdatedBySource(AppSource.PROPRIETARY, 1).isNotEmpty() ||
-            catalog.recentlyUpdatedBySource(AppSource.IZZY, 1).isNotEmpty()
-        ) {
-            // The offline gate stays quiet, but Accrescent is network-backed: refresh its
-            // allowlist + listings on every cold start that reaches this far, same as the phone.
-            loadAccrescent(enabled)
-            return
-        }
-        isLoadingFlow.value = true
-        val report = catalog.sync(enabled) { step ->
-            statusMessageFlow.value = context.getString(
-                when (step) {
-                    SyncStep.FDROID -> R.string.sync_step_fdroid
-                    SyncStep.IZZY -> R.string.sync_step_izzy
-                    SyncStep.MODERN_APPS -> R.string.sync_step_modern_apps
-                    SyncStep.PROPRIETARY -> R.string.sync_step_proprietary
-                },
-            )
-        }
-        statusMessageFlow.value = ""
-        isLoadingFlow.value = false
-        AppMessages.show(
-            when {
-                report.allSkipped -> context.getString(R.string.sync_all_sources_off)
-                !report.anyFailed -> context.getString(
-                    R.string.sync_done,
-                    (report.fdroidCount ?: 0) + (report.modernCount ?: 0) +
-                        (report.proprietaryCount ?: 0) + (report.izzyCount ?: 0),
-                )
-                report.fdroidCount == null && report.modernCount == null &&
-                    report.proprietaryCount == null && report.izzyCount == null ->
-                    context.getString(R.string.sync_failed_all)
-                report.fdroidCount == null -> context.getString(R.string.sync_failed_fdroid)
-                report.izzyCount == null && AppSource.IZZY in enabled ->
-                    context.getString(R.string.sync_failed_izzy)
-                report.proprietaryCount == null ->
-                    context.getString(R.string.sync_failed_proprietary)
-                else -> context.getString(R.string.sync_failed_modern_apps)
-            },
-        )
-    }
-
-    /**
      * Fill the home rows from the TV-filtered catalogue: one section per source with
      * the phone's own titles and subtitles, capped at two grid rows each.
      *
      * A chosen category replaces the browsing rows, mirroring the phone: the user asked
      * a narrow question and a wall of unrelated sections underneath is just noise.
      */
-    fun loadHome() {
-        viewModelScope.launch {
-            isLoadingFlow.value = true
-            val enabled = enabledSourcesFlow.value
-            val category = selectedCategoryFlow.value
-            if (category != null) {
-                val apps = categoryAppsFlow.value.ifEmpty { catalog.allByCategory(category) }
-                categoryAppsFlow.value = apps
-                sectionsFlow.value = listOf(
-                    TvSection(
-                        id = "category",
-                        title = category,
-                        subtitle = context.getString(R.string.section_category_subtitle),
-                        apps = apps,
-                    )
-                )
-                isLoadingFlow.value = false
-                return@launch
-            }
-            categoriesFlow.value = catalog.categories()
-            val sections = buildList {
-                if (AppSource.MODERN_APPS in enabled) {
-                    val recent = catalog.recentlyUpdatedBySource(AppSource.MODERN_APPS, ROW_LIMIT)
-                    if (recent.isNotEmpty()) {
-                        add(
-                            TvSection(
-                                id = "modern-recent",
-                                title = context.getString(R.string.section_modern_apps_recent),
-                                subtitle = context.getString(R.string.section_modern_apps_recent_subtitle),
-                                source = AppSource.MODERN_APPS,
-                                apps = recent,
-                            )
-                        )
-                    } else {
-                        catalog.allBySource(AppSource.MODERN_APPS).take(ROW_LIMIT)
-                            .takeIf { it.isNotEmpty() }?.let {
-                                add(
-                                    TvSection(
-                                        id = "modern",
-                                        title = context.getString(R.string.section_modern_apps),
-                                        subtitle = context.getString(R.string.section_modern_apps_subtitle),
-                                        source = AppSource.MODERN_APPS,
-                                        apps = it,
-                                    )
-                                )
-                            }
-                    }
-                }
-                addAll(offlineRows(enabled, ROW_LIMIT))
-                if (AppSource.PLAYSTORE in enabled) {
-                    val clusters = play.homeClusters().filter { it.apps.isNotEmpty() }
-                        .take(CLUSTER_LIMIT)
-                    playFullClustersFlow.value = clusters.associate { "play-${it.title}" to it.apps }
-                    clusters.forEach { cluster ->
-                        add(
-                            TvSection(
-                                id = "play-${cluster.title}",
-                                title = cluster.title,
-                                source = AppSource.PLAYSTORE,
-                                apps = cluster.apps.take(ROW_LIMIT),
-                            )
-                        )
-                    }
-                    if (clusters.isEmpty()) {
-                        // No account, or Play changed its stream shape. A top chart is one
-                        // request and still gives the screen something beyond this repo's
-                        // own dozen apps. Mirrors the phone's fallback.
-                        play.topChart().takeIf { it.isNotEmpty() }?.let { chart ->
-                            playFullClustersFlow.value = mapOf("play-top" to chart)
-                            add(
-                                TvSection(
-                                    id = "play-top",
-                                    title = context.getString(R.string.section_play_top_charts),
-                                    source = AppSource.PLAYSTORE,
-                                    apps = chart.take(ROW_LIMIT),
-                                )
-                            )
-                        }
-                    }
-                }
-                if (AppSource.ACCRESCENT in enabled) {
-                    accrescentAppsFlow.value.take(ROW_LIMIT).takeIf { it.isNotEmpty() }?.let {
-                        add(
-                            TvSection(
-                                id = "accrescent",
-                                title = context.getString(R.string.section_accrescent),
-                                subtitle = context.getString(R.string.section_accrescent_subtitle),
-                                source = AppSource.ACCRESCENT,
-                                apps = it,
-                            )
-                        )
-                    }
-                }
-            }
-            // Same precedence the phone uses: the surviving row's source decides the
-            // download-and-verify path, so cross-source duplicates resolve identically.
-            sectionsFlow.value = sections.map { section ->
-                section.copy(
-                    apps = section.apps.sortedBy { it.source.priority }
-                        .distinctBy { it.packageName }
-                )
-            }
-            isLoadingFlow.value = false
-        }
-    }
+    fun loadHome() = loadHomeImpl()
 
     /** A chosen category replaces the browsing rows; null restores them. Mirrors the phone. */
     fun selectCategory(category: String?) {
@@ -766,7 +602,7 @@ class TvStoreViewModel(
         super.onCleared()
     }
 
-    private companion object {
+    internal companion object {
         /** Two grid rows per home section: the phone's rows become dense grids, not walls. */
         const val ROW_LIMIT = 6
         const val CLUSTER_LIMIT = 4
@@ -781,6 +617,7 @@ private data class TvSearchAux(
     val stages: Map<String, InstallStage>,
 )
 
+/** Factory creating TvStoreViewModel with its context and database. */
 class TvStoreViewModelFactory(
     private val context: android.content.Context,
     private val db: AppDatabase,

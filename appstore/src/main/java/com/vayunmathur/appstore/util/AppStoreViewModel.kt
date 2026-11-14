@@ -374,7 +374,6 @@ class AppStoreViewModel(
             LibraryInputs(index, playPackages, accrescentPackages, filter, enabled)
         },
     ) { rows, inputs ->
-        val (index, playPackages, accrescentPackages, filter, enabled) = inputs
         // Source attribution, highest priority first:
         //  1. Whatever the offline catalogue (F-Droid / Modern Apps / Proprietary) recorded.
         //  2. Accrescent, for packages its signed allowlist vouches for.
@@ -386,12 +385,12 @@ class AppStoreViewModel(
         // cache can still hold a disabled offline source's rows on a cold start before
         // purgeDisabled runs, and the Play/Accrescent snapshots are in-memory.
         fun sourceOf(pkg: String): AppSource? {
-            index[pkg]?.source?.let { runCatching { AppSource.valueOf(it) }.getOrNull() }
-                ?.takeIf { it in enabled }?.let { return it }
-            if (AppSource.ACCRESCENT in enabled && pkg in accrescentPackages) {
+            inputs.index[pkg]?.source?.let { runCatching { AppSource.valueOf(it) }.getOrNull() }
+                ?.takeIf { it in inputs.enabled }?.let { return it }
+            if (AppSource.ACCRESCENT in inputs.enabled && pkg in inputs.accrescentPackages) {
                 return AppSource.ACCRESCENT
             }
-            if (AppSource.PLAYSTORE in enabled && pkg in playPackages) {
+            if (AppSource.PLAYSTORE in inputs.enabled && pkg in inputs.playPackages) {
                 return AppSource.PLAYSTORE
             }
             return null
@@ -401,8 +400,8 @@ class AppStoreViewModel(
             sourceOf(info.packageName)?.let { info.toUnifiedApp(it) }
         }
         LibraryUiState(
-            apps = all.filter { filter.source == null || it.source == filter.source },
-            filter = filter,
+            apps = all.filter { inputs.filter.source == null || it.source == inputs.filter.source },
+            filter = inputs.filter,
             counts = SourceFilter.entries.associateWith { f ->
                 if (f.source == null) all.size else all.count { it.source == f.source }
             },
@@ -733,6 +732,7 @@ class AppStoreViewModel(
     }
 }
 
+/** Factory creating AppStoreViewModel with its context and database. */
 class AppStoreViewModelFactory(
     private val context: Context,
     private val db: AppDatabase,

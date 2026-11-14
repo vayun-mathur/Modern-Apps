@@ -293,25 +293,7 @@ object FDroidRepository {
         // Sibling order is deterministic (base first: shortest file name tends
         // to be the base; ties broken alphabetically) — the session writer
         // doesn't care about order, but humans reading logs do.
-        val splitFiles = if (latest.requiredSplitTypes.isEmpty()) {
-            emptyList()
-        } else {
-            b.versions
-                .filter {
-                    it.versionCode == latest.versionCode &&
-                        it.fileName != latest.fileName &&
-                        !isDynamiteModule(it.fileName)
-                }
-                .sortedWith(compareBy({ it.fileName.length }, { it.fileName }))
-                .map {
-                    SplitFile(
-                        fileName = it.fileName,
-                        url = repoBase + "/" + it.fileName.trimStart('/'),
-                        sha256 = it.sha256,
-                        size = it.size,
-                    )
-                }
-        }
+        val splitFiles = splitFilesFor(b.versions, latest, repoBase)
 
         // index-v2 file names are repo-absolute ("/com.example_12.apk").
         val apkUrl = repoBase + "/" + latest.fileName.trimStart('/')
@@ -354,6 +336,39 @@ object FDroidRepository {
             containsSplit = latest.requiredSplitTypes.isNotEmpty() || splitFiles.isNotEmpty(),
             splitFiles = splitFiles,
         )
+    }
+
+    // Split-set versions install as a set: when the chosen entry requires
+    // splits, every indexed file sharing its versionCode belongs in the
+    // same installer session (base + config splits). Without this the
+    // system refuses with INSTALL_FAILED_MISSING_SPLIT on Android 14+.
+    // Dynamite runtime modules (`*_installtime.apk`) are excluded: they share
+    // the versionCode but are not installable splits, and the system refuses
+    // the whole session when one is included.
+    // Sibling order is deterministic (base first: shortest file name tends
+    // to be the base; ties broken alphabetically) — the session writer
+    // doesn't care about order, but humans reading logs do.
+    private fun splitFilesFor(
+        versions: List<VersionCandidate>,
+        latest: VersionCandidate,
+        repoBase: String,
+    ): List<SplitFile> {
+        if (latest.requiredSplitTypes.isEmpty()) return emptyList()
+        return versions
+            .filter {
+                it.versionCode == latest.versionCode &&
+                    it.fileName != latest.fileName &&
+                    !isDynamiteModule(it.fileName)
+            }
+            .sortedWith(compareBy({ it.fileName.length }, { it.fileName }))
+            .map {
+                SplitFile(
+                    fileName = it.fileName,
+                    url = repoBase + "/" + it.fileName.trimStart('/'),
+                    sha256 = it.sha256,
+                    size = it.size,
+                )
+            }
     }
 
     private fun readMetadataV2(reader: JsonReader, repoBase: String, b: PackageBuilder) {
