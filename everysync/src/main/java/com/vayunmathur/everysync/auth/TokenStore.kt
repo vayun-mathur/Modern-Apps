@@ -96,6 +96,7 @@ class TokenStore private constructor(context: Context) {
         }
     }
 
+    /** Holds Keystore constants for encrypted token storage. */
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val KEY_ALIAS = "everysync_token_key"

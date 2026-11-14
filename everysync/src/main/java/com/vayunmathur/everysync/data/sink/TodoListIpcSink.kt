@@ -36,25 +36,31 @@ object TodoListIpcSink {
         val out = mutableListOf<RemoteTodoList>()
         var failed = false
         try {
-            val cursor = context.contentResolver.query(listsUri(vaultId), arrayOf(TodoIpcSink.COL_PAYLOAD_JSON), null, null, null)
+            val cursor = context.contentResolver.query(
+                listsUri(vaultId), arrayOf(TodoIpcSink.COL_PAYLOAD_JSON), null, null, null,
+            )
             if (cursor == null) {
                 failed = true
             } else {
-                cursor.use { c ->
-                    val idx = c.getColumnIndex(TodoIpcSink.COL_PAYLOAD_JSON)
-                    while (c.moveToNext()) {
-                        val payload = if (idx >= 0) c.getStringOrNull(idx) else null
-                        if (!payload.isNullOrBlank()) {
-                            TodoListKind.fromJson(payload)?.takeIf { it.uid.isNotBlank() }?.let { out += it }
-                        }
-                    }
-                }
+                cursor.use { c -> out += readTodoListRows(c) }
             }
         } catch (expected: Exception) {
             Log.error(TAG, "listLocal failed", expected)
             failed = true
         }
         lastListLocalOk = !failed
+        return out
+    }
+
+    private fun readTodoListRows(cursor: android.database.Cursor): List<RemoteTodoList> {
+        val out = mutableListOf<RemoteTodoList>()
+        val idx = cursor.getColumnIndex(TodoIpcSink.COL_PAYLOAD_JSON)
+        while (cursor.moveToNext()) {
+            val payload = if (idx >= 0) cursor.getStringOrNull(idx) else null
+            if (!payload.isNullOrBlank()) {
+                TodoListKind.fromJson(payload)?.takeIf { it.uid.isNotBlank() }?.let { out += it }
+            }
+        }
         return out
     }
 

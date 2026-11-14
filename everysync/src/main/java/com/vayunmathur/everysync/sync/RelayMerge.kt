@@ -121,6 +121,7 @@ class RelayPlan<T>(
     val deletedRemote: Int,
 )
 
+/** Accumulates local and remote changes while merging one vault kind. */
 class MergeAccumulator<T> {
     val localUpserts = mutableListOf<T>()
     val localDeletes = mutableListOf<T>()
@@ -550,69 +551,80 @@ object RelayMerge {
             return
         }
         if (base != null && !kind.isDeleted(remoteEntity) && !localDeletesAreAuthoritative) {
-            // Hard-delete store (passwords): rows vanish with only the baseline
-            // remembering them, so a healthy-read absence IS a genuine local
-            // delete. Propagate a tombstone so the delete does not resurrect.
-            // (driveMerge aborts on failed local reads, so absence here is
-            // evidence, not a missed read.)
-            val tombstone = kind.withUpdatedAt(
-                kind.withDeleted(kind.rebind(remoteEntity, id), true),
-                maxOf(kind.updatedAt(remoteEntity), now),
-            )
-            accumulator.remoteOut += tombstone
-            accumulator.remoteChanged = true
-            accumulator.snapshots += kind.snapshot(
-                id,
-                kind.contentHash(tombstone),
-                kind.updatedAt(tombstone),
-                kind.updatedAt(tombstone),
-                now,
-                true,
-            )
-            accumulator.deletedRemote++
+            propagateHardDelete(kind, id, remoteEntity, now, accumulator)
             return
         }
         if (base != null && !kind.isDeleted(remoteEntity)) {
-            // Soft-delete store (notes, todos, contacts, calendar): local
-            // deletes carry explicit marks (app tombstone rows or
-            // system-provider DELETED flags surfaced via getLocalChanges), so
-            // an absence WITHOUT a mark is never a local delete — it is a
-            // missed read. Do NOT tombstone the relay on zero evidence.
-            // Pull the relay copy back instead; a genuinely deleted row will
-            // arrive with its mark and propagate through the normal path.
-            val rebound = kind.rebind(remoteEntity, id)
-            if (kind.isDeleted(rebound)) {
-                accumulator.snapshots += kind.snapshot(
-                    id,
-                    kind.contentHash(rebound),
-                    kind.updatedAt(rebound),
-                    kind.updatedAt(rebound),
-                    now,
-                    true,
-                )
-                accumulator.deletedRemote++
-                return
-            }
-            accumulator.localUpserts += rebound
-            if (id in accumulator.adoptedRemote) {
-                // The relay copy lacks our sync id; re-append it identified.
-                accumulator.remoteOut += rebound
-                accumulator.remoteChanged = true
-            }
-            accumulator.pulled++
-            val stamp = kind.updatedAt(remoteEntity)
-            accumulator.snapshots += kind.snapshot(
-                id,
-                kind.contentHash(rebound),
-                stamp,
-                stamp,
-                now,
-            )
+            pullBackSoftDeleted(kind, id, remoteEntity, now, accumulator)
             return
         }
         val rebound = kind.rebind(remoteEntity, id)
         if (kind.isDeleted(rebound)) {
             // Fresh remote tombstone with no local row: record it, nothing to pull.
+            recordTombstoneSnapshot(kind, id, rebound, now, accumulator)
+            return
+        }
+        accumulator.localUpserts += rebound
+        if (id in accumulator.adoptedRemote) {
+            // The relay copy lacks our sync id; re-append it identified.
+            accumulator.remoteOut += rebound
+            accumulator.remoteChanged = true
+        }
+        accumulator.pulled++
+        val stamp = kind.updatedAt(remoteEntity)
+        accumulator.snapshots += kind.snapshot(
+            id,
+            kind.contentHash(rebound),
+            stamp,
+            stamp,
+            now,
+        )
+    }
+    private fun <T> propagateHardDelete(
+        kind: EntityKind<T>,
+        id: String,
+        remoteEntity: T,
+        now: Long,
+        accumulator: MergeAccumulator<T>,
+    ) {
+        // Hard-delete store (passwords): rows vanish with only the baseline
+        // remembering them, so a healthy-read absence IS a genuine local
+        // delete. Propagate a tombstone so the delete does not resurrect.
+        // (driveMerge aborts on failed local reads, so absence here is
+        // evidence, not a missed read.)
+        val tombstone = kind.withUpdatedAt(
+            kind.withDeleted(kind.rebind(remoteEntity, id), true),
+            maxOf(kind.updatedAt(remoteEntity), now),
+        )
+        accumulator.remoteOut += tombstone
+        accumulator.remoteChanged = true
+        accumulator.snapshots += kind.snapshot(
+            id,
+            kind.contentHash(tombstone),
+            kind.updatedAt(tombstone),
+            kind.updatedAt(tombstone),
+            now,
+            true,
+        )
+        accumulator.deletedRemote++
+    }
+
+    private fun <T> pullBackSoftDeleted(
+        kind: EntityKind<T>,
+        id: String,
+        remoteEntity: T,
+        now: Long,
+        accumulator: MergeAccumulator<T>,
+    ) {
+        // Soft-delete store (notes, todos, contacts, calendar): local
+        // deletes carry explicit marks (app tombstone rows or
+        // system-provider DELETED flags surfaced via getLocalChanges), so
+        // an absence WITHOUT a mark is never a local delete — it is a
+        // missed read. Do NOT tombstone the relay on zero evidence.
+        // Pull the relay copy back instead; a genuinely deleted row will
+        // arrive with its mark and propagate through the normal path.
+        val rebound = kind.rebind(remoteEntity, id)
+        if (kind.isDeleted(rebound)) {
             accumulator.snapshots += kind.snapshot(
                 id,
                 kind.contentHash(rebound),
@@ -639,5 +651,25 @@ object RelayMerge {
             stamp,
             now,
         )
+        return
     }
+
+    private fun <T> recordTombstoneSnapshot(
+        kind: EntityKind<T>,
+        id: String,
+        rebound: T,
+        now: Long,
+        accumulator: MergeAccumulator<T>,
+    ) {
+        accumulator.snapshots += kind.snapshot(
+            id,
+            kind.contentHash(rebound),
+            kind.updatedAt(rebound),
+            kind.updatedAt(rebound),
+            now,
+            true,
+        )
+        accumulator.deletedRemote++
+    }
+
 }

@@ -57,17 +57,27 @@ object VaultKeys {
         val blobs = runCatching { RelaySync.pullRaw(keysChannel(vaultId), 0) }.getOrNull()
             ?: return inviteEpoch to inviteKey
         for (blob in blobs) {
-            val epoch = decodeEpoch(blob) ?: continue
-            val sig = runCatching { Base64.decode(epoch.sig) }.getOrNull() ?: continue
-            if (!RelaySync.verify(ownerKey, epochSigningBytes(vaultId, epoch.epoch, epoch.wraps), sig)) continue
-            val wrap = epoch.wraps[deviceId] ?: continue
-            val key = runCatching { RelaySync.unseal(Base64.decode(wrap)) }.getOrNull() ?: continue
-            if (epoch.epoch >= bestEpoch) {
-                bestEpoch = epoch.epoch
-                bestKey = key
+            val candidate = verifiedEpochKey(blob, vaultId, ownerKey, deviceId) ?: continue
+            if (candidate.first >= bestEpoch) {
+                bestEpoch = candidate.first
+                bestKey = candidate.second
             }
         }
         return bestEpoch to bestKey
+    }
+
+    private suspend fun verifiedEpochKey(
+        blob: String,
+        vaultId: String,
+        ownerKey: ByteArray,
+        deviceId: String,
+    ): Pair<Int, ByteArray>? {
+        val epoch = decodeEpoch(blob) ?: return null
+        val sig = runCatching { Base64.decode(epoch.sig) }.getOrNull() ?: return null
+        if (!RelaySync.verify(ownerKey, epochSigningBytes(vaultId, epoch.epoch, epoch.wraps), sig)) return null
+        val wrap = epoch.wraps[deviceId] ?: return null
+        val key = runCatching { RelaySync.unseal(Base64.decode(wrap)) }.getOrNull() ?: return null
+        return epoch.epoch to key
     }
 
     /**

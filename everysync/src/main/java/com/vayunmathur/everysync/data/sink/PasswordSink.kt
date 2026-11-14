@@ -238,20 +238,14 @@ object PasswordSink {
                     null,
                     null,
                     null,
-                )?.use { c ->
-                    val idIdx = c.getColumnIndex(COL_SYNC_ID)
-                    val tsIdx = c.getColumnIndex(COL_UPDATED_AT)
-                    while (c.moveToNext()) {
-                        val uid = (if (idIdx >= 0) c.getStringOrNull(idIdx) else null) ?: continue
-                        result[uid] = if (tsIdx >= 0) c.getLongOrNull(tsIdx) else null
-                    }
-                }
+                )?.use { c -> readEtagRows(c, result) }
             } catch (expected: Exception) {
                 Log.error(TAG, "localUidToEtag failed for $uri", expected)
             }
         }
         return result
     }
+
 
     /** All local rows in relay form (tombstones never occur locally — hard deletes). */
     fun listLocal(context: Context, vaultId: String): List<RemotePassword> =
@@ -280,15 +274,7 @@ object PasswordSink {
                     failed = true
                     continue
                 }
-                cursor.use { c ->
-                    val payloadIdx = c.getColumnIndex(COL_PAYLOAD_JSON)
-                    while (c.moveToNext()) {
-                        val payload = if (payloadIdx >= 0) c.getStringOrNull(payloadIdx) else null
-                        if (!payload.isNullOrBlank()) {
-                            fromPayload(payload, isPasskey)?.let { out += it }
-                        }
-                    }
-                }
+                cursor.use { c -> out += readPasswordRows(c, isPasskey) }
             } catch (expected: Exception) {
                 Log.error(TAG, "listLocal failed for $uri", expected)
                 failed = true
@@ -299,6 +285,21 @@ object PasswordSink {
             throw LocalReadException("password provider read failed for vault $vaultId")
         }
         lastListLocalOk = true
+        return out
+    }
+
+    private fun readPasswordRows(
+        cursor: android.database.Cursor,
+        isPasskey: Boolean,
+    ): List<RemotePassword> {
+        val out = mutableListOf<RemotePassword>()
+        val payloadIdx = cursor.getColumnIndex(COL_PAYLOAD_JSON)
+        while (cursor.moveToNext()) {
+            val payload = if (payloadIdx >= 0) cursor.getStringOrNull(payloadIdx) else null
+            if (!payload.isNullOrBlank()) {
+                fromPayload(payload, isPasskey)?.let { out += it }
+            }
+        }
         return out
     }
 
@@ -346,6 +347,8 @@ object PasswordSink {
      * the app provider. Used when the user turns password sync off; the vault
      * itself stays, so a later re-enable repopulates it from a fresh pull.
      */
+    // Intentional no-op / account-parity parameter: kept so all sinks share one call shape.
+    @Suppress("UnusedParameter")
     fun purge(context: Context, accountName: String, vaultId: String) {
         for (table in listOf(PATH_PASSWORDS, PATH_PASSKEYS, PATH_SNAPSHOTS)) {
             try {
@@ -377,25 +380,7 @@ object PasswordSink {
                     null,
                     null,
                     null,
-                )?.use { c ->
-                    val idIdx = c.getColumnIndex(COL_SYNC_ID)
-                    val tsIdx = c.getColumnIndex(COL_UPDATED_AT)
-                    val payloadIdx = c.getColumnIndex(COL_PAYLOAD_JSON)
-                    while (c.moveToNext()) {
-                        val uid = (if (idIdx >= 0) c.getStringOrNull(idIdx) else null) ?: continue
-                        val payload = if (payloadIdx >= 0) c.getStringOrNull(payloadIdx) else null
-                        // Table determines the half; the parsed flag is
-                        // authoritative when present, table otherwise.
-                        val parsed = if (payload.isNullOrBlank()) null else fromPayload(payload, isPasskey)
-                        changes += LocalPasswordChange(
-                            syncId = uid,
-                            isPasskey = parsed?.isPasskey ?: isPasskey,
-                            updatedAt = if (tsIdx >= 0) c.getLong(tsIdx) else 0L,
-                            deleted = false,
-                            password = parsed,
-                        )
-                    }
-                }
+                )?.use { c -> readPasswordChangeRows(c, isPasskey, changes) }
             } catch (expected: Exception) {
                 Log.error(TAG, "getLocalChanges failed for $table", expected)
             }
@@ -408,6 +393,8 @@ object PasswordSink {
      * rows applied via `upsertRaw` keep their remote `updatedAt`, which sits
      * at or below the push watermark, so fresh pulls never look dirty.
      */
+    // Intentional no-op / account-parity parameter: kept so all sinks share one call shape.
+    @Suppress("UnusedParameter")
     fun clearDirty(context: Context, vaultId: String, syncId: String) {
         // Timestamp-watermark providers need no explicit clean bit; kept for
         // API parity with ContactsSink/CalendarSink.
@@ -430,3 +417,37 @@ object PasswordSink {
         val updatedAt: Long = 0L,
     )
 }
+
+private fun readEtagRows(cursor: android.database.Cursor, result: MutableMap<String, Long?>) {
+    val idIdx = cursor.getColumnIndex(PasswordSink.COL_SYNC_ID)
+    val tsIdx = cursor.getColumnIndex(PasswordSink.COL_UPDATED_AT)
+    while (cursor.moveToNext()) {
+        val uid = (if (idIdx >= 0) cursor.getStringOrNull(idIdx) else null) ?: continue
+        result[uid] = if (tsIdx >= 0) cursor.getLongOrNull(tsIdx) else null
+    }
+}
+
+private fun readPasswordChangeRows(
+    cursor: android.database.Cursor,
+    isPasskey: Boolean,
+    changes: MutableList<LocalPasswordChange>,
+) {
+    val idIdx = cursor.getColumnIndex(PasswordSink.COL_SYNC_ID)
+    val tsIdx = cursor.getColumnIndex(PasswordSink.COL_UPDATED_AT)
+    val payloadIdx = cursor.getColumnIndex(PasswordSink.COL_PAYLOAD_JSON)
+    while (cursor.moveToNext()) {
+        val uid = (if (idIdx >= 0) cursor.getStringOrNull(idIdx) else null) ?: continue
+        val payload = if (payloadIdx >= 0) cursor.getStringOrNull(payloadIdx) else null
+        // Table determines the half; the parsed flag is
+        // authoritative when present, table otherwise.
+        val parsed = if (payload.isNullOrBlank()) null else PasswordSink.fromPayload(payload, isPasskey)
+        changes += LocalPasswordChange(
+            syncId = uid,
+            isPasskey = parsed?.isPasskey ?: isPasskey,
+            updatedAt = if (tsIdx >= 0) cursor.getLong(tsIdx) else 0L,
+            deleted = false,
+            password = parsed,
+        )
+    }
+}
+

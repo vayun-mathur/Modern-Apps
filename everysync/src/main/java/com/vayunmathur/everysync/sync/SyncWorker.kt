@@ -30,6 +30,7 @@ class SyncWorker(
         }
     }
 
+    /** Holds WorkManager input keys and logging constants for sync work. */
     companion object {
         const val KEY_ACCOUNT = "account"
         private const val TAG = "SyncWorker"

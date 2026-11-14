@@ -28,6 +28,7 @@ class SnapshotWorker(appContext: Context, params: WorkerParameters) : CoroutineW
         }
     }
 
+    /** Holds WorkManager names and logging constants for daily snapshots. */
     companion object {
         private const val TAG = "SnapshotWorker"
         private const val UNIQUE_WORK = "EverySyncSnapshots"

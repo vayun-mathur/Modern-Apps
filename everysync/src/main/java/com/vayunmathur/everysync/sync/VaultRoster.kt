@@ -51,19 +51,22 @@ object VaultRoster {
             ?: return emptyMap()
         val byId = LinkedHashMap<String, RelaySync.Member>()
         for (r in raw) {
-            val envelope = runCatching {
-                json.decodeFromString<RelaySync.SignedEnvelope>(r)
-            }.getOrNull() ?: continue
-            val sig = runCatching { Base64.decode(envelope.sig) }.getOrNull() ?: continue
-            if (!RelaySync.verify(ownerKey, envelope.payload.encodeToByteArray(), sig)) continue
-            val members = runCatching {
-                json.decodeFromString<List<RelaySync.Member>>(envelope.payload)
-            }.getOrNull() ?: continue
-            for (member in members) {
+            verifiedMembers(r, ownerKey)?.forEach { member ->
                 if (member.id.isNotBlank()) byId[member.id] = member
             }
         }
         return byId
+    }
+
+    private suspend fun verifiedMembers(raw: String, ownerKey: ByteArray): List<RelaySync.Member>? {
+        val envelope = runCatching {
+            json.decodeFromString<RelaySync.SignedEnvelope>(raw)
+        }.getOrNull() ?: return null
+        val sig = runCatching { Base64.decode(envelope.sig) }.getOrNull() ?: return null
+        if (!RelaySync.verify(ownerKey, envelope.payload.encodeToByteArray(), sig)) return null
+        return runCatching {
+            json.decodeFromString<List<RelaySync.Member>>(envelope.payload)
+        }.getOrNull()
     }
 
     /** This device's role in the vault, or null when it is not on the verified roster. */

@@ -177,21 +177,25 @@ object NoteSink {
                 // Null cursor = provider cannot serve: failure, not empty.
                 failed = true
             } else {
-                cursor.use { c ->
-                    val payloadIdx = c.getColumnIndex(COL_PAYLOAD_JSON)
-                    while (c.moveToNext()) {
-                        val payload = if (payloadIdx >= 0) c.getStringOrNull(payloadIdx) else null
-                        if (!payload.isNullOrBlank()) {
-                            fromPayload(payload)?.let { out += it }
-                        }
-                    }
-                }
+                cursor.use { c -> out += readNoteRows(c) }
             }
         } catch (expected: Exception) {
             Log.error(TAG, "listLocal failed", expected)
             failed = true
         }
         lastListLocalOk = !failed
+        return out
+    }
+
+    private fun readNoteRows(cursor: android.database.Cursor): List<RemoteNote> {
+        val out = mutableListOf<RemoteNote>()
+        val payloadIdx = cursor.getColumnIndex(COL_PAYLOAD_JSON)
+        while (cursor.moveToNext()) {
+            val payload = if (payloadIdx >= 0) cursor.getStringOrNull(payloadIdx) else null
+            if (!payload.isNullOrBlank()) {
+                fromPayload(payload)?.let { out += it }
+            }
+        }
         return out
     }
 
@@ -238,6 +242,8 @@ object NoteSink {
      * provider. Used when the user turns note sync off; the vault itself
      * stays, so a later re-enable repopulates it from a fresh pull.
      */
+    // Intentional no-op / account-parity parameter: kept so all sinks share one call shape.
+    @Suppress("UnusedParameter")
     fun purge(context: Context, accountName: String, vaultId: String) {
         for (table in listOf(PATH_NOTES, PATH_SNAPSHOTS)) {
             try {
@@ -299,6 +305,8 @@ object NoteSink {
      * rows applied via `upsertRaw` keep their remote `updatedAt`, which sits
      * at or below the push watermark, so fresh pulls never look dirty.
      */
+    // Intentional no-op / account-parity parameter: kept so all sinks share one call shape.
+    @Suppress("UnusedParameter")
     fun clearDirty(context: Context, vaultId: String, syncId: String) {
         // Timestamp-watermark providers need no explicit clean bit; kept for
         // API parity with ContactsSink/CalendarSink.

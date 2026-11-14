@@ -50,7 +50,7 @@ object VaultStore {
         // Never persist a raw vault key: re-wrap through the Keystore store so
         // even a programming slip that passes plaintext cannot land it in JSON.
         val safe = if (meta.keyB64.isNotBlank() && !VaultKeyStore.looksSealed(meta.keyB64)) {
-            meta.copy(keyB64 = VaultKeyStore.seal(context, meta.keyB64) ?: return)
+            meta.copy(keyB64 = VaultKeyStore.seal(meta.keyB64) ?: return)
         } else {
             meta
         }
@@ -78,7 +78,7 @@ object VaultStore {
         var migrated = 0
         val sealed = all.map { meta ->
             if (meta.keyB64.isNotBlank() && !VaultKeyStore.looksSealed(meta.keyB64)) {
-                val wrapped = VaultKeyStore.seal(context, meta.keyB64) ?: return@map meta
+                val wrapped = VaultKeyStore.seal(meta.keyB64) ?: return@map meta
                 migrated++
                 meta.copy(keyB64 = wrapped)
             } else {
@@ -96,8 +96,8 @@ object VaultStore {
  * value stored in [VaultMeta.keyB64]. Returns null when the key is missing or
  * cannot be unsealed (fail closed — the vault is skipped, never merged).
  */
-fun VaultMeta.readKey(context: Context): ByteArray? =
-    VaultKeyStore.unseal(context, keyB64)?.let { b64 ->
+fun VaultMeta.readKey(): ByteArray? =
+    VaultKeyStore.unseal(keyB64)?.let { b64 ->
         runCatching { kotlin.io.encoding.Base64.decode(b64) }.getOrNull()
             ?.takeIf { it.isNotEmpty() }
     }
@@ -116,10 +116,15 @@ object VaultKeyStore {
     private const val KEY_ALIAS = "everysync_vault_keystore"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
     private const val GCM_TAG_BITS = 128
+    private const val LENGTH_PREFIX_BYTES = 4
+    private const val BYTE_MASK = 0xFF
+    private const val SHIFT_24 = 24
+    private const val SHIFT_16 = 16
+    private const val SHIFT_8 = 8
 
     fun looksSealed(keyB64: String): Boolean = keyB64.startsWith(PREFIX)
 
-    fun seal(context: Context, plainB64: String): String? = runCatching {
+    fun seal(plainB64: String): String? = runCatching {
         val contentKey = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
         val cipher = javax.crypto.Cipher.getInstance(TRANSFORMATION)
         cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, javax.crypto.spec.SecretKeySpec(contentKey, "AES"))
@@ -135,13 +140,13 @@ object VaultKeyStore {
         )
     }.getOrNull()
 
-    fun unseal(context: Context, sealedB64: String): String? = runCatching {
+    fun unseal(sealedB64: String): String? = runCatching {
         if (!looksSealed(sealedB64)) return@runCatching null
         val sealed = kotlin.io.encoding.Base64.decode(sealedB64.removePrefix(PREFIX))
         var off = 0
         fun readChunk(): ByteArray {
-            val len = sealed.copyOfRange(off, off + 4).toInt()
-            off += 4
+            val len = sealed.copyOfRange(off, off + LENGTH_PREFIX_BYTES).toInt()
+            off += LENGTH_PREFIX_BYTES
             val chunk = sealed.copyOfRange(off, off + len)
             off += len
             return chunk
@@ -189,10 +194,9 @@ object VaultKeyStore {
     }
 
     private fun Int.toBytes(): ByteArray = byteArrayOf(
-        (this shr 24).toByte(), (this shr 16).toByte(), (this shr 8).toByte(), this.toByte(),
+        (this shr SHIFT_24).toByte(), (this shr SHIFT_16).toByte(), (this shr SHIFT_8).toByte(), this.toByte(),
     )
 
     private fun ByteArray.toInt(): Int =
-        ((this[0].toInt() and 0xFF) shl 24) or ((this[1].toInt() and 0xFF) shl 16) or
-            ((this[2].toInt() and 0xFF) shl 8) or (this[3].toInt() and 0xFF)
+        fold(0) { acc, byte -> (acc shl SHIFT_8) or (byte.toInt() and BYTE_MASK) }
 }

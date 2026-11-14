@@ -85,58 +85,65 @@ class VaultsFlowTest {
                 members.single { it.id == RelaySync.deviceId }.role == RelayRoles.EDITOR
         }, vm.vaults.vaultUi.value[meta.vaultId]?.members.toString())
 
-        // Invite self (registered) works, unknown device does not
-        var inviteResult: Boolean? = null
-        vm.vaults.sendInvite(meta.vaultId, RelaySync.deviceId, RelayRoles.VIEWER) { inviteResult = it }
-        assertTrue(await { inviteResult != null }); assertEquals(true, inviteResult)
-        inviteResult = null
-        vm.vaults.sendInvite(meta.vaultId, "ghost-device", RelayRoles.EDITOR) { inviteResult = it }
-        assertTrue(await { inviteResult != null }); assertEquals(false, inviteResult)
-        // Inviting for a missing vault fails closed
-        inviteResult = null
-        vm.vaults.sendInvite("no-such-vault", RelaySync.deviceId, RelayRoles.EDITOR) { inviteResult = it }
-        assertTrue(await { inviteResult != null }); assertEquals(false, inviteResult)
-
-        // Join request to self, pulled back as a pending request, then approved
-        var joinResult: Boolean? = null
-        vm.vaults.requestToJoin(meta.vaultId, RelaySync.deviceId, "notes") { joinResult = it }
-        assertTrue(await { joinResult != null }); assertEquals(true, joinResult)
-        vm.vaults.refreshInbox()
-        assertTrue(await {
-            vm.vaults.vaultUi.value[meta.vaultId]?.requests?.any { it.requesterId == RelaySync.deviceId } == true
-        }, "ui=${vm.vaults.vaultUi.value}")
-        vm.vaults.approveRequest(meta.vaultId, RelaySync.deviceId, "Self", RelayRoles.EDITOR)
-        assertTrue(await {
-            vm.vaults.vaultUi.value[meta.vaultId]?.requests?.none { it.requesterId == RelaySync.deviceId } == true
-        })
-        // The invite from the approval is in our own inbox channel
-        assertTrue(relay.channel("inbox:${RelaySync.deviceId}").isNotEmpty())
-
-        // A second request can be denied instead
-        joinResult = null
-        vm.vaults.requestToJoin(meta.vaultId, RelaySync.deviceId, "notes") { joinResult = it }
-        assertTrue(await { joinResult != null }); assertEquals(true, joinResult)
-        vm.vaults.refreshInbox()
-        assertTrue(await {
-            vm.vaults.vaultUi.value[meta.vaultId]?.requests?.any { it.requesterId == RelaySync.deviceId } == true
-        })
-        vm.vaults.denyRequest(meta.vaultId, RelaySync.deviceId)
-        assertTrue(await {
-            vm.vaults.vaultUi.value[meta.vaultId]?.requests?.isEmpty() == true
-        })
-
-        // Safety codes: self has one, unknown devices do not
-        var code: String? = "unset"; var codeDone = false
-        vm.vaults.safetyCode(RelaySync.deviceId) { code = it; codeDone = true }
-        assertTrue(await { codeDone }); assertNotNull(code)
-        // ViewModel-level safety code + offerable roles (passwords never viewer at VM level either)
-        vm.computeSafetyCode(RelaySync.deviceId)
-        assertTrue(await { !vm.computingCode.value && vm.safetyCode.value != null })
-        assertEquals(listOf(RelayRoles.OWNER, RelayRoles.EDITOR), vm.offerableRoles("passwords"))
-        assertEquals(listOf(RelayRoles.OWNER, RelayRoles.EDITOR, RelayRoles.VIEWER), vm.offerableRoles("notes"))
-        var ghostCode: String? = "unset"; var ghostDone = false
-        vm.vaults.safetyCode("ghost-device") { ghostCode = it; ghostDone = true }
-        assertTrue(await { ghostDone }); assertNull(ghostCode)
+        exerciseInviteAndJoinFlows(vm, meta)
+        exerciseSafetyCodes(vm)
         assertFalse(vm.vaults.vaultUi.value.isEmpty())
+    }
+
+    private fun exerciseInviteAndJoinFlows(vm: EverySyncViewModel, meta: com.vayunmathur.everysync.data.VaultMeta) {
+    // Invite self (registered) works, unknown device does not
+    var inviteResult: Boolean? = null
+    vm.vaults.sendInvite(meta.vaultId, RelaySync.deviceId, RelayRoles.VIEWER) { inviteResult = it }
+    assertTrue(await { inviteResult != null }); assertEquals(true, inviteResult)
+    inviteResult = null
+    vm.vaults.sendInvite(meta.vaultId, "ghost-device", RelayRoles.EDITOR) { inviteResult = it }
+    assertTrue(await { inviteResult != null }); assertEquals(false, inviteResult)
+    // Inviting for a missing vault fails closed
+    inviteResult = null
+    vm.vaults.sendInvite("no-such-vault", RelaySync.deviceId, RelayRoles.EDITOR) { inviteResult = it }
+    assertTrue(await { inviteResult != null }); assertEquals(false, inviteResult)
+
+    // Join request to self, pulled back as a pending request, then approved
+    var joinResult: Boolean? = null
+    vm.vaults.requestToJoin(meta.vaultId, RelaySync.deviceId, "notes") { joinResult = it }
+    assertTrue(await { joinResult != null }); assertEquals(true, joinResult)
+    vm.vaults.refreshInbox()
+    assertTrue(await {
+        vm.vaults.vaultUi.value[meta.vaultId]?.requests?.any { it.requesterId == RelaySync.deviceId } == true
+    }, "ui=${vm.vaults.vaultUi.value}")
+    vm.vaults.approveRequest(meta.vaultId, RelaySync.deviceId, "Self", RelayRoles.EDITOR)
+    assertTrue(await {
+        vm.vaults.vaultUi.value[meta.vaultId]?.requests?.none { it.requesterId == RelaySync.deviceId } == true
+    })
+    // The invite from the approval is in our own inbox channel
+    assertTrue(relay.channel("inbox:${RelaySync.deviceId}").isNotEmpty())
+
+    // A second request can be denied instead
+    joinResult = null
+    vm.vaults.requestToJoin(meta.vaultId, RelaySync.deviceId, "notes") { joinResult = it }
+    assertTrue(await { joinResult != null }); assertEquals(true, joinResult)
+    vm.vaults.refreshInbox()
+    assertTrue(await {
+        vm.vaults.vaultUi.value[meta.vaultId]?.requests?.any { it.requesterId == RelaySync.deviceId } == true
+    })
+    vm.vaults.denyRequest(meta.vaultId, RelaySync.deviceId)
+    assertTrue(await {
+        vm.vaults.vaultUi.value[meta.vaultId]?.requests?.isEmpty() == true
+    })
+    }
+
+    private fun exerciseSafetyCodes(vm: EverySyncViewModel) {
+    // Safety codes: self has one, unknown devices do not
+    var code: String? = "unset"; var codeDone = false
+    vm.vaults.safetyCode(RelaySync.deviceId) { code = it; codeDone = true }
+    assertTrue(await { codeDone }); assertNotNull(code)
+    // ViewModel-level safety code + offerable roles (passwords never viewer at VM level either)
+    vm.computeSafetyCode(RelaySync.deviceId)
+    assertTrue(await { !vm.computingCode.value && vm.safetyCode.value != null })
+    assertEquals(listOf(RelayRoles.OWNER, RelayRoles.EDITOR), vm.offerableRoles("passwords"))
+    assertEquals(listOf(RelayRoles.OWNER, RelayRoles.EDITOR, RelayRoles.VIEWER), vm.offerableRoles("notes"))
+    var ghostCode: String? = "unset"; var ghostDone = false
+    vm.vaults.safetyCode("ghost-device") { ghostCode = it; ghostDone = true }
+    assertTrue(await { ghostDone }); assertNull(ghostCode)
     }
 }

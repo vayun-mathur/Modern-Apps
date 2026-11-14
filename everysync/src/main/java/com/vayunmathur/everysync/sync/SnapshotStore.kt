@@ -158,7 +158,7 @@ object SnapshotStore {
         val blobs = readBlobs(context, vaultId, dataType)
         val payload = SnapshotPayload(records, blobs)
         val plain = json.encodeToString(payload).encodeToByteArray()
-        val sealed = SnapshotKeyStore.seal(context, plain) ?: run {
+        val sealed = SnapshotKeyStore.seal(plain) ?: run {
             Log.error(TAG, "snapshot failed for $vaultId/$dataType: keystore unavailable")
             return@withContext false
         }
@@ -191,7 +191,7 @@ object SnapshotStore {
             val sealed = runCatching {
                 snapshotFile(context, snapshot.vaultId, snapshot.dayEpochMs).readBytes()
             }.getOrNull() ?: return@withContext null
-            val plain = SnapshotKeyStore.unseal(context, sealed) ?: return@withContext null
+            val plain = SnapshotKeyStore.unseal(sealed) ?: return@withContext null
             val payload = runCatching {
                 json.decodeFromString<SnapshotPayload>(plain.decodeToString())
             }.getOrNull() ?: return@withContext null
@@ -225,39 +225,52 @@ object SnapshotStore {
 
     private fun readRecords(context: Context, vaultId: String, dataType: String): Pair<List<String>, Boolean> {
         return when (dataType) {
-            "passwords" -> {
-                // Throws on unhealthy read — fail closed, never snapshot partial.
-                val records = runCatching {
-                    PasswordSink.listLocalOrThrow(context, vaultId)
-                        .map { PasswordKind.toJson(it) }
-                }.getOrNull()
-                if (records == null || !PasswordSink.lastListLocalOk) emptyList<String>() to false
-                else records to true
-            }
-            "notes" -> {
-                val records = NoteSink.listLocal(context, vaultId).map { NoteKind.toJson(it) }
-                if (!NoteSink.lastListLocalOk) emptyList<String>() to false else records to true
-            }
-            "todos" -> {
-                val records = TodoIpcSink.listLocal(context, vaultId).map { TodoKind.toJson(it) }
-                if (!TodoIpcSink.lastListLocalOk) emptyList<String>() to false else records to true
-            }
-            "contacts" -> {
-                // Contacts/calendar rows are account-scoped, not vault-scoped:
-                // snapshot the bound account's rows (see accountForVault).
-                val account = accountForVault(context, vaultId) ?: return emptyList<String>() to false
-                val records = ContactsSink.listLocal(context, account).map { ContactKind.toJson(it) }
-                if (!ContactsSink.lastListLocalOk) emptyList<String>() to false else records to true
-            }
-            "calendar" -> {
-                val account = accountForVault(context, vaultId) ?: return emptyList<String>() to false
-                val calendarId = CalendarSink.localCalendars(context, account)
-                    .firstOrNull() ?: return emptyList<String>() to true
-                val records = CalendarSink.listLocal(context, calendarId).map { CalendarKind.toJson(it) }
-                if (!CalendarSink.lastListLocalOk) emptyList<String>() to false else records to true
-            }
+            "passwords" -> readPasswordRecords(context, vaultId)
+            "notes" -> readNoteRecords(context, vaultId)
+            "todos" -> readTodoRecords(context, vaultId)
+            "contacts" -> readContactRecords(context, vaultId)
+            "calendar" -> readCalendarRecords(context, vaultId)
             else -> emptyList<String>() to false
         }
+    }
+
+    private fun readPasswordRecords(context: Context, vaultId: String): Pair<List<String>, Boolean> {
+        // Throws on unhealthy read — fail closed, never snapshot partial.
+        val records = runCatching {
+            PasswordSink.listLocalOrThrow(context, vaultId)
+                .map { PasswordKind.toJson(it) }
+        }.getOrNull()
+        return if (records == null || !PasswordSink.lastListLocalOk) {
+            emptyList<String>() to false
+        } else {
+            records to true
+        }
+    }
+
+    private fun readNoteRecords(context: Context, vaultId: String): Pair<List<String>, Boolean> {
+        val records = NoteSink.listLocal(context, vaultId).map { NoteKind.toJson(it) }
+        return if (!NoteSink.lastListLocalOk) emptyList<String>() to false else records to true
+    }
+
+    private fun readTodoRecords(context: Context, vaultId: String): Pair<List<String>, Boolean> {
+        val records = TodoIpcSink.listLocal(context, vaultId).map { TodoKind.toJson(it) }
+        return if (!TodoIpcSink.lastListLocalOk) emptyList<String>() to false else records to true
+    }
+
+    private fun readContactRecords(context: Context, vaultId: String): Pair<List<String>, Boolean> {
+        // Contacts/calendar rows are account-scoped, not vault-scoped:
+        // snapshot the bound account's rows (see accountForVault).
+        val account = accountForVault(context, vaultId) ?: return emptyList<String>() to false
+        val records = ContactsSink.listLocal(context, account).map { ContactKind.toJson(it) }
+        return if (!ContactsSink.lastListLocalOk) emptyList<String>() to false else records to true
+    }
+
+    private fun readCalendarRecords(context: Context, vaultId: String): Pair<List<String>, Boolean> {
+        val account = accountForVault(context, vaultId) ?: return emptyList<String>() to false
+        val calendarId = CalendarSink.localCalendars(context, account)
+            .firstOrNull() ?: return emptyList<String>() to true
+        val records = CalendarSink.listLocal(context, calendarId).map { CalendarKind.toJson(it) }
+        return if (!CalendarSink.lastListLocalOk) emptyList<String>() to false else records to true
     }
 
     private fun accountForVault(context: Context, vaultId: String): String? {
@@ -332,10 +345,12 @@ object SnapshotStore {
 
     private fun writeBlobs(context: Context, vaultId: String, dataType: String, blobs: Map<String, String>) {
         if (dataType != "notes" || blobs.isEmpty()) return
-        for ((name, b64) in blobs) {
-            if (name.isBlank()) continue
-            val bytes = runCatching { Base64.decode(b64) }.getOrNull() ?: continue
-            RelayBlobStore.writeLocal(context, vaultId, name, bytes)
+        blobs.forEach { (name, b64) ->
+            if (name.isNotBlank()) {
+                runCatching { Base64.decode(b64) }.getOrNull()?.let { bytes ->
+                    RelayBlobStore.writeLocal(context, vaultId, name, bytes)
+                }
+            }
         }
     }
 }
@@ -351,6 +366,11 @@ internal object SnapshotKeyStore {
     private const val KEY_ALIAS = "everysync_snapshot_key"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
     private const val GCM_TAG_BITS = 128
+    private const val LENGTH_PREFIX_BYTES = 4
+    private const val BYTE_MASK = 0xFF
+    private const val SHIFT_24 = 24
+    private const val SHIFT_16 = 16
+    private const val SHIFT_8 = 8
 
     /** Test seam: a software key replacing the AndroidKeyStore key (which Robolectric lacks). */
     internal var secretKeyForTest: javax.crypto.SecretKey? = null
@@ -375,7 +395,7 @@ internal object SnapshotKeyStore {
         return generator.generateKey()
     }
 
-    fun seal(context: Context, plain: ByteArray): ByteArray? = runCatching {
+    fun seal(plain: ByteArray): ByteArray? = runCatching {
         // Fresh random content key per snapshot file, wrapped by the Keystore
         // key: keeps the Keystore key's GCM nonce space unbounded.
         val contentKey = ByteArray(32).also { SecureRandom().nextBytes(it) }
@@ -392,11 +412,11 @@ internal object SnapshotKeyStore {
             iv.size.toByteArray() + iv + ct
     }.getOrNull()
 
-    fun unseal(context: Context, sealed: ByteArray): ByteArray? = runCatching {
+    fun unseal(sealed: ByteArray): ByteArray? = runCatching {
         var off = 0
         fun readChunk(): ByteArray {
-            val len = sealed.copyOfRange(off, off + 4).toInt()
-            off += 4
+            val len = sealed.copyOfRange(off, off + LENGTH_PREFIX_BYTES).toInt()
+            off += LENGTH_PREFIX_BYTES
             val chunk = sealed.copyOfRange(off, off + len)
             off += len
             return chunk
@@ -420,10 +440,9 @@ internal object SnapshotKeyStore {
     }.getOrNull()
 
     private fun Int.toByteArray(): ByteArray = byteArrayOf(
-        (this shr 24).toByte(), (this shr 16).toByte(), (this shr 8).toByte(), this.toByte(),
+        (this shr SHIFT_24).toByte(), (this shr SHIFT_16).toByte(), (this shr SHIFT_8).toByte(), this.toByte(),
     )
 
     private fun ByteArray.toInt(): Int =
-        ((this[0].toInt() and 0xFF) shl 24) or ((this[1].toInt() and 0xFF) shl 16) or
-            ((this[2].toInt() and 0xFF) shl 8) or (this[3].toInt() and 0xFF)
+        fold(0) { acc, byte -> (acc shl SHIFT_8) or (byte.toInt() and BYTE_MASK) }
 }

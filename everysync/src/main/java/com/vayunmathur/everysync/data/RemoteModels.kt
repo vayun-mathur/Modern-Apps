@@ -31,6 +31,7 @@ data class RemoteContact(
 )
 
 @Serializable
+/** A typed string value exchanged with the relay. */
 data class TypedValue(val value: String, val type: Int)
 
 /** A calendar event resolved from a relay vault record. */

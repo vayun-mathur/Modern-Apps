@@ -32,6 +32,7 @@ import com.vayunmathur.everysync.sync.OwnerTransfer
 import com.vayunmathur.everysync.sync.PasswordRelayStore
 import com.vayunmathur.everysync.sync.RelayMerge
 import com.vayunmathur.everysync.sync.RelayPlan
+import com.vayunmathur.everysync.sync.RelaySnapshot
 import com.vayunmathur.everysync.sync.RelayStore
 import com.vayunmathur.everysync.sync.TodoListRelayStore
 import com.vayunmathur.everysync.sync.TodoRelayStore
@@ -105,17 +106,21 @@ class E2eeProvider : SyncProvider {
             Log.error(TAG, "sync: relay unavailable for '${config.accountName}'")
             throw VaultSyncAbort(CH_RELAY_UNAVAILABLE, "")
         }
+        // Surface the first abort so lastSyncError reflects it; SyncEngine
+        // records it via its existing catch path.
+        syncEnabledTypes(context, config, direction)?.let { throw it }
+    }
+
+    private suspend fun syncEnabledTypes(
+        context: Context,
+        config: AccountConfig,
+        direction: SyncDirection,
+    ): VaultSyncAbort? {
         var firstAbort: VaultSyncAbort? = null
         for (type in capabilities) {
             if (type !in config.enabledTypes) continue
             try {
-                when (type) {
-                    DataType.CONTACTS -> syncContactsVault(context, config, direction)
-                    DataType.CALENDAR -> syncCalendarVault(context, config, direction)
-                    DataType.PASSWORDS -> syncPasswordsVault(context, config, direction)
-                    DataType.NOTES -> syncNotesVault(context, config, direction)
-                    DataType.TODOS -> syncTodosVault(context, config, direction)
-                }
+                dispatchVaultSync(type, context, config, direction)
             } catch (e: CancellationException) {
                 throw e
             } catch (abort: VaultSyncAbort) {
@@ -127,9 +132,22 @@ class E2eeProvider : SyncProvider {
                 Log.error(TAG, "sync $type failed for '${config.accountName}'", expected)
             }
         }
-        // Surface the first abort so lastSyncError reflects it; SyncEngine
-        // records it via its existing catch path.
-        firstAbort?.let { throw it }
+        return firstAbort
+    }
+
+    private suspend fun dispatchVaultSync(
+        type: DataType,
+        context: Context,
+        config: AccountConfig,
+        direction: SyncDirection,
+    ) {
+        when (type) {
+            DataType.CONTACTS -> syncContactsVault(context, config, direction)
+            DataType.CALENDAR -> syncCalendarVault(context, config, direction)
+            DataType.PASSWORDS -> syncPasswordsVault(context, config, direction)
+            DataType.NOTES -> syncNotesVault(context, config, direction)
+            DataType.TODOS -> syncTodosVault(context, config, direction)
+        }
     }
 
     // --- Contacts vault <-> ContactsContract via ContactsSink ---
@@ -243,6 +261,41 @@ class E2eeProvider : SyncProvider {
      * IPC sinks already persist `updatedAt` via `upsertRaw`, so they pass
      * null and the store writes carry the merged entities verbatim.
      */
+    private suspend fun pullRemoteOrAbort(
+        channel: String,
+        vaultKey: ByteArray,
+        channelType: String,
+    ): RelaySync.RecordsResult {
+        // A failed pull is NOT an empty log: abort with zero writes, zero
+        // appends, zero baseline/cursor mutations. Merging a failure as empty
+        // would delete every baseline-present row (see RelayMerge).
+        val pulled = RelaySync.pullRecords(channel, vaultKey, 0)
+            ?: throw VaultSyncAbort(CH_PULL_TRANSPORT, channelType)
+        if (pulled.fullyUndecryptable) {
+            // Records exist but none decrypt under this epoch key: re-key or
+            // epoch fetch is needed, not a merge of an "empty" vault.
+            throw VaultSyncAbort(CH_UNDECRYPTABLE_LOG, channelType)
+        }
+        return pulled
+    }
+
+    private suspend fun <T> readLocalOrAbort(store: RelayStore<T>, channelType: String): List<T> {
+        val local = try {
+            store.listLocal()
+        } catch (read: LocalReadException) {
+            // A failed local read is not an empty vault: abort with zero
+            // writes, zero appends, zero baseline/cursor mutations.
+            Log.error(TAG, "local read failed for $channelType", read)
+            throw VaultSyncAbort(CH_LOCAL_READ_FAILED, channelType)
+        }
+        if (!store.listLocalOk) {
+            // The sink tracked a failed/partial read without throwing (null
+            // cursor, swallowed IPC error): same abort, never merge.
+            throw VaultSyncAbort(CH_LOCAL_READ_FAILED, channelType)
+        }
+        return local
+    }
+
     private suspend fun <T> driveMerge(
         context: Context,
         vault: ResolvedVault,
@@ -261,26 +314,9 @@ class E2eeProvider : SyncProvider {
         // A failed pull is NOT an empty log: abort with zero writes, zero
         // appends, zero baseline/cursor mutations. Merging a failure as empty
         // would delete every baseline-present row (see RelayMerge).
-        val pulled = RelaySync.pullRecords(channel, vault.key, 0)
-            ?: throw VaultSyncAbort(CH_PULL_TRANSPORT, channelType)
-        if (pulled.fullyUndecryptable) {
-            // Records exist but none decrypt under this epoch key: re-key or
-            // epoch fetch is needed, not a merge of an "empty" vault.
-            throw VaultSyncAbort(CH_UNDECRYPTABLE_LOG, channelType)
-        }
+        val pulled = pullRemoteOrAbort(channel, vault.key, channelType)
         val remote = pulled.items.mapNotNull { store.parseRemote(it) }
-        val local = try {
-            store.listLocal()
-        } catch (read: LocalReadException) {
-            // A failed local read is not an empty vault: abort with zero
-            // writes, zero appends, zero baseline/cursor mutations.
-            throw VaultSyncAbort(CH_LOCAL_READ_FAILED, channelType)
-        }
-        if (!store.listLocalOk) {
-            // The sink tracked a failed/partial read without throwing (null
-            // cursor, swallowed IPC error): same abort, never merge.
-            throw VaultSyncAbort(CH_LOCAL_READ_FAILED, channelType)
-        }
+        val local = readLocalOrAbort(store, channelType)
         val baseline = store.loadBaseline()
         val plan = RelayMerge.merge(kind, local, remote, baseline, now)
         // When the append step is skipped (PULL-only cycle, or a viewer who
@@ -301,6 +337,30 @@ class E2eeProvider : SyncProvider {
             }
         }
         if (direction == SyncDirection.PUSH) return
+        applyMergedPlan(context, vault, channelType, kind, store, writeRemoteStamps, plan, appendSkipped, pulled)
+    }
+
+    // --- Vault resolution ---
+
+    private class ResolvedVault(
+        val vaultId: String,
+        val key: ByteArray,
+        val title: String,
+        val canEdit: Boolean,
+    )
+
+
+    private suspend fun <T> applyMergedPlan(
+        context: Context,
+        vault: ResolvedVault,
+        channelType: String,
+        kind: EntityKind<T>,
+        store: RelayStore<T>,
+        writeRemoteStamps: (suspend (item: T, stamp: Long) -> Unit)?,
+        plan: RelayPlan<T>,
+        appendSkipped: Boolean,
+        pulled: RelaySync.RecordsResult,
+    ) {
         val unpushedIds = if (appendSkipped) {
             plan.remoteOut.map { kind.syncId(it) }.toSet()
         } else {
@@ -312,32 +372,7 @@ class E2eeProvider : SyncProvider {
             plan.snapshots.filterNot { it.syncId in unpushedIds }
         }
         if (writeRemoteStamps != null) {
-            // System-provider sinks mirror the relay stamp into their
-            // change-detection column on write; the IPC stores persist
-            // updatedAt via upsertRaw, so they need no stamping.
-            // Tombstones are deletes, not upserts: the merge puts a winning
-            // tombstone in localUpserts (IPC sinks persist it as a deleted
-            // row), but the stamped system sinks have no deleted-row form —
-            // upserting one would resurrect it as a live contact/event.
-            val (tombstoneUpserts, liveUpserts) = plan.localUpserts.partition { kind.isDeleted(it) }
-            for (item in liveUpserts) {
-                writeRemoteStamps(item, kind.updatedAt(item))
-            }
-            RelayMerge.applyLocal(
-                store,
-                RelayPlan(
-                    localUpserts = emptyList(),
-                    localDeletes = plan.localDeletes + tombstoneUpserts,
-                    remoteOut = emptyList(),
-                    snapshots = pendingSnapshots,
-                    removedSyncIds = plan.removedSyncIds,
-                    remoteChanged = false,
-                    pushed = plan.pushed,
-                    pulled = plan.pulled,
-                    deletedLocal = plan.deletedLocal,
-                    deletedRemote = plan.deletedRemote,
-                ),
-            )
+            applyStampedPlan(store, kind, plan, pendingSnapshots, writeRemoteStamps)
         } else {
             RelayMerge.applyLocal(
                 store,
@@ -360,14 +395,40 @@ class E2eeProvider : SyncProvider {
         RelayCursorStore.advance(context, channelType, vault.vaultId, CH_RECORDS, pulled.seq)
     }
 
-    // --- Vault resolution ---
-
-    private class ResolvedVault(
-        val vaultId: String,
-        val key: ByteArray,
-        val title: String,
-        val canEdit: Boolean,
-    )
+    private suspend fun <T> applyStampedPlan(
+        store: RelayStore<T>,
+        kind: EntityKind<T>,
+        plan: RelayPlan<T>,
+        pendingSnapshots: List<RelaySnapshot>,
+        writeRemoteStamps: suspend (item: T, stamp: Long) -> Unit,
+    ) {
+        // System-provider sinks mirror the relay stamp into their
+        // change-detection column on write; the IPC stores persist
+        // updatedAt via upsertRaw, so they need no stamping.
+        // Tombstones are deletes, not upserts: the merge puts a winning
+        // tombstone in localUpserts (IPC sinks persist it as a deleted
+        // row), but the stamped system sinks have no deleted-row form —
+        // upserting one would resurrect it as a live contact/event.
+        val (tombstoneUpserts, liveUpserts) = plan.localUpserts.partition { kind.isDeleted(it) }
+        for (item in liveUpserts) {
+            writeRemoteStamps(item, kind.updatedAt(item))
+        }
+        RelayMerge.applyLocal(
+            store,
+            RelayPlan(
+                localUpserts = emptyList(),
+                localDeletes = plan.localDeletes + tombstoneUpserts,
+                remoteOut = emptyList(),
+                snapshots = pendingSnapshots,
+                removedSyncIds = plan.removedSyncIds,
+                remoteChanged = false,
+                pushed = plan.pushed,
+                pulled = plan.pulled,
+                deletedLocal = plan.deletedLocal,
+                deletedRemote = plan.deletedRemote,
+            ),
+        )
+    }
 
     /**
      * Resolves the account's vault for [type]: looks up the stored vault id,
@@ -377,28 +438,49 @@ class E2eeProvider : SyncProvider {
      */
     private suspend fun resolveVault(context: Context, config: AccountConfig, type: DataType): ResolvedVault? {
         val rt = type.relayType() ?: return null
-        var meta = vaultIdFor(context, config.accountName, rt)?.let { VaultStore.get(context, it) }
-        if (meta == null) {
-            val existing = VaultStore.getAll(context).filter { it.dataType == rt }
-            meta = if (existing.size == 1) {
-                existing.first()
-            } else {
-                createVault(context, config.accountName, rt) ?: return null
-            }
-            SyncState.set(context, config.accountName, vaultScope(rt), meta.vaultId)
-        }
+        var meta = findOrCreateVaultMeta(context, config, rt) ?: return null
         // Unseal the Keystore-wrapped key; fail closed when it cannot be read.
-        val baseKey = meta.readKey(context)
+        val baseKey = meta.readKey()
         if (baseKey == null || baseKey.isEmpty()) return null
-        val baseOwnerKey = meta.ownerKeyB64
-        val ownerKey = OwnerTransfer.fetchOwnerKey(meta.vaultId, baseOwnerKey)
-            ?: runCatching { Base64.decode(baseOwnerKey) }.getOrNull()
-        if (ownerKey == null || ownerKey.isEmpty()) return null
+        val ownerKey = resolveOwnerKey(meta) ?: return null
         val (epoch, key) = VaultKeys.fetchCurrentKey(meta.vaultId, baseKey, ownerKey, meta.epoch)
         if (epoch != meta.epoch) {
             meta = meta.copy(epoch = epoch)
             VaultStore.upsert(context, meta)
         }
+        return resolvedVaultIfReadable(meta, key, ownerKey)
+    }
+
+    private suspend fun findOrCreateVaultMeta(
+        context: Context,
+        config: AccountConfig,
+        relayType: String,
+    ): VaultMeta? {
+        vaultIdFor(context, config.accountName, relayType)?.let { VaultStore.get(context, it) }
+            ?.let { return it }
+        val existing = VaultStore.getAll(context).filter { it.dataType == relayType }
+        val meta = if (existing.size == 1) {
+            existing.first()
+        } else {
+            createVault(context, config.accountName, relayType) ?: return null
+        }
+        SyncState.set(context, config.accountName, vaultScope(relayType), meta.vaultId)
+        return meta
+    }
+
+    private suspend fun resolveOwnerKey(meta: VaultMeta): ByteArray? {
+        val baseOwnerKey = meta.ownerKeyB64
+        val ownerKey = OwnerTransfer.fetchOwnerKey(meta.vaultId, baseOwnerKey)
+            ?: runCatching { Base64.decode(baseOwnerKey) }.getOrNull()
+        if (ownerKey == null || ownerKey.isEmpty()) return null
+        return ownerKey
+    }
+
+    private suspend fun resolvedVaultIfReadable(
+        meta: VaultMeta,
+        key: ByteArray,
+        ownerKey: ByteArray,
+    ): ResolvedVault? {
         val role = VaultRoster.myRole(meta.vaultId, ownerKey)
         val canRead = role?.let { RelayRoles.canRead(it) } ?: meta.isOwner
         if (!canRead) return null
@@ -436,6 +518,7 @@ class E2eeProvider : SyncProvider {
         RelaySync.appendRaw("title:${meta.vaultId}", listOf(envelope))
     }
 
+    /** Holds relay channel names and logging constants for the E2EE provider. */
     companion object {
         private const val TAG = "E2eeProvider"
         const val CH_CONTACTS = "contacts"

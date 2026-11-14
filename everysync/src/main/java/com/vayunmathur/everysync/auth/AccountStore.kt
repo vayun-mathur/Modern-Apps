@@ -77,6 +77,7 @@ class AccountStore private constructor(private val appContext: Application) {
         }
     }
 
+    /** Holds account-type and storage constants for AccountStore. */
     companion object {
         const val ACCOUNT_TYPE = "com.vayunmathur.everysync"
         private const val KEY = "everysync_accounts"

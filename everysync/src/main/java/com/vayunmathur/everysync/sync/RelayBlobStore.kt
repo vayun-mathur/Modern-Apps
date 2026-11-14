@@ -32,6 +32,7 @@ object RelayBlobStore {
     fun blobChannel(vaultId: String): String = "notes-blobs:$vaultId"
 
     @Serializable
+    /** An encrypted blob envelope transferred through the relay. */
     data class BlobEnvelope(
         val name: String,
         val sha256: String = "",
@@ -41,6 +42,7 @@ object RelayBlobStore {
         val deleted: Boolean = false,
     )
 
+    /** Counts of blobs pulled, pushed and deleted in one relay sync. */
     data class BlobSyncResult(
         val pulled: Int,
         val pushed: Int,
@@ -120,36 +122,45 @@ object RelayBlobStore {
             RelayCursorStore.advance(context, "notes", vaultId, channel, result.seq)
             return emptyList()
         }
-        val latest = LinkedHashMap<String, BlobEnvelope>()
-        for (raw in result.items) {
-            val env = decode(raw) ?: continue
-            if (!isSafeBlobName(env.name)) continue
-            val prev = latest[env.name]
-            if (prev == null || env.updatedAt >= prev.updatedAt) latest[env.name] = env
-        }
+        val latest = latestEnvelopes(result.items)
         val changed = mutableListOf<BlobEnvelope>()
         for (env in latest.values) {
-            if (env.deleted) {
-                val f = fileFor(context, vaultId, env.name)
-                if (f.exists()) {
-                    f.delete()
-                    changed += env
-                }
-                continue
-            }
-            val bytes = runCatching { Base64.decode(env.bytesB64) }.getOrNull() ?: continue
-            if (env.sha256.isNotBlank() && sha256(bytes) != env.sha256) {
-                Log.status(TAG, "sha mismatch for blob ${env.name}, skipping")
-                continue
-            }
-            val existing = readLocal(context, vaultId, env.name)
-            if (existing == null || sha256(existing) != sha256(bytes)) {
-                writeLocal(context, vaultId, env.name, bytes)
-                changed += env
-            }
+            if (applyPulledBlob(context, vaultId, env)) changed += env
         }
         RelayCursorStore.advance(context, "notes", vaultId, channel, result.seq)
         return changed
+    }
+
+    private fun latestEnvelopes(items: List<String>): LinkedHashMap<String, BlobEnvelope> {
+        val latest = LinkedHashMap<String, BlobEnvelope>()
+        items.mapNotNull { decode(it) }
+            .filter { isSafeBlobName(it.name) }
+            .forEach { env ->
+                val prev = latest[env.name]
+                if (prev == null || env.updatedAt >= prev.updatedAt) latest[env.name] = env
+            }
+        return latest
+    }
+
+    /** Applies one pulled envelope locally; returns true when it changed a local file. */
+    private fun applyPulledBlob(context: Context, vaultId: String, env: BlobEnvelope): Boolean {
+        if (env.deleted) {
+            val file = fileFor(context, vaultId, env.name)
+            if (!file.exists()) return false
+            file.delete()
+            return true
+        }
+        val bytes = runCatching { Base64.decode(env.bytesB64) }.getOrNull() ?: return false
+        if (env.sha256.isNotBlank() && sha256(bytes) != env.sha256) {
+            Log.status(TAG, "sha mismatch for blob ${env.name}, skipping")
+            return false
+        }
+        val existing = readLocal(context, vaultId, env.name)
+        if (existing == null || sha256(existing) != sha256(bytes)) {
+            writeLocal(context, vaultId, env.name, bytes)
+            return true
+        }
+        return false
     }
 
     /**

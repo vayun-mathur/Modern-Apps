@@ -53,6 +53,7 @@ class Authenticator(context: Context) : AbstractAccountAuthenticator(context) {
     ): Bundle? = null
 }
 
+/** Service exposing the EverySync account authenticator to Android. */
 class AuthenticatorService : Service() {
     private val authenticator by lazy { Authenticator(this) }
 

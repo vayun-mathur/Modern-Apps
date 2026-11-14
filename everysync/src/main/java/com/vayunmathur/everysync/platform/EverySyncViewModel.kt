@@ -33,12 +33,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** ViewModel backing EverySync account, sync and vault screens. */
 class EverySyncViewModel(app: Application) : AndroidViewModel(app) {
     private val store = AccountStore.getInstance(app)
 
     /** Personal E2EE vault sharing (create-vault + invites + join requests). EverySync-only. */
     val vaults = EverySyncVaults(this)
 
+    /** Holds shared vault data-type constants for the ViewModel. */
     companion object {
         /** Vault data type whose invites never offer viewer: read-only still discloses every secret. */
         const val PASSWORDS_DATA_TYPE = "passwords"

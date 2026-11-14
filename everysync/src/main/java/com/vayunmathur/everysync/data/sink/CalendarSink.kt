@@ -158,18 +158,6 @@ object CalendarSink {
         val out = mutableListOf<RemoteEvent>()
         // Local column positions for the projection below (not the shared
         // CURSOR_INDEX_* constants, which map a different 12-column query).
-        val colUid = 0
-        val colStamp = 1
-        val colTitle = 2
-        val colDesc = 3
-        val colLoc = 4
-        val colStart = 5
-        val colEnd = 6
-        val colAllDay = 7
-        val colTz = 8
-        val colRrule = 9
-        val colDeleted = 10
-        val colId = 11
         var failed = false
         try {
             val cursor = context.contentResolver.query(
@@ -196,42 +184,58 @@ object CalendarSink {
                 // Null cursor = provider cannot serve: failure, not empty.
                 failed = true
             } else {
-                cursor.use { c ->
-                    while (c.moveToNext()) {
-                        var uid = c.getStringOrNull(colUid).orEmpty()
-                        if (uid.isBlank()) {
-                            // An event created on-device has no relay
-                            // identity yet. Bind one to THIS row now: the
-                            // merge can only mint an id in memory, and a
-                            // later upsert-by-uid would insert a duplicate
-                            // instead of attaching to this row, re-minting
-                            // (and re-pushing) a copy every cycle.
-                            uid = com.vayunmathur.everysync.sync.newRelaySyncId()
-                            bindSyncId(context, localCalendarId, c.getLong(colId), uid)
-                        }
-                        out += RemoteEvent(
-                            uid = uid,
-                            etag = c.getStringOrNull(colStamp),
-                            calendarId = localCalendarId.toString(),
-                            summary = c.getStringOrNull(colTitle) ?: "",
-                            description = c.getStringOrNull(colDesc) ?: "",
-                            location = c.getStringOrNull(colLoc) ?: "",
-                            startMillis = c.getLong(colStart),
-                            endMillis = c.getLong(colEnd),
-                            allDay = c.getInt(colAllDay) == 1,
-                            timezone = c.getStringOrNull(colTz) ?: "UTC",
-                            rrule = c.getStringOrNull(colRrule),
-                            deleted = c.getInt(colDeleted) == 1,
-                            updatedAt = c.getStringOrNull(colStamp)?.toLongOrNull() ?: 0L,
-                        )
-                    }
-                }
-            }
+                cursor.use { c -> out += readEventRows(c, context, localCalendarId) }            }
         } catch (expected: Exception) {
             Log.error(TAG, "listLocal failed", expected)
             failed = true
         }
         lastListLocalOk = !failed
+        return out
+    }
+
+    private fun readEventRows(
+        cursor: android.database.Cursor,
+        context: Context,
+        localCalendarId: Long,
+    ): List<RemoteEvent> {
+        val out = mutableListOf<RemoteEvent>()
+        // Column positions for the listLocal projection above.
+        val colUid = 0
+        val colStamp = 1
+        val colTitle = 2
+        val colDesc = 3
+        val colLoc = 4
+        val colStart = 5
+        val colEnd = 6
+        val colAllDay = 7
+        val colTz = 8
+        val colRrule = 9
+        val colDeleted = 10
+        val colId = 11
+        while (cursor.moveToNext()) {
+            var uid = cursor.getStringOrNull(colUid).orEmpty()
+            if (uid.isBlank()) {
+                // An event created on-device has no relay identity yet. Bind
+                // one to THIS row now (see listLocal).
+                uid = com.vayunmathur.everysync.sync.newRelaySyncId()
+                bindSyncId(context, localCalendarId, cursor.getLong(colId), uid)
+            }
+            out += RemoteEvent(
+                uid = uid,
+                etag = cursor.getStringOrNull(colStamp),
+                calendarId = localCalendarId.toString(),
+                summary = cursor.getStringOrNull(colTitle) ?: "",
+                description = cursor.getStringOrNull(colDesc) ?: "",
+                location = cursor.getStringOrNull(colLoc) ?: "",
+                startMillis = cursor.getLong(colStart),
+                endMillis = cursor.getLong(colEnd),
+                allDay = cursor.getInt(colAllDay) == 1,
+                timezone = cursor.getStringOrNull(colTz) ?: "UTC",
+                rrule = cursor.getStringOrNull(colRrule),
+                deleted = cursor.getInt(colDeleted) == 1,
+                updatedAt = cursor.getStringOrNull(colStamp)?.toLongOrNull() ?: 0L,
+            )
+        }
         return out
     }
 

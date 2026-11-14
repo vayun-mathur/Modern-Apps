@@ -95,6 +95,7 @@ class ContactRelayStore(
         ContactKind.toJson(entity)
 }
 
+/** Relay store syncing calendar records for one calendar. */
 class CalendarRelayStore(
     private val context: Context,
     private val accountName: String,
@@ -137,6 +138,7 @@ class CalendarRelayStore(
         CalendarKind.toJson(entity)
 }
 
+/** Relay store syncing password records for one vault. */
 class PasswordRelayStore(
     private val context: Context,
     private val vaultId: String,
@@ -182,6 +184,7 @@ class PasswordRelayStore(
         PasswordKind.toJson(entity)
 }
 
+/** Relay store syncing note records for one vault. */
 class NoteRelayStore(
     private val context: Context,
     private val vaultId: String,
@@ -226,6 +229,7 @@ class NoteRelayStore(
         NoteKind.toJson(entity)
 }
 
+/** Relay store syncing todo records for one vault. */
 class TodoRelayStore(
     private val context: Context,
     private val vaultId: String,
@@ -267,6 +271,7 @@ class TodoRelayStore(
         TodoKind.toJson(entity)
 }
 
+/** Relay store syncing todo-list records for one vault. */
 class TodoListRelayStore(
     private val context: Context,
     private val vaultId: String,

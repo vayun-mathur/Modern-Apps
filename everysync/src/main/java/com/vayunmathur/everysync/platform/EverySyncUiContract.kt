@@ -71,6 +71,7 @@ interface AccountsActions {
     fun openAddAccount() {}
     fun openSettings() {}
 
+    /** Provides a no-op AccountsActions for previews and defaults. */
     companion object {
         val Noop: AccountsActions = object : AccountsActions {}
     }
@@ -81,6 +82,7 @@ interface AddAccountActions {
     fun addRelayAccount(providerId: String) {}
     fun back() {}
 
+    /** Provides a no-op AddAccountActions for previews and defaults. */
     companion object {
         val Noop: AddAccountActions = object : AddAccountActions {}
     }
@@ -118,6 +120,7 @@ interface AccountDetailActions {
     /** Roles offerable for [dataType] — passwords exclude viewer (read-only still discloses secrets). */
     fun offerableRoles(dataType: String): List<String> = emptyList()
 
+    /** Provides a no-op AccountDetailActions for previews and defaults. */
     companion object {
         val Noop: AccountDetailActions = object : AccountDetailActions {}
     }
@@ -130,6 +133,7 @@ interface SettingsActions {
     fun setConflictPolicy(policy: String) {}
     fun back() {}
 
+    /** Provides a no-op SettingsActions for previews and defaults. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }

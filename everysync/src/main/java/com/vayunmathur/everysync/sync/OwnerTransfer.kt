@@ -47,22 +47,13 @@ object OwnerTransfer {
         var advanced = true
         while (advanced) {
             advanced = false
-            for ((idx, transfer) in transfers.withIndex()) {
-                if (idx in used) continue
-                val sig = runCatching { Base64.decode(transfer.sig) }.getOrNull() ?: continue
-                if (!RelaySync.verify(
-                        ownerKey,
-                        ownerSigningBytes(vaultId, transfer.newOwnerId, transfer.newOwnerKey),
-                        sig,
-                    )
-                ) {
-                    continue
-                }
-                val decoded = runCatching { Base64.decode(transfer.newOwnerKey) }.getOrNull()
-                if (decoded != null && decoded.isNotEmpty()) {
-                    ownerKey = decoded
-                    used.add(idx)
-                    advanced = true
+            transfers.withIndex().forEach { (idx, transfer) ->
+                if (idx !in used) {
+                    verifiedTransferKey(transfer, vaultId, ownerKey)?.let { decoded ->
+                        ownerKey = decoded
+                        used.add(idx)
+                        advanced = true
+                    }
                 }
             }
         }
@@ -101,6 +92,24 @@ object OwnerTransfer {
         val transfer = json.encodeToString(RelaySync.OwnerTransfer(newOwnerId, newKeyB64, sig))
         RelaySync.appendRaw(ownerChannel(vaultId), listOf(Base64.encode(transfer.encodeToByteArray()))) != null
     }.getOrDefault(false)
+
+    private suspend fun verifiedTransferKey(
+        transfer: RelaySync.OwnerTransfer,
+        vaultId: String,
+        ownerKey: ByteArray,
+    ): ByteArray? {
+        val sig = runCatching { Base64.decode(transfer.sig) }.getOrNull() ?: return null
+        if (!RelaySync.verify(
+                ownerKey,
+                ownerSigningBytes(vaultId, transfer.newOwnerId, transfer.newOwnerKey),
+                sig,
+            )
+        ) {
+            return null
+        }
+        return runCatching { Base64.decode(transfer.newOwnerKey) }.getOrNull()
+            ?.takeIf { it.isNotEmpty() }
+    }
 
     private fun decodeTransfer(blob: String): RelaySync.OwnerTransfer? = runCatching {
         json.decodeFromString<RelaySync.OwnerTransfer>(Base64.decode(blob).decodeToString())

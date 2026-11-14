@@ -106,7 +106,7 @@ class EverySyncVaults(private val viewModel: EverySyncViewModel) {
             val ok = runCatching {
                 val meta = VaultStore.get(app, vaultId) ?: return@runCatching false
                 if (!meta.isOwner) return@runCatching false
-                val key = meta.readKey(app) ?: return@runCatching false
+                val key = meta.readKey() ?: return@runCatching false
                 RelaySync.sendInvite(
                     recipientId = recipientId,
                     vaultId = vaultId,
@@ -129,7 +129,7 @@ class EverySyncVaults(private val viewModel: EverySyncViewModel) {
             val ok = runCatching {
                 val meta = VaultStore.get(app, vaultId) ?: return@runCatching false
                 if (!meta.isOwner) return@runCatching false
-                val key = meta.readKey(app) ?: return@runCatching false
+                val key = meta.readKey() ?: return@runCatching false
                 writeMembers(vaultId, listOf(RelaySync.Member(requesterId, name, role)))
                 RelaySync.sendInvite(
                     recipientId = requesterId,
@@ -223,7 +223,7 @@ class EverySyncVaults(private val viewModel: EverySyncViewModel) {
     private suspend fun refreshVault(vaultId: String) {
         val meta = VaultStore.get(app, vaultId) ?: return
         // Fail closed when the key cannot be unsealed: skip, never merge.
-        if ((meta.readKey(app)?.size ?: 0) == 0) return
+        if ((meta.readKey()?.size ?: 0) == 0) return
         val members = readMembers(vaultId).map { VaultMemberUi(it.id, it.name, it.role) }
         val requests = loadRequests(vaultId).map { VaultRequestUi(it.requesterId, it.name) }
         // Joined vaults follow the owner-signed title; owned vaults keep the local one.
@@ -260,18 +260,21 @@ class EverySyncVaults(private val viewModel: EverySyncViewModel) {
         // showed the member once per historical role, revoked included.
         val byId = LinkedHashMap<String, RelaySync.Member>()
         for (r in raw) {
-            val envelope = runCatching { inboxJson.decodeFromString<RelaySync.SignedEnvelope>(r) }.getOrNull()
-                ?: continue
-            val valid = RelaySync.verify(ownerKey, envelope.payload.encodeToByteArray(), Base64.decode(envelope.sig))
-            if (!valid) continue
-            val members = runCatching {
-                inboxJson.decodeFromString<List<RelaySync.Member>>(envelope.payload)
-            }.getOrNull() ?: continue
-            for (member in members) {
+            verifiedInboxMembers(r, ownerKey)?.forEach { member ->
                 if (member.id.isNotBlank()) byId[member.id] = member
             }
         }
         return byId.values.toList()
+    }
+
+    private suspend fun verifiedInboxMembers(raw: String, ownerKey: ByteArray): List<RelaySync.Member>? {
+        val envelope = runCatching { inboxJson.decodeFromString<RelaySync.SignedEnvelope>(raw) }.getOrNull()
+            ?: return null
+        val sig = runCatching { Base64.decode(envelope.sig) }.getOrNull() ?: return null
+        if (!RelaySync.verify(ownerKey, envelope.payload.encodeToByteArray(), sig)) return null
+        return runCatching {
+            inboxJson.decodeFromString<List<RelaySync.Member>>(envelope.payload)
+        }.getOrNull()
     }
 
     private suspend fun publishTitle(meta: VaultMeta) {
@@ -328,6 +331,7 @@ class EverySyncVaults(private val viewModel: EverySyncViewModel) {
         refreshVault(vaultId)
     }
 
+    /** Holds inbox cursor preference keys for vault sync. */
     companion object {
         private const val KEY_INBOX_CURSOR = "everysync_inbox_cursor"
     }

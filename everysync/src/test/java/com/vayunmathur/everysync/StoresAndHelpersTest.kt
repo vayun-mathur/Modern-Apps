@@ -34,7 +34,13 @@ class StoresAndHelpersTest {
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test fun settingsDefaultsAndWrites() = runBlocking {
-        suspend fun awaitInterval(v: Long) { repeat(100) { if (Settings.intervalMinutes(ctx) == v) return; kotlinx.coroutines.delay(20) }; assertEquals(v, Settings.intervalMinutes(ctx)) }
+        suspend fun awaitInterval(v: Long) {
+            repeat(100) {
+                if (Settings.intervalMinutes(ctx) == v) return
+                kotlinx.coroutines.delay(20)
+            }
+            assertEquals(v, Settings.intervalMinutes(ctx))
+        }
         awaitInterval(60L)
         Settings.setIntervalMinutes(ctx, 5); awaitInterval(15L) // coerced to min
         Settings.setIntervalMinutes(ctx, 45); awaitInterval(45L)
@@ -71,10 +77,10 @@ class StoresAndHelpersTest {
         // upsert with blank key avoids keystore; getAll corrupt tolerance via saveAll valid only
         VaultStore.upsert(ctx, m); assertEquals(1, VaultStore.getAll(ctx).size)
         VaultStore.migrateKeysToKeystore(ctx) // blank keys: no migration, no crash
-        assertNull(m.readKey(ctx)) // blank key cannot unseal
+        assertNull(m.readKey()) // blank key cannot unseal
         assertEquals(false, com.vayunmathur.everysync.data.VaultKeyStore.looksSealed("abc"))
         assertEquals(true, com.vayunmathur.everysync.data.VaultKeyStore.looksSealed("v1:abc"))
-        assertNull(com.vayunmathur.everysync.data.VaultKeyStore.unseal(ctx, "abc"))
+        assertNull(com.vayunmathur.everysync.data.VaultKeyStore.unseal("abc"))
     }
     @Test fun relayRolesAndLinks() {
         assertTrue(RelayRoles.canEdit(RelayRoles.OWNER)); assertTrue(RelayRoles.canEdit(RelayRoles.EDITOR))

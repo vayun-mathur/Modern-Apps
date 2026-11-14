@@ -80,7 +80,7 @@ class E2eeDriveTest {
         val (meta, key) = makeVault("notes", "v-keywrap")
         // Stored value is sealed, the read key is the original vault key
         assertTrue(com.vayunmathur.everysync.data.VaultKeyStore.looksSealed(meta.keyB64), meta.keyB64.take(8))
-        assertTrue(meta.readKey(ctx)!!.contentEquals(key))
+        assertTrue(meta.readKey()!!.contentEquals(key))
         // TokenStore sync keys round-trip and clear
         val tokens = TokenStore.getInstance(ctx)
         tokens.putSyncKey(ACCOUNT, "notes", "sekrit")
@@ -88,10 +88,10 @@ class E2eeDriveTest {
         assertNull(tokens.getSyncKey(ACCOUNT, "todos"))
         tokens.clear(ACCOUNT)
         // SnapshotKeyStore seal/unseal
-        val sealed = SnapshotKeyStore.seal(ctx, "payload".encodeToByteArray())
+        val sealed = SnapshotKeyStore.seal("payload".encodeToByteArray())
         assertNotNull(sealed)
-        assertEquals("payload", SnapshotKeyStore.unseal(ctx, sealed)?.decodeToString())
-        assertNull(SnapshotKeyStore.unseal(ctx, byteArrayOf(1, 2, 3)))
+        assertEquals("payload", SnapshotKeyStore.unseal(sealed)?.decodeToString())
+        assertNull(SnapshotKeyStore.unseal(byteArrayOf(1, 2, 3)))
     } }
 
     @Test fun notesVaultFullCycle() { runBlocking {

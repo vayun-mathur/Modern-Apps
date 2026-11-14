@@ -204,6 +204,9 @@ object RelaySync {
      * for backward compatibility) vs join requests (`kind:"req"`). Unparseable/foreign
      * blobs are skipped so one bad item never drops the batch.
      */
+    private fun decodeInvite(text: String, invites: MutableList<Invite>): Invite? =
+        runCatching { json.decodeFromString<Invite>(text) }.getOrNull()?.also { invites.add(it) }
+
     suspend fun pullInbox(since: Int): InboxResult {
         val p = pull("inbox:$deviceId", since) ?: return InboxResult(emptyList(), emptyList(), since)
         val invites = mutableListOf<Invite>()
@@ -214,7 +217,7 @@ object RelaySync {
             val kind = runCatching { json.decodeFromString<InboxEnvelope>(text).kind }.getOrNull().orEmpty()
             if (kind == "req") {
                 runCatching { json.decodeFromString<JoinRequest>(text) }.getOrNull()?.let { requests.add(it) }
-            } else if (runCatching { json.decodeFromString<Invite>(text) }.getOrNull()?.also { invites.add(it) } == null) {
+            } else if (decodeInvite(text, invites) == null) {
                 // Join requests written before the discriminator was emitted on
                 // the wire (kotlinx omits default values, so kind:"req" never
                 // left the device) fail Invite decoding: they carry a
@@ -330,7 +333,9 @@ object RelaySync {
      * [NetworkClient] against the live relay. Lets unit tests run the whole
      * vault stack against an in-memory fake relay with no network at all.
      */
-    internal var transportForTest: (suspend (path: String, bodyJson: String) -> com.vayunmathur.library.network.SimpleResponse?)? = null
+    internal var transportForTest: (
+        suspend (path: String, bodyJson: String) -> com.vayunmathur.library.network.SimpleResponse?
+    )? = null
 
     // Broad catch is deliberate: any transport/serialization failure mode means
     // "no response" per this function's contract. Cancellation is rethrown so this
@@ -407,7 +412,9 @@ object RelaySync {
     /** An owner-signed vault title (latest valid one wins). */
     @Serializable data class SignedTitle(val title: String, val sig: String)
 
+    /** Pending vault invites returned by the relay with their inbox sequence. */
     class InvitesResult(val invites: List<Invite>, val seq: Int)
+    /** Vault invites and join requests returned by the relay with their sequence. */
     class InboxResult(val invites: List<Invite>, val requests: List<JoinRequest>, val seq: Int)
 
     /**
@@ -429,6 +436,7 @@ object RelaySync {
     @Serializable private data class SubMsg(val t: String, val channel: String)
     @Serializable private data class AppendMsg(val t: String, val channel: String, val actions: List<String>)
 
+    /** A live relay message with its type, channel and available actions. */
     @Serializable data class LiveMsg(
         val t: String = "",
         val channel: String = "",

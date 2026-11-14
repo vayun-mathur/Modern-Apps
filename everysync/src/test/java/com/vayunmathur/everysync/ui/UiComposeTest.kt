@@ -116,7 +116,8 @@ class UiComposeTest {
             rule.onNodeWithText("Contacts vault", substring = true).performClick()
             assertTrue(created.startsWith("contacts"))
         } catch (e: AssertionError) {
-            // label text may differ by locale/resources; rendering alone covered the section
+            // Label text may differ by locale/resources; rendering alone covered the section.
+            println("vault section label lookup differed: ${e.message}")
         }
     }
 }

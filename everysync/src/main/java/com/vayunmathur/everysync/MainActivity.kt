@@ -14,6 +14,7 @@ import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.OfflineAware
 
+/** Entry activity that wires the EverySync UI and join-link handling. */
 class MainActivity : MaActivity() {
     private val viewModel: EverySyncViewModel by viewModels()
 

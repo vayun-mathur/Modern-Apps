@@ -17,6 +17,8 @@ object NoteKind : EntityKind<RemoteNote>() {
     /** Notes soft-delete (tombstone rows survive locally); the default holds. */
     override val localDeletesAreAuthoritative = true
 
+    private const val CONTENT_PREVIEW_LENGTH = 64
+
     private val json = Json { ignoreUnknownKeys = true }
 
     override fun syncId(e: RemoteNote) = e.uid
@@ -26,7 +28,8 @@ object NoteKind : EntityKind<RemoteNote>() {
     override fun contentHash(e: RemoteNote): String =
         relayContentHash(canonical(e) + "\u0000deleted=${e.deleted}")
 
-    override fun contentKey(e: RemoteNote): String = "note\u0000${e.title}\u0000${e.content.take(64)}"
+    override fun contentKey(e: RemoteNote): String =
+        "note\u0000${e.title}\u0000${e.content.take(CONTENT_PREVIEW_LENGTH)}"
 
     override fun rebind(e: RemoteNote, syncId: String) = e.copy(uid = syncId)
     override fun withDeleted(e: RemoteNote, deleted: Boolean) = e.copy(deleted = deleted)

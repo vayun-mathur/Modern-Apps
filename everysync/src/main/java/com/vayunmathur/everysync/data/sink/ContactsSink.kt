@@ -118,33 +118,7 @@ object ContactsSink {
                 // Null cursor = provider cannot serve: failure, not empty.
                 failed = true
             } else {
-                cursor.use { c ->
-                    while (c.moveToNext()) {
-                        val rawId = c.getLong(CURSOR_RAW_ID)
-                        var uid = c.getStringOrNull(CURSOR_SOURCE_ID).orEmpty()
-                        val stamp = c.getStringOrNull(CURSOR_SYNC1)?.toLongOrNull() ?: 0L
-                        if (uid.isBlank()) {
-                            // A contact created on-device has no relay
-                            // identity yet. Bind one to THIS row now: the
-                            // merge can only mint an id in memory, and a
-                            // later upsert-by-uid would insert a duplicate
-                            // instead of attaching to this row, re-minting
-                            // (and re-pushing) a copy every cycle.
-                            uid = com.vayunmathur.everysync.sync.newRelaySyncId()
-                            setSourceId(
-                                context, accountName, rawId, uid,
-                                c.getStringOrNull(CURSOR_SYNC1),
-                            )
-                        }
-                        val contact = readContact(context, rawId, uid)
-                        out += contact.copy(
-                            uid = uid,
-                            updatedAt = stamp,
-                            deleted = c.getInt(CURSOR_DELETED) == 1,
-                        )
-                    }
-                }
-            }
+                cursor.use { c -> out += readContactRows(c, context, accountName) }            }
         } catch (expected: Exception) {
             Log.error(TAG, "listLocal failed", expected)
             failed = true
@@ -168,6 +142,35 @@ object ContactsSink {
             Log.error(TAG, "rawContactId failed", expected)
             null
         }
+    }
+
+    private fun readContactRows(
+        cursor: android.database.Cursor,
+        context: Context,
+        accountName: String,
+    ): List<RemoteContact> {
+        val out = mutableListOf<RemoteContact>()
+        while (cursor.moveToNext()) {
+            val rawId = cursor.getLong(CURSOR_RAW_ID)
+            var uid = cursor.getStringOrNull(CURSOR_SOURCE_ID).orEmpty()
+            val stamp = cursor.getStringOrNull(CURSOR_SYNC1)?.toLongOrNull() ?: 0L
+            if (uid.isBlank()) {
+                // A contact created on-device has no relay identity yet. Bind
+                // one to THIS row now (see listLocal).
+                uid = com.vayunmathur.everysync.sync.newRelaySyncId()
+                setSourceId(
+                    context, accountName, rawId, uid,
+                    cursor.getStringOrNull(CURSOR_SYNC1),
+                )
+            }
+            val contact = readContact(context, rawId, uid)
+            out += contact.copy(
+                uid = uid,
+                updatedAt = stamp,
+                deleted = cursor.getInt(CURSOR_DELETED) == 1,
+            )
+        }
+        return out
     }
 
     /** Idempotent upsert keyed on [RemoteContact.uid]. */
