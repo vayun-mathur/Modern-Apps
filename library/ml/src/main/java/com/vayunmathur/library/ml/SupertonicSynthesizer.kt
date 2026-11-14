@@ -203,6 +203,7 @@ class SupertonicSynthesizer private constructor(
         override fun toString(): String = directory.toString()
     }
 
+    /** Vocoder constants, voices and asset/directory factories for [SupertonicSynthesizer]. */
     companion object {
         private const val TAG = "SupertonicSynthesizer"
 

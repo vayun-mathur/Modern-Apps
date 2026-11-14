@@ -76,6 +76,7 @@ class Gemma4AudioHandle private constructor(private val file: File) : AutoClosea
 
     override fun toString(): String = "Gemma 4 audio tower at $file"
 
+    /** Model constants and factories for the Gemma 4 audio tower. */
     companion object {
         private const val TAG = "Gemma4AudioHandle"
 

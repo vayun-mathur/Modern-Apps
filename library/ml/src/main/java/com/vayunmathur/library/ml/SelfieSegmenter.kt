@@ -39,6 +39,7 @@ class SelfieSegmenter(context: Context, assetName: String = DEFAULT_ASSET) : Aut
 
     override fun close() = native.close()
 
+    /** Bundled-asset constants for [SelfieSegmenter]. */
     companion object {
         /** What `:camera` ships. */
         const val DEFAULT_ASSET: String = "selfie_segmentation.maml"

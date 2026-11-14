@@ -93,6 +93,7 @@ class MaiaHandle private constructor(private val source: String) : AutoCloseable
 
     override fun toString(): String = "Maia3-5M from $source"
 
+    /** Board/move dimensions, model constants and the asset factory for [MaiaHandle]. */
     companion object {
         private const val TAG = "MaiaHandle"
 

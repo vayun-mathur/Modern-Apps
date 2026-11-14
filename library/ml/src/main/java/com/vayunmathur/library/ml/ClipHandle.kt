@@ -88,6 +88,7 @@ class ClipHandle private constructor(private val source: String) : AutoCloseable
 
     override fun toString(): String = "TinyCLIP from $source"
 
+    /** Model constants and the asset factory for [ClipHandle]. */
     companion object {
         private const val TAG = "ClipHandle"
 

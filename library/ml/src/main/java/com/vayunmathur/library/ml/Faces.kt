@@ -156,6 +156,7 @@ class FaceDetector(context: Context, assetName: String = DEFAULT_ASSET) : AutoCl
         if (toDestroy != 0L) MlNative.destroy(toDestroy)
     }
 
+    /** Bundled-asset constants for [FaceDetector]. */
     companion object {
         /** What `:photos` ships. */
         const val DEFAULT_ASSET: String = "scrfd_500m.maml"
@@ -203,6 +204,7 @@ class FaceEmbedder(context: Context, assetName: String = DEFAULT_ASSET) : AutoCl
 
     override fun close() = native.close()
 
+    /** Bundled-asset and embedding constants for [FaceEmbedder]. */
     companion object {
         /** What `:photos` ships. */
         const val DEFAULT_ASSET: String = "w600k_mbf.maml"

@@ -620,6 +620,7 @@ class Gemma4Handle private constructor(internal val directory: File) : AutoClose
     /** A call the model asked for, as [parseToolCall] found it. */
     data class ToolCall(val name: String, val arguments: Map<String, String>)
 
+    /** Context-window constants and reply-reserve helpers for [Gemma4Handle]. */
     companion object {
         internal const val TAG = "Gemma4Handle"
 

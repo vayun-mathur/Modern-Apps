@@ -97,6 +97,7 @@ class MadladHandle private constructor(private val directory: File) : AutoClosea
 
     override fun toString(): String = "MADLAD400-3B-MT in $directory"
 
+    /** Model file names and the on-disk factory for [MadladHandle]. */
     companion object {
         private const val TAG = "MadladHandle"
 

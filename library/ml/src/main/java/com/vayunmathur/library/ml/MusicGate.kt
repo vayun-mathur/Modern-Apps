@@ -72,6 +72,7 @@ class MusicGate private constructor() : AutoCloseable {
 
     override fun toString(): String = "Now Playing music gate (CPU)"
 
+    /** Front-end timing constants and the in-process factory for [MusicGate]. */
     companion object {
         const val SAMPLE_RATE = 16_000
 

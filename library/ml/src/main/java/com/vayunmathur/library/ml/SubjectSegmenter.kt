@@ -43,6 +43,7 @@ class SubjectSegmenter(context: Context, assetName: String = DEFAULT_ASSET) : Au
 
     override fun close() = native.close()
 
+    /** Bundled-asset constants for [SubjectSegmenter]. */
     companion object {
         /** What `:photos` ships. */
         const val DEFAULT_ASSET: String = "u2netp.maml"

@@ -78,6 +78,7 @@ class Gemma4VisionHandle private constructor(private val file: File) : AutoClose
 
     override fun toString(): String = "Gemma 4 vision tower at $file"
 
+    /** Model constants and factories for the Gemma 4 vision tower. */
     companion object {
         private const val TAG = "Gemma4VisionHandle"
 

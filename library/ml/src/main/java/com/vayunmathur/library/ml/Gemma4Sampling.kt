@@ -31,6 +31,7 @@ data class Sampling(
     val temperature: Float = 1.0f,
     val seed: Long = 0L,
 ) {
+    /** Preset sampling configurations: chat defaults and deterministic greedy decoding. */
     companion object {
         /**
          * The previous runtime's behaviour: top_k 64, top_p 0.95, temperature 1.

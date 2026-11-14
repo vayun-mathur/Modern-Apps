@@ -121,33 +121,54 @@ private fun toolCallBody(reply: String): String? {
  * Strings arrive as `<|"|>value<|"|>`, but the template writes numbers and booleans bare
  * (`seconds:120`), so a value without the quote marker runs to the next `,` or `}`.
  */
-@Suppress("LoopWithTooManyJumpStatements")
 private fun parseToolArguments(body: String, at: Int): Map<String, String> {
     val arguments = LinkedHashMap<String, String>()
     var cursor = at
-    while (cursor < body.length) {
-        while (cursor < body.length && (body[cursor] == ',' || body[cursor].isWhitespace())) cursor++
+    var done = false
+    while (!done && cursor < body.length) {
+        cursor = skipArgumentSeparators(body, cursor)
         val colon = body.indexOf(':', cursor)
-        if (colon < 0) break
-        val key = body.substring(cursor, colon).trim().trim(',', '{', '}')
-        var valueStart = colon + 1
-        while (valueStart < body.length && body[valueStart].isWhitespace()) valueStart++
-        val value: String
-        if (body.startsWith(GEMMA4_QUOTE, valueStart)) {
-            val valueEnd = body.indexOf(GEMMA4_QUOTE, valueStart + GEMMA4_QUOTE.length)
-            if (valueEnd < 0) break
-            value = body.substring(valueStart + GEMMA4_QUOTE.length, valueEnd)
-            cursor = valueEnd + GEMMA4_QUOTE.length
+        val parsed = if (colon < 0) null else parseToolValue(body, colon + 1)
+        if (parsed == null) {
+            done = true
         } else {
-            var valueEnd = valueStart
-            while (valueEnd < body.length && body[valueEnd] != ',' && body[valueEnd] != '}') valueEnd++
-            value = body.substring(valueStart, valueEnd).trim()
-            cursor = valueEnd
+            val key = body.substring(cursor, colon).trim().trim(',', '{', '}')
+            if (key.isNotEmpty()) arguments[key] = parsed.first
+            cursor = parsed.second
+            while (cursor < body.length && body[cursor] == '}') cursor++
         }
-        if (key.isNotEmpty()) arguments[key] = value
-        while (cursor < body.length && body[cursor] == '}') cursor++
     }
     return arguments
+}
+
+/** Skips the `,` and whitespace separators between argument pairs. */
+private fun skipArgumentSeparators(body: String, from: Int): Int {
+    var cursor = from
+    while (cursor < body.length && (body[cursor] == ',' || body[cursor].isWhitespace())) cursor++
+    return cursor
+}
+
+/**
+ * One argument value starting at or after [from]: quoted with [GEMMA4_QUOTE] or
+ * bare up to the next `,`/`}`. Returns the value and the cursor just past it, or
+ * null for an unterminated quoted value.
+ */
+private fun parseToolValue(body: String, from: Int): Pair<String, Int>? {
+    var valueStart = from
+    while (valueStart < body.length && body[valueStart].isWhitespace()) valueStart++
+    return if (body.startsWith(GEMMA4_QUOTE, valueStart)) {
+        val valueEnd = body.indexOf(GEMMA4_QUOTE, valueStart + GEMMA4_QUOTE.length)
+        if (valueEnd < 0) {
+            null
+        } else {
+            body.substring(valueStart + GEMMA4_QUOTE.length, valueEnd) to
+                (valueEnd + GEMMA4_QUOTE.length)
+        }
+    } else {
+        var valueEnd = valueStart
+        while (valueEnd < body.length && body[valueEnd] != ',' && body[valueEnd] != '}') valueEnd++
+        body.substring(valueStart, valueEnd).trim() to valueEnd
+    }
 }
 
 private const val TOOL_CALL_OPEN = "<|tool_call>call:"

@@ -40,6 +40,7 @@ class ModnetSegmenter(context: Context, assetName: String = DEFAULT_ASSET) : Aut
 
     override fun close() = native.close()
 
+    /** Bundled-asset constants for [ModnetSegmenter]. */
     companion object {
         /** What `:camera` ships for still capture. */
         const val DEFAULT_ASSET: String = "modnet.maml"

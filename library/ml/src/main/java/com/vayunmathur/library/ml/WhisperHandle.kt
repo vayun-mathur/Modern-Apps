@@ -80,6 +80,7 @@ class WhisperHandle private constructor(private val source: String) : AutoClosea
 
     override fun toString(): String = "whisper-base from $source"
 
+    /** Front-end dimensions, model constants and the asset factory for [WhisperHandle]. */
     companion object {
         private const val TAG = "WhisperHandle"
 

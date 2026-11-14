@@ -98,6 +98,7 @@ class NnfpHandle private constructor(private val source: String) : AutoCloseable
 
     override fun toString(): String = "Now Playing fingerprinter from $source"
 
+    /** Front-end window constants for the Now Playing fingerprint network. */
     companion object {
         private const val TAG = "NnfpHandle"
 

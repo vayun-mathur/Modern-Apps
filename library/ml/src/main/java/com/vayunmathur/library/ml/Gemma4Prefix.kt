@@ -171,6 +171,16 @@ internal fun createGemma4Handle(directory: File): Long {
         Log.status(Gemma4Handle.TAG, "short files in $directory: ${short.joinToString()}")
         return 0L
     }
+    return createGemma4Native(directory, text, embed, tokenizer)
+}
+
+/** Opens the descriptors and creates the native Gemma 4 handle, or 0 on failure. */
+private fun createGemma4Native(
+    directory: File,
+    text: File,
+    embed: File,
+    tokenizer: File,
+): Long {
     // Optional GPU head (third file). Absent on old downloads — native falls
     // back to the host head, so this stays warning-free by design.
     val head = File(directory, Gemma4Handle.HEAD)

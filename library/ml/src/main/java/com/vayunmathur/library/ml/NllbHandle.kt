@@ -99,6 +99,7 @@ class NllbHandle private constructor(private val directory: File) : AutoCloseabl
 
     override fun toString(): String = "NLLB-200 in $directory"
 
+    /** Model file names and the on-disk factory for [NllbHandle]. */
     companion object {
         private const val TAG = "NllbHandle"
 
