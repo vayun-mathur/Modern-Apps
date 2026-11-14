@@ -37,6 +37,36 @@ thread_local! {
 }
 
 impl ZsecRegion {
+    /// Graph v9's intermediate blob (`data[..blob_bytes]`) as a ZSEC region; `None` inside the
+    /// `Some` for v6-v8 (raw blob). The outer `None` is a corrupt section.
+    pub(crate) fn v9_blob(data: *const u8, blob_bytes: u64, v9: bool) -> Option<Option<ZsecRegion>> {
+        if !v9 {
+            return Some(None);
+        }
+        ZsecRegion::parse(unsafe { std::slice::from_raw_parts(data, blob_bytes as usize) }).map(Some)
+    }
+
+    /// Graph v9's road-name pool as a ZSEC region, with the raw pool length the name lookups bound
+    /// against; v6-v8 (or no pool): `(None, len)`.
+    pub(crate) fn v9_names(base: *const u8, len: usize, v9: bool) -> Option<(Option<ZsecRegion>, usize)> {
+        if !v9 || base.is_null() || len == 0 {
+            return Some((None, len));
+        }
+        let z = ZsecRegion::parse(unsafe { std::slice::from_raw_parts(base, len) })?;
+        let raw = z.raw_len();
+        Some((Some(z), raw))
+    }
+
+    /// `edges.bin`'s name-offset table (from `name_off_off` to the end of `edges`): a ZSEC section
+    /// of `named * 4` raw bytes under v9, exactly `named * 4` raw bytes before it.
+    pub(crate) fn v9_name_offsets(edges: &[u8], name_off_off: u64, named: u64, v9: bool) -> Option<Option<ZsecRegion>> {
+        if v9 && named > 0 {
+            let z = ZsecRegion::parse(edges.get(name_off_off as usize..)?)?;
+            return (z.raw_len() as u64 == named * 4).then_some(Some(z));
+        }
+        (edges.len() as u64 == name_off_off + named * 4).then_some(None)
+    }
+
     /// Validate `bytes` as a whole ZSEC section (header, codec, full offset table).
     pub(crate) fn parse(bytes: &[u8]) -> Option<ZsecRegion> {
         let z = tilecodec::zsec::ZSec::parse(bytes).ok()?;

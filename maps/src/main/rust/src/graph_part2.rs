@@ -144,29 +144,9 @@ impl Graph {
             SECTION_ALIGN,
         );
         let name_off_off = names_off + EdgeBitmap::bytes(edge_count);
-        let want_edges = name_off_off + named_edges * std::mem::size_of::<u32>() as u64;
         // Graph v9: the name-offset table (the file's tail) is a ZSEC section of that table.
-        let name_off_zsec = if zsec_v9 && named_edges > 0 {
-            if (edges_region.len as u64) <= name_off_off {
-                return None;
-            }
-            let tail = unsafe {
-                std::slice::from_raw_parts(
-                    edges_region.base().add(name_off_off as usize),
-                    edges_region.len - name_off_off as usize,
-                )
-            };
-            let z = ZsecRegion::parse(tail)?;
-            if z.raw_len() as u64 != named_edges * 4 {
-                return None;
-            }
-            Some(z)
-        } else {
-            if edges_region.len as u64 != want_edges {
-                return None;
-            }
-            None
-        };
+        let edges_all = unsafe { std::slice::from_raw_parts(edges_region.base(), edges_region.len) };
+        let name_off_zsec = ZsecRegion::v9_name_offsets(edges_all, name_off_off, named_edges, zsec_v9)?;
         // Table base is the file base unconditionally: only the record array
         // itself is blocked-compressed under v7 (see the single-archive
         // `assemble` — same fix, same on-device SIGSEGV). The per-record
@@ -249,29 +229,18 @@ impl Graph {
             ) + u64::from(read_at::<u16>(intermediate_within, geometry_edges as usize))
         };
         // Graph v9: the blob is a ZSEC section of the raw blob the trailer addresses.
-        let intermediate_zsec = if zsec_v9 {
-            let z = ZsecRegion::parse(unsafe { std::slice::from_raw_parts(intermediate_data, blob_bytes as usize) })?;
-            Some(z)
-        } else {
-            None
-        };
+        let intermediate_zsec = ZsecRegion::v9_blob(intermediate_data, blob_bytes, zsec_v9)?;
         let raw_blob = intermediate_zsec.as_ref().map_or(blob_bytes, |z| z.raw_len() as u64);
         if sentinel != raw_blob || geometry.total(edge_count) != geometry_edges {
             return None;
         }
 
         let road_names_region = MmapRegion::map(&format!("{base}road_names.bin"));
-        let (road_names, mut road_names_size) = match &road_names_region {
+        let (road_names, road_names_size) = match &road_names_region {
             Some(r) => (r.base(), r.len),
             None => (ptr::null(), 0),
         };
-        let road_names_zsec = if zsec_v9 && !road_names.is_null() && road_names_size > 0 {
-            let z = ZsecRegion::parse(unsafe { std::slice::from_raw_parts(road_names, road_names_size) })?;
-            road_names_size = z.raw_len();
-            Some(z)
-        } else {
-            None
-        };
+        let (road_names_zsec, road_names_size) = ZsecRegion::v9_names(road_names, road_names_size, zsec_v9)?;
 
         // lanes.bin: [ u32 n ][ LaneEntry[n + 1] ][ u16 lane-mask blob ]. The index
         // is sized by its own header rather than by `edge_count`, so it is validated
