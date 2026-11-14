@@ -112,6 +112,7 @@ class BlobProvider : ContentProvider(), ContentProvider.PipeDataWriter<ByteArray
 
     private class Entry(val gzipped: ByteArray, val size: Int)
 
+    /** Shared constants and helpers for BlobProvider. */
     companion object {
         private const val TAG = "BlobProvider"
 

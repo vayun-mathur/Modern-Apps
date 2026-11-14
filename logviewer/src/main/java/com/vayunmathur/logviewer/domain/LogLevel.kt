@@ -21,6 +21,7 @@ enum class LogLevel(val priority: Int, val label: String) {
 
     val headerValue: String get() = label.lowercase()
 
+    /** Shared constants and helpers for LogLevel. */
     companion object {
         /** Clamped rather than rejected, matching the behaviour of an out-of-range intent extra. */
         fun ofPriority(priority: Int): LogLevel {

@@ -56,7 +56,7 @@ internal open class LogViewerController(
         copy()
         try {
             activity.startActivity(Intent(Intent.ACTION_VIEW, ISSUES_URL.toUri()))
-        } catch (e: ActivityNotFoundException) {
+        } catch (_: ActivityNotFoundException) {
             // No browser (or anything else that handles https) on this build. The log is
             // already on the clipboard from copy() above, so say that instead of crashing
             // the viewer over its own Report button.

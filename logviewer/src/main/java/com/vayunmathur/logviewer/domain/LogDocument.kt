@@ -104,8 +104,10 @@ class LogDocument(
         }
     }
 
+    /** Immutable value describing clip text; carries text, truncated. */
     data class ClipText(val text: String, val truncated: Boolean)
 
+    /** Shared constants and helpers for LogDocument. */
     companion object {
         private const val MAX_CLIP_BYTES = 200_000
 
