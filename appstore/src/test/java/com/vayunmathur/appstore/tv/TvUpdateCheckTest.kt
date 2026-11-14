@@ -9,6 +9,7 @@ import com.vayunmathur.appstore.data.AppDatabase
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.toEntity
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,6 +36,11 @@ class TvUpdateCheckTest {
 
     @BeforeTest
     fun setUp() {
+        // Hermetic offline: the check's catalogue sync must fail and keep
+        // the seeded rows, whatever network the test host happens to have.
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
         val app = ApplicationProvider.getApplicationContext<Application>()
         ownPackage = app.packageName
         db = Room.inMemoryDatabaseBuilder(app, AppDatabase::class.java)
@@ -56,6 +62,11 @@ class TvUpdateCheckTest {
         }
         vm = TvStoreViewModel(app, db)
         vm.enabledSourcesFlow.value = setOf(AppSource.MODERN_APPS)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = null
     }
 
     private fun await(description: String, condition: () -> Boolean) {

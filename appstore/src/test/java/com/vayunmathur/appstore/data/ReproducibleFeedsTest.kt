@@ -23,6 +23,20 @@ class ReproducibleFeedsTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
+    @kotlin.test.BeforeTest
+    fun forceOfflineDownloads() {
+        // Hermetic offline: every feed download fails, whatever network the
+        // host running the tests happens to have.
+        FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
+    }
+
+    @kotlin.test.AfterTest
+    fun restoreDownloads() {
+        FDroidRepository.downloadOverride = null
+    }
+
     @Test
     fun `izzy admits only versions with an explicit verdict`() {
         val verified = IzzyReproducibleBuilds.Verified(setOf("com.example.a:7", "com.example.b:1"))

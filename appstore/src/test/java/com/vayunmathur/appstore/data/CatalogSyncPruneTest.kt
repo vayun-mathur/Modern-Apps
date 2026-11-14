@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,6 +31,11 @@ class CatalogSyncPruneTest {
 
     @BeforeTest
     fun setUp() {
+        // Hermetic offline: every repo-index download fails, whatever
+        // network the host running the tests happens to have.
+        FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
             .setDriver(BundledSQLiteDriver())
@@ -37,6 +43,11 @@ class CatalogSyncPruneTest {
             .build()
         scope = CoroutineScope(Dispatchers.IO)
         catalog = CatalogRepository(ctx, db, scope)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        FDroidRepository.downloadOverride = null
     }
 
     @Test

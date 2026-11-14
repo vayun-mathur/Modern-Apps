@@ -100,7 +100,20 @@ object FDroidRepository {
         return IndexRef(name, sha)
     }
 
+    /**
+     * Test seam: when set, replaces the network download entirely. Offline
+     * unit tests install a handler that throws [java.io.IOException] so the
+     * fetch-failure paths run deterministically even on a host with live
+     * network access; production code never sets this. Tests must clear it
+     * again so loopback-download tests in the same JVM see real behaviour.
+     */
+    internal var downloadOverride: ((String, File) -> Unit)? = null
+
     internal fun downloadToFile(url: String, outFile: File) {
+        downloadOverride?.let { handler ->
+            handler(url, outFile)
+            return
+        }
         val rawConnection = URL(url).openConnection()
         val sslSocketFactory = NetworkClient.defaultSslSocketFactory
         if (sslSocketFactory != null && rawConnection is HttpsURLConnection) {

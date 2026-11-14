@@ -7,6 +7,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.ListenableWorker
 import androidx.work.testing.TestListenableWorkerBuilder
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,6 +36,11 @@ class UpdateCheckWorkerDoWorkTest {
 
     @BeforeTest
     fun setUp() {
+        // Hermetic offline: the worker's catalogue sync must fail and keep
+        // the seeded rows, whatever network the test host happens to have.
+        FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
         // The production database is SQLCipher via AndroidKeyStore, which
         // Robolectric lacks: bind an in-memory database into the shared
         // cache the database builder consults first.
@@ -55,6 +61,11 @@ class UpdateCheckWorkerDoWorkTest {
             // Drop any catalogue rows a previous test in this class seeded.
             AppStoreDatabaseRepository.get(ctx).database.cachedAppDao().clearAll()
         }
+    }
+
+    @AfterTest
+    fun tearDown() {
+        FDroidRepository.downloadOverride = null
     }
 
     private fun worker() = TestListenableWorkerBuilder<UpdateCheckWorker>(ctx).build()
