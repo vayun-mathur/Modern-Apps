@@ -144,9 +144,14 @@ object MapOverlay {
     /**
      * A `0x…` hex build id from the manifest, or 0 when it does not parse.
      * Build ids are opaque equality tokens here (match the base or refuse).
+     *
+     * A build id is a full u64: parsed unsigned and carried as the same 64 bits in a Long.
+     * `toLongOrNull(16)` refused anything at or above 0x8000000000000000 — half of all builds,
+     * including both planet5 builds — and turned it into 0, so the manifest never matched the
+     * header's build id.
      */
     fun parseBuildId(raw: String): Long =
-        raw.removePrefix("0x").removePrefix("0X").toLongOrNull(BUILD_ID_RADIX) ?: 0L
+        raw.removePrefix("0x").removePrefix("0X").toULongOrNull(BUILD_ID_RADIX)?.toLong() ?: 0L
 
     /** Build ids are hex in the manifest and in logs. */
     const val BUILD_ID_RADIX = 16

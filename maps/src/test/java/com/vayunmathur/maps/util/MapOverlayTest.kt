@@ -116,6 +116,10 @@ class MapOverlayTest {
     fun build_ids_parse_hex_with_prefix() {
         assertEquals(0x1234L, MapOverlay.parseBuildId("0x0000000000001234"))
         assertEquals(0L, MapOverlay.parseBuildId("garbage"))
+        // Top bit set (the published planet5 build): the same 64 bits as a signed Long.
+        assertEquals(-0x768935f835da84c7L, MapOverlay.parseBuildId("0x8976ca07ca257b39"))
+        assertEquals(-1L, MapOverlay.parseBuildId("0xffffffffffffffff"))
+        assertEquals(0L, MapOverlay.parseBuildId("0x10000000000000000"))
     }
 
     @Test
