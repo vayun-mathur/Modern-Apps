@@ -209,6 +209,14 @@ class Slice2Pass2LogicTest {
             lat = null, long = null, videoData = null, panoData = null,
         )
         vm.export(app, missing, true) { completed = true }
+        // Transformer reports a bad source asynchronously on the main
+        // looper (paused under Robolectric); pump it until the failure
+        // callback lands instead of asserting synchronously.
+        val deadline = System.currentTimeMillis() + 15_000
+        while (!completed && System.currentTimeMillis() < deadline) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            if (!completed) Thread.sleep(10)
+        }
         assertTrue(completed, "onComplete must fire on unrecoverable failure")
         assertFalse(vm.exporting.value)
         val orphans = app.cacheDir.listFiles { f -> f.name.startsWith("video_edit_") } ?: emptyArray()

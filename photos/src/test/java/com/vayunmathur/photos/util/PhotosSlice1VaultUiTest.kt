@@ -9,6 +9,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.util.NavBackStack
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import com.vayunmathur.photos.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.PhotoDatabase
@@ -127,7 +128,7 @@ class PhotosSlice1VaultUiTest {
         viewModel = SecureFolderViewModel(app)
         viewModel.setVault(fakeDao(), "pw")
         composeRule.setContent {
-            CompositionLocalProvider(LocalColumnCount provides mutableFloatStateOf(3f)) {
+            CompositionLocalProvider(LocalColumnCount provides remember { mutableFloatStateOf(3f) }) {
                 SecureFolderPage(
                 backStack = NavBackStack(arrayOf<Route>(Route.SecureFolder)),
                 password = "pw",
@@ -145,7 +146,7 @@ class PhotosSlice1VaultUiTest {
         viewModel = SecureFolderViewModel(app)
         viewModel.setVault(fakeDao(listOf(vaultPhoto("a.jpg"), vaultPhoto("b.jpg"))), "pw")
         composeRule.setContent {
-            CompositionLocalProvider(LocalColumnCount provides mutableFloatStateOf(3f)) {
+            CompositionLocalProvider(LocalColumnCount provides remember { mutableFloatStateOf(3f) }) {
                 SecureFolderPage(
                 backStack = NavBackStack(arrayOf<Route>(Route.SecureFolder)),
                 password = "pw",
