@@ -21,14 +21,14 @@ import java.util.zip.GZIPInputStream
 /**
  * App vs server parity for the static R2 weather path.
  *
- * Fixtures (`src/test/resources/wx/`) come from the server repo's
+ * Fixtures (`src/test/resources/wx/`, gzipped) come from the server repo's
  * `server wx fixtures`: for each (point, now) the server's own `/wx/v1/bundle`
- * JSON (its real fetch path over the same Open-Meteo chunk files, gzipped),
- * plus the exported `WXT1` run tile, history-day tiles and `WXG1` geo block
- * the app would download. The
- * server already checked its Rust tile path against that JSON; this checks
- * the Kotlin port ([WxGrid.seriesFromTile] + [WxCompute.computeBundle])
- * produces the same bundle, value for value.
+ * JSON (its real fetch path over the same Open-Meteo chunk files), plus mini
+ * `WXP1` packs (run.wxp, hist/<day>.wxp, geo.wxp) laid out exactly like the
+ * production objects but holding only the fixtures' tiles. The server already
+ * checked its Rust pack/tile path against that JSON; this reads the packs the
+ * way [com.vayunmathur.weather.network.WxStatic] does (entry → spans) and
+ * checks the Kotlin port produces the same bundle, value for value.
  */
 class WxParityTest {
     // encodeDefaults: the server always writes v/model/step; a missing key
@@ -41,6 +41,13 @@ class WxParityTest {
     private fun res(path: String): ByteArray =
         javaClass.classLoader!!.getResourceAsStream("wx/$path")?.use { it.readBytes() }
             ?: error("missing fixture wx/$path")
+
+    private fun gz(path: String): ByteArray = GZIPInputStream(res(path).inputStream()).use { it.readBytes() }
+
+    private val packs = HashMap<String, ByteArray>()
+    private fun pack(name: String) = packs.getOrPut(name) { gz("$name.gz") }
+    private fun slice(name: String, off: Long, len: Int) = pack(name).copyOfRange(off.toInt(), (off + len).toInt())
+    private fun slice(name: String, s: WxPack.Span) = slice(name, s.off, s.len)
 
     private fun isNumber(e: JsonElement) = e is JsonPrimitive && e !is JsonNull && !e.isString
 
@@ -59,6 +66,23 @@ class WxParityTest {
         if (a.size != b.size) "$path: len ${a.size} != ${b.size}"
         else a.indices.firstNotNullOfOrNull { k -> diff("$path[$k]", a[k], b[k]) }
 
+    /** The bundle for a case, read through the packs like WxStatic. */
+    private fun bundleFromPacks(lat: Double, lon: Double, now: Long): WxBundle {
+        val (ty, tx) = WxGrid.tileOf(lat, lon, WxPack.NY, WxPack.NX, WxPack.CELLS)
+        val e = WxPack.decodeRunEntry(slice("run.wxp", WxPack.runEntryOffset(ty, tx), WxPack.RUN_ENTRY_LEN))
+        assertEquals(ty to tx, e.ty to e.tx)
+        val tile = WxTiles.decodeTile(slice("run.wxp", e.tile))
+        val hist = WxGrid.histDaysNeeded(now, e.histToDay * 24L).map { d ->
+            WxTiles.decodeTile(slice("hist/$d.wxp", e.histSpan(d)!!))
+        }
+        val k = WxGrid.geoOf(lat, lon)!!
+        val h = WxPack.decodeHeader(slice("geo.wxp", 0, WxPack.HEADER_LEN.toInt()))
+        val at = h.entryOffset(k.y * 4 + k.b / 4, k.x * 4 + k.b % 4)!!
+        val geo = WxTiles.decodeGeo(slice("geo.wxp", WxPack.decodeSpan(slice("geo.wxp", at, 8))))
+        val series = WxGrid.seriesFromTile(tile, hist, geo, lat, lon, now)
+        return WxCompute.computeBundle(lat, lon, now, tile.iconRunIso, series)
+    }
+
     @Test
     fun `every fixture bundle computed on device equals the server bundle`() {
         val cases = json.parseToJsonElement(res("cases.json").decodeToString()).jsonArray
@@ -69,14 +93,8 @@ class WxParityTest {
             val lat = o["lat"]!!.jsonPrimitive.content.toDouble()
             val lon = o["lon"]!!.jsonPrimitive.content.toDouble()
             val now = o["now"]!!.jsonPrimitive.long
-            val tile = WxTiles.decodeTile(res(o["tile"]!!.jsonPrimitive.content))
-            val hist = o["hist"]!!.jsonArray.map { WxTiles.decodeTile(res(it.jsonPrimitive.content)) }
-            val geo = WxTiles.decodeGeo(res(o["geo"]!!.jsonPrimitive.content))
-            val gz = res(o["expected"]!!.jsonPrimitive.content)
-            val expected = json.parseToJsonElement(GZIPInputStream(gz.inputStream()).readBytes().decodeToString())
-            val series = WxGrid.seriesFromTile(tile, hist, geo, lat, lon, now)
-            val bundle = WxCompute.computeBundle(lat, lon, now, tile.iconRunIso, series)
-            val ours = json.encodeToJsonElement(WxBundle.serializer(), bundle)
+            val expected = json.parseToJsonElement(gz(o["expected"]!!.jsonPrimitive.content).decodeToString())
+            val ours = json.encodeToJsonElement(WxBundle.serializer(), bundleFromPacks(lat, lon, now))
             diff("", expected, ours)?.let { failures += "$lat,$lon @$now: $it" }
         }
         if (failures.isNotEmpty()) fail("${failures.size}/${cases.size} differ:\n" + failures.joinToString("\n"))
@@ -92,6 +110,9 @@ class WxParityTest {
         assertEquals(0, WxGrid.tileOf(0.0, 179.99, 1441, 2879, 8).second)
         assertEquals(720L to 2880L, WxGrid.cellNode(0.0, 179.99))
         assertEquals(null, WxGrid.geoOf(-89.0, 0.0))
+        // Run-pack entry addressing (server pack::Header::entry_offset).
+        assertEquals(64L, WxPack.runEntryOffset(0, 0))
+        assertEquals(64L + (142L * 360 + 193) * 120, WxPack.runEntryOffset(142, 193))
     }
 
     @Test
