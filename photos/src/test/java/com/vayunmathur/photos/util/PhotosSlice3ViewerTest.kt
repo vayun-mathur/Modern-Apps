@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.library.ui.ZoomState
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.VideoData
@@ -30,7 +31,6 @@ import com.vayunmathur.photos.ui.PhotoDetailSection
 import com.vayunmathur.photos.ui.PhotoMetadataCard
 import com.vayunmathur.photos.ui.PhotoViewerActions
 import com.vayunmathur.photos.ui.PhotoViewerWideLayout
-import com.vayunmathur.photos.ui.ZoomState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

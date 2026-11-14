@@ -104,7 +104,6 @@ _Install: ./install photos (dev by default)._
 - com/vayunmathur/photos/ui/PhotoFilmstrip.kt
 - com/vayunmathur/photos/ui/PhotoViewerActions.kt
 - com/vayunmathur/photos/ui/PhotoViewerWideLayout.kt
-- com/vayunmathur/photos/ui/PhotoZoomGestures.kt
 - com/vayunmathur/photos/ui/EditRoute.kt
 - com/vayunmathur/photos/ui/EditActivity.kt
 - com/vayunmathur/photos/ui/FaceBoxLayer.kt

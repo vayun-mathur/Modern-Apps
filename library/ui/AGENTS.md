@@ -78,6 +78,9 @@
 - com/vayunmathur/library/ui/PopVisibility.kt
 - com/vayunmathur/library/ui/FreeHeightBottomSheet.kt
 - com/vayunmathur/library/ui/FreeHeightSheetState.kt
+### Media viewer
+- com/vayunmathur/library/ui/ZoomState.kt — pure zoom/pan value + anchored pinch, clamp, double-tap math
+- com/vayunmathur/library/ui/ZoomGestures.kt — `zoomGestures()` pinch/pan/double-tap modifier, pager-friendly (photos viewer, appstore screenshots)
 ### Forms + settings
 - com/vayunmathur/library/ui/FormComponents.kt
 - com/vayunmathur/library/ui/FormSection.kt

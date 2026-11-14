@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.IntSize
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.library.ui.ZoomState
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
@@ -19,7 +20,6 @@ import com.vayunmathur.photos.data.VideoFilterPreset
 import com.vayunmathur.photos.ui.OcrTextLayer
 import com.vayunmathur.photos.ui.SecureFolderPage
 import com.vayunmathur.photos.ui.VaultViewerScreen
-import com.vayunmathur.photos.ui.ZoomState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

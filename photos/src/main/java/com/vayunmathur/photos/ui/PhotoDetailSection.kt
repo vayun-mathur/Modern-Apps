@@ -24,6 +24,7 @@ import com.vayunmathur.library.ui.FadeVisibility
 import com.vayunmathur.library.ui.FilledTonalButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.R as UiR
+import com.vayunmathur.library.ui.ZoomState
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.OcrLayout
 import com.vayunmathur.photos.data.Photo

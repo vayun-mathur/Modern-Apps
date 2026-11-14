@@ -20,12 +20,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.core.net.toUri
+import com.vayunmathur.library.ui.ZoomState
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.library.ui.zoomGestures
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.OcrLayout
 import com.vayunmathur.photos.data.Photo
@@ -40,9 +41,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.absoluteValue
-
-// Helper class to store zoom information
-data class ZoomState(val scale: Float = 1f, val offset: Offset = Offset.Zero)
 
 @Composable
 fun PhotoDetailView(
@@ -182,12 +180,12 @@ fun PhotoDetailView(
         modifier =
             Modifier.fillMaxSize()
                 .then(
-                    photoZoomGestures(
-                        currentZoom = currentZoom,
+                    zoomGestures(
+                        zoom = currentZoom,
                         containerSize = sizeReader,
-                        onZoomUpdate = updatedOnZoomUpdate,
-                        onToggleMetadata = updatedOnToggleMetadata,
-                        isChromeTap = { tap -> metadataSize.height <= 0 || tap.y < (sizeReader().height - metadataSize.height).toFloat() },
+                        onZoomChange = updatedOnZoomUpdate,
+                        onTap = { updatedOnToggleMetadata() },
+                        acceptsTap = { tap -> metadataSize.height <= 0 || tap.y < (sizeReader().height - metadataSize.height).toFloat() },
                     )
                 )
     ) {

@@ -29,6 +29,8 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.ZoomState
+import com.vayunmathur.library.ui.zoomGestures
 import java.io.File
 
 /**
@@ -65,11 +67,11 @@ fun VaultViewerScreen(
                 .background(Color.Black)
                 .onGloballyPositioned { containerSize = it.size }
                 .then(
-                    photoZoomGestures(
-                        currentZoom = zoomState,
+                    zoomGestures(
+                        zoom = zoomState,
                         containerSize = { containerSize },
-                        onZoomUpdate = { zoom = it },
-                        onToggleMetadata = { isChromeVisible = !isChromeVisible },
+                        onZoomChange = { zoom = it },
+                        onTap = { isChromeVisible = !isChromeVisible },
                     )
                 )
         ) {
