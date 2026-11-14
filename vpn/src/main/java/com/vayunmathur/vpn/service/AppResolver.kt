@@ -23,6 +23,7 @@ class AppResolver(private val context: Context) {
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     private val packageManager: PackageManager = context.packageManager
 
+    /** Immutable value describing resolved app. */
     data class ResolvedApp(
         val uid: Int,
         val packageName: String?,
@@ -182,6 +183,7 @@ class AppResolver(private val context: Context) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>) = size > max
         }
 
+    /** Shared constants and helpers for AppResolver. */
     companion object {
         private const val TAG = "AppResolver"
         private const val MAX_FLOWS = 4096

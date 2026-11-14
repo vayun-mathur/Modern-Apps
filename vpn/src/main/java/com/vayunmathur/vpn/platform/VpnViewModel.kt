@@ -40,6 +40,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.IOException
 
+/** View model for the vpn screen: holds UI state and handles its actions. */
 class VpnViewModel(
     application: Application,
     private val dao: VpnConfigDao,
@@ -224,12 +225,14 @@ class VpnViewModel(
         return list.firstOrNull { it.id == id } ?: default()
     }
 
+    /** Shared constants and helpers for VpnViewModel. */
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
         private const val POLL_RUNNING_MS = 500L
     }
 }
 
+/** Creates vpn view model instances. */
 class VpnViewModelFactory(
     private val application: Application,
     private val configDao: VpnConfigDao,

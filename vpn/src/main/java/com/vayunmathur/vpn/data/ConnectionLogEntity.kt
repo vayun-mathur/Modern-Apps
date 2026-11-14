@@ -36,6 +36,7 @@ data class ConnectionLogEntity(
     val requestCount: Long = 1,
 ) : DatabaseItem
 
+/** Immutable value describing app usage summary. */
 data class AppUsageSummary(
     val packageName: String?,
     val appLabel: String,
@@ -43,11 +44,13 @@ data class AppUsageSummary(
     val totalCount: Long,
 )
 
+/** Immutable value describing domain count summary. */
 data class DomainCountSummary(
     val domain: String,
     val totalCount: Long,
 )
 
+/** Immutable value describing domain bytes summary. */
 data class DomainBytesSummary(
     val domain: String,
     val totalBytes: Long,

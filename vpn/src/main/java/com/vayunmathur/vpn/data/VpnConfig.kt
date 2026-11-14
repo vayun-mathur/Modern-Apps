@@ -3,6 +3,7 @@ package com.vayunmathur.vpn.data
 import com.vayunmathur.library.util.DatabaseItem
 import kotlinx.serialization.Serializable
 
+/** Immutable value describing vpn config. */
 @Serializable
 data class VpnConfig(
     override val id: Long = 0,
@@ -20,6 +21,7 @@ data class VpnConfig(
     val lastUsed: Long = 0,
 ) : DatabaseItem
 
+/** Immutable value describing wg quick import. */
 data class WgQuickImport(
     val privateKey: String,
     val address: String,
@@ -32,6 +34,7 @@ data class WgQuickImport(
     val peerKeepalive: Int,
 )
 
+/** Singleton holding wg config parser state and operations. */
 object WgConfigParser {
     fun parse(confText: String): Result<WgQuickImport> = runCatching {
         buildImport(splitSections(confText))
@@ -130,6 +133,7 @@ fun VpnConfig.endpointPort(): Int = peerEndpoint.substringAfterLast(':').toIntOr
 
 private const val DEFAULT_WG_PORT = 51820
 
+/** Immutable value describing vpn stats. */
 data class VpnStats(
     val handshakeAgoMs: Long = 0,
     val txBytes: Long = 0,

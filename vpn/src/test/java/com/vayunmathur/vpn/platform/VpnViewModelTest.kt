@@ -172,7 +172,7 @@ class VpnViewModelTest {
         try {
             factory.create(String::class.java as Class<androidx.lifecycle.ViewModel>)
             kotlin.test.fail("should reject other VM classes")
-        } catch (e: IllegalArgumentException) { /* expected */ }
+        } catch (_: IllegalArgumentException) { /* expected */ }
     }
 
     @Test fun bypassListRoundTrip() { runBlocking {

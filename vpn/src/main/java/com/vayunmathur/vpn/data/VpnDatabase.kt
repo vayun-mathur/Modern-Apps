@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 
 const val DB_NAME = "vpn-db"
 
+/** Immutable value describing vpn config entity. */
 @Entity
 data class VpnConfigEntity(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
@@ -51,6 +52,7 @@ fun VpnConfig.toEntity() = VpnConfigEntity(
     lastUsed = lastUsed,
 )
 
+/** Contract for vpn config dao. */
 @Dao
 interface VpnConfigDao {
     @Query("SELECT * FROM VpnConfigEntity ORDER BY lastUsed DESC, id DESC")
@@ -116,11 +118,13 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/** Vpn Database: a room database implementation for vpn database. */
 @Database(entities = [VpnConfigEntity::class, ConnectionLogEntity::class], version = 2, exportSchema = false)
 abstract class VpnDatabase : RoomDatabase() {
     abstract fun vpnConfigDao(): VpnConfigDao
     abstract fun connectionLogDao(): ConnectionLogDao
 
+    /** Shared constants and helpers for VpnDatabase. */
     companion object : DatabaseMigrations {
         override val migrations: List<Migration> = listOf(MIGRATION_1_2)
 

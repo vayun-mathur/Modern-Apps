@@ -9,6 +9,7 @@ import java.net.InetAddress
  */
 object PacketInspector {
 
+    /** Immutable value describing parsed packet. */
     data class ParsedPacket(
         val protocolNumber: Int,
         val protocol: String,

@@ -17,6 +17,7 @@ class VpnRepository private constructor(context: Context) :
     val vpnConfigDao: VpnConfigDao get() = db.vpnConfigDao()
     val connectionLogDao: ConnectionLogDao get() = db.connectionLogDao()
 
+    /** Shared constants and helpers for VpnRepository. */
     companion object {
         @Volatile
         private var instance: VpnRepository? = null

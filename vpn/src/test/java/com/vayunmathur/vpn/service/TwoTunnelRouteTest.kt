@@ -43,6 +43,8 @@ class TwoTunnelRouteTest {
         return Tunnel(a, privA, pubA) to Tunnel(b, privB, pubB)
     }
 
+    // detekt EmptyElseBlock false positive: this if has no else branch at all.
+    @Suppress("EmptyElseBlock")
     private fun tempChannel(name: String): FileChannel {
         val f = File(ctx.cacheDir, name).apply { if (exists()) delete(); createNewFile() }
         return FileChannel.open(f.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)

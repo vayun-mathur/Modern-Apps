@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private lateinit var configDao: VpnConfigDao
     private lateinit var logDao: ConnectionLogDao

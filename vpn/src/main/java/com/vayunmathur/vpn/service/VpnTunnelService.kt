@@ -55,6 +55,7 @@ import kotlinx.serialization.json.Json
  */
 class VpnTunnelService : VpnService() {
 
+    /** Shared constants and helpers for VpnTunnelService. */
     companion object {
         private const val TAG = "VpnTunnelService"
         const val ACTION_CONNECT = "com.vayunmathur.vpn.CONNECT"

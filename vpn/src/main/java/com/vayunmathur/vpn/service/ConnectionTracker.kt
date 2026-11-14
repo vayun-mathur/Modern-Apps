@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class ConnectionTracker {
 
+    /** Kinds of direction. */
     enum class Direction { TX, RX }
 
     /**
@@ -223,6 +224,7 @@ class ConnectionTracker {
         }
     }
 
+    /** Shared constants and helpers for ConnectionTracker. */
     companion object {
         @Volatile
         var globalInstance: ConnectionTracker? = null

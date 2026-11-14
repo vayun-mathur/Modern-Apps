@@ -236,6 +236,7 @@ class DnsCache(private val maxSize: Int = 1500) {
         }
     }
 
+    /** Shared constants and helpers for DnsCache. */
     companion object {
         private const val DNS_PORT = 53
         private const val DNS_HEADER_LEN = 12
