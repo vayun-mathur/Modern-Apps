@@ -36,8 +36,21 @@ class PlayWithApiTest {
         ),
     )
 
+    // Hermetic offline: dispensing always fails, whatever network the
+    // host running the tests happens to have.
+    private fun offlinePlayRepo() = PlayRepository(
+        context,
+        object : AnonymousAuthRepository() {
+            override suspend fun ensureAuthData(
+                deviceProps: java.util.Properties,
+                dispenserUrls: List<String>,
+            ): Result<AuthData> =
+                Result.failure(IOException("offline test double"))
+        },
+    )
+
     private fun repoWithSession(): PlayRepository {
-        val repo = PlayRepository(context)
+        val repo = offlinePlayRepo()
         repo.cachedAuthData = authData()
         repo.dispensedAt = System.currentTimeMillis()
         return repo
@@ -45,7 +58,7 @@ class PlayWithApiTest {
 
     @Test
     fun `withApi without a session returns null and never runs the block`() = runBlocking {
-        val repo = PlayRepository(context)
+        val repo = offlinePlayRepo()
         var ran = false
         val result = repo.withApi { ran = true; "value" }
         assertNull(result)
@@ -75,7 +88,7 @@ class PlayWithApiTest {
 
     @Test
     fun `withFreshApi answers null when no session can be dispensed`() = runBlocking {
-        val repo = PlayRepository(context)
+        val repo = offlinePlayRepo()
         var ran = false
         val result = repo.withFreshApi { ran = true; "value" }
         assertNull(result)
@@ -84,7 +97,7 @@ class PlayWithApiTest {
 
     @Test
     fun `detailsOrNull of no packages is an answered empty lookup`() = runBlocking {
-        val repo = PlayRepository(context)
+        val repo = offlinePlayRepo()
         assertEquals(emptyList(), repo.detailsOrNull(emptyList()))
     }
 }

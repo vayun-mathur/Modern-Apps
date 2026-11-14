@@ -56,9 +56,10 @@ sealed interface PlayAuthState {
  * knowing that an account has to be dispensed first, and the "cycle a dead account and
  * try again" rule exists in exactly one place.
  */
-open class PlayRepository(private val context: Context) {
-
-    private val anonAuthRepo = AnonymousAuthRepository()
+open class PlayRepository(
+    private val context: Context,
+    private val anonAuthRepo: AnonymousAuthRepository = AnonymousAuthRepository(),
+) {
     private val httpClient = PlayHttpClient()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 

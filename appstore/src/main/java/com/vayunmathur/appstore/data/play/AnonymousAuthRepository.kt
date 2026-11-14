@@ -31,7 +31,28 @@ import kotlin.random.Random
  * exponential backoff and jitter rather than surfaced immediately, so a brief
  * throttle no longer leaves Play access broken until the app restarts.
  */
-class AnonymousAuthRepository {
+open class AnonymousAuthRepository(
+    /**
+     * Builds the Play session from dispensed credentials (the Google
+     * checkin). Injectable so tests can fail the checkin deterministically
+     * instead of depending on the host having no network; production uses
+     * gplayapi's [AuthHelper] unchanged.
+     */
+    private val authBuilder: suspend (
+        email: String,
+        token: String,
+        deviceProps: Properties,
+    ) -> AuthData = { email, token, props ->
+        AuthHelper.build(
+            email = email,
+            token = token,
+            tokenType = AuthHelper.Token.AUTH,
+            isAnonymous = true,
+            properties = props,
+            locale = java.util.Locale.getDefault(),
+        )
+    },
+) {
 
     companion object {
         private const val TAG = "AnonAuthRepo"
@@ -180,17 +201,7 @@ class AnonymousAuthRepository {
         deviceProps: Properties
     ): Result<AuthData> = withContext(Dispatchers.IO) {
         try {
-            val locale = java.util.Locale.getDefault()
-            val authData = AuthHelper
-                .build(
-                    email = email,
-                    token = token,
-                    tokenType = AuthHelper.Token.AUTH,
-                    isAnonymous = true,
-                    properties = deviceProps,
-                    locale = locale
-                )
-            Result.success(authData)
+            Result.success(authBuilder(email, token, deviceProps))
         } catch (expected: IllegalStateException) {
             Log.status(TAG, "buildAuthData failed: ${expected.message}", expected)
             Result.failure(expected)
@@ -208,7 +219,7 @@ class AnonymousAuthRepository {
      * that got throttled at the same moment would otherwise retry in lockstep
      * and throttle each other again.
      */
-    suspend fun ensureAuthData(
+    open suspend fun ensureAuthData(
         deviceProps: Properties,
         dispenserUrls: List<String> = FALLBACK_DISPENSERS
     ): Result<AuthData> = withContext(Dispatchers.IO) {

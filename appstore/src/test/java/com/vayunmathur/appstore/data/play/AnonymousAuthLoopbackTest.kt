@@ -31,6 +31,13 @@ class AnonymousAuthLoopbackTest {
     private val lastBody = AtomicReference<String?>(null)
     private val repo = AnonymousAuthRepository()
 
+    // Hermetic checkin failure: the Google checkin is replaced by a
+    // failing double so the tests below do not depend on the host
+    // having no network route to Google.
+    private val offlineRepo = AnonymousAuthRepository { _, _, _ ->
+        throw java.io.IOException("checkin unreachable (offline test double)")
+    }
+
     private fun props(): Properties = DeviceInfoProvider.auroraProfile(
         ApplicationProvider.getApplicationContext<Context>(),
     ).apply {
@@ -115,7 +122,7 @@ class AnonymousAuthLoopbackTest {
         // then performs a device checkin against Google, which is
         // unreachable here and surfaces as an IOException.
         assertFailsWith<java.io.IOException> {
-            repo.ensureAuthData(props(), listOf("$base/auth"))
+            offlineRepo.ensureAuthData(props(), listOf("$base/auth"))
         }
         Unit
     }
@@ -132,7 +139,7 @@ class AnonymousAuthLoopbackTest {
     @Test
     fun `buildAuthData needs the google checkin`() = runBlocking {
         assertFailsWith<java.io.IOException> {
-            repo.buildAuthData("anon@example.org", "tok-123", props())
+            offlineRepo.buildAuthData("anon@example.org", "tok-123", props())
         }
         Unit
     }

@@ -20,9 +20,22 @@ class PlayRepositoryAuthFailureTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
+    // Hermetic offline: dispensing always fails, whatever network the
+    // host running the tests happens to have.
+    private fun repo() = PlayRepository(
+        context,
+        object : AnonymousAuthRepository() {
+            override suspend fun ensureAuthData(
+                deviceProps: java.util.Properties,
+                dispenserUrls: List<String>,
+            ): Result<com.aurora.gplayapi.data.models.AuthData> =
+                Result.failure(java.io.IOException("offline test double"))
+        },
+    )
+
     @Test
     fun `ensureAuth fails and records an error state when the dispenser is unreachable`() = runBlocking {
-        val repo = PlayRepository(context)
+        val repo = repo()
         val result = repo.ensureAuth()
         assertTrue(result.isFailure, "auth must fail with no network: $result")
         assertTrue(
@@ -33,7 +46,7 @@ class PlayRepositoryAuthFailureTest {
 
     @Test
     fun `fresh-session reads answer empty when auth cannot be dispensed`() = runBlocking {
-        val repo = PlayRepository(context)
+        val repo = repo()
         assertTrue(repo.details(listOf("com.example.a", "com.example.b")).isEmpty())
         assertTrue(repo.topChart().isEmpty())
         assertTrue(repo.homeClusters().isEmpty())
@@ -41,7 +54,7 @@ class PlayRepositoryAuthFailureTest {
 
     @Test
     fun `purchase throws when no session can be dispensed`() = runBlocking {
-        val repo = PlayRepository(context)
+        val repo = repo()
         assertFailsWith<Exception> {
             repo.purchase("com.example.a", versionCode = 1L, offerType = 0, certHash = null)
         }
