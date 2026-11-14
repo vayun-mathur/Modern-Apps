@@ -2,6 +2,7 @@ package com.vayunmathur.games.pipes.platform
 
 import com.vayunmathur.library.util.BaseBackupAgent
 
+/** App Backup Agent: a base backup agent implementation for app backup agent. */
 class AppBackupAgent : BaseBackupAgent() {
     override val prefNames: List<String>
         get() = listOf("level_stats", "daily_stats", "pipes_progress")

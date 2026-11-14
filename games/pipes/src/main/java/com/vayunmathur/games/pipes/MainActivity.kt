@@ -7,6 +7,7 @@ import com.vayunmathur.games.pipes.platform.PipesViewModel
 import com.vayunmathur.games.pipes.ui.PipesTheme
 import com.vayunmathur.library.ui.MaActivity
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     override fun onCreateBeforeContent() {
         LevelPack.init(this)

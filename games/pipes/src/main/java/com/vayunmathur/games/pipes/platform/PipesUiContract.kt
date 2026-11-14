@@ -60,6 +60,7 @@ interface PipesActions {
     fun commitDraw() {}
     fun onUndo() {}
     fun onRestart() {}
+    /** Shared constants and helpers for PipesActions. */
     companion object {
         val Noop: PipesActions = object : PipesActions {}
     }
@@ -79,6 +80,7 @@ interface SettingsActions {
     fun setReminderEnabled(enabled: Boolean) {}
     fun setReminderTime(hour: Int, minute: Int) {}
 
+    /** Shared constants and helpers for SettingsActions. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }

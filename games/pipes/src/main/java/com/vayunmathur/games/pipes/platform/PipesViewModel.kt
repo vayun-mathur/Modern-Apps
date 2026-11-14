@@ -37,6 +37,7 @@ import kotlinx.coroutines.withContext
 /** The board position the screens draw; the pure model lives in domain/. */
 typealias PipesGameState = BoardState
 
+/** Immutable value describing pipes ui state. */
 data class PipesUiState(
     val packIndex: Int = -1,
     val levelIndex: Int = -1,
@@ -54,6 +55,7 @@ data class PipesUiState(
     val leftStart: Boolean = false,
 )
 
+/** Pipes View Model: a application implementation for pipes view model. */
 class PipesViewModel(application: Application) : AndroidViewModel(application), PipesActions {
 
     val repository: CompletedLevelsRepository = CompletedLevelsRepository(application)
@@ -425,6 +427,7 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
         achievementsManager.dismissNotification()
     }
 
+    /** Shared constants and helpers for PipesViewModel. */
     companion object {
         const val KEY_COLORBLIND = "pipes_colorblind"
 

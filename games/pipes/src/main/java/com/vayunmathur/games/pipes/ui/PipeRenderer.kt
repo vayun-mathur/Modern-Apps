@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 
+/** Kinds of direction. */
 enum class Direction { UP, DOWN, LEFT, RIGHT }
 
 /** Six pipe exits for pointy-top hex cells (screen coords, y down): E=0°, SE=60°, SW=120°, W=180°, NW=240°, NE=300°. */

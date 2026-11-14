@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/** Manages pipes achievements. */
 class PipesAchievementsManager(
     context: Context,
     json: String,

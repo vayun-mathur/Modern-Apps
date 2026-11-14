@@ -9,12 +9,16 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
+/** Immutable value describing cell pos; carries row, col. */
 data class CellPos(val row: Int, val col: Int)
 
+/** Immutable value describing render pos; carries x, y. */
 data class RenderPos(val x: Float, val y: Float)
 
+/** Immutable value describing endpoint pair; carries colorIndex, cells. */
 data class EndpointPair(val colorIndex: Int, val cells: List<CellPos>)
 
+/** Immutable value describing level data. */
 data class LevelData(
     val id: String,
     val rows: Int,
@@ -29,11 +33,13 @@ data class LevelData(
     val grid: String = "square"
 )
 
+/** Immutable value describing level pack. */
 data class LevelPack(
     val name: String,
     val shape: String,
     val levels: List<LevelData>
 ) {
+    /** Shared constants and helpers for LevelPack. */
     companion object {
         private val PACK_FILES = listOf(
             "packs/5x5.json",
@@ -145,65 +151,99 @@ private fun levelFromJson(json: kotlinx.serialization.json.JsonObject): LevelDat
     // "grid": "hex" derives odd-r six-neighbour adjacency + staggered centers, so hex packs only
     // declare cells + endpoints. Anything else is square with an optional explicit adjacency.
     val grid = json["grid"]?.jsonPrimitive?.content ?: "square"
-
-    val cells = json["cells"]?.jsonArray?.map {
-        val arr = it.jsonArray
-        CellPos(arr[0].jsonPrimitive.int, arr[1].jsonPrimitive.int)
-    }?.toSet() ?: rectangularCells(rows, cols)
-
-    val adjacency = json["adjacency"]?.jsonObject?.map { (key, value) ->
-        val parts = key.split(",")
-        val cell = CellPos(parts[0].toInt(), parts[1].toInt())
-        val neighbors = value.jsonArray.map {
-            val arr = it.jsonArray
-            CellPos(arr[0].jsonPrimitive.int, arr[1].jsonPrimitive.int)
-        }
-        cell to neighbors
-    }?.toMap() ?: if (grid == "hex") computeHexAdjacency(cells) else computeAdjacency(cells)
-
+    val cells = cellsFromJson(json, rows, cols)
+    val adjacency = adjacencyFromJson(json, cells, grid)
     // Portals as paired cells: "portals": [[[r,c],[r,c]], ...]. Each pair is bidirectional.
     // Transit is a normal adjacency step: the links are unioned into the adjacency below, and
     // isValidStep accepts them like any other edge.
-    val portals = json["portals"]?.jsonArray?.flatMap { pair ->
-        val ends = pair.jsonArray.map { c ->
-            val arr = c.jsonArray
-            CellPos(arr[0].jsonPrimitive.int, arr[1].jsonPrimitive.int)
-        }
-        if (ends.size == 2) listOf(ends[0] to ends[1], ends[1] to ends[0]) else emptyList()
-    }?.toMap() ?: emptyMap()
-
+    val portals = pairsFromJson(json, "portals").toMap()
     // Extra long-range edges (wrap/torus): "extraEdges": [[[r,c],[r,c]], ...], bidirectional.
-    val extraEdges = json["extraEdges"]?.jsonArray?.flatMap { pair ->
-        val ends = pair.jsonArray.map { c ->
-            val arr = c.jsonArray
-            CellPos(arr[0].jsonPrimitive.int, arr[1].jsonPrimitive.int)
-        }
-        if (ends.size == 2) listOf(ends[0] to ends[1], ends[1] to ends[0]) else emptyList()
-    } ?: emptyList()
+    val extraEdges = pairsFromJson(json, "extraEdges")
+    val fullAdjacency = mergedAdjacency(adjacency, cells, portals, extraEdges)
+    val renderPositions = renderPositionsFromJson(json, cells, grid)
+    val endpoints = endpointsFromJson(json)
+    val bridges = json["bridges"]?.jsonArray?.map {
+        val arr = it.jsonArray
+        CellPos(arr[0].jsonPrimitive.int, arr[1].jsonPrimitive.int)
+    }?.toSet() ?: emptySet()
+    val optimalMoves = json["optimalMoves"]!!.jsonPrimitive.int
+    return LevelData(
+        id, rows, cols, cells, fullAdjacency, renderPositions, endpoints, bridges, optimalMoves, portals, grid,
+    )
+}
 
-    val fullAdjacency = if (portals.isEmpty() && extraEdges.isEmpty()) {
-        adjacency
-    } else {
-        val merged = adjacency.mapValues { (_, neighbors) -> neighbors.toMutableSet() }.toMutableMap()
-        for ((a, b) in portals) {
-            merged.getOrPut(a) { mutableSetOf() }.add(b)
-        }
-        for ((a, b) in extraEdges) {
-            merged.getOrPut(a) { mutableSetOf() }.add(b)
-        }
-        for (cell in cells) merged.putIfAbsent(cell, mutableSetOf())
-        merged.mapValues { (_, neighbors) -> neighbors.toList() }
+/** Declared cells, or the full rows x cols rectangle when omitted. */
+private fun cellsFromJson(
+    json: kotlinx.serialization.json.JsonObject,
+    rows: Int,
+    cols: Int,
+): Set<CellPos> = json["cells"]?.jsonArray?.map {
+    val arr = it.jsonArray
+    CellPos(arr[0].jsonPrimitive.int, arr[1].jsonPrimitive.int)
+}?.toSet() ?: rectangularCells(rows, cols)
+
+/** Declared adjacency, or the grid-derived adjacency when omitted. */
+private fun adjacencyFromJson(
+    json: kotlinx.serialization.json.JsonObject,
+    cells: Set<CellPos>,
+    grid: String,
+): Map<CellPos, List<CellPos>> = json["adjacency"]?.jsonObject?.map { (key, value) ->
+    val parts = key.split(",")
+    val cell = CellPos(parts[0].toInt(), parts[1].toInt())
+    val neighbors = value.jsonArray.map {
+        val arr = it.jsonArray
+        CellPos(arr[0].jsonPrimitive.int, arr[1].jsonPrimitive.int)
     }
+    cell to neighbors
+}?.toMap() ?: if (grid == "hex") computeHexAdjacency(cells) else computeAdjacency(cells)
 
-    val renderPositions = json["renderPositions"]?.jsonObject?.map { (key, value) ->
-        val parts = key.split(",")
-        val cell = CellPos(parts[0].toInt(), parts[1].toInt())
-        val posObj = value.jsonObject
-        val pos = RenderPos(posObj["x"]!!.jsonPrimitive.float, posObj["y"]!!.jsonPrimitive.float)
-        cell to pos
-    }?.toMap() ?: if (grid == "hex") hexRenderPositions(cells) else null
+/** Bidirectional cell pairs declared under [key] ("portals" / "extraEdges"). */
+private fun pairsFromJson(
+    json: kotlinx.serialization.json.JsonObject,
+    key: String,
+): List<Pair<CellPos, CellPos>> = json[key]?.jsonArray?.flatMap { pair ->
+    val ends = pair.jsonArray.map { c ->
+        val arr = c.jsonArray
+        CellPos(arr[0].jsonPrimitive.int, arr[1].jsonPrimitive.int)
+    }
+    if (ends.size == 2) listOf(ends[0] to ends[1], ends[1] to ends[0]) else emptyList()
+} ?: emptyList()
 
-    val endpoints = json["endpoints"]!!.jsonArray.mapIndexed { index, endpoint ->
+/** Base adjacency unioned with portals and extra edges. */
+private fun mergedAdjacency(
+    adjacency: Map<CellPos, List<CellPos>>,
+    cells: Set<CellPos>,
+    portals: Map<CellPos, CellPos>,
+    extraEdges: List<Pair<CellPos, CellPos>>,
+): Map<CellPos, List<CellPos>> {
+    if (portals.isEmpty() && extraEdges.isEmpty()) return adjacency
+    val merged = adjacency.mapValues { (_, neighbors) -> neighbors.toMutableSet() }.toMutableMap()
+    for ((a, b) in portals) {
+        merged.getOrPut(a) { mutableSetOf() }.add(b)
+    }
+    for ((a, b) in extraEdges) {
+        merged.getOrPut(a) { mutableSetOf() }.add(b)
+    }
+    for (cell in cells) merged.putIfAbsent(cell, mutableSetOf())
+    return merged.mapValues { (_, neighbors) -> neighbors.toList() }
+}
+
+/** Declared render positions, or hex-derived ones for hex grids. */
+private fun renderPositionsFromJson(
+    json: kotlinx.serialization.json.JsonObject,
+    cells: Set<CellPos>,
+    grid: String,
+): Map<CellPos, RenderPos>? = json["renderPositions"]?.jsonObject?.map { (key, value) ->
+    val parts = key.split(",")
+    val cell = CellPos(parts[0].toInt(), parts[1].toInt())
+    val posObj = value.jsonObject
+    val pos = RenderPos(posObj["x"]!!.jsonPrimitive.float, posObj["y"]!!.jsonPrimitive.float)
+    cell to pos
+}?.toMap() ?: if (grid == "hex") hexRenderPositions(cells) else null
+
+/** Endpoint pairs, colour defaulting to declaration order. */
+private fun endpointsFromJson(json: kotlinx.serialization.json.JsonObject): List<EndpointPair> =
+    json["endpoints"]!!.jsonArray.mapIndexed { index, endpoint ->
         val epObj = endpoint.jsonObject
         val colorIndex = epObj["color"]?.jsonPrimitive?.intOrNull ?: index
         val epCells = epObj["cells"]!!.jsonArray.map { c ->
@@ -212,13 +252,3 @@ private fun levelFromJson(json: kotlinx.serialization.json.JsonObject): LevelDat
         }
         EndpointPair(colorIndex, epCells)
     }
-
-    val bridges = json["bridges"]?.jsonArray?.map {
-        val arr = it.jsonArray
-        CellPos(arr[0].jsonPrimitive.int, arr[1].jsonPrimitive.int)
-    }?.toSet() ?: emptySet()
-
-    val optimalMoves = json["optimalMoves"]!!.jsonPrimitive.int
-
-    return LevelData(id, rows, cols, cells, fullAdjacency, renderPositions, endpoints, bridges, optimalMoves, portals, grid)
-}

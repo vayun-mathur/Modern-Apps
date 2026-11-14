@@ -44,6 +44,7 @@ class ProgressRepository(context: Context) {
 
     private fun key(levelId: String) = "level_$levelId"
 
+    /** Shared constants and helpers for ProgressRepository. */
     companion object {
         const val PREFS_NAME = "pipes_progress"
         private const val ORDER_KEY = "order"
