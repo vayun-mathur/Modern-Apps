@@ -87,6 +87,7 @@ class SosActivity : ComponentActivity() {
         if (!isFinishing) recreate()
     }
 
+    /** Intent extras and factories for opening the SOS countdown screen. */
     companion object {
         private const val EXTRA_REMAINING_MS = "STATE_MILLIS_LEFT"
         private const val EXTRA_DEADLINE_MS = "STATE_DEADLINE_WALL_MS"

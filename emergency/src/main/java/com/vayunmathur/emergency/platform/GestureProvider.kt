@@ -186,6 +186,7 @@ class GestureProvider : ContentProvider() {
         selectionArgs: Array<String>?,
     ): Int = throw UnsupportedOperationException()
 
+    /** Wire-protocol constants and static reads for [GestureProvider]. */
     companion object {
         private const val OVERRIDE_PREFS = "local_emergency_number_override_shared_pref"
 

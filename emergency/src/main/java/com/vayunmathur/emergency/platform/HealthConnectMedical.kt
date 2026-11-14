@@ -112,6 +112,7 @@ class HealthConnectMedical(context: Context) {
         }
     }
 
+    /** Health Connect permissions and paging constants for [HealthConnectMedical]. */
     companion object {
         /** The read permissions the emergency card needs. Requested from the edit screen. */
         val PERMISSIONS = setOf(

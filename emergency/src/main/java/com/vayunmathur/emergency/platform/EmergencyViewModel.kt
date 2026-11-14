@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/** ViewModel backing the emergency info screens, combining stored info, grants and Health Connect state. */
 class EmergencyViewModel(app: Application) : AndroidViewModel(app), EmergencyActions {
 
     private val repository = EmergencyRepository.get(app)

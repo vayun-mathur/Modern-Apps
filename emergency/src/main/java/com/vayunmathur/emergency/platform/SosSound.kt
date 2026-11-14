@@ -73,6 +73,7 @@ class SosSound(private val context: Context) {
         }
     }
 
+    /** Volume sentinel for [SosSound] when no prior alarm volume was saved. */
     companion object {
         const val UNKNOWN_VOLUME = -1
     }

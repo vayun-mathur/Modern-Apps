@@ -84,61 +84,77 @@ class FakeContactsProvider : ContentProvider() {
             throw SecurityException("READ_CONTACTS revoked for $uri")
         }
         if (uri.toString() in nullUris) return null
+        return cursorFor(projection, queryRows(uri, projection, selection))
+    }
+
+    private fun queryRows(
+        uri: Uri,
+        projection: Array<out String>?,
+        selection: String?,
+    ): List<Map<String, Any?>> {
         val path = uri.path.orEmpty()
-        // Owner name: RawContacts.CONTENT_URI/<id> with DISPLAY_NAME_PRIMARY
-        if (path.startsWith("/raw_contacts/") && projection?.contains(
-                ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY,
-            ) == true
-        ) {
-            val rows = if (ownerName.isEmpty()) emptyList()
-            else listOf(mapOf(ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY to ownerName))
-            return cursorFor(projection, rows)
+        return when {
+            isOwnerNameQuery(path, projection) -> ownerRows()
+            path == "/raw_contacts" -> rawIdRows()
+            path == "/data" && selection != null -> addressRows()
+            path.startsWith("/data/") && uri.pathSegments.size == 2 -> photoRows()
+            else -> phoneRows(uri, projection)
         }
-        // Aggregate -> raw id resolution: query on RawContacts.CONTENT_URI with CONTACT_ID
-        if (path == "/raw_contacts") {
-            val rows = rawIdForContact?.let {
-                listOf(mapOf(ContactsContract.RawContacts._ID to it))
-            } ?: emptyList()
-            return cursorFor(projection, rows)
+    }
+
+    private fun isOwnerNameQuery(path: String, projection: Array<out String>?): Boolean =
+        path.startsWith("/raw_contacts/") &&
+            projection?.contains(ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY) == true
+
+    private fun ownerRows(): List<Map<String, Any?>> =
+        if (ownerName.isEmpty()) {
+            emptyList()
+        } else {
+            listOf(mapOf(ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY to ownerName))
         }
-        // Address rows: query on Data.CONTENT_URI with a selection
-        if (path == "/data" && selection != null) {
-            val cols = listOf(
-                ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS,
-                ContactsContract.CommonDataKinds.StructuredPostal.STREET,
-                ContactsContract.CommonDataKinds.StructuredPostal.CITY,
-                ContactsContract.CommonDataKinds.StructuredPostal.REGION,
-                ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE,
-                ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY,
-            )
-            val rows = addresses.map { row -> cols.zip(row.toList()).toMap() }
-            return cursorFor(projection, rows)
+
+    private fun rawIdRows(): List<Map<String, Any?>> =
+        rawIdForContact?.let { listOf(mapOf(ContactsContract.RawContacts._ID to it)) } ?: emptyList()
+
+    private fun addressRows(): List<Map<String, Any?>> {
+        val cols = listOf(
+            ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS,
+            ContactsContract.CommonDataKinds.StructuredPostal.STREET,
+            ContactsContract.CommonDataKinds.StructuredPostal.CITY,
+            ContactsContract.CommonDataKinds.StructuredPostal.REGION,
+            ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE,
+            ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY,
+        )
+        return addresses.map { row -> cols.zip(row.toList()).toMap() }
+    }
+
+    private fun photoRows(): List<Map<String, Any?>> {
+        val bytes = photoBytes
+        return if (bytes == null) {
+            emptyList()
+        } else {
+            listOf(mapOf(ContactsContract.Contacts.Photo.PHOTO to bytes))
         }
-        // Photo blob: Data.CONTENT_URI/<photoId> (exactly two segments;
-        // phone URIs are /data/phones/<id> and must fall through to below)
-        if (path.startsWith("/data/") && uri.pathSegments.size == 2) {
-            val bytes = photoBytes
-            val rows = if (bytes == null) emptyList()
-            else listOf(mapOf(ContactsContract.Contacts.Photo.PHOTO to bytes))
-            return cursorFor(projection, rows)
-        }
-        // Phone rows (including validation queries with a null projection)
+    }
+
+    private fun phoneRows(uri: Uri, projection: Array<out String>?): List<Map<String, Any?>> {
         val row = phones[uri.toString()]
         if (projection == null) {
-            val rows = if (row == null) emptyList()
-            else listOf(mapOf(ContactsContract.Contacts._ID to 1L))
-            return cursorFor(null, rows)
+            return if (row == null) emptyList() else listOf(mapOf(ContactsContract.Contacts._ID to 1L))
         }
-        val rows = if (row == null) emptyList() else listOf(
-            mapOf<String, Any?>(
-                ContactsContract.Contacts.DISPLAY_NAME to row.name,
-                ContactsContract.CommonDataKinds.Phone.NUMBER to row.number,
-                ContactsContract.CommonDataKinds.Phone.TYPE to row.type,
-                ContactsContract.CommonDataKinds.Phone.LABEL to row.label,
-                ContactsContract.Contacts.Photo.PHOTO_ID to row.photoId,
-            ),
-        )
-        return cursorFor(projection, rows)
+        return if (row == null) {
+            emptyList()
+        } else {
+            listOf(
+                mapOf<String, Any?>(
+                    ContactsContract.Contacts.DISPLAY_NAME to row.name,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER to row.number,
+                    ContactsContract.CommonDataKinds.Phone.TYPE to row.type,
+                    ContactsContract.CommonDataKinds.Phone.LABEL to row.label,
+                    ContactsContract.Contacts.Photo.PHOTO_ID to row.photoId,
+                ),
+            )
+        }
     }
 
     override fun getType(uri: Uri): String = "vnd.android.cursor.item/phone_v2"

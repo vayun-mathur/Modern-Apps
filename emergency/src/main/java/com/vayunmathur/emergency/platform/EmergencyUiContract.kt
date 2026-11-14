@@ -56,6 +56,7 @@ data class OwnerPickCandidates(
     val addresses: List<String>,
 )
 
+/** Callbacks the emergency info screens use to persist edits and re-read stored or Health Connect data. */
 interface EmergencyActions {
     /** Persists the dropdown-selected medical fields (identity comes from a pick). */
     fun saveMedicalInfo(bloodType: String, organDonor: String) {}
@@ -90,6 +91,7 @@ interface EmergencyActions {
     /** Re-reads Health Connect allergies/medications after a permission grant. */
     fun refreshHealthConnect() {}
 
+    /** No-op [EmergencyActions] for previews and tests. */
     companion object {
         val Noop: EmergencyActions = object : EmergencyActions {}
     }
@@ -107,6 +109,7 @@ data class SosUiState(
     val loaded: Boolean = false,
 )
 
+/** Callbacks the SOS countdown screen uses to continue in the background or cancel the countdown. */
 interface SosActions {
     /** Hands the remaining countdown to the foreground service and finishes the screen. */
     fun continueInBackground(remainingMillis: Long) {}
@@ -114,6 +117,7 @@ interface SosActions {
     /** Cancels the countdown entirely (alarm + service + sound). */
     fun cancel() {}
 
+    /** No-op [SosActions] for previews and tests. */
     companion object {
         val Noop: SosActions = object : SosActions {}
     }

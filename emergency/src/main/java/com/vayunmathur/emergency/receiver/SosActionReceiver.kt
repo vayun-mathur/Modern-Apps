@@ -94,6 +94,7 @@ class SosActionReceiver : BroadcastReceiver() {
             .onFailure { Log.status(TAG, "could not place the emergency call to $number", it) }
     }
 
+    /** Broadcast actions and intent factories for [SosActionReceiver]. */
     companion object {
         const val ACTION_MAKE_CALL = "com.vayunmathur.emergency.broadcast.MAKE_EMERGENCY_CALL"
         const val ACTION_CANCEL_COUNTDOWN =

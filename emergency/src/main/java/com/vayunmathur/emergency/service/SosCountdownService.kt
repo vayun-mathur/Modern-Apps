@@ -113,6 +113,7 @@ class SosCountdownService : Service() {
             .onFailure { Log.status(TAG, "could not schedule the SOS call alarm", it) }
     }
 
+    /** Intent extras, vibration pattern and start/stop helpers for [SosCountdownService]. */
     companion object {
         private const val EXTRA_REMAINING_MS = "service.extra.remaining_time_ms"
 

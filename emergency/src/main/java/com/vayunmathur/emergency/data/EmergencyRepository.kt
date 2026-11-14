@@ -163,6 +163,7 @@ class EmergencyRepository private constructor(private val app: Context) {
         }.onFailure { Log.status(TAG, "could not update the settings suggestion state", it) }
     }
 
+    /** Singleton access and preference-file constants for [EmergencyRepository]. */
     companion object {
         private const val PREFS = "emergency_info"
         private const val SUGGESTION_CLASS = "com.vayunmathur.emergency.ui.EditInfoSuggestion"

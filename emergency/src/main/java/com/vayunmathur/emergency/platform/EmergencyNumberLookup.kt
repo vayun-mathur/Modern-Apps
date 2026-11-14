@@ -58,6 +58,7 @@ class EmergencyNumberLookup(private val context: Context) {
         return result == PackageManager.PERMISSION_GRANTED
     }
 
+    /** Shared fallback emergency number for [EmergencyNumberLookup]. */
     companion object {
         /** SettingsLib `FALL_BACK_NUMBER`: the GSM emergency number, reachable everywhere. */
         const val FALLBACK_NUMBER = "112"
