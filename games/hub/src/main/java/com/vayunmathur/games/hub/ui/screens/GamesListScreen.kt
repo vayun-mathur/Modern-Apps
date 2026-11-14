@@ -34,6 +34,7 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.sharedContainer
 import androidx.compose.ui.res.stringResource
 
+/** Kinds of game sort. */
 enum class GameSort { LAST_PLAYED, MOST_PLAYED, NAME, COMPLETION }
 
 /**

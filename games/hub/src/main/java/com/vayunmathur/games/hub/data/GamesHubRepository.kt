@@ -31,6 +31,7 @@ class GamesHubRepository private constructor(context: Context) :
 
     val database: GamesHubDatabase get() = db
 
+    /** Shared constants and helpers for GamesHubRepository. */
     companion object {
         @Volatile
         private var instance: GamesHubRepository? = null

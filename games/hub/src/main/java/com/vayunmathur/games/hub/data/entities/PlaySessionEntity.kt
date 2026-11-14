@@ -4,6 +4,7 @@ import androidx.room3.Entity
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 
+/** Immutable value describing play session entity. */
 @Entity(tableName = "play_sessions", indices = [Index(value = ["sessionId"], unique = true)])
 data class PlaySessionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

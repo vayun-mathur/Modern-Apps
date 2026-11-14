@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/** Immutable value describing cross game stats. */
 data class CrossGameStats(
     val totalPlaytimeMs: Long = 0L,
     val totalSessions: Int = 0,
@@ -38,6 +39,7 @@ data class CrossGameStats(
     val longestStreak: Int = 0
 )
 
+/** View model for the game hub screen: holds UI state and handles its actions. */
 class GameHubViewModel(
     application: Application,
     private val repository: GamesHubRepository,
@@ -244,6 +246,7 @@ class GameHubViewModel(
     fun getActivityForGameFlow(gameId: String): Flow<List<ActivityEventEntity>> =
         repository.activity.activityByGameFlow(gameId, GAME_ACTIVITY_LIMIT)
 
+    /** Shared constants and helpers for GameHubViewModel. */
     companion object {
         private const val RECENT_ACTIVITY_LIMIT = 50
         private const val GAME_ACTIVITY_LIMIT = 30
@@ -261,6 +264,7 @@ class GameHubViewModel(
     }
 }
 
+/** Creates game hub view model instances. */
 class GameHubViewModelFactory(
     private val application: Application,
     private val repository: GamesHubRepository,

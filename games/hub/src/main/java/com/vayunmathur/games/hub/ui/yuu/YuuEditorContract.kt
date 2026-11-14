@@ -24,10 +24,12 @@ data class YuuEditorUiState(
     val initialConfig: YuuFaceConfig = YuuFaceConfig.DEFAULT,
 )
 
+/** Contract for yuu editor actions. */
 interface YuuEditorActions {
     fun onSave(name: String, config: YuuFaceConfig) {}
     fun onDismiss() {}
 
+    /** Shared constants and helpers for YuuEditorActions. */
     companion object {
         val Noop: YuuEditorActions = object : YuuEditorActions {}
     }

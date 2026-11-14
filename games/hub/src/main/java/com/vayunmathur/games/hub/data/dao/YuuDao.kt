@@ -7,6 +7,7 @@ import androidx.room3.Upsert
 import com.vayunmathur.games.hub.data.entities.YuuEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for yuu dao. */
 @Dao
 interface YuuDao {
 

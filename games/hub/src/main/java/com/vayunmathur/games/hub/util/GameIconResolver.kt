@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 
+/** Singleton holding game icon resolver state and operations. */
 object GameIconResolver {
 
     fun resolveAppIcon(context: Context, packageName: String): Drawable? {

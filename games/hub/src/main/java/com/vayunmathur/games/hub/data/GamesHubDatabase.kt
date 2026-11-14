@@ -37,6 +37,7 @@ const val DB_NAME = "games-hub-db"
     version = 3,
     exportSchema = false
 )
+/** Games Hub Database: a room database implementation for games hub database. */
 abstract class GamesHubDatabase : RoomDatabase() {
     abstract fun gameDao(): GameDao
     abstract fun achievementDao(): AchievementDao
@@ -46,6 +47,7 @@ abstract class GamesHubDatabase : RoomDatabase() {
     abstract fun streakDao(): StreakDao
     abstract fun yuuDao(): YuuDao
 
+    /** Shared constants and helpers for GamesHubDatabase. */
     companion object : DatabaseMigrations {
         override val migrations: List<Migration> = listOf(
             // Per-game daily-puzzle streaks. Schemas aren't exported here, so this DDL is written

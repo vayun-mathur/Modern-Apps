@@ -180,7 +180,7 @@ fun YuuEditorScreen(
             ) {
                 when (category) {
                     YuuCategory.Face -> FacePanel(draft)
-                    YuuCategory.Body -> BodyPanel(draft)
+                    YuuCategory.Body -> BodyPanel()
                     YuuCategory.Hair -> HairPanel(draft)
                     YuuCategory.Eyes -> EyesPanel(draft)
                     YuuCategory.Brows -> BrowsPanel(draft)
@@ -509,7 +509,7 @@ private fun FacePanel(d: YuuDraft) {
 }
 
 @Composable
-private fun BodyPanel(d: YuuDraft) {
+private fun BodyPanel() {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionLabel(stringResource(R.string.yuu_body_preview_hint))
         Card(modifier = Modifier.fillMaxWidth()) {

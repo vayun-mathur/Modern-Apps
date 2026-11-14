@@ -15,8 +15,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
+/** Games Hub Provider: a content provider implementation for games hub provider. */
 open class GamesHubProvider : ContentProvider() {
 
+    /** Shared constants and helpers for GamesHubProvider. */
     companion object {
         private const val GAMES_PACKAGE_PREFIX = "com.vayunmathur.games"
 
@@ -171,4 +173,5 @@ open class GamesHubProvider : ContentProvider() {
     override fun getType(uri: Uri): String? = null
 }
 
+/** Games Hub Legacy Provider: a games hub provider implementation for games hub legacy provider. */
 class GamesHubLegacyProvider : GamesHubProvider()

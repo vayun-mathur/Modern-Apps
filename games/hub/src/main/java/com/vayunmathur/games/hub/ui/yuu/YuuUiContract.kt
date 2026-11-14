@@ -11,6 +11,7 @@ data class YuuListUiState(
     val profileYuuId: Long? = null,
 )
 
+/** Contract for yuu list actions. */
 interface YuuListActions {
     fun onCreate() {}
     fun onEdit(yuu: YuuUiModel) {}
@@ -19,6 +20,7 @@ interface YuuListActions {
     fun onSetAsProfile(yuu: YuuUiModel) {}
     fun onClearProfile() {}
 
+    /** Shared constants and helpers for YuuListActions. */
     companion object {
         val Noop: YuuListActions = object : YuuListActions {}
     }

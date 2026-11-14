@@ -80,6 +80,7 @@ interface DashboardActions {
     fun playGame(game: HubGameEntity) {}
     fun openController() {}
 
+    /** Shared constants and helpers for DashboardActions. */
     companion object {
         val Noop: DashboardActions = object : DashboardActions {}
     }
@@ -92,6 +93,7 @@ interface GamesListActions {
     /** Play a suggested game if installed, else open its store listing. */
     fun openSuggestedGame(game: KnownGame) {}
 
+    /** Shared constants and helpers for GamesListActions. */
     companion object {
         val Noop: GamesListActions = object : GamesListActions {}
     }
@@ -103,6 +105,7 @@ interface ProfileActions {
     fun updateAvatarSymbol(symbol: String?) {}
     fun updateProfilePose(poseId: String) {}
 
+    /** Shared constants and helpers for ProfileActions. */
     companion object {
         val Noop: ProfileActions = object : ProfileActions {}
     }

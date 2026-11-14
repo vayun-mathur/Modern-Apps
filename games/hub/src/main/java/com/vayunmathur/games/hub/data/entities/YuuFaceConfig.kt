@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class YuuFaceConfig(
     val faceShape: Int = 0,
-    val skinTone: Long = YUU_SKIN_TONES[3],
+    val skinTone: Long = YUU_SKIN_TONES[DEFAULT_SKIN_TONE_INDEX],
     val earSize: Float = 0.5f,
     val bodyHeight: Float = 0.5f,
     val bodyWeight: Float = 0.5f,
@@ -44,8 +44,10 @@ data class YuuFaceConfig(
     val blushStyle: Int = 0,
     val poseId: String? = null,
 ) {
+    /** Shared constants and helpers for YuuFaceConfig. */
     companion object {
         /** Variant counts the Canvas renderer supports for v1 (Mii-like breadth). */
+        const val DEFAULT_SKIN_TONE_INDEX = 3
         const val FACE_SHAPES = 8
         const val HAIR_STYLES = 12
         const val EYE_STYLES = 12

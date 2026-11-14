@@ -41,6 +41,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
 
     private val vm: GameHubViewModel by viewModels {
@@ -53,8 +54,10 @@ class MainActivity : MaActivity() {
     }
 }
 
+/** Contract for main route. */
 @Serializable
 sealed interface MainRoute : NavKey {
+    /** Singleton holding settings state and operations. */
     @Serializable data object Main : MainRoute
     @Serializable data class GameDetail(val gameId: String) : MainRoute
     @Serializable data class AchievementsForGame(val gameId: String) : MainRoute

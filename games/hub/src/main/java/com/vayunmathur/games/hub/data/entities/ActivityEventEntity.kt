@@ -3,6 +3,7 @@ package com.vayunmathur.games.hub.data.entities
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 
+/** Immutable value describing activity event entity. */
 @Entity(tableName = "activity_events")
 data class ActivityEventEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -13,6 +14,7 @@ data class ActivityEventEntity(
     val description: String? = null,
     val payloadJson: String? = null
 ) {
+    /** Shared constants and helpers for ActivityEventEntity. */
     companion object {
         const val TYPE_ACHIEVEMENT_UNLOCKED = "ACHIEVEMENT_UNLOCKED"
         const val TYPE_SESSION_COMPLETED = "SESSION_COMPLETED"

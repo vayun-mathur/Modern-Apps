@@ -6,6 +6,7 @@ import androidx.room3.Upsert
 import com.vayunmathur.games.hub.data.entities.PlaySessionEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for session dao. */
 @Dao
 interface SessionDao {
 

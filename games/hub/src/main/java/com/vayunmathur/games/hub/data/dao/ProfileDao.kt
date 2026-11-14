@@ -6,6 +6,7 @@ import androidx.room3.Upsert
 import com.vayunmathur.games.hub.data.entities.PlayerProfileEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for profile dao. */
 @Dao
 interface ProfileDao {
 

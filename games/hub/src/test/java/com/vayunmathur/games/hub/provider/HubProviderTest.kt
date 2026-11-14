@@ -139,6 +139,10 @@ class HubProviderTest {
             assertTrue(c.moveToFirst())
             assertEquals(1, c.getInt(c.getColumnIndex(GameHubContract.Legacy.UNLOCKED)))
         }
+    }
+
+    @Test
+    fun achievementUpdatePathMergesAndUnlocks() = runBlocking {
         // Update path follows the same merge + unlock-activity rules.
         val updated = provider.update(
             GameHubContract.buildAchievementProgressItemUri("chess", "win2"),

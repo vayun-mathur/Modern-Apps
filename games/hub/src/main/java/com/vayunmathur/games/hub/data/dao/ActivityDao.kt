@@ -6,6 +6,7 @@ import androidx.room3.Upsert
 import com.vayunmathur.games.hub.data.entities.ActivityEventEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for activity dao. */
 @Dao
 interface ActivityDao {
 
@@ -30,6 +31,7 @@ interface ActivityDao {
     )
     suspend fun trim(keep: Int = ACTIVITY_TRIM_DEFAULT)
 
+    /** Shared constants and helpers for ActivityDao. */
     companion object {
         const val ACTIVITY_TRIM_DEFAULT = 500
     }

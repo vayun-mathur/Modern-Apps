@@ -6,6 +6,7 @@ import androidx.room3.Upsert
 import com.vayunmathur.games.hub.data.entities.HubGameEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for game dao. */
 @Dao
 interface GameDao {
     @Query("SELECT * FROM hub_games ORDER BY lastPlayedAt DESC, displayName ASC")

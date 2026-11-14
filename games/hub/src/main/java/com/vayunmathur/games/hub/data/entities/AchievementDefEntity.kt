@@ -2,6 +2,7 @@ package com.vayunmathur.games.hub.data.entities
 
 import androidx.room3.Entity
 
+/** Immutable value describing achievement def entity. */
 @Entity(tableName = "achievement_defs", primaryKeys = ["gameId", "achievementId"])
 data class AchievementDefEntity(
     val gameId: String,

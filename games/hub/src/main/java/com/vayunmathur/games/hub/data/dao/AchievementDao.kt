@@ -7,6 +7,7 @@ import com.vayunmathur.games.hub.data.entities.AchievementDefEntity
 import com.vayunmathur.games.hub.data.entities.AchievementProgressEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Immutable value describing achievement with progress. */
 data class AchievementWithProgress(
     val gameId: String,
     val achievementId: String,
@@ -22,6 +23,7 @@ data class AchievementWithProgress(
     val unlockedAt: Long?
 )
 
+/** Contract for achievement dao. */
 @Dao
 interface AchievementDao {
 

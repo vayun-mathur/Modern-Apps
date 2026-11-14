@@ -6,6 +6,7 @@ import com.vayunmathur.library.util.BaseBackupAgent
 import com.vayunmathur.library.util.DatabaseHelper
 import java.io.File
 
+/** App Backup Agent: a base backup agent implementation for app backup agent. */
 class AppBackupAgent : BaseBackupAgent() {
     override val dbCodec = SqlCipherDbCodec
 

@@ -6,6 +6,7 @@ import androidx.room3.Upsert
 import com.vayunmathur.games.hub.data.entities.DailyStreakEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for streak dao. */
 @Dao
 interface StreakDao {
 

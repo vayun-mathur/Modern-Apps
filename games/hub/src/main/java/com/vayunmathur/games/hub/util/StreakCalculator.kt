@@ -6,8 +6,10 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import com.vayunmathur.games.hub.data.entities.PlaySessionEntity
 
+/** Singleton holding streak calculator state and operations. */
 object StreakCalculator {
 
+    /** Immutable value describing streak result. */
     data class StreakResult(
         val currentStreak: Int,
         val longestStreak: Int

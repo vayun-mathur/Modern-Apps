@@ -30,6 +30,7 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.games.hub.R
 
+/** Kinds of achievement filter. */
 enum class AchievementFilter { ALL, LOCKED, UNLOCKED }
 
 @Composable
