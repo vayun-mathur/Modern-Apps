@@ -11,6 +11,7 @@ import androidx.work.WorkerParameters
 import com.vayunmathur.library.util.DataStoreUtils
 import java.util.concurrent.TimeUnit
 
+/** Periodic worker that re-syncs contact events to the calendar while calendar sync is enabled. */
 class CalendarWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val dataStore = DataStoreUtils.getInstance(applicationContext)
@@ -23,6 +24,7 @@ class CalendarWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return Result.success()
     }
 
+    /** Unique work name and scheduling entry points for [CalendarWorker]. */
     companion object {
         private const val WORK_NAME = "CalendarSyncWorker"
 

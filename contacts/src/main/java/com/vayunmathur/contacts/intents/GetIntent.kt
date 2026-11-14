@@ -7,6 +7,7 @@ import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 
 @OptIn(InternalSerializationApi::class)
+/** Assistant intent returning every contact's name and phone number from the provider. */
 class GetIntent: AssistantIntent<Unit, List<ContactData>>(serializer<Unit>(), serializer<List<ContactData>>()) {
 
     override suspend fun performCalculation(input: Unit): List<ContactData> {

@@ -31,8 +31,20 @@ class FakeProviderPass2Test {
             uri: Uri, projection: Array<out String>?, selection: String?,
             selectionArgs: Array<out String>?, sortOrder: String?,
         ): Cursor {
-            // lookupContact requests a null projection and indexes columns by name
-            val cols = projection ?: if (uri.toString().contains("lookup")) {
+            val cols = columnsFor(uri, projection)
+            val cursor = MatrixCursor(cols)
+            when {
+                uri.toString().contains("raw_contacts") ->
+                    fillRawContacts(cursor, cols, selectionArgs)
+                uri.toString().contains("lookup") -> fillLookup(cursor, cols)
+                uri.toString().contains("groups") -> fillGroups(cursor, cols)
+                uri.toString().contains("data") -> fillData(cursor, cols, selectionArgs)
+            }
+            return cursor
+        }
+
+        private fun columnsFor(uri: Uri, projection: Array<out String>?): Array<String> =
+            if (projection != null) arrayOf(*projection) else if (uri.toString().contains("lookup")) {
                 arrayOf(
                     ContactsContract.Contacts._ID,
                     ContactsContract.Contacts.LOOKUP_KEY,
@@ -41,50 +53,61 @@ class FakeProviderPass2Test {
             } else {
                 defaultColumns(uri)
             }
-            val cursor = MatrixCursor(cols)
-            fun addRow(values: Map<String, Any?>) {
-                cursor.addRow(cols.map { values[it] })
+
+        private fun MatrixCursor.addMappedRow(cols: Array<String>, values: Map<String, Any?>) {
+            addRow(cols.map { values[it] })
+        }
+
+        private fun fillRawContacts(
+            cursor: MatrixCursor, cols: Array<String>, selectionArgs: Array<out String>?,
+        ) {
+            // selectionArgs carries the requested raw id for getContact
+            val wanted = selectionArgs?.firstOrNull()?.toLongOrNull()
+            for (row in RAW_CONTACTS) {
+                if (wanted != null && wanted != row.id) continue
+                cursor.addMappedRow(
+                    cols,
+                    mapOf(
+                        ContactsContract.RawContacts._ID to row.id,
+                        ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY to row.name,
+                        ContactsContract.RawContacts.STARRED to row.starred,
+                        ContactsContract.RawContacts.ACCOUNT_NAME to row.accountName,
+                        ContactsContract.RawContacts.ACCOUNT_TYPE to row.accountType,
+                        ContactsContract.RawContacts.CUSTOM_RINGTONE to row.ringtone,
+                        ContactsContract.RawContacts.CONTACT_ID to row.id,
+                    )
+                )
             }
-            when {
-                uri.toString().contains("raw_contacts") -> {
-                    // selectionArgs carries the requested raw id for getContact
-                    val wanted = selectionArgs?.firstOrNull()?.toLongOrNull()
-                    for ((id, name, starred, accountName, accountType, ringtone) in RAW_CONTACTS) {
-                        if (wanted != null && wanted != id) continue
-                        addRow(
-                            mapOf(
-                                ContactsContract.RawContacts._ID to id,
-                                ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY to name,
-                                ContactsContract.RawContacts.STARRED to starred,
-                                ContactsContract.RawContacts.ACCOUNT_NAME to accountName,
-                                ContactsContract.RawContacts.ACCOUNT_TYPE to accountType,
-                                ContactsContract.RawContacts.CUSTOM_RINGTONE to ringtone,
-                                ContactsContract.RawContacts.CONTACT_ID to id,
-                            )
-                        )
-                    }
-                }
-                uri.toString().contains("lookup") -> {
-                    // Contacts.lookupContact reads CONTACT_ID off the lookup URI
-                    val row = HashMap<String, Any?>()
-                    row[ContactsContract.Contacts._ID] = 7L
-                    row["contact_id"] = 7L
-                    row[ContactsContract.Contacts.LOOKUP_KEY] = "k7"
-                    addRow(row)
-                }
-                uri.toString().contains("groups") -> {
-                    addRow(mapOf(ContactsContract.Groups._ID to 11L, ContactsContract.Groups.TITLE to "Family"))
-                    addRow(mapOf(ContactsContract.Groups._ID to 12L, ContactsContract.Groups.TITLE to null))
-                }
-                uri.toString().contains("data") -> {
-                    val wanted = selectionArgs?.firstOrNull()?.toLongOrNull()
-                    for (row in DATA_ROWS) {
-                        if (wanted != null && wanted != row[ContactsContract.Data.RAW_CONTACT_ID]) continue
-                        addRow(row)
-                    }
-                }
+        }
+
+        private fun fillLookup(cursor: MatrixCursor, cols: Array<String>) {
+            // Contacts.lookupContact reads CONTACT_ID off the lookup URI
+            val row = HashMap<String, Any?>()
+            row[ContactsContract.Contacts._ID] = 7L
+            row["contact_id"] = 7L
+            row[ContactsContract.Contacts.LOOKUP_KEY] = "k7"
+            cursor.addMappedRow(cols, row)
+        }
+
+        private fun fillGroups(cursor: MatrixCursor, cols: Array<String>) {
+            cursor.addMappedRow(
+                cols,
+                mapOf(ContactsContract.Groups._ID to 11L, ContactsContract.Groups.TITLE to "Family")
+            )
+            cursor.addMappedRow(
+                cols,
+                mapOf(ContactsContract.Groups._ID to 12L, ContactsContract.Groups.TITLE to null)
+            )
+        }
+
+        private fun fillData(
+            cursor: MatrixCursor, cols: Array<String>, selectionArgs: Array<out String>?,
+        ) {
+            val wanted = selectionArgs?.firstOrNull()?.toLongOrNull()
+            for (row in DATA_ROWS) {
+                if (wanted != null && wanted != row[ContactsContract.Data.RAW_CONTACT_ID]) continue
+                cursor.addMappedRow(cols, row)
             }
-            return cursor
         }
 
         private fun defaultColumns(uri: Uri): Array<String> = when {

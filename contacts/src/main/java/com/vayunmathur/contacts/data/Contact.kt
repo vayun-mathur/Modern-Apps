@@ -27,6 +27,7 @@ fun LocalDate.formatDisplay(locale: Locale = Locale.getDefault()): String =
     DateString.dateWithOptionalYear(this, hasYear, locale)
 
 
+/** Every detail row of one contact, grouped by kind; empty lists mean the contact has none of that kind. */
 @Serializable
 data class ContactDetails(
     val phoneNumbers: List<PhoneNumber>,
@@ -43,13 +44,15 @@ data class ContactDetails(
     val commPrefs: List<CommPref> = emptyList(),
 ) {
     fun all(): List<ContactDetail<*>> {
-        return phoneNumbers + emails + addresses + dates + photos + names + orgs + notes + nicknames + groups + genders + commPrefs
+        return phoneNumbers + emails + addresses + dates + photos + names +
+            orgs + notes + nicknames + groups + genders + commPrefs
     }
 
     /** Single shared preferred number + platform; null means ask every time. */
     val commPref: CommPref?
         get() = commPrefs.firstOrNull()
 
+    /** Factory for an entirely empty detail set. */
     companion object {
         fun empty() = ContactDetails(
             emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
@@ -69,6 +72,7 @@ typealias CDKNote = ContactsContract.CommonDataKinds.Note
 typealias CDKNickname = ContactsContract.CommonDataKinds.Nickname
 typealias CDKGroupMembership = ContactsContract.CommonDataKinds.GroupMembership
 
+/** One typed detail row of a contact (a number, email, date and so on), writable back to the provider. */
 interface ContactDetail<T: ContactDetail<T>> {
     val id: Long
     val type: Int
@@ -78,6 +82,7 @@ interface ContactDetail<T: ContactDetail<T>> {
     fun withLabel(label: String): T
     fun typeString(context: Context): String
 
+    /** Default empty row for the reified detail type, used to seed editor rows. */
     companion object {
         @OptIn(ExperimentalTime::class)
         inline fun <reified T: ContactDetail<T>> default(): T {
@@ -96,6 +101,7 @@ interface ContactDetail<T: ContactDetail<T>> {
     }
 }
 
+/** A phone number row with its provider type and optional custom label. */
 @Serializable
 data class PhoneNumber(
     override val id: Long,
@@ -113,6 +119,7 @@ data class PhoneNumber(
     override fun typeString(context: Context) = CDKPhone.getTypeLabel(context.resources, type, label).toString()
 }
 
+/** An email address row with its provider type and optional custom label. */
 @Serializable
 data class Email(
     override val id: Long,
@@ -130,6 +137,7 @@ data class Email(
     override fun typeString(context: Context) = CDKEmail.getTypeLabel(context.resources, type, label).toString()
 }
 
+/** A formatted postal address row with its provider type and optional custom label. */
 @Serializable
 data class Address(
     override val id: Long,
@@ -148,6 +156,7 @@ data class Address(
         CDKStructuredPostal.getTypeLabel(context.resources, type, label).toString()
 }
 
+/** A contact photo row; [photo] holds the Base64-encoded image bytes. */
 @Serializable
 data class Photo(override val id: Long, val photo: String): ContactDetail<Photo> {
     override val type: Int = 0
@@ -161,6 +170,7 @@ data class Photo(override val id: Long, val photo: String): ContactDetail<Photo>
     override fun typeString(context: Context) = throw UnsupportedOperationException("Photo doesn't have type")
 }
 
+/** A dated event row (birthday, anniversary and similar) starting on [startDate]. */
 @Serializable
 data class Event(
     override val id: Long,
@@ -178,6 +188,7 @@ data class Event(
     override fun typeString(context: Context) = CDKEvent.getTypeLabel(context.resources, type, label).toString()
 }
 
+/** An organization row holding the contact's company name. */
 @Serializable
 data class Organization(override val id: Long, val company: String): ContactDetail<Organization> {
     override val type: Int = 0
@@ -191,6 +202,7 @@ data class Organization(override val id: Long, val company: String): ContactDeta
     override fun typeString(context: Context) = throw UnsupportedOperationException("Photo doesn't have type")
 }
 
+/** A structured name row: prefix, given, middle and family names, and suffix. */
 @Serializable
 data class Name(
     override val id: Long,
@@ -217,6 +229,7 @@ data class Name(
     override fun typeString(context: Context) = throw UnsupportedOperationException("Name doesn't have type")
 }
 
+/** A free-text note row. */
 @Serializable
 data class Note(override val id: Long, val content: String): ContactDetail<Note> {
     override val type: Int = 0
@@ -230,6 +243,7 @@ data class Note(override val id: Long, val content: String): ContactDetail<Note>
     override fun typeString(context: Context) = throw UnsupportedOperationException("Note doesn't have type")
 }
 
+/** A nickname row with its provider nickname type. */
 @Serializable
 data class Nickname(override val id: Long, val nickname: String, override val type: Int): ContactDetail<Nickname> {
     override val value: String
@@ -243,6 +257,7 @@ data class Nickname(override val id: Long, val nickname: String, override val ty
         throw UnsupportedOperationException("Nickname types shouldn't be written")
 }
 
+/** A group-membership row linking the contact to the group with [groupId]. */
 @Serializable
 data class GroupMembership(override val id: Long, val groupId: Long): ContactDetail<GroupMembership> {
     override val type: Int = 0
@@ -283,6 +298,7 @@ data class Gender(
     override fun typeString(context: Context) =
         throw UnsupportedOperationException("Gender doesn't have type")
 
+    /** Canonical one-letter gender codes and the row's provider MIME type. */
     companion object {
         const val FEMALE = "F"
         const val MALE = "M"
@@ -301,6 +317,7 @@ data class Gender(
     }
 }
 
+/** One raw contact: its provider id and account, favourite flag, ringtone and all detail rows. */
 @Serializable
 data class Contact(
     val id: Long,
@@ -437,21 +454,33 @@ data class Contact(
         if (isInsert) {
             this.withValue(ContactsContract.Data.MIMETYPE, mimeTypeFor(detail))
         }
-        return when (detail) {
-            is PhoneNumber -> completePhoneOperation(detail)
-            is Email -> completeEmailOperation(detail)
-            is Address -> completeAddressOperation(detail)
-            is Event -> completeEventOperation(detail)
-            is Photo -> completePhotoOperation(detail)
-            is Name -> completeNameOperation(detail)
-            is Organization -> completeOrganizationOperation(detail)
-            is Note -> completeNoteOperation(detail)
-            is Nickname -> completeNicknameOperation(detail)
-            is GroupMembership -> completeGroupMembershipOperation(detail)
-            is Gender -> completeGenderOperation(detail)
-            is CommPref -> completeCommPrefOperation(detail)
-            else -> throw IllegalArgumentException("Unknown detail type")
-        }
+        return completeTypedOperation(detail) ?: completeSingletonOperation(detail)
+    }
+
+    /** Builds the provider operation for typed rows (phone through organization), or null for other kinds. */
+    private fun ContentProviderOperation.Builder.completeTypedOperation(
+        detail: ContactDetail<*>
+    ): ContentProviderOperation? = when (detail) {
+        is PhoneNumber -> completePhoneOperation(detail)
+        is Email -> completeEmailOperation(detail)
+        is Address -> completeAddressOperation(detail)
+        is Event -> completeEventOperation(detail)
+        is Photo -> completePhotoOperation(detail)
+        is Name -> completeNameOperation(detail)
+        is Organization -> completeOrganizationOperation(detail)
+        else -> null
+    }
+
+    /** Builds the provider operation for singleton rows (note through comm-pref). */
+    private fun ContentProviderOperation.Builder.completeSingletonOperation(
+        detail: ContactDetail<*>
+    ): ContentProviderOperation = when (detail) {
+        is Note -> completeNoteOperation(detail)
+        is Nickname -> completeNicknameOperation(detail)
+        is GroupMembership -> completeGroupMembershipOperation(detail)
+        is Gender -> completeGenderOperation(detail)
+        is CommPref -> completeCommPrefOperation(detail)
+        else -> throw IllegalArgumentException("Unknown detail type")
     }
 
     private fun mimeTypeFor(detail: ContactDetail<*>): String =
@@ -562,6 +591,7 @@ data class Contact(
         .withValue(ContactsContract.Data.DATA2, detail.platform.storageKey)
         .build()
 
+    /** Provider read/write entry points: loading, saving and deleting raw contacts. */
     companion object {
 
         private fun processDetails(details: ContactDetails, displayName: String?): ContactDetails? {

@@ -9,6 +9,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.IBinder
 
+/**
+ * No-op account authenticator for the app's local accounts: every operation
+ * returns null, so accounts need no credentials.
+ */
 class Authenticator(context: Context) : AbstractAccountAuthenticator(context) {
     override fun editProperties(response: AccountAuthenticatorResponse?, accountType: String?): Bundle? = null
     override fun addAccount(
@@ -43,6 +47,7 @@ class Authenticator(context: Context) : AbstractAccountAuthenticator(context) {
     ): Bundle? = null
 }
 
+/** Service exposing [Authenticator] to the account framework through its binder. */
 class AuthenticatorService : Service() {
     private val authenticator by lazy { Authenticator(this) }
 

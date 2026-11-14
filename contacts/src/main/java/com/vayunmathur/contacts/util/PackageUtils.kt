@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import com.vayunmathur.library.log.Log
 
+/** Package-name constants and installed-app / messaging-platform lookups for contacts. */
 object PackageUtils {
     const val SIGNAL_PACKAGE = "org.thoughtcrime.securesms"
     const val WHATSAPP_PACKAGE = "com.whatsapp"
@@ -117,6 +118,7 @@ object PackageUtils {
         contains("telegram") && (contains("profile") || contains("contact"))
 }
 
+/** Data-row ids for a contact's WhatsApp, Signal and Telegram rows, grouped by call, video and message. */
 data class ContactPlatforms(
     val whatsAppCallId: Long? = null,
     val whatsAppVideoId: Long? = null,

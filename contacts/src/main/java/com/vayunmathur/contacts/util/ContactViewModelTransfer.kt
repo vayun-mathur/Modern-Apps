@@ -29,6 +29,10 @@ enum class SimDroppedField {
     FAVORITE,
 }
 
+/**
+ * Outcome of a contact transfer: how many moved, how many failed, and whether
+ * group memberships or the destination account were dropped or refused.
+ */
 data class TransferResult(
     val moved: Int,
     val failed: Int,

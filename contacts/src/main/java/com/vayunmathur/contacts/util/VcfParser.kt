@@ -284,10 +284,13 @@ private class VcfParser(
             kotlin.io.encoding.Base64.decode(normalized)
             true
         } catch (e: IllegalArgumentException) {
+            // Expected fallback: standard Base64 rejects URL-safe input, so retry URL-safe before dropping.
+            Log.debug("VcfParser", "Standard Base64 PHOTO decode failed; trying URL-safe", e)
             try {
                 kotlin.io.encoding.Base64.UrlSafe.decode(normalized)
                 true
             } catch (e2: IllegalArgumentException) {
+                Log.debug("VcfParser", "URL-safe Base64 PHOTO decode failed; dropping value", e2)
                 false
             }
         }
@@ -410,65 +413,6 @@ private class VcfParser(
             null
         }
     }
-
-    private fun detectPhoneTypeWithLabel(params: Map<String, List<String>>): TypedLabel {
-        val allTokens = params.values.flatten()
-        val customLabel = extractCustomLabel(allTokens)
-        val tokenStr = allTokens.joinToString(";")
-        val type = when {
-            customLabel != null -> ContactsContract.CommonDataKinds.Phone.TYPE_CUSTOM
-            tokenStr.contains("CELL", ignoreCase = true) ->
-                ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE
-            tokenStr.contains("HOME", ignoreCase = true) ->
-                ContactsContract.CommonDataKinds.Phone.TYPE_HOME
-            tokenStr.contains("WORK", ignoreCase = true) ->
-                ContactsContract.CommonDataKinds.Phone.TYPE_WORK
-            tokenStr.contains("FAX", ignoreCase = true) ->
-                ContactsContract.CommonDataKinds.Phone.TYPE_FAX_WORK
-            else -> ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE
-        }
-        return TypedLabel(type, customLabel ?: "")
-    }
-
-    private fun detectEmailTypeWithLabel(params: Map<String, List<String>>): TypedLabel {
-        val allTokens = params.values.flatten()
-        val customLabel = extractCustomLabel(allTokens)
-        val tokenStr = allTokens.joinToString(";")
-        val type = when {
-            customLabel != null -> ContactsContract.CommonDataKinds.Email.TYPE_CUSTOM
-            tokenStr.contains("WORK", ignoreCase = true) ->
-                ContactsContract.CommonDataKinds.Email.TYPE_WORK
-            tokenStr.contains("HOME", ignoreCase = true) ->
-                ContactsContract.CommonDataKinds.Email.TYPE_HOME
-            else -> ContactsContract.CommonDataKinds.Email.TYPE_OTHER
-        }
-        return TypedLabel(type, customLabel ?: "")
-    }
-
-    private fun detectAddressTypeWithLabel(params: Map<String, List<String>>): TypedLabel {
-        val allTokens = params.values.flatten()
-        val customLabel = extractCustomLabel(allTokens)
-        val tokenStr = allTokens.joinToString(";")
-        val type = when {
-            customLabel != null -> ContactsContract.CommonDataKinds.StructuredPostal.TYPE_CUSTOM
-            tokenStr.contains("HOME", ignoreCase = true) ->
-                ContactsContract.CommonDataKinds.StructuredPostal.TYPE_HOME
-            tokenStr.contains("WORK", ignoreCase = true) ->
-                ContactsContract.CommonDataKinds.StructuredPostal.TYPE_WORK
-            else -> ContactsContract.CommonDataKinds.StructuredPostal.TYPE_HOME
-        }
-        return TypedLabel(type, customLabel ?: "")
-    }
-
-    private fun detectEventTypeWithLabel(params: Map<String, List<String>>): TypedLabel {
-        val allTokens = params.values.flatten()
-        val customLabel = extractCustomLabel(allTokens)
-        return if (customLabel != null) {
-            TypedLabel(ContactsContract.CommonDataKinds.Event.TYPE_CUSTOM, customLabel)
-        } else {
-            TypedLabel(ContactsContract.CommonDataKinds.Event.TYPE_OTHER, "")
-        }
-    }
 }
 
 private class ContactBuilder {
@@ -487,17 +431,6 @@ private class ContactBuilder {
     val commPrefs: MutableList<CommPref> = mutableListOf()
     val groups: MutableList<GroupMembership> = mutableListOf()
     var isFavorite: Boolean = false
-}
-
-private data class TypedLabel(val type: Int, val label: String)
-
-private fun extractCustomLabel(tokens: List<String>): String? {
-    for (t in tokens) {
-        if (t.startsWith("X-", ignoreCase = true) && t.length > 2) {
-            return t.substring(2)
-        }
-    }
-    return null
 }
 
 private fun unescapeV(value: String): String {

@@ -21,6 +21,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.vayunmathur.contacts.data.Event as ContactEvent
 
+/**
+ * Mirrors contact birthdays and events into a dedicated local calendar,
+ * creating its account and calendar on demand.
+ */
 object CalendarSyncHelper {
     private const val ACCOUNT_NAME = "Contacts"
     private const val ACCOUNT_TYPE = "com.vayunmathur.contacts"

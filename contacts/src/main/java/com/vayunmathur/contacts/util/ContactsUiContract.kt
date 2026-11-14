@@ -76,6 +76,7 @@ interface ContactsActions {
     fun shareContacts(contacts: List<Contact>, filename: String) {}
     fun selectTab(tab: ContactsTab) {}
 
+    /** Shared no-op implementation for previews and stateless screens. */
     companion object {
         val Noop: ContactsActions = object : ContactsActions {}
     }

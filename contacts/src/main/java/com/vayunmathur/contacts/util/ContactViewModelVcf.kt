@@ -65,6 +65,19 @@ private fun resolveImportGroups(
     names: List<String>,
 ): List<com.vayunmathur.contacts.data.GroupMembership> {
     val resolver = app.contentResolver
+    val existing = queryExistingImportGroups(resolver) ?: return emptyList()
+    val result = mutableListOf<com.vayunmathur.contacts.data.GroupMembership>()
+    for (name in names) {
+        val membership = resolveSingleImportGroup(resolver, name.trim(), existing)
+        if (membership != null) result += membership
+    }
+    return result
+}
+
+/** Existing visible groups by lowercased title, or null when the provider query fails. */
+private fun queryExistingImportGroups(
+    resolver: android.content.ContentResolver,
+): MutableMap<String, Long>? {
     val existing = mutableMapOf<String, Long>()
     try {
         resolver.query(
@@ -80,50 +93,60 @@ private fun resolveImportGroups(
             val idIdx = cursor.getColumnIndexOrThrow(android.provider.ContactsContract.Groups._ID)
             val titleIdx = cursor.getColumnIndexOrThrow(android.provider.ContactsContract.Groups.TITLE)
             while (cursor.moveToNext()) {
-                val title = cursor.getString(titleIdx)?.trim() ?: continue
+                val title = cursor.getString(titleIdx)?.trim().orEmpty()
                 if (title.isNotEmpty()) existing[title.lowercase()] = cursor.getLong(idIdx)
             }
         }
     } catch (e: SecurityException) {
         Log.error("ContactViewModel", "Error reading groups for VCF import", e)
-        return emptyList()
+        return null
     } catch (e: IllegalArgumentException) {
         Log.error("ContactViewModel", "Error reading groups for VCF import", e)
-        return emptyList()
+        return null
     } catch (e: android.database.SQLException) {
         Log.error("ContactViewModel", "Error reading groups for VCF import", e)
-        return emptyList()
+        return null
     }
+    return existing
+}
 
-    val result = mutableListOf<com.vayunmathur.contacts.data.GroupMembership>()
-    for (name in names) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty()) continue
-        val known = existing[trimmed.lowercase()]
-        if (known != null) {
-            result += com.vayunmathur.contacts.data.GroupMembership(0, known)
-            continue
+/** Membership for one trimmed name: the existing group, or a newly created visible one. */
+private fun resolveSingleImportGroup(
+    resolver: android.content.ContentResolver,
+    trimmed: String,
+    existing: MutableMap<String, Long>,
+): com.vayunmathur.contacts.data.GroupMembership? {
+    if (trimmed.isEmpty()) return null
+    existing[trimmed.lowercase()]?.let { return com.vayunmathur.contacts.data.GroupMembership(0, it) }
+    val newId = createImportGroup(resolver, trimmed) ?: return null
+    existing[trimmed.lowercase()] = newId
+    return com.vayunmathur.contacts.data.GroupMembership(0, newId)
+}
+
+/** Creates a visible group titled [trimmed], returning its id or null when creation fails. */
+private fun createImportGroup(
+    resolver: android.content.ContentResolver,
+    trimmed: String,
+): Long? {
+    return try {
+        val values = android.content.ContentValues().apply {
+            put(android.provider.ContactsContract.Groups.TITLE, trimmed)
+            put(android.provider.ContactsContract.Groups.GROUP_VISIBLE, 1)
         }
-        try {
-            val values = android.content.ContentValues().apply {
-                put(android.provider.ContactsContract.Groups.TITLE, trimmed)
-                put(android.provider.ContactsContract.Groups.GROUP_VISIBLE, 1)
-            }
-            val createdUri = resolver.insert(
-                android.provider.ContactsContract.Groups.CONTENT_URI, values
-            )
-            val newId = createdUri?.lastPathSegment?.toLongOrNull() ?: continue
-            existing[trimmed.lowercase()] = newId
-            result += com.vayunmathur.contacts.data.GroupMembership(0, newId)
-        } catch (e: SecurityException) {
-            Log.error("ContactViewModel", "Error creating group for VCF import", e)
-        } catch (e: IllegalArgumentException) {
-            Log.error("ContactViewModel", "Error creating group for VCF import", e)
-        } catch (e: android.database.SQLException) {
-            Log.error("ContactViewModel", "Error creating group for VCF import", e)
-        }
+        val createdUri = resolver.insert(
+            android.provider.ContactsContract.Groups.CONTENT_URI, values
+        )
+        createdUri?.lastPathSegment?.toLongOrNull()
+    } catch (e: SecurityException) {
+        Log.error("ContactViewModel", "Error creating group for VCF import", e)
+        null
+    } catch (e: IllegalArgumentException) {
+        Log.error("ContactViewModel", "Error creating group for VCF import", e)
+        null
+    } catch (e: android.database.SQLException) {
+        Log.error("ContactViewModel", "Error creating group for VCF import", e)
+        null
     }
-    return result
 }
 
 /** Clears any parsed-VCF state held in the VM (called when the import screen dismisses). */

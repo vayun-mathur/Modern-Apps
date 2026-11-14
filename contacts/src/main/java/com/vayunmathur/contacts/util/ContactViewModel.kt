@@ -70,8 +70,10 @@ import com.vayunmathur.contacts.util.ContactSorting.sortedByNameLocale
 import kotlinx.datetime.LocalDate
 import kotlin.io.encoding.Base64
 
+/** A contacts account identified by its provider [name] and [type]. */
 data class ContactAccount(val name: String, val type: String)
 
+/** Links the contact with [contactId] to the group with [groupId] for UI state. */
 data class ContactGroupMembership(val contactId: Long, val groupId: Long)
 
 /**
@@ -88,6 +90,7 @@ private const val SUBSCRIBE_TIMEOUT = 5_000L
 /** Debounce for coalesced system-contact change notifications. */
 private const val SYNC_DEBOUNCE_MILLIS = 300L
 
+/** Holds the provider-backed contact list, search, accounts, groups and edit-draft state for the contacts screens. */
 class ContactViewModel internal constructor(
     application: Application,
     /** Where the provider's default-account facts come from (#916); tests pass a fake. */
@@ -113,14 +116,6 @@ class ContactViewModel internal constructor(
 
     val hiddenAccounts: StateFlow<Set<String>> = dataStore.stringSetFlow("hidden_accounts")
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
-
-    private fun accountKey(type: String?, name: String?): String = "${type ?: ""}|${name ?: ""}"
-
-    private fun encodedAccountKey(type: String?, name: String?): String {
-        fun enc(raw: String): String =
-            raw.replace("%", "%25").replace("|", "%7C").replace(",", "%2C")
-        return "${enc(type ?: "")}|${enc(name ?: "")}"
-    }
 
     /** Unfiltered address book for export (ignores search query and hidden accounts). */
     val allContactsForExport: StateFlow<List<com.vayunmathur.contacts.data.Contact>> =
@@ -445,19 +440,6 @@ class ContactViewModel internal constructor(
         return findContact(contactId)
     }
 
-    /** Builds the fallback [SimContact] when no ADN row backs [contact]. */
-    private fun fallbackSimContact(contact: com.vayunmathur.contacts.data.Contact): SimContact {
-        val phone = contact.details.phoneNumbers.firstOrNull()?.number ?: ""
-        val email = contact.details.emails.firstOrNull()?.address
-        return SimContact(
-            -1,
-            contact.name.value,
-            phone,
-            email,
-            contact.accountName?.toIntOrNull()
-        )
-    }
-
     override fun deleteContact(contact: com.vayunmathur.contacts.data.Contact) {
         viewModelScope.launch(Dispatchers.IO) {
             if (isSimAccountType(contact.accountType)) {
@@ -543,6 +525,7 @@ class ContactViewModel internal constructor(
     // EditContactPage form draft state.
     // ---------------------------------------------------------------------
 
+    /** Editable form state for one contact, mirroring the detail rows the editor can change. */
     data class ContactDraft(
         val namePrefix: String = "",
         val firstName: String = "",
@@ -579,4 +562,25 @@ class ContactViewModel internal constructor(
     internal fun normalizePhoneForCompare(raw: String): String {
         return raw.filter { it.isDigit() || it == '+' }.trim()
     }
+}
+
+private fun accountKey(type: String?, name: String?): String = "${type ?: ""}|${name ?: ""}"
+
+private fun encodedAccountKey(type: String?, name: String?): String {
+    fun enc(raw: String): String =
+        raw.replace("%", "%25").replace("|", "%7C").replace(",", "%2C")
+    return "${enc(type ?: "")}|${enc(name ?: "")}"
+}
+
+/** Builds the fallback [SimContact] when no ADN row backs [contact]. */
+private fun fallbackSimContact(contact: Contact): SimContact {
+    val phone = contact.details.phoneNumbers.firstOrNull()?.number ?: ""
+    val email = contact.details.emails.firstOrNull()?.address
+    return SimContact(
+        -1,
+        contact.name.value,
+        phone,
+        email,
+        contact.accountName?.toIntOrNull()
+    )
 }

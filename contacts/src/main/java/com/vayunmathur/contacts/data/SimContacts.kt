@@ -58,6 +58,7 @@ fun isLocalAccountType(type: String?): Boolean = type.isNullOrBlank() || type ==
 fun isDefaultLocalAccount(name: String?, type: String?): Boolean =
     name.isNullOrBlank() && type.isNullOrBlank()
 
+/** Reads and writes SIM ADN rows and projects them into the unified [Contact] model. */
 object SimContactsDataSource {
 
     private const val TAG = "SimContacts"
@@ -401,6 +402,7 @@ object SimContactsDataSource {
 
     // --- Virtual SIM accounts ---
 
+    /** One active SIM subscription: its subscription id, slot, display name and carrier. */
     data class SimSubscriptionInfo(
         val subscriptionId: Int,
         val slotIndex: Int,

@@ -59,6 +59,7 @@ import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.launch
 import com.vayunmathur.library.ui.EmptyState
 
+/** Import target choice on the vCard import screen: an existing account or a newly created one. */
 enum class ImportMode { Existing, New }
 
 @OptIn(ExperimentalMaterial3Api::class)

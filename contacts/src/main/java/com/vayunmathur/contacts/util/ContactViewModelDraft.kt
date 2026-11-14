@@ -126,54 +126,6 @@ private fun ContactViewModel.draftPhoneNumbers(
     mergePhones(details?.phoneNumbers ?: emptyList(), prefill?.phones ?: emptyList())
         .ifEmpty { listOf(ContactDetail.default<PhoneNumber>()) }
 
-/** Appends prefilled phones that aren't already present (compared by normalized number). */
-internal fun ContactViewModel.mergePhones(
-    existing: List<PhoneNumber>,
-    prefill: List<PrefillValue>
-): List<PhoneNumber> {
-    if (prefill.isEmpty()) return existing
-    val result = existing.toMutableList()
-    val known = result.mapTo(mutableSetOf()) { normalizePhoneForCompare(it.number) }
-    for (p in prefill) {
-        val norm = normalizePhoneForCompare(p.value)
-        if (norm.isEmpty() || !known.add(norm)) continue
-        result += PhoneNumber(0, p.value, p.type ?: CDKPhone.TYPE_MOBILE, p.label ?: "")
-    }
-    return result
-}
-
-/** Appends prefilled emails that aren't already present (case-insensitive address match). */
-internal fun ContactViewModel.mergeEmails(
-    existing: List<Email>,
-    prefill: List<PrefillValue>
-): List<Email> {
-    if (prefill.isEmpty()) return existing
-    val result = existing.toMutableList()
-    val known = result.mapTo(mutableSetOf()) { it.address.trim().lowercase() }
-    for (e in prefill) {
-        val v = e.value.trim()
-        if (v.isEmpty() || !known.add(v.lowercase())) continue
-        result += Email(0, e.value, e.type ?: CDKEmail.TYPE_HOME, e.label ?: "")
-    }
-    return result
-}
-
-/** Appends prefilled postal addresses that aren't already present (case-insensitive match). */
-internal fun ContactViewModel.mergeAddresses(
-    existing: List<Address>,
-    prefill: List<PrefillValue>
-): List<Address> {
-    if (prefill.isEmpty()) return existing
-    val result = existing.toMutableList()
-    val known = result.mapTo(mutableSetOf()) { it.formattedAddress.trim().lowercase() }
-    for (a in prefill) {
-        val v = a.value.trim()
-        if (v.isEmpty() || !known.add(v.lowercase())) continue
-        result += Address(0, a.value, a.type ?: CDKStructuredPostal.TYPE_HOME, a.label ?: "")
-    }
-    return result
-}
-
 /**
  * Used by INSERT_OR_EDIT / SHOW_OR_CREATE_CONTACT flow when the user picks an existing
  * contact from the dialer. Directly appends [phone] (if not already present) and saves,

@@ -101,22 +101,70 @@ class VCardRoundTripTest {
     }
 
     private fun parse(text: String): List<VCardContact> {
+        val state = VCardParseState()
+        unfold(text).forEach { line -> state.consume(line) }
+        return state.contacts
+    }
+
+    private inner class VCardParseState {
         val contacts = mutableListOf<VCardContact>()
-        var last = ""
-        var firstName = ""
-        var middle = ""
-        var prefix = ""
-        var suffix = ""
-        var full = ""
-        val phones = mutableListOf<String>()
-        val emails = mutableListOf<String>()
-        val notes = mutableListOf<String>()
-        var favorite = false
-        var inCard = false
-        fun build(): VCardContact {
+        private var last = ""
+        private var firstName = ""
+        private var middle = ""
+        private var prefix = ""
+        private var suffix = ""
+        private var full = ""
+        private val phones = mutableListOf<String>()
+        private val emails = mutableListOf<String>()
+        private val notes = mutableListOf<String>()
+        private var favorite = false
+        private var inCard = false
+
+        fun consume(line: String) {
+            val trimmed = line.trimEnd()
+            when {
+                trimmed.isEmpty() -> Unit
+                trimmed.startsWith("BEGIN:VCARD", ignoreCase = true) -> inCard = true
+                trimmed.startsWith("END:VCARD", ignoreCase = true) -> flush()
+                inCard -> applyLine(trimmed)
+                else -> Unit
+            }
+        }
+
+        private fun applyLine(trimmed: String) {
+            val colon = trimmed.indexOf(':')
+            if (colon == -1) return
+            val prop = trimmed.take(colon).split(';').firstOrNull()?.uppercase() ?: return
+            applyProperty(prop, trimmed.substring(colon + 1))
+        }
+
+        private fun applyProperty(prop: String, rawValue: String) {
+            when (prop) {
+                "N" -> applyName(rawValue)
+                "FN" -> full = unescapeV(rawValue)
+                "TEL" -> phones.add(unescapeV(rawValue))
+                "EMAIL" -> emails.add(unescapeV(rawValue))
+                "NOTE" -> notes.add(unescapeV(rawValue))
+                "X-STARRED" -> if (rawValue.trim() == "1") favorite = true
+            }
+        }
+
+        private fun applyName(rawValue: String) {
+            // Split on unescaped semicolons first, mirroring the
+            // production parser: an escaped "\;" is data, not a boundary.
+            val comps = splitUnescapedMirror(rawValue).map(::unescapeV)
+            last = comps.getOrNull(0) ?: ""
+            firstName = comps.getOrNull(1) ?: ""
+            middle = comps.getOrNull(2) ?: ""
+            prefix = comps.getOrNull(3) ?: ""
+            suffix = comps.getOrNull(4) ?: ""
+        }
+
+        private fun build(): VCardContact {
             var f = firstName
             var l = last
-            if (f.isBlank() && l.isBlank() && middle.isBlank() && prefix.isBlank() && suffix.isBlank()) {
+            val hasStructuredName = listOf(f, l, middle, prefix, suffix).any { it.isNotBlank() }
+            if (!hasStructuredName) {
                 val parts = full.split(" ").filter { it.isNotEmpty() }
                 f = parts.firstOrNull() ?: ""
                 l = parts.drop(1).joinToString(" ")
@@ -126,7 +174,8 @@ class VCardRoundTripTest {
                 notes.joinToString("\n"), favorite,
             )
         }
-        fun flush() {
+
+        private fun flush() {
             if (inCard) contacts.add(build())
             last = ""
             firstName = ""
@@ -140,41 +189,6 @@ class VCardRoundTripTest {
             favorite = false
             inCard = false
         }
-        for (line in unfold(text)) {
-            val trimmed = line.trimEnd()
-            if (trimmed.isEmpty()) continue
-            if (trimmed.startsWith("BEGIN:VCARD", ignoreCase = true)) {
-                inCard = true
-                continue
-            }
-            if (trimmed.startsWith("END:VCARD", ignoreCase = true)) {
-                flush()
-                continue
-            }
-            if (!inCard) continue
-            val colon = trimmed.indexOf(':')
-            if (colon == -1) continue
-            val prop = trimmed.take(colon).split(';').firstOrNull()?.uppercase() ?: continue
-            val rawValue = trimmed.substring(colon + 1)
-            when (prop) {
-                "N" -> {
-                    // Split on unescaped semicolons first, mirroring the
-                    // production parser: an escaped "\;" is data, not a boundary.
-                    val comps = splitUnescapedMirror(rawValue).map(::unescapeV)
-                    last = comps.getOrNull(0) ?: ""
-                    firstName = comps.getOrNull(1) ?: ""
-                    middle = comps.getOrNull(2) ?: ""
-                    prefix = comps.getOrNull(3) ?: ""
-                    suffix = comps.getOrNull(4) ?: ""
-                }
-                "FN" -> full = unescapeV(rawValue)
-                "TEL" -> phones.add(unescapeV(rawValue))
-                "EMAIL" -> emails.add(unescapeV(rawValue))
-                "NOTE" -> notes.add(unescapeV(rawValue))
-                "X-STARRED" -> if (rawValue.trim() == "1") favorite = true
-            }
-        }
-        return contacts
     }
 
     private fun parseStrict(text: String): List<VCardContact> {

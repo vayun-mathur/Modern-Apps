@@ -24,6 +24,7 @@ import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.ui.Text
 
+/** Kind of communication the details-page dropdown starts: a call or an SMS. */
 enum class CommunicationType { CALL, SMS }
 
 @Composable

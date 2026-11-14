@@ -17,6 +17,7 @@ import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 
 @OptIn(InternalSerializationApi::class)
+/** Assistant intent saving a new contact from a name and phone number, using the system default account. */
 class InsertIntent: AssistantIntent<ContactData, Unit>(serializer<ContactData>(), serializer<Unit>()) {
 
     override suspend fun performCalculation(input: ContactData) {

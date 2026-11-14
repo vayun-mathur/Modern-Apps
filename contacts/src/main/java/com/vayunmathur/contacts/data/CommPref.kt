@@ -36,6 +36,7 @@ data class CommPref(
     override fun typeString(context: Context) =
         throw UnsupportedOperationException("Comm pref doesn't have type")
 
+    /** Provider MIME type under which a [CommPref] row is stored. */
     companion object {
         const val MIME_TYPE = "vnd.android.cursor.item/vnd.com.vayunmathur.contacts.comm_pref"
     }
@@ -50,6 +51,7 @@ enum class CommPlatform(val storageKey: String) {
     TELEGRAM("telegram"),
     MEET("meet");
 
+    /** Lookup of a platform by its persisted storage key. */
     companion object {
         fun fromStorageKey(key: String): CommPlatform? =
             entries.firstOrNull { it.storageKey == key.trim().lowercase() }

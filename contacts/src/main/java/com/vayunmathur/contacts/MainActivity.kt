@@ -71,10 +71,15 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
+/**
+ * Contacts entry activity: gates on contacts permissions, then hosts the pager
+ * navigation and pick/import intent flows.
+ */
 class MainActivity : MaActivity() {
     private val importUris = mutableStateOf<List<String>>(emptyList())
     private val externalRoute = mutableStateOf<Route?>(null)
 
+    /** Legacy quick-contact action string and groups deep-link path segment. */
     companion object {
         private const val QUICK_CONTACT_LEGACY_ACTION = "com.android.contacts.action.QUICK_CONTACT"
         private const val GROUPS_PATH_SEGMENT = "/groups"
@@ -264,62 +269,56 @@ class MainActivity : MaActivity() {
     private fun resolveContactId(uri: Uri?): Long? {
         if (uri == null) return null
         val path = uri.path ?: return null
-
-        // For raw_contacts URIs, the last segment is already a raw contact ID
-        if (path.startsWith("/raw_contacts/") || path.contains("/raw_contacts")) {
-            return uri.lastPathSegment?.toLongOrNull()
+        return when {
+            // For raw_contacts URIs, the last segment is already a raw contact ID
+            isRawContactsPath(path) -> uri.lastPathSegment?.toLongOrNull()
+            // A phone_lookup URI identifies a contact by number, not by ID: resolve
+            // the number through PhoneLookup before the generic ID extraction below.
+            path.contains("/phone_lookup/") -> resolvePhoneLookupContactId(uri)
+            else -> aggregatedContactId(uri, path)?.let { rawContactIdForAggregated(it) }
         }
+    }
 
-        // A phone_lookup URI identifies a contact by number, not by ID: resolve
-        // the number through PhoneLookup before the generic ID extraction below.
-        if (path.contains("/phone_lookup/")) {
-            val number = uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: return null
-            val filterUri = Uri.withAppendedPath(
-                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                Uri.encode(number),
-            )
-            contentResolver.query(
-                filterUri,
-                arrayOf(ContactsContract.PhoneLookup._ID),
-                null,
-                null,
-                null,
-            )?.use { cursor ->
-                if (!cursor.moveToFirst()) return null
-                val phoneLookupId = cursor.getLong(0)
-                // Convert aggregated contact ID to raw contact ID (same as below).
-                contentResolver.query(
-                    ContactsContract.RawContacts.CONTENT_URI,
-                    arrayOf(ContactsContract.RawContacts._ID),
-                    "${ContactsContract.RawContacts.CONTACT_ID} = ? AND ${ContactsContract.RawContacts.DELETED} = 0",
-                    arrayOf(phoneLookupId.toString()),
-                    "${ContactsContract.RawContacts.STARRED} DESC, ${ContactsContract.RawContacts._ID} ASC"
-                )?.use { rawCursor ->
-                    if (rawCursor.moveToFirst()) {
-                        return rawCursor.getLong(0)
-                    }
-                }
-            }
-            return null
+    private fun isRawContactsPath(path: String): Boolean =
+        path.startsWith("/raw_contacts/") || path.contains("/raw_contacts")
+
+    private fun resolvePhoneLookupContactId(uri: Uri): Long? {
+        val number = uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: return null
+        val phoneLookupId = phoneLookupIdForNumber(number) ?: return null
+        return rawContactIdForAggregated(phoneLookupId)
+    }
+
+    private fun phoneLookupIdForNumber(number: String): Long? {
+        val filterUri = Uri.withAppendedPath(
+            ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+            Uri.encode(number),
+        )
+        contentResolver.query(
+            filterUri,
+            arrayOf(ContactsContract.PhoneLookup._ID),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) return cursor.getLong(0)
         }
+        return null
+    }
 
-        // For contacts/lookup or contacts/<id> URIs, extract the aggregated contact ID
-        val aggregatedId: Long? = when {
-            path.contains("/lookup/") -> {
-                ContactsContract.Contacts.lookupContact(contentResolver, uri)?.let {
-                    ContentUris.parseId(it)
-                }
+    /** For contacts/lookup or contacts/<id> URIs, extracts the aggregated contact ID. */
+    private fun aggregatedContactId(uri: Uri, path: String): Long? = when {
+        path.contains("/lookup/") ->
+            ContactsContract.Contacts.lookupContact(contentResolver, uri)?.let {
+                ContentUris.parseId(it)
             }
-            path.startsWith("/contacts/") || path == "/contacts" -> {
-                uri.lastPathSegment?.toLongOrNull()
-            }
-            else -> uri.lastPathSegment?.toLongOrNull()
-        }
+        else -> uri.lastPathSegment?.toLongOrNull()
+    }
 
-        if (aggregatedId == null) return null
-
-        // Convert aggregated contact ID to raw contact ID.
-        // Pick the most visible raw contact: prefer STARRED, then lowest _ID.
+    /**
+     * Converts an aggregated contact ID to a raw contact ID.
+     * Picks the most visible raw contact: prefer STARRED, then lowest _ID.
+     */
+    private fun rawContactIdForAggregated(aggregatedId: Long): Long? {
         contentResolver.query(
             ContactsContract.RawContacts.CONTENT_URI,
             arrayOf(ContactsContract.RawContacts._ID),
@@ -327,9 +326,7 @@ class MainActivity : MaActivity() {
             arrayOf(aggregatedId.toString()),
             "${ContactsContract.RawContacts.STARRED} DESC, ${ContactsContract.RawContacts._ID} ASC"
         )?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                return cursor.getLong(0)
-            }
+            if (cursor.moveToFirst()) return cursor.getLong(0)
         }
         return null
     }
@@ -609,48 +606,62 @@ private fun ContactsTabs(
     TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)
 }
 
+/** Navigation destinations for the contacts host: tab routes collapse to [Main], the rest push onto the back stack. */
 sealed interface Route: NavKey {
     @Serializable
+    /** Pager host holding the Contacts, Groups and Settings tabs. */
     object Main : Route
 
     @Serializable
+    /** Contacts tab destination; represented by the pager host rather than pushed. */
     object ContactsList : Route
 
     @Serializable
+    /** Groups tab destination, optionally expanding the group with [expandGroupId]. */
     data class GroupsList(val expandGroupId: Long? = null) : Route
 
     @Serializable
+    /** Dialog destination adding [contactIds] to a chosen group. */
     data class AddToGroupDialog(val contactIds: List<Long>) : Route
 
     @Serializable
+    /** Detail page destination for the contact with [contactId]. */
     data class ContactDetail(val contactId: Long) : Route
 
     @Serializable
+    /** Editor destination for [contactId] (null creates a contact), seeded by [prefill] when present. */
     data class EditContact(
         val contactId: Long?,
         val prefill: ContactPrefill? = null
     ) : Route
 
     @Serializable
+    /** Insert-or-edit destination seeded by [prefill], used by dialer-style intents. */
     data class InsertOrEditContact(
         val prefill: ContactPrefill? = null
     ) : Route
 
     @Serializable
+    /** Date-picker dialog destination identified by [id], starting at [initialDate]. */
     data class EventDatePickerDialog(val id: String, val initialDate: LocalDate?): Route
 
     @Serializable
+    /** Delete-confirmation dialog destination for [contactId], labelled with [contactName]. */
     data class EventDeleteConfirmDialog(val contactId: Long, val contactName: String?): Route
 
     @Serializable
+    /** Settings tab destination; represented by the pager host rather than pushed. */
     object Settings : Route
 
     @Serializable
+    /** Dialog destination for creating a new contacts account. */
     object AddAccountDialog : Route
 
     @Serializable
+    /** Photo-crop destination for the image at [uri]. */
     data class CropPhoto(val uri: String) : Route
 
     @Serializable
+    /** vCard import destination for the files at [uris]. */
     data class ImportVcf(val uris: List<String>) : Route
 }

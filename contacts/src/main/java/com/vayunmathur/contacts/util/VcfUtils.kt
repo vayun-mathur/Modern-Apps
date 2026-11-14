@@ -14,6 +14,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.io.Writer
 
+/** Writes contacts as folded vCard 3.0 and parses vCard input back into contacts. */
 object VcfUtils {
     private const val VCF_FOLD_LENGTH = 75
 
