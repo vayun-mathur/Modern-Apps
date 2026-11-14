@@ -3,12 +3,14 @@ package com.vayunmathur.appstore.ui
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.util.AppDetailUiState
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -110,8 +112,23 @@ class AppDetailHeaderRichTest {
         rule.setContent {
             AppScreenshotStrip(
                 urls = listOf("https://example.org/1.png", "https://example.org/2.png"),
+                appName = "Example",
             )
         }
         rule.waitForIdle()
+    }
+
+    @Test
+    fun `tapping a screenshot opens it by index`() {
+        var opened: Int? = null
+        rule.setContent {
+            AppScreenshotStrip(
+                urls = listOf("https://example.org/1.png", "https://example.org/2.png"),
+                appName = "Example",
+                onOpen = { opened = it },
+            )
+        }
+        rule.onNodeWithContentDescription("Example screenshot 2 of 2").performClick()
+        assertEquals(1, opened)
     }
 }

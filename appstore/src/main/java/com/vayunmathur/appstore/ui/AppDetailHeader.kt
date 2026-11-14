@@ -1,6 +1,7 @@
 package com.vayunmathur.appstore.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,6 +29,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -116,20 +121,36 @@ internal fun AppDetailFacts(app: UnifiedApp) {
     }
 }
 
-/** Screenshots, at a fixed height so mixed aspect ratios still scroll as one strip. */
+/**
+ * Screenshots, at a fixed height so mixed aspect ratios still scroll as one strip. Tapping
+ * one calls [onOpen] with its index so the full-screen viewer can start there (#918).
+ */
 @Composable
-internal fun AppScreenshotStrip(urls: List<String>) {
+internal fun AppScreenshotStrip(
+    urls: List<String>,
+    appName: String,
+    onOpen: (Int) -> Unit = {},
+) {
+    val openLabel = stringResource(R.string.screenshot_open_full_screen)
     LazyRow(
         Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(urls, key = { it }) { url ->
+        itemsIndexed(urls, key = { index, url -> "$index:$url" }) { index, url ->
             // The width has to be stated. AsyncImage draws its bitmap with matchParentSize, which
             // contributes nothing to the measure pass, so an image given only a height resolves to
             // zero wide and the strip is 220dp of nothing. Start at a phone screenshot's shape and
             // switch to the real one once the bitmap has been decoded.
             var ratio by remember(url) { mutableFloatStateOf(PORTRAIT_SCREENSHOT_RATIO) }
+            // Described on the tap target, not the bitmap: AsyncImage only emits its Image (and
+            // so its description) once decoded, and a still-loading screenshot is still a button.
+            val description = stringResource(
+                R.string.screenshot_description,
+                appName,
+                index + 1,
+                urls.size,
+            )
             AsyncImage(
                 model = url,
                 contentDescription = null,
@@ -137,7 +158,9 @@ internal fun AppScreenshotStrip(urls: List<String>) {
                     .height(220.dp)
                     .aspectRatio(ratio)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(onClickLabel = openLabel, role = Role.Image) { onOpen(index) }
+                    .semantics { contentDescription = description },
                 contentScale = ContentScale.Fit,
                 onState = { state ->
                     val size = (state as? AsyncImageState.Success)?.painter?.intrinsicSize

@@ -26,6 +26,14 @@ class RouteSerializerTest {
         assertEquals(browse, restoredBrowse)
         assertEquals("editors-choice", assertIs<Route.Browse>(restoredBrowse).sectionId)
 
+        val shots: Route = Route.Screenshots("Example", listOf("https://a/1.png", "https://a/2.png"), 1)
+        val restoredShots = json.decodeFromString(
+            Route.serializer(),
+            json.encodeToString(Route.serializer(), shots),
+        )
+        assertEquals(shots, restoredShots)
+        assertEquals(1, assertIs<Route.Screenshots>(restoredShots).index)
+
         for (route in listOf<Route>(Route.Main, Route.Trust, Route.Detail)) {
             val restored = json.decodeFromString(
                 Route.serializer(),

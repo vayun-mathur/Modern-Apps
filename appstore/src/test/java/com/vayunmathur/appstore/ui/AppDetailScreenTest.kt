@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -170,5 +171,19 @@ class AppDetailScreenTest {
         rule.setContent { AppDetailScreen(state = AppDetailUiState(app = null), actions = AppDetailActions.Noop) }
 
         rule.waitForIdle()
+    }
+
+    @Test
+    fun `tapping a screenshot asks for the viewer at that index`() {
+        var opened: Int? = null
+        val state = AppDetailUiState(
+            app = app().copy(screenshots = listOf("https://example.org/a.png", "https://example.org/b.png")),
+        )
+        rule.setContent {
+            AppDetailScreen(state = state, actions = AppDetailActions.Noop, onOpenScreenshot = { opened = it })
+        }
+        rule.onNodeWithContentDescription("Example screenshot 1 of 2").performScrollTo()
+        rule.onNodeWithContentDescription("Example screenshot 1 of 2").performClick()
+        assertEquals(0, opened)
     }
 }

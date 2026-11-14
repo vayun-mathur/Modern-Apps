@@ -184,6 +184,11 @@
     <string name="detail_install_blocked">Install blocked: %1$s</string>
     <string name="detail_checked_on_install">Checked on install: %1$s</string>
     <string name="detail_installed_unverified">Installed unverified: %1$s</string>
+    <!-- Screenshot strip on the app page and the full-screen viewer it opens (#918). -->
+    <string name="screenshot_description">%1$s screenshot %2$d of %3$d</string>
+    <string name="screenshot_open_full_screen">View full screen</string>
+    <string name="screenshot_counter">%1$d / %2$d</string>
+    <string name="screenshot_load_failed">Couldn\'t load this screenshot</string>
     <string name="detail_tap_for_trust">Tap to see how this source is checked</string>
 
     <!-- Store guarantees: true of every install, from every source. -->

@@ -21,6 +21,7 @@ import com.vayunmathur.appstore.ui.AppDetailPage
 import com.vayunmathur.appstore.ui.BrowsePage
 import com.vayunmathur.appstore.ui.HomePage
 import com.vayunmathur.appstore.ui.LibraryPage
+import com.vayunmathur.appstore.ui.ScreenshotViewerScreen
 import com.vayunmathur.appstore.ui.SearchPage
 import com.vayunmathur.appstore.ui.SourcesPage
 import com.vayunmathur.appstore.ui.TrustPage
@@ -116,6 +117,13 @@ sealed interface Route : NavKey {
     @Serializable data object Trust : Route
     @Serializable data object Detail : Route
     @Serializable data class Browse(val sectionId: String) : Route
+
+    /**
+     * Full-screen screenshot viewer (#918). Carries its own URL list rather than reading the
+     * selected app back out of the view model, so a restored back stack still has its images.
+     */
+    @Serializable
+    data class Screenshots(val appName: String, val urls: List<String>, val index: Int) : Route
 }
 
 /**
@@ -181,6 +189,20 @@ private fun AppRoot(
                     viewModel.clearSelection()
                 },
                 onOpenTrust = { backStack.add(Route.Trust) },
+                onOpenScreenshot = { index ->
+                    val app = viewModel.detail.value.app
+                    if (app != null && app.screenshots.isNotEmpty()) {
+                        backStack.add(Route.Screenshots(app.name, app.screenshots, index))
+                    }
+                },
+            )
+        }
+        entry<Route.Screenshots> { route ->
+            ScreenshotViewerScreen(
+                appName = route.appName,
+                urls = route.urls,
+                initialIndex = route.index,
+                onClose = { backStack.pop() },
             )
         }
     }

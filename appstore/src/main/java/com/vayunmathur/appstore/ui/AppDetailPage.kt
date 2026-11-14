@@ -35,9 +35,16 @@ fun AppDetailPage(
     viewModel: AppStoreViewModel,
     onBack: () -> Unit,
     onOpenTrust: () -> Unit = {},
+    onOpenScreenshot: (Int) -> Unit = {},
 ) {
     val state by viewModel.detail.collectAsState()
-    AppDetailScreen(state = state, actions = viewModel, onBack = onBack, onOpenTrust = onOpenTrust)
+    AppDetailScreen(
+        state = state,
+        actions = viewModel,
+        onBack = onBack,
+        onOpenTrust = onOpenTrust,
+        onOpenScreenshot = onOpenScreenshot,
+    )
 }
 
 /**
@@ -56,6 +63,8 @@ fun AppDetailScreen(
     actions: AppDetailActions,
     onBack: () -> Unit = {},
     onOpenTrust: () -> Unit = {},
+    /** Opens the full-screen viewer at this index into `app.screenshots` (#918). */
+    onOpenScreenshot: (Int) -> Unit = {},
 ) {
     val app = state.app ?: return
     var showUninstallConfirm by remember { mutableStateOf(false) }
@@ -79,7 +88,9 @@ fun AppDetailScreen(
         ) {
             AppDetailHeader(state)
             AppInstallActions(state, actions, onUninstall = { showUninstallConfirm = true })
-            if (app.screenshots.isNotEmpty()) AppScreenshotStrip(app.screenshots)
+            if (app.screenshots.isNotEmpty()) {
+                AppScreenshotStrip(app.screenshots, app.name, onOpen = onOpenScreenshot)
+            }
             AppDetailFacts(app)
             AppDetailDescription(app)
             AppDetailWhatsNew(app)

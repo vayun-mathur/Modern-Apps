@@ -82,6 +82,7 @@ _Install: ./install appstore (dev by default)._
 - com/vayunmathur/appstore/ui/AppDetailPage.kt
 - com/vayunmathur/appstore/ui/AppDetailHeader.kt
 - com/vayunmathur/appstore/ui/AppDetailSections.kt
+- com/vayunmathur/appstore/ui/ScreenshotViewerScreen.kt — full-screen swipe/zoom screenshot viewer (`Route.Screenshots`, #918)
 - com/vayunmathur/appstore/ui/AppTile.kt
 - com/vayunmathur/appstore/ui/AppComponents.kt
 - com/vayunmathur/appstore/ui/AppMeta.kt
