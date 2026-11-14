@@ -37,9 +37,6 @@ fun TvHomePage(viewModel: TvHomeViewModel) {
         onOpenAddMenu = viewModel::openAddMenu,
         onPickAddCandidate = viewModel::pickAddCandidate,
         onUninstallOrInfo = viewModel::uninstallOrInfo,
-        onRefreshHome = remember(viewModel, context) {
-            { viewModel.refreshDefaultHome(context as android.app.Activity) }
-        },
         onRequestHomeRole = remember(viewModel, context) {
             { viewModel.requestHomeRole(context as android.app.Activity) }
         },

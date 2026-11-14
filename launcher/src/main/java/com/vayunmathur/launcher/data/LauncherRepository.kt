@@ -403,6 +403,7 @@ class LauncherRepository private constructor(context: Context) :
         }
     }
 
+    /** Shared constants and helpers for LauncherRepository. */
     companion object {
         /**
          * Explicit, because [RoomRepository]'s default is `"passwords-db"` — a default that

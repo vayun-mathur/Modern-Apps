@@ -67,6 +67,7 @@ interface IconLoader {
     fun shortcutIcon(packageName: String, shortcutId: String, profileSerial: Long): ImageBitmap? = null
     fun widgetPreview(provider: String, profileSerial: Long): ImageBitmap? = null
 
+    /** Shared constants and helpers for IconLoader. */
     companion object {
         val Noop: IconLoader = object : IconLoader {}
     }
@@ -101,6 +102,7 @@ data class HomeUiState(
     val canExpandShade: Boolean = false,
 )
 
+/** Contract for home actions. */
 interface HomeActions {
     /** [boundsInWindow] is the icon's on-screen rect, used for the launch animation. */
     fun launch(item: WorkspaceItem, left: Int, top: Int, right: Int, bottom: Int) {}
@@ -180,6 +182,7 @@ interface HomeActions {
      */
     fun resizeItem(id: Long, rect: CellRect, displaced: Map<Long, CellRect> = emptyMap()) {}
 
+    /** Shared constants and helpers for HomeActions. */
     companion object {
         val Noop: HomeActions = object : HomeActions {}
     }
@@ -196,6 +199,7 @@ data class DrawerApp(
     val isWorkProfile: Boolean = false,
 )
 
+/** Immutable value describing drawer ui state. */
 data class DrawerUiState(
     val query: String = "",
     /** Already filtered by [query] and sorted case-insensitively by label. */
@@ -223,6 +227,7 @@ data class DrawerUiState(
     val workPaused: Boolean? = null,
 )
 
+/** Contract for drawer actions. */
 interface DrawerActions {
     fun setQuery(query: String) {}
     fun launchApp(key: ComponentKey, left: Int, top: Int, right: Int, bottom: Int) {}
@@ -230,6 +235,7 @@ interface DrawerActions {
     /** Pauses or resumes the work profile. Only reachable when [DrawerUiState.workPaused] is set. */
     fun setWorkPaused(paused: Boolean) {}
 
+    /** Shared constants and helpers for DrawerActions. */
     companion object {
         val Noop: DrawerActions = object : DrawerActions {}
     }
@@ -254,6 +260,7 @@ interface FolderActions {
     /** Reorders [itemId] to [rank] within its folder, after a drop onto a sibling. */
     fun reorderInFolder(folderId: Long, itemId: Long, rank: Int) {}
 
+    /** Shared constants and helpers for FolderActions. */
     companion object {
         val Noop: FolderActions = object : FolderActions {}
     }
@@ -271,6 +278,7 @@ data class ShortcutEntry(
     val profileSerial: Long,
 )
 
+/** Immutable value describing item menu ui state. */
 data class ItemMenuUiState(
     val item: WorkspaceItem? = null,
     val shortcuts: List<ShortcutEntry> = emptyList(),
@@ -281,12 +289,14 @@ data class ItemMenuUiState(
     val canUninstall: Boolean = false,
 )
 
+/** Contract for item menu actions. */
 interface ItemMenuActions {
     fun openAppInfo(item: WorkspaceItem) {}
     fun uninstall(item: WorkspaceItem) {}
     fun launchShortcut(entry: ShortcutEntry) {}
     fun pinShortcutToHome(entry: ShortcutEntry) {}
 
+    /** Shared constants and helpers for ItemMenuActions. */
     companion object {
         val Noop: ItemMenuActions = object : ItemMenuActions {}
     }
@@ -296,6 +306,7 @@ interface ItemMenuActions {
 // Widget picker
 // ------------------------------------------------------------------
 
+/** Immutable value describing widget entry. */
 data class WidgetEntry(
     /** Flattened provider `ComponentName`. */
     val provider: String,
@@ -309,6 +320,7 @@ data class WidgetEntry(
 /** Widgets grouped by the app that provides them, which is how people look for them. */
 data class WidgetGroup(val appLabel: String, val widgets: List<WidgetEntry>)
 
+/** Immutable value describing widget picker ui state. */
 data class WidgetPickerUiState(
     val query: String = "",
     val groups: List<WidgetGroup> = emptyList(),
@@ -323,12 +335,14 @@ data class WidgetPickerUiState(
     val open: Boolean = false,
 )
 
+/** Contract for widget picker actions. */
 interface WidgetPickerActions {
     fun setWidgetQuery(query: String) {}
     fun addWidget(entry: WidgetEntry) {}
     fun openWidgetPicker() {}
     fun closeWidgetPicker() {}
 
+    /** Shared constants and helpers for WidgetPickerActions. */
     companion object {
         val Noop: WidgetPickerActions = object : WidgetPickerActions {}
     }
@@ -338,6 +352,7 @@ interface WidgetPickerActions {
 // Settings
 // ------------------------------------------------------------------
 
+/** Immutable value describing settings ui state. */
 data class SettingsUiState(
     val columns: Int = DefaultGrid.columns,
     val rows: Int = DefaultGrid.rows,
@@ -348,6 +363,7 @@ data class SettingsUiState(
     val isDefaultHome: Boolean = false,
 )
 
+/** Contract for settings actions. */
 interface SettingsActions {
     fun setColumns(columns: Int) {}
     fun setRows(rows: Int) {}
@@ -360,6 +376,7 @@ interface SettingsActions {
     fun pickWallpaper() {}
     fun requestDefaultHome() {}
 
+    /** Shared constants and helpers for SettingsActions. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }

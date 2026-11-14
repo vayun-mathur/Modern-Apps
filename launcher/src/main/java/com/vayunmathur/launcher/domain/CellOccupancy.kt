@@ -40,6 +40,7 @@ class CellOccupancy(val columns: Int, val rows: Int) {
 
     val freeCellCount: Int get() = cells.count { !it }
 
+    /** Shared constants and helpers for CellOccupancy. */
     companion object {
         fun of(spec: GridSpec, rects: Iterable<CellRect>): CellOccupancy =
             CellOccupancy(spec).apply { rects.forEach { mark(it) } }

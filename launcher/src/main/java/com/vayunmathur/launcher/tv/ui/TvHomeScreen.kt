@@ -49,7 +49,6 @@ fun TvHomeScreen(
     onOpenAddMenu: (Int) -> Unit,
     onPickAddCandidate: (String) -> Unit,
     onUninstallOrInfo: (String) -> Unit,
-    onRefreshHome: () -> Unit,
     onRequestHomeRole: () -> Unit,
 ) {
     Box(

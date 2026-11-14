@@ -27,6 +27,7 @@ object ReconcileUseCase {
         val key: PackageKey? get() = packageName?.let { PackageKey(it, profileSerial) }
     }
 
+    /** Contract for action. */
     sealed interface Action {
         /** The target is gone for good. Drop the row. */
         data class Delete(val id: Long) : Action
@@ -62,36 +63,46 @@ object ReconcileUseCase {
                     null
                 }
 
-            LauncherItemType.APPLICATION, LauncherItemType.DEEP_SHORTCUT -> {
-                val key = item.key
-                when {
-                    key == null -> Action.Delete(item.id)
-                    // A profile that is off (quiet mode) at cold start has sent
-                    // no onPackagesUnavailable callback yet, and its packages
-                    // cannot be enumerated to fill [unavailable]. The profile
-                    // itself is the only reliable signal, so hide by profile:
-                    // deleting here wipes every work-profile icon whenever
-                    // the launcher restarts while the profile is paused.
-                    item.profileSerial in unavailableProfiles ->
-                        Action.SetHidden(item.id, true).takeUnless { item.hidden }
-                    key in unavailable -> Action.SetHidden(item.id, true).takeUnless { item.hidden }
-                    // The package is still installed but the stored launcher
-                    // activity is gone (an update renamed or removed it):
-                    // the row can never launch again, so it is dead weight
-                    // exactly like an uninstalled app. Only APPLICATION rows
-                    // are judged this way - a pinned shortcut's activity is
-                    // not required to be a launcher activity at all. An
-                    // empty [installedActivities] means the caller supplied
-                    // no activity list, in which case this check is skipped
-                    // rather than deleting everything.
-                    key in installed && item.type == LauncherItemType.APPLICATION &&
-                        installedActivities.isNotEmpty() && item.className != null &&
-                        ActivityKey(key.packageName, item.className, key.profileSerial) !in installedActivities ->
-                        Action.Delete(item.id)
-                    key in installed -> Action.SetHidden(item.id, false).takeIf { item.hidden }
-                    else -> Action.Delete(item.id)
-                }
+            LauncherItemType.APPLICATION, LauncherItemType.DEEP_SHORTCUT ->
+                appAction(item, installed, unavailable, unavailableProfiles, installedActivities)
             }
+        }
+
+    /** Application and deep-shortcut rows: hide while unavailable, delete once gone. */
+    private fun appAction(
+        item: Item,
+        installed: Set<PackageKey>,
+        unavailable: Set<PackageKey>,
+        unavailableProfiles: Set<Long>,
+        installedActivities: Set<ActivityKey>,
+    ): Action? {
+        val key = item.key
+        return when {
+            key == null -> Action.Delete(item.id)
+            // A profile that is off (quiet mode) at cold start has sent
+            // no onPackagesUnavailable callback yet, and its packages
+            // cannot be enumerated to fill [unavailable]. The profile
+            // itself is the only reliable signal, so hide by profile:
+            // deleting here wipes every work-profile icon whenever
+            // the launcher restarts while the profile is paused.
+            item.profileSerial in unavailableProfiles ->
+                Action.SetHidden(item.id, true).takeUnless { item.hidden }
+            key in unavailable -> Action.SetHidden(item.id, true).takeUnless { item.hidden }
+            // The package is still installed but the stored launcher
+            // activity is gone (an update renamed or removed it):
+            // the row can never launch again, so it is dead weight
+            // exactly like an uninstalled app. Only APPLICATION rows
+            // are judged this way - a pinned shortcut's activity is
+            // not required to be a launcher activity at all. An
+            // empty [installedActivities] means the caller supplied
+            // no activity list, in which case this check is skipped
+            // rather than deleting everything.
+            key in installed && item.type == LauncherItemType.APPLICATION &&
+                installedActivities.isNotEmpty() && item.className != null &&
+                ActivityKey(key.packageName, item.className, key.profileSerial) !in installedActivities ->
+                Action.Delete(item.id)
+            key in installed -> Action.SetHidden(item.id, false).takeIf { item.hidden }
+            else -> Action.Delete(item.id)
         }
     }
 }

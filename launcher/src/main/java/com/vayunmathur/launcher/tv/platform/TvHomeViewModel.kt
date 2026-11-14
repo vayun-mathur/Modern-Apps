@@ -325,6 +325,7 @@ class TvHomeViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- internals ---
 
+    /** Shared constants and helpers for TvHomeViewModel. */
     companion object {
         const val APP_STORE = "com.vayunmathur.appstore"
     }

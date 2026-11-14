@@ -10,6 +10,7 @@ package com.vayunmathur.launcher.domain
  */
 object WidgetResize {
 
+    /** Kinds of edge. */
     enum class Edge { Left, Top, Right, Bottom }
 
     /** Which way a resize on [edge] shoves whatever is in the way. */

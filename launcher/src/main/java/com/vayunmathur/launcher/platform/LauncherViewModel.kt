@@ -121,6 +121,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app),
         bridge = null
     }
 
+    /** Shared constants and helpers for LauncherViewModel. */
     companion object {
         /** Rasterisation size for cached icons, in dp. Generous so scaling up stays sharp. */
         private const val ICON_CACHE_DP = 72

@@ -30,15 +30,13 @@ object TvApps {
         val seen = mutableSetOf<String>()
         val out = mutableListOf<TvAppEntry>()
         for (pkg in leanbackPkgs + phonePkgs) {
-            if (pkg == selfPackage || pkg in seen) continue
-            seen.add(pkg)
-            val isLeanback = pkg in leanbackPkgs
-            if (pkg in com.vayunmathur.launcher.tv.domain.TvRowOrder.NEVER_TILES &&
-                pkg != com.vayunmathur.launcher.tv.domain.TvRowOrder.PLAY_STORE
-            ) {
-                continue
+            val isTile = pkg != selfPackage && pkg !in seen &&
+                (pkg !in com.vayunmathur.launcher.tv.domain.TvRowOrder.NEVER_TILES ||
+                    pkg == com.vayunmathur.launcher.tv.domain.TvRowOrder.PLAY_STORE)
+            if (isTile) {
+                seen.add(pkg)
+                out.add(TvAppEntry(pkg, labelOf(pm, pkg), pkg in leanbackPkgs))
             }
-            out.add(TvAppEntry(pkg, labelOf(pm, pkg), isLeanback))
         }
         return out
     }

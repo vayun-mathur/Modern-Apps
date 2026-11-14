@@ -42,6 +42,7 @@ class TvPrefs(private val context: Context) {
         context.tvDataStore.edit { it[KEY_QUICK] = quick.joinToString(",") }
     }
 
+    /** Shared constants and helpers for TvPrefs. */
     companion object {
         private val KEY_APPS = stringPreferencesKey("apps")
         private val KEY_QUICK = stringPreferencesKey("quick")

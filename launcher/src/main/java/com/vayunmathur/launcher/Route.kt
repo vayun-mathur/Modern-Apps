@@ -18,6 +18,7 @@ sealed interface Route : NavKey {
     @Serializable
     data object Home : Route
 
+    /** Singleton holding settings state and operations. */
     @Serializable
     data object Settings : Route
 }

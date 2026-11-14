@@ -200,8 +200,7 @@ class LauncherTvUiTest {
                 onOpenAddMenu = {},
                 onPickAddCandidate = {},
                 onUninstallOrInfo = {},
-                onRefreshHome = {},
-                onRequestHomeRole = {},
+                        onRequestHomeRole = {},
             )
         }
         assertEquals(2, rule.onAllNodesWithText("Alpha").fetchSemanticsNodes().size)

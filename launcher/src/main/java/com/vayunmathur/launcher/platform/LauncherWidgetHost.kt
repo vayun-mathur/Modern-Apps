@@ -43,6 +43,7 @@ class LauncherWidgetHost(context: Context) : AppWidgetHost(context, HOST_ID) {
     /** Ids the host still recognises. An id missing from here can never be rendered again. */
     fun boundIds(): Set<Int> = runCatching { appWidgetIds.toSet() }.getOrDefault(emptySet())
 
+    /** Shared constants and helpers for LauncherWidgetHost. */
     companion object {
         /** Frozen. See the class doc — never change this value. */
         const val HOST_ID = 0x4C41

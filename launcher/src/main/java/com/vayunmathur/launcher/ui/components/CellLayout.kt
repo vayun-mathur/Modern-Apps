@@ -30,6 +30,7 @@ data class CellMetrics(
         return cellX to cellY
     }
 
+    /** Shared constants and helpers for CellMetrics. */
     companion object {
         val Empty = CellMetrics(0, 0, 0, 0)
     }

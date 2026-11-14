@@ -14,6 +14,7 @@ import com.vayunmathur.library.util.DatabaseMigrations
 import com.vayunmathur.library.util.DefaultConverters
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for launcher item dao. */
 @Dao
 interface LauncherItemDao {
 
@@ -82,11 +83,13 @@ interface LauncherItemDao {
     suspend fun setRank(id: Long, rank: Int)
 }
 
+/** Launcher Database: a room database implementation for launcher database. */
 @ColumnTypeConverters(DefaultConverters::class, LauncherConverters::class)
 @Database(entities = [LauncherItemEntity::class], version = 1, exportSchema = false)
 abstract class LauncherDatabase : RoomDatabase() {
     abstract fun itemDao(): LauncherItemDao
 
+    /** Shared constants and helpers for LauncherDatabase. */
     companion object : DatabaseMigrations {
         override val migrations: List<Migration> = emptyList()
     }
