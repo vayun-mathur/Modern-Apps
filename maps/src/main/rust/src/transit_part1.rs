@@ -64,14 +64,19 @@ impl TransitIndex {
         let mut zsec = [None; SECTION_COUNT];
         for (i, s) in sec.iter_mut().enumerate().take(section_count.min(SECTION_COUNT)) {
             let off: u64 = unsafe { read_at::<u64>(dir_base, i * 2) };
-            let len: u64 = unsafe { read_at::<u64>(dir_base, i * 2 + 1) };
+            let len_word: u64 = unsafe { read_at::<u64>(dir_base, i * 2 + 1) };
+            // v8: bit 63 of a directory length marks a ZSEC block section (see
+            // TRANSIT_ZSEC_FLAG); the rest is the stored length either way.
+            let zflag = version >= tilecodec::mamaps::archive::TRANSIT_VERSION_ZSEC
+                && len_word & tilecodec::mamaps::archive::TRANSIT_ZSEC_FLAG != 0;
+            let len = len_word & !tilecodec::mamaps::archive::TRANSIT_ZSEC_FLAG;
             if off as usize + len as usize > backing.len() {
                 return None;
             }
             *s = (off as usize, len as usize);
-            // v8: every non-empty section is a ZSEC block section. Validate its table now and
-            // expose its *raw* length, which is what every bound check below compares against.
-            if version >= tilecodec::mamaps::archive::TRANSIT_VERSION_ZSEC && len > 0 {
+            // Validate a ZSEC section's table now and expose its *raw* length, which is what
+            // every bound check below compares against.
+            if zflag && len > 0 {
                 let bytes = unsafe { std::slice::from_raw_parts(base.add(off as usize), len as usize) };
                 let z = tilecodec::zsec::ZSec::parse(bytes).ok()?;
                 if z.block_size() == 0 || z.block_size() > (1 << 20) {

@@ -484,7 +484,8 @@
             out.extend_from_slice(&z);
             let d = dir_at + i * 16;
             out[d..d + 8].copy_from_slice(&o.to_le_bytes());
-            out[d + 8..d + 16].copy_from_slice(&(z.len() as u64).to_le_bytes());
+            let flag = if z.is_empty() { 0 } else { tilecodec::mamaps::archive::TRANSIT_ZSEC_FLAG };
+            out[d + 8..d + 16].copy_from_slice(&(z.len() as u64 | flag).to_le_bytes());
         }
         out
     }

@@ -13,7 +13,10 @@
 //!   vertices (every stop's vertex of every route sharing the blob, and both ends), remapping
 //!   ROUTE_STOP_SHAPE to the kept vertices and rebuilding ROUTE_SHAPE_IDX; a ride leg still
 //!   slices `shape[vertex(board)..=vertex(alight)]` exactly at its stops;
-//! * stores every non-empty section as a 64 KiB zstd-19 ZSEC section and stamps version 8.
+//! * stores the sections the planner only reads to describe a result (names, feed metadata,
+//!   polylines, MOTIS ids) and the calendar exceptions as 64 KiB zstd-19 ZSEC sections
+//!   (`--zsec` overrides; see COLD_SECTIONS for the measured trade-off), flagged by bit 63 of
+//!   their directory length, and stamps version 8.
 //!
 //! The device reader (maps `transit.rs`) reads v3..=v8; a v7-only reader refuses v8 cleanly.
 use std::fs::File;
@@ -30,6 +33,14 @@ const SEC_ROUTE_STOP_SHAPE: usize = 22;
 const SEC_ROUTE_TRIP_RECS: usize = 25;
 const SEC_ROUTE_TRIP_OFF: usize = 26;
 const ROUTE_REC: usize = 32;
+/// Sections stored as ZSEC by default: the ones the planner reads only to describe a finished
+/// journey or a stop (names 0, feed metadata 16/17/23, polylines and their indexes 20-22, MOTIS
+/// ids 24), plus the calendar exceptions (12; 0.53 GB raw, ~11x smaller). The other RAPTOR
+/// tables stay raw: measured on the planet pack (12 world queries, block cache 16 MiB/thread),
+/// every compressed set cost this much plan time against raw v7:
+///   cold only 1.04x (2.94 GB) | cold + exceptions 1.30x (2.45 GB) | + stop routes 2.3x |
+///   + transfers 2.6x | + profiles 5.2x | everything ~35x (1.19 GB).
+const COLD_SECTIONS: [usize; 9] = [0, 12, 16, 17, 20, 21, 22, 23, 24];
 const NONE: u32 = u32::MAX;
 
 fn u32_at(b: &[u8], o: usize) -> u32 {
@@ -71,6 +82,7 @@ fn seg_dist_sq(p: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     let mut tol = 1.0f64;
+    let mut zsec: Vec<usize> = COLD_SECTIONS.to_vec();
     let mut pos = Vec::new();
     let mut i = 1;
     while i < args.len() {
@@ -79,14 +91,24 @@ fn main() -> ExitCode {
             i += 2;
             continue;
         }
+        if args[i] == "--zsec" {
+            zsec = match args[i + 1].as_str() {
+                "all" => (0..DEVICE_SECTIONS).collect(),
+                "cold" => COLD_SECTIONS.to_vec(),
+                "none" => Vec::new(),
+                list => list.split(',').map(|v| v.parse().expect("--zsec section list")).collect(),
+            };
+            i += 2;
+            continue;
+        }
         pos.push(args[i].clone());
         i += 1;
     }
     if pos.len() != 2 {
-        eprintln!("usage: transit_planet5 IN.transit OUT.transit [--shape-tol-m M]");
+        eprintln!("usage: transit_planet5 IN.transit OUT.transit [--shape-tol-m M] [--zsec cold|all|none|i,j,..]");
         return ExitCode::from(2);
     }
-    match run(&pos[0], &pos[1], tol) {
+    match run(&pos[0], &pos[1], tol, &zsec) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("transit_planet5: {e}");
@@ -95,7 +117,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn run(input: &str, output: &str, tol: f64) -> Result<(), String> {
+fn run(input: &str, output: &str, tol: f64, zsec: &[usize]) -> Result<(), String> {
     let f = File::open(input).map_err(|e| format!("open {input}: {e}"))?;
     let m = unsafe { memmap2::Mmap::map(&f) }.map_err(|e| e.to_string())?;
     if m.len() < HEADER_LEN || u32_at(&m, 0) != tilecodec::mamaps::archive::TRANSIT_MAGIC {
@@ -261,26 +283,34 @@ fn run(input: &str, output: &str, tol: f64) -> Result<(), String> {
         sections[SEC_ROUTE_STOP_SHAPE] = new_rss;
     }
 
-    // ZSEC every non-empty section; v8 header and directory.
+    // ZSEC the chosen non-empty sections (flagged in the directory); v8 header and directory.
     let raw_total: usize = sections.iter().map(|s| s.len()).sum();
-    let stored: Vec<Vec<u8>> = sections
+    let stored: Vec<(Vec<u8>, bool)> = sections
         .iter()
-        .map(|s| if s.is_empty() { Vec::new() } else { tilecodec::zsec::write_zsec(s, tilecodec::zsec::ZSEC_BLOCK, 19) })
+        .enumerate()
+        .map(|(i, s)| {
+            if s.is_empty() || !zsec.contains(&i) {
+                (s.clone(), false)
+            } else {
+                (tilecodec::zsec::write_zsec(s, tilecodec::zsec::ZSEC_BLOCK, 19), true)
+            }
+        })
         .collect();
     let mut out = m[..HEADER_LEN].to_vec();
     out[4..8].copy_from_slice(&tilecodec::mamaps::archive::TRANSIT_VERSION_ZSEC.to_le_bytes());
     out[8..12].copy_from_slice(&(DEVICE_SECTIONS as u32).to_le_bytes());
     let dir_at = out.len();
     out.resize(dir_at + DEVICE_SECTIONS * 16, 0);
-    for (i, s) in stored.iter().enumerate() {
+    for (i, (s, z)) in stored.iter().enumerate() {
         while out.len() % 8 != 0 {
             out.push(0);
         }
         let off = out.len() as u64;
         out.extend_from_slice(s);
         let at = dir_at + i * 16;
+        let flag = if *z { tilecodec::mamaps::archive::TRANSIT_ZSEC_FLAG } else { 0 };
         out[at..at + 8].copy_from_slice(&off.to_le_bytes());
-        out[at + 8..at + 16].copy_from_slice(&(s.len() as u64).to_le_bytes());
+        out[at + 8..at + 16].copy_from_slice(&(s.len() as u64 | flag).to_le_bytes());
     }
     std::fs::write(output, &out).map_err(|e| format!("write {output}: {e}"))?;
     println!(

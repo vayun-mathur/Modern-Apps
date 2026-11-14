@@ -68,10 +68,15 @@ pub const GRAPH_META_LEN: u64 = 40;
 pub const TRANSIT_MAGIC: u32 = 0x5452_4958;
 /// Newest transit version accepted. v7 adds a host-only section the app never reads.
 pub const TRANSIT_VERSION: u32 = 8;
-/// Planet5: every section of a v8 pack is a [`crate::zsec`] block-compressed section, its
-/// directory length the stored length (the raw length is in the ZSEC header). v8 also drops the
-/// unread ROUTE_TRIPS varint stream and thins SHAPE_COORDS.
+/// Planet5: a v8 pack may store any section as a [`crate::zsec`] block-compressed section,
+/// marked by [`TRANSIT_ZSEC_FLAG`] in its directory length (the raw length is in the ZSEC
+/// header). The writer compresses the sections the planner does not touch per relaxation
+/// (names, polylines, ids); the RAPTOR tables stay raw. v8 also drops the unread ROUTE_TRIPS
+/// varint stream and thins SHAPE_COORDS.
 pub const TRANSIT_VERSION_ZSEC: u32 = 8;
+/// Bit 63 of a v8 directory length: the section is ZSEC. A v7 reader never sees it (it refuses
+/// v8); real lengths never come near 2^63.
+pub const TRANSIT_ZSEC_FLAG: u64 = 1 << 63;
 /// Oldest transit version accepted.
 pub const TRANSIT_VERSION_MIN: u32 = 3;
 /// POI index record stride.

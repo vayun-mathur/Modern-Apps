@@ -1,10 +1,12 @@
 // Planet5 (TRIX v8) block-compressed sections: typed reads through a per-thread block cache.
 //
-// Every non-empty v8 section is a `tilecodec::zsec` section. A read of `size_of::<T>()` bytes at
-// a byte position decodes the one (or, straddling a boundary, two) 64 KiB blocks it touches and
-// keeps them in a small per-thread cache, so the RAPTOR loops — which walk a route's trips, a
-// stop's transfers and a profile's varints in order — decode each block once and then hit the
-// cache. v3..v7 sections take the old raw mmap path untouched.
+// A v8 section flagged ZSEC in its directory length is a `tilecodec::zsec` section. A read of
+// `size_of::<T>()` bytes at a byte position decodes the one (or, straddling a boundary, two)
+// 64 KiB blocks it touches and keeps them in a small per-thread cache, with a per-section
+// last-block fast path for sequential walks (varint streams, polylines). The writer flags only
+// the sections a plan reads to describe its result; the RAPTOR tables stay raw, because their
+// random access across a world pack ran ~35x slower through the cache. Raw sections, and every
+// v3..v7 section, take the old mmap path untouched.
 
 static NEXT_TRANSIT_UID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
@@ -14,14 +16,16 @@ const TRANSIT_BLOCK_CACHE: usize = 256;
 struct TransitBlockCache {
     map: std::collections::HashMap<(u64, u8, u32), std::rc::Rc<Vec<u8>>>,
     order: std::collections::VecDeque<(u64, u8, u32)>,
-    last: Option<((u64, u8, u32), std::rc::Rc<Vec<u8>>)>,
+    /// The last block each section touched: sequential walks (a varint stream, a polyline)
+    /// stay in one block for thousands of reads, interleaved across sections.
+    last: Vec<Option<((u64, u8, u32), std::rc::Rc<Vec<u8>>)>>,
 }
 
 thread_local! {
     static TRANSIT_BLOCKS: std::cell::RefCell<TransitBlockCache> = std::cell::RefCell::new(TransitBlockCache {
         map: std::collections::HashMap::new(),
         order: std::collections::VecDeque::new(),
-        last: None,
+        last: vec![None; 32],
     });
 }
 
@@ -31,13 +35,13 @@ impl TransitIndex {
         let key = (self.uid, section as u8, b);
         TRANSIT_BLOCKS.with(|cell| {
             let mut c = cell.borrow_mut();
-            if let Some((k, v)) = &c.last {
+            if let Some(Some((k, v))) = c.last.get(section) {
                 if *k == key {
                     return v.clone();
                 }
             }
             if let Some(v) = c.map.get(&key).cloned() {
-                c.last = Some((key, v.clone()));
+                c.last[section % 32] = Some((key, v.clone()));
                 return v;
             }
             let (off, len, _) = self.zsec[section].expect("a ZSEC section");
@@ -54,7 +58,7 @@ impl TransitIndex {
             }
             c.order.push_back(key);
             c.map.insert(key, v.clone());
-            c.last = Some((key, v.clone()));
+            c.last[section % 32] = Some((key, v.clone()));
             v
         })
     }

@@ -49,6 +49,9 @@ fn main() -> std::process::ExitCode {
         (seed >> 11) as f64 / (1u64 << 53) as f64
     };
     let (mut same, mut diff, mut none_both, mut routed) = (0usize, 0usize, 0usize, 0usize);
+    // Same final arrival through a different itinerary: an equally optimal journey (tie-breaks
+    // read ride distances, which shape thinning moves by centimetres). Counted apart, not failed.
+    let mut alt = 0usize;
     let (mut boards_same, mut boards) = (0usize, 0usize);
     let (mut t7, mut t8) = (0.0f64, 0.0f64);
     let mut max_dist_diff = 0.0f64;
@@ -95,10 +98,23 @@ fn main() -> std::process::ExitCode {
                         coords7 += g7.coords.len() / 2;
                         coords8 += g8.coords.len() / 2;
                     }
+                } else if x.last().map(|g| g.arr_secs) == y.last().map(|g| g.arr_secs)
+                    && x.first().map(|g| g.dep_secs) == y.first().map(|g| g.dep_secs)
+                {
+                    alt += 1;
                 } else {
                     diff += 1;
                     if diff <= 5 {
                         println!("query {q}: plans differ");
+                        for (tag, l) in [("v7", x), ("v8", y)] {
+                            for g in l.iter() {
+                                println!(
+                                    "  {tag} ride={} {:?} {:?}->{:?} hs={:?} {}..{} n={} d={:.0}",
+                                    g.kind == LegKind::Ride, g.name, g.from_stop, g.to_stop, g.headsign,
+                                    g.dep_secs, g.arr_secs, g.stop_count, g.dist_m
+                                );
+                            }
+                        }
                     }
                 }
             }
@@ -107,6 +123,13 @@ fn main() -> std::process::ExitCode {
                 println!("query {q}: routable in one pack only");
             }
         }
+        eprintln!(
+            "q{q}: v7 {} legs, v8 {} legs, {:.0} / {:.0} ms so far",
+            p7.as_ref().map_or(0, |l| l.len()),
+            p8.as_ref().map_or(0, |l| l.len()),
+            t7 * 1e3,
+            t8 * 1e3
+        );
         let b7 = stop_departures(&v7, fla, flo, dep, sched, 20);
         let b8 = stop_departures(&v8, fla, flo, dep, sched, 20);
         let bk = |b: &Vec<offlinerouter::transit::StopDeparture>| {
@@ -118,7 +141,8 @@ fn main() -> std::process::ExitCode {
         }
     }
     println!(
-        "plans: {routed} routed, {none_both} unroutable in both; identical legs {same}, different {diff}\n\
+        "plans: {routed} routed, {none_both} unroutable in both; identical legs {same}, same arrival via another \
+         itinerary {alt}, different {diff}\n\
          departure boards identical {boards_same}/{boards}\n\
          ride polylines: {coords7} -> {coords8} points; max leg distance change {max_dist_diff:.2} m\n\
          plan time: v7 {:.1} ms/query, v8 {:.1} ms/query",
