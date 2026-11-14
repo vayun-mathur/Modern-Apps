@@ -45,23 +45,27 @@ class RideStateTest {
     private fun ride(status: RideStatus, stops: List<RideStopInfo> = emptyList()): ActiveRide =
         ActiveRide(null, status, null, null, null, null, stops, "")
 
+    private val terminalStatuses = setOf(
+        RideStatus.CANCELED, RideStatus.COMPLETED, RideStatus.PROCESSED, RideStatus.LAPSED,
+    )
+
+    private val allowedTransitions: Map<RideStatus, Set<RideStatus>> = mapOf(
+        RideStatus.IDLE to setOf(RideStatus.PENDING, RideStatus.LAPSED),
+        RideStatus.PENDING to setOf(RideStatus.ACCEPTED, RideStatus.CANCELED),
+        RideStatus.ACCEPTED to setOf(RideStatus.APPROACHING, RideStatus.CANCELED),
+        RideStatus.APPROACHING to setOf(RideStatus.ARRIVED, RideStatus.CANCELED),
+        RideStatus.ARRIVED to setOf(RideStatus.PICKED_UP, RideStatus.CANCELED),
+        RideStatus.PICKED_UP to setOf(RideStatus.DROPPED_OFF, RideStatus.CANCELED),
+        RideStatus.DROPPED_OFF to setOf(RideStatus.COMPLETED),
+        RideStatus.COMPLETED to setOf(RideStatus.PROCESSED),
+    )
+
     private fun canTransition(from: RideStatus, to: RideStatus): Boolean {
-        if (from == RideStatus.CANCELED || from == RideStatus.COMPLETED) return false
-        if (from == RideStatus.PROCESSED || from == RideStatus.LAPSED) return false
+        if (from in terminalStatuses) return false
         if (from == RideStatus.UNKNOWN || from == RideStatus.IDLE && to == RideStatus.PICKED_UP) {
             return false
         }
-        return when (from) {
-            RideStatus.IDLE -> to == RideStatus.PENDING || to == RideStatus.LAPSED
-            RideStatus.PENDING -> to == RideStatus.ACCEPTED || to == RideStatus.CANCELED
-            RideStatus.ACCEPTED -> to == RideStatus.APPROACHING || to == RideStatus.CANCELED
-            RideStatus.APPROACHING -> to == RideStatus.ARRIVED || to == RideStatus.CANCELED
-            RideStatus.ARRIVED -> to == RideStatus.PICKED_UP || to == RideStatus.CANCELED
-            RideStatus.PICKED_UP -> to == RideStatus.DROPPED_OFF || to == RideStatus.CANCELED
-            RideStatus.DROPPED_OFF -> to == RideStatus.COMPLETED
-            RideStatus.COMPLETED -> to == RideStatus.PROCESSED
-            else -> false
-        }
+        return to in allowedTransitions[from].orEmpty()
     }
 
     private fun surgedFareMinor(fareMinor: Long, surge: Double?): Long {

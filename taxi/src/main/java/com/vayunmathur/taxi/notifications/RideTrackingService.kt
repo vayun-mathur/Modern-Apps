@@ -157,6 +157,7 @@ class RideTrackingService : Service() {
         super.onDestroy()
     }
 
+    /** Shared constants and helpers for RideTrackingService. */
     companion object {
         private const val TAG = "RideTrackingService"
 

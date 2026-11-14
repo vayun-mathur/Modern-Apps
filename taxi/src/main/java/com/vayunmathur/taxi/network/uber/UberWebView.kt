@@ -99,12 +99,14 @@ private const val TAG = "UberWeb"
 /** How much of a captured GraphQL response goes to logcat — the shape, not the payload. */
 private const val GRAPHQL_RESPONSE_LOG_MAX = 4000
 
+/** Immutable value describing uber graphql capture. */
 data class UberGraphqlCapture(
     val operationName: String,
     val variables: String,
     val responseBody: String,
 )
 
+/** Singleton holding uber web state and operations. */
 object UberWeb {
     const val HOME = "https://m.uber.com/"
     const val GRAPHQL = "https://m.uber.com/go/graphql"

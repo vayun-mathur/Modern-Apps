@@ -11,6 +11,7 @@ import java.net.URLEncoder
 import java.util.Locale
 import java.util.UUID
 
+/** Immutable value describing lyft token. */
 @Serializable
 data class LyftToken(
     @SerialName("access_token") val accessToken: String,
@@ -21,7 +22,9 @@ data class LyftToken(
     @SerialName("user_id") val userId: String? = null,
 )
 
+/** Contract for lyft auth result. */
 sealed interface LyftAuthResult {
+    /** Immutable value describing success; carries token. */
     data class Success(val token: LyftToken) : LyftAuthResult
 
     /** Lyft wants a web challenge finished first; [url] comes from BrowserRedirectRequiredError. */
@@ -38,6 +41,7 @@ sealed interface LyftAuthResult {
         val description: String?,
     ) : LyftAuthResult
 
+    /** Immutable value describing failed; carries code, message. */
     data class Failed(val code: String?, val message: String) : LyftAuthResult
 }
 

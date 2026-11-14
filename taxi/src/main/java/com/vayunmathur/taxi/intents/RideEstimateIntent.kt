@@ -75,6 +75,7 @@ class RideEstimateIntent : AssistantIntent<RideEstimateRequest, RideEstimateResu
         }
     }
 
+    /** Shared constants and helpers for RideEstimateIntent. */
     companion object {
         /** Upper bound on the upstream quote so the call can't hang. */
         private const val ESTIMATE_TIMEOUT_MS = 5_000L

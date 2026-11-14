@@ -72,10 +72,12 @@ class TaxiPass3ScreensTest {
         capacity = 4, offerId = offerId, offerToken = "tok", costToken = "ct", rideType = "Lyft",
     )
 
-    private fun accountsJson(): String =
-        """{"chargeAccounts":[
-          {"id":"ca1","label":"Visa ••1111","default":true},
-          {"id":"ca2","kind":"Mastercard","lastFour":"2222","default":false}]}"""
+    private companion object {
+        const val ACCOUNTS_JSON =
+            """{"chargeAccounts":[
+              {"id":"ca1","label":"Visa ••1111","default":true},
+              {"id":"ca2","kind":"Mastercard","lastFour":"2222","default":false}]}"""
+    }
 
     @BeforeTest
     fun setUp() {
@@ -133,8 +135,8 @@ class TaxiPass3ScreensTest {
     @Test
     fun accountsSignedInListsPaymentsAndActions() {
         seedSignedIn()
-        http.on("/chargeaccounts") { http.raw(200, accountsJson(), url = it.url) }
-        http.on("/charge-accounts-multi-provider") { http.raw(200, accountsJson(), url = it.url) }
+        http.on("/chargeaccounts") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
+        http.on("/charge-accounts-multi-provider") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
         rule.setContent { AccountsScreen(onConnectLyft = {}) }
         waitForText("Visa ••1111")
         rule.onNodeWithText("Mastercard ••2222").assertIsDisplayed()
@@ -163,7 +165,7 @@ class TaxiPass3ScreensTest {
     @Test
     fun accountsSignOutFlowRevokesAndClears() {
         seedSignedIn()
-        http.on("/chargeaccounts") { http.raw(200, accountsJson(), url = it.url) }
+        http.on("/chargeaccounts") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
         http.performHandler = { http.simple(200, "", it.url) }
         rule.setContent { AccountsScreen(onConnectLyft = {}) }
         waitForText("Visa ••1111")
@@ -178,12 +180,12 @@ class TaxiPass3ScreensTest {
     @Test
     fun accountsAddCardDialogValidationAndSubmit() {
         seedSignedIn()
-        http.on("/chargeaccounts") { http.raw(200, accountsJson(), url = it.url) }
+        http.on("/chargeaccounts") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
         http.on("/v1/tokenization_strategies") {
             http.raw(200, """{"strategies":[{"stripe_card_data":{"api_key":"pk"}}]}""", url = it.url)
         }
         http.on("api.stripe.com") { http.raw(200, """{"id":"tok_new"}""", url = it.url) }
-        http.on("/charge-accounts-multi-provider") { http.raw(200, accountsJson(), url = it.url) }
+        http.on("/charge-accounts-multi-provider") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
         rule.setContent { AccountsScreen(onConnectLyft = {}) }
         waitForText(str(R.string.add_card))
         rule.onNode(
@@ -208,12 +210,12 @@ class TaxiPass3ScreensTest {
     @Test
     fun accountsAddCardSubmitRunsFullChain() {
         seedSignedIn()
-        http.on("/chargeaccounts") { http.raw(200, accountsJson(), url = it.url) }
+        http.on("/chargeaccounts") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
         http.on("/v1/tokenization_strategies") {
             http.raw(200, """{"strategies":[{"stripe_card_data":{"api_key":"pk"}}]}""", url = it.url)
         }
         http.on("api.stripe.com") { http.raw(200, """{"id":"tok_new"}""", url = it.url) }
-        http.on("/charge-accounts-multi-provider") { http.raw(200, accountsJson(), url = it.url) }
+        http.on("/charge-accounts-multi-provider") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
         rule.setContent { AccountsScreen(onConnectLyft = {}) }
         waitForText(str(R.string.add_card))
         rule.onNode(
@@ -244,7 +246,7 @@ class TaxiPass3ScreensTest {
     @Test
     fun bookingFlowPicksPaymentConfirmsAndCreates() {
         seedSignedIn()
-        http.on("/chargeaccounts") { http.raw(200, accountsJson(), url = it.url) }
+        http.on("/chargeaccounts") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
         http.on("/v1/core_trips/create") {
             http.raw(200, """{"trip_details":{"trip_id":"888"}}""", url = it.url)
         }
@@ -280,7 +282,7 @@ class TaxiPass3ScreensTest {
 
     @Test
     fun bookingFlowNotSignedInFailsWithConnectPrompt() {
-        http.on("/chargeaccounts") { http.raw(200, accountsJson(), url = it.url) }
+        http.on("/chargeaccounts") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
         rule.setContent {
             LyftBookingFlow(LyftBookingRequest(quote(), pickup, dropoff, null), onDismiss = {})
         }
@@ -448,7 +450,7 @@ class TaxiPass3ScreensTest {
 
     @Test
     fun rideScreenWithBookingTripPrefillsAndQuotes() {
-        http.on("/chargeaccounts") { http.raw(200, accountsJson(), url = it.url) }
+        http.on("/chargeaccounts") { http.raw(200, ACCOUNTS_JSON, url = it.url) }
         // Quote calls need a token; without one the results note prompt shows.
         val trip = mutableStateOf<BookingTrip?>(BookingTrip(pickup, dropoff))
         rule.setContent { RideScreen(bookingTrip = trip) }

@@ -18,7 +18,9 @@ import com.vayunmathur.taxi.data.RemoteImageFetchers
 import com.vayunmathur.taxi.ipc.RideHandoffContract
 import com.vayunmathur.taxi.notifications.RideLiveUpdate
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
+    /** Shared constants and helpers for MainActivity. */
     companion object {
         // Hosts the cross-app AssistantIntent client for taxi (mirrors
         // openassistant MainActivity.intentLauncher). WS-B's DirectionsClient and

@@ -14,10 +14,21 @@ import javax.net.ssl.SSLSocketFactory
  */
 internal object TaxiHttp {
     @Volatile
-    var executeOverride: (suspend (url: String, method: String, headers: Map<String, *>, body: Any?, sslSocketFactory: SSLSocketFactory?) -> RawResponse)? = null
+    var executeOverride: (suspend (
+        url: String,
+        method: String,
+        headers: Map<String, *>,
+        body: Any?,
+        sslSocketFactory: SSLSocketFactory?,
+    ) -> RawResponse)? = null
 
     @Volatile
-    var performOverride: (suspend (url: String, method: String, headers: Map<String, *>, body: Any?) -> SimpleResponse)? = null
+    var performOverride: (suspend (
+        url: String,
+        method: String,
+        headers: Map<String, *>,
+        body: Any?,
+    ) -> SimpleResponse)? = null
 
     suspend fun execute(
         url: String,

@@ -131,6 +131,7 @@ class LyftProvider(context: Context) : RideProvider {
     /** `POST /v1/rides/redispatch` — request a new driver for a ride. Mutates a live ride. */
     suspend fun redispatch(rideId: String): String? = exploratory.redispatch(rideId)
 
+    /** Shared constants and helpers for LyftProvider. */
     companion object {
         /**
          * Master guard for live ride booking. While false, [createRide] builds and returns the

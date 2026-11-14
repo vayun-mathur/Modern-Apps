@@ -8,6 +8,7 @@ import com.vayunmathur.taxi.network.lyft.LyftProvider
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
+/** Singleton holding quote repository state and operations. */
 object QuoteRepository {
 
     /**

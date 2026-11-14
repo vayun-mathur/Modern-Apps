@@ -35,6 +35,7 @@ class UberSession(private val context: Context) {
         UberCookies.clear()
     }
 
+    /** Shared constants and helpers for UberSession. */
     companion object {
         /** Hosts/paths that mean the user is still in the sign-in flow. */
         private val AUTH_MARKERS = listOf("auth.uber.com", "/login", "accounts.uber.com")

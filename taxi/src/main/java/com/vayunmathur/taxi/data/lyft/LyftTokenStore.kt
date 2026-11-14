@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.first
 
 private val Context.lyftDataStore by preferencesDataStore(name = "lyft_session")
 
+/** Lyft Token Store: a context implementation for lyft token store. */
 class LyftTokenStore(private val context: Context) {
     private val accessKey = stringPreferencesKey("access_token")
     private val refreshKey = stringPreferencesKey("refresh_token")

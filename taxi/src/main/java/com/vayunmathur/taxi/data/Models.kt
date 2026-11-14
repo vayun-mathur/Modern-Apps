@@ -1,10 +1,12 @@
 package com.vayunmathur.taxi.data
 
+/** Immutable value describing lat lng. */
 data class LatLng(
     val latitude: Double,
     val longitude: Double,
 )
 
+/** Immutable value describing place. */
 data class Place(
     val name: String,
     val address: String?,
@@ -20,6 +22,7 @@ data class BookingTrip(
     val destination: Place,
 )
 
+/** Kinds of provider. */
 enum class Provider(val label: String, val packageName: String) {
     UBER("Uber", "com.ubercab"),
     LYFT("Lyft", "me.lyft.android"),
@@ -66,6 +69,7 @@ data class RideQuote(
     val hasDiscount: Boolean get() = originalFareLowMinor != null || originalFareHighMinor != null
 }
 
+/** Contract for quote result. */
 sealed interface QuoteResult {
     /**
      * [purchaseSessionId] and [offersResponseId] are response-level identifiers from the offers
@@ -82,6 +86,7 @@ sealed interface QuoteResult {
     /** The provider is reachable but we are not signed in to it. */
     data object NotSignedIn : QuoteResult
 
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : QuoteResult
 }
 
@@ -100,10 +105,13 @@ data class ChargeAccount(
 
 /** Result of fetching a provider's payment methods (in-memory, never persisted). */
 sealed interface PaymentMethodsResult {
+    /** Immutable value describing success; carries accounts. */
     data class Success(val accounts: List<ChargeAccount>) : PaymentMethodsResult
 
+    /** Singleton holding not signed in state and operations. */
     data object NotSignedIn : PaymentMethodsResult
 
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : PaymentMethodsResult
 
     /** The provider does not support in-app payment management. */
@@ -115,8 +123,10 @@ sealed interface PaymentActionResult {
     /** [accounts] is the refreshed list when the server returned one, else null. */
     data class Success(val accounts: List<ChargeAccount>?) : PaymentActionResult
 
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : PaymentActionResult
 
+    /** Singleton holding unsupported state and operations. */
     data object Unsupported : PaymentActionResult
 }
 
@@ -141,10 +151,13 @@ data class NewCard(
 
 /** Result of adding a card. Mirrors [PaymentActionResult]; [accounts] is the refreshed list. */
 sealed interface AddCardResult {
+    /** Immutable value describing success; carries accounts. */
     data class Success(val accounts: List<ChargeAccount>?) : AddCardResult
 
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : AddCardResult
 
+    /** Singleton holding unsupported state and operations. */
     data object Unsupported : AddCardResult
 }
 
@@ -153,12 +166,16 @@ sealed interface AddCardResult {
  * and logs can verify it against a real capture before any live send — no charge occurs.
  */
 sealed interface BookingResult {
+    /** Immutable value describing dry run; carries requestJson, account. */
     data class DryRun(val requestJson: String, val account: ChargeAccount?) : BookingResult
 
+    /** Immutable value describing created; carries rideId, status, raw. */
     data class Created(val rideId: String?, val status: String?, val raw: String) : BookingResult
 
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : BookingResult
 
+    /** Singleton holding unsupported state and operations. */
     data object Unsupported : BookingResult
 }
 
@@ -234,6 +251,7 @@ enum class RideStatus(val wire: String) {
     /** There is a live ride worth tracking (pre-pickup or in-trip). */
     val isActive: Boolean get() = isPrePickup || this == PICKED_UP
 
+    /** Shared constants and helpers for RideStatus. */
     companion object {
         fun fromWire(raw: String?): RideStatus {
             if (raw.isNullOrBlank()) return UNKNOWN
@@ -268,21 +286,27 @@ data class ActiveRide(
 
 /** Result of reading the active ride. */
 sealed interface RideStatusResult {
+    /** Immutable value describing active; carries ride. */
     data class Active(val ride: ActiveRide) : RideStatusResult
 
     /** No ride in progress. */
     data object None : RideStatusResult
 
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : RideStatusResult
 
+    /** Singleton holding unsupported state and operations. */
     data object Unsupported : RideStatusResult
 }
 
 /** Result of a cancel request. Server response is surfaced verbatim — a cancel may incur a fee. */
 sealed interface CancelResult {
+    /** Immutable value describing done; carries message. */
     data class Done(val message: String) : CancelResult
 
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : CancelResult
 
+    /** Singleton holding unsupported state and operations. */
     data object Unsupported : CancelResult
 }

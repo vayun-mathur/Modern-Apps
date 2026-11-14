@@ -114,6 +114,7 @@ object UberAuth {
     }
 }
 
+/** Contract for uber auth result. */
 sealed interface UberAuthResult {
     /** Server accepted the answer and wants the next screen filled in. */
     data class NextScreen(
@@ -122,6 +123,7 @@ sealed interface UberAuthResult {
         val raw: String,
     ) : UberAuthResult
 
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : UberAuthResult
 }
 
