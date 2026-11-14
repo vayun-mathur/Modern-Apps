@@ -91,8 +91,14 @@ pub fn traffic_class() -> Class {
 // --- v6/v7 graph on-disk constants (see traffic_id_contract.md §2 / graph.rs) -----------------
 
 pub(crate) const MARG_MAGIC: u32 = 0x4752_414D; // "MARG"
-/// Newest graph version: v7 blocked record sections.
+/// First graph version with blocked record sections (v7). The build reads v7 straight out of
+/// `road_graph`; v8/v9 (planet5's varint / zstd-block shape points, see [`GRAPH_VERSION_MAX`])
+/// load too, for the junction-reconstruction check.
 pub(crate) const GRAPH_VERSION: u32 = 7;
+/// Newest graph version read: v9.
+pub(crate) const GRAPH_VERSION_MAX: u32 = 9;
+/// v8+: 16 geometry edges per coarse intermediate entry (`graph.rs` INTERMEDIATE_BLOCK_V8).
+const INTERMEDIATE_BLOCK_V8: u64 = 16;
 /// Oldest graph version accepted: v6 raw tables still read directly.
 pub(crate) const GRAPH_VERSION_MIN: u32 = 6;
 /// One escape block index per 1024 edges (`graph.rs` ESCAPE_BLOCK).
@@ -214,6 +220,12 @@ pub(crate) struct Graph {
     geom_present_off: usize,
     coarse_off: usize,
     within_off: usize,
+    /// Geometry edges per coarse entry: 32 (v6/v7) or 16 (v8+).
+    inter_block: u64,
+    /// v8+: blobs are zigzag varint deltas on a 1e-6 degree grid.
+    varint_v8: bool,
+    /// v9: the inflated blob (the file holds a ZSEC section). Empty otherwise.
+    blob_owned: Vec<u8>,
 }
 
 impl Graph {
@@ -251,11 +263,14 @@ impl Graph {
             return err("metadata.bin is not a MARG graph header".to_string());
         }
         let version = u32_at(&meta, 4);
-        if !(GRAPH_VERSION_MIN..=GRAPH_VERSION).contains(&version) {
+        if !(GRAPH_VERSION_MIN..=GRAPH_VERSION_MAX).contains(&version) {
             return err(format!(
-                "the graph is version {version}; the traffic layer reads v{GRAPH_VERSION_MIN}..=v{GRAPH_VERSION}"
+                "the graph is version {version}; the traffic layer reads v{GRAPH_VERSION_MIN}..=v{GRAPH_VERSION_MAX}"
             ));
         }
+        let varint_v8 = version >= 8;
+        let zsec_v9 = version >= 9;
+        let inter_block = if varint_v8 { INTERMEDIATE_BLOCK_V8 } else { INTERMEDIATE_BLOCK };
         let blocked_v7 = version >= GRAPH_VERSION;
         let node_count = u64_at(&meta, 8);
         let edge_count = u64_at(&meta, 16);
@@ -355,7 +370,7 @@ impl Graph {
             ));
         }
         let bitmap_bytes = edge_bitmap_bytes(edge_count);
-        let coarse_bytes = ((g_edges.div_ceil(INTERMEDIATE_BLOCK) + 1) * 8) as usize;
+        let coarse_bytes = ((g_edges.div_ceil(inter_block) + 1) * 8) as usize;
         let within_bytes = ((g_edges + 1) * 2) as usize;
         let trailer = bitmap_bytes + coarse_bytes + within_bytes + 8;
         if inter.len() < trailer {
@@ -365,6 +380,18 @@ impl Graph {
             ));
         }
         let blob_bytes = inter.len() - trailer;
+        // v9: the blob is a ZSEC section; inflate it whole (a batch tool walks it all).
+        let blob_owned = if zsec_v9 {
+            let z = tilecodec::zsec::ZSec::parse(&inter[..blob_bytes])
+                .map_err(|e| osm_ingest::proto::Error(format!("intermediate.bin v9 blob: {e:?}")))?;
+            let mut raw = Vec::with_capacity(z.raw_len() as usize);
+            for b in 0..z.block_count() {
+                raw.extend_from_slice(&z.block(b).map_err(|e| osm_ingest::proto::Error(format!("{e:?}")))?);
+            }
+            raw
+        } else {
+            Vec::new()
+        };
         let geom_rank_off = blob_bytes;
         let geom_present_off = blob_bytes + present_offset(edge_count);
         let coarse_off = blob_bytes + bitmap_bytes;
@@ -383,6 +410,9 @@ impl Graph {
             geom_present_off,
             coarse_off,
             within_off,
+            inter_block,
+            varint_v8,
+            blob_owned,
         })
     }
 
@@ -453,7 +483,7 @@ impl Graph {
 
     /// The blob byte offset of the `g`th geometry edge: `coarse[g/32] + within[g]`.
     fn geom_offset(&self, g: u64) -> u64 {
-        let coarse = u64_at(&self.inter, self.coarse_off + (g / INTERMEDIATE_BLOCK) as usize * 8);
+        let coarse = u64_at(&self.inter, self.coarse_off + (g / self.inter_block) as usize * 8);
         let within = u16_at(&self.inter, self.within_off + (g as usize) * 2) as u64;
         coarse + within
     }
@@ -476,6 +506,37 @@ impl Graph {
         let mut out = Vec::with_capacity(4);
         out.push((slat, slon));
         if let Some((start, end)) = self.intermediate_range(idx) {
+            if self.varint_v8 {
+                // Mirrors graph.rs decode_edge_coords (v8/v9).
+                let blob: &[u8] = if self.blob_owned.is_empty() { &self.inter } else { &self.blob_owned };
+                let b = &blob[start..end.min(blob.len())];
+                let q = |v: i32| (v as i64).div_euclid(10) + i64::from((v as i64).rem_euclid(10) >= 5);
+                let (mut qlat, mut qlon) = (q(slat), q(slon));
+                let mut at = 0usize;
+                let mut uvar = |at: &mut usize| -> Option<u64> {
+                    let (mut r, mut sh) = (0u64, 0u32);
+                    while *at < b.len() {
+                        let x = b[*at];
+                        *at += 1;
+                        r |= u64::from(x & 0x7f) << sh;
+                        if x & 0x80 == 0 {
+                            return Some(r);
+                        }
+                        sh += 7;
+                    }
+                    None
+                };
+                let mut count = 1usize;
+                while at < b.len() && count + 1 < MAX_POINTS {
+                    let (Some(a), Some(c)) = (uvar(&mut at), uvar(&mut at)) else { break };
+                    qlat += ((a >> 1) as i64) ^ -((a & 1) as i64);
+                    qlon += ((c >> 1) as i64) ^ -((c & 1) as i64);
+                    out.push(((qlat * 10) as i32, (qlon * 10) as i32));
+                    count += 1;
+                }
+                out.push((tlat, tlon));
+                return out;
+            }
             let (mut lat, mut lon) = (slat, slon);
             let mut off = start;
             // count starts at 1 for the source; the reader stops at MAX_POINTS total, matching
