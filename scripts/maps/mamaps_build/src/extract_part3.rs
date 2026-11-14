@@ -267,9 +267,14 @@ fn append_external_and_finish(
     }
     graph.wait().map_err(osm_ingest::proto::Error)?;
     timer.switch("junctions");
-    println!("building lane connectors from the v6 routing graph for the junction layer");
-    stats.junction_connectors =
-        schema::junction::stream_junctions(graph.dir(), &conventions, &mut sink)?;
+    if crate::tiler::size_opts().no_junction {
+        println!("--no-junction-layer: no lane connectors (the release style does not draw them)");
+        stats.junction_connectors = 0;
+    } else {
+        println!("building lane connectors from the v6 routing graph for the junction layer");
+        stats.junction_connectors =
+            schema::junction::stream_junctions(graph.dir(), &conventions, &mut sink)?;
+    }
     stats.features += stats.junction_connectors;
     println!("  {} lane connector(s)", stats.junction_connectors);
     // `sink.finish` itself is a flush, not a loop: every feature was serialised and its coordinates

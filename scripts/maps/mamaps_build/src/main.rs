@@ -208,6 +208,10 @@ fn main() -> ExitCode {
                 size.keep_z13_wash = true;
                 Ok(1)
             }
+            "--no-junction-layer" => {
+                size.no_junction = true;
+                Ok(1)
+            }
             "--coord-quant" => {
                 size.coord_quant = true;
                 Ok(1)

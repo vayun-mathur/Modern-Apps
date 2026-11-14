@@ -236,6 +236,12 @@ fn every_layer_decodes_and_tessellates_in_four_cities() {
         println!("layer {name:<10} tiles {:3} features {}", t.tiles, t.features);
     }
     for name in tilecodec::mamaps::dict::LAYERS {
+        if *name == "junction" {
+            // planet5 (~50 GB revision) builds with --no-junction-layer: lane connectors are drawn
+            // only by the carriageway style layers, which style::LANE_RENDERING drops for release.
+            // planet4 still carries them; either is valid.
+            continue;
+        }
         if *name == "traffic" {
             // The writer stopped emitting `traffic` features (mamaps_build extract_part3.rs:
             // "dropped as of the NA diet"); the layer stays in the dictionary with zero

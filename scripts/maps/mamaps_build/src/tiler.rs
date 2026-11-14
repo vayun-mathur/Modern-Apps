@@ -357,6 +357,11 @@ pub struct SizeOpts {
     /// parent's wash under every z14 tile (z14 drops wash areas), so z13 landtype is what users
     /// see at street zooms and its deviation is magnified 2^(view-13) times.
     pub keep_z13_wash: bool,
+    /// `--no-junction-layer`: build no lane connectors. The only style layer that reads them
+    /// (`junction-connector`) is a carriageway layer, dropped from the release style while
+    /// `library/map` `style::LANE_RENDERING` is off, so the layer is ~8% of z14 bytes no app
+    /// draws (planet5 ~50 GB revision).
+    pub no_junction: bool,
 }
 
 impl SizeOpts {
@@ -368,6 +373,7 @@ impl SizeOpts {
         z14_tolerance: 0.0,
         coord_quant: false,
         keep_z13_wash: false,
+        no_junction: false,
     };
     pub fn is_default(&self) -> bool {
         *self == SizeOpts::DEFAULT
@@ -375,9 +381,10 @@ impl SizeOpts {
     /// Stable text for the build id (only hashed when non-default).
     pub fn tag(&self) -> String {
         format!(
-            "size/zstd={};dem={};dempx={};simp={};z14={};q={};kw={}",
+            "size/zstd={};dem={};dempx={};simp={};z14={};q={};kw={}{}",
             self.zstd_level, self.dem_max_error_m, self.dem_px, self.simplify_scale, self.z14_tolerance, self.coord_quant,
-            self.keep_z13_wash
+            self.keep_z13_wash,
+            if self.no_junction { ";nojunction" } else { "" }
         )
     }
     /// The coordinate grid step for zoom `z` under `--coord-quant` (1 = untouched).
