@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.appstore.data.AppDatabase
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -27,7 +28,27 @@ class TvLoadHomePlayAccrescentTest {
 
     @BeforeTest
     fun setUp() {
+        // Hermetic offline: catalogue downloads fail, so the ViewModel's
+        // first-run sync fails closed instead of importing the real
+        // catalogue, whatever network the test host happens to have.
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
         val app = ApplicationProvider.getApplicationContext<Application>()
+        // The ViewModel's init reloads the enabled set from settings and
+        // would overwrite the flow set below (a race that made this test
+        // depend on coroutine timing): persist the same set first.
+        kotlinx.coroutines.runBlocking {
+            val settings = com.vayunmathur.appstore.data.SettingsRepository(
+                app, kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO),
+            )
+            settings.setSourceEnabled(AppSource.PLAYSTORE, true)
+            settings.setSourceEnabled(AppSource.ACCRESCENT, true)
+            settings.setSourceEnabled(AppSource.MODERN_APPS, true)
+            settings.setSourceEnabled(AppSource.FDROID, false)
+            settings.setSourceEnabled(AppSource.IZZY, false)
+            settings.setSourceEnabled(AppSource.PROPRIETARY, false)
+        }
         val db = Room.inMemoryDatabaseBuilder(app, AppDatabase::class.java)
             .setDriver(BundledSQLiteDriver())
             .allowMainThreadQueries()
@@ -67,6 +88,11 @@ class TvLoadHomePlayAccrescentTest {
         vm.accrescentAppsFlow.value = listOf(
             UnifiedApp("com.example.acc", AppSource.ACCRESCENT, "Acc App"),
         )
+    }
+
+    @AfterTest
+    fun tearDown() {
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = null
     }
 
     private fun await(description: String, condition: () -> Boolean) {
