@@ -7,6 +7,7 @@ import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 
 @OptIn(InternalSerializationApi::class)
+/** Assistant read intent: returns the most recently starting events, capped for binder transport. */
 class GetIntent: AssistantIntent<Unit, List<EventData>>(serializer<Unit>(), serializer<List<EventData>>()) {
 
     override suspend fun performCalculation(input: Unit): List<EventData> {

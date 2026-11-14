@@ -76,6 +76,10 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+/**
+ * Calendar entry activity: hosts the navigation graph, applies the pinned light/dark
+ * choice, and routes intent extras into pending navigation state.
+ */
 class MainActivity : MaActivity() {
     private val importUris = mutableStateOf<List<String>>(emptyList())
     private val pendingRoute = mutableStateOf<Route?>(null)
@@ -407,15 +411,20 @@ private fun resolveInitialRoute(
     pending: Route?,
     fallback: ReminderFallback? = null,
 ): Route? {
-    if (uris.isNotEmpty()) return Route.Settings.ImportIcs(uris)
-    if (pending != null) return pending
-    if (fallback != null) {
+    return when {
+        uris.isNotEmpty() -> Route.Settings.ImportIcs(uris)
+        pending != null -> pending
         // Pre-unlock notification tap stashed before composition: resolved
         // against the provider by the LaunchedEffect in CalendarAppContent.
-        // Return of null here is temporary until that resolution lands.
-        return null
+        // Null here is temporary until that resolution lands.
+        fallback != null -> null
+        activityIntent == null -> null
+        else -> routeFromIntent(activityIntent)
     }
-    if (activityIntent == null) return null
+}
+
+/** Route carried directly by [activityIntent]: an instance deep-link or an ACTION_INSERT, else null. */
+private fun routeFromIntent(activityIntent: Intent): Route? {
     activityIntent.getStringExtra(ReminderScheduler.EXTRA_INSTANCE)?.let { raw ->
         runCatching { Json.decodeFromString<Instance>(raw) }.getOrNull()
     }?.let { return Route.Event(it) }
@@ -428,41 +437,54 @@ private fun resolveInitialRoute(
 }
 
 
+/** Navigation keys for calendar screens and dialogs, serializable so the back stack can be restored. */
 sealed interface Route: NavKey {
     @Serializable
+    /** Calendar home destination. */
     data object Calendar: Route {
         @Serializable
+        /** Go-to-date dialog over the calendar home, initially showing the given viewing date. */
         data class GotoDialog(val dateViewing: LocalDate): Route
     }
 
     @Serializable
+    /** Settings destination and parent of the settings dialog destinations. */
     data object Settings: Route {
         @Serializable
+        /** Colour-picker dialog for the calendar with the given id. */
         data class ChangeColor(val id: Long): Route
 
         @Serializable
+        /** Dialog for creating a new local calendar. */
         data class AddCalendar(val placeholder: Int = 0): Route
 
         @Serializable
+        /** Dialog for renaming the calendar with the given id. */
         data class RenameCalendar(val id: Long): Route
 
         @Serializable
+        /** Confirmation dialog for deleting the calendar with the given id. */
         data class DeleteCalendar(val id: Long): Route
 
         @Serializable
+        /** Dialog for editing default reminders of the calendar with the given id. */
         data class DefaultReminders(val id: Long): Route
 
         @Serializable
+        /** Holiday-calendar picker destination under Settings. */
         data object HolidayCalendars: Route
 
         @Serializable
+        /** ICS import destination for the files at the given URIs. */
         data class ImportIcs(val uris: List<String>): Route
     }
 
     @Serializable
+    /** Event detail destination for one occurrence of an event. */
     data class Event(val instance: Instance): Route
 
     @Serializable
+    /** Event create/edit destination; a null id creates a new event, otherwise the event with that id is edited. */
     data class EditEvent(
         val id: Long?,
         val title: String? = null,
@@ -481,17 +503,22 @@ sealed interface Route: NavKey {
         val instanceId: Long? = null,
     ): Route {
         @Serializable
+        /** Date-picker dialog that returns its result under its key, starting at the initial date. */
         data class DatePickerDialog(val key: String, val initialDate: LocalDate, val minDate: LocalDate? = null): Route
 
         @Serializable
+        /** Time-picker dialog that returns its result under its key, starting at the initial time. */
         data class TimePickerDialog(val key: String, val initialTime: LocalTime, val minTime: LocalTime? = null): Route
 
         @Serializable
+        /** Calendar-picker dialog that returns its result under its key. */
         data class CalendarPickerDialog(val key: String): Route
         @Serializable
+        /** Timezone-picker dialog that returns its result under its key. */
         data class TimezonePickerDialog(val key: String): Route
 
         @Serializable
+        /** Recurrence-editor dialog returning its result under its key for an event starting on the start date. */
         data class RecurrenceDialog(
             val key: String,
             val startDate: LocalDate,

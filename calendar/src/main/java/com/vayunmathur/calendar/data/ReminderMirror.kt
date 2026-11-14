@@ -36,6 +36,7 @@ object ReminderMirror {
     /** Entries serialize as 4 comma-separated longs: eventId, minutes, start, end. */
     private const val ENTRY_PART_COUNT = 4
 
+    /** One mirrored reminder: event id, minutes before start, and occurrence start/end to re-arm its alarm. */
     data class Entry(
         val eventId: Long,
         val minutes: Int,

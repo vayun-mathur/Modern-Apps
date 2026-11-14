@@ -2,6 +2,7 @@ package com.vayunmathur.calendar.glance
 
 import com.vayunmathur.library.widgets.MaWidgetReceiver
 
+/** Widget receiver that registers the month-grid widget and refreshes it when the date changes. */
 class CalendarMonthGlanceWidgetReceiver : MaWidgetReceiver<CalendarMonthGlanceWidget>(
     widgetClass = CalendarMonthGlanceWidget::class,
     receiverClass = CalendarMonthGlanceWidgetReceiver::class,

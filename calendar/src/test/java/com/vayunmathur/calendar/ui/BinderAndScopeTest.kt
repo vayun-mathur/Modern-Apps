@@ -1,7 +1,6 @@
 package com.vayunmathur.calendar.ui
 
 import android.app.Application
-import android.content.Context
 import android.net.Uri
 import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
@@ -45,12 +44,10 @@ class BinderAndScopeTest {
     @get:Rule
     val rule = createComposeRule()
 
-    private val context: Context get() = ApplicationProvider.getApplicationContext()
-
     @Before
     fun setUp() {
         FakeCalendarData.reset()
-        FakeCalendarData.register(context)
+        FakeCalendarData.register()
         val standup = D.event(title = "BinderStandup", location = "BinderRoom", reminders = listOf(10))
         val recurring = D.event(
             id = 11, calendar = D.WORK, title = "BinderWeekly",

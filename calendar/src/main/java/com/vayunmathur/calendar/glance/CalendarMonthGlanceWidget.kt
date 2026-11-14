@@ -68,6 +68,7 @@ data class MonthWidgetData(
     val weekdayNames: List<String>,
 )
 
+/** Month-grid Glance widget showing titled event chips for each day of the current month. */
 class CalendarMonthGlanceWidget : MaWidget<MonthWidgetData>() {
     /**
      * Exact size mode so [LocalSize] reports the widget's real dimensions and each day

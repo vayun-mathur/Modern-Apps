@@ -2,7 +2,6 @@ package com.vayunmathur.calendar
 
 import android.Manifest
 import android.app.AlarmManager
-import android.content.Context
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -21,12 +20,10 @@ class MainActivityComposeTest {
     @get:Rule
     val rule = createAndroidComposeRule<MainActivity>()
 
-    private val context: Context get() = ApplicationProvider.getApplicationContext()
-
     @Before
     fun grantPermissions() {
         FakeCalendarData.reset()
-        FakeCalendarData.register(context)
+        FakeCalendarData.register()
         FakeCalendarData.calendars = listOf(FakeCalendarData.calendarRow(CalendarTestData.PERSONAL))
         FakeCalendarData.events = listOf(FakeCalendarData.eventRow(CalendarTestData.event(title = "ActivityEvent")))
         FakeCalendarData.instances = listOf(FakeCalendarData.instanceRow(CalendarTestData.instance()))

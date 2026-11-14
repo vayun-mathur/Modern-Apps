@@ -22,6 +22,10 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
 @Serializable
+/**
+ * A calendar event: epoch-millis timing, its calendar, recurrence rule and extra
+ * dates, and reminder minutes before start.
+ */
 data class Event(
     val id: Long?,
     val calendarID: Long,
@@ -117,6 +121,7 @@ data class Event(
         }
     }
 
+    /** Provider queries that load [Event] rows together with their reminders. */
     companion object {
         fun getAllEvents(context: Context): List<Event> {
             val events = mutableListOf<Event>()

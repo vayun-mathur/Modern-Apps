@@ -187,7 +187,7 @@ class ReminderHolidayIntentTest {
     @Test
     fun `insert intent succeeds with a writable visible calendar`() = runBlocking {
         com.vayunmathur.calendar.FakeCalendarData.reset()
-        com.vayunmathur.calendar.FakeCalendarData.register(context)
+        com.vayunmathur.calendar.FakeCalendarData.register()
         com.vayunmathur.calendar.FakeCalendarData.calendars = listOf(
             com.vayunmathur.calendar.FakeCalendarData.calendarRow(D.PERSONAL),
         )

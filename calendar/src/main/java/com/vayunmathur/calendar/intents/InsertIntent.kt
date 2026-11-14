@@ -13,6 +13,10 @@ import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 
 @OptIn(InternalSerializationApi::class)
+/**
+ * Assistant write intent: validates event data, inserts it into the first visible
+ * writable calendar, and refreshes the widgets.
+ */
 class InsertIntent: AssistantIntent<EventData, Unit>(serializer<EventData>(), serializer<Unit>()) {
 
     override suspend fun performCalculation(input: EventData) {

@@ -56,7 +56,7 @@ class ImportGlanceHolidayTest {
     @Before
     fun setUp() {
         FakeCalendarData.reset()
-        FakeCalendarData.register(context)
+        FakeCalendarData.register()
         FakeCalendarData.calendars = listOf(
             FakeCalendarData.calendarRow(D.PERSONAL),
             FakeCalendarData.calendarRow(D.WORK),

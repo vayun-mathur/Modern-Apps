@@ -3,6 +3,7 @@ import android.content.Context
 import android.provider.CalendarContract
 import com.vayunmathur.library.log.Log
 
+/** An on-device calendar from the calendar provider: identity, display colour, access level, and visibility. */
 data class Calendar(
     val id: Long,
     val accountName: String,
@@ -14,6 +15,7 @@ data class Calendar(
     val canModify: Boolean
         get() = accessLevel >= CalendarContract.Calendars.CAL_ACCESS_EDITOR
 
+    /** Provider queries that load [Calendar] rows. */
     companion object {
         fun getAllCalendars(context: Context): List<Calendar> {
             val list = mutableListOf<Calendar>()

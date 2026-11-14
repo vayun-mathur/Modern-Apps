@@ -33,6 +33,7 @@ data class HourScale(val rowHeights: List<Dp>) {
         return offsets[hour] + rowHeights[hour] * ((minute % 60) / 60f)
     }
 
+    /** Factories for hour scales: uniform rows, or rows that collapse hours with no events. */
     companion object {
         fun uniform(): HourScale = HourScale(List(24) { FULL_HOUR_HEIGHT })
 

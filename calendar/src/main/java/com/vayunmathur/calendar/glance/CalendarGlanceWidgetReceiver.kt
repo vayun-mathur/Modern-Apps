@@ -2,6 +2,7 @@ package com.vayunmathur.calendar.glance
 
 import com.vayunmathur.library.widgets.MaWidgetReceiver
 
+/** Widget receiver that registers the agenda widget and refreshes it when the date changes. */
 class CalendarGlanceWidgetReceiver : MaWidgetReceiver<CalendarGlanceWidget>(
     widgetClass = CalendarGlanceWidget::class,
     receiverClass = CalendarGlanceWidgetReceiver::class,

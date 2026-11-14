@@ -63,6 +63,7 @@ private fun RRule.EndCondition.toStringSuffix(): String = when (this) {
 }
 
 @Serializable
+/** An RFC 5545 recurrence rule parsed from an RRULE string; each subclass carries its frequency interval. */
 sealed class RRule {
     abstract val endCondition: EndCondition
     abstract val byMonthDay: List<Int>?
@@ -83,6 +84,7 @@ sealed class RRule {
         return toStringImpl() + endCondition.toStringSuffix()
     }
 
+    /** Parsing of RRULE strings into recurrence rules. */
     companion object {
         fun parse(content: String, timeZone: TimeZone): RRule? {
             if (content.isBlank()) return null
@@ -201,12 +203,16 @@ sealed class RRule {
     }
 
     @Serializable
+    /** When a recurrence stops: never, after a number of occurrences, or on a date. */
     sealed interface EndCondition {
         @Serializable
+        /** The recurrence repeats without an end. */
         object Never : EndCondition
         @Serializable
+        /** The recurrence stops after the given number of occurrences. */
         data class Count(val count: Long) : EndCondition
         @Serializable
+        /** The recurrence stops after the given date. */
         data class Until(val date: LocalDate) : EndCondition
     }
 
@@ -243,6 +249,7 @@ sealed class RRule {
     }
 
     @Serializable
+    /** A yearly recurrence repeating at the given year interval. */
     data class EveryXYears(
         val years: Int,
         override val endCondition: EndCondition,
@@ -273,6 +280,7 @@ sealed class RRule {
     }
 
     @Serializable
+    /** A monthly recurrence at the given month interval, positioned by month day or weekday within the month. */
     data class EveryXMonths(
         val months: Int,
         val typeE: Int,
@@ -309,6 +317,7 @@ sealed class RRule {
     }
 
     @Serializable
+    /** A weekly recurrence repeating at the given week interval on the given days of the week. */
     data class EveryXWeeks(
         val weeks: Int,
         val daysOfWeek: List<DayOfWeek>,
@@ -348,6 +357,7 @@ sealed class RRule {
     }
 
     @Serializable
+    /** A daily recurrence repeating at the given day interval. */
     data class EveryXDays(
         val days: Int,
         override val endCondition: EndCondition,

@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
 data class RecurrenceDates(val dates: List<LocalDate>)
 
 @Serializable
+/** Recurrence settings edited in the recurrence dialog, converted to and from a parsed recurrence rule. */
 data class RecurrenceParams(
     val freq: String, // NONE, DAILY, WEEKLY, MONTHLY, YEARLY
     val interval: Int,
@@ -25,6 +26,7 @@ data class RecurrenceParams(
     val byWeekNo: List<Int> = emptyList(),
     val wkst: DayOfWeek? = null
 ) {
+    /** Conversion from a parsed recurrence rule into dialog recurrence settings. */
     companion object {
         fun fromRRule(rr: RRule?): RecurrenceParams? {
             if (rr == null) return null

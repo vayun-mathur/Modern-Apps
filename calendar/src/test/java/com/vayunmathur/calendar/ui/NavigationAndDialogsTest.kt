@@ -1,7 +1,6 @@
 package com.vayunmathur.calendar.ui
 
 import android.app.Application
-import android.content.Context
 import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -54,12 +53,10 @@ class NavigationAndDialogsTest {
     @get:Rule
     val rule = createComposeRule()
 
-    private val context: Context get() = ApplicationProvider.getApplicationContext()
-
     @Before
     fun setUp() {
         FakeCalendarData.reset()
-        FakeCalendarData.register(context)
+        FakeCalendarData.register()
         val standup = D.event(
             title = "NavStandup", location = "NavRoom", description = "NavDesc",
             reminders = listOf(10),

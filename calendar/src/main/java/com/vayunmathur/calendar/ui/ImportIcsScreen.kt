@@ -59,6 +59,7 @@ import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.launch
 import com.vayunmathur.library.ui.EmptyState
 
+/** Whether an ICS import writes into an existing calendar or creates a new one for the imported events. */
 enum class ImportMode { Existing, New }
 
 @OptIn(ExperimentalMaterial3Api::class)

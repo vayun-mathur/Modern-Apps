@@ -57,6 +57,7 @@ data class CalendarWidgetData(
     val positionedEvents: Map<LocalDate, List<Instance>>,
 )
 
+/** Agenda Glance widget showing the next month of visible events grouped by day. */
 class CalendarGlanceWidget : MaWidget<CalendarWidgetData>() {
     override suspend fun loadData(context: Context, id: GlanceId): CalendarWidgetData {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())

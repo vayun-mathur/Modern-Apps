@@ -75,6 +75,7 @@ interface CalendarActions {
     /** Create a new event pre-filled to [date] (e.g. from a long-press on a month cell). */
     fun createEventOn(date: LocalDate) {}
 
+    /** No-op calendar actions used by previews, which render the screen without behaviour. */
     companion object {
         val Noop: CalendarActions = object : CalendarActions {}
     }
@@ -87,6 +88,7 @@ interface EventActions {
     fun deleteEventSeries(eventId: Long) {}
     fun deleteEventInstance(eventId: Long, instanceBeginTime: Long) {}
 
+    /** No-op event-detail actions used by previews, which render the screen without behaviour. */
     companion object {
         val Noop: EventActions = object : EventActions {}
     }
@@ -115,6 +117,7 @@ interface SettingsActions {
     /** Same, restricted to one calendar. Read-only calendars are exportable too. */
     fun exportCalendarIcs(calendarId: Long) {}
 
+    /** No-op settings actions used by previews, which render the screen without behaviour. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }

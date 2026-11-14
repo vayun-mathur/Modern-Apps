@@ -6,12 +6,15 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Serializable
+/** A country available in the bundled holiday data, identified by its code. */
 data class HolidayCountry(val code: String, val name: String)
 
 @Serializable
+/** One holiday in a country file: the ISO date and its display name. */
 data class HolidayEntry(val d: String, val n: String)
 
 @Serializable
+/** A language available for holiday names, identified by its code. */
 data class HolidayLanguage(val code: String, val name: String)
 
 /**

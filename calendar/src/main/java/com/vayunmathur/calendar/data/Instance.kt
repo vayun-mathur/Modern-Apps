@@ -16,6 +16,10 @@ import kotlin.time.Instant
 
 
 @Serializable
+/**
+ * One occurrence of an event: begin/end millis, display fields copied from its
+ * event, and the recurrence rule that produced it.
+ */
 data class Instance(
     val id: Long,
     val eventID: Long,
@@ -68,6 +72,7 @@ data class Instance(
         }
 
 
+    /** Provider queries that load [Instance] occurrences for a time window. */
     companion object {
         /**
          * Best-match [Instance] for a reminder tap: exact begin match first, then

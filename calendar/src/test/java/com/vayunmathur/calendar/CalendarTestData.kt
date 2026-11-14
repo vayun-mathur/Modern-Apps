@@ -25,37 +25,47 @@ class FakeCalendarProvider : android.content.ContentProvider() {
         selectionArgs: Array<out String>?, sortOrder: String?,
     ): android.database.Cursor {
         val cols = projection ?: emptyArray()
-        val rows = when (uri.pathSegments.firstOrNull()) {
+        val filtered = filterRows(rowsForUri(uri), selection, selectionArgs)
+        val cursor = android.database.MatrixCursor(cols)
+        for (row in filtered) cursor.addRow(cols.map { row[it] })
+        return cursor
+    }
+
+    /** Rows backing [uri]'s first path segment, or none for an unknown table. */
+    private fun rowsForUri(uri: android.net.Uri): List<Map<String, Any?>> =
+        when (uri.pathSegments.firstOrNull()) {
             "calendars" -> FakeCalendarData.calendars
             "events" -> FakeCalendarData.events
             "reminders" -> FakeCalendarData.reminders
             "instances" -> FakeCalendarData.instances
             else -> emptyList()
         }
-        var filtered = rows
-        if (selection != null && selectionArgs != null) {
-            val args = selectionArgs.filterNotNull()
-            filtered = when {
-                selection.contains(" LIKE ") -> {
-                    val prefix = args.getOrNull(1)?.removeSuffix("%") ?: ""
-                    val nameCol = android.provider.CalendarContract.Calendars.NAME
-                    rows.filter { (it[nameCol] as? String)?.startsWith(prefix) == true }
-                }
-                selection.contains(" OR ") && selection.contains(" = ?") -> {
-                    val nameCol = android.provider.CalendarContract.Calendars.NAME
-                    val names = args.drop(1).toSet()
-                    rows.filter { (it[nameCol] as? String) in names }
-                }
-                selection.contains("_id = ?") -> {
-                    val id = args.getOrNull(0)?.toLongOrNull()
-                    rows.filter { (it[android.provider.CalendarContract.Calendars._ID] as? Number)?.toLong() == id }
-                }
-                else -> rows
+
+    /** Applies the small selection grammar the calendar queries use in tests to [rows]. */
+    private fun filterRows(
+        rows: List<Map<String, Any?>>,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+    ): List<Map<String, Any?>> {
+        if (selection == null || selectionArgs == null) return rows
+        val args = selectionArgs.filterNotNull()
+        return when {
+            selection.contains(" LIKE ") -> {
+                val prefix = args.getOrNull(1)?.removeSuffix("%") ?: ""
+                val nameCol = android.provider.CalendarContract.Calendars.NAME
+                rows.filter { (it[nameCol] as? String)?.startsWith(prefix) == true }
             }
+            selection.contains(" OR ") && selection.contains(" = ?") -> {
+                val nameCol = android.provider.CalendarContract.Calendars.NAME
+                val names = args.drop(1).toSet()
+                rows.filter { (it[nameCol] as? String) in names }
+            }
+            selection.contains("_id = ?") -> {
+                val id = args.getOrNull(0)?.toLongOrNull()
+                rows.filter { (it[android.provider.CalendarContract.Calendars._ID] as? Number)?.toLong() == id }
+            }
+            else -> rows
         }
-        val cursor = android.database.MatrixCursor(cols)
-        for (row in filtered) cursor.addRow(cols.map { row[it] })
-        return cursor
     }
 
     override fun insert(uri: android.net.Uri, values: android.content.ContentValues?): android.net.Uri =
@@ -78,7 +88,7 @@ object FakeCalendarData {
         calendars = emptyList(); events = emptyList(); reminders = emptyList(); instances = emptyList(); nextId = 900
     }
 
-    fun register(context: android.content.Context) {
+    fun register() {
         org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(
             "com.android.calendar", FakeCalendarProvider(),
         )

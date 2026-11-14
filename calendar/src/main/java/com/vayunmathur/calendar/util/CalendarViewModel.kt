@@ -54,6 +54,7 @@ class CalendarViewModel(application: Application) :
     private val _lastViewedDate = MutableStateFlow<LocalDate?>(null)
     val lastViewedDate: StateFlow<LocalDate?> = _lastViewedDate.asStateFlow()
 
+    /** Calendar view layouts the user can pick, each with short and full label resources. */
     enum class CalendarLayout(@StringRes val shortNameRes: Int, @StringRes val prettyNameRes: Int) {
         Agenda(R.string.layout_short_agenda, R.string.layout_agenda),
         Day(R.string.layout_short_day, R.string.layout_day),
@@ -81,6 +82,7 @@ class CalendarViewModel(application: Application) :
         }
     }
 
+    /** Light/dark preference: follow the system, or force light or dark. */
     enum class ThemeMode(@StringRes val prettyNameRes: Int) {
         System(R.string.theme_system_default),
         Light(R.string.theme_light),

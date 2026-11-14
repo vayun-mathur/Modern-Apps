@@ -28,7 +28,7 @@ class ProviderCursorTest {
     @Before
     fun setUp() {
         FakeCalendarData.reset()
-        FakeCalendarData.register(context)
+        FakeCalendarData.register()
     }
 
     private fun seedBasic() {

@@ -100,6 +100,7 @@ class ReminderReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Notification-channel id and logging tag for the reminder receiver. */
     companion object {
         const val CHANNEL_ID = "calendar_reminders"
         private const val TAG = "CalendarReminderReceiver"
