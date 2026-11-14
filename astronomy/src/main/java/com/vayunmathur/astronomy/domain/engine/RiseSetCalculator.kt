@@ -5,7 +5,9 @@ import kotlin.math.acos
 import kotlin.math.cos
 import kotlin.math.sin
 
+/** Computes rise, transit, and set times for celestial objects. */
 object RiseSetCalculator {
+    /** Rise, transit, and set Julian dates, or circumpolar flags when no crossing occurs. */
     data class RiseTransitSet(
         val riseJd: Double?,
         val transitJd: Double?,

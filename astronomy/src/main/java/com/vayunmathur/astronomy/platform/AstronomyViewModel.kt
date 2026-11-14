@@ -35,6 +35,7 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
+/** The observer's geographic position in degrees and radians, with altitude in metres. */
 data class ObserverLocation(
     val latRad: Double,
     val lonRad: Double,
@@ -43,17 +44,26 @@ data class ObserverLocation(
     val altM: Double = 0.0,
 )
 
+/** How the sky-map view center is determined. */
 sealed interface CenterOption {
+    /** Center follows the device pointing direction. */
     data object DevicePointing : CenterOption
+
+    /** Center is fixed at an explicit azimuth and altitude. */
     data class Manual(val azRad: Double, val altRad: Double) : CenterOption
+
+    /** Center is locked to a selected object at an explicit azimuth and altitude. */
     data class TargetObject(val objectId: String, val azRad: Double, val altRad: Double) : CenterOption
 }
 
+/** A catalog star placed in the sky for the current time and observer. */
 data class VisibleStar(
     val star: com.vayunmathur.astronomy.data.model.Star,
     val altAz: AltAz,
     val raDec: RaDec,
 )
+
+/** A planet placed in the sky for the current time and observer. */
 data class VisiblePlanet(
     val id: String,
     val name: String,
@@ -62,7 +72,10 @@ data class VisiblePlanet(
     val mag: Double?,
     val distanceAu: Double,
 )
+/** The Sun placed in the sky for the current time and observer. */
 data class VisibleSun(val altAz: AltAz, val raDec: RaDec, val distanceAu: Double)
+
+/** The Moon placed in the sky, with its phase and illumination. */
 data class VisibleMoon(
     val altAz: AltAz,
     val raDec: RaDec,
@@ -70,18 +83,22 @@ data class VisibleMoon(
     val illumination: Double,
     val ageDays: Double,
 )
+/** A deep-sky object placed in the sky for the current time and observer. */
 data class VisibleDeepSky(
     val obj: com.vayunmathur.astronomy.data.model.DeepSkyObject,
     val altAz: AltAz,
     val raDec: RaDec,
 )
 
+/** Whether constellation lines and artwork are hidden, lines-only, or combined. */
 enum class ConstellationMode { OFF, LINES, LINES_AND_ART }
 
 /** One anchor of a constellation figure: the image pixel and where it currently sits on the sky. */
 data class VisibleArtAnchor(val srcX: Float, val srcY: Float, val altAz: AltAz)
+/** A constellation figure placed in the sky via its resolved anchors. */
 data class VisibleArt(val abbr: String, val image: String, val anchors: List<VisibleArtAnchor>)
 
+/** The fully computed sky at one instant for one observer. */
 @OptIn(ExperimentalTime::class)
 data class VisibleSky(
     val stars: List<VisibleStar> = emptyList(),
@@ -97,15 +114,25 @@ data class VisibleSky(
     val art: List<VisibleArt> = emptyList()
 )
 
+/** A constellation's stick-figure segments as star-id polylines for drawing. */
 data class ConstellationLine(val abbr: String, val name: String, val segments: List<List<Int>>)
+
+/** One sampled point of an object's path: Julian date with horizontal and equatorial positions. */
 data class TrajectoryPoint(val jd: Double, val altAz: AltAz, val raDec: RaDec)
+
+/** One search hit: stable id, display title and subtitle, and optional equatorial position. */
 data class SearchResult(val id: String, val title: String, val subtitle: String, val raDec: Pair<Double, Double>?)
 
+/** ViewModel owning the computed sky, observer, time, and settings state for the screens. */
 @OptIn(ExperimentalTime::class)
 class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapActions, SearchActions, SettingsActions {
     private companion object {
         const val MIN_FOV_DEG = 10f
         const val MAX_FOV_DEG = 120f
+        const val MIN_LAT_DEG = -90.0
+        const val MAX_LAT_DEG = 90.0
+        const val MIN_LON_DEG = -180.0
+        const val MAX_LON_DEG = 180.0
         const val TICKER_DELAY_MS = 1000L
         const val LOCATION_TIMEOUT_MS = 8000L
         const val TRAJECTORY_HALF_STEPS = 48
@@ -166,10 +193,15 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
     // list), so it must be one of the combined flows: without it, changing
     // the magnitude limit in Settings only took effect on the next
     // one-second live tick, and never while time was scrubbed/paused.
-    val visibleSky: StateFlow<VisibleSky> = combine(_simTime, _observer, _catalogReady, _magLimit) { time, obs, ready, _ ->
-        if (!ready || obs == null) VisibleSky(observer = obs, time = time, jd = TimeEngine.instantToJulianDate(time))
-        else computeVisibleSky(time, obs)
-    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, VisibleSky())
+    val visibleSky: StateFlow<VisibleSky> =
+        combine(_simTime, _observer, _catalogReady, _magLimit) { time, obs, ready, _ ->
+            if (!ready || obs == null) {
+                VisibleSky(observer = obs, time = time, jd = TimeEngine.instantToJulianDate(time))
+            } else {
+                computeVisibleSky(time, obs)
+            }
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, VisibleSky())
 
     private var tickerJob: Job? = null
     private var locationJob: Job? = null
@@ -336,8 +368,12 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
         val lonDeg = snapshot.lonDeg
         // Ignore an out-of-range persisted pair from an older build
         // instead of resurrecting a nonsense observer every launch.
-        if (latDeg != null && lonDeg != null && latDeg in -90.0..90.0 && lonDeg in -180.0..180.0) {
-            _observer.value = ObserverLocation(latDeg.toRad(), lonDeg.toRad(), latDeg, lonDeg, 0.0)
+        if (latDeg != null && lonDeg != null) {
+            val latInRange = latDeg in MIN_LAT_DEG..MAX_LAT_DEG
+            val lonInRange = lonDeg in MIN_LON_DEG..MAX_LON_DEG
+            if (latInRange && lonInRange) {
+                _observer.value = ObserverLocation(latDeg.toRad(), lonDeg.toRad(), latDeg, lonDeg, 0.0)
+            }
         }
     }
 
@@ -390,7 +426,7 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
         // Double, so e.g. latitude 999 was applied and persisted; the
         // alt-az formulas then silently produced a sky for a latitude
         // outside [-90, 90] (likewise longitude outside [-180, 180]).
-        if (latDeg !in -90.0..90.0 || lonDeg !in -180.0..180.0) return
+        if (latDeg !in MIN_LAT_DEG..MAX_LAT_DEG || lonDeg !in MIN_LON_DEG..MAX_LON_DEG) return
         _observer.value = ObserverLocation(latDeg.toRad(), lonDeg.toRad(), latDeg, lonDeg)
         prefs.saveDouble("astro_lat", latDeg)
         prefs.saveDouble("astro_lon", lonDeg)

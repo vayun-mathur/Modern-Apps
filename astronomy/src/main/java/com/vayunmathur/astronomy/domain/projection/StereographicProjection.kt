@@ -47,6 +47,7 @@ fun projectAll(viewState: ViewState, altAzList: List<AltAz>): List<Offset?> {
     }
 }
 
+/** Stereographic projection of the sky onto the screen for a single view state. */
 class StereographicProjection(private val viewState: ViewState) : SkyProjection {
     private val sinCenterAlt = sin(viewState.centerAltRad)
     private val cosCenterAlt = cos(viewState.centerAltRad)

@@ -9,6 +9,7 @@ import com.vayunmathur.library.ui.AppPermissionsSpec
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.PermissionRequirement
 
+/** Entry activity for the offline sky viewer; requires location permission, then shows navigation. */
 class MainActivity : MaActivity() {
     private val viewModel: AstronomyViewModel by viewModels()
 

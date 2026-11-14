@@ -9,7 +9,9 @@ import kotlin.math.log10
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+/** Computes planetary positions from Keplerian orbital elements. */
 object PlanetaryCalculator {
+    /** A planet's geocentric position, distances, and estimated magnitude at one instant. */
     data class PlanetResult(
         val id: String,
         val name: String,

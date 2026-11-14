@@ -6,7 +6,9 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
+/** Computes the Sun's position and equation of time from the Julian date. */
 object SolarCalculator {
+    /** The Sun's equatorial position, distance, declination, and equation of time. */
     data class SolarResult(
         val raDec: RaDec,
         val distanceAu: Double,

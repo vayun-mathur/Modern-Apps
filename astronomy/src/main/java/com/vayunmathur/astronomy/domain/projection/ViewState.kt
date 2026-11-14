@@ -1,5 +1,6 @@
 package com.vayunmathur.astronomy.domain.projection
 
+/** The sky view's center direction, field of view, screen size, and rotation. */
 data class ViewState(
     val centerAzRad: Double,
     val centerAltRad: Double,

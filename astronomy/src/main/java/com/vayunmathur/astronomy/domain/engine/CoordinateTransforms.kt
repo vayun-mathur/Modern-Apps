@@ -9,19 +9,23 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.tan
 
+/** Equatorial coordinates: right ascension and declination in radians (J2000). */
 data class RaDec(val raRad: Double, val decRad: Double) {
     val raDeg get() = raRad.toDeg()
     val decDeg get() = decRad.toDeg()
     val raHours get() = raDeg / 15.0
 }
 
+/** Horizontal coordinates: azimuth and altitude in radians for an observer. */
 data class AltAz(val azRad: Double, val altRad: Double) {
     val azDeg get() = azRad.toDeg()
     val altDeg get() = altRad.toDeg()
 }
 
+/** Ecliptic longitude and latitude in radians. */
 data class Ecliptic(val lonRad: Double, val latRad: Double)
 
+/** Conversions between equatorial, horizontal, and ecliptic coordinates. */
 object CoordinateTransforms {
 
     fun raDecToAltAz(raDec: RaDec, lstRad: Double, latRad: Double): AltAz {

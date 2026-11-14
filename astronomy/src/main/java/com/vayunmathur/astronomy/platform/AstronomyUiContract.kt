@@ -53,6 +53,7 @@ interface SkyMapActions {
     fun selectObject(id: String) {}
     fun setTime(instant: Instant, live: Boolean = false) {}
 
+    /** Holds the shared no-op [SkyMapActions] instance for previews. */
     companion object {
         val Noop: SkyMapActions = object : SkyMapActions {}
     }
@@ -66,6 +67,7 @@ interface SearchActions {
     fun search(query: String): List<SearchResult> = emptyList()
     fun selectObject(id: String) {}
 
+    /** Holds the shared no-op [SearchActions] instance for previews. */
     companion object {
         val Noop: SearchActions = object : SearchActions {}
     }
@@ -101,6 +103,7 @@ interface SettingsActions {
     fun setManualLocation(latDeg: Double, lonDeg: Double) {}
     fun refreshLocation() {}
 
+    /** Holds the shared no-op [SettingsActions] instance for previews. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }

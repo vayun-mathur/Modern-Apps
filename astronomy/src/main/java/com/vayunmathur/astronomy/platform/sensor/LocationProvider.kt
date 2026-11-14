@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
+/** Reads the device's last-known or freshly requested location for the observer position. */
 object LocationProvider {
     fun hasPermission(context: Context): Boolean {
         val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)

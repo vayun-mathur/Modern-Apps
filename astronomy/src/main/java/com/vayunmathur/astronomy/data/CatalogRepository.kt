@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
+/** Loads bundled catalogs from assets, falling back to built-in data when unreadable. */
 class CatalogRepository(
     private val context: Context,
     /** Reads one bundled asset as text, or null when it cannot be read. Injectable for tests. */
@@ -95,6 +96,7 @@ class CatalogRepository(
     }
 }
 
+/** Small built-in fallback catalogs used when a bundled asset is missing or unreadable. */
 object BuiltInCatalogs {
     val stars: List<Star> = listOf(
         Star(1, 2.0632318, 0.68092, -1.44, 0.0, "Sirius", "Sirius", "Alpha", null, "CMa", 8.6, "A1V"),

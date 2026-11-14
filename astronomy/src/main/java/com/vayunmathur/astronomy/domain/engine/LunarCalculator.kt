@@ -3,7 +3,9 @@ package com.vayunmathur.astronomy.domain.engine
 import kotlin.math.cos
 import kotlin.math.sin
 
+/** Computes the Moon's position, distance, and phase from the Julian date. */
 object LunarCalculator {
+    /** The Moon's equatorial position, distance, and phase quantities at one instant. */
     data class MoonResult(
         val raDec: RaDec,
         val distanceKm: Double,

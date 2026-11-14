@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import com.vayunmathur.astronomy.R
 import kotlinx.serialization.Serializable
 
+/** A catalog star at J2000 equatorial coordinates, with magnitude and optional identity data. */
 @Serializable
 data class Star(
     val id: Int,
@@ -20,6 +21,7 @@ data class Star(
     val spectralClass: String? = null
 )
 
+/** A constellation identified by abbreviation, with stick-figure lines joining star ids. */
 @Serializable
 data class Constellation(
     val abbr: String,
@@ -27,6 +29,7 @@ data class Constellation(
     val lines: List<List<Int>>
 )
 
+/** One alignment point tying a figure-image pixel to the catalog star it must overlay. */
 @Serializable
 data class ArtAnchor(
     val x: Int, // pixel x in the figure image
@@ -34,6 +37,7 @@ data class ArtAnchor(
     val hip: Int // star (catalog id) this pixel should align to
 )
 
+/** A constellation figure image and its three anchors defining its sky placement. */
 @Serializable
 data class ConstellationArt(
     val abbr: String,
@@ -41,6 +45,7 @@ data class ConstellationArt(
     val anchors: List<ArtAnchor> // exactly 3, defines the affine placement
 )
 
+/** A deep-sky catalog entry (galaxy, nebula, or cluster) at J2000 coordinates. */
 @Serializable
 data class DeepSkyObject(
     val id: String,
@@ -53,6 +58,7 @@ data class DeepSkyObject(
     val constellation: String? = null
 )
 
+/** Keplerian orbital elements for a solar-system body, used to compute its position. */
 @Serializable
 data class OrbitalElements(
     val id: String,
@@ -70,21 +76,27 @@ data class OrbitalElements(
     val magBase: Double? = null
 )
 
+/** Serialized wrapper for the bundled star catalog. */
 @Serializable
 data class StarsCatalog(val stars: List<Star>)
 
+/** Serialized wrapper for the bundled constellation catalog. */
 @Serializable
 data class ConstellationsCatalog(val constellations: List<Constellation>)
 
+/** Serialized wrapper for the bundled constellation-art catalog. */
 @Serializable
 data class ConstellationArtCatalog(val art: List<ConstellationArt>)
 
+/** Serialized wrapper for the bundled deep-sky catalog. */
 @Serializable
 data class DeepSkyCatalog(val objects: List<DeepSkyObject>)
 
+/** Serialized wrapper for the bundled orbital-elements catalog. */
 @Serializable
 data class OrbitalElementsCatalog(val planets: List<OrbitalElements>)
 
+/** Solar-system bodies shown as planets, each with its display-name string resource. */
 enum class PlanetId(@StringRes val displayNameRes: Int) {
     SUN(R.string.planet_sun),
     MOON(R.string.planet_moon),

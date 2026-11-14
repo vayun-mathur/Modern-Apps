@@ -4,6 +4,7 @@ import kotlin.math.PI
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
+/** Julian-date, sidereal-time, and obliquity conversions for the ephemeris. */
 object TimeEngine {
     const val J2000 = 2451545.0
 
