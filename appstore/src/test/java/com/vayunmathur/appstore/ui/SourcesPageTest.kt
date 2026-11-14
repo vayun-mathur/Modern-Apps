@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
@@ -50,7 +51,10 @@ class SourcesPageTest {
         rule.setContent { SourcesPage(viewModel = vm) }
         rule.onNodeWithText("Modern Apps", substring = true).assertIsDisplayed()
         rule.onNodeWithText("Automatically install updates", substring = true).assertIsDisplayed()
-        rule.onNodeWithText("F-Droid", substring = true).assertIsDisplayed()
+        // The F-Droid card sits below the scroll fold on the Robolectric
+        // display (further down when a status line is showing): scroll it
+        // into view, then require it to actually be displayed.
+        rule.onNodeWithText("F-Droid", substring = true).performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("https://f-droid.org/repo", substring = true).assertExists()
         // Below the scroll fold on the Robolectric display; existence is what matters.
         rule.onNodeWithText("play.google.com", substring = true).assertExists()
