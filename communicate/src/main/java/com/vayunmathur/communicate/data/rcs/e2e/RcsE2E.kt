@@ -364,7 +364,13 @@ object RcsE2E {
     ): ByteArray? = withContext(Dispatchers.IO) {
         if (!RcsFeature.enabled || !RustMlsCrypto.isAvailable) return@withContext null
         val db = RcsDatabase.getDatabase(context)
-        val storage = db.mlsGroupDao().getByConversation(conversationId)?.storage ?: ByteArray(0)
+        // The Welcome's key-package private key lives in the pending
+        // snapshot freshKeyPackage stashed under our own 1:1 thread, not
+        // under the (new) conversation's row: without it the native join
+        // has no key material and always fails for a first group.
+        val storage = db.mlsGroupDao().getByConversation(conversationId)?.storage
+            ?: db.mlsGroupDao().getPending()?.storage
+            ?: ByteArray(0)
         runCatching {
             val out = RustMlsCrypto.joinGroup(storage, welcome) ?: return@runCatching null
             val storageOut = out.getOrNull(0) ?: storage

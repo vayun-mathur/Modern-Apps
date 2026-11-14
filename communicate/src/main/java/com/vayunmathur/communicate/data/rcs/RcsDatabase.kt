@@ -291,6 +291,10 @@ interface RcsMlsGroupDao {
     @Query("SELECT * FROM rcs_mls_group WHERE conversationId = :conversationId LIMIT 1")
     suspend fun getByConversation(conversationId: String): RcsMlsGroup?
 
+    /** The pending key-package snapshot (see RcsE2E.freshKeyPackage). */
+    @Query("SELECT * FROM rcs_mls_group WHERE groupIdHex LIKE 'pending:%' ORDER BY updatedAt DESC LIMIT 1")
+    suspend fun getPending(): RcsMlsGroup?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(group: RcsMlsGroup)
 

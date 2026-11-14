@@ -312,6 +312,8 @@ class WelcomeJoinRcsPass3Test {
             val dbDeadline = System.currentTimeMillis() + 15_000
             var bodies = emptyList<String>()
             while (System.currentTimeMillis() < dbDeadline) {
+                // The service caches on its main-looper scope; pump it.
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
                 bodies = deviceB.cachedMessageDao().getForConversation(meA).map { it.body }
                 if ("cached secret" in bodies) break
                 Thread.sleep(25)

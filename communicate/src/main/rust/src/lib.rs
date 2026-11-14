@@ -22,7 +22,11 @@ pub mod session;
 pub mod wire;
 pub mod signal;
 
-#[cfg(target_os = "android")]
+// JNI bridge must also build for the host: JVM unit tests load the host
+// cdylib (build/rustHostLibs) and call the same Java_* entry points. Gating
+// this to Android left the host .so loadable but symbol-less, so
+// System.loadLibrary succeeded while every native call threw
+// UnsatisfiedLinkError under Robolectric.
 mod jni_bridge;
 
 #[cfg(test)]

@@ -40,13 +40,27 @@ class RcsSlice3Pass2E2ETest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private lateinit var testDb: RcsDatabase
+    private lateinit var deviceB: RcsDatabase
 
-    @BeforeTest
-    fun setUp() {
-        testDb = androidx.room3.Room.inMemoryDatabaseBuilder(context, RcsDatabase::class.java)
+    private fun newDb(): RcsDatabase =
+        androidx.room3.Room.inMemoryDatabaseBuilder(context, RcsDatabase::class.java)
             .setDriver(androidx.sqlite.driver.bundled.BundledSQLiteDriver())
             .allowMainThreadQueries()
             .build()
+
+    private suspend fun <T> onDb(db: RcsDatabase, block: suspend () -> T): T {
+        RcsDatabase.overrideForTest = db
+        try {
+            return block()
+        } finally {
+            RcsDatabase.overrideForTest = testDb
+        }
+    }
+
+    @BeforeTest
+    fun setUp() {
+        testDb = newDb()
+        deviceB = newDb()
         RcsDatabase.overrideForTest = testDb
         RcsPeerKeys.clear()
     }
@@ -55,6 +69,7 @@ class RcsSlice3Pass2E2ETest {
     fun tearDown() {
         RcsDatabase.overrideForTest = null
         testDb.close()
+        deviceB.close()
         RcsPeerKeys.clear()
     }
 
@@ -201,12 +216,18 @@ class RcsSlice3Pass2E2ETest {
         assertNotNull(row)
         assertEquals(identity.toList(), row.identity.toList())
 
-        // Key packages for both sides.
+        // Key packages for both sides. The peer lives on a second
+        // database: one Room row per group id cannot hold both the
+        // creator's and the joiner's snapshot of the same group, so
+        // modelling both devices in one DB (as this test used to)
+        // makes the join replace the creator's row.
         val myKp = RcsE2E.freshKeyPackage(context, me)
         assertNotNull(myKp)
-        val peerIdentity = RcsE2E.identityFor(context, peer)
-        assertNotNull(peerIdentity)
-        val peerKp = RcsE2E.freshKeyPackage(context, peer)
+        val peerKp = onDb(deviceB) {
+            val peerIdentity = RcsE2E.identityFor(context, peer)
+            assertNotNull(peerIdentity)
+            RcsE2E.freshKeyPackage(context, peer)
+        }
         assertNotNull(peerKp)
 
         // Create a group adding the peer, then join from the Welcome.
@@ -214,15 +235,15 @@ class RcsSlice3Pass2E2ETest {
         assertNotNull(created)
         val (commit, welcome) = created
         assertTrue(commit.isNotEmpty() && welcome.isNotEmpty())
-        val groupId = RcsE2E.joinEncryptedGroup(context, "conv-mls-2", welcome)
+        val groupId = onDb(deviceB) { RcsE2E.joinEncryptedGroup(context, "conv-mls-2", welcome) }
         assertNotNull(groupId)
         assertEquals(groupId.toList(), RcsE2E.groupIdFor(context, "conv-mls-1")?.toList())
-        assertEquals(groupId.toList(), RcsE2E.groupIdFor(context, "conv-mls-2")?.toList())
+        assertEquals(groupId.toList(), onDb(deviceB) { RcsE2E.groupIdFor(context, "conv-mls-2") }?.toList())
 
         // Encrypt on one side, decrypt on the joined side.
         val payload = RcsE2E.encryptTo(context, me, "conv-mls-1", "secret hello".toByteArray(Charsets.UTF_8))
         assertNotNull(payload)
-        val decrypted = RcsE2E.decryptFor(context, "conv-mls-2", payload)
+        val decrypted = onDb(deviceB) { RcsE2E.decryptFor(context, "conv-mls-2", payload) }
         assertNotNull(decrypted)
         assertEquals("secret hello", decrypted.first.toString(Charsets.UTF_8))
         assertTrue(decrypted.second)
