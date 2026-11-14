@@ -53,13 +53,18 @@ pub const ARCHIVE_KIND_MAX_KNOWN: u8 = ARCHIVE_KIND_POI_ADMIN;
 pub const GRAPH_MAGIC: u32 = 0x4752_414D;
 /// Newest (and only, for the single archive) graph version: v7 blocked record
 /// sections (nodes, edges records, elevation).
-pub const GRAPH_VERSION: u32 = 8;
+pub const GRAPH_VERSION: u32 = 9;
 /// First graph version whose nodes/edges/elevation are ZBLK blocked (v7 and later).
 pub const GRAPH_VERSION_BLOCKED: u32 = 7;
 /// Planet5: `intermediate.bin` blobs are zigzag-varint deltas on a 1e-6 degree grid (rather
 /// than fixed `i16` 1e-7 degree deltas), thinned to a 1 m bound, with 16 geometry edges per
 /// coarse block (`INTERMEDIATE_BLOCK_V8`) so a block's span still fits the `u16` within-table.
 pub const GRAPH_VERSION_VARINT: u32 = 8;
+/// Planet5 (~50 GB revision): v8 plus (a) `nodes.bin`/`edges.bin` ZBLK blocks stored column-wise
+/// ([`crate::blocked::BLOCKED_FLAG_COLUMNS`]) and (b) `intermediate.bin`'s blob and
+/// `road_names.bin` stored as [`crate::zsec`] sections (zstd blocks; the intermediate trailer stays
+/// raw and addresses the raw blob). A v8 reader refuses v9 by version.
+pub const GRAPH_VERSION_ZSEC: u32 = 9;
 /// Oldest graph version accepted: v6 raw tables still validate by length.
 pub const GRAPH_VERSION_MIN: u32 = 6;
 /// `metadata.bin` wire length: magic + version + 4 counts.

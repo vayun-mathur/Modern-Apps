@@ -135,6 +135,27 @@ impl<'a> ZSec<'a> {
     }
 }
 
+/// Block `b` of a section that [`ZSec::parse`] already validated, in O(1): the header and the
+/// two offsets are read directly instead of re-walking the whole offset table (which `parse`
+/// does, and which made every cache miss on a big section cost O(blocks)).
+pub fn block_of(bytes: &[u8], b: usize) -> Result<Vec<u8>> {
+    if bytes.len() < ZSEC_HEADER_LEN {
+        return err("not a ZSEC section");
+    }
+    let u32_at = |o: usize| u32::from_le_bytes(bytes[o..o + 4].try_into().unwrap());
+    let z = ZSec {
+        bytes,
+        block_size: u32_at(4) as usize,
+        raw_len: u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
+        block_count: u32_at(16) as usize,
+        codec: u32_at(20),
+    };
+    if ZSEC_HEADER_LEN + (b + 2) * 8 > bytes.len() {
+        return err("a ZSEC block index past its table");
+    }
+    z.block(b)
+}
+
 /// Compress `raw` into a ZSEC section: `block_size` blocks, zstd `level`, blocks compressed on
 /// all cores (each is independent, so the output is the same at any thread count).
 #[cfg(feature = "write")]

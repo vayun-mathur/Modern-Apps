@@ -74,12 +74,39 @@ fn zz(v: i64) -> u64 {
     ((v << 1) ^ (v >> 63)) as u64
 }
 
+/// A ZBLK section (plus any trailing tables) with column-transformed blocks; unchanged when its
+/// blocks already are.
+fn columns_blocked(raw: &[u8]) -> Vec<u8> {
+    let v = tilecodec::blocked::Blocked::parse(raw).expect("a ZBLK section");
+    if v.flags() & tilecodec::blocked::BLOCKED_FLAG_COLUMNS != 0 {
+        return raw.to_vec();
+    }
+    let end = v.block_offset(v.block_count()).expect("end") as usize;
+    let mut records = Vec::with_capacity(v.unpacked_len() as usize);
+    for b in 0..v.block_count() {
+        records.extend_from_slice(&v.block(b).expect("block"));
+    }
+    let mut out = tilecodec::blocked::write_blocked_columns(&records, v.record_len());
+    // Trailing tables (edges.bin's escapes and names) start at the next 8-byte boundary after
+    // the records, in the old file and in the new one alike.
+    let tail = end.div_ceil(8) * 8;
+    if tail < raw.len() {
+        out.resize(out.len().div_ceil(8) * 8, 0);
+        out.extend_from_slice(&raw[tail..]);
+    }
+    out
+}
+
 fn main() -> std::process::ExitCode {
     let all: Vec<String> = std::env::args().skip(1).collect();
     // `--v8`: write the planet5 layout (graph v8: zigzag-varint deltas on a 1e-6 degree grid,
     // INTERMEDIATE_BLOCK_V8 per coarse entry, no i16 bridging needed). Without it the v7 layout.
-    let v8 = all.iter().any(|x| x == "--v8");
-    let a: Vec<String> = all.into_iter().filter(|x| x != "--v8").collect();
+    // `--v9`: v8's encoding, then graph v9's block compression: the intermediate blob and
+    // road_names.bin become ZSEC sections (64 KiB zstd-19 blocks) and nodes.bin/edges.bin ZBLK
+    // blocks are column-transformed when the input still has row blocks.
+    let v9 = all.iter().any(|x| x == "--v9");
+    let v8 = v9 || all.iter().any(|x| x == "--v8");
+    let a: Vec<String> = all.into_iter().filter(|x| x != "--v8" && x != "--v9").collect();
     if a.len() < 3 {
         eprintln!("usage: graph_thin IN_GRAPH_DIR OUT_GRAPH_DIR TOL_CM");
         return std::process::ExitCode::from(2);
@@ -304,10 +331,32 @@ fn main() -> std::process::ExitCode {
         if name == "intermediate.bin" || !f.file_type().unwrap().is_file() {
             continue;
         }
+        if v9 && name == "road_names.bin" {
+            let raw = std::fs::read(f.path()).expect("read road_names");
+            let z = if raw.is_empty() { raw } else { tilecodec::zsec::write_zsec(&raw, tilecodec::zsec::ZSEC_BLOCK, 19) };
+            std::fs::write(format!("{outp}/{name}"), &z).expect("write road_names");
+            continue;
+        }
+        if v9 && (name == "nodes.bin" || name == "edges.bin") {
+            let raw = std::fs::read(f.path()).expect("read blocked");
+            let mut out = columns_blocked(&raw);
+            if name == "edges.bin" {
+                // The name-offset table (u32 per named edge, the file's tail) becomes a ZSEC
+                // section: 1.1 GB raw on the planet, read only to word instructions.
+                let named = read_u64(&meta, 32) as usize;
+                if named > 0 {
+                    let at = out.len() - named * 4;
+                    let table = out.split_off(at);
+                    out.extend_from_slice(&tilecodec::zsec::write_zsec(&table, tilecodec::zsec::ZSEC_BLOCK, 19));
+                }
+            }
+            std::fs::write(format!("{outp}/{name}"), out).expect("write blocked");
+            continue;
+        }
         std::fs::copy(f.path(), format!("{outp}/{name}")).expect("copy");
     }
-    let mut out = blob;
-    let new_blob = out.len();
+    let new_blob = blob.len();
+    let mut out = if v9 { tilecodec::zsec::write_zsec(&blob, tilecodec::zsec::ZSEC_BLOCK, 19) } else { blob };
     out.extend_from_slice(bitmap);
     for c in &coarse {
         out.extend_from_slice(&c.to_le_bytes());
@@ -318,7 +367,7 @@ fn main() -> std::process::ExitCode {
     out.extend_from_slice(&gcount.to_le_bytes());
     std::fs::write(format!("{outp}/intermediate.bin"), &out).expect("write");
     let mut meta_out = meta.clone();
-    let out_version: u32 = if v8 { 8 } else { in_version.min(7) };
+    let out_version: u32 = if v9 { 9 } else if v8 { 8 } else { in_version.min(7) };
     meta_out[4..8].copy_from_slice(&out_version.to_le_bytes());
     std::fs::write(format!("{outp}/metadata.bin"), &meta_out).expect("write metadata");
     // Validate by loading the result with the real reader.

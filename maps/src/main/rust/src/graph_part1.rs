@@ -37,6 +37,9 @@ pub struct Graph {
     pub escape_count: u64,
     names: EdgeBitmap,
     name_off: *const u8, // u32[named_edges], indexed by rank in `names`
+    // Graph v9: the `name_off` table is a ZSEC section of the raw u32 table (the file's last
+    // section); `name_off` then points at it and reads go through the block cache.
+    name_off_zsec: Option<ZsecRegion>,
     /// Edges with a name at all. Validated against the rank index's total at load.
     pub named_edges: u64,
 
@@ -52,6 +55,9 @@ pub struct Graph {
     // degree deltas, INTERMEDIATE_BLOCK per entry.
     intermediate_varint: bool,
     intermediate_block: u64,
+    // Graph v9: the blob is a ZSEC section (read through [`ZsecRegion`]); the trailer is raw
+    // and its offsets address the *raw* blob.
+    intermediate_zsec: Option<ZsecRegion>,
 
     // Real OSM turn-lane data (see `edge_lane_masks`). Sparse: only the edges that
     // actually carry `turn:lanes` appear, which on a planet is 2.9 M of 1.07 G.
@@ -63,6 +69,8 @@ pub struct Graph {
 
     road_names: *const u8,
     pub road_names_size: usize,
+    // Graph v9: `road_names.bin` is a ZSEC section; `road_names_size` is then its raw length.
+    road_names_zsec: Option<ZsecRegion>,
 
     // `elevation.bin`, an OPTIONAL `i16[node_count]` of per-node ground elevation in metres, baked
     // from the DEM at graph-build time (WS-G route profile). Null when the file is absent or its
@@ -103,6 +111,8 @@ pub struct Graph {
 /// exactly like the raw tables. No lifetime ties the two structs together.
 pub(crate) struct BlockedView {
     record_len: usize,
+    /// Blocks are column-transformed (ZBLK flag, graph v9): inverse after the inflate.
+    columns: bool,
     records_per_block: u64,
     /// `log2(records_per_block)` when it is a power of two (always, for packs
     /// the writer produces), so the hot lookup shifts instead of dividing.
@@ -139,6 +149,7 @@ impl BlockedView {
         // still refused by the shared parse — an offset past the bytes fails.
         Some(BlockedView {
             record_len: shared.record_len(),
+            columns: shared.flags() & tilecodec::blocked::BLOCKED_FLAG_COLUMNS != 0,
             records_per_block,
             block_shift: records_per_block
                 .is_power_of_two()
@@ -173,6 +184,9 @@ impl BlockedView {
         let frame = unsafe { std::slice::from_raw_parts(self.frames.add(start), end - start) };
         // The shared ZBLK frame decode (same code the writer's reader runs).
         match tilecodec::blocked::inflate_frame(frame, want) {
+            Ok(out) if out.len() == want && self.columns => {
+                tilecodec::blocked::columns_inverse(&out, self.record_len).into_boxed_slice()
+            }
             Ok(out) if out.len() == want => out.into_boxed_slice(),
             _ => Box::default(),
         }

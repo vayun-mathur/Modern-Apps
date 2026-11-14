@@ -447,6 +447,7 @@ pub(crate) unsafe fn read_at<T: Copy>(base: *const u8, idx: usize) -> T {
 }
 
 include!("graph_part1.rs");
+include!("graph_zsec.rs");
 include!("graph_part2.rs");
 include!("graph_part2b.rs");
 include!("graph_part3.rs");

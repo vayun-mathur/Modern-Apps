@@ -18,7 +18,13 @@ impl Graph {
         if !self.names.contains(idx) {
             return None;
         }
-        Some(unsafe { read_at::<u32>(self.name_off, self.names.rank_of(idx) as usize) })
+        let rank = self.names.rank_of(idx) as usize;
+        if let Some(z) = &self.name_off_zsec {
+            let mut b = Vec::with_capacity(4);
+            z.read_into(rank * 4, 4, &mut b);
+            return (b.len() == 4).then(|| u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+        }
+        Some(unsafe { read_at::<u32>(self.name_off, rank) })
     }
 
     /// Real OSM per-lane turn-indication masks for directed edge `idx`, ordered
@@ -103,6 +109,9 @@ impl Graph {
 
     /// Read the NUL-terminated string starting at byte `offset` in the pool.
     fn cstr_at(&self, offset: usize) -> String {
+        if let Some(z) = &self.road_names_zsec {
+            return String::from_utf8_lossy(&z.cstr_at(offset)).into_owned();
+        }
         unsafe {
             let start = self.road_names.add(offset);
             let mut len = 0usize;
@@ -270,7 +279,17 @@ impl Graph {
         if self.intermediate_varint {
             // v8: zigzag varint deltas on the 1e-6 degree grid, seeded from the source node's
             // own grid position. Each decoded point lands on a multiple of 10 e7 units.
-            let blob = unsafe { std::slice::from_raw_parts(data, byte_len as usize) };
+            // v9: the same bytes, read out of the ZSEC blob.
+            let copied;
+            let blob: &[u8] = match &self.intermediate_zsec {
+                Some(z) => {
+                    let mut v = Vec::with_capacity(byte_len as usize);
+                    z.read_into(data_off as usize, byte_len as usize, &mut v);
+                    copied = v;
+                    &copied
+                }
+                None => unsafe { std::slice::from_raw_parts(data, byte_len as usize) },
+            };
             let mut qlat = (lat as i64).div_euclid(10) + i64::from((lat as i64).rem_euclid(10) >= 5);
             let mut qlon = (lon as i64).div_euclid(10) + i64::from((lon as i64).rem_euclid(10) >= 5);
             let mut at = 0usize;

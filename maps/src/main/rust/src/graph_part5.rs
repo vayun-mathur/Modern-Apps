@@ -187,7 +187,7 @@ mod archive_tests {
         vec![
             (
                 ARCHIVE_KIND_GRAPH_META,
-                meta_at(GRAPH_VERSION, 1, 0, 0, 0),
+                meta_at(tilecodec::mamaps::archive::GRAPH_VERSION_VARINT, 1, 0, 0, 0),
                 0,
             ),
             (ARCHIVE_KIND_GRAPH_NODES, nodes, 1),
@@ -237,7 +237,7 @@ mod archive_tests {
         vec![
             (
                 ARCHIVE_KIND_GRAPH_META,
-                meta_at(GRAPH_VERSION, 2, 1, 0, 0),
+                meta_at(tilecodec::mamaps::archive::GRAPH_VERSION_VARINT, 2, 1, 0, 0),
                 0,
             ),
             (ARCHIVE_KIND_GRAPH_NODES, nodes, 1),

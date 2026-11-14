@@ -187,12 +187,12 @@ impl ArchiveView {
             )
         });
         let meta = slice(ARCHIVE_KIND_GRAPH_META)?;
-        let (node_count, edge_count, escape_count, named_edges, blocked_v7) = match meta {
+        let (node_count, edge_count, escape_count, named_edges, blocked_v7, zsec_v9) = match meta {
             None => {
                 if graph_present {
                     return err("a single-archive carries graph sections but no graph meta");
                 }
-                (0, 0, 0, 0, false)
+                (0, 0, 0, 0, false, false)
             }
             Some(m) => {
                 if m.len() as u64 != GRAPH_META_LEN {
@@ -227,7 +227,7 @@ impl ArchiveView {
                     return err("a single-archive graph node count overflows u32");
                 }
                 let _ = header;
-                (n, e, esc, named, graph_version >= GRAPH_VERSION_BLOCKED)
+                (n, e, esc, named, graph_version >= GRAPH_VERSION_BLOCKED, graph_version >= GRAPH_VERSION_ZSEC)
             }
         };
         // Nodes: (N+1) 12-byte records (the sentinel). Under v7 a ZBLK
@@ -272,7 +272,14 @@ impl ArchiveView {
             let present = edge_count.div_ceil(8);
             let name_off_off = names_off + rank + present;
             let want = name_off_off + named_edges * 4;
-            if b.len() as u64 != want {
+            if zsec_v9 && named_edges > 0 {
+                // v9: the name-offset table is a ZSEC section of the raw table, last in the file.
+                let tail = b.get(name_off_off as usize..).unwrap_or(&[]);
+                match crate::zsec::ZSec::parse(tail) {
+                    Ok(z) if z.raw_len() == named_edges * 4 => {}
+                    _ => return err("a single-archive v9 edges section's name-offset table is not the ZSEC section it claims"),
+                }
+            } else if b.len() as u64 != want {
                 return err(format!(
                     "a single-archive edges section is {} bytes, want {want}",
                     b.len()

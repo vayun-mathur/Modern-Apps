@@ -334,8 +334,9 @@ fn validate_sidecars(
     let graph_version = u32_at(&meta, 4);
     // v8 (planet5) differs from v7 only inside intermediate.bin (varint shape points), which
     // is validated below by its trailer like any other version.
-    if !(6..=8).contains(&graph_version) {
-        return Err(format!("the graph is version {graph_version}, this pack reads v6..=v8"));
+    // v9 adds column ZBLK blocks and ZSEC intermediate blob / road names / name-offset table.
+    if !(6..=9).contains(&graph_version) {
+        return Err(format!("the graph is version {graph_version}, this pack reads v6..=v9"));
     }
     let blocked_v7 = graph_version >= 7;
     let (node_count, edge_count) = (u64_at(&meta, 8), u64_at(&meta, 16));
@@ -432,7 +433,20 @@ fn validate_sidecars(
         let present = edge_count.div_ceil(8);
         let name_off_off = names_off + rank + present;
         let want = name_off_off + named_edges * 4;
-        if len != want {
+        if graph_version >= 9 && named_edges > 0 {
+            // v9: the name-offset table is a ZSEC section (header: magic, block, raw_len).
+            let path = graph.join("edges.bin");
+            let mut f = std::fs::File::open(&path)
+                .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+            f.seek(SeekFrom::Start(name_off_off))
+                .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+            let mut zh = [0u8; 24];
+            f.read_exact(&mut zh)
+                .map_err(|e| format!("edges.bin ends before its name-offset table: {e}"))?;
+            if &zh[..4] != b"ZSEC" || u64::from_le_bytes(zh[8..16].try_into().unwrap()) != named_edges * 4 {
+                return Err("edges.bin (v9) name-offset table is not a ZSEC section of the table".to_string());
+            }
+        } else if len != want {
             return Err(format!("edges.bin is {len} bytes, want {want}"));
         }
     }

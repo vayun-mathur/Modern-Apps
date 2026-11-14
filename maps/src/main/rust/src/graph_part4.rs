@@ -113,6 +113,7 @@ impl Graph {
         let named_edges = named;
         let blocked_v7 = version >= tilecodec::mamaps::archive::GRAPH_VERSION_BLOCKED;
         let varint_v8 = version >= tilecodec::mamaps::archive::GRAPH_VERSION_VARINT;
+        let zsec_v9 = version >= tilecodec::mamaps::archive::GRAPH_VERSION_ZSEC;
         let intermediate_block = if varint_v8 { INTERMEDIATE_BLOCK_V8 } else { INTERMEDIATE_BLOCK };
 
         // `edge_count` comes from the header rather than from the edges
@@ -171,9 +172,22 @@ impl Graph {
         );
         let name_off_off = names_off + EdgeBitmap::bytes(edge_count);
         let want_edges = name_off_off + named_edges * std::mem::size_of::<u32>() as u64;
-        if edges_bytes.len() as u64 != want_edges {
-            return None;
-        }
+        // Graph v9: the name-offset table (the payload's tail) is a ZSEC section of that table.
+        let name_off_zsec = if zsec_v9 && named_edges > 0 {
+            if (edges_bytes.len() as u64) <= name_off_off {
+                return None;
+            }
+            let z = ZsecRegion::parse(&edges_bytes[name_off_off as usize..])?;
+            if z.raw_len() as u64 != named_edges * 4 {
+                return None;
+            }
+            Some(z)
+        } else {
+            if edges_bytes.len() as u64 != want_edges {
+                return None;
+            }
+            None
+        };
         // The escape index, escape rows and name tables live behind the
         // record array in the same payload, raw in both v6 and v7 — only the
         // record array itself is blocked-compressed. So the table base is the
@@ -271,13 +285,28 @@ impl Graph {
                 (geometry_edges / intermediate_block) as usize,
             ) + u64::from(read_at::<u16>(intermediate_within, geometry_edges as usize))
         };
-        if sentinel != blob_bytes || geometry.total(edge_count) != geometry_edges {
+        // Graph v9: the blob is a ZSEC section of the raw blob the trailer addresses.
+        let intermediate_zsec = if zsec_v9 {
+            let z = ZsecRegion::parse(unsafe { std::slice::from_raw_parts(intermediate_data, blob_bytes as usize) })?;
+            Some(z)
+        } else {
+            None
+        };
+        let raw_blob = intermediate_zsec.as_ref().map_or(blob_bytes, |z| z.raw_len() as u64);
+        if sentinel != raw_blob || geometry.total(edge_count) != geometry_edges {
             return None;
         }
 
-        let (road_names, road_names_size) = match sections.road_names {
+        let (road_names, mut road_names_size) = match sections.road_names {
             Some(b) => (b.as_ptr(), b.len()),
             None => (ptr::null(), 0),
+        };
+        let road_names_zsec = if zsec_v9 && !road_names.is_null() && road_names_size > 0 {
+            let z = ZsecRegion::parse(unsafe { std::slice::from_raw_parts(road_names, road_names_size) })?;
+            road_names_size = z.raw_len();
+            Some(z)
+        } else {
+            None
         };
 
         // Lanes payload: [ u32 n ][ LaneEntry[n + 1] ][ u16 lane-mask blob ].
@@ -455,6 +484,7 @@ impl Graph {
             escape_count,
             names,
             name_off,
+            name_off_zsec,
             named_edges,
             intermediate_data,
             geometry,
@@ -462,11 +492,13 @@ impl Graph {
             intermediate_within,
             intermediate_varint: varint_v8,
             intermediate_block,
+            intermediate_zsec,
             lane_index,
             lane_edges,
             lane_data,
             road_names,
             road_names_size,
+            road_names_zsec,
             elevation,
             nodes_view,
             edges_view,
