@@ -12,6 +12,14 @@
 #   PB_GO_FILE    POI go-file              (default: $HOME/planet-build/poi_go)
 #   PB_LOGDIR     master/phase logs        (default: $HOME/planet-build-logs)
 #   PB_DISK_PATH  filesystem the disk gates check (default: /)
+#   PB_OUT        the archive to write   (default: $IN/world.mamaps; its .buildtmp beside it)
+#
+# PLANET5 (2026-11-14, owner: "balanced with planet5 for 60 GB"; see the planet-size report):
+# mamaps_build runs with the "balanced" size flags; after tiles + POI the build converts the
+# three big inputs to the planet5 formats before packing -- graph_thin (1 m DP, +-25 m junction
+# zone, graph v8 varint shape points), transit_planet5 (TRIX v8: ZSEC sections, ROUTE_TRIPS
+# dropped, shapes thinned at 1 m) and mamaps_planet5 (v10 header: dictionary-zstd v11 bodies).
+# The graph's ZBLK blocks are zstd-19 straight out of road_graph (tilecodec BLOCK_LEVEL).
 # Memory admission reads MemAvailable, capped by the cgroup's own headroom when
 # the process runs under a memory limit below the host's RAM (containers, vast
 # slices); with no such limit (devvm) it is plain MemAvailable as before.
@@ -97,7 +105,9 @@
 set -u
 REPO=${PB_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
 IN=$REPO/scripts/maps/inputs
-OUT=$IN/world.mamaps
+OUT=${PB_OUT:-$IN/world.mamaps}
+OUTDIR=$(dirname "$OUT")
+OUTNAME=$(basename "$OUT")
 TMP=$OUT.buildtmp
 GRAPH=$TMP/graph
 ROUTES=$TMP/transit-routes.geojsonseq
@@ -110,7 +120,7 @@ DISK_PATH=${PB_DISK_PATH:-/}
 LOG=$LOGDIR/planet-build.log
 # Inline archive hash written by `mamaps_pack --sha256-out` (moved beside the
 # archive only after the phase-7 header gate passes).
-PACK_SHA=$TMP/world.mamaps.sha256
+PACK_SHA=$TMP/$OUTNAME.sha256
 # mamaps_build --graph-ready-file: created only after road_graph + road_overlay.
 READY=$GRAPH/.ready
 # Running-tool registry for memory admission (one "pid budget_gib" per file).
@@ -299,9 +309,14 @@ cargo build --release \
     --bin road_graph --bin road_overlay \
     --bin transit_shapes \
     --bin mamaps_build --bin mamaps_pack --bin mamaps_dump \
-    --bin poi_extract \
+    --bin poi_extract --bin mamaps_planet5 --bin transit_planet5 \
     >>"$LOGDIR/cargo-build.log" 2>&1 || die "cargo build failed (see cargo-build.log)"
-for b in road_graph road_overlay transit_shapes mamaps_build mamaps_pack mamaps_dump poi_extract; do
+# planet5 graph post-pass: an examples/ target of the engine crate (it drives the app's own
+# graph reader), so the Android cdylib never links it.
+cargo build --release -p offlinerouter --example graph_thin \
+    >>"$LOGDIR/cargo-build.log" 2>&1 || die "cargo build graph_thin failed (see cargo-build.log)"
+[ -x "$BIN/examples/graph_thin" ] || die "no graph_thin after build"
+for b in road_graph road_overlay transit_shapes mamaps_build mamaps_pack mamaps_dump poi_extract mamaps_planet5 transit_planet5; do
     [ -x "$BIN/$b" ] || die "no $b after build"
 done
 log "  all binaries present (go-file at build time: $GO_AT_BUILD)"
@@ -321,7 +336,10 @@ log "  memory: MemAvailable $(mem_avail_gb)G, headroom ${MEM_HEADROOM_GB}G, scop
 
 MB_ARGS=(--input "$IN/planet.osm.pbf" --out "$TILES"
     --coastline "$IN/coastline.shp" --graph "$GRAPH"
-    --transit-routes "$ROUTES" --dem "$IN/world.mdem" --region world)
+    --transit-routes "$ROUTES" --dem "$IN/world.mdem" --region world
+    # planet5 "balanced": DEM error <= 0.5 ground pixel per zoom, 2x simplification below z14,
+    # a 1-unit z14 floor for washable layers, zoom-adaptive coordinate grid, z13 wash kept.
+    --dem-px 0.5 --simplify-scale 2 --z14-tolerance 1 --coord-quant --keep-z13-wash)
 
 # Pressure log: user.slice memory PSI (what fb-oomd watches), MemAvailable and
 # each build scope's anon/file, every 30 s, for the life of the build.
@@ -567,11 +585,28 @@ wait "$POI_PID" || die "POI job failed (see $LOG / $TMP/poi.log)"
 [ -f "$POI/poi_region.bin" ] || die "poi_extract wrote no $POI/poi_region.bin -- fix regressed?"
 log "  poi sidecars ready"
 
-log "[6/7] pack: mamaps_pack -> world.mamaps"
+log "[5b/7] planet5: graph v8, transit v8, dictionary tiles"
+GRAPH5=$TMP/graph5
+TRANSIT5=$TMP/world5.transit
+TILES5=$TMP/tiles5.mamaps
+rm -rf "$GRAPH5" "$TRANSIT5" "$TILES5"
+# Three independent conversions, run together (graph_thin is one thread, ~48 GB; the others
+# use the pool). All read their inputs only.
+run_tool g5 60 0 1 -- nice -n 10 "$BIN/examples/graph_thin" "$GRAPH" "$GRAPH5" 100 25 --v8 \
+    >"$TMP/graph5.log" 2>&1 & G5_PID=$!
+run_tool t5 24 0 1 -- nice -n 10 "$BIN/transit_planet5" "$WT" "$TRANSIT5" --shape-tol-m 1 \
+    >"$TMP/transit5.log" 2>&1 & T5_PID=$!
+run_tool m5 120 1 1 -- "$BIN/mamaps_planet5" "$TILES" "$TILES5" >"$TMP/tiles5.log" 2>&1 \
+    || die "mamaps_planet5 failed (see $TMP/tiles5.log)"
+wait "$T5_PID" || die "transit_planet5 failed (see $TMP/transit5.log)"
+wait "$G5_PID" || die "graph_thin failed (see $TMP/graph5.log)"
+log "  graph5 $(stat -c%s "$GRAPH5/intermediate.bin") B intermediate; transit5 $(stat -c%s "$TRANSIT5") B; tiles5 $(stat -c%s "$TILES5") B"
+
+log "[6/7] pack: mamaps_pack -> $OUTNAME"
 # A stale inline hash from an earlier run must never be taken for this one.
 rm -f "$PACK_SHA"
-"$BIN/mamaps_pack" --tiles "$TILES" --graph "$GRAPH" --poi "$POI" \
-    --transit "$WT" --out "$OUT" ${PACK_SHA_ARGS[@]+"${PACK_SHA_ARGS[@]}"} >"$TMP/pack.log" 2>&1 \
+"$BIN/mamaps_pack" --tiles "$TILES5" --graph "$GRAPH5" --poi "$POI" \
+    --transit "$TRANSIT5" --out "$OUT" ${PACK_SHA_ARGS[@]+"${PACK_SHA_ARGS[@]}"} >"$TMP/pack.log" 2>&1 \
     || die "mamaps_pack failed (see $TMP/pack.log)"
 log "  packed $(stat -c%s "$OUT") B; freeing transit workdir"
 rm -rf "$IN/world_transit_work" && log "  inputs/world_transit_work deleted" \
@@ -585,12 +620,12 @@ log "[7/7] verify: header dump gates + sha256"
 # written) when it is present, well-formed and newer than the archive's own
 # rename; otherwise hash the file as before.
 if [ -s "$PACK_SHA" ] && [ "$(wc -l < "$PACK_SHA")" -eq 1 ] \
-    && grep -Eq '^[0-9a-f]{64}  world\.mamaps$' "$PACK_SHA" && ! [ "$PACK_SHA" -ot "$OUT" ]; then
-    mv -f "$PACK_SHA" "$IN/world.mamaps.sha256" || die "cannot place $IN/world.mamaps.sha256"
-    log "  sha256 (inline, from mamaps_pack): $(cut -d' ' -f1 "$IN/world.mamaps.sha256")"
+    && grep -Eq "^[0-9a-f]{64}  ${OUTNAME//./\\.}\$" "$PACK_SHA" && ! [ "$PACK_SHA" -ot "$OUT" ]; then
+    mv -f "$PACK_SHA" "$OUT.sha256" || die "cannot place $OUT.sha256"
+    log "  sha256 (inline, from mamaps_pack): $(cut -d' ' -f1 "$OUT.sha256")"
 else
     log "  no usable inline hash; running sha256sum"
-    ( cd "$IN" && sha256sum world.mamaps > world.mamaps.sha256 ) || die "sha256sum failed"
-    log "  sha256: $(cut -d' ' -f1 "$IN/world.mamaps.sha256")"
+    ( cd "$OUTDIR" && sha256sum "$OUTNAME" > "$OUTNAME.sha256" ) || die "sha256sum failed"
+    log "  sha256: $(cut -d' ' -f1 "$OUT.sha256")"
 fi
 log "BUILD COMPLETE: $OUT"
