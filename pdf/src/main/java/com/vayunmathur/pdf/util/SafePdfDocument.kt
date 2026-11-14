@@ -73,6 +73,7 @@ class SafePdfDocument private constructor(
      * the whole class of missing-content bugs was invisible in the field.
      */
     sealed interface PageLoad {
+        /** Immutable value describing decoded; carries page. */
         data class Decoded(val page: SafePdfPage) : PageLoad
         /** [reason] is a log/diagnostic string, not user-facing copy. */
         data class Failed(val reason: String) : PageLoad
@@ -265,6 +266,7 @@ class SafePdfDocument private constructor(
     suspend fun saveEncrypted(userPw: String, ownerPw: String): ByteArray? =
         withContext(Dispatchers.IO) { PdfNative.saveEncrypted(documentHandle, userPw, ownerPw) }
 
+    /** Shared constants and helpers for SafePdfDocument. */
     companion object {
         private const val TAG = "SafePdfDocument"
         private const val MAX_CACHED_PAGES = 12

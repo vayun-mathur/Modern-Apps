@@ -31,6 +31,7 @@ import com.vayunmathur.pdf.ui.CutGlueScreen
 import com.vayunmathur.pdf.ui.SafePdfViewerScreen
 import com.vayunmathur.pdf.util.PdfViewModel
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private val pdfViewModel: PdfViewModel by viewModels()
     private var intentData: Uri? = null

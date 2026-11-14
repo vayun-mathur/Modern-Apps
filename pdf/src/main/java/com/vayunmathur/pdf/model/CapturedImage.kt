@@ -4,12 +4,14 @@ import android.net.Uri
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 
+/** Immutable value describing quadrilateral. */
 data class Quadrilateral(
     val topLeft: Offset,
     val topRight: Offset,
     val bottomRight: Offset,
     val bottomLeft: Offset
 ) {
+    /** Shared constants and helpers for Quadrilateral. */
     companion object {
         fun default() = Quadrilateral(
                 topLeft = Offset(0f, 0f),
@@ -47,6 +49,7 @@ data class Quadrilateral(
     }
 }
 
+/** Immutable value describing captured image. */
 data class CapturedImage(
     val uri: Uri,
     val cropRect: Rect? = null,

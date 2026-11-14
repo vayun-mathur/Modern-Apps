@@ -3,6 +3,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.content.edit
 
+/** Singleton holding pdf state store state and operations. */
 object PdfStateStore {
     private const val PREFS_NAME = "pdf_viewer_state"
 

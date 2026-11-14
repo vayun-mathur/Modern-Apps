@@ -51,12 +51,14 @@ enum class BlendMode(val code: Int) {
     Color(BLEND_COLOR),
     Luminosity(BLEND_LUMINOSITY);
 
+    /** Shared constants and helpers for BlendMode. */
     companion object {
         private val CODE_MAP: Map<Int, BlendMode> = entries.associateBy { it.code }
         fun fromCode(c: Int): BlendMode = CODE_MAP[c] ?: Normal
     }
 }
 
+/** Contract for pdf primitive. */
 sealed interface PdfPrimitive {
     /**
      * A run of text with its baseline origin, on-page size and color. Optional
@@ -228,13 +230,17 @@ sealed interface PdfPrimitive {
 
 /** A bezier-retentive clip path operation (wire v4), in page space. */
 sealed interface PathOp {
+    /** Immutable value describing move; carries x, y. */
     data class Move(val x: Float, val y: Float) : PathOp
+    /** Immutable value describing line; carries x, y. */
     data class Line(val x: Float, val y: Float) : PathOp
+    /** Immutable value describing cubic. */
     data class Cubic(
         val x1: Float, val y1: Float,
         val x2: Float, val y2: Float,
         val x3: Float, val y3: Float,
     ) : PathOp
+    /** Singleton holding close state and operations. */
     data object Close : PathOp
 }
 

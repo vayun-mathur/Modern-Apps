@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** Pdf View Model: a application implementation for pdf view model. */
 class PdfViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Captured images / cropping ----------------------------------------
@@ -49,6 +50,7 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- PDF export from captured images -----------------------------------
 
+    /** Immutable value describing pdf write result; carries targetUri, success. */
     data class PdfWriteResult(val targetUri: Uri, val success: Boolean)
 
     private val _pdfWriteResults = MutableSharedFlow<PdfWriteResult>(extraBufferCapacity = 1)

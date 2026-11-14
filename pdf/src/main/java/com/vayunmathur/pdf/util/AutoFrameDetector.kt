@@ -9,6 +9,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
+/** Singleton holding auto frame detector state and operations. */
 object AutoFrameDetector {
 
     private const val MAX_DIM = 500

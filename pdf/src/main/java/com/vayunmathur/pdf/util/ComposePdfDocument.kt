@@ -56,6 +56,7 @@ class ComposePdfDocument private constructor(private var handle: Long) {
         }
     }
 
+    /** Shared constants and helpers for ComposePdfDocument. */
     companion object {
         fun create(): ComposePdfDocument = ComposePdfDocument(PdfNative.createEmptyDocument())
     }

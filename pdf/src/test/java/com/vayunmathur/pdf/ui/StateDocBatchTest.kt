@@ -27,7 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -62,8 +62,10 @@ class StateDocBatchTest {
         SafePdfDocument.open(ctx, Uri.fromFile(f))!!
     }
 
-    private suspend fun await(desc: String, cond: suspend () -> Boolean) =
-        withTimeout(8000) { while (!cond()) delay(25) }
+    private suspend fun await(desc: String, cond: suspend () -> Boolean) {
+        val ok = withTimeoutOrNull(8000) { while (!cond()) delay(25); true } ?: false
+        if (!ok) throw AssertionError("Timed out waiting for: $desc")
+    }
 
     @Test fun selectionTextCases() {
         val g = listOf(selGlyph("h", 0f, 0f, 10f, 10f), selGlyph("i", 10f, 0f, 20f, 10f), selGlyph("!", 20f, 0f, 30f, 10f))
@@ -71,7 +73,7 @@ class StateDocBatchTest {
         assertEquals("i", selectionText(g, 1..1))
         assertEquals("", selectionText(g, 5..9))
         assertEquals("", selectionText(emptyList(), 0..0))
-        assertEquals("", selectionText(g, 2..1))
+        assertEquals("", selectionText(g, IntRange(2, 1)))
     }
 
     @Test fun allKindIconsCompose() {
