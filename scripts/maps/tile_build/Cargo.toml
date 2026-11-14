@@ -38,6 +38,12 @@ path = "src/bin/mamaps_dump.rs"
 name = "mamaps_pack"
 path = "src/bin/mamaps_pack.rs"
 [[bin]]
+name = "transit_planet5"
+path = "src/bin/transit_planet5.rs"
+[[bin]]
+name = "mamaps_planet5"
+path = "src/bin/mamaps_planet5.rs"
+[[bin]]
 name = "mamaps_churn"
 path = "src/bin/mamaps_churn.rs"
 [[bin]]
@@ -53,6 +59,12 @@ sha2.workspace = true
 # Anonymous pagefile-backed mappings for the spill backends (see `anon`): already
 # in the tree via osm_ingest, so this adds a name to link, not a crate to fetch.
 memmap2.workspace = true
+# Planet5 transcoder (`mamaps_planet5`): the pure-Rust zstd encoder with dictionaries (what the
+# reader's `ruzstd` decodes), and the C zstd dictionary trainer -- host-only, never in the
+# Android cdylib (tilecodec's reader keeps its single pure-Rust decoder). Both were already in
+# the workspace's lockfile.
+zstd-rs.workspace = true
+zstd.workspace = true
 [profile.release]
 opt-level = 3
 
@@ -61,7 +73,5 @@ opt-level = 3
 # path uses (zstd-rs encode, ruzstd decode), measured side by side. Never
 # linked into the shipping binaries.
 [dev-dependencies]
-zstd.workspace = true
-zstd-rs.workspace = true
 ruzstd.workspace = true
 png.workspace = true

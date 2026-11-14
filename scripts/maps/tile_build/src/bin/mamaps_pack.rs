@@ -332,8 +332,10 @@ fn validate_sidecars(
         return Err("metadata.bin is not a MARG graph header".to_string());
     }
     let graph_version = u32_at(&meta, 4);
-    if graph_version != 6 && graph_version != 7 {
-        return Err(format!("the graph is version {graph_version}, this pack reads v6..=v7"));
+    // v8 (planet5) differs from v7 only inside intermediate.bin (varint shape points), which
+    // is validated below by its trailer like any other version.
+    if !(6..=8).contains(&graph_version) {
+        return Err(format!("the graph is version {graph_version}, this pack reads v6..=v8"));
     }
     let blocked_v7 = graph_version >= 7;
     let (node_count, edge_count) = (u64_at(&meta, 8), u64_at(&meta, 16));

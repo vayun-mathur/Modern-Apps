@@ -977,7 +977,7 @@ fn cmd_sidecars(path: &str, windows: usize, out_dir: &str) {
     let _ = std::io::stdout().flush();
 }
 
-include!("size_lab_more.rs");
+include!("more.rs");
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
