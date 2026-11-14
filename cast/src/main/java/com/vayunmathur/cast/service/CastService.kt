@@ -286,6 +286,7 @@ class CastService : Service() {
             .build()
     }
 
+        /** Session actions and start/stop helpers for the cast service. */
     companion object {
         /** Ends the whole session, from the notification's own action or the tile. */
         const val ACTION_STOP = "com.vayunmathur.cast.action.STOP"

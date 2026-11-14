@@ -120,6 +120,7 @@ class OpusEncoder {
     private val presentationTimeUs: Long
         get() = samplesWritten * 1_000_000L / SAMPLE_RATE
 
+        /** Audio format constants shared with the cast protocol. */
     companion object {
         /**
          * The protocol's audio format, not a third copy of it.

@@ -77,19 +77,7 @@ class EngineFeedbackTest {
             }
 
             // Collect the burst and learn the engine's ephemeral port.
-            val received = mutableListOf<DatagramPacket>()
-            var engineAddress: java.net.InetSocketAddress? = null
-            val burstDeadline = System.currentTimeMillis() + 4_000
-            while (System.currentTimeMillis() < burstDeadline && received.size < 3) {
-                val packet = DatagramPacket(ByteArray(2_048), 2_048)
-                try {
-                    peer.receive(packet)
-                    received += packet
-                    engineAddress = java.net.InetSocketAddress(packet.address, packet.port)
-                } catch (_: java.net.SocketTimeoutException) {
-                    // keep waiting
-                }
-            }
+            val (received, engineAddress) = collectBurst(peer)
             assertTrue(received.size >= 3, "expected video+audio RTP, got ${received.size}")
             assertTrue(configs.isNotEmpty(), "AV1 config should have been reported")
             val configsAfterStart = configs.size
@@ -103,12 +91,7 @@ class EngineFeedbackTest {
             // Robolectric's uptime clock is frozen unless advanced, and the
             // encoder coalesces key-frame asks within 400 ms of uptime.
             org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(5))
-            val pliDeadline = System.currentTimeMillis() + 8_000
-            while (configs.size <= configsAfterStart && System.currentTimeMillis() < pliDeadline) {
-                peer.send(DatagramPacket(feedback, feedback.size, engineAddress))
-                org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofMillis(600))
-                Thread.sleep(300)
-            }
+            awaitConfigResend(peer, feedback, engineAddress, configs, configsAfterStart)
             assertTrue(configs.size > configsAfterStart, "PLI should re-send the AV1 codec config")
 
             // Sender reports keep leaving after the frame burst is over.
@@ -120,6 +103,40 @@ class EngineFeedbackTest {
         } finally {
             engine.stop()
             peer.close()
+        }
+    }
+
+    private fun collectBurst(
+        peer: DatagramSocket,
+    ): Pair<MutableList<DatagramPacket>, java.net.InetSocketAddress?> {
+        val received = mutableListOf<DatagramPacket>()
+        var engineAddress: java.net.InetSocketAddress? = null
+        val burstDeadline = System.currentTimeMillis() + 4_000
+        while (System.currentTimeMillis() < burstDeadline && received.size < 3) {
+            val packet = DatagramPacket(ByteArray(2_048), 2_048)
+            try {
+                peer.receive(packet)
+                received += packet
+                engineAddress = java.net.InetSocketAddress(packet.address, packet.port)
+            } catch (_: java.net.SocketTimeoutException) {
+                // keep waiting
+            }
+        }
+        return received to engineAddress
+    }
+
+    private fun awaitConfigResend(
+        peer: DatagramSocket,
+        feedback: ByteArray,
+        engineAddress: java.net.InetSocketAddress?,
+        configs: MutableList<ByteArray>,
+        configsAfterStart: Int,
+    ) {
+        val pliDeadline = System.currentTimeMillis() + 8_000
+        while (configs.size <= configsAfterStart && System.currentTimeMillis() < pliDeadline) {
+            peer.send(DatagramPacket(feedback, feedback.size, engineAddress))
+            org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofMillis(600))
+            Thread.sleep(300)
         }
     }
 }

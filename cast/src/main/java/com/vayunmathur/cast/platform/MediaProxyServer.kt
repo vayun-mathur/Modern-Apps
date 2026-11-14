@@ -288,6 +288,7 @@ class MediaProxyServer(
         }
     }
 
+        /** Session-token generation and local-address lookup for the media proxy. */
     companion object {
 
         /**

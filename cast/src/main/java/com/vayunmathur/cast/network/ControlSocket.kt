@@ -146,6 +146,7 @@ class ControlSocket(private val host: String, private val port: Int) {
         output = null
     }
 
+        /** A decoded control [message] together with its raw framed [body]. */
     data class Received(val message: ControlMessage, val body: ByteArray) {
         override fun equals(other: Any?): Boolean =
             other is Received && message == other.message && body.contentEquals(other.body)

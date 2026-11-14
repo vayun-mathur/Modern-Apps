@@ -92,71 +92,12 @@ class ContentCastIntegrationTest {
             assertEquals("Fake TV", ready.data.getString(CastContract.KEY_RECEIVER_NAME))
             assertTrue(ready.data.getBoolean(CastContract.KEY_WANT_VIDEO))
 
-            // Every gated message kind, now that a session is open.
-            incoming.send(Message.obtain(null, CastContract.MSG_PLAYBACK_STATE).apply {
-                data = Bundle().apply {
-                    putLong(CastContract.KEY_POSITION_MS, 5_000)
-                    putLong(CastContract.KEY_DURATION_MS, 60_000)
-                    putBoolean(CastContract.KEY_PLAYING, true)
-                    putFloat(CastContract.KEY_SPEED, 1.25f)
-                }
-            })
-            incoming.send(Message.obtain(null, CastContract.MSG_PLAY_MEDIA).apply {
-                data = Bundle().apply {
-                    putString(CastContract.KEY_RESOURCE_ID, "song-1")
-                    putString(CastContract.KEY_RESOURCE_TYPE, "audio/mpeg")
-                    putLong(CastContract.KEY_MEDIA_DURATION_MS, 60_000)
-                }
-            })
-            incoming.send(Message.obtain(null, CastContract.MSG_SEND_PLAYBACK_COMMAND).apply {
-                data = Bundle().apply {
-                    putInt(CastContract.KEY_ACTION, CastContract.ACTION_SEEK_TO)
-                    putDouble(CastContract.KEY_ACTION_VALUE, 12_000.0)
-                }
-            })
-            incoming.send(Message.obtain(null, CastContract.MSG_SEND_PLAYBACK_COMMAND).apply {
-                data = Bundle().apply { putInt(CastContract.KEY_ACTION, 999) } // unknown: dropped
-            })
-            incoming.send(Message.obtain(null, CastContract.MSG_SET_NOW_PLAYING).apply {
-                data = Bundle().apply {
-                    putString(CastContract.KEY_RESOURCE_ID, "song-1")
-                    putString(CastContract.KEY_TITLE, "Blue Monday")
-                    putString(CastContract.KEY_AUTHOR, "New Order")
-                }
-            })
-            incoming.send(Message.obtain(null, CastContract.MSG_SET_NOW_PLAYING).apply {
-                data = Bundle() // nothing displayable: dropped inside nowPlayingOf
-            })
+            sendGatedMessages(incoming)
             Shadows.shadowOf(Looper.getMainLooper()).idle()
             await { tv.received.any { it is com.vayunmathur.cast.protocol.PlayMedia } }
             await { tv.received.any { it is com.vayunmathur.cast.protocol.NowPlaying } }
 
-            // TV-originated playback state and remote presses flow back to the
-            // client through the watch dispatch.
-            tv.push(
-                com.vayunmathur.cast.protocol.PlaybackState(
-                    42_000, 90_000, playing = false, buffering = false,
-                    speed = 1f, volume = 0.25f, hasNext = true, hasPrevious = true, ended = true,
-                ),
-            )
-            tv.push(
-                com.vayunmathur.cast.protocol.PlaybackCommand(
-                    com.vayunmathur.cast.protocol.PlaybackAction.SetVolume, 0.5,
-                ),
-            )
-            pumpUntil {
-                received.any { it.what == CastContract.MSG_TV_PLAYBACK_STATE } &&
-                    received.any { it.what == CastContract.MSG_PLAYBACK_COMMAND }
-            }
-            val tvState = received.first { it.what == CastContract.MSG_TV_PLAYBACK_STATE }
-            kotlin.test.assertEquals(42_000L, tvState.data.getLong(CastContract.KEY_POSITION_MS))
-            kotlin.test.assertEquals(true, tvState.data.getBoolean(CastContract.KEY_ENDED))
-            val tvCommand = received.first { it.what == CastContract.MSG_PLAYBACK_COMMAND }
-            kotlin.test.assertEquals(
-                CastContract.ACTION_SET_VOLUME, tvCommand.data.getInt(CastContract.KEY_ACTION),
-            )
-            kotlin.test.assertEquals(0.5, tvCommand.data.getDouble(CastContract.KEY_ACTION_VALUE))
-
+            verifyTvPushback(tv, received)
             // Close from the client: SESSION_ENDED is answered with the client reason.
             incoming.send(Message.obtain(null, CastContract.MSG_CLOSE_SESSION))
             pumpUntil {
@@ -173,5 +114,71 @@ class ContentCastIntegrationTest {
             controller.destroy()
             tv.close()
         }
+    }
+
+    private fun sendGatedMessages(incoming: Messenger) {
+        // Every gated message kind, now that a session is open.
+        incoming.send(Message.obtain(null, CastContract.MSG_PLAYBACK_STATE).apply {
+            data = Bundle().apply {
+                putLong(CastContract.KEY_POSITION_MS, 5_000)
+                putLong(CastContract.KEY_DURATION_MS, 60_000)
+                putBoolean(CastContract.KEY_PLAYING, true)
+                putFloat(CastContract.KEY_SPEED, 1.25f)
+            }
+        })
+        incoming.send(Message.obtain(null, CastContract.MSG_PLAY_MEDIA).apply {
+            data = Bundle().apply {
+                putString(CastContract.KEY_RESOURCE_ID, "song-1")
+                putString(CastContract.KEY_RESOURCE_TYPE, "audio/mpeg")
+                putLong(CastContract.KEY_MEDIA_DURATION_MS, 60_000)
+            }
+        })
+        incoming.send(Message.obtain(null, CastContract.MSG_SEND_PLAYBACK_COMMAND).apply {
+            data = Bundle().apply {
+                putInt(CastContract.KEY_ACTION, CastContract.ACTION_SEEK_TO)
+                putDouble(CastContract.KEY_ACTION_VALUE, 12_000.0)
+            }
+        })
+        incoming.send(Message.obtain(null, CastContract.MSG_SEND_PLAYBACK_COMMAND).apply {
+            data = Bundle().apply { putInt(CastContract.KEY_ACTION, 999) } // unknown: dropped
+        })
+        incoming.send(Message.obtain(null, CastContract.MSG_SET_NOW_PLAYING).apply {
+            data = Bundle().apply {
+                putString(CastContract.KEY_RESOURCE_ID, "song-1")
+                putString(CastContract.KEY_TITLE, "Blue Monday")
+                putString(CastContract.KEY_AUTHOR, "New Order")
+            }
+        })
+        incoming.send(Message.obtain(null, CastContract.MSG_SET_NOW_PLAYING).apply {
+            data = Bundle() // nothing displayable: dropped inside nowPlayingOf
+        })
+    }
+
+    private fun verifyTvPushback(tv: FakeTv, received: MutableList<Message>) {
+        // TV-originated playback state and remote presses flow back to the
+        // client through the watch dispatch.
+        tv.push(
+            com.vayunmathur.cast.protocol.PlaybackState(
+                42_000, 90_000, playing = false, buffering = false,
+                speed = 1f, volume = 0.25f, hasNext = true, hasPrevious = true, ended = true,
+            ),
+        )
+        tv.push(
+            com.vayunmathur.cast.protocol.PlaybackCommand(
+                com.vayunmathur.cast.protocol.PlaybackAction.SetVolume, 0.5,
+            ),
+        )
+        pumpUntil {
+            received.any { it.what == CastContract.MSG_TV_PLAYBACK_STATE } &&
+                received.any { it.what == CastContract.MSG_PLAYBACK_COMMAND }
+        }
+        val tvState = received.first { it.what == CastContract.MSG_TV_PLAYBACK_STATE }
+        kotlin.test.assertEquals(42_000L, tvState.data.getLong(CastContract.KEY_POSITION_MS))
+        kotlin.test.assertEquals(true, tvState.data.getBoolean(CastContract.KEY_ENDED))
+        val tvCommand = received.first { it.what == CastContract.MSG_PLAYBACK_COMMAND }
+        kotlin.test.assertEquals(
+            CastContract.ACTION_SET_VOLUME, tvCommand.data.getInt(CastContract.KEY_ACTION),
+        )
+        kotlin.test.assertEquals(0.5, tvCommand.data.getDouble(CastContract.KEY_ACTION_VALUE))
     }
 }

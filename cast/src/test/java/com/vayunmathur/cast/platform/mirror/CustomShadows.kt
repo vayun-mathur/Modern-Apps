@@ -42,10 +42,14 @@ class ShadowMediaCodecSynthesizing : ShadowMediaCodecWithSurface() {
 
     private var outputStep = 0
 
+    // Shadow signature must match the framework API it replaces; the parameter is intentionally unused.
+    @Suppress("UnusedParameter")
     @Implementation
     fun getInputBuffer(index: Int): java.nio.ByteBuffer =
         java.nio.ByteBuffer.allocate(INPUT_CAPACITY)
 
+    // Shadow signature must match the framework API it replaces; the parameter is intentionally unused.
+    @Suppress("UnusedParameter")
     @Implementation
     fun getOutputBuffer(index: Int): java.nio.ByteBuffer =
         java.nio.ByteBuffer.wrap(ByteArray(OUTPUT_CAPACITY) { (it * 7 + 1).toByte() })
@@ -99,6 +103,8 @@ class ShadowMediaCodecSynthesizing : ShadowMediaCodecWithSurface() {
 @org.robolectric.annotation.Implements(android.media.projection.MediaProjection::class)
 class ShadowMediaProjectionFake {
 
+    // Shadow signature must match the framework API it replaces; parameters are intentionally unused.
+    @Suppress("UnusedParameter", "FunctionOnlyReturningConstant") // A shadow must be a method, and null is the simulated no-display result.
     @org.robolectric.annotation.Implementation
     fun createVirtualDisplay(
         name: String,
@@ -111,12 +117,16 @@ class ShadowMediaProjectionFake {
         handler: android.os.Handler?,
     ): android.hardware.display.VirtualDisplay? = null
 
+    // Shadow signature must match the framework API it replaces; parameters are intentionally unused.
+    @Suppress("UnusedParameter")
     @org.robolectric.annotation.Implementation
     fun registerCallback(
         callback: android.media.projection.MediaProjection.Callback,
         handler: android.os.Handler?,
     ) = Unit
 
+    // Shadow signature must match the framework API it replaces; parameters are intentionally unused.
+    @Suppress("UnusedParameter")
     @org.robolectric.annotation.Implementation
     fun unregisterCallback(callback: android.media.projection.MediaProjection.Callback) = Unit
 
@@ -128,6 +138,8 @@ class ShadowMediaProjectionFake {
 @org.robolectric.annotation.Implements(android.media.projection.MediaProjectionManager::class)
 class ShadowMediaProjectionManagerFake {
 
+    // Shadow signature must match the framework API it replaces; parameters are intentionally unused.
+    @Suppress("UnusedParameter")
     @org.robolectric.annotation.Implementation
     fun getMediaProjection(
         resultCode: Int,
@@ -181,6 +193,8 @@ fun newFakeProjection(context: android.content.Context): android.media.projectio
 @org.robolectric.annotation.Implements(android.media.projection.MediaProjection::class)
 class ShadowMediaProjectionGivingDisplay {
 
+    // Shadow signature must match the framework API it replaces; parameters are intentionally unused.
+    @Suppress("UnusedParameter")
     @org.robolectric.annotation.Implementation
     fun createVirtualDisplay(
         name: String,
@@ -200,12 +214,16 @@ class ShadowMediaProjectionGivingDisplay {
             as android.hardware.display.VirtualDisplay
     }
 
+    // Shadow signature must match the framework API it replaces; parameters are intentionally unused.
+    @Suppress("UnusedParameter")
     @org.robolectric.annotation.Implementation
     fun registerCallback(
         callback: android.media.projection.MediaProjection.Callback,
         handler: android.os.Handler?,
     ) = Unit
 
+    // Shadow signature must match the framework API it replaces; parameters are intentionally unused.
+    @Suppress("UnusedParameter")
     @org.robolectric.annotation.Implementation
     fun unregisterCallback(callback: android.media.projection.MediaProjection.Callback) = Unit
 

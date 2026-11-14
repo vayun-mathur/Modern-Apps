@@ -132,10 +132,10 @@ class MirrorTileService : TileService() {
             // A concurrent in-app connect may have already finished - or `connect` may have
             // early-returned on its live session - in which case no flag will ever rise.
             val now = CastController.sessionState.value
-            if (!CastController.isConnecting.value &&
+            val alreadyPaired = !CastController.isConnecting.value &&
                 CastController.device.value?.id == fresh.id &&
                 (now.phase == ClientPhase.Paired || now.phase == ClientPhase.Streaming)
-            ) {
+            if (alreadyPaired) {
                 return@withTimeoutOrNull true
             }
             CastController.isConnecting.first { it }

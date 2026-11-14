@@ -60,6 +60,7 @@ private const val BITS_PER_MEGABIT = 1_000_000.0
 /** Whether the TV took a content session, and why not if it did not. */
 sealed interface ContentOutcome {
 
+        /** The TV accepted the content session. */
     data object Accepted : ContentOutcome
 
     /**
@@ -94,6 +95,7 @@ sealed interface HandshakeOutcome {
     /** Configured. The media pipeline is built from [negotiation]. */
     data class Ready(val negotiation: Negotiation) : HandshakeOutcome
 
+        /** The handshake failed for the given [reason]. */
     data class Failed(val reason: ClientFailure) : HandshakeOutcome
 }
 
@@ -628,6 +630,7 @@ class MirrorClient(
 
     private fun SecureRandom.ssrc(min: Int, max: Int): Long = (min + nextInt(max - min + 1)).toLong()
 
+        /** Device naming used when presenting this phone to the TV. */
     companion object {
         /** What the TV shows while it waits for a code, and what its logs name us as. */
         fun deviceName(): String =

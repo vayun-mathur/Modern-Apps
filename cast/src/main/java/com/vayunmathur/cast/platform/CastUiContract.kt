@@ -65,6 +65,7 @@ data class CastUiState(
     val canMirror: Boolean get() = connection == CastConnection.Connected
 }
 
+/** Callbacks for scanning, connecting, pairing, and mirroring from the cast screen. */
 interface CastActions {
     fun startScan() {}
     fun stopScan() {}
@@ -75,6 +76,7 @@ interface CastActions {
     fun stopMirroring() {}
     fun openLocalNetworkSettings() {}
 
+        /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: CastActions = object : CastActions {}
     }

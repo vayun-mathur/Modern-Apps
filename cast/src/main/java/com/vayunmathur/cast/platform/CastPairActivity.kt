@@ -75,6 +75,7 @@ class CastPairActivity : ComponentActivity() {
         }
     }
 
+        /** Factory for the intent that opens the pairing prompt. */
     companion object {
         /** `NEW_TASK` because the caller is a bound provider service with no task of its own. */
         fun intent(context: Context): Intent =

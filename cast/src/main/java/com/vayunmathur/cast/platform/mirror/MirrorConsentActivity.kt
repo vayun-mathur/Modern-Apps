@@ -64,6 +64,7 @@ class MirrorConsentActivity : ComponentActivity() {
         }
     }
 
+        /** Factory for the intent that starts the screen-capture consent flow. */
     companion object {
         /**
          * An intent that starts the consent flow.

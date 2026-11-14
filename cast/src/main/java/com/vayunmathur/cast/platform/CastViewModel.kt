@@ -178,6 +178,7 @@ class CastViewModel(application: Application) : AndroidViewModel(application), C
     }
 }
 
+/** Factory that creates [CastViewModel] with its application context. */
 class CastViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

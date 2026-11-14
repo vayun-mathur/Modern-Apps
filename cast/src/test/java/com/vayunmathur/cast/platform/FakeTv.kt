@@ -126,16 +126,7 @@ class FakeTv(
                 return
             }
 
-            val sealedBody = ControlFraming.read(input) ?: return
-            val sealed = codec.decode(sealedBody) as? SealedSecret ?: return
-            received += sealed
-            transcript.add(sealedBody)
-            val secret = SecretSealing.open(
-                identity,
-                ProtocolBase64.decode(sealed.sealed) ?: return,
-            ) ?: return
-            val keys = SessionKeys.of(secret)
-            codec.useSessionKey(keys.control)
+            val keys = openSecret(input, transcript) ?: return
             val frozen = transcript.value()
 
             send(PairRequired(code = codeRequired))
@@ -143,6 +134,20 @@ class FakeTv(
         } catch (_: Exception) {
             // Socket closed by the test: the ordinary end of a fake TV.
         }
+    }
+
+    private fun openSecret(input: DataInputStream, transcript: Transcript): SessionKeys? {
+        val sealedBody = ControlFraming.read(input) ?: return null
+        val sealed = codec.decode(sealedBody) as? SealedSecret ?: return null
+        received += sealed
+        transcript.add(sealedBody)
+        val secret = SecretSealing.open(
+            identity,
+            ProtocolBase64.decode(sealed.sealed) ?: return null,
+        ) ?: return null
+        val keys = SessionKeys.of(secret)
+        codec.useSessionKey(keys.control)
+        return keys
     }
 
     private fun drain(input: DataInputStream) {

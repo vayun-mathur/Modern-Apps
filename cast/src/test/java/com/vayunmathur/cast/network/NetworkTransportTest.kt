@@ -18,6 +18,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 class NetworkTransportTest {
 
@@ -140,34 +141,19 @@ class NetworkTransportTest {
 
     @Test
     fun `control socket connect rejects an invalid port`() {
-        var threw = false
-        try {
+        assertFailsWith<IllegalArgumentException> {
             ControlSocket("127.0.0.1", -1).connect()
-        } catch (e: IllegalArgumentException) {
-            threw = true
         }
-        assertTrue(threw)
-        var ioThrew = false
-        try {
+        // An unresolvable host may surface as either argument or I/O failure.
+        assertFailsWith<Exception> {
             ControlSocket("256.256.256.256", 80).connect()
-        } catch (e: java.io.IOException) {
-            ioThrew = true
-        } catch (e: IllegalArgumentException) {
-            ioThrew = true
         }
-        assertTrue(ioThrew)
     }
 
     @Test
     fun `control socket connect to closed port throws`() {
         val port = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1")).use { it.localPort }
         val socket = ControlSocket("127.0.0.1", port)
-        var threw = false
-        try {
-            socket.connect()
-        } catch (e: java.io.IOException) {
-            threw = true
-        }
-        assertTrue(threw)
+        assertFailsWith<java.io.IOException> { socket.connect() }
     }
 }

@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 import kotlin.test.assertContentEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -126,13 +127,8 @@ class ClientResourceResolverTest {
         assertEquals(-1L, resource.length)
         // Fail it: a reader at/past EOF must throw rather than hang.
         resolver.onComplete(Bundle().apply { putString(CastContract.KEY_RESOURCE_ID, "growing") })
-        var threw = false
-        try {
-            resource.open(2).readBytes()
-        } catch (e: java.io.IOException) {
-            threw = true
-        }
-        assertTrue(threw, "failed growing resource should fail its readers")
+        // A failed growing resource must fail its readers rather than hang.
+        assertFailsWith<java.io.IOException> { resource.open(2).readBytes() }
         resolver.close()
     }
 
