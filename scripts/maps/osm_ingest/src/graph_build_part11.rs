@@ -45,6 +45,7 @@ const PAR_BLOCKS: usize = 256;
 /// record through the writer produces. The tail that never fills a block goes
 /// through the writer's own `push`, so `finish` frames it exactly as before.
 struct ParBlocked {
+    record_len: usize,
     w: tilecodec::blocked::BlockedStreamWriter,
     staged: Vec<u8>,
     block_bytes: usize,
@@ -58,9 +59,12 @@ const PAR_INFLIGHT: usize = 8;
 
 impl ParBlocked {
     fn create(record_len: usize, scratch: &Path) -> std::io::Result<ParBlocked> {
-        let w = tilecodec::blocked::BlockedStreamWriter::create(record_len, scratch)?;
+        // planet5 graph v9: every block column-transformed (ZBLK flag), so curve-sorted node
+        // coordinates and monotone edge pointers compress as small deltas (nodes 3.40 -> 1.92 GB).
+        let w = tilecodec::blocked::BlockedStreamWriter::create(record_len, scratch)?.with_columns();
         let block_bytes = w.block_bytes();
         Ok(ParBlocked {
+            record_len,
             w,
             staged: Vec::with_capacity(block_bytes * PAR_BLOCKS * 2),
             block_bytes,
@@ -91,10 +95,13 @@ impl ParBlocked {
         group.truncate(full);
         self.staged.extend_from_slice(&tail);
         let bb = self.block_bytes;
+        let rl = self.record_len;
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
         par::spawn(move || {
-            let frames: Vec<Vec<u8>> =
-                group.par_chunks(bb).map(tilecodec::blocked::compress_block).collect();
+            let frames: Vec<Vec<u8>> = group
+                .par_chunks(bb)
+                .map(|b| tilecodec::blocked::compress_block_columns(b, rl))
+                .collect();
             let _ = tx.send(frames);
         });
         self.inflight.push_back(rx);
