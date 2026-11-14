@@ -47,6 +47,7 @@ data class SupertonicLanguage(
     val nativeName: String,
 )
 
+/** Singleton holding supertonic voices state and operations. */
 object SupertonicVoices {
     /**
      * All 31 languages, English first because it is the default and the rest alphabetically by

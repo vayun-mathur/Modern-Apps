@@ -15,6 +15,8 @@ import org.robolectric.annotation.Implements
 @Implements(AudioRecord::class)
 class FakeAudioRecordShadow {
 
+    // Signature must mirror AudioRecord's constructor for Robolectric; the values are not needed.
+    @Suppress("UnusedParameter")
     @Implementation
     fun __constructor__(audioSource: Int, sampleRateInHz: Int, channelConfig: Int, audioFormat: Int, bufferSizeInBytes: Int) = Unit
 
@@ -68,8 +70,13 @@ class FakeAudioRecordShadow {
 
         fun releaseBlock() { blockRelease?.countDown() }
 
+        // Signature must mirror AudioRecord.getMinBufferSize for Robolectric; args are not needed.
+        @Suppress("UnusedParameter")
         @Implementation
         @JvmStatic
-        fun getMinBufferSize(sampleRateInHz: Int, channelConfig: Int, audioFormat: Int): Int = 3200
+        fun getMinBufferSize(sampleRateInHz: Int, channelConfig: Int, audioFormat: Int): Int = MIN_BUFFER_SIZE
+
+        /** Fixed minimum buffer the fake reports, in bytes. */
+        const val MIN_BUFFER_SIZE = 3200
     }
 }

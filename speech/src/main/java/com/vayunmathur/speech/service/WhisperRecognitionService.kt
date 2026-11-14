@@ -330,6 +330,7 @@ open class WhisperRecognitionService : RecognitionService() {
     private fun rmsToDb(rms: Double): Float =
         (DB_SCALE * log10(rms + RMS_FLOOR)).toFloat().coerceIn(MIN_DB, MAX_DB) / DB_DIVISOR
 
+    /** Shared constants and helpers for WhisperRecognitionService. */
     companion object {
         private const val TAG = "WhisperRecognition"
         private const val SAMPLE_RATE = 16000

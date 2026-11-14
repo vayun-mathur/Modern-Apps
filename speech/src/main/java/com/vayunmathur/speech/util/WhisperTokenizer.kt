@@ -31,6 +31,7 @@ class WhisperTokenizer private constructor(private val idToToken: Array<String?>
         return bytes.toString("UTF-8")
     }
 
+    /** Shared constants and helpers for WhisperTokenizer. */
     companion object {
         /** Ids at or above this are special/timestamp tokens with no text form. */
         const val FIRST_SPECIAL_ID = 50257

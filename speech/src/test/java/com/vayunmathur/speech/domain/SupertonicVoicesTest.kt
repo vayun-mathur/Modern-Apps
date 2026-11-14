@@ -180,8 +180,7 @@ class SupertonicVoicesTest {
         assertEquals("en-US", en.bcp47)
         assertEquals("eng", en.iso3)
         assertEquals("USA", en.iso3Country)
-        val (code, bcp47, iso3, country, english, native) = en
         assertEquals(listOf("en", "en-US", "eng", "USA", "English", "English"),
-            listOf(code, bcp47, iso3, country, english, native))
+            listOf(en.code, en.bcp47, en.iso3, en.iso3Country, en.englishName, en.nativeName))
     }
 }

@@ -61,6 +61,7 @@ interface SpeechSetupActions {
     /** Re-read the device state after a step completes. */
     fun refresh() {}
 
+    /** Shared constants and helpers for SpeechSetupActions. */
     companion object {
         val Noop: SpeechSetupActions = object : SpeechSetupActions {}
     }

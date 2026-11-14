@@ -59,6 +59,7 @@ import com.vayunmathur.speech.util.TtsVoiceUiState
 import com.vayunmathur.speech.util.WhisperModel
 import java.util.Locale
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     @Composable
     override fun Content() {
