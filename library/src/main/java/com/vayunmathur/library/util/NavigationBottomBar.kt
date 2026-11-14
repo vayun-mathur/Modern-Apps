@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/** One bottom-bar destination: label, route key and icon. */
 data class BottomBarItem<Route: NavKey>(
     val name: String,
     val route: Route,

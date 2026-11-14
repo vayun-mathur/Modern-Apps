@@ -2,6 +2,7 @@ package com.vayunmathur.library.util
 
 import kotlinx.serialization.Serializable
 
+/** A game achievement definition: id, display text, target progress and secrecy. */
 @Serializable
 data class Achievement(
     val id: String,
@@ -11,6 +12,7 @@ data class Achievement(
     val isSecret: Boolean = false
 )
 
+/** A player's current progress against one [Achievement]. */
 data class AchievementStatus(
     val achievement: Achievement,
     val progress: Int,

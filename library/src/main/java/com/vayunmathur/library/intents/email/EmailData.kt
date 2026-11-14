@@ -2,6 +2,7 @@ package com.vayunmathur.library.intents.email
 
 import kotlinx.serialization.Serializable
 
+/** Serializable email message payload exchanged over AssistantIntent. */
 @Serializable
 data class EmailData(
     val subject: String,
@@ -12,5 +13,6 @@ data class EmailData(
     val isRead: Boolean
 )
 
+/** Serializable free-text email search request for AssistantIntent. */
 @Serializable
 data class EmailSearchQuery(val query: String)

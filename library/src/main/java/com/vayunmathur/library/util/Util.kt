@@ -29,6 +29,7 @@ inline fun <reified T : ComponentActivity> Context.findActivity(): T? {
 }
 
 typealias Tuple3<A, B, C> = Triple<A, B, C>
+/** A four-element tuple; Kotlin's standard library stops at Triple. */
 data class Tuple4<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 @Composable

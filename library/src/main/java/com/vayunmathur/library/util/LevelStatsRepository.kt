@@ -6,9 +6,11 @@ import androidx.core.content.edit
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+/** A level's best score, persisted as JSON in shared preferences. */
 @Serializable
 data class LevelStats(val bestScore: Int)
 
+/** SharedPreferences-backed store of per-level best scores and counters. */
 open class LevelStatsRepository(context: Context, prefsName: String = "level_stats") {
 
     protected val prefs: SharedPreferences = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)

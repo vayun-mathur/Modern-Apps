@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
 // The Registry that holds the events
+/** Delivers keyed results back to an earlier destination on the back stack. */
 class NavResultRegistry {
     // Use a SharedFlow with some extra buffer capacity so events are not dropped
     private val _results = MutableSharedFlow<Pair<String, Any>>(extraBufferCapacity = 64)

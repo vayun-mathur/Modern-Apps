@@ -23,8 +23,10 @@ import kotlinx.coroutines.flow.asSharedFlow
  */
 object AppMessages {
 
+    /** How long a transient message stays on screen. */
     enum class Duration { Short, Long, Indefinite }
 
+    /** One transient message: text, an optional action and a display duration. */
     data class Message(
         val text: String,
         val actionLabel: String? = null,

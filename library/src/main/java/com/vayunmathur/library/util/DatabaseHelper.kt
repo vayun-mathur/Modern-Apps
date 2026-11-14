@@ -14,6 +14,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+/** Owns the AndroidKeyStore key that encrypts the SQLCipher database passphrase. */
 open class DatabaseHelper(val context: Context) {
     protected open val keyStoreAlias = "db_no_auth_key"
     protected open val sharedPrefsName = "secure_prefs"
@@ -138,6 +139,7 @@ open class DatabaseHelper(val context: Context) {
         return decryptPassphrase(getCipherForDecryption())
     }
 
+    /** KeyStore algorithm and cipher constants for [DatabaseHelper]. */
     companion object {
         private const val TAG = "DatabaseHelper"
         private const val AES_ALGORITHM = KeyProperties.KEY_ALGORITHM_AES

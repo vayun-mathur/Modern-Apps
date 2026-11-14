@@ -5,6 +5,7 @@ import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 
+/** A backup container format: exports and imports an app's data as one stream. */
 interface BackupFormat {
     val mimeType: String
     val defaultFileName: String
@@ -13,6 +14,7 @@ interface BackupFormat {
     suspend fun import(context: Context, password: String?, inputStream: InputStream)
 }
 
+/** Plain ZIP [BackupFormat] delegating to [BackupHelper]; no password protection. */
 class ZipBackupFormat(
     private val dbConfigs: List<Pair<String, String>> = emptyList(),
     private val datastoreNames: List<String> = emptyList(),

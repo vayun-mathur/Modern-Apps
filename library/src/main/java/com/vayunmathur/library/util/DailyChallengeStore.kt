@@ -11,6 +11,7 @@ import java.time.LocalDate
  */
 class DailyChallengeStore(context: Context, private val keyPrefix: String) {
 
+    /** Current and best consecutive-day completion counts. */
     data class Streak(val current: Long, val best: Long)
 
     private val store = DataStoreUtils.getInstance(context)
@@ -51,6 +52,7 @@ class DailyChallengeStore(context: Context, private val keyPrefix: String) {
 
     val lastCompletedDayFlow: Flow<Long> = store.longFlow(lastDayKey, NO_DAY)
 
+    /** Sentinel epoch-day meaning no day has been completed yet. */
     companion object {
         const val NO_DAY = Long.MIN_VALUE
     }

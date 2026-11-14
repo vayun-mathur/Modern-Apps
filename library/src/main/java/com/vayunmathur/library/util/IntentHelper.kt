@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.core.content.IntentCompat
 
+/** Extracts shared file URIs and display names from incoming intents. */
 object IntentHelper {
     /**
      * Extracts file URIs from an intent (ACTION_VIEW or ACTION_SEND).

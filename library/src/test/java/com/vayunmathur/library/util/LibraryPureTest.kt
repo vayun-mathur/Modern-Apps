@@ -108,7 +108,7 @@ class LibraryPureTest {
     @Test
     fun miscUtils() {
         assertEquals(42, tryOrDefault(0) { 42 })
-        assertEquals(0, tryOrDefault(0) { throw RuntimeException("x") })
+        assertEquals(0, tryOrDefault(0) { throw IllegalStateException("x") })
         assertEquals(3.14, 3.14159.round(2))
         assertEquals(3.0, 3.14159.round(0))
         assertEquals(listOf("a", "b"), "a\nb".byteInputStream().readLines())

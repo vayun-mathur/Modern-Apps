@@ -8,6 +8,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
+/** BackupAgent base that zips databases, datastores, prefs and extra files into one entity. */
 abstract class BaseBackupAgent : BackupAgent() {
     
     open val dbConfigs: List<Pair<String, String>> = emptyList()
@@ -16,6 +17,7 @@ abstract class BaseBackupAgent : BackupAgent() {
     open val extraFiles: List<File> = emptyList()
     open val dbCodec: DbBackupCodec? = null
     
+    /** Backup entity key and state-record layout for [BaseBackupAgent]. */
     companion object {
         private const val BACKUP_KEY = "full_backup"
         private const val STATE_TIMESTAMP_BYTES = 8

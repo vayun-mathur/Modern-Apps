@@ -30,6 +30,10 @@ import java.util.concurrent.TimeoutException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+/**
+ * Base class for cross-app assistant actions: receives a serialized [Input],
+ * computes an [Output] off the activity lifecycle and replies over a ResultReceiver.
+ */
 abstract class AssistantIntent<Input : Any, Output : Any>(
     val inputSerializer: KSerializer<Input>,
     val outputSerializer: KSerializer<Output>
@@ -89,6 +93,7 @@ abstract class AssistantIntent<Input : Any, Output : Any>(
 
     abstract suspend fun performCalculation(input: Input): Output
 
+    /** Process-scoped work scope so calculations survive the NoDisplay activity. */
     companion object {
         private const val TAG = "AssistantIntent"
 
@@ -201,6 +206,7 @@ class IntentLauncher(private val activity: ComponentActivity) {
         }
     }
 
+    /** Launch timeout for [IntentLauncher] calls. */
     companion object {
         private const val INTENT_TIMEOUT_MS = 30_000L
         private const val INTENT_TAG = "IntentLauncher"

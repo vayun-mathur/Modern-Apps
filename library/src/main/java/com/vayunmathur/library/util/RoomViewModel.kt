@@ -18,10 +18,12 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
 
+/** A Room entity identified by a numeric primary key. */
 interface DatabaseItem {
     val id: Long
 }
 
+/** Join row linking a left id to a right id under a typed many-to-many relation. */
 @Entity
 data class ManyManyMatching(
     val leftID: Long,
@@ -30,11 +32,13 @@ data class ManyManyMatching(
     @PrimaryKey(autoGenerate = true) val id: Long = 0
 )
 
+/** A [DatabaseItem] with a sortable position that can be rewritten on reorder. */
 interface ReorderableDatabaseItem<T: ReorderableDatabaseItem<T>>: DatabaseItem {
     val position: Double
     fun withPosition(position: Double): T
 }
 
+/** DAO over [ManyManyMatching] join rows: upsert, delete and directional lookups. */
 @Dao
 interface MatchingDao {
     @Upsert
@@ -93,6 +97,7 @@ interface DatabaseMigrations {
     val migrations: List<Migration>
 }
 
+/** Room type converters for instants, durations and JSON-encoded lists. */
 class DefaultConverters {
     @ColumnTypeConverter
     fun fromInstant(value: Instant) = value.epochSeconds

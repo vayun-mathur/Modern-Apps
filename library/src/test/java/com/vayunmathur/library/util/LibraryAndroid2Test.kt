@@ -233,7 +233,7 @@ class LibraryAndroid2Test {
     ) {
         override suspend fun performCalculation(
             input: com.vayunmathur.library.intents.notes.NoteData,
-        ): com.vayunmathur.library.intents.notes.NoteData = throw RuntimeException("calc boom")
+        ): com.vayunmathur.library.intents.notes.NoteData = throw IllegalStateException("calc boom")
     }
 
     private fun intentWith(data: String?, results: MutableList<Pair<Int, Bundle?>>): Intent {

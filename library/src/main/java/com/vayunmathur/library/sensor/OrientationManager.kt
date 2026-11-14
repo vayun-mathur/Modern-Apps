@@ -14,6 +14,7 @@ import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
+/** A fused device-orientation sample: heading, pitch, roll and the view-pointing direction. */
 data class DeviceOrientation(
     val azimuthTrueDeg: Double, // true-north yaw of device top
     val azimuthMagDeg: Double,
@@ -37,6 +38,7 @@ data class DeviceOrientation(
     val viewRotationRad get() = Math.toRadians(viewRotationDeg)
 }
 
+/** Fuses rotation-vector and magnetic sensors into [DeviceOrientation] samples. */
 class OrientationManager(private val context: Context) : SensorEventListener {
     private val sensorManager =
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -319,6 +321,7 @@ class OrientationManager(private val context: Context) : SensorEventListener {
         return ((deg % FULL_CIRCLE_DEG) + FULL_CIRCLE_DEG) % FULL_CIRCLE_DEG
     }
 
+    /** Sensor-vector sizes and angle constants for the fusion math. */
     companion object {
         private const val ROTATION_MATRIX_SIZE = 9
         private const val SENSOR_VECTOR_SIZE = 3

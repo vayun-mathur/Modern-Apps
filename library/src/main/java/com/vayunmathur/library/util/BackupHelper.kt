@@ -23,6 +23,7 @@ interface DbBackupCodec {
     fun importDatabase(context: Context, dbName: String, password: String, inputFile: File)
 }
 
+/** ZIP packing, restore and database file handling shared by the backup formats. */
 object BackupHelper {
     private const val TAG = "BackupHelper"
     private const val RESTORE_TEMP_NAME = "restore_temp"

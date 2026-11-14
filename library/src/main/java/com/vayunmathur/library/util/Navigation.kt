@@ -71,7 +71,9 @@ import androidx.window.core.layout.WindowSizeClass
 // NavigationResults.kt; the bottom bar lives in NavigationBottomBar.kt. This file keeps
 // the back stack, motion, transitions, shared-element helpers and MainNavigation.
 
+/** Marker for a navigation destination key in the type-safe back stack. */
 interface NavKey
+/** An observable, mutable navigation back stack over [NavKey] destinations. */
 class NavBackStack<T: NavKey>(initial: Array<out T>) {
     private val backend = mutableStateListOf(*initial)
     val backStack: List<T> = backend
@@ -122,6 +124,7 @@ val LocalSnackbarHostState = compositionLocalOf<SnackbarHostState?> { null }
  */
 val LocalHostScaffoldInfo = staticCompositionLocalOf { false }
 
+/** Receiver scope that registers the NavEntry matching the current destination. */
 class EntryProviderScope<T: NavKey>(val obj: T) {
     var result: NavEntry<T>? = null
 

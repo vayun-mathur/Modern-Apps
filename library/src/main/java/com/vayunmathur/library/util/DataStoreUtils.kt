@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 // across files would scatter one type's read/write pair; the count is inherent to the API
 // surface. FileLength (fatal lint) still caps file size.
 @Suppress("TooManyFunctions")
+/** Typed synchronous, suspending and Flow accessors over the shared preferences DataStore. */
 class DataStoreUtils internal constructor(private val dataStore: DataStore<Preferences>) {
 
     private constructor(context: Context) : this(createDataStore(context))
@@ -247,6 +248,7 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
         return copied
     }
 
+    /** Singleton access and Direct Boot seeding for [DataStoreUtils]. */
     companion object {
         private const val TAG = "DataStoreUtils"
 

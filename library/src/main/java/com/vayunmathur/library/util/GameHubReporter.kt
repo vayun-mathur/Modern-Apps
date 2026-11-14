@@ -100,6 +100,7 @@ object GameHubReporter {
         return ReporterHandle(job)
     }
 
+    /** Handle to a running reporter binding; [cancel] stops its mirroring job. */
     class ReporterHandle(private val job: Job) {
         fun cancel() { job.cancel() }
     }
@@ -119,6 +120,7 @@ object GameHubReporter {
     }
 }
 
+/** Reports game-session start/stop to the game hub for one client. */
 class GameHubSessionReporter(private val client: GameHubClient) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var currentSessionId: String? = null
