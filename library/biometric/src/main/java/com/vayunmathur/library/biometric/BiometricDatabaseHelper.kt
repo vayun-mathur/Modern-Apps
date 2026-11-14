@@ -11,6 +11,11 @@ import com.vayunmathur.library.util.DatabaseHelper
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 
+/**
+ * Database key helper whose AES key is bound to biometric/device-credential
+ * authentication, so the SQLCipher passphrase can only be unwrapped after the
+ * user unlocks the device.
+ */
 class BiometricDatabaseHelper(context: Context) : DatabaseHelper(context) {
     override val keyStoreAlias = "db_auth_key"
     override val passphraseKey = "encrypted_passphrase"

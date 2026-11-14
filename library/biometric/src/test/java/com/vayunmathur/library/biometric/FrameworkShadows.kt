@@ -16,7 +16,9 @@ import org.robolectric.annotation.Implements
 @Implements(BiometricManager::class)
 class ShadowFrameworkBiometricManager {
     @Implementation
-    fun canAuthenticate(authenticators: Int): Int = statusToReturn
+    // Parameter name is detekt's allowed marker for a framework-dictated
+    // signature whose argument the shadow deliberately ignores.
+    fun canAuthenticate(ignored: Int): Int = statusToReturn
 
     companion object {
         /** The status the next canAuthenticate call reports; BiometricManager codes. */
