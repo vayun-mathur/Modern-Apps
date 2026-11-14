@@ -75,6 +75,7 @@ class RawResponse(
         headers.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value ?: emptyList()
 }
 
+/** A readable byte stream for a response body, buffered or live over the network. */
 interface NetworkDataStream {
     suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int
     suspend fun read(buffer: ByteArray): Int = read(buffer, 0, buffer.size)
@@ -98,6 +99,10 @@ fun ByteArray.asNetworkDataStream(): NetworkDataStream {
     }
 }
 
+/**
+ * The app's single HTTP entry point: buffered and streaming requests over the
+ * pooled engine or HttpURLConnection fallback, with pinned-CA trust bundles.
+ */
 object NetworkClient {
 
     private const val TAG = "NetworkClient"
@@ -356,14 +361,18 @@ object NetworkClient {
                 // Shield acquisition until ownership is recorded; socket timeouts still apply.
                 HttpUrlEngine.openResponse(
                     url, method, headers, HttpUrlEngine.toBodyBytes(body),
-                    followRedirects = followRedirects, connectTimeoutMs = connectTimeoutMs, readTimeoutMs = readTimeoutMs,
+                    followRedirects = followRedirects,
+                    connectTimeoutMs = connectTimeoutMs,
+                    readTimeoutMs = readTimeoutMs,
                     sslSocketFactory = resolveFactory(sslSocketFactory, useSystemTrust),
                     // This entry point has always let connect failures surface as they are.
                     wrapConnectErrors = false,
                 ).also { ownedResponse = it }
             }
             currentCoroutineContext().ensureActive()
-            var simple = SimpleResponse(response.status, response.statusMessage, "", response.headers, response.finalUrl)
+            var simple = SimpleResponse(
+                response.status, response.statusMessage, "", response.headers, response.finalUrl,
+            )
             if (simple.isSuccess || simple.status == STATUS_PARTIAL_CONTENT) {
                 if (!response.hasStream) {
                     closeResponse()

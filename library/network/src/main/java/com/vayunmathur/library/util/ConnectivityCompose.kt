@@ -108,6 +108,9 @@ fun OfflineAware(content: @Composable () -> Unit) {
     }
 }
 
+/** Vertical centre of the warning glyph's dot, as a fraction of its height. */
+private const val DOT_CENTER_Y_FRACTION = 0.72f
+
 /** Warning triangle with an exclamation bar, drawn to match the `IconWarning` look. */
 @Composable
 private fun OfflineWarningGlyph(
@@ -136,7 +139,7 @@ private fun OfflineWarningGlyph(
         drawCircle(
             color = barColor,
             radius = barHalfWidth,
-            center = Offset(w / 2f, h * 0.72f),
+            center = Offset(w / 2f, h * DOT_CENTER_Y_FRACTION),
         )
     }
 }

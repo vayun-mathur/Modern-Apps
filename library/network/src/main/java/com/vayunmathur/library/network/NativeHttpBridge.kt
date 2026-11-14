@@ -129,7 +129,9 @@ object NativeHttpBridge {
                                 body = null,
                             )
                             packReply(response.status, response.url, response.headers, response.bytes)
-                        } catch (e: Exception) {
+                        } catch (e: java.io.IOException) {
+                            packFailure(url, e.message ?: e::class.simpleName ?: "request failed")
+                        } catch (e: IllegalArgumentException) {
                             packFailure(url, e.message ?: e::class.simpleName ?: "request failed")
                         }
                     }
@@ -137,7 +139,7 @@ object NativeHttpBridge {
                 pending.awaitAll()
             }
             return packBatch(replies)
-        } catch (e: Exception) {
+        } catch (e: java.io.IOException) {
             // The batch framing itself failed: every slot reports the failure, so no slot hangs.
             return packBatch(ranges.map { packFailure(url, e.message ?: "batch failed") })
         }
@@ -270,10 +272,10 @@ object NativeHttpBridge {
         ((b[at].toInt() and BYTE_MASK) shl BYTE_SHIFT) or (b[at + 1].toInt() and BYTE_MASK)
 
     private fun readU32(b: ByteArray, at: Int): Int =
-        ((b[at].toInt() and BYTE_MASK) shl 24) or
-            ((b[at + 1].toInt() and BYTE_MASK) shl 16) or
+        ((b[at].toInt() and BYTE_MASK) shl (BYTE_SHIFT * U32_BYTE_SHIFTS)) or
+            ((b[at + 1].toInt() and BYTE_MASK) shl (BYTE_SHIFT * 2)) or
             ((b[at + 2].toInt() and BYTE_MASK) shl BYTE_SHIFT) or
-            (b[at + 3].toInt() and BYTE_MASK)
+            (b[at + U32_BYTE_SHIFTS].toInt() and BYTE_MASK)
 
     private fun writeU16(out: java.io.ByteArrayOutputStream, v: Int) {
         out.write((v ushr BYTE_SHIFT) and BYTE_MASK)

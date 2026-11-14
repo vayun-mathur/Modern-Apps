@@ -103,7 +103,18 @@ internal object PooledHttpEngine {
         readTimeoutMs: Long? = connectTimeoutMs,
         useSystemTrust: Boolean,
     ): RawResponse = withContext(Dispatchers.IO) {
-        val client = clientFor(useSystemTrust, followRedirects)
+        val pooled = clientFor(useSystemTrust, followRedirects)
+        // The shared client carries default timeouts; a caller that asked for its own
+        // gets a derived client (same pool and dispatcher, so pooling is preserved).
+        // The HttpURLConnection path always honoured these, so the pooled path must too.
+        val client = if (readTimeoutMs == null && connectTimeoutMs == null) {
+            pooled
+        } else {
+            pooled.newBuilder().apply {
+                connectTimeoutMs?.let { connectTimeout(it, TimeUnit.MILLISECONDS) }
+                readTimeoutMs?.let { readTimeout(it, TimeUnit.MILLISECONDS) }
+            }.build()
+        }
         val bodyBytes = HttpUrlEngine.toBodyBytes(body)
         val builder = Request.Builder().url(url)
         applyHeaders(builder, headers)
@@ -167,9 +178,9 @@ internal object PooledHttpEngine {
         synchronized(lock) {
             if (followRedirects) {
                 val current = client
-                if (current != null && factory === builtFactory && manager === builtManager &&
+                val trustMatches = factory === builtFactory && manager === builtManager &&
                     useSystemTrust == builtSystemTrust
-                ) {
+                if (current != null && trustMatches) {
                     return current
                 }
                 val built = buildClient(factory, manager, true)

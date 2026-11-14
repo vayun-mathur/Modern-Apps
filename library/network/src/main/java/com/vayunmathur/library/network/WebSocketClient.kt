@@ -51,11 +51,21 @@ class WebSocketClient private constructor(
 ) {
     @Volatile private var closed = false
 
+    /** One WebSocket message or control frame, as decoded by the frame codec. */
     sealed class WsFrame {
+        /** A UTF-8 text message. */
         data class Text(val text: String) : WsFrame()
+
+        /** A binary message, payload uninterpreted. */
         data class Binary(val bytes: ByteArray) : WsFrame()
+
+        /** A close frame: RFC 6455 status [code] plus an optional [reason]. */
         data class Close(val code: Int = CLOSE_NORMAL, val reason: String = "") : WsFrame()
+
+        /** A ping control frame; the client auto-replies with [Pong]. */
         object Ping : WsFrame()
+
+        /** A pong control frame, reply to a peer's ping. */
         object Pong : WsFrame()
     }
 
@@ -281,6 +291,7 @@ class WebSocketClient private constructor(
         return WsFrame.Close(code, reason)
     }
 
+    /** Frame-codec constants and the [webSocket] handshake factory. */
     companion object {
         private const val TAG = "WebSocketClient"
         private const val GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
