@@ -495,3 +495,43 @@ fn a_superblock_archive_round_trips_through_every_reader() {
     // The superblock frame is stored once (content dedup): the file holds one copy.
     assert_eq!(bytes.windows(frame.len()).filter(|w| *w == &frame[..]).count(), 1);
 }
+
+#[test]
+fn a_v12_body_shares_runs_between_adjacent_polygons_and_round_trips() {
+    use crate::mamaps::body::{serialize_into_v11, serialize_into_v12, Body, Scratch};
+    // Two squares sharing an edge (traced in opposite directions), plus a third copying a
+    // forward run, in the landtype layer.
+    let mut body = body_for(1);
+    let lid = crate::mamaps::dict::LAYER_LANDTYPE;
+    let mut layer = crate::mamaps::body::Layer::new(lid);
+    let rings: Vec<Vec<(i16, i16)>> = vec![
+        (0..40).map(|i| (i * 10, 0)).chain((0..40).map(|i| (400, i * 10))).chain([(0, 400)]).collect(),
+        (0..40).rev().map(|i| (400, i * 10)).chain([(800, 0), (800, 400)]).collect(),
+        (5..30).map(|i| (i * 10, 0)).chain([(100, -50)]).collect(),
+    ];
+    for (k, r) in rings.iter().enumerate() {
+        let start = layer.coords.len() as u32;
+        layer.coords.extend_from_slice(r);
+        layer.parts.push(crate::mamaps::body::Part {
+            coord_start: start,
+            point_count: r.len() as u32,
+            winding: crate::mamaps::body::WINDING_OUTER,
+        });
+        layer.features.push(crate::mamaps::body::Feature {
+            kind: 1 + k as u16,
+            geom_type: crate::mamaps::body::GEOM_POLYGON,
+            parts_offset: k as u32,
+            part_count: 1,
+            ..body.layers[0].features[0]
+        });
+    }
+    body.layers.retain(|l| l.layer_id != lid);
+    body.layers.push(layer);
+    body.layers.sort_by_key(|l| l.layer_id);
+    let (mut s11, mut s12) = (Scratch::default(), Scratch::default());
+    let b11 = serialize_into_v11(&body, &mut s11).expect("v11").to_vec();
+    let b12 = serialize_into_v12(&body, &mut s12).expect("v12").to_vec();
+    assert_eq!(b12[3], crate::mamaps::header::FORMAT_VERSION_V12);
+    assert!(b12.len() < b11.len(), "shared runs must shrink the body ({} vs {})", b12.len(), b11.len());
+    assert_eq!(Body::parse(&b12).expect("parse v12"), Body::parse(&b11).expect("parse v11"));
+}

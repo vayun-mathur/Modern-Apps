@@ -51,6 +51,12 @@ pub fn serialize_into_v11<'s>(body: &Body, scratch: &'s mut Scratch) -> Result<&
     serialize_into_version(body, scratch, crate::mamaps::header::FORMAT_VERSION_V11)
 }
 
+/// Serialise a v12 body: v11 plus shared-run parts (see
+/// [`crate::mamaps::header::FORMAT_VERSION_V12`]). Lossless; same model back.
+pub fn serialize_into_v12<'s>(body: &Body, scratch: &'s mut Scratch) -> Result<&'s [u8]> {
+    serialize_into_version(body, scratch, crate::mamaps::header::FORMAT_VERSION_V12)
+}
+
 fn serialize_into_version<'s>(
     body: &Body,
     scratch: &'s mut Scratch,
@@ -289,8 +295,9 @@ fn serialize_into_version<'s>(
         out.clear();
         if version == crate::mamaps::header::FORMAT_VERSION_V10
             || version == crate::mamaps::header::FORMAT_VERSION_V11
+            || version == crate::mamaps::header::FORMAT_VERSION_V12
         {
-            write_v10_layer_payload(layer, out)?;
+            write_v10_layer_payload(layer, out, version == crate::mamaps::header::FORMAT_VERSION_V12)?;
         } else {
             write_full_layer_payload(layer, out);
         }
@@ -320,8 +327,10 @@ fn serialize_into_version<'s>(
         body_flags |= BODY_FLAG_BUILDING_TABLE;
     }
     let v10 = version == crate::mamaps::header::FORMAT_VERSION_V10
-        || version == crate::mamaps::header::FORMAT_VERSION_V11;
-    let v11 = version == crate::mamaps::header::FORMAT_VERSION_V11;
+        || version == crate::mamaps::header::FORMAT_VERSION_V11
+        || version == crate::mamaps::header::FORMAT_VERSION_V12;
+    let v11 = version == crate::mamaps::header::FORMAT_VERSION_V11
+        || version == crate::mamaps::header::FORMAT_VERSION_V12;
     if body.heightmap.is_some() {
         body_flags |= BODY_FLAG_HEIGHTMAP;
     }

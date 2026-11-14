@@ -139,6 +139,7 @@ pub(crate) fn write_full_layer_payload(layer: &Layer, out: &mut Vec<u8>) {
 pub(crate) fn write_v10_layer_payload(
     layer: &Layer,
     out: &mut Vec<u8>,
+    shared_runs: bool,
 ) -> crate::proto::Result<()> {
     use crate::proto::err;
     let class = record_class(layer.layer_id);
@@ -228,7 +229,14 @@ pub(crate) fn write_v10_layer_payload(
             }
         }
     }
-    for part in &layer.parts {
+    // Each part's arena bytes: plain varint deltas, or (v12) the shared-run token stream when it
+    // is smaller.
+    let arenas: Vec<(Vec<u8>, bool)> = if shared_runs {
+        encode_layer_shared_runs(layer)
+    } else {
+        layer.parts.iter().map(|p| (plain_part(layer.points(p)), false)).collect()
+    };
+    for (part, (_, tokens)) in layer.parts.iter().zip(&arenas) {
         if part.point_count > u16::MAX as u32 {
             return err(format!(
                 "a v10 part holds {} points, past the u16 count",
@@ -236,27 +244,138 @@ pub(crate) fn write_v10_layer_payload(
             ));
         }
         out.extend_from_slice(&(part.point_count as u16).to_le_bytes());
-        // Bit 0 is the winding (outer/hole); the rest is reserved zero.
-        let flags = if part.winding == super::consts::WINDING_HOLE {
+        // Bit 0 is the winding (outer/hole); bit 1 (v12) a shared-run token part; the rest is
+        // reserved zero.
+        let mut flags = if part.winding == super::consts::WINDING_HOLE {
             1u8
         } else {
             0u8
         };
+        if *tokens {
+            flags |= PART_FLAG_SHARED_RUNS;
+        }
         out.push(flags);
         out.push(0);
     }
     while out.len() % 4 != 0 {
         out.push(0);
     }
-    // The arena is byte-identical to the v8 layout: same parts order, same
-    // varint deltas. Only the tables around it narrow.
-    for part in &layer.parts {
-        let (mut px, mut py) = (0i32, 0i32);
-        for &(x, y) in layer.points(part) {
-            push_uvarint(out, crate::proto::zigzag_encode(x as i64 - px as i64));
-            push_uvarint(out, crate::proto::zigzag_encode(y as i64 - py as i64));
-            (px, py) = (x as i32, y as i32);
-        }
+    // The arena: parts in table order, each its plain varint deltas (byte-identical to the v8
+    // layout) or its token stream.
+    for (a, _) in &arenas {
+        out.extend_from_slice(a);
     }
     Ok(())
+}
+
+/// Part flag (v12 bodies): the part's arena data is a shared-run token stream.
+pub(crate) const PART_FLAG_SHARED_RUNS: u8 = 0x02;
+/// The shortest run worth a copy token (a token costs three varints).
+const MIN_SHARED_RUN: usize = 3;
+/// Candidate positions examined per vertex pair (bounds the encoder's time on dense tiles).
+const MAX_CANDIDATES: usize = 16;
+
+fn plain_part(points: &[(i16, i16)]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(points.len() * 3);
+    let (mut px, mut py) = (0i32, 0i32);
+    for &(x, y) in points {
+        push_uvarint(&mut out, crate::proto::zigzag_encode(x as i64 - px as i64));
+        push_uvarint(&mut out, crate::proto::zigzag_encode(y as i64 - py as i64));
+        (px, py) = (x as i32, y as i32);
+    }
+    out
+}
+
+/// Shared-run token streams for every part of `layer` (each `(bytes, is_tokens)`; a part keeps
+/// its plain encoding when the tokens would not be smaller).
+///
+/// Token stream of one part, until `point_count` points are produced (deltas run from the
+/// previous produced point; the part starts at (0, 0) like the plain encoding):
+///
+/// * `uvarint(L << 1)` then `L` literal points, each `zigzag(dx), zigzag(dy)`;
+/// * `uvarint(L << 1 | 1)`, `uvarint(back << 1 | reverse)`, `uvarint(start)`: copy `L` points of
+///   the part `back` parts earlier in this layer, from point `start`, forwards
+///   (`start, start + 1, ...`) or backwards (`start, start - 1, ...`).
+///
+/// Adjacent polygons trace their common edge in opposite directions, which a byte-level LZ
+/// (zstd) cannot see; a reversed copy can.
+pub(crate) fn encode_layer_shared_runs(layer: &Layer) -> Vec<(Vec<u8>, bool)> {
+    use std::collections::HashMap;
+    type Pt = (i16, i16);
+    let mut pairs: HashMap<(Pt, Pt), Vec<(u32, u32)>> = HashMap::new();
+    let mut out = Vec::with_capacity(layer.parts.len());
+    for (pi, part) in layer.parts.iter().enumerate() {
+        let c = layer.points(part);
+        let plain = plain_part(c);
+        let mut tok = Vec::with_capacity(plain.len());
+        let mut lit: Vec<Pt> = Vec::new();
+        let (mut px, mut py) = (0i32, 0i32);
+        let flush = |lit: &mut Vec<Pt>, tok: &mut Vec<u8>, px: &mut i32, py: &mut i32| {
+            if lit.is_empty() {
+                return;
+            }
+            push_uvarint(tok, (lit.len() as u64) << 1);
+            for &(x, y) in lit.iter() {
+                push_uvarint(tok, crate::proto::zigzag_encode(x as i64 - *px as i64));
+                push_uvarint(tok, crate::proto::zigzag_encode(y as i64 - *py as i64));
+                (*px, *py) = (x as i32, y as i32);
+            }
+            lit.clear();
+        };
+        let mut j = 0usize;
+        while j < c.len() {
+            let mut best: Option<(usize, u32, u32, bool)> = None; // (len, part, start, reverse)
+            if j + 1 < c.len() {
+                for (key, reverse) in [((c[j], c[j + 1]), false), ((c[j + 1], c[j]), true)] {
+                    let Some(cands) = pairs.get(&key) else { continue };
+                    for &(qp, qi) in cands.iter().rev().take(MAX_CANDIDATES) {
+                        let q = layer.points(&layer.parts[qp as usize]);
+                        let (start, len) = if !reverse {
+                            let mut l = 0usize;
+                            while j + l < c.len() && (qi as usize) + l < q.len() && c[j + l] == q[qi as usize + l] {
+                                l += 1;
+                            }
+                            (qi, l)
+                        } else {
+                            // pair (q[qi], q[qi + 1]) == (c[j + 1], c[j]): walk q down from qi + 1
+                            let s = qi as usize + 1;
+                            let mut l = 0usize;
+                            while j + l < c.len() && l <= s && c[j + l] == q[s - l] {
+                                l += 1;
+                            }
+                            (s as u32, l)
+                        };
+                        if len >= MIN_SHARED_RUN && best.is_none_or(|b| len > b.0) {
+                            best = Some((len, qp, start, reverse));
+                        }
+                    }
+                }
+            }
+            match best {
+                Some((len, qp, start, reverse)) => {
+                    flush(&mut lit, &mut tok, &mut px, &mut py);
+                    push_uvarint(&mut tok, ((len as u64) << 1) | 1);
+                    push_uvarint(&mut tok, (((pi as u32 - qp) as u64) << 1) | u64::from(reverse));
+                    push_uvarint(&mut tok, start as u64);
+                    let last = c[j + len - 1];
+                    (px, py) = (last.0 as i32, last.1 as i32);
+                    j += len;
+                }
+                None => {
+                    lit.push(c[j]);
+                    j += 1;
+                }
+            }
+        }
+        flush(&mut lit, &mut tok, &mut px, &mut py);
+        for i in 0..c.len().saturating_sub(1) {
+            pairs.entry((c[i], c[i + 1])).or_default().push((pi as u32, i as u32));
+        }
+        if tok.len() < plain.len() {
+            out.push((tok, true));
+        } else {
+            out.push((plain, false));
+        }
+    }
+    out
 }

@@ -77,6 +77,6 @@ pub use model::{
     ROOF_ORIENT_ACROSS, ROOF_ORIENT_ALONG, ROOF_ORIENT_MAX, ROOF_PYRAMIDAL, ROOF_SHAPE_MAX,
     ROOF_SKILLION,
 };
-pub use emit::{Scratch, serialize, serialize_into, serialize_into_v10, serialize_into_v11};
+pub use emit::{Scratch, serialize, serialize_into, serialize_into_v10, serialize_into_v11, serialize_into_v12};
 pub(crate) use codec::parse_layer;
 pub(crate) use tables::align4;

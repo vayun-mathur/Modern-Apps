@@ -97,6 +97,11 @@ pub const FORMAT_VERSION_HEADER_V11: u8 = 11;
 /// residuals rather than raw `u16`s. Lossless (mod 2^16 arithmetic); only the entropy of the
 /// heightmap section changes, which is what makes it compress. Planet5 only.
 pub const FORMAT_VERSION_V11: u8 = 11;
+/// Planet5 (~50 GB revision) body v12: v11 plus *shared-run* parts (part flag `0x02`): a part's
+/// arena data is a token stream of literal points and copies of point runs from an earlier part
+/// of the same layer, forwards or backwards -- the edge two adjacent polygons share is stored
+/// once. Decodes to the identical model (lossless); see `body::emit_extra::encode_part_tokens`.
+pub const FORMAT_VERSION_V12: u8 = 12;
 
 pub const HEADER_LEN: usize = 128;
 

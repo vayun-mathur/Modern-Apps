@@ -112,10 +112,12 @@ impl Body {
             && version != crate::mamaps::header::FORMAT_VERSION_V9
             && version != crate::mamaps::header::FORMAT_VERSION_V10
             && version != crate::mamaps::header::FORMAT_VERSION_V11
+            && version != crate::mamaps::header::FORMAT_VERSION_V12
         {
             return err(format!("unsupported .mamaps body version {version}"));
         }
-        let v11 = version == crate::mamaps::header::FORMAT_VERSION_V11;
+        let v12 = version == crate::mamaps::header::FORMAT_VERSION_V12;
+        let v11 = version == crate::mamaps::header::FORMAT_VERSION_V11 || v12;
         let v10 = version == crate::mamaps::header::FORMAT_VERSION_V10 || v11;
         let raw_len = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]) as usize;
         if raw_len != buf.len() {
@@ -188,7 +190,7 @@ impl Body {
                 return err("a .mamaps layer's payload is outside the body");
             }
             layers.push(if v10 {
-                parse_layer_v10(layer_id, feature_count, &buf[offset..end])?
+                parse_layer_v10(layer_id, feature_count, &buf[offset..end], v12)?
             } else {
                 parse_layer(layer_id, feature_count, &buf[offset..end])?
             });
@@ -433,7 +435,7 @@ fn parse_layer_v8(layer_id: u8, feature_count: usize, buf: &[u8]) -> Result<Laye
 /// writer used without a wire bit. Dropped fields read back as their defaults
 /// (zero names/details/transit/lanes), and `coord_start` is reconstructed by
 /// the arena walk — v10 parts are validated contiguous exactly as v8 requires.
-pub(crate) fn parse_layer_v10(layer_id: u8, feature_count: usize, buf: &[u8]) -> Result<Layer> {
+pub(crate) fn parse_layer_v10(layer_id: u8, feature_count: usize, buf: &[u8], v12: bool) -> Result<Layer> {
     use super::consts::{FEATURE_RECORD_MIN_LEN, FEATURE_RECORD_ROAD_LEN, PART_ENTRY_V10_LEN};
     use super::emit_extra::{RecordClass, is_mixed_layer, record_class};
     let class = record_class(layer_id);
@@ -552,12 +554,14 @@ pub(crate) fn parse_layer_v10(layer_id: u8, feature_count: usize, buf: &[u8]) ->
         return err("a .mamaps layer's parts run past its payload");
     }
     let mut parts = Vec::with_capacity(parts_needed);
+    let mut token_parts: Vec<bool> = Vec::with_capacity(parts_needed);
     let mut coords_needed = 0usize;
     for i in 0..parts_needed {
         let at = parts_at + i * PART_ENTRY_V10_LEN;
         let point_count = u32::from(u16::from_le_bytes([buf[at], buf[at + 1]]));
         let pflags = buf[at + 2];
-        if pflags & !0x01 != 0 {
+        let allowed = if v12 { 0x01 | super::emit_extra::PART_FLAG_SHARED_RUNS } else { 0x01 };
+        if pflags & !allowed != 0 {
             return err(format!("a .mamaps part sets unknown flags {pflags:#04x}"));
         }
         if buf[at + 3] != 0 {
@@ -571,6 +575,7 @@ pub(crate) fn parse_layer_v10(layer_id: u8, feature_count: usize, buf: &[u8]) ->
         // coord_start is reconstructed: v10 parts are contiguous by
         // construction (the writer validates), so the Nth part starts where
         // the arena walk ends.
+        token_parts.push(pflags & super::emit_extra::PART_FLAG_SHARED_RUNS != 0);
         let part = Part { coord_start: coords_needed as u32, point_count, winding };
         let end = (part.coord_start as usize)
             .checked_add(part.point_count as usize)
@@ -586,13 +591,17 @@ pub(crate) fn parse_layer_v10(layer_id: u8, feature_count: usize, buf: &[u8]) ->
     // Identical arena walk to v8: varint deltas restarting at each part.
     let mut coords = Vec::with_capacity(coords_needed);
     let mut reader = crate::proto::Reader::new(&buf[coords_at..]);
-    for part in &parts {
+    for (pi, part) in parts.iter().enumerate() {
         if part.coord_start as usize != coords.len() {
             return err(format!(
                 "a .mamaps part claims to start at point {} but the arena is {} points in",
                 part.coord_start,
                 coords.len(),
             ));
+        }
+        if token_parts[pi] {
+            decode_part_tokens(&mut reader, &parts, pi, &mut coords)?;
+            continue;
         }
         let (mut x, mut y) = (0i32, 0i32);
         for _ in 0..part.point_count {
@@ -611,6 +620,58 @@ pub(crate) fn parse_layer_v10(layer_id: u8, feature_count: usize, buf: &[u8]) ->
         ));
     }
     Ok(Layer { layer_id, features, parts, coords })
+}
+
+/// Decode one v12 shared-run part (see `emit_extra::encode_layer_shared_runs`) onto `coords`.
+fn decode_part_tokens(
+    reader: &mut crate::proto::Reader<'_>,
+    parts: &[Part],
+    pi: usize,
+    coords: &mut Vec<(i16, i16)>,
+) -> Result<()> {
+    let want = parts[pi].point_count as usize;
+    let start_len = coords.len();
+    let (mut x, mut y) = (0i32, 0i32);
+    while coords.len() - start_len < want {
+        let t = reader.uvarint()?;
+        let len = (t >> 1) as usize;
+        if len == 0 || coords.len() - start_len + len > want {
+            return err("a .mamaps shared-run token overruns its part");
+        }
+        if t & 1 == 0 {
+            for _ in 0..len {
+                x += zigzag(reader.uvarint()?);
+                y += zigzag(reader.uvarint()?);
+                let (Ok(xx), Ok(yy)) = (i16::try_from(x), i16::try_from(y)) else {
+                    return err("a .mamaps coordinate delta walks outside the extent an i16 holds");
+                };
+                coords.push((xx, yy));
+            }
+        } else {
+            let r = reader.uvarint()?;
+            let back = (r >> 1) as usize;
+            let reverse = r & 1 != 0;
+            let start = reader.uvarint()? as usize;
+            if back == 0 || back > pi {
+                return err("a .mamaps shared-run copy names a part that is not earlier");
+            }
+            let q = &parts[pi - back];
+            let qs = q.coord_start as usize;
+            let qn = q.point_count as usize;
+            let ok = if reverse { start < qn && start + 1 >= len } else { start + len <= qn };
+            if !ok {
+                return err("a .mamaps shared-run copy runs outside its source part");
+            }
+            for t in 0..len {
+                let p = if reverse { coords[qs + start - t] } else { coords[qs + start + t] };
+                coords.push(p);
+            }
+            let last = coords[coords.len() - 1];
+            x = last.0 as i32;
+            y = last.1 as i32;
+        }
+    }
+    Ok(())
 }
 
 fn zigzag(v: u64) -> i32 {

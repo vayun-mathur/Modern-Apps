@@ -8,7 +8,8 @@
 //! writes the same tiles as:
 //!
 //! * **v11 bodies** — byte-for-byte the v10 body except that the heightmap is MED-residual coded
-//!   (`tilecodec::mamaps::body::serialize_into_v11`); decodes to the identical `Body`;
+//!   (`tilecodec::mamaps::body::serialize_into_v11`), and since the ~50 GB revision v12: shared
+//!   point runs between parts of a layer (`serialize_into_v12`); decodes to the identical `Body`;
 //! * **dictionary zstd** — one zstd dictionary trained per zoom band (z0-9, z10-11, z12, z13,
 //!   z14) on a stride sample of that band's v11 bodies, every body compressed at zstd-19 against
 //!   its band's dictionary; the dictionaries go into the v10 header's dictionary section.
@@ -34,7 +35,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use rayon::prelude::*;
-use tile_build::mamaps::body::{serialize_into_v11, Body, Scratch, BODY_HEADER_LEN};
+use tile_build::mamaps::body::{serialize_into_v12, Body, Scratch, BODY_HEADER_LEN};
 use tile_build::mamaps::header::{Header, FLAG_RINGS_VALIDATED};
 use tile_build::mamaps::index;
 use tile_build::mamaps::read::decompress;
@@ -114,9 +115,9 @@ fn to_v11(map: &[u8], hdr: &Header, off: u64, len: u32) -> Result<(Vec<u8>, Body
             .map(|l| l.features.len())
             .ok_or("a body with a marking convention and no roads layer")?;
         b.carriageways = vec![(roads, vec![tile_build::mamaps::body::Carriageway::default(); n])];
-        serialize_into_v11(&b, &mut s).map_err(|e| e.0)?.to_vec()
+        serialize_into_v12(&b, &mut s).map_err(|e| e.0)?.to_vec()
     } else {
-        serialize_into_v11(&body, &mut s).map_err(|e| e.0)?.to_vec()
+        serialize_into_v12(&body, &mut s).map_err(|e| e.0)?.to_vec()
     };
     Ok((v11, body))
 }
