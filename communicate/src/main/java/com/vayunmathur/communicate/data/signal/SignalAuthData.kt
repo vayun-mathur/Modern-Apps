@@ -81,6 +81,7 @@ data class SignalAuthData(
     fun effectiveAciPqSec(): String = aciPqLastResortSecret.ifEmpty { pqLastResortSecret }
     fun effectiveAciPqSig(): String = aciPqLastResortSignature.ifEmpty { pqLastResortSignature }
 
+    /** Preference keys and factories for [SignalAuthData]. */
     companion object {
         private const val PREFS_NAME = "communicate_signal_auth"
         private const val KEY_AUTH_DATA = "auth_data"

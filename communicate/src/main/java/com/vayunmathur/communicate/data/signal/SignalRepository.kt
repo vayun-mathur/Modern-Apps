@@ -17,6 +17,7 @@ class SignalRepository private constructor(context: Context) :
     /** Direct database access for legacy `runBlocking` bridges; prefer suspend wrappers for new code. */
     fun database(): SignalDatabase = db
 
+    /** The singleton [SignalRepository] instance holder. */
     companion object {
         @Volatile
         private var instance: SignalRepository? = null

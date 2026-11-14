@@ -162,6 +162,7 @@ class MmsDeliverReceiver : BroadcastReceiver() {
         )
     }
 
+    /** MMS PDU type constants and logging tag for [MmsDeliverReceiver]. */
     companion object {
         private const val TAG = "MmsDeliverReceiver"
         private const val MMS_TYPE_RETRIEVE_CONF = 132

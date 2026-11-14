@@ -260,7 +260,7 @@ object RcsE2E {
                     members = pruneMembers(group.members, droppedIdx),
                 ),
             )
-            sendMlsEnvelope(conversationId, commit, CT_COMMIT)
+            RcsE2ETransport.sendMlsEnvelope(conversationId, commit, CT_COMMIT)
         }
     }
 
@@ -443,21 +443,9 @@ object RcsE2E {
         identityFor(context, localE164) ?: return false
         // Publish ours alongside the request so one round trip suffices.
         RcsKeyDirectory.publishTo(context, localE164, peerE164)
-        return sendKeyRequest(peerE164)
+        return RcsE2ETransport.sendKeyRequest(peerE164)
     }
 
-    private suspend fun sendKeyRequest(peerE164: String): Boolean {
-        if (!RcsSipTransport.canSend()) return false
-        val body = "Content-Type: $CT_KEY_REQUEST\r\n\r\nrequest"
-        val (startLine, headers, content) = RcsSipTransport.buildChatMessage(
-            fromUri = "sip:me@rcs",
-            toUri = "sip:$peerE164@rcs",
-            callId = "${UUID.randomUUID()}@rcs-kreq",
-            body = body,
-        )
-        return runCatching { RcsSipTransport.sendSipMessage(startLine, headers, content) }
-            .getOrDefault(false)
-    }
 
     /**
      * Request one peer's key package (public; the peer auto-publishes).
@@ -465,7 +453,7 @@ object RcsE2E {
      */
     suspend fun requestKeyPackage(peerE164: String): Boolean {
         if (!RcsFeature.enabled || !RustMlsCrypto.isAvailable) return false
-        return sendKeyRequest(peerE164)
+        return RcsE2ETransport.sendKeyRequest(peerE164)
     }
 
     /**
@@ -485,15 +473,15 @@ object RcsE2E {
             context, localE164, conversationId, peerPackages.values.toList(),
         ) ?: return false
         // Track leaf indices for later removal (§5.2).
-        trackGroupMembers(context, conversationId, peerPackages.keys.toList())
-        var ok = sendMlsEnvelope(conversationId, commit, CT_COMMIT)
+        RcsE2ETransport.trackGroupMembers(context, conversationId, peerPackages.keys.toList())
+        var ok = RcsE2ETransport.sendMlsEnvelope(conversationId, commit, CT_COMMIT)
         for ((peer, _) in peerPackages) {
-            ok = sendMlsEnvelope(peer, welcome, CT_WELCOME) && ok
+            ok = RcsE2ETransport.sendMlsEnvelope(peer, welcome, CT_WELCOME) && ok
         }
         // Rotate our key package now that the previous one may be consumed.
         freshKeyPackage(context, localE164)
         // Replenish the published pool (§5.1).
-        replenishKeyPackages(context, peerPackages.keys.toList(), localE164)
+        RcsE2ETransport.replenishKeyPackages(context, peerPackages.keys.toList(), localE164)
         return ok
     }
 
@@ -513,63 +501,14 @@ object RcsE2E {
         if (!RcsFeature.enabled || !RustMlsCrypto.isAvailable) return false
         val (commit, welcome) = createEncryptedGroup(context, localE164, conversationId, listOf(peerKeyPackage))
             ?: return false
-        trackGroupMembers(context, conversationId, listOf(peerE164))
+        RcsE2ETransport.trackGroupMembers(context, conversationId, listOf(peerE164))
         // Commit → the (new) group thread; Welcome → the peer 1:1.
-        val commitOk = sendMlsEnvelope(conversationId, commit, CT_COMMIT)
-        val welcomeOk = sendMlsEnvelope(peerE164, welcome, CT_WELCOME)
+        val commitOk = RcsE2ETransport.sendMlsEnvelope(conversationId, commit, CT_COMMIT)
+        val welcomeOk = RcsE2ETransport.sendMlsEnvelope(peerE164, welcome, CT_WELCOME)
         // Rotate our key package now that the previous one may be consumed.
         freshKeyPackage(context, localE164)
-        replenishKeyPackages(context, listOf(peerE164), localE164)
+        RcsE2ETransport.replenishKeyPackages(context, listOf(peerE164), localE164)
         return commitOk && welcomeOk
-    }
-
-    /**
-     * Merge [peers] into the tracked member map for [conversationId]'s group
-     * (§5.2). Best-effort; never throws.
-     */
-    private suspend fun trackGroupMembers(context: Context, conversationId: String, peers: List<String>) {
-        if (!RcsFeature.enabled || peers.isEmpty()) return
-        runCatching {
-            val db = RcsDatabase.getDatabase(context)
-            val group = db.mlsGroupDao().getByConversation(conversationId) ?: return
-            db.mlsGroupDao().upsert(
-                group.copy(
-                    members = trackAddedMembers(group.members, peers),
-                    updatedAt = System.currentTimeMillis(),
-                ),
-            )
-        }
-    }
-
-    /**
-     * Key-package replenishment (§5.1): after consuming our published package
-     * in a setup, immediately publish a fresh one to the same peers so their
-     * cached pool stays warm and the next add doesn't stall on a round trip.
-     */
-    private suspend fun replenishKeyPackages(context: Context, peers: List<String>, localE164: String) {
-        if (!RcsFeature.enabled || !RustMlsCrypto.isAvailable || peers.isEmpty()) return
-        for (peer in peers) {
-            runCatching { RcsKeyDirectory.publishTo(context, localE164, peer) }
-        }
-    }
-
-    private suspend fun sendMlsEnvelope(
-        recipient: String,
-        framed: ByteArray,
-        contentType: String,
-    ): Boolean {
-        if (!RcsSipTransport.canSend()) return false
-        val b64 = android.util.Base64.encodeToString(framed, android.util.Base64.NO_WRAP)
-        val body = "Content-Type: $contentType\r\n\r\n$b64"
-        val (startLine, headers, content) = RcsSipTransport.buildChatMessage(
-            fromUri = "sip:me@rcs",
-            toUri = "sip:$recipient@rcs",
-            callId = "${UUID.randomUUID()}@rcs-env",
-            body = body,
-        )
-        val typedHeaders = headers.replace("Content-Type: message/cpim", "Content-Type: $contentType")
-        return runCatching { RcsSipTransport.sendSipMessage(startLine, typedHeaders, content) }
-            .getOrDefault(false)
     }
 
     /** Group id for [conversationId], or null when no E2EE group exists. */
@@ -579,7 +518,7 @@ object RcsE2E {
             val group = RcsDatabase.getDatabase(context).mlsGroupDao().getByConversation(conversationId)
                 ?: return@withContext null
             if (group.groupIdHex.startsWith("pending:")) return@withContext null
-            group.groupIdHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+            group.groupIdHex.chunked(HEX_PAIR).map { it.toInt(HEX_RADIX).toByte() }.toByteArray()
         }
 
     /**
@@ -619,4 +558,71 @@ object RcsE2E {
 
 
 
+}
+
+/**
+ * SIP transport legs for [RcsE2E]: key-package requests, MLS envelope fan-out,
+ * member tracking and key-package replenishment.
+ */
+internal object RcsE2ETransport {
+    suspend fun sendKeyRequest(peerE164: String): Boolean {
+        if (!RcsSipTransport.canSend()) return false
+        val body = "Content-Type: ${RcsE2E.CT_KEY_REQUEST}\r\n\r\nrequest"
+        val (startLine, headers, content) = RcsSipTransport.buildChatMessage(
+            fromUri = "sip:me@rcs",
+            toUri = "sip:$peerE164@rcs",
+            callId = "${UUID.randomUUID()}@rcs-kreq",
+            body = body,
+        )
+        return runCatching { RcsSipTransport.sendSipMessage(startLine, headers, content) }
+            .getOrDefault(false)
+    }
+    /**
+     * Merge [peers] into the tracked member map for [conversationId]'s group
+     * (§5.2). Best-effort; never throws.
+     */
+    suspend fun trackGroupMembers(context: Context, conversationId: String, peers: List<String>) {
+        if (!RcsFeature.enabled || peers.isEmpty()) return
+        runCatching {
+            val db = RcsDatabase.getDatabase(context)
+            val group = db.mlsGroupDao().getByConversation(conversationId) ?: return
+            db.mlsGroupDao().upsert(
+                group.copy(
+                    members = RcsE2E.trackAddedMembers(group.members, peers),
+                    updatedAt = System.currentTimeMillis(),
+                ),
+            )
+        }
+    }
+
+    /**
+     * Key-package replenishment (§5.1): after consuming our published package
+     * in a setup, immediately publish a fresh one to the same peers so their
+     * cached pool stays warm and the next add doesn't stall on a round trip.
+     */
+    suspend fun replenishKeyPackages(context: Context, peers: List<String>, localE164: String) {
+        if (!RcsFeature.enabled || !RustMlsCrypto.isAvailable || peers.isEmpty()) return
+        for (peer in peers) {
+            runCatching { RcsKeyDirectory.publishTo(context, localE164, peer) }
+        }
+    }
+
+    suspend fun sendMlsEnvelope(
+        recipient: String,
+        framed: ByteArray,
+        contentType: String,
+    ): Boolean {
+        if (!RcsSipTransport.canSend()) return false
+        val b64 = android.util.Base64.encodeToString(framed, android.util.Base64.NO_WRAP)
+        val body = "Content-Type: $contentType\r\n\r\n$b64"
+        val (startLine, headers, content) = RcsSipTransport.buildChatMessage(
+            fromUri = "sip:me@rcs",
+            toUri = "sip:$recipient@rcs",
+            callId = "${UUID.randomUUID()}@rcs-env",
+            body = body,
+        )
+        val typedHeaders = headers.replace("Content-Type: message/cpim", "Content-Type: $contentType")
+        return runCatching { RcsSipTransport.sendSipMessage(startLine, typedHeaders, content) }
+            .getOrDefault(false)
+    }
 }

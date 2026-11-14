@@ -41,6 +41,7 @@ object Crypt15Decryptor {
     private const val VARINT_CONT = 0x80
     private const val VARINT_BITS = 7
 
+    /** Thrown when a crypt15 WhatsApp backup cannot be decrypted. */
     class DecryptException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
     /** @return the decrypted plaintext SQLite file in [cacheDir]. */

@@ -221,6 +221,15 @@ class SignalSlice2DatabaseTest {
 
     @Test
     fun e2eStoresRoundTrip() = runTest {
+        sessionStoreRoundTrip()
+        identityStoreRoundTrip()
+        preKeyStoreRoundTrip()
+        signedPreKeyStoreRoundTrip()
+        kyberStoreRoundTrip()
+        senderKeyStoreRoundTrip()
+    }
+
+    private suspend fun sessionStoreRoundTrip() {
         // Sessions.
         val sessDao = db.e2eSessionDao()
         assertEquals(false, sessDao.exists("alice", 1))
@@ -231,7 +240,9 @@ class SignalSlice2DatabaseTest {
         assertEquals(listOf(1), sessDao.getSubDeviceIds("alice").filter { it == 1 })
         sessDao.delete("alice", 1)
         assertEquals(false, sessDao.exists("alice", 1))
+    }
 
+    private suspend fun identityStoreRoundTrip() {
         // Identities.
         val idDao = db.e2eIdentityDao()
         assertNull(idDao.get("alice"))
@@ -241,7 +252,9 @@ class SignalSlice2DatabaseTest {
         assertTrue(idDao.get("alice")!!.identityKey.contentEquals(byteArrayOf(5)))
         idDao.delete("alice")
         assertNull(idDao.get("alice"))
+    }
 
+    private suspend fun preKeyStoreRoundTrip() {
         // One-time pre-keys.
         val preDao = db.e2ePreKeyDao()
         assertEquals(0, preDao.getCount())
@@ -259,7 +272,9 @@ class SignalSlice2DatabaseTest {
         assertEquals(2, preDao.getCount())
         preDao.delete(21)
         assertEquals(false, preDao.exists(21))
+    }
 
+    private suspend fun signedPreKeyStoreRoundTrip() {
         // Signed pre-keys.
         val spkDao = db.e2eSignedPreKeyDao()
         assertEquals(false, spkDao.exists(11))
@@ -270,7 +285,9 @@ class SignalSlice2DatabaseTest {
         assertEquals(1, spkDao.getAll().size)
         spkDao.delete(11)
         assertEquals(false, spkDao.exists(11))
+    }
 
+    private suspend fun kyberStoreRoundTrip() {
         // Kyber pre-keys + used base keys.
         val kyDao = db.e2eKyberPreKeyDao()
         assertNull(kyDao.get(31))
@@ -289,7 +306,9 @@ class SignalSlice2DatabaseTest {
         assertEquals(false, usedDao.exists(31, 11, "YmFzZQ=="))
         kyDao.delete(31)
         assertEquals(false, kyDao.exists(31))
+    }
 
+    private suspend fun senderKeyStoreRoundTrip() {
         // Sender keys.
         val skDao = db.e2eSenderKeyDao()
         assertNull(skDao.get("alice", 1, "dist-1"))

@@ -86,6 +86,7 @@ class GoogleVoiceSession private constructor(private val store: DataStoreUtils) 
     val phoneNumberFlow: Flow<String?>
         get() = store.stringFlow(KEY_PHONE_NUMBER).map { it }
 
+    /** Preference keys for the Google Voice session (cookie, SAPISID, phone number). */
     companion object {
         private const val KEY_COOKIE = "gv_cookie"
         private const val KEY_SAPISID = "gv_sapisid"

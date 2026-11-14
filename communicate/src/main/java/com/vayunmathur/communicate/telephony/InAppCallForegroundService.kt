@@ -202,6 +202,7 @@ class InAppCallForegroundService : Service() {
         super.onDestroy()
     }
 
+    /** Notification channel ids for the in-app call foreground service. */
     companion object {
         private const val CHANNEL_ID = "inapp_calls"
         // Retired pre-ringer channel: the system keeps an existing channel's sound, so muting it

@@ -29,6 +29,7 @@ object SignalContactSync {
     private const val TAG = "SignalContactSync"
     private const val LONG_BYTES = 8
 
+    /** The outcome of a Signal contact sync: how many numbers were checked and discovered. */
     data class SyncResult(
         val deviceCount: Int,
         val e164Count: Int,

@@ -21,9 +21,12 @@ object SignalAttachmentCipher {
     private const val IV_SIZE = 16
     private const val MAC_SIZE = 32
 
+    /** Thrown when an attachment blob MAC does not verify (tampered or wrong key). */
     class MacMismatchException : Exception("attachment MAC did not verify")
+    /** Thrown when an attachment blob digest does not match its pointer. */
     class DigestMismatchException : Exception("attachment digest did not verify")
 
+    /** An encrypted attachment blob plus the key and digest for its AttachmentPointer. */
     data class Encrypted(
         /** The 64-byte combined key for `AttachmentPointer.key`. */
         val key: ByteArray,

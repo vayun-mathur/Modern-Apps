@@ -23,6 +23,7 @@ object BackupImporter {
     private const val TAG = "WABackupImporter"
     private const val BATCH = 500
 
+    /** The outcome of a WhatsApp backup import: conversations and messages imported. */
     data class ImportResult(
         val conversationCount: Int,
         val messageCount: Int,

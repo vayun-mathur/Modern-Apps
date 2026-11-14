@@ -14,6 +14,7 @@ sealed interface SignalEvent {
         val detail: String? = null,
     ) : SignalEvent
 
+    /** A conversation-list row changed: latest preview, unread count and peer metadata. */
     data class ConversationUpdate(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
@@ -31,6 +32,7 @@ sealed interface SignalEvent {
         val isMessageRequest: Boolean = false,
     ) : SignalEvent
 
+    /** A message row changed (new, edited or status-updated) in a conversation. */
     data class MessageUpdate(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
@@ -74,6 +76,7 @@ sealed interface SignalEvent {
         val timestamp: Long = 0L,
     ) : SignalEvent
 
+    /** A message was edited; the row now shows the replacement body. */
     data class MessageEdited(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String? = null,
@@ -82,6 +85,7 @@ sealed interface SignalEvent {
         val timestamp: Long = 0L,
     ) : SignalEvent
 
+    /** A delivery or read receipt for one of our sent messages. */
     data class ReadReceipt(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
@@ -92,6 +96,7 @@ sealed interface SignalEvent {
         val isDelivery: Boolean = false,
     ) : SignalEvent
 
+    /** A conversation was deleted. */
     data class ConversationDeleted(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
@@ -105,6 +110,7 @@ sealed interface SignalEvent {
         val isTyping: Boolean,
     ) : SignalEvent
 
+    /** An emoji reaction was added to a message. */
     data class ReactionReceived(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
@@ -113,6 +119,7 @@ sealed interface SignalEvent {
         val emoji: String,
     ) : SignalEvent
 
+    /** An emoji reaction was removed from a message. */
     data class ReactionRemoved(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
@@ -120,6 +127,7 @@ sealed interface SignalEvent {
         val senderId: String,
     ) : SignalEvent
 
+    /** A vote was cast on a poll message. */
     data class PollVote(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
@@ -128,41 +136,48 @@ sealed interface SignalEvent {
         val optionNames: List<String>,
     ) : SignalEvent
 
+    /** A conversation (group) was renamed. */
     data class ConversationNameChanged(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
         val newName: String,
     ) : SignalEvent
 
+    /** A conversation avatar changed. */
     data class ConversationAvatarChanged(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
         val avatarUrl: String?,
     ) : SignalEvent
 
+    /** A participant joined a group conversation. */
     data class ParticipantAdded(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
         val participantId: String,
     ) : SignalEvent
 
+    /** A participant left or was removed from a group conversation. */
     data class ParticipantRemoved(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
         val participantId: String,
     ) : SignalEvent
 
+    /** A conversation mute setting changed; muteExpireTimeMs is when the mute lapses. */
     data class MuteSettingChanged(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
         val muteExpireTimeMs: Long,
     ) : SignalEvent
 
+    /** A message request arrived from an unknown sender. */
     data class MessageRequestReceived(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
     ) : SignalEvent
 
+    /** Sending a message failed. */
     data class SendFailed(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
@@ -171,6 +186,7 @@ sealed interface SignalEvent {
         val errorMessage: String,
     ) : SignalEvent
 
+    /** An inbound message could not be decrypted (session or identity problem). */
     data class DecryptionError(
         override val source: SignalSource = SignalSource.SIGNAL,
         val conversationId: String,
@@ -255,6 +271,7 @@ enum class SignalState {
     Ready,
 }
 
+/** Which Signal line an event came from. */
 enum class SignalSource { SIGNAL }
 
 /** A media/share attachment carried on a Signal message. Mirrors WhatsApp's MessageAttachment. */
@@ -279,6 +296,7 @@ data class SignalHistoryConversation(
     val messages: List<SignalHistoryMessage>,
 )
 
+/** One message inside a history-sync conversation payload. */
 data class SignalHistoryMessage(
     val messageId: String,
     val body: String,

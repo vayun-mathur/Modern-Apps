@@ -73,6 +73,7 @@ abstract class WhatsAppDatabase : RoomDatabase() {
     abstract fun contactDao(): WhatsAppContactDao
     abstract fun callLogDao(): WhatsAppCallLogDao
 
+    /** Schema migrations and the singleton accessor for [WhatsAppDatabase]. */
     companion object : DatabaseMigrations {
         /**
          * v1 → v2: message delivery status (ticks) + group metadata on conversations. All new
@@ -133,6 +134,7 @@ abstract class WhatsAppDatabase : RoomDatabase() {
     }
 }
 
+/** Room column converters for WhatsApp entities; string lists are stored as CSV. */
 class WhatsAppTypeConverters {
     @ColumnTypeConverter
     fun fromStringList(value: List<String>): String {
@@ -170,6 +172,7 @@ data class WhatsAppConversation(
     val participants: String = "",
 )
 
+/** Queries for WhatsApp conversations. */
 @Dao
 interface WhatsAppConversationDao {
     @Query("SELECT * FROM whatsapp_history_sync_conversation WHERE chatJid = :chatJid")
@@ -224,6 +227,7 @@ data class WhatsAppMediaRequest(
     override fun hashCode(): Int = messageId.hashCode()
 }
 
+/** Queries for pending WhatsApp media backfill requests. */
 @Dao
 interface WhatsAppMediaRequestDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -248,6 +252,7 @@ data class WhatsAppAvatarCache(
     val gone: Boolean = false,
 )
 
+/** Queries for the WhatsApp avatar cache. */
 @Dao
 interface WhatsAppAvatarCacheDao {
     @Query("SELECT * FROM whatsapp_avatar_cache WHERE entityJid = :entityJid AND avatarId = :avatarId")
@@ -268,6 +273,7 @@ data class WhatsAppPollOption(
     val optionName: String,
 )
 
+/** Queries for WhatsApp poll options. */
 @Dao
 interface WhatsAppPollOptionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -297,6 +303,7 @@ data class WhatsAppPollSecret(
     val secret: String,
 )
 
+/** Queries for WhatsApp poll vote secrets. */
 @Dao
 interface WhatsAppPollSecretDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -347,6 +354,7 @@ data class WhatsAppE2ESenderKey(
     val record: ByteArray,
 )
 
+/** Queries for WhatsApp E2E (Signal protocol) session records. */
 @Dao
 interface WhatsAppE2ESessionDao {
     @Query("SELECT * FROM whatsapp_e2e_sessions WHERE address = :address AND deviceId = :deviceId LIMIT 1")
@@ -368,6 +376,7 @@ interface WhatsAppE2ESessionDao {
     suspend fun deleteAll(address: String)
 }
 
+/** Queries for WhatsApp peer identity keys. */
 @Dao
 interface WhatsAppE2EIdentityDao {
     @Query("SELECT * FROM whatsapp_e2e_identities WHERE address = :address LIMIT 1")
@@ -380,6 +389,7 @@ interface WhatsAppE2EIdentityDao {
     suspend fun delete(address: String)
 }
 
+/** Queries for our WhatsApp one-time EC pre-keys. */
 @Dao
 interface WhatsAppE2EPreKeyDao {
     @Query("SELECT * FROM whatsapp_e2e_pre_keys WHERE id = :id LIMIT 1")
@@ -413,6 +423,7 @@ interface WhatsAppE2EPreKeyDao {
     suspend fun getMaxId(): Int
 }
 
+/** Queries for our WhatsApp signed EC pre-keys. */
 @Dao
 interface WhatsAppE2ESignedPreKeyDao {
     @Query("SELECT * FROM whatsapp_e2e_signed_pre_keys WHERE id = :id LIMIT 1")
@@ -431,6 +442,7 @@ interface WhatsAppE2ESignedPreKeyDao {
     suspend fun delete(id: Int)
 }
 
+/** Queries for WhatsApp group sender-key records. */
 @Dao
 interface WhatsAppE2ESenderKeyDao {
     @Query("SELECT * FROM whatsapp_e2e_sender_keys WHERE address = :address AND " +
@@ -474,6 +486,7 @@ data class WhatsAppCachedMessage(
     val status: Int = 0,
 )
 
+/** Queries for cached WhatsApp messages. */
 @Dao
 interface WhatsAppCachedMessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -529,6 +542,7 @@ data class WhatsAppCachedReaction(
     val timestamp: Long,
 )
 
+/** Queries for cached WhatsApp message reactions. */
 @Dao
 interface WhatsAppCachedReactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -560,6 +574,7 @@ data class WhatsAppContact(
     val updatedAt: Long = 0L,
 )
 
+/** Queries for WhatsApp contacts. */
 @Dao
 interface WhatsAppContactDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -600,6 +615,7 @@ data class WhatsAppCallLog(
     val outcome: String = "",
 )
 
+/** Queries for the WhatsApp call log. */
 @Dao
 interface WhatsAppCallLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)

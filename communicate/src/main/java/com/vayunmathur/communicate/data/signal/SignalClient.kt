@@ -99,11 +99,17 @@ object SignalClient {
     /** Wire prefix distinguishing a phone-number identity from an ACI, which is a bare UUID. */
     internal const val PNI_PREFIX = "PNI:"
 
+    /** Lifecycle state of the Signal line. */
     sealed interface State {
+        /** Not yet connected. */
         data object Idle : State
+        /** The line has no registered account yet. */
         data object NeedsSetup : State
+        /** The socket is connecting / logging in. */
         data object Connecting : State
+        /** Connected and logged in. */
         data object Connected : State
+        /** Disconnected, with the reason. */
         data class Disconnected(val reason: String) : State
     }
 

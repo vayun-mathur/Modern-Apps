@@ -65,6 +65,7 @@ object WhatsAppProtocol {
         0xe1.toByte(), 0xf7.toByte(), 0xf9.toByte(), 0x54, 0x5d, 0xa8.toByte(), 0xee.toByte(), 0x6b
     )
 
+    /** One node of the WhatsApp binary XML (binary stanza) tree: tag, attributes and children. */
     data class Node(
         val tag: String,
         val attrs: Map<String, String> = emptyMap(),
@@ -103,6 +104,7 @@ object WhatsAppProtocol {
      * Implements Noise_XX_25519_AESGCM_SHA256 as per whatsmeow/socket/noisehandshake.go
      */
     class NoiseHandshake {
+        /** Noise handshake constants (hash and AEAD sizes) for [WhatsAppProtocol.NoiseHandshake]. */
         companion object {
             private const val HASH_SIZE = 32
             private const val EXPANDED_SIZE = 64
@@ -239,6 +241,7 @@ object WhatsAppProtocol {
         return mac.doFinal(data)
     }
 
+    /** The key material split out of a media key: IV, cipher key and MAC key. */
     data class MediaKeys(
         val iv: ByteArray,
         val cipherKey: ByteArray,
@@ -246,6 +249,7 @@ object WhatsAppProtocol {
         val refKey: ByteArray,
     )
 
+    /** The result of encrypting media for upload: media key, ciphertext and hashes. */
     data class MediaEncryptResult(
         val mediaKey: ByteArray,
         val encryptedData: ByteArray,
@@ -329,6 +333,7 @@ object WhatsAppProtocol {
     // -- Message node builders live in WhatsAppProtocolBuilders.kt /
     // WhatsAppProtocolBuilders2.kt (same package, extension functions). --
 
+    /** One fan-out copy of a group message, encrypted for a single device. */
     data class ParticipantEnc(val deviceJid: String, val encType: String, val ciphertext: ByteArray)
 
     // (buildFanOutMessageNode, retry receipts, queries, reactions — see Builders files.)
@@ -368,6 +373,7 @@ object WhatsAppProtocol {
 
 }
 
+/** A parsed incoming WhatsApp message stanza, flattened for the repository. */
 data class WhatsAppMessage(
     val id: String,
     val from: String,
@@ -402,6 +408,7 @@ data class WhatsAppMessage(
     val e2eMessage: com.vayunmathur.communicate.data.whatsapp.proto.WhatsAppE2EProto.Message? = null,
 )
 
+/** A shared location: coordinates plus optional place name/address. */
 data class LocationData(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
@@ -414,11 +421,13 @@ data class LocationData(
     fun toMapsUrl(): String = "https://maps.google.com/?q=%.5f,%.5f".format(latitude, longitude)
 }
 
+/** A shared contact card: display name and vCard payload. */
 data class ContactData(
     val displayName: String = "",
     val vcard: String = "",
 )
 
+/** A poll: question, options and how many options may be picked. */
 data class PollData(
     val question: String = "",
     val options: List<String> = emptyList(),
@@ -427,9 +436,11 @@ data class PollData(
     val pollCreationMessageKey: String? = null,
     val encPayload: List<ByteArray>? = null,
 ) {
+    /** Factories for WhatsApp protocol values. */
     companion object
 }
 
+/** The context info extracted from a message: forwarding, reply and mention metadata. */
 data class ContextInfoResult(
     val isForwarded: Boolean = false,
     val forwardingScore: Int = 0,

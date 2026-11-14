@@ -80,6 +80,40 @@ class WelcomeJoinRcsPass3Test {
     private fun wrapped(contentType: String, payload: ByteArray): String =
         "Content-Type: $contentType\r\n\r\n" + Base64.encodeToString(payload, Base64.NO_WRAP)
 
+    /** Create device B's identity and a fresh key package to publish, on B's database. */
+    private suspend fun freshKeyPackageForB(meB: String): ByteArray? =
+        onDeviceSuspend(deviceB) {
+            RcsE2E.identityFor(context, meB)
+            RcsE2E.freshKeyPackage(context, meB)
+        }
+
+    /** Wait until the sync service installs its SIP inbound callback (15s budget). */
+    private fun awaitInboundCallback() =
+        run {
+            val deadline = System.currentTimeMillis() + 15_000
+            while (
+                com.vayunmathur.communicate.data.rcs.RcsSipTransport.onInboundMessage == null &&
+                System.currentTimeMillis() < deadline
+            ) {
+                Thread.sleep(20)
+            }
+            com.vayunmathur.communicate.data.rcs.RcsSipTransport.onInboundMessage
+        }
+
+    /** Deliver [welcome] to device B through the service inbound route and assert the join notice. */
+    private suspend fun deliverWelcomeToB(
+        service: RcsSyncService,
+        meA: String,
+        welcome: ByteArray,
+        callId: String,
+    ) = onDeviceSuspend(deviceB) {
+        val notice = service.handleE2EEInbound(
+            envelope(meA, RcsE2E.CT_WELCOME, wrapped(RcsE2E.CT_WELCOME, welcome), callId),
+        )
+        assertNotNull(notice)
+        notice
+    }
+
     @Test fun welcomeJoinThenEncryptedMessageEndToEnd() = runTest {
         val service = Robolectric.setupService(RcsSyncService::class.java)
         try {
@@ -95,10 +129,7 @@ class WelcomeJoinRcsPass3Test {
             val meB = "+15550001002"
 
             // Device B creates its identity and a key package to publish.
-            val kpB = onDeviceSuspend(deviceB) {
-                assertNotNull(RcsE2E.identityFor(context, meB))
-                RcsE2E.freshKeyPackage(context, meB)
-            }
+            val kpB = freshKeyPackageForB(meB)
             assertNotNull(kpB)
 
             // Device A adds B and gets the Welcome for B (A's thread is with B).
@@ -107,12 +138,7 @@ class WelcomeJoinRcsPass3Test {
             val (commit, welcome) = created
 
             // B receives the Welcome through the sync service inbound route.
-            val notice = onDeviceSuspend(deviceB) {
-                service.handleE2EEInbound(
-                    envelope(meA, RcsE2E.CT_WELCOME, wrapped(RcsE2E.CT_WELCOME, welcome), "w1"),
-                )
-            }
-            assertNotNull(notice)
+            val notice = deliverWelcomeToB(service, meA, welcome, "w1")
             assertEquals(meA, notice.conversationId)
             assertEquals(meA, notice.senderId)
             assertEquals("🔒 Encrypted chat started", notice.body)
@@ -218,10 +244,7 @@ class WelcomeJoinRcsPass3Test {
         try {
             if (!RustMlsCrypto.isAvailable) return@runTest
             val meB = "+15550001002"
-            val kpB = onDeviceSuspend(deviceB) {
-                RcsE2E.identityFor(context, meB)
-                RcsE2E.freshKeyPackage(context, meB)
-            }
+            val kpB = freshKeyPackageForB(meB)
             assertNotNull(kpB)
             // B's publication arrives at A: cached, answered with a Typing-kind
             // control result, and no group auto-forms (no local number here).
@@ -250,10 +273,7 @@ class WelcomeJoinRcsPass3Test {
         if (!RustMlsCrypto.isAvailable) return@runTest
         val meA = "+15550001001"
         val meB = "+15550001002"
-        val kpB = onDeviceSuspend(deviceB) {
-            RcsE2E.identityFor(context, meB)
-            RcsE2E.freshKeyPackage(context, meB)
-        }
+        val kpB = freshKeyPackageForB(meB)
         assertNotNull(kpB)
         val created = RcsE2E.createEncryptedGroup(context, meA, meB, listOf(kpB))
         assertNotNull(created)
@@ -261,24 +281,12 @@ class WelcomeJoinRcsPass3Test {
         val service = Robolectric.setupService(RcsSyncService::class.java)
         try {
             // B joins the way production does, then starts its sync service.
-            val notice = onDeviceSuspend(deviceB) {
-                service.handleE2EEInbound(
-                    envelope(meA, RcsE2E.CT_WELCOME, wrapped(RcsE2E.CT_WELCOME, welcome), "w-cb"),
-                )
-            }
-            assertNotNull(notice)
+            deliverWelcomeToB(service, meA, welcome, "w-cb")
             assertEquals(
                 android.app.Service.START_STICKY,
                 service.onStartCommand(null, 0, 5),
             )
-            val deadline = System.currentTimeMillis() + 15_000
-            while (
-                com.vayunmathur.communicate.data.rcs.RcsSipTransport.onInboundMessage == null &&
-                System.currentTimeMillis() < deadline
-            ) {
-                Thread.sleep(20)
-            }
-            val callback = com.vayunmathur.communicate.data.rcs.RcsSipTransport.onInboundMessage
+            val callback = awaitInboundCallback()
             assertNotNull(callback)
             // A sends an application message; on B it decrypts and caches.
             val payload = RcsE2E.encryptTo(context, meA, meB, "cached secret".toByteArray(Charsets.UTF_8))

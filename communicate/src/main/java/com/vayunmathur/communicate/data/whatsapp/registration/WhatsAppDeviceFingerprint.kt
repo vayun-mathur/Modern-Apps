@@ -24,6 +24,7 @@ class WhatsAppDeviceFingerprint private constructor(
     val backupToken: ByteArray,
     val attestationKey: ByteArray,
 ) {
+    /** Preference keys and factories for the WhatsApp device fingerprint. */
     companion object {
         private const val PREFS = "communicate_whatsapp_fingerprint"
         private const val K_FDID = "fdid"

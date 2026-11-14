@@ -18,6 +18,7 @@ import org.signal.libsignal.protocol.kem.KEMKeyType
  */
 object WhatsAppPqPreKey {
 
+    /** A generated post-quantum (Kyber1024) pre-key for WhatsApp registration. */
     data class Generated(
         val keyId: Int,
         /** Raw Kyber1024 public key, 1568 bytes (no type tag). */

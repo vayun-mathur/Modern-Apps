@@ -15,7 +15,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
-import java.util.Base64 as JavaBase64
 
 /**
  * Typed, bounded catalog of `xwa2_*` MEX operations (w2.md §8). Each entry pairs a **GraphQL
@@ -34,9 +33,6 @@ import java.util.Base64 as JavaBase64
 object WhatsAppMexOps {
 
     private const val TAG = "WAMex"
-    private const val PREKEY_VERSION_BYTE = 0x05
-    private const val SHIFT_BYTE2 = 16
-    private const val SHIFT_BYTE1 = 8
 
     // -- GraphQL operation names (persist-ids JSON keys) ---------------------------------------
 
@@ -80,56 +76,21 @@ object WhatsAppMexOps {
 
     /** `xwa2_group_query_by_id` — read a group's metadata/participants over MEX. */
     suspend fun groupQueryById(context: Context, groupJid: String, queryContext: String = "INTERACTIVE"): MexResult =
-        WhatsAppMex.call(context, OP_GROUP_QUERY, buildGroupQueryByIdVariables(groupJid, queryContext), "get")
+        WhatsAppMex.call(
+            context, OP_GROUP_QUERY, WhatsAppMexVariables.buildGroupQueryByIdVariables(groupJid, queryContext), "get")
 
     /** `xwa2_group_query_participating_groups` — groups the (optional) user participates in. */
     suspend fun groupParticipatingGroups(context: Context, userJid: String? = null): MexResult =
-        WhatsAppMex.call(context, OP_GROUP_PARTICIPATING, buildParticipatingGroupsVariables(userJid), "get")
+        WhatsAppMex.call(
+            context, OP_GROUP_PARTICIPATING, WhatsAppMexVariables.buildParticipatingGroupsVariables(userJid), "get")
 
     /** `xwa2_group_batch_query_by_id` — batch group metadata read. */
     suspend fun groupBatchQueryById(
         context: Context,
         groupJids: List<String>,
         queryContext: String = "INTERACTIVE"): MexResult =
-        WhatsAppMex.call(context, OP_GROUP_BATCH, buildGroupBatchQueryVariables(groupJids, queryContext), "get")
-
-    fun buildGroupQueryByIdVariables(groupJid: String, queryContext: String): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject {
-                putJsonObject("group_input") {
-                    put("group_jid", groupJid)
-                    put("query_context", queryContext)
-                }
-            },
-        )
-
-    fun buildParticipatingGroupsVariables(userJid: String?): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject {
-                putJsonObject("participating_groups_input") {
-                    if (userJid != null) put("id", userJid)
-                }
-            },
-        )
-
-    fun buildGroupBatchQueryVariables(groupJids: List<String>, queryContext: String): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject {
-                putJsonObject("batch_query_input") {
-                    putJsonArray("groups") {
-                        groupJids.forEach { jid ->
-                            addJsonObject {
-                                put("group_jid", jid)
-                                put("query_context", queryContext)
-                            }
-                        }
-                    }
-                }
-            },
-        )
+        WhatsAppMex.call(
+            context, OP_GROUP_BATCH, WhatsAppMexVariables.buildGroupBatchQueryVariables(groupJids, queryContext), "get")
 
     // ============================================================ Contacts (§8.3)
 
@@ -141,7 +102,7 @@ object WhatsAppMexOps {
         WhatsAppMex.call(
             context,
             OP_CONTACT_DISCOVERY,
-            buildContactDiscoveryVariables(rawPhoneNumbers, discoveryContext),
+            WhatsAppMexVariables.buildContactDiscoveryVariables(rawPhoneNumbers, discoveryContext),
             "get")
 
     /** `xwa2_primary_contacts_full_sync` — single/multi-page primary-contact sync. */
@@ -155,48 +116,9 @@ object WhatsAppMexOps {
     ): MexResult = WhatsAppMex.call(
         context,
         OP_PRIMARY_CONTACTS_FULL_SYNC,
-        buildPrimaryContactsFullSyncVariables(rawPhoneNumbers, sessionId, pageIndex, last, syncContext),
+        WhatsAppMexVariables.buildPrimaryContactsFullSyncVariables(
+            rawPhoneNumbers, sessionId, pageIndex, last, syncContext),
         "set",
-    )
-
-    fun buildContactDiscoveryVariables(rawPhoneNumbers: List<String>, discoveryContext: String): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject {
-                putJsonObject("input") {
-                    putJsonArray("contacts") {
-                        rawPhoneNumbers.forEach { pn ->
-                            addJsonObject { putJsonObject("phone") { put("raw_pn", pn) } }
-                        }
-                    }
-                    put("context", discoveryContext)
-                }
-            },
-        )
-
-    fun buildPrimaryContactsFullSyncVariables(
-        rawPhoneNumbers: List<String>,
-        sessionId: String,
-        pageIndex: Int,
-        last: Boolean,
-        syncContext: String,
-    ): String = json.encodeToString(
-        JsonObject.serializer(),
-        buildJsonObject {
-            putJsonObject("input") {
-                putJsonArray("primary_contacts") {
-                    rawPhoneNumbers.forEach { pn ->
-                        addJsonObject { putJsonObject("phone") { put("raw_pn", pn) } }
-                    }
-                }
-                putJsonObject("cursor") {
-                    put("session_id", sessionId)
-                    put("page_index", pageIndex)
-                    put("last", last)
-                }
-                put("context", syncContext)
-            }
-        },
     )
 
     // ============================================================ Username (§8.11)
@@ -215,7 +137,7 @@ object WhatsAppMexOps {
     ): MexResult = WhatsAppMex.call(
         context,
         OP_USERNAME_CHECK,
-        buildUsernameCheckVariables(username, includeSuggestions, source, sessionId),
+        WhatsAppMexVariables.buildUsernameCheckVariables(username, includeSuggestions, source, sessionId),
         "get",
     )
 
@@ -229,41 +151,15 @@ object WhatsAppMexOps {
     ): MexResult = WhatsAppMex.call(
         context,
         OP_USERNAME_SET,
-        buildUsernameSetVariables(username, pin, source, sessionId),
+        WhatsAppMexVariables.buildUsernameSetVariables(username, pin, source, sessionId),
         "set",
     )
-
-    fun buildUsernameCheckVariables(
-        username: String,
-        includeSuggestions: Boolean,
-        source: String,
-        sessionId: String?): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject {
-                put("username", username)
-                put("include_suggestions", includeSuggestions)
-                put("source", source)
-                if (sessionId != null) put("session_id", sessionId)
-            },
-        )
-
-    fun buildUsernameSetVariables(username: String, pin: String?, source: String, sessionId: String?): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject {
-                put("username", username)
-                put("source", source)
-                if (pin != null) put("pin", pin)
-                if (sessionId != null) put("session_id", sessionId)
-            },
-        )
 
     // ============================================================ Blocklist (§8.8)
 
     /** `xwa2_blocklist_get` — the account blocklist; [dhash] is the previously-returned delta hash. */
     suspend fun blocklistGet(context: Context, dhash: String? = null): MexResult =
-        WhatsAppMex.call(context, OP_BLOCKLIST_GET, buildBlocklistGetVariables(dhash), "get")
+        WhatsAppMex.call(context, OP_BLOCKLIST_GET, WhatsAppMexVariables.buildBlocklistGetVariables(dhash), "get")
 
     /**
      * `xwa2_update_blocklist_lid` — block/unblock a LID user. [identifierKey] is exactly one of
@@ -280,32 +176,8 @@ object WhatsAppMexOps {
     ): MexResult = WhatsAppMex.call(
         context,
         OP_BLOCKLIST_UPDATE_LID,
-        buildUpdateBlocklistLidVariables(userLid, identifierKey, identifierValue, action, dhash),
+        WhatsAppMexVariables.buildUpdateBlocklistLidVariables(userLid, identifierKey, identifierValue, action, dhash),
         "set",
-    )
-
-    fun buildBlocklistGetVariables(dhash: String?): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject { if (dhash != null) put("dhash", dhash) },
-        )
-
-    fun buildUpdateBlocklistLidVariables(
-        userLid: String,
-        identifierKey: String,
-        identifierValue: String,
-        action: String,
-        dhash: String?,
-    ): String = json.encodeToString(
-        JsonObject.serializer(),
-        buildJsonObject {
-            putJsonObject("block_input") {
-                put("user", userLid)
-                putJsonObject("identifier") { put(identifierKey, identifierValue) }
-                put("action", action)
-                if (dhash != null) put("dhash", dhash)
-            }
-        },
     )
 
     // ============================================================ Presence (§8.6)
@@ -321,21 +193,8 @@ object WhatsAppMexOps {
         WhatsAppMex.call(
             context,
             OP_PRESENCE_ONLINE_OR_LAST,
-            buildOnlineOrLastStatusVariables(lidJids, lastActiveFilter),
+            WhatsAppMexVariables.buildOnlineOrLastStatusVariables(lidJids, lastActiveFilter),
             "get")
-
-    fun buildOnlineOrLastStatusVariables(lidJids: List<String>, lastActiveFilter: String?): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject {
-                putJsonObject("get_online_or_last_status_input") {
-                    putJsonArray("online_or_last_status_input") {
-                        lidJids.forEach { jid -> addJsonObject { put("jid", jid) } }
-                    }
-                    if (lastActiveFilter != null) put("last_active_filter", lastActiveFilter)
-                }
-            },
-        )
 
     // ============================================================ Newsletters (§8.4)
 
@@ -345,49 +204,25 @@ object WhatsAppMexOps {
         key: String,
         keyType: String = "JID",
         viewRole: String? = null): MexResult =
-        WhatsAppMex.call(context, OP_NEWSLETTER, buildNewsletterVariables(key, keyType, viewRole), "get")
+        WhatsAppMex.call(
+            context, OP_NEWSLETTER, WhatsAppMexVariables.buildNewsletterVariables(key, keyType, viewRole), "get")
 
     /** `xwa2_newsletter_join_v2`. */
     suspend fun newsletterJoinV2(context: Context, newsletterId: String): MexResult =
-        WhatsAppMex.call(context, OP_NEWSLETTER_JOIN_V2, buildNewsletterIdVariables(newsletterId), "set")
+        WhatsAppMex.call(
+            context, OP_NEWSLETTER_JOIN_V2, WhatsAppMexVariables.buildNewsletterIdVariables(newsletterId), "set")
 
     /** `xwa2_newsletter_leave_v2`. */
     suspend fun newsletterLeaveV2(context: Context, newsletterId: String): MexResult =
-        WhatsAppMex.call(context, OP_NEWSLETTER_LEAVE_V2, buildNewsletterIdVariables(newsletterId), "set")
-
-    fun buildNewsletterVariables(key: String, keyType: String, viewRole: String?): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject {
-                putJsonObject("input") {
-                    put("key", key)
-                    put("type", keyType)
-                    if (viewRole != null) put("view_role", viewRole)
-                }
-            },
-        )
-
-    fun buildNewsletterIdVariables(newsletterId: String): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject { put("newsletter_id", newsletterId) },
-        )
+        WhatsAppMex.call(
+            context, OP_NEWSLETTER_LEAVE_V2, WhatsAppMexVariables.buildNewsletterIdVariables(newsletterId), "set")
 
     // ============================================================ Messaging keys (§8.2)
 
     /** `xwa2_get_messaging_keys` — fetch Signal prekey bundles for the given interop user JIDs. */
     suspend fun getMessagingKeys(context: Context, userJids: List<String>): MexResult =
-        WhatsAppMex.call(context, OP_GET_MESSAGING_KEYS, buildGetMessagingKeysVariables(userJids), "get")
-
-    fun buildGetMessagingKeysVariables(userJids: List<String>): String =
-        json.encodeToString(
-            JsonObject.serializer(),
-            buildJsonObject {
-                putJsonObject("input") {
-                    putJsonArray("users") { userJids.forEach { add(it) } }
-                }
-            },
-        )
+        WhatsAppMex.call(
+            context, OP_GET_MESSAGING_KEYS, WhatsAppMexVariables.buildGetMessagingKeysVariables(userJids), "get")
 
     /**
      * `xwa2_set_messaging_keys` — publish our identity + signed prekey + a batch of freshly-minted
@@ -422,7 +257,7 @@ object WhatsAppMexOps {
             TAG,
             "setMessagingKeys: minted ${minted.size} one-time prekeys (ids ${maxId + 1}..${maxId + minted.size})")
 
-        val variables = buildSetMessagingKeysVariables(
+        val variables = WhatsAppMexVariables.buildSetMessagingKeysVariables(
             identity = identity,
             skeyId = auth.signedPreKeyId,
             skeyValue = skeyValue,
@@ -432,51 +267,8 @@ object WhatsAppMexOps {
         return WhatsAppMex.call(context, OP_SET_MESSAGING_KEYS, variables, "set")
     }
 
-    /**
-     * Pure builder for the `xwa2_set_messaging_keys` `variables` (§8.2). Binary fields are standard
-     * Base64; ids are 3-byte big-endian (skey/prekey id space), `type` is Base64 of `0x05`.
-     */
-    fun buildSetMessagingKeysVariables(
-        identity: ByteArray,
-        skeyId: Int,
-        skeyValue: ByteArray,
-        skeySignature: ByteArray,
-        prekeys: List<Pair<Int, ByteArray>>,
-    ): String = json.encodeToString(
-        JsonObject.serializer(),
-        buildJsonObject {
-            putJsonObject("input") {
-                put("type", b64(byteArrayOf(PREKEY_VERSION_BYTE.toByte())))
-                put("identity", b64(identity))
-                putJsonObject("skey") {
-                    put("id", b64(int3BE(skeyId)))
-                    put("value", b64(skeyValue))
-                    put("signature", b64(skeySignature))
-                }
-                putJsonArray("prekeys") {
-                    prekeys.forEach { (id, value) ->
-                        addJsonObject {
-                            put("id", b64(int3BE(id)))
-                            put("value", b64(value))
-                        }
-                    }
-                }
-            }
-        },
-    )
-
     // -- encoding helpers ------------------------------------------------------------------------
-
-    /** Standard Base64 (with padding), JVM-pure so the builders are unit-testable off-device. */
-    private fun b64(bytes: ByteArray): String = JavaBase64.getEncoder().encodeToString(bytes)
 
     /** Decode a STANDARD-base64 field stored in [WhatsAppAuthData] (android.util.Base64.NO_WRAP). */
     private fun decodeStd(s: String): ByteArray = AndroidBase64.decode(s, AndroidBase64.NO_WRAP)
-
-    /** 3-byte big-endian encoding of a prekey/skey id (matches the classic wire encoding). */
-    private fun int3BE(id: Int): ByteArray = byteArrayOf(
-        (id ushr SHIFT_BYTE2).toByte(),
-        (id ushr SHIFT_BYTE1).toByte(),
-        id.toByte(),
-    )
 }

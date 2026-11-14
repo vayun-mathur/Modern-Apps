@@ -67,10 +67,10 @@ class RcsSlice3Pass2MsrpTest {
 
     private fun readToMarker(input: java.io.BufferedReader, txid: String): String {
         val sb = StringBuilder()
-        while (true) {
-            val l = input.readLine() ?: break
-            if (l.startsWith("-------$txid")) break
-            sb.append(l).append("\r\n")
+        var line = input.readLine()
+        while (line != null && !line.startsWith("-------$txid")) {
+            sb.append(line).append("\r\n")
+            line = input.readLine()
         }
         return sb.toString()
     }
@@ -166,6 +166,71 @@ class RcsSlice3Pass2MsrpTest {
         assertNull(RcsMsrp.connect(session(1), context) { _, _ -> })
     }
 
+    /** The fake MSRP peer: ack our SEND, push an inbound SEND, REPORT, then AUTH expecting 501. */
+    private fun runMsrpPeer(
+        server: ServerSocket,
+        port: Int,
+        chunksSeen: CopyOnWriteArrayList<String>,
+        peerLatch: CountDownLatch,
+    ) {
+        server.accept().use { s ->
+            s.soTimeout = 20_000
+            val input = s.getInputStream().bufferedReader(Charsets.UTF_8)
+            val out = s.getOutputStream()
+            // 1) Read our SEND, ack it.
+            val head1 = readHead(input)
+            val tx1 = head1.firstOrNull()?.split(" ")?.getOrNull(1).orEmpty()
+            chunksSeen += readToMarker(input, tx1)
+            // OutChunk serialization appends CRLF before the marker; the
+            // body slice read here is line-based, so compare trimmed.
+            respondOk(s, tx1, "msrp://127.0.0.1:$port/self;tcp")
+            // 2) Send an inbound SEND to us; expect our auto-200.
+            val inbound = RcsMsrpFraming.splitSend(
+                toPath = "msrp://127.0.0.1:$port/self;tcp",
+                fromPath = "msrp://127.0.0.1:$port/peer;tcp",
+                payload = "inbound hello".toByteArray(Charsets.UTF_8),
+                messageId = "pass2-inbound-1",
+            ).single()
+            out.write(RcsMsrpFraming.serializeChunk(inbound))
+            out.flush()
+            val respHead = readHead(input)
+            chunksSeen += respHead.joinToString("\n")
+            readToMarker(input, inbound.txid)
+            // 3) REPORT frame: queued by the reader, no response.
+            val report = RcsMsrpFraming.buildReport(
+                toPath = "msrp://127.0.0.1:$port/self;tcp",
+                fromPath = "msrp://127.0.0.1:$port/peer;tcp",
+                messageId = "pass2-msg-9", statusCode = 200, reason = "OK",
+                byteRange = "1-5/5",
+            )
+            out.write(report)
+            out.flush()
+            // 4) AUTH frame: answered 501.
+            val authTx = "authtx123456"
+            out.write(
+                ("MSRP $authTx AUTH\r\nTo-Path: msrp://127.0.0.1:$port/self;tcp\r\n" +
+                    "From-Path: msrp://127.0.0.1:$port/peer;tcp\r\n\r\n" +
+                    "-------$authTx\$\r\n").toByteArray(Charsets.UTF_8),
+            )
+            out.flush()
+            // Read frames until the 501 AUTH response arrives; our
+            // keepalive/report frames may interleave ahead of it.
+            var saw501 = false
+            var guard = 0
+            while (!saw501 && guard++ < 8) {
+                val frameHead = readHead(input)
+                if (frameHead.isEmpty()) break
+                chunksSeen += frameHead.joinToString("\n")
+                val frameTx = frameHead.firstOrNull()?.split(" ")?.getOrNull(1).orEmpty()
+                readToMarker(input, frameTx)
+                if (frameHead.joinToString("\n").contains("501")) saw501 = true
+            }
+            chunksSeen += if (saw501) "SAW-501" else "NO-501"
+            // Wait for the test to finish its assertions, then close.
+            peerLatch.await(20, TimeUnit.SECONDS)
+        }
+    }
+
     // --- persistent connection, both directions ---
 
     @Test
@@ -177,63 +242,7 @@ class RcsSlice3Pass2MsrpTest {
         val peerErrors = AtomicReference<String>()
         val peer = Thread {
             try {
-                server.accept().use { s ->
-                    s.soTimeout = 20_000
-                    val input = s.getInputStream().bufferedReader(Charsets.UTF_8)
-                    val out = s.getOutputStream()
-                    // 1) Read our SEND, ack it.
-                    val head1 = readHead(input)
-                    val tx1 = head1.firstOrNull()?.split(" ")?.getOrNull(1).orEmpty()
-                    val body1 = readToMarker(input, tx1)
-                    chunksSeen += body1
-                    // OutChunk serialization appends CRLF before the marker; the
-                    // body slice read here is line-based, so compare trimmed.
-                    respondOk(s, tx1, "msrp://127.0.0.1:$port/self;tcp")
-                    // 2) Send an inbound SEND to us; expect our auto-200.
-                    val inbound = RcsMsrpFraming.splitSend(
-                        toPath = "msrp://127.0.0.1:$port/self;tcp",
-                        fromPath = "msrp://127.0.0.1:$port/peer;tcp",
-                        payload = "inbound hello".toByteArray(Charsets.UTF_8),
-                        messageId = "pass2-inbound-1",
-                    ).single()
-                    out.write(RcsMsrpFraming.serializeChunk(inbound))
-                    out.flush()
-                    val respHead = readHead(input)
-                    chunksSeen += respHead.joinToString("\n")
-                    readToMarker(input, inbound.txid)
-                    // 3) REPORT frame: queued by the reader, no response.
-                    val report = RcsMsrpFraming.buildReport(
-                        toPath = "msrp://127.0.0.1:$port/self;tcp",
-                        fromPath = "msrp://127.0.0.1:$port/peer;tcp",
-                        messageId = "pass2-msg-9", statusCode = 200, reason = "OK",
-                        byteRange = "1-5/5",
-                    )
-                    out.write(report)
-                    out.flush()
-                    // 4) AUTH frame: answered 501.
-                    val authTx = "authtx123456"
-                    out.write(
-                        ("MSRP $authTx AUTH\r\nTo-Path: msrp://127.0.0.1:$port/self;tcp\r\n" +
-                            "From-Path: msrp://127.0.0.1:$port/peer;tcp\r\n\r\n" +
-                            "-------$authTx\$\r\n").toByteArray(Charsets.UTF_8),
-                    )
-                    out.flush()
-                    // Read frames until the 501 AUTH response arrives; our
-                    // keepalive/report frames may interleave ahead of it.
-                    var saw501 = false
-                    var guard = 0
-                    while (!saw501 && guard++ < 8) {
-                        val frameHead = readHead(input)
-                        if (frameHead.isEmpty()) break
-                        chunksSeen += frameHead.joinToString("\n")
-                        val frameTx = frameHead.firstOrNull()?.split(" ")?.getOrNull(1).orEmpty()
-                        readToMarker(input, frameTx)
-                        if (frameHead.joinToString("\n").contains("501")) saw501 = true
-                    }
-                    chunksSeen += if (saw501) "SAW-501" else "NO-501"
-                    // Wait for the test to finish its assertions, then close.
-                    peerLatch.await(20, TimeUnit.SECONDS)
-                }
+                runMsrpPeer(server, port, chunksSeen, peerLatch)
             } catch (e: Throwable) {
                 peerErrors.set(e.toString())
             }

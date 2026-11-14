@@ -22,6 +22,7 @@ class RegistrationKeys private constructor(
     /** URL-safe-base64 E2E bundle fields for `/v2/ endpoints` (from the freshly-generated scaffold). */
     fun registerBundleFields(): Map<String, String> = bundleFields(authScaffold)
 
+    /** Registration key-bundle constants (whether the PQ bundle is attached). */
     companion object {
         /**
          * DEFAULT **false** — do not attach the post-quantum `e_pq_last_resort_*` bundle to the

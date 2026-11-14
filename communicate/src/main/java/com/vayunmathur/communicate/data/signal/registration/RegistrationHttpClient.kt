@@ -44,12 +44,14 @@ class RegistrationHttpClient(private val context: Context) {
     var baseUrl: String = "https://chat.signal.org"
     var cdnUrl: String = "https://cdn.signal.org"
 
+    /** The result of requesting an SMS/voice verification code from the Signal service. */
     data class CodeResult(val status: String, val reason: String?, val raw: String) {
         val ok: Boolean get() = status == "sent" || status == "ok" || status == "200"
 
         /** Server asked for an hCaptcha token (requestedInformation contains "captcha"). */
         val needsCaptcha: Boolean get() = status == "captcha"
     }
+    /** The result of submitting a Signal registration; carries the new ACI/PNI on success. */
     data class RegisterResult(
         val status: String,
         val aci: String?,
@@ -58,7 +60,9 @@ class RegistrationHttpClient(private val context: Context) {
         val auth: SignalAuthData?,
         val raw: String,
     ) { val ok: Boolean get() = status == "ok" }
+    /** Whether a number is registered on Signal (whoami probe), plus the raw response. */
     data class ExistResult(val exists: Boolean, val reason: String?, val raw: String)
+    /** A Signal registration session: what the service still needs before a code can be sent. */
     data class SessionInfo(
         val id: String,
         val allowedToRequestCode: Boolean,
@@ -238,6 +242,9 @@ class RegistrationHttpClient(private val context: Context) {
 
     // Real Signal has no GET /v1/accounts/exists/{e164}; CDSIv2 is authority for number->ACI.
     // Post-auth use GET /v1/accounts/whoami.
+    // The number is not probed directly: post-auth whoami identifies by credentials, and pre-registration
+    // has no existence endpoint (CDSIv2 is the authority), so e164 only documents the caller's intent.
+    @Suppress("UnusedParameter")
     suspend fun checkExists(e164: String): ExistResult {
         val auth = SignalAuthData.load(context)
         // If authenticated (registered), probe real endpoint GET /v1/accounts/whoami with Basic e164:password
@@ -289,7 +296,7 @@ class RegistrationHttpClient(private val context: Context) {
         )
         if (resp.status == HTTP_LOCKED) throw IllegalStateException("423 RegistrationLock (live-only: needs" +
             "svr2Credentials/recoveryPassword)")
-        if (!resp.isSuccess) throw IllegalStateException("HTTP ${resp.status}: ${resp.body.take(500)}")
+        if (!resp.isSuccess) throw IllegalStateException("HTTP ${resp.status}: ${resp.body.take(ERROR_BODY_MAX_CHARS)}")
         return parseSession(resp.body)
     }
 
@@ -318,7 +325,7 @@ class RegistrationHttpClient(private val context: Context) {
             body = body,
             sslSocketFactory = SignalTrust.sslSocketFactory(context),
         )
-        if (!resp.isSuccess) throw IllegalStateException("HTTP ${resp.status}: ${resp.body.take(500)}")
+        if (!resp.isSuccess) throw IllegalStateException("HTTP ${resp.status}: ${resp.body.take(ERROR_BODY_MAX_CHARS)}")
         return parseSession(resp.body)
     }
 
@@ -337,9 +344,16 @@ class RegistrationHttpClient(private val context: Context) {
             body = body,
             sslSocketFactory = SignalTrust.sslSocketFactory(context),
         )
-        if (resp.status == HTTP_LOCKED) throw IllegalStateException("423 RegistrationLock (live-only)")
-        if (resp.status == HTTP_RATE_LIMITED) throw IllegalStateException("429 rate limited: ${resp.body.take(500)}")
-        if (!resp.isSuccess) throw IllegalStateException("HTTP ${resp.status}: ${resp.body.take(500)}")
+        val failure = when {
+            resp.status == HTTP_LOCKED ->
+                IllegalStateException("423 RegistrationLock (live-only)")
+            resp.status == HTTP_RATE_LIMITED ->
+                IllegalStateException("429 rate limited: ${resp.body.take(ERROR_BODY_MAX_CHARS)}")
+            !resp.isSuccess ->
+                IllegalStateException("HTTP ${resp.status}: ${resp.body.take(ERROR_BODY_MAX_CHARS)}")
+            else -> null
+        }
+        if (failure != null) throw failure
         return parseSession(resp.body)
     }
 
@@ -361,7 +375,7 @@ class RegistrationHttpClient(private val context: Context) {
         if (resp.isSuccess || session.verified) {
             return session
         }
-        throw IllegalStateException("HTTP ${resp.status}: ${resp.body.take(500)}")
+        throw IllegalStateException("HTTP ${resp.status}: ${resp.body.take(ERROR_BODY_MAX_CHARS)}")
     }
 
     private suspend fun submitRegistration(sessionId: String, auth: SignalAuthData): RegisterResult {
@@ -375,52 +389,7 @@ class RegistrationHttpClient(private val context: Context) {
         val e164 = auth.phoneNumber
         val basic = "Basic " + b64NoPad("$e164:$password".toByteArray(Charsets.UTF_8))
 
-        val accountAttributes = buildAccountAttributesJson(auth)
-        // Identity keys: Base64-nopad(IdentityKey.serialize() 33B = 0x05||32)
-        val aciIdKey = auth.effectiveAciPublic().ifEmpty { auth.aciIdentityPublicKey }
-        val pniIdKey = auth.pniIdentityPublicKey.ifEmpty { auth.effectiveAciPublic() }
-        // Fallback: if PNI identity missing (legacy single-identity auth), reuse ACI identity wire-correctly but
-        // document live-only dual requirement
-        val pniIdentityWire = if (pniIdKey.isEmpty()) aciIdKey else pniIdKey
-
-        fun spkEntity(keyId: Int, pubB64: String, sigB64: String): JSONObject = JSONObject().apply {
-            put("keyId", keyId)
-            put("publicKey", pubB64.trimEnd('=')) // Base64-nopad per SignedPreKeyEntity
-            put("signature", sigB64.trimEnd('='))
-        }
-        fun kyberEntity(keyId: Int, pubB64: String, sigB64: String): JSONObject = JSONObject().apply {
-            put("keyId", keyId)
-            // KEM public serialize is 1569B = 0x08||1568; keep 0x08 tag intact for wire (see SignalPqPreKey)
-            put("publicKey", pubB64.trimEnd('='))
-            put("signature", sigB64.trimEnd('='))
-        }
-
-        val bodyJson = JSONObject().apply {
-            put("sessionId", sessionId)
-            // recoveryPassword is xor with sessionId — null here; live-only SVR re-registration uses recoveryPassword
-            // instead
-            put("accountAttributes", accountAttributes)
-            put("aciIdentityKey", aciIdKey.trimEnd('='))
-            put("pniIdentityKey", pniIdentityWire.trimEnd('='))
-            put(
-                "aciSignedPreKey",
-                spkEntity(auth.effectiveAciSignedId(), auth.effectiveAciSignedPub(), auth.effectiveAciSignedSig()))
-            // pniSignedPreKey — reuse ACI if missing legacy
-            val pniSpkId = if (auth.pniSignedPreKeyId != 0) auth.pniSignedPreKeyId else auth.effectiveAciSignedId()
-            val pniSpkPub = auth.pniSignedPreKeyPublic.ifEmpty { auth.effectiveAciSignedPub() }
-            val pniSpkSig = auth.pniSignedPreKeySignature.ifEmpty { auth.effectiveAciSignedSig() }
-            put("pniSignedPreKey", spkEntity(pniSpkId, pniSpkPub, pniSpkSig))
-            put(
-                "aciPqLastResortPreKey",
-                kyberEntity(auth.effectiveAciPqId(), auth.effectiveAciPqPub(), auth.effectiveAciPqSig()))
-            val pniPqId = if (auth.pniPqLastResortKeyId != 0) auth.pniPqLastResortKeyId else auth.effectiveAciPqId()
-            val pniPqPub = auth.pniPqLastResortPublic.ifEmpty { auth.effectiveAciPqPub() }
-            val pniPqSig = auth.pniPqLastResortSignature.ifEmpty { auth.effectiveAciPqSig() }
-            put("pniPqLastResortPreKey", kyberEntity(pniPqId, pniPqPub, pniPqSig))
-            // gcmToken: null if fetchesMessages:true (primary), else {gcmRegistrationId, webSocketChannel:true}
-            put("skipDeviceTransfer", true)
-            put("requireAtomic", true)
-        }.toString()
+        val bodyJson = buildRegistrationBody(sessionId, auth)
 
         val resp = NetworkClient.performRequest(
             "$baseUrl$REGISTRATION_PATH",
@@ -445,10 +414,59 @@ class RegistrationHttpClient(private val context: Context) {
         }
         if (!resp.isSuccess) {
             // Log the full server body so a 422/400 names the rejected field in logcat on the next retest.
-            Log.error(TAG, "submitRegistration HTTP ${resp.status}: ${resp.body.take(1000)}")
+            Log.error(TAG, "submitRegistration HTTP ${resp.status}: ${resp.body.take(LOG_BODY_MAX_CHARS)}")
             return RegisterResult("error", null, null, "HTTP ${resp.status}", null, resp.body)
         }
         return finalizeRegister(resp.body, auth)
+    }
+
+    /** The POST /v1/registration body: session, account attributes and ACI/PNI key material. */
+    private fun buildRegistrationBody(sessionId: String, auth: SignalAuthData): String {
+        // Identity keys: Base64-nopad(IdentityKey.serialize() 33B = 0x05||32)
+        val aciIdKey = auth.effectiveAciPublic().ifEmpty { auth.aciIdentityPublicKey }
+        val pniIdKey = auth.pniIdentityPublicKey.ifEmpty { auth.effectiveAciPublic() }
+        // Fallback: if PNI identity missing (legacy single-identity auth), reuse ACI identity wire-correctly but
+        // document live-only dual requirement
+        val pniIdentityWire = if (pniIdKey.isEmpty()) aciIdKey else pniIdKey
+
+        fun spkEntity(keyId: Int, pubB64: String, sigB64: String): JSONObject = JSONObject().apply {
+            put("keyId", keyId)
+            put("publicKey", pubB64.trimEnd('=')) // Base64-nopad per SignedPreKeyEntity
+            put("signature", sigB64.trimEnd('='))
+        }
+        fun kyberEntity(keyId: Int, pubB64: String, sigB64: String): JSONObject = JSONObject().apply {
+            put("keyId", keyId)
+            // KEM public serialize is 1569B = 0x08||1568; keep 0x08 tag intact for wire (see SignalPqPreKey)
+            put("publicKey", pubB64.trimEnd('='))
+            put("signature", sigB64.trimEnd('='))
+        }
+
+        return JSONObject().apply {
+            put("sessionId", sessionId)
+            // recoveryPassword is xor with sessionId — null here; live-only SVR re-registration uses recoveryPassword
+            // instead
+            put("accountAttributes", buildAccountAttributesJson(auth))
+            put("aciIdentityKey", aciIdKey.trimEnd('='))
+            put("pniIdentityKey", pniIdentityWire.trimEnd('='))
+            put(
+                "aciSignedPreKey",
+                spkEntity(auth.effectiveAciSignedId(), auth.effectiveAciSignedPub(), auth.effectiveAciSignedSig()))
+            // pniSignedPreKey — reuse ACI if missing legacy
+            val pniSpkId = if (auth.pniSignedPreKeyId != 0) auth.pniSignedPreKeyId else auth.effectiveAciSignedId()
+            val pniSpkPub = auth.pniSignedPreKeyPublic.ifEmpty { auth.effectiveAciSignedPub() }
+            val pniSpkSig = auth.pniSignedPreKeySignature.ifEmpty { auth.effectiveAciSignedSig() }
+            put("pniSignedPreKey", spkEntity(pniSpkId, pniSpkPub, pniSpkSig))
+            put(
+                "aciPqLastResortPreKey",
+                kyberEntity(auth.effectiveAciPqId(), auth.effectiveAciPqPub(), auth.effectiveAciPqSig()))
+            val pniPqId = if (auth.pniPqLastResortKeyId != 0) auth.pniPqLastResortKeyId else auth.effectiveAciPqId()
+            val pniPqPub = auth.pniPqLastResortPublic.ifEmpty { auth.effectiveAciPqPub() }
+            val pniPqSig = auth.pniPqLastResortSignature.ifEmpty { auth.effectiveAciPqSig() }
+            put("pniPqLastResortPreKey", kyberEntity(pniPqId, pniPqPub, pniPqSig))
+            // gcmToken: null if fetchesMessages:true (primary), else {gcmRegistrationId, webSocketChannel:true}
+            put("skipDeviceTransfer", true)
+            put("requireAtomic", true)
+        }.toString()
     }
 
     private fun buildAccountAttributesJson(auth: SignalAuthData): JSONObject {
@@ -501,18 +519,28 @@ class RegistrationHttpClient(private val context: Context) {
         val status = j.optString("status", if (body.contains("\"uuid\"") || body.contains("\"aci\"")) "ok" else "error")
         val aci = j.optStringOrNull("uuid") ?: j.optStringOrNull("aci") ?: j.optStringOrNull("number")
         val pni = j.optStringOrNull("pni")
-        // VerifyAccountResponse fields: uuid/aci, pni, storageCapable, number, reregistration
-        val aciVal = j.optStringOrNull("uuid") ?: j.optStringOrNull("aci") ?: auth.aci
-        val pniVal = pni ?: auth.pni
-        val ok = status == "ok" || (aciVal.isNotEmpty() && body.contains("\"uuid\""))
-        val updated = if (ok || j.has("uuid") || j.has("aci")) {
-            auth.copy(
-                aci = aciVal.ifEmpty { aci ?: auth.aci },
-                pni = pniVal,
-                registered = true).also { SignalAuthData.save(context, it) }
-        } else null
+        val updated = persistRegisteredAuth(j, body, auth, status, aci, pni)
         val finalStatus = if (updated != null) "ok" else status
         return RegisterResult(finalStatus, aci, pni, j.optStringOrNull("reason"), updated, body)
+    }
+
+    /** Persist the registered ACI/PNI onto [auth] when the response carries an account id. */
+    private fun persistRegisteredAuth(
+        j: JSONObject,
+        body: String,
+        auth: SignalAuthData,
+        status: String,
+        aci: String?,
+        pni: String?,
+    ): SignalAuthData? {
+        // VerifyAccountResponse fields: uuid/aci, pni, storageCapable, number, reregistration
+        val aciVal = j.optStringOrNull("uuid") ?: j.optStringOrNull("aci") ?: auth.aci
+        val ok = status == "ok" || (aciVal.isNotEmpty() && body.contains("\"uuid\""))
+        if (!ok && !j.has("uuid") && !j.has("aci")) return null
+        return auth.copy(
+            aci = aciVal.ifEmpty { aci ?: auth.aci },
+            pni = pni ?: auth.pni,
+            registered = true).also { SignalAuthData.save(context, it) }
     }
 
     private fun parseSession(body: String): SessionInfo {
@@ -542,11 +570,16 @@ class RegistrationHttpClient(private val context: Context) {
         return bytes.size == UUID_SIZE
     }
 
+    /** HTTP status constants and logging tag for the Signal registration client. */
     companion object {
         private const val TAG = "SignalRegHttp"
         private const val HTTP_OK = 200
         private const val HTTP_LOCKED = 423
         private const val HTTP_RATE_LIMITED = 429
+        /** How much of an error response body is quoted in an exception message. */
+        private const val ERROR_BODY_MAX_CHARS = 500
+        /** How much of an error response body is written to the log for diagnosis. */
+        private const val LOG_BODY_MAX_CHARS = 1000
         private const val UUID_SIZE = 16
         private const val VERIFICATION_SESSION_PATH = "/v1/verification/session"
         private const val VERIFICATION_CODE_PATH = "/v1/verification/session/%s/code"

@@ -17,6 +17,7 @@ sealed interface WhatsAppEvent {
         val detail: String? = null,
     ) : WhatsAppEvent
 
+    /** A conversation-list row changed: latest preview, unread count and peer metadata. */
     data class ConversationUpdate(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
@@ -34,6 +35,7 @@ sealed interface WhatsAppEvent {
         val isMessageRequest: Boolean = false,
     ) : WhatsAppEvent
 
+    /** A message row changed (new, edited or status-updated) in a conversation. */
     data class MessageUpdate(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
@@ -77,6 +79,7 @@ sealed interface WhatsAppEvent {
         val timestamp: Long = 0L,
     ) : WhatsAppEvent
 
+    /** A message was edited; the row now shows the replacement body. */
     data class MessageEdited(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String? = null,
@@ -85,6 +88,7 @@ sealed interface WhatsAppEvent {
         val timestamp: Long = 0L,
     ) : WhatsAppEvent
 
+    /** A delivery or read receipt for one of our sent messages. */
     data class ReadReceipt(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
@@ -95,6 +99,7 @@ sealed interface WhatsAppEvent {
         val isDelivery: Boolean = false,
     ) : WhatsAppEvent
 
+    /** A conversation was deleted. */
     data class ConversationDeleted(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
@@ -108,6 +113,7 @@ sealed interface WhatsAppEvent {
         val isTyping: Boolean,
     ) : WhatsAppEvent
 
+    /** An emoji reaction was added to a message. */
     data class ReactionReceived(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
@@ -116,6 +122,7 @@ sealed interface WhatsAppEvent {
         val emoji: String,
     ) : WhatsAppEvent
 
+    /** An emoji reaction was removed from a message. */
     data class ReactionRemoved(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
@@ -123,6 +130,7 @@ sealed interface WhatsAppEvent {
         val senderId: String,
     ) : WhatsAppEvent
 
+    /** A vote was cast on a poll message. */
     data class PollVote(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
@@ -131,41 +139,48 @@ sealed interface WhatsAppEvent {
         val optionNames: List<String>,
     ) : WhatsAppEvent
 
+    /** A conversation (group) was renamed. */
     data class ConversationNameChanged(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
         val newName: String,
     ) : WhatsAppEvent
 
+    /** A conversation avatar changed. */
     data class ConversationAvatarChanged(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
         val avatarUrl: String?,
     ) : WhatsAppEvent
 
+    /** A participant joined a group conversation. */
     data class ParticipantAdded(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
         val participantId: String,
     ) : WhatsAppEvent
 
+    /** A participant left or was removed from a group conversation. */
     data class ParticipantRemoved(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
         val participantId: String,
     ) : WhatsAppEvent
 
+    /** A conversation mute setting changed; muteExpireTimeMs is when the mute lapses. */
     data class MuteSettingChanged(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
         val muteExpireTimeMs: Long,
     ) : WhatsAppEvent
 
+    /** A message request arrived from an unknown sender. */
     data class MessageRequestReceived(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
     ) : WhatsAppEvent
 
+    /** Sending a message failed. */
     data class SendFailed(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
@@ -174,6 +189,7 @@ sealed interface WhatsAppEvent {
         val errorMessage: String,
     ) : WhatsAppEvent
 
+    /** An inbound message could not be decrypted (session or identity problem). */
     data class DecryptionError(
         override val source: MessageSource = MessageSource.WHATSAPP,
         val conversationId: String,
@@ -264,6 +280,7 @@ data class WhatsAppHistoryConversation(
     val messages: List<WhatsAppHistoryMessage>,
 )
 
+/** One message inside a history-sync conversation payload. */
 data class WhatsAppHistoryMessage(
     val messageId: String,
     val body: String,

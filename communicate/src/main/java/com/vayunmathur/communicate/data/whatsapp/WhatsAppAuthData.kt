@@ -61,6 +61,7 @@ data class WhatsAppAuthData(
     // Profile name sent to /v2/* for new clients (profile_name, w2.md §2.2).
     val profileName: String = "",
 ) {
+    /** Preference keys and factories for [WhatsAppAuthData]. */
     companion object {
         // Distinct from the companion's "whatsapp_auth" in the messages module.
         private const val PREFS_NAME = "communicate_whatsapp_auth"

@@ -214,7 +214,8 @@ private suspend fun SignalClient.sendRetryReceipt(env: SignalProtocol.SignalEnve
             urgent = false,
         )
     when (val outcome = putMessages(sender, json, accessKey = null)) {
-            is SignalClient.SendOutcome.Success -> Log.status(TAG, "sent a retry receipt to $sender:${env.sourceDevice}")
+            is SignalClient.SendOutcome.Success ->
+                Log.status(TAG, "sent a retry receipt to $sender:${env.sourceDevice}")
             else -> Log.status(TAG, "could not send a retry receipt to $sender: $outcome")
         }
     } catch (expected: Throwable) {

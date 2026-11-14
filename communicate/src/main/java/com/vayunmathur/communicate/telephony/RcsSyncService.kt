@@ -532,6 +532,7 @@ class RcsSyncService : Service() {
         stopSelf()
     }
 
+    /** Outbox poll interval and logging tag for the RCS sync service. */
     companion object {
         internal const val TAG = "RcsSync"
         internal const val OUTBOX_POLL_MS = 5 * 60_000L

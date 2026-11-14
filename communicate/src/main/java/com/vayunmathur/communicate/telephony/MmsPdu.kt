@@ -41,6 +41,7 @@ object MmsPdu {
 
     private const val CT_MULTIPART_MIXED = "application/vnd.wap.multipart.mixed"
 
+    /** One part of a composed MMS: content type, bytes and optional name. */
     data class Part(val contentType: String, val data: ByteArray, val name: String? = null)
 
     /**

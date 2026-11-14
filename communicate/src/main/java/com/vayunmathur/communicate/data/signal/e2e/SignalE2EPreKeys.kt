@@ -71,7 +71,9 @@ internal fun SignalE2E.seedStoredSignedPreKey(id: Int): Boolean {
         val identityOk = signature.isNotEmpty() &&
             ECPublicKey(ownIdentityPublicKey).verifySignature(pub, signature)
         if (!identityOk) {
-            Log.status(SignalE2E.TAG, "stored signed pre-key $id signature does not verify under our identity key; rotating")
+            Log.status(
+                SignalE2E.TAG,
+                "stored signed pre-key $id signature does not verify under our identity key; rotating")
             return false
         }
         protocolStore.storeSignedPreKey(

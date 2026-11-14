@@ -53,6 +53,7 @@ class SignalSocket(
     private val passwordOverride: String? = null,
     private val authenticated: Boolean = true,
 ) {
+    /** Server endpoint and logging constants for [SignalSocket]. */
     companion object {
         private const val TAG = "SignalSocket"
         private const val ACI_PREFIX_LENGTH = 8
@@ -86,9 +87,13 @@ class SignalSocket(
     private val _connectionState = MutableSharedFlow<ConnectionState>(extraBufferCapacity = 16)
     val connectionState: SharedFlow<ConnectionState> = _connectionState.asSharedFlow()
 
+    /** WebSocket connection lifecycle state. */
     sealed interface ConnectionState {
+        /** The socket is connecting. */
         data object Connecting : ConnectionState
+        /** The socket is connected. */
         data object Connected : ConnectionState
+        /** The socket disconnected, with the reason. */
         data class Disconnected(val reason: String) : ConnectionState
     }
 

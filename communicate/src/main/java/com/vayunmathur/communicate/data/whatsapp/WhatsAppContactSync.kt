@@ -31,8 +31,10 @@ object WhatsAppContactSync {
     private const val TAG = "WAContactSync"
     private const val PAGE_SIZE = 500
 
+    /** One device address-book contact to check against WhatsApp. */
     data class DeviceContact(val e164: String, val name: String)
 
+    /** The outcome of a contact sync: how many numbers were checked and how many are on WhatsApp. */
     data class SyncResult(
         val deviceCount: Int,
         val e164Count: Int,

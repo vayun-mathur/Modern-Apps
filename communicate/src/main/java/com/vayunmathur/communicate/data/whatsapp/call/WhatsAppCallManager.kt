@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 /** Coarse call lifecycle exposed to the UI. */
 enum class WhatsAppCallPhase { Idle, Outgoing, Incoming, Connecting, Active, Ended }
 
+/** An immutable snapshot of the current WhatsApp call for the UI. */
 data class WhatsAppCallState(
     val phase: WhatsAppCallPhase = WhatsAppCallPhase.Idle,
     val callId: String = "",

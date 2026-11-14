@@ -132,6 +132,7 @@ class GoogleVoiceClient(private val session: GoogleVoiceSession) {
         }
     }
 
+    /** HTTP constants and logging tag for the Google Voice client. */
     companion object {
         private const val TAG = "GoogleVoiceRaw"
         private const val HTTP_UNAUTHORIZED = 401

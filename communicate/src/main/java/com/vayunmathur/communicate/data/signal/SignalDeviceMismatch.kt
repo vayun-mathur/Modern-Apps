@@ -19,6 +19,7 @@ data class SignalDeviceMismatch(
     /** Devices whose session should be archived. */
     val archive: Set<Int>,
 ) {
+    /** Factories and the 409-mismatch parser for [SignalDeviceMismatch]. */
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
         private const val HTTP_MISMATCH = 409

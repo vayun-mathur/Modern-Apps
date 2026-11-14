@@ -213,6 +213,7 @@ class SignalE2E(
     fun decryptDM(aci: String, deviceId: Int, ciphertext: ByteArray): ByteArray =
         decryptDM(aci, deviceId, false, ciphertext)
 
+    /** A peers pre-key bundle parsed off the wire: registration id, pre-keys and identity key. */
     data class ParsedPreKeyBundle(
         val registrationId: Int,
         val preKeyId: Int?,
@@ -349,6 +350,7 @@ class SignalE2E(
         val lastResortKyber: KeyEntity?,
         val oneTimeEcPreKeys: List<KeyEntity>,
     ) {
+        /** One pre-key to upload: id, public key and signature (signed/Kyber keys only). */
         data class KeyEntity(val id: Int, val publicKey: ByteArray, val signature: ByteArray? = null)
 
         val isEmpty: Boolean
@@ -382,6 +384,7 @@ class SignalE2E(
         return locals
     }
 
+    /** Pre-key replenishment thresholds and logging tag for [SignalE2E]. */
     companion object {
         internal const val TAG = "SignalE2E"
 

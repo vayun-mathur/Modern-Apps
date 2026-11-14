@@ -81,11 +81,11 @@ class MsrpListenRcsPass3Test {
         val out = java.io.ByteArrayOutputStream()
         val buf = ByteArray(4096)
         try {
-            while (true) {
-                val n = socket.getInputStream().read(buf)
-                if (n < 0) break
+            var n = socket.getInputStream().read(buf)
+            while (n >= 0) {
                 out.write(buf, 0, n)
                 if (out.size() > 8192) break
+                n = socket.getInputStream().read(buf)
             }
         } catch (_: Exception) {
             // Timeout/reset also prove the server closed its side.

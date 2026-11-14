@@ -14,11 +14,18 @@ class RcsSlice3Pass2ProvisioningShadow {
     @Implementation
     fun isRcsVolteSingleRegistrationCapable(): Boolean = capable
 
+    // The capability/tech arguments mirror the framework signature; the shadow ignores them.
     @Implementation
-    fun isRcsProvisioningRequiredForCapability(capability: Int, tech: Int): Boolean = provisioningRequired
+    fun isRcsProvisioningRequiredForCapability(
+        @Suppress("UnusedParameter") capability: Int,
+        @Suppress("UnusedParameter") tech: Int,
+    ): Boolean = provisioningRequired
 
     @Implementation
-    fun getRcsProvisioningStatusForCapability(capability: Int, tech: Int): Boolean = !provisioningRequired
+    fun getRcsProvisioningStatusForCapability(
+        @Suppress("UnusedParameter") capability: Int,
+        @Suppress("UnusedParameter") tech: Int,
+    ): Boolean = !provisioningRequired
 
     companion object {
         @Volatile var capable = true

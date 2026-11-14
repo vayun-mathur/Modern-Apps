@@ -22,6 +22,7 @@ object SignalPqPreKey {
 
     private const val KYBER1024_PUB_SIZE = 1569
 
+    /** A generated post-quantum (Kyber1024) pre-key for Signal registration. */
     data class Generated(
         val keyId: Int,
         val publicKey: ByteArray,   // 1569B = 0x08 || 1568 raw Kyber1024 pub (tag INTACT for wire)

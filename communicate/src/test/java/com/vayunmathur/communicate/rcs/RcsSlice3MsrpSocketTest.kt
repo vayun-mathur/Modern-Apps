@@ -114,9 +114,9 @@ class RcsSlice3MsrpSocketTest {
             val txid = headLines.firstOrNull()?.split(" ")?.getOrNull(1).orEmpty()
             if (txid.isEmpty()) return
             // Consume body through end marker.
-            while (true) {
-                val l = input.readLine() ?: break
-                if (l.startsWith("-------$txid")) break
+            var bodyLine = input.readLine()
+            while (bodyLine != null && !bodyLine.startsWith("-------$txid")) {
+                bodyLine = input.readLine()
             }
             all.append(headLines.joinToString("\n")).append("\n")
             val toPath = headLines.firstOrNull { it.startsWith("To-Path:", ignoreCase = true) }

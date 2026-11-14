@@ -245,9 +245,9 @@ class RcsSlice3Pass2FtNetworkTest {
                         }
                         val txid = head.firstOrNull()?.split(" ")?.getOrNull(1).orEmpty()
                         // Consume body lines to the end marker.
-                        while (true) {
-                            val l = input.readLine() ?: break
-                            if (l.startsWith("-------$txid")) break
+                        var bodyLine = input.readLine()
+                        while (bodyLine != null && !bodyLine.startsWith("-------$txid")) {
+                            bodyLine = input.readLine()
                         }
                         val out = s.getOutputStream()
                         out.write(RcsMsrpFraming.buildErrorResponse("", txid, 200, "OK"))

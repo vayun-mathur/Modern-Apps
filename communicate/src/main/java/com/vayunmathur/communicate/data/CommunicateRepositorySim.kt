@@ -502,36 +502,56 @@ fun CommunicateRepository.loadCarrierVoicemails(context: Context): List<Voicemai
                 val activeSubs = SimManager.activeSims(context).map { it.subscriptionId }.toSet()
 
                 while (cursor.moveToNext()) {
-                    val rowId = cursor.getLong(id)
-                    // PHONE_ACCOUNT_ID tagging mirrors the call log: keep it only when it
-                    // maps to an active SIM so the row can be labeled by SIM.
-                    val subId = account.takeIf { it >= 0 }
-                        ?.let { cursor.getString(it) }
-                        ?.toIntOrNull()
-                        ?.takeIf { it in activeSubs }
-                    add(
-                        VoicemailEntry(
-                            id = rowId,
-                            phoneNumber = cursor.getString(number).orEmpty().ifBlank { "Unknown" },
-                            timestampMillis = cursor.getLong(date),
-                            durationSeconds = cursor.getLong(duration),
-                            contentUri = Uri.withAppendedPath(
-                                VoicemailContract.Voicemails.CONTENT_URI,
-                                rowId.toString(),
-                            ).toString(),
-                            mimeType = mimeType.takeIf { it >= 0 }?.let { cursor.getString(it) },
-                            hasAudio = hasContent.takeIf { it >= 0 }
-                                ?.let { cursor.getInt(it) != 0 } ?: false,
-                            transcript = transcription.takeIf { it >= 0 }
-                                ?.let { cursor.getString(it)?.takeIf { it.isNotBlank() } },
-                            isRead = cursor.getInt(isRead) != 0,
-                            subscriptionId = subId,
-                        )
-                    )
+                    val columns = VoicemailColumns(
+                        id, number, date, duration, hasContent, mimeType, transcription, isRead, account)
+                    add(cursor.toVoicemailEntry(columns, activeSubs))
                 }
             }
         }.orEmpty()
     }.getOrDefault(emptyList())
+}
+
+/** Column indices into a VoicemailContract cursor row. */
+private data class VoicemailColumns(
+    val id: Int,
+    val number: Int,
+    val date: Int,
+    val duration: Int,
+    val hasContent: Int,
+    val mimeType: Int,
+    val transcription: Int,
+    val isRead: Int,
+    val account: Int,
+)
+
+/** Map the current cursor row to a [VoicemailEntry]; the SIM tag is kept only for active SIMs. */
+private fun android.database.Cursor.toVoicemailEntry(
+    cols: VoicemailColumns,
+    activeSubs: Set<Int>,
+): VoicemailEntry {
+    val rowId = getLong(cols.id)
+    // PHONE_ACCOUNT_ID tagging mirrors the call log: keep it only when it
+    // maps to an active SIM so the row can be labeled by SIM.
+    val subId = cols.account.takeIf { it >= 0 }
+        ?.let { getString(it) }
+        ?.toIntOrNull()
+        ?.takeIf { it in activeSubs }
+    return VoicemailEntry(
+        id = rowId,
+        phoneNumber = getString(cols.number).orEmpty().ifBlank { "Unknown" },
+        timestampMillis = getLong(cols.date),
+        durationSeconds = getLong(cols.duration),
+        contentUri = Uri.withAppendedPath(
+            VoicemailContract.Voicemails.CONTENT_URI,
+            rowId.toString(),
+        ).toString(),
+        mimeType = cols.mimeType.takeIf { it >= 0 }?.let { getString(it) },
+        hasAudio = cols.hasContent.takeIf { it >= 0 }?.let { getInt(it) != 0 } ?: false,
+        transcript = cols.transcription.takeIf { it >= 0 }
+            ?.let { getString(it)?.takeIf { text -> text.isNotBlank() } },
+        isRead = getInt(cols.isRead) != 0,
+        subscriptionId = subId,
+    )
 }
 
 /** Mark a carrier voicemail read/unread. Needs WRITE_CALL_LOG. */

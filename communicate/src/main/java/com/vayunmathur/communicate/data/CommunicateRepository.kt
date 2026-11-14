@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.provider.CallLog
 import androidx.core.content.ContextCompat
 
+/** The unified repository facade: routes SMS/MMS, Google Voice, WhatsApp, Signal and RCS traffic per line. */
 object CommunicateRepository {
     // SIM/SMS+MMS, send dispatch, Google Voice, WhatsApp, Signal, delete routing,
     // polls and shared-contact dispatch live in the CommunicateRepository*.kt

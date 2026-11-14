@@ -58,6 +58,7 @@ data class WhatsAppSession(
     }
 }
 
+/** Queries for linked WhatsApp devices. */
 @Dao
 interface WhatsAppDeviceDao {
     @Query("SELECT * FROM whatsapp_devices WHERE deviceId = :deviceId")
@@ -70,6 +71,7 @@ interface WhatsAppDeviceDao {
     suspend fun deleteDevice(deviceId: String)
 }
 
+/** Queries for stored WhatsApp protocol sessions. */
 @Dao
 interface WhatsAppSessionDao {
     @Query("SELECT * FROM whatsapp_sessions WHERE jid = :jid")
@@ -103,6 +105,7 @@ data class MessageMetadata(
     val edits: List<String> = emptyList(),
 )
 
+/** Why a WhatsApp message could not be processed (decryption, media, …). */
 enum class MessageErrorType {
     NO_ERROR,
     DECRYPTION_FAILED,

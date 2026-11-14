@@ -40,6 +40,7 @@ object SignalGroups {
     const val GROUPSV2_TOKEN_PATH = "/v1/certificate/auth/group"
     const val HIGHEST_KNOWN_EPOCH = 7
 
+    /** The result of creating a Signal group: its master key and initial revision. */
     data class GroupCreateResult(
         val masterKey: ByteArray,
         val revision: Int,

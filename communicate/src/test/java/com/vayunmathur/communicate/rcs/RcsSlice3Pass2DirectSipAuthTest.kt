@@ -48,45 +48,21 @@ class RcsSlice3Pass2DirectSipAuthTest {
                         s.soTimeout = 20_000
                         val input = s.getInputStream().bufferedReader(Charsets.UTF_8)
                         val out = s.getOutputStream()
-                        fun readRequest(): List<String> {
-                            val lines = mutableListOf<String>()
-                            var line = input.readLine() ?: return lines
-                            while (line.isNotEmpty()) {
-                                lines += line
-                                line = input.readLine() ?: break
-                            }
-                            return lines
-                        }
-                        fun respond(lines: List<String>, code: Int, reason: String, extra: String = "") {
-                            val branch = lines.firstOrNull { it.startsWith("Via:", true) }
-                                ?.substringAfter("branch=")?.substringBefore(";")?.trim().orEmpty()
-                            val callId = lines.firstOrNull { it.startsWith("Call-ID:", true) }.orEmpty()
-                            val cseq = lines.firstOrNull { it.startsWith("CSeq:", true) }
-                                ?.substringAfter(":")?.trim().orEmpty()
-                            out.write(
-                                ("SIP/2.0 $code $reason\r\nVia: SIP/2.0/TCP 127.0.0.1;branch=$branch\r\n" +
-                                    "$callId\r\nCSeq: $cseq\r\n$extra" +
-                                    "Contact: <sip:127.0.0.1:5060>;expires=600\r\n" +
-                                    "Expires: 600\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.UTF_8),
-                            )
-                            out.flush()
-                        }
                         var first = true
-                        while (true) {
-                            val request = readRequest()
-                            if (request.isEmpty()) break
+                        var request = readRequest(input)
+                        while (request.isNotEmpty()) {
                             requests += request.joinToString("\n")
-                            if (first && challengeFirst) {
+                            val finished = if (first && challengeFirst) {
                                 first = false
-                                respond(
-                                    request, 401, "Unauthorized",
+                                respond(out, request, 401, "Unauthorized",
                                     "WWW-Authenticate: Digest realm=\"carrier.example\", " +
-                                        "nonce=\"bm9uY2UxMjM0NTY=\", qop=auth, algorithm=MD5\r\n",
-                                )
+                                        "nonce=\"bm9uY2UxMjM0NTY=\", qop=auth, algorithm=MD5\r\n")
+                                false
                             } else {
-                                respond(request, 200, "OK")
-                                if (request.joinToString("\n").contains("expires=0")) break
+                                respond(out, request, 200, "OK")
+                                request.joinToString("\n").contains("expires=0")
                             }
+                            request = if (finished) emptyList() else readRequest(input)
                         }
                     }
                 } catch (e: Throwable) {
@@ -94,6 +70,39 @@ class RcsSlice3Pass2DirectSipAuthTest {
                 }
                 done.countDown()
             }.apply { isDaemon = true; start() }
+        }
+
+        /** Read one SIP request head; empty at end of stream. */
+        private fun readRequest(input: java.io.BufferedReader): List<String> {
+            val lines = mutableListOf<String>()
+            var line = input.readLine() ?: return lines
+            while (line.isNotEmpty()) {
+                lines += line
+                line = input.readLine() ?: return lines
+            }
+            return lines
+        }
+
+        /** Write a SIP response echoing Via branch / Call-ID / CSeq. */
+        private fun respond(
+            out: java.io.OutputStream,
+            lines: List<String>,
+            code: Int,
+            reason: String,
+            extra: String = "",
+        ) {
+            val branch = lines.firstOrNull { it.startsWith("Via:", true) }
+                ?.substringAfter("branch=")?.substringBefore(";")?.trim().orEmpty()
+            val callId = lines.firstOrNull { it.startsWith("Call-ID:", true) }.orEmpty()
+            val cseq = lines.firstOrNull { it.startsWith("CSeq:", true) }
+                ?.substringAfter(":")?.trim().orEmpty()
+            out.write(
+                ("SIP/2.0 $code $reason\r\nVia: SIP/2.0/TCP 127.0.0.1;branch=$branch\r\n" +
+                    "$callId\r\nCSeq: $cseq\r\n$extra" +
+                    "Contact: <sip:127.0.0.1:5060>;expires=600\r\n" +
+                    "Expires: 600\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.UTF_8),
+            )
+            out.flush()
         }
     }
 

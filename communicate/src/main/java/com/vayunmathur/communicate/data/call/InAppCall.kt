@@ -21,6 +21,7 @@ data class CallCapabilities(
     val screenShare: Boolean = false,
     val hold: Boolean = false,
 ) {
+    /** Prebuilt capability sets for audio-only and audio+video calls. */
     companion object {
         val AudioOnly = CallCapabilities()
         val AudioAndVideo = CallCapabilities(video = true, screenShare = true)

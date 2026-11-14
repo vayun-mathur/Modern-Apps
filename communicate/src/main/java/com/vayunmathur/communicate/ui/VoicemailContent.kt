@@ -145,7 +145,8 @@ private fun VoicemailRow(
         if (entry.hasAudio) {
             VoicemailPlayer(
                 audioUri = entry.contentUri,
-                onPlayed = {},
+                onPlayed = onPlayed,
+                requestHeaders = entry.audioHeaders,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 56.dp, end = 16.dp, bottom = 8.dp),

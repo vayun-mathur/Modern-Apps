@@ -59,6 +59,7 @@ class WhatsAppE2E(
 
     // -- 1:1 encrypt / decrypt ------------------------------------------------
 
+    /** An encrypted 1:1 message: wire type (pkmsg/msg) and ciphertext. */
     data class EncResult(val type: String, val data: ByteArray)
 
     fun encryptDM(jid: String, paddedPlaintext: ByteArray): EncResult {
@@ -116,6 +117,7 @@ class WhatsAppE2E(
 
     // -- Parsed bundle --------------------------------------------------------
 
+    /** A peers pre-key bundle parsed off the wire: registration id, pre-keys and identity key. */
     data class ParsedPreKeyBundle(
         val registrationId: Int,
         val preKeyId: Int?, // null if absent
@@ -365,6 +367,7 @@ class WhatsAppE2E(
             (idBytes[2].toInt() and BYTE_MASK)
     }
 
+    /** Crypto size constants and logging tag for [WhatsAppE2E]. */
     companion object {
         private const val TAG = "WhatsAppE2E"
         private const val IDENTITY_KEY_SIZE = 32

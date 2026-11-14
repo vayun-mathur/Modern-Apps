@@ -14,14 +14,19 @@ import org.whispersystems.signalservice.internal.push.SignalServiceProtos
 sealed interface SignalCallMessage {
     val callId: Long
 
+    /** A call offer: opaque SDP blob and whether video is offered. */
     data class Offer(override val callId: Long, val opaque: ByteArray, val video: Boolean) : SignalCallMessage
+    /** A call answer: opaque SDP blob. */
     data class Answer(override val callId: Long, val opaque: ByteArray) : SignalCallMessage
+    /** ICE candidates for a call, as opaque blobs. */
     data class Ice(override val callId: Long, val candidates: List<ByteArray>) : SignalCallMessage
+    /** A call hangup, with the hangup kind. */
     data class Hangup(
         override val callId: Long,
         val type: CallManager.HangupType,
         val deviceId: Int,
     ) : SignalCallMessage
+    /** The callee is busy. */
     data class Busy(override val callId: Long) : SignalCallMessage
 }
 

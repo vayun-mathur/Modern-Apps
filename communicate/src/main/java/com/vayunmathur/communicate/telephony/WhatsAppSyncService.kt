@@ -179,6 +179,7 @@ class WhatsAppSyncService : Service() {
         stopSelf()
     }
 
+    /** Notification id and logging tag for the WhatsApp sync foreground service. */
     companion object {
         private const val TAG = "WhatsAppSync"
         private const val SYNC_NOTIFICATION_ID = 4721

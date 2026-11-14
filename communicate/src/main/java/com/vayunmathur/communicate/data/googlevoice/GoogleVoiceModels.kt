@@ -19,6 +19,7 @@ private const val FOLDER_CALLS = 3
 private const val FOLDER_VOICEMAIL = 4
 private const val FOLDER_SPAM = 5
 
+/** A Google Voice mailbox folder (All, Inbox, Spam, Trash, …) by its api2thread folder id. */
 enum class GvFolder(val id: Int) {
     All(FOLDER_ALL),
     Inbox(FOLDER_INBOX),
@@ -29,6 +30,7 @@ enum class GvFolder(val id: Int) {
     Spam(FOLDER_SPAM),
 }
 
+/** One Google Voice message in a thread. */
 data class GvMessage(
     val id: String,
     val threadId: String,
@@ -41,6 +43,7 @@ data class GvMessage(
     val hasMedia: Boolean = mediaUrls.isNotEmpty(),
 )
 
+/** One Google Voice conversation thread. */
 data class GvThread(
     val id: String,
     val phoneNumber: String,
@@ -51,8 +54,10 @@ data class GvThread(
     val messages: List<GvMessage> = emptyList(),
 )
 
+/** The direction/kind of a Google Voice call-log entry. */
 enum class GvCallType { Incoming, Outgoing, Missed, Voicemail, Unknown }
 
+/** One Google Voice call-log entry. */
 data class GvCall(
     val id: String,
     val phoneNumber: String,

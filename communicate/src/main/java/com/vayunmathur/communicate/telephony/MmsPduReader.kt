@@ -37,9 +37,12 @@ object MmsPduReader {
     private const val VARINT_MASK = 0x7F
     private const val VARINT_CONT = 0x80
 
+    /** A parsed MMS notification (m-notification-ind): where to fetch the message and its transaction id. */
     data class Notification(val contentLocation: String?, val transactionId: String?)
 
+    /** One part of a retrieved MMS: content type, bytes and decoded text when textual. */
     data class RetrievedPart(val contentType: String, val data: ByteArray, val text: String?)
+    /** A retrieved MMS (m-retrieve-conf) flattened to sender, subject, text and parts. */
     data class Retrieved(
         val from: String?,
         val subject: String?,

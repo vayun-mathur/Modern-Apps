@@ -21,31 +21,37 @@ sealed interface LineChoice {
     val label: String
     val category: CommunicateLine
 
+    /** The physical SIM line identified by subscription id. */
     data class Sim(val subscriptionId: Int, override val label: String) : LineChoice {
         override val category get() = CommunicateLine.Sim
     }
 
+    /** The Google Voice line. */
     data object GoogleVoice : LineChoice {
         override val label = "Google Voice"
         override val category get() = CommunicateLine.GoogleVoice
     }
 
+    /** The WhatsApp line. */
     data object WhatsApp : LineChoice {
         override val label = "WhatsApp"
         override val category get() = CommunicateLine.WhatsApp
     }
 
+    /** The Signal line. */
     data object Signal : LineChoice {
         override val label = "Signal"
         override val category get() = CommunicateLine.Signal
     }
 
+    /** The carrier RCS line. */
     data object Rcs : LineChoice {
         override val label = "RCS"
         override val category get() = CommunicateLine.Rcs
     }
 }
 
+/** A contact as shown across lines: name, number and photo. */
 data class CommunicateContact(
     val id: Long,
     val name: String,
@@ -53,6 +59,7 @@ data class CommunicateContact(
     val label: String,
 )
 
+/** The direction/outcome kind of a call-log entry. */
 enum class CommunicateCallType {
     Incoming,
     Outgoing,
@@ -63,6 +70,7 @@ enum class CommunicateCallType {
     Unknown,
 }
 
+/** One unified call-log entry across SIM, Google Voice, WhatsApp, Signal and RCS lines. */
 data class CommunicateCallLogEntry(
     val id: Long,
     val displayName: String?,
@@ -118,6 +126,7 @@ data class CommunicateAttachment(
     val fileName: String? = null,
 )
 
+/** One SMS/MMS thread in the system telephony provider. */
 data class SmsThread(
     val threadId: Long,
     val address: String,
@@ -158,6 +167,7 @@ enum class MessageStatus {
     Failed,
 }
 
+/** One SMS/MMS message in the system telephony provider. */
 data class SmsMessage(
     val id: Long,
     val threadId: Long,

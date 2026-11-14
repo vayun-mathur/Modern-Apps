@@ -17,6 +17,7 @@ class WhatsAppRepository private constructor(context: Context) :
     /** Direct database access for legacy `runBlocking` bridges; prefer suspend wrappers for new code. */
     fun database(): WhatsAppDatabase = db
 
+    /** The singleton [WhatsAppRepository] instance holder. */
     companion object {
         @Volatile
         private var instance: WhatsAppRepository? = null

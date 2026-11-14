@@ -48,6 +48,7 @@ class WhatsAppSocket(
     private val host: String = DEFAULT_HOST,
     private val port: Int = DEFAULT_PORT,
 ) {
+    /** Server endpoint and logging constants for [WhatsAppSocket]. */
     companion object {
         private const val TAG = "WhatsAppSocket"
         const val DEFAULT_HOST = "g.whatsapp.net"
@@ -83,9 +84,13 @@ class WhatsAppSocket(
     private val _connectionState = MutableSharedFlow<ConnectionState>(extraBufferCapacity = 16)
     val connectionState: SharedFlow<ConnectionState> = _connectionState.asSharedFlow()
 
+    /** WebSocket connection lifecycle state. */
     sealed interface ConnectionState {
+        /** The socket is connecting. */
         data object Connecting : ConnectionState
+        /** The socket is connected. */
         data object Connected : ConnectionState
+        /** The socket disconnected, with the reason. */
         data class Disconnected(val reason: String) : ConnectionState
     }
 

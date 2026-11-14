@@ -221,6 +221,7 @@ class GoogleVoiceSyncService : Service() {
         stopSelf()
     }
 
+    /** Poll interval and logging tag for the Google Voice sync service. */
     companion object {
         private const val TAG = "GoogleVoiceSync"
         private const val POLL_INTERVAL_MILLIS = 60_000L

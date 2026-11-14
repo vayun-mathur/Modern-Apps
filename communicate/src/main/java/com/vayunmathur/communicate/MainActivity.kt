@@ -64,22 +64,33 @@ import com.vayunmathur.communicate.ui.signal.SignalRegistrationScreen
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.serialization.Serializable
 
+/** Navigation routes for the communicate app (type-safe back stack keys). */
 sealed interface Route : NavKey {
+    /** The conversation list (home) route. */
     @Serializable data object Main : Route
+    /** The accounts / line management route. */
     @Serializable data object Accounts : Route
+    /** The Google Voice sign-in route. */
     @Serializable data object GoogleVoiceSignIn : Route
+    /** The WhatsApp phone-number registration route. */
     @Serializable data object WhatsAppRegistration : Route
+    /** The WhatsApp backup import route. */
     @Serializable data object WhatsAppBackupImport : Route
+    /** The Signal phone-number registration route. */
     @Serializable data object SignalRegistration : Route
 
+    /** The RCS status / provisioning route. */
     @Serializable data object RcsStatus : Route
 
+    /** The RCS safety-number verification route for one peer. */
     @Serializable
     data class RcsVerify(val peerE164: String) : Route
 
+    /** The RCS group member list route. */
     @Serializable
     data class RcsGroupMembers(val conversationId: String) : Route
 
+    /** One open conversation: its thread, peer address and line. */
     @Serializable
     data class Conversation(
         val threadId: Long,
@@ -94,6 +105,7 @@ sealed interface Route : NavKey {
     ) : Route
 }
 
+/** The single activity hosting the communicate UI: navigation, deep links and line setup. */
 class MainActivity : MaActivity() {
     /** The deep link the app was opened with, or the most recent one delivered to a running instance. */
     private var pendingDeepLink by mutableStateOf<DeepLink?>(null)
@@ -142,6 +154,7 @@ class MainActivity : MaActivity() {
         }
     }
 
+    /** Notification-permission request code and splash aspect-ratio constants. */
     companion object {
         private const val REQUEST_POST_NOTIFICATIONS = 1001
         private const val PORTRAIT_WIDTH = 9

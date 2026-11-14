@@ -116,6 +116,7 @@ object RustWhatsAppCrypto {
 
     // -- Convenience helpers used by callers --
 
+    /** An E2E key pair from the Rust crypto core (Curve25519, split private/public). */
     data class KeyPair(val privateKey: ByteArray, val publicKey: ByteArray)
 
     fun generateKeyPairSplit(): KeyPair {
@@ -129,6 +130,7 @@ object RustWhatsAppCrypto {
         )
     }
 
+    /** The result of a Rust 1:1 encrypt: whether a pre-key message and the updated session record. */
     data class EncryptResult(val isPreKey: Boolean, val body: ByteArray, val newSession: ByteArray)
     fun encryptSplit(sessionBytes: ByteArray, plaintext: ByteArray): EncryptResult {
         val out = encrypt(sessionBytes, plaintext) ?: throw IllegalStateException("Rust encrypt returned null")
@@ -140,6 +142,7 @@ object RustWhatsAppCrypto {
         )
     }
 
+    /** The result of a Rust 1:1 decrypt: plaintext and the updated session record. */
     data class DecryptResult(val plaintext: ByteArray, val newSession: ByteArray)
     fun decryptMessageSplit(sessionBytes: ByteArray, ciphertext: ByteArray): DecryptResult {
         val out = decryptMessage(sessionBytes, ciphertext) ?: throw IllegalStateException("Rust decryptMessage null")
@@ -162,6 +165,7 @@ object RustWhatsAppCrypto {
         return DecryptResult(out[0], out[1])
     }
 
+    /** A new group sender-key state plus its distribution message (SKDM). */
     data class SenderKeyCreateResult(val state: ByteArray, val skdm: ByteArray)
     fun createSenderKeySplit(): SenderKeyCreateResult {
         val out = createSenderKey() ?: throw IllegalStateException("Rust createSenderKey null")
@@ -169,6 +173,7 @@ object RustWhatsAppCrypto {
         return SenderKeyCreateResult(out[0], out[1])
     }
 
+    /** A group ciphertext plus the updated sender-key state. */
     data class GroupCipherResult(val data: ByteArray, val newState: ByteArray)
     fun encryptGroupSplit(stateBytes: ByteArray, plaintext: ByteArray): GroupCipherResult {
         val out = encryptGroup(stateBytes, plaintext) ?: throw IllegalStateException("Rust encryptGroup null")

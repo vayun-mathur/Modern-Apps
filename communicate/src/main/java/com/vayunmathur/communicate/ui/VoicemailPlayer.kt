@@ -25,7 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.vayunmathur.communicate.R
 import com.vayunmathur.library.ui.FilledIconButton
 import com.vayunmathur.library.ui.IconPause
@@ -65,8 +67,12 @@ fun VoicemailPlayer(
     var scrubTo by remember { mutableFloatStateOf(-1f) }
     var notified by remember { mutableStateOf(false) }
 
-    val player = remember(audioUri) {
-        ExoPlayer.Builder(context).build().apply {
+    val player = remember(audioUri, requestHeaders) {
+        val httpFactory = DefaultHttpDataSource.Factory()
+            .setDefaultRequestProperties(requestHeaders)
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(httpFactory))
+            .build().apply {
             setMediaItem(MediaItem.fromUri(Uri.parse(audioUri)))
             addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {

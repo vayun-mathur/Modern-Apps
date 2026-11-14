@@ -36,16 +36,19 @@ class RegistrationHttpClient(
 
     // ------------------------------------------------------------------ results
 
+    /** The result of requesting a WhatsApp verification code (status, method, retry-after). */
     data class CodeResult(
         val status: String, val method: String?, val length: Int?,
         val retryAfter: Long?, val reason: String?, val param: String?, val raw: String,
     ) { val ok: Boolean get() = status == "sent" || status == "ok" }
 
+    /** The result of a WhatsApp /v2/register attempt; carries the new JID on success. */
     data class RegisterResult(
         val status: String, val newJid: String?, val login: String?, val serverTime: Long?,
         val reason: String?, val param: String?, val auth: WhatsAppAuthData?, val raw: String,
     ) { val ok: Boolean get() = status == "ok" }
 
+    /** The result of a WhatsApp /v2/exist number check. */
     data class ExistResult(val status: String, val reason: String?, val param: String?, val raw: String)
 
     /** `/v2/consent` — over-18 self-declare / DOB / parent-verification consent (§3.12). */
@@ -155,7 +158,9 @@ class RegistrationHttpClient(
         // DEBUG: log token variants so we can compare to the offline reference (no SMS sent).
         runCatching {
             Log.status(TAG, "debug token national=$number -> ${RegistrationAttestation.computeToken(context, number)}")
-            Log.status(TAG, "debug token full=$cc$number -> ${RegistrationAttestation.computeToken(context, "$cc$number")}")
+            Log.status(
+                TAG,
+                "debug token full=$cc$number -> ${RegistrationAttestation.computeToken(context, "$cc$number")}")
         }
         val auth = WhatsAppAuthData.load(context)
         val p = RegParams()
@@ -568,6 +573,7 @@ class RegistrationHttpClient(
     private fun normalizeJid(jid: String): String =
         if (jid.contains("@")) jid else "$jid@s.whatsapp.net"
 
+    /** Endpoint and logging constants for the WhatsApp registration client. */
     companion object {
         private const val TAG = "WARegHttp"
 

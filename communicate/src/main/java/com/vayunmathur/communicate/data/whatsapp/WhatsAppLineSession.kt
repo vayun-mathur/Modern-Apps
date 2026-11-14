@@ -68,6 +68,7 @@ class WhatsAppLineSession private constructor(
         store.setBoolean(KEY_SIGNED_IN, false)
     }
 
+    /** Preference keys for the WhatsApp line session (signed-in flag, phone number). */
     companion object {
         private const val KEY_SIGNED_IN = "wa_signed_in"
         private const val KEY_PHONE_NUMBER = "wa_phone_number"

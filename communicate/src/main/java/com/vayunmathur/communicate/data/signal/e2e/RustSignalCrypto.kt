@@ -131,6 +131,7 @@ object RustSignalCrypto {
 
     // -- Convenience helpers --
 
+    /** An E2E key pair from the Rust crypto core (Curve25519, split private/public). */
     data class KeyPair(val privateKey: ByteArray, val publicKey: ByteArray)
 
     fun generateKeyPairSplit(): KeyPair {
@@ -143,6 +144,7 @@ object RustSignalCrypto {
             blob.copyOfRange(PRIVATE_KEY_SIZE, KEYPAIR_SIZE))
     }
 
+    /** The result of a Rust 1:1 encrypt: whether a pre-key message and the updated session record. */
     data class EncryptResult(val isPreKey: Boolean, val body: ByteArray, val newSession: ByteArray)
     fun encryptSplit(sessionBytes: ByteArray, plaintext: ByteArray): EncryptResult {
         val out = encrypt(sessionBytes, plaintext) ?: throw IllegalStateException("Rust encrypt returned null")
@@ -150,6 +152,7 @@ object RustSignalCrypto {
         return EncryptResult(out[0].isNotEmpty() && out[0][0].toInt() != 0, out[1], out[2])
     }
 
+    /** The result of a Rust 1:1 decrypt: plaintext and the updated session record. */
     data class DecryptResult(val plaintext: ByteArray, val newSession: ByteArray)
     fun decryptMessageSplit(sessionBytes: ByteArray, ciphertext: ByteArray): DecryptResult {
         val out = decryptMessage(sessionBytes, ciphertext) ?: throw IllegalStateException("Rust decryptMessage null")

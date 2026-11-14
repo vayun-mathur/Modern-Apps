@@ -35,6 +35,7 @@ data class SignalServiceData(
 ) {
     fun serialize(): String = JSON.encodeToString(this)
 
+    /** The JSON codec and parser entry point for [SignalServiceData]. */
     companion object {
         private val JSON = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
@@ -45,6 +46,7 @@ data class SignalServiceData(
     }
 }
 
+/** One option of a Signal poll, with its running vote tally. */
 @Serializable
 data class SignalPollOptionData(
     val name: String,
@@ -52,5 +54,6 @@ data class SignalPollOptionData(
     val voters: List<String> = emptyList(),
 )
 
+/** One emoji reaction tally on a Signal message. */
 @Serializable
 data class SignalReaction(val emoji: String, val count: Int)

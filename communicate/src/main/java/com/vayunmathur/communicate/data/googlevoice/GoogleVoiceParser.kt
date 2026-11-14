@@ -31,9 +31,13 @@ object GoogleVoiceParser {
 
     /** Thread attribute mutations for `thread/batchupdateattributes`. */
     sealed interface ThreadAction {
+        /** Mark the thread read. */
         data object MarkRead : ThreadAction
+        /** Mark the thread unread. */
         data object MarkUnread : ThreadAction
+        /** Archive the thread. */
         data object Archive : ThreadAction
+        /** Unarchive the thread. */
         data object Unarchive : ThreadAction
     }
 

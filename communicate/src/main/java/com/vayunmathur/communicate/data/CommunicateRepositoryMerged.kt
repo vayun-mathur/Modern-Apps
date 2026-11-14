@@ -64,7 +64,7 @@ internal suspend fun CommunicateRepository.loadGoogleVoiceVoicemails(context: Co
     return runCatching {
         val cookie = session.cookieHeader().orEmpty()
         val headers = if (cookie.isNotBlank()) mapOf("Cookie" to cookie) else emptyMap()
-        GoogleVoiceClient.get(context).listVoicemails().map { it.toVoicemailEntry(context, headers) }
+        GoogleVoiceClient.get(context).listVoicemails().map { it.toVoicemailEntry(headers) }
     }.getOrDefault(emptyList())
 }
 
@@ -330,7 +330,7 @@ internal fun GvCall.toCallLogEntry(context: Context): CommunicateCallLogEntry = 
     line = CommunicateLine.GoogleVoice,
 )
 
-internal fun GvVoicemail.toVoicemailEntry(context: Context, audioHeaders: Map<String, String>): VoicemailEntry =
+internal fun GvVoicemail.toVoicemailEntry(audioHeaders: Map<String, String>): VoicemailEntry =
     VoicemailEntry(
         id = CommunicateRepository.stableThreadId(id),
         phoneNumber = phoneNumber,

@@ -28,6 +28,7 @@ data class MexResult(
 ) {
     val isSuccess: Boolean get() = transportError == null && errors.isEmpty()
 
+    /** Factories for [MexResult] (transport failures). */
     companion object {
         /** Build a transport-level failure result (no GraphQL round-trip completed). */
         fun transport(reason: String): MexResult = MexResult(null, emptyList(), reason)

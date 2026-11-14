@@ -45,6 +45,7 @@ class SignalCallManager(
     private val sslSocketFactory: () -> SSLSocketFactory?,
 ) : CallManager.Observer {
 
+    /** The lifecycle phase of the current Signal call. */
     enum class CallState { Ringing, Connecting, Connected, Ended }
 
     internal val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

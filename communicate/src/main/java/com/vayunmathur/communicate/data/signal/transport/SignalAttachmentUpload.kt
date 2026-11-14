@@ -24,6 +24,7 @@ object SignalAttachmentUpload {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** The signed upload form for a Signal attachment: CDN, key and headers. */
     data class UploadForm(
         val cdn: Int,
         /** Becomes `AttachmentPointer.cdnKey`. */

@@ -198,6 +198,7 @@ class GoogleVoiceCallForegroundService : Service() {
         super.onDestroy()
     }
 
+    /** Notification channel ids for the Google Voice call foreground service. */
     companion object {
         private const val CHANNEL_ID = "gv_calls"
         // Retired pre-ringer channel: the system keeps an existing channel's sound, so muting it

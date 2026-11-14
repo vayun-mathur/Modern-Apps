@@ -57,17 +57,21 @@ class HiddenApiRcsPass3Test {
         var unregisteredWith: Any? = null
         fun setRcsClientConfiguration(config: RcsClientConfiguration) { this.config = config }
         fun registerRcsProvisioningCallback(
-            executor: java.util.concurrent.Executor,
+            // Mirrors the framework signature; the fake invokes the callback directly.
+            @Suppress("UnusedParameter") executor: java.util.concurrent.Executor,
             callback: `ProvisioningManager$RcsProvisioningCallback`,
         ) { this.callback = callback }
         fun unregisterRcsProvisioningCallback(callback: `ProvisioningManager$RcsProvisioningCallback`) {
             unregisteredWith = callback
         }
+        // Mirrors the framework capability query; the fake always reports single-registration capable.
+        @Suppress("FunctionOnlyReturningConstant")
         fun isRcsVolteSingleRegistrationCapable(): Boolean = true
     }
 
     class ThrowingProvisioningManager {
-        fun isRcsVolteSingleRegistrationCapable(): Boolean = throw RuntimeException("dead")
+        fun isRcsVolteSingleRegistrationCapable(): Boolean =
+            throw IllegalStateException("dead")
     }
 
     @Test fun provisioningCallbackSubclassForwardsEvents() {

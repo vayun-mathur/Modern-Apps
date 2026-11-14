@@ -46,41 +46,16 @@ class DirectSipRcsPass3Test {
                         s.soTimeout = 20_000
                         val input = s.getInputStream().bufferedReader(Charsets.UTF_8)
                         val out = s.getOutputStream()
-                        while (true) {
-                            val lines = mutableListOf<String>()
-                            var line = input.readLine() ?: break
-                            var contentLength = 0
-                            while (line.isNotEmpty()) {
-                                lines += line
-                                if (line.startsWith("Content-Length:", true)) {
-                                    contentLength = line.substringAfter(":").trim().toIntOrNull() ?: 0
-                                }
-                                line = input.readLine() ?: break
+                        var request = readRequest(input)
+                        while (request != null) {
+                            requests += request.first
+                            val response = handler(request.first)
+                            if (response == null) {
+                                request = null
+                            } else {
+                                writeResponse(out, request.second, response)
+                                request = readRequest(input)
                             }
-                            if (lines.isEmpty()) break
-                            if (contentLength > 0) {
-                                val chars = CharArray(contentLength)
-                                var read = 0
-                                while (read < contentLength) {
-                                    val r = input.read(chars, read, contentLength - read)
-                                    if (r < 0) break
-                                    read += r
-                                }
-                                lines += String(chars, 0, read)
-                            }
-                            val request = lines.joinToString("\r\n")
-                            requests += request
-                            val response = handler(request) ?: break
-                            // Echo Via branch / Call-ID / CSeq like a real P-CSCF.
-                            val branch = lines.firstOrNull { it.startsWith("Via:", true) }
-                                ?.substringAfter("branch=")?.substringBefore(";")?.trim().orEmpty()
-                            val callId = lines.firstOrNull { it.startsWith("Call-ID:", true) }.orEmpty()
-                            val cseq = lines.firstOrNull { it.startsWith("CSeq:", true) }.orEmpty()
-                            out.write(
-                                ("$response\r\nVia: SIP/2.0/TCP 127.0.0.1;branch=$branch\r\n" +
-                                    "$callId\r\n$cseq\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.UTF_8),
-                            )
-                            out.flush()
                         }
                     }
                 } catch (_: Throwable) {
@@ -88,6 +63,45 @@ class DirectSipRcsPass3Test {
                 }
                 done.countDown()
             }.apply { isDaemon = true; start() }
+        }
+
+        /** Read one SIP request (head + Content-Length body); null at end of stream. */
+        private fun readRequest(input: java.io.BufferedReader): Pair<String, List<String>>? {
+            val lines = mutableListOf<String>()
+            var line = input.readLine() ?: return null
+            var contentLength = 0
+            while (line.isNotEmpty()) {
+                lines += line
+                if (line.startsWith("Content-Length:", true)) {
+                    contentLength = line.substringAfter(":").trim().toIntOrNull() ?: 0
+                }
+                line = input.readLine() ?: return null
+            }
+            if (lines.isEmpty()) return null
+            if (contentLength > 0) {
+                val chars = CharArray(contentLength)
+                var read = 0
+                var eof = false
+                while (read < contentLength && !eof) {
+                    val r = input.read(chars, read, contentLength - read)
+                    if (r < 0) eof = true else read += r
+                }
+                lines += String(chars, 0, read)
+            }
+            return lines.joinToString("\r\n") to lines
+        }
+
+        /** Write [response], echoing Via branch / Call-ID / CSeq like a real P-CSCF. */
+        private fun writeResponse(out: java.io.OutputStream, lines: List<String>, response: String) {
+            val branch = lines.firstOrNull { it.startsWith("Via:", true) }
+                ?.substringAfter("branch=")?.substringBefore(";")?.trim().orEmpty()
+            val callId = lines.firstOrNull { it.startsWith("Call-ID:", true) }.orEmpty()
+            val cseq = lines.firstOrNull { it.startsWith("CSeq:", true) }.orEmpty()
+            out.write(
+                ("$response\r\nVia: SIP/2.0/TCP 127.0.0.1;branch=$branch\r\n" +
+                    "$callId\r\n$cseq\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.UTF_8),
+            )
+            out.flush()
         }
     }
 

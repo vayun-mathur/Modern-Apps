@@ -35,6 +35,7 @@ object SignalProtocol {
     private const val BYTE_MASK = 0xFFL
     private const val BYTE_BITS = 8
 
+    /** A decrypted Signal service envelope: sender ACI/device, timestamp and plaintext content bytes. */
     data class SignalEnvelope(
         val type: SignalServiceProtos.Envelope.Type,
         val sourceAci: String,
@@ -52,19 +53,30 @@ object SignalProtocol {
         val rawEnvelope: SignalServiceProtos.Envelope? = null,
     )
 
+    /** The decoded payload of a Signal envelope, split by Signal protocol message kind. */
     sealed interface ParsedContent {
+        /** A normal data message (text, attachments, group traffic). */
         data class Data(
             val dataMessage: SignalServiceProtos.DataMessage,
             val raw: SignalServiceProtos.Content,
         ) : ParsedContent
+        /** A delivery/read receipt. */
         data class Receipt(val receiptMessage: SignalServiceProtos.ReceiptMessage) : ParsedContent
+        /** A typing indicator. */
         data class Typing(val typingMessage: SignalServiceProtos.TypingMessage) : ParsedContent
+        /** An edit of a previously sent message. */
         data class Edit(val editMessage: SignalServiceProtos.EditMessage) : ParsedContent
+        /** A call signalling message. */
         data class Call(val callMessage: SignalServiceProtos.CallMessage) : ParsedContent
+        /** A null/padding message, used to keep sealed-sender traffic sizes uniform. */
         data class Null(val nullMessage: SignalServiceProtos.NullMessage) : ParsedContent
+        /** A sync message from our own other device. */
         data class Sync(val syncMessage: SignalServiceProtos.SyncMessage) : ParsedContent
+        /** A story message. */
         data class Story(val storyMessage: SignalServiceProtos.StoryMessage) : ParsedContent
+        /** Content that failed to decrypt; carries the raw bytes for diagnostics. */
         data class DecryptionError(val bytes: ByteArray) : ParsedContent
+        /** A content kind this client does not model yet; carries the raw proto. */
         data class Unknown(val raw: SignalServiceProtos.Content) : ParsedContent
     }
 
@@ -296,6 +308,7 @@ object SignalProtocol {
         return v
     }
 
+    /** Legacy text WebSocket frame; superseded by the binary WebSocket message helpers. */
     @Deprecated("Use binary WebSocketMessage helpers")
     data class WsFrame(
         val type: String,

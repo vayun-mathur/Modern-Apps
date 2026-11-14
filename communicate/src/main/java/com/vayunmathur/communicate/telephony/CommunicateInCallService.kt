@@ -257,6 +257,7 @@ class CommunicateInCallService : InCallService() {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
+    /** Notification channel ids for the Telecom in-call service. */
     companion object {
         // Retired pre-CallStyle channel: the system keeps an existing channel's sound, so silencing
         // it in place would never take effect — the renamed channel below replaces it and this deletes it.

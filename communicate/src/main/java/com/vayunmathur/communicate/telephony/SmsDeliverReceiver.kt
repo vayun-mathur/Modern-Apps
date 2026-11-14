@@ -90,6 +90,7 @@ class SmsDeliverReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Logging tag for [SmsDeliverReceiver]. */
     companion object {
         private const val TAG = "SmsDeliverReceiver"
     }

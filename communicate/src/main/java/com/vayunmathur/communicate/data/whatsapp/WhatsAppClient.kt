@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 
+/** The WhatsApp primary client: owns the socket, E2E stores and event stream for the WhatsApp line. */
 @OptIn(ExperimentalAtomicApi::class)
 object WhatsAppClient {
 
@@ -56,11 +57,17 @@ object WhatsAppClient {
     @Volatile
     var fullHistorySync: Boolean = true
 
+    /** Lifecycle state of the WhatsApp line. */
     sealed interface State {
+        /** Not yet connected. */
         data object Idle : State
+        /** The line has no registered account yet. */
         data object NeedsSetup : State
+        /** The socket is connecting / logging in. */
         data object Connecting : State
+        /** Connected and logged in. */
         data object Connected : State
+        /** Disconnected, with the reason. */
         data class Disconnected(val reason: String) : State
     }
 

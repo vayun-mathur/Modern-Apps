@@ -37,6 +37,7 @@ object WhatsAppCallSignaling {
         val candidates: List<String> = emptyList(),
         val stanzaId: String = "",
     ) {
+        /** The kind of a WhatsApp call signalling stanza. */
         enum class Kind { OFFER, PREACCEPT, ACCEPT, REJECT, TERMINATE, RELAY, UNKNOWN }
     }
 

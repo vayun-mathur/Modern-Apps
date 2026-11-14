@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 /** Coarse call lifecycle exposed to the UI + Telecom bridge. */
 enum class CallPhase { Idle, Dialing, Ringing, Active, Incoming, Ended }
 
+/** An immutable snapshot of the current Google Voice call for the UI. */
 data class CallState(
     val phase: CallPhase = CallPhase.Idle,
     val remoteNumber: String = "",

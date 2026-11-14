@@ -64,6 +64,7 @@ abstract class SignalDatabase : RoomDatabase() {
     abstract fun profileKeyDao(): SignalProfileKeyDao
     abstract fun callLogDao(): SignalCallLogDao
 
+    /** Schema migrations and the singleton accessor for [SignalDatabase]. */
     companion object : DatabaseMigrations {
         /**
          * v1 → v2: Kyber pre-key storage. The protocol store needs somewhere to keep our own Kyber
@@ -148,6 +149,7 @@ abstract class SignalDatabase : RoomDatabase() {
     }
 }
 
+/** Room column converters for Signal entities; string lists are stored as CSV. */
 class SignalTypeConverters {
     @ColumnTypeConverter
     fun fromStringList(value: List<String>): String = value.joinToString(",")
@@ -159,6 +161,7 @@ class SignalTypeConverters {
 
 // -- Device / session (transport) --
 
+/** A linked Signal device: its device id, phone number, platform and last-seen time. */
 @Entity(tableName = "signal_devices")
 data class SignalDevice(
     @PrimaryKey val deviceId: String,
@@ -171,6 +174,7 @@ data class SignalDevice(
     val loggedInAt: Long = 0L,
 )
 
+/** A stored Signal protocol session record for one peer address (legacy transport table). */
 @Entity(tableName = "signal_sessions")
 data class SignalSession(
     @PrimaryKey val jid: String,
@@ -192,6 +196,7 @@ data class SignalSession(
     }
 }
 
+/** Queries for linked Signal devices. */
 @Dao
 interface SignalDeviceDao {
     @Query("SELECT * FROM signal_devices WHERE deviceId = :deviceId")
@@ -204,6 +209,7 @@ interface SignalDeviceDao {
     suspend fun deleteDevice(deviceId: String)
 }
 
+/** Queries for stored Signal protocol sessions. */
 @Dao
 interface SignalSessionDao {
     @Query("SELECT * FROM signal_sessions WHERE jid = :jid")
@@ -227,6 +233,7 @@ interface SignalSessionDao {
 
 // -- Conversation --
 
+/** A Signal conversation row: a 1:1 chat keyed by address or a group keyed by its derived group id. */
 @Entity(tableName = "signal_conversation")
 data class SignalConversation(
     @PrimaryKey val chatId: String,
@@ -249,6 +256,7 @@ data class SignalConversation(
     @ColumnInfo(defaultValue = "0") val groupRevision: Int = 0,
 )
 
+/** Queries for Signal conversations. */
 @Dao
 interface SignalConversationDao {
     @Query("SELECT * FROM signal_conversation WHERE chatId = :chatId")
@@ -275,6 +283,7 @@ interface SignalConversationDao {
 
 // -- Cached messages --
 
+/** A cached Signal message row, including edit/revoke state, media pointer and delivery status. */
 @Entity(tableName = "signal_cached_message")
 data class SignalCachedMessage(
     @PrimaryKey val messageId: String,
@@ -292,6 +301,7 @@ data class SignalCachedMessage(
     val status: Int = 0,
 )
 
+/** Queries for cached Signal messages. */
 @Dao
 interface SignalCachedMessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -352,6 +362,7 @@ interface SignalCachedMessageDao {
 
 // -- Reactions --
 
+/** One emoji reaction on a cached Signal message, keyed by message and sender. */
 @Entity(tableName = "signal_cached_reaction", primaryKeys = ["messageId", "senderId"])
 data class SignalCachedReaction(
     val messageId: String,
@@ -360,6 +371,7 @@ data class SignalCachedReaction(
     val timestamp: Long,
 )
 
+/** Queries for cached Signal message reactions. */
 @Dao
 interface SignalCachedReactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -377,6 +389,7 @@ interface SignalCachedReactionDao {
 
 // -- Contacts --
 
+/** A Signal contact discovered via CDSi, keyed by ACI with its phone number and PNI. */
 @Entity(tableName = "signal_contact")
 data class SignalContact(
     @PrimaryKey val aci: String,
@@ -392,6 +405,7 @@ data class SignalContact(
     @ColumnInfo(defaultValue = "''") val pni: String = "",
 )
 
+/** Queries for Signal contacts. */
 @Dao
 interface SignalContactDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -424,6 +438,7 @@ interface SignalContactDao {
 
 // -- E2E stores --
 
+/** A Signal protocol (double-ratchet) session record for one peer device. */
 @Entity(tableName = "signal_e2e_sessions", primaryKeys = ["address", "deviceId"])
 data class SignalE2ESession(
     val address: String,
@@ -431,12 +446,14 @@ data class SignalE2ESession(
     val record: ByteArray,
 )
 
+/** A peer identity key for one Signal address, used for trust-on-first-use checks. */
 @Entity(tableName = "signal_e2e_identities")
 data class SignalE2EIdentity(
     @PrimaryKey val address: String,
     val identityKey: ByteArray,
 )
 
+/** One of our one-time EC pre-keys, with whether it has been uploaded to the service. */
 @Entity(tableName = "signal_e2e_pre_keys")
 data class SignalE2EPreKey(
     @PrimaryKey val id: Int,
@@ -444,12 +461,14 @@ data class SignalE2EPreKey(
     val uploaded: Boolean = false,
 )
 
+/** One of our signed EC pre-keys (the serialized protocol record). */
 @Entity(tableName = "signal_e2e_signed_pre_keys")
 data class SignalE2ESignedPreKey(
     @PrimaryKey val id: Int,
     val record: ByteArray,
 )
 
+/** One of our Kyber (post-quantum) pre-keys; the last-resort key is the reusable fallback. */
 @Entity(tableName = "signal_e2e_kyber_pre_keys")
 data class SignalE2EKyberPreKey(
     @PrimaryKey val id: Int,
@@ -472,6 +491,7 @@ data class SignalE2EKyberUsedBaseKey(
     val baseKeyB64: String,
 )
 
+/** A group sender-key record for one (address, device, distribution) triple. */
 @Entity(tableName = "signal_e2e_sender_keys", primaryKeys = ["address", "deviceId", "distributionId"])
 data class SignalE2ESenderKey(
     val address: String,
@@ -480,6 +500,7 @@ data class SignalE2ESenderKey(
     val record: ByteArray,
 )
 
+/** Queries for Signal protocol session records. */
 @Dao
 interface SignalE2ESessionDao {
     @Query("SELECT * FROM signal_e2e_sessions WHERE address = :address AND deviceId = :deviceId LIMIT 1")
@@ -501,6 +522,7 @@ interface SignalE2ESessionDao {
     suspend fun deleteAll(address: String)
 }
 
+/** Queries for peer identity keys. */
 @Dao
 interface SignalE2EIdentityDao {
     @Query("SELECT * FROM signal_e2e_identities WHERE address = :address LIMIT 1")
@@ -513,6 +535,7 @@ interface SignalE2EIdentityDao {
     suspend fun delete(address: String)
 }
 
+/** Queries for our one-time EC pre-keys. */
 @Dao
 interface SignalE2EPreKeyDao {
     @Query("SELECT * FROM signal_e2e_pre_keys WHERE id = :id LIMIT 1")
@@ -546,6 +569,7 @@ interface SignalE2EPreKeyDao {
     suspend fun getMaxId(): Int
 }
 
+/** Queries for our signed EC pre-keys. */
 @Dao
 interface SignalE2ESignedPreKeyDao {
     @Query("SELECT * FROM signal_e2e_signed_pre_keys WHERE id = :id LIMIT 1")
@@ -564,6 +588,7 @@ interface SignalE2ESignedPreKeyDao {
     suspend fun delete(id: Int)
 }
 
+/** Queries for our Kyber pre-keys. */
 @Dao
 interface SignalE2EKyberPreKeyDao {
     @Query("SELECT * FROM signal_e2e_kyber_pre_keys WHERE id = :id LIMIT 1")
@@ -582,6 +607,7 @@ interface SignalE2EKyberPreKeyDao {
     suspend fun delete(id: Int)
 }
 
+/** Queries for used last-resort Kyber base keys (replay detection). */
 @Dao
 interface SignalE2EKyberUsedBaseKeyDao {
     @Query(
@@ -597,6 +623,7 @@ interface SignalE2EKyberUsedBaseKeyDao {
     suspend fun deleteForKyberPreKey(kyberPreKeyId: Int)
 }
 
+/** Queries for group sender-key records. */
 @Dao
 interface SignalE2ESenderKeyDao {
     @Query("SELECT * FROM signal_e2e_sender_keys WHERE address = :address AND " +
@@ -635,6 +662,7 @@ data class SignalProfileKey(
     val profileKey: ByteArray,
 )
 
+/** Queries for the sealed-sender delivery certificate row. */
 @Dao
 interface SignalSenderCertificateDao {
     @Query("SELECT * FROM signal_sender_certificate WHERE id = 0 LIMIT 1")
@@ -647,6 +675,7 @@ interface SignalSenderCertificateDao {
     suspend fun clear()
 }
 
+/** Queries for recipient profile keys. */
 @Dao
 interface SignalProfileKeyDao {
     @Query("SELECT * FROM signal_profile_keys WHERE address = :address LIMIT 1")
@@ -658,6 +687,7 @@ interface SignalProfileKeyDao {
 
 // -- Call log --
 
+/** One Signal voice/video call in the call log, with peer, direction and outcome. */
 @Entity(tableName = "signal_call_log")
 data class SignalCallLog(
     @PrimaryKey val callId: String,
@@ -670,6 +700,7 @@ data class SignalCallLog(
     val outcome: String = "",
 )
 
+/** Queries for the Signal call log. */
 @Dao
 interface SignalCallLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)

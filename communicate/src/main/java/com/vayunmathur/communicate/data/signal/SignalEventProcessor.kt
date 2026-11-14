@@ -254,5 +254,6 @@ class SignalEventProcessor(private val db: SignalDatabase) {
         messages.updateServiceData(messageId, transform(current).serialize())
     }
 
+    /** Logging tag for [SignalEventProcessor]. */
     companion object { private const val TAG = "SignalEventProcessor" }
 }

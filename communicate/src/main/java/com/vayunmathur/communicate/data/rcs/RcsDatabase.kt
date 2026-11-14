@@ -41,6 +41,7 @@ abstract class RcsDatabase : RoomDatabase() {
     abstract fun mlsGroupDao(): RcsMlsGroupDao
     abstract fun outboxDao(): RcsOutboxDao
 
+    /** Schema migrations and the singleton accessor for [RcsDatabase]. */
     companion object : DatabaseMigrations {
         /**
          * v1 → v2: MLS E2EE tables (identity + group state). New tables only,
@@ -118,6 +119,7 @@ class RcsRepository private constructor(context: Context) :
     /** Direct database access; prefer suspend wrappers for new code. */
     fun database(): RcsDatabase = db
 
+    /** The singleton [RcsRepository] instance holder. */
     companion object {
         @Volatile
         private var instance: RcsRepository? = null
@@ -129,6 +131,7 @@ class RcsRepository private constructor(context: Context) :
     }
 }
 
+/** Room column converters for RCS entities; string lists are stored as CSV. */
 class RcsTypeConverters {
     @ColumnTypeConverter
     fun fromStringList(value: List<String>): String = value.joinToString(",")
@@ -140,6 +143,7 @@ class RcsTypeConverters {
 
 // -- Conversation --
 
+/** An RCS conversation row: a 1:1 peer (E.164) or a group conference URI. */
 @Entity(tableName = "rcs_conversation")
 data class RcsConversation(
     /** E.164 for 1:1, conference URI for groups. */
@@ -153,6 +157,7 @@ data class RcsConversation(
     val lastMessageTimestamp: Long = 0L,
 )
 
+/** Queries for RCS conversations. */
 @Dao
 interface RcsConversationDao {
     @Query("SELECT * FROM rcs_conversation WHERE remoteId = :remoteId")
@@ -172,6 +177,7 @@ interface RcsConversationDao {
 }
 
 // -- Cached messages --
+/** A cached RCS message row, including file-transfer and delivery state. */
 @Entity(tableName = "rcs_cached_message")
 data class RcsCachedMessage(
     @PrimaryKey val messageId: String,
@@ -194,6 +200,7 @@ data class RcsCachedMessage(
     val imdnId: String = "",
 )
 
+/** Queries for cached RCS messages. */
 @Dao
 interface RcsCachedMessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -262,6 +269,7 @@ data class RcsMlsGroup(
     val members: String = "",
 )
 
+/** Queries for our RCS MLS identity (credential and key package state). */
 @Dao
 interface RcsMlsIdentityDao {
     @Query("SELECT * FROM rcs_mls_identity WHERE e164 = :e164 LIMIT 1")
@@ -274,6 +282,7 @@ interface RcsMlsIdentityDao {
     suspend fun delete(e164: String)
 }
 
+/** Queries for RCS MLS group state. */
 @Dao
 interface RcsMlsGroupDao {
     @Query("SELECT * FROM rcs_mls_group WHERE groupIdHex = :groupIdHex LIMIT 1")
@@ -313,6 +322,7 @@ data class RcsOutboxMessage(
     val createdAt: Long = 0L,
 )
 
+/** Queries for the RCS outbox (messages queued while offline/unregistered). */
 @Dao
 interface RcsOutboxDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)

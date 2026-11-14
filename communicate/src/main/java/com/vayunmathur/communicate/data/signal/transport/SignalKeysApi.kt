@@ -34,8 +34,10 @@ object SignalKeysApi {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** Thrown when the service has no pre-key bundle for an account (not registered). */
     class UnregisteredUserException(aci: String) : Exception("$aci is not registered")
 
+    /** A pre-key bundle fetched for one device of an account. */
     data class DeviceBundle(val deviceId: Int, val bundle: SignalE2E.ParsedPreKeyBundle)
 
     /**

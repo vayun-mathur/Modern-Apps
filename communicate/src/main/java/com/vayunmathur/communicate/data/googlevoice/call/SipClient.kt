@@ -35,6 +35,7 @@ class SipClient(
     private val scope: CoroutineScope,
     private val listener: Listener,
 ) {
+    /** Callbacks for SIP registration, provisional responses and remote SDP on the Google Voice call leg. */
     interface Listener {
         fun onRegistered()
         fun onProvisional(code: Int)
@@ -348,6 +349,7 @@ class SipClient(
 
 
 
+    /** Registrar endpoint and logging constants for [SipClient]. */
     companion object {
         private const val TAG = "SipClient"
         private const val WS_URL = "wss://web.voice.telephony.goog/websocket"

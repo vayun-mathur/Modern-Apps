@@ -121,17 +121,7 @@ class RcsSlice3Pass2ImsTest {
         assertTrue(path.startsWith("msrp://0.0.0.0:$port/"))
 
         // Unknown path: 481 and close.
-        val txUnknown = "unknowntx1"
-        val rogue = sendHeadAndBody(
-            port,
-            "MSRP $txUnknown SEND\r\nTo-Path: msrp://0.0.0.0:$port/nope;tcp\r\n" +
-                "From-Path: msrp://10.0.0.9/peer;tcp\r\n\r\n",
-            null,
-        )
-        val rogueIn = rogue.getInputStream().bufferedReader(Charsets.UTF_8)
-        val responseLine = rogueIn.readLine()
-        assertTrue(responseLine?.contains("481") == true, "response=$responseLine")
-        rogue.close()
+        assertUnknownPathRejected(port)
 
         // Matched path: the accept callback receives the socket + head, and
         // wrapping it in an MSRP connection delivers the pending body.
@@ -312,6 +302,103 @@ class RcsSlice3Pass2ImsTest {
         RcsMsrpListen.stop()
     }
 
+    /** An MSRP SEND to an unadvertised path is rejected with 481. */
+    private fun assertUnknownPathRejected(port: Int) {
+        val txUnknown = "unknowntx1"
+        val rogue = sendHeadAndBody(
+            port,
+            "MSRP $txUnknown SEND\r\nTo-Path: msrp://0.0.0.0:$port/nope;tcp\r\n" +
+                "From-Path: msrp://10.0.0.9/peer;tcp\r\n\r\n",
+            null,
+        )
+        val rogueIn = rogue.getInputStream().bufferedReader(Charsets.UTF_8)
+        val responseLine = rogueIn.readLine()
+        assertTrue(responseLine?.contains("481") == true, "response=$responseLine")
+        rogue.close()
+    }
+
+    /** Fake P-CSCF script: REGISTER 200, push an inbound MESSAGE, ack the outbound one, ack deregistration. */
+    private fun serveFakePcscf(
+        pcscf: ServerSocket,
+        requests: CopyOnWriteArrayList<String>,
+        inboundSent: CountDownLatch,
+    ) {
+        pcscf.accept().use { s ->
+            s.soTimeout = 20_000
+            val input = s.getInputStream().bufferedReader(Charsets.UTF_8)
+            val out = s.getOutputStream()
+            // 1) REGISTER -> 200 (no auth challenge in this script).
+            val register = readSipRequest(input)
+            requests += register.joinToString("\n")
+            respondSip(out, register, 200, "OK")
+            // 2) Inbound MESSAGE pushed to the client.
+            out.write(
+                ("MESSAGE sip:me@rcs SIP/2.0\r\nVia: SIP/2.0/TCP 127.0.0.1;branch=z9hG4bKinbound\r\n" +
+                    "From: <sip:peer@rcs>;tag=p1\r\nTo: <sip:me@rcs>\r\n" +
+                    "Call-ID: inbound-1@pcscf\r\nCSeq: 1 MESSAGE\r\n" +
+                    "Content-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello")
+                    .toByteArray(Charsets.UTF_8),
+            )
+            out.flush()
+            inboundSent.countDown()
+            // 3) Outbound MESSAGE from the client -> 200 echoing its branch.
+            val message = readSipRequest(input)
+            requests += message.joinToString("\n")
+            respondSip(out, message, 200, "OK")
+            // 4) Deregistration REGISTER (expires=0) -> 200, then close.
+            val bye = readSipRequest(input)
+            requests += bye.joinToString("\n")
+            respondSip(out, bye, 200, "OK")
+        }
+    }
+
+    /** Read one SIP request head plus its Content-Length body, when present. */
+    private fun readSipRequest(input: java.io.BufferedReader): List<String> {
+        val lines = mutableListOf<String>()
+        var line = input.readLine() ?: return lines
+        var contentLength = 0
+        while (line.isNotEmpty()) {
+            lines += line
+            if (line.startsWith("Content-Length:", true)) {
+                contentLength = line.substringAfter(":").trim().toIntOrNull() ?: 0
+            }
+            line = input.readLine() ?: return lines
+        }
+        if (contentLength > 0) {
+            val chars = CharArray(contentLength)
+            var read = 0
+            var eof = false
+            while (read < contentLength && !eof) {
+                val r = input.read(chars, read, contentLength - read)
+                if (r < 0) eof = true else read += r
+            }
+            lines += String(chars, 0, read)
+        }
+        return lines
+    }
+
+    /** Write a SIP response echoing Via branch / Call-ID / CSeq. */
+    private fun respondSip(
+        out: java.io.OutputStream,
+        lines: List<String>,
+        code: Int,
+        reason: String,
+        extra: String = "",
+    ) {
+        val branch = lines.firstOrNull { it.startsWith("Via:", true) }
+            ?.substringAfter("branch=")?.substringBefore(";")?.trim().orEmpty()
+        val callId = lines.firstOrNull { it.startsWith("Call-ID:", true) }.orEmpty()
+        val cseq = lines.firstOrNull { it.startsWith("CSeq:", true) }
+            ?.substringAfter(":")?.trim().orEmpty()
+        out.write(
+            ("SIP/2.0 $code $reason\r\nVia: SIP/2.0/TCP 127.0.0.1;branch=$branch\r\n" +
+                "$callId\r\nCSeq: $cseq\r\n$extra" +
+                "Contact: <sip:127.0.0.1:5060>;expires=600\r\n" +
+                "Expires: 600\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.UTF_8),
+        )
+        out.flush()
+    }
+
     // --- Direct SIP over the fake PDN ---
 
     @Test
@@ -327,73 +414,7 @@ class RcsSlice3Pass2ImsTest {
         val serverDone = CountDownLatch(1)
         Thread {
             try {
-                pcscf.accept().use { s ->
-                    s.soTimeout = 20_000
-                    val input = s.getInputStream().bufferedReader(Charsets.UTF_8)
-                    val out = s.getOutputStream()
-                    fun readRequest(): List<String> {
-                        val lines = mutableListOf<String>()
-                        var line = input.readLine() ?: return lines
-                        // Content-Length body, when present.
-                        var contentLength = 0
-                        while (line.isNotEmpty()) {
-                            lines += line
-                            if (line.startsWith("Content-Length:", true)) {
-                                contentLength = line.substringAfter(":").trim().toIntOrNull() ?: 0
-                            }
-                            line = input.readLine() ?: break
-                        }
-                        if (contentLength > 0) {
-                            val chars = CharArray(contentLength)
-                            var read = 0
-                            while (read < contentLength) {
-                                val r = input.read(chars, read, contentLength - read)
-                                if (r < 0) break
-                                read += r
-                            }
-                            lines += String(chars, 0, read)
-                        }
-                        return lines
-                    }
-                    fun branchOf(lines: List<String>): String =
-                        lines.firstOrNull { it.startsWith("Via:", true) }
-                            ?.substringAfter("branch=")?.substringBefore(";")?.trim().orEmpty()
-                    fun respond(lines: List<String>, code: Int, reason: String, extra: String = "") {
-                        val branch = branchOf(lines)
-                        val callId = lines.firstOrNull { it.startsWith("Call-ID:", true) }.orEmpty()
-                        val cseq = lines.firstOrNull { it.startsWith("CSeq:", true) }
-                            ?.substringAfter(":")?.trim().orEmpty()
-                        out.write(
-                            ("SIP/2.0 $code $reason\r\nVia: SIP/2.0/TCP 127.0.0.1;branch=$branch\r\n" +
-                                "$callId\r\nCSeq: $cseq\r\n$extra" +
-                                "Contact: <sip:127.0.0.1:5060>;expires=600\r\n" +
-                                "Expires: 600\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.UTF_8),
-                        )
-                        out.flush()
-                    }
-                    // 1) REGISTER -> 200 (no auth challenge in this script).
-                    val register = readRequest()
-                    requests += register.joinToString("\n")
-                    respond(register, 200, "OK")
-                    // 2) Inbound MESSAGE pushed to the client.
-                    out.write(
-                        ("MESSAGE sip:me@rcs SIP/2.0\r\nVia: SIP/2.0/TCP 127.0.0.1;branch=z9hG4bKinbound\r\n" +
-                            "From: <sip:peer@rcs>;tag=p1\r\nTo: <sip:me@rcs>\r\n" +
-                            "Call-ID: inbound-1@pcscf\r\nCSeq: 1 MESSAGE\r\n" +
-                            "Content-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello")
-                            .toByteArray(Charsets.UTF_8),
-                    )
-                    out.flush()
-                    inboundSent.countDown()
-                    // 3) Outbound MESSAGE from the client -> 200 echoing its branch.
-                    val message = readRequest()
-                    requests += message.joinToString("\n")
-                    respond(message, 200, "OK")
-                    // 4) Deregistration REGISTER (expires=0) -> 200, then close.
-                    val bye = readRequest()
-                    requests += bye.joinToString("\n")
-                    respond(bye, 200, "OK")
-                }
+                serveFakePcscf(pcscf, requests, inboundSent)
             } catch (e: Throwable) {
                 requests += "SERVER-ERROR: $e"
             }

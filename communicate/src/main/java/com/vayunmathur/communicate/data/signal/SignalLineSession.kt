@@ -67,6 +67,7 @@ class SignalLineSession private constructor(
         store.setBoolean(KEY_SIGNED_IN, false)
     }
 
+    /** Preference keys for the Signal line session (signed-in flag, phone number). */
     companion object {
         private const val KEY_SIGNED_IN = "sig_signed_in"
         private const val KEY_PHONE_NUMBER = "sig_phone_number"

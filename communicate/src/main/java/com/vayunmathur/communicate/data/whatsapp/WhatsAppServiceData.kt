@@ -34,6 +34,7 @@ data class WhatsAppServiceData(
 ) {
     fun serialize(): String = JSON.encodeToString(this)
 
+    /** The JSON codec and parser entry point for [WhatsAppServiceData]. */
     companion object {
         private val JSON = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
@@ -44,6 +45,7 @@ data class WhatsAppServiceData(
     }
 }
 
+/** One option of a WhatsApp poll, with its running vote tally. */
 @Serializable
 data class PollOptionData(
     val name: String,

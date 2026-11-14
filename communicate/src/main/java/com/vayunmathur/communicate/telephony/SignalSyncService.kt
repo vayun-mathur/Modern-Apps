@@ -216,6 +216,7 @@ class SignalSyncService : Service() {
         stopSelf()
     }
 
+    /** Notification id and logging tag for the Signal sync foreground service. */
     companion object {
         private const val TAG = "SignalSync"
         private const val SYNC_NOTIFICATION_ID = 4722

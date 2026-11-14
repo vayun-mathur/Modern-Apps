@@ -39,10 +39,15 @@ enum class RcsUnavailableReason {
  * this doubles as the line session: `Available` means signed-in.
  */
 sealed interface RcsRegistrationState {
+    /** Registration state not yet determined. */
     data object Unknown : RcsRegistrationState
+    /** Carrier RCS provisioning is in progress. */
     data object Provisioning : RcsRegistrationState
+    /** RCS is provisioned and available. */
     data object Available : RcsRegistrationState
+    /** RCS is unavailable, with the reason. */
     data class Unavailable(val reason: RcsUnavailableReason) : RcsRegistrationState
+    /** RCS is disabled (release builds / gate off). */
     data object Disabled : RcsRegistrationState
 }
 

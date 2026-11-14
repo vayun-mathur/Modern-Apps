@@ -1,6 +1,6 @@
 package com.vayunmathur.communicate.whatsapp
 
-import com.vayunmathur.communicate.data.whatsapp.mex.WhatsAppMexOps
+import com.vayunmathur.communicate.data.whatsapp.mex.WhatsAppMexVariables
 import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -15,7 +15,7 @@ class WhatsAppMexOpsVariablesTest {
     fun groupQueryByIdVariables_usesGroupInputArg() {
         assertEquals(
             """{"group_input":{"group_jid":"123@g.us","query_context":"INTERACTIVE"}}""",
-            WhatsAppMexOps.buildGroupQueryByIdVariables("123@g.us", "INTERACTIVE"),
+            WhatsAppMexVariables.buildGroupQueryByIdVariables("123@g.us", "INTERACTIVE"),
         )
     }
 
@@ -23,7 +23,7 @@ class WhatsAppMexOpsVariablesTest {
     fun usernameSetVariables_omitsNullPinAndSession() {
         assertEquals(
             """{"username":"johndoe","source":"USER_INPUT","pin":"ABC123"}""",
-            WhatsAppMexOps.buildUsernameSetVariables("johndoe", "ABC123", "USER_INPUT", null),
+            WhatsAppMexVariables.buildUsernameSetVariables("johndoe", "ABC123", "USER_INPUT", null),
         )
     }
 
@@ -31,7 +31,7 @@ class WhatsAppMexOpsVariablesTest {
     fun contactDiscoveryVariables_matchesSection83Shape() {
         assertEquals(
             """{"input":{"contacts":[{"phone":{"raw_pn":"+15551234567"}}],"context":"SEARCH"}}""",
-            WhatsAppMexOps.buildContactDiscoveryVariables(listOf("+15551234567"), "SEARCH"),
+            WhatsAppMexVariables.buildContactDiscoveryVariables(listOf("+15551234567"), "SEARCH"),
         )
     }
 
@@ -51,7 +51,7 @@ class WhatsAppMexOpsVariablesTest {
         val expectedPrekeyId = enc.encodeToString(byteArrayOf(0, 0, 7))
         val expectedPrekeyValue = enc.encodeToString(prekeyValue)
 
-        val out = WhatsAppMexOps.buildSetMessagingKeysVariables(
+        val out = WhatsAppMexVariables.buildSetMessagingKeysVariables(
             identity = identity,
             skeyId = 1,
             skeyValue = skeyValue,

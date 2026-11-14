@@ -29,11 +29,13 @@ object SignalCdsi {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** Short-lived CDSi credentials (username/password) for one contact-discovery lookup. */
     data class Credentials(val username: String, val password: String)
 
     /** One discovered account. [aci] is null when the number is registered but its ACI is withheld. */
     data class Discovered(val e164: String, val aci: String?, val pni: String?)
 
+    /** The result of a CDSi lookup: discovered accounts plus a rate-limit continuation token. */
     data class LookupResult(
         val discovered: List<Discovered>,
         /** Continuation token to reuse next time, reducing rate-limit cost. */

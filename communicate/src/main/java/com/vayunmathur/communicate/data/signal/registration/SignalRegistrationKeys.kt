@@ -26,6 +26,7 @@ import org.signal.libsignal.protocol.ecc.ECKeyPair
  *   Secret key (3168B raw + tag) is persisted locally only, never uploaded.
  */
 class SignalRegistrationKeys private constructor(val authScaffold: SignalAuthData) {
+    /** Registration-id bounds and factories for [SignalRegistrationKeys]. */
     companion object {
         private const val MAX_REGISTRATION_ID = 0x3FFF
 

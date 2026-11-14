@@ -57,7 +57,7 @@ class RcsSlice3Pass2DelegateTest {
             val handler = InvocationHandler { _, method, args ->
                 when (method.name) {
                     "sendMessage" -> {
-                        if (failSend) throw RuntimeException("fake send failure")
+                        if (failSend) throw IllegalStateException("fake send failure")
                         val message = args[0]
                         sentMessages += SentMessage(
                             message, args[1] as Long, branchMethod.invoke(message) as String,
