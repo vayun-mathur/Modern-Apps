@@ -11,6 +11,7 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.DirectBootStore
+import com.vayunmathur.findfamily.data.InboundSpool
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.platform.keepAliveTick
 import com.vayunmathur.findfamily.platform.refreshFixCeiling
@@ -60,9 +61,17 @@ internal fun LocationTrackingService.startDirectBootTracking() {
             registerSensors()
             startMovingNow()
         }
-        // Inbound delivery needs Room to persist anything, so the pre-unlock socket is
-        // publish-only. Peers' locations are picked up on reconnect after unlock.
-        Networking.startLive(serviceScope, onLocations = {}, onUwb = {})
+        // Room (credential-encrypted) can't be opened before unlock, so inbound pushes can't be
+        // stored yet. The relay forgets a frame once it has sent it to a plain subscriber, so
+        // the frames are spooled, still encrypted, to device-protected storage and replayed
+        // through the normal pipeline after unlock (see InboundSpool). Before this, every
+        // frame drained here was silently dropped.
+        Networking.startLive(
+            serviceScope,
+            onLocations = {},
+            onUwb = {},
+            onRawMsg = { frame -> spoolPreUnlockFrame(frame) },
+        )
 
         val sharing = DirectBootStore.isGlobalSharingEnabled(ctx)
         val targets = if (sharing) DirectBootStore.roster(ctx) else emptyList()
@@ -78,6 +87,55 @@ internal fun LocationTrackingService.startDirectBootTracking() {
             publishDirectBoot(targets)
             delay(30.seconds)
         }
+    }
+}
+
+/**
+ * Keeps one inbound relay frame received before unlock. Past [InboundSpool.SOFT_LIMIT_BYTES]
+ * the pre-unlock socket is closed so the relay keeps the rest queued for the unlocked socket;
+ * publishing pauses until unlock in that (unrealistic) case rather than losing inbound data.
+ */
+// Broad catch is deliberate: a spool write failure must be logged, never kill the socket reader.
+@Suppress("TooGenericExceptionCaught")
+internal suspend fun LocationTrackingService.spoolPreUnlockFrame(frame: ByteArray) {
+    try {
+        val size = InboundSpool.append(this, frame)
+        if (size > InboundSpool.SOFT_LIMIT_BYTES) {
+            Log.status(
+                LocationTrackingService.TAG_DIRECT_BOOT,
+                "pre-unlock spool at $size bytes; closing the socket so the relay keeps the rest"
+            )
+            Networking.stopLive()
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.status(LocationTrackingService.TAG_DIRECT_BOOT, "pre-unlock spool write failed", e)
+    }
+}
+
+/**
+ * Replays relay frames spooled before unlock through the normal inbound pipeline (decrypt,
+ * pair-ID authentication, storage, UWB handling), oldest first, then clears the spool.
+ * Called on the unlocked path before the live socket starts, so spooled (older) frames are
+ * processed ahead of anything the new socket delivers.
+ */
+// Broad catch is deliberate: a replay failure leaves the spool for the next start, never blocks tracking.
+@Suppress("TooGenericExceptionCaught")
+internal suspend fun LocationTrackingService.replayPreUnlockInbound() {
+    try {
+        val n = InboundSpool.drain(this) { frame ->
+            dispatchLiveFrame(
+                frame,
+                onLocations = { processIncomingFixes(it) },
+                onUwb = { handleUwbEnvelopes(it) },
+            )
+        }
+        if (n > 0) Log.status(LocationTrackingService.TAG_DIRECT_BOOT, "replayed $n pre-unlock frame(s)")
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.status(LocationTrackingService.TAG_DIRECT_BOOT, "pre-unlock replay failed; kept for next start", e)
     }
 }
 

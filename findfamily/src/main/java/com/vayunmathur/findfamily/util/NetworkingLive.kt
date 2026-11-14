@@ -47,6 +47,7 @@ internal suspend fun WsSession.superviseConnection(
     outerScope: CoroutineScope,
     onLocations: suspend (List<InboundFix>) -> Unit,
     onUwb: suspend (List<UwbEnvelope>) -> Unit,
+    onRawMsg: (suspend (ByteArray) -> Unit)? = null,
 ) {
     val lastInboundMs = AtomicLong(System.currentTimeMillis())
     // Reader: decrypts and delivers inbound frames, refreshing liveness on
@@ -59,7 +60,7 @@ internal suspend fun WsSession.superviseConnection(
                 lastInboundMs.set(System.currentTimeMillis())
                 when (frame) {
                     is WebSocketClient.WsFrame.Binary ->
-                        dispatchLiveFrame(frame.bytes, onLocations, onUwb)
+                        dispatchLiveFrame(frame.bytes, onLocations, onUwb, onRawMsg)
                     else -> Unit
                 }
             }
@@ -89,15 +90,23 @@ internal suspend fun WsSession.superviseConnection(
     }
 }
 
-/** Parse one server frame and dispatch: MSG → decrypt+deliver; KEYRESP → complete the lookup. */
+/**
+ * Parse one server frame and dispatch: MSG → decrypt+deliver; KEYRESP → complete the lookup.
+ *
+ * With [onRawMsg] set, MSG frames are handed over still encrypted instead of being decrypted
+ * and delivered. The pre-unlock socket uses this to spool them (see
+ * [com.vayunmathur.findfamily.data.InboundSpool]) because it has nowhere to store a location;
+ * the unlocked path later replays each spooled frame through this function without it.
+ */
 internal suspend fun dispatchLiveFrame(
     buf: ByteArray,
     onLocations: suspend (List<InboundFix>) -> Unit,
     onUwb: suspend (List<UwbEnvelope>) -> Unit,
+    onRawMsg: (suspend (ByteArray) -> Unit)? = null,
 ) {
     val op = buf.firstOrNull() ?: return
     when (op) {
-        Networking.WS_OP_MSG -> handleLiveMsg(buf, onLocations, onUwb)
+        Networking.WS_OP_MSG -> if (onRawMsg != null) onRawMsg(buf) else handleLiveMsg(buf, onLocations, onUwb)
         Networking.WS_OP_GETKEY_RESP -> handleKeyResp(buf)
         WS_OP_RESOLVE_RESP -> handleResolveResp(buf)
         WS_OP_REPORT_GET_RESP -> handleReportGetResp(buf)

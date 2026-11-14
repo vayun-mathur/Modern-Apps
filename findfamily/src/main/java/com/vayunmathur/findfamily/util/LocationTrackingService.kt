@@ -460,6 +460,9 @@ class LocationTrackingService : Service(), SensorEventListener {
             // heartbeat used to. This is the only inbound path — there is no HTTP poll.
             // Inbound fixes arrive with their claimed pair ID attached (see InboundFix);
             // processIncomingFixes authenticates, pins, and time-clamps before storing.
+            // Frames received before the first unlock were spooled (still encrypted) by the
+            // pre-unlock socket; process them first so they land ahead of newer pushes.
+            replayPreUnlockInbound()
             Networking.startLive(
                 serviceScope,
                 onLocations = { processIncomingFixes(it) },

@@ -315,8 +315,9 @@ object Networking {
     /**
      * Start (or no-op if already running) the live relay loop. On connect it subscribes
      * and registers this device's PQC bundle in one frame; [onLocations]/[onUwb] then
-     * receive already-decrypted pushes. Reconnects with 1s→15s backoff — there is no
-     * HTTP fallback, so a dropped socket is simply re-established.
+     * receive already-decrypted pushes. With [onRawMsg] set, location/UWB pushes are handed
+     * over still encrypted instead (the pre-unlock spool). Reconnects with 1s→15s backoff —
+     * there is no HTTP fallback, so a dropped socket is simply re-established.
      */
     // @Synchronized (with stopLive) makes the check-and-set atomic. onStartCommand can
     // fire concurrently (START_STICKY redelivery, ServiceRestartWorker, BootReceiver),
@@ -329,6 +330,7 @@ object Networking {
         scope: CoroutineScope,
         onLocations: suspend (List<InboundFix>) -> Unit,
         onUwb: suspend (List<UwbEnvelope>) -> Unit,
+        onRawMsg: (suspend (ByteArray) -> Unit)? = null,
     ) {
         if (liveJob?.isActive == true) return
         stopLive()
@@ -347,7 +349,7 @@ object Networking {
                         wsSession = this
                         sendSubscribe()
                         backoff = BACKOFF_INITIAL_MS
-                        superviseConnection(connScope, outerScope, onLocations, onUwb)
+                        superviseConnection(connScope, outerScope, onLocations, onUwb, onRawMsg)
                     }
                 }.onFailure { Log.status(TAG, "live WS loop error", it) }
                 connScope.cancel()
