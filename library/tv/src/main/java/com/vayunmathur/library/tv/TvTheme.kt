@@ -70,24 +70,36 @@ fun TvIcon(content: @Composable () -> Unit) {
     CompositionLocalProvider(M3LocalContentColor provides LocalContentColor.current, content = content)
 }
 
+/** Luminance above which an accent gets dark on-accent content instead of white. */
+private const val ON_ACCENT_LUMINANCE_THRESHOLD = 0.4f
+private const val PRIMARY_CONTAINER_BLEND = 0.7f
+private const val ON_PRIMARY_CONTAINER_BLEND = 0.6f
+private const val SECONDARY_BLEND = 0.35f
+private const val SECONDARY_CONTAINER_BLEND = 0.8f
+private const val TERTIARY_BLEND = 0.5f
+private const val BORDER_BLEND = 0.25f
+
 private val Background = Color(0xFF0B0C10)
 private val Surface = Color(0xFF16181D)
 private val SurfaceVariant = Color(0xFF23262D)
 private val OnSurface = Color(0xFFECEDF0)
 private val OnSurfaceVariant = Color(0xFFA6AAB3)
+private val Error = Color(0xFFFF8A80)
+private val ErrorContainer = Color(0xFF5C1F1B)
+private val OnErrorContainer = Color(0xFFFFDAD6)
 
 private fun tvColorScheme(accent: Color): ColorScheme {
-    val onAccent = if (accent.luminance() > 0.4f) Background else Color.White
+    val onAccent = if (accent.luminance() > ON_ACCENT_LUMINANCE_THRESHOLD) Background else Color.White
     return darkColorScheme(
         primary = accent,
         onPrimary = onAccent,
-        primaryContainer = lerp(accent, Background, 0.7f),
-        onPrimaryContainer = lerp(accent, Color.White, 0.6f),
-        secondary = lerp(accent, Color.White, 0.35f),
+        primaryContainer = lerp(accent, Background, PRIMARY_CONTAINER_BLEND),
+        onPrimaryContainer = lerp(accent, Color.White, ON_PRIMARY_CONTAINER_BLEND),
+        secondary = lerp(accent, Color.White, SECONDARY_BLEND),
         onSecondary = Background,
-        secondaryContainer = lerp(accent, SurfaceVariant, 0.8f),
+        secondaryContainer = lerp(accent, SurfaceVariant, SECONDARY_CONTAINER_BLEND),
         onSecondaryContainer = OnSurface,
-        tertiary = lerp(accent, Color.White, 0.5f),
+        tertiary = lerp(accent, Color.White, TERTIARY_BLEND),
         background = Background,
         onBackground = OnSurface,
         surface = Surface,
@@ -96,12 +108,12 @@ private fun tvColorScheme(accent: Color): ColorScheme {
         onSurfaceVariant = OnSurfaceVariant,
         inverseSurface = OnSurface,
         inverseOnSurface = Background,
-        border = lerp(accent, Color.White, 0.25f),
+        border = lerp(accent, Color.White, BORDER_BLEND),
         borderVariant = SurfaceVariant,
-        error = Color(0xFFFF8A80),
+        error = Error,
         onError = Background,
-        errorContainer = Color(0xFF5C1F1B),
-        onErrorContainer = Color(0xFFFFDAD6),
+        errorContainer = ErrorContainer,
+        onErrorContainer = OnErrorContainer,
         scrim = Color.Black,
     )
 }

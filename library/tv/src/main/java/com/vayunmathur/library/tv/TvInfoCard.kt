@@ -77,38 +77,15 @@ fun TvInfoCard(
                         content = leading,
                     )
                 }
-                Column(
-                    Modifier.weight(1f).padding(start = if (leading != null) 14.dp else 0.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (subtitle != null) {
-                        Text(
-                            subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = LocalContentColor.current.copy(alpha = 0.72f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    if (!description.isNullOrBlank()) {
-                        Text(
-                            description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = LocalContentColor.current.copy(alpha = 0.86f),
-                            maxLines = descriptionLines,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    if (badges != null) {
-                        Row(
-                            Modifier.padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            content = badges,
-                        )
-                    }
-                }
+                TvInfoCardText(
+                    title = title,
+                    subtitle = subtitle,
+                    description = description,
+                    descriptionLines = descriptionLines,
+                    hasLeading = leading != null,
+                    badges = badges,
+                    modifier = Modifier.weight(1f),
+                )
                 if (trailing != null) {
                     Box(Modifier.padding(start = 10.dp)) { TvIcon(trailing) }
                 }
@@ -121,3 +98,53 @@ fun TvInfoCard(
 /** Fixed width when given, otherwise fill the grid cell / parent. */
 internal fun Modifier.cellWidth(width: Dp): Modifier =
     if (width == Dp.Unspecified) fillMaxWidth() else width(width)
+
+/** Title, subtitle, description and badge column of a [TvInfoCard]. */
+@Composable
+private fun TvInfoCardText(
+    title: String,
+    subtitle: String?,
+    description: String?,
+    descriptionLines: Int,
+    hasLeading: Boolean,
+    badges: (@Composable RowScope.() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier.padding(start = if (hasLeading) 14.dp else 0.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (subtitle != null) {
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalContentColor.current.copy(alpha = 0.72f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (!description.isNullOrBlank()) {
+            Text(
+                description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = LocalContentColor.current.copy(alpha = 0.86f),
+                maxLines = descriptionLines,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (badges != null) {
+            Row(
+                Modifier.padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                content = badges,
+            )
+        }
+    }
+}

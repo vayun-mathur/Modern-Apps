@@ -48,7 +48,12 @@ fun TvScreenHeader(
     Row(
         modifier
             .fillMaxWidth()
-            .padding(start = tvContentStart(), end = TvDimens.SafeHorizontal, top = TvDimens.SafeVertical, bottom = 8.dp),
+            .padding(
+                start = tvContentStart(),
+                end = TvDimens.SafeHorizontal,
+                top = TvDimens.SafeVertical,
+                bottom = 8.dp,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {

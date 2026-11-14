@@ -26,6 +26,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.StandardCardContainer
 import androidx.tv.material3.Text
 
+/** Width-over-height aspect ratios for TV artwork: 16:9 landscape, 2:3 poster, square. */
 object TvAspect {
     const val Landscape = 16f / 9f
     const val Poster = 2f / 3f

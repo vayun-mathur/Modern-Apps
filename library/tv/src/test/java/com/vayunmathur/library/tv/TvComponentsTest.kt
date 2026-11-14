@@ -166,7 +166,8 @@ class TvComponentsTest {
     @Test fun `initial focus composable and dimens are sane`() {
         themed {
             Box {
-                TvInitialFocus(FocusRequester())
+                val requester = androidx.compose.runtime.remember { FocusRequester() }
+                TvInitialFocus(requester)
                 Text("focused root")
             }
         }

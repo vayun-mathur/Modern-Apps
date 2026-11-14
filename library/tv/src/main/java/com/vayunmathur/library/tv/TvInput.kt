@@ -93,7 +93,11 @@ fun TvTextField(
             }
             Box(Modifier.weight(1f).padding(start = if (leading != null) 16.dp else 0.dp)) {
                 if (value.isEmpty()) {
-                    Text(placeholder, style = MaterialTheme.typography.titleMedium, color = LocalContentColor.current.copy(alpha = 0.6f))
+                    Text(
+                        placeholder,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = LocalContentColor.current.copy(alpha = 0.6f),
+                    )
                 }
                 BasicTextField(
                     value = value,
@@ -136,7 +140,11 @@ fun TvDialog(
             Column(Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
                 if (body != null) {
-                    Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        body,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 content?.invoke()
                 Row(

@@ -18,6 +18,12 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 
+/** Half the seek-bar chapter marker width, in pixels. */
+private const val MARKER_HALF_WIDTH_PX = 1.5f
+
+/** Width of a seek-bar chapter marker, in pixels. */
+private const val MARKER_WIDTH_PX = 3f
+
 /**
  * Player seek bar. Draw-only - the caller owns LEFT/RIGHT scrubbing - but it thickens and
  * shows a thumb while [active] (focused or scrubbing), the visual cue that the arrows seek.
@@ -51,7 +57,7 @@ fun TvSeekBar(
         drawRoundRect(primary, Offset(0f, top), Size(x, h), radius)
         markers.forEach { m ->
             val mx = size.width * m.coerceIn(0f, 1f)
-            drawRect(gapColor, Offset(mx - 1.5f, top), Size(3f, h))
+            drawRect(gapColor, Offset(mx - MARKER_HALF_WIDTH_PX, top), Size(MARKER_WIDTH_PX, h))
         }
         if (active) drawCircle(thumbColor, radius = h * 1.1f, center = Offset(x, size.height / 2))
     }
