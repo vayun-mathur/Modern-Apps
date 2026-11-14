@@ -61,6 +61,7 @@ impl TransitIndex {
         // tail rather than rejecting it.
         let dir_base = unsafe { base.add(HEADER_LEN) };
         let mut sec = [(0usize, 0usize); SECTION_COUNT];
+        let mut zsec = [None; SECTION_COUNT];
         for (i, s) in sec.iter_mut().enumerate().take(section_count.min(SECTION_COUNT)) {
             let off: u64 = unsafe { read_at::<u64>(dir_base, i * 2) };
             let len: u64 = unsafe { read_at::<u64>(dir_base, i * 2 + 1) };
@@ -68,6 +69,17 @@ impl TransitIndex {
                 return None;
             }
             *s = (off as usize, len as usize);
+            // v8: every non-empty section is a ZSEC block section. Validate its table now and
+            // expose its *raw* length, which is what every bound check below compares against.
+            if version >= tilecodec::mamaps::archive::TRANSIT_VERSION_ZSEC && len > 0 {
+                let bytes = unsafe { std::slice::from_raw_parts(base.add(off as usize), len as usize) };
+                let z = tilecodec::zsec::ZSec::parse(bytes).ok()?;
+                if z.block_size() == 0 || z.block_size() > (1 << 20) {
+                    return None;
+                }
+                zsec[i] = Some((off as usize, len as usize, z.block_size()));
+                *s = (off as usize, z.raw_len() as usize);
+            }
         }
 
         Some(TransitIndex {
@@ -88,6 +100,8 @@ impl TransitIndex {
             grid_cols,
             grid_cell_count,
             sec,
+            zsec,
+            uid: NEXT_TRANSIT_UID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             intercity: std::sync::OnceLock::new(),
         })
     }
@@ -106,7 +120,11 @@ impl TransitIndex {
             if *pos >= len {
                 break;
             }
-            let b = unsafe { *self.base.add(off + *pos) };
+            let b = if self.zsec[section].is_some() {
+                self.byte(section, *pos)
+            } else {
+                unsafe { *self.base.add(off + *pos) }
+            };
             *pos += 1;
             result |= ((b & 0x7f) as u64) << shift;
             if b & 0x80 == 0 {
@@ -125,6 +143,19 @@ impl TransitIndex {
         if off as usize >= len {
             return String::new();
         }
+        if self.zsec[SEC_STRINGS].is_some() {
+            let mut bytes = Vec::new();
+            let mut at = off as usize;
+            while at < len {
+                let b = self.byte(SEC_STRINGS, at);
+                if b == 0 {
+                    break;
+                }
+                bytes.push(b);
+                at += 1;
+            }
+            return String::from_utf8_lossy(&bytes).into_owned();
+        }
         unsafe {
             let p = self.base.add(start + off as usize);
             let mut n = 0usize;
@@ -136,49 +167,49 @@ impl TransitIndex {
     }
 
     fn stop(&self, i: u32) -> StopRec {
-        unsafe { read_at::<StopRec>(self.sec_ptr(SEC_STOPS), i as usize) }
+        self.rd::<StopRec>(SEC_STOPS, i as usize)
     }
     fn route(&self, i: u32) -> RouteRec {
-        unsafe { read_at::<RouteRec>(self.sec_ptr(SEC_ROUTES), i as usize) }
+        self.rd::<RouteRec>(SEC_ROUTES, i as usize)
     }
     fn route_stop(&self, i: u32) -> u32 {
-        unsafe { read_at::<u32>(self.sec_ptr(SEC_ROUTE_STOPS), i as usize) }
+        self.rd::<u32>(SEC_ROUTE_STOPS, i as usize)
     }
     fn stop_routes_range(&self, stop: u32) -> (u32, u32) {
-        let idx = self.sec_ptr(SEC_STOP_ROUTES_IDX);
-        let s = unsafe { read_at::<u32>(idx, stop as usize) };
-        let e = unsafe { read_at::<u32>(idx, stop as usize + 1) };
+        let idx = SEC_STOP_ROUTES_IDX;
+        let s = self.rd::<u32>(idx, stop as usize);
+        let e = self.rd::<u32>(idx, stop as usize + 1);
         (s, e)
     }
     fn stop_route(&self, i: u32) -> u32 {
-        unsafe { read_at::<u32>(self.sec_ptr(SEC_STOP_ROUTES), i as usize) }
+        self.rd::<u32>(SEC_STOP_ROUTES, i as usize)
     }
     /// Position of the stop within that route's stop pattern, parallel to
     /// [`Self::stop_route`] (first occurrence, as the writer records it).
     fn stop_route_pos(&self, i: u32) -> u32 {
-        unsafe { read_at::<u32>(self.sec_ptr(SEC_STOP_ROUTE_POS), i as usize) }
+        self.rd::<u32>(SEC_STOP_ROUTE_POS, i as usize)
     }
     fn transfers_range(&self, stop: u32) -> (u32, u32) {
-        let idx = self.sec_ptr(SEC_TRANSFERS_IDX);
-        let s = unsafe { read_at::<u32>(idx, stop as usize) };
-        let e = unsafe { read_at::<u32>(idx, stop as usize + 1) };
+        let idx = SEC_TRANSFERS_IDX;
+        let s = self.rd::<u32>(idx, stop as usize);
+        let e = self.rd::<u32>(idx, stop as usize + 1);
         (s, e)
     }
     fn transfer(&self, i: u32) -> TransferRec {
-        unsafe { read_at::<TransferRec>(self.sec_ptr(SEC_TRANSFERS), i as usize) }
+        self.rd::<TransferRec>(SEC_TRANSFERS, i as usize)
     }
     fn service(&self, i: u32) -> ServiceRec {
-        unsafe { read_at::<ServiceRec>(self.sec_ptr(SEC_SERVICES), i as usize) }
+        self.rd::<ServiceRec>(SEC_SERVICES, i as usize)
     }
     fn exception(&self, i: u32) -> ExcRec {
-        unsafe { read_at::<ExcRec>(self.sec_ptr(SEC_EXCEPTIONS), i as usize) }
+        self.rd::<ExcRec>(SEC_EXCEPTIONS, i as usize)
     }
     /// `[start, end)` range of EXCEPTIONS belonging to `service_idx`, ascending
     /// by date. v3 CSR index; replaces a full scan of every exception per call.
     fn exceptions_range(&self, service_idx: u32) -> (u32, u32) {
-        let idx = self.sec_ptr(SEC_EXCEPTIONS_IDX);
-        let s = unsafe { read_at::<u32>(idx, service_idx as usize) };
-        let e = unsafe { read_at::<u32>(idx, service_idx as usize + 1) };
+        let idx = SEC_EXCEPTIONS_IDX;
+        let s = self.rd::<u32>(idx, service_idx as usize);
+        let e = self.rd::<u32>(idx, service_idx as usize + 1);
         (s, e)
     }
 
@@ -193,7 +224,7 @@ impl TransitIndex {
         if self.sec[SEC_ROUTE_SHAPE_IDX].1 < (self.route_count as usize + 1) * 4 {
             return None;
         }
-        let off = unsafe { read_at::<u32>(self.sec_ptr(SEC_ROUTE_SHAPE_IDX), route_idx as usize) };
+        let off = self.rd::<u32>(SEC_ROUTE_SHAPE_IDX, route_idx as usize);
         // NONE marks "no shape"; an offset with no room for the point count is
         // corrupt and gets the same fallback.
         if (off as usize).saturating_add(4) > self.sec[SEC_SHAPE_COORDS].1 {
@@ -208,16 +239,14 @@ impl TransitIndex {
         if (i as usize + 1) * 4 > self.sec[SEC_ROUTE_STOP_SHAPE].1 {
             return NONE;
         }
-        unsafe { read_at::<u32>(self.sec_ptr(SEC_ROUTE_STOP_SHAPE), i as usize) }
+        self.rd::<u32>(SEC_ROUTE_STOP_SHAPE, i as usize)
     }
 
     /// Decode vertices `from..=to` of the shape blob at byte offset `off`, as
     /// `(lat, lon)` degrees. Deltas accumulate from the blob's first point, so
     /// decoding always starts there and discards the head.
     fn shape_slice(&self, off: usize, from: u32, to: u32) -> Vec<(f64, f64)> {
-        let point_count = unsafe {
-            read_at::<u32>(self.base.add(self.sec[SEC_SHAPE_COORDS].0 + off), 0)
-        };
+        let point_count = self.rd_at::<u32>(SEC_SHAPE_COORDS, off);
         if to < from || to >= point_count {
             return Vec::new();
         }
@@ -259,13 +288,13 @@ impl TransitIndex {
 
     /// Trip record `i` of the strided table, by global trip index.
     fn trip_at(&self, i: u32) -> TripDec {
-        let p = self.sec_ptr(SEC_ROUTE_TRIP_RECS);
+        let p = SEC_ROUTE_TRIP_RECS;
         let w = i as usize * 4;
         TripDec {
-            start_time: unsafe { read_at::<u32>(p, w) },
-            profile_id: unsafe { read_at::<u32>(p, w + 1) },
-            service_idx: unsafe { read_at::<u32>(p, w + 2) },
-            headsign_off: unsafe { read_at::<u32>(p, w + 3) },
+            start_time: self.rd::<u32>(p, w),
+            profile_id: self.rd::<u32>(p, w + 1),
+            service_idx: self.rd::<u32>(p, w + 2),
+            headsign_off: self.rd::<u32>(p, w + 3),
         }
     }
 
@@ -274,9 +303,9 @@ impl TransitIndex {
         if !self.has_trip_table() {
             return Trips::Decoded(self.route_trips(rec));
         }
-        let off = self.sec_ptr(SEC_ROUTE_TRIP_OFF);
-        let base = unsafe { read_at::<u32>(off, route_idx as usize) };
-        let end = unsafe { read_at::<u32>(off, route_idx as usize + 1) };
+        let off = SEC_ROUTE_TRIP_OFF;
+        let base = self.rd::<u32>(off, route_idx as usize);
+        let end = self.rd::<u32>(off, route_idx as usize + 1);
         // A directory that disagrees with the route record would index past the table;
         // fall back rather than read out of bounds.
         let len = end.saturating_sub(base);
@@ -291,7 +320,7 @@ impl TransitIndex {
 
     /// Decode profile `pid` into per-stop offsets relative to `start_time`.
     fn profile(&self, pid: u32) -> ProfileDec {
-        let off = unsafe { read_at::<u32>(self.sec_ptr(SEC_PROFILES_IDX), pid as usize) } as usize;
+        let off = self.rd::<u32>(SEC_PROFILES_IDX, pid as usize) as usize;
         let mut pos = off;
         let n = self.uvarint(SEC_PROFILES, &mut pos) as usize;
         let mut arr_rel = vec![0i32; n.max(1)];
@@ -343,11 +372,11 @@ impl TransitIndex {
 
     /// Binary-search a cell id in GRID_CELL_IDS -> its index, if present.
     fn cell_index(&self, cell_id: u32) -> Option<usize> {
-        let ids = self.sec_ptr(SEC_GRID_CELL_IDS);
+        let ids = SEC_GRID_CELL_IDS;
         let (mut lo, mut hi) = (0usize, self.grid_cell_count as usize);
         while lo < hi {
             let mid = (lo + hi) / 2;
-            let v = unsafe { read_at::<u32>(ids, mid) };
+            let v = self.rd::<u32>(ids, mid);
             if v == cell_id {
                 return Some(mid);
             } else if v < cell_id {
@@ -360,13 +389,13 @@ impl TransitIndex {
     }
 
     fn cell_stops(&self, cell_index: usize) -> (u32, u32) {
-        let off = self.sec_ptr(SEC_GRID_CELL_OFF);
-        let s = unsafe { read_at::<u32>(off, cell_index) };
-        let e = unsafe { read_at::<u32>(off, cell_index + 1) };
+        let off = SEC_GRID_CELL_OFF;
+        let s = self.rd::<u32>(off, cell_index);
+        let e = self.rd::<u32>(off, cell_index + 1);
         (s, e)
     }
     fn grid_stop(&self, i: u32) -> u32 {
-        unsafe { read_at::<u32>(self.sec_ptr(SEC_GRID_STOPS), i as usize) }
+        self.rd::<u32>(SEC_GRID_STOPS, i as usize)
     }
 
     /// Candidate stops within `radius_m` of `(lat,lon)` and their distances,
@@ -445,7 +474,7 @@ impl TransitIndex {
         if feed_idx >= self.feed_count {
             return self.feed_name();
         }
-        let off = unsafe { read_at::<u32>(self.sec_ptr(SEC_FEEDS), feed_idx as usize) };
+        let off = self.rd::<u32>(SEC_FEEDS, feed_idx as usize);
         self.read_str(off)
     }
 }

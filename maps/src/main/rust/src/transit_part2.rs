@@ -6,7 +6,7 @@ impl TransitIndex {
         if feed_idx >= self.feed_count {
             return String::new();
         }
-        let off = unsafe { read_at::<u32>(self.sec_ptr(SEC_FEED_TZ), feed_idx as usize) };
+        let off = self.rd::<u32>(SEC_FEED_TZ, feed_idx as usize);
         self.read_str(off)
     }
 
@@ -21,7 +21,7 @@ impl TransitIndex {
             return None;
         }
         let off =
-            unsafe { read_at::<u32>(self.sec_ptr(SEC_FEED_MOTIS_PREFIX), feed_idx as usize) };
+            self.rd::<u32>(SEC_FEED_MOTIS_PREFIX, feed_idx as usize);
         if off == NONE {
             return None;
         }
@@ -49,7 +49,7 @@ impl TransitIndex {
             return None;
         }
         let id_off =
-            unsafe { read_at::<u32>(self.sec_ptr(SEC_STOP_GTFS_ID), stop_idx as usize) };
+            self.rd::<u32>(SEC_STOP_GTFS_ID, stop_idx as usize);
         if id_off == NONE {
             return None;
         }

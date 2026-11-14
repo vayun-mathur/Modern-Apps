@@ -313,6 +313,12 @@ pub struct TransitIndex {
     grid_cell_count: u32,
     // Section (offset, len) directory.
     sec: [(usize, usize); SECTION_COUNT],
+    /// Planet5 (TRIX v8): per section, its ZSEC `(offset, stored_len, block_size)` when the
+    /// section is block-compressed; `sec[i]` then holds `(offset, raw_len)` and every read goes
+    /// through [`TransitIndex::rd`] / [`TransitIndex::byte`] and the per-thread block cache.
+    zsec: [Option<(usize, usize, usize)>; SECTION_COUNT],
+    /// Distinguishes this index's blocks in the per-thread cache.
+    uid: u64,
     /// Long-distance route classification, built on first use.
     intercity: std::sync::OnceLock<Intercity>,
 }
@@ -322,6 +328,7 @@ unsafe impl Send for TransitIndex {}
 unsafe impl Sync for TransitIndex {}
 
 include!("transit_part1.rs");
+include!("transit_zsec.rs");
 include!("transit_part2.rs");
 include!("transit_part3.rs");
 include!("transit_part4.rs");

@@ -92,7 +92,7 @@
     fn every_version_of_a_pack_plans_the_same_journey() {
         let pack = one_route_pack();
         let mut baseline: Option<Vec<(u32, u32, String)>> = None;
-        for version in [VERSION_MIN, 4, 5, VERSION] {
+        for version in [VERSION_MIN, 4, 5, 7] {
             let idx = TransitIndex::from_bytes(pack.build_with_version(version))
                 .unwrap_or_else(|| panic!("v{version} loads"));
             let legs = plan(&idx, 37.700, -122.400, 37.720, -122.400, 25_000, sched(wednesday()))
@@ -112,7 +112,7 @@
     fn every_version_of_a_pack_lists_the_same_departures() {
         let pack = one_route_pack();
         let mut baseline: Option<Vec<u32>> = None;
-        for version in [VERSION_MIN, 4, 5, VERSION] {
+        for version in [VERSION_MIN, 4, 5, 7] {
             let idx = TransitIndex::from_bytes(pack.build_with_version(version))
                 .unwrap_or_else(|| panic!("v{version} loads"));
             let board = stop_departures(&idx, 37.700, -122.400, 0, sched(wednesday()), 10);
@@ -130,7 +130,7 @@
     #[test]
     fn a_trip_table_disagreeing_with_the_route_falls_back_to_the_varint_stream() {
         let pack = one_route_pack();
-        let idx = TransitIndex::from_bytes(pack.build_with_version(VERSION)).expect("v6 loads");
+        let idx = TransitIndex::from_bytes(pack.build_with_version(7)).expect("v6 loads");
         let route = idx.route(0);
         assert!(idx.has_trip_table(), "the fixture writes the table");
         // What the strided path returns, to compare the fallback against.

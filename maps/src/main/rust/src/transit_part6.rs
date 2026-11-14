@@ -451,7 +451,40 @@
             out
         }
 
+        /// The planet5 (TRIX v8) pack every test reads: the v7 layout with every non-empty
+        /// section wrapped in a ZSEC block section — so the whole suite runs through the
+        /// block-cache read path. Small blocks (64 bytes) so records straddle block edges.
         fn index(&self) -> TransitIndex {
-            TransitIndex::from_bytes(self.build_with_version(VERSION)).expect("index loads")
+            TransitIndex::from_bytes(zsec_pack(&self.build_with_version(7), 64)).expect("index loads")
         }
+
+        /// The same pack as raw v7 sections (planet4's layout).
+        fn index_v7(&self) -> TransitIndex {
+            TransitIndex::from_bytes(self.build_with_version(7)).expect("index loads")
+        }
+    }
+
+    /// Rewrite a raw TRIX pack as v8: each non-empty section a ZSEC section of `block`-byte
+    /// blocks (the real packs use 64 KiB; tests use tiny blocks to force straddling reads).
+    fn zsec_pack(v7: &[u8], block: usize) -> Vec<u8> {
+        let count = u32::from_le_bytes(v7[8..12].try_into().unwrap()) as usize;
+        let mut out = v7[..HEADER_LEN].to_vec();
+        out[4..8].copy_from_slice(&tilecodec::mamaps::archive::TRANSIT_VERSION_ZSEC.to_le_bytes());
+        let dir_at = out.len();
+        out.resize(dir_at + count * 16, 0);
+        for i in 0..count {
+            let at = HEADER_LEN + i * 16;
+            let off = u64::from_le_bytes(v7[at..at + 8].try_into().unwrap()) as usize;
+            let len = u64::from_le_bytes(v7[at + 8..at + 16].try_into().unwrap()) as usize;
+            let z = if len == 0 { Vec::new() } else { tilecodec::zsec::write_zsec(&v7[off..off + len], block, 3) };
+            while out.len() % 8 != 0 {
+                out.push(0);
+            }
+            let o = out.len() as u64;
+            out.extend_from_slice(&z);
+            let d = dir_at + i * 16;
+            out[d..d + 8].copy_from_slice(&o.to_le_bytes());
+            out[d + 8..d + 16].copy_from_slice(&(z.len() as u64).to_le_bytes());
+        }
+        out
     }

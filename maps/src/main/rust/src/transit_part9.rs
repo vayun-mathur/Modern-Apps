@@ -242,7 +242,7 @@
     fn a_pack_sliced_from_the_archive_plans_the_same_journey() {
         // The pack bytes through the container must read exactly as from the
         // pack's own file: same journey, same 08:00 trip.
-        let pack = one_route_pack().build_with_version(VERSION);
+        let pack = one_route_pack().build_with_version(7);
         let bytes = archive_with_pack(&pack);
         let idx = TransitIndex::from_bytes(pack_section(&bytes)).expect("section parses");
         let legs = plan(&idx, 37.700, -122.400, 37.720, -122.400, 25_000, sched(wednesday()))
@@ -289,7 +289,7 @@
     #[cfg(unix)]
     #[test]
     fn load_archive_maps_one_file_and_plans() {
-        let pack = one_route_pack().build_with_version(VERSION);
+        let pack = one_route_pack().build_with_version(7);
         let bytes = archive_with_pack(&pack);
         let path = std::env::temp_dir().join(format!(
             "transit_archive_{}.mamaps",
@@ -311,7 +311,7 @@
     #[cfg(unix)]
     #[test]
     fn has_archive_transit_sees_section_thirteen() {
-        let pack = one_route_pack().build_with_version(VERSION);
+        let pack = one_route_pack().build_with_version(7);
         let bytes = archive_with_pack(&pack);
         let path = std::env::temp_dir().join(format!(
             "transit_presence_{}.mamaps",
