@@ -260,9 +260,9 @@ fn cmd_p50_pyramid(path: &str, stride: usize) {
     tiles.par_iter().for_each(|&(id, off, len)| {
         let (z, x, y) = tile_zxy(id);
         let share = len as f64 / *seen.get(&off).unwrap_or(&1) as f64;
-        let child = body_at(&a, off, len);
+        let child = body_at(&a, id, off, len);
         let pid = tilecodec::pmtiles::tile_id(z - 1, x / 2, y / 2);
-        let parent = ti.find(pid).map(|(po, pl)| body_at(&a, po, pl));
+        let parent = ti.find(pid).map(|(po, pl)| body_at(&a, pid, po, pl));
         let ext = child.extent as f64;
         let (qx, qy) = (x % 2, y % 2);
         let mut reason: Option<String> = None;

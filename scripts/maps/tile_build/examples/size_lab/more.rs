@@ -40,9 +40,11 @@ impl TileIndex {
     }
 }
 
-fn body_at(a: &Arch, off: u64, len: u32) -> Body {
+fn body_at(a: &Arch, id: u64, off: u64, len: u32) -> Body {
     let stored = &a.map[off as usize..off as usize + len as usize];
     let raw = tile_build::mamaps::read::decompress_with(a.hdr.compression, stored, a.zd.as_ref()).expect("inflate");
+    // header v11: a superblock frame holds this tile's body among its neighbours'
+    let raw = tile_build::mamaps::superblock::resolve(raw, id).expect("superblock member");
     Body::parse(&raw).expect("parse")
 }
 
@@ -369,8 +371,8 @@ fn cmd_cmp(base: &str, cand: &str, per_zoom: usize, out_dir: &str) {
         for &(id, off, len) in chunk {
             let (z, _x, y) = tile_zxy(id);
             let Some((boff, blen)) = ib.find(id) else { continue };
-            let ba = body_at(&a, off, len);
-            let bb = body_at(&b, boff, blen);
+            let ba = body_at(&a, id, off, len);
+            let bb = body_at(&b, id, boff, blen);
             let mpu = m_per_unit(z, y);
             for lid in 0..nl as u8 {
                 let (la, lb) = (ba.layer(lid), bb.layer(lid));
@@ -747,8 +749,8 @@ fn cmd_render(args: &[String]) {
         let cv = match ix.find(id) {
             Some((off, len)) => {
                 let pid = tilecodec::pmtiles::tile_id(z - 1, x / 2, y / 2);
-                let parent = if z == 14 { ix.find(pid).map(|(o, l)| body_at(&a, o, l)) } else { None };
-                render_body(&body_at(&a, off, len), &a.dict, z, crop, size, parent.as_ref().map(|p| (p, x % 2, y % 2)))
+                let parent = if z == 14 { ix.find(pid).map(|(o, l)| body_at(&a, pid, o, l)) } else { None };
+                render_body(&body_at(&a, id, off, len), &a.dict, z, crop, size, parent.as_ref().map(|p| (p, x % 2, y % 2)))
             }
             None => Canvas::new(size, size, [255, 0, 255]),
         };
@@ -792,7 +794,7 @@ fn cmd_dem_pyramid(path: &str, tol: f64, out_dir: &str) {
             .par_iter()
             .map(|&(id, off, len)| {
                 let (_, x, y) = tile_zxy(id);
-                let body = body_at(&a, off, len);
+                let body = body_at(&a, id, off, len);
                 let Some(hm) = body.heightmap.clone() else { return (id, None, None, 0) };
                 if *z == 0 {
                     return (id, Some(hm), None, 0);
