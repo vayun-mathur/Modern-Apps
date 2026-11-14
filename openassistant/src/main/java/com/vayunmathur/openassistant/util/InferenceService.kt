@@ -48,6 +48,11 @@ import com.vayunmathur.openassistant.data.MessageDao
 import com.vayunmathur.openassistant.data.Message as DbMessage
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
 import com.vayunmathur.openassistant.R
+import com.vayunmathur.library.ml.GEMMA4_EXPECTED_BYTES
+import com.vayunmathur.library.ml.Gemma4Handle
+import com.vayunmathur.openassistant.domain.ModelLoadFailure
+import com.vayunmathur.openassistant.domain.classifyModelLoadFailure
+import com.vayunmathur.openassistant.domain.describe
 import com.vayunmathur.openassistant.domain.splitA2ui
 import com.vayunmathur.openassistant.domain.withA2uiBlock
 import kotlinx.coroutines.channels.Channel
@@ -392,14 +397,18 @@ class InferenceService : Service() {
         if (!created.load()) {
             val detail = created.loadError()
             created.close()
-            throw IllegalStateException(
-                buildString {
-                    append("Model missing or failed to load at ${dir.absolutePath}")
-                    if (!detail.isNullOrBlank()) append(": $detail")
-                },
-            )
+            // Say which it was (#917): "missing or failed to load" read as "missing" to a
+            // user whose verified files were all there and whose GPU had refused them.
+            throw IllegalStateException(modelLoadFailure(dir, detail).describe(dir.absolutePath))
         }
         engine = created
+    }
+
+    /** What is on disk in [dir], classified against the engine's own [engineError]. */
+    private fun modelLoadFailure(dir: File, engineError: String?): ModelLoadFailure {
+        val names = (Gemma4Handle.FILES + GEMMA4_EXPECTED_BYTES.keys).distinct()
+        val sizes = names.associateWith { name -> File(dir, name).takeIf { it.isFile }?.length() }
+        return classifyModelLoadFailure(sizes, Gemma4Handle.FILES, GEMMA4_EXPECTED_BYTES, engineError)
     }
 
     /** The user's (or default) prompt plus the A2UI section, which custom prompts must not lose. */

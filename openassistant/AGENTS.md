@@ -57,6 +57,7 @@ _Install: ./install openassistant (dev by default)._
 - com/vayunmathur/openassistant/domain/HistoryFit.kt
 - com/vayunmathur/openassistant/domain/A2uiBlocks.kt — split/restore ```a2ui blocks, streaming-safe
 - com/vayunmathur/openassistant/domain/A2uiEnvelope.kt — block → A2UI protocol messages, action → user turn
+- com/vayunmathur/openassistant/domain/ModelLoadFailure.kt — missing vs incomplete vs refused model load, for the error text (#917)
 ### platform/ — engine + tool registry
 - com/vayunmathur/openassistant/platform/MamlChatEngine.kt
 - com/vayunmathur/openassistant/platform/AssistantTools.kt
