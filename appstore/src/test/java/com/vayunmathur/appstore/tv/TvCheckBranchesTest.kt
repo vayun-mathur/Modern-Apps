@@ -9,6 +9,7 @@ import com.vayunmathur.appstore.data.AccrescentTrustEntity
 import com.vayunmathur.appstore.data.AppDatabase
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -33,6 +34,12 @@ class TvCheckBranchesTest {
 
     @BeforeTest
     fun setUp() {
+        // Hermetic offline: the check's catalogue sync must fail too, or
+        // a live sync imports the real catalogue and Play is never asked
+        // (its previous rows are then cleared as 'answered empty').
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
         val app = ApplicationProvider.getApplicationContext<Application>()
         ownPackage = app.packageName
         db = Room.inMemoryDatabaseBuilder(app, AppDatabase::class.java)
@@ -77,6 +84,11 @@ class TvCheckBranchesTest {
         vm.enabledSourcesFlow.value = setOf(
             AppSource.PLAYSTORE, AppSource.ACCRESCENT, AppSource.MODERN_APPS,
         )
+    }
+
+    @AfterTest
+    fun tearDown() {
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = null
     }
 
     private fun await(description: String, condition: () -> Boolean) {
