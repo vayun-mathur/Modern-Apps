@@ -39,7 +39,7 @@ impl Graph {
         // Explicit count fields rather than a generic section directory: each
         // version adds one, and a named field is more debuggable than speculative
         // generality.
-        let (node_count, edge_count, escape_count, named_edges, blocked_v7) = {
+        let (node_count, edge_count, escape_count, named_edges, blocked_v7, varint_v8) = {
             let meta = MmapRegion::map(&format!("{base}metadata.bin"))?;
             if meta.len < 40 {
                 return None;
@@ -67,9 +67,11 @@ impl Graph {
                 edges,
                 escapes,
                 named,
-                version >= GRAPH_VERSION,
+                version >= tilecodec::mamaps::archive::GRAPH_VERSION_BLOCKED,
+                version >= tilecodec::mamaps::archive::GRAPH_VERSION_VARINT,
             )
         };
+        let intermediate_block = if varint_v8 { INTERMEDIATE_BLOCK_V8 } else { INTERMEDIATE_BLOCK };
 
         // `edge_count` now comes from the header rather than from `edges.bin`'s
         // length. That is the point of version 4, and 5 and 6 are why: the record is
@@ -198,7 +200,7 @@ impl Graph {
             return None;
         }
         let bitmap_bytes = EdgeBitmap::bytes(edge_count);
-        let coarse_bytes = (geometry_edges.div_ceil(INTERMEDIATE_BLOCK) + 1)
+        let coarse_bytes = (geometry_edges.div_ceil(intermediate_block) + 1)
             * std::mem::size_of::<u64>() as u64;
         let within_bytes = (geometry_edges + 1) * std::mem::size_of::<u16>() as u64;
         let trailer = bitmap_bytes + coarse_bytes + within_bytes + 8;
@@ -223,7 +225,7 @@ impl Graph {
         let sentinel = unsafe {
             read_at::<u64>(
                 intermediate_coarse,
-                (geometry_edges / INTERMEDIATE_BLOCK) as usize,
+                (geometry_edges / intermediate_block) as usize,
             ) + u64::from(read_at::<u16>(intermediate_within, geometry_edges as usize))
         };
         if sentinel != blob_bytes || geometry.total(edge_count) != geometry_edges {
@@ -387,6 +389,8 @@ impl Graph {
             geometry,
             intermediate_coarse,
             intermediate_within,
+            intermediate_varint: varint_v8,
+            intermediate_block,
             lane_index,
             lane_edges,
             lane_data,

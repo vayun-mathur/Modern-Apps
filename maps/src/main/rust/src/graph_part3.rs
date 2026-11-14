@@ -74,7 +74,7 @@ impl Graph {
     #[inline]
     fn geometry_offset(&self, g: u64) -> u64 {
         let coarse =
-            unsafe { read_at::<u64>(self.intermediate_coarse, (g / INTERMEDIATE_BLOCK) as usize) };
+            unsafe { read_at::<u64>(self.intermediate_coarse, (g / self.intermediate_block) as usize) };
         let within = unsafe { read_at::<u16>(self.intermediate_within, g as usize) };
         coarse + u64::from(within)
     }
@@ -267,6 +267,37 @@ impl Graph {
         let data = unsafe { self.intermediate_data.add(data_off as usize) };
         let mut count: u32 = 1;
         let mut off: u32 = 0;
+        if self.intermediate_varint {
+            // v8: zigzag varint deltas on the 1e-6 degree grid, seeded from the source node's
+            // own grid position. Each decoded point lands on a multiple of 10 e7 units.
+            let blob = unsafe { std::slice::from_raw_parts(data, byte_len as usize) };
+            let mut qlat = (lat as i64).div_euclid(10) + i64::from((lat as i64).rem_euclid(10) >= 5);
+            let mut qlon = (lon as i64).div_euclid(10) + i64::from((lon as i64).rem_euclid(10) >= 5);
+            let mut at = 0usize;
+            let mut uvar = |at: &mut usize| -> Option<u64> {
+                let (mut r, mut s) = (0u64, 0u32);
+                while *at < blob.len() {
+                    let b = blob[*at];
+                    *at += 1;
+                    r |= u64::from(b & 0x7f) << s;
+                    if b & 0x80 == 0 {
+                        return Some(r);
+                    }
+                    s += 7;
+                }
+                None
+            };
+            while at < blob.len() && count + 1 < 256 {
+                let (Some(a), Some(b)) = (uvar(&mut at), uvar(&mut at)) else { break };
+                qlat += ((a >> 1) as i64) ^ -((a & 1) as i64);
+                qlon += ((b >> 1) as i64) ^ -((b & 1) as i64);
+                out[count as usize] = LatLon { lat_e7: (qlat * 10) as i32, lon_e7: (qlon * 10) as i32 };
+                count += 1;
+            }
+            let b = self.node(target);
+            out[count as usize] = LatLon { lat_e7: b.lat_e7, lon_e7: b.lon_e7 };
+            return count + 1;
+        }
         // One slot is reserved for the target, so the interior stops one short of
         // the 256 points every caller's buffer holds.
         while off + 4 <= byte_len && count + 1 < 256 {

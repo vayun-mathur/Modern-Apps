@@ -47,6 +47,11 @@ pub struct Graph {
     geometry: EdgeBitmap,           // which edges store a polyline, and their rank
     intermediate_coarse: *const u8, // u64[G.div_ceil(BLOCK) + 1]
     intermediate_within: *const u8, // u16[G + 1]
+    // Planet5 (graph v8): blobs are zigzag-varint deltas on a 1e-6 degree grid and the coarse
+    // table covers INTERMEDIATE_BLOCK_V8 geometry edges per entry. v6/v7: fixed i16 1e-7
+    // degree deltas, INTERMEDIATE_BLOCK per entry.
+    intermediate_varint: bool,
+    intermediate_block: u64,
 
     // Real OSM turn-lane data (see `edge_lane_masks`). Sparse: only the edges that
     // actually carry `turn:lanes` appear, which on a planet is 2.9 M of 1.07 G.

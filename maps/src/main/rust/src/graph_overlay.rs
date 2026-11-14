@@ -264,7 +264,7 @@ mod overlay_tests {
         let intermediate = vec![0u8; (EdgeBitmap::bytes(e) + 18) as usize];
         let mut meta = Vec::new();
         meta.extend_from_slice(&GRAPH_MAGIC.to_le_bytes());
-        meta.extend_from_slice(&GRAPH_VERSION.to_le_bytes());
+        meta.extend_from_slice(&tilecodec::mamaps::archive::GRAPH_VERSION_BLOCKED.to_le_bytes());
         meta.extend_from_slice(&u64::from(n).to_le_bytes());
         meta.extend_from_slice(&e.to_le_bytes());
         meta.extend_from_slice(&0u64.to_le_bytes());

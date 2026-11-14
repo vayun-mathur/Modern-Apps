@@ -111,7 +111,9 @@ impl Graph {
         let edge_count = edges;
         let escape_count = escapes;
         let named_edges = named;
-        let blocked_v7 = version >= GRAPH_VERSION;
+        let blocked_v7 = version >= tilecodec::mamaps::archive::GRAPH_VERSION_BLOCKED;
+        let varint_v8 = version >= tilecodec::mamaps::archive::GRAPH_VERSION_VARINT;
+        let intermediate_block = if varint_v8 { INTERMEDIATE_BLOCK_V8 } else { INTERMEDIATE_BLOCK };
 
         // `edge_count` comes from the header rather than from the edges
         // payload's length. That is the point of graph version 4, and 5 and 6
@@ -239,7 +241,7 @@ impl Graph {
             return None;
         }
         let bitmap_bytes = EdgeBitmap::bytes(edge_count);
-        let coarse_bytes = (geometry_edges.div_ceil(INTERMEDIATE_BLOCK) + 1)
+        let coarse_bytes = (geometry_edges.div_ceil(intermediate_block) + 1)
             * std::mem::size_of::<u64>() as u64;
         let within_bytes = (geometry_edges + 1) * std::mem::size_of::<u16>() as u64;
         let trailer = bitmap_bytes + coarse_bytes + within_bytes + 8;
@@ -266,7 +268,7 @@ impl Graph {
         let sentinel = unsafe {
             read_at::<u64>(
                 intermediate_coarse,
-                (geometry_edges / INTERMEDIATE_BLOCK) as usize,
+                (geometry_edges / intermediate_block) as usize,
             ) + u64::from(read_at::<u16>(intermediate_within, geometry_edges as usize))
         };
         if sentinel != blob_bytes || geometry.total(edge_count) != geometry_edges {
@@ -458,6 +460,8 @@ impl Graph {
             geometry,
             intermediate_coarse,
             intermediate_within,
+            intermediate_varint: varint_v8,
+            intermediate_block,
             lane_index,
             lane_edges,
             lane_data,

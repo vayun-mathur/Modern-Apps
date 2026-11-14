@@ -161,6 +161,11 @@ const fn align_up(n: u64, align: u64) -> u64 {
 /// entry in a block describes a real blob.
 pub const INTERMEDIATE_BLOCK: u64 = 32;
 
+/// Geometry edges per coarse block in a v8 (planet5) `intermediate.bin`. Half of
+/// [`INTERMEDIATE_BLOCK`] because a varint blob is variable length: at most 254 interior points
+/// x 2 varints x 5 bytes = 2540 bytes, and 16 x 2540 = 40,640 still fits the `u16` within-table.
+pub const INTERMEDIATE_BLOCK_V8: u64 = 16;
+
 /// Bytes of presence bitmap one entry of a rank index covers.
 ///
 /// 64 bytes is 512 edges and one cache line, so a rank costs one `u64` load plus at

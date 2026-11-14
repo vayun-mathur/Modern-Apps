@@ -21,7 +21,7 @@
 //!
 //! Experiment tooling (examples/): never in the cdylib.
 
-use offlinerouter::graph::{Graph, LatLon, INTERMEDIATE_BLOCK};
+use offlinerouter::graph::{Graph, LatLon, INTERMEDIATE_BLOCK, INTERMEDIATE_BLOCK_V8};
 
 fn read_u64(b: &[u8], at: usize) -> u64 {
     u64::from_le_bytes(b[at..at + 8].try_into().unwrap())
@@ -75,7 +75,11 @@ fn zz(v: i64) -> u64 {
 }
 
 fn main() -> std::process::ExitCode {
-    let a: Vec<String> = std::env::args().skip(1).collect();
+    let all: Vec<String> = std::env::args().skip(1).collect();
+    // `--v8`: write the planet5 layout (graph v8: zigzag-varint deltas on a 1e-6 degree grid,
+    // INTERMEDIATE_BLOCK_V8 per coarse entry, no i16 bridging needed). Without it the v7 layout.
+    let v8 = all.iter().any(|x| x == "--v8");
+    let a: Vec<String> = all.into_iter().filter(|x| x != "--v8").collect();
     if a.len() < 3 {
         eprintln!("usage: graph_thin IN_GRAPH_DIR OUT_GRAPH_DIR TOL_CM");
         return std::process::ExitCode::from(2);
@@ -91,7 +95,12 @@ fn main() -> std::process::ExitCode {
     let e = g.edge_count;
     let gcount = read_u64(&inter, inter.len() - 8);
     let bitmap_bytes = (e.div_ceil(512) + 1) * 8 + e.div_ceil(8);
-    let coarse_bytes = (gcount.div_ceil(INTERMEDIATE_BLOCK) + 1) * 8;
+    let meta = std::fs::read(format!("{inp}/metadata.bin")).expect("read metadata");
+    let in_version = u32::from_le_bytes(meta[4..8].try_into().unwrap());
+    let in_block = if in_version >= 8 { INTERMEDIATE_BLOCK_V8 } else { INTERMEDIATE_BLOCK };
+    let out_block = if v8 { INTERMEDIATE_BLOCK_V8 } else { INTERMEDIATE_BLOCK };
+    let coarse_bytes = (gcount.div_ceil(in_block) + 1) * 8;
+    let out_coarse_bytes = (gcount.div_ceil(out_block) + 1) * 8;
     let within_bytes = (gcount + 1) * 2;
     let trailer = bitmap_bytes + coarse_bytes + within_bytes + 8;
     let blob_len = inter.len() as u64 - trailer;
@@ -101,7 +110,7 @@ fn main() -> std::process::ExitCode {
 
     let tol_m = tol_cm / 100.0;
     let mut blob: Vec<u8> = Vec::with_capacity(blob_len as usize);
-    let mut coarse: Vec<u64> = Vec::with_capacity(coarse_bytes as usize / 8);
+    let mut coarse: Vec<u64> = Vec::with_capacity(out_coarse_bytes as usize / 8);
     let mut within: Vec<u16> = Vec::with_capacity(gcount as usize + 1);
     let mut buf = vec![LatLon { lat_e7: 0, lon_e7: 0 }; 256];
     let (mut pts_in, mut pts_out, mut readded) = (0u64, 0u64, 0u64);
@@ -113,11 +122,11 @@ fn main() -> std::process::ExitCode {
         if present[(idx / 8) as usize] & (1 << (idx % 8)) == 0 {
             continue;
         }
-        if rank % INTERMEDIATE_BLOCK == 0 {
+        if rank % out_block == 0 {
             block_start = blob.len() as u64;
             coarse.push(block_start);
         }
-        within.push((blob.len() as u64 - block_start) as u16);
+        within.push(u16::try_from(blob.len() as u64 - block_start).expect("a coarse block spans more than 64 KiB"));
         rank += 1;
         let src = g.find_node_idx_for_edge(idx);
         let Some((cnt, rev)) = g.get_edge_coordinates_from(src, idx, &mut buf) else {
@@ -164,7 +173,11 @@ fn main() -> std::process::ExitCode {
             (b.lat_e7 - a.lat_e7).abs() <= i16::MAX as i32 && (b.lon_e7 - a.lon_e7).abs() <= i16::MAX as i32
         };
         let mut out_idx: Vec<usize> = vec![0];
-        let mut i = 1;
+        let mut i = if v8 { cnt - 1 } else { 1 };
+        if v8 {
+            // No delta range to bridge: varints take any step.
+            out_idx.extend((1..cnt - 1).filter(|&k| keep[k]));
+        }
         while i < cnt - 1 {
             if !keep[i] {
                 i += 1;
@@ -226,6 +239,30 @@ fn main() -> std::process::ExitCode {
                 max_dev_m = max_dev_m.max(seg_dist_sq(xy[k], xy[w[0]], xy[w[1]]).sqrt());
             }
         }
+        if v8 {
+            let q = |v: i32| (v as i64).div_euclid(10) + i64::from((v as i64).rem_euclid(10) >= 5);
+            let (mut pl, mut pn) = (q(poly[0].lat_e7), q(poly[0].lon_e7));
+            for &k in &out_idx[1..] {
+                let (ql, qn) = (q(poly[k].lat_e7), q(poly[k].lon_e7));
+                let mut put = |v: i64| {
+                    let mut u = ((v << 1) ^ (v >> 63)) as u64;
+                    loop {
+                        let b = (u & 0x7f) as u8;
+                        u >>= 7;
+                        if u == 0 {
+                            blob.push(b);
+                            break;
+                        }
+                        blob.push(b | 0x80);
+                    }
+                };
+                put(ql - pl);
+                put(qn - pn);
+                (pl, pn) = (ql, qn);
+                pts_out += 1;
+            }
+            continue;
+        }
         // Encode interior points (out_idx[1..]) as i16 deltas, first from the source.
         let mut prev = poly[0];
         let mut prev6 = (poly[0].lat_e7 / 10, poly[0].lon_e7 / 10);
@@ -247,17 +284,17 @@ fn main() -> std::process::ExitCode {
     }
     assert_eq!(rank, gcount, "geometry rank count");
     // Sentinel: the blob length, in the final block's slot.
-    if rank % INTERMEDIATE_BLOCK == 0 {
+    if rank % out_block == 0 {
         coarse.push(blob.len() as u64);
         block_start = blob.len() as u64;
     }
-    within.push((blob.len() as u64 - block_start) as u16);
+    within.push(u16::try_from(blob.len() as u64 - block_start).expect("a coarse block spans more than 64 KiB"));
     // The table always carries div_ceil(G, 32) + 1 entries; the generator's trailing slot is
     // the blob length.
-    while (coarse.len() as u64) * 8 < coarse_bytes {
+    while (coarse.len() as u64) * 8 < out_coarse_bytes {
         coarse.push(blob.len() as u64);
     }
-    assert_eq!(coarse.len() as u64 * 8, coarse_bytes, "coarse table size");
+    assert_eq!(coarse.len() as u64 * 8, out_coarse_bytes, "coarse table size");
     assert_eq!(within.len() as u64 * 2, within_bytes, "within table size");
 
     std::fs::create_dir_all(outp).expect("mkdir");
@@ -280,11 +317,15 @@ fn main() -> std::process::ExitCode {
     }
     out.extend_from_slice(&gcount.to_le_bytes());
     std::fs::write(format!("{outp}/intermediate.bin"), &out).expect("write");
+    let mut meta_out = meta.clone();
+    let out_version: u32 = if v8 { 8 } else { in_version.min(7) };
+    meta_out[4..8].copy_from_slice(&out_version.to_le_bytes());
+    std::fs::write(format!("{outp}/metadata.bin"), &meta_out).expect("write metadata");
     // Validate by loading the result with the real reader.
     let g2 = Graph::load(&format!("{outp}/")).expect("thinned graph must load");
     assert_eq!(g2.edge_count, e);
     println!(
-        "graph_thin tol_cm={tol_cm} keep_end_m={keep_end_m} interior_points {pts_in} -> {pts_out} ({:.1}%), readded_for_i16 {readded}, \
+        "graph_thin v8={v8} tol_cm={tol_cm} keep_end_m={keep_end_m} interior_points {pts_in} -> {pts_out} ({:.1}%), readded_for_i16 {readded}, \
          max_dev_m {max_dev_m:.3}\n  intermediate.bin {} -> {} bytes (blob {} -> {}; trailer {})\n  \
          format-change estimates for the thinned blob: zigzag-varint e7 {} B, varint at 1e-6 deg {} B",
         100.0 * pts_out as f64 / pts_in.max(1) as f64,
