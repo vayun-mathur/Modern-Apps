@@ -169,6 +169,7 @@ class Dictionary private constructor(
         return lo
     }
 
+    /** Shared constants and helpers for Dictionary. */
     companion object {
         /** An empty dictionary used before loading completes. */
         val EMPTY = Dictionary(emptyList(), IntArray(0), emptyMap(), emptyMap())

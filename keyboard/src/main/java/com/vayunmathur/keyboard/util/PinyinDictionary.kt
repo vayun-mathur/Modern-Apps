@@ -60,6 +60,7 @@ class PinyinDictionary private constructor(
         return lo
     }
 
+    /** Shared constants and helpers for PinyinDictionary. */
     companion object {
         /** How many characters a merely-prefix-matching syllable may contribute. */
         private const val PREFIX_CANDIDATES = 3

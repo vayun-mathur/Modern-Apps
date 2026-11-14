@@ -27,6 +27,7 @@ data class KeyboardSettings(
     val activeLayout: KeyboardLayout
         get() = KeyboardLayouts.byId(activeLayoutId) ?: KeyboardLayouts.DEFAULT
 
+    /** Singleton holding keys state and operations. */
     object Keys {
         const val HAPTIC = "kb_haptic"
         const val SOUND = "kb_sound"
@@ -55,6 +56,7 @@ data class KeyboardSettings(
         const val ACTIVE_LAYOUT = "kb_active_layout"
     }
 
+    /** Shared constants and helpers for KeyboardSettings. */
     companion object {
         /** Read the current persisted snapshot (defaults applied for unset keys). */
         fun load(ds: DataStoreUtils): KeyboardSettings = KeyboardSettings(

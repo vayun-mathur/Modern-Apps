@@ -99,6 +99,7 @@ class EmojiData(
         }
     }
 
+    /** Shared constants and helpers for EmojiData. */
     companion object {
         /** Minimum TSV columns for a valid emoji row (emoji, group, name). */
         private const val MIN_PARTS = 3

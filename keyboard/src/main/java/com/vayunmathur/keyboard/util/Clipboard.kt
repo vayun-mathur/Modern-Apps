@@ -135,32 +135,7 @@ class ClipboardStore(private val imageDir: File) {
         val uri = entry.uri
         val mime = uri?.let { context.contentResolver.getType(it) }
         if (uri != null && mime != null && mime.startsWith("image/")) {
-            // Sensitive images are not recorded at all: bytes on disk would outlive
-            // the session while the history entry (excluded from serialization)
-            // does not, leaving orphaned credential-adjacent files.
-            if (flagged) return null
-            val id = nextId()
-            val file = withContext(Dispatchers.IO) { copyImage(context, uri, id, mime) }
-                ?: return null
-            // The service re-sweeps the system clip on every field start, and an
-            // image cannot be content-compared the way text is (sameContentAs),
-            // so without this the same image is re-copied into a new file and a
-            // duplicate history entry every time the keyboard opens, crowding
-            // out the history up to the image cap. Same bytes = same clip:
-            // drop the fresh copy and hand back the entry already kept.
-            val duplicate = withContext(Dispatchers.IO) {
-                items.firstOrNull { it.isImage && sameFileBytes(it.imageFile, file) }
-            }
-            if (duplicate != null) {
-                withContext(Dispatchers.IO) { runCatching { file.delete() } }
-                return duplicate
-            }
-            return ClipItem(
-                id = id,
-                imagePath = file.path,
-                mimeType = mime,
-                sensitive = false,
-            )
+            return captureImage(context, uri, mime, flagged)
         }
 
         val text = entry.coerceToText(context).toString().trim()
@@ -172,6 +147,36 @@ class ClipboardStore(private val imageDir: File) {
             text = text,
             mimeType = ClipDescription.MIMETYPE_TEXT_PLAIN,
             sensitive = flagged || looksSensitive(text),
+        )
+    }
+
+    /** Image branch of [capture]: copies the image, de-duplicating against history by bytes. */
+    private suspend fun captureImage(context: Context, uri: Uri, mime: String, flagged: Boolean): ClipItem? {
+        // Sensitive images are not recorded at all: bytes on disk would outlive
+        // the session while the history entry (excluded from serialization)
+        // does not, leaving orphaned credential-adjacent files.
+        if (flagged) return null
+        val id = nextId()
+        val file = withContext(Dispatchers.IO) { copyImage(context, uri, id, mime) }
+            ?: return null
+        // The service re-sweeps the system clip on every field start, and an
+        // image cannot be content-compared the way text is (sameContentAs),
+        // so without this the same image is re-copied into a new file and a
+        // duplicate history entry every time the keyboard opens, crowding
+        // out the history up to the image cap. Same bytes = same clip:
+        // drop the fresh copy and hand back the entry already kept.
+        val duplicate = withContext(Dispatchers.IO) {
+            items.firstOrNull { it.isImage && sameFileBytes(it.imageFile, file) }
+        }
+        if (duplicate != null) {
+            withContext(Dispatchers.IO) { runCatching { file.delete() } }
+            return duplicate
+        }
+        return ClipItem(
+            id = id,
+            imagePath = file.path,
+            mimeType = mime,
+            sensitive = false,
         )
     }
 
@@ -204,6 +209,7 @@ class ClipboardStore(private val imageDir: File) {
         runCatching { item.imageFile?.delete() }
     }
 
+    /** Shared constants and helpers for ClipboardStore. */
     companion object {
         /** Roughly a day of copying; beyond this the history is an archive, not a clipboard. */
         const val MAX_ITEMS = 30

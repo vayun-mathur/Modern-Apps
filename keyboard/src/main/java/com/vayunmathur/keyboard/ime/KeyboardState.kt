@@ -188,6 +188,7 @@ interface ImeActions {
     /** Open this app's system settings, the only way back from a blocked microphone. */
     fun openVoiceSettings()
 
+    /** Shared constants and helpers for ImeActions. */
     companion object {
         /**
          * Does nothing. Lets `src/screenshotTest` render [

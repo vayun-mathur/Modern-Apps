@@ -18,6 +18,7 @@ interface SpellingScheme {
     /** The pinyin the buffer spells, or null while it spells nothing yet. */
     fun toPinyin(buffer: String): String?
 
+    /** Singleton holding pinyin state and operations. */
     object Pinyin : SpellingScheme {
         override fun accepts(c: Char) = c in 'a'..'z' || c in 'A'..'Z'
         override fun toPinyin(buffer: String) = buffer.lowercase()

@@ -350,7 +350,15 @@ class ServiceOpsTest {
             info(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD),
         )
         assertTrue(service.kbState.passwordField)
-        // enter actions
+    }
+
+    @Test
+    fun `configureForEditor maps enter actions`() {
+        fun info(inputType: Int, imeOptions: Int = 0, actionLabel: CharSequence? = null, actionId: Int = 0) =
+            EditorInfo().apply {
+                this.inputType = inputType; this.imeOptions = imeOptions
+                this.actionLabel = actionLabel; this.actionId = actionId
+            }
         service.configureForEditor(info(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_ACTION_SEARCH))
         assertEquals(EnterAction.SEARCH, service.kbState.enterAction)
         assertTrue(service.enterSendsAction)
