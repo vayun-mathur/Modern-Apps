@@ -45,11 +45,11 @@ data class RepoApp(
  * [Result.failure] — fail closed — so a tampered, unsigned or rolled-back document yields no
  * usable allowlist and therefore nothing installable.
  */
-class AccrescentRepoDataFetcher(private val context: Context) {
+open class AccrescentRepoDataFetcher(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    suspend fun fetch(): Result<RepoData> {
+    open suspend fun fetch(): Result<RepoData> {
         return try {
             val (jsonStatus, _, jsonBytes) =
                 NetworkClient.performRequestBytesFull(AccrescentRepo.REPODATA_JSON_URL)

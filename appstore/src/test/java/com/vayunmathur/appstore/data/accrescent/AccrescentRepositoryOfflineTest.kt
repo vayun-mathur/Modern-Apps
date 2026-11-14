@@ -35,7 +35,16 @@ class AccrescentRepositoryOfflineTest {
             .setDriver(BundledSQLiteDriver())
             .allowMainThreadQueries()
             .build()
-        repo = AccrescentRepository(ctx, db)
+        // Hermetic offline: an in-process channel with no server behind it
+        // (every RPC fails UNAVAILABLE) plus a repodata fetcher that fails,
+        // whatever network the host running the tests happens to have.
+        val deadChannel = io.grpc.inprocess.InProcessChannelBuilder
+            .forName("accrescent-offline-no-server").directExecutor().build()
+        val failingFetcher = object : AccrescentRepoDataFetcher(ctx) {
+            override suspend fun fetch(): Result<RepoData> =
+                Result.failure(java.io.IOException("offline test double"))
+        }
+        repo = AccrescentRepository(ctx, db, AccrescentApi { deadChannel }, failingFetcher)
     }
 
     @AfterTest

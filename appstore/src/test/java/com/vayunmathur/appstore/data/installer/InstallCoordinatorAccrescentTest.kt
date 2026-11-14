@@ -110,11 +110,21 @@ class InstallCoordinatorAccrescentTest {
             .allowMainThreadQueries()
             .build()
         scope = CoroutineScope(Dispatchers.Unconfined)
+        // The repodata refresh must fail closed and leave the trust rows
+        // each test seeds: with live network it would succeed and replace
+        // them with the real allowlist, which does not vouch for the fake
+        // app ids below.
+        val failingFetcher = object :
+            com.vayunmathur.appstore.data.accrescent.AccrescentRepoDataFetcher(context) {
+            override suspend fun fetch():
+                Result<com.vayunmathur.appstore.data.accrescent.RepoData> =
+                Result.failure(java.io.IOException("offline test double"))
+        }
         coordinator = InstallCoordinator(
             context = context,
             db = db,
             play = PlayRepository(context),
-            accrescent = AccrescentRepository(context, db, AccrescentApi { channel }),
+            accrescent = AccrescentRepository(context, db, AccrescentApi { channel }, failingFetcher),
             scope = scope,
             ownSigningCertificates = { emptySet() },
         )
