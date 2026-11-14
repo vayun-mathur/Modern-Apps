@@ -322,6 +322,7 @@ impl ArchiveView {
         }
         // Attrs / spatial / words each refuse a count mismatch (ordinal join).
         if let Some(b) = slice(ARCHIVE_KIND_POI_ATTRS)? {
+            let b = &*poi_head(b)?;
             if b.len() < 12 {
                 return err("a single-archive POI attrs end before their header");
             }
@@ -362,6 +363,7 @@ impl ArchiveView {
         }
         // Region: PRG1 header + one u64 tagged id per index ordinal (ordinal join).
         if let Some(b) = slice(ARCHIVE_KIND_POI_REGION)? {
+            let b = &*poi_head(b)?;
             if b.len() < 12 {
                 return err("a single-archive POI region ends before its header");
             }
@@ -398,4 +400,21 @@ impl ArchiveView {
         }
         Ok(())
     }
+}
+
+/// A POI sidecar's leading bytes for the header checks: the section itself, or -- for a planet5
+/// block-compressed section (a DEFLATE-codec [`crate::zsec`] section; the attrs and region
+/// sidecars) -- its first decoded block, which starts with the same header.
+fn poi_head(b: &[u8]) -> Result<std::borrow::Cow<'_, [u8]>> {
+    if b.len() >= 4 && &b[..4] == crate::zsec::ZSEC_MAGIC {
+        let z = crate::zsec::ZSec::parse(b)?;
+        if z.codec() != crate::zsec::ZSEC_CODEC_DEFLATE {
+            return err("a block-compressed POI section must use the DEFLATE codec");
+        }
+        if z.block_count() == 0 {
+            return Ok(std::borrow::Cow::Owned(Vec::new()));
+        }
+        return Ok(std::borrow::Cow::Owned(z.block(0)?));
+    }
+    Ok(std::borrow::Cow::Borrowed(b))
 }

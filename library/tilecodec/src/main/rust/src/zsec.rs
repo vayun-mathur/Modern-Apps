@@ -8,10 +8,15 @@
 //! them; nothing is ever decoded whole.
 //!
 //! ```text
-//! [magic "ZSEC" u32][block_size u32][raw_len u64][block_count u32][reserved u32 = 0]
+//! [magic "ZSEC" u32][block_size u32][raw_len u64][block_count u32][codec u32]
 //! [offsets u64 x (block_count + 1)]   absolute from the section start; last = section end
-//! [zstd frame][zstd frame]...
+//! [block][block]...
 //! ```
+//!
+//! `codec` 0 ([`ZSEC_CODEC_ZSTD`]): each block is a zstd frame (transit; read in Rust).
+//! `codec` 1 ([`ZSEC_CODEC_DEFLATE`]): each block is raw DEFLATE (RFC 1951, no zlib/gzip
+//! framing) -- the POI sections, which the app reads in Kotlin with `java.util.zip.Inflater`
+//! (`nowrap`), so they need no JNI and no new dependency. Same layout either way.
 //!
 //! Measured on the planet: 64 KiB blocks at zstd-19 shrink `world.transit` 2.56x and the POI
 //! sections 1.4-40x, at ~0.4 ms of host decode per cold block.
@@ -22,6 +27,10 @@ pub const ZSEC_MAGIC: &[u8; 4] = b"ZSEC";
 pub const ZSEC_HEADER_LEN: usize = 24;
 /// The block size the writers use.
 pub const ZSEC_BLOCK: usize = 64 * 1024;
+/// Blocks are zstd frames.
+pub const ZSEC_CODEC_ZSTD: u32 = 0;
+/// Blocks are raw DEFLATE streams.
+pub const ZSEC_CODEC_DEFLATE: u32 = 1;
 
 /// A parsed ZSEC section over bytes the caller keeps alive.
 #[derive(Clone, Copy)]
@@ -30,6 +39,7 @@ pub struct ZSec<'a> {
     block_size: usize,
     raw_len: u64,
     block_count: usize,
+    codec: u32,
 }
 
 impl<'a> ZSec<'a> {
@@ -41,8 +51,9 @@ impl<'a> ZSec<'a> {
         let block_size = u32_at(4) as usize;
         let raw_len = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
         let block_count = u32_at(16) as usize;
-        if u32_at(20) != 0 {
-            return err("a ZSEC section sets reserved bits");
+        let codec = u32_at(20);
+        if codec != ZSEC_CODEC_ZSTD && codec != ZSEC_CODEC_DEFLATE {
+            return err(format!("a ZSEC section uses unknown codec {codec}"));
         }
         if block_size == 0 || (raw_len as u128) > block_count as u128 * block_size as u128 {
             return err("a ZSEC section's blocks cannot hold its length");
@@ -54,7 +65,7 @@ impl<'a> ZSec<'a> {
         if table_end > bytes.len() {
             return err("a ZSEC offset table runs past its section");
         }
-        let z = ZSec { bytes, block_size, raw_len, block_count };
+        let z = ZSec { bytes, block_size, raw_len, block_count, codec };
         let mut prev = table_end as u64;
         for i in 0..=block_count {
             let o = z.offset(i);
@@ -86,6 +97,11 @@ impl<'a> ZSec<'a> {
         self.block_count
     }
 
+    /// [`ZSEC_CODEC_ZSTD`] or [`ZSEC_CODEC_DEFLATE`].
+    pub fn codec(&self) -> u32 {
+        self.codec
+    }
+
     /// The decoded length of block `b` (the last one holds the remainder).
     pub fn block_len(&self, b: usize) -> usize {
         let start = b as u64 * self.block_size as u64;
@@ -98,7 +114,16 @@ impl<'a> ZSec<'a> {
             return err(format!("ZSEC block {b} of {}", self.block_count));
         }
         let frame = &self.bytes[self.offset(b) as usize..self.offset(b + 1) as usize];
-        let mut out = vec![0u8; self.block_len(b)];
+        let want = self.block_len(b);
+        if self.codec == ZSEC_CODEC_DEFLATE {
+            let out = miniz_oxide::inflate::decompress_to_vec_with_limit(frame, want)
+                .map_err(|e| Error(format!("a ZSEC DEFLATE block will not decode: {e:?}")))?;
+            if out.len() != want {
+                return err("a ZSEC block decoded to the wrong length");
+            }
+            return Ok(out);
+        }
+        let mut out = vec![0u8; want];
         let mut dec = ruzstd::decoding::FrameDecoder::new();
         let n = dec
             .decode_all(frame, &mut out)
@@ -114,36 +139,57 @@ impl<'a> ZSec<'a> {
 /// all cores (each is independent, so the output is the same at any thread count).
 #[cfg(feature = "write")]
 pub fn write_zsec(raw: &[u8], block_size: usize, level: i32) -> Vec<u8> {
+    let frames = compress_blocks(raw, block_size, |run| {
+        let cfg = zstd_rs::CompressionConfig { level, ..zstd_rs::CompressionConfig::DEFAULT };
+        let mut enc = zstd_rs::Compressor::new(cfg).expect("valid zstd level");
+        run.iter()
+            .map(|b| {
+                let mut out = Vec::with_capacity(b.len() / 2);
+                enc.compress(b, None, &mut out).expect("zstd encode of an in-memory block");
+                out
+            })
+            .collect()
+    });
+    assemble(raw.len(), block_size, ZSEC_CODEC_ZSTD, frames)
+}
+
+/// Compress `raw` into a DEFLATE-codec ZSEC section (`level` 0..=10, miniz_oxide's scale; 10 is
+/// its slowest/best). For sections the app reads from Kotlin (see the module docs).
+#[cfg(feature = "write")]
+pub fn write_zsec_deflate(raw: &[u8], block_size: usize, level: u8) -> Vec<u8> {
+    let frames = compress_blocks(raw, block_size, |run| {
+        run.iter().map(|b| miniz_oxide::deflate::compress_to_vec(b, level)).collect()
+    });
+    assemble(raw.len(), block_size, ZSEC_CODEC_DEFLATE, frames)
+}
+
+/// Every `block_size` chunk of `raw` through `enc`, on all cores; output order is block order.
+#[cfg(feature = "write")]
+fn compress_blocks(
+    raw: &[u8],
+    block_size: usize,
+    enc: impl Fn(&[&[u8]]) -> Vec<Vec<u8>> + Sync,
+) -> Vec<Vec<u8>> {
     let blocks: Vec<&[u8]> = raw.chunks(block_size.max(1)).collect();
     let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1).max(1);
     let per = blocks.len().div_ceil(threads).max(1);
-    let frames: Vec<Vec<u8>> = std::thread::scope(|s| {
-        let handles: Vec<_> = blocks
-            .chunks(per)
-            .map(|run| {
-                s.spawn(move || {
-                    let cfg = zstd_rs::CompressionConfig { level, ..zstd_rs::CompressionConfig::DEFAULT };
-                    let mut enc = zstd_rs::Compressor::new(cfg).expect("valid zstd level");
-                    run.iter()
-                        .map(|b| {
-                            let mut out = Vec::with_capacity(b.len() / 2);
-                            enc.compress(b, None, &mut out).expect("zstd encode of an in-memory block");
-                            out
-                        })
-                        .collect::<Vec<_>>()
-                })
-            })
-            .collect();
+    let enc = &enc;
+    std::thread::scope(|s| {
+        let handles: Vec<_> = blocks.chunks(per).map(|run| s.spawn(move || enc(run))).collect();
         handles.into_iter().flat_map(|h| h.join().expect("a ZSEC compression thread")).collect()
-    });
+    })
+}
+
+#[cfg(feature = "write")]
+fn assemble(raw_len: usize, block_size: usize, codec: u32, frames: Vec<Vec<u8>>) -> Vec<u8> {
     let table_end = ZSEC_HEADER_LEN + (frames.len() + 1) * 8;
     let total = table_end + frames.iter().map(|f| f.len()).sum::<usize>();
     let mut out = Vec::with_capacity(total);
     out.extend_from_slice(ZSEC_MAGIC);
     out.extend_from_slice(&(block_size as u32).to_le_bytes());
-    out.extend_from_slice(&(raw.len() as u64).to_le_bytes());
+    out.extend_from_slice(&(raw_len as u64).to_le_bytes());
     out.extend_from_slice(&(frames.len() as u32).to_le_bytes());
-    out.extend_from_slice(&0u32.to_le_bytes());
+    out.extend_from_slice(&codec.to_le_bytes());
     let mut at = table_end as u64;
     for f in &frames {
         out.extend_from_slice(&at.to_le_bytes());
@@ -173,6 +219,24 @@ mod tests {
             }
             assert_eq!(back, raw, "len {len}");
         }
+    }
+
+    #[test]
+    fn a_deflate_zsec_section_round_trips_every_block() {
+        for len in [0usize, 1, 1000, ZSEC_BLOCK, ZSEC_BLOCK + 1, 3 * ZSEC_BLOCK + 17] {
+            let raw: Vec<u8> = (0..len).map(|i| (i * 31 % 251) as u8).collect();
+            let sec = write_zsec_deflate(&raw, ZSEC_BLOCK, 10);
+            let z = ZSec::parse(&sec).expect("parse");
+            assert_eq!(z.codec(), ZSEC_CODEC_DEFLATE);
+            let mut back = Vec::new();
+            for b in 0..z.block_count() {
+                back.extend_from_slice(&z.block(b).expect("block"));
+            }
+            assert_eq!(back, raw, "len {len}");
+        }
+        let mut bad = write_zsec_deflate(&[1u8; 10], ZSEC_BLOCK, 10);
+        bad[20] = 7;
+        assert!(ZSec::parse(&bad).is_err(), "unknown codec");
     }
 
     #[test]
