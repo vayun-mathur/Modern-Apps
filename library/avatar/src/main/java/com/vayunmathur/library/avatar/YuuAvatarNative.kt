@@ -22,8 +22,12 @@ internal object YuuAvatarNative {
         nativeInit()
         Log.status("YuuAvatarNative", "libyuu_avatar loaded")
         true
-    } catch (t: Throwable) {
-        Log.status("YuuAvatarNative", "libyuu_avatar absent - using placeholder")
+    } catch (e: UnsatisfiedLinkError) {
+        // Library absent on this device: surfaces use the placeholder.
+        Log.status("YuuAvatarNative", "libyuu_avatar absent - using placeholder (${e.message})")
+        false
+    } catch (e: SecurityException) {
+        Log.status("YuuAvatarNative", "libyuu_avatar load denied - using placeholder (${e.message})")
         false
     }
 

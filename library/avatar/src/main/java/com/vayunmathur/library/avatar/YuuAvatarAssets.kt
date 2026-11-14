@@ -4,6 +4,7 @@ import android.content.res.AssetFileDescriptor
 import android.content.res.AssetManager
 import android.os.ParcelFileDescriptor
 import com.vayunmathur.library.log.Log
+import java.io.IOException
 
 /**
  * Loads `models/base_upperbody.glb` from this module's assets and hands the
@@ -27,7 +28,7 @@ object YuuAvatarAssets {
         if (!YuuAvatarNative.isAvailable) return
         try {
             assets.openFd(BASE_MESH_PATH).use { afd -> handOff(afd) }
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             Log.status("YuuAvatarAssets", "no bundled mesh - procedural fallback (${e.message})")
         }
     }

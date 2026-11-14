@@ -68,7 +68,7 @@ fun YuuAvatar3D(
 
     // Debounced config push: rapid draft edits coalesce into one JNI call.
     LaunchedEffect(configJson, pose, surfaceId) {
-        delay(200)
+        delay(CONFIG_DEBOUNCE_MS)
         YuuAvatarNative.setConfig(surfaceId, configJson, pose)
     }
 
@@ -112,3 +112,6 @@ fun YuuAvatar3D(
 
 /** Radians of orbit per pixel of drag. */
 private const val DRAG_RAD_PER_PX = 0.008f
+
+/** Coalescing window for config pushes: rapid draft edits merge into one JNI call. */
+private const val CONFIG_DEBOUNCE_MS = 200L
