@@ -46,6 +46,7 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
         }
     }
 
+    /** WorkManager input keys, enqueue entry points and spec decoding for [ModelDownloadWorker]. */
     companion object {
         private const val KEY_URLS = "urls"
         private const val KEY_FILE_NAMES = "fileNames"
@@ -155,11 +156,11 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
             val hashes = data.getStringArray(KEY_HASHES) ?: return emptyList()
             // Old enqueues predate sizes: default every entry to unknown.
             val sizes = data.getLongArray(KEY_SIZES)
-            if (fileNames.size != urls.size ||
+            val sizesMismatch = fileNames.size != urls.size ||
                 descriptions.size != urls.size ||
                 hashes.size != urls.size ||
                 (sizes != null && sizes.size != urls.size)
-            ) {
+            if (sizesMismatch) {
                 return emptyList()
             }
             return urls.indices.map { i ->
