@@ -18,6 +18,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
+/**
+ * Receives a fired alarm, posts the insistent ring notification, starts the sound service,
+ * and re-arms repeating alarms.
+ */
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         createNotificationChannels(context)
@@ -47,7 +51,7 @@ class AlarmReceiver : BroadcastReceiver() {
         // behind (stale notification, second service start) before posting our own.
         stopPreviousRing(context)
 
-        postRingNotification(context, intent, alarmId, pendingIntent)
+        postRingNotification(context, intent, pendingIntent)
         rescheduleAlarm(context, alarmId, isSnooze)
         startSoundService(context, alarmId)
         startRingActivity(context, alarmId, ringIntent)
@@ -56,7 +60,6 @@ class AlarmReceiver : BroadcastReceiver() {
     private fun postRingNotification(
         context: Context,
         intent: Intent,
-        alarmId: Long,
         pendingIntent: PendingIntent,
     ) {
         // 3. Build the Notification. For most alarms this is the backstop: FLAG_INSISTENT

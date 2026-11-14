@@ -41,6 +41,7 @@ interface AlarmActions {
     fun setSnoozeMinutes(alarm: Alarm, minutes: Int) {}
     fun setGradualVolumeSeconds(alarm: Alarm, seconds: Int) {}
 
+        /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: AlarmActions = object : AlarmActions {}
     }
@@ -79,6 +80,7 @@ interface TimerActions {
     /** Play/pause, or restart a timer that has already finished. */
     fun toggle(timer: Timer) {}
 
+        /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: TimerActions = object : TimerActions {}
     }
@@ -108,6 +110,7 @@ interface StopwatchActions {
     fun resetStopwatch() {}
     fun addLap() {}
 
+        /** Provides the no-op implementation used by previews. */
     companion object {
         val Noop: StopwatchActions = object : StopwatchActions {}
     }

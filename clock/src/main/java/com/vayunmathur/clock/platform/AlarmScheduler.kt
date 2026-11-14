@@ -18,6 +18,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
+/** Schedules, cancels, and snoozes alarms through AlarmManager, carrying ring settings in the broadcast extras. */
 object AlarmScheduler {
     /**
      * Whether this alarm fades in, carried in the broadcast so AlarmReceiver can pick a channel

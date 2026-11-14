@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** Foreground service that plays the ringing alarm's ringtone and vibration until dismissed, snoozed, or timed out. */
 class AlarmSoundService : Service() {
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
@@ -250,6 +251,7 @@ class AlarmSoundService : Service() {
 
     override fun onBind(intent: Intent?) = null
 
+        /** Notification id and ring timeout shared with the alarm receiver. */
     companion object {
         const val NOTIFICATION_ID = 1001
 

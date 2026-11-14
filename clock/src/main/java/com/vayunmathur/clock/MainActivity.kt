@@ -37,6 +37,10 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.util.DataStoreUtils
 
+/**
+ * Entry activity that owns the [ClockViewModel], creates notification channels, and gates
+ * the UI on notification and alarm permissions.
+ */
 class MainActivity : MaActivity() {
     private val clockViewModel: ClockViewModel by viewModels {
         ClockViewModelFactory(application, ClockRepository.get(application))

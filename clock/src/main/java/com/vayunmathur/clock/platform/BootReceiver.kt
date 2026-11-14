@@ -37,77 +37,10 @@ class BootReceiver : BroadcastReceiver() {
                 val pendingResult = goAsync()
                 CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                     try {
-                        val alarms = repository.getAllAlarms()
-                        var rings = 0
-                        var snoozes = 0
                         val now = Clock.System.now()
-                        alarms.filter { it.enabled }.forEach { alarm ->
-                            AlarmScheduler.schedule(context, alarm)
-                            rings++
-                            // Snoozes live in AlarmManager, which does not survive a
-                            // reboot; the trigger time is persisted on the alarm, so
-                            // re-arm those still in the future. Spent ones just clear.
-                            val snoozedUntil = alarm.snoozedUntil
-                            if (snoozedUntil != null) {
-                                if (snoozedUntil > now) {
-                                    // Re-arm for the persisted instant itself:
-                                    // recomputing from whole minutes would ring
-                                    // up to 59 seconds early.
-                                    AlarmScheduler.scheduleSnoozeAt(
-                                        context,
-                                        repository,
-                                        alarm,
-                                        snoozedUntil.toEpochMilliseconds(),
-                                    )
-                                    snoozes++
-                                } else {
-                                    repository.upsertAlarm(alarm.copy(snoozedUntil = null))
-                                }
-                            }
-                        }
-                        // Running timers are AlarmManager entries too, so a reboot
-                        // kills them exactly like alarms; nothing else ever re-armed
-                        // them, and the row would sit at isRunning=true counting
-                        // into negative time with no finish notification. Re-arm
-                        // those still in the future and complete those that
-                        // expired while the device was off. (On a timezone/clock
-                        // change this same pass is a no-op repost: a timer's end
-                        // is a duration from a stored instant, which neither
-                        // change moves.)
-                        var timersRearmed = 0
-                        var timersCompleted = 0
-                        repository.getAllTimers().filter { it.isRunning }.forEach { timer ->
-                            // One bad timer must not take the others down with it.
-                            runCatching {
-                                if (timerRemaining(timer, now) > Duration.ZERO) {
-                                    sendTimerNotification(context, timer, true)
-                                    timersRearmed++
-                                } else {
-                                    repository.upsertTimer(
-                                        timer.copy(
-                                            isRunning = false,
-                                            remainingLength = Duration.ZERO,
-                                            remainingStartTime = now,
-                                        )
-                                    )
-                                    // TimerReceiver posts the "time's up"
-                                    // notification and re-writes the completed
-                                    // row. It is not direct-boot aware, so at
-                                    // LOCKED_BOOT_COMPLETED this broadcast may
-                                    // go nowhere; the completed row above is
-                                    // what the timer list then shows.
-                                    context.sendBroadcast(
-                                        Intent(context, TimerReceiver::class.java).apply {
-                                            putExtra("timer_id", timer.id)
-                                            putExtra("timer_name", timer.name)
-                                        }
-                                    )
-                                    timersCompleted++
-                                }
-                            }.onFailure {
-                                Log.error(TAG, "Timer ${timer.id}: could not restore after ${intent.action}", it)
-                            }
-                        }
+                        val (rings, snoozes) = rescheduleAlarms(context, repository, now)
+                        val (timersRearmed, timersCompleted) =
+                            restoreTimers(context, repository, now, intent.action)
                         Log.status(
                             TAG,
                             "${intent.action}: rescheduled $rings alarm(s) and $snoozes snooze(s); " +
@@ -125,6 +58,87 @@ class BootReceiver : BroadcastReceiver() {
                 }
             }
         }
+    }
+
+    private suspend fun rescheduleAlarms(
+        context: Context,
+        repository: ClockRepository,
+        now: kotlin.time.Instant,
+    ): Pair<Int, Int> {
+        var rings = 0
+        var snoozes = 0
+        repository.getAllAlarms().filter { it.enabled }.forEach { alarm ->
+            AlarmScheduler.schedule(context, alarm)
+            rings++
+            // Snoozes live in AlarmManager, which does not survive a reboot; the
+            // trigger time is persisted on the alarm, so re-arm those still in the
+            // future. Spent ones just clear.
+            val snoozedUntil = alarm.snoozedUntil
+            if (snoozedUntil != null) {
+                if (snoozedUntil > now) {
+                    // Re-arm for the persisted instant itself: recomputing from whole
+                    // minutes would ring up to 59 seconds early.
+                    AlarmScheduler.scheduleSnoozeAt(
+                        context,
+                        repository,
+                        alarm,
+                        snoozedUntil.toEpochMilliseconds(),
+                    )
+                    snoozes++
+                } else {
+                    repository.upsertAlarm(alarm.copy(snoozedUntil = null))
+                }
+            }
+        }
+        return rings to snoozes
+    }
+
+    private suspend fun restoreTimers(
+        context: Context,
+        repository: ClockRepository,
+        now: kotlin.time.Instant,
+        action: String?,
+    ): Pair<Int, Int> {
+        // Running timers are AlarmManager entries too, so a reboot kills them exactly
+        // like alarms; nothing else ever re-armed them, and the row would sit at
+        // isRunning=true counting into negative time with no finish notification.
+        // Re-arm those still in the future and complete those that expired while the
+        // device was off. (On a timezone/clock change this same pass is a no-op
+        // repost: a timer's end is a duration from a stored instant, which neither
+        // change moves.)
+        var timersRearmed = 0
+        var timersCompleted = 0
+        repository.getAllTimers().filter { it.isRunning }.forEach { timer ->
+            // One bad timer must not take the others down with it.
+            runCatching {
+                if (timerRemaining(timer, now) > Duration.ZERO) {
+                    sendTimerNotification(context, timer, true)
+                    timersRearmed++
+                } else {
+                    repository.upsertTimer(
+                        timer.copy(
+                            isRunning = false,
+                            remainingLength = Duration.ZERO,
+                            remainingStartTime = now,
+                        )
+                    )
+                    // TimerReceiver posts the "time's up" notification and re-writes
+                    // the completed row. It is not direct-boot aware, so at
+                    // LOCKED_BOOT_COMPLETED this broadcast may go nowhere; the
+                    // completed row above is what the timer list then shows.
+                    context.sendBroadcast(
+                        Intent(context, TimerReceiver::class.java).apply {
+                            putExtra("timer_id", timer.id)
+                            putExtra("timer_name", timer.name)
+                        }
+                    )
+                    timersCompleted++
+                }
+            }.onFailure {
+                Log.error(TAG, "Timer ${timer.id}: could not restore after $action", it)
+            }
+        }
+        return timersRearmed to timersCompleted
     }
 
     private companion object {

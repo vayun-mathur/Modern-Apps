@@ -13,6 +13,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+/** Handles stopwatch notification actions (toggle, lap, stop) against DataStore-backed stopwatch state. */
 class StopwatchActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
@@ -71,6 +72,7 @@ class StopwatchActionReceiver : BroadcastReceiver() {
         }
     }
 
+        /** Notification action names, DataStore keys, and notification id for the stopwatch. */
     companion object {
         const val ACTION_TOGGLE = "com.vayunmathur.clock.STOPWATCH_TOGGLE"
         const val ACTION_LAP = "com.vayunmathur.clock.STOPWATCH_LAP"

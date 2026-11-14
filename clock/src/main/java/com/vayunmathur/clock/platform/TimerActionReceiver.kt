@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Duration
 
+/** Handles timer notification actions (pause, resume, cancel, reset) against persisted timers. */
 class TimerActionReceiver : BroadcastReceiver() {
     // Broad catch is deliberate: onReceive must not throw, and Room throws
     // undocumented RuntimeExceptions (not just SQLiteException).
@@ -132,6 +133,7 @@ class TimerActionReceiver : BroadcastReceiver() {
         am.cancel(pendingAlarm)
     }
 
+        /** Notification action names broadcast to this receiver. */
     companion object {
         const val ACTION_PAUSE = "com.vayunmathur.clock.TIMER_PAUSE"
         const val ACTION_RESUME = "com.vayunmathur.clock.TIMER_RESUME"

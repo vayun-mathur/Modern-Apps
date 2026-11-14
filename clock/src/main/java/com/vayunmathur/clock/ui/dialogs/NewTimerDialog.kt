@@ -133,6 +133,7 @@ fun NewTimerDialog(
     )
 }
 
+/** Formats up to six raw digits as an hh:mm:ss display string for the new-timer field. */
 class TimeVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val raw = text.text.padStart(6, '0')

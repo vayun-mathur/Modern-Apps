@@ -19,6 +19,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
 
+/** A persisted countdown timer, with its remaining length measured from [remainingStartTime] while running. */
 @Entity
 data class Timer(
     var isRunning: Boolean,
@@ -43,6 +44,7 @@ data class Timer(
     }
 }
 
+/** A persisted alarm; [days] is a weekday bitmask with bit 0 as Sunday. */
 @Entity
 data class Alarm(
     var time: LocalTime,
@@ -63,6 +65,7 @@ data class Alarm(
     override var id: Long = 0,
 ): DatabaseItem
 
+/** Room access for persisted [Timer] rows. */
 @Dao
 interface TimerDao {
     @Query("SELECT * FROM Timer")
@@ -81,6 +84,7 @@ interface TimerDao {
     suspend fun delete(value: Timer): Int
 }
 
+/** Room access for persisted [Alarm] rows, ordered by time. */
 @Dao
 interface AlarmDao {
     @Query("SELECT * FROM Alarm ORDER BY time")
@@ -99,12 +103,14 @@ interface AlarmDao {
     suspend fun delete(value: Alarm): Int
 }
 
+/** Room database holding the clock app's timers and alarms. */
 @ColumnTypeConverters(DefaultConverters::class)
 @Database(entities = [Timer::class, Alarm::class], version = 3, exportSchema = false)
 abstract class ClockDatabase: RoomDatabase() {
     abstract fun timerDao(): TimerDao
     abstract fun alarmDao(): AlarmDao
 
+    /** Migration definitions upgrading the clock database schema between versions. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations: List<Migration> = listOf(
             Migration(1, 2) {

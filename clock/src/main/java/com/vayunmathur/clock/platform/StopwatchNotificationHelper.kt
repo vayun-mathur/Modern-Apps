@@ -12,6 +12,7 @@ import com.vayunmathur.library.util.DataStoreUtils
 import java.util.Locale
 import kotlin.time.Clock
 
+/** Builds and updates the ongoing stopwatch notification with pause, lap, and stop actions. */
 object StopwatchNotificationHelper {
     fun updateNotification(context: Context) {
         val ds = DataStoreUtils.getInstance(context)

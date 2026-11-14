@@ -351,6 +351,7 @@ class ClockViewModel(
         return map
     }
 
+        /** Tick timings and DataStore keys for alarm defaults. */
     companion object {
         private const val TAG = "ClockViewModel"
         private const val TICK_MS = 100L

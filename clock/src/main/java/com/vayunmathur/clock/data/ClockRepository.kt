@@ -45,6 +45,7 @@ class ClockRepository private constructor(context: Context) :
     suspend fun upsertAlarm(alarm: Alarm): Long = alarmDao.upsert(alarm)
     suspend fun deleteAlarm(alarm: Alarm): Int = alarmDao.delete(alarm)
 
+    /** Holds the process-wide [ClockRepository] singleton. */
     companion object {
         @Volatile
         private var instance: ClockRepository? = null

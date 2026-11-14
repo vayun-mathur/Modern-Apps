@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** Full-screen ringing screen shown when an alarm fires, offering dismiss and snooze. */
 class AlarmActivity : ComponentActivity() {
     private var alarmId: Long = -1L
     private var alarm: Alarm? by mutableStateOf(null)

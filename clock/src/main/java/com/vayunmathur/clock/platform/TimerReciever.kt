@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Duration
 
+/** Receives a finished timer, posts its completion notification, and marks the timer stopped. */
 class TimerReceiver : BroadcastReceiver() {
     // Broad catch is deliberate: onReceive must not throw, and Room throws
     // undocumented RuntimeExceptions (not just SQLiteException).
