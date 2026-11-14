@@ -37,7 +37,10 @@ internal fun LocationTrackingService.startTrackerScanner() {
                     return@collect
                 }
                 if (loc.accuracy > MAX_FIX_ACCURACY_METERS) {
-                    Log.status("FF-Tracker", "sighting dropped: accuracy ${loc.accuracy}m > ${MAX_FIX_ACCURACY_METERS}m")
+                    Log.status(
+                        "FF-Tracker",
+                        "sighting dropped: accuracy ${loc.accuracy}m > ${MAX_FIX_ACCURACY_METERS}m"
+                    )
                     return@collect
                 }
                 val battery = runCatching {
@@ -132,9 +135,13 @@ internal fun LocationTrackingService.startPoweredOffScanner() {
                             0f,
                         )
                         runCatching { PoweredOffReporting.reportSighting(sighting, lv) }
-                            .onFailure { Log.status(LocationTrackingService.TAG_POWERED_OFF, "reportSighting failed", it) }
+                            .onFailure {
+                                Log.status(LocationTrackingService.TAG_POWERED_OFF, "reportSighting failed", it)
+                            }
                     }
-                }.onFailure { Log.status(LocationTrackingService.TAG_POWERED_OFF, "powered-off scan collect failed", it) }
+                }.onFailure {
+                    Log.status(LocationTrackingService.TAG_POWERED_OFF, "powered-off scan collect failed", it)
+                }
             }
     }
 }

@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/** Restarts location sharing and no-show checks after boot or app replacement. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         // LOCKED_BOOT_COMPLETED is the only one of these delivered before the user unlocks,

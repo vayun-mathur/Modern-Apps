@@ -84,51 +84,7 @@ internal suspend fun LocationTrackingService.processIncomingFixes(incoming: List
     val authenticated = ArrayList<LocationValue>(incoming.size)
     val strangerIds = LinkedHashSet<Long>()
     for (fix in incoming) {
-        val loc = fix.location
-        val senderId = loc.userid
-        if (senderId == Networking.userid) continue
-        if (PairAuth.isFromTheFuture(loc.reportedAt, loc.timestamp, now)) {
-            Log.status(
-                "FF-Heartbeat",
-                "dropped future-dated fix from ${senderId.toULong()} " +
-                    "reportedAt=${loc.reportedAt} timestamp=${loc.timestamp}"
-            )
-            continue
-        }
-        val peer = usersById[senderId]
-        if (peer == null || peer.kind != UserKind.PERSON || senderId !in eligibleIds) {
-            // Stranger, tracker claim, or not-yet-mutual: request row at most, never a pin,
-            // never storage. Collected for the single insert below.
-            if (peer == null && senderId != Networking.userid) strangerIds.add(senderId)
-            else Log.status(
-                "FF-Heartbeat",
-                "dropped fix from ineligible sender ${senderId.toULong()} " +
-                    "(known=${peer != null} kind=${peer?.kind} status=${peer?.requestStatus})"
-            )
-            continue
-        }
-        when (PairAuth.checkInbound(peer.inboundPairId, fix.pairId)) {
-            PairAuth.InboundVerdict.ACCEPT_MATCH,
-            PairAuth.InboundVerdict.ACCEPT_LEGACY,
-            -> authenticated.add(loc)
-            PairAuth.InboundVerdict.ACCEPT_PIN -> {
-                runCatching { repository.pinInboundPairId(senderId, fix.pairId!!) }
-                Log.dev(
-                    "FF-Heartbeat",
-                    "pinned inbound pair ID for ${senderId.toULong()} " +
-                        "(preview ${PairAuth.logPreview(fix.pairId)})"
-                )
-                authenticated.add(loc)
-            }
-            PairAuth.InboundVerdict.DROP_MISMATCH,
-            PairAuth.InboundVerdict.DROP_MISSING,
-            -> Log.status(
-                "FF-Heartbeat",
-                "dropped unauthenticated fix claiming ${senderId.toULong()} " +
-                    "(pair ${PairAuth.logPreview(fix.pairId)}, " +
-                    "expected ${PairAuth.logPreview(peer.inboundPairId)})"
-            )
-        }
+        collectAuthenticatedFix(fix, usersById, eligibleIds, now, authenticated, strangerIds)
     }
     if (strangerIds.isNotEmpty()) {
         Log.dev("FF-Heartbeat", "newUsers to insert=${strangerIds.map { it.toULong() }}")
@@ -137,6 +93,61 @@ internal suspend fun LocationTrackingService.processIncomingFixes(incoming: List
         })
     }
     processIncomingLocations(authenticated)
+}
+
+private suspend fun LocationTrackingService.collectAuthenticatedFix(
+    fix: InboundFix,
+    usersById: Map<Long, User>,
+    eligibleIds: Set<Long>,
+    now: kotlin.time.Instant,
+    authenticated: MutableList<LocationValue>,
+    strangerIds: MutableSet<Long>,
+) {
+    val loc = fix.location
+    val senderId = loc.userid
+    if (senderId == Networking.userid) return
+    if (PairAuth.isFromTheFuture(loc.reportedAt, loc.timestamp, now)) {
+        Log.status(
+            "FF-Heartbeat",
+            "dropped future-dated fix from ${senderId.toULong()} " +
+                "reportedAt=${loc.reportedAt} timestamp=${loc.timestamp}"
+        )
+        return
+    }
+    val peer = usersById[senderId]
+    if (peer == null || peer.kind != UserKind.PERSON || senderId !in eligibleIds) {
+        // Stranger, tracker claim, or not-yet-mutual: request row at most, never a pin,
+        // never storage. Collected for the single insert in the caller.
+        if (peer == null) strangerIds.add(senderId)
+        else Log.status(
+            "FF-Heartbeat",
+            "dropped fix from ineligible sender ${senderId.toULong()} " +
+                "(known=true kind=${peer.kind} status=${peer.requestStatus})"
+        )
+        return
+    }
+    when (PairAuth.checkInbound(peer.inboundPairId, fix.pairId)) {
+        PairAuth.InboundVerdict.ACCEPT_MATCH,
+        PairAuth.InboundVerdict.ACCEPT_LEGACY,
+        -> authenticated.add(loc)
+        PairAuth.InboundVerdict.ACCEPT_PIN -> {
+            runCatching { repository.pinInboundPairId(senderId, fix.pairId!!) }
+            Log.dev(
+                "FF-Heartbeat",
+                "pinned inbound pair ID for ${senderId.toULong()} " +
+                    "(preview ${PairAuth.logPreview(fix.pairId)})"
+            )
+            authenticated.add(loc)
+        }
+        PairAuth.InboundVerdict.DROP_MISMATCH,
+        PairAuth.InboundVerdict.DROP_MISSING,
+        -> Log.status(
+            "FF-Heartbeat",
+            "dropped unauthenticated fix claiming ${senderId.toULong()} " +
+                "(pair ${PairAuth.logPreview(fix.pairId)}, " +
+                "expected ${PairAuth.logPreview(peer.inboundPairId)})"
+        )
+    }
 }
 
 /**
@@ -228,7 +239,7 @@ internal suspend fun LocationTrackingService.enrichIncomingLocations(
     latestMap: Map<Long, LocationValue>,
 ) {
     val currentUsers = repository.getAllUsers()
-    val currentWaypoints = repository.getAllWaypoints()
+    val currentWaypoints = repository.waypointStore.getAll()
     currentUsers.forEach { user ->
         enrichOneUser(user, locList, latestMap, currentWaypoints)
     }

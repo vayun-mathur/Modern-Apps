@@ -83,7 +83,7 @@ class LocationTrackingHeartbeatTest {
     @Test
     fun syncHeartbeatPersistsSelfAndCleansExpiredLinks() = runBlocking {
         val peer = repo.upsertUser(user("Peer"))
-        repo.upsertWaypoint(Waypoint(name = "Home", range = 500.0, coord = Coord(51.5, -0.12)))
+        repo.waypointStore.upsert(Waypoint(name = "Home", range = 500.0, coord = Coord(51.5, -0.12)))
         val expired = TemporaryLink(name = "old", deleteAt = Instant.fromEpochMilliseconds(1), pqcPublicKey = "pub")
         repo.temporaryLinkStore.upsert(expired)
         service.lastKnownLocation = location()

@@ -110,6 +110,7 @@ class PoweredOffScanner(private val context: Context) {
         return builder.build()
     }
 
+    /** Logging tag for [PoweredOffScanner]. */
     companion object {
         private const val TAG = "PoweredOffScanner"
     }

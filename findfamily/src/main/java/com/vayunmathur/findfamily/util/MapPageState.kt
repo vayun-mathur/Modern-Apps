@@ -120,8 +120,8 @@ class MapPageState(
         val id = _selectedWaypointId.value ?: return
         val coord = _waypointCoord.value
         scope.launch(Dispatchers.IO) {
-            val base = if (id == 0L) Waypoint.NEW_WAYPOINT else repository.getWaypoint(id)
-            repository.upsertWaypoint(base.copy(name = name, range = range, coord = coord))
+            val base = if (id == 0L) Waypoint.NEW_WAYPOINT else repository.waypointStore.get(id)
+            repository.waypointStore.upsert(base.copy(name = name, range = range, coord = coord))
             withContext(Dispatchers.Main) {
                 _selectedWaypointId.value = null
             }

@@ -1,4 +1,5 @@
 package com.vayunmathur.findfamily.ui.dialogs
+import com.vayunmathur.findfamily.util.myInviteFingerprint
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement

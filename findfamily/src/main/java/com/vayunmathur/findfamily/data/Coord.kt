@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlin.math.PI
 
 @Serializable
+/** Geographic coordinate in decimal degrees, embedded in Room rows and carried on the wire. */
 data class Coord(val lat: Double, val lon: Double)
 
 fun Coord.toGeoPoint() = GeoPoint(lon, lat)

@@ -119,23 +119,13 @@ class FindFamilyRepository internal constructor(
     // Waypoint reads / writes
     // ------------------------------------------------------------------
 
-    suspend fun getAllWaypoints(): List<Waypoint> = waypointDao.getAll()
-    suspend fun getWaypoint(id: Long): Waypoint = waypointDao.get(id)
-    suspend fun upsertWaypoint(waypoint: Waypoint): Long = waypointDao.upsert(waypoint)
-
     /**
-     * Delete a saved place and its dangling references: arrival auto-toggles
-     * and current-place pointers naming it, plus no-show watches expecting
-     * arrivals there. Without this they pointed at a place that no longer
-     * exists - toggles silently dead, watches firing for a deleted place.
+     * Saved-place rows. Exposed as a store (rather than flat repository methods)
+     * so the repository stays under the function cap — call sites use
+     * `repository.waypointStore.*`.
      */
-    suspend fun deleteWaypoint(waypoint: Waypoint): Int {
-        val deleted = waypointDao.delete(waypoint)
-        userDao.clearArrivalTogglesForWaypoint(waypoint.id)
-        userDao.clearLastWaypointForWaypoint(waypoint.id)
-        noShowAlertDao.deleteByWaypointId(waypoint.id)
-        return deleted
-    }
+    internal val waypointStore: WaypointStore
+        get() = WaypointStore(waypointDao, userDao, noShowAlertDao)
 
     // ------------------------------------------------------------------
     // LocationValue reads / writes
@@ -163,6 +153,7 @@ class FindFamilyRepository internal constructor(
      */
     internal val noShowAlertStore: NoShowAlertStore get() = NoShowAlertStore(noShowAlertDao)
 
+    /** Process-wide singleton access for [FindFamilyRepository]. */
     companion object {
         @Volatile
         private var instance: FindFamilyRepository? = null
@@ -193,4 +184,29 @@ internal class NoShowAlertStore(private val dao: NoShowAlertDao) {
     suspend fun delete(alert: NoShowAlert): Int = dao.delete(alert)
     suspend fun markFired(id: Long): Int = dao.markFired(id)
     suspend fun rearm(id: Long): Int = dao.rearm(id)
+}
+
+/** Thin facade over [WaypointDao], owned by [FindFamilyRepository]. */
+internal class WaypointStore(
+    private val dao: WaypointDao,
+    private val userDao: UserDao,
+    private val noShowAlertDao: NoShowAlertDao,
+) {
+    suspend fun getAll(): List<Waypoint> = dao.getAll()
+    suspend fun get(id: Long): Waypoint = dao.get(id)
+    suspend fun upsert(waypoint: Waypoint): Long = dao.upsert(waypoint)
+
+    /**
+     * Delete a saved place and its dangling references: arrival auto-toggles
+     * and current-place pointers naming it, plus no-show watches expecting
+     * arrivals there. Without this they pointed at a place that no longer
+     * exists - toggles silently dead, watches firing for a deleted place.
+     */
+    suspend fun delete(waypoint: Waypoint): Int {
+        val deleted = dao.delete(waypoint)
+        userDao.clearArrivalTogglesForWaypoint(waypoint.id)
+        userDao.clearLastWaypointForWaypoint(waypoint.id)
+        noShowAlertDao.deleteByWaypointId(waypoint.id)
+        return deleted
+    }
 }

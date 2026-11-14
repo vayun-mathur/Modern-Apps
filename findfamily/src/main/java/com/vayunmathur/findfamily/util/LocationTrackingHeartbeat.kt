@@ -154,7 +154,7 @@ private suspend fun LocationTrackingService.applyArrivalAutoToggles(
     // waypoint-id-guarded update as the timer path so a stale snapshot cannot mis-flip.
     try {
         val myCoord = Coord(location.latitude, location.longitude)
-        val insideWaypointIds = repository.getAllWaypoints()
+        val insideWaypointIds = repository.waypointStore.getAll()
             .filter { havershine(it.coord, myCoord) < it.range }
             .map { it.id }
         if (insideWaypointIds.isNotEmpty()) {
@@ -250,7 +250,8 @@ internal suspend fun LocationTrackingService.seedDirectBootMirror() {
     val targets = repository.getAllUsers()
         .filter { it.id != Networking.userid && it.sendingEnabled }
         .mapNotNull { u -> u.pqcEncryptionKey?.let { DirectBootStore.Target(u.id, it, u.outboundPairId) } }
-    val signature = "$sharingOut|$trackingEnabled|" + targets.joinToString(",") { "${it.id}:${it.bundle.length}:${it.pairId?.take(4)}" }
+    val targetSignature = targets.joinToString(",") { "${it.id}:${it.bundle.length}:${it.pairId?.take(4)}" }
+    val signature = "$sharingOut|$trackingEnabled|$targetSignature"
     publishRoster = if (sharingOut) targets else emptyList()
     if (signature == lastSeededMirror) return
     DirectBootStore.seed(

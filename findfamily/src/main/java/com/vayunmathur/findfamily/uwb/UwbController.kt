@@ -64,10 +64,15 @@ class UwbController(context: Context) {
      */
     private var lastWorkingTier: Int = -1
 
+    /** Lifecycle state of a UWB ranging controller session. */
     sealed interface State {
+        /** No ranging session is open. */
         data object Idle : State
+        /** A ranging session is being opened. */
         data object Opening : State
+        /** Session parameters are ready, carrying the local UWB address. */
         data class Ready(val localAddress: ByteArray) : State
+        /** Opening or ranging failed, carrying the reason. */
         data class Failed(val reason: String) : State
     }
 
@@ -424,6 +429,7 @@ class UwbController(context: Context) {
         _state.value = State.Idle
     }
 
+    /** Local FiRa parameters generated for an initiator session. */
     data class ControllerInfo(
         val localAddress: ByteArray,
         val channelNumber: Int,
@@ -433,6 +439,7 @@ class UwbController(context: Context) {
         val uuid: UUID,
     )
 
+    /** Whether this device starts ranging or answers it. */
     enum class Role { Initiator, Responder }
 
     /** Marker sample for "the peer is gone / the session failed" — one call site per failure path. */
@@ -456,6 +463,7 @@ class UwbController(context: Context) {
             "rssi=${runCatching { data.rssi }.getOrNull()}"
     }
 
+    /** Default FiRa channel and preamble and logging tag for [UwbController]. */
     companion object {
         private const val TAG = "UwbController"
         /** FiRa channel 9 (the most common UWB channel; supported by every iPhone with U1/U2). */

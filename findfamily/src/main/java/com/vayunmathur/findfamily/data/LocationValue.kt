@@ -74,6 +74,7 @@ enum class LocationSource {
 
 @Serializable
 @Entity(indices = [Index(value = ["userid", "timestamp"]), Index(value = ["userid", "reportedAt"])])
+/** One stored location report for a person, with measured and sent timestamps. */
 data class LocationValue(
     val userid: Long,
     @Embedded val coord: Coord,
@@ -123,6 +124,7 @@ data class LocationValue(
 }
 
 @Serializable
+/** Wire form of [LocationValue] exchanged with peers, using epoch millis and unsigned ids. */
 data class LocationValueCompatible(
     val id: ULong = 0uL,
     val userid: ULong,

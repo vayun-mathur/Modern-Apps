@@ -41,6 +41,7 @@ private data class PickedContact(
 private fun withPhoto(photos: List<String>, photo: String?): List<String> =
     if (photo != null) photos + photo else photos
 
+/** Android platform helpers for contact picking, clipboard, and last known device location. */
 class Platform(private val context: Context) {
     @SuppressLint("Range")
     @Composable

@@ -77,8 +77,8 @@ class FindFamilyRepositoryTest {
 
     @Test
     fun deleteWaypointCascadesReferences() = runTest {
-        val wpId = repo.upsertWaypoint(Waypoint(name = "Home", range = 150.0, coord = Coord(3.0, 4.0)))
-        val otherWp = repo.upsertWaypoint(Waypoint(name = "Work", range = 150.0, coord = Coord(5.0, 6.0)))
+        val wpId = repo.waypointStore.upsert(Waypoint(name = "Home", range = 150.0, coord = Coord(3.0, 4.0)))
+        val otherWp = repo.waypointStore.upsert(Waypoint(name = "Work", range = 150.0, coord = Coord(5.0, 6.0)))
         val uid = repo.upsertUser(user())
         repo.setSharingAutoToggleWaypointId(uid, wpId)
         repo.updateLocationMeta(uid, "Home", wpId, 1234L)
@@ -88,7 +88,7 @@ class FindFamilyRepositoryTest {
         repo.noShowAlertStore.upsert(
             NoShowAlert(watchedUserId = uid, waypointId = otherWp, expectedAt = Clock.System.now(), grace = 5.minutes)
         )
-        assertEquals(1, repo.deleteWaypoint(repo.getWaypoint(wpId)))
+        assertEquals(1, repo.waypointStore.delete(repo.waypointStore.get(wpId)))
         val row = repo.getUser(uid)!!
         assertNull(row.sharingAutoToggleWaypointId)
         assertNull(row.lastWaypointId)
@@ -145,9 +145,9 @@ class FindFamilyRepositoryTest {
 
     @Test
     fun waypointAndLocationPaths() = runTest {
-        val wpId = repo.upsertWaypoint(Waypoint(name = "Home", range = 150.0, coord = Coord(3.0, 4.0)))
-        assertEquals("Home", repo.getWaypoint(wpId).name)
-        assertEquals(1, repo.getAllWaypoints().size)
+        val wpId = repo.waypointStore.upsert(Waypoint(name = "Home", range = 150.0, coord = Coord(3.0, 4.0)))
+        assertEquals("Home", repo.waypointStore.get(wpId).name)
+        assertEquals(1, repo.waypointStore.getAll().size)
         assertEquals(1, repo.waypoints.first().size)
         val uid = repo.upsertUser(user())
         repo.upsertLocation(fix(uid, 1000))
@@ -157,7 +157,7 @@ class FindFamilyRepositoryTest {
         assertEquals(1, repo.latestLocationsOnce().size)
         repo.deleteLocationsOlderThan(2) // timestamps are stored as epoch seconds (1s, 2s, 3s)
         assertEquals(2, repo.locationHistory(uid).first().size)
-        assertEquals(1, repo.deleteWaypoint(repo.getWaypoint(wpId)))
+        assertEquals(1, repo.waypointStore.delete(repo.waypointStore.get(wpId)))
     }
 
     @Test

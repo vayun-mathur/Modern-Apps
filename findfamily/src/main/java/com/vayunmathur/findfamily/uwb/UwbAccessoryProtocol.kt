@@ -44,6 +44,7 @@ object UwbAccessoryProtocol {
         )
     }
 
+    /** FiRa parameters parsed from a peer's shareable configuration data. */
     data class Parsed(
         val peerAddress: ByteArray,
         val sessionId: Int,

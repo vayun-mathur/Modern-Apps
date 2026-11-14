@@ -75,7 +75,7 @@ class FindFamilyViewModelDbTest {
         val alice = repo.upsertUser(user("Alice"))
         repo.upsertUser(user("Bob", RequestStatus.AWAITING_REQUEST, loc = "Office"))
         repo.upsertUser(user("Carol", RequestStatus.AWAITING_RESPONSE, loc = "Office"))
-        repo.upsertWaypoint(Waypoint(name = "Home", range = 100.0, coord = Coord(1.0, 2.0)))
+        repo.waypointStore.upsert(Waypoint(name = "Home", range = 100.0, coord = Coord(1.0, 2.0)))
         // Recent fix: the ViewModel startup cleanup deletes week-old locations.
         val nowFix = Clock.System.now()
         repo.upsertLocation(LocationValue(userid = alice, coord = Coord(1.0, 2.0), speed = 0f, acc = 5f,
@@ -125,15 +125,15 @@ class FindFamilyViewModelDbTest {
         val id = repo.upsertUser(user("Dave"))
         vm.updateContactNamePhoto(id, "David", "photo://d")
         awaitTrue("rename") { kotlinx.coroutines.runBlocking { repo.getUser(id)?.name == "David" } }
-        val wpId = repo.upsertWaypoint(Waypoint(name = "Gym", range = 50.0, coord = Coord(0.0, 0.0)))
-        vm.beginEditWaypoint(repo.getWaypoint(wpId))
+        val wpId = repo.waypointStore.upsert(Waypoint(name = "Gym", range = 50.0, coord = Coord(0.0, 0.0)))
+        vm.beginEditWaypoint(repo.waypointStore.get(wpId))
         assertEquals("Gym", vm.waypointName.value)
         vm.mapState.setWaypointName("Gym2")
         vm.mapState.setWaypointRange("75")
         vm.mapState.saveCurrentWaypoint()
-        awaitTrue("waypoint saved") { kotlinx.coroutines.runBlocking { repo.getWaypoint(wpId).name == "Gym2" } }
-        vm.deleteWaypoint(repo.getWaypoint(wpId))
-        awaitTrue("waypoint deleted") { kotlinx.coroutines.runBlocking { repo.getAllWaypoints().isEmpty() } }
+        awaitTrue("waypoint saved") { kotlinx.coroutines.runBlocking { repo.waypointStore.get(wpId).name == "Gym2" } }
+        vm.deleteWaypoint(repo.waypointStore.get(wpId))
+        awaitTrue("waypoint deleted") { kotlinx.coroutines.runBlocking { repo.waypointStore.getAll().isEmpty() } }
         val link = TemporaryLink(name = "L", deleteAt = Clock.System.now(), pqcPublicKey = "pub")
         repo.temporaryLinkStore.upsert(link)
         vm.deleteTemporaryLink(repo.temporaryLinkStore.getAll().first())
@@ -153,11 +153,11 @@ class FindFamilyViewModelDbTest {
         vm.mapState.setWaypointRange("200")
         vm.mapState.setWaypointCoord(Coord(5.0, 6.0))
         vm.mapState.saveCurrentWaypoint()
-        awaitTrue("waypoint created") { kotlinx.coroutines.runBlocking { repo.getAllWaypoints().any { it.name == "Park" } } }
+        awaitTrue("waypoint created") { kotlinx.coroutines.runBlocking { repo.waypointStore.getAll().any { it.name == "Park" } } }
         val uid = repo.upsertUser(user("Frank"))
         vm.applyInitialSelection(uid, null)
         assertEquals(uid, vm.selectedUserId.value)
-        vm.applyInitialSelection(null, repo.getAllWaypoints().first().id)
+        vm.applyInitialSelection(null, repo.waypointStore.getAll().first().id)
         assertNotNull(vm.mapState.selectedWaypointId.value)
         vm.refreshPermissions()
         // Permission flags must be readable (values depend on Robolectric grants).

@@ -125,7 +125,7 @@ class LocationTrackingInboundTest {
     @Test
     fun enrichResolvesWaypointAndNotifies() = runBlocking {
         val uid = repo.upsertUser(user("Carol"))
-        val wpId = repo.upsertWaypoint(Waypoint(name = "HomeBase", range = 500.0, coord = Coord(51.5, -0.12)))
+        val wpId = repo.waypointStore.upsert(Waypoint(name = "HomeBase", range = 500.0, coord = Coord(51.5, -0.12)))
         val now = Clock.System.now()
         service.enrichIncomingLocations(
             listOf(fix(uid, at = now, battery = 10f, coord = Coord(51.5, -0.12))),
@@ -140,7 +140,7 @@ class LocationTrackingInboundTest {
 
     @Test
     fun networkSightingDoesNotFireLowBattery() = runBlocking {
-        val wpId = repo.upsertWaypoint(Waypoint(name = "HomeBase", range = 500.0, coord = Coord(51.5, -0.12)))
+        val wpId = repo.waypointStore.upsert(Waypoint(name = "HomeBase", range = 500.0, coord = Coord(51.5, -0.12)))
         val uid = repo.upsertUser(user("Eve").copy(locationName = "HomeBase", lastWaypointId = wpId))
         val now = Clock.System.now()
         val previous = fix(uid, at = now, battery = 90f)

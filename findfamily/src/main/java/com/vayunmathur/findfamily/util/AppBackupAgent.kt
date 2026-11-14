@@ -5,6 +5,7 @@ import com.vayunmathur.library.util.BaseBackupAgent
 import com.vayunmathur.library.util.DatabaseHelper
 import java.io.File
 
+/** Android backup agent covering the SQLCipher database passphrase and identity DataStore. */
 class AppBackupAgent : BaseBackupAgent() {
     override val dbCodec = SqlCipherDbCodec
 

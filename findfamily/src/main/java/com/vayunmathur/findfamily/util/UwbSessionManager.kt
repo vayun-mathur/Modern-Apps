@@ -58,17 +58,24 @@ object UwbSessionManager {
 
     /** UI-facing state machine for the Find Nearby (UWB) screen. */
     sealed interface UwbSessionState {
+        /** No Find Nearby session is active. */
         data object Idle : UwbSessionState
+        /** A Find Nearby session is being set up. */
         data object Starting : UwbSessionState
+        /** Waiting for the peer to answer the Find Nearby request. */
         data object WaitingForPeer : UwbSessionState
+        /** Actively ranging, carrying the latest sample. */
         data class Ranging(val sample: RangingSample) : UwbSessionState
+        /** The peer left the ranging session. */
         data object PeerDisconnected : UwbSessionState
+        /** Find Nearby is unavailable, optionally with the reason. */
         data class Unsupported(val reason: String? = null) : UwbSessionState
         /**
          * The peer's phone declined the REQUEST because it can't do Find Nearby at all
          * (CANCEL with [UwbCancelReason.UNSUPPORTED], #869). Terminal until the screen closes.
          */
         data object PeerUnsupported : UwbSessionState
+        /** Terminal failure state carrying the reason. */
         data class Failed(val reason: String) : UwbSessionState
     }
 

@@ -56,7 +56,12 @@ import com.vayunmathur.findfamily.util.Platform
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 
+/**
+ * FindFamily entry activity: initialises the first-party network client, parses invite
+ * and no-show intents, and hosts the permission-gated navigation graph.
+ */
 class MainActivity : MaActivity() {
+    /** Intent-extra keys for launching [MainActivity]. */
     companion object {
         /** Extra key for launching directly into [Route.UwbRangingPage] via notification tap. */
         const val EXTRA_UWB_PEER_ID = "com.vayunmathur.findfamily.EXTRA_UWB_PEER_ID"
@@ -226,17 +231,22 @@ fun MissingFeaturesDialog(backStack: NavBackStack<Route>) {
 }
 
 @Serializable
+/** Navigation destinations for FindFamily's single-activity graph. */
 sealed interface Route: NavKey {
     @Serializable
+    /** Map home destination, optionally preselecting a person or waypoint. */
     data class MainPage(val selectedUserId: Long? = null, val selectedWaypointId: Long? = null): Route
 
     @Serializable
+    /** Dialog for picking the date whose location history to show. */
     data class UserPageHistoryDatePicker(val initialDate: LocalDate): Route
 
     @Serializable
+    /** Dialog for connecting to a person, optionally prefilled from an invite link. */
     data class AddPersonDialog(val id: Long? = null, val fingerprint: String? = null): Route
 
     @Serializable
+    /** Dialog for creating a temporary share link. */
     data object AddLinkDialog: Route
 
     /** Dev-only (DEV_BUILD): bind a new custom UWB tracker. */
@@ -244,6 +254,7 @@ sealed interface Route: NavKey {
     data object AddTrackerDialog: Route
 
     @Serializable
+    /** Dialog explaining features unavailable on this device. */
     data object MissingFeaturesDialog: Route
 
     /** UWB Find Nearby (UWB) screen for the given peer. Full screen (no DialogPage metadata). */

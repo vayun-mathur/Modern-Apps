@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 
 
 @Dao
+/** Room access for stored location reports, including latest-per-user queries. */
 interface LocationValueDao {
     /**
      * The newest report per user, ranked by when it was *sent* rather than when its position was
@@ -46,6 +47,7 @@ interface LocationValueDao {
 }
 
 @Dao
+/** Room access for saved places (waypoints). */
 interface WaypointDao {
     @Query("SELECT * FROM Waypoint")
     fun getAllFlow(): Flow<List<Waypoint>>
@@ -67,6 +69,7 @@ interface WaypointDao {
 }
 
 @Dao
+/** Room access for people, trackers, and their sharing and sender-auth state. */
 interface UserDao {
     @Query("SELECT * FROM User")
     fun getAllFlow(): Flow<List<User>>
@@ -195,6 +198,7 @@ interface UserDao {
 }
 
 @Dao
+/** Room access for temporary share links. */
 interface TemporaryLinkDao {
     @Query("SELECT * FROM TemporaryLink")
     fun getAllFlow(): Flow<List<TemporaryLink>>
@@ -218,6 +222,7 @@ interface TemporaryLinkDao {
     exportSchema = false
 )
 @ColumnTypeConverters(DefaultConverters::class)
+/** Room database holding users, waypoints, location reports, share links, and no-show alerts. */
 abstract class FFDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun waypointDao(): WaypointDao
@@ -225,6 +230,7 @@ abstract class FFDatabase : RoomDatabase() {
     abstract fun temporaryLinkDao(): TemporaryLinkDao
     abstract fun noShowAlertDao(): NoShowAlertDao
 
+    /** Schema migrations from version 1 to the current database version. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations: List<androidx.room3.migration.Migration> = listOf(
             androidx.room3.migration.Migration(1, 2) {

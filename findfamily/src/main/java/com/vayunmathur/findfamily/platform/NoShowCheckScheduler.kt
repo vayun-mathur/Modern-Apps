@@ -63,7 +63,7 @@ class NoShowCheckWorker(
         alert: NoShowAlert,
     ) {
         val user = repository.getUser(alert.watchedUserId) ?: return
-        val waypoint = alert.waypointId?.let { runCatching { repository.getWaypoint(it) }.getOrNull() }
+        val waypoint = alert.waypointId?.let { runCatching { repository.waypointStore.get(it) }.getOrNull() }
         val message = if (waypoint != null) {
             context.getString(R.string.notification_noshow_at_place, user.name, waypoint.name)
         } else {
@@ -72,12 +72,14 @@ class NoShowCheckWorker(
         context.notifyNoShowAlert(user, message, alert.id, alert.waypointId)
     }
 
+    /** WorkManager keys and logging tag for [NoShowCheckWorker]. */
     companion object {
         private const val TAG = "FF-NoShow"
         internal const val KEY_ALERT_ID = "alert_id"
     }
 }
 
+/** Enqueues and sweeps deadline checks for no-show alerts. */
 object NoShowCheckScheduler {
 
     private const val TAG = "FF-NoShow"
@@ -167,7 +169,7 @@ object NoShowCheckScheduler {
                 fixAccuracyMeters = fix.acc.toDouble(),
             )
         }
-        val waypoint = runCatching { repository.getWaypoint(waypointId) }.getOrNull()
+        val waypoint = runCatching { repository.waypointStore.get(waypointId) }.getOrNull()
             ?: return false
         return NoShowPolicy.hasArrivedAtWaypoint(
             fixLat = fix.coord.lat,

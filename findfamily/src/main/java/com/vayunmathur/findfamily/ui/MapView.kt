@@ -57,7 +57,9 @@ import kotlin.io.encoding.Base64
 import kotlin.math.abs
 import kotlin.math.cos
 
+/** Person selected on the map, with whether the present or a historical position is shown. */
 data class SelectedUser(val user: User, val isShowingPresent: Boolean, val historicalPosition: GeoPoint?)
+/** Waypoint selected on the map, with its range and move callback. */
 data class SelectedWaypoint(val waypoint: Waypoint, val range: Double, val onMoveWaypoint: (Coord) -> Unit)
 
 private fun GeoPoint.toCoord() = Coord(latitude, longitude)

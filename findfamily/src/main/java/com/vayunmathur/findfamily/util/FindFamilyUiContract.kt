@@ -47,6 +47,7 @@ interface FamilyListActions {
     fun deleteTemporaryLink(link: TemporaryLink) {}
     fun beginEditWaypoint(waypoint: Waypoint) {}
 
+    /** No-op [FamilyListActions] for previews. */
     companion object {
         val Noop: FamilyListActions = object : FamilyListActions {}
     }
@@ -93,6 +94,7 @@ interface PersonActions {
     /** Opt in or out of acting as a finder for other people's powered-off devices. */
     fun setCrowdFinding(enabled: Boolean) {}
 
+    /** No-op [PersonActions] for previews. */
     companion object {
         val Noop: PersonActions = object : PersonActions {}
     }
@@ -153,6 +155,7 @@ interface MainPageActions {
     fun setWaypointName(name: String) {}
     fun setWaypointRange(range: String) {}
 
+    /** No-op [MainPageActions] for previews. */
     companion object {
         val Noop: MainPageActions = object : MainPageActions {}
     }

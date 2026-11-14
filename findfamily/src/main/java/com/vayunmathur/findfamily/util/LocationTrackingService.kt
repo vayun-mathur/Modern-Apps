@@ -98,6 +98,7 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
+/** Foreground service that publishes this device's location and receives peers' fixes. */
 class LocationTrackingService : Service(), SensorEventListener {
     internal val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     internal lateinit var locationManager: LocationManager
@@ -613,6 +614,7 @@ class LocationTrackingService : Service(), SensorEventListener {
         stopGps()
     }
 
+    /** Notification channels, tags, and timing constants for [LocationTrackingService]. */
     companion object {
         internal const val CHANNEL_ID = "location_tracking_channel"
         internal const val BATTERY_CHANNEL_ID = "battery_channel"
@@ -739,6 +741,7 @@ suspend fun Context.fetchAddress(lat: Double, lng: Double): Address? {
     }
 }
 
+/** Periodic worker that reconciles the tracking service with current sharing state. */
 class ServiceRestartWorker(
     appContext: Context,
     workerParams: WorkerParameters

@@ -7,6 +7,7 @@ import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
+/** Room access for no-show alerts watching expected arrivals. */
 interface NoShowAlertDao {
     @Query("SELECT * FROM NoShowAlert")
     fun getAllFlow(): Flow<List<NoShowAlert>>

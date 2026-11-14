@@ -181,6 +181,7 @@ class TrackerProvisioner(private val context: Context) {
             Log.status(TAG, "writeCharacteristic failed", e); false
         }
 
+    /** Logging tag and provisioning-blob layout constants for [TrackerProvisioner]. */
     companion object {
         private const val TAG = "TrackerProvisioner"
 

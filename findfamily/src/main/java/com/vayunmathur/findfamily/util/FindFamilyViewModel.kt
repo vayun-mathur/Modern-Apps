@@ -212,7 +212,7 @@ class FindFamilyViewModel(
                     .filter { it.waypointId == waypoint.id }
                     .forEach { NoShowCheckScheduler.cancel(ctx, it.id) }
             }
-            repository.deleteWaypoint(waypoint)
+            repository.waypointStore.delete(waypoint)
         }
     }
 

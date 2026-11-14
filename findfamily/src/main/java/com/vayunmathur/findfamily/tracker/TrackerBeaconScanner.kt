@@ -89,6 +89,7 @@ class TrackerBeaconScanner(private val context: Context) {
         }
     }
 
+    /** Logging tag for [TrackerBeaconScanner]. */
     companion object {
         private const val TAG = "TrackerBeaconScanner"
     }

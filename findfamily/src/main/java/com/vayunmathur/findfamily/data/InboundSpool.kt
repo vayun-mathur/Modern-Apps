@@ -130,24 +130,31 @@ object InboundSpool {
                 if (skipped <= 0) return out
                 pos += skipped
             }
-            while (true) {
-                val len = try {
-                    input.readInt()
-                } catch (_: EOFException) {
-                    break
-                }
-                if (len < 0 || len > MAX_FRAME_BYTES) break
-                val buf = ByteArray(len)
-                try {
-                    input.readFully(buf)
-                } catch (_: EOFException) {
-                    break // torn final record from a crash mid-append
-                }
-                pos += LENGTH_PREFIX_BYTES + len
-                out.add(buf to pos)
+            var record = readNextRecord(input, pos)
+            while (record != null) {
+                out.add(record)
+                pos = record.second
+                record = readNextRecord(input, pos)
             }
         }
         return out
+    }
+
+    /** One complete record starting at [pos], or null at EOF, on a corrupt length, or on a torn final record. */
+    private fun readNextRecord(input: DataInputStream, pos: Long): Pair<ByteArray, Long>? {
+        val len = try {
+            input.readInt()
+        } catch (_: EOFException) {
+            return null
+        }
+        if (len < 0 || len > MAX_FRAME_BYTES) return null
+        val buf = ByteArray(len)
+        try {
+            input.readFully(buf)
+        } catch (_: EOFException) {
+            return null // torn final record from a crash mid-append
+        }
+        return buf to (pos + LENGTH_PREFIX_BYTES + len)
     }
 
     /** Bytes taken by the length prefix of each record (for tests). */

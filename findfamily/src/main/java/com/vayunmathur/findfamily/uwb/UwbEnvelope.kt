@@ -121,6 +121,7 @@ data class UwbHandshake(
     val shareableConfigDataB64: String? = null,
 )
 
+/** Envelope kinds carried on the UWB session-setup channel. */
 object UwbEnvelopeKind {
     const val REQUEST = "request"
     const val ACK = "ack"

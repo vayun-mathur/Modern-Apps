@@ -62,6 +62,7 @@ class SharingTileService : TileService() {
         scope.cancel()
     }
 
+    /** Helpers for refreshing the sharing Quick Settings tile. */
     companion object {
         /**
          * Ask the system to bind the tile so it re-reads the flag. Without this a

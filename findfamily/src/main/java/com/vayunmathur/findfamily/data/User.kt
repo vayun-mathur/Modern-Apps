@@ -8,6 +8,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Serializable
+/** Connection state between this device and a person. */
 enum class RequestStatus {
     MUTUAL_CONNECTION,
     AWAITING_REQUEST,
@@ -29,6 +30,7 @@ enum class UserKind {
 
 @Serializable
 @Entity
+/** A person (or DEV_BUILD tracker) this device shares location with. */
 data class User(
     val name: String,
     val photo: String?,
@@ -70,6 +72,7 @@ data class User(
      * [UserKind.PERSON]; only the DEV_BUILD tracker feature ever writes [UserKind.TRACKER]. */
     val kind: UserKind = UserKind.PERSON
 ): DatabaseItem {
+    /** Shared placeholder values for [User]. */
     companion object {
         val EMPTY = User(" ", null, "Unnamed Location", true, RequestStatus.MUTUAL_CONNECTION, Clock.System.now(), null)
     }
