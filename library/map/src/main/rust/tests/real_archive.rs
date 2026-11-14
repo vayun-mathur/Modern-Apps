@@ -96,10 +96,10 @@ fn header_version_and_dictionary_are_accepted() {
     // planet4 is a v9 archive; planet5 a v10 one (dictionary-zstd bodies). Both must open.
     match head[7] {
         tilecodec::mamaps::header::FORMAT_VERSION_V9 => {}
-        tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V10 => {
+        tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V10 | tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V11 => {
             assert_eq!(header.compression, tilecodec::mamaps::header::COMPRESSION_ZSTD_DICT);
         }
-        v => panic!("planet4 is v9 and planet5 v10, got v{v}"),
+        v => panic!("planet4 is v9 and planet5 v10/v11 (superblocks), got v{v}"),
     }
     assert_eq!(header.file_len, std::fs::metadata(&path).unwrap().len());
     assert!(header.compressed() && header.rings_validated() && header.leaves_compressed());
@@ -266,8 +266,8 @@ fn every_layer_decodes_and_tessellates_in_four_cities() {
     assert!(extra.contains_key("region_links"), "no region-link tables decoded");
     // planet4 carries v10 bodies, planet5 v11 (MED-residual heightmaps); never a mix.
     assert!(
-        versions.len() == 1 && versions.keys().all(|&v| v == 10 || v == 11),
-        "expected v10 (planet4) or v11 (planet5) bodies only, got {versions:?}"
+        versions.len() == 1 && versions.keys().all(|&v| (10..=12).contains(&v)),
+        "expected one body version, v10 (planet4) or v11/v12 (planet5), got {versions:?}"
     );
 }
 
