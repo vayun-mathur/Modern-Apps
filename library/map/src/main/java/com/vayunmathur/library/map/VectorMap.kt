@@ -47,8 +47,8 @@ internal val MapOnlineDefault: StateFlow<Boolean> = OnlineAlways
 /**
  * The vector map.
  *
- * Renders the planet-scale single-file `planet4.mamaps` archive
- * (`data.maproj.org/planet4.mamaps`: v9 header, v10 bodies, 10 layers, 128-byte header) with our own
+ * Renders the planet-scale single-file `planet5.mamaps` archive
+ * (`data.maproj.org/planet5.mamaps`: v10 header, dictionary-zstd v11 bodies, 10 layers, 128-byte header; planet4 v9 archives still read) with our own
  * Vulkan renderer. No third-party tile CDN and no API key, which is the whole point:
  * watermarked, and that broke the basemap in five apps (#615).
  *

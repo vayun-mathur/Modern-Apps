@@ -1,4 +1,4 @@
-//! The renderer's reader against a REAL planet archive (`planet4.mamaps`, or the
+//! The renderer's reader against a REAL planet archive (`planet4.mamaps` / `planet5.mamaps`, or the
 //! byte-identical local build `scripts/maps/inputs/world.mamaps`).
 //!
 //! Ignored by default and gated on `MAMAPS_REAL_ARCHIVE`, so a normal `cargo test` never
@@ -93,7 +93,14 @@ fn header_version_and_dictionary_are_accepted() {
         head[7], header.flags, header.compression, header.layer_count, header.min_zoom,
         header.max_zoom, header.build_id, header.file_len
     );
-    assert_eq!(head[7], tilecodec::mamaps::header::FORMAT_VERSION_V9, "planet4 is a v9 archive");
+    // planet4 is a v9 archive; planet5 a v10 one (dictionary-zstd bodies). Both must open.
+    match head[7] {
+        tilecodec::mamaps::header::FORMAT_VERSION_V9 => {}
+        tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V10 => {
+            assert_eq!(header.compression, tilecodec::mamaps::header::COMPRESSION_ZSTD_DICT);
+        }
+        v => panic!("planet4 is v9 and planet5 v10, got v{v}"),
+    }
     assert_eq!(header.file_len, std::fs::metadata(&path).unwrap().len());
     assert!(header.compressed() && header.rings_validated() && header.leaves_compressed());
     // The header claims validated rings, but the renderer does not trust it (see

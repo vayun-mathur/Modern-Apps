@@ -11,7 +11,7 @@ import kotlinx.serialization.json.long
 import kotlinx.serialization.json.int
 
 /**
- * The client half of incremental map updates: the `planet4.manifest.json`
+ * The client half of incremental map updates: the `planet5.manifest.json`
  * model, the on-disk overlay layout, and the queries the Settings UI and the
  * check worker drive.
  *
@@ -32,7 +32,7 @@ import kotlinx.serialization.json.int
  */
 object MapOverlay {
     /** Where [MapTileCache.BASEMAP_ARCHIVE_FILE] is checked for updates. */
-    const val MANIFEST_URL = "https://data.maproj.org/planet4.manifest.json"
+    const val MANIFEST_URL = MapTileCache.BASEMAP_MANIFEST_URL
 
     /** Pinned manifest filename (under [OVERLAY_ROOT]). */
     const val MANIFEST_FILE = "manifest.json"

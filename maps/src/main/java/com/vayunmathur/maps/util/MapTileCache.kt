@@ -17,13 +17,24 @@ object MapTileCache {
      */
     const val BASEMAP_ARCHIVE_FILE = "basemap.mamaps"
 
-    /** Where [BASEMAP_ARCHIVE_FILE] is fetched from on a first launch that has no copy yet. */
+    /**
+     * Where [BASEMAP_ARCHIVE_FILE] is fetched from on a first launch that has no copy yet.
+     *
+     * planet5: the dictionary-compressed format (v10 header). Installs that already hold a
+     * planet4 base keep reading it (the reader speaks both) until the planet5 manifest's
+     * rebase signal swaps it (see [BASEMAP_MANIFEST_URL]); older app versions keep fetching
+     * planet4, which stays published unchanged.
+     */
     const val BASEMAP_ARCHIVE_URL =
-        "https://data.maproj.org/planet4.mamaps"
+        "https://data.maproj.org/planet5.mamaps"
 
-    /** Where the incremental-update manifest lives (see `util/MapOverlay`). */
+    /**
+     * Where the incremental-update manifest lives (see `util/MapOverlay`). planet5's manifest
+     * pins the planet5 base with an empty overlay list, which is the rebase signal: an install
+     * on planet4 downloads planet5 once (on an unmetered network) and swaps it in.
+     */
     const val BASEMAP_MANIFEST_URL =
-        "https://data.maproj.org/planet4.manifest.json"
+        "https://data.maproj.org/planet5.manifest.json"
 
     /**
      * The single source of truth for the streamed basemap PMTiles URL.

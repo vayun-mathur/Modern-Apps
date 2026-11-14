@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Checks for and fetches incremental map updates (Phase 2: download + store).
  *
- * One run: fetch `planet4.manifest.json` (kilobytes, any network), compare
+ * One run: fetch `planet5.manifest.json` (kilobytes, any network), compare
  * its overlay sequence against the pinned manifest, and — when newer —
  * download the missing segments sequentially through the shared
  * [downloadModels] path (`.part` + Range resume, per-segment SHA-256, atomic

@@ -44,7 +44,7 @@ internal object MapNative {
      *
      * [localPath] is an optional path to a `.mamaps` archive already on the device. When
      * it names an existing file the renderer reads that file directly and does no
-     * networking at all; `null` or empty keeps the built-in `planet4.mamaps` URL and its
+     * networking at all; `null` or empty keeps the built-in `planet5.mamaps` URL and its
      * range cache unchanged.
      */
     external fun create(
