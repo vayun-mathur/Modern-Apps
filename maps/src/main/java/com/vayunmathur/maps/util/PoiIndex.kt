@@ -466,19 +466,10 @@ object PoiIndex {
         }
     }
 
-    /**
-     * Buffer core of the attrs sidecar, reused by the single-archive path. A planet5 archive
-     * stores it block-compressed ([PoiBlockSection]); [PoiBytes.of] reads either form.
-     */
-    internal fun attrsFromBuffer(buf: MappedByteBuffer, count: Int): Pair<PoiBytes, Int>? {
-        return runCatching {
-            val bytes = PoiBytes.of(buf) ?: run {
-                Log.status(TAG, "$ATTRS_FILE block table is malformed; ignoring it")
-                return null
-            }
-            readAttrs(bytes, count)
-        }.getOrElse { bufferFailure(it, ATTRS_FILE) }
-    }
+    /** Buffer core of the attrs sidecar (raw, or planet5 block-compressed: [PoiBytes.of]). */
+    internal fun attrsFromBuffer(buf: MappedByteBuffer, count: Int): Pair<PoiBytes, Int>? =
+        runCatching { PoiBytes.of(buf)?.let { readAttrs(it, count) } ?: blockTableRefused(ATTRS_FILE) }
+            .getOrElse { bufferFailure(it, ATTRS_FILE) }
 
     private fun readAttrs(buf: PoiBytes, count: Int): Pair<PoiBytes, Int>? {
         if (buf.size < ATTRS_HEADER_BYTES) {
@@ -511,6 +502,9 @@ object PoiIndex {
         Log.dev(TAG, "Loaded POI attributes for $attrCount record(s)")
         return buf to blobStart
     }
+
+    /** Null, logged: a block-compressed section whose table did not validate (or a refused file). */
+    internal fun <T> blockTableRefused(file: String): T? = null.also { Log.status(TAG, "$file refused") }
 
     /**
      * Yield null (with a log line) for the failures a corrupt/truncated file
