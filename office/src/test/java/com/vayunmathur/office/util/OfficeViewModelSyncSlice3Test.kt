@@ -57,9 +57,18 @@ class OfficeViewModelSyncSlice3Test {
     private val roboApp: android.app.Application
         get() = ApplicationProvider.getApplicationContext()
 
+    private var previousTransport: OfficeSync.HttpTransport? = null
+
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
+        // Hermetic: never touch the real relay. The fake transport fails
+        // every request (null), so registration/pull exercise the
+        // production offline branches instead of depending on whether
+        // this host can reach api.maproj.org (via proxy it can, which
+        // made syncDoc adopt a live cursor and registration succeed).
+        previousTransport = OfficeSync.httpTransport
+        OfficeSync.httpTransport = OfficeSync.HttpTransport { _, _ -> null }
         runBlocking {
             if (runCatching { OfficeSync.identity }.isFailure) {
                 OfficeSync.identity = PqcIdentity.loadOrCreate(MemStore(), "slice3sync")
@@ -69,6 +78,7 @@ class OfficeViewModelSyncSlice3Test {
 
     @AfterTest
     fun tearDown() {
+        OfficeSync.httpTransport = previousTransport
         OfficeSync.stopLive()
         Dispatchers.resetMain()
     }
