@@ -251,6 +251,7 @@ class MusicRepository private constructor(context: Context) :
     suspend fun deleteByType(type: Int) = matchingDao.deleteByType(type)
     suspend fun clearMatchings() = matchingDao.clear()
 
+    /** Shared constants and helpers for MusicRepository. */
     companion object {
         private const val STALE_DELETE_BATCH = 900
         private const val TAG_CACHE_UPSERT_BATCH = 200

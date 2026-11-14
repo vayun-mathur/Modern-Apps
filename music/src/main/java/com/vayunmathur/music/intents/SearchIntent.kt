@@ -6,6 +6,7 @@ import com.vayunmathur.music.data.MusicRepository
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 
+/** Intent contract for search. */
 @OptIn(InternalSerializationApi::class)
 class SearchIntent :
     AssistantIntent<String, List<MusicSearchResult>>(

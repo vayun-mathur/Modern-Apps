@@ -20,6 +20,7 @@ import androidx.car.app.validation.HostValidator
  */
 class MusicCarAppService : CarAppService() {
 
+    /** Shared constants and helpers for MusicCarAppService. */
     companion object {
         const val MIN_API_MULTI_DISPLAY = 6
         const val MIN_API_THEMING = 9

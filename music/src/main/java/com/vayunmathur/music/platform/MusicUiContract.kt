@@ -100,6 +100,7 @@ interface MusicActions {
     fun toggleShuffle() {}
     fun toggleRepeat() {}
 
+    /** Shared constants and helpers for MusicActions. */
     companion object {
         val Noop: MusicActions = object : MusicActions {}
     }

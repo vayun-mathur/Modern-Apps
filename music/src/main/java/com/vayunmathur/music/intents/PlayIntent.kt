@@ -9,6 +9,7 @@ import com.vayunmathur.music.platform.PlaybackManager
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 
+/** Play Intent: a assistant intent implementation for play intent. */
 @OptIn(InternalSerializationApi::class)
 class PlayIntent: AssistantIntent<PlayMusicData, Unit>(serializer<PlayMusicData>(), serializer<Unit>()) {
 

@@ -12,6 +12,7 @@ import com.vayunmathur.library.util.MatchingDao
 import androidx.room3.migration.Migration
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for music dao. */
 @Dao
 interface MusicDao {
     @Query("SELECT * FROM Music")
@@ -26,6 +27,7 @@ interface MusicDao {
     suspend fun deleteByIds(ids: List<Long>)
 }
 
+/** Contract for playlist dao. */
 @Dao
 interface PlaylistDao {
     @Query("SELECT * FROM Playlist")
@@ -53,6 +55,7 @@ abstract class MusicDatabase: RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
     abstract fun matchingDao(): MatchingDao
 
+    /** Shared constants and helpers for MusicDatabase. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations: List<Migration> =
             listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)

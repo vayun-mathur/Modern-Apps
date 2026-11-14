@@ -117,7 +117,7 @@ class MusicCarScreensTest {
         val carState = state()
         var calls = 0
         carState.observe { calls++ }
-        carState.observe { throw RuntimeException("observer boom") }
+        carState.observe { throw IllegalStateException("observer boom") }
         carState.notifyChanged()
         assertTrue(calls == 1, "observer must be called despite a throwing sibling")
         assertTrue(carState.controller == null)

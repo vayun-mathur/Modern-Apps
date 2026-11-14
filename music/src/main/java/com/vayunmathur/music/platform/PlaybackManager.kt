@@ -28,22 +28,27 @@ import kotlin.random.Random
 sealed interface PlaybackSource {
     val id: String
 
+    /** Singleton holding all songs state and operations. */
     data object AllSongs : PlaybackSource {
         override val id = "all_songs"
     }
 
+    /** Immutable value describing album; carries albumId. */
     data class Album(val albumId: Long) : PlaybackSource {
         override val id = "album_$albumId"
     }
 
+    /** Immutable value describing playlist; carries playlistId. */
     data class Playlist(val playlistId: Long) : PlaybackSource {
         override val id = "playlist_$playlistId"
     }
 
+    /** Immutable value describing artist; carries artistId. */
     data class Artist(val artistId: Long) : PlaybackSource {
         override val id = "artist_$artistId"
     }
 
+    /** Shared constants and helpers for PlaybackSource. */
     companion object {
         fun parse(id: String?): PlaybackSource? = when {
             id == null -> null
@@ -68,6 +73,7 @@ fun nextRepeatMode(mode: Int): Int = when (mode) {
     else -> Player.REPEAT_MODE_OFF
 }
 
+/** Playback Manager: a context implementation for playback manager. */
 class PlaybackManager private constructor(context: Context) {
 
     private var controller: MediaController? = null
@@ -255,6 +261,7 @@ class PlaybackManager private constructor(context: Context) {
         controller?.let { it.repeatMode = nextRepeatMode(it.repeatMode) }
     }
 
+    /** Shared constants and helpers for PlaybackManager. */
     companion object {
         private const val PROGRESS_UPDATE_MS = 1000L
         @SuppressLint("StaticFieldLeak")

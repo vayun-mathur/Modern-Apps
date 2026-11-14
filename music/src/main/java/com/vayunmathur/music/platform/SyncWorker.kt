@@ -31,6 +31,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         WorkResult.success()
     }
 
+    /** Shared constants and helpers for SyncWorker. */
     companion object {
         private const val WORK_NAME = "MusicSyncWorker"
 

@@ -82,6 +82,7 @@ class MusicLibraryTree(context: Context) {
 
     // ── Browse ids ─────────────────────────────────────────────────────────
 
+    /** Shared constants and helpers for MusicLibraryTree. */
     companion object {
         const val ROOT = "root"
         const val TAB_PLAYLISTS = "tab_playlists"

@@ -14,6 +14,7 @@ import com.vayunmathur.music.platform.MusicViewModel
 import com.vayunmathur.music.platform.MusicViewModelFactory
 import com.vayunmathur.music.platform.PlaybackManager
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private val musicViewModel: MusicViewModel by viewModels {
         MusicViewModelFactory(application, MusicRepository.get(application), PlaybackManager.getInstance(this))

@@ -56,13 +56,16 @@ private const val TAG = "CastPlayback"
  */
 object CastPlayback {
 
+    /** Contract for state. */
     sealed interface State {
 
+        /** Singleton holding idle state and operations. */
         data object Idle : State
 
         /** The picker has been dismissed and the session is being negotiated. */
         data object Connecting : State
 
+        /** Immutable value describing casting; carries receiverName. */
         data class Casting(val receiverName: String) : State
     }
 

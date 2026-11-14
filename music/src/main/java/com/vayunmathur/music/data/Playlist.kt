@@ -4,6 +4,7 @@ import androidx.room3.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
 import kotlinx.serialization.Serializable
 
+/** Immutable value describing playlist. */
 @Serializable
 @Entity
 data class Playlist(

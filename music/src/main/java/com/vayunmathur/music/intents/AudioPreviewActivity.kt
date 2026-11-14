@@ -53,6 +53,7 @@ import kotlinx.coroutines.delay
  */
 private const val POSITION_POLL_MS = 250L
 
+/** Audio Preview Activity: a component activity implementation for audio preview activity. */
 class AudioPreviewActivity : ComponentActivity() {
 
     private var player: ExoPlayer? = null
