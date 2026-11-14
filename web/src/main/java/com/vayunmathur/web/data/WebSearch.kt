@@ -21,6 +21,7 @@ data class WebSearchResponse(
     @SerialName("fallback_url") val fallbackUrl: String? = null,
 )
 
+/** Immutable value describing web search text item. */
 @Serializable
 data class WebSearchTextItem(
     val title: String = "",
@@ -28,6 +29,7 @@ data class WebSearchTextItem(
     val snippet: String = "",
 )
 
+/** Immutable value describing web search image item. */
 @Serializable
 data class WebSearchImageItem(
     val title: String = "",
@@ -36,6 +38,7 @@ data class WebSearchImageItem(
     @SerialName("source_url") val sourceUrl: String = "",
 )
 
+/** Immutable value describing web search news item. */
 @Serializable
 data class WebSearchNewsItem(
     val title: String = "",

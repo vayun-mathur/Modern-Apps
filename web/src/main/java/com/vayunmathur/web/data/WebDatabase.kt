@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 // Bumped to new file name to avoid old migration crash — fresh install uses this DB.
 const val DB_NAME = "web-browser-db"
 
+/** Contract for history dao. */
 @Dao
 interface HistoryDao {
     @Query("SELECT * FROM HistoryEntry ORDER BY visitedAt DESC")
@@ -39,6 +40,7 @@ interface HistoryDao {
     suspend fun recent(limit: Int): List<HistoryEntry>
 }
 
+/** Contract for bookmark dao. */
 @Dao
 interface BookmarkDao {
     @Query("SELECT * FROM Bookmark ORDER BY createdAt DESC")
@@ -72,6 +74,7 @@ interface BookmarkDao {
     suspend fun deleteByFolder(folderId: Long)
 }
 
+/** Contract for site permission dao. */
 @Dao
 interface SitePermissionDao {
     @Query("SELECT * FROM SitePermission ORDER BY origin ASC")
@@ -96,6 +99,7 @@ interface SitePermissionDao {
     suspend fun deleteOrigin(origin: String)
 }
 
+/** Contract for storage info dao. */
 @Dao
 interface StorageInfoDao {
     @Query("SELECT * FROM StorageInfo ORDER BY lastSeen DESC")
@@ -117,6 +121,7 @@ interface StorageInfoDao {
     suspend fun clearAll()
 }
 
+/** Contract for download dao. */
 @Dao
 interface DownloadDao {
     @Query("SELECT * FROM DownloadEntry ORDER BY startedAt DESC")
@@ -132,6 +137,7 @@ interface DownloadDao {
     suspend fun clearAll()
 }
 
+/** Contract for installed site dao. */
 @Dao
 interface InstalledSiteDao {
     @Query("SELECT * FROM InstalledSite ORDER BY installedAt DESC")
@@ -153,6 +159,7 @@ interface InstalledSiteDao {
     suspend fun clearAll()
 }
 
+/** Contract for shield setting dao. */
 @Dao
 interface ShieldSettingDao {
     @Query("SELECT * FROM ShieldSetting ORDER BY host ASC")
@@ -189,6 +196,7 @@ interface ShieldSettingDao {
     version = 3,
     exportSchema = false
 )
+/** Web Database: a room database implementation for web database. */
 abstract class WebDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
     abstract fun bookmarkDao(): BookmarkDao
@@ -198,6 +206,7 @@ abstract class WebDatabase : RoomDatabase() {
     abstract fun installedSiteDao(): InstalledSiteDao
     abstract fun shieldSettingDao(): ShieldSettingDao
 
+    /** Shared constants and helpers for WebDatabase. */
     companion object : DatabaseMigrations {
         override val migrations = listOf(MIGRATION_1_2, MIGRATION_2_3)
     }

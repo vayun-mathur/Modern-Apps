@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
 
     private val readyState = mutableStateOf(false)
@@ -193,6 +194,7 @@ class MainActivity : MaActivity() {
         }
     }
 
+    /** Shared constants and helpers for MainActivity. */
     companion object {
         const val EXTRA_WINDOW_ID = "com.vayunmathur.web.WINDOW_ID"
         const val EXTRA_INCOGNITO = "com.vayunmathur.web.INCOGNITO"

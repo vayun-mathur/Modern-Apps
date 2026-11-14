@@ -23,6 +23,7 @@ interface WebStores {
     val shields: WebShieldStore
 }
 
+/** Web Repository: a context implementation for web repository. */
 class WebRepository private constructor(context: Context) :
     RoomRepository<WebDatabase>(context, WebDatabase::class, DB_NAME), WebStores {
 
@@ -34,6 +35,7 @@ class WebRepository private constructor(context: Context) :
     override val installed = WebInstalledSiteStore(db.installedSiteDao())
     override val shields = WebShieldStore(db.shieldSettingDao())
 
+    /** Shared constants and helpers for WebRepository. */
     companion object {
         @Volatile private var instance: WebRepository? = null
         fun get(context: Context): WebRepository =

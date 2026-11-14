@@ -21,7 +21,12 @@ object WebSearchRepository {
      * Production never sets it; unit tests use it to drive the search pages
      * deterministically (no live api.maproj.org in the test environment).
      */
-    internal var searchOverride: (suspend (query: String, kind: WebSearchKind, safeSearch: Boolean, page: Int) -> WebSearchResponse)? = null
+    internal var searchOverride: (suspend (
+        query: String,
+        kind: WebSearchKind,
+        safeSearch: Boolean,
+        page: Int,
+    ) -> WebSearchResponse)? = null
 
     /**
      * Runs one search. `safeSearch=true` (parental supervision switch) maps to

@@ -4,6 +4,7 @@ import android.content.Context
 import com.vayunmathur.web.data.ShieldSetting
 import com.vayunmathur.web.data.WebStores
 
+/** Creates web view model instances. */
 class WebViewModelFactory(
     private val repository: WebStores,
     private val context: Context,

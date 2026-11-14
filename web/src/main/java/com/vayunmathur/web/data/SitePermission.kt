@@ -4,6 +4,7 @@ import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
 
+/** Immutable value describing site permission. */
 @Entity
 data class SitePermission(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
@@ -15,6 +16,7 @@ data class SitePermission(
     val updatedAt: Long = System.currentTimeMillis(),
 ) : DatabaseItem
 
+/** Immutable value describing storage info. */
 @Entity
 data class StorageInfo(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
@@ -28,6 +30,7 @@ data class StorageInfo(
     val lastSeen: Long = System.currentTimeMillis(),
 ) : DatabaseItem
 
+/** Immutable value describing download entry. */
 @Entity
 data class DownloadEntry(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,

@@ -28,6 +28,7 @@ data class ShieldsSettings(
         get() = level == null && blockTrackers == null && cosmeticFiltering == null &&
             fingerprintProtection == null && httpsUpgrade == null
 
+    /** Shared constants and helpers for ShieldsSettings. */
     companion object {
         /** Brave's "Aggressive" preset, applied on first run. */
         val AGGRESSIVE_DEFAULTS = ShieldsSettings(
@@ -55,6 +56,7 @@ data class EffectiveShields(
     val anyEnabled: Boolean
         get() = blockTrackers || cosmeticFiltering || fingerprintProtection || httpsUpgrade
 
+    /** Shared constants and helpers for EffectiveShields. */
     companion object {
         val OFF = EffectiveShields(
             level = ShieldLevel.OFF,

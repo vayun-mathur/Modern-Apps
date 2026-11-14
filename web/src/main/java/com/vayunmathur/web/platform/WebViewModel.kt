@@ -54,6 +54,7 @@ internal const val P_SHIELD_HTTPS = "web_shield_https"
 internal const val P_LOCAL_NETWORK_DENIED = "web_local_network_denied"
 internal const val P_SEARCH_BAR_BOTTOM = "web_search_bar_bottom"
 
+/** View model for the web screen: holds UI state and handles its actions. */
 class WebViewModel(
     internal val repository: WebStores,
     internal val context: Context,
@@ -70,6 +71,7 @@ class WebViewModel(
     val originStateClearer: OriginStateClearer = WebViewCookieClearer,
 ) : ViewModel() {
 
+    /** Shared constants and helpers for WebViewModel. */
     companion object {
         const val DEFAULT_WINDOW_ID = "main"
 

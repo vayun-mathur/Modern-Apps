@@ -39,6 +39,7 @@ class ShieldsServiceWorkerClient(
             onBlocked = { _, _ -> },
         )
 
+    /** Shared constants and helpers for ShieldsServiceWorkerClient. */
     companion object {
         private val registered = AtomicBoolean(false)
 

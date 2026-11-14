@@ -30,6 +30,7 @@ data class FarblingConfig(
         append("}}")
     }
 
+    /** Shared constants and helpers for FarblingConfig. */
     companion object {
         /** Builds the config from the global defaults plus every per-site record. */
         fun of(global: ShieldsSettings, sites: Map<String, ShieldsSettings>): FarblingConfig {

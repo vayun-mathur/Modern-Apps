@@ -16,6 +16,7 @@ import com.vayunmathur.library.image.ImageResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** Immutable value describing pwa info. */
 data class PwaInfo(
     val name: String,
     val shortName: String = "",
@@ -30,7 +31,11 @@ data class PwaInfo(
     val hasManifest: Boolean = false,
 )
 
+/** Singleton holding pwa helper state and operations. */
 object PwaHelper {
+    private const val HEX_RADIX = 16
+    private const val UNICODE_ESCAPE_LENGTH = 6
+
     private const val TAG = "PwaHelper"
 
     /** Display titles are truncated so shortcut labels and dialog rows stay on one line. */
@@ -121,6 +126,13 @@ object PwaHelper {
      * the remaining backslash, so a title like `p\/q` decoded to `p/q`.
      * Walking once keeps each escape pair intact (`\\/` → `\` + `/`).
      */
+
+    /** Decodes a \uXXXX escape starting at [i]; returns the char and consumed length. */
+    private fun String.unicodeEscapeAt(i: Int): Pair<Char, Int>? {
+        val hex = if (i + 5 < length) substring(i + 2, i + 6) else null
+        val code = hex?.toIntOrNull(HEX_RADIX) ?: return null
+        return code.toChar() to UNICODE_ESCAPE_LENGTH
+    }
     private fun String.unescapeJson(): String {
         val out = StringBuilder(length)
         var i = 0
@@ -157,11 +169,10 @@ object PwaHelper {
                     i += 2
                 }
                 'u' -> {
-                    val hex = if (i + 5 < length) substring(i + 2, i + 6) else null
-                    val code = hex?.toIntOrNull(16)
-                    if (code != null) {
-                        out.append(code.toChar())
-                        i += 6
+                    val decoded = unicodeEscapeAt(i)
+                    if (decoded != null) {
+                        out.append(decoded.first)
+                        i += decoded.second
                     } else {
                         out.append('\\')
                         i++

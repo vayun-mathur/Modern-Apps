@@ -29,6 +29,7 @@ data class ShieldSetting(
         httpsUpgrade = httpsUpgrade,
     )
 
+    /** Shared constants and helpers for ShieldSetting. */
     companion object {
         fun from(host: String, settings: ShieldsSettings) = ShieldSetting(
             host = host,

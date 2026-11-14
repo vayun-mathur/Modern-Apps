@@ -29,6 +29,7 @@ import com.vayunmathur.web.platform.shields.ShieldsServiceWorkerClient
  */
 class PwaActivity : ComponentActivity() {
 
+    /** Shared constants and helpers for PwaActivity. */
     companion object {
         const val EXTRA_URL = "pwa_url"
         const val EXTRA_TITLE = "pwa_title"

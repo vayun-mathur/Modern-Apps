@@ -4,6 +4,7 @@ import android.net.Uri
 import com.vayunmathur.web.domain.LocalNetwork
 import kotlinx.serialization.Serializable
 
+/** Immutable value describing browser tab. */
 @Serializable
 data class BrowserTab(
     val id: String,
@@ -16,6 +17,7 @@ data class BrowserTab(
 val BrowserTab.isNewTab: Boolean
     get() = url.isBlank() || url == "about:blank"
 
+/** Kinds of search engine. */
 enum class SearchEngine(
     val displayName: String,
     val searchUrl: String,
@@ -46,7 +48,12 @@ enum class SearchEngine(
      * [searchUrl] is only a template for [buildQueryUrl]; navigation is
      * intercepted in [navigateActiveTab] before any WebView load.
      */
-    SELF_HOSTED("Maproj Search", "https://api.maproj.org/api/search?q=%s", "https://api.maproj.org/api/search", "safe_search=on");
+    SELF_HOSTED(
+        "Maproj Search",
+        "https://api.maproj.org/api/search?q=%s",
+        "https://api.maproj.org/api/search",
+        "safe_search=on",
+    );
 
     fun buildQueryUrl(query: String): String =
         searchUrl.replace("%s", Uri.encode(query))
@@ -64,6 +71,7 @@ enum class SearchEngine(
         return "$base$separator$param"
     }
 
+    /** Shared constants and helpers for SearchEngine. */
     companion object {
         val DEFAULT = DUCKDUCKGO
 
@@ -93,6 +101,7 @@ enum class SearchEngine(
     }
 }
 
+/** Kinds of cache mode. */
 enum class CacheMode(val title: String, val description: String, val webSettingsValue: Int) {
     DEFAULT("Default", "Use HTTP cache as needed", android.webkit.WebSettings.LOAD_DEFAULT),
     CACHE_ELSE_NETWORK("Cache first", "Prefer cache, fastest", android.webkit.WebSettings.LOAD_CACHE_ELSE_NETWORK),
@@ -100,6 +109,7 @@ enum class CacheMode(val title: String, val description: String, val webSettings
     CACHE_ONLY("Offline", "Cache only, offline mode", android.webkit.WebSettings.LOAD_CACHE_ONLY);
 }
 
+/** Kinds of site permission type. */
 enum class SitePermissionType(val key: String, val displayName: String) {
     CAMERA("camera", "Camera"),
     MICROPHONE("mic", "Microphone"),
@@ -107,6 +117,7 @@ enum class SitePermissionType(val key: String, val displayName: String) {
     NOTIFICATIONS("notifications", "Notifications")
 }
 
+/** Singleton holding browser utils state and operations. */
 object BrowserUtils {
     private const val MAX_PRETTY_URL_LENGTH = 48
     // Deliberately requires a dot (or localhost, or a dotted quad): loosening this to accept

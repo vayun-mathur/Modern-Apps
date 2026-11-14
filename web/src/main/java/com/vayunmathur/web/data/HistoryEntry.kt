@@ -4,6 +4,7 @@ import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
 
+/** Immutable value describing history entry. */
 @Entity
 data class HistoryEntry(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
