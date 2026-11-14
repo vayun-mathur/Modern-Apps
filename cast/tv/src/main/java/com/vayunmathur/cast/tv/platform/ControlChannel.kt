@@ -65,6 +65,7 @@ class ControlChannel(private val socket: Socket) {
         runCatching { socket.close() }
     }
 
+    /** One received control message together with the exact body bytes that carried it on the wire. */
     data class Received(val message: ControlMessage, val body: ByteArray) {
         override fun equals(other: Any?): Boolean =
             other is Received && message == other.message && body.contentEquals(other.body)

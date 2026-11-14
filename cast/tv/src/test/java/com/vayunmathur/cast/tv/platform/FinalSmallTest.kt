@@ -21,6 +21,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -35,7 +36,7 @@ class FinalSmallTest {
         val b = ControlChannel.Received(com.vayunmathur.cast.protocol.Ping, byteArrayOf(1, 2))
         val c = ControlChannel.Received(com.vayunmathur.cast.protocol.Ping, byteArrayOf(3))
         assertEquals(a, b); assertEquals(a.hashCode(), b.hashCode()); assertTrue(a != c)
-        assertTrue(!a.equals(null)); assertTrue(!a.equals("ping"))
+        assertNotEquals<Any?>(null, a); assertTrue(!a.equals("ping"))
         assertEquals(a, a)
     }
 

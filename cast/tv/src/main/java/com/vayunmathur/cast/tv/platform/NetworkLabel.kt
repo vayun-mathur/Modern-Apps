@@ -21,6 +21,9 @@ private const val TAG = "NetworkLabel"
  */
 object NetworkLabel {
 
+    /** Number of bytes in an IPv4 address, as returned by `InetAddress.getAddress()`. */
+    private const val IPV4_ADDRESS_SIZE = 4
+
     fun of(context: Context): String {
         val ssid = runCatching { wifiSsid(context) }.getOrNull()
         val ip = runCatching { lanIpv4() }.getOrNull()
@@ -56,7 +59,7 @@ object NetworkLabel {
         return interfaces.asSequence()
             .filter { runCatching { it.isUp && !it.isLoopback }.getOrDefault(false) }
             .flatMap { it.inetAddresses.asSequence() }
-            .filter { it.address.size == 4 && !it.isLoopbackAddress && it.isSiteLocalAddress }
+            .filter { it.address.size == IPV4_ADDRESS_SIZE && !it.isLoopbackAddress && it.isSiteLocalAddress }
             .map { it.hostAddress.orEmpty() }
             .firstOrNull { it.isNotBlank() }
     }

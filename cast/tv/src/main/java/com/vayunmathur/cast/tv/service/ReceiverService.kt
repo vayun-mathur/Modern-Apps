@@ -262,6 +262,7 @@ class ReceiverService : Service() {
             .build()
     }
 
+    /** Service actions and the entry point other components use to start the receiver. */
     companion object {
         const val ACTION_STOP = "com.vayunmathur.cast.tv.action.STOP"
 

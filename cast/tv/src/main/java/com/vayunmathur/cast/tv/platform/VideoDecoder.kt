@@ -176,6 +176,7 @@ class VideoDecoder(private val surface: Surface, private val codec: VideoCodec) 
         mediaCodec = null
     }
 
+    /** Stateless decoder discovery: the hardware decoders this TV can advertise to a sender. */
     companion object {
 
         /** Bit rate per Mbit/s, for the human-readable line in `limits`. */
