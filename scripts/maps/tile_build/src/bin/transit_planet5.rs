@@ -14,9 +14,9 @@
 //!   ROUTE_STOP_SHAPE to the kept vertices and rebuilding ROUTE_SHAPE_IDX; a ride leg still
 //!   slices `shape[vertex(board)..=vertex(alight)]` exactly at its stops;
 //! * stores the sections the planner only reads to describe a result (names, feed metadata,
-//!   polylines, MOTIS ids) and the calendar exceptions as 64 KiB zstd-19 ZSEC sections
-//!   (`--zsec` overrides; see COLD_SECTIONS for the measured trade-off), flagged by bit 63 of
-//!   their directory length, and stamps version 8.
+//!   polylines, MOTIS ids) as 64 KiB zstd-19 ZSEC sections (`--zsec` overrides; see
+//!   COLD_SECTIONS for the measured trade-off), flagged by bit 63 of their directory length,
+//!   and stamps version 8.
 //!
 //! The device reader (maps `transit.rs`) reads v3..=v8; a v7-only reader refuses v8 cleanly.
 use std::fs::File;
@@ -35,12 +35,13 @@ const SEC_ROUTE_TRIP_OFF: usize = 26;
 const ROUTE_REC: usize = 32;
 /// Sections stored as ZSEC by default: the ones the planner reads only to describe a finished
 /// journey or a stop (names 0, feed metadata 16/17/23, polylines and their indexes 20-22, MOTIS
-/// ids 24), plus the calendar exceptions (12; 0.53 GB raw, ~11x smaller). The other RAPTOR
-/// tables stay raw: measured on the planet pack (12 world queries, block cache 16 MiB/thread),
-/// every compressed set cost this much plan time against raw v7:
-///   cold only 1.04x (2.94 GB) | cold + exceptions 1.30x (2.45 GB) | + stop routes 2.3x |
-///   + transfers 2.6x | + profiles 5.2x | everything ~35x (1.19 GB).
-const COLD_SECTIONS: [usize; 9] = [0, 12, 16, 17, 20, 21, 22, 23, 24];
+/// ids 24). The RAPTOR tables stay raw. Plan time against raw v7 on the planet pack (block cache
+/// 16 MiB/thread):
+///   cold only           2.94 GB  1.01x (60 queries)  <- default
+///   cold + exceptions   2.45 GB  1.30x (12 queries), 5.5x (60: long searches thrash the cache)
+///   + stop routes 2.3x | + transfers 2.6x | + profiles 5.2x (12 queries)
+///   everything          1.19 GB  ~35x
+const COLD_SECTIONS: [usize; 8] = [0, 16, 17, 20, 21, 22, 23, 24];
 const NONE: u32 = u32::MAX;
 
 fn u32_at(b: &[u8], o: usize) -> u32 {
