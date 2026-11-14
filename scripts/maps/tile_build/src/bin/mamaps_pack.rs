@@ -1077,6 +1077,40 @@ fn value(args: &[String], i: usize, name: &str) -> PathBuf {
     }
 }
 
+/// POI kinds `--poi-zsec` may block-compress: the ones the app's Kotlin reader opens through
+/// `PoiBlockSection` (attrs 10, region 15). Their lookups are per record (a place sheet, a
+/// search row's locality), not scans; see the planet5 report for the measured trade-off.
+const POI_ZSEC_KINDS: [u8; 2] = [10, 15];
+/// miniz_oxide's best level (DEFLATE: the app inflates with java.util.zip, no JNI).
+const POI_ZSEC_LEVEL: u8 = 10;
+
+/// Replace each staged POI section of a kind in `kinds` with a DEFLATE ZSEC copy written next
+/// to `out` (`<out>.poi<kind>.zsec.tmp`); returns the temporaries for the caller to delete.
+fn block_compress_poi(validated: &mut Validated, kinds: &[u8], out: &Path) -> Result<Vec<PathBuf>, String> {
+    let mut temps = Vec::new();
+    for s in validated.staged.iter_mut().filter(|s| kinds.contains(&s.kind)) {
+        let raw = std::fs::read(&s.path).map_err(|e| format!("cannot read {}: {e}", s.path.display()))?;
+        let z = tilecodec::zsec::write_zsec_deflate(&raw, tilecodec::zsec::ZSEC_BLOCK, POI_ZSEC_LEVEL);
+        let tmp = out.with_extension(format!("poi{}.zsec.tmp", s.kind));
+        std::fs::write(&tmp, &z).map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
+        println!("poi kind {} block-compressed: {} -> {} bytes", s.kind, raw.len(), z.len());
+        temps.push(tmp.clone());
+        *s = Staged::whole(s.kind, tmp, z.len() as u64);
+    }
+    Ok(temps)
+}
+
+/// Deletes the block-compressed POI temporaries however `main` returns.
+struct TempFiles(Vec<PathBuf>);
+
+impl Drop for TempFiles {
+    fn drop(&mut self) {
+        for p in &self.0 {
+            let _ = std::fs::remove_file(p);
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     let mut tiles: Option<PathBuf> = None;
@@ -1085,6 +1119,7 @@ fn main() -> ExitCode {
     let mut transit: Option<PathBuf> = None;
     let mut out: Option<PathBuf> = None;
     let mut sha256_out: Option<PathBuf> = None;
+    let mut poi_zsec: Vec<u8> = Vec::new();
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -1096,6 +1131,19 @@ fn main() -> ExitCode {
             // SHA-256 of the finished archive, computed while it is written, in
             // `sha256sum` format (`<hex>  <archive file name>`).
             "--sha256-out" => sha256_out = Some(value(&args, i, "--sha256-out")),
+            // planet5: store these POI kinds as DEFLATE block sections (see POI_ZSEC_KINDS).
+            "--poi-zsec" => {
+                let v = value(&args, i, "--poi-zsec");
+                for k in v.to_string_lossy().split(',').filter(|k| !k.is_empty()) {
+                    match k.parse::<u8>() {
+                        Ok(k) if POI_ZSEC_KINDS.contains(&k) => poi_zsec.push(k),
+                        _ => {
+                            eprintln!("ERROR: mamaps_pack: --poi-zsec takes kinds from {POI_ZSEC_KINDS:?}, got {k}");
+                            return ExitCode::from(2);
+                        }
+                    }
+                }
+            }
             other => {
                 eprintln!("ERROR: mamaps_pack: unknown flag {other}");
                 return ExitCode::from(2);
@@ -1104,7 +1152,7 @@ fn main() -> ExitCode {
         i += 2;
     }
     let (Some(tiles), Some(graph), Some(poi), Some(out)) = (tiles, graph, poi, out) else {
-        eprintln!("usage: mamaps_pack --tiles IN.mamaps --graph GRAPH_DIR --poi POI_DIR [--transit WORLD.transit] --out OUT.mamaps [--sha256-out OUT.mamaps.sha256]");
+        eprintln!("usage: mamaps_pack --tiles IN.mamaps --graph GRAPH_DIR --poi POI_DIR [--transit WORLD.transit] --out OUT.mamaps [--sha256-out OUT.mamaps.sha256] [--poi-zsec 10,15]");
         return ExitCode::from(2);
     };
     // One phase clock for the run; subphases tile its wall gaplessly (`other`
@@ -1137,6 +1185,17 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
+    // Block-compress the chosen POI sidecars now that every one has validated raw. Their
+    // payloads are written to temporary files beside the output and staged in place of the
+    // originals; the build id still hashes the raw poi_attrs.bin (Validated::poi_attrs).
+    let zsec_temps = match block_compress_poi(&mut validated, &poi_zsec, &out) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("ERROR: mamaps_pack: {e}");
+            return ExitCode::from(1);
+        }
+    };
+    let _cleanup = TempFiles(zsec_temps);
     if tile_bytes_prefix.len() < 24 {
         eprintln!("ERROR: mamaps_pack: tile header too short");
         return ExitCode::from(1);
@@ -1148,7 +1207,14 @@ fn main() -> ExitCode {
     timer.switch("write-output");
     let derive = || -> Result<u64, String> {
         let digest = validated.poi_attrs_digest()?;
-        Ok(derive_build_id(&validated.osm_id, &digest, &validated.transit_prefix))
+        // A block-compressed POI section changes the archive's bytes but not the attribute
+        // digest, and phones cache byte ranges by build id: the encoding moves the id too.
+        let mut place: Vec<u8> = digest.to_vec();
+        if !poi_zsec.is_empty() {
+            place.extend_from_slice(b"|poi-zsec:");
+            place.extend_from_slice(&poi_zsec);
+        }
+        Ok(derive_build_id(&validated.osm_id, &place, &validated.transit_prefix))
     };
     match pack_streaming_with(&tiles, &validated, derive, &out, sha256_out.is_some()) {
         Ok((final_len, id, digest)) => {
@@ -1451,6 +1517,27 @@ mod tests {
         // kind 15 stages after the overlay's 14.
         let view = ArchiveView::parse(&packed, &header).expect("packed archive opens");
         assert_eq!(view.section(&packed, ARCHIVE_KIND_POI_REGION), Some(&region[..]));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    #[test]
+    fn a_block_compressed_region_packs_validates_and_decodes_back() {
+        let (dir, poi) = overlay_fixture("region-zsec");
+        let region = region_payload((300u64 << 2) | 3);
+        std::fs::write(poi.join("poi_region.bin"), &region).expect("fixture region");
+        let mut validated = load_sidecars(&dir, &poi, None).expect("stage fixtures");
+        let out = dir.join("packed.mamaps");
+        let temps = block_compress_poi(&mut validated, &[ARCHIVE_KIND_POI_REGION], &out).expect("compress");
+        assert_eq!(temps.len(), 1);
+        pack_streaming(&dir.join("tiles.mamaps"), &validated, 0xBEEF, &out).expect("pack");
+        let packed = std::fs::read(&out).expect("read packed");
+        let header = Header::parse(&packed).expect("packed header");
+        // The view validates the compressed section through its first decoded block.
+        let view = ArchiveView::parse(&packed, &header).expect("packed archive opens");
+        let sec = view.section(&packed, ARCHIVE_KIND_POI_REGION).expect("region section");
+        let z = tilecodec::zsec::ZSec::parse(sec).expect("a ZSEC section");
+        assert_eq!(z.codec(), tilecodec::zsec::ZSEC_CODEC_DEFLATE);
+        let back: Vec<u8> = (0..z.block_count()).flat_map(|b| z.block(b).expect("block")).collect();
+        assert_eq!(back, region);
         let _ = std::fs::remove_dir_all(&dir);
     }
     /// `poi_admin.bin`: PAD1 + version + one 32-byte entry + a 6-byte name pool.

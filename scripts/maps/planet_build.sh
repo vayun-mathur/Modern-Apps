@@ -20,6 +20,8 @@
 # zone, graph v8 varint shape points), transit_planet5 (TRIX v8: ZSEC sections, ROUTE_TRIPS
 # dropped, shapes thinned at 1 m) and mamaps_planet5 (v10 header: dictionary-zstd v11 bodies).
 # The graph's ZBLK blocks are zstd-19 straight out of road_graph (tilecodec BLOCK_LEVEL).
+# mamaps_pack stores the POI attrs (kind 10) and region (kind 15) sidecars as DEFLATE block
+# sections (--poi-zsec 10,15), which the app inflates per lookup with java.util.zip.
 # Memory admission reads MemAvailable, capped by the cgroup's own headroom when
 # the process runs under a memory limit below the host's RAM (containers, vast
 # slices); with no such limit (devvm) it is plain MemAvailable as before.
@@ -606,7 +608,7 @@ log "[6/7] pack: mamaps_pack -> $OUTNAME"
 # A stale inline hash from an earlier run must never be taken for this one.
 rm -f "$PACK_SHA"
 "$BIN/mamaps_pack" --tiles "$TILES5" --graph "$GRAPH5" --poi "$POI" \
-    --transit "$TRANSIT5" --out "$OUT" ${PACK_SHA_ARGS[@]+"${PACK_SHA_ARGS[@]}"} >"$TMP/pack.log" 2>&1 \
+    --transit "$TRANSIT5" --poi-zsec 10,15 --out "$OUT" ${PACK_SHA_ARGS[@]+"${PACK_SHA_ARGS[@]}"} >"$TMP/pack.log" 2>&1 \
     || die "mamaps_pack failed (see $TMP/pack.log)"
 log "  packed $(stat -c%s "$OUT") B; freeing transit workdir"
 rm -rf "$IN/world_transit_work" && log "  inputs/world_transit_work deleted" \
