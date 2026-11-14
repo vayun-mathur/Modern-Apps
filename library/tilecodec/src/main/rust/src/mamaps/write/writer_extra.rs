@@ -61,6 +61,9 @@ impl StreamWriter {
         if self.options.rings_validated {
             flags |= FLAG_RINGS_VALIDATED;
         }
+        if self.options.superblocks && self.options.zdicts.is_some() {
+            flags |= crate::mamaps::header::FLAG_SUPERBLOCKS;
+        }
         // One raw-DEFLATE frame per leaf, decided here — after the budget loop, exactly once
         // per finish — so `partition` stays about boundaries and the frame bytes are a pure
         // function of the leaf: the same leaf always stores the same bytes, which is what keeps

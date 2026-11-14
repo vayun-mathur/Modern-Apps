@@ -8,7 +8,8 @@ use crate::proto::{err, Result};
 
 use super::consts::{
     COMPRESSION_DEFLATE, COMPRESSION_NONE, COMPRESSION_ZSTD, COMPRESSION_ZSTD_DICT, FLAG_LEAF_LEN_64,
-    FORMAT_VERSION, FORMAT_VERSION_HEADER_V10, FORMAT_VERSION_V9, HEADER_LEN, KNOWN_FLAGS, MAGIC,
+    FORMAT_VERSION, FORMAT_VERSION_HEADER_V10, FORMAT_VERSION_HEADER_V11, FORMAT_VERSION_V9, HEADER_LEN, KNOWN_FLAGS, MAGIC,
+    FLAG_SUPERBLOCKS,
     MAX_ZOOM,
 };
 use super::types::Header;
@@ -33,14 +34,24 @@ impl Header {
             return err("not a .mamaps archive (bad magic)");
         }
         let version = buf[7];
-        if version != FORMAT_VERSION && version != FORMAT_VERSION_V9 && version != FORMAT_VERSION_HEADER_V10 {
+        if version != FORMAT_VERSION
+            && version != FORMAT_VERSION_V9
+            && version != FORMAT_VERSION_HEADER_V10
+            && version != FORMAT_VERSION_HEADER_V11
+        {
             return err(format!(
                 "unsupported .mamaps format version {version} (this reader speaks v{FORMAT_VERSION}, \
-                 v{FORMAT_VERSION_V9} and v{FORMAT_VERSION_HEADER_V10})",
+                 v{FORMAT_VERSION_V9}, v{FORMAT_VERSION_HEADER_V10} and v{FORMAT_VERSION_HEADER_V11})",
             ));
         }
-        // Dictionary compression is exactly what makes a header v10, both ways.
-        if (version == FORMAT_VERSION_HEADER_V10) != (buf[12] == COMPRESSION_ZSTD_DICT) {
+        // v11 is v10 with superblocks, and the superblock flag is v11 only.
+        let sb_flag = u16::from_le_bytes([buf[10], buf[11]]) & FLAG_SUPERBLOCKS != 0;
+        if (version == FORMAT_VERSION_HEADER_V11) != sb_flag {
+            return err(format!("a .mamaps v{version} header with the superblock flag {}", if sb_flag { "set" } else { "clear" }));
+        }
+        let dict_version = version == FORMAT_VERSION_HEADER_V10 || version == FORMAT_VERSION_HEADER_V11;
+        // Dictionary compression is exactly what makes a header v10/v11, both ways.
+        if dict_version != (buf[12] == COMPRESSION_ZSTD_DICT) {
             return err(format!(
                 "a .mamaps v{version} header with compression {} (v{FORMAT_VERSION_HEADER_V10} means \
                  dictionary-zstd bodies and nothing else)",

@@ -447,3 +447,51 @@ fn a_dictionary_archive_round_trips() {
     let (start, end) = crate::mamaps::read::zdict_extent(&a.header).expect("extent");
     assert_eq!(&bytes[start as usize..end as usize], &section[..]);
 }
+
+#[test]
+fn a_superblock_archive_round_trips_through_every_reader() {
+    use crate::mamaps::body::serialize;
+    use crate::mamaps::write::compress_body_zstd;
+    use crate::mamaps::zdict::ZDicts;
+    let section = ZDicts::serialize(&[]);
+    let mut writer = StreamWriter::new(Options { zdicts: Some(section), superblocks: true, ..Options::default() })
+        .expect("options");
+    // An aligned 2x2 block at z2 (Hilbert-contiguous ids) as one superblock, plus one plain tile.
+    let block: Vec<(u64, u64, i16)> = vec![(2, 0, 1), (3, 0, 2), (2, 1, 3), (3, 1, 4)];
+    let mut members: Vec<(u64, Vec<u8>)> =
+        block.iter().map(|&(x, y, s)| (tile_id(2, x, y), serialize(&body_for(s)).expect("serialize"))).collect();
+    members.sort_by_key(|m| m.0);
+    let sb = crate::mamaps::superblock::assemble(&members);
+    let frame = compress_body_zstd(&sb);
+    let plain = (0u64, 0u64, 9i16);
+    let mut appends: Vec<(u64, Vec<u8>)> = members.iter().map(|m| (m.0, frame.clone())).collect();
+    appends.push((tile_id(2, plain.0, plain.1), compress_body_zstd(&serialize(&body_for(plain.2)).expect("s"))));
+    appends.sort_by_key(|a| a.0);
+    for (id, stored) in &appends {
+        writer.append_stored(*id, stored).expect("append");
+    }
+    let bytes = writer.finish().expect("finish");
+    assert_eq!(bytes[7], crate::mamaps::header::FORMAT_VERSION_HEADER_V11, "header v11");
+    let a = MamapsArchive::open(Counting { bytes: bytes.clone(), requests: RefCell::new(Vec::new()) }).expect("open");
+    assert!(a.header.flags & crate::mamaps::header::FLAG_SUPERBLOCKS != 0);
+    for &(x, y, s) in &block {
+        assert_eq!(a.tile(2, x as u32, y as u32).expect("tile").expect("present"), body_for(s));
+    }
+    assert_eq!(a.tile(2, 0, 0).expect("tile").expect("present"), body_for(9));
+    // Batched: every member resolves, sharing one fetch.
+    let want: Vec<(u8, u32, u32)> = block.iter().map(|&(x, y, _)| (2u8, x as u32, y as u32)).chain([(2, 0, 0)]).collect();
+    let got = a.tiles(&want);
+    for (i, &(x, y, s)) in block.iter().enumerate() {
+        assert_eq!(got[i].as_ref().expect("ok").as_ref().expect("present"), &body_for(s), "{x},{y}");
+    }
+    assert_eq!(got[4].as_ref().expect("ok").as_ref().expect("present"), &body_for(9));
+    // read_all expands the members, one entry each.
+    let all = crate::mamaps::read::read_all(&bytes).expect("read_all");
+    assert_eq!(all.len(), 5);
+    for (id, run, raw) in &all {
+        assert_eq!(*run, 1);
+        assert!(crate::mamaps::body::Body::parse(raw).is_ok(), "tile {id} is a body");
+    }
+    // The superblock frame is stored once (content dedup): the file holds one copy.
+    assert_eq!(bytes.windows(frame.len()).filter(|w| *w == &frame[..]).count(), 1);
+}

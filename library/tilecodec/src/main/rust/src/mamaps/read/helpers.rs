@@ -156,11 +156,19 @@ pub fn read_all(bytes: &[u8]) -> Result<Vec<(u64, u32, Vec<u8>)>> {
             if end > bytes.len() {
                 return err("a .mamaps leaf entry runs past the file");
             }
-            out.push((
-                entry.base_tile_id + tile.tile_id_lo as u64,
-                tile.run_length,
-                decompress_with(header.compression, &bytes[start..end], zdicts.as_ref())?,
-            ));
+            let id = entry.base_tile_id + tile.tile_id_lo as u64;
+            let raw = decompress_with(header.compression, &bytes[start..end], zdicts.as_ref())?;
+            if crate::mamaps::superblock::is_superblock(&raw) {
+                // Header v11: one entry per member tile (a run of members shares the frame).
+                for k in 0..tile.run_length.max(1) as u64 {
+                    match crate::mamaps::superblock::member(&raw, id + k)? {
+                        Some(b) => out.push((id + k, 1, b.to_vec())),
+                        None => return err("a .mamaps leaf entry addresses a superblock its tile is not in"),
+                    }
+                }
+            } else {
+                out.push((id, tile.run_length, raw));
+            }
         }
     }
     if out.windows(2).any(|pair| pair[1].0 <= pair[0].0) {

@@ -128,6 +128,33 @@ impl<R: RangeReader> MamapsArchive<R> {
     ///
     /// `None` rather than an error: most of a coastal viewport is off the edge of coverage, and
     /// that is the ordinary answer rather than a fault.
+    /// Decompress a stored frame for `tile_id`: a body as is, or -- for a superblock (header
+    /// v11) -- the tile's member body, the decompressed block kept in the shared cache so its
+    /// other members cost no decompress.
+    fn decode_stored(&self, abs_offset: u64, stored: &[u8], tile_id: u64) -> Result<Vec<u8>> {
+        let raw = decompress_with(self.header.compression, stored, self.zdicts.as_deref())?;
+        if crate::mamaps::superblock::is_superblock(&raw) {
+            let raw = Arc::new(raw);
+            let body = crate::mamaps::superblock::resolve(raw.as_ref().clone(), tile_id);
+            crate::mamaps::superblock::shared_cache().put(self.header.build_id, abs_offset, raw);
+            return body;
+        }
+        Ok(raw)
+    }
+
+    /// The member body of `tile_id` from an already-cached superblock at `abs_offset`.
+    fn cached_member(&self, abs_offset: u64, tile_id: u64) -> Option<Result<Vec<u8>>> {
+        if self.header.flags & crate::mamaps::header::FLAG_SUPERBLOCKS == 0 {
+            return None;
+        }
+        let sb = crate::mamaps::superblock::shared_cache().get(self.header.build_id, abs_offset)?;
+        Some(match crate::mamaps::superblock::member(&sb, tile_id) {
+            Ok(Some(b)) => Ok(b.to_vec()),
+            Ok(None) => err(format!("tile {tile_id} is not a member of the superblock its leaf entry addresses")),
+            Err(e) => Err(e),
+        })
+    }
+
     pub fn tile(&self, z: u8, x: u32, y: u32) -> Result<Option<Body>> {
         let Some(bytes) = self.tile_bytes(z, x, y)? else { return Ok(None) };
         Ok(Some(Body::parse(&bytes)?))
@@ -269,14 +296,27 @@ impl<R: RangeReader> MamapsArchive<R> {
                 }
             }
         }
-        // Wave 2: every wanted body, fetched concurrently in slot order.
+        // Wave 2: every wanted body, fetched concurrently in slot order. Tiles of one superblock
+        // share a stored frame: it is fetched and decompressed once (or not at all when cached).
+        let ids: Vec<u64> = tiles.iter().map(|&(z, x, y)| tile_id(z, x as u64, y as u64)).collect();
         let mut body_slots: Vec<usize> = Vec::new();
         let mut body_requests: Vec<(u64, u32)> = Vec::new();
+        let mut shared: Vec<(usize, usize)> = Vec::new(); // (slot, index of the request it shares)
         for (slot, slot_body) in bodies.iter().enumerate() {
             if done[slot].is_some() {
                 continue;
             }
             if let Some((offset, length)) = slot_body {
+                if let Some(hit) = self.cached_member(*offset, ids[slot]) {
+                    done[slot] = Some(hit.and_then(|raw| Body::parse(&raw)).map(Some));
+                    continue;
+                }
+                if self.header.flags & crate::mamaps::header::FLAG_SUPERBLOCKS != 0 {
+                    if let Some(j) = body_requests.iter().position(|r| r.0 == *offset) {
+                        shared.push((slot, j));
+                        continue;
+                    }
+                }
                 body_slots.push(slot);
                 body_requests.push((*offset, *length));
             }
@@ -287,7 +327,7 @@ impl<R: RangeReader> MamapsArchive<R> {
                 let (offset, length) = body_requests[i];
                 match found.get(i) {
                     Some(Ok(stored)) if stored.len() == length as usize => {
-                        match decompress_with(self.header.compression, stored, self.zdicts.as_deref()) {
+                        match self.decode_stored(offset, stored, ids[*slot]) {
                             Ok(raw) => match Body::parse(&raw) {
                                 Ok(body) => done[*slot] = Some(Ok(Some(body))),
                                 Err(e) => done[*slot] = Some(Err(e)),
@@ -307,6 +347,14 @@ impl<R: RangeReader> MamapsArchive<R> {
                     }
                 }
             }
+        }
+        // Slots that shared another slot's superblock frame: it is in the cache now.
+        for (slot, j) in shared {
+            let (offset, _) = body_requests[j];
+            done[slot] = Some(match self.cached_member(offset, ids[slot]) {
+                Some(r) => r.and_then(|raw| Body::parse(&raw)).map(Some),
+                None => err("a .mamaps superblock its batch fetched did not decode"),
+            });
         }
         done.into_iter()
             .map(|slot| slot.unwrap_or_else(|| err("a .mamaps batch left a tile unresolved")))
@@ -418,8 +466,12 @@ impl<R: RangeReader> MamapsArchive<R> {
         if at + entry.length as u64 > self.header.data_len {
             return err("a .mamaps leaf entry runs past the tile data section");
         }
-        let stored = self.exact(self.header.data_offset + at, entry.length, "a tile body")?;
-        Ok(Some(decompress_with(self.header.compression, &stored, self.zdicts.as_deref())?))
+        let abs = self.header.data_offset + at;
+        if let Some(hit) = self.cached_member(abs, want) {
+            return hit.map(Some);
+        }
+        let stored = self.exact(abs, entry.length, "a tile body")?;
+        Ok(Some(self.decode_stored(abs, &stored, want)?))
     }
 
     /// The parsed leaf a root entry addresses, from the shared cache or over the wire.

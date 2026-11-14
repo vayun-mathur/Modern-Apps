@@ -90,6 +90,8 @@ pub const FORMAT_VERSION_V10: u8 = 10;
 /// header cleanly, which is what keeps planet4 apps on planet4. This reader still speaks v8 and
 /// v9 headers unchanged.
 pub const FORMAT_VERSION_HEADER_V10: u8 = 10;
+/// Header v11: v10 (dictionary-zstd bodies) plus [`FLAG_SUPERBLOCKS`]; the two go together.
+pub const FORMAT_VERSION_HEADER_V11: u8 = 11;
 
 /// Body version 11: a v10 body whose heightmap samples are MED-predicted (LOCO-I) zigzag
 /// residuals rather than raw `u16`s. Lossless (mod 2^16 arithmetic); only the entropy of the
@@ -124,9 +126,16 @@ pub const FLAG_LEAF_LEN_64: u16 = 1 << 3;
 /// non-zero reserved word. See [`crate::mamaps::index`] for the framing.
 pub const FLAG_LEAVES_COMPRESSED: u16 = 1 << 4;
 
+/// Planet5 (~50 GB revision): some stored bodies are *superblocks* -- one dictionary-zstd frame
+/// holding the bodies of up to 8x8 neighbouring tiles (see [`crate::mamaps::superblock`]). Every
+/// member tile's leaf entry addresses the shared frame; the reader picks its body out by tile id.
+/// Only with [`FORMAT_VERSION_HEADER_V11`] (and that version means exactly this flag), so a v10
+/// reader refuses the archive by version.
+pub const FLAG_SUPERBLOCKS: u16 = 1 << 5;
+
 pub(super) const KNOWN_FLAGS: u16 =
     FLAG_BODIES_COMPRESSED | FLAG_RUN_LENGTH_PRESENT | FLAG_RINGS_VALIDATED | FLAG_LEAF_LEN_64
-    | FLAG_LEAVES_COMPRESSED;
+    | FLAG_LEAVES_COMPRESSED | FLAG_SUPERBLOCKS;
 
 /// Bodies stored as written.
 pub const COMPRESSION_NONE: u8 = 0;

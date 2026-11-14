@@ -4,7 +4,8 @@
 
 use super::consts::{
     COMPRESSION_ZSTD_DICT, FLAG_LEAF_LEN_64, FLAG_LEAVES_COMPRESSED, FORMAT_VERSION,
-    FORMAT_VERSION_HEADER_V10, FORMAT_VERSION_V9, HEADER_LEN, MAGIC,
+    FORMAT_VERSION_HEADER_V10, FORMAT_VERSION_HEADER_V11, FORMAT_VERSION_V9, HEADER_LEN, MAGIC,
+    FLAG_SUPERBLOCKS,
 };
 use super::types::Header;
 
@@ -16,7 +17,9 @@ impl Header {
         // Compressed leaves are a v9 frame: the flag is unknown to a v8
         // reader, which refuses cleanly rather than misreading the leaf
         // section. Everything else keeps the v8 byte (and v8 readers).
-        out.push(if self.compression == COMPRESSION_ZSTD_DICT {
+        out.push(if self.flags & FLAG_SUPERBLOCKS != 0 {
+            FORMAT_VERSION_HEADER_V11
+        } else if self.compression == COMPRESSION_ZSTD_DICT {
             FORMAT_VERSION_HEADER_V10
         } else if (self.flags & FLAG_LEAVES_COMPRESSED) != 0 {
             FORMAT_VERSION_V9
