@@ -15,6 +15,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 sealed interface Route : NavKey {
+    /** The home screen: storage meter, shortcuts, recents, and bookmarks. */
     @Serializable
     data object Home : Route
 

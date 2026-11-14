@@ -192,6 +192,7 @@ interface FilesActions :
     HomeActions,
     TrashActions,
     FeedbackActions {
+    /** Shared no-op actions, so previews can render the browser without behaviour. */
     companion object {
         val Noop: FilesActions = object : FilesActions {}
     }

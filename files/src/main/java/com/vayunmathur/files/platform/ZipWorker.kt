@@ -15,6 +15,11 @@ import java.util.zip.ZipOutputStream
 
 private const val TAG_ZIP = "ZipWorker"
 
+/**
+ * Background archive creation that refuses to overwrite or archive its own
+ * destination and removes partial output on failure.
+ */
+
 class ZipWorker(context: Context, params: WorkerParameters) : ProgressNotificationWorker(
     context,
     params,

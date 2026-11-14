@@ -12,6 +12,11 @@ import com.vayunmathur.files.platform.FilesViewModel
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ui.MaActivity
 
+/**
+ * Entry activity for the file browser: enables the SAF picker when privileged
+ * and routes files shared into the app toward the browser.
+ */
+
 class MainActivity : MaActivity() {
     private val viewModel: FilesViewModel by viewModels()
 

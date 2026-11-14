@@ -282,11 +282,7 @@ internal fun sortItemsList(
  */
 internal fun File.atomicMoveTo(target: File) {
     if (canonicalFile == target.canonicalFile) return
-    if (target.exists()) {
-        throw java.nio.file.FileAlreadyExistsException(
-            absolutePath, target.absolutePath, "destination already exists"
-        )
-    }
+    checkMoveTargetAbsent(target)
     try {
         java.nio.file.Files.move(
             this.toPath(),
@@ -297,34 +293,54 @@ internal fun File.atomicMoveTo(target: File) {
         throw e
     } catch (_: IOException) {
         // Cross-volume (or non-atomic) move: rename, else copy then delete the source.
-        // The copy never overwrites, and the source is only deleted after it succeeds.
-        // A failed copy deletes the partial destination before rethrowing, so a
-        // retry sees a clean slate instead of "already exists".
-        if (target.exists()) {
-            throw java.nio.file.FileAlreadyExistsException(
-                absolutePath, target.absolutePath, "destination already exists"
-            )
+        fallbackMoveTo(target)
+    }
+}
+
+/** Refuses a move whose destination already exists, leaving both files untouched. */
+private fun File.checkMoveTargetAbsent(target: File) {
+    if (target.exists()) {
+        throw java.nio.file.FileAlreadyExistsException(
+            absolutePath, target.absolutePath, "destination already exists"
+        )
+    }
+}
+
+/**
+ * Rename-or-copy fallback for a move `ATOMIC_MOVE` could not do. The copy never
+ * overwrites, and the source is only deleted after it succeeds.
+ */
+private fun File.fallbackMoveTo(target: File) {
+    // A concurrent creation may have landed while the atomic move was tried.
+    checkMoveTargetAbsent(target)
+    if (!renameTo(target)) {
+        copyMoveTo(target)
+    }
+}
+
+/** Copies this file or directory tree to [target], then deletes the source. */
+private fun File.copyMoveTo(target: File) {
+    try {
+        copySourceTo(target)
+    } catch (e: java.nio.file.FileAlreadyExistsException) {
+        // A concurrent creation raced the copy: never delete a file we did not create.
+        throw e
+    } catch (e: IOException) {
+        // A failed copy must not leave a partial destination behind to
+        // block a retry with "already exists".
+        target.deleteRecursively()
+        throw e
+    }
+}
+
+private fun File.copySourceTo(target: File) {
+    if (isDirectory) {
+        if (!copyRecursively(target, overwrite = false)) {
+            throw IOException("Could not move $absolutePath to ${target.absolutePath}")
         }
-        if (!this.renameTo(target)) {
-            try {
-                if (this.isDirectory) {
-                    if (!this.copyRecursively(target, overwrite = false)) {
-                        throw IOException("Could not move $absolutePath to ${target.absolutePath}")
-                    }
-                    this.deleteRecursively()
-                } else {
-                    this.copyTo(target, overwrite = false)
-                    this.delete()
-                }
-            } catch (e: java.nio.file.FileAlreadyExistsException) {
-                // A concurrent creation raced the copy: never delete a file we did not create.
-                throw e
-            } catch (e: IOException) {
-                // A failed copy must not leave a partial destination behind to
-                // block a retry with "already exists".
-                target.deleteRecursively()
-                throw e
-            }
-        }
+        deleteRecursively()
+    } else {
+        copyTo(target, overwrite = false)
+        delete()
     }
 }

@@ -28,23 +28,26 @@ internal fun resolveTrashableUris(context: Context, files: List<File>): Map<File
     val out = mutableMapOf<File, Uri>()
     for (file in files) {
         if (file.isDirectory) continue
-        try {
-            context.contentResolver.query(
-                collection,
-                arrayOf(MediaStore.MediaColumns._ID, MediaStore.Files.FileColumns.MEDIA_TYPE),
-                "${MediaStore.MediaColumns.DATA}=?",
-                arrayOf(file.absolutePath),
-                null,
-            )?.use { c ->
-                if (c.moveToFirst()) {
-                    mediaItemUri(c.getInt(1), c.getLong(0))?.let { out[file] = it }
-                }
-            }
-        } catch (_: IllegalArgumentException) {
-        }
+        queryTrashableUri(context, collection, file)?.let { out[file] = it }
     }
     return out
 }
+
+/** The MediaStore Uri for one file, or null when it is unindexed or not a media item. */
+private fun queryTrashableUri(context: Context, collection: Uri, file: File): Uri? =
+    try {
+        context.contentResolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID, MediaStore.Files.FileColumns.MEDIA_TYPE),
+            "${MediaStore.MediaColumns.DATA}=?",
+            arrayOf(file.absolutePath),
+            null,
+        )?.use { c ->
+            if (c.moveToFirst()) mediaItemUri(c.getInt(1), c.getLong(0)) else null
+        }
+    } catch (_: IllegalArgumentException) {
+        null
+    }
 
 /**
  * The per-collection Uri MediaStore's trash/delete requests require. They reject generic

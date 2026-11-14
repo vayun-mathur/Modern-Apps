@@ -15,6 +15,7 @@ import java.util.zip.ZipInputStream
 
 private const val TAG_UNZIP = "UnzipWorker"
 
+/** Background archive extraction with a byte budget, zip-slip checks, and all-or-nothing cleanup of partial output. */
 class UnzipWorker(context: Context, params: WorkerParameters) : ProgressNotificationWorker(
     context,
     params,

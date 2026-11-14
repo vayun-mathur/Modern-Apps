@@ -54,7 +54,7 @@ class WorkersAndStorageTest {
         dir.deleteRecursively()
     } }
 
-    private fun zipWorker(dir: File, sources: Array<String>, dest: File) =
+    private fun zipWorker(sources: Array<String>, dest: File) =
         TestListenableWorkerBuilder<ZipWorker>(ctx)
             .setInputData(
                 workDataOf(
@@ -71,14 +71,14 @@ class WorkersAndStorageTest {
         val existing = File(dir, "out.zip").apply { writeText("keep me") }
         assertEquals(
             ListenableWorker.Result.failure(),
-            zipWorker(dir, arrayOf(srcFile.absolutePath), existing).doWork(),
+            zipWorker(arrayOf(srcFile.absolutePath), existing).doWork(),
         )
         assertEquals("keep me", existing.readText())
         // the archive must never be one of its own sources (it would be
         // truncated before being read)
         assertEquals(
             ListenableWorker.Result.failure(),
-            zipWorker(dir, arrayOf(srcFile.absolutePath), srcFile).doWork(),
+            zipWorker(arrayOf(srcFile.absolutePath), srcFile).doWork(),
         )
         assertEquals("alpha", srcFile.readText())
         dir.deleteRecursively()
@@ -92,7 +92,7 @@ class WorkersAndStorageTest {
         // the same source twice makes ZipOutputStream reject the duplicate entry
         assertEquals(
             ListenableWorker.Result.failure(),
-            zipWorker(dir, arrayOf(srcFile.absolutePath, srcFile.absolutePath), dest).doWork(),
+            zipWorker(arrayOf(srcFile.absolutePath, srcFile.absolutePath), dest).doWork(),
         )
         assertFalse(dest.exists())
         dir.deleteRecursively()

@@ -13,6 +13,9 @@ import org.robolectric.shadows.ShadowEnvironment
 @Implements(android.os.Environment::class)
 class ShadowEnvironmentFix : ShadowEnvironment() {
     companion object {
+        // Robolectric dispatches to a shadow only through an @Implementation method matching
+        // the framework signature, so this cannot be a constant property as detekt suggests.
+        @Suppress("FunctionOnlyReturningConstant")
         @Implementation
         @JvmStatic
         fun isExternalStorageManager(): Boolean = true
@@ -23,6 +26,9 @@ class ShadowEnvironmentFix : ShadowEnvironment() {
 @Implements(android.os.Environment::class)
 class ShadowEnvironmentDeniedFix : ShadowEnvironment() {
     companion object {
+        // Robolectric dispatches to a shadow only through an @Implementation method matching
+        // the framework signature, so this cannot be a constant property as detekt suggests.
+        @Suppress("FunctionOnlyReturningConstant")
         @Implementation
         @JvmStatic
         fun isExternalStorageManager(): Boolean = false
