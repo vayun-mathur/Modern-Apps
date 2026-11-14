@@ -33,8 +33,8 @@ class MapOverlayLiveTest {
     }
 
     private companion object {
-        // The planet5 build of 2026-11-14 (planet_build.sh at a465eb7aa).
-        const val PLANET5_BUILD_ID = -0x420c77ce6b6280d4L // 0xbdf38831949d7f2c as a signed Long
-        const val PLANET5_LEN = 64_211_565_112L
+        // The published planet5 build of 2026-11-14 (planet_build.sh start to finish at 6514fbe1c).
+        const val PLANET5_BUILD_ID = -0x30a2dfe3078dfbcfL // 0xcf5d201cf8720431 as a signed Long
+        const val PLANET5_LEN = 63_117_680_720L
     }
 }
