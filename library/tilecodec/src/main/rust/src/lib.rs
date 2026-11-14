@@ -42,3 +42,5 @@ pub mod stream;
 /// tables. Read side always linked; the writer ([`blocked::write_blocked`])
 /// is behind the `write` feature like the tile writer.
 pub mod blocked;
+/// Byte-addressed block compression for planet5 sidecars ([`zsec`]).
+pub mod zsec;

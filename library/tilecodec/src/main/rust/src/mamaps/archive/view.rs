@@ -227,7 +227,7 @@ impl ArchiveView {
                     return err("a single-archive graph node count overflows u32");
                 }
                 let _ = header;
-                (n, e, esc, named, graph_version >= GRAPH_VERSION)
+                (n, e, esc, named, graph_version >= GRAPH_VERSION_BLOCKED)
             }
         };
         // Nodes: (N+1) 12-byte records (the sentinel). Under v7 a ZBLK

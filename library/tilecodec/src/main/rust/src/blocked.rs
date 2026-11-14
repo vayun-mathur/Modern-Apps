@@ -34,6 +34,10 @@ pub const BLOCKED_MAGIC: u32 = 0x4B4C_425A; // "ZBLK" LE
 /// Records per zstd frame. 4096 × 12 B = 48 KiB nodes, 4096 × 7 B = 28 KiB
 /// edges: small enough to inflate on a lookup, large enough to compress.
 pub const BLOCK_RECORDS: u32 = 4096;
+/// The zstd level every ZBLK frame is written at. 19 since planet5 (was 10): the planet's
+/// nodes shrink 4.34 -> 3.40 GB and edge records 4.61 -> 4.24 GB, decoded by the same reader
+/// at ~1.4x the per-block cost (cold blocks only; decoded blocks are cached).
+pub const BLOCK_LEVEL: i32 = 19;
 
 /// A parsed blocked section over bytes the caller keeps alive.
 ///
@@ -260,7 +264,7 @@ pub fn write_blocked_with(records: &[u8], record_len: usize, per_block: u32) -> 
     let count = records.len() / record_len;
     let block_count = count.div_ceil(per_block as usize);
     let cfg = zstd_rs::CompressionConfig {
-        level: 10,
+        level: BLOCK_LEVEL,
         ..zstd_rs::CompressionConfig::DEFAULT
     };
     let mut enc = zstd_rs::Compressor::new(cfg).expect("valid zstd level");
@@ -276,7 +280,7 @@ pub fn write_blocked_with(records: &[u8], record_len: usize, per_block: u32) -> 
     assemble_blocked(record_len, per_block, records.len(), &frames)
 }
 
-/// One block's zstd frame: a fresh level-10 encoder over `block`, exactly what
+/// One block's zstd frame: a fresh [`BLOCK_LEVEL`] encoder over `block`, exactly what
 /// [`BlockedStreamWriter`] writes for it. Public so a caller can compress
 /// blocks on its own thread pool and hand the frames to
 /// [`BlockedStreamWriter::push_frames`] in order.
@@ -284,7 +288,7 @@ pub fn write_blocked_with(records: &[u8], record_len: usize, per_block: u32) -> 
 pub fn compress_block(block: &[u8]) -> Vec<u8> {
     // One context per thread, reused for every block it compresses. A fresh
     // `Compressor` per block (what this used to do) allocates and zeroes the
-    // level-10 match tables — megabytes — for every 28-48 KiB block, which
+    // [`BLOCK_LEVEL`] match tables — megabytes — for every 28-48 KiB block, which
     // dominated the cost of compressing a planet's nodes.bin/edges.bin. The
     // encoder is built for reuse: its tables are epoch-tagged, so entries from
     // an earlier frame are never matched, and a frame "depends only on the
@@ -298,7 +302,7 @@ pub fn compress_block(block: &[u8]) -> Vec<u8> {
         let mut slot = cell.borrow_mut();
         let enc = slot.get_or_insert_with(|| {
             zstd_rs::Compressor::new(zstd_rs::CompressionConfig {
-                level: 10,
+                level: BLOCK_LEVEL,
                 ..zstd_rs::CompressionConfig::DEFAULT
             })
             .expect("valid zstd level")
@@ -623,7 +627,7 @@ mod tests {
         }
         let fresh = |b: &[u8]| {
             let mut enc = zstd_rs::Compressor::new(zstd_rs::CompressionConfig {
-                level: 10,
+                level: BLOCK_LEVEL,
                 ..zstd_rs::CompressionConfig::DEFAULT
             })
             .unwrap();

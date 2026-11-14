@@ -53,7 +53,13 @@ pub const ARCHIVE_KIND_MAX_KNOWN: u8 = ARCHIVE_KIND_POI_ADMIN;
 pub const GRAPH_MAGIC: u32 = 0x4752_414D;
 /// Newest (and only, for the single archive) graph version: v7 blocked record
 /// sections (nodes, edges records, elevation).
-pub const GRAPH_VERSION: u32 = 7;
+pub const GRAPH_VERSION: u32 = 8;
+/// First graph version whose nodes/edges/elevation are ZBLK blocked (v7 and later).
+pub const GRAPH_VERSION_BLOCKED: u32 = 7;
+/// Planet5: `intermediate.bin` blobs are zigzag-varint deltas on a 1e-6 degree grid (rather
+/// than fixed `i16` 1e-7 degree deltas), thinned to a 1 m bound, with 16 geometry edges per
+/// coarse block (`INTERMEDIATE_BLOCK_V8`) so a block's span still fits the `u16` within-table.
+pub const GRAPH_VERSION_VARINT: u32 = 8;
 /// Oldest graph version accepted: v6 raw tables still validate by length.
 pub const GRAPH_VERSION_MIN: u32 = 6;
 /// `metadata.bin` wire length: magic + version + 4 counts.
@@ -61,7 +67,11 @@ pub const GRAPH_META_LEN: u64 = 40;
 /// `transit` (`TRIX`) magic, little-endian `u32`.
 pub const TRANSIT_MAGIC: u32 = 0x5452_4958;
 /// Newest transit version accepted. v7 adds a host-only section the app never reads.
-pub const TRANSIT_VERSION: u32 = 7;
+pub const TRANSIT_VERSION: u32 = 8;
+/// Planet5: every section of a v8 pack is a [`crate::zsec`] block-compressed section, its
+/// directory length the stored length (the raw length is in the ZSEC header). v8 also drops the
+/// unread ROUTE_TRIPS varint stream and thins SHAPE_COORDS.
+pub const TRANSIT_VERSION_ZSEC: u32 = 8;
 /// Oldest transit version accepted.
 pub const TRANSIT_VERSION_MIN: u32 = 3;
 /// POI index record stride.
