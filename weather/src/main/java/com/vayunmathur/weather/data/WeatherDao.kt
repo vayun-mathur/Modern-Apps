@@ -8,6 +8,7 @@ import androidx.room3.Query
 import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for weather dao. */
 @Dao
 interface WeatherDao {
 

@@ -84,7 +84,7 @@ class WeatherMiscTest {
         val state = WeatherCarState()
         var calls = 0
         state.observe { calls++ }
-        state.observe { throw RuntimeException("bad observer") }
+        state.observe { throw IllegalStateException("bad observer") }
         state.notifyChanged()
         assertEquals(1, calls)
         assertNull(state.forecastFor(1L))

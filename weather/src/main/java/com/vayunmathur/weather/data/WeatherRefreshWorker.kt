@@ -16,6 +16,7 @@ import com.vayunmathur.weather.network.toAirQuality
 import com.vayunmathur.weather.network.toForecastResponse
 import java.util.concurrent.TimeUnit
 
+/** Background worker performing weather refresh. */
 class WeatherRefreshWorker(
     private val context: Context,
     workerParams: WorkerParameters
@@ -50,6 +51,7 @@ class WeatherRefreshWorker(
         }
     }
 
+    /** Shared constants and helpers for WeatherRefreshWorker. */
     companion object {
         private const val TAG = "WeatherRefresh"
         private const val WORK_NAME = "WeatherHourlyRefresh"

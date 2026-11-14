@@ -50,6 +50,14 @@ import java.io.IOException
  * [Status.Absent] and search returns no results rather than failing.
  */
 object GeoDatabase {
+    const val COL_ID = 0
+    const val COL_NAME = 1
+    const val COL_LATITUDE = 2
+    const val COL_LONGITUDE = 3
+    const val COL_COUNTRY = 4
+    const val COL_COUNTRY_CODE = 5
+    const val COL_ADMIN1 = 6
+    const val COL_TIMEZONE = 7
 
     private const val TAG = "GeoDatabase"
     private const val ASSET_DB = "places.db.br"
@@ -78,18 +86,22 @@ object GeoDatabase {
         val compressedBytes: Long = 0,
     )
 
+    /** Contract for status. */
     sealed interface Status {
         val installed: Meta? get() = null
 
         /** Not unpacked yet; search returns no results. */
         data object Absent : Status
 
+        /** Singleton holding preparing state and operations. */
         data object Preparing : Status
 
+        /** Immutable value describing ready; carries meta. */
         data class Ready(val meta: Meta) : Status {
             override val installed: Meta get() = meta
         }
 
+        /** Immutable value describing failed; carries message, installed. */
         data class Failed(val message: String, override val installed: Meta?) : Status
     }
 
@@ -173,14 +185,14 @@ object GeoDatabase {
                         while (cursor.moveToNext()) {
                             add(
                                 GeocodingResult(
-                                    id = cursor.getLong(0),
-                                    name = cursor.getString(1),
-                                    latitude = cursor.getDouble(2),
-                                    longitude = cursor.getDouble(3),
-                                    country = cursor.getString(4)?.takeIf { it.isNotEmpty() },
-                                    countryCode = cursor.getString(5)?.takeIf { it.isNotEmpty() },
-                                    admin1 = cursor.getString(6)?.takeIf { it.isNotEmpty() },
-                                    timezone = cursor.getString(7)?.takeIf { it.isNotEmpty() },
+                                    id = cursor.getLong(COL_ID),
+                                    name = cursor.getString(COL_NAME),
+                                    latitude = cursor.getDouble(COL_LATITUDE),
+                                    longitude = cursor.getDouble(COL_LONGITUDE),
+                                    country = cursor.getString(COL_COUNTRY)?.takeIf { it.isNotEmpty() },
+                                    countryCode = cursor.getString(COL_COUNTRY_CODE)?.takeIf { it.isNotEmpty() },
+                                    admin1 = cursor.getString(COL_ADMIN1)?.takeIf { it.isNotEmpty() },
+                                    timezone = cursor.getString(COL_TIMEZONE)?.takeIf { it.isNotEmpty() },
                                 ),
                             )
                         }

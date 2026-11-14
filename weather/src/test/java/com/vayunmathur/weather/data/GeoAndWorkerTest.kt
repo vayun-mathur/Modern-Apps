@@ -13,6 +13,7 @@ import org.junit.Test as JUnitTest
 import org.junit.runner.RunWith
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -75,12 +76,10 @@ class GeoAndWorkerTest {
             } catch (e: Exception) {
                 assertTrue(e.message != null || e is RuntimeException)
             }
-            try {
+            val failure = kotlin.test.assertFailsWith<Exception> {
                 WeatherApi.currentTemperatures(listOf(52.0 to 13.0))
-                fail("expected network failure")
-            } catch (e: Exception) {
-                assertTrue(true)
             }
+            assertNotNull(failure)
         } finally {
             com.vayunmathur.weather.network.WeatherApi.bundleBaseOverride = null
         }

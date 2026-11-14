@@ -15,6 +15,7 @@ import com.vayunmathur.weather.platform.WeatherViewModel
 import com.vayunmathur.weather.platform.WeatherViewModelFactory
 import com.vayunmathur.weather.widget.glance.WeatherGlanceWidgetReceiver
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private val viewModel: WeatherViewModel by viewModels {
         WeatherViewModelFactory(application, WeatherRepository.get(application))

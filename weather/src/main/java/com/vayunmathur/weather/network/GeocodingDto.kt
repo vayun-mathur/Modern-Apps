@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class GeocodingResponse(val results: List<GeocodingResult> = emptyList())
 
+/** Immutable value describing geocoding result. */
 @Serializable
 data class GeocodingResult(
     val id: Long,

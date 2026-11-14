@@ -47,17 +47,20 @@ data class CurrentTemperatureResponse(
     val current: CurrentTemperature? = null,
 )
 
+/** Immutable value describing current temperature. */
 @Serializable
 data class CurrentTemperature(
     @SerialName("temperature_2m") val temperature: Double,
 )
 
+/** Immutable value describing minutely15. */
 @Serializable
 data class Minutely15(
     val time: List<String> = emptyList(),
     @SerialName("precipitation") val precipitation: List<Double> = emptyList(),
 )
 
+/** Immutable value describing current. */
 @Serializable
 data class Current(
     val time: String,
@@ -75,6 +78,7 @@ data class Current(
     @SerialName("is_day") val isDay: Int = 1,
 )
 
+/** Immutable value describing hourly. */
 @Serializable
 data class Hourly(
     val time: List<String> = emptyList(),
@@ -95,6 +99,7 @@ data class Hourly(
     @SerialName("is_day") val isDay: List<Int> = emptyList(),
 )
 
+/** Immutable value describing daily. */
 @Serializable
 data class Daily(
     val time: List<String> = emptyList(),

@@ -32,6 +32,7 @@ data class WxBundle(
     val aq: WxAq? = null,
 )
 
+/** Immutable value describing wx current. */
 @Serializable
 data class WxCurrent(
     val time: Long,
@@ -49,6 +50,7 @@ data class WxCurrent(
     val day: Int,
 )
 
+/** Immutable value describing wx hourly. */
 @Serializable
 data class WxHourly(
     val start: Long,
@@ -72,6 +74,7 @@ data class WxHourly(
     val day: List<Int> = emptyList(),
 )
 
+/** Immutable value describing wx daily. */
 @Serializable
 data class WxDaily(
     val start: String = "",
@@ -93,6 +96,7 @@ data class WxDaily(
     val moonset: List<Long?> = emptyList(),
 )
 
+/** Immutable value describing wx min15. */
 @Serializable
 data class WxMin15(
     val start: Long,
@@ -101,6 +105,7 @@ data class WxMin15(
     val precip: List<Double> = emptyList(),
 )
 
+/** Immutable value describing wx aq. */
 @Serializable
 data class WxAq(
     val time: Long,
@@ -120,6 +125,7 @@ data class WxCurrentBatch(
     val points: List<WxCurrentPoint> = emptyList(),
 )
 
+/** Immutable value describing wx current point. */
 @Serializable
 data class WxCurrentPoint(
     val lat: Double,

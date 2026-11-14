@@ -16,6 +16,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AirQualityResponse(val current: AirQualityCurrent? = null)
 
+/** Immutable value describing air quality current. */
 @Serializable
 data class AirQualityCurrent(
     val time: String,

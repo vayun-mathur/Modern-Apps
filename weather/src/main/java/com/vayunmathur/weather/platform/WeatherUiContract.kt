@@ -86,6 +86,7 @@ interface WeatherActions {
     fun deleteLocation(location: SavedLocation) {}
     fun reorderLocations(ordered: List<SavedLocation>) {}
 
+    /** Shared constants and helpers for WeatherActions. */
     companion object {
         val Noop: WeatherActions = object : WeatherActions {}
     }

@@ -6,6 +6,7 @@ import com.vayunmathur.weather.network.AirQualityResponse
 import com.vayunmathur.weather.network.ForecastResponse
 import kotlinx.coroutines.flow.Flow
 
+/** Weather Repository: a context implementation for weather repository. */
 open class WeatherRepository internal constructor(context: Context) :
     RoomRepository<WeatherDatabase>(context, WeatherDatabase::class, DB_NAME) {
 
@@ -35,6 +36,7 @@ open class WeatherRepository internal constructor(context: Context) :
         fetchedAtEpochMs: Long = System.currentTimeMillis(),
     ) = dao.writeForecastCache(latitude, longitude, forecast, airQuality, fetchedAtEpochMs)
 
+    /** Shared constants and helpers for WeatherRepository. */
     companion object {
         @Volatile private var instance: WeatherRepository? = null
         fun get(context: Context): WeatherRepository =

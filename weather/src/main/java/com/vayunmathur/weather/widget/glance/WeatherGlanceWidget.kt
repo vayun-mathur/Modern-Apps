@@ -47,6 +47,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
 import kotlin.time.Clock
 
+/** Weather Glance Widget: a ma widget implementation for weather glance widget. */
 open class WeatherGlanceWidget : MaWidget<WidgetWeather?>() {
     override suspend fun loadData(context: Context, id: GlanceId): WidgetWeather? =
         loadWeatherSnapshot(context)

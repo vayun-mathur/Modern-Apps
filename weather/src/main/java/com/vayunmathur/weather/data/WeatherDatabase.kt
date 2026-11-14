@@ -26,9 +26,11 @@ val MIGRATION_1_2 = Migration(1, 2) {
     version = 2,
     exportSchema = false,
 )
+/** Weather Database: a room database implementation for weather database. */
 abstract class WeatherDatabase : RoomDatabase() {
     abstract fun weatherDao(): WeatherDao
 
+    /** Shared constants and helpers for WeatherDatabase. */
     companion object : DatabaseMigrations {
         override val migrations: List<Migration> = listOf(MIGRATION_1_2)
     }

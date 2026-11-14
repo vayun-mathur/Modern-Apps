@@ -31,6 +31,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 
+/** Immutable value describing forecast ui state. */
 data class ForecastUiState(
     val forecast: ForecastResponse? = null,
     val airQuality: AirQualityResponse? = null,
@@ -40,6 +41,7 @@ data class ForecastUiState(
 )
 
 
+/** View model for the weather screen: holds UI state and handles its actions. */
 class WeatherViewModel(
     application: Application,
     private val repository: WeatherRepository,
@@ -302,6 +304,7 @@ class WeatherViewModel(
         )
     }
 
+    /** Shared constants and helpers for WeatherViewModel. */
     companion object {
         const val STALE_THRESHOLD_MS = 15 * 60 * 1000L
         private const val LOCATION_FIX_TIMEOUT_MS = 8_000L
@@ -309,6 +312,7 @@ class WeatherViewModel(
     }
 }
 
+/** Creates weather view model instances. */
 class WeatherViewModelFactory(
     private val application: Application,
     private val repository: WeatherRepository,

@@ -33,6 +33,41 @@ private fun epochToNaiveLocal(epochSec: Long, utcOffsetSec: Int): String {
     )
 }
 
+
+/** Daily section of the bundle mapped to the forecast shape, or null without daily data. */
+private fun WxBundle.dailyResponse(off: Int): Daily? {
+    val d = daily
+    // Daily `start` is the first LOCAL date; entries are consecutive days.
+    // Add k days with date arithmetic (DST-safe; avoids 86400 assumptions).
+    val firstDate: kotlinx.datetime.LocalDate? = runCatching {
+        kotlinx.datetime.LocalDate.parse(d?.start ?: "")
+    }.getOrNull()
+    val startDate = firstDate ?: kotlinx.datetime.LocalDate(2000, 1, 1)
+    // UV gaps (past the CAMS horizon) map to NaN; consumers use getOrNull +
+    // takeIf(isFinite) fallbacks (see SelectedData), mirroring how the map
+    // colorizer already treats NaN as missing.
+    return if (d == null || firstDate == null) null else Daily(
+        time = List(d.count) { k ->
+            val date = kotlinx.datetime.LocalDate.fromEpochDays(startDate.toEpochDays() + k)
+            "%04d-%02d-%02d".format(date.year, date.monthNumber, date.dayOfMonth)
+        },
+        weatherCode = d.code,
+        temperatureMax = d.tmax,
+        temperatureMin = d.tmin,
+        apparentTemperatureMax = d.feelsMax,
+        apparentTemperatureMin = d.feelsMin,
+        sunrise = d.sunrise.map { epochToNaiveLocal(it, off) },
+        sunset = d.sunset.map { epochToNaiveLocal(it, off) },
+        daylightDuration = d.daylight.map { it.toDouble() },
+        sunshineDuration = d.sunshine.map { it.toDouble() },
+        uvIndexMax = d.uvMax,
+        precipitationProbabilityMax = d.pprobMax,
+        precipitationSum = d.precipSum,
+        moonPhase = d.moonPhase,
+        moonrise = d.moonrise.map { it?.let { e -> epochToNaiveLocal(e, off) } },
+        moonset = d.moonset.map { it?.let { e -> epochToNaiveLocal(e, off) } },
+    )
+}
 /** `WxBundle` → [ForecastResponse] (mapped shape, cache-compatible). */
 fun WxBundle.toForecastResponse(): ForecastResponse {
     val off = utcOffset
@@ -55,37 +90,7 @@ fun WxBundle.toForecastResponse(): ForecastResponse {
         uvIndex = h.uv,
         isDay = h.day,
     )
-    val d = daily
-    // Daily `start` is the first LOCAL date; entries are consecutive days.
-    // Add k days with date arithmetic (DST-safe; avoids 86400 assumptions).
-    val firstDate: kotlinx.datetime.LocalDate? = runCatching {
-        kotlinx.datetime.LocalDate.parse(d?.start ?: "")
-    }.getOrNull()
-    val startDate = firstDate ?: kotlinx.datetime.LocalDate(2000, 1, 1)
-    // UV gaps (past the CAMS horizon) map to NaN; consumers use getOrNull +
-    // takeIf(isFinite) fallbacks (see SelectedData), mirroring how the map
-    // colorizer already treats NaN as missing.
-    val dailyResp = if (d == null || firstDate == null) null else Daily(
-        time = List(d.count) { k ->
-            val date = kotlinx.datetime.LocalDate.fromEpochDays(startDate.toEpochDays() + k)
-            "%04d-%02d-%02d".format(date.year, date.monthNumber, date.dayOfMonth)
-        },
-        weatherCode = d.code,
-        temperatureMax = d.tmax,
-        temperatureMin = d.tmin,
-        apparentTemperatureMax = d.feelsMax,
-        apparentTemperatureMin = d.feelsMin,
-        sunrise = d.sunrise.map { epochToNaiveLocal(it, off) },
-        sunset = d.sunset.map { epochToNaiveLocal(it, off) },
-        daylightDuration = d.daylight.map { it.toDouble() },
-        sunshineDuration = d.sunshine.map { it.toDouble() },
-        uvIndexMax = d.uvMax,
-        precipitationProbabilityMax = d.pprobMax,
-        precipitationSum = d.precipSum,
-        moonPhase = d.moonPhase,
-        moonrise = d.moonrise.map { it?.let { e -> epochToNaiveLocal(e, off) } },
-        moonset = d.moonset.map { it?.let { e -> epochToNaiveLocal(e, off) } },
-    )
+    val dailyResp = dailyResponse(off)
     val m = min15
     val min15Resp = if (m == null) null else Minutely15(
         time = List(m.count) { k -> epochToNaiveLocal(m.start + k * m.step, off) },
