@@ -104,12 +104,7 @@ class YinPhaseSlopeAnalyzer(val sampleRate: Double) : PitchAnalyzer {
             minOf(maxHz, note * span),
         ) ?: return reject(PitchRejection.OUT_OF_RANGE, 0.0)
 
-        if (coarse.rms < noiseFloor * NOISE_MARGIN) {
-            return reject(PitchRejection.TOO_QUIET, coarse.rms)
-        }
-        if (coarse.aperiodicity > APERIODICITY_GATE) {
-            return reject(PitchRejection.NOT_PERIODIC, coarse.rms)
-        }
+        gateRejection(coarse)?.let { return it }
 
         updateBand(coarse.frequencyHz)
 
@@ -137,6 +132,13 @@ class YinPhaseSlopeAnalyzer(val sampleRate: Double) : PitchAnalyzer {
         )
     }
 
+
+    /** Level and periodicity gates on the coarse estimate; null lets the frame through. */
+    private fun gateRejection(coarse: YinResult): PitchFrame? = when {
+        coarse.rms < noiseFloor * NOISE_MARGIN -> reject(PitchRejection.TOO_QUIET, coarse.rms)
+        coarse.aperiodicity > APERIODICITY_GATE -> reject(PitchRejection.NOT_PERIODIC, coarse.rms)
+        else -> null
+    }
     private fun reject(reason: PitchRejection, rms: Double): PitchFrame {
         // Asymmetric on purpose. Averaging rejected frames symmetrically latches the gate shut: a
         // strum or an attack transient is loud *and* aperiodic, so it is rejected at full signal

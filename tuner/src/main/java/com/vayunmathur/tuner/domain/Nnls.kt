@@ -279,6 +279,7 @@ class NoteSalience(
         return column
     }
 
+    /** Shared constants and helpers for NoteSalience. */
     companion object {
         /** Every note the CQT covers: C2..B6. */
         val FULL_RANGE: IntRange = LOWEST_NOTE_MIDI until (LOWEST_NOTE_MIDI + NOTE_COUNT)

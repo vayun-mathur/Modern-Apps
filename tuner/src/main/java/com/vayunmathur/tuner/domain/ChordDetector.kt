@@ -204,8 +204,12 @@ class ChordDetector(
         var best = 0
         for (s in posterior.indices) if (posterior[s] > posterior[best]) best = s
         val bassConfidence = frame.bassConfidence.toFloat()
-        fun reading(label: ChordLabel, alternates: List<ChordCandidate>, confidence: Double, presentation: ChordPresentation) =
-            ChordReading(notes, bass, bassConfidence, label, alternates, confidence.toFloat(), tier, presentation)
+        fun reading(
+            label: ChordLabel,
+            alternates: List<ChordCandidate>,
+            confidence: Double,
+            presentation: ChordPresentation,
+        ) = ChordReading(notes, bass, bassConfidence, label, alternates, confidence.toFloat(), tier, presentation)
 
         return when (val state = bank.states[best]) {
             ChordState.NoChord -> notesOnly(notes, frame, tier)
@@ -253,19 +257,28 @@ class ChordDetector(
                 if (confidence < ChordNaming.NAMING_THRESHOLD) {
                     return reading(ChordLabel.Unnamed, emptyList(), confidence, ChordPresentation.NOTES_ONLY)
                 }
-                return reading(ChordLabel.Ambiguous(named, rival.name), alternates, confidence, ChordPresentation.AMBIGUOUS)
+                return reading(
+                    ChordLabel.Ambiguous(named, rival.name), alternates, confidence, ChordPresentation.AMBIGUOUS,
+                )
             }
             if (gated) return reading(ChordLabel.Unnamed, emptyList(), posterior[best], ChordPresentation.NOTES_ONLY)
         }
 
-        val confidence = posterior[best]
-        return when {
-            confidence < ChordNaming.NAMING_THRESHOLD ->
-                reading(ChordLabel.Unnamed, emptyList(), confidence, ChordPresentation.NOTES_ONLY)
-            confidence >= ChordNaming.CONFIDENT_THRESHOLD ->
-                reading(ChordLabel.Chord(named), alternates, confidence, ChordPresentation.CONFIDENT)
-            else -> reading(ChordLabel.Chord(named), alternates, confidence, ChordPresentation.UNCERTAIN)
-        }
+        return settledReading(posterior[best], named, alternates, reading)
+    }
+
+    /** An uncontested winner: named above the confident threshold, tentative between them. */
+    private fun settledReading(
+        confidence: Double,
+        named: ChordName,
+        alternates: List<ChordCandidate>,
+        reading: (ChordLabel, List<ChordCandidate>, Double, ChordPresentation) -> ChordReading,
+    ): ChordReading = when {
+        confidence < ChordNaming.NAMING_THRESHOLD ->
+            reading(ChordLabel.Unnamed, emptyList(), confidence, ChordPresentation.NOTES_ONLY)
+        confidence >= ChordNaming.CONFIDENT_THRESHOLD ->
+            reading(ChordLabel.Chord(named), alternates, confidence, ChordPresentation.CONFIDENT)
+        else -> reading(ChordLabel.Chord(named), alternates, confidence, ChordPresentation.UNCERTAIN)
     }
 
     private fun twinOf(bank: ChordTemplates, posterior: DoubleArray, name: ChordName): Pair<ChordName, Double>? {
@@ -294,7 +307,8 @@ class ChordDetector(
         var best = LOWEST_NOTE_MIDI + pitchClass
         for (n in frame.semitones.indices) {
             val midi = LOWEST_NOTE_MIDI + n
-            if (pitchClassOf(midi) == pitchClass && frame.semitones[n] > frame.semitones[best - LOWEST_NOTE_MIDI]) best = midi
+            val stronger = frame.semitones[n] > frame.semitones[best - LOWEST_NOTE_MIDI]
+            if (pitchClassOf(midi) == pitchClass && stronger) best = midi
         }
         return best
     }

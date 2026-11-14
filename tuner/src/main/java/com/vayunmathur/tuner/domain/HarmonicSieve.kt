@@ -220,6 +220,7 @@ class HarmonicSieve(
         }
     }
 
+    /** Shared constants and helpers for HarmonicSieve. */
     companion object {
         /** 341 ms at 48 kHz: 2.93 Hz a bin, against 15.5 Hz between semitones at C4. */
         const val FFT_SIZE: Int = 16384

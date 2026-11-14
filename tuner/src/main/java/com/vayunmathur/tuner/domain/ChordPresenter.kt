@@ -75,6 +75,7 @@ class ChordPresenter {
         return ++pendingCount >= HYSTERESIS_FRAMES
     }
 
+    /** Shared constants and helpers for ChordPresenter. */
     companion object {
         /** A new name must win this many consecutive frames before it replaces the shown one. */
         const val HYSTERESIS_FRAMES: Int = 2

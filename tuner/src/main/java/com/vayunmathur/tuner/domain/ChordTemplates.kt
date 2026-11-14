@@ -35,11 +35,12 @@ internal class ChordTemplates(partials: List<Double>, instrument: Instrument?) {
     }
     val noChord: Int = states.lastIndex
 
-    private val harmonics: List<Pair<Int, Double>> = partials.take(MAX_HARMONICS).mapIndexedNotNull { index, amplitude ->
-        if (amplitude <= 0.0) return@mapIndexedNotNull null
-        val h = index + 1
-        (12.0 * ln(h.toDouble()) / ln(2.0)).roundToInt() to (amplitude / partials[0]).pow(HARMONIC_EXPONENT)
-    }
+    private val harmonics: List<Pair<Int, Double>> =
+        partials.take(MAX_HARMONICS).mapIndexedNotNull { index, amplitude ->
+            if (amplitude <= 0.0) return@mapIndexedNotNull null
+            val h = index + 1
+            (12.0 * ln(h.toDouble()) / ln(2.0)).roundToInt() to (amplitude / partials[0]).pow(HARMONIC_EXPONENT)
+        }
 
     private val chroma: Array<DoubleArray> = Array(noChord) { pitchChroma(pitchClassesOf(states[it])) }
 
@@ -53,35 +54,50 @@ internal class ChordTemplates(partials: List<Double>, instrument: Instrument?) {
         for (s in 0 until noChord) {
             var score = dot(frame.treble, chroma[s])
             if (useShapes) {
-                var best = 0.0
-                if (frameNorm > 0.0) {
-                    for (shape in shapes[s]) {
-                        val shapeNorm = norm(shape, firstNote)
-                        if (shapeNorm <= 0.0) continue
-                        val fit = dot(frame.semitones, shape) / (frameNorm * shapeNorm)
-                        if (fit > best) best = fit
-                    }
-                }
-                score = CHROMA_WEIGHT * score + (1 - CHROMA_WEIGHT) * best
+                score = CHROMA_WEIGHT * score + (1 - CHROMA_WEIGHT) * shapeFit(frame, s, frameNorm, firstNote)
             }
-            when (val state = states[s]) {
-                is ChordState.Named -> {
-                    // Tier B': a false Caug on a beginner's C is far worse than a missed real one.
-                    val strict = state.name.quality.strictInterval
-                    if (strict != null &&
-                        frame.treble[pitchClassOf(state.name.root + strict)] <= ChordNaming.STRICT_TONE * trebleMax
-                    ) {
-                        score = 0.0
-                    }
-                    score -= COMPLEXITY_COST * state.name.quality.complexity
-                    if (bassPitchClass == state.name.root) score += BASS_BONUS
-                }
-                is ChordState.Note -> if (bassPitchClass == state.pitchClass) score += BASS_BONUS
-                ChordState.NoChord -> Unit
-            }
+            score = adjustedScore(score, states[s], frame, trebleMax, bassPitchClass)
             out[s] = SHARPNESS * score
         }
         out[noChord] = SHARPNESS * NO_CHORD_SCORE
+    }
+
+    /** Best cosine fit of the frame against this state's rendered voicing shapes. */
+    private fun shapeFit(frame: ChromaFrame, s: Int, frameNorm: Double, firstNote: Int): Double {
+        if (frameNorm <= 0.0) return 0.0
+        var best = 0.0
+        for (shape in shapes[s]) {
+            val shapeNorm = norm(shape, firstNote)
+            if (shapeNorm <= 0.0) continue
+            val fit = dot(frame.semitones, shape) / (frameNorm * shapeNorm)
+            if (fit > best) best = fit
+        }
+        return best
+    }
+
+    /** Per-state score adjustments: strict-interval veto, complexity cost, bass bonus. */
+    private fun adjustedScore(
+        score: Double,
+        state: ChordState,
+        frame: ChromaFrame,
+        trebleMax: Double,
+        bassPitchClass: Int?,
+    ): Double = when (state) {
+        is ChordState.Named -> {
+            // Tier B': a false Caug on a beginner's C is far worse than a missed real one.
+            val strict = state.name.quality.strictInterval
+            var adjusted = score
+            if (strict != null &&
+                frame.treble[pitchClassOf(state.name.root + strict)] <= ChordNaming.STRICT_TONE * trebleMax
+            ) {
+                adjusted = 0.0
+            }
+            adjusted -= COMPLEXITY_COST * state.name.quality.complexity
+            if (bassPitchClass == state.name.root) adjusted += BASS_BONUS
+            adjusted
+        }
+        is ChordState.Note -> if (bassPitchClass == state.pitchClass) score + BASS_BONUS else score
+        ChordState.NoChord -> score
     }
 
     private fun pitchClassesOf(state: ChordState): Set<Int> = when (state) {
@@ -101,7 +117,9 @@ internal class ChordTemplates(partials: List<Double>, instrument: Instrument?) {
         if (instrument == null || instrument.strings.isEmpty()) return emptyList()
         return when (state) {
             is ChordState.Named -> VoicingGenerator.generate(instrument, state.name).map { render(it.soundingMidi) }
-            is ChordState.Note -> instrument.soundingRange.filter { pitchClassOf(it) == state.pitchClass }.map { render(listOf(it)) }
+            is ChordState.Note -> instrument.soundingRange
+                .filter { pitchClassOf(it) == state.pitchClass }
+                .map { render(listOf(it)) }
             ChordState.NoChord -> emptyList()
         }
     }

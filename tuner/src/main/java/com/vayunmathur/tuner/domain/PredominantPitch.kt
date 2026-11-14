@@ -176,6 +176,28 @@ class PredominantPitch(private val sampleRate: Double) {
             }
             if (energy <= 0.0) return null
 
+            val gain = bandGains()
+
+            val out = DoubleArray(magnitude.size)
+            var band = 0
+            for (k in out.indices) {
+                val hz = k * binHz
+                while (band < BANDS && hz > centres[band + 1]) band++
+                val g = if (hz <= centres[0]) {
+                    gain[0]
+                } else if (band >= BANDS) {
+                    gain[BANDS]
+                } else {
+                    val t = (hz - centres[band]) / (centres[band + 1] - centres[band])
+                    gain[band] * (1 - t) + gain[band + 1] * t
+                }
+                out[k] = g * magnitude[k]
+            }
+            return out
+        }
+
+        /** Per-band whitening gains from the triangular auditory filterbank. */
+        private fun bandGains(): DoubleArray {
             val gain = DoubleArray(BANDS + 2)
             for (b in 1..BANDS) {
                 var sum = 0.0
@@ -198,23 +220,7 @@ class PredominantPitch(private val sampleRate: Double) {
             }
             gain[0] = gain[1]
             gain[BANDS + 1] = gain[BANDS]
-
-            val out = DoubleArray(magnitude.size)
-            var band = 0
-            for (k in out.indices) {
-                val hz = k * binHz
-                while (band < BANDS && hz > centres[band + 1]) band++
-                val g = if (hz <= centres[0]) {
-                    gain[0]
-                } else if (band >= BANDS) {
-                    gain[BANDS]
-                } else {
-                    val t = (hz - centres[band]) / (centres[band + 1] - centres[band])
-                    gain[band] * (1 - t) + gain[band + 1] * t
-                }
-                out[k] = g * magnitude[k]
-            }
-            return out
+            return gain
         }
     }
 

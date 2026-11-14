@@ -85,6 +85,7 @@ class TuningOffset {
         }
     }
 
+    /** Shared constants and helpers for TuningOffset. */
     companion object {
         /** A local maximum this far below the frame's strongest is a sidelobe, not a partial. */
         const val PEAK_FRACTION: Double = 0.25

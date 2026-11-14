@@ -179,6 +179,7 @@ class AudioCapture(private val context: Context) {
         }.onFailure { Log.status(TAG, "could not detach voice processing", it) }
     }
 
+    /** Shared constants and helpers for AudioCapture. */
     companion object {
         /** Native rate on effectively every modern device. Never resample. */
         const val SAMPLE_RATE = 48_000

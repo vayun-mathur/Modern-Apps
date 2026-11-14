@@ -61,6 +61,7 @@ data class Tonality(
     val isTonal: Boolean
         get() = flatness <= MAX_FLATNESS && peakSalience >= MIN_PEAK_SALIENCE
 
+    /** Shared constants and helpers for Tonality. */
     companion object {
         /**
          * Measured (TonalityTest): chords 0.004..0.142, noise 0.709..1.000 - a factor of five

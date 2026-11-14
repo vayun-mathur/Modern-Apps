@@ -10,6 +10,7 @@ import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.PermissionRequirement
 import com.vayunmathur.tuner.platform.TunerViewModel
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private val viewModel: TunerViewModel by viewModels()
 

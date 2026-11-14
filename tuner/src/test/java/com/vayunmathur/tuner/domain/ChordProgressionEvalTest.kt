@@ -90,6 +90,30 @@ class ChordProgressionEvalTest {
         else -> label.javaClass.simpleName
     }
 
+
+    /** Scores one frame against the segment that contains it. */
+    private fun scoreSegment(
+        metrics: Metrics,
+        firstHit: HashMap<StrumSynth.Segment, Int>,
+        segment: StrumSynth.Segment,
+        shown: ChordLabel?,
+        reading: ChordReading,
+        end: Int,
+    ) {
+        metrics.frames++
+        val truth = segment.chord
+        val shownChord = (shown as? ChordLabel.Chord)?.name
+        if (shownChord != null && same(shownChord, truth)) metrics.shownCorrect++
+        val rawChord = (reading.label as? ChordLabel.Chord)?.name
+        if (rawChord != null && same(rawChord, truth)) metrics.rawCorrect++
+        if (namesIn(shown).any { same(it, truth) }) {
+            metrics.shownOffered++
+            if (segment !in firstHit) firstHit[segment] = end
+        } else {
+            val key = "${symbol(truth)} -> ${describe(shown)}"
+            metrics.confusions[key] = (metrics.confusions[key] ?: 0) + 1
+        }
+    }
     private fun stream(instrument: Instrument, extractor: ChordExtractor, take: StrumSynth.Take): Metrics {
         val detector = ChordDetector(Signals.SAMPLE_RATE, extractor = extractor)
         detector.setInstrument(instrument)
@@ -119,19 +143,7 @@ class ChordProgressionEvalTest {
 
             val segment = take.segments.firstOrNull { end - 1 >= it.start && end - 1 < it.end }
             if (segment != null) {
-                metrics.frames++
-                val truth = segment.chord
-                val shownChord = (shown as? ChordLabel.Chord)?.name
-                if (shownChord != null && same(shownChord, truth)) metrics.shownCorrect++
-                val rawChord = (reading.label as? ChordLabel.Chord)?.name
-                if (rawChord != null && same(rawChord, truth)) metrics.rawCorrect++
-                if (namesIn(shown).any { same(it, truth) }) {
-                    metrics.shownOffered++
-                    if (segment !in firstHit) firstHit[segment] = end
-                } else {
-                    val key = "${symbol(truth)} -> ${describe(shown)}"
-                    metrics.confusions[key] = (metrics.confusions[key] ?: 0) + 1
-                }
+                scoreSegment(metrics, firstHit, segment, shown, reading, end)
             }
             end += HOP
         }

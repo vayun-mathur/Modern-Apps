@@ -158,6 +158,7 @@ data class InstrumentCatalog(@SerialName("instruments") val instruments: List<In
     /** Looks an instrument up, falling back to the first entry so the UI always has one. */
     fun byId(id: String): Instrument = instruments.firstOrNull { it.id == id } ?: instruments.first()
 
+    /** Shared constants and helpers for InstrumentCatalog. */
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
 
