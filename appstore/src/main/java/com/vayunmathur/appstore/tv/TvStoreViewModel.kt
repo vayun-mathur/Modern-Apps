@@ -55,11 +55,15 @@ import kotlinx.coroutines.withContext
 class TvStoreViewModel(
     internal val context: Application,
     db: AppDatabase,
+    // Test seams: offline tests inject repositories whose network calls
+    // fail deterministically; production uses the defaults.
+    playOverride: PlayRepository? = null,
+    accrescentOverride: AccrescentRepository? = null,
 ) : ViewModel() {
 
     internal val catalog = CatalogRepository(context, db, viewModelScope)
-    internal val play = PlayRepository(context)
-    internal val accrescent = AccrescentRepository(context, db)
+    internal val play = playOverride ?: PlayRepository(context)
+    internal val accrescent = accrescentOverride ?: AccrescentRepository(context, db)
     internal val installedRepo = InstalledAppsRepository(context)
     internal val settings = SettingsRepository(context, viewModelScope)
     internal val installer = InstallCoordinator(context, db, play, accrescent, viewModelScope) {

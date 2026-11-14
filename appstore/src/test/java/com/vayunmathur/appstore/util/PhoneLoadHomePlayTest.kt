@@ -46,7 +46,19 @@ class PhoneLoadHomePlayTest {
                 ).toEntity(),
             )
         }
-        vm = AppStoreViewModel(app, db)
+        // Hermetic offline: Play dispensing always fails, whatever
+        // network the host running the tests happens to have.
+        val offlinePlay = com.vayunmathur.appstore.data.play.PlayRepository(
+            app,
+            object : com.vayunmathur.appstore.data.play.AnonymousAuthRepository() {
+                override suspend fun ensureAuthData(
+                    deviceProps: java.util.Properties,
+                    dispenserUrls: List<String>,
+                ): Result<com.aurora.gplayapi.data.models.AuthData> =
+                    Result.failure(java.io.IOException("offline test double"))
+            },
+        )
+        vm = AppStoreViewModel(app, db, playOverride = offlinePlay)
     }
 
     @Test

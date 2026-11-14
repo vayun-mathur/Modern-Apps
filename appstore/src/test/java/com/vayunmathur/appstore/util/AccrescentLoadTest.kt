@@ -35,7 +35,24 @@ class AccrescentLoadTest {
             .build()
         // Not closed: the ViewModel scope keeps collecting DB flows; the
         // in-memory DB dies with the Robolectric sandbox.
-        vm = AppStoreViewModel(app, db)
+        // Hermetic offline: dead gRPC channel + failing repodata fetcher,
+        // whatever network the test host happens to have.
+        val deadChannel = io.grpc.inprocess.InProcessChannelBuilder
+            .forName("accrescent-load-offline").directExecutor().build()
+        val failingFetcher = object :
+            com.vayunmathur.appstore.data.accrescent.AccrescentRepoDataFetcher(app) {
+            override suspend fun fetch():
+                Result<com.vayunmathur.appstore.data.accrescent.RepoData> =
+                Result.failure(java.io.IOException("offline test double"))
+        }
+        vm = AppStoreViewModel(
+            app, db,
+            accrescentOverride = com.vayunmathur.appstore.data.accrescent.AccrescentRepository(
+                app, db,
+                com.vayunmathur.appstore.data.accrescent.AccrescentApi { deadChannel },
+                failingFetcher,
+            ),
+        )
     }
 
     @Test

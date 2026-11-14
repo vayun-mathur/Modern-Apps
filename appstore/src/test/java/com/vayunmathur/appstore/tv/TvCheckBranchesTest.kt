@@ -44,7 +44,36 @@ class TvCheckBranchesTest {
                 listOf(AccrescentTrustEntity(ownPackage, "ab".repeat(32), 1L)),
             )
         }
-        vm = TvStoreViewModel(app, db)
+        // Hermetic offline: Play dispensing fails (so previous Play rows
+        // are kept) and the Accrescent refresh fails (so the seeded
+        // allowlist survives), whatever network the test host has.
+        val offlinePlay = com.vayunmathur.appstore.data.play.PlayRepository(
+            app,
+            object : com.vayunmathur.appstore.data.play.AnonymousAuthRepository() {
+                override suspend fun ensureAuthData(
+                    deviceProps: java.util.Properties,
+                    dispenserUrls: List<String>,
+                ): Result<com.aurora.gplayapi.data.models.AuthData> =
+                    Result.failure(java.io.IOException("offline test double"))
+            },
+        )
+        val deadChannel = io.grpc.inprocess.InProcessChannelBuilder
+            .forName("tv-check-offline").directExecutor().build()
+        val failingFetcher = object :
+            com.vayunmathur.appstore.data.accrescent.AccrescentRepoDataFetcher(app) {
+            override suspend fun fetch():
+                Result<com.vayunmathur.appstore.data.accrescent.RepoData> =
+                Result.failure(java.io.IOException("offline test double"))
+        }
+        vm = TvStoreViewModel(
+            app, db,
+            playOverride = offlinePlay,
+            accrescentOverride = com.vayunmathur.appstore.data.accrescent.AccrescentRepository(
+                app, db,
+                com.vayunmathur.appstore.data.accrescent.AccrescentApi { deadChannel },
+                failingFetcher,
+            ),
+        )
         vm.enabledSourcesFlow.value = setOf(
             AppSource.PLAYSTORE, AppSource.ACCRESCENT, AppSource.MODERN_APPS,
         )

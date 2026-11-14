@@ -47,7 +47,36 @@ class PhoneCheckAccrescentTest {
             settings.setSourceEnabled(AppSource.ACCRESCENT, true)
             settings.setSourceEnabled(AppSource.PLAYSTORE, true)
         }
-        vm = AppStoreViewModel(app, db)
+        // Hermetic offline: Play dispensing fails, the Accrescent API is
+        // a dead channel and its repodata refresh fails, so the seeded
+        // allowlist above survives — whatever network the test host has.
+        val offlinePlay = com.vayunmathur.appstore.data.play.PlayRepository(
+            app,
+            object : com.vayunmathur.appstore.data.play.AnonymousAuthRepository() {
+                override suspend fun ensureAuthData(
+                    deviceProps: java.util.Properties,
+                    dispenserUrls: List<String>,
+                ): Result<com.aurora.gplayapi.data.models.AuthData> =
+                    Result.failure(java.io.IOException("offline test double"))
+            },
+        )
+        val deadChannel = io.grpc.inprocess.InProcessChannelBuilder
+            .forName("phone-check-offline").directExecutor().build()
+        val failingFetcher = object :
+            com.vayunmathur.appstore.data.accrescent.AccrescentRepoDataFetcher(app) {
+            override suspend fun fetch():
+                Result<com.vayunmathur.appstore.data.accrescent.RepoData> =
+                Result.failure(java.io.IOException("offline test double"))
+        }
+        vm = AppStoreViewModel(
+            app, db,
+            playOverride = offlinePlay,
+            accrescentOverride = com.vayunmathur.appstore.data.accrescent.AccrescentRepository(
+                app, db,
+                com.vayunmathur.appstore.data.accrescent.AccrescentApi { deadChannel },
+                failingFetcher,
+            ),
+        )
     }
 
     private fun await(description: String, condition: () -> Boolean) {
