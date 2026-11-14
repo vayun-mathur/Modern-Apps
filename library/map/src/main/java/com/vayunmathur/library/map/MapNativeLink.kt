@@ -69,7 +69,9 @@ internal class MapNativeLink {
      * the main thread, unless a [destroy] overtook it. [cacheDir] and [localPath] are resolved
      * on the render thread because both touch the disk.
      */
-    @Suppress("LongParameterList")
+    // Broad catch is the contract at this JNI boundary: any native or path-resolution
+    // failure must answer 0 (failed start), never propagate and wedge the frame loop.
+    @Suppress("LongParameterList", "TooGenericExceptionCaught")
     fun create(
         surface: Surface,
         cacheDir: () -> String,
@@ -126,6 +128,9 @@ internal class MapNativeLink {
      * Draw one frame on the render thread from a snapshot read on the main thread; [onDone]
      * gets the result back on the main thread, unless a [destroy] overtook it.
      */
+    // Broad catch is the contract at this JNI boundary: every dispatched frame must
+    // answer, so any native failure answers "not drawn" instead of hanging the loop.
+    @Suppress("TooGenericExceptionCaught")
     fun frame(
         snapshot: FrameSnapshot,
         density: Float,

@@ -64,6 +64,9 @@ internal object MapRenderThread {
     private var thread: Thread? = null
 
     /** Run [task] on the render thread after everything already queued. Never blocks. */
+    // Tasks are arbitrary renderer lambdas: any failure must be contained and logged,
+    // never kill the only render thread. No specific exception type exists to catch.
+    @Suppress("TooGenericExceptionCaught")
     fun post(task: () -> Unit) {
         executor.execute {
             thread = Thread.currentThread()

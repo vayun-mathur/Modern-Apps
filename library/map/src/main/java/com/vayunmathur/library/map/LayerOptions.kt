@@ -83,6 +83,7 @@ data class LayerOptions(
      */
     val safety: Boolean = false,
 ) {
+    /** Preset layer combinations: basemap-only and all optional layers. */
     companion object {
         /** The default: basemap only. */
         val None = LayerOptions()

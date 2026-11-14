@@ -10,6 +10,7 @@ data class GestureOptions(
     val isRotateEnabled: Boolean = true,
     val isTiltEnabled: Boolean = true,
 ) {
+    /** Preset gesture configurations for common embedding scenarios. */
     companion object {
         /** Pan + zoom, rotation locked north-up (the old default behaviour). */
         val RotationLocked =
@@ -55,11 +56,13 @@ internal val GestureOptions.isTiltDisabled: Boolean
 data class OrnamentOptions(
     val isAttributionEnabled: Boolean = true,
 ) {
+    /** Preset ornament configurations. */
     companion object {
         val AllDisabled = OrnamentOptions(isAttributionEnabled = false)
     }
 }
 
+/** Bundles the gesture, ornament and layer options a [VectorMap] is created with. */
 data class MapOptions(
     val gestureOptions: GestureOptions = GestureOptions(),
     val ornamentOptions: OrnamentOptions = OrnamentOptions(),

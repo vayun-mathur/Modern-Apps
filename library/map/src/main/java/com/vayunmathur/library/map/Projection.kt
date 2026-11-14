@@ -339,6 +339,7 @@ class Projection internal constructor(
      */
     fun pickMarker(xDp: Float, yDp: Float): Long = markerPick?.invoke(xDp, yDp) ?: 0L
 
+    /** Numeric guards shared by the projection paths. */
     companion object {
         private const val OFF_SCREEN_DP = -1e5f
         private const val MIN_PERSPECTIVE_DENOM = 1e-6
