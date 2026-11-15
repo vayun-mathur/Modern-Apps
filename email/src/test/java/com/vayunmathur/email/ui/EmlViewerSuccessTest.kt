@@ -37,6 +37,25 @@ class EmlViewerSuccessTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+
+    /**
+     * Waits for [text] to appear, idling Robolectric's paused main looper so
+     * the IO parse's Main-thread resume can actually land: the compose
+     * rule's waitUntil does not pump that looper, so under load the parse
+     * result sat queued past the wait (see ComposerSendTest).
+     */
+    private fun awaitText(text: String, substring: Boolean = false, unmerged: Boolean = false) {
+        val deadline = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < deadline) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            if (composeRule.onAllNodesWithText(text, substring = substring, useUnmergedTree = unmerged)
+                    .fetchSemanticsNodes().isNotEmpty()
+            ) return
+            Thread.sleep(10)
+        }
+        throw AssertionError("timed out waiting for text: $text")
+    }
+
     private fun writeEml(name: String, content: String): File {
         val context = ApplicationProvider.getApplicationContext<Application>()
         return File(context.cacheDir, name).apply { writeText(content) }
@@ -72,10 +91,7 @@ class EmlViewerSuccessTest {
         // The scaffold title flips to the subject when the parse lands, a
         // frame before the loading flag clears and the detail column
         // composes: wait for a detail row, not just the title.
-        composeRule.waitUntil(15_000) {
-            composeRule.onAllNodesWithText("Dana Sender", useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        }
+        awaitText("Dana Sender", unmerged = true)
         // The subject renders as scaffold title (and again as the body
         // headline below the fold); assert it landed at all, plus the
         // detail rows in the unmerged tree below.
@@ -120,10 +136,7 @@ class EmlViewerSuccessTest {
         composeRule.setContent {
             EmlViewerScreen(uriString = Uri.fromFile(file).toString(), onBack = {})
         }
-        composeRule.waitUntil(15_000) {
-            composeRule.onAllNodesWithText("Open", useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        }
+        awaitText("Open", unmerged = true)
         composeRule.onNodeWithText("Open", useUnmergedTree = true).performClick()
         composeRule.waitForIdle()
         val context = ApplicationProvider.getApplicationContext<Application>()
@@ -150,10 +163,7 @@ class EmlViewerSuccessTest {
         composeRule.setContent {
             EmlViewerScreen(uriString = Uri.fromFile(file).toString(), onBack = {})
         }
-        composeRule.waitUntil(15_000) {
-            composeRule.onAllNodesWithText("Remote images blocked", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        }
+        awaitText("Remote images blocked", substring = true)
         composeRule.onNodeWithText("Remote images blocked", substring = true).assertExists()
         composeRule.onNodeWithText("Load images").performClick()
         composeRule.waitForIdle()
@@ -180,10 +190,7 @@ class EmlViewerSuccessTest {
             root = LocalView.current
             EmlViewerScreen(uriString = Uri.fromFile(file).toString(), onBack = {})
         }
-        composeRule.waitUntil(15_000) {
-            composeRule.onAllNodesWithText("Remote images blocked", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        }
+        awaitText("Remote images blocked", substring = true)
         composeRule.waitForIdle()
         val webViews = mutableListOf<WebView>()
         val q = ArrayDeque<View>().apply { add(assertNotNull(root).rootView) }

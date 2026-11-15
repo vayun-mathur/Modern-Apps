@@ -5,9 +5,11 @@ import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.email.data.EmailDatabase
 import com.vayunmathur.email.platform.EmailDraftActions
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -46,17 +48,15 @@ class EmailDraftActionsTest {
 
     @Test
     fun `save inserts a new draft and reports its id`() = runBlocking {
-        var savedId = -1L
+        // The save runs on the actions' scope; await its callback directly
+        // rather than polling a flag on a wall-clock budget.
+        val saved = CompletableDeferred<Long>()
         actions.save(
             id = null, accountEmail = "me@x.com", to = "a@b.com",
             cc = "", bcc = "", subject = "Hi", body = "hello",
-            onSaved = { savedId = it },
+            onSaved = { saved.complete(it) },
         )
-        // The save runs on the actions' scope; wait for the callback.
-        repeat(200) {
-            if (savedId != -1L) return@repeat
-            Thread.sleep(10)
-        }
+        val savedId = withTimeout(30_000) { saved.await() }
         val loaded = actions.load(savedId)
         assertEquals("a@b.com", loaded?.to)
         assertEquals("Hi", loaded?.subject)
@@ -65,26 +65,20 @@ class EmailDraftActionsTest {
 
     @Test
     fun `save with an id updates the existing draft`() = runBlocking {
-        var firstId = -1L
+        val first = CompletableDeferred<Long>()
         actions.save(
             id = null, accountEmail = "me@x.com", to = "a@b.com",
             cc = "", bcc = "", subject = "v1", body = "b1",
-            onSaved = { firstId = it },
+            onSaved = { first.complete(it) },
         )
-        repeat(200) {
-            if (firstId != -1L) return@repeat
-            Thread.sleep(10)
-        }
-        var secondId = -2L
+        val firstId = withTimeout(30_000) { first.await() }
+        val second = CompletableDeferred<Long>()
         actions.save(
             id = firstId, accountEmail = "me@x.com", to = "c@d.com",
             cc = "", bcc = "", subject = "v2", body = "b2",
-            onSaved = { secondId = it },
+            onSaved = { second.complete(it) },
         )
-        repeat(200) {
-            if (secondId != -2L) return@repeat
-            Thread.sleep(10)
-        }
+        val secondId = withTimeout(30_000) { second.await() }
         assertEquals(firstId, secondId)
         val loaded = actions.load(firstId)
         assertEquals("c@d.com", loaded?.to)
@@ -93,20 +87,20 @@ class EmailDraftActionsTest {
 
     @Test
     fun `delete removes the draft`() = runBlocking {
-        var savedId = -1L
+        val saved = CompletableDeferred<Long>()
         actions.save(
             id = null, accountEmail = "me@x.com", to = "a@b.com",
             cc = "", bcc = "", subject = "bye", body = "b",
-            onSaved = { savedId = it },
+            onSaved = { saved.complete(it) },
         )
-        repeat(200) {
-            if (savedId != -1L) return@repeat
-            Thread.sleep(10)
-        }
+        val savedId = withTimeout(30_000) { saved.await() }
         actions.delete(savedId)
-        repeat(200) {
-            if (actions.load(savedId) == null && savedId != -1L) return@repeat
-            Thread.sleep(10)
+        // Delete is fire-and-forget on the actions' scope: wait until the row
+        // is actually gone instead of sleeping a fixed budget.
+        withTimeout(30_000) {
+            while (actions.load(savedId) != null) {
+                kotlinx.coroutines.delay(10)
+            }
         }
         assertNull(actions.load(savedId))
     }
