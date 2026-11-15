@@ -30,6 +30,7 @@ object RouteService {
         )
         /** Immutable value describing transit line; carries name, nameShort, color. */
         @Serializable data class Stop(val name: String)
+        /** Immutable value describing a transit line: display name, short name and brand colour. */
         @Serializable
         data class TransitLine(val name: String, val nameShort: String? = null, val color: String)
         /** Immutable value describing nav instruction. */
