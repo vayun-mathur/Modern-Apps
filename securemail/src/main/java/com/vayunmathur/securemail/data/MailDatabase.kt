@@ -98,6 +98,7 @@ data class MailIdentity(
     val createdMillis: Long,
 )
 
+/** Contract for message dao. */
 @Dao
 interface MessageDao {
     @Query("SELECT * FROM StoredMessage ORDER BY dateMillis DESC")
@@ -138,6 +139,7 @@ interface MessageDao {
     suspend fun deleteAll(ids: List<String>)
 }
 
+/** Contract for key dao. */
 @Dao
 interface KeyDao {
     @Query("SELECT * FROM CachedKey WHERE address = :address LIMIT 1")
@@ -147,6 +149,7 @@ interface KeyDao {
     suspend fun upsert(key: CachedKey)
 }
 
+/** Contract for outbox dao. */
 @Dao
 interface OutboxDao {
     @Query("SELECT * FROM OutboxMessage ORDER BY createdMillis ASC")
@@ -168,6 +171,7 @@ interface OutboxDao {
     suspend fun noteAttempt(rowId: Long, error: String)
 }
 
+/** Contract for identity dao. */
 @Dao
 interface IdentityDao {
     @Query("SELECT * FROM MailIdentity ORDER BY isPrimary DESC, createdMillis ASC")
@@ -200,12 +204,14 @@ interface IdentityDao {
     version = 5,
     exportSchema = false,
 )
+/** Mail Database: a room database implementation for mail database. */
 abstract class MailDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun keyDao(): KeyDao
     abstract fun outboxDao(): OutboxDao
     abstract fun identityDao(): IdentityDao
 
+    /** Shared constants and helpers for MailDatabase. */
     companion object : DatabaseMigrations {
         /**
          * v1 → v2: drops the `sendUnencrypted` column from OutboxMessage (the

@@ -71,6 +71,7 @@ class DraftsController(
         val inReplyTo: String? = null,
     )
 
+    /** Shared constants and helpers for DraftsController. */
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
 

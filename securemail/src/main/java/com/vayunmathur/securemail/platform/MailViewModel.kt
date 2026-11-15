@@ -53,6 +53,7 @@ data class MailUiState(
 )
 
 private const val TAG = "MailViewModel"
+private const val MIN_PASSPHRASE_LENGTH = 8
 
 /**
  * Owns identity, decryption, send gating, and the socket lifecycle.
@@ -60,7 +61,7 @@ private const val TAG = "MailViewModel"
  */
 class MailViewModel(
     app: Application,
-    private val repo: com.vayunmathur.securemail.data.MailStore,
+    internal val repo: com.vayunmathur.securemail.data.MailStore,
 ) : AndroidViewModel(app) {
 
     /** Production constructor used by `by viewModels()` (reflective lookup). */
@@ -168,28 +169,19 @@ class MailViewModel(
     }
 
     /** Moves messages to Trash (local vault only). */
-    fun moveToTrash(ids: List<String>) = moveTo(ids, MailFolder.TRASH)
 
     /** Moves messages to [folder]; also the undo for a Trash move. */
-    fun moveTo(ids: List<String>, folder: MailFolder) = io { repo.messageDao().moveTo(ids, folder) }
 
     /** Restores trashed messages to the Inbox. */
-    fun restoreFromTrash(ids: List<String>) = moveTo(ids, MailFolder.INBOX)
 
     /** Permanently deletes messages (local only). */
-    fun deleteForever(ids: List<String>) = io { repo.messageDao().deleteAll(ids) }
 
-    fun setRead(ids: List<String>, read: Boolean) = io { repo.messageDao().setRead(ids, read) }
 
-    private fun io(block: suspend () -> Unit) {
+    internal fun io(block: suspend () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) { block() }
     }
 
     /** Permanently deletes everything in Trash (local only). */
-    fun emptyTrash() = io {
-        repo.messageDao().emptyTrash()
-        state = state.copy(message = "Trash emptied.")
-    }
 
     /**
      * In-memory S2K passphrase for the PGP secret ring. Sealed in
@@ -203,6 +195,11 @@ class MailViewModel(
      * Returns the S2K passphrase, loading it from Keystore-wrapped storage
      * on first use. Must be called on Dispatchers.IO (Keystore I/O).
      */
+    fun emptyTrash() = io {
+        repo.messageDao().emptyTrash()
+        state = state.copy(message = "Trash emptied.")
+    }
+
     private fun requirePassphrase(): String =
         passphraseCache ?: keyManager.getKeyPassphrase()?.also { passphraseCache = it }
         ?: error("No key passphrase stored — restore from your recovery passphrase.")
@@ -247,7 +244,7 @@ class MailViewModel(
             state = state.copy(error = "Use 3–64 lowercase letters, digits, dots or dashes.")
             return
         }
-        if (passphrase.length < 8) {
+        if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
             state = state.copy(error = "Use a passphrase of at least 8 characters.")
             return
         }
@@ -436,15 +433,6 @@ class MailViewModel(
         }
     }
 
-    /** Extracts the raw PGP bytes from an RFC 3156 multipart/encrypted envelope. */
-    private fun extractPgpPayload(envelope: ByteArray): ByteArray? {
-        val b64 = MimeCodec.extractPgpPayloadB64(envelope) ?: return null
-        return try {
-            Base64.decode(b64, Base64.DEFAULT)
-        } catch (_: IllegalArgumentException) {
-            null
-        }
-    }
 
     // ------------------------------------------------------------------
     // Outbound: trust gate + publish
@@ -670,67 +658,8 @@ class MailViewModel(
                     state = state.copy(error = "Relay offline — kept in outbox.")
                     return@withContext
                 }
-                val pending = repo.outboxDao().all()
-                var sent = 0
-                var failed = 0
-                val ownPassphrase = requirePassphrase()
-                for (entry in pending) {
-                    var reason = "relay publish failed"
-                    val ok = runCatching {
-                        val sender = senderIdentity(entry.fromAddress)
-                        val ownSecret = sender.secretArmor
-                        val to = entry.toJson.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                        val mime = buildMimeBody(sender.address, entry.subject, entry.body)
-                        var entryOk = true
-                        for (address in to) {
-                            val cached = repo.keyDao().get(address)
-                            val published = if (cached != null) {
-                                val raw = try {
-                                    PgpCrypto.encryptSigned(
-                                        mime, cached.armoredPublic, ownSecret, ownPassphrase,
-                                    )
-                                } catch (e: Exception) {
-                                    reason = "encrypt failed: " +
-                                        (e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
-                                    Log.status(TAG, "outbox encrypt failed", e)
-                                    null
-                                }
-                                if (raw == null) {
-                                    false
-                                } else if (MailSocket.publish(sender.address, address, buildEncryptedBody(raw))) {
-                                    true
-                                } else {
-                                    reason = "publish failed: " +
-                                        (MailSocket.lastPublishError ?: "socket write failed")
-                                    false
-                                }
-                            } else {
-                                if (MailSocket.publish(sender.address, address, mime, unencrypted = true)) {
-                                    true
-                                } else {
-                                    reason = "publish failed: " +
-                                        (MailSocket.lastPublishError ?: "socket write failed")
-                                    false
-                                }
-                            }
-                            if (!published) entryOk = false
-                        }
-                        entryOk
-                    }.onFailure {
-                        if (reason == "relay publish failed") {
-                            reason = "outbox error: " +
-                                (it.message?.takeIf { m -> m.isNotBlank() } ?: it.javaClass.simpleName)
-                        }
-                        Log.status(TAG, "outbox entry failed", it)
-                    }.getOrDefault(false)
-                    if (ok) {
-                        repo.outboxDao().delete(entry.rowId)
-                        sent++
-                    } else {
-                        repo.outboxDao().noteAttempt(entry.rowId, reason)
-                        failed++
-                    }
-                }
+                val (sent, failed) = OutboxRetry(repo, ::requirePassphrase) { senderIdentity(it) }
+                    .retryAll()
                 state = when {
                     failed > 0 -> state.copy(error = "$failed message(s) still queued.")
                     sent > 0 -> state.copy(message = "Sent $sent message(s).")
@@ -750,9 +679,43 @@ class MailViewModel(
         }
     }
 
-    fun markRead(id: String) = io { repo.messageDao().markRead(id) }
 
-    fun envelopeOf(stored: StoredMessage): MessageEnvelope = MessageEnvelope(
+    fun dismissMessages() {
+        state = state.copy(message = null, error = null, exportArmor = null)
+    }
+
+}
+
+/** Moves messages to the trash folder. */
+fun MailViewModel.moveToTrash(ids: List<String>) = moveTo(ids, MailFolder.TRASH)
+
+/** Moves messages to [folder]. */
+fun MailViewModel.moveTo(ids: List<String>, folder: MailFolder) = io { repo.messageDao().moveTo(ids, folder) }
+
+/** Restores messages from trash to the inbox. */
+fun MailViewModel.restoreFromTrash(ids: List<String>) = moveTo(ids, MailFolder.INBOX)
+
+/** Permanently deletes messages. */
+fun MailViewModel.deleteForever(ids: List<String>) = io { repo.messageDao().deleteAll(ids) }
+
+/** Sets the read flag on messages. */
+fun MailViewModel.setRead(ids: List<String>, read: Boolean) = io { repo.messageDao().setRead(ids, read) }
+
+/** Marks one message read. */
+fun MailViewModel.markRead(id: String) = io { repo.messageDao().markRead(id) }
+
+    /** Extracts the raw PGP bytes from an RFC 3156 multipart/encrypted envelope. */
+/** Extracts the raw PGP bytes from an RFC 3156 multipart/encrypted envelope. */
+private fun extractPgpPayload(envelope: ByteArray): ByteArray? {
+        val b64 = MimeCodec.extractPgpPayloadB64(envelope) ?: return null
+        return try {
+            Base64.decode(b64, Base64.DEFAULT)
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+    }
+/** The list-display envelope for a stored message. */
+fun MailViewModel.envelopeOf(stored: StoredMessage): MessageEnvelope = MessageEnvelope(
         id = stored.id,
         from = stored.from,
         to = runCatching {
@@ -763,13 +726,3 @@ class MailViewModel(
         unencrypted = stored.unencrypted,
     )
 
-    fun dismissMessages() {
-        state = state.copy(message = null, error = null, exportArmor = null)
-    }
-
-    private fun buildMimeBody(from: String, subject: String, body: String): ByteArray =
-        MimeCodec.buildPlainBody(from, subject, body, MimeCodec.newMessageId())
-
-    private fun buildEncryptedBody(encrypted: ByteArray): ByteArray =
-        MimeCodec.buildEncryptedEnvelope(PgpCrypto.armorMessage(encrypted))
-}

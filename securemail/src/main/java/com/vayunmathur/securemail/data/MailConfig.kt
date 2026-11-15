@@ -56,12 +56,15 @@ class MailConfig(context: Context) {
         dataStore.edit { it.clear() }
     }
 
+    /** Shared constants and helpers for MailConfig. */
     companion object {
         @Volatile
         private var sharedStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>? =
             null
 
-        private fun store(app: Context): androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences> =
+        private fun store(
+            app: Context,
+        ): androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences> =
             sharedStore ?: synchronized(this) {
                 sharedStore ?: app.applicationContext.mailDataStore.also { sharedStore = it }
             }

@@ -20,9 +20,13 @@ object KeyLookupPolicy {
 
     /** Where a recipient's usable public key came from, or why there is none. */
     sealed interface KeySource {
+        /** Singleton holding own directory state and operations. */
         data object OwnDirectory : KeySource
+        /** Singleton holding wkd state and operations. */
         data object Wkd : KeySource
+        /** Singleton holding cached state and operations. */
         data object Cached : KeySource
+        /** Singleton holding none state and operations. */
         data object None : KeySource
     }
 

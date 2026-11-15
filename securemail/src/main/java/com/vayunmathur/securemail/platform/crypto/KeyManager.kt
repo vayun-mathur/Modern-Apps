@@ -18,6 +18,10 @@ import com.vayunmathur.library.util.DatabaseHelper
  * secret is read.
  */
 class KeyManager(context: Context) : DatabaseHelper(context) {
+
+    private companion object {
+        const val GCM_TAG_BITS = 128
+    }
     override val keyStoreAlias = "securemail_master_key"
     override val sharedPrefsName = "securemail_secure_prefs"
     override val passphraseKey = "encrypted_pgp_secret"
@@ -68,7 +72,7 @@ class KeyManager(context: Context) : DatabaseHelper(context) {
             cipher.init(
                 javax.crypto.Cipher.DECRYPT_MODE,
                 getSecretKey(),
-                javax.crypto.spec.GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP)),
+                javax.crypto.spec.GCMParameterSpec(GCM_TAG_BITS, Base64.decode(iv, Base64.NO_WRAP)),
             )
             String(cipher.doFinal(Base64.decode(enc, Base64.NO_WRAP)), Charsets.UTF_8)
         } catch (_: Exception) {

@@ -25,6 +25,8 @@ import kotlin.time.Duration.Companion.minutes
  */
 class MailSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
+    // The worker contract is success/retry; every failure retries, logged.
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun doWork(): Result {
         val settings = MailConfig(applicationContext).settings.first()
         if (settings.address.isBlank()) return Result.success()
@@ -44,17 +46,20 @@ class MailSyncWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 onMessage = { msg -> InboundStore.store(applicationContext, msg) },
             )
             // Give the SUB + backlog drain time to complete within the worker.
-            kotlinx.coroutines.delay(20_000)
+            kotlinx.coroutines.delay(SYNC_DRAIN_MS)
             Result.success()
         } catch (e: Exception) {
+            // The worker's contract is success/retry; every failure retries, logged.
             Log.status(TAG, "sync worker failed", e)
             Result.retry()
         }
     }
 
+    /** Shared constants and helpers for MailSyncWorker. */
     companion object {
         private const val TAG = "MailSyncWorker"
         private const val WORK_NAME = "securemail_sync"
+        private const val SYNC_DRAIN_MS = 20_000L
 
         fun schedule(context: Context) {
             startRepeatedTask<MailSyncWorker>(context, WORK_NAME, 15.minutes)

@@ -8,17 +8,22 @@ object IntentState {
     var navigationRoute: Route? = null
 }
 
+/** Contract for route. */
 @Serializable
 sealed interface Route : NavKey {
+    /** Singleton holding onboarding state and operations. */
     @Serializable
     data object Onboarding : Route
 
+    /** Singleton holding lock state and operations. */
     @Serializable
     data object Lock : Route
 
+    /** Singleton holding inbox state and operations. */
     @Serializable
     data object Inbox : Route
 
+    /** Immutable value describing composer. */
     @Serializable
     data class Composer(
         val to: String = "",
@@ -33,6 +38,7 @@ sealed interface Route : NavKey {
         val from: String? = null,
     ) : Route
 
+    /** Immutable value describing reader; carries messageId. */
     @Serializable
     data class Reader(val messageId: String) : Route
 
@@ -40,6 +46,7 @@ sealed interface Route : NavKey {
     @Serializable
     data object Out : Route
 
+    /** Singleton holding settings state and operations. */
     @Serializable
     data object Settings : Route
 }

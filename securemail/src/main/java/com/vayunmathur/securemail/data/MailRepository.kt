@@ -15,6 +15,7 @@ class MailRepository private constructor(context: Context) :
     override fun outboxDao(): OutboxDao = db.outboxDao()
     override fun identityDao(): IdentityDao = db.identityDao()
 
+    /** Shared constants and helpers for MailRepository. */
     companion object {
         @Volatile private var instance: MailRepository? = null
         fun get(context: Context): MailRepository =

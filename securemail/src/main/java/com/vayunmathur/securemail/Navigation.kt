@@ -14,9 +14,18 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.securemail.data.MailFolder
+import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.platform.MailUiState
 import com.vayunmathur.securemail.domain.mail.AddressValidator
 import com.vayunmathur.securemail.platform.Draft
 import com.vayunmathur.securemail.platform.MailViewModel
+import com.vayunmathur.securemail.platform.deleteForever
+import com.vayunmathur.securemail.platform.envelopeOf
+import com.vayunmathur.securemail.platform.markRead
+import com.vayunmathur.securemail.platform.moveTo
+import com.vayunmathur.securemail.platform.moveToTrash
+import com.vayunmathur.securemail.platform.restoreFromTrash
+import com.vayunmathur.securemail.platform.setRead
 import com.vayunmathur.securemail.ui.ComposeScreen
 import com.vayunmathur.securemail.ui.FolderActions
 import com.vayunmathur.securemail.ui.InboxScreen
@@ -87,78 +96,103 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
             }
         },
     ) {
-        entry<Route.Onboarding> {
-            OnboardingScreen(
-                state = state,
-                onClaim = { localPart, passphrase ->
-                    viewModel.claimAddress(localPart, passphrase) {
-                        // Protection enrolls immediately after claim: run the
-                        // biometric gate as soon as the Lock screen lands.
-                        (context as? FragmentActivity)?.let { viewModel.unlock(it) }
-                    }
-                },
-                onDismissMessages = viewModel::dismissMessages,
-            )
-        }
-        entry<Route.Lock> {
-            LockScreen(
-                state = state,
-                onUnlock = {
-                    (context as? FragmentActivity)?.let { viewModel.unlock(it) }
-                },
-                onDismissMessages = viewModel::dismissMessages,
-            )
-        }
-        entry<Route.Inbox>(metadata = SiblingPage()) {
-            InboxScreen(
-                state = state,
-                folder = viewModel.selectedFolder,
-                actions = folderActions,
-                messages = folderMessages,
-            )
-        }
+        mainEntries(viewModel, backStack, state, folderMessages, allMessages, folderActions, context)
         composerEntry(viewModel, backStack)
-        entry<Route.Reader> { route ->
-            val msg = remember(route.messageId, allMessages, folderMessages) {
-                folderMessages.firstOrNull { it.id == route.messageId }
-                    ?: allMessages.firstOrNull { it.id == route.messageId }
-            }
-            LaunchedEffect(route.messageId) {
-                viewModel.decryptStored(route.messageId)
-                viewModel.markRead(route.messageId)
-            }
-            ReaderScreen(
-                state = state,
-                onReply = { m ->
-                    backStack.add(
-                        Route.Composer(
-                            to = m.from,
-                            subject = "Re: ${m.decryptedSubject ?: ""}",
-                            inReplyTo = m.id,
-                            from = m.deliveredTo,
-                        ),
-                    )
-                },
-                onBack = { backStack.pop() },
-                message = msg,
-            )
-        }
         outEntry(viewModel, backStack)
-        entry<Route.Settings>(metadata = SiblingPage()) {
-            val identities by viewModel.identities.collectAsState(emptyList())
-            SettingsScreen(
-                state = state,
-                identities = identities,
-                onCreateAlias = viewModel::createAlias,
-                onSetAliasDisabled = viewModel::setAliasDisabled,
-                onExportPublicKey = viewModel::exportPublicKey,
-                onForget = viewModel::forgetIdentity,
-                onDismissMessages = viewModel::dismissMessages,
-            )
-        }
     }
 }
 
+
+/** Onboarding, lock, inbox, reader and settings destinations. */
+private fun EntryProviderScope<Route>.mainEntries(
+    viewModel: MailViewModel,
+    backStack: NavBackStack<Route>,
+    state: MailUiState,
+    folderMessages: List<StoredMessage>,
+    allMessages: List<StoredMessage>,
+    folderActions: FolderActions,
+    context: android.content.Context,
+) {
+    entry<Route.Onboarding> {
+        OnboardingScreen(
+            state = state,
+            onClaim = { localPart, passphrase ->
+                viewModel.claimAddress(localPart, passphrase) {
+                    // Protection enrolls immediately after claim: run the
+                    // biometric gate as soon as the Lock screen lands.
+                    (context as? FragmentActivity)?.let { viewModel.unlock(it) }
+                }
+            },
+            onDismissMessages = viewModel::dismissMessages,
+        )
+    }
+    entry<Route.Lock> {
+        LockScreen(
+            state = state,
+            onUnlock = {
+                (context as? FragmentActivity)?.let { viewModel.unlock(it) }
+            },
+            onDismissMessages = viewModel::dismissMessages,
+        )
+    }
+    entry<Route.Inbox>(metadata = SiblingPage()) {
+        InboxScreen(
+            state = state,
+            folder = viewModel.selectedFolder,
+            actions = folderActions,
+            messages = folderMessages,
+        )
+    }
+    readerEntry(viewModel, backStack, state, folderMessages, allMessages)
+    entry<Route.Settings>(metadata = SiblingPage()) {
+        val identities by viewModel.identities.collectAsState(emptyList())
+        SettingsScreen(
+            state = state,
+            identities = identities,
+            onCreateAlias = viewModel::createAlias,
+            onSetAliasDisabled = viewModel::setAliasDisabled,
+            onExportPublicKey = viewModel::exportPublicKey,
+            onForget = viewModel::forgetIdentity,
+            onDismissMessages = viewModel::dismissMessages,
+        )
+    }
+}
+
+
+/** Reader destination: decrypts and marks read on entry. */
+private fun EntryProviderScope<Route>.readerEntry(
+    viewModel: MailViewModel,
+    backStack: NavBackStack<Route>,
+    state: MailUiState,
+    folderMessages: List<StoredMessage>,
+    allMessages: List<StoredMessage>,
+) {
+entry<Route.Reader> { route ->
+    val msg = remember(route.messageId, allMessages, folderMessages) {
+        folderMessages.firstOrNull { it.id == route.messageId }
+            ?: allMessages.firstOrNull { it.id == route.messageId }
+    }
+    LaunchedEffect(route.messageId) {
+        viewModel.decryptStored(route.messageId)
+        viewModel.markRead(route.messageId)
+    }
+    ReaderScreen(
+        state = state,
+        onReply = { m ->
+            backStack.add(
+                Route.Composer(
+                    to = m.from,
+                    subject = "Re: ${m.decryptedSubject ?: ""}",
+                    inReplyTo = m.id,
+                    from = m.deliveredTo,
+                ),
+            )
+        },
+        onBack = { backStack.pop() },
+        message = msg,
+    )
+}
+}
 /**
  * Composer. Leaving with Back saves a draft (or updates the reopened one);
  * Discard drops it; a successful send deletes it.

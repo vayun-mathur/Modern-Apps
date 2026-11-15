@@ -65,6 +65,7 @@ class MailSocketService : Service() {
         return builder.build()
     }
 
+    /** Shared constants and helpers for MailSocketService. */
     companion object {
         private const val CHANNEL_ID = "securemail_relay"
         private const val NOTIFICATION_ID = 4101

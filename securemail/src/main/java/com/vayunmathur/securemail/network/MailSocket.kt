@@ -45,6 +45,16 @@ import kotlinx.serialization.json.Json
  * server only accepts PUB from addresses this socket authenticated.
  */
 object MailSocket {
+    // Wire framing: one opcode byte, then big-endian length fields.
+    private const val OP_BYTES = 1
+    private const val FLAGS_BYTES = 1
+    private const val LEN16_BYTES = 2
+    private const val LEN32_BYTES = 4
+    private const val BYTE_MASK = 0xFF
+    private const val SHIFT_8 = 8
+    private const val SHIFT_16 = 16
+    private const val SHIFT_24 = 24
+    private const val LAST_BYTE = 3
 
     const val WS_URL = "wss://mail.maemail.org/mail/ws"
 
@@ -119,8 +129,10 @@ object MailSocket {
 
     val connected: Boolean get() = session != null
 
+    /** Immutable value describing key result; carries address, armoredPublic. */
     data class KeyResult(val address: String, val armoredPublic: String?)
 
+    /** Immutable value describing identity snapshot; carries address, armoredPublic. */
     data class IdentitySnapshot(val address: String, val armoredPublic: String)
 
     /**
@@ -198,6 +210,8 @@ object MailSocket {
      * session's challenge via [sign] and waits for SUBRESP. Returns the
      * [SUB_OK]…[SUB_INVALID] status, or null when offline / timed out.
      */
+    // Any failure (offline, timeout, signing) means the claim did not land: null, logged.
+    @Suppress("TooGenericExceptionCaught")
     suspend fun claim(address: String, armoredPublic: String, sign: suspend (ByteArray) -> ByteArray): Int? {
         val s = session ?: return null
         val n = nonce ?: return null
@@ -244,6 +258,8 @@ object MailSocket {
         private set
 
     /** Directory lookup over the socket (request/response with timeout). */
+    // Any failure (offline, timeout) means no key: null, logged.
+    @Suppress("TooGenericExceptionCaught")
     suspend fun getKey(address: String): KeyResult? {
         val s = session ?: return null
         val key = address.lowercase()
@@ -261,6 +277,8 @@ object MailSocket {
     }
 
     /** Fetch one backlog message's blob by id (for missed fan-outs / fresh devices). */
+    // Any failure (offline, timeout) means no blob: null, logged.
+    @Suppress("TooGenericExceptionCaught")
     suspend fun fetch(id: String): ByteArray? {
         val s = session ?: return null
         val deferred = CompletableDeferred<ByteArray?>()
@@ -358,85 +376,88 @@ object MailSocket {
     internal fun subFrame(address: String, signature: ByteArray, armoredPublic: String): ByteArray {
         val addr = address.lowercase().toByteArray(Charsets.UTF_8)
         val key = armoredPublic.toByteArray(Charsets.UTF_8)
-        val out = ByteArray(1 + 2 + addr.size + 2 + signature.size + key.size)
+        val out = ByteArray(OP_BYTES + LEN16_BYTES + addr.size + LEN16_BYTES + signature.size + key.size)
         out[0] = OP_SUB
-        putU16(out, 1, addr.size)
-        addr.copyInto(out, 3)
-        putU16(out, 3 + addr.size, signature.size)
-        signature.copyInto(out, 5 + addr.size)
-        key.copyInto(out, 5 + addr.size + signature.size)
+        putU16(out, OP_BYTES, addr.size)
+        addr.copyInto(out, OP_BYTES + LEN16_BYTES)
+        putU16(out, OP_BYTES + LEN16_BYTES + addr.size, signature.size)
+        signature.copyInto(out, OP_BYTES + LEN16_BYTES + LEN16_BYTES + addr.size)
+        key.copyInto(out, OP_BYTES + LEN16_BYTES + LEN16_BYTES + addr.size + signature.size)
         return out
     }
 
     internal fun pubFrame(from: String, recipient: String, raw: ByteArray, unencrypted: Boolean): ByteArray {
         val sender = from.lowercase().toByteArray(Charsets.UTF_8)
         val rcpt = recipient.lowercase().toByteArray(Charsets.UTF_8)
-        val out = ByteArray(1 + 1 + 2 + sender.size + 2 + rcpt.size + raw.size)
+        val out = ByteArray(OP_BYTES + FLAGS_BYTES + LEN16_BYTES + sender.size + LEN16_BYTES + rcpt.size + raw.size)
         out[0] = OP_PUB
         out[1] = if (unencrypted) FLAG_PLAIN else 0
-        putU16(out, 2, sender.size)
-        sender.copyInto(out, 4)
-        putU16(out, 4 + sender.size, rcpt.size)
-        rcpt.copyInto(out, 6 + sender.size)
-        raw.copyInto(out, 6 + sender.size + rcpt.size)
+        putU16(out, OP_BYTES + FLAGS_BYTES, sender.size)
+        sender.copyInto(out, OP_BYTES + FLAGS_BYTES + LEN16_BYTES)
+        putU16(out, OP_BYTES + FLAGS_BYTES + LEN16_BYTES + sender.size, rcpt.size)
+        rcpt.copyInto(out, OP_BYTES + FLAGS_BYTES + LEN16_BYTES + LEN16_BYTES + sender.size)
+        raw.copyInto(out, OP_BYTES + FLAGS_BYTES + LEN16_BYTES + LEN16_BYTES + sender.size + rcpt.size)
         return out
     }
 
     internal fun getKeyFrame(address: String): ByteArray {
         val addr = address.lowercase().toByteArray(Charsets.UTF_8)
-        val out = ByteArray(1 + 2 + addr.size)
+        val out = ByteArray(OP_BYTES + LEN16_BYTES + addr.size)
         out[0] = OP_GETKEY_REQ
-        putU16(out, 1, addr.size)
-        addr.copyInto(out, 3)
+        putU16(out, OP_BYTES, addr.size)
+        addr.copyInto(out, OP_BYTES + LEN16_BYTES)
         return out
     }
 
     internal fun fetchFrame(id: String): ByteArray {
         val raw = id.toByteArray(Charsets.UTF_8)
-        val out = ByteArray(1 + 2 + raw.size)
+        val out = ByteArray(OP_BYTES + LEN16_BYTES + raw.size)
         out[0] = OP_FETCH_REQ
         putU16(out, 1, raw.size)
-        raw.copyInto(out, 3)
+        raw.copyInto(out, OP_BYTES + LEN16_BYTES)
         return out
     }
 
     /** MSG: [0x03][flags][u32 idLen][id][u16 rcptLen][rcpt][raw…]. */
     internal fun parseMsg(buf: ByteArray): InboundMsg? {
-        if (buf.size < 1 + 1 + 4 + 2) return null
-        val flags = buf[1].toInt() and 0xFF
+        if (buf.size < OP_BYTES + FLAGS_BYTES + LEN32_BYTES + LEN16_BYTES) return null
+        val flags = buf[OP_BYTES].toInt() and BYTE_MASK
         val parsed = MsgFlags(
             unencrypted = (flags and FLAG_PLAIN.toInt()) != 0,
             spam = (flags and FLAG_SPAM.toInt()) != 0,
         )
-        val idLen = readU32(buf, 2)
-        if (idLen < 0 || buf.size < 6 + idLen + 2) return null
-        val id = buf.copyOfRange(6, 6 + idLen).toString(Charsets.UTF_8)
-        val rcptOff = 6 + idLen
+        val idLen = readU32(buf, OP_BYTES + FLAGS_BYTES)
+        if (idLen < 0 || buf.size < OP_BYTES + FLAGS_BYTES + LEN32_BYTES + idLen + LEN16_BYTES) return null
+        val idStart = OP_BYTES + FLAGS_BYTES + LEN32_BYTES
+        val id = buf.copyOfRange(idStart, idStart + idLen).toString(Charsets.UTF_8)
+        val rcptOff = OP_BYTES + FLAGS_BYTES + LEN32_BYTES + idLen
         val rcptLen = readU16(buf, rcptOff)
-        if (buf.size < rcptOff + 2 + rcptLen) return null
-        val rcpt = buf.copyOfRange(rcptOff + 2, rcptOff + 2 + rcptLen).toString(Charsets.UTF_8)
-        val raw = buf.copyOfRange(rcptOff + 2 + rcptLen, buf.size)
+        if (buf.size < rcptOff + LEN16_BYTES + rcptLen) return null
+        val rcpt = buf.copyOfRange(rcptOff + LEN16_BYTES, rcptOff + LEN16_BYTES + rcptLen).toString(Charsets.UTF_8)
+        val raw = buf.copyOfRange(rcptOff + LEN16_BYTES + rcptLen, buf.size)
         return InboundMsg(id, parsed, rcpt, raw)
     }
 
     /** SUBRESP: [0x09][status][u16 addrLen][address] → (address, status). */
     internal fun parseSubResp(buf: ByteArray): Pair<String, Int>? {
-        if (buf.size < 1 + 1 + 2) return null
-        val status = buf[1].toInt() and 0xFF
-        val addrLen = readU16(buf, 2)
-        if (buf.size < 4 + addrLen) return null
-        return buf.copyOfRange(4, 4 + addrLen).toString(Charsets.UTF_8) to status
+        if (buf.size < OP_BYTES + FLAGS_BYTES + LEN16_BYTES) return null
+        val status = buf[OP_BYTES].toInt() and BYTE_MASK
+        val addrLen = readU16(buf, OP_BYTES + FLAGS_BYTES)
+        if (buf.size < OP_BYTES + FLAGS_BYTES + LEN16_BYTES + addrLen) return null
+        val addrStart = OP_BYTES + FLAGS_BYTES + LEN16_BYTES
+        return buf.copyOfRange(addrStart, addrStart + addrLen).toString(Charsets.UTF_8) to status
     }
 
     /** KEYRESP: [0x05][status][u16 addrLen][address][key…] → (address, key?). */
     internal fun parseKeyResp(buf: ByteArray): Pair<String, String?>? {
-        if (buf.size < 1 + 1 + 2) return null
-        val status = buf[1].toInt()
-        val addrLen = readU16(buf, 2)
-        if (buf.size < 4 + addrLen) return null
-        val addr = buf.copyOfRange(4, 4 + addrLen).toString(Charsets.UTF_8)
-        val key = if (status == KEY_FOUND && buf.size > 4 + addrLen) {
-            buf.copyOfRange(4 + addrLen, buf.size).toString(Charsets.UTF_8)
+        if (buf.size < OP_BYTES + FLAGS_BYTES + LEN16_BYTES) return null
+        val status = buf[OP_BYTES].toInt()
+        val addrLen = readU16(buf, OP_BYTES + FLAGS_BYTES)
+        if (buf.size < OP_BYTES + FLAGS_BYTES + LEN16_BYTES + addrLen) return null
+        val addrStart = OP_BYTES + FLAGS_BYTES + LEN16_BYTES
+        val addr = buf.copyOfRange(addrStart, addrStart + addrLen).toString(Charsets.UTF_8)
+        val key = if (status == KEY_FOUND && buf.size > OP_BYTES + FLAGS_BYTES + LEN16_BYTES + addrLen) {
+            buf.copyOfRange(OP_BYTES + FLAGS_BYTES + LEN16_BYTES + addrLen, buf.size).toString(Charsets.UTF_8)
         } else {
             null
         }
@@ -445,26 +466,26 @@ object MailSocket {
 
     /** FETCHED: [0x07][u16 idLen][id][raw…] → (id, raw). */
     internal fun parseFetched(buf: ByteArray): Pair<String, ByteArray>? {
-        if (buf.size < 1 + 2) return null
-        val idLen = readU16(buf, 1)
-        if (buf.size < 3 + idLen) return null
-        val id = buf.copyOfRange(3, 3 + idLen).toString(Charsets.UTF_8)
-        return id to buf.copyOfRange(3 + idLen, buf.size)
+        if (buf.size < OP_BYTES + LEN16_BYTES) return null
+        val idLen = readU16(buf, OP_BYTES)
+        if (buf.size < OP_BYTES + LEN16_BYTES + idLen) return null
+        val id = buf.copyOfRange(OP_BYTES + LEN16_BYTES, OP_BYTES + LEN16_BYTES + idLen).toString(Charsets.UTF_8)
+        return id to buf.copyOfRange(OP_BYTES + LEN16_BYTES + idLen, buf.size)
     }
 
     internal fun putU16(dst: ByteArray, off: Int, v: Int) {
-        dst[off] = (v shr 8).toByte()
+        dst[off] = (v shr SHIFT_8).toByte()
         dst[off + 1] = v.toByte()
     }
 
     internal fun readU16(src: ByteArray, off: Int): Int =
-        ((src[off].toInt() and 0xFF) shl 8) or (src[off + 1].toInt() and 0xFF)
+        ((src[off].toInt() and BYTE_MASK) shl SHIFT_8) or (src[off + 1].toInt() and BYTE_MASK)
 
     internal fun readU32(src: ByteArray, off: Int): Int =
-        ((src[off].toInt() and 0xFF) shl 24) or
-            ((src[off + 1].toInt() and 0xFF) shl 16) or
-            ((src[off + 2].toInt() and 0xFF) shl 8) or
-            (src[off + 3].toInt() and 0xFF)
+        ((src[off].toInt() and BYTE_MASK) shl SHIFT_24) or
+            ((src[off + 1].toInt() and BYTE_MASK) shl SHIFT_16) or
+            ((src[off + 2].toInt() and BYTE_MASK) shl SHIFT_8) or
+            (src[off + LAST_BYTE].toInt() and BYTE_MASK)
 }
 
 /** Minimal REST surface: WKD runs over plain HTTPS, not the relay socket. */
