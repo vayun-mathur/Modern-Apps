@@ -19,13 +19,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 // DataStore accessor overloads for each stored type (byteArray/long/boolean/double/string/
@@ -42,8 +41,25 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
 
     // Eagerly mirror the persisted preferences so the synchronous getters below
     // can read the latest snapshot without blocking the calling thread.
-    private val state: StateFlow<Preferences> =
-        dataStore.data.stateIn(scope, SharingStarted.Eagerly, emptyPreferences())
+    private val mirror = MutableStateFlow(emptyPreferences())
+    private val state: StateFlow<Preferences> = mirror
+
+    init {
+        scope.launch { dataStore.data.collect { mirror.value = it } }
+    }
+
+    /**
+     * Applies [transform] as one DataStore edit and republishes the mirror
+     * before returning, so a synchronous getter on any thread observes the
+     * write as soon as the suspending setter returns (read-your-writes).
+     * Without this the mirror only caught up whenever its collector was
+     * scheduled, and a write-then-read sequence could observe the stale
+     * snapshot — most visibly under load, where the collector lags.
+     */
+    private suspend fun editAndSync(transform: (MutablePreferences) -> Unit) {
+        dataStore.edit(transform)
+        mirror.value = dataStore.data.first()
+    }
 
     private fun <T> getWithFallback(key: Preferences.Key<T>): T? {
         return state.value[key]
@@ -59,8 +75,8 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
     }
 
     suspend fun setByteArray(name: String, value: ByteArray, onlyIfAbsent: Boolean = false) {
-        dataStore.edit {
-            if (onlyIfAbsent && it.contains(byteArrayPreferencesKey(name))) return@edit
+        editAndSync {
+            if (onlyIfAbsent && it.contains(byteArrayPreferencesKey(name))) return@editAndSync
             it[byteArrayPreferencesKey(name)] = value
         }
     }
@@ -93,7 +109,7 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
     }
 
     suspend fun setBoolean(name: String, value: Boolean) {
-        dataStore.edit {
+        editAndSync {
             it[booleanPreferencesKey(name)] = value
         }
     }
@@ -107,8 +123,8 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
     }
 
     suspend fun setLong(key: String, value: Long, onlyIfAbsent: Boolean = false) {
-        dataStore.edit {
-            if (onlyIfAbsent && it.contains(longPreferencesKey(key))) return@edit
+        editAndSync {
+            if (onlyIfAbsent && it.contains(longPreferencesKey(key))) return@editAndSync
             it[longPreferencesKey(key)] = value
         }
     }
@@ -116,7 +132,7 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
     /** Atomically raises the stored value to [value] when it is larger. Returns true if it changed. */
     suspend fun setLongIfGreater(name: String, value: Long): Boolean {
         var updated = false
-        dataStore.edit {
+        editAndSync {
             val current = it[longPreferencesKey(name)] ?: 0L
             if (value > current) {
                 it[longPreferencesKey(name)] = value
@@ -135,7 +151,7 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
     }
 
     suspend fun setDouble(key: String, value: Double) {
-        dataStore.edit {
+        editAndSync {
             it[doublePreferencesKey(key)] = value
         }
     }
@@ -150,15 +166,15 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
     }
 
     suspend fun setString(key: String, value: String, onlyIfAbsent: Boolean = false) {
-        dataStore.edit {
-            if (onlyIfAbsent && it.contains(stringPreferencesKey(key))) return@edit
+        editAndSync {
+            if (onlyIfAbsent && it.contains(stringPreferencesKey(key))) return@editAndSync
             it[stringPreferencesKey(key)] = value
         }
     }
 
     /** Read-modify-write [name] in one edit, so concurrent callers can't drop each other's change. */
     suspend fun updateString(name: String, transform: (String?) -> String) {
-        dataStore.edit {
+        editAndSync {
             it[stringPreferencesKey(name)] = transform(it[stringPreferencesKey(name)])
         }
     }
@@ -181,7 +197,7 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
 
     fun addStringToSet(key: String, id: String) {
         scope.launch {
-            dataStore.edit {
+            editAndSync {
                 val set = it[stringSetPreferencesKey(key)] ?: setOf()
                 it[stringSetPreferencesKey(key)] = set + id
             }
@@ -191,7 +207,7 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
     /** Atomically adds [id] to the set, returning true only if it was not already present. */
     suspend fun addStringToSetIfAbsent(key: String, id: String): Boolean {
         var added = false
-        dataStore.edit {
+        editAndSync {
             val set = it[stringSetPreferencesKey(key)] ?: setOf()
             if (id !in set) {
                 it[stringSetPreferencesKey(key)] = set + id
@@ -203,10 +219,18 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
 
     fun removeStringFromSet(key: String, id: String) {
         scope.launch {
-            dataStore.edit {
+            editAndSync {
                 val set = it[stringSetPreferencesKey(key)] ?: setOf()
                 it[stringSetPreferencesKey(key)] = set - id
             }
+        }
+    }
+
+    /** Suspending [removeStringFromSet]: the removal is committed (and mirrored) before returning. */
+    suspend fun removeStringFromSetAwait(key: String, id: String) {
+        editAndSync {
+            val set = it[stringSetPreferencesKey(key)] ?: setOf()
+            it[stringSetPreferencesKey(key)] = set - id
         }
     }
 
@@ -215,7 +239,7 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
      * has to delete the key too, or the store grows a tail of state nothing can ever reach again.
      */
     suspend fun removeKeys(names: Collection<String>) {
-        dataStore.edit { prefs ->
+        editAndSync { prefs ->
             for (name in names) {
                 // Every stored type, as documented above: callers
                 // remove string session keys and double calibration
@@ -252,7 +276,7 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
         if (sourcePrefs.asMap().keys.none { it.name in wanted }) return 0
 
         var copied = 0
-        dataStore.edit { copied = it.copyEntriesFrom(sourcePrefs, wanted, overwrite) }
+        editAndSync { copied = it.copyEntriesFrom(sourcePrefs, wanted, overwrite) }
         return copied
     }
 
