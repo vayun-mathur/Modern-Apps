@@ -10,7 +10,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
-import org.junit.Assume
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -44,7 +43,7 @@ class OfflineRouterTransitSlice3ExtraTest {
     }
 
     @Test fun noPackEntryPointsDegrade() { runBlocking {
-        Assume.assumeTrue("host offlinerouter lib unavailable", nativeAvailable())
+        assertTrue(nativeAvailable(), "host offlinerouter lib unavailable: cargoBuildHost must produce libofflinerouter for JVM tests")
         // Force re-init against the sandbox external dir (no packs were ever downloaded)
         OfflineRouterLifecycle.isInitialized = false
         OfflineRouterTransit.onReload()
@@ -61,7 +60,7 @@ class OfflineRouterTransitSlice3ExtraTest {
     } }
 
     @Test fun fakeFeedFileDegradesThroughNative() { runBlocking {
-        Assume.assumeTrue("host offlinerouter lib unavailable", nativeAvailable())
+        assertTrue(nativeAvailable(), "host offlinerouter lib unavailable: cargoBuildHost must produce libofflinerouter for JVM tests")
         val base = OfflineRouterLifecycle.transitBase(ctx)
         assertNotNull(base)
         // A zero-byte sidecar pack makes transitFeeds report this feed; every native

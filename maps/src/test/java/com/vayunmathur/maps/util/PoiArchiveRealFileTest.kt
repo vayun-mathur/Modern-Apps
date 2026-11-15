@@ -5,69 +5,91 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import org.junit.Assume
 
 /**
- * The app's POI reader against a REAL planet archive (`planet4.mamaps` or its
- * byte-identical local build). Skipped unless `MAMAPS_REAL_ARCHIVE` names the
- * file, so CI and normal unit-test runs never need the 80 GB input:
+ * The app's POI reader against a real `.mamaps` archive, through exactly the
+ * production entry point ([PoiIndex.reloadArchive] -> [PoiArchive]): every
+ * POI section the app reads — index + names (kinds 8/9), attributes incl.
+ * rating / review count / summary (10), the spatial grid (11), the word
+ * index (12), the boundary links (15) and the admin hierarchy (16).
+ *
+ * By default the archive is the small synthetic fixture
+ * ([PoiSyntheticArchive]: the same section formats, a handful of bay-area
+ * records), so the test runs hermetically in CI instead of skipping. When
+ * `MAMAPS_REAL_ARCHIVE` names a planet archive the same test methods run
+ * their original planet-scale assertions against it:
  *
  * ```
  * MAMAPS_REAL_ARCHIVE=/path/to/world.mamaps ./gradlew :maps:testDevUnitTest \
  *     --tests '*PoiArchiveRealFileTest*'
  * ```
- *
- * It goes through exactly the production entry point ([PoiIndex.reloadArchive]
- * -> [PoiArchive]) and checks every POI section the app reads: index + names
- * (kinds 8/9), attributes incl. rating / review count / summary (10), the
- * spatial grid (11), the word index (12) and the boundary links (15).
  */
 class PoiArchiveRealFileTest {
 
-    private fun archive(): File {
-        val path = System.getenv(ENV)
-        Assume.assumeTrue("$ENV not set; real-archive test skipped", !path.isNullOrBlank())
-        val file = File(path!!)
-        Assume.assumeTrue("$ENV=$path does not exist", file.isFile)
-        return file
+    private var temp: File? = null
+
+    private fun planetFile(): File? {
+        val path = System.getenv(ENV)?.takeIf { it.isNotBlank() } ?: return null
+        return File(path).takeIf { it.isFile }
     }
 
     private fun load(): PoiIndex.Mapped {
-        val file = archive()
+        val planet = planetFile()
+        val file = planet ?: PoiSyntheticArchive.write().also { temp = it.parentFile }
         assertTrue(PoiIndex.reloadArchive(file), "the app could not map POI sections from $file")
         return assertNotNull(PoiIndex.mappedForQuery())
     }
+
+    private val isPlanet: Boolean get() = planetFile() != null
 
     @Test
     fun `every POI section maps and agrees on the record count`() {
         val m = load()
         println("POI records=${m.count} names=${m.namesLen}B cells=${m.cellCount} words=${m.entryCount}")
-        assertTrue(m.count > MIN_PLANET_RECORDS, "only ${m.count} records: not a planet index")
+        if (isPlanet) {
+            assertTrue(m.count > MIN_PLANET_RECORDS, "only ${m.count} records: not a planet index")
+        } else {
+            assertEquals(PoiSyntheticArchive.RECORDS.size, m.count)
+        }
         assertNotNull(m.attrs, "attrs section (kind 10) refused")
         assertNotNull(m.spatial, "spatial section (kind 11) refused")
         assertTrue(m.cellCount > 0)
         assertNotNull(m.nameIdx, "word index (kind 12) refused")
         assertTrue(m.entryCount > m.count, "word index should hold >1 word per record on average")
         assertNotNull(m.region, "region section (kind 15) refused")
+        assertNotNull(m.admin, "admin section (kind 16) refused")
     }
 
     @Test
     fun `nearest and viewport queries answer in four cities`() {
         load()
-        for ((city, lat, lon) in CITIES) {
+        val places = if (isPlanet) {
+            CITIES
+        } else {
+            PoiSyntheticArchive.RECORDS.take(4).map { Triple(it.name, it.lat, it.lon) }
+        }
+        for ((city, lat, lon) in places) {
             val near = PoiIndex.nearest(lat, lon, limit = 20, maxMeters = 500.0)
             val box = PoiIndex.inViewport(lon - 0.01, lat - 0.01, lon + 0.01, lat + 0.01)
             println("$city nearest=${near.size} first=${near.firstOrNull()?.name} viewport=${box.size}")
             assertTrue(near.isNotEmpty(), "$city: no POI within 500 m")
             assertTrue(box.isNotEmpty(), "$city: empty viewport")
             assertTrue(near.all { it.name.isNotEmpty() }, "$city: a nearest hit has no name")
+            if (!isPlanet) {
+                assertEquals(city, near.first().name, "$city: nearest hit is not the record at that point")
+            }
         }
     }
 
     @Test
     fun `name search finds landmarks and the new type-51 place labels`() {
         load()
-        for ((query, lat, lon) in LANDMARKS) {
+        val landmarks = if (isPlanet) LANDMARKS else listOf(
+            Triple("Golden Gate Bridge", 37.8199, -122.4783),
+            Triple("Tartine Bakery", 37.7614, -122.4241),
+            Triple("Golden Gate Park", 37.7694, -122.4862),
+        )
+        for ((query, lat, lon) in landmarks) {
             val hits = PoiIndex.searchByName(query, lat, lon, limit = 10)
             println("search '$query' -> ${hits.take(3).map { "${it.name}(${it.type})" }}")
             assertTrue(hits.isNotEmpty(), "no hit for '$query'")
@@ -75,7 +97,8 @@ class PoiArchiveRealFileTest {
             assertTrue(d < NEAR_DEG_SQ, "top hit for '$query' is far away: ${hits[0]}")
         }
         // Place labels became searchable records (type 51) in planet4.
-        for ((query, lat, lon) in PLACES) {
+        val places = if (isPlanet) PLACES else listOf(Triple("Oakland", 37.8044, -122.2712))
+        for ((query, lat, lon) in places) {
             val hits = PoiIndex.searchByName(query, lat, lon, limit = 20)
             val place = hits.firstOrNull { it.type == TYPE_PLACE && it.name.equals(query, ignoreCase = true) }
             println("place '$query' -> $place")
@@ -84,6 +107,10 @@ class PoiArchiveRealFileTest {
             assertTrue(place.regionId != 0L, "'$query' place label carries no boundary link")
             // Tagged OSM id: low 2 bits are the id space (2 = way, 3 = relation).
             assertTrue((place.regionId and SPACE_MASK) in 2L..3L, "bad tagged id ${place.regionId}")
+        }
+        if (!isPlanet) {
+            // The admin hierarchy gives every fixture record its locality line.
+            assertEquals("Paris, France", PoiIndex.localityAt(0, english = true))
         }
     }
 
@@ -120,6 +147,12 @@ class PoiArchiveRealFileTest {
         assertTrue(rated > 0, "no rating (KEY_RATING) decoded")
         assertTrue(counted > 0, "no review count (KEY_REVIEW_COUNT) decoded")
         assertTrue(summarised > 0, "no review summary (KEY_REVIEW_SUMMARY) decoded")
+        if (!isPlanet) {
+            val tartine = PoiIndex.attributesAt(1)
+            assertEquals(4.6, tartine?.rating)
+            assertEquals(157, tartine?.reviewCount)
+            assertTrue(tartine?.reviewSummary?.contains("Tartine Bakery") == true)
+        }
     }
 
     @Test
@@ -127,7 +160,12 @@ class PoiArchiveRealFileTest {
         load()
         var rated = 0
         var summarised = 0
-        for ((query, lat, lon) in FAMOUS) {
+        val famous = if (isPlanet) FAMOUS else listOf(
+            Triple("Tartine Bakery", 37.7614, -122.4241),
+            Triple("Golden Gate Park", 37.7694, -122.4862),
+            Triple("Golden Gate Bridge", 37.8199, -122.4783),
+        )
+        for ((query, lat, lon) in famous) {
             val hit = PoiIndex.searchByName(query, lat, lon, limit = 5).firstOrNull()
             val attrs = hit?.let { PoiIndex.attributesAt(it.ordinal) }
             println(
@@ -139,7 +177,7 @@ class PoiArchiveRealFileTest {
         }
         // Coverage depends on the review table (reviews_archive.tsv); decoding is what is
         // pinned here, so a couple of fully reviewed landmarks are enough.
-        assertTrue(rated >= 2, "only $rated of ${FAMOUS.size} famous places carry an archive rating")
+        assertTrue(rated >= 2, "only $rated of ${famous.size} famous places carry an archive rating")
         assertTrue(summarised >= 1, "no famous place carries rating + count + summary")
     }
 
@@ -157,6 +195,7 @@ class PoiArchiveRealFileTest {
         }
         println("region links $linked/$sampled sampled")
         assertTrue(linked * 2 > sampled, "fewer than half the sampled POIs link to a boundary")
+        if (!isPlanet) assertEquals(sampled, linked, "every fixture record links to Paris")
     }
 
     private companion object {

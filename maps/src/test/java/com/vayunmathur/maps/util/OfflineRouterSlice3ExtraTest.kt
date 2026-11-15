@@ -8,7 +8,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
-import org.junit.Assume
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -27,7 +26,7 @@ class OfflineRouterSlice3ExtraTest {
     } catch (_: Throwable) { false }
 
     @Test fun getRouteWithoutGraphThrowsNoRoute() { runBlocking {
-        Assume.assumeTrue("host offlinerouter lib unavailable", nativeAvailable())
+        assertTrue(nativeAvailable(), "host offlinerouter lib unavailable: cargoBuildHost must produce libofflinerouter for JVM tests")
         OfflineRouterLifecycle.isInitialized = false
         // No archive was ever downloaded in the sandbox: native finds no route
         // and getRoute surfaces that as IllegalStateException, which routing
@@ -39,7 +38,7 @@ class OfflineRouterSlice3ExtraTest {
     } }
 
     @Test fun trafficNativeSurfaceWithoutGraph() {
-        Assume.assumeTrue("host offlinerouter lib unavailable", nativeAvailable())
+        assertTrue(nativeAvailable(), "host offlinerouter lib unavailable: cargoBuildHost must produce libofflinerouter for JVM tests")
         // Tile queries against an uninitialized graph answer deterministically
         // (null or an empty tile - either is a valid no-data answer, never a throw)
         val tile1 = OfflineRouter.getTrafficTileNative(14, 2600, 6500)
@@ -57,7 +56,7 @@ class OfflineRouterSlice3ExtraTest {
     }
 
     @Test fun lifecycleInitializeAndReload() { runBlocking {
-        Assume.assumeTrue("host offlinerouter lib unavailable", nativeAvailable())
+        assertTrue(nativeAvailable(), "host offlinerouter lib unavailable: cargoBuildHost must produce libofflinerouter for JVM tests")
         OfflineRouterLifecycle.isInitialized = false
         val base = OfflineRouterLifecycle.transitBase(ctx)
         // Sandbox external dir exists; graph init against it simply reports false
