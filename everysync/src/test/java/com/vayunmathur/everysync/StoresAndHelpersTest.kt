@@ -52,6 +52,12 @@ class StoresAndHelpersTest {
         assertEquals("lww", Settings.CONFLICT_LWW)
     }
     @Test fun syncStateAndCursorAndBaseline() = runBlocking {
+        // The store is shared with every other everysync test class in this
+        // JVM: clear the keys under test so the initial-state assertions do
+        // not depend on class order.
+        SyncState.set(ctx, "acc", "scope", null)
+        RelayCursorStore.clearVault(ctx, "notes", "v1", listOf("chan"))
+        VaultBaseline.clearVault(ctx, "v1", listOf("todo"))
         assertNull(SyncState.get(ctx, "acc", "scope"))
         SyncState.set(ctx, "acc", "scope", "42"); assertEquals("42", SyncState.get(ctx, "acc", "scope"))
         SyncState.set(ctx, "acc", "scope", null); assertNull(SyncState.get(ctx, "acc", "scope"))
