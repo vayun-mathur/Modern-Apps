@@ -60,6 +60,7 @@ import kotlinx.serialization.json.Json
  */
 class RelayPasswordProvider : ContentProvider() {
 
+    /** Shared constants and helpers for RelayPasswordProvider. */
     companion object {
         const val AUTHORITY = "com.vayunmathur.passwords.relay"
         const val PERMISSION = "com.vayunmathur.passwords.permission.RELAY"
@@ -150,7 +151,7 @@ class RelayPasswordProvider : ContentProvider() {
                         cursorFromPasswords(repo().getPasswordsUpdatedSince(since))
                     CODE_PASSKEYS, CODE_PASSKEYS_QUERY ->
                         cursorFromPasskeys(repo().getPasskeysUpdatedSince(since))
-                    CODE_SNAPSHOTS -> cursorFromSnapshots(repo().getAllSnapshots())
+                    CODE_SNAPSHOTS -> cursorFromSnapshots(repo().snapshots.getAll())
                     else -> null
                 }
             } catch (e: IllegalArgumentException) {
@@ -217,50 +218,7 @@ class RelayPasswordProvider : ContentProvider() {
         return runBlocking(Dispatchers.IO) {
             try {
                 val repo = repo()
-                when (uriMatcher.match(uri)) {
-                    CODE_PASSWORDS_PURGE -> {
-                        repo.deleteAllPasswords()
-                        repo.deleteSnapshotsByKind(SyncSnapshot.KIND_PASSWORD)
-                        0
-                    }
-                    CODE_PASSKEYS_PURGE -> {
-                        repo.deleteAllPasskeys()
-                        repo.deleteSnapshotsByKind(SyncSnapshot.KIND_PASSKEY)
-                        0
-                    }
-                    CODE_SNAPSHOTS_PURGE -> {
-                        repo.deleteAllSnapshots()
-                        0
-                    }
-                    // Single delete (`syncId = ?`): hard-delete the row but keep
-                    // its snapshot — the relay merge reads that as a deletion.
-                    // Selection-less base delete is the legacy purge spelling.
-                    CODE_PASSWORDS -> deleteBySyncIdOrPurge(selection, selectionArgs) {
-                        repo.deletePasswordBySyncId(it)
-                    } ?: run {
-                        repo.deleteAllPasswords()
-                        repo.deleteSnapshotsByKind(SyncSnapshot.KIND_PASSWORD)
-                        0
-                    }
-                    CODE_PASSKEYS -> deleteBySyncIdOrPurge(selection, selectionArgs) {
-                        repo.deletePasskeyBySyncId(it)
-                    } ?: run {
-                        repo.deleteAllPasskeys()
-                        repo.deleteSnapshotsByKind(SyncSnapshot.KIND_PASSKEY)
-                        0
-                    }
-                    CODE_SNAPSHOTS -> {
-                        val syncId = selectionArgs?.firstOrNull()
-                        if (syncId != null) {
-                            repo.deleteSnapshotBySyncId(syncId)
-                            1
-                        } else {
-                            repo.deleteAllSnapshots()
-                            0
-                        }
-                    }
-                    else -> 0
-                }
+                deleteMatched(repo, uriMatcher.match(uri), selection, selectionArgs)
             } catch (e: IllegalArgumentException) {
                 Log.error(TAG, "delete failed $uri", e)
                 0
@@ -269,6 +227,58 @@ class RelayPasswordProvider : ContentProvider() {
                 0
             }
         }
+    }
+
+
+    /** Delete dispatch for the matched provider code. */
+    private suspend fun deleteMatched(
+        repo: PasswordRepository,
+        code: Int,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+    ): Int = when (code) {
+        CODE_PASSWORDS_PURGE -> {
+            repo.deleteAllPasswords()
+            repo.snapshots.deleteByKind(SyncSnapshot.KIND_PASSWORD)
+            0
+        }
+        CODE_PASSKEYS_PURGE -> {
+            repo.deleteAllPasskeys()
+            repo.snapshots.deleteByKind(SyncSnapshot.KIND_PASSKEY)
+            0
+        }
+        CODE_SNAPSHOTS_PURGE -> {
+            repo.snapshots.deleteAll()
+            0
+        }
+        // Single delete (`syncId = ?`): hard-delete the row but keep
+        // its snapshot — the relay merge reads that as a deletion.
+        // Selection-less base delete is the legacy purge spelling.
+        CODE_PASSWORDS -> deleteBySyncIdOrPurge(selection, selectionArgs) {
+            repo.deletePasswordBySyncId(it)
+        } ?: run {
+            repo.deleteAllPasswords()
+            repo.snapshots.deleteByKind(SyncSnapshot.KIND_PASSWORD)
+            0
+        }
+        CODE_PASSKEYS -> deleteBySyncIdOrPurge(selection, selectionArgs) {
+            repo.deletePasskeyBySyncId(it)
+        } ?: run {
+            repo.deleteAllPasskeys()
+            repo.snapshots.deleteByKind(SyncSnapshot.KIND_PASSKEY)
+            0
+        }
+        CODE_SNAPSHOTS -> {
+            val syncId = selectionArgs?.firstOrNull()
+            if (syncId != null) {
+                repo.snapshots.deleteBySyncId(syncId)
+                1
+            } else {
+                repo.snapshots.deleteAll()
+                0
+            }
+        }
+        else -> 0
     }
 
     override fun getType(uri: Uri): String? = when (uriMatcher.match(uri)) {
@@ -315,7 +325,7 @@ class RelayPasswordProvider : ContentProvider() {
 
     private suspend fun upsertSnapshot(v: ContentValues): String? {
         val syncId = v.getAsString(COL_SYNC_ID) ?: return null
-        repo().upsertSnapshot(
+        repo().snapshots.upsert(
             SyncSnapshot(
                 syncId = syncId,
                 kind = v.getAsString("kind").orEmpty(),

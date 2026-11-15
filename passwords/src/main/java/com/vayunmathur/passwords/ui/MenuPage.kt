@@ -11,9 +11,12 @@ import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.platform.MenuUiState
 import com.vayunmathur.passwords.platform.PasswordsViewModel
 
+/** Credential Item: a long implementation for credential item. */
 sealed class CredentialItem(override val id: Long) : DatabaseItem {
+    /** Password Item: a password implementation for password item. */
     class PasswordItem(val password: Password, val passkeys: List<Passkey>) :
         CredentialItem(password.id)
+    /** Passkey Item: a passkey implementation for passkey item. */
     class PasskeyItem(val passkey: Passkey) : CredentialItem(Long.MAX_VALUE - passkey.id)
 }
 

@@ -37,6 +37,7 @@ class KdbxSyncWorker(
         }
     }
 
+    /** Shared constants and helpers for KdbxSyncWorker. */
     companion object {
         private const val TAG = "KdbxSyncWorker"
     }

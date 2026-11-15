@@ -31,6 +31,7 @@ import kotlinx.coroutines.runBlocking
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.passwords.data.Password
 
+/** Password Autofill Service: a autofill service implementation for password autofill service. */
 class PasswordAutofillService : AutofillService() {
 
     private val tag = "AutofillService"

@@ -91,6 +91,7 @@ class CableService : Service() {
         super.onDestroy()
     }
 
+    /** Shared constants and helpers for CableService. */
     companion object {
         const val EXTRA_FIDO_URI = "fido_uri"
         const val EXTRA_USER_VERIFIED = "user_verified"

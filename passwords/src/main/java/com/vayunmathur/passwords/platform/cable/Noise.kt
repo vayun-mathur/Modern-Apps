@@ -148,6 +148,7 @@ class NoiseResponder(
         }
     }
 
+    /** Shared constants and helpers for NoiseResponder. */
     companion object {
         const val PROTOCOL_NAME = "Noise_KNpsk0_P256_AESGCM_SHA256"
         private const val PSK_BYTES = 32

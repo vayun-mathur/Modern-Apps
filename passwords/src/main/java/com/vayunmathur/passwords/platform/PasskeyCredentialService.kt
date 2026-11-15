@@ -27,6 +27,7 @@ import com.vayunmathur.passwords.data.PasswordRepository
 import com.vayunmathur.passwords.ui.PasskeyAuthActivity
 import kotlinx.coroutines.runBlocking
 
+/** Passkey Credential Service: a credential provider service implementation for passkey credential service. */
 class PasskeyCredentialService : CredentialProviderService() {
 
     private val repository by lazy { PasswordRepository.get(applicationContext) }
@@ -119,6 +120,7 @@ class PasskeyCredentialService : CredentialProviderService() {
         callback.onResult(null)
     }
 
+    /** Shared constants and helpers for PasskeyCredentialService. */
     companion object {
         private const val TAG = "PasskeyCredService"
         private const val REQUEST_CODE_UNLOCK = 999999

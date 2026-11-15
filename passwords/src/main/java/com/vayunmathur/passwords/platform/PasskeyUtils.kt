@@ -8,6 +8,7 @@ import java.security.SecureRandom
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
+/** Singleton holding passkey utils state and operations. */
 @OptIn(ExperimentalEncodingApi::class)
 object PasskeyUtils {
 

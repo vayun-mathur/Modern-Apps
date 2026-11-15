@@ -10,6 +10,7 @@ import com.vayunmathur.library.util.DatabaseItem
  */
 const val PASSKEY_LINK_DETACHED = "-"
 
+/** Immutable value describing passkey. */
 @Entity
 data class Passkey(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
@@ -44,20 +45,22 @@ data class Passkey(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Passkey) return false
-        return id == other.id &&
-            rpId == other.rpId &&
-            rpName == other.rpName &&
-            credentialId == other.credentialId &&
-            userId == other.userId &&
-            userName == other.userName &&
-            userDisplayName == other.userDisplayName &&
-            privateKeyBytes.contentEquals(other.privateKeyBytes) &&
-            creationTime == other.creationTime &&
-            lastUsedTime == other.lastUsedTime &&
-            signCount == other.signCount &&
-            linkedPasswordSyncId == other.linkedPasswordSyncId &&
-            syncId == other.syncId &&
-            updatedAt == other.updatedAt
+        return listOf(
+            id == other.id,
+            rpId == other.rpId,
+            rpName == other.rpName,
+            credentialId == other.credentialId,
+            userId == other.userId,
+            userName == other.userName,
+            userDisplayName == other.userDisplayName,
+            privateKeyBytes.contentEquals(other.privateKeyBytes),
+            creationTime == other.creationTime,
+            lastUsedTime == other.lastUsedTime,
+            signCount == other.signCount,
+            linkedPasswordSyncId == other.linkedPasswordSyncId,
+            syncId == other.syncId,
+            updatedAt == other.updatedAt,
+        ).all { it }
     }
 
     override fun hashCode(): Int {

@@ -104,6 +104,7 @@ class CborReader(private val bytes: ByteArray, private var pos: Int = 0) {
         return toInt()
     }
 
+    /** Shared constants and helpers for CborReader. */
     companion object {
         private const val MAJOR_UNSIGNED = 0
         private const val MAJOR_NEGATIVE = 1

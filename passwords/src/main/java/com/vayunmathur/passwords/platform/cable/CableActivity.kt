@@ -137,6 +137,7 @@ class CableActivity : FragmentActivity() {
         finish()
     }
 
+    /** Shared constants and helpers for CableActivity. */
     companion object {
         private const val TAG = "CableActivity"
     }

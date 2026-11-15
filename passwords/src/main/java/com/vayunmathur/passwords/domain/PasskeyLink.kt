@@ -20,6 +20,7 @@ sealed interface PasskeyLink {
     /** Pinned to the password with this syncId, regardless of domain or username. */
     data class To(val passwordSyncId: String) : PasskeyLink
 
+    /** Shared constants and helpers for PasskeyLink. */
     companion object {
         fun fromColumn(raw: String?): PasskeyLink = when {
             raw.isNullOrBlank() -> Auto

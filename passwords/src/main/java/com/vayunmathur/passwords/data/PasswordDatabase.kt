@@ -12,6 +12,7 @@ import androidx.sqlite.execSQL
 import com.vayunmathur.library.util.DatabaseMigrations
 import kotlinx.coroutines.flow.Flow
 
+/** Type representing password dao. */
 @Dao
 abstract class PasswordDao {
     @Query("SELECT * FROM Password")
@@ -49,6 +50,7 @@ abstract class PasswordDao {
         upsertRaw(value.copy(updatedAt = System.currentTimeMillis()))
 }
 
+/** Type representing passkey dao. */
 @Dao
 abstract class PasskeyDao {
     @Query("SELECT * FROM Passkey")
@@ -91,12 +93,14 @@ abstract class PasskeyDao {
     version = 5,
     exportSchema = false,
 )
+/** Password Database: a room database implementation for password database. */
 @ColumnTypeConverters(Converters::class)
 abstract class PasswordDatabase : RoomDatabase() {
     abstract fun passwordDao(): PasswordDao
     abstract fun passkeyDao(): PasskeyDao
     abstract fun syncSnapshotDao(): SyncSnapshotDao
 
+    /** Shared constants and helpers for PasswordDatabase. */
     companion object : DatabaseMigrations {
         override val migrations = listOf(
             Migration(1, 2) {

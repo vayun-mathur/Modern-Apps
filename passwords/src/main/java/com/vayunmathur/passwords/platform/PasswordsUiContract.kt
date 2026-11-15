@@ -81,6 +81,7 @@ interface PasswordsActions {
 
     fun saveDraft(onSaved: ((Long) -> Unit)? = null) {}
 
+    /** Shared constants and helpers for PasswordsActions. */
     companion object {
         val Noop: PasswordsActions = object : PasswordsActions {}
     }

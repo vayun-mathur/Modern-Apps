@@ -81,6 +81,7 @@ data class CtapGetAssertionRequest(
     /** Effective user-verification requirement (defaults to false per CTAP2). */
     val userVerificationRequired: Boolean get() = options["uv"] ?: false
 
+    /** Shared constants and helpers for CtapGetAssertionRequest. */
     companion object {
         /** Parses the CBOR payload (the bytes after the 0x02 command byte). */
         fun parse(payload: ByteArray): CtapGetAssertionRequest {
@@ -184,6 +185,7 @@ data class CtapMakeCredentialRequest(
 
     val supportsEs256: Boolean get() = algorithms.contains(Ctap.ALG_ES256)
 
+    /** Shared constants and helpers for CtapMakeCredentialRequest. */
     companion object {
         /** Parses the CBOR payload (the bytes after the 0x01 command byte). */
         fun parse(payload: ByteArray): CtapMakeCredentialRequest {

@@ -22,6 +22,7 @@ data class SyncSnapshot(
     val remoteModified: Long,
     val lastSyncedAt: Long,
 ) {
+    /** Shared constants and helpers for SyncSnapshot. */
     companion object {
         const val KIND_PASSWORD = "password"
         const val KIND_PASSKEY = "passkey"

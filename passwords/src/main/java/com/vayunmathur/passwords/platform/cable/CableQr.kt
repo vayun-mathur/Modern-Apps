@@ -25,6 +25,7 @@ data class CableQrData(
     val supportsLinking: Boolean?,
     val requestTypeHint: String?,
 ) {
+    /** Shared constants and helpers for CableQrData. */
     companion object {
         const val URI_PREFIX = "FIDO:/"
         const val PEER_KEY_SIZE = 33

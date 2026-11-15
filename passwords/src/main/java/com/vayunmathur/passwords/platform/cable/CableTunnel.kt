@@ -43,6 +43,7 @@ class CableTunnel private constructor(
         }
     }
 
+    /** Shared constants and helpers for CableTunnel. */
     companion object {
         const val SUBPROTOCOL = "fido.cable"
         const val ROUTING_ID_HEADER = "X-caBLE-Routing-ID"

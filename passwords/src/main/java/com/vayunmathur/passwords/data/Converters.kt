@@ -2,6 +2,7 @@ package com.vayunmathur.passwords.data
 
 import androidx.room3.ColumnTypeConverter
 
+/** Singleton holding converters state and operations. */
 object Converters {
     private const val DELIM = "|||"
 

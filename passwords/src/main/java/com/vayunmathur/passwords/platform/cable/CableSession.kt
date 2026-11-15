@@ -129,6 +129,7 @@ class CableSession(
         }
     }
 
+    /** Shared constants and helpers for CableSession. */
     companion object {
         private const val TAG = "CableSession"
         private const val BYTE_MASK = 0xFF

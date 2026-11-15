@@ -17,6 +17,7 @@ import com.vayunmathur.passwords.platform.PasswordsViewModelFactory
 import com.vayunmathur.passwords.sync.KdbxSyncScheduler
 import com.vayunmathur.passwords.sync.KdbxSyncSettings
 
+/** Main Activity: a ma fragment activity implementation for main activity. */
 class MainActivity : MaFragmentActivity() {
     private val passwordsViewModel: PasswordsViewModel by viewModels {
         PasswordsViewModelFactory(application, PasswordRepository.get(application))

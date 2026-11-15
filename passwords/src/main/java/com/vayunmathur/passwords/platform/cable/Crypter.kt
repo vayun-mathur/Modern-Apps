@@ -37,6 +37,7 @@ class Crypter(private val readKey: ByteArray, private val writeKey: ByteArray) {
             init(mode, SecretKeySpec(key, "AES"), GCMParameterSpec(GCM_TAG_BITS, nonce))
         }
 
+    /** Shared constants and helpers for Crypter. */
     companion object {
         private const val PADDING_GRANULARITY = 32
         private const val NONCE_BYTES = 12

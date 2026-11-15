@@ -26,6 +26,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
 
+/** Passkey Auth Activity: a fragment activity implementation for passkey auth activity. */
 class PasskeyAuthActivity : FragmentActivity() {
 
     private lateinit var repository: PasswordRepository
@@ -313,6 +314,7 @@ class PasskeyAuthActivity : FragmentActivity() {
         setResult(RESULT_OK, result)
     }
 
+    /** Shared constants and helpers for PasskeyAuthActivity. */
     companion object {
         const val EXTRA_FLOW = "flow"
         const val EXTRA_CREDENTIAL_ID = "credential_id"

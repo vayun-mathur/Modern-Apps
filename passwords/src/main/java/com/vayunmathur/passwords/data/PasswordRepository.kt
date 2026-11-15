@@ -79,11 +79,8 @@ class PasswordRepository private constructor(context: Context) :
     // SyncSnapshot reads / writes
     // ------------------------------------------------------------------
 
-    suspend fun getAllSnapshots(): List<SyncSnapshot> = syncSnapshotDao.getAll()
-    suspend fun upsertSnapshot(snapshot: SyncSnapshot) = syncSnapshotDao.upsert(snapshot)
-    suspend fun deleteSnapshotBySyncId(syncId: String) = syncSnapshotDao.deleteBySyncId(syncId)
-    suspend fun deleteAllSnapshots() = syncSnapshotDao.deleteAll()
-    suspend fun deleteSnapshotsByKind(kind: String) = syncSnapshotDao.deleteByKind(kind)
+    /** Sync-snapshot persistence, split out of the credential store. */
+    val snapshots: SnapshotStore by lazy { SnapshotStore(syncSnapshotDao) }
 
     // ------------------------------------------------------------------
     // Transaction
@@ -91,6 +88,7 @@ class PasswordRepository private constructor(context: Context) :
 
     suspend fun <R> withTransaction(block: suspend () -> R): R = db.withWriteTransaction { block() }
 
+    /** Shared constants and helpers for PasswordRepository. */
     companion object {
         @Volatile
         private var instance: PasswordRepository? = null
@@ -100,4 +98,22 @@ class PasswordRepository private constructor(context: Context) :
                 instance ?: PasswordRepository(context).also { instance = it }
             }
     }
+}
+
+/** Persistence for sync snapshots (the relay merge baseline). */
+class SnapshotStore(private val dao: SyncSnapshotDao) {
+    /** All snapshots, across kinds. */
+    suspend fun getAll(): List<SyncSnapshot> = dao.getAll()
+
+    /** Inserts or replaces one snapshot. */
+    suspend fun upsert(snapshot: SyncSnapshot) = dao.upsert(snapshot)
+
+    /** Deletes the snapshot for [syncId], if any. */
+    suspend fun deleteBySyncId(syncId: String) = dao.deleteBySyncId(syncId)
+
+    /** Deletes every snapshot. */
+    suspend fun deleteAll() = dao.deleteAll()
+
+    /** Deletes every snapshot of [kind]. */
+    suspend fun deleteByKind(kind: String) = dao.deleteByKind(kind)
 }

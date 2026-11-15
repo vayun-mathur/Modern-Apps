@@ -150,6 +150,7 @@ class CtapProcessor(
     private fun decodeUserId(userId: String): ByteArray =
         runCatching { urlDecoder.decode(userId) }.getOrElse { userId.toByteArray() }
 
+    /** Shared constants and helpers for CtapProcessor. */
     companion object {
         private const val TAG = "CtapProcessor"
         private const val BYTE_MASK = 0xFF

@@ -4,6 +4,7 @@ import androidx.room3.Dao
 import androidx.room3.Query
 import androidx.room3.Upsert
 
+/** Contract for sync snapshot dao. */
 @Dao
 interface SyncSnapshotDao {
     @Query("SELECT * FROM SyncSnapshot")

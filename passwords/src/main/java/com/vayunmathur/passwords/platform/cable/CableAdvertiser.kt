@@ -75,6 +75,7 @@ class CableAdvertiser(context: Context) {
         callback = null
     }
 
+    /** Shared constants and helpers for CableAdvertiser. */
     companion object {
         private const val TAG = "CableAdvertiser"
         private const val UUID_MASK_16 = 0xFFFF

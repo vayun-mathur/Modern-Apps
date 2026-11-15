@@ -1,5 +1,6 @@
 package com.vayunmathur.passwords.domain
 
+/** Singleton holding cbor state and operations. */
 object Cbor {
     private const val TYPE_UNSIGNED_INT = 0x00
     private const val TYPE_NEGATIVE_INT = 0x01

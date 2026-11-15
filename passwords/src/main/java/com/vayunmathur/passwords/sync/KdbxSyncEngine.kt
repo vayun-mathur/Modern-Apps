@@ -22,7 +22,9 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 
+/** Contract for kdbx sync result. */
 sealed interface KdbxSyncResult {
+    /** Immutable value describing success. */
     data class Success(
         val pushed: Int,
         val pulled: Int,
@@ -30,9 +32,13 @@ sealed interface KdbxSyncResult {
         val deletedRemote: Int,
     ) : KdbxSyncResult
 
+    /** Singleton holding not configured state and operations. */
     data object NotConfigured : KdbxSyncResult
+    /** Singleton holding file missing state and operations. */
     data object FileMissing : KdbxSyncResult
+    /** Singleton holding wrong password state and operations. */
     data object WrongPassword : KdbxSyncResult
+    /** Singleton holding verify failed state and operations. */
     data object VerifyFailed : KdbxSyncResult
     /**
      * Ambiguous foreign absence: baseline entries are missing from the file
@@ -42,6 +48,7 @@ sealed interface KdbxSyncResult {
      * baseline ids, for display only — never logged with content.
      */
     data class Quarantined(val count: Int) : KdbxSyncResult
+    /** Immutable value describing error; carries message. */
     data class Error(val message: String) : KdbxSyncResult
 }
 
@@ -129,11 +136,11 @@ class KdbxSyncEngine(
             override suspend fun deleteAll() = repository.deleteAllPasskeys()
         },
         snapshotDao = object : SyncSnapshotDao {
-            override suspend fun getAll(): List<SyncSnapshot> = repository.getAllSnapshots()
-            override suspend fun upsert(snapshot: SyncSnapshot) = repository.upsertSnapshot(snapshot)
-            override suspend fun deleteBySyncId(syncId: String) = repository.deleteSnapshotBySyncId(syncId)
-            override suspend fun deleteByKind(kind: String) = repository.deleteSnapshotsByKind(kind)
-            override suspend fun deleteAll() = repository.deleteAllSnapshots()
+            override suspend fun getAll(): List<SyncSnapshot> = repository.snapshots.getAll()
+            override suspend fun upsert(snapshot: SyncSnapshot) = repository.snapshots.upsert(snapshot)
+            override suspend fun deleteBySyncId(syncId: String) = repository.snapshots.deleteBySyncId(syncId)
+            override suspend fun deleteByKind(kind: String) = repository.snapshots.deleteByKind(kind)
+            override suspend fun deleteAll() = repository.snapshots.deleteAll()
         },
         codec = codec,
         inTransaction = { repository.withTransaction(it) },
@@ -165,24 +172,36 @@ class KdbxSyncEngine(
         override suspend fun delete(e: Passkey) { passkeyDao.delete(e) }
     }
 
+
+    /** Reads the remote file; the failure half is set instead of bytes on error. */
+    private fun readRemote(
+        document: KdbxDocument,
+    ): Pair<ByteArray, KdbxSyncResult?> = try {
+        document.read() to null
+    } catch (_: FileNotFoundException) {
+        ByteArray(0) to KdbxSyncResult.FileMissing
+    } catch (expected: IOException) {
+        ByteArray(0) to KdbxSyncResult.Error(expected.message ?: "Failed to read KDBX file")
+    }
+
+    /** Decodes remote entries; a zero-byte file is an empty vault, not a failure. */
+    private fun readFailureEntries(
+        remoteBytes: ByteArray,
+        vaultPassword: String,
+    ): List<Map<String, String>>? = if (remoteBytes.isEmpty()) {
+        emptyList()
+    } else {
+        codec.read(vaultPassword, remoteBytes)
+    }
     suspend fun sync(
         document: KdbxDocument,
         vaultPassword: String,
         onBackup: (ByteArray) -> Unit = {},
     ): KdbxSyncResult {
-        val remoteBytes = try {
-            document.read()
-        } catch (_: FileNotFoundException) {
-            return KdbxSyncResult.FileMissing
-        } catch (expected: IOException) {
-            return KdbxSyncResult.Error(expected.message ?: "Failed to read KDBX file")
-        }
-        // A brand new SAF document is zero bytes; that is an empty vault, not a failure.
-        val remoteEntries = if (remoteBytes.isEmpty()) {
-            emptyList()
-        } else {
-            codec.read(vaultPassword, remoteBytes) ?: return KdbxSyncResult.WrongPassword
-        }
+        val (remoteBytes, readFailure) = readRemote(document)
+        if (readFailure != null) return readFailure
+        val remoteEntries = readFailureEntries(remoteBytes, vaultPassword)
+            ?: return KdbxSyncResult.WrongPassword
 
         val now = System.currentTimeMillis()
         val baseline = snapshotDao.getAll().associateBy { it.syncId }
@@ -229,30 +248,10 @@ class KdbxSyncEngine(
             return KdbxSyncResult.Quarantined(quarantineIds.size)
         }
 
-        if (passwordPlan.remoteChanged || passkeyPlan.remoteChanged) {
-            val tombstoneEntries = (passwordPlan.tombstoneIds + passkeyPlan.tombstoneIds).map { id ->
-                mapOf(
-                    EntryMapper.FIELD_SYNC_ID to id,
-                    EntryMapper.FIELD_TYPE to "tombstone",
-                    EntryMapper.FIELD_TOMBSTONE to EntryMapper.TOMBSTONE_VALUE,
-                    EntryMapper.FIELD_MODIFIED to now.toString(),
-                )
-            } + (passwordPlan.retainedTombstoneIds + passkeyPlan.retainedTombstoneIds).mapNotNull { id ->
-                tombstones.firstOrNull { it[EntryMapper.FIELD_SYNC_ID] == id }
-            }
-            val merged = passwordPlan.remoteFields + passkeyPlan.remoteFields + tombstoneEntries
-            val bytes = codec.write(vaultPassword, merged)
-                ?: return KdbxSyncResult.Error("Failed to encode KDBX")
-            // A SAF single-document write truncates, so prove the payload parses first.
-            val verified = codec.read(vaultPassword, bytes)
-            if (verified == null || verified.size != merged.size) return KdbxSyncResult.VerifyFailed
-            if (remoteBytes.isNotEmpty()) onBackup(remoteBytes)
-            try {
-                document.write(bytes)
-            } catch (expected: IOException) {
-                return KdbxSyncResult.Error(expected.message ?: "Failed to write KDBX file")
-            }
-        }
+        val writeError = writeMerged(
+            document, vaultPassword, passwordPlan, passkeyPlan, tombstones, now, remoteBytes, onBackup,
+        )
+        if (writeError != null) return writeError
 
         inTransaction {
             applyPlan(passwordKind, passwordPlan)
@@ -265,6 +264,44 @@ class KdbxSyncEngine(
             deletedLocal = passwordPlan.deletedLocal + passkeyPlan.deletedLocal,
             deletedRemote = passwordPlan.deletedRemote + passkeyPlan.deletedRemote,
         )
+    }
+
+
+    /** Writes the merged file back when either plan changed the remote; null on success. */
+    private suspend fun writeMerged(
+        document: KdbxDocument,
+        vaultPassword: String,
+        passwordPlan: Plan<Password>,
+        passkeyPlan: Plan<Passkey>,
+        tombstones: List<Map<String, String>>,
+        now: Long,
+        remoteBytes: ByteArray,
+        onBackup: (ByteArray) -> Unit,
+    ): KdbxSyncResult? {
+        if (!passwordPlan.remoteChanged && !passkeyPlan.remoteChanged) return null
+        val tombstoneEntries = (passwordPlan.tombstoneIds + passkeyPlan.tombstoneIds).map { id ->
+            mapOf(
+                EntryMapper.FIELD_SYNC_ID to id,
+                EntryMapper.FIELD_TYPE to "tombstone",
+                EntryMapper.FIELD_TOMBSTONE to EntryMapper.TOMBSTONE_VALUE,
+                EntryMapper.FIELD_MODIFIED to now.toString(),
+            )
+        } + (passwordPlan.retainedTombstoneIds + passkeyPlan.retainedTombstoneIds).mapNotNull { id ->
+            tombstones.firstOrNull { it[EntryMapper.FIELD_SYNC_ID] == id }
+        }
+        val merged = passwordPlan.remoteFields + passkeyPlan.remoteFields + tombstoneEntries
+        val bytes = codec.write(vaultPassword, merged)
+            ?: return KdbxSyncResult.Error("Failed to encode KDBX")
+        // A SAF single-document write truncates, so prove the payload parses first.
+        val verified = codec.read(vaultPassword, bytes)
+        if (verified == null || verified.size != merged.size) return KdbxSyncResult.VerifyFailed
+        if (remoteBytes.isNotEmpty()) onBackup(remoteBytes)
+        try {
+            document.write(bytes)
+        } catch (expected: IOException) {
+            return KdbxSyncResult.Error(expected.message ?: "Failed to write KDBX file")
+        }
+        return null
     }
 
     private suspend fun <T> applyPlan(kind: EntityKind<T>, plan: Plan<T>) {
@@ -652,6 +689,7 @@ private class Plan<T>(
     val quarantineIds: List<String>,
 )
 
+/** Singleton holding native kdbx codec state and operations. */
 object NativeKdbxCodec : KdbxCodec {
     override fun read(password: String, bytes: ByteArray): List<Map<String, String>>? {
         val json = KdbxNative.nativeImport(password, bytes) ?: return null
@@ -669,6 +707,7 @@ object NativeKdbxCodec : KdbxCodec {
     }
 }
 
+/** Saf Kdbx Document: a context implementation for saf kdbx document. */
 class SafKdbxDocument(private val context: Context, private val uri: Uri) : KdbxDocument {
     override fun read(): ByteArray =
         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }

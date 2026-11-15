@@ -3,6 +3,7 @@ package com.vayunmathur.passwords.domain
 import androidx.annotation.StringRes
 import com.vayunmathur.passwords.R
 
+/** Kinds of import source. */
 enum class ImportSource(
     @StringRes val label: Int,
     val nameHeaders: Array<String>,
