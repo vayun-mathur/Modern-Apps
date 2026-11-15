@@ -331,7 +331,10 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     override fun setMarkMode(mode: MarkMode) {
         // In memory first, so a tap straight after switching uses the new mode.
         _uiState.value = _uiState.value.copy(markMode = mode)
-        viewModelScope.launch { dataStore.setMarkMode(mode) }
+        // IO, not Main: a DataStore edit suspended on Main can strand
+        // the store's write lock when Main stops being pumped (tests
+        // reset it between cases), wedging every later board write.
+        viewModelScope.launch(Dispatchers.IO) { dataStore.setMarkMode(mode) }
     }
 
     /**
@@ -381,7 +384,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     }
 
     override fun setGameMode(mode: GameMode) {
-        viewModelScope.launch { dataStore.setGameMode(mode) }
+        viewModelScope.launch(Dispatchers.IO) { dataStore.setGameMode(mode) }
     }
 
     override fun setReminderEnabled(enabled: Boolean) {
