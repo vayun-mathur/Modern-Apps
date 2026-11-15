@@ -27,6 +27,7 @@ import com.vayunmathur.contacts.ui.dialogs.MoveDialogHost
 import com.vayunmathur.contacts.ui.dialogs.MoveToAccountDialog
 import com.vayunmathur.contacts.util.ContactAccount
 import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.util.initEditDraft
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.NavBackStack
@@ -138,6 +139,14 @@ class BoundScreensPass2Test {
             ) { DynamicTheme { EditContactPage(backStack(), vm, Route.EditContact(contactId = 7)) } }
         }
         rule.waitForIdle()
+        // The ViewModel's init sync replaces allContactsState with the
+        // provider's (empty) list whenever its IO lands, which can wipe the
+        // fixture before the page's draft init reads it. Re-seed and re-run
+        // draft init so the assertion observes the page loading an existing
+        // contact regardless of that interleaving.
+        vm.allContactsState.value = listOf(fixtureContact())
+        vm.editingInitialized = false
+        vm.initEditDraft(7)
         assertEquals("Aisha", vm.editDraft.value?.firstName)
         rule.onNodeWithText(str(R.string.edit_contact), substring = true).assertExists()
     }

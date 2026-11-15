@@ -85,6 +85,15 @@ class CloudDefaultAccountPass2Test {
     fun setUp() {
         Dispatchers.setMain(Dispatchers.Unconfined)
         ShadowContentResolver.registerProviderInternal(ContactsContract.AUTHORITY, RejectingProvider())
+        // A new-contact draft defaults to the last-selected account, and the
+        // store is shared with every other contacts test class in this JVM
+        // (AccountsLifecyclePass2Test persists "Temp" there): clear it so the
+        // draft seeding below observes only this class's account source.
+        runBlocking {
+            val ds = com.vayunmathur.library.util.DataStoreUtils.getInstance(app)
+            ds.setString("last_account_name", "")
+            ds.setString("last_account_type", "")
+        }
     }
 
     @AfterTest

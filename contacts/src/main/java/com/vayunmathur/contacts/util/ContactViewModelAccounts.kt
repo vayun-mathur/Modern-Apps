@@ -367,11 +367,11 @@ private suspend fun ContactViewModel.migrateRenamedAccountRefs(
     trimmed: String,
 ) {
     // Migrate the saved-accounts label so an empty account (no contacts) is renamed too.
-    dataStore.removeStringFromSet(
+    dataStore.removeStringFromSetAwait(
         "extra_accounts_set",
         encodeExtraAccountEntry(account.name, account.type)
     )
-    dataStore.removeStringFromSet("extra_accounts_set", "${account.name}|${account.type}")
+    dataStore.removeStringFromSetAwait("extra_accounts_set", "${account.name}|${account.type}")
     dataStore.addStringToSetIfAbsent(
         "extra_accounts_set",
         encodeExtraAccountEntry(trimmed, account.type)
@@ -381,11 +381,11 @@ private suspend fun ContactViewModel.migrateRenamedAccountRefs(
     val oldHiddenKey = encodeHiddenAccountKey(account.type, account.name)
     val legacyRawHiddenKey = "${account.type}|${account.name}"
     if (oldHiddenKey in hidden || legacyRawHiddenKey in hidden) {
-        dataStore.removeStringFromSet("hidden_accounts", oldHiddenKey)
+        dataStore.removeStringFromSetAwait("hidden_accounts", oldHiddenKey)
         if (legacyRawHiddenKey != oldHiddenKey) {
-            dataStore.removeStringFromSet("hidden_accounts", legacyRawHiddenKey)
+            dataStore.removeStringFromSetAwait("hidden_accounts", legacyRawHiddenKey)
         }
-        dataStore.addStringToSet(
+        dataStore.addStringToSetIfAbsent(
             "hidden_accounts",
             encodeHiddenAccountKey(account.type, trimmed)
         )
@@ -450,18 +450,18 @@ private suspend fun ContactViewModel.deleteLocalAccountRows(account: ContactAcco
 }
 
 private suspend fun ContactViewModel.clearDeletedAccountRefs(account: ContactAccount) {
-    dataStore.removeStringFromSet(
+    dataStore.removeStringFromSetAwait(
         "extra_accounts_set",
         encodeExtraAccountEntry(account.name, account.type)
     )
-    dataStore.removeStringFromSet("extra_accounts_set", "${account.name}|${account.type}")
-    dataStore.removeStringFromSet(
+    dataStore.removeStringFromSetAwait("extra_accounts_set", "${account.name}|${account.type}")
+    dataStore.removeStringFromSetAwait(
         "hidden_accounts",
         encodeHiddenAccountKey(account.type, account.name)
     )
-    dataStore.removeStringFromSet("hidden_accounts", "${account.type}|${account.name}")
+    dataStore.removeStringFromSetAwait("hidden_accounts", "${account.type}|${account.name}")
     // Legacy name-only hidden key.
-    dataStore.removeStringFromSet("hidden_accounts", account.name)
+    dataStore.removeStringFromSetAwait("hidden_accounts", account.name)
     // If this account was the default save location, reset to on-device.
     if (dataStore.getString("last_account_type") == account.type &&
         dataStore.getString("last_account_name") == account.name
