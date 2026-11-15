@@ -217,8 +217,16 @@ class DataStoreUtils internal constructor(private val dataStore: DataStore<Prefe
     suspend fun removeKeys(names: Collection<String>) {
         dataStore.edit { prefs ->
             for (name in names) {
+                // Every stored type, as documented above: callers
+                // remove string session keys and double calibration
+                // offsets, neither of which the old two-type removal
+                // touched, so "cleared" values resurrected on reload.
                 prefs.remove(stringSetPreferencesKey(name))
                 prefs.remove(longPreferencesKey(name))
+                prefs.remove(booleanPreferencesKey(name))
+                prefs.remove(doublePreferencesKey(name))
+                prefs.remove(stringPreferencesKey(name))
+                prefs.remove(byteArrayPreferencesKey(name))
             }
         }
     }
