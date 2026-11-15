@@ -243,6 +243,7 @@ class ShareTransferService : Service() {
         return builder.build()
     }
 
+    /** Shared constants and helpers for ShareTransferService. */
     companion object {
         const val ACTION_START_RECEIVE = "com.vayunmathur.share.action.START_RECEIVE"
         const val ACTION_START_SEND = "com.vayunmathur.share.action.START_SEND"

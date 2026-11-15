@@ -121,7 +121,9 @@ class GapPush6Test {
         val result = ScanResult(device, scanRecordFor(serviceData), -50, 1L)
         val job = CoroutineScope(Dispatchers.Default).async {
             val out = mutableListOf<com.vayunmathur.share.platform.discovery.NearbyDevice>()
-            try { mgr.scan().collect { out += it } } catch (e: Exception) { }
+            try { mgr.scan().collect { out += it } } catch (_: Exception) {
+                // Ignored: collection is cancelled at test end; assertions check collected state.
+            }
             out
         }
         delay(800)
@@ -185,7 +187,11 @@ class GapPush6Test {
         val job = async { receiver.handle(req("/Ask", BinaryPlist.encode(ask.toPlist())), remote) }
         var inc: com.vayunmathur.share.platform.airdrop.AirDropIncoming? = null
         val dl = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < dl) { inc = receiver.incoming.value.firstOrNull(); if (inc != null) break; delay(50) }
+        while (System.currentTimeMillis() < dl) {
+            inc = receiver.incoming.value.firstOrNull()
+            if (inc != null) break
+            delay(50)
+        }
         assertNotNull(inc)
         // Directory entries are not pending files.
         assertEquals(1, inc!!.pendingFiles.value.size)

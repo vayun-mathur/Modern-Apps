@@ -37,6 +37,7 @@ data class ReceivedFile(
     val uri: Uri,
 )
 
+/** Contract for share actions. */
 interface ShareActions {
     fun startScan()
     fun stopScan()
@@ -45,6 +46,7 @@ interface ShareActions {
     fun clearOutgoing()
     fun disconnect(connection: Connection)
 
+    /** Shared constants and helpers for ShareActions. */
     companion object {
         val Noop = object : ShareActions {
             override fun startScan() {}

@@ -26,6 +26,7 @@ private const val CLIENT_TIMEOUT_MS = 120_000
  */
 class AirDropHttpServer(private val handler: Handler) {
 
+    /** Contract for handler. */
     fun interface Handler {
         suspend fun handle(request: AirDropHttp.Request, remote: InetAddress): AirDropHttp.Response
     }
@@ -88,14 +89,19 @@ class AirDropHttpServer(private val handler: Handler) {
             client.use {
                 val input = client.inputStream.buffered()
                 val output = client.outputStream.buffered()
-                while (true) {
-                    val request = AirDropHttp.readRequest(input) ?: break
-                    Log.dev(TAG, "${request.method} ${request.path} from ${remote.hostAddress}")
-                    val response = handler.handle(request, remote)
-                    AirDropHttp.drain(request.body)
-                    val keepAlive = request.headers.keepAlive
-                    AirDropHttp.writeResponse(output, response, keepAlive)
-                    if (!keepAlive) break
+                var keepConnectionOpen = true
+                while (keepConnectionOpen) {
+                    val request = AirDropHttp.readRequest(input)
+                    if (request == null) {
+                        keepConnectionOpen = false
+                    } else {
+                        Log.dev(TAG, "${request.method} ${request.path} from ${remote.hostAddress}")
+                        val response = handler.handle(request, remote)
+                        AirDropHttp.drain(request.body)
+                        val keepAlive = request.headers.keepAlive
+                        AirDropHttp.writeResponse(output, response, keepAlive)
+                        keepConnectionOpen = keepAlive
+                    }
                 }
             }
         } catch (e: Exception) {

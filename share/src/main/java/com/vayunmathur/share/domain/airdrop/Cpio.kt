@@ -31,6 +31,7 @@ object Cpio {
     /** Longest name accepted on read; a hostile header must not make us allocate gigabytes. */
     private const val MAX_NAME = 4096
 
+    /** Format Exception: a string implementation for format exception. */
     class FormatException(message: String) : IOException(message)
 
     /** Streams an odc archive. Close (or [finish]) to write the trailer. */
@@ -84,6 +85,7 @@ object Cpio {
         }
     }
 
+    /** Type representing entry. */
     class Entry(
         val name: String,
         val mode: Int,

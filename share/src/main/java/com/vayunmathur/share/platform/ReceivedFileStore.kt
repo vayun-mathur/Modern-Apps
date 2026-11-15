@@ -137,6 +137,7 @@ class ReceivedFileStore(private val context: Context) {
         }
     }
 
+    /** Shared constants and helpers for ReceivedFileStore. */
     companion object {
         /**
          * What an unrecognised extension resolves to, and what the protocol layer substitutes

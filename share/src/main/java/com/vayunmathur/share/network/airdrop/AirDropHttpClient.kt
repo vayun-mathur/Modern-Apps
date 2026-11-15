@@ -35,7 +35,9 @@ class AirDropHttpClient(
     /** `Host` exactly as Mosey writes it, with IPv6 bracketed (`cce.z`). */
     private val hostHeader: String
         get() {
-            val host = (address as? Inet6Address)?.let { "[${it.hostAddress?.substringBefore('%')}]" } ?: address.hostAddress
+            val host = (address as? Inet6Address)?.let {
+                "[${it.hostAddress?.substringBefore('%')}]"
+            } ?: address.hostAddress
             return "$host:$port"
         }
 
@@ -79,7 +81,12 @@ class AirDropHttpClient(
     }
 
     /** Streams an `/Upload` body through [writeBody] using chunked transfer encoding. */
-    fun upload(contentType: String, totalBytes: Long, transferId: String?, writeBody: (OutputStream) -> Unit): AirDropHttp.Response {
+    fun upload(
+        contentType: String,
+        totalBytes: Long,
+        transferId: String?,
+        writeBody: (OutputStream) -> Unit,
+    ): AirDropHttp.Response {
         val (inp, out) = connection()
         val headers = buildList {
             add("Host" to hostHeader)

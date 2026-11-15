@@ -53,6 +53,18 @@ class GapPush2Test {
     private fun b64(b: ByteArray) = Base64.encodeToString(b, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
     private fun pump() = Shadows.shadowOf(Looper.getMainLooper()).idle()
 
+    /** Polls [fetch] (pumping the main looper) until it returns a value or times out. */
+    private fun <T> awaitNonNull(timeoutMs: Long, sleepMs: Long, fetch: () -> T?): T? {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        var value: T? = null
+        while (value == null && System.currentTimeMillis() < deadline) {
+            pump()
+            value = fetch()
+            if (value == null) Thread.sleep(sleepMs)
+        }
+        return value
+    }
+
     @Test
     fun `viewmodel scan merges nsd and ble legs for same endpoint`() {
         grant(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT)
@@ -61,18 +73,16 @@ class GapPush2Test {
         val vm = ShareViewModel(app)
         // sendUiState is WhileSubscribed: collect it so the combine actually computes.
         val collectJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).async {
-            try { vm.sendUiState.collect { } } catch (e: Exception) { }
+            try { vm.sendUiState.collect { } } catch (_: Exception) {
+                // Ignored: collection is cancelled at test end; assertions check collected state.
+            }
         }
         vm.startScan()
         val nsd = app.getSystemService(NsdManager::class.java)
         val shadow = Shadows.shadowOf(nsd)
         // Wait for NSD discovery listener registration (viewModelScope is Main-bound).
-        var listener: NsdManager.DiscoveryListener? = null
-        val dl = System.currentTimeMillis() + 10_000
-        while (System.currentTimeMillis() < dl) {
-            pump(); Thread.sleep(50)
-            listener = shadow.getDiscoveryListeners(SHARE_SERVICE_TYPE)?.firstOrNull()
-            if (listener != null) break
+        val listener = awaitNonNull(10_000, 50) {
+            shadow.getDiscoveryListeners(SHARE_SERVICE_TYPE)?.firstOrNull()
         }
         assertNotNull(listener)
         val info = ShareNativeDiscovery.nativeBuildEndpointInfo("MergedPeer", 1)!!
@@ -81,12 +91,8 @@ class GapPush2Test {
         val found = NsdServiceInfo().apply { serviceName = instance; serviceType = SHARE_SERVICE_TYPE }
         listener!!.onServiceFound(found)
         // Poll for the resolve listener the manager registers in onServiceFound.
-        var resolveListener: NsdManager.ResolveListener? = null
-        val dlR = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < dlR) {
-            pump(); Thread.sleep(50)
-            resolveListener = shadow.getResolveListeners(found)?.firstOrNull()
-            if (resolveListener != null) break
+        val resolveListener = awaitNonNull(8_000, 50) {
+            shadow.getResolveListeners(found)?.firstOrNull()
         }
         assertNotNull("resolve listener registered", resolveListener)
         val resolved = NsdServiceInfo().apply {
@@ -107,14 +113,11 @@ class GapPush2Test {
         val device = bt.adapter.getRemoteDevice("AA:BB:CC:DD:EE:02")
         val result = ScanResult(device, record, -50, 1L)
         val scanner = bt.adapter.bluetoothLeScanner
-        val dl2 = System.currentTimeMillis() + 10_000
-        var merged: com.vayunmathur.share.platform.discovery.NearbyDevice? = null
-        while (System.currentTimeMillis() < dl2) {
-            pump()
+        // Re-deliver the BLE result until the ViewModel merges it with the NSD leg.
+        awaitNonNull(10_000, 100) {
             Shadows.shadowOf(scanner).scanCallbacks.forEach { it.onScanResult(1, result) }
-            merged = vm.sendUiState.value.discoveredDevices.firstOrNull { it.endpointId == "ABCD" }
-            if (merged != null && merged.source == DiscoverySource.Both) break
-            Thread.sleep(100)
+            vm.sendUiState.value.discoveredDevices
+                .firstOrNull { it.endpointId == "ABCD" && it.source == DiscoverySource.Both }
         }
         assertNotNull("NSD leg should list ABCD: ${vm.sendUiState.value.discoveredDevices}", vm.sendUiState.value.discoveredDevices.firstOrNull { it.endpointId == "ABCD" })
         vm.stopScan()
@@ -198,7 +201,9 @@ class GapPush2Test {
             val shadow = Shadows.shadowOf(nsd)
             val job = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).async {
                 val out = mutableListOf<com.vayunmathur.share.platform.discovery.NearbyDevice>()
-                try { controller.browse().collect { out += it } } catch (e: Exception) { }
+                try { controller.browse().collect { out += it } } catch (_: Exception) {
+                    // Ignored: collection is cancelled at test end; assertions check collected state.
+                }
                 out
             }
             var listener: NsdManager.DiscoveryListener? = null
@@ -217,16 +222,14 @@ class GapPush2Test {
                 port = serverPortVal; setHost(InetAddress.getByName("127.0.0.1"))
             }
             shadow.getResolveListeners(found)?.firstOrNull()?.onServiceResolved(resolved)
-            var foundDevice: com.vayunmathur.share.platform.discovery.NearbyDevice? = null
             val dl2 = System.currentTimeMillis() + 12_000
-            while (System.currentTimeMillis() < dl2) {
-                // browse collects on Default; poll the job's partial state via controller peers is private,
-                // so poll by cancelling after deadline and checking job result.
+            // Browse collects on Default; re-deliver the resolve in case the first
+            // arrived before the resolve listener registered, until browse finishes.
+            while (System.currentTimeMillis() < dl2 && !job.isCompleted) {
                 delay(200)
-                if (job.isCompleted) break
-                // Peek: re-deliver resolve in case first arrived before resolve listener registered.
-                shadow.getResolveListeners(found)?.firstOrNull()?.onServiceResolved(resolved)
-                if (job.isCompleted) break
+                if (!job.isCompleted) {
+                    shadow.getResolveListeners(found)?.firstOrNull()?.onServiceResolved(resolved)
+                }
             }
             job.cancel()
             // Device emission is asserted via a second direct discover below if browse timing missed it.
@@ -249,7 +252,11 @@ class GapPush2Test {
         val job1 = async { receiver.handle(req("/Ask", BinaryPlist.encode(ask1.toPlist())), remote) }
         var h1: Long? = null
         val dl = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < dl) { h1 = receiver.incoming.value.firstOrNull()?.sessionHandle; if (h1 != null) break; delay(50) }
+        while (System.currentTimeMillis() < dl) {
+            h1 = receiver.incoming.value.firstOrNull()?.sessionHandle
+            if (h1 != null) break
+            delay(50)
+        }
         assertNotNull(h1)
         receiver.accept(h1!!, true)
         assertEquals(200, job1.await().status)

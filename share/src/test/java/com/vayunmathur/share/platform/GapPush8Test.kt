@@ -48,7 +48,9 @@ class GapPush8Test {
         Shadows.shadowOf(bt.adapter).setEnabled(true)
         val mgr = BleDiscoveryManager(app)
         val job = CoroutineScope(Dispatchers.Default).async {
-            try { mgr.scan().collect { } } catch (e: Exception) { }
+            try { mgr.scan().collect { } } catch (_: Exception) {
+                // Ignored: collection is cancelled at test end; assertions check collected state.
+            }
         }
         // Wait for the scan callback to register, then stop through the manager.
         val dl = System.currentTimeMillis() + 8_000

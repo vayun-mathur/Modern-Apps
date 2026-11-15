@@ -37,6 +37,13 @@ private const val GZIP_MAGIC_0 = 0x1F
 private const val GZIP_MAGIC_1 = 0x8B
 private const val COPY_BUFFER = 64 * 1024
 
+// HTTP status codes returned to AirDrop peers.
+private const val STATUS_OK = 200
+private const val STATUS_BAD_REQUEST = 400
+private const val STATUS_UNAUTHORIZED = 401
+private const val STATUS_NOT_FOUND = 404
+private const val STATUS_INTERNAL_SERVER_ERROR = 500
+
 /** One incoming AirDrop transfer, from the Ask through the Upload. */
 class AirDropIncoming internal constructor(
     override val sessionHandle: Long,
@@ -48,7 +55,11 @@ class AirDropIncoming internal constructor(
     override val state = MutableStateFlow(ShareState.AwaitingAccept)
     override val pendingFiles: StateFlow<List<PendingFile>> = MutableStateFlow(
         ask.files.filterNot { it.isDirectory }.map {
-            PendingFile(it.fileName, it.fileSize.coerceAtLeast(0), Uti.mimeTypeOf(it.fileType) ?: ReceivedFileStore.GENERIC_MIME_TYPE)
+            PendingFile(
+                it.fileName,
+                it.fileSize.coerceAtLeast(0),
+                Uti.mimeTypeOf(it.fileType) ?: ReceivedFileStore.GENERIC_MIME_TYPE,
+            )
         },
     )
     override val receivedFiles = MutableStateFlow<List<ReceivedFile>>(emptyList())
@@ -113,7 +124,7 @@ class AirDropReceiver(
             "/Discover" -> discover()
             "/Ask" -> ask(request, remote)
             "/Upload" -> upload(request, remote)
-            else -> AirDropHttp.Response(404)
+            else -> AirDropHttp.Response(STATUS_NOT_FOUND)
         }
 
     private fun discover(): AirDropHttp.Response {
@@ -133,20 +144,20 @@ class AirDropReceiver(
         } catch (e: Exception) {
             Log.status(TAG, "unreadable Ask from ${remote.hostAddress}", e)
             null
-        } ?: return AirDropHttp.Response(401)
+        } ?: return AirDropHttp.Response(STATUS_UNAUTHORIZED)
         if (ask.items.isNotEmpty() && ask.files.isEmpty()) {
             // Links arrive as Items with no archive; nowhere to stage them yet.
             Log.status(TAG, "declining link-only Ask from ${ask.senderComputerName}")
-            return AirDropHttp.Response(401)
+            return AirDropHttp.Response(STATUS_UNAUTHORIZED)
         }
         if (freeBytes() < ask.totalBytes * SPACE_MARGIN) {
             Log.status(TAG, "not enough space for ${ask.totalBytes} bytes from ${ask.senderComputerName}")
-            return AirDropHttp.Response(401)
+            return AirDropHttp.Response(STATUS_UNAUTHORIZED)
         }
         val session = AirDropIncoming(nextHandle.getAndDecrement(), ask, remote)
         synchronized(lock) {
             if (sessions.values.any { it.state.value == ShareState.Transferring }) {
-                return AirDropHttp.Response(401)
+                return AirDropHttp.Response(STATUS_UNAUTHORIZED)
             }
             sessions[session.sessionHandle] = session
             _incoming.value = sessions.values.toList()
@@ -155,7 +166,7 @@ class AirDropReceiver(
         val accepted = withTimeoutOrNull(ASK_TIMEOUT_MS) { session.decision.await() } ?: false
         if (!accepted) {
             session.fail("timed out")
-            return AirDropHttp.Response(401)
+            return AirDropHttp.Response(STATUS_UNAUTHORIZED)
         }
         session.state.value = ShareState.Transferring
         return plistResponse(
@@ -177,7 +188,7 @@ class AirDropReceiver(
             }
         } ?: run {
             Log.status(TAG, "Upload from ${remote.hostAddress} matches no accepted Ask")
-            return AirDropHttp.Response(400)
+            return AirDropHttp.Response(STATUS_BAD_REQUEST)
         }
         onTransfer(remote, true)
         return try {
@@ -187,11 +198,11 @@ class AirDropReceiver(
             }
             session.state.value = ShareState.Completed
             Log.status(TAG, "received ${written.size} file(s) from ${session.displayName}")
-            AirDropHttp.Response(200)
+            AirDropHttp.Response(STATUS_OK)
         } catch (e: Exception) {
             Log.status(TAG, "Upload from ${session.displayName} failed", e)
             session.fail(e.message ?: "upload failed")
-            AirDropHttp.Response(500)
+            AirDropHttp.Response(STATUS_INTERNAL_SERVER_ERROR)
         } finally {
             onTransfer(remote, false)
         }
@@ -213,9 +224,11 @@ class AirDropReceiver(
         val written = mutableListOf<File>()
         while (true) {
             val (entry, content) = reader.next() ?: break
-            if (!entry.isFile) continue
-            val name = AirDropMessages.safeRelativePath(entry.name) ?: continue
-            written += writeEntry(name, content, onBytes)
+            if (entry.isFile) {
+                AirDropMessages.safeRelativePath(entry.name)?.let { name ->
+                    written += writeEntry(name, content, onBytes)
+                }
+            }
         }
         return written
     }
@@ -224,9 +237,11 @@ class AirDropReceiver(
         val written = mutableListOf<File>()
         while (true) {
             val entry = zip.nextEntry ?: break
-            if (entry.isDirectory) continue
-            val name = AirDropMessages.safeRelativePath(entry.name) ?: continue
-            written += writeEntry(name, zip, onBytes)
+            if (!entry.isDirectory) {
+                AirDropMessages.safeRelativePath(entry.name)?.let { name ->
+                    written += writeEntry(name, zip, onBytes)
+                }
+            }
         }
         return written
     }
@@ -259,7 +274,7 @@ class AirDropReceiver(
     }
 
     private fun plistResponse(body: Map<String, Any?>) = AirDropHttp.Response(
-        200,
+        STATUS_OK,
         mapOf("Content-Type" to AirDropMessages.CONTENT_TYPE_PLIST),
         BinaryPlist.encode(body),
     )

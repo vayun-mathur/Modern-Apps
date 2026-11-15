@@ -64,6 +64,17 @@ class GapPush3Test {
     private fun grant(vararg p: String) = Shadows.shadowOf(app).grantPermissions(*p)
     private fun pump() = Shadows.shadowOf(Looper.getMainLooper()).idle()
 
+    /** Polls [fetch] until it returns a value or times out. */
+    private suspend fun <T> awaitNonNullSuspend(timeoutMs: Long, pollMs: Long, fetch: () -> T?): T? {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        var value: T? = null
+        while (value == null && System.currentTimeMillis() < deadline) {
+            value = fetch()
+            if (value == null) delay(pollMs)
+        }
+        return value
+    }
+
     @Test
     fun `send screen with viewmodel composes`() {
         val vm = ShareViewModel(app)
@@ -162,7 +173,9 @@ class GapPush3Test {
             val result = android.bluetooth.le.ScanResult(device, record, -50, 1L)
             val job = kotlinx.coroutines.CoroutineScope(Dispatchers.Default).async {
                 val out = mutableListOf<NearbyDevice>()
-                try { mgr.scan().collect { out += it } } catch (e: Exception) { }
+                try { mgr.scan().collect { out += it } } catch (_: Exception) {
+                    // Ignored: collection is cancelled at test end; assertions check collected state.
+                }
                 out
             }
             delay(700)
@@ -256,14 +269,12 @@ class GapPush3Test {
             val shadow = Shadows.shadowOf(nsd)
             val emitted = java.util.concurrent.CopyOnWriteArrayList<NearbyDevice>()
             val browseJob = kotlinx.coroutines.CoroutineScope(Dispatchers.Default).async {
-                try { controller.browse().collect { emitted += it } } catch (e: Exception) { }
+                try { controller.browse().collect { emitted += it } } catch (_: Exception) {
+                    // Ignored: collection is cancelled at test end; assertions check collected state.
+                }
             }
-            var listener: NsdManager.DiscoveryListener? = null
-            val dl = System.currentTimeMillis() + 10_000
-            while (System.currentTimeMillis() < dl) {
-                listener = shadow.getDiscoveryListeners(AIRDROP_SERVICE_TYPE)?.firstOrNull()
-                if (listener != null) break
-                delay(100)
+            val listener = awaitNonNullSuspend(10_000, 100) {
+                shadow.getDiscoveryListeners(AIRDROP_SERVICE_TYPE)?.firstOrNull()
             }
             assertNotNull(listener)
             val found = NsdServiceInfo().apply { serviceName = "vmmac"; serviceType = AIRDROP_SERVICE_TYPE }
@@ -273,13 +284,9 @@ class GapPush3Test {
                 serviceName = "vmmac"; serviceType = AIRDROP_SERVICE_TYPE
                 port = serverPort; setHost(InetAddress.getByName("127.0.0.1"))
             }
-            var device: NearbyDevice? = null
-            val dl2 = System.currentTimeMillis() + 12_000
-            while (System.currentTimeMillis() < dl2) {
+            val device = awaitNonNullSuspend(12_000, 300) {
                 shadow.getResolveListeners(found)?.firstOrNull()?.onServiceResolved(resolved)
-                device = emitted.firstOrNull()
-                if (device != null) break
-                delay(300)
+                emitted.firstOrNull()
             }
             assertNotNull("browse should emit the Apple peer: $emitted", device)
             browseJob.cancel()
@@ -290,23 +297,16 @@ class GapPush3Test {
             delay(400)
             vm.connectToDevice(device!!)
             // Accept the Ask on the standalone receiver; VM scope is Main-bound so pump.
-            var accepted = false
-            val dl3 = System.currentTimeMillis() + 15_000
-            while (System.currentTimeMillis() < dl3 && !accepted) {
+            val accepted = awaitNonNullSuspend(15_000, 60) {
                 pump()
-                val inc = receiver.incoming.value.firstOrNull()
-                if (inc != null) { receiver.accept(inc.sessionHandle, true); accepted = true }
-                delay(60)
-            }
+                receiver.incoming.value.firstOrNull()?.also { receiver.accept(it.sessionHandle, true) }
+            } != null
             assertTrue("receiver should see the VM Ask", accepted)
             // Let the upload finish.
-            val dl4 = System.currentTimeMillis() + 15_000
-            var completed = false
-            while (System.currentTimeMillis() < dl4) {
+            val completed = awaitNonNullSuspend(15_000, 80) {
                 pump()
-                if (receiver.incoming.value.firstOrNull()?.state?.value == ShareState.Completed) { completed = true; break }
-                delay(80)
-            }
+                receiver.incoming.value.firstOrNull()?.takeIf { it.state.value == ShareState.Completed }
+            } != null
             assertTrue("upload should complete", completed)
             assertTrue(receiver.incoming.value.first().receivedFiles.value.isNotEmpty())
         } finally { server.release() }

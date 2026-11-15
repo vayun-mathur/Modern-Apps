@@ -134,6 +134,7 @@ class ShareSaveActivity : ComponentActivity() {
         false
     }
 
+    /** Shared constants and helpers for ShareSaveActivity. */
     companion object {
         const val EXTRA_FILE_URIS = "com.vayunmathur.share.EXTRA_FILE_URIS"
     }

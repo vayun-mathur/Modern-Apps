@@ -6,6 +6,7 @@ import java.nio.ByteOrder
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+/** Immutable value describing pending file; carries name, sizeBytes, mimeType. */
 @Serializable
 data class PendingFile(val name: String, val sizeBytes: Long, val mimeType: String)
 
@@ -35,6 +36,7 @@ enum class ShareState(val code: Int) {
     Failed(4),
     Unknown(-1);
 
+    /** Shared constants and helpers for ShareState. */
     companion object {
         fun fromCode(code: Int): ShareState = entries.firstOrNull { it.code == code } ?: Unknown
     }

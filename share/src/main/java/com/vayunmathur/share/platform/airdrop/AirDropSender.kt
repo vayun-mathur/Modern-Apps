@@ -26,9 +26,13 @@ private const val TRANSFER_TIMEOUT_MS = 120_000
 /** The sending half of AirDrop: `/Discover` for a name, then `/Ask` and a dvzip `/Upload`. */
 class AirDropSender(private val localName: () -> String) {
 
+    /** Contract for result. */
     sealed interface Result {
+        /** Singleton holding sent state and operations. */
         data object Sent : Result
+        /** Singleton holding declined state and operations. */
         data object Declined : Result
+        /** Immutable value describing failed; carries reason. */
         data class Failed(val reason: String) : Result
     }
 
@@ -40,12 +44,21 @@ class AirDropSender(private val localName: () -> String) {
      */
     // Broad catch is deliberate: any failure to talk to a candidate means "not listed".
     @Suppress("TooGenericExceptionCaught")
-    suspend fun discover(peer: AirDropPeer, link: AirDropLink): AirDropMessages.DiscoverResponse? = withContext(Dispatchers.IO) {
+    suspend fun discover(
+        peer: AirDropPeer,
+        link: AirDropLink,
+    ): AirDropMessages.DiscoverResponse? = withContext(Dispatchers.IO) {
         try {
             AirDropHttpClient(peer.address, peer.port, link.socketFactory, DISCOVER_TIMEOUT_MS).use { client ->
-                val resp = client.postPlist("/Discover", BinaryPlist.encode(emptyMap<String, Any?>()), keepAlive = false)
+                val resp = client.postPlist(
+                    "/Discover",
+                    BinaryPlist.encode(emptyMap<String, Any?>()),
+                    keepAlive = false,
+                )
                 if (!resp.isSuccessful) return@withContext null
-                val parsed = AirDropMessages.DiscoverResponse.fromPlist(BinaryPlist.decodeDict(resp.body)) ?: return@withContext null
+                val parsed = AirDropMessages.DiscoverResponse.fromPlist(
+                    BinaryPlist.decodeDict(resp.body),
+                ) ?: return@withContext null
                 if (parsed.manufacturer.equals(AirDropMessages.MANUFACTURER_GOOGLE, ignoreCase = true)) {
                     Log.dev(TAG, "skipping Google device ${parsed.receiverComputerName}")
                     return@withContext null

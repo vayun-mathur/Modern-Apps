@@ -60,6 +60,7 @@ class MoseyNetworkAgent private constructor(
         thread.quitSafely()
     }
 
+    /** Shared constants and helpers for MoseyNetworkAgent. */
     companion object {
         suspend fun bringUp(context: Context): MoseyNetworkAgent? {
             val iface = awaitInterface() ?: return null
@@ -92,7 +93,11 @@ class MoseyNetworkAgent private constructor(
          * (signature|role), which a priv-app cannot hold; an agent with no provider is still
          * accepted under CREATE_APP_SPECIFIC_NETWORK, so this is only a nicety.
          */
-        private fun registerProvider(context: Context, cm: ConnectivityManager, looper: android.os.Looper): NetworkProvider? {
+        private fun registerProvider(
+            context: Context,
+            cm: ConnectivityManager,
+            looper: android.os.Looper,
+        ): NetworkProvider? {
             val provider = NetworkProvider(context, looper, "MoseyNetworkProvider")
             return runCatching {
                 ConnectivityManager::class.java
@@ -103,11 +108,22 @@ class MoseyNetworkAgent private constructor(
                 .getOrNull()
         }
 
+        private fun hasLinkLocalIpv6(iface: NetworkInterface): Boolean =
+            iface.inetAddresses.toList().any { address ->
+                val linkLocalIpv6 = address is Inet6Address && address.isLinkLocalAddress
+                linkLocalIpv6
+            }
+
+        private fun isUsableInterface(iface: NetworkInterface?): Boolean {
+            if (iface == null || !iface.isUp) return false
+            return hasLinkLocalIpv6(iface)
+        }
+
         private suspend fun awaitInterface(): NetworkInterface? {
             var waited = 0L
             while (waited < INTERFACE_WAIT_MS) {
                 val iface = runCatching { NetworkInterface.getByName(INTERFACE) }.getOrNull()
-                if (iface != null && iface.isUp && iface.inetAddresses.toList().any { it is Inet6Address && it.isLinkLocalAddress }) {
+                if (isUsableInterface(iface)) {
                     return iface
                 }
                 delay(INTERFACE_POLL_MS)
@@ -139,7 +155,8 @@ class MoseyNetworkAgent private constructor(
             val lp = LinkProperties()
             val cls = LinkProperties::class.java
             cls.getMethod("setInterfaceName", String::class.java).invoke(lp, INTERFACE)
-            val newAddress = LinkAddress::class.java.getConstructor(InetAddress::class.java, Int::class.javaPrimitiveType)
+            val newAddress = LinkAddress::class.java
+                .getConstructor(InetAddress::class.java, Int::class.javaPrimitiveType)
             val addAddress = cls.getMethod("addLinkAddress", LinkAddress::class.java)
             iface.interfaceAddresses.filter { it.address is Inet6Address }.forEach {
                 addAddress.invoke(lp, newAddress.newInstance(it.address, it.networkPrefixLength.toInt()))

@@ -28,6 +28,7 @@ interface MoseyHal {
     fun stop()
 }
 
+/** Kinds of mosey backend. */
 enum class MoseyBackend(val label: String) {
     SharedLibrary("moseylib"),
     AidlAndroid(MoseyDetector.AIDL_ANDROID),
@@ -42,6 +43,7 @@ data class MoseyStatus(
     val available: Boolean get() = backend != null
 }
 
+/** Singleton holding mosey detector state and operations. */
 object MoseyDetector {
 
     const val SHARED_LIBRARY = "com.google.android.moseylib"
@@ -60,7 +62,10 @@ object MoseyDetector {
             null,
             "ServiceManager unreachable (hidden API blocked; :share must be a whitelisted system app)",
         )
-        for ((name, backend) in listOf(AIDL_ANDROID to MoseyBackend.AidlAndroid, AIDL_PIXEL to MoseyBackend.AidlPixel)) {
+        for ((name, backend) in listOf(
+            AIDL_ANDROID to MoseyBackend.AidlAndroid,
+            AIDL_PIXEL to MoseyBackend.AidlPixel,
+        )) {
             if (sm.isDeclared(name)) return MoseyStatus(backend, "VINTF service $name")
         }
         return MoseyStatus(null, "no Mosey HAL on this device (no $SHARED_LIBRARY, $AIDL_ANDROID or $AIDL_PIXEL)")
@@ -222,8 +227,13 @@ private class LibraryMoseyHal(private val manager: Any) : MoseyHal {
     }
 
     override fun start(channels: IntArray, token: IBinder, config: ByteArray) {
-        cls.getMethod("start", IntArray::class.java, IBinder::class.java, Int::class.javaPrimitiveType, ByteArray::class.java)
-            .invoke(manager, channels, token, Int.MAX_VALUE, config)
+        cls.getMethod(
+            "start",
+            IntArray::class.java,
+            IBinder::class.java,
+            Int::class.javaPrimitiveType,
+            ByteArray::class.java,
+        ).invoke(manager, channels, token, Int.MAX_VALUE, config)
     }
 
     override fun update(countryCode: String, config: ByteArray) {

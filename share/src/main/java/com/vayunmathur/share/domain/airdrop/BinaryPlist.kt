@@ -17,6 +17,7 @@ object BinaryPlist {
     private const val MAGIC = "bplist00"
     private const val TRAILER_SIZE = 32
 
+    /** Format Exception: a string implementation for format exception. */
     class FormatException(message: String) : IllegalArgumentException(message)
 
     fun encode(root: Any?): ByteArray = Encoder().encode(root)
@@ -74,6 +75,14 @@ object BinaryPlist {
 
         private fun writeObject(out: ByteArrayOutputStream, value: Any?, refSize: Int, firstChildRef: Int) {
             when (value) {
+                is List<*> -> writeList(out, value, refSize, firstChildRef)
+                is Map<*, *> -> writeDict(out, value, refSize, firstChildRef)
+                else -> writeScalar(out, value)
+            }
+        }
+
+        private fun writeScalar(out: ByteArrayOutputStream, value: Any?) {
+            when (value) {
                 null -> out.write(0x00)
                 is Boolean -> out.write(if (value) 0x09 else 0x08)
                 is Int -> writeInt(out, value.toLong())
@@ -87,24 +96,26 @@ object BinaryPlist {
                     writeMarker(out, 0x40, value.size)
                     out.write(value)
                 }
-                is List<*> -> {
-                    writeMarker(out, 0xA0, value.size)
-                    var ref = firstChildRef
-                    value.forEach { child ->
-                        writeSized(out, ref.toLong(), refSize)
-                        ref += subtreeSize(child)
-                    }
-                }
-                is Map<*, *> -> {
-                    writeMarker(out, 0xD0, value.size)
-                    var ref = firstChildRef
-                    value.keys.forEach { _ -> writeSized(out, (ref++).toLong(), refSize) }
-                    value.values.forEach { child ->
-                        writeSized(out, ref.toLong(), refSize)
-                        ref += subtreeSize(child)
-                    }
-                }
                 else -> throw FormatException("cannot encode ${value.javaClass.name}")
+            }
+        }
+
+        private fun writeList(out: ByteArrayOutputStream, value: List<*>, refSize: Int, firstChildRef: Int) {
+            writeMarker(out, 0xA0, value.size)
+            var ref = firstChildRef
+            value.forEach { child ->
+                writeSized(out, ref.toLong(), refSize)
+                ref += subtreeSize(child)
+            }
+        }
+
+        private fun writeDict(out: ByteArrayOutputStream, value: Map<*, *>, refSize: Int, firstChildRef: Int) {
+            writeMarker(out, 0xD0, value.size)
+            var ref = firstChildRef
+            value.keys.forEach { _ -> writeSized(out, (ref++).toLong(), refSize) }
+            value.values.forEach { child ->
+                writeSized(out, ref.toLong(), refSize)
+                ref += subtreeSize(child)
             }
         }
 
@@ -169,12 +180,17 @@ object BinaryPlist {
             numObjects = readSized(t + 8, 8)
             val top = readSized(t + 16, 8)
             offsetTableOffset = readSized(t + 24, 8)
-            if (offsetSize !in 1..8 || refSize !in 1..8 || top >= numObjects ||
-                offsetTableOffset + numObjects * offsetSize > t
-            ) {
+            if (!isTrailerValid(top, t)) {
                 throw FormatException("corrupt trailer")
             }
             return readObject(top)
+        }
+
+        private fun isTrailerValid(top: Long, trailerStart: Int): Boolean {
+            val sizesValid = offsetSize in 1..8 && refSize in 1..8
+            val topValid = top < numObjects
+            val tableFits = offsetTableOffset + numObjects * offsetSize <= trailerStart
+            return sizesValid && topValid && tableFits
         }
 
         private fun offsetOf(ref: Long): Int {
@@ -192,12 +208,7 @@ object BinaryPlist {
                 val type = marker shr 4
                 val info = marker and 0x0F
                 return when (type) {
-                    0x0 -> when (info) {
-                        0x0 -> null
-                        0x8 -> false
-                        0x9 -> true
-                        else -> throw FormatException("bad simple marker $marker")
-                    }
+                    0x0 -> readSimple(info, marker)
                     0x1 -> readInt(pos + 1, 1 shl info)
                     0x2 -> readReal(pos + 1, 1 shl info)
                     0x3 -> readReal(pos + 1, 8)
@@ -214,27 +225,38 @@ object BinaryPlist {
                         String(bytes, start, checkedEnd(start, len * 2) - start, Charsets.UTF_16BE)
                     }
                     0x8 -> readSized(pos + 1, info + 1)
-                    0xA -> {
-                        val (count, start) = countAt(pos, info)
-                        checkedEnd(start, count * refSize)
-                        List(count) { i -> readObject(readSized(start + i * refSize, refSize)) }
-                    }
-                    0xD -> {
-                        val (count, start) = countAt(pos, info)
-                        checkedEnd(start, count * refSize * 2)
-                        val map = LinkedHashMap<String, Any?>(count)
-                        for (i in 0 until count) {
-                            val key = readObject(readSized(start + i * refSize, refSize)) as? String
-                                ?: throw FormatException("non-string dict key")
-                            map[key] = readObject(readSized(start + (count + i) * refSize, refSize))
-                        }
-                        map
-                    }
+                    0xA -> readArray(pos, info)
+                    0xD -> readDict(pos, info)
                     else -> throw FormatException("unsupported marker $marker")
                 }
             } finally {
                 depth--
             }
+        }
+
+        private fun readSimple(info: Int, marker: Int): Any? = when (info) {
+            0x0 -> null
+            0x8 -> false
+            0x9 -> true
+            else -> throw FormatException("bad simple marker $marker")
+        }
+
+        private fun readArray(pos: Int, info: Int): List<Any?> {
+            val (count, start) = countAt(pos, info)
+            checkedEnd(start, count * refSize)
+            return List(count) { i -> readObject(readSized(start + i * refSize, refSize)) }
+        }
+
+        private fun readDict(pos: Int, info: Int): Map<String, Any?> {
+            val (count, start) = countAt(pos, info)
+            checkedEnd(start, count * refSize * 2)
+            val map = LinkedHashMap<String, Any?>(count)
+            for (i in 0 until count) {
+                val key = readObject(readSized(start + i * refSize, refSize)) as? String
+                    ?: throw FormatException("non-string dict key")
+                map[key] = readObject(readSized(start + (count + i) * refSize, refSize))
+            }
+            return map
         }
 
         private fun countAt(pos: Int, info: Int): Pair<Int, Int> {

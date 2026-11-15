@@ -30,4 +30,5 @@ data class NearbyDevice(
     val extra: String? = null,
 )
 
+/** Kinds of discovery source. */
 enum class DiscoverySource { Nsd, Ble, Both, AirDrop }

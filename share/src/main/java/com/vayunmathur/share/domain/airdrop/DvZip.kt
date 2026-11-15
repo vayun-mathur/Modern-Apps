@@ -24,6 +24,7 @@ object DvZip {
     /** Longest chunk accepted on read, compressed or not, so a hostile length cannot OOM us. */
     private const val MAX_CHUNK = 16 * 1024 * 1024
 
+    /** Writer: a output stream implementation for writer. */
     class Writer(private val out: OutputStream) : OutputStream() {
         private val buffer = ByteArray(CHUNK_SIZE)
         private var filled = 0
@@ -85,6 +86,7 @@ object DvZip {
         }
     }
 
+    /** Reader: a input stream implementation for reader. */
     class Reader(private val input: InputStream) : InputStream() {
         private val inflater = Inflater()
         private var chunk = ByteArray(0)

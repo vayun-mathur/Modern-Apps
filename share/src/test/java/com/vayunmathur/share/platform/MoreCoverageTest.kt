@@ -173,7 +173,11 @@ class MoreCoverageTest {
             val job = async { receiver.handle(req("/Ask", BinaryPlist.encode(ask.toPlist())), remote) }
             var inc: com.vayunmathur.share.platform.airdrop.AirDropIncoming? = null
             val dl = System.currentTimeMillis() + 5_000
-            while (System.currentTimeMillis() < dl) { inc = receiver.incoming.value.firstOrNull { it.ask.transferId == transferId }; if (inc != null) break; delay(20) }
+            while (System.currentTimeMillis() < dl) {
+                inc = receiver.incoming.value.firstOrNull { it.ask.transferId == transferId }
+                if (inc != null) break
+                delay(20)
+            }
             receiver.accept(inc!!.sessionHandle, true)
             job.await()
             return inc

@@ -83,6 +83,10 @@ class AirDropController(
         }
     }
 
+    // Broad catch is deliberate: binding the server or advertising can fail with
+    // IOException, SSL failures or runtime discovery errors; any of them must
+    // release the acquired link before the failure is rethrown to the caller.
+    @Suppress("TooGenericExceptionCaught")
     suspend fun startReceiving() {
         if (receiving) return
         val link = acquire()

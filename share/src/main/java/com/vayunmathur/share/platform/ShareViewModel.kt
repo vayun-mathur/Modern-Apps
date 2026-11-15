@@ -288,8 +288,10 @@ class ShareViewModel(
                 val result = airDrop.send(device, files) { _, _ -> }
                 val message = when (result) {
                     AirDropSender.Result.Sent -> appContext.getString(R.string.share_airdrop_sent, device.endpointName)
-                    AirDropSender.Result.Declined -> appContext.getString(R.string.share_airdrop_declined, device.endpointName)
-                    is AirDropSender.Result.Failed -> appContext.getString(R.string.share_airdrop_failed, result.reason)
+                    AirDropSender.Result.Declined ->
+                        appContext.getString(R.string.share_airdrop_declined, device.endpointName)
+                    is AirDropSender.Result.Failed ->
+                        appContext.getString(R.string.share_airdrop_failed, result.reason)
                 }
                 AppMessages.show(message)
             } finally {
@@ -332,6 +334,7 @@ class ShareViewModel(
     }
 }
 
+/** Share View Model Factory: a application implementation for share view model factory. */
 class ShareViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

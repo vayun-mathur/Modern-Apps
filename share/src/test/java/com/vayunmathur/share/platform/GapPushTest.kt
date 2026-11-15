@@ -79,7 +79,9 @@ class GapPushTest {
         val result = ScanResult(device, record, -55, 1_000_000L)
         val deferred = async(Dispatchers.Default) {
             val out = mutableListOf<com.vayunmathur.share.platform.discovery.NearbyDevice>()
-            try { mgr.scan().collect { out += it } } catch (e: Exception) { }
+            try { mgr.scan().collect { out += it } } catch (_: Exception) {
+                // Ignored: collection is cancelled at test end; assertions check collected state.
+            }
             out
         }
         val scanner = bt.adapter.bluetoothLeScanner
@@ -134,7 +136,9 @@ class GapPushTest {
         // discover: found -> resolve -> emitted
         val deferred = async(Dispatchers.Default) {
             val out = mutableListOf<com.vayunmathur.share.platform.discovery.NearbyDevice>()
-            try { mgr.discover().collect { out += it } } catch (e: Exception) { }
+            try { mgr.discover().collect { out += it } } catch (_: Exception) {
+                // Ignored: collection is cancelled at test end; assertions check collected state.
+            }
             out
         }
         delay(700)
@@ -178,7 +182,9 @@ class GapPushTest {
         val shadow = Shadows.shadowOf(nsd)
         val deferred = async(Dispatchers.Default) {
             val out = mutableListOf<com.vayunmathur.share.platform.discovery.NearbyDevice>()
-            try { mgr.discover().collect { out += it } } catch (e: Exception) { }
+            try { mgr.discover().collect { out += it } } catch (_: Exception) {
+                // Ignored: collection is cancelled at test end; assertions check collected state.
+            }
             out
         }
         delay(700)

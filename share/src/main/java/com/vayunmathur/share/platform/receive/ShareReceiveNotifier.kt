@@ -505,6 +505,7 @@ class ShareReceiveNotifier(
     private fun requestCode(handle: Long, action: String): Int =
         (handle.hashCode() * HASH_MULTIPLIER + action.hashCode())
 
+    /** Shared constants and helpers for ShareReceiveNotifier. */
     companion object {
         /**
          * Clear every per-transfer notification left over from a previous process.

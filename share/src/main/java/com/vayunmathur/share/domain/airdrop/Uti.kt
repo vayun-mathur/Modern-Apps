@@ -8,6 +8,7 @@ package com.vayunmathur.share.domain.airdrop
  */
 object Uti {
 
+    /** Immutable value describing type; carries uti, bundleId. */
     data class Type(val uti: String, val bundleId: String)
 
     const val FOLDER = "public.folder"

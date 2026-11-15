@@ -185,11 +185,17 @@ class GapPush5Test {
         val shadow = Shadows.shadowOf(nsd)
         val emitted = java.util.concurrent.CopyOnWriteArrayList<com.vayunmathur.share.platform.airdrop.AirDropPeer>()
         val job = CoroutineScope(Dispatchers.Default).async {
-            try { discovery.browse(null).collect { emitted += it } } catch (e: Exception) { }
+            try { discovery.browse(null).collect { emitted += it } } catch (_: Exception) {
+                // Ignored: collection is cancelled at test end; assertions check collected state.
+            }
         }
         var listener: NsdManager.DiscoveryListener? = null
         val dl = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < dl) { listener = shadow.getDiscoveryListeners(AIRDROP_SERVICE_TYPE)?.firstOrNull(); if (listener != null) break; delay(80) }
+        while (System.currentTimeMillis() < dl) {
+            listener = shadow.getDiscoveryListeners(AIRDROP_SERVICE_TYPE)?.firstOrNull()
+            if (listener != null) break
+            delay(80)
+        }
         assertNotNull(listener)
         val found = NsdServiceInfo().apply { serviceName = "failpeer"; serviceType = AIRDROP_SERVICE_TYPE }
         listener!!.onServiceFound(found)
@@ -207,7 +213,9 @@ class GapPush5Test {
             val port = server.listen()
             val vm = ShareViewModel(app)
             val collectJob = CoroutineScope(Dispatchers.Default).async {
-                try { vm.sendUiState.collect { } } catch (e: Exception) { }
+                try { vm.sendUiState.collect { } } catch (_: Exception) {
+                    // Ignored: collection is cancelled at test end; assertions check collected state.
+                }
             }
             val src = File(app.cacheDir, "disc-${System.nanoTime()}.txt").apply { writeText("disc") }
             vm.setOutgoingUris(listOf(Uri.fromFile(src)))

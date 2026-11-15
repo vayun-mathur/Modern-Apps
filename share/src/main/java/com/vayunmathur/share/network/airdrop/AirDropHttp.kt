@@ -20,10 +20,21 @@ object AirDropHttp {
 
     private const val MAX_LINE = 8192
     private const val MAX_HEADERS = 100
+    private const val MIN_REQUEST_LINE_PARTS = 3
+    private const val BYTE_MASK = 0xFF
+    private const val CHUNK_SIZE_RADIX = 16
+
+    // HTTP status codes named where the text table below is keyed by them.
+    private const val STATUS_OK = 200
+    private const val STATUS_BAD_REQUEST = 400
+    private const val STATUS_UNAUTHORIZED = 401
+    private const val STATUS_NOT_FOUND = 404
+    private const val STATUS_INTERNAL_SERVER_ERROR = 500
 
     /** Largest plist body read into memory; `/Upload` is the only big body and is streamed. */
     const val MAX_PLIST_BODY = 4 * 1024 * 1024
 
+    /** Protocol Exception: a string implementation for protocol exception. */
     class ProtocolException(message: String) : IOException(message)
 
     /** Header names are stored lowercased; HTTP header names are case-insensitive. */
@@ -37,10 +48,12 @@ object AirDropHttp {
         override fun toString(): String = map.toString()
     }
 
+    /** Request: a string implementation for request. */
     class Request(val method: String, val path: String, val headers: Headers, val body: InputStream) {
         fun readBody(limit: Int = MAX_PLIST_BODY): ByteArray = readLimited(body, limit)
     }
 
+    /** Type representing response. */
     class Response(
         val status: Int,
         val headers: Map<String, String> = emptyMap(),
@@ -52,7 +65,7 @@ object AirDropHttp {
     fun readRequest(input: InputStream): Request? {
         val line = readLine(input) ?: return null
         val parts = line.split(' ')
-        if (parts.size < 3) throw ProtocolException("bad request line: $line")
+        if (parts.size < MIN_REQUEST_LINE_PARTS) throw ProtocolException("bad request line: $line")
         val headers = readHeaders(input)
         return Request(parts[0], parts[1].substringBefore('?'), headers, bodyStream(input, headers, requestBody = true))
     }
@@ -171,11 +184,11 @@ object AirDropHttp {
     }
 
     private fun reason(status: Int): String = when (status) {
-        200 -> "OK"
-        400 -> "Bad Request"
-        401 -> "Unauthorized"
-        404 -> "Not Found"
-        500 -> "Internal Server Error"
+        STATUS_OK -> "OK"
+        STATUS_BAD_REQUEST -> "Bad Request"
+        STATUS_UNAUTHORIZED -> "Unauthorized"
+        STATUS_NOT_FOUND -> "Not Found"
+        STATUS_INTERNAL_SERVER_ERROR -> "Internal Server Error"
         else -> "Status"
     }
 
@@ -209,15 +222,20 @@ object AirDropHttp {
 
         override fun read(): Int {
             val one = ByteArray(1)
-            return if (read(one, 0, 1) < 0) -1 else one[0].toInt() and 0xFF
+            return if (read(one, 0, 1) < 0) -1 else one[0].toInt() and BYTE_MASK
+        }
+
+        /** The next chunk's size; throws on a truncated or unparseable size line. */
+        private fun readChunkSize(): Long {
+            val sizeLine = readLine(`in`) ?: throw EOFException("chunked body truncated")
+            return sizeLine.substringBefore(';').trim().toLongOrNull(CHUNK_SIZE_RADIX)
+                ?: throw ProtocolException("bad chunk size '$sizeLine'")
         }
 
         override fun read(b: ByteArray, off: Int, len: Int): Int {
             if (done) return -1
             if (chunkLeft == 0L) {
-                val sizeLine = readLine(`in`) ?: throw EOFException("chunked body truncated")
-                chunkLeft = sizeLine.substringBefore(';').trim().toLongOrNull(16)
-                    ?: throw ProtocolException("bad chunk size '$sizeLine'")
+                chunkLeft = readChunkSize()
                 if (chunkLeft == 0L) {
                     // Trailers, if any, end with an empty line.
                     while (!readLine(`in`).isNullOrEmpty()) Unit

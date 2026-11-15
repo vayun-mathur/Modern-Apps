@@ -121,12 +121,18 @@ class GapPush4Test {
         val shadow = Shadows.shadowOf(nsd)
         val job = kotlinx.coroutines.CoroutineScope(Dispatchers.Default).async {
             val out = mutableListOf<com.vayunmathur.share.platform.discovery.NearbyDevice>()
-            try { mgr.discover().collect { out += it } } catch (e: Exception) { }
+            try { mgr.discover().collect { out += it } } catch (_: Exception) {
+                // Ignored: collection is cancelled at test end; assertions check collected state.
+            }
             out
         }
         var listener: NsdManager.DiscoveryListener? = null
         val dl = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < dl) { listener = shadow.getDiscoveryListeners(SHARE_SERVICE_TYPE)?.firstOrNull(); if (listener != null) break; delay(80) }
+        while (System.currentTimeMillis() < dl) {
+            listener = shadow.getDiscoveryListeners(SHARE_SERVICE_TYPE)?.firstOrNull()
+            if (listener != null) break
+            delay(80)
+        }
         assertNotNull(listener)
         fun deliver(instance: String, resolvedAttrs: Map<String, String>, host: InetAddress? = null) {
             val found = NsdServiceInfo().apply { serviceName = instance; serviceType = SHARE_SERVICE_TYPE }
@@ -192,14 +198,25 @@ class GapPush4Test {
         val reader = DvZip.Reader(ByteArrayInputStream(out.toByteArray()))
         val buf = ByteArray(999)
         var total = 0
-        while (true) { val n = reader.read(buf); if (n < 0) break; total += n }
+        while (true) {
+            val n = reader.read(buf)
+            if (n < 0) break
+            total += n
+        }
         assertEquals(payload.size, total)
         reader.close()
         // Truncated deflate stream: reading must fail or end early, never yield the payload.
         val truncated = out.toByteArray().copyOf(20)
         val r2 = DvZip.Reader(ByteArrayInputStream(truncated))
         var got = 0
-        runCatching { val b = ByteArray(4096); while (true) { val n = r2.read(b); if (n < 0) break; got += n } }
+        runCatching {
+            val b = ByteArray(4096)
+            while (true) {
+                val n = r2.read(b)
+                if (n < 0) break
+                got += n
+            }
+        }
         assertTrue(got < payload.size)
     }
 
@@ -229,12 +246,18 @@ class GapPush4Test {
         val shadow = Shadows.shadowOf(nsd)
         var completed = false
         val job = kotlinx.coroutines.CoroutineScope(Dispatchers.Default).async {
-            try { discovery.browse(null).collect { } } catch (e: Exception) { }
+            try { discovery.browse(null).collect { } } catch (_: Exception) {
+                // Ignored: collection is cancelled at test end; assertions check collected state.
+            }
             completed = true
         }
         var listener: NsdManager.DiscoveryListener? = null
         val dl = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < dl) { listener = shadow.getDiscoveryListeners(AIRDROP_SERVICE_TYPE)?.firstOrNull(); if (listener != null) break; delay(80) }
+        while (System.currentTimeMillis() < dl) {
+            listener = shadow.getDiscoveryListeners(AIRDROP_SERVICE_TYPE)?.firstOrNull()
+            if (listener != null) break
+            delay(80)
+        }
         assertNotNull(listener)
         listener!!.onDiscoveryStarted(AIRDROP_SERVICE_TYPE)
         val info = NsdServiceInfo().apply { serviceName = "lostpeer"; serviceType = AIRDROP_SERVICE_TYPE }

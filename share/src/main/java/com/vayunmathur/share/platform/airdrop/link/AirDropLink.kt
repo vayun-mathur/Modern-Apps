@@ -41,9 +41,11 @@ sealed interface AirDropLink {
     fun onTransferStarted(peer: InetAddress) = Unit
     fun onTransferEnded(peer: InetAddress) = Unit
 
+    /** Kinds of kind. */
     enum class Kind { Mosey, WifiLan }
 }
 
+/** Wifi Lan Link: a context implementation for wifi lan link. */
 class WifiLanLink(private val context: Context) : AirDropLink {
     override val kind = AirDropLink.Kind.WifiLan
 
@@ -155,23 +157,41 @@ class MoseyLink(private val context: Context, private val hal: MoseyHal) : AirDr
     @SuppressLint("PrivateApi")
     private fun countryCode(): String? {
         val wifi = context.getSystemService(WifiManager::class.java)
-        val fromWifi = runCatching { WifiManager::class.java.getMethod("getCountryCode").invoke(wifi) as String? }.getOrNull()
+        val fromWifi =
+            runCatching { WifiManager::class.java.getMethod("getCountryCode").invoke(wifi) as String? }.getOrNull()
         val fromCell = context.getSystemService(TelephonyManager::class.java)?.networkCountryIso
         return (fromWifi ?: fromCell)?.takeIf { it.length == 2 }?.uppercase(Locale.ROOT)
     }
 
     private fun frequencyToChannel(mhz: Int): Int? = when (mhz) {
-        2484 -> 14
-        in 2412..2472 -> (mhz - 2407) / 5
-        in 5160..5885 -> (mhz - 5000) / 5
-        in 5955..7115 -> (mhz - 5950) / 5
+        FREQ_CHANNEL_14_MHZ -> CHANNEL_14
+        in BAND_2_4_START_MHZ..BAND_2_4_END_MHZ -> (mhz - BAND_2_4_BASE_MHZ) / CHANNEL_WIDTH_MHZ
+        in BAND_5_START_MHZ..BAND_5_END_MHZ -> (mhz - BAND_5_BASE_MHZ) / CHANNEL_WIDTH_MHZ
+        in BAND_6_START_MHZ..BAND_6_END_MHZ -> (mhz - BAND_6_BASE_MHZ) / CHANNEL_WIDTH_MHZ
         else -> null
+    }
+
+    private companion object {
+        // Wi-Fi frequency (MHz) to channel mapping bands; channel = (freq - base) / width.
+        const val FREQ_CHANNEL_14_MHZ = 2484
+        const val CHANNEL_14 = 14
+        const val BAND_2_4_START_MHZ = 2412
+        const val BAND_2_4_END_MHZ = 2472
+        const val BAND_2_4_BASE_MHZ = 2407
+        const val BAND_5_START_MHZ = 5160
+        const val BAND_5_END_MHZ = 5885
+        const val BAND_5_BASE_MHZ = 5000
+        const val BAND_6_START_MHZ = 5955
+        const val BAND_6_END_MHZ = 7115
+        const val BAND_6_BASE_MHZ = 5950
+        const val CHANNEL_WIDTH_MHZ = 5
     }
 }
 
 /** Picks the best available link and reports which one, for logs and the send screen. */
 object AirDropLinkSelector {
 
+    /** Immutable value describing selection; carries link, mosey. */
     data class Selection(val link: AirDropLink, val mosey: MoseyStatus)
 
     suspend fun select(context: Context): Selection {

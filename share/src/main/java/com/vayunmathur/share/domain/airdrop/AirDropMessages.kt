@@ -21,6 +21,7 @@ object AirDropMessages {
     /** What Mosey and OpenDrop both advertise; Apple peers only check that it parses. */
     val DEFAULT_MEDIA_CAPABILITIES: ByteArray = """{"Version":1}""".toByteArray(Charsets.UTF_8)
 
+    /** Immutable value describing discover response. */
     data class DiscoverResponse(
         val receiverComputerName: String,
         val manufacturer: String? = null,
@@ -32,6 +33,7 @@ object AirDropMessages {
             manufacturer?.let { put("Manufacturer", it) }
         }
 
+        /** Shared constants and helpers for DiscoverResponse. */
         companion object {
             fun fromPlist(map: Map<String, Any?>): DiscoverResponse? {
                 val name = (map["ReceiverComputerName"] as? String)?.takeIf { it.isNotBlank() } ?: return null
@@ -44,6 +46,7 @@ object AirDropMessages {
         }
     }
 
+    /** Immutable value describing ask file. */
     data class AskFile(
         val fileName: String,
         val fileType: String,
@@ -63,6 +66,7 @@ object AirDropMessages {
             put("ShouldConvertMediaFormats", false)
         }
 
+        /** Shared constants and helpers for AskFile. */
         companion object {
             fun fromPlist(map: Map<*, *>): AskFile? {
                 val name = (map["FileName"] as? String)?.takeIf { it.isNotBlank() } ?: return null
@@ -86,6 +90,7 @@ object AirDropMessages {
         }
     }
 
+    /** Immutable value describing ask request. */
     data class AskRequest(
         val senderComputerName: String,
         val senderModelName: String,
@@ -110,6 +115,7 @@ object AirDropMessages {
         /** Sum of announced sizes, treating Apple's "unknown" (negative) as zero. */
         val totalBytes: Long get() = files.sumOf { it.fileSize.coerceAtLeast(0) }
 
+        /** Shared constants and helpers for AskRequest. */
         companion object {
             fun fromPlist(map: Map<String, Any?>): AskRequest? {
                 val files = (map["Files"] as? List<*>).orEmpty()
@@ -122,7 +128,8 @@ object AirDropMessages {
                     else -> null
                 }
                 return AskRequest(
-                    senderComputerName = (map["SenderComputerName"] as? String)?.takeIf { it.isNotBlank() } ?: "AirDrop",
+                    senderComputerName = (map["SenderComputerName"] as? String)
+                        ?.takeIf { it.isNotBlank() } ?: "AirDrop",
                     senderModelName = map["SenderModelName"] as? String ?: "",
                     senderId = map["SenderID"] as? String ?: "",
                     files = files,
