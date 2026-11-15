@@ -10,6 +10,11 @@
  * - [mergedCoverageClassDirs]: the class files the merged report analyzes.
  */
 
+import java.io.File
+import java.io.Serializable
+import org.gradle.api.file.FileCollection
+import org.gradle.api.specs.Spec
+
 /** Task name of the per-module merged (unit + instrumented) JaCoCo report. */
 const val MERGED_COVERAGE_TASK = "createMergedCoverageReport"
 
@@ -78,26 +83,120 @@ val MERGED_COVERAGE_EXCLUDES = listOf(
     "**/Dagger*.class",
     "**/*_Factory.class",
     "**/*_MembersInjector.class",
-    // protobuf-lite generated outer classes.
+    // protobuf-lite generated outer classes. Kept as belt-and-braces: the precise
+    // protoc rule is ProtoGeneratedClassFilter below (every class whose top-level
+    // type has a generated source); this pattern still catches an outer class if
+    // its generated-source root was not scanned (e.g. a future variant layout).
     "**/*OuterClass*.class",
     // AIDL-generated stubs.
     "**/*\$Stub*.class",
 )
 
 /**
+ * Keeps protoc output out of merged coverage: a class file is dropped when its
+ * top-level type has a generated source under the module's proto output roots
+ * (`build/generated/source/proto` and
+ * `build/generated/java/generate<Variant>Proto`). This is the same rule the
+ * CI zero-coverage fallback applies (location_share_server
+ * `scripts/test-run.sh`: "drop every class whose top-level type has a generated
+ * .java source"), so modules with tests and modules without agree on what
+ * counts. Protoc message/builder/or-builder/grpc classes are pure generated
+ * plumbing with no hand-written logic; counting them drowned real coverage
+ * (repo-wide ~587k missed + ~75k covered instructions at the time of writing).
+ *
+ * Why not name patterns (`*Protos*`, `*Proto$*`, proto-package globs)? They are both
+ * too broad and too narrow: `communicate` has hand-written `*Protocol` classes
+ * (`SignalProtocol`, `WhatsAppProtocol*`) one suffix away from `*Proto*`, and
+ * hand-written code may legitimately live in a `proto` package later, while
+ * GAL/grpc types (`AbsoluteEvent`, `AppServiceGrpc`) match no proto name
+ * pattern at all. Source presence is exact: only types protoc actually emitted
+ * are excluded, so no hand-written class can be caught. Verified on
+ * `communicate`, `auto/protocol` and `appstore`: the excluded top-level set is
+ * exactly the generated-source set, and no `src/main` class is in it.
+ *
+ * Laziness / configuration cache: the filter stores only the build directory
+ * and variant (both serializable) and scans the generated sources on first use,
+ * i.e. at report execution time, after the compile tasks have produced them.
+ * Nothing is read from disk while configuring, and the [Spec] itself is
+ * serializable, so the report task stays configuration-cache compatible
+ * (verified by running the report twice: the second run reuses the cache).
+ * The generated roots contain one source-set directory (`java`, plus `grpc` /
+ * `grpckt` for grpc modules); the class relative path is the source path minus
+ * that segment and its extension, so `.../java/com/foo/Bar.java` (and
+ * `.../grpc/com/foo/BarGrpc.java`, `.../grpckt/... .kt`) excludes
+ * `com/foo/Bar.class` and `com/foo/Bar$*.class`. Unknown class-dir layouts keep
+ * the file: exclusion must never guess.
+ */
+class ProtoGeneratedClassFilter(
+    private val buildDir: File,
+    private val variantCap: String,
+) : Spec<File>, Serializable {
+
+    @Transient
+    private var generatedTopLevels: Set<String>? = null
+
+    override fun isSatisfiedBy(element: File): Boolean {
+        if (!element.name.endsWith(".class")) return true
+        val path = element.path.replace('\\', '/')
+        val marker = "/classes/"
+        val idx = path.lastIndexOf(marker)
+        if (idx < 0) return true
+        val rel = path.substring(idx + marker.length).removeSuffix(".class")
+        val topLevel = rel.substringBefore('$')
+        return topLevel !in generatedTopLevels()
+    }
+
+    private fun generatedTopLevels(): Set<String> {
+        generatedTopLevels?.let { return it }
+        val found = mutableSetOf<String>()
+        val roots = listOf(
+            File(buildDir, "generated/source/proto"),
+            File(buildDir, "generated/java/generate${variantCap}Proto"),
+        )
+        for (root in roots) {
+            if (!root.isDirectory) continue
+            root.walkTopDown().forEach { file ->
+                if (!file.isFile) return@forEach
+                if (file.extension != "java" && file.extension != "kt") return@forEach
+                val rel = file.toRelativeString(root).replace('\\', '/')
+                val parts = rel.split('/')
+                if (parts.size < 2) return@forEach
+                val stripped = if (parts[0] == "java" || parts[0] == "grpc" || parts[0] == "grpckt") {
+                    parts.drop(1).joinToString("/")
+                } else {
+                    rel
+                }
+                found += stripped.removeSuffix(".java").removeSuffix(".kt")
+            }
+        }
+        generatedTopLevels = found
+        return found
+    }
+
+    companion object {
+        private const val serialVersionUID = 1L
+    }
+}
+
+/**
  * This module's own compiled classes for [variant], before AGP's offline JaCoCo
  * instrumentation (JaCoCo can only render from original classes), minus
- * [MERGED_COVERAGE_EXCLUDES]. Covers Kotlin and javac output; dependency classes never
- * appear here, so no package filter is needed.
+ * [MERGED_COVERAGE_EXCLUDES] and minus protoc-generated classes
+ * ([ProtoGeneratedClassFilter]). Covers Kotlin and javac output; dependency
+ * classes never appear here, so no package filter is needed.
  */
-fun org.gradle.api.Project.mergedCoverageClassDirs(variant: String): org.gradle.api.file.FileTree {
+fun org.gradle.api.Project.mergedCoverageClassDirs(variant: String): FileCollection {
     val cap = variant.replaceFirstChar { it.uppercase() }
-    return files(
+    val tree = files(
         layout.buildDirectory.dir("intermediates/built_in_kotlinc/$variant/compile${cap}Kotlin/classes"),
         layout.buildDirectory.dir("intermediates/javac/$variant/compile${cap}JavaWithJavac/classes"),
     ).builtBy("compile${cap}Kotlin", "compile${cap}JavaWithJavac").asFileTree.matching {
         MERGED_COVERAGE_EXCLUDES.forEach { exclude(it) }
     }
+    // Only the build-dir path is captured here (configuration time); the
+    // generated-source scan happens lazily when JaCoCo resolves the files.
+    val buildDirFile = layout.buildDirectory.asFile.get()
+    return tree.filter(ProtoGeneratedClassFilter(buildDirFile, cap))
 }
 
 /**
