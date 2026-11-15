@@ -19,7 +19,6 @@ import kotlin.test.assertEquals
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import org.junit.Assume
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -63,7 +62,7 @@ class FinalCoverageBatchTest {
     }
 
     @Test fun pumpTunAfterEstablishedHandshake() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = Robolectric.buildService(VpnTunnelService::class.java).create().get()
         val privA = VpnNative.generatePrivateKey(); val pubA = VpnNative.derivePublicKey(privA)
         val privB = VpnNative.generatePrivateKey(); val pubB = VpnNative.derivePublicKey(privB)
@@ -108,7 +107,7 @@ class FinalCoverageBatchTest {
     } }
 
     @Test fun handleLoggingMalformedAndMergeCombos() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = Robolectric.buildService(VpnTunnelService::class.java).create().get()
         val priv = VpnNative.generatePrivateKey()
         val handle = VpnNative.newTunnel(priv, VpnNative.derivePublicKey(priv), "", 25)
@@ -132,7 +131,7 @@ class FinalCoverageBatchTest {
     } }
 
     @Test fun connectWithValidKeysExercisesRunTunnel() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = Robolectric.buildService(VpnTunnelService::class.java).create().get()
         val priv = VpnNative.generatePrivateKey(); val pub = VpnNative.derivePublicKey(priv)
         // Empty address lists keep Builder.add* (hidden InetAddress APIs) out of buildTun;

@@ -17,7 +17,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import org.junit.Assume
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -31,7 +30,7 @@ class PumpLoopTest {
     private fun nativeAvailable(): Boolean = try { VpnNative.init(); true } catch (_: Throwable) { false }
 
     @Test fun pumpLoopConsumesTunPacketAndStopsOnDisconnect() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = Robolectric.buildService(VpnTunnelService::class.java).create().get()
         val priv = VpnNative.generatePrivateKey()
         val handle = VpnNative.newTunnel(priv, VpnNative.derivePublicKey(priv), "", 25)
@@ -69,7 +68,7 @@ class PumpLoopTest {
     } }
 
     @Test fun sessionRunDegradesWhenNoEndpoint() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = Robolectric.buildService(VpnTunnelService::class.java).create().get()
         val priv = VpnNative.generatePrivateKey()
         val handle = VpnNative.newTunnel(priv, VpnNative.derivePublicKey(priv), "", 25)

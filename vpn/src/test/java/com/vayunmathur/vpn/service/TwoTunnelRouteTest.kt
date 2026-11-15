@@ -17,7 +17,6 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import org.junit.Assume
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -63,7 +62,7 @@ class TwoTunnelRouteTest {
     }
 
     @Test fun handshakeAndDataRouteThroughRouteIncoming() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = service()
         val (a, b) = tunnelPair()
         val sessionA = svc.TunnelSession(VpnConfig(name = "A", peerEndpoint = "127.0.0.1:51820"), a.handle)
@@ -103,7 +102,7 @@ class TwoTunnelRouteTest {
     } }
 
     @Test fun pumpTunFallbackAndStopSessionDrains() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = service()
         val (a, _) = tunnelPair()
         val s = svc.TunnelSession(VpnConfig(name = "A", peerEndpoint = "127.0.0.1:51820"), a.handle)
@@ -135,7 +134,7 @@ class TwoTunnelRouteTest {
     } }
 
     @Test fun flushJobLoopFlushesSeededFlow() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = service()
         val (a, _) = tunnelPair()
         val s = svc.TunnelSession(VpnConfig(name = "A", peerEndpoint = "127.0.0.1:51820"), a.handle)
@@ -159,7 +158,7 @@ class TwoTunnelRouteTest {
     } }
 
     @Test fun handleLoggingSniPacket() {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = service()
         val (a, _) = tunnelPair()
         val s = svc.TunnelSession(VpnConfig(name = "A", peerEndpoint = "127.0.0.1:51820"), a.handle)

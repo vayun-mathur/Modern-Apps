@@ -19,7 +19,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
-import org.junit.Assume
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -75,7 +74,7 @@ class VpnTunnelServiceTest {
     }
 
     @Test fun parseCsvCidrsAndLeakGuard() {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val s = session(service())
         assertEquals(listOf("10.0.0.2" to 32), s.parseCsvCidrs("10.0.0.2/32"))
         assertEquals(listOf("10.0.0.2" to 32, "fd00::2" to 128), s.parseCsvCidrs(" 10.0.0.2 , fd00::2 "))
@@ -92,7 +91,7 @@ class VpnTunnelServiceTest {
     }
 
     @Test fun resolveEndpointVariants() {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = service()
         assertNotNull(session(svc, VpnConfig(peerEndpoint = "127.0.0.1:51820")).resolveEndpoint())
         assertEquals(51820, session(svc, VpnConfig(peerEndpoint = "127.0.0.1:51820")).resolveEndpoint()!!.port)
@@ -101,7 +100,7 @@ class VpnTunnelServiceTest {
     }
 
     @Test fun buildTunAndBuilderHelpersDoNotThrow() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val s = session(service(), VpnConfig(name = "", address = "10.0.0.2/32", dns = "1.1.1.1, 8.8.8.8", peerAllowedIPs = "0.0.0.0/0"))
         // VpnService.Builder's addAddress/establish call hidden InetAddress.parseNumericAddress,
         // which the Robolectric stub android.jar lacks (NoSuchMethodError, an Error the production
@@ -116,7 +115,7 @@ class VpnTunnelServiceTest {
     } }
 
     @Test fun loggingMergeAndFlush() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = service()
         val s = session(svc)
         val dao = FakeLogDao()
@@ -144,7 +143,7 @@ class VpnTunnelServiceTest {
     } }
 
     @Test fun pumpHelpersWithRealChannels() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = service()
         val s = session(svc)
         s.logDao = FakeLogDao(); s.appResolver = AppResolver(ctx); s.tracker.clear()

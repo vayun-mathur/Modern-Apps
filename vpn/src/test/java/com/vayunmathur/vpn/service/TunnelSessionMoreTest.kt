@@ -14,7 +14,6 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import org.junit.Assume
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -59,7 +58,7 @@ class TunnelSessionMoreTest {
     }
 
     @Test fun resolveDomainFromSniAndCache() {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val s = session(service(), VpnConfig(peerEndpoint = "127.0.0.1:51820"))
         val hello = clientHello("secure.example.com")
         val pkt = tcpPacket(hello, 40000, 443)
@@ -88,7 +87,7 @@ class TunnelSessionMoreTest {
     // per-package catches do not intercept). BypassList itself is covered in VpnViewModelTest.
 
     @Test fun flushJobAndStopSession() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = service()
         val s = session(svc, VpnConfig(peerEndpoint = "127.0.0.1:51820"))
         val dao = VpnTunnelServiceTest.FakeLogDao()
@@ -119,7 +118,7 @@ class TunnelSessionMoreTest {
     }
 
     @Test fun startFlushJobLoopsAndFlushes() { runBlocking {
-        Assume.assumeTrue(nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val svc = service()
         val s = session(svc, VpnConfig(peerEndpoint = "127.0.0.1:51820"))
         val dao = VpnTunnelServiceTest.FakeLogDao()

@@ -5,7 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import org.junit.Assume
 
 class VpnNativeTest {
     private fun nativeAvailable(): Boolean = try {
@@ -13,7 +12,7 @@ class VpnNativeTest {
     } catch (_: UnsatisfiedLinkError) { false } catch (_: NoClassDefFoundError) { false }
 
     @Test fun keyGenerationAndDerivation() {
-        Assume.assumeTrue("host vpn_wireguard lib unavailable", nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val priv = VpnNative.generatePrivateKey()
         assertTrue(priv.isNotBlank())
         val pub1 = VpnNative.derivePublicKey(priv)
@@ -23,7 +22,7 @@ class VpnNativeTest {
     }
 
     @Test fun tunnelLifecycleAndStats() {
-        Assume.assumeTrue("host vpn_wireguard lib unavailable", nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val priv = VpnNative.generatePrivateKey()
         val pub = VpnNative.derivePublicKey(priv)
         val handle = VpnNative.newTunnel(priv, pub, "", 25)
@@ -42,7 +41,7 @@ class VpnNativeTest {
     }
 
     @Test fun invalidTunnelArgsReturnError() {
-        Assume.assumeTrue("host vpn_wireguard lib unavailable", nativeAvailable())
+        assertTrue(nativeAvailable(), "host vpn_wireguard lib unavailable: cargoBuildHost must produce libvpn_wireguard for JVM tests")
         val handle = VpnNative.newTunnel("not-base64!!", "also-bad!!", "", 0)
         assertTrue(handle <= 0, "bad keys should fail, got handle=$handle")
         if (handle > 0) VpnNative.freeTunnel(handle)
