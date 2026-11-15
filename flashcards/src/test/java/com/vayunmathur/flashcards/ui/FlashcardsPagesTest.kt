@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -74,7 +75,18 @@ class FlashcardsPagesTest {
         scope.launch { vm.notes.collect {} }
         scope.launch { vm.settings.collect {} }
         scope.launch { vm.deckPresets.collect {} }
-        await("built-ins") { vm.noteTypes.value.size >= 3 }
+        // As in FlashcardsViewModelTest: wait for the complete built-in
+        // configuration, not just the type rows (fields/templates load in
+        // later combine emissions).
+        await("built-ins fully loaded") {
+            val byId = vm.noteTypes.value.associateBy { it.noteType.id }
+            byId[1L]?.fields?.map { it.name } == listOf("Front", "Back") &&
+                byId[1L]?.templates?.size == 1 &&
+                byId[2L]?.fields?.size == 2 &&
+                byId[2L]?.templates?.size == 2 &&
+                byId[3L]?.fields?.size == 2 &&
+                byId[3L]?.templates?.size == 1
+        }
         // The settings combine only emits once the mapNotNull flows have values.
         vm.setReminderEnabledImpl(false)
         vm.setAutoPlayImpl(false)
@@ -157,8 +169,16 @@ class FlashcardsPagesTest {
     fun noteTypePagesBind() {
         val stack = NavBackStack<Route>(arrayOf(Route.Main))
         rule.setContent { DynamicTheme { NoteTypeListPage(stack, vm) } }
-        rule.onNodeWithText("Basic").assertIsDisplayed()
-        rule.onNodeWithText("Basic").performClick()
+        // "Basic" can match two semantics nodes while the list is still
+        // settling (the built-in row plus its substring sibling row in the
+        // unmerged tree), so onNodeWithText throws on the ambiguity.
+        // Address the first matching row explicitly: it is the Basic type
+        // (id 1, first in the list), which is the row this test opens.
+        await("basic row composed") {
+            rule.onAllNodesWithText("Basic").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onAllNodesWithText("Basic")[0].assertIsDisplayed()
+        rule.onAllNodesWithText("Basic")[0].performClick()
         assertEquals(Route.NoteTypeEdit(1L), stack.last())
     }
 

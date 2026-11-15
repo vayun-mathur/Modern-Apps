@@ -71,7 +71,27 @@ class FlashcardsViewModelTest {
         scope.launch { vm.notes.collect {} }
         scope.launch { vm.settings.collect {} }
         scope.launch { vm.deckPresets.collect {} }
-        await("built-in note types") { vm.noteTypes.value.size >= 3 }
+        // The combine over the three Room flows (types/fields/templates)
+        // emits intermediate snapshots while seeding writes each table in
+        // turn: a type can be visible with no fields or templates yet.
+        // Wait for the complete built-in configuration, not just the rows.
+        await("built-in note types fully loaded") {
+            val byId = vm.noteTypes.value.associateBy { it.noteType.id }
+            byId[1L]?.fields?.map { it.name } == listOf("Front", "Back") &&
+                byId[1L]?.templates?.size == 1 &&
+                byId[2L]?.fields?.map { it.name } == listOf("Front", "Back") &&
+                byId[2L]?.templates?.size == 2 &&
+                byId[3L]?.fields?.size == 2 &&
+                byId[3L]?.templates?.size == 1
+        }
+    }
+
+    /** Awaits a custom note type's complete config (fields + templates), not just its row. */
+    private fun awaitNoteType(name: String, fields: List<String>, templates: Int) {
+        await("note type $name fully loaded") {
+            vm.noteTypes.value.firstOrNull { it.noteType.name == name }
+                ?.let { it.fields.map { f -> f.name } == fields && it.templates.size == templates } == true
+        }
     }
 
     private fun await(label: String, condition: () -> Boolean) {
@@ -93,7 +113,11 @@ class FlashcardsViewModelTest {
     private fun saveBasicNote(deckId: Long, front: String, back: String, tags: String = ""): Note {
         vm.saveNoteImpl(0, FlashcardsViewModel.BASIC_NOTE_TYPE_ID, deckId, listOf(front, back), tags)
         await("note $front") { runBlocking { repo.getAllNotesImpl().any { it.sortField == front } } }
-        return runBlocking { repo.getAllNotesImpl().first { it.sortField == front && it.deckId == deckId } }
+        val note = runBlocking { repo.getAllNotesImpl().first { it.sortField == front && it.deckId == deckId } }
+        // The note row is upserted before its cards are regenerated in the
+        // same IO coroutine, so the note can be visible with no cards yet.
+        await("cards for $front") { runBlocking { repo.getCardsByNoteImpl(note.id) }.isNotEmpty() }
+        return note
     }
 
     @Test
@@ -167,10 +191,12 @@ class FlashcardsViewModelTest {
         vm.saveNoteImpl(0, 2L, deck.id, listOf("FrontMulti", "BackMulti"), "")
         await("reversed note") { runBlocking { repo.getAllNotesImpl().any { it.sortField == "FrontMulti" } } }
         val note = runBlocking { repo.getAllNotesImpl().first { it.sortField == "FrontMulti" } }
+        await("reversed cards") { runBlocking { repo.getCardsByNoteImpl(note.id) }.size == 2 }
         assertEquals(2, runBlocking { repo.getCardsByNoteImpl(note.id) }.size)
         vm.saveNoteImpl(0, 3L, deck.id, listOf("The {{c1::capital}} of {{c2::France}}", "extra"), "")
         await("cloze note") { runBlocking { repo.getAllNotesImpl().any { it.sortField.startsWith("The {{c1") } } }
         val cloze = runBlocking { repo.getAllNotesImpl().first { it.sortField.startsWith("The {{c1") } }
+        await("cloze cards") { runBlocking { repo.getCardsByNoteImpl(cloze.id) }.size == 2 }
         assertEquals(setOf(0, 1), runBlocking { repo.getCardsByNoteImpl(cloze.id) }.map { it.templateOrd }.toSet())
     }
 
@@ -249,7 +275,9 @@ class FlashcardsViewModelTest {
     @Test
     fun noteTypeSaveDeleteAndBuiltInGuard() {
         vm.saveNoteTypeImpl(0, "VmCustomType", ".c{}", 0, listOf("Q", "A"), listOf(TemplateDraft("Only", "{{Q}}", "{{A}}")))
-        await("note type created") { vm.noteTypes.value.any { it.noteType.name == "VmCustomType" } }
+        // The type row is written before its fields/templates, and the
+        // combine emits that intermediate snapshot (fields == []).
+        awaitNoteType("VmCustomType", listOf("Q", "A"), templates = 1)
         val created = vm.noteTypes.value.first { it.noteType.name == "VmCustomType" }
         assertEquals(listOf("Q", "A"), created.fields.map { it.name })
         // Built-in types cannot be deleted.
@@ -335,6 +363,9 @@ class FlashcardsViewModelTest {
         await("card graded in db") {
             runBlocking { repo.getAllCardsImpl().first { it.id == cardId }.reps > 0 }
         }
+        await("review log written") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.size == 1
+        }
         assertEquals(1, runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.size)
         assertTrue(vm.review.value.canUndo)
         vm.undoReviewImpl()
@@ -386,6 +417,7 @@ class FlashcardsViewModelTest {
             runBlocking { repo.getAllNotesImpl().any { it.sortField == "RegenFront" } }
         }
         val note = runBlocking { repo.getAllNotesImpl().first { it.sortField == "RegenFront" } }
+        await("regen cards generated") { runBlocking { repo.getCardsByNoteImpl(note.id) }.size == 2 }
         val cards = runBlocking { repo.getCardsByNoteImpl(note.id) }
         assertEquals(2, cards.size)
         runBlocking {
@@ -457,7 +489,10 @@ class FlashcardsViewModelTest {
         val csv = File(app.cacheDir, "import_vm.csv")
         csv.writeText("front,back\nCsvFront,CsvBack\nSecond,Row\n")
         vm.importCsvImpl(deck.id, Uri.fromFile(csv))
-        await("csv imported") { runBlocking { repo.getAllNotesImpl().any { it.sortField == "CsvFront" && it.deckId == deck.id } } }
+        // The first imported note is visible before the second is written.
+        await("csv imported") {
+            runBlocking { repo.getAllNotesImpl().count { it.deckId == deck.id } } == 2
+        }
         assertEquals(2, runBlocking { repo.getAllNotesImpl().count { it.deckId == deck.id } })
         // Importing an empty csv is a no-op.
         val empty = File(app.cacheDir, "empty_vm.csv"); empty.writeText("front,back\n")
@@ -504,11 +539,15 @@ class FlashcardsViewModelTest {
     fun noteTypeEditRegeneratesCardsAndDeleteTypeRemovesNotes() {
         val deck = uniqueDeck("TypeRegenDeck")
         vm.saveNoteTypeImpl(0, "RegenType", "", 0, listOf("Q", "A"), listOf(TemplateDraft("Only", "{{Q}}", "{{A}}")))
-        await("regen type created") { vm.noteTypes.value.any { it.noteType.name == "RegenType" } }
+        // saveNote reads its template config from noteTypes.value: saving
+        // against the intermediate snapshot (type present, templates not
+        // yet loaded) would generate zero cards for the note.
+        awaitNoteType("RegenType", listOf("Q", "A"), templates = 1)
         val type = vm.noteTypes.value.first { it.noteType.name == "RegenType" }
         vm.saveNoteImpl(0, type.noteType.id, deck.id, listOf("RegenQ", "RegenA"), "")
         await("regen note") { runBlocking { repo.getAllNotesImpl().any { it.sortField == "RegenQ" } } }
         val note = runBlocking { repo.getAllNotesImpl().first { it.sortField == "RegenQ" } }
+        await("regen note card") { runBlocking { repo.getCardsByNoteImpl(note.id) }.size == 1 }
         assertEquals(1, runBlocking { repo.getCardsByNoteImpl(note.id) }.size)
         // Adding a second template regenerates a second card for the existing note.
         vm.saveNoteTypeImpl(
@@ -570,6 +609,10 @@ class FlashcardsViewModelTest {
         await("leech tagged") {
             runBlocking { repo.getNoteImpl(note.id)?.tags?.contains(FlashcardsViewModel.LEECH_TAG) == true }
         }
+        await("leech card suspended") {
+            runBlocking { repo.getCardsByNoteImpl(note.id) }
+                .let { it.isNotEmpty() && it.all { c -> c.suspended == 1 } }
+        }
         assertTrue(runBlocking { repo.getCardsByNoteImpl(note.id) }.all { it.suspended == 1 })
     }
 
@@ -585,8 +628,14 @@ class FlashcardsViewModelTest {
         val shares = mutableListOf<Uri>()
         scope.launch { vm.shareRequests.collect { shares.add(it) } }
         vm.exportCsvImpl(deck.id)
-        await("empty deck csv shared") {
-            shares.isNotEmpty() || File(app.cacheDir, "shared_decks/EmptyCsvDeck.csv").exists()
+        // Await the finished content, not mere existence: the writer
+        // creates the file before writing it, and the share collector
+        // launched above can miss the emission entirely if it subscribes
+        // after the export completes.
+        await("empty deck csv written") {
+            shares.isNotEmpty() ||
+                runCatching { File(app.cacheDir, "shared_decks/EmptyCsvDeck.csv").readText() }
+                    .getOrNull() == "front,back\n"
         }
         assertEquals("front,back\n", File(app.cacheDir, "shared_decks/EmptyCsvDeck.csv").readText())
         vm.exportCsvImpl(987654L)
