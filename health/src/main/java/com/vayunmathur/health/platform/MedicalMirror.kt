@@ -113,6 +113,14 @@ internal suspend fun HealthRepository.mirrorMedication(id: String): Boolean {
 }
 
 /** Writes a dose as a `MedicationStatement`, mirroring its medication first if that never landed. */
+
+/** The dose's medication, mirrored first when it never landed in Health Connect. */
+internal suspend fun HealthRepository.mirroredMedication(event: DoseEvent): MedicationEntry? {
+    val unmirrored = getMedication(event.medicationId) ?: return null
+    if (unmirrored.fhirResourceId == null && !mirrorMedication(unmirrored.id)) return null
+    return getMedication(event.medicationId)
+}
+
 internal suspend fun HealthRepository.mirrorDose(id: String): Boolean {
     val event = getDoseEvent(id) ?: run {
         clearPending(MedicalKind.Dose, id)
@@ -120,9 +128,7 @@ internal suspend fun HealthRepository.mirrorDose(id: String): Boolean {
     }
     val target = mirrorTarget(MedicalKind.Dose, id, event.dataSourceId) ?: return false
     // basedOn must point at a MedicationRequest that actually exists in Health Connect.
-    val unmirrored = getMedication(event.medicationId) ?: return false
-    if (unmirrored.fhirResourceId == null && !mirrorMedication(unmirrored.id)) return false
-    val medication = getMedication(event.medicationId) ?: return false
+    val medication = mirroredMedication(event) ?: return false
 
     val written = PersonalHealthRecords.upsert(
         target,

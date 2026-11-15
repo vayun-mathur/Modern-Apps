@@ -19,6 +19,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
+/** Kinds of record type. */
 enum class RecordType {
     Steps, Wheelchair, Distance, CaloriesTotal, CaloriesActive, CaloriesBasal, Floors, Elevation,
     HeartRate, RestingHeartRate, HeartRateVariabilityRmssd, RespiratoryRate, OxygenSaturation,
@@ -27,6 +28,7 @@ enum class RecordType {
     Sleep, Mindfulness, Hydration, Nutrition, Exercise
 }
 
+/** Immutable value describing nutrition data. */
 @Serializable
 data class NutritionData(
     val protein: Double = 0.0,
@@ -72,6 +74,7 @@ data class NutritionData(
     val calories: Double = 0.0
 )
 
+/** Immutable value describing sleep stage. */
 @Serializable
 data class SleepStage(
     val startTimeMillis: Long,
@@ -79,6 +82,7 @@ data class SleepStage(
     val stage: Int
 )
 
+/** Immutable value describing sleep data. */
 @Serializable
 data class SleepData(
     val awakeDurationMillis: Long = 0,
@@ -89,6 +93,7 @@ data class SleepData(
     val stagesJson: String? = null
 )
 
+/** Immutable value describing exercise segment data. */
 @Serializable
 data class ExerciseSegmentData(
     val startTimeMillis: Long,
@@ -97,6 +102,7 @@ data class ExerciseSegmentData(
     val repetitions: Int,
 )
 
+/** Immutable value describing exercise lap data. */
 @Serializable
 data class ExerciseLapData(
     val startTimeMillis: Long,
@@ -104,6 +110,7 @@ data class ExerciseLapData(
     val lengthMeters: Double?,
 )
 
+/** Immutable value describing exercise data. */
 @Serializable
 data class ExerciseData(
     val exerciseType: Int = 0,
@@ -114,6 +121,7 @@ data class ExerciseData(
     val hasRoute: Boolean = false,
 )
 
+/** Immutable value describing record. */
 @Entity(indices = [Index(value = ["type", "startTime", "endTime"])])
 data class Record(
     val id: String,
@@ -133,6 +141,7 @@ data class Record(
 @Dao
 // Query surface of the fitness-record tables: one method per query by Room's design.
 // Splitting the interface would only move the same method count to more files.
+/** Contract for health dao. */
 @Suppress("TooManyFunctions")
 interface HealthDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -293,11 +302,13 @@ interface HealthDao {
     ): List<HourlySum>
 
     // Helper data class to catch the results
+    /** Immutable value describing daily sum. */
     data class DailySum(
         val day: String, // Format: YYYY-MM-DD
         val totalValue: Double,
         val totalValue2: Double
     )
+    /** Immutable value describing hourly sum. */
     data class HourlySum(
         val hourBlock: String, // Format: 2026-03-03 15:00
         val totalValue: Double,
@@ -374,12 +385,14 @@ interface HealthDao {
     version = 12,
     exportSchema = false
 )
+/** Health Database: a room database implementation for health database. */
 @ColumnTypeConverters(Converters::class)
 abstract class HealthDatabase : RoomDatabase() {
     abstract fun healthDao(): HealthDao
     abstract fun medicalDao(): MedicalDao
     abstract fun scheduleDao(): ScheduleDao
 
+    /** Shared constants and helpers for HealthDatabase. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations = listOf(
             Migration(4, 5) {
@@ -615,6 +628,7 @@ abstract class HealthDatabase : RoomDatabase() {
     }
 }
 
+/** Type representing converters. */
 class Converters {
     @ColumnTypeConverter
     fun fromTimestamp(value: Long?): Instant? = value?.let { Instant.ofEpochMilli(it) }

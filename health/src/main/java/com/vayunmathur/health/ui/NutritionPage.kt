@@ -58,6 +58,7 @@ import com.vayunmathur.library.util.round
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 
+/** Immutable value describing nutrient dv. */
 data class NutrientDV(
     val name: String,
     val dailyValue: Double,

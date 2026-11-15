@@ -9,6 +9,7 @@ import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 
+/** Immutable value describing ingredient. */
 @Entity
 data class Ingredient(
     @PrimaryKey val id: String, // Unique identifier, possibly from API
@@ -22,6 +23,7 @@ data class Ingredient(
         get() = customName ?: originalName
 }
 
+/** Immutable value describing recipe. */
 @Entity
 data class Recipe(
     @PrimaryKey val id: String = Uuid.random().toString(),
@@ -48,6 +50,7 @@ data class Recipe(
         Index("recipeId")
     ]
 )
+/** Immutable value describing serving unit. */
 data class ServingUnit(
     @PrimaryKey val id: String = Uuid.random().toString(),
     val ingredientId: String? = null,
@@ -84,6 +87,7 @@ data class ServingUnit(
         Index("unitId")
     ]
 )
+/** Immutable value describing recipe ingredient. */
 data class RecipeIngredient(
     @PrimaryKey val id: String = Uuid.random().toString(),
     val recipeId: String,

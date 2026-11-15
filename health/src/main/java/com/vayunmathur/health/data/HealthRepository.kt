@@ -193,6 +193,7 @@ class HealthRepository private constructor(context: Context) :
      */
     internal val database: HealthDatabase get() = db
 
+    /** Shared constants and helpers for HealthRepository. */
     companion object {
         @Volatile
         private var instance: HealthRepository? = null

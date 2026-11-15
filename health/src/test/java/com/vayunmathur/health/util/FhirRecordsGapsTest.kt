@@ -14,6 +14,7 @@ import com.vayunmathur.health.data.PregnancyStatus
 import com.vayunmathur.health.data.RepeatUnit
 import com.vayunmathur.health.data.SmokingStatus
 import com.vayunmathur.health.data.VaccinationEntry
+import com.vayunmathur.health.domain.FhirObservations
 import com.vayunmathur.health.domain.FhirRecords
 import com.vayunmathur.health.domain.SocialHistoryQuestions
 import java.time.Instant
@@ -528,17 +529,17 @@ class FhirRecordsGapsTest {
 
     @Test
     fun `resource id and effective instant read through`() {
-        assertEquals("x-1", FhirRecords.resourceId("""{"id":"x-1"}"""))
-        assertNull(FhirRecords.resourceId("not json"))
+        assertEquals("x-1", FhirObservations.resourceId("""{"id":"x-1"}"""))
+        assertNull(FhirObservations.resourceId("not json"))
         assertEquals(
             Instant.parse("2025-11-02T10:00:00Z"),
-            FhirRecords.observationEffective("""{"effectiveDateTime":"2025-11-02T10:00:00Z"}"""),
+            FhirObservations.observationEffective("""{"effectiveDateTime":"2025-11-02T10:00:00Z"}"""),
         )
         assertEquals(
             Instant.parse("2025-11-02T00:00:00Z"),
-            FhirRecords.observationEffective("""{"effectivePeriod":{"start":"2025-11-02"}}"""),
+            FhirObservations.observationEffective("""{"effectivePeriod":{"start":"2025-11-02"}}"""),
         )
-        assertNull(FhirRecords.observationEffective("""{"resourceType":"Observation"}"""))
+        assertNull(FhirObservations.observationEffective("""{"resourceType":"Observation"}"""))
     }
 
     @Test
@@ -579,6 +580,6 @@ class FhirRecordsGapsTest {
         val json = FhirRecords.socialHistoryAnswerJson("o", question, answer, t)
         assertTrue(question.loinc in json)
         assertTrue(answer.code in json)
-        assertEquals("o", FhirRecords.resourceId(json))
+        assertEquals("o", FhirObservations.resourceId(json))
     }
 }

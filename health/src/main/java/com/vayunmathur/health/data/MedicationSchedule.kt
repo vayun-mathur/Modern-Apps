@@ -50,6 +50,7 @@ data class MedicationSchedule(
     val endDate: LocalDate? = null,
 )
 
+/** Contract for schedule dao. */
 @Dao
 interface ScheduleDao {
 

@@ -154,6 +154,7 @@ val PERMISSIONS = CLASSES.map { HealthPermission.getReadPermission(it) }.toSet()
     )
 
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private val healthViewModel: HealthViewModel by viewModels {
         HealthViewModelFactory(application, HealthRepository.get(this))
@@ -268,35 +269,46 @@ class MainActivity : MaActivity() {
     }
 }
 
+/** Contract for route. */
 @Serializable
 sealed interface Route: NavKey {
+    /** Singleton holding today state and operations. */
     @Serializable
     data object Today: Route
 
+    /** Singleton holding body state and operations. */
     @Serializable
     data object Body: Route
 
+    /** Singleton holding nutrition details state and operations. */
     @Serializable
     data object NutritionDetails: Route
 
+    /** Singleton holding nutrition full breakdown state and operations. */
     @Serializable
     data object NutritionFullBreakdown: Route
 
+    /** Singleton holding recipe management state and operations. */
     @Serializable
     data object RecipeManagement: Route
 
+    /** Immutable value describing recipe editor; carries recipeId. */
     @Serializable
     data class RecipeEditor(val recipeId: String? = null): Route
 
+    /** Immutable value describing bar chart details; carries healthMetric. */
     @Serializable
     data class BarChartDetails(val healthMetric: HealthMetricConfig): Route
 
+    /** Singleton holding sleep details state and operations. */
     @Serializable
     data object SleepDetails: Route
 
+    /** Singleton holding exercise details state and operations. */
     @Serializable
     data object ExerciseDetails: Route
 
+    /** Singleton holding medical state and operations. */
     @Serializable
     data object Medical: Route
 

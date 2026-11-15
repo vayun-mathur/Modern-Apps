@@ -30,6 +30,7 @@ object SocialHistoryQuestions {
      */
     data class Answer(val code: String, val display: String, val labelRes: Int)
 
+    /** Immutable value describing question. */
     data class Question(
         /** LOINC code for the question itself, used as `Observation.code`. */
         val loinc: String,

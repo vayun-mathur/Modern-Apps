@@ -206,6 +206,7 @@ data class HealthProfile(
     val smokingFhirId: String? = null,
     val dataSourceId: String? = null,
 ) {
+    /** Shared constants and helpers for HealthProfile. */
     companion object {
         /** There is only ever one profile, so its key is a constant rather than a generated id. */
         const val SINGLETON_ID = "profile"
@@ -256,6 +257,7 @@ data class PendingMirror(val kind: MedicalKind, val rowId: String)
 @Dao
 // Query surface of the medical tables
 // Splitting the interface would only move the same method count to more files.
+/** Contract for medical dao. */
 @Suppress("TooManyFunctions")
 interface MedicalDao {
 

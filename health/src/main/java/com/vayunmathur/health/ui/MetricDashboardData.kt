@@ -1,5 +1,6 @@
 package com.vayunmathur.health.ui
 
+/** Immutable value describing metric dashboard data. */
 data class MetricDashboardData(
     val totalValue: Double = 0.0,
     val dailyAverage: Double = 0.0,
@@ -11,6 +12,7 @@ data class MetricDashboardData(
     val totalBarCount: Int = 0
 )
 
+/** Immutable value describing history item. */
 data class HistoryItem(
     val label: String,
     val value: Double,

@@ -77,6 +77,7 @@ class DoseActionReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Shared constants and helpers for DoseActionReceiver. */
     companion object {
         const val ACTION_TAKEN = "com.vayunmathur.health.DOSE_TAKEN"
         const val ACTION_SNOOZE = "com.vayunmathur.health.DOSE_SNOOZE"

@@ -177,6 +177,7 @@ fun RecipeEditorPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel,
     }
 }
 
+/** Immutable value describing recipe ingredient data. */
 data class RecipeIngredientData(
     val ingredient: Ingredient,
     val unit: ServingUnit,

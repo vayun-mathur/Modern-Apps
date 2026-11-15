@@ -76,6 +76,7 @@ class MedicalViewModel(
     internal val repository: HealthRepository = HealthRepository.get(application),
 ) : AndroidViewModel(application) {
 
+    /** Shared constants and helpers for MedicalViewModel. */
     companion object {
         /** 9am in seconds since midnight: the default time of a new reminder schedule. */
         internal const val DEFAULT_DOSE_TIME_SECONDS = 9 * 60 * 60
@@ -177,6 +178,7 @@ class MedicalViewModel(
             get() = savedAttachments.filterNot { it.id in removedAttachmentIds }
     }
 
+    /** Immutable value describing medication draft. */
     data class MedicationDraft(
         val editingId: String? = null,
         val rxcui: String? = null,
@@ -213,6 +215,7 @@ class MedicalViewModel(
     internal val medicationDraftState = MutableStateFlow(MedicationDraft())
     val medicationDraft: StateFlow<MedicationDraft> = medicationDraftState.asStateFlow()
 
+    /** Immutable value describing allergy draft. */
     data class AllergyDraft(
         val editingId: String? = null,
         val rxcui: String? = null,
@@ -224,6 +227,7 @@ class MedicalViewModel(
         val note: String = "",
     )
 
+    /** Immutable value describing condition draft. */
     data class ConditionDraft(
         val editingId: String? = null,
         val icd10Code: String? = null,
@@ -234,6 +238,7 @@ class MedicalViewModel(
         val note: String = "",
     )
 
+    /** Immutable value describing lab result draft. */
     data class LabResultDraft(
         val editingId: String? = null,
         val loincCode: String? = null,
@@ -395,6 +400,7 @@ class MedicalViewModel(
 internal fun formatNumber(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
 
+/** Creates medical view model instances. */
 class MedicalViewModelFactory(
     private val application: Application,
     private val repository: HealthRepository,

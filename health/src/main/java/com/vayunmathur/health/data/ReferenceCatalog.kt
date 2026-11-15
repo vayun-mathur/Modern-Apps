@@ -93,18 +93,22 @@ object ReferenceCatalog {
         val icd10Year: Int = 0,
     )
 
+    /** Contract for status. */
     sealed interface Status {
         val installed: Meta? get() = null
 
         /** Not unpacked yet; the pickers accept free text only. */
         data object Absent : Status
 
+        /** Singleton holding preparing state and operations. */
         data object Preparing : Status
 
+        /** Immutable value describing ready; carries meta. */
         data class Ready(val meta: Meta) : Status {
             override val installed: Meta get() = meta
         }
 
+        /** Immutable value describing failed; carries message, installed. */
         data class Failed(val message: String, override val installed: Meta?) : Status
     }
 

@@ -133,6 +133,7 @@ object FoodDatabase {
         val compressedBytes: Long = 0,
     )
 
+    /** Contract for status. */
     sealed interface Status {
         /** The database that is unpacked and searchable right now, if any. */
         val installed: Meta? get() = null
@@ -143,10 +144,12 @@ object FoodDatabase {
         /** First-run construction of the database, in products written. */
         data class Preparing(val productsWritten: Long, val totalProducts: Long) : Status
 
+        /** Immutable value describing ready; carries meta. */
         data class Ready(val meta: Meta) : Status {
             override val installed: Meta get() = meta
         }
 
+        /** Immutable value describing failed; carries message, installed. */
         data class Failed(val message: String, override val installed: Meta?) : Status
     }
 

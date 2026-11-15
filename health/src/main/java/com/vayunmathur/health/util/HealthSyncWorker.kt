@@ -142,6 +142,7 @@ class HealthSyncWorker(
         } while (response.hasMore)
     }
 
+    /** Shared constants and helpers for HealthSyncWorker. */
     companion object {
         private const val TAG = "HealthSyncWorker"
 

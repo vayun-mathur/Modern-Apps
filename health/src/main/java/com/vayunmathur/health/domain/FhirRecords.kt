@@ -145,21 +145,12 @@ object FhirRecords {
         recordedAt: Instant,
     ): String = com.vayunmathur.health.domain.socialHistoryAnswerJson(id, question, answer, recordedAt)
 
-    fun parseSocialHistoryAnswer(data: String): String? =
-        com.vayunmathur.health.domain.parseSocialHistoryAnswer(data)
 
     fun parseLabResult(data: String, dataSourceId: String): LabResultEntry? =
         com.vayunmathur.health.domain.parseLabResult(data, dataSourceId)
 
-    fun observationLoincCode(data: String): String? =
-        com.vayunmathur.health.domain.observationLoincCode(data)
 
-    /** The resource's own `id`, needed to update rather than duplicate it on the next write. */
-    fun resourceId(data: String): String? =
-        com.vayunmathur.health.domain.resourceId(data)
 
-    fun observationEffective(data: String): Instant? =
-        com.vayunmathur.health.domain.observationEffective(data)
 
     fun parsePregnancyStatus(data: String): Pair<PregnancyStatus, Instant?>? =
         com.vayunmathur.health.domain.parsePregnancyStatus(data)
@@ -180,4 +171,21 @@ object FhirRecords {
     /** Splits "0.5 mL" into 0.5 and "mL". Null when the text does not start with a number. */
     internal fun parseQuantity(text: String): Pair<Double, String>? =
         com.vayunmathur.health.domain.parseQuantity(text)
+}
+
+/** Observation-level FHIR helpers, split out of [FhirRecords]. */
+object FhirObservations {
+    fun parseSocialHistoryAnswer(data: String): String? =
+        com.vayunmathur.health.domain.parseSocialHistoryAnswer(data)
+
+    fun observationLoincCode(data: String): String? =
+        com.vayunmathur.health.domain.observationLoincCode(data)
+
+    /** The resource's own `id`, needed to update rather than duplicate it on the next write. */
+
+    fun resourceId(data: String): String? =
+        com.vayunmathur.health.domain.resourceId(data)
+
+    fun observationEffective(data: String): Instant? =
+        com.vayunmathur.health.domain.observationEffective(data)
 }

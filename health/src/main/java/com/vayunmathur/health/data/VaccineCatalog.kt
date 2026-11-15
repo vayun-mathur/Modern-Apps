@@ -23,6 +23,7 @@ object VaccineCatalog {
     private const val TAG = "VaccineCatalog"
     private const val ASSET = "cvx.json"
 
+    /** Immutable value describing vaccine. */
     @Serializable
     data class Vaccine(
         /** CVX code, e.g. "208". Kept as a string because FHIR codes are strings. */

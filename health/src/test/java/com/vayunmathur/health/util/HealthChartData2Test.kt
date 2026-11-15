@@ -79,17 +79,17 @@ class HealthChartData2Test {
             Tuple3(LocalDate(2024, 6, 3).toEpochDays().toLong(), 100.0, 50.0),
             Tuple3(LocalDate(2024, 6, 4).toEpochDays().toLong(), 200.0, 60.0),
         )
-        val week = HealthChartData.buildHistoryItems(HealthMetricConfig.STEPS, 1, LocalDate(2024, 6, 2), start, tz, resources, weekPairs)
+        val week = HealthChartData.buildHistoryItems(HealthMetricConfig.STEPS, 1, LocalDate(2024, 6, 2), resources, weekPairs)
         assertEquals(7, week.size)
         assertTrue(week.any { it.value == 200.0 })
-        val weekLine = HealthChartData.buildHistoryItems(HealthMetricConfig.HEART_RATE, 1, LocalDate(2024, 6, 2), start, tz, resources, weekPairs)
+        val weekLine = HealthChartData.buildHistoryItems(HealthMetricConfig.HEART_RATE, 1, LocalDate(2024, 6, 2), resources, weekPairs)
         assertTrue(weekLine.size <= 7)
-        val month = HealthChartData.buildHistoryItems(HealthMetricConfig.BLOOD_PRESSURE, 2, LocalDate(2024, 6, 1), start, tz, resources, pairs)
+        val month = HealthChartData.buildHistoryItems(HealthMetricConfig.BLOOD_PRESSURE, 2, LocalDate(2024, 6, 1), resources, pairs)
         assertEquals(2, month.size)
         assertEquals(50.0, month.last().secondaryValue)
-        val year = HealthChartData.buildHistoryItems(HealthMetricConfig.STEPS, 3, LocalDate(2024, 1, 1), start, tz, resources, pairs)
+        val year = HealthChartData.buildHistoryItems(HealthMetricConfig.STEPS, 3, LocalDate(2024, 1, 1), resources, pairs)
         assertEquals(2, year.size)
-        val day = HealthChartData.buildHistoryItems(HealthMetricConfig.STEPS, 0, LocalDate(2024, 6, 2), start, tz, resources, pairs)
+        val day = HealthChartData.buildHistoryItems(HealthMetricConfig.STEPS, 0, LocalDate(2024, 6, 2), resources, pairs)
         assertTrue(day.isEmpty())
     }
 

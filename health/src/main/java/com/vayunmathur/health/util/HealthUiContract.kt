@@ -48,6 +48,7 @@ interface TodayActions {
     fun openExerciseDetails() {}
     fun openMetric(config: HealthMetricConfig) {}
 
+    /** Shared constants and helpers for TodayActions. */
     companion object {
         val Noop: TodayActions = object : TodayActions {}
     }
@@ -70,6 +71,7 @@ interface NutritionActions {
     fun openRecipes() {}
     fun openFullBreakdown() {}
 
+    /** Shared constants and helpers for NutritionActions. */
     companion object {
         val Noop: NutritionActions = object : NutritionActions {}
     }
@@ -89,6 +91,7 @@ interface MetricDetailsActions {
     fun loadBarChartData(config: HealthMetricConfig, anchorDate: LocalDate, selectedTab: Int) {}
     fun navigateUp() {}
 
+    /** Shared constants and helpers for MetricDetailsActions. */
     companion object {
         val Noop: MetricDetailsActions = object : MetricDetailsActions {}
     }

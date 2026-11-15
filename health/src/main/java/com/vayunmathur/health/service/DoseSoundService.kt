@@ -160,6 +160,7 @@ class DoseSoundService : Service() {
 
     override fun onBind(intent: Intent?) = null
 
+    /** Shared constants and helpers for DoseSoundService. */
     companion object {
         const val EXTRA_MEDICATION_NAME = "MEDICATION_NAME"
         private const val TAG = "DoseSoundService"

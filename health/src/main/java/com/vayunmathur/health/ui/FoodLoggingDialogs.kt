@@ -39,6 +39,7 @@ import com.vayunmathur.health.data.Recipe
 import com.vayunmathur.health.util.HealthViewModel
 import java.time.Instant
 
+/** Kinds of hydration unit. */
 enum class HydrationUnit(@StringRes val displayName: Int, val toLiters: Double) {
     Liters(R.string.hydration_liters, 1.0),
     Milliliters(R.string.hydration_milliliters, 0.001),
@@ -114,15 +115,18 @@ fun LogHydrationDialog(viewModel: HealthViewModel, initialTime: Instant? = null,
     )
 }
 
+/** Type representing loggable. */
 sealed class Loggable {
     abstract val id: String
     abstract val name: String
 
+    /** Immutable value describing recipe wrapper; carries recipe. */
     data class RecipeWrapper(val recipe: Recipe) : Loggable() {
         override val id = recipe.id
         override val name = recipe.name
     }
 
+    /** Immutable value describing ingredient wrapper; carries ingredient. */
     data class IngredientWrapper(val ingredient: Ingredient) : Loggable() {
         override val id = ingredient.id
         override val name = ingredient.displayName

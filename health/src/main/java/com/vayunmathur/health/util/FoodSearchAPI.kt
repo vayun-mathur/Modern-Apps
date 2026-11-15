@@ -17,6 +17,7 @@ import com.vayunmathur.health.data.Ingredient
  */
 object FoodSearchAPI {
 
+    /** Immutable value describing search result; carries id, displayName. */
     data class SearchResult(val id: Long, val displayName: String)
 
     /** Ranked name matches from the downloaded bundle; empty if it isn't installed. */

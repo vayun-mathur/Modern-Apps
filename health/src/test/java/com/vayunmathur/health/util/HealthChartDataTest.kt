@@ -189,8 +189,7 @@ class HealthChartDataTest {
         val monday = LocalDate(2026, 3, 2)
         val history = HealthChartData.buildHistoryItems(
             HealthMetricConfig.STEPS, 1, weekStart,
-            kotlin.time.Instant.fromEpochMilliseconds(0),
-            TimeZone.currentSystemDefault(), context.resources,
+            context.resources,
             listOf(Tuple3(monday.toEpochDays().toLong(), 12_000.0, 0.0)),
         )
         assertEquals(7, history.size)
@@ -203,8 +202,7 @@ class HealthChartDataTest {
     fun `day tab builds no history rows`() {
         val history = HealthChartData.buildHistoryItems(
             HealthMetricConfig.STEPS, 0, LocalDate(2026, 3, 4),
-            kotlin.time.Instant.fromEpochMilliseconds(0),
-            TimeZone.currentSystemDefault(), context.resources,
+            context.resources,
             listOf(Tuple3(0L, 100.0, 0.0)),
         )
         assertTrue(history.isEmpty())

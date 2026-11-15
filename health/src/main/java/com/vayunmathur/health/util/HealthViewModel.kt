@@ -253,7 +253,7 @@ class HealthViewModel(
                 config, selectedTab, startDate, rawPairs, is24Hour(getApplication()),
             )
             val history = HealthChartData.buildHistoryItems(
-                config, selectedTab, startDate, startTime, tz, resources, rawPairsHistory,
+                config, selectedTab, startDate, resources, rawPairsHistory,
             )
 
             _barChartData.value = HealthChartData.buildDashboardData(
@@ -303,8 +303,11 @@ class HealthViewModel(
         }
     }
 
+    /** Type representing log meal target. */
     sealed class LogMealTarget {
+        /** Immutable value describing from recipe; carries recipeId, name. */
         data class FromRecipe(val recipeId: String, val name: String) : LogMealTarget()
+        /** Immutable value describing from ingredient; carries ingredient. */
         data class FromIngredient(val ingredient: Ingredient) : LogMealTarget()
     }
 
@@ -464,6 +467,7 @@ class HealthViewModel(
         foodDatabaseJob = viewModelScope.launch { FoodDatabase.prepare() }
     }
 
+    /** Shared constants and helpers for HealthViewModel. */
     companion object {
         private const val TAG = "HealthViewModel"
 
@@ -490,6 +494,7 @@ class HealthViewModel(
     }
 }
 
+/** Creates health view model instances. */
 class HealthViewModelFactory(
     private val application: Application,
     private val repository: HealthRepository,

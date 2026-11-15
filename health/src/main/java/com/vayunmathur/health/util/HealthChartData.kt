@@ -31,6 +31,8 @@ import kotlinx.datetime.toLocalDateTime
  * framework access except formatted strings, which callers pass in.
  */
 internal object HealthChartData {
+    private const val METERS_TO_CM = 100.0
+
 
     /** Sunday..Saturday slot count for the week tab. */
     internal const val DAYS_PER_WEEK = 7
@@ -112,7 +114,7 @@ internal object HealthChartData {
         pairs: List<Tuple3<Long, Double, Double>>,
     ): List<Tuple3<Long, Double, Double>> {
         if (config.recordType != com.vayunmathur.health.data.RecordType.Height) return pairs
-        return pairs.map { Tuple3(it.first, it.second * 100.0, it.third * 100.0) }
+        return pairs.map { Tuple3(it.first, it.second * METERS_TO_CM, it.third * METERS_TO_CM) }
     }
 
     /**
@@ -163,8 +165,6 @@ internal object HealthChartData {
         config: HealthMetricConfig,
         selectedTab: Int,
         startDate: LocalDate,
-        startTime: kotlin.time.Instant,
-        tz: TimeZone,
         resources: Resources,
         rawPairsHistory: List<Tuple3<Long, Double, Double>>,
     ): List<HistoryItem> {

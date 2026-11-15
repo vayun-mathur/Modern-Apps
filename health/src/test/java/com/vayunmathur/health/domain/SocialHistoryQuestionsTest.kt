@@ -94,12 +94,12 @@ class SocialHistoryQuestionsTest {
 
                 assertEquals(
                     question.loinc,
-                    FhirRecords.observationLoincCode(json),
+                    FhirObservations.observationLoincCode(json),
                     "question code lost for ${question.loinc}",
                 )
                 assertEquals(
                     answer.code,
-                    FhirRecords.parseSocialHistoryAnswer(json),
+                    FhirObservations.parseSocialHistoryAnswer(json),
                     "answer code lost for ${answer.code}",
                 )
             }
@@ -158,13 +158,13 @@ class SocialHistoryQuestionsTest {
             "Often true",
             value["coding"]!!.jsonArray.single().jsonObject.str("display"),
         )
-        assertEquals("LA28397-0", FhirRecords.parseSocialHistoryAnswer(json))
+        assertEquals("LA28397-0", FhirObservations.parseSocialHistoryAnswer(json))
     }
 
     @Test
     fun `a non observation is not mistaken for an answer`() {
-        assertNull(FhirRecords.parseSocialHistoryAnswer("""{"resourceType":"Condition"}"""))
-        assertNull(FhirRecords.parseSocialHistoryAnswer("not json at all"))
+        assertNull(FhirObservations.parseSocialHistoryAnswer("""{"resourceType":"Condition"}"""))
+        assertNull(FhirObservations.parseSocialHistoryAnswer("not json at all"))
     }
 
     @Test
@@ -177,8 +177,8 @@ class SocialHistoryQuestionsTest {
             }
         """.trimIndent()
 
-        assertEquals("68518-0", FhirRecords.observationLoincCode(bare))
-        assertNull(FhirRecords.parseSocialHistoryAnswer(bare))
+        assertEquals("68518-0", FhirObservations.observationLoincCode(bare))
+        assertNull(FhirObservations.parseSocialHistoryAnswer(bare))
     }
 
     @Test

@@ -8,6 +8,7 @@ import com.vayunmathur.health.data.MedicationEntry
 import com.vayunmathur.health.data.MedicationSchedule
 import com.vayunmathur.health.data.MedicationStatus
 import com.vayunmathur.health.data.ProfileAnswer
+import com.vayunmathur.health.domain.FhirObservations
 import com.vayunmathur.health.domain.FhirRecords
 import com.vayunmathur.health.domain.SocialHistoryQuestions
 import kotlinx.coroutines.launch
@@ -97,24 +98,40 @@ private suspend fun <Row : Any, Parsed : Any> MedicalViewModel.reconcile(
     store: suspend (incoming: Parsed, rowId: String, existing: Row?) -> Unit,
 ) {
     resources.forEach { resource ->
-        val source = resource.dataSourceId
-        val fhirId = FhirRecords.resourceId(resource.data) ?: return@forEach
-        if (repository.isTombstoned(kind, source, fhirId)) return@forEach
-        val isOwn = source == own || PersonalHealthRecords.isOwnDataSource(source)
-        val existing = find(source, fhirId)
-        if (existing != null && isOwn) return@forEach
-
-        if (FhirRecords.isEnteredInError(resource.data)) {
-            existing?.let { retract(it) }
-            return@forEach
-        }
-        val incoming = parse(resource) ?: return@forEach
-        val rowId = existing?.let(rowIdOf) ?: if (isOwn) fhirId else importedRowId(source, fhirId)
-        // Earlier builds used the bare FHIR id as the row id, and an edit could since have moved
-        // such a row into this app's data source, where find() no longer matches it.
-        if (existing == null && (getById(rowId) != null || getById(fhirId) != null)) return@forEach
-        store(incoming, rowId, existing)
+        reconcileOne(kind, resource, own, find, getById, rowIdOf, parse, retract, store)
     }
+}
+
+/** Applies one resource within [reconcile]; see its contract. */
+@Suppress("LongParameterList")
+private suspend fun <Row : Any, Parsed : Any> MedicalViewModel.reconcileOne(
+    kind: MedicalKind,
+    resource: PersonalHealthRecords.RawResource,
+    own: String?,
+    find: suspend (dataSourceId: String, fhirId: String) -> Row?,
+    getById: suspend (rowId: String) -> Row?,
+    rowIdOf: (Row) -> String,
+    parse: (PersonalHealthRecords.RawResource) -> Parsed?,
+    retract: suspend (Row) -> Unit,
+    store: suspend (incoming: Parsed, rowId: String, existing: Row?) -> Unit,
+) {
+    val source = resource.dataSourceId
+    val fhirId = FhirObservations.resourceId(resource.data) ?: return
+    if (repository.isTombstoned(kind, source, fhirId)) return
+    val isOwn = source == own || PersonalHealthRecords.isOwnDataSource(source)
+    val existing = find(source, fhirId)
+    if (existing != null && isOwn) return
+
+    if (FhirRecords.isEnteredInError(resource.data)) {
+        existing?.let { retract(it) }
+        return
+    }
+    val incoming = parse(resource) ?: return
+    val rowId = existing?.let(rowIdOf) ?: if (isOwn) fhirId else importedRowId(source, fhirId)
+    // Earlier builds used the bare FHIR id as the row id, and an edit could since have moved
+    // such a row into this app's data source, where find() no longer matches it.
+    if (existing == null && (getById(rowId) != null || getById(fhirId) != null)) return
+    store(incoming, rowId, existing)
 }
 
 private suspend fun MedicalViewModel.importVaccinesAndMeds(own: String?) {
@@ -219,7 +236,7 @@ private suspend fun MedicalViewModel.migrateLegacyStatements(
     legacy: List<PersonalHealthRecords.RawResource>,
 ) {
     legacy.forEach { resource ->
-        val fhirId = FhirRecords.resourceId(resource.data) ?: return@forEach
+        val fhirId = FhirObservations.resourceId(resource.data) ?: return@forEach
         val local = repository.findMedication(resource.dataSourceId, fhirId)
         val rowId = when {
             local != null -> local.id
@@ -303,7 +320,7 @@ private suspend fun MedicalViewModel.importProfile() {
     val newest = mutableMapOf<String, ProfileAnswer>()
 
     resources.forEach { resource ->
-        val loinc = FhirRecords.observationLoincCode(resource.data)
+        val loinc = FhirObservations.observationLoincCode(resource.data)
         when (loinc) {
             FhirRecords.LOINC_PREGNANCY_STATUS -> applyPregnancy(resource, profile).also { profile = it }
             FhirRecords.LOINC_SMOKING_STATUS -> applySmoking(resource, profile).also { profile = it }
@@ -331,7 +348,7 @@ private fun MedicalViewModel.applyPregnancy(
             pregnancyStatus = status,
             dueDate = due,
             pregnancyFhirId = profile.pregnancyFhirId
-                ?: FhirRecords.resourceId(resource.data),
+                ?: FhirObservations.resourceId(resource.data),
         )
     } ?: profile
 
@@ -343,7 +360,7 @@ private fun MedicalViewModel.applySmoking(
         profile.copy(
             smokingStatus = status,
             smokingFhirId = profile.smokingFhirId
-                ?: FhirRecords.resourceId(resource.data),
+                ?: FhirObservations.resourceId(resource.data),
         )
     } ?: profile
 
@@ -355,7 +372,7 @@ private fun MedicalViewModel.applySocialHistoryAnswer(
     // Anything else in this category that is one of ours, matched by question code.
     // A provider's social history contains plenty this app does not ask about.
     val question = loinc?.let { SocialHistoryQuestions.byLoinc(it) } ?: return
-    val answerCode = FhirRecords.parseSocialHistoryAnswer(resource.data) ?: return
+    val answerCode = FhirObservations.parseSocialHistoryAnswer(resource.data) ?: return
     // Refuse an answer outside the question's own list rather than storing a code
     // the selector could never show.
     if (question.answers.none { it.code == answerCode }) return
@@ -365,8 +382,8 @@ private fun MedicalViewModel.applySocialHistoryAnswer(
         answerCode = answerCode,
         // The observation's own date, not now. Using now would make every import
         // look like the freshest answer and would misdate the "Recorded" line.
-        recordedAt = FhirRecords.observationEffective(resource.data) ?: return,
-        fhirResourceId = FhirRecords.resourceId(resource.data),
+        recordedAt = FhirObservations.observationEffective(resource.data) ?: return,
+        fhirResourceId = FhirObservations.resourceId(resource.data),
         dataSourceId = resource.dataSourceId,
     )
     val held = newest[question.loinc]

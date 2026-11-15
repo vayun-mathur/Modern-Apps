@@ -33,6 +33,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
+/** Singleton holding health api state and operations. */
 object HealthAPI {
     private var healthConnectClient: HealthConnectClient? = null
     lateinit var preferences: SharedPreferences
@@ -255,6 +256,7 @@ object HealthAPI {
             metadata = Metadata.manualEntry(clientRecordId = record.id),
         )
 
+    /** Kinds of period type. */
     enum class PeriodType {
         Hourly,
         Daily,

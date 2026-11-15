@@ -65,7 +65,7 @@ class AboutYouDialogsTest {
         rule.waitForIdle()
     }
 
-    private fun settleProfile(vm: MedicalViewModel, cond: () -> Boolean) {
+    private fun settleProfile(cond: () -> Boolean) {
         repeat(100) {
             rule.waitForIdle()
             if (cond()) return
@@ -84,7 +84,7 @@ class AboutYouDialogsTest {
         rule.onAllNodesWithText(label, substring = false).fetchSemanticsNodes().let { nodes ->
             rule.onAllNodesWithText(label, substring = false)[nodes.size - 1].performClick()
         }
-        settleProfile(vm) { vm.profile.value.smokingStatus == SmokingStatus.entries.last() }
+        settleProfile { vm.profile.value.smokingStatus == SmokingStatus.entries.last() }
         assertEquals(SmokingStatus.entries.last(), HealthRepository.get(context).getProfile()?.smokingStatus)
     }
 
@@ -98,7 +98,7 @@ class AboutYouDialogsTest {
         rule.onAllNodesWithText(label, substring = false).fetchSemanticsNodes().let { nodes ->
             rule.onAllNodesWithText(label, substring = false)[nodes.size - 1].performClick()
         }
-        settleProfile(vm) { vm.profile.value.pregnancyStatus == PregnancyStatus.Pregnant }
+        settleProfile { vm.profile.value.pregnancyStatus == PregnancyStatus.Pregnant }
         assertEquals(PregnancyStatus.Pregnant, HealthRepository.get(context).getProfile()?.pregnancyStatus)
     }
 

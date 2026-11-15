@@ -84,6 +84,23 @@ private fun JsonObjectBuilder.putMedicationConcept(entry: MedicationEntry) {
  * Times of day become `timeOfDay`, the interval and its unit become `period` and `periodUnit`,
  * and chosen weekdays become `dayOfWeek`.
  */
+
+/** Times of day and the derived frequency for a schedule's repeat. */
+private fun JsonObjectBuilder.putScheduleTimes(
+    schedule: MedicationSchedule,
+    weekly: Boolean,
+    doseDays: Int,
+) {
+    if (schedule.times.isEmpty()) return
+    putJsonArray("timeOfDay") {
+        schedule.times.sorted().forEach { add(JsonPrimitive(formatTimeOfDay(it))) }
+    }
+    // frequency counts doses per period, so a weekly schedule multiplies its times of
+    // day by the number of days it falls on.
+    if (!weekly || doseDays > 0) {
+        put("frequency", schedule.times.size * (if (weekly) doseDays else 1))
+    }
+}
 private fun JsonObjectBuilder.putRepeat(entry: MedicationEntry, schedule: MedicationSchedule?) {
     putJsonObject("repeat") {
         putJsonObject("boundsPeriod") {
@@ -99,16 +116,7 @@ private fun JsonObjectBuilder.putRepeat(entry: MedicationEntry, schedule: Medica
 
         val weekly = schedule.repeatUnit == RepeatUnit.Weekly
         val doseDays = Integer.bitCount(schedule.daysOfWeek and ALL_DAYS_MASK)
-        if (schedule.times.isNotEmpty()) {
-            putJsonArray("timeOfDay") {
-                schedule.times.sorted().forEach { add(JsonPrimitive(formatTimeOfDay(it))) }
-            }
-            // frequency counts doses per period, so a weekly schedule multiplies its times of
-            // day by the number of days it falls on.
-            if (!weekly || doseDays > 0) {
-                put("frequency", schedule.times.size * (if (weekly) doseDays else 1))
-            }
-        }
+        putScheduleTimes(schedule, weekly, doseDays)
         put("period", schedule.interval)
         put("periodUnit", if (weekly) "wk" else "d")
         if (weekly && doseDays > 0) {
@@ -169,15 +177,32 @@ private fun JsonObject.medicationName(): Pair<String, String?>? {
  * schedule behind it — a provider's instructions are worth keeping rather than flattening to a
  * date range. The entry's `id` is the FHIR id; the importer assigns the local row id.
  */
+
+/** The shared medication header: root, id, display name and RxCUI. */
+private data class MedHeader(
+    val root: JsonObject,
+    val id: String,
+    val displayName: String,
+    val rxcui: String?,
+)
+
+/** Parses and type-checks the resource header; null when it is not a [type] with a name. */
+private fun medHeader(data: String, type: String): MedHeader? {
+    val root = parseObject(data) ?: return null
+    if (root.string("resourceType") != type) return null
+    val id = root.string("id") ?: return null
+    val (displayName, rxcui) = root.medicationName() ?: return null
+    return MedHeader(root, id, displayName, rxcui)
+}
 internal fun parseMedicationRequest(
     data: String,
     dataSourceId: String,
 ): Pair<MedicationEntry, MedicationSchedule?>? {
-    val root = parseObject(data) ?: return null
-    if (root.string("resourceType") != "MedicationRequest") return null
-    val id = root.string("id") ?: return null
+    val header = medHeader(data, "MedicationRequest") ?: return null
+    val root = header.root
+    val id = header.id
     val status = requestStatusFromFhir(root.string("status")) ?: return null
-    val (displayName, rxcui) = root.medicationName() ?: return null
+    val (displayName, rxcui) = header.displayName to header.rxcui
 
     val dosage = (root["dosageInstruction"] as? JsonArray)?.firstOrNull() as? JsonObject
     val repeat = ((dosage?.get("timing") as? JsonObject)?.get("repeat")) as? JsonObject
@@ -211,12 +236,12 @@ internal fun parseMedicationRequest(
  * a dose against one of this app's plans.
  */
 internal fun parseMedicationStatement(data: String, dataSourceId: String): MedicationEntry? {
-    val root = parseObject(data) ?: return null
-    if (root.string("resourceType") != "MedicationStatement") return null
+    val header = medHeader(data, "MedicationStatement") ?: return null
+    val root = header.root
     if (root.basedOnRequestId() != null) return null
-    val id = root.string("id") ?: return null
+    val id = header.id
     val status = statementStatusFromFhir(root.string("status")) ?: return null
-    val (displayName, rxcui) = root.medicationName() ?: return null
+    val (displayName, rxcui) = header.displayName to header.rxcui
 
     val period = root["effectivePeriod"] as? JsonObject
     val startedAt = parseDateTime(root.string("effectiveDateTime"))
@@ -250,6 +275,31 @@ internal fun isUnplannedMedicationStatement(data: String): Boolean {
     return root.string("resourceType") == "MedicationStatement" && root.basedOnRequestId() == null
 }
 
+
+/** The repeat unit and interval, normalising daily-on-weekdays to weekly. */
+private fun repeatUnitInterval(
+    periodUnit: String?,
+    days: Int,
+    intervalIn: Int,
+): Pair<RepeatUnit, Int>? {
+    var unit = when (periodUnit) {
+        null, "d" -> RepeatUnit.Daily
+        "wk" -> RepeatUnit.Weekly
+        // Hours, minutes, months and years cannot be expressed as days or weeks. Reading "every 8
+        // hours" as "every 8 days" would be a wrong regimen, so no schedule is better.
+        else -> return null
+    }
+    var interval = intervalIn
+    if (unit == RepeatUnit.Daily && days != 0) {
+        // Daily on chosen weekdays is weekly on those days. With a multi-day period as well the
+        // two constraints do not combine into anything this model can say.
+        if (interval != 1) return null
+        unit = RepeatUnit.Weekly
+        interval = 1
+    }
+    if (unit == RepeatUnit.Weekly && days == 0) return null
+    return unit to interval
+}
 private fun parseRepeat(
     repeat: JsonObject,
     medicationId: String,
@@ -266,29 +316,16 @@ private fun parseRepeat(
     // is refused rather than rounded into a different regimen.
     val period = repeat["period"]?.jsonPrimitive?.doubleOrNull ?: 1.0
     if (period < 1 || period % 1.0 != 0.0) return null
-    var interval = period.toInt()
+    val parsedInterval = period.toInt()
 
-    var unit = when (repeat.string("periodUnit")) {
-        null, "d" -> RepeatUnit.Daily
-        "wk" -> RepeatUnit.Weekly
-        // Hours, minutes, months and years cannot be expressed as days or weeks. Reading "every 8
-        // hours" as "every 8 days" would be a wrong regimen, so no schedule is better.
-        else -> return null
-    }
     val days = (repeat["dayOfWeek"] as? JsonArray)
         ?.mapNotNull { (it as? JsonPrimitive)?.content }
         ?.fold(0) { acc, day ->
             val index = FHIR_DAYS.indexOf(day)
             if (index < 0) acc else acc or (1 shl index)
         } ?: 0
-    if (unit == RepeatUnit.Daily && days != 0) {
-        // Daily on chosen weekdays is weekly on those days. With a multi-day period as well the
-        // two constraints do not combine into anything this model can say.
-        if (interval != 1) return null
-        unit = RepeatUnit.Weekly
-        interval = 1
-    }
-    if (unit == RepeatUnit.Weekly && days == 0) return null
+    val (unit, interval) = repeatUnitInterval(repeat.string("periodUnit"), days, parsedInterval)
+        ?: return null
 
     return MedicationSchedule(
         id = medicationId,
@@ -352,8 +389,9 @@ internal fun doseEventJson(event: DoseEvent, medication: MedicationEntry): Strin
  */
 internal fun parseDoseEvent(data: String, dataSourceId: String): DoseEvent? {
     val root = parseObject(data) ?: return null
-    if (root.string("resourceType") != "MedicationStatement") return null
-    if (root.string("status") != "completed") return null
+    if (root.string("resourceType") != "MedicationStatement" || root.string("status") != "completed") {
+        return null
+    }
     val id = root.string("id") ?: return null
     val takenAt = parseDateTime(root.string("effectiveDateTime")) ?: return null
     val requestId = root.basedOnRequestId() ?: return null
