@@ -473,12 +473,15 @@ class TvStoreViewModel(
      */
     fun setSourceEnabled(source: AppSource, enabled: Boolean) {
         viewModelScope.launch {
-            settings.setSourceEnabled(source, enabled)
+            // In-memory state first: the screens (and anything observing the
+            // flows) agree with the toggle as soon as this coroutine runs,
+            // instead of after the DataStore write and cache purge below.
             val next = if (enabled) enabledSourcesFlow.value + source else enabledSourcesFlow.value - source
             enabledSourcesFlow.value = next
-            catalog.purgeDisabled(next)
             if (!enabled) forgetSource(source)
             clearBrowse()
+            settings.setSourceEnabled(source, enabled)
+            catalog.purgeDisabled(next)
             categoriesFlow.value = catalog.categories()
             loadHome()
             loadAccrescent(next)

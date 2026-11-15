@@ -70,12 +70,17 @@ class TvMainActivityTest {
             composeRule.onNodeWithText(label).assertIsDisplayed()
         }
         composeRule.onNodeWithText("Library").performSemanticsAction(SemanticsActions.RequestFocus)
+        // The destination content lands via viewModelScope (Dispatchers.Main):
+        // Robolectric's paused main looper only runs when idled, and the
+        // compose rule's waitUntil does not pump it, so idle it per poll.
         composeRule.waitUntil(timeoutMillis = 15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             composeRule.onAllNodesWithText("Apps you install are listed here", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("Sources").performSemanticsAction(SemanticsActions.RequestFocus)
         composeRule.waitUntil(timeoutMillis = 15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             composeRule.onAllNodesWithText("Automatically install updates", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
