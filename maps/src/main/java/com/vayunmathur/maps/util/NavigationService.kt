@@ -405,6 +405,7 @@ class NavigationService : Service() {
         stopSelf()
     }
 
+    /** Shared constants and helpers for NavigationService. */
     companion object {
         private const val TAG = "NavigationService"
         private const val CHANNEL_ID = "navigation_channel"

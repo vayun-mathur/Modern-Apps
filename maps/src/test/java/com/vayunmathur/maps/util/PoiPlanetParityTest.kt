@@ -38,6 +38,15 @@ class PoiPlanetParityTest {
     /** Everything a user sees from the POI index for the fixed query set, plus timings. */
     private data class Answers(val lines: List<String>, val timings: Map<String, Pair<Double, Double>>)
 
+    /** Cold/warm timings for [pass], keeping only the cold run's output lines. */
+    private fun timedPair(lines: ArrayList<String>, n: Int, pass: () -> Unit): Pair<Double, Double> {
+        val cold = nanosPer(n, pass)
+        val keep = lines.size
+        val warm = nanosPer(n, pass)
+        while (lines.size > keep) lines.removeAt(lines.size - 1)
+        return cold to warm
+    }
+
     private fun nanosPer(n: Int, block: () -> Unit): Double {
         val t = System.nanoTime()
         block()
@@ -57,11 +66,7 @@ class PoiPlanetParityTest {
         fun searchPass(): Unit = QUERIES.forEach { (q, lat, lon) ->
             PoiIndex.searchByName(q, lat, lon, limit = 10).forEach { lines.add("search $q: ${row(it)}") }
         }
-        val searchCold = nanosPer(QUERIES.size) { searchPass() }
-        val keep = lines.size
-        val searchWarm = nanosPer(QUERIES.size) { searchPass() }
-        while (lines.size > keep) lines.removeAt(lines.size - 1)
-        timings["search (us/query)"] = searchCold to searchWarm
+        timings["search (us/query)"] = timedPair(lines, QUERIES.size) { searchPass() }
 
         // Spatial: nearest + viewport in each city (each record carries its regionId).
         fun spatialPass(): Unit = CITIES.forEach { (c, lat, lon) ->
@@ -69,11 +74,7 @@ class PoiPlanetParityTest {
             val box = PoiIndex.inViewport(lon - 0.01, lat - 0.01, lon + 0.01, lat + 0.01)
             lines.add("viewport $c: ${box.size} regionsum ${box.sumOf { it.regionId }}")
         }
-        val spatialCold = nanosPer(CITIES.size) { spatialPass() }
-        val keep2 = lines.size
-        val spatialWarm = nanosPer(CITIES.size) { spatialPass() }
-        while (lines.size > keep2) lines.removeAt(lines.size - 1)
-        timings["nearest+viewport (us/city)"] = spatialCold to spatialWarm
+        timings["nearest+viewport (us/city)"] = timedPair(lines, CITIES.size) { spatialPass() }
 
         // Place sheet: attributes of random ordinals (each one a different block when cold).
         val rnd = Random(SEED)

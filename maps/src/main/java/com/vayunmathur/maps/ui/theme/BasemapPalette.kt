@@ -69,6 +69,7 @@ object BasemapPalette {
         Other,
     }
 
+    /** Immutable value describing label colors; carries text, halo. */
     @Immutable
     data class LabelColors(val text: Color, val halo: Color)
 

@@ -28,6 +28,7 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.maps.data.MapPreferences
 
+/** Selected Feature View Model: a application implementation for selected feature view model. */
 class SelectedFeatureViewModel(application: Application): AndroidViewModel(application) {
     private val _selectedFeature = MutableStateFlow<SpecificFeature?>(null)
     val selectedFeature = _selectedFeature.asStateFlow()

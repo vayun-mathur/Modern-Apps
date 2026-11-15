@@ -15,6 +15,7 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 
+/** Opening Hours: a string implementation for opening hours. */
 @Serializable
 class OpeningHours(val rawString: String) {
 
@@ -29,6 +30,7 @@ class OpeningHours(val rawString: String) {
      */
     val hasRules: Boolean get() = rules.isNotEmpty()
 
+    /** Shared constants and helpers for OpeningHours. */
     companion object {
         fun from(input: String): OpeningHours = OpeningHours(input)
 

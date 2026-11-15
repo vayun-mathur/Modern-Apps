@@ -70,11 +70,17 @@ object NavigationSessionManager {
 
     /** UI / notification state for the navigation session. */
     sealed interface NavState {
+        /** Singleton holding idle state and operations. */
         data object Idle : NavState
+        /** Singleton holding starting state and operations. */
         data object Starting : NavState
+        /** Immutable value describing navigating; carries progress. */
         data class Navigating(val progress: NavigationProgress) : NavState
+        /** Singleton holding recalculating state and operations. */
         data object Recalculating : NavState
+        /** Singleton holding arrived state and operations. */
         data object Arrived : NavState
+        /** Immutable value describing failed; carries reason. */
         data class Failed(val reason: String) : NavState
     }
 

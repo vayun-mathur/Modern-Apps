@@ -281,6 +281,7 @@ object OfflineRouter {
         notifyTrafficFetchFinishedNative(packedSquare)
     }
 
+    /** Type representing raw step. */
     class RawStep
     @Keep
     constructor(

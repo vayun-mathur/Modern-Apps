@@ -51,8 +51,10 @@ import kotlinx.serialization.Serializable
 import com.vayunmathur.library.map.GeoPoint
 import java.io.File
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
 
+    /** Shared constants and helpers for MainActivity. */
     companion object {
         private const val TAG = "MapsIntent"
 
@@ -317,12 +319,16 @@ class MainActivity : MaActivity() {
         )
 }
 
+/** Contract for route. */
 @Serializable
 sealed interface Route: NavKey {
+    /** Singleton holding map page state and operations. */
     @Serializable
     data object MapPage: Route
+    /** Singleton holding settings page state and operations. */
     @Serializable
     data object SettingsPage: Route
+    /** Singleton holding saved places page state and operations. */
     @Serializable
     data object SavedPlacesPage: Route
 }

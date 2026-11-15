@@ -46,6 +46,7 @@ data class PoiEnrichmentKey(
     val hasHours: Boolean,
     val hasPopularTimes: Boolean,
 ) {
+    /** Shared constants and helpers for PoiEnrichmentKey. */
     companion object {
         fun of(poi: GooglePoiInfo?): PoiEnrichmentKey = PoiEnrichmentKey(
             photoCount = poi?.photoUrls?.size ?: 0,

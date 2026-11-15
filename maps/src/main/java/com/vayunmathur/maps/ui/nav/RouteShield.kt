@@ -17,6 +17,7 @@ import com.vayunmathur.library.ui.Text
 /** A parsed road shield reference and its rendering style. */
 data class RoadShield(val ref: String, val kind: ShieldKind)
 
+/** Kinds of shield kind. */
 enum class ShieldKind { INTERSTATE, US_HIGHWAY, STATE, GENERIC }
 
 /**

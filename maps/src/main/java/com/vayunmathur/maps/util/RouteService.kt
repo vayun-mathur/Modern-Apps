@@ -5,9 +5,13 @@ import com.vayunmathur.library.map.GeoPoint
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+/** Singleton holding route service state and operations. */
 object RouteService {
+    /** Kinds of travel mode. */
     enum class TravelMode { DRIVE, TRANSIT, WALK, BICYCLE }
+    /** Singleton holding api state and operations. */
     object API {
+        /** Immutable value describing transit details. */
         @Serializable
         data class TransitDetails(
             val headsign: String,
@@ -16,6 +20,7 @@ object RouteService {
             val stopDetails: StopDetails,
             val feedName: String? = null,
         )
+        /** Immutable value describing stop details. */
         @Serializable
         data class StopDetails(
             val arrivalTime: String,
@@ -23,14 +28,17 @@ object RouteService {
             val arrivalStop: Stop,
             val departureStop: Stop,
         )
+        /** Immutable value describing transit line; carries name, nameShort, color. */
         @Serializable data class Stop(val name: String)
         @Serializable
         data class TransitLine(val name: String, val nameShort: String? = null, val color: String)
+        /** Immutable value describing nav instruction. */
         @Serializable
         data class NavInstruction(
             val maneuver: Maneuver = Maneuver.MANEUVER_UNSPECIFIED,
             val instructions: String = "",
         )
+        /** Kinds of maneuver. */
         @Serializable
         enum class Maneuver {
             MANEUVER_UNSPECIFIED, TURN_SLIGHT_LEFT, TURN_SHARP_LEFT, UTURN_LEFT,
@@ -77,6 +85,7 @@ object RouteService {
     ): RouteType
     /** One sample of the [Route.elevationProfile]: elevation at a cumulative distance. */
     data class ElevationPoint(val distanceMeters: Double, val elevationMeters: Double)
+    /** Immutable value describing step. */
     data class Step(
         val distanceMeters: Double,
         val staticDuration: Duration,
@@ -87,7 +96,9 @@ object RouteService {
         val speedRatio: Double = 1.0,
         val lanes: List<API.Lane> = emptyList(),
     )
+    /** Contract for route type. */
     interface RouteType { val duration: Duration; val distanceMeters: Double }
+    /** Empty Route: a route type implementation for empty route. */
     class EmptyRoute : RouteType {
         override val duration: Duration = 0.seconds
         override val distanceMeters: Double = 0.0

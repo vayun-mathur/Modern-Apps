@@ -59,6 +59,7 @@ class SavedPlaceStore(private val ds: DataStoreUtils) {
             ?.let { runCatching { Json.decodeFromString<Map<String, List<SavedPlace>>>(it) }.getOrNull() }
             ?: emptyMap()
 
+    /** Shared constants and helpers for SavedPlaceStore. */
     companion object {
         private const val KEY_SAVED = "saved_places_list"
         private const val KEY_LISTS = "saved_place_lists"

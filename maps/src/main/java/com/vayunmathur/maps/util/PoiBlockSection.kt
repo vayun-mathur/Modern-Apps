@@ -116,7 +116,8 @@ internal class PoiBlockSection private constructor(
         try {
             while (n < want) {
                 val got = inflater.inflate(out, n, want - n)
-                if (got == 0 && (inflater.finished() || inflater.needsInput() || inflater.needsDictionary())) break
+                val stalled = inflater.finished() || inflater.needsInput() || inflater.needsDictionary()
+                if (got == 0 && stalled) break
                 n += got
             }
         } catch (e: DataFormatException) {
@@ -133,11 +134,11 @@ internal class PoiBlockSection private constructor(
         return block(pos / blockSize)[pos % blockSize]
     }
 
-    override fun getShort(pos: Int): Short = (littleEndian(pos, 2)).toInt().toShort()
+    override fun getShort(pos: Int): Short = (littleEndian(pos, SHORT_BYTES)).toInt().toShort()
 
-    override fun getInt(pos: Int): Int = littleEndian(pos, 4).toInt()
+    override fun getInt(pos: Int): Int = littleEndian(pos, INT_BYTES).toInt()
 
-    override fun getLong(pos: Int): Long = littleEndian(pos, 8)
+    override fun getLong(pos: Int): Long = littleEndian(pos, LONG_BYTES)
 
     override fun bytes(pos: Int, len: Int): ByteArray {
         checkRange(pos, len)
@@ -192,6 +193,9 @@ internal class PoiBlockSection private constructor(
         const val CACHE_BLOCKS = 64
         private const val LOAD_FACTOR = 0.75f
         private const val BYTE_BITS = 8
+        private const val SHORT_BYTES = 2
+        private const val INT_BYTES = 4
+        private const val LONG_BYTES = 8
         private const val BYTE_MASK = 0xFFL
         private const val MAX_BLOCK = 1 shl 20
 
@@ -207,18 +211,29 @@ internal class PoiBlockSection private constructor(
             val blockSize = buf.getInt(BLOCK_SIZE_OFF)
             val rawLen = buf.getLong(RAW_LEN_OFF)
             val blockCount = buf.getInt(BLOCK_COUNT_OFF)
-            if (blockSize !in 1..MAX_BLOCK || rawLen !in 0..Int.MAX_VALUE.toLong() || blockCount < 0) return null
-            if (blockCount.toLong() != (rawLen + blockSize - 1) / blockSize) return null
+            if (!countsValid(buf, blockSize, rawLen, blockCount)) return null
+            if (!tableValid(buf, blockCount)) return null
+            return PoiBlockSection(buf, rawLen.toInt(), blockSize, blockCount)
+        }
+
+        /** Block geometry from the header must be self-consistent and in range. */
+        private fun countsValid(buf: ByteBuffer, blockSize: Int, rawLen: Long, blockCount: Int): Boolean {
+            if (blockSize !in 1..MAX_BLOCK || rawLen !in 0..Int.MAX_VALUE.toLong() || blockCount < 0) return false
+            if (blockCount.toLong() != (rawLen + blockSize - 1) / blockSize) return false
             val tableEnd = HEADER_BYTES.toLong() + OFFSET_BYTES.toLong() * (blockCount + 1)
-            if (tableEnd > buf.capacity()) return null
+            return tableEnd <= buf.capacity()
+        }
+
+        /** The offset table must be monotonic, in bounds and end at the file end. */
+        private fun tableValid(buf: ByteBuffer, blockCount: Int): Boolean {
+            val tableEnd = HEADER_BYTES.toLong() + OFFSET_BYTES.toLong() * (blockCount + 1)
             var prev = tableEnd
             for (i in 0..blockCount) {
                 val o = buf.getLong(HEADER_BYTES + OFFSET_BYTES * i)
-                if (o < prev || o > buf.capacity()) return null
+                if (o < prev || o > buf.capacity()) return false
                 prev = o
             }
-            if (prev != buf.capacity().toLong()) return null
-            return PoiBlockSection(buf, rawLen.toInt(), blockSize, blockCount)
+            return prev == buf.capacity().toLong()
         }
     }
 }

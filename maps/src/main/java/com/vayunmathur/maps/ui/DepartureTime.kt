@@ -31,6 +31,7 @@ object DepartureTime {
 
     private const val MINUTE_MS = 60_000L
 
+    /** Contract for label. */
     sealed interface Label {
         /** Leaving now — inside half a minute either way. */
         data object Now : Label

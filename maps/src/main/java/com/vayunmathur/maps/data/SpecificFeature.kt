@@ -11,8 +11,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
+/** Contract for specific feature. */
 @Serializable
 sealed interface SpecificFeature {
+    /** Contract for routable feature. */
     interface RoutableFeature : SpecificFeature {
         val position: GeoPoint
         val name: String
@@ -61,6 +63,7 @@ sealed interface SpecificFeature {
         @Serializable(with = GeoPointAsCoordinates::class) val position: GeoPoint? = null,
         val regionId: Long = 0L,
     ) : SpecificFeature
+    /** Immutable value describing restaurant. */
     @Serializable
     data class Restaurant(
         override val name: String,
@@ -70,6 +73,7 @@ sealed interface SpecificFeature {
         val openingHours: OpeningHours?,
         @Serializable(with = GeoPointAsCoordinates::class) override val position: GeoPoint,
     ) : RoutableFeature
+    /** Immutable value describing generic place. */
     @Serializable
     data class GenericPlace(
         override val name: String,
@@ -92,6 +96,7 @@ sealed interface SpecificFeature {
          */
         val regionId: Long = 0L,
     ) : RoutableFeature
+    /** Immutable value describing route; carries waypoints. */
     @Serializable
     data class Route(val waypoints: List<RoutableFeature?>) : SpecificFeature
 }

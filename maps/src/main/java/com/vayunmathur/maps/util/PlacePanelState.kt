@@ -43,6 +43,7 @@ interface PlacePanelActions {
     fun removeSaved(place: SavedPlace) {}
     fun openNearestStop(lat: Double, lon: Double) {}
 
+    /** Shared constants and helpers for PlacePanelActions. */
     companion object {
         val Noop: PlacePanelActions = object : PlacePanelActions {}
     }

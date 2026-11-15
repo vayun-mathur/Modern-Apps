@@ -71,6 +71,7 @@ fun projectOntoSegment(p: GeoPoint, a: GeoPoint, b: GeoPoint): SegmentProjection
     )
 }
 
+/** Immutable value describing segment projection. */
 data class SegmentProjection(
     val fraction: Double,
     val projectedPosition: GeoPoint,

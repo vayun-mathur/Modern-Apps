@@ -54,6 +54,7 @@ class ParkingViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { block() }
     }
 
+    /** Shared constants and helpers for ParkingViewModel. */
     companion object {
         private const val MAX_HISTORY = 10
     }

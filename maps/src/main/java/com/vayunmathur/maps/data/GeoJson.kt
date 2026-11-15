@@ -21,10 +21,13 @@ import kotlinx.serialization.encoding.Encoder
  */
 sealed interface Geometry
 
+/** Immutable value describing point; carries coordinates. */
 data class Point(val coordinates: GeoPoint) : Geometry
 
+/** Immutable value describing line string; carries coordinates. */
 data class LineString(val coordinates: List<GeoPoint>) : Geometry
 
+/** Immutable value describing feature; carries geometry, properties. */
 data class Feature<G : Geometry, P>(val geometry: G, val properties: P)
 
 /**

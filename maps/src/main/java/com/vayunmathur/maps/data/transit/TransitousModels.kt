@@ -125,6 +125,7 @@ data class MotisStoptimes(
     val stopTimes: List<MotisStopTime> = emptyList(),
 )
 
+/** Immutable value describing motis stop time. */
 @Serializable
 data class MotisStopTime(
     val place: MotisPlace? = null,

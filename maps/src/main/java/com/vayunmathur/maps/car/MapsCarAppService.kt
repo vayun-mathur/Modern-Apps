@@ -18,6 +18,7 @@ import androidx.car.app.validation.HostValidator
  */
 class MapsCarAppService : CarAppService() {
 
+    /** Shared constants and helpers for MapsCarAppService. */
     companion object {
         /** Car API level for per-display sessions (MAIN + CLUSTER). */
         private const val CAR_API_SESSIONS = 6

@@ -49,6 +49,7 @@ class RecentSearchStore private constructor(private val ds: DataStoreUtils) {
             ?.let { runCatching { Json.decodeFromString<List<String>>(it) }.getOrNull() }
             ?: emptyList()
 
+    /** Shared constants and helpers for RecentSearchStore. */
     companion object {
         private const val KEY = "maps_recent_searches"
         private const val MAX = 10

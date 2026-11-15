@@ -117,6 +117,7 @@ private fun PoiIndex.PoiRecord.toSearchResult(locality: String?) = SearchResult(
  */
 class MapsSearchViewModel(application: Application) : AndroidViewModel(application) {
 
+    /** Shared constants and helpers for MapsSearchViewModel. */
     companion object {
         /**
          * Keystroke coalescing (ms) before a query hits the offline index.

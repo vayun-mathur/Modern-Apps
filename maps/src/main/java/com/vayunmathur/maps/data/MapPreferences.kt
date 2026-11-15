@@ -70,6 +70,7 @@ enum class ThemeMode(val pref: String) {
             DARK -> true
         }
 
+    /** Shared constants and helpers for ThemeMode. */
     companion object {
         fun from(pref: String?): ThemeMode = entries.firstOrNull { it.pref == pref } ?: SYSTEM
     }

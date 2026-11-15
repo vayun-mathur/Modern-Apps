@@ -11,7 +11,9 @@ import android.location.LocationManager
 import android.os.Bundle
 import com.vayunmathur.library.map.GeoPoint
 
+/** Framework Location Manager: a context implementation for framework location manager. */
 class FrameworkLocationManager(context: Context) : SensorEventListener {
+    /** Shared constants and helpers for FrameworkLocationManager. */
     companion object {
         /** Fastest fix cadence asked of either provider. */
         private const val LOCATION_MIN_TIME_MS = 1000L

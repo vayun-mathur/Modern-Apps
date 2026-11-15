@@ -187,6 +187,7 @@ class FamilyLocationClient(
         override fun hashCode(): Int = super.hashCode()
     }
 
+    /** Shared constants and helpers for FamilyLocationClient. */
     companion object {
         /** Battery sentinel when the payload carries no battery array. */
         private const val NO_BATTERY = -1f

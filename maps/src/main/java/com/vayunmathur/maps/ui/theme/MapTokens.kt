@@ -97,6 +97,7 @@ val SpeedSign = SpeedSignColors(
     ink = Color(0xFF111111),
 )
 
+/** Immutable value describing speed sign colors. */
 @Immutable
 data class SpeedSignColors(
     val disc: Color,

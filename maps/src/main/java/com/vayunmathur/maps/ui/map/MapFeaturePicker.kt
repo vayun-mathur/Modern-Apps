@@ -134,6 +134,7 @@ class MapFeaturePicker(
         return DpRect(offset.x - pad, offset.y - pad, offset.x + pad, offset.y + pad)
     }
 
+    /** Shared constants and helpers for MapFeaturePicker. */
     companion object {
         /**
          * The basemap label layers probed for a "what's here?" tap.

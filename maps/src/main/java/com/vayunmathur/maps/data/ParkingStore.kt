@@ -62,6 +62,7 @@ class ParkingStore(private val ds: DataStoreUtils) {
             ?.let { runCatching { Json.decodeFromString<List<ParkingSpot>>(it) }.getOrNull() }
             ?: emptyList()
 
+    /** Shared constants and helpers for ParkingStore. */
     companion object {
         private const val KEY_ACTIVE = "parking_active_spot"
         private const val KEY_HISTORY = "parking_history"

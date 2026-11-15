@@ -221,16 +221,22 @@ data class TripSelection(
 
 /** UI state for the vehicle trip sheet. */
 sealed interface TripItineraryState {
+    /** Singleton holding idle state and operations. */
     data object Idle : TripItineraryState
+    /** Singleton holding loading state and operations. */
     data object Loading : TripItineraryState
     /** The id did not resolve or the trip does not run today. */
     data object Missing : TripItineraryState
+    /** Immutable value describing loaded; carries itinerary. */
     data class Loaded(val itinerary: TripItinerary) : TripItineraryState
 }
 
 /** UI state for the departure board. */
 sealed interface DeparturesState {
+    /** Singleton holding idle state and operations. */
     data object Idle : DeparturesState
+    /** Immutable value describing loading; carries stop. */
     data class Loading(val stop: TransitStop) : DeparturesState
+    /** Immutable value describing loaded; carries stop, departures. */
     data class Loaded(val stop: TransitStop, val departures: List<Departure>) : DeparturesState
 }

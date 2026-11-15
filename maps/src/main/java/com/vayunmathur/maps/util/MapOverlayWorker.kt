@@ -219,6 +219,7 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
         return Result.success()
     }
 
+    /** Shared constants and helpers for MapOverlayWorker. */
     companion object {
         private const val TAG = "MapOverlay"
         private const val KEY_MANIFEST_URL = "manifest_url"

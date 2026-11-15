@@ -84,6 +84,7 @@ interface SearchActions {
     fun clearRecents() {}
     fun back() {}
 
+    /** Shared constants and helpers for SearchActions. */
     companion object {
         val Noop: SearchActions = object : SearchActions {}
     }

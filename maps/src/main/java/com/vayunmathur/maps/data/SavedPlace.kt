@@ -27,6 +27,7 @@ data class SavedPlace(val name: String, val lat: Double, val lon: Double) {
             lat == feature.position.latitude &&
             lon == feature.position.longitude
 
+    /** Shared constants and helpers for SavedPlace. */
     companion object {
         fun from(feature: SpecificFeature.RoutableFeature): SavedPlace =
             SavedPlace(feature.name, feature.position.latitude, feature.position.longitude)
