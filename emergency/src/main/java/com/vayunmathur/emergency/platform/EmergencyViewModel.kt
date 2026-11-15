@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** ViewModel backing the emergency info screens, combining stored info, grants and Health Connect state. */
 class EmergencyViewModel(app: Application) : AndroidViewModel(app), EmergencyActions {
@@ -26,6 +28,11 @@ class EmergencyViewModel(app: Application) : AndroidViewModel(app), EmergencyAct
     private val health = MutableStateFlow(HealthConnectMedicalState())
     private val ownerCandidates = MutableStateFlow<OwnerPickCandidates?>(null)
     private val ownerPickFailed = MutableStateFlow(false)
+
+    // Contact add/remove run as separate IO launches; without serialization
+    // a slow add can publish its outcome after a later one, leaving
+    // addFailed (and the stored list) describing the wrong action.
+    private val contactMutex = Mutex()
 
     val state: StateFlow<EmergencyUiState> = combine(
         repository.info,
@@ -126,13 +133,17 @@ class EmergencyViewModel(app: Application) : AndroidViewModel(app), EmergencyAct
 
     override fun addContact(phoneUri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
-            addFailed.value = !repository.addContact(phoneUri)
+            contactMutex.withLock {
+                addFailed.value = !repository.addContact(phoneUri)
+            }
         }
     }
 
     override fun removeContact(phoneUri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.removeContact(phoneUri)
+            contactMutex.withLock {
+                repository.removeContact(phoneUri)
+            }
         }
     }
 
