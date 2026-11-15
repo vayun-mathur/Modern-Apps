@@ -25,6 +25,7 @@ class LichessAuthExpired(message: String) : IOException(message)
  */
 class LichessApi(private val tokenStore: LichessTokenStore) {
 
+    /** Shared constants and helpers for LichessApi. */
     companion object {
         private const val BASE = "https://lichess.org"
         private const val FORM = "application/x-www-form-urlencoded"
@@ -32,7 +33,10 @@ class LichessApi(private val tokenStore: LichessTokenStore) {
         /** Idle games outlast the 60 s default read timeout; moves reset it on every read. */
         private const val STREAM_READ_TIMEOUT_MS = 10 * 60_000L
 
-        private const val MAX_ERROR_CHARS = 200
+        private const val HTTP_OK_MIN = 200
+private const val HTTP_OK_MAX = 299
+private const val HTTP_UNAUTHORIZED = 401
+private const val MAX_ERROR_CHARS = 200
 
         private val HTTP_401 = Regex("^HTTP 401\\b")
 
@@ -52,8 +56,8 @@ class LichessApi(private val tokenStore: LichessTokenStore) {
 
     private fun checkOk(response: SimpleResponse, what: String) {
         when (response.status) {
-            in 200..299 -> return
-            401 -> throw LichessAuthExpired("Lichess $what: unauthorized (401)")
+            in HTTP_OK_MIN..HTTP_OK_MAX -> return
+            HTTP_UNAUTHORIZED -> throw LichessAuthExpired("Lichess $what: unauthorized (401)")
             else -> throw IOException("Lichess $what: HTTP ${response.status}: ${response.body.take(MAX_ERROR_CHARS)}")
         }
     }
@@ -229,19 +233,28 @@ class LichessApi(private val tokenStore: LichessTokenStore) {
         while (true) {
             val read = stream.read(buffer)
             if (read == -1) break
-            if (read == 0) continue
-            var start = 0
-            for (i in 0 until read) {
-                if (buffer[i] == NEWLINE_BYTE) {
-                    pending.write(buffer, start, i - start)
-                    val line = pending.toString(Charsets.UTF_8.name()).trim()
-                    pending.reset()
-                    start = i + 1
-                    if (line.isNotEmpty()) onLine(line)
-                }
-            }
-            pending.write(buffer, start, read - start)
+            if (read > 0) emitLines(buffer, read, pending, onLine)
         }
+    }
+
+    /** Emits every complete line in [buffer] into [pending], keeping the partial tail. */
+    private suspend fun emitLines(
+        buffer: ByteArray,
+        read: Int,
+        pending: ByteArrayOutputStream,
+        onLine: suspend (String) -> Unit,
+    ) {
+        var start = 0
+        for (i in 0 until read) {
+            if (buffer[i] == NEWLINE_BYTE) {
+                pending.write(buffer, start, i - start)
+                val line = pending.toString(Charsets.UTF_8.name()).trim()
+                pending.reset()
+                start = i + 1
+                if (line.isNotEmpty()) onLine(line)
+            }
+        }
+        pending.write(buffer, start, read - start)
     }
 }
 

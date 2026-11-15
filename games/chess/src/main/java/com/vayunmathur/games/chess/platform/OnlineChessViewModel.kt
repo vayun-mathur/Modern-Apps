@@ -60,13 +60,13 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     internal var api = LichessApi(tokenStore)
         set(value) {
             field = value
-            if (_uiState.value.auth is OnlineAuth.SignedIn) {
+            if (uiStateFlow.value.auth is OnlineAuth.SignedIn) {
                 startEventStream()
             }
         }
 
-    private val _uiState = MutableStateFlow(OnlineChessUiState())
-    val uiState: StateFlow<OnlineChessUiState> = _uiState.asStateFlow()
+    internal val uiStateFlow = MutableStateFlow(OnlineChessUiState())
+    val uiState: StateFlow<OnlineChessUiState> = uiStateFlow.asStateFlow()
 
     private var eventJob: Job? = null
     private var gameJob: Job? = null
@@ -78,6 +78,7 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     /** Game the stream is currently attached to; stale `gameStart`s for other ids are ignored. */
     private var attachedGameId: String? = null
 
+    /** Shared constants and helpers for OnlineChessViewModel. */
     companion object {
         private const val RECONNECT_BASE_MS = 1_000L
         private const val RECONNECT_MAX_MS = 30_000L
@@ -88,17 +89,17 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             val username = tokenStore.usernameNow()
             if (tokenStore.tokenNow() != null && username != null) {
-                _uiState.update { it.copy(auth = OnlineAuth.SignedIn(username)) }
+                uiStateFlow.update { it.copy(auth = OnlineAuth.SignedIn(username)) }
                 startEventStream()
             }
         }
         redirectJob = viewModelScope.launch {
             LichessAuthBridge.redirects.collect { redirect ->
-                val auth = _uiState.value.auth
+                val auth = uiStateFlow.value.auth
                 if (auth !is OnlineAuth.SigningIn) return@collect
                 try {
                     val username = authManager.finishSignIn(redirect)
-                    _uiState.update { it.copy(auth = OnlineAuth.SignedIn(username)) }
+                    uiStateFlow.update { it.copy(auth = OnlineAuth.SignedIn(username)) }
                     startEventStream()
                 } catch (_: IllegalStateException) {
                     failAuth(OnlineAuth.Error.SignInFailed)
@@ -110,8 +111,8 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun signIn() {
-        if (_uiState.value.auth is OnlineAuth.SigningIn) return
-        _uiState.update { it.copy(auth = OnlineAuth.SigningIn, authError = null) }
+        if (uiStateFlow.value.auth is OnlineAuth.SigningIn) return
+        uiStateFlow.update { it.copy(auth = OnlineAuth.SigningIn, authError = null) }
         authManager.startSignIn()
     }
 
@@ -120,61 +121,48 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch { tokenStore.clear() }
         attachedGameId = null
         appliedUciCount = 0
-        _uiState.value = OnlineChessUiState()
+        uiStateFlow.value = OnlineChessUiState()
     }
 
     private fun failAuth(error: OnlineAuth.Error) {
-        _uiState.update { it.copy(auth = OnlineAuth.SignedOut, authError = error) }
+        uiStateFlow.update { it.copy(auth = OnlineAuth.SignedOut, authError = error) }
     }
 
     private suspend fun requireReauth() {
         stopStreams()
         tokenStore.clear()
         attachedGameId = null
-        _uiState.update {
-            it.copy(connection = OnlineConnection.Idle, auth = OnlineAuth.SignedOut, authError = OnlineAuth.Error.Expired)
+        uiStateFlow.update {
+            it.copy(
+                connection = OnlineConnection.Idle,
+                auth = OnlineAuth.SignedOut,
+                authError = OnlineAuth.Error.Expired,
+            )
         }
         AppMessages.show(authErrorText(OnlineAuth.Error.Expired))
     }
 
     /** Localized text for auth errors ([OnlineAuth.Error] stays locale-free for previews/tests). */
-    fun authErrorText(error: OnlineAuth.Error): String {
-        val context = getApplication<Application>()
-        return when (error) {
-            OnlineAuth.Error.SignInFailed -> context.getString(
-                com.vayunmathur.games.chess.R.string.online_sign_in_failed
-            )
-            OnlineAuth.Error.Expired -> context.getString(
-                com.vayunmathur.games.chess.R.string.online_auth_expired
-            )
-        }
-    }
 
     // -- matchmaking ----------------------------------------------------------
 
-    fun selectTimeControl(timeControl: LichessTimeControl) {
-        _uiState.update { it.copy(selectedTimeControl = timeControl) }
-    }
 
-    fun onChallengeUsernameChange(username: String) {
-        _uiState.update { it.copy(challengeUsername = username) }
-    }
 
     fun quickSeek() {
-        val connection = _uiState.value.connection
+        val connection = uiStateFlow.value.connection
         if (connection is OnlineConnection.Seeking || connection is OnlineConnection.Playing) return
-        _uiState.update {
+        uiStateFlow.update {
             it.copy(connection = OnlineConnection.Seeking(it.selectedTimeControl), lobbyError = null)
         }
         viewModelScope.launch {
             try {
-                api.seek(_uiState.value.selectedTimeControl)
+                api.seek(uiStateFlow.value.selectedTimeControl)
                 // Pairing arrives as gameStart on the event stream; the Seeking UI persists until
                 // then. Seeks live server-side — leaving the tab does not cancel them.
-            } catch (e: LichessAuthExpired) {
+            } catch (_: LichessAuthExpired) {
                 requireReauth()
             } catch (_: IOException) {
-                _uiState.update {
+                uiStateFlow.update {
                     it.copy(connection = OnlineConnection.Idle, lobbyError = OnlineLobby.Error.SeekFailed)
                 }
             }
@@ -182,38 +170,35 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun cancelSeek() {
-        _uiState.update { it.copy(connection = OnlineConnection.Idle) }
+        uiStateFlow.update { it.copy(connection = OnlineConnection.Idle) }
     }
 
     fun challenge() {
-        val username = _uiState.value.challengeUsername.trim()
+        val username = uiStateFlow.value.challengeUsername.trim()
         if (username.isEmpty()) return
-        val connection = _uiState.value.connection
+        val connection = uiStateFlow.value.connection
         if (connection is OnlineConnection.Seeking || connection is OnlineConnection.Playing) return
-        _uiState.update {
+        uiStateFlow.update {
             it.copy(connection = OnlineConnection.Challenging(username), lobbyError = null)
         }
         viewModelScope.launch {
             try {
-                api.challenge(username, _uiState.value.selectedTimeControl)
-                _uiState.update { it.copy(lobbyNotice = OnlineLobby.Notice.ChallengeSent(username)) }
+                api.challenge(username, uiStateFlow.value.selectedTimeControl)
+                uiStateFlow.update { it.copy(lobbyNotice = OnlineLobby.Notice.ChallengeSent(username)) }
                 delay(CHALLENGE_TIMEOUT_MS)
-                if (_uiState.value.connection is OnlineConnection.Challenging) {
-                    _uiState.update { it.copy(connection = OnlineConnection.Idle) }
+                if (uiStateFlow.value.connection is OnlineConnection.Challenging) {
+                    uiStateFlow.update { it.copy(connection = OnlineConnection.Idle) }
                 }
-            } catch (e: LichessAuthExpired) {
+            } catch (_: LichessAuthExpired) {
                 requireReauth()
             } catch (_: IOException) {
-                _uiState.update {
+                uiStateFlow.update {
                     it.copy(connection = OnlineConnection.Idle, lobbyError = OnlineLobby.Error.ChallengeFailed)
                 }
             }
         }
     }
 
-    fun dismissLobbyMessage() {
-        _uiState.update { it.copy(lobbyError = null, lobbyNotice = null, authError = null) }
-    }
 
     // -- streams ----------------------------------------------------------------
 
@@ -236,8 +221,8 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
             try {
                 reconnectLoop(
                     onDrop = {
-                        if (_uiState.value.connection is OnlineConnection.Playing) {
-                            _uiState.update { state ->
+                        if (uiStateFlow.value.connection is OnlineConnection.Playing) {
+                            uiStateFlow.update { state ->
                                 val playing = state.connection as OnlineConnection.Playing
                                 state.copy(connection = playing.copy(reconnecting = true))
                             }
@@ -279,7 +264,7 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     private suspend fun onEvent(event: LichessEvent) {
         when (event) {
             is LichessEvent.GameStart -> {
-                _uiState.update {
+                uiStateFlow.update {
                     it.copy(
                         connection = OnlineConnection.Playing(
                             gameId = event.gameId,
@@ -304,8 +289,8 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }
             is LichessEvent.ChallengeDeclined -> {
-                if (_uiState.value.connection is OnlineConnection.Challenging) {
-                    _uiState.update {
+                if (uiStateFlow.value.connection is OnlineConnection.Challenging) {
+                    uiStateFlow.update {
                         it.copy(
                             connection = OnlineConnection.Idle,
                             lobbyNotice = OnlineLobby.Notice.ChallengeDeclined,
@@ -337,7 +322,7 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
                     PieceColor.WHITE -> blackName
                     PieceColor.BLACK -> whiteName
                 }
-                _uiState.update {
+                uiStateFlow.update {
                     val playing = (it.connection as? OnlineConnection.Playing)
                     it.copy(
                         connection = OnlineConnection.Playing(
@@ -368,34 +353,34 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
      * applied partially — a short suffix mismatch resyncs on the next state.
      */
     private fun applyGameState(state: GameState) {
-        val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
+        val playing = uiStateFlow.value.connection as? OnlineConnection.Playing ?: return
         val tokens = splitUciMoves(state.moves)
         var board = playing.board
         var applied = appliedUciCount
         var selectedPiece: Position? = playing.selectedPiece
         while (applied < tokens.size) {
-            val uci = try {
-                parseUci(tokens[applied])
-            } catch (_: IllegalArgumentException) {
+            val uci = runCatching { parseUci(tokens[applied]) }.getOrNull()
+            if (uci == null) {
                 applied++
-                continue
+            } else if (!board.isValidMove(uci.from, uci.to)) {
+                break
+            } else {
+                board = board.movePiece(uci.from, uci.to, uci.promotion)
+                val promotionSquare = board.promotionPosition
+                if (promotionSquare != null && uci.promotion != null) {
+                    board = board.promotePawn(promotionSquare, uci.promotion)
+                }
+                applied++
+                selectedPiece = null
             }
-            if (!board.isValidMove(uci.from, uci.to)) break
-            board = board.movePiece(uci.from, uci.to, uci.promotion)
-            val promotionSquare = board.promotionPosition
-            if (promotionSquare != null && uci.promotion != null) {
-                board = board.promotePawn(promotionSquare, uci.promotion)
-            }
-            applied++
-            selectedPiece = null
         }
         appliedUciCount = applied
         val resultText = resultTextFor(state, playing.localColor)
-        _uiState.update {
+        uiStateFlow.update {
             it.copy(
                 connection = playing.copy(
                     board = board,
-                    turn = turnForMoveCount(applied),
+                    turn = sideToMoveAfter(applied),
                     whiteClockMs = state.wtime.takeIf { t -> t > 0 },
                     blackClockMs = state.btime.takeIf { t -> t > 0 },
                     selectedPiece = selectedPiece,
@@ -405,10 +390,6 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
             )
         }
     }
-
-    /** Side to move after [moveCount] half-moves from the initial position: White starts. */
-    private fun turnForMoveCount(moveCount: Int): PieceColor =
-        if (moveCount % 2 == 0) PieceColor.WHITE else PieceColor.BLACK
 
     private fun resultTextFor(state: GameState, localColor: PieceColor): String? {
         if (!state.isTerminal) return null
@@ -439,19 +420,18 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     // -- moves ------------------------------------------------------------------
 
     fun onSquareClick(position: Position) {
-        val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
-        if (playing.resultText != null) return
-        if (playing.turn != playing.localColor) return
+        val playing = uiStateFlow.value.connection as? OnlineConnection.Playing ?: return
         // The promotion dialog owns input while a choice is pending (it is modal); dismissing it
         // goes through onCancelPromotion, so squares stay dead until a piece is chosen or the
         // step is cancelled.
+        if (playing.resultText != null || playing.turn != playing.localColor) return
         if (playing.pendingPromotion != null) return
         val board = playing.board
         val selectedPiece = playing.selectedPiece
         if (selectedPiece == null) {
             val piece = board.pieces[position.row][position.col]
             if (piece != null && piece.color == playing.turn) {
-                _uiState.update { it.copy(connection = playing.copy(selectedPiece = position)) }
+                uiStateFlow.update { it.copy(connection = playing.copy(selectedPiece = position)) }
             }
             return
         }
@@ -461,7 +441,7 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
             if (preview.promotionPosition != null && moving.type == PieceType.PAWN) {
                 // Choice only — the board keeps the confirmed position until the server echoes
                 // the promotion UCI, so a failed POST leaves nothing to roll back.
-                _uiState.update {
+                uiStateFlow.update {
                     it.copy(
                         connection = playing.copy(
                             pendingPromotion = UciMove(selectedPiece, position),
@@ -473,12 +453,12 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
             }
             sendLocalMove(UciMove(selectedPiece, position))
         } else {
-            _uiState.update { it.copy(connection = playing.copy(selectedPiece = null)) }
+            uiStateFlow.update { it.copy(connection = playing.copy(selectedPiece = null)) }
         }
     }
 
     fun onPromote(pieceType: PieceType) {
-        val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
+        val playing = uiStateFlow.value.connection as? OnlineConnection.Playing ?: return
         val pending = playing.pendingPromotion ?: return
         sendLocalMove(pending.copy(promotion = pieceType))
     }
@@ -488,9 +468,9 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
      * moved and nothing was sent), so dropping the pending choice is the whole undo.
      */
     fun onCancelPromotion() {
-        val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
+        val playing = uiStateFlow.value.connection as? OnlineConnection.Playing ?: return
         if (playing.pendingPromotion == null) return
-        _uiState.update { it.copy(connection = playing.copy(pendingPromotion = null, selectedPiece = null)) }
+        uiStateFlow.update { it.copy(connection = playing.copy(pendingPromotion = null, selectedPiece = null)) }
     }
 
     /**
@@ -505,9 +485,9 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
             onSquareClick(from)
             return
         }
-        val selected = (_uiState.value.connection as? OnlineConnection.Playing)?.selectedPiece
+        val selected = (uiStateFlow.value.connection as? OnlineConnection.Playing)?.selectedPiece
         if (selected != from) onSquareClick(from)
-        val reselected = (_uiState.value.connection as? OnlineConnection.Playing)?.selectedPiece
+        val reselected = (uiStateFlow.value.connection as? OnlineConnection.Playing)?.selectedPiece
         if (reselected == from) onSquareClick(to)
     }
 
@@ -518,18 +498,18 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
      * while the position stays exactly as the server last confirmed it.
      */
     private fun sendLocalMove(uci: UciMove) {
-        val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
+        val playing = uiStateFlow.value.connection as? OnlineConnection.Playing ?: return
         if (playing.turn != playing.localColor || playing.resultText != null) return
         viewModelScope.launch {
             try {
                 api.sendMove(playing.gameId, uci.toString())
-                _uiState.update {
+                uiStateFlow.update {
                     val current = it.connection as? OnlineConnection.Playing ?: return@update it
                     it.copy(
                         connection = current.copy(selectedPiece = null, pendingPromotion = null)
                     )
                 }
-            } catch (e: LichessAuthExpired) {
+            } catch (_: LichessAuthExpired) {
                 requireReauth()
             } catch (_: IOException) {
                 AppMessages.show(moveFailedText())
@@ -537,17 +517,13 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    private fun moveFailedText(): String =
-        getApplication<Application>().getString(com.vayunmathur.games.chess.R.string.online_move_failed)
-
-    // -- resign / abort -----------------------------------------------------------
 
     fun onResignConfirm() {
-        val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
+        val playing = uiStateFlow.value.connection as? OnlineConnection.Playing ?: return
         viewModelScope.launch {
             try {
                 api.resign(playing.gameId)
-            } catch (e: LichessAuthExpired) {
+            } catch (_: LichessAuthExpired) {
                 requireReauth()
             } catch (_: IOException) {
                 AppMessages.show(moveFailedText())
@@ -556,11 +532,11 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun onAbortConfirm() {
-        val playing = _uiState.value.connection as? OnlineConnection.Playing ?: return
+        val playing = uiStateFlow.value.connection as? OnlineConnection.Playing ?: return
         viewModelScope.launch {
             try {
                 api.abort(playing.gameId)
-            } catch (e: LichessAuthExpired) {
+            } catch (_: LichessAuthExpired) {
                 requireReauth()
             } catch (_: IOException) {
                 AppMessages.show(moveFailedText())
@@ -573,7 +549,7 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
         gameJob?.cancel()
         attachedGameId = null
         appliedUciCount = 0
-        _uiState.update { it.copy(connection = OnlineConnection.Idle) }
+        uiStateFlow.update { it.copy(connection = OnlineConnection.Idle) }
     }
 
     private fun stopStreams() {
@@ -591,22 +567,31 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
 
 /** Whether the lobby shows the sign-in CTA, the signing-in wait, or the signed-in identity. */
 sealed interface OnlineAuth {
+    /** Singleton holding signed out state and operations. */
     data object SignedOut : OnlineAuth
+    /** Singleton holding signing in state and operations. */
     data object SigningIn : OnlineAuth
+    /** Immutable value describing signed in; carries username. */
     data class SignedIn(val username: String) : OnlineAuth
 
     /** Sign-in failure vs token expiry; text resolves via `OnlineChessViewModel.authErrorText`. */
     sealed interface Error {
+        /** Singleton holding sign in failed state and operations. */
         data object SignInFailed : Error
+        /** Singleton holding expired state and operations. */
         data object Expired : Error
     }
 }
 
 /** Matchmaking / game session state; `Playing` doubles as the game screen's state holder. */
 sealed interface OnlineConnection {
+    /** Singleton holding idle state and operations. */
     data object Idle : OnlineConnection
+    /** Immutable value describing seeking; carries timeControl. */
     data class Seeking(val timeControl: LichessTimeControl) : OnlineConnection
+    /** Immutable value describing challenging; carries username. */
     data class Challenging(val username: String) : OnlineConnection
+    /** Immutable value describing playing. */
     data class Playing(
         val gameId: String,
         val localColor: PieceColor,
@@ -628,17 +613,24 @@ sealed interface OnlineConnection {
 
 /** Lobby-scoped transient messages; cleared by [OnlineChessViewModel.dismissLobbyMessage]. */
 object OnlineLobby {
+    /** Contract for error. */
     sealed interface Error {
+        /** Singleton holding seek failed state and operations. */
         data object SeekFailed : Error
+        /** Singleton holding challenge failed state and operations. */
         data object ChallengeFailed : Error
     }
 
+    /** Contract for notice. */
     sealed interface Notice {
+        /** Immutable value describing challenge sent; carries username. */
         data class ChallengeSent(val username: String) : Notice
+        /** Singleton holding challenge declined state and operations. */
         data object ChallengeDeclined : Notice
     }
 }
 
+/** Immutable value describing online chess ui state. */
 data class OnlineChessUiState(
     val auth: OnlineAuth = OnlineAuth.SignedOut,
     val authError: OnlineAuth.Error? = null,
@@ -657,3 +649,35 @@ data class OnlineChessUiState(
         return playing.localColor == PieceColor.BLACK
     }
 }
+
+/** Side to move after [moveCount] half-moves from the initial position: White starts. */
+private fun sideToMoveAfter(moveCount: Int): PieceColor =
+    if (moveCount % 2 == 0) PieceColor.WHITE else PieceColor.BLACK
+
+/** Localized text for auth errors ([OnlineAuth.Error] stays locale-free for previews/tests). */
+fun OnlineChessViewModel.authErrorText(error: OnlineAuth.Error): String {
+        val context = getApplication<Application>()
+        return when (error) {
+            OnlineAuth.Error.SignInFailed -> context.getString(
+                com.vayunmathur.games.chess.R.string.online_sign_in_failed
+            )
+            OnlineAuth.Error.Expired -> context.getString(
+                com.vayunmathur.games.chess.R.string.online_auth_expired
+            )
+        }
+    }
+
+fun OnlineChessViewModel.selectTimeControl(timeControl: LichessTimeControl) {
+    uiStateFlow.update { it.copy(selectedTimeControl = timeControl) }
+}
+
+fun OnlineChessViewModel.onChallengeUsernameChange(username: String) {
+    uiStateFlow.update { it.copy(challengeUsername = username) }
+}
+
+fun OnlineChessViewModel.dismissLobbyMessage() {
+    uiStateFlow.update { it.copy(lobbyError = null, lobbyNotice = null, authError = null) }
+}
+
+private fun OnlineChessViewModel.moveFailedText(): String =
+    getApplication<Application>().getString(com.vayunmathur.games.chess.R.string.online_move_failed)

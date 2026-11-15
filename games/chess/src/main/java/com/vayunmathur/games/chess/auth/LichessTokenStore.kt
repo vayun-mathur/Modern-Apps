@@ -15,6 +15,7 @@ class LichessTokenStore(context: Context) {
 
     private val store = DataStoreUtils.getInstance(context.applicationContext)
 
+    /** Shared constants and helpers for LichessTokenStore. */
     companion object {
         private const val KEY_ACCESS_TOKEN = "lichess_access_token"
         private const val KEY_USERNAME = "lichess_username"

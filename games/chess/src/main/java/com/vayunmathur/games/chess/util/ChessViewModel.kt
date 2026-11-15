@@ -15,20 +15,27 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Type representing game mode. */
 sealed class GameMode {
+    /** Singleton holding two player state and operations. */
     data object TwoPlayer : GameMode()
+    /** Immutable value describing vs ai; carries playerColor, difficulty. */
     data class VsAI(val playerColor: PieceColor, val difficulty: Difficulty) : GameMode()
 }
 
 /** Terminal outcome of a game, or null while it is still in progress. */
 sealed class GameResult {
+    /** Immutable value describing checkmate; carries winner. */
     data class Checkmate(val winner: PieceColor) : GameResult()
+    /** Singleton holding stalemate state and operations. */
     data object Stalemate : GameResult()
+    /** Singleton holding insufficient material state and operations. */
     data object InsufficientMaterial : GameResult()
 
     val isGameOver: Boolean get() = true
 }
 
+/** Immutable value describing chess ui state. */
 data class ChessUiState(
     val board: Board = Board.initialState,
     val selectedPiece: Position? = null,
@@ -41,6 +48,7 @@ data class ChessUiState(
     val aiThinking: Boolean = false,
 )
 
+/** Chess View Model: a application implementation for chess view model. */
 class ChessViewModel(application: Application) : AndroidViewModel(application), ChessActions {
 
     private val _uiState = MutableStateFlow(ChessUiState())
@@ -69,6 +77,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
     // The state before a pawn stepped onto the last rank, while its promotion choice is pending.
     private var promotionUndo: ChessUiState? = null
 
+    /** Shared constants and helpers for ChessViewModel. */
     companion object {
         private const val AI_REPLY_DELAY_MS = 500L
     }

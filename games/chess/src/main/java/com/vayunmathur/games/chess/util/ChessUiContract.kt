@@ -29,6 +29,7 @@ interface ChessActions {
      */
     fun onSquareDrop(from: Position, to: Position) {}
 
+    /** Shared constants and helpers for ChessActions. */
     companion object {
         val Noop: ChessActions = object : ChessActions {}
     }
@@ -53,6 +54,7 @@ interface PuzzleActions {
     fun retry() {}
     fun showSolution() {}
 
+    /** Shared constants and helpers for PuzzleActions. */
     companion object {
         val Noop: PuzzleActions = object : PuzzleActions {}
     }

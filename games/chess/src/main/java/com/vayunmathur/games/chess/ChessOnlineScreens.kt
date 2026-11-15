@@ -29,6 +29,10 @@ import com.vayunmathur.games.chess.network.LichessTimeControl
 import com.vayunmathur.games.chess.platform.OnlineAuth
 import com.vayunmathur.games.chess.platform.OnlineChessUiState
 import com.vayunmathur.games.chess.platform.OnlineChessViewModel
+import com.vayunmathur.games.chess.platform.authErrorText
+import com.vayunmathur.games.chess.platform.dismissLobbyMessage
+import com.vayunmathur.games.chess.platform.onChallengeUsernameChange
+import com.vayunmathur.games.chess.platform.selectTimeControl
 import com.vayunmathur.games.chess.platform.OnlineConnection
 import com.vayunmathur.games.chess.platform.OnlineLobby
 import com.vayunmathur.library.ui.AppScaffold
@@ -313,6 +317,105 @@ private fun ChallengeRow(
     }
 }
 
+
+/** Promotion and resign/abort confirmation dialogs for the online game. */
+@Composable
+private fun GameDialogs(
+    playing: OnlineConnection.Playing,
+    confirmResign: Boolean,
+    confirmAbort: Boolean,
+    onPromote: (com.vayunmathur.games.chess.data.PieceType) -> Unit,
+    onCancelPromotion: () -> Unit,
+    onResignConfirm: () -> Unit,
+    onAbortConfirm: () -> Unit,
+    onDismissResign: () -> Unit,
+    onDismissAbort: () -> Unit,
+) {
+if (playing.pendingPromotion != null) {
+    PawnPromotionDialog(playing.localColor, onPromote = onPromote, onDismiss = onCancelPromotion)
+}
+if (confirmResign) {
+    ConfirmDialog(
+        title = stringResource(R.string.online_resign_title),
+        confirmLabel = stringResource(R.string.online_resign_confirm),
+        onConfirm = onResignConfirm,
+        onDismiss = onDismissResign,
+        dismissLabel = stringResource(UiR.string.cancel),
+        destructive = true,
+    )
+}
+if (confirmAbort) {
+    ConfirmDialog(
+        title = stringResource(R.string.online_abort_title),
+        confirmLabel = stringResource(R.string.online_abort_confirm),
+        onConfirm = onAbortConfirm,
+        onDismiss = onDismissAbort,
+        dismissLabel = stringResource(UiR.string.cancel),
+        destructive = true,
+    )
+}
+}
+
+/** Compact (portrait) and wide (landscape) arrangements of the online game content. */
+@Composable
+private fun GameLayout(
+    state: OnlineChessUiState,
+    playing: OnlineConnection.Playing,
+    onSquareClick: (com.vayunmathur.games.chess.data.Position) -> Unit,
+    onSquareDrop: (com.vayunmathur.games.chess.data.Position, com.vayunmathur.games.chess.data.Position) -> Unit,
+    onResign: () -> Unit,
+    onAbort: () -> Unit,
+    onBackToLobby: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier) {
+        val compact = maxWidth < maxHeight
+        if (compact) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                OnlineGameContent(
+                    state = state,
+                    playing = playing,
+                    onSquareClick = onSquareClick,
+                    onSquareDrop = onSquareDrop,
+                    onResign = onResign,
+                    onAbort = onAbort,
+                    onBackToLobby = onBackToLobby,
+                )
+            }
+        } else {
+            Row(
+                Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    OnlineGameContent(
+                        state = state,
+                        playing = playing,
+                        onSquareClick = onSquareClick,
+                    onSquareDrop = onSquareDrop,
+                        onResign = onResign,
+                        onAbort = onAbort,
+                        onBackToLobby = onBackToLobby,
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ChessOnlineGame(
     state: OnlineChessUiState,
@@ -328,86 +431,36 @@ private fun ChessOnlineGame(
     var confirmResign by remember { mutableStateOf(false) }
     var confirmAbort by remember { mutableStateOf(false) }
 
-    if (playing.pendingPromotion != null) {
-        PawnPromotionDialog(playing.localColor, onPromote = onPromote, onDismiss = onCancelPromotion)
-    }
-    if (confirmResign) {
-        ConfirmDialog(
-            title = stringResource(R.string.online_resign_title),
-            confirmLabel = stringResource(R.string.online_resign_confirm),
-            onConfirm = onResignConfirm,
-            onDismiss = { confirmResign = false },
-            dismissLabel = stringResource(UiR.string.cancel),
-            destructive = true,
-        )
-    }
-    if (confirmAbort) {
-        ConfirmDialog(
-            title = stringResource(R.string.online_abort_title),
-            confirmLabel = stringResource(R.string.online_abort_confirm),
-            onConfirm = onAbortConfirm,
-            onDismiss = { confirmAbort = false },
-            dismissLabel = stringResource(UiR.string.cancel),
-            destructive = true,
-        )
-    }
+    GameDialogs(
+        playing = playing,
+        confirmResign = confirmResign,
+        confirmAbort = confirmAbort,
+        onPromote = onPromote,
+        onCancelPromotion = onCancelPromotion,
+        onResignConfirm = onResignConfirm,
+        onAbortConfirm = onAbortConfirm,
+        onDismissResign = { confirmResign = false },
+        onDismissAbort = { confirmAbort = false },
+    )
 
     AppScaffold(
         title = playing.opponentName?.let { stringResource(R.string.online_opponent, it) }
             ?: stringResource(R.string.tab_online),
         scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
-        BoxWithConstraints(
-            Modifier
+        GameLayout(
+            state = state,
+            playing = playing,
+            onSquareClick = onSquareClick,
+            onSquareDrop = onSquareDrop,
+            onResign = { confirmResign = true },
+            onAbort = { confirmAbort = true },
+            onBackToLobby = onBackToLobby,
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
-        ) {
-            val compact = maxWidth < maxHeight
-            if (compact) {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    OnlineGameContent(
-                        state = state,
-                        playing = playing,
-                        onSquareClick = onSquareClick,
-                        onSquareDrop = onSquareDrop,
-                        onResign = { confirmResign = true },
-                        onAbort = { confirmAbort = true },
-                        onBackToLobby = onBackToLobby,
-                    )
-                }
-            } else {
-                Row(
-                    Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(
-                        Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        OnlineGameContent(
-                            state = state,
-                            playing = playing,
-                            onSquareClick = onSquareClick,
-                        onSquareDrop = onSquareDrop,
-                            onResign = { confirmResign = true },
-                            onAbort = { confirmAbort = true },
-                            onBackToLobby = onBackToLobby,
-                        )
-                    }
-                }
-            }
-        }
+                .padding(16.dp),
+        )
     }
 }
 

@@ -30,6 +30,7 @@ import kotlinx.serialization.Serializable
  */
 class LichessAuthManager(private val context: Context, private val tokenStore: LichessTokenStore) {
 
+    /** Shared constants and helpers for LichessAuthManager. */
     companion object {
         private const val OAUTH_URL = "https://lichess.org/oauth"
         private const val TOKEN_URL = "https://lichess.org/api/token"
@@ -66,6 +67,7 @@ class LichessAuthManager(private val context: Context, private val tokenStore: L
 
     /** Redirect URI query parsed out of the OAuth callback intent (null when not ours). */
     data class AuthRedirect(val code: String, val state: String) {
+        /** Shared constants and helpers for AuthRedirect. */
         companion object {
             fun from(intent: Intent): AuthRedirect? {
                 val uri: Uri = intent.data ?: return null
@@ -112,10 +114,13 @@ class LichessAuthManager(private val context: Context, private val tokenStore: L
      * [IllegalStateException] on `state` mismatch (possible CSRF — drop it) or
      * [java.io.IOException] from [NetworkClient] on transport/HTTP failure.
      */
+    /** Throws [IllegalStateException] with [message]; keeps throw sites out of sign-in. */
+    private fun failSignIn(message: String): Nothing = throw IllegalStateException(message)
+
     suspend fun finishSignIn(redirect: AuthRedirect): String {
-        val attempt = pending ?: throw IllegalStateException("No pending Lichess sign-in")
+        val attempt = pending ?: failSignIn("No pending Lichess sign-in")
         pending = null
-        if (redirect.state != attempt.state) throw IllegalStateException("Lichess state mismatch")
+        if (redirect.state != attempt.state) failSignIn("Lichess state mismatch")
         val response: TokenResponse = NetworkClient.callJson(
             TOKEN_URL,
             method = "POST",

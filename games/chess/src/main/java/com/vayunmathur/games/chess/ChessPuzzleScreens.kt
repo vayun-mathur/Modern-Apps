@@ -52,12 +52,34 @@ fun PuzzleScreen(viewModel: PuzzleViewModel) {
     PuzzleBoardScreen(state = uiState, actions = viewModel)
 }
 
+/** Difficulty selector, rating and side-to-move header for the puzzle screen. */
+@Composable
+private fun PuzzleHeader(state: PuzzleUiState, actions: PuzzleActions) {
+    PuzzleDifficultySelector(state = state, actions = actions)
+    Spacer(Modifier.height(12.dp))
+
+    Text(
+        stringResource(R.string.puzzle_rating, state.rating),
+        fontWeight = FontWeight.Bold
+    )
+    Text(
+        if (state.playerColor == PieceColor.WHITE) {
+            stringResource(R.string.puzzle_white_to_move)
+        } else {
+            stringResource(R.string.puzzle_black_to_move)
+        },
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(Modifier.height(8.dp))
+}
+
 /**
  * The puzzle screen, with no dependency on the ViewModel so it can be rendered from a
  * `@Preview` — see `src/screenshotTest`, which is where the store listing images come from.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+
 fun PuzzleBoardScreen(state: PuzzleUiState, actions: PuzzleActions) {
     if (state.board.promotionPosition != null) {
         PawnPromotionDialog(state.playerColor, onPromote = actions::onPromote, onDismiss = actions::onCancelPromotion)
@@ -74,23 +96,7 @@ fun PuzzleBoardScreen(state: PuzzleUiState, actions: PuzzleActions) {
             Arrangement.Center,
             Alignment.CenterHorizontally
         ) {
-            PuzzleDifficultySelector(state = state, actions = actions)
-            Spacer(Modifier.height(12.dp))
-
-            Text(
-                stringResource(R.string.puzzle_rating, state.rating),
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                if (state.playerColor == PieceColor.WHITE) {
-                    stringResource(R.string.puzzle_white_to_move)
-                } else {
-                    stringResource(R.string.puzzle_black_to_move)
-                },
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(8.dp))
-
+            PuzzleHeader(state = state, actions = actions)
             // Capped like the game board so a desktop window doesn't blow the grid up.
             Box(Modifier.widthIn(max = ChessBoardMaxWidth).fillMaxWidth()) {
                 BoardGrid(

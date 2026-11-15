@@ -23,14 +23,18 @@ import kotlinx.serialization.json.JsonElement
 
 private const val UCI_LENGTH = 4
 private const val UCI_PROMOTION_LENGTH = 5
+private const val RANK_COUNT = 8
+private const val SQUARE_END = 2
+private const val MOVE_END = 4
+private const val PROMOTION_INDEX = 4
 
 /** `e2` → [Position]: row 0 is rank 8 (matches [com.vayunmathur.games.chess.data.Board]). */
 internal fun squareFromUci(square: String): Position =
-    Position(8 - (square[1] - '0'), square[0] - 'a')
+    Position(RANK_COUNT - (square[1] - '0'), square[0] - 'a')
 
 /** [Position] → `e2`. */
 internal fun Position.toUciSquare(): String =
-    "${('a'.code + col).toChar()}${8 - row}"
+    "${('a'.code + col).toChar()}${RANK_COUNT - row}"
 
 /** `q`/`r`/`b`/`n` → [PieceType]; anything else is a protocol violation. */
 internal fun promotionFromUci(letter: Char): PieceType = when (letter) {
@@ -60,9 +64,9 @@ data class UciMove(val from: Position, val to: Position, val promotion: PieceTyp
 fun parseUci(uci: String): UciMove {
     require(uci.length == UCI_LENGTH || uci.length == UCI_PROMOTION_LENGTH) { "Bad UCI: $uci" }
     return UciMove(
-        from = squareFromUci(uci.substring(0, 2)),
-        to = squareFromUci(uci.substring(2, 4)),
-        promotion = uci.getOrNull(4)?.let(::promotionFromUci),
+        from = squareFromUci(uci.substring(0, SQUARE_END)),
+        to = squareFromUci(uci.substring(SQUARE_END, MOVE_END)),
+        promotion = uci.getOrNull(PROMOTION_INDEX)?.let(::promotionFromUci),
     )
 }
 
@@ -80,6 +84,7 @@ fun colorFromLichess(color: String): PieceColor = when (color) {
 /** [PieceColor] → `white`/`black` for seek/challenge request bodies. */
 fun PieceColor.toLichessColor(): String = if (this == PieceColor.WHITE) "white" else "black"
 
+/** Immutable value describing lichess profile. */
 @Serializable
 data class LichessProfile(
     val id: String = "",
@@ -94,6 +99,7 @@ data class LichessEventEnvelope(
     @SerialName("challenge") val challenge: LichessChallenge? = null,
 )
 
+/** Immutable value describing lichess event game. */
 @Serializable
 data class LichessEventGame(
     @SerialName("gameId") val gameId: String = "",
@@ -102,11 +108,13 @@ data class LichessEventGame(
     @SerialName("isMyTurn") val isMyTurn: Boolean = false,
 )
 
+/** Immutable value describing lichess opponent. */
 @Serializable
 data class LichessOpponent(
     val username: String = "",
 )
 
+/** Immutable value describing lichess challenge. */
 @Serializable
 data class LichessChallenge(
     val id: String = "",
@@ -116,10 +124,15 @@ data class LichessChallenge(
 
 /** Decoded event — unknown `type` values become [Ignored] so new server kinds don't crash us. */
 sealed interface LichessEvent {
+    /** Immutable value describing game start; carries gameId, color, opponent. */
     data class GameStart(val gameId: String, val color: PieceColor, val opponent: String) : LichessEvent
+    /** Immutable value describing game finish; carries gameId. */
     data class GameFinish(val gameId: String) : LichessEvent
+    /** Immutable value describing challenge; carries id, challenger. */
     data class Challenge(val id: String, val challenger: String) : LichessEvent
+    /** Immutable value describing challenge declined; carries id. */
     data class ChallengeDeclined(val id: String) : LichessEvent
+    /** Singleton holding ignored state and operations. */
     data object Ignored : LichessEvent
 }
 
@@ -155,17 +168,20 @@ data class GameFull(
         if (black.id == myUserId && white.id != myUserId) PieceColor.BLACK else PieceColor.WHITE
 }
 
+/** Immutable value describing lichess variant. */
 @Serializable
 data class LichessVariant(
     val key: String = "standard",
 )
 
+/** Immutable value describing lichess clock. */
 @Serializable
 data class LichessClock(
     val initial: Long = 0L,
     val increment: Long = 0L,
 )
 
+/** Immutable value describing lichess player. */
 @Serializable
 data class LichessPlayer(
     val id: String = "",
@@ -187,6 +203,7 @@ data class GameState(
     /** Terminal statuses per `https://lichess.org/api#tag/Board/operation/boardGameStream`. */
     val isTerminal: Boolean get() = status in TERMINAL_STATUSES
 
+    /** Shared constants and helpers for GameState. */
     companion object {
         private val TERMINAL_STATUSES = setOf(
             "aborted", "mate", "resign", "stalemate", "timeout", "draw", "outoftime", "cheat",
@@ -197,8 +214,11 @@ data class GameState(
 
 /** Decoded game-stream line: full snapshot first, deltas after. Unknown → [Ignored]. */
 sealed interface LichessGameUpdate {
+    /** Immutable value describing full; carries game. */
     data class Full(val game: GameFull) : LichessGameUpdate
+    /** Immutable value describing state; carries state. */
     data class State(val state: GameState) : LichessGameUpdate
+    /** Singleton holding ignored state and operations. */
     data object Ignored : LichessGameUpdate
 }
 
@@ -221,6 +241,7 @@ fun decodeGameLine(element: JsonElement, json: Json): LichessGameUpdate {
 data class LichessTimeControl(val minutes: Int, val incrementSeconds: Int) {
     val label: String get() = "$minutes+$incrementSeconds"
 
+    /** Shared constants and helpers for LichessTimeControl. */
     companion object {
         val BULLET = LichessTimeControl(1, 0)
         val BLITZ_3_2 = LichessTimeControl(3, 2)

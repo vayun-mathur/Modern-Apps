@@ -10,6 +10,9 @@ import com.vayunmathur.games.chess.network.LichessTimeControl
 import com.vayunmathur.games.chess.platform.OnlineAuth
 import com.vayunmathur.games.chess.platform.OnlineChessUiState
 import com.vayunmathur.games.chess.platform.OnlineChessViewModel
+import com.vayunmathur.games.chess.platform.authErrorText
+import com.vayunmathur.games.chess.platform.onChallengeUsernameChange
+import com.vayunmathur.games.chess.platform.selectTimeControl
 import com.vayunmathur.games.chess.platform.OnlineConnection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

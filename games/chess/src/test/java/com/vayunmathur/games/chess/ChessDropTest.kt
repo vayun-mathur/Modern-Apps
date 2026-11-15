@@ -152,29 +152,43 @@ class ChessDropTest {
         assertEquals(vm.uiState.value.puzzle!!.solution.size, vm.uiState.value.solutionIndex)
     }
 
+
+    /** First (from, target) move for [color] whose target holds an enemy piece, if any. */
+    private fun findCapture(
+        board: com.vayunmathur.games.chess.data.Board,
+        color: com.vayunmathur.games.chess.data.PieceColor,
+    ): Pair<Position, Position>? =
+        (0..7).firstNotNullOfOrNull { r ->
+            (0..7).firstNotNullOfOrNull { c ->
+                val target = board.pieces[r][c]
+                if (target == null || target.color == color) {
+                    null
+                } else {
+                    val to = Position(r, c)
+                    (0..7).firstNotNullOfOrNull { fr ->
+                        (0..7).firstNotNullOfOrNull { fc ->
+                            val piece = board.pieces[fr][fc]
+                            val from = Position(fr, fc)
+                            if (piece?.color == color &&
+                                (board.isValidMove(from, to) || board.isPseudoLegalMove(from, to))
+                            ) {
+                                from to to
+                            } else {
+                                null
+                            }
+                        }
+                    }
+                }
+            }
+        }
     @Test fun learnDropCapturesLikeTwoTaps() {
         val vm = LearnViewModel(app)
         vm.loadStage("fundamentals", "capture")
         await("stage capture") { vm.uiState.value.level != null }
         val before = vm.uiState.value.board
-        var dropped = false
-        outer@ for (r in 0..7) for (c in 0..7) {
-            val enemy = vm.uiState.value.board.pieces[r][c] ?: continue
-            if (enemy.color == vm.uiState.value.playerColor) continue
-            val target = Position(r, c)
-            for (fr in 0..7) for (fc in 0..7) {
-                val piece = vm.uiState.value.board.pieces[fr][fc] ?: continue
-                if (piece.color != vm.uiState.value.playerColor) continue
-                val from = Position(fr, fc)
-                val board = vm.uiState.value.board
-                if (board.isValidMove(from, target) || board.isPseudoLegalMove(from, target)) {
-                    vm.onSquareDrop(from, target)
-                    dropped = true
-                    break@outer
-                }
-            }
-        }
-        assertTrue(dropped, "a capture must be available")
+        val capture = findCapture(vm.uiState.value.board, vm.uiState.value.playerColor)
+        assertTrue(capture != null, "a capture must be available")
+        vm.onSquareDrop(capture.first, capture.second)
         assertTrue(
             vm.uiState.value.board != before || vm.uiState.value.status != LearnStatus.Playing,
             "the drop captures exactly like two taps would"

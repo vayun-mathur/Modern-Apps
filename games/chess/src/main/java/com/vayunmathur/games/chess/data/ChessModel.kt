@@ -18,6 +18,7 @@ internal const val WHITE_EP_ROW = 4
 internal const val BLACK_EP_ROW = 3
 internal const val SQUARE_COLOR_MOD = 2
 
+/** Kinds of piece type. */
 enum class PieceType(val resID: Int) {
     KING(R.drawable.chess_king_2_fill1_24px),
     QUEEN(R.drawable.chess_queen_fill1_24px),
@@ -27,12 +28,15 @@ enum class PieceType(val resID: Int) {
     PAWN(R.drawable.chess_pawn_fill1_24px)
 }
 
+/** Kinds of piece color. */
 enum class PieceColor { WHITE, BLACK }
 
 val PieceColor.opposite get() = if (this == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE
 
+/** Immutable value describing piece; carries type, color, hasMoved. */
 data class Piece(val type: PieceType, val color: PieceColor, val hasMoved: Boolean = false)
 
+/** Immutable value describing position; carries row, col. */
 data class Position(val row: Int, val col: Int)
 
 /** Castling availability for a position, as encoded in a FEN's castling field. */
@@ -48,6 +52,7 @@ private val PieceType.notationLetter: String get() = when (this) {
     PieceType.BISHOP -> "B"; PieceType.KNIGHT -> "N"; PieceType.PAWN -> ""
 }
 
+/** Immutable value describing move. */
 data class Move(
     val start: Position,
     val end: Position,
@@ -82,6 +87,7 @@ data class Move(
     }
 }
 
+/** Immutable value describing board. */
 data class Board(
     val pieces: List<List<Piece?>>,
     val capturedByWhite: List<Piece> = emptyList(),
@@ -268,6 +274,7 @@ data class Board(
         return squareColors.size == 1
     }
 
+    /** Shared constants and helpers for Board. */
     companion object {
         /**
          * What a pawn may become, in the order Maia3's move vocabulary lists them.

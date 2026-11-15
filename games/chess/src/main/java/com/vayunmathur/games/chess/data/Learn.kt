@@ -49,6 +49,7 @@ data class LearnLevel(
         ?: emptyList()
 }
 
+/** Immutable value describing learn stage. */
 @Serializable
 data class LearnStage(
     val id: Int = 0,
@@ -60,9 +61,11 @@ data class LearnStage(
     val levels: List<LearnLevel>
 )
 
+/** Immutable value describing learn category; carries key, name, stages. */
 @Serializable
 data class LearnCategory(val key: String, val name: String, val stages: List<LearnStage>)
 
+/** Immutable value describing learn data; carries categories. */
 @Serializable
 data class LearnData(val categories: List<LearnCategory>)
 

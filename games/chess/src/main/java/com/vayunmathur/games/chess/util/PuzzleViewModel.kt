@@ -25,12 +25,14 @@ private val EASY_RANGE = 400..1199
 private val MEDIUM_RANGE = 1200..1799
 private val HARD_RANGE = 1800..2799
 
+/** Kinds of puzzle difficulty. */
 enum class PuzzleDifficulty(val range: IntRange) {
     EASY(EASY_RANGE),
     MEDIUM(MEDIUM_RANGE),
     HARD(HARD_RANGE);
 }
 
+/** Kinds of puzzle status. */
 enum class PuzzleStatus {
     /** Loading a puzzle / auto-playing the opponent's setup move. */
     Loading,
@@ -44,6 +46,7 @@ enum class PuzzleStatus {
     ShowingSolution
 }
 
+/** Immutable value describing puzzle ui state. */
 data class PuzzleUiState(
     val puzzle: Puzzle? = null,
     val board: Board = Board.initialState,
@@ -73,6 +76,7 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application),
     private val setupDelayMs = 500L
     private val replyDelayMs = 400L
 
+    /** Shared constants and helpers for PuzzleViewModel. */
     companion object {
         private const val REPLAY_STEP_DELAY_MS = 600L
     }

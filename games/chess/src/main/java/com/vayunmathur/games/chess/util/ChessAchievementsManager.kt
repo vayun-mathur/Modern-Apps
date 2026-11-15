@@ -4,6 +4,7 @@ import android.content.Context
 import com.vayunmathur.library.util.AchievementsManager
 import com.vayunmathur.library.util.DataStoreUtils
 
+/** Manages chess achievements. */
 class ChessAchievementsManager(
     context: Context,
     json: String

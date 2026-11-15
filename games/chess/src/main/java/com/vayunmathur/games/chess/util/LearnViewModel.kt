@@ -24,8 +24,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** Kinds of learn status. */
 enum class LearnStatus { Playing, Completed, Failed }
 
+/** Immutable value describing learn ui state. */
 data class LearnUiState(
     val stage: LearnStage? = null,
     val levelIndex: Int = 0,

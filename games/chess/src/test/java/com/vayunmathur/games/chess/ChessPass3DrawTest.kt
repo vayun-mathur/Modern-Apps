@@ -103,26 +103,42 @@ class ChessPass3DrawTest {
         assertTrue(state.apples.isNotEmpty())
     }
 
+
+    /** First move for [color] satisfying [accept] over (from, to, board-after), if any. */
+    private fun findMove(
+        state: com.vayunmathur.games.chess.util.LearnUiState,
+        accept: (Position, Position, com.vayunmathur.games.chess.data.Board) -> Boolean,
+    ): Pair<Position, Position>? =
+        (0..7).firstNotNullOfOrNull { r ->
+            (0..7).firstNotNullOfOrNull { c ->
+                val piece = state.board.pieces[r][c]
+                if (piece?.color != state.playerColor) {
+                    null
+                } else {
+                    val from = Position(r, c)
+                    (0..7).firstNotNullOfOrNull { r2 ->
+                        (0..7).firstNotNullOfOrNull { c2 ->
+                            val to = Position(r2, c2)
+                            val legal = state.board.isValidMove(from, to) ||
+                                state.board.isPseudoLegalMove(from, to)
+                            if (legal && accept(from, to, state.board.movePiece(from, to))) {
+                                from to to
+                            } else {
+                                null
+                            }
+                        }
+                    }
+                }
+            }
+        }
     @Test fun learnPunishedFailureShowsRetryButtonAndRetries() {
         val vm = LearnViewModel(app)
         vm.loadStage("fundamentals", "protection")
         await("protection loaded") { vm.uiState.value.level != null }
         val state = vm.uiState.value
         val level = state.level!!
-        var hanging: Pair<Position, Position>? = null
-        outer@ for (r in 0..7) for (c in 0..7) {
-            val piece = state.board.pieces[r][c] ?: continue
-            if (piece.color != state.playerColor) continue
-            for (r2 in 0..7) for (c2 in 0..7) {
-                val from = Position(r, c)
-                val to = Position(r2, c2)
-                if (!state.board.isValidMove(from, to) && !state.board.isPseudoLegalMove(from, to)) continue
-                val after = state.board.movePiece(from, to)
-                if (com.vayunmathur.games.chess.util.detectCaptureMove(level, after, state.playerColor) != null) {
-                    hanging = from to to
-                    break@outer
-                }
-            }
+        val hanging = findMove(state) { _, _, after ->
+            com.vayunmathur.games.chess.util.detectCaptureMove(level, after, state.playerColor) != null
         }
         val (from, to) = hanging ?: error("protection level should offer a hanging move")
         vm.onSquareClick(from)
@@ -146,34 +162,11 @@ class ChessPass3DrawTest {
         // Make a legal-but-wrong move on a capture level with detectCapture: find any
         // move that gets punished (hangs a piece) or fails; retry restores Playing.
         val state = vm.uiState.value
-        var played = false
-        outer@ for (r in 0..7) for (c in 0..7) {
-            val piece = state.board.pieces[r][c] ?: continue
-            if (piece.color != state.playerColor) continue
-            for (r2 in 0..7) for (c2 in 0..7) {
-                val from = Position(r, c)
-                val to = Position(r2, c2)
-                if (state.board.isValidMove(from, to) || state.board.isPseudoLegalMove(from, to)) {
-                    // Prefer a capture (the lesson's goal) to advance the script.
-                    if (state.board.pieces[r2][c2] != null) {
-                        vm.onSquareClick(from); vm.onSquareClick(to); played = true; break@outer
-                    }
-                }
-            }
-        }
-        if (!played) {
-            // Fall back to any legal move.
-            outer2@ for (r in 0..7) for (c in 0..7) {
-                val piece = state.board.pieces[r][c] ?: continue
-                if (piece.color != state.playerColor) continue
-                for (r2 in 0..7) for (c2 in 0..7) {
-                    if (state.board.isValidMove(Position(r, c), Position(r2, c2))) {
-                        vm.onSquareClick(Position(r, c)); vm.onSquareClick(Position(r2, c2))
-                        break@outer2
-                    }
-                }
-            }
-        }
+        // Prefer a capture (the lesson's goal) to advance the script.
+        val capture = findMove(state) { _, to, _ -> state.board.pieces[to.row][to.col] != null }
+        val move = capture ?: findMove(state) { _, _, _ -> true }
+        assertTrue(move != null, "a legal move must exist")
+        vm.onSquareClick(move!!.first); vm.onSquareClick(move.second)
         // Whatever the outcome, the stage screen composes the status area for it.
         rule.setContent {
             LearnStageScreen(viewModel = vm, onBack = {}, onOpenStage = { _, _ -> })

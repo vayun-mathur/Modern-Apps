@@ -207,6 +207,7 @@ class MaiaEngine(private val context: Context) {
         return scored[keep - 1].first
     }
 
+    /** Shared constants and helpers for MaiaEngine. */
     companion object {
         private const val TAG = "MaiaEngine"
 

@@ -34,6 +34,7 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     override fun onCreateBeforeContent() {
         // lichess.org serves public-CA certs; STANDARD covers its chain without system trust.
@@ -78,7 +79,7 @@ class MainActivity : MaActivity() {
                 backStack,
                 bottomBar = {
                     val cur = backStack.last()
-                    if (cur is Route.Game || cur is Route.Online || cur is Route.Puzzles || cur is Route.Learn) {
+                    if (cur.isMainTabRoute()) {
                         BottomNavBar(backStack, pages, cur)
                     }
                 }
@@ -185,4 +186,10 @@ class MainActivity : MaActivity() {
             }
         )
     }
+}
+
+/** True for the four top-level tab destinations that show the bottom bar. */
+private fun Route.isMainTabRoute(): Boolean = when (this) {
+    is Route.Game, is Route.Online, is Route.Puzzles, is Route.Learn -> true
+    else -> false
 }

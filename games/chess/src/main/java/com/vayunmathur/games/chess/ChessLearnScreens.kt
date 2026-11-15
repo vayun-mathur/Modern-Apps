@@ -531,7 +531,10 @@ private const val STAR_STEP_DIVISOR = 5
 fun LearnBoard(
     ui: LearnUiState,
     onSquareClick: (com.vayunmathur.games.chess.data.Position) -> Unit,
-    onSquareDrop: (com.vayunmathur.games.chess.data.Position, com.vayunmathur.games.chess.data.Position) -> Unit = { _, _ -> }
+    onSquareDrop: (
+        com.vayunmathur.games.chess.data.Position,
+        com.vayunmathur.games.chess.data.Position,
+    ) -> Unit = { _, _ -> }
 ) {
     // Capped like the game board so a desktop window doesn't blow the grid up.
     Box(Modifier.widthIn(max = ChessBoardMaxWidth).fillMaxWidth().aspectRatio(1f)) {
