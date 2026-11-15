@@ -13,8 +13,11 @@ import com.stripe.android.paymentsheet.rememberPaymentSheet
 
 /** Outcome of the in-app card payment sheet. */
 sealed interface CardPaymentResult {
+    /** Singleton holding completed state and operations. */
     data object Completed : CardPaymentResult
+    /** Singleton holding canceled state and operations. */
     data object Canceled : CardPaymentResult
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : CardPaymentResult
 }
 

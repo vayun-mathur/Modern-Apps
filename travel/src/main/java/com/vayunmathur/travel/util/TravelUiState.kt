@@ -118,10 +118,13 @@ data class SeatMapState(
 
 /** Booking lifecycle for the trip → checkout flow. */
 sealed interface BookingState {
+    /** Singleton holding idle state and operations. */
     data object Idle : BookingState
+    /** Singleton holding loading state and operations. */
     data object Loading : BookingState
     /** Trip created; ancillaries step (or checkout when none) comes next. */
     data class TripReady(val trip: TripDto) : BookingState
+    /** Immutable value describing error; carries message. */
     data class Error(val message: String) : BookingState
     /** Checkout demands missing traveler details: back to passengers with these fields. */
     data class MissingDetails(val missingFields: List<String>, val message: String) : BookingState
@@ -129,26 +132,37 @@ sealed interface BookingState {
 
 /** Lifecycle for the checkout step (payment intent → card sheet → confirm). */
 sealed interface CheckoutState {
+    /** Singleton holding idle state and operations. */
     data object Idle : CheckoutState
+    /** Singleton holding loading state and operations. */
     data object Loading : CheckoutState
     /** Checkout link ready; [acceptedNewPrice] gates "Pay securely" when the price changed. */
     data class Ready(val checkout: CheckoutDto, val acceptedNewPrice: Boolean = false) : CheckoutState
+    /** Immutable value describing error; carries message. */
     data class Error(val message: String) : CheckoutState
 }
 
 /** Lifecycle for polling a trip after checkout (resumed / refresh). */
 sealed interface TripPollState {
+    /** Singleton holding idle state and operations. */
     data object Idle : TripPollState
+    /** Singleton holding polling state and operations. */
     data object Polling : TripPollState
+    /** Immutable value describing done; carries trip. */
     data class Done(val trip: TripDto) : TripPollState
+    /** Immutable value describing error; carries message. */
     data class Error(val message: String) : TripPollState
 }
 
 /** Lifecycle for the pay-later action on a hold order. */
 sealed interface PaymentActionState {
+    /** Singleton holding idle state and operations. */
     data object Idle : PaymentActionState
+    /** Singleton holding loading state and operations. */
     data object Loading : PaymentActionState
+    /** Singleton holding success state and operations. */
     data object Success : PaymentActionState
+    /** Immutable value describing error; carries message. */
     data class Error(val message: String) : PaymentActionState
 }
 
@@ -200,8 +214,12 @@ data class StayRatesState(
 
 /** Booking lifecycle for a stay. */
 sealed interface StayBookingState {
+    /** Singleton holding idle state and operations. */
     data object Idle : StayBookingState
+    /** Singleton holding loading state and operations. */
     data object Loading : StayBookingState
+    /** Immutable value describing success; carries result. */
     data class Success(val result: StayBookingResultDto) : StayBookingState
+    /** Immutable value describing error; carries message. */
     data class Error(val message: String) : StayBookingState
 }

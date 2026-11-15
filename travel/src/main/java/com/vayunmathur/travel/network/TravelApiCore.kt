@@ -68,9 +68,12 @@ internal fun travelExtractError(body: String): String = runCatching {
         ?: GENERIC_TRAVEL_ERROR
 }.getOrDefault(GENERIC_TRAVEL_ERROR).take(MAX_ERROR_SNIPPET_LENGTH)
 
+private const val HTTP_UNPROCESSABLE_ENTITY = 422
+private const val HTTP_SERVICE_UNAVAILABLE = 503
+
 /** Map a non-2xx status + body to the exception the ViewModel surfaces. */
 internal fun travelHttpError(status: Int, body: String, fallback: String): IllegalStateException {
-    if (status == 422) {
+    if (status == HTTP_UNPROCESSABLE_ENTITY) {
         val fields = runCatching {
             val start = body.indexOf('{')
             val jsonPart = if (start >= 0) body.substring(start) else body
@@ -80,7 +83,7 @@ internal fun travelHttpError(status: Int, body: String, fallback: String): Illeg
         }.getOrDefault(emptyList())
         return MissingDetailsException(fields, travelExtractError(body))
     }
-    if (status == 503) {
+    if (status == HTTP_SERVICE_UNAVAILABLE) {
         val retryAfter = runCatching {
             val start = body.indexOf('{')
             val jsonPart = if (start >= 0) body.substring(start) else body

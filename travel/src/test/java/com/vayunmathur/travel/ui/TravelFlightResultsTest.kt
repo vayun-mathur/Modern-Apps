@@ -38,7 +38,7 @@ class TravelFlightResultsTest {
     @get:Rule
     val rule = createComposeRule()
 
-    private fun seg(carrier: String = "AS", iata: String = "AS") = SegmentDto(
+    private fun seg(iata: String = "AS") = SegmentDto(
         id = "seg_1", carrier = "Alaska Airlines", carrierIata = iata,
         flightNumber = "AS 6", origin = "SFO", destination = "JFK",
         departureAt = "2026-06-24T07:15:00", arrivalAt = "2026-06-24T15:50:00",
@@ -48,11 +48,11 @@ class TravelFlightResultsTest {
         ),
     )
 
-    private fun slice(stops: Long = 0, carrier: String = "AS", iata: String = "AS") = SliceDto(
+    private fun slice(stops: Long = 0, iata: String = "AS") = SliceDto(
         id = "sli_1", origin = "SFO", destination = "JFK",
         departureAt = "2026-06-24T07:15:00", arrivalAt = "2026-06-24T15:50:00",
         durationMinutes = 335, stops = stops,
-        segments = listOf(seg(carrier, iata)),
+        segments = listOf(seg(iata)),
     )
 
     private fun offer(

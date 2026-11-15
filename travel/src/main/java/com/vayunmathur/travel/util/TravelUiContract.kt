@@ -47,6 +47,7 @@ interface FlightResultsActions {
     fun openOffer(offer: OfferDto) {}
     fun back() {}
 
+    /** Shared constants and helpers for FlightResultsActions. */
     companion object {
         val Noop: FlightResultsActions = object : FlightResultsActions {}
     }
@@ -62,6 +63,7 @@ interface SeatMapActions {
 
     fun back() {}
 
+    /** Shared constants and helpers for SeatMapActions. */
     companion object {
         val Noop: SeatMapActions = object : SeatMapActions {}
     }
@@ -72,6 +74,7 @@ interface StayResultsActions {
     fun openStay(result: StaySearchResultDto) {}
     fun back() {}
 
+    /** Shared constants and helpers for StayResultsActions. */
     companion object {
         val Noop: StayResultsActions = object : StayResultsActions {}
     }
@@ -86,6 +89,7 @@ interface OrderDetailActions {
     fun openCancel(orderId: String) {}
     fun back() {}
 
+    /** Shared constants and helpers for OrderDetailActions. */
     companion object {
         val Noop: OrderDetailActions = object : OrderDetailActions {}
     }

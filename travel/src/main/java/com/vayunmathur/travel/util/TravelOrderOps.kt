@@ -1,6 +1,7 @@
 package com.vayunmathur.travel.util
 
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.travel.data.BookedTrip
 import com.vayunmathur.travel.data.TRIP_STATUS_CANCELLED
 import com.vayunmathur.travel.domain.isCheckoutUnexpired
 import com.vayunmathur.travel.network.ChangeRequestInputDto
@@ -113,6 +114,13 @@ fun TravelViewModel.quoteCancellation(orderId: String) {
     }
 }
 
+
+/** Persists [stored] as cancelled once a cancellation lands. */
+private suspend fun TravelViewModel.markTripCancelled(stored: BookedTrip?) {
+    stored?.let {
+        repository.upsertBookedTrip(it.copy(status = TRIP_STATUS_CANCELLED, awaitingPayment = false))
+    }
+}
 /**
  * Confirm the pending cancellation, then poll until succeeded/failed and
  * update the local trip.
@@ -133,7 +141,7 @@ fun TravelViewModel.confirmCancellation(orderId: String) {
             return@launch
         }
         if (confirmed.status == "succeeded") {
-            stored?.let { repository.upsertBookedTrip(it.copy(status = TRIP_STATUS_CANCELLED, awaitingPayment = false)) }
+            markTripCancelled(stored)
             cancellationMutable.value = cancellationMutable.value.copy(confirming = false, done = true)
             return@launch
         }
@@ -161,9 +169,7 @@ fun TravelViewModel.confirmCancellation(orderId: String) {
                     return@repeat
                 }
                 if (status.status == "succeeded") {
-                    stored?.let {
-                        repository.upsertBookedTrip(it.copy(status = TRIP_STATUS_CANCELLED, awaitingPayment = false))
-                    }
+                    markTripCancelled(stored)
                     cancellationMutable.value = cancellationMutable.value.copy(polling = false, done = true)
                     return@launch
                 }

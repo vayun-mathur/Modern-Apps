@@ -27,6 +27,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
+private const val DEFAULT_RETRY_SECONDS = 5
+private const val MIN_RETRY_SECONDS = 1
+private const val MAX_RETRY_SECONDS = 30
+private const val MILLIS_PER_SECOND = 1_000L
+
 /**
  * Initialize one blank passenger per booking passenger id on the offer,
  * unless a matching set is already present (so returning to the form keeps
@@ -165,8 +170,8 @@ fun TravelViewModel.loadAncillaries(tripId: String) {
                 return@launch
             }
             // Still pricing: honor the server's hint, then retry.
-            val waitSecs = (failure as? StillPricingException)?.retryAfterSeconds ?: 5
-            delay(waitSecs.coerceIn(1, 30) * 1_000L)
+            val waitSecs = (failure as? StillPricingException)?.retryAfterSeconds ?: DEFAULT_RETRY_SECONDS
+            delay(waitSecs.coerceIn(MIN_RETRY_SECONDS, MAX_RETRY_SECONDS) * MILLIS_PER_SECOND)
             attempt++
         }
         ancillariesMutable.value = AncillariesState(

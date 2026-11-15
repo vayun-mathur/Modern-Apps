@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 
 const val DB_NAME = "travel-db"
 
+/** Contract for recent search dao. */
 @Dao
 interface RecentSearchDao {
     @Query("SELECT * FROM RecentSearch ORDER BY createdAt DESC LIMIT :limit")
@@ -39,6 +40,7 @@ interface RecentSearchDao {
     suspend fun trim(keep: Int = 20)
 }
 
+/** Contract for booked trip dao. */
 @Dao
 interface BookedTripDao {
     @Query("SELECT * FROM BookedTrip ORDER BY createdAt DESC")
@@ -57,6 +59,7 @@ interface BookedTripDao {
     suspend fun deleteById(orderId: String)
 }
 
+/** Contract for frequent flyer dao. */
 @Dao
 interface FrequentFlyerDao {
     @Query("SELECT * FROM FrequentFlyer ORDER BY airlineName")
@@ -72,6 +75,7 @@ interface FrequentFlyerDao {
     suspend fun deleteById(airlineIata: String)
 }
 
+/** Contract for customer dao. */
 @Dao
 interface CustomerDao {
     @Query("SELECT * FROM Customer ORDER BY givenName, familyName")
@@ -92,12 +96,14 @@ interface CustomerDao {
     version = 5,
     exportSchema = false,
 )
+/** Travel Database: a room database implementation for travel database. */
 abstract class TravelDatabase : RoomDatabase() {
     abstract fun recentSearchDao(): RecentSearchDao
     abstract fun bookedTripDao(): BookedTripDao
     abstract fun frequentFlyerDao(): FrequentFlyerDao
     abstract fun customerDao(): CustomerDao
 
+    /** Shared constants and helpers for TravelDatabase. */
     companion object : DatabaseMigrations {
         override val migrations = listOf(
             object : androidx.room3.migration.Migration(1, 2) {

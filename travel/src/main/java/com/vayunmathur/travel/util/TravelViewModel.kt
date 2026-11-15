@@ -164,6 +164,7 @@ class TravelViewModel(
     internal val customerErrorMutable = MutableStateFlow<String?>(null)
     val customerError: StateFlow<String?> = customerErrorMutable.asStateFlow()
 
+    /** Shared constants and helpers for TravelViewModel. */
     companion object {
         /** "2026-09-01" -> "Sep 1"; falls back to the raw string on any parse error. */
         fun prettyDate(iso: String): String = runCatching {
@@ -177,6 +178,7 @@ class TravelViewModel(
 internal fun TravelViewModel.errorMessage(t: Throwable): String =
     t.message?.takeIf { it.isNotBlank() } ?: "Something went wrong. Please try again."
 
+/** Creates travel view model instances. */
 class TravelViewModelFactory(
     private val application: Application,
     private val repository: TravelRepository,

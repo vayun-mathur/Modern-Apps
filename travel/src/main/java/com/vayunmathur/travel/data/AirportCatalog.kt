@@ -211,6 +211,60 @@ object AirportCatalog {
             }
         }.getOrDefault(emptyList())
 
+
+    /** Airlines, aircraft names and city DTOs from their TSV snapshots. */
+    private fun loadAirlinesAircraftCities(
+        assets: android.content.res.AssetManager,
+        metroCells: List<List<String>>,
+    ): Triple<List<AirlineDto>, Map<String, String>, List<CityDto>> {
+    val airlines = assetsReader(assets, "airlines.tsv")
+        .filter { it.size >= 2 && it[0].isNotBlank() && it[1].isNotBlank() }
+        .distinctBy { it[0].uppercase() }
+        .map { cols -> AirlineDto(name = cols[1], iataCode = cols[0].uppercase()) }
+        .sortedBy { it.name }
+
+    val aircraft = assetsReader(assets, "aircraft.tsv")
+        .filter { it.size >= 2 && it[0].isNotBlank() && it[1].isNotBlank() }
+        .distinctBy { it[0].uppercase() }
+        .associate { it[0].uppercase() to it[1] }
+
+    val metros = metroCells.map { cols ->
+        Triple(cols[0].uppercase(), cols[1], cols[2].uppercase())
+    }
+    val cities = metros
+        .map { (code, city, countryCode) ->
+            CityDto(name = city, iataCode = code, iataCountryCode = countryCode)
+        }
+        .sortedBy { it.name }
+        return Triple(airlines, aircraft, cities)
+    }
+
+    /** Metro (city) rows, skipping codes a real airport already covers. */
+    private fun loadMetroRows(
+        assets: android.content.res.AssetManager,
+        airportCodes: Set<String>,
+        countryName: (String) -> String,
+    ): Pair<List<CatalogPlaceRow>, List<List<String>>> {
+    // A metro code that collides with a real airport IATA (e.g. IST, BKK,
+    // BER) is skipped: the airport row already covers that code.
+    val metroCells = assetsReader(assets, "metros.tsv").filter { it.size >= 5 }
+    val metroRows = metroCells
+        .filter { !airportCodes.contains(it[0].uppercase()) }
+        .map { cols ->
+            val city = cols[1]
+            CatalogPlaceRow(
+                code = cols[0].uppercase(),
+                name = city,
+                city = city,
+                country = countryName(cols[2].uppercase()),
+                type = "city",
+                latitude = cols[3].toDoubleOrNull(),
+                longitude = cols[4].toDoubleOrNull(),
+            )
+        }
+        .sortedBy { it.code }
+        return metroRows to metroCells
+    }
     private fun loadSnapshot(assets: android.content.res.AssetManager): CatalogSnapshot {
         val countries = assetsReader(assets, "countries.tsv")
             .filter { it.size >= 2 }
@@ -236,45 +290,11 @@ object AirportCatalog {
             .sortedBy { it.code }
         val airportCodes = airportRows.map { it.code }.toSet()
 
-        // A metro code that collides with a real airport IATA (e.g. IST, BKK,
-        // BER) is skipped: the airport row already covers that code.
-        val metroCells = assetsReader(assets, "metros.tsv").filter { it.size >= 5 }
-        val metroRows = metroCells
-            .filter { !airportCodes.contains(it[0].uppercase()) }
-            .map { cols ->
-                val city = cols[1]
-                CatalogPlaceRow(
-                    code = cols[0].uppercase(),
-                    name = city,
-                    city = city,
-                    country = countryName(cols[2].uppercase()),
-                    type = "city",
-                    latitude = cols[3].toDoubleOrNull(),
-                    longitude = cols[4].toDoubleOrNull(),
-                )
-            }
-            .sortedBy { it.code }
-
-        val airlines = assetsReader(assets, "airlines.tsv")
-            .filter { it.size >= 2 && it[0].isNotBlank() && it[1].isNotBlank() }
-            .distinctBy { it[0].uppercase() }
-            .map { cols -> AirlineDto(name = cols[1], iataCode = cols[0].uppercase()) }
-            .sortedBy { it.name }
-
-        val aircraft = assetsReader(assets, "aircraft.tsv")
-            .filter { it.size >= 2 && it[0].isNotBlank() && it[1].isNotBlank() }
-            .distinctBy { it[0].uppercase() }
-            .associate { it[0].uppercase() to it[1] }
-
+        val (metroRows, metroCells) = loadMetroRows(assets, airportCodes, countryName)
         val metros = metroCells.map { cols ->
             Triple(cols[0].uppercase(), cols[1], cols[2].uppercase())
         }
-        val cities = metros
-            .map { (code, city, countryCode) ->
-                CityDto(name = city, iataCode = code, iataCountryCode = countryCode)
-            }
-            .sortedBy { it.name }
-
+        val (airlines, aircraft, cities) = loadAirlinesAircraftCities(assets, metroCells)
         val airportByCode = airportRows.associate { row ->
             row.code to AirportDto(
                 iataCode = row.code,

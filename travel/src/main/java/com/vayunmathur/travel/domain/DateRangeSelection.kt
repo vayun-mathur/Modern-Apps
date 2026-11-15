@@ -9,7 +9,12 @@ import java.time.LocalDate
  * otherwise it ends the range. [allowSameDay] = false (hotel nights) keeps
  * waiting for an end after the start when the start is tapped again.
  */
-fun nextRange(start: LocalDate?, end: LocalDate?, tapped: LocalDate, allowSameDay: Boolean): Pair<LocalDate?, LocalDate?> =
+fun nextRange(
+    start: LocalDate?,
+    end: LocalDate?,
+    tapped: LocalDate,
+    allowSameDay: Boolean,
+): Pair<LocalDate?, LocalDate?> =
     when {
         start == null || end != null -> tapped to null
         tapped.isBefore(start) -> tapped to null

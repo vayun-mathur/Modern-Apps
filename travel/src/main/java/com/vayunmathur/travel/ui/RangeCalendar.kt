@@ -52,13 +52,13 @@ import java.util.Locale
 // same component: 120dp header, 56dp month row, 48dp cells, 40dp day circles.
 private val HeaderMinHeight = 120.dp
 private val HeaderTitlePadding = PaddingValues(start = 24.dp, end = 12.dp, top = 16.dp)
-private val HeaderHeadlinePadding = PaddingValues(start = 24.dp, end = 12.dp, bottom = 12.dp)
-private val MonthRowHeight = 56.dp
-private val HorizontalPadding = 12.dp
-private val CellSize = 48.dp
-private val DaySize = 40.dp
-private const val CalendarRows = 6
-private const val MonthsAhead = 24L
+private val headerHeadlinePadding = PaddingValues(start = 24.dp, end = 12.dp, bottom = 12.dp)
+private val monthRowHeight = 56.dp
+private val horizontalPadding = 12.dp
+private val cellSize = 48.dp
+private val daySize = 40.dp
+private const val CALENDAR_ROWS = 6
+private const val MONTHS_AHEAD = 24L
 
 /**
  * A start/end date calendar that looks and behaves like the single Material
@@ -85,8 +85,8 @@ internal fun RangeCalendar(
     val initialPage = remember {
         val shown = YearMonth.from(start ?: minDate)
         (shown.year - firstMonth.year) * 12 + (shown.monthValue - firstMonth.monthValue)
-    }.coerceIn(0, MonthsAhead.toInt() - 1)
-    val pager = rememberPagerState(initialPage = initialPage) { MonthsAhead.toInt() }
+    }.coerceIn(0, MONTHS_AHEAD.toInt() - 1)
+    val pager = rememberPagerState(initialPage = initialPage) { MONTHS_AHEAD.toInt() }
     val scope = rememberCoroutineScope()
     val shownMonth = firstMonth.plusMonths(pager.currentPage.toLong())
 
@@ -101,7 +101,7 @@ internal fun RangeCalendar(
             )
             Text(
                 "${start?.let { formatHeadlineDate(it, locale) } ?: startLabel} – ${end?.let { formatHeadlineDate(it, locale) } ?: endLabel}",
-                modifier = Modifier.padding(HeaderHeadlinePadding),
+                modifier = Modifier.padding(headerHeadlinePadding),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -111,7 +111,7 @@ internal fun RangeCalendar(
 
         // Month navigation: "November 2026" with previous/next arrows.
         Row(
-            Modifier.fillMaxWidth().requiredHeight(MonthRowHeight).padding(horizontal = HorizontalPadding),
+            Modifier.fillMaxWidth().requiredHeight(monthRowHeight).padding(horizontal = horizontalPadding),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -128,14 +128,14 @@ internal fun RangeCalendar(
                 ) { IconKeyboardArrowLeft(tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                 IconButton(
                     onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
-                    enabled = pager.currentPage < MonthsAhead - 1,
+                    enabled = pager.currentPage < MONTHS_AHEAD - 1,
                 ) { IconKeyboardArrowRight(tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
 
-        Column(Modifier.padding(horizontal = HorizontalPadding)) {
+        Column(Modifier.padding(horizontal = horizontalPadding)) {
             val weekDays = remember(locale) { orderedWeekDays(locale) }
-            Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = CellSize), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = cellSize), verticalAlignment = Alignment.CenterVertically) {
                 weekDays.forEach { day ->
                     Text(
                         day.getDisplayName(TextStyle.NARROW, locale),
@@ -174,9 +174,9 @@ private fun MonthGrid(
 ) {
     val today = remember { LocalDate.now() }
     val leading = weekDays.indexOf(month.atDay(1).dayOfWeek)
-    Column(Modifier.fillMaxWidth().requiredHeight(CellSize * CalendarRows), verticalArrangement = Arrangement.SpaceEvenly) {
-        for (row in 0 until CalendarRows) {
-            Row(Modifier.fillMaxWidth().height(CellSize)) {
+    Column(Modifier.fillMaxWidth().requiredHeight(cellSize * CALENDAR_ROWS), verticalArrangement = Arrangement.SpaceEvenly) {
+        for (row in 0 until CALENDAR_ROWS) {
+            Row(Modifier.fillMaxWidth().height(cellSize)) {
                 for (col in 0 until 7) {
                     val dayNumber = row * 7 + col - leading + 1
                     if (dayNumber < 1 || dayNumber > month.lengthOfMonth()) {
@@ -219,7 +219,7 @@ private fun RowScope.DayCell(
         // ends, half width on the start/end cells so the ends stay round.
         if (hasRange && (inRange || isStart || isEnd)) {
             val band = colors.secondaryContainer
-            Row(Modifier.fillMaxWidth().height(DaySize)) {
+            Row(Modifier.fillMaxWidth().height(daySize)) {
                 val leftFilled = inRange || (if (rtl) isStart else isEnd)
                 val rightFilled = inRange || (if (rtl) isEnd else isStart)
                 Box(Modifier.weight(1f).fillMaxHeight().background(if (leftFilled) band else Color.Transparent))
@@ -232,7 +232,7 @@ private fun RowScope.DayCell(
             shape = CircleShape,
             color = if (selected) colors.primary else Color.Transparent,
             border = if (today && !selected) BorderStroke(1.dp, colors.primary) else null,
-            modifier = Modifier.size(DaySize),
+            modifier = Modifier.size(daySize),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(

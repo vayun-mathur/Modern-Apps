@@ -48,29 +48,32 @@ class TravelSuccessOpsTest {
 
     @BeforeTest fun open() {
         repo = FakeRepo(ApplicationProvider.getApplicationContext())
+        val routes: List<Pair<List<String>, String>> = listOf(
+            listOf("/flights") to """{"offerRequestId":"req_1","offers":[$offerJson]}""",
+            listOf("/ancillaries", "/trips/") to """{"status":"ok","services":[{"id":"bag_1","type":"baggage","title":"Checked bag","totalAmount":"30.00","totalCurrency":"USD","maxQuantity":3}],"seatMaps":[]}""",
+            listOf("/checkout") to """{"clientSecret":"cs_1","publishableKey":"pk_1","quoteId":"q_1","totalAmount":"250.00","currency":"USD"}""",
+            listOf("/confirm", "/trips/") to """{"tripId":"trip_1","status":"confirmed","bookingReference":"ABC123","totalAmount":"250.00","currency":"USD"}""",
+            listOf("/trips/") to """{"tripId":"trip_1","status":"confirmed","bookingReference":"ABC123","totalAmount":"250.00","currency":"USD"}""",
+            listOf("/bookings/", "/cancel") to """{"id":"can_1","orderId":"ord_1","refundAmount":"200.00","refundCurrency":"USD","commitable":true,"status":"quoted"}""",
+            listOf("/cancellations/", "/confirm") to """{"id":"can_1","orderId":"ord_1","refundAmount":"200.00","refundCurrency":"USD","status":"processing"}""",
+            listOf("/cancellations/") to """{"id":"can_1","orderId":"ord_1","refundAmount":"200.00","refundCurrency":"USD","status":"cancelled"}""",
+            listOf("/changes", "/bookings/") to """{"id":"chgreq_1","offers":[{"id":"chg_1","changeTotalAmount":"50.00","changeTotalCurrency":"USD","newTotalAmount":"300.00","newTotalCurrency":"USD","slices":[{"origin":"SFO","destination":"JFK","departureAt":"2027-07-01T07:15:00","arrivalAt":"2027-07-01T15:50:00"}]}]}""",
+            listOf("/price?") to """{"outcome":"pay","amount":"50.00","currency":"USD"}""",
+            listOf("/changes/", "/confirm") to """{"id":"chg_1","status":"processing"}""",
+            listOf("/changes/status") to """{"orderId":"ord_1","status":"changed"}""",
+            listOf("/bookings/") to """{"orderId":"ord_1","bookingReference":"ABC123","totalAmount":"250.00","currency":"USD","status":"confirmed","passengerNames":["Jane Doe"],"slices":[{"origin":"SFO","destination":"JFK","departureAt":"2027-06-24T07:15:00","arrivalAt":"2027-06-24T15:50:00"}],"canCancel":true,"canChange":true}""",
+            listOf("/stays/search") to """[{"id":"sr_1","name":"Grand Hotel","rating":5,"cheapestAmount":"180.00","cheapestCurrency":"USD"}]""",
+            listOf("/stays/rates") to """{"name":"Grand Hotel","rooms":[{"name":"Deluxe King","rates":[{"id":"r1","boardType":"breakfast","totalAmount":"180.00","totalCurrency":"USD","cancellation":"Free cancellation"}]}]}""",
+            listOf("/stays/quote") to """{"id":"quote_1","totalAmount":"180.00","totalCurrency":"USD"}""",
+            listOf("/stays/bookings") to """{"id":"stay_1","reference":"STAY123","status":"pending_payment","accommodationName":"Grand Hotel","totalAmount":"180.00","totalCurrency":"USD","clientSecret":"cs_s","publishableKey":"pk_s"}""",
+            listOf("/trips") to """{"tripId":"trip_1","status":"created","totalAmount":"250.00","currency":"USD"}""",  // endsWith
+        )
         travelTransport = { _, url, _ ->
-            when {
-                url.contains("/flights") -> TravelRaw(200, """{"offerRequestId":"req_1","offers":[$offerJson]}""")
-                url.contains("/offer?") -> TravelRaw(200, offerJson)
-                url.contains("/ancillaries") && url.contains("/trips/") -> TravelRaw(200, """{"status":"ok","services":[{"id":"bag_1","type":"baggage","title":"Checked bag","totalAmount":"30.00","totalCurrency":"USD","maxQuantity":3}],"seatMaps":[]}""")
-                url.contains("/checkout") -> TravelRaw(200, """{"clientSecret":"cs_1","publishableKey":"pk_1","quoteId":"q_1","totalAmount":"250.00","currency":"USD"}""")
-                url.contains("/confirm") && url.contains("/trips/") -> TravelRaw(200, """{"tripId":"trip_1","status":"confirmed","bookingReference":"ABC123","totalAmount":"250.00","currency":"USD"}""")
-                url.endsWith("/trips") -> TravelRaw(200, """{"tripId":"trip_1","status":"created","totalAmount":"250.00","currency":"USD"}""")
-                url.contains("/trips/") -> TravelRaw(200, """{"tripId":"trip_1","status":"confirmed","bookingReference":"ABC123","totalAmount":"250.00","currency":"USD"}""")
-                url.contains("/bookings/") && url.contains("/cancel") -> TravelRaw(200, """{"id":"can_1","orderId":"ord_1","refundAmount":"200.00","refundCurrency":"USD","commitable":true,"status":"quoted"}""")
-                url.contains("/cancellations/") && url.contains("/confirm") -> TravelRaw(200, """{"id":"can_1","orderId":"ord_1","refundAmount":"200.00","refundCurrency":"USD","status":"processing"}""")
-                url.contains("/cancellations/") -> TravelRaw(200, """{"id":"can_1","orderId":"ord_1","refundAmount":"200.00","refundCurrency":"USD","status":"cancelled"}""")
-                url.contains("/changes") && url.contains("/bookings/") -> TravelRaw(200, """{"id":"chgreq_1","offers":[{"id":"chg_1","changeTotalAmount":"50.00","changeTotalCurrency":"USD","newTotalAmount":"300.00","newTotalCurrency":"USD","slices":[{"origin":"SFO","destination":"JFK","departureAt":"2027-07-01T07:15:00","arrivalAt":"2027-07-01T15:50:00"}]}]}""")
-                url.contains("/price?") -> TravelRaw(200, """{"outcome":"pay","amount":"50.00","currency":"USD"}""")
-                url.contains("/changes/") && url.contains("/confirm") -> TravelRaw(200, """{"id":"chg_1","status":"processing"}""")
-                url.contains("/changes/status") -> TravelRaw(200, """{"orderId":"ord_1","status":"changed"}""")
-                url.contains("/bookings/") -> TravelRaw(200, """{"orderId":"ord_1","bookingReference":"ABC123","totalAmount":"250.00","currency":"USD","status":"confirmed","passengerNames":["Jane Doe"],"slices":[{"origin":"SFO","destination":"JFK","departureAt":"2027-06-24T07:15:00","arrivalAt":"2027-06-24T15:50:00"}],"canCancel":true,"canChange":true}""")
-                url.contains("/stays/search") -> TravelRaw(200, """[{"id":"sr_1","name":"Grand Hotel","rating":5,"cheapestAmount":"180.00","cheapestCurrency":"USD"}]""")
-                url.contains("/stays/rates") -> TravelRaw(200, """{"name":"Grand Hotel","rooms":[{"name":"Deluxe King","rates":[{"id":"r1","boardType":"breakfast","totalAmount":"180.00","totalCurrency":"USD","cancellation":"Free cancellation"}]}]}""")
-                url.contains("/stays/quote") -> TravelRaw(200, """{"id":"quote_1","totalAmount":"180.00","totalCurrency":"USD"}""")
-                url.contains("/stays/bookings") -> TravelRaw(200, """{"id":"stay_1","reference":"STAY123","status":"pending_payment","accommodationName":"Grand Hotel","totalAmount":"180.00","totalCurrency":"USD","clientSecret":"cs_s","publishableKey":"pk_s"}""")
-                else -> TravelRaw(404, """{"message":"not found"}""")
-            }
+            val body = routes.firstOrNull { (parts, _) ->
+                parts.all { url.contains(it) }
+            }?.second
+            if (body != null) TravelRaw(200, body) else TravelRaw(404, """{"message":"not found"}""")
+
         }
     }
 

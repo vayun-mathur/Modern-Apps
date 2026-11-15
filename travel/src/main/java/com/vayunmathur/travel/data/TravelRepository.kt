@@ -39,6 +39,7 @@ open class TravelRepository internal constructor(context: Context) :
     open suspend fun upsertCustomer(value: Customer) = customerDao.upsert(value)
     open suspend fun deleteCustomerById(id: String) = customerDao.deleteById(id)
 
+    /** Shared constants and helpers for TravelRepository. */
     companion object {
         @Volatile private var instance: TravelRepository? = null
         fun get(context: Context): TravelRepository =
