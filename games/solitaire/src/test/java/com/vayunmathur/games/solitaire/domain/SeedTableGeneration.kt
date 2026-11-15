@@ -68,12 +68,17 @@ class SeedTableGeneration(
         val reports = keys.map { ConfigReport(it) }
         var nextSeed = 1
         val started = System.currentTimeMillis()
+        // Round size scales with the target: a full 10 000-seed table keeps
+        // the historic 2048-seed rounds, but a tiny unit-test target must not
+        // have to solve a whole round before it can stop. The tables are
+        // unaffected — each is still the ascending prefix of proven seeds.
+        val roundSize = minOf(ROUND_SIZE, maxOf(target * ROUND_TARGET_FACTOR, ROUND_MIN))
         while (found.any { it.size < target }) {
             val needed = BooleanArray(keys.size) { found[it].size < target }
-            val round = (nextSeed until nextSeed + ROUND_SIZE).map { seed ->
+            val round = (nextSeed until nextSeed + roundSize).map { seed ->
                 Callable { evaluate(group, seed, needed) }
             }
-            nextSeed += ROUND_SIZE
+            nextSeed += roundSize
             for (outcome in pool.invokeAll(round).map { it.get() }) {
                 record(outcome, needed, found, reports)
             }
@@ -150,6 +155,8 @@ class SeedTableGeneration(
     companion object {
         val GROUP_NAMES = listOf("klondike-draw1", "klondike-draw3", "pyramid", "freecell", "spider1", "spider2", "spider4")
         private const val ROUND_SIZE = 2048
+        private const val ROUND_TARGET_FACTOR = 8
+        private const val ROUND_MIN = 32
         private val RELAXED = com.vayunmathur.games.solitaire.data.KlondikeDifficulty.RELAXED
     }
 }
