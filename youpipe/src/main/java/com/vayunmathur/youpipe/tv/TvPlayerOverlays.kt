@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableLongState
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -29,7 +30,6 @@ import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FadeVisibility
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.platform.CastPlayback
-import com.vayunmathur.youpipe.ui.AudioStream
 import com.vayunmathur.youpipe.ui.SubtitleTrack
 import com.vayunmathur.youpipe.ui.VideoChapter
 import com.vayunmathur.youpipe.ui.VideoInfo
@@ -42,35 +42,37 @@ import com.vayunmathur.youpipe.util.YouPipeViewModel
  */
 @Composable
 internal fun BoxScope.TvPlayerOverlays(
-    ypvm: YouPipeViewModel,
-    videoInfo: VideoInfo,
-    videoStreams: List<VideoStream>,
-    audioStreams: List<AudioStream>,
-    subtitles: List<SubtitleTrack>,
-    segments: List<VideoChapter>,
-    transport: CastPlayback.Transport,
-    cues: List<Cue>,
-    overlayVisible: Boolean,
-    controller: MediaController?,
-    languageEntries: List<Pair<String, String>>,
-    language: String,
-    onLanguage: (String) -> Unit,
-    selectedSubtitle: SubtitleTrack?,
-    onSubtitle: (SubtitleTrack?) -> Unit,
-    currentVideoStream: VideoStream,
-    onVideoStream: (VideoStream) -> Unit,
-    showChapters: Boolean,
-    onShowChapters: (Boolean) -> Unit,
-    showQuality: Boolean,
-    onShowQuality: (Boolean) -> Unit,
-    showLanguage: Boolean,
-    onShowLanguage: (Boolean) -> Unit,
-    showCaptions: Boolean,
-    onShowCaptions: (Boolean) -> Unit,
-    showSpeed: Boolean,
-    onShowSpeed: (Boolean) -> Unit,
+    ypvm: YouPipeViewModel, videoInfo: VideoInfo, videoStreams: List<VideoStream>,
+    subtitles: List<SubtitleTrack>, segments: List<VideoChapter>,
+    transport: CastPlayback.Transport, cues: List<Cue>, overlayVisible: Boolean,
+    controller: MediaController?, languageEntries: List<Pair<String, String>>, language: String,
+    onLanguage: (String) -> Unit, selectedSubtitle: SubtitleTrack?, onSubtitle: (SubtitleTrack?) -> Unit,
+    currentVideoStream: VideoStream, onVideoStream: (VideoStream) -> Unit, showChapters: Boolean,
+    onShowChapters: (Boolean) -> Unit, showQuality: Boolean, onShowQuality: (Boolean) -> Unit,
+    showLanguage: Boolean, onShowLanguage: (Boolean) -> Unit, showCaptions: Boolean,
+    onShowCaptions: (Boolean) -> Unit, showSpeed: Boolean, onShowSpeed: (Boolean) -> Unit,
     chrome: TvPlayerChrome,
 ) {
+    TvPlayerCueOverlay(cues)
+    TvPlayerBufferingSpinner(transport.buffering)
+    val sheetState = TvPlayerOverlaySheetState(
+        showChapters, onShowChapters, showQuality, onShowQuality, showLanguage, onShowLanguage,
+        showCaptions, onShowCaptions, showSpeed, onShowSpeed,
+    )
+    val transportArgs = TvPlayerTransportArgs(
+        videoInfo, chrome, transport, overlayVisible, subtitles.isNotEmpty(), selectedSubtitle != null,
+        currentVideoStream.quality, segments.isNotEmpty(), languageEntries.size > 1, sheetState, ypvm,
+    )
+    TvPlayerTransportLayer(transportArgs)
+    val sheetArgs = TvPlayerSheetArgs(
+        segments, controller, videoStreams, currentVideoStream, onVideoStream, languageEntries,
+        language, onLanguage, subtitles, selectedSubtitle, onSubtitle, transport.speed, sheetState,
+    )
+    TvPlayerSheets(sheetArgs)
+}
+
+@Composable
+private fun BoxScope.TvPlayerCueOverlay(cues: List<Cue>) {
     if (cues.isNotEmpty()) {
         Column(
             Modifier
@@ -92,80 +94,130 @@ internal fun BoxScope.TvPlayerOverlays(
             }
         }
     }
+}
 
-    if (transport.buffering) {
+@Composable
+private fun BoxScope.TvPlayerBufferingSpinner(buffering: Boolean) {
+    if (buffering) {
         CircularProgressIndicator(
             modifier = Modifier.align(Alignment.Center),
             color = Color.White,
         )
     }
+}
 
-    FadeVisibility(visible = overlayVisible) {
+private data class TvPlayerOverlaySheetState(
+    val showChapters: Boolean,
+    val onShowChapters: (Boolean) -> Unit,
+    val showQuality: Boolean,
+    val onShowQuality: (Boolean) -> Unit,
+    val showLanguage: Boolean,
+    val onShowLanguage: (Boolean) -> Unit,
+    val showCaptions: Boolean,
+    val onShowCaptions: (Boolean) -> Unit,
+    val showSpeed: Boolean,
+    val onShowSpeed: (Boolean) -> Unit,
+)
+
+private data class TvPlayerTransportArgs(
+    val videoInfo: VideoInfo,
+    val chrome: TvPlayerChrome,
+    val transport: CastPlayback.Transport,
+    val overlayVisible: Boolean,
+    val hasCaptions: Boolean,
+    val captionsOn: Boolean,
+    val qualityLabel: String,
+    val hasChapters: Boolean,
+    val hasLanguage: Boolean,
+    val sheets: TvPlayerOverlaySheetState,
+    val ypvm: YouPipeViewModel,
+)
+
+@Composable
+private fun TvPlayerTransportLayer(args: TvPlayerTransportArgs) {
+    FadeVisibility(visible = args.overlayVisible) {
         TvTransportOverlay(
-            title = videoInfo.name,
-            chrome = chrome,
-            hasNext = transport.hasNext,
-            hasPrevious = transport.hasPrevious,
-            hasCaptions = subtitles.isNotEmpty(),
-            captionsOn = selectedSubtitle != null,
-            onCaptions = { onShowCaptions(true) },
+            title = args.videoInfo.name,
+            chrome = args.chrome,
+            hasNext = args.transport.hasNext,
+            hasPrevious = args.transport.hasPrevious,
+            hasCaptions = args.hasCaptions,
+            captionsOn = args.captionsOn,
+            onCaptions = { args.sheets.onShowCaptions(true) },
             settings = TvPlayerSettings(
-                qualityLabel = currentVideoStream.quality,
-                speed = transport.speed,
-                hasChapters = segments.isNotEmpty(),
-                hasLanguage = languageEntries.size > 1,
-                onQuality = { onShowQuality(true) },
-                onSpeed = { onShowSpeed(true) },
-                onLanguage = { onShowLanguage(true) },
-                onChapters = { onShowChapters(true) },
+                qualityLabel = args.qualityLabel,
+                speed = args.transport.speed,
+                hasChapters = args.hasChapters,
+                hasLanguage = args.hasLanguage,
+                onQuality = { args.sheets.onShowQuality(true) },
+                onSpeed = { args.sheets.onShowSpeed(true) },
+                onLanguage = { args.sheets.onShowLanguage(true) },
+                onChapters = { args.sheets.onShowChapters(true) },
             ),
-            ypvm = ypvm,
+            ypvm = args.ypvm,
             modifier = Modifier.fillMaxSize(),
         )
     }
+}
 
-    if (showChapters) {
+private data class TvPlayerSheetArgs(
+    val segments: List<VideoChapter>,
+    val controller: MediaController?,
+    val videoStreams: List<VideoStream>,
+    val currentVideoStream: VideoStream,
+    val onVideoStream: (VideoStream) -> Unit,
+    val languageEntries: List<Pair<String, String>>,
+    val language: String,
+    val onLanguage: (String) -> Unit,
+    val subtitles: List<SubtitleTrack>,
+    val selectedSubtitle: SubtitleTrack?,
+    val onSubtitle: (SubtitleTrack?) -> Unit,
+    val speed: Float,
+    val sheets: TvPlayerOverlaySheetState,
+)
+
+@Composable
+private fun TvPlayerSheets(args: TvPlayerSheetArgs) {
+    if (args.sheets.showChapters) {
         TvChapterSheet(
-            segments = segments,
-            onSeekTo = { controller?.seekTo(it) },
-            onDismiss = { onShowChapters(false) },
+            segments = args.segments,
+            onSeekTo = { args.controller?.seekTo(it) },
+            onDismiss = { args.sheets.onShowChapters(false) },
         )
     }
-    if (showQuality) {
+    if (args.sheets.showQuality) {
         TvQualitySheet(
-            streams = videoStreams,
-            current = currentVideoStream,
-            onSelect = { onVideoStream(it); onShowQuality(false) },
-            onDismiss = { onShowQuality(false) },
+            streams = args.videoStreams, current = args.currentVideoStream,
+            onSelect = { args.onVideoStream(it); args.sheets.onShowQuality(false) },
+            onDismiss = { args.sheets.onShowQuality(false) },
         )
     }
-    if (showLanguage) {
+    if (args.sheets.showLanguage) {
         TvLanguageSheet(
-            entries = languageEntries,
-            selected = language,
-            onSelect = { onLanguage(it); onShowLanguage(false) },
-            onDismiss = { onShowLanguage(false) },
+            entries = args.languageEntries, selected = args.language,
+            onSelect = { args.onLanguage(it); args.sheets.onShowLanguage(false) },
+            onDismiss = { args.sheets.onShowLanguage(false) },
         )
     }
-    if (showCaptions) {
+    if (args.sheets.showCaptions) {
         TvCaptionSheet(
-            tracks = subtitles,
-            selected = selectedSubtitle,
-            onSelect = { onSubtitle(it); onShowCaptions(false) },
-            onDismiss = { onShowCaptions(false) },
+            tracks = args.subtitles, selected = args.selectedSubtitle,
+            onSelect = { args.onSubtitle(it); args.sheets.onShowCaptions(false) },
+            onDismiss = { args.sheets.onShowCaptions(false) },
         )
     }
-    if (showSpeed) {
+    if (args.sheets.showSpeed) {
         TvSpeedSheet(
-            current = transport.speed,
+            current = args.speed,
             onSelect = { speed ->
                 CastPlayback.update { it.copy(speed = speed) }
-                onShowSpeed(false)
+                args.sheets.onShowSpeed(false)
             },
-            onDismiss = { onShowSpeed(false) },
+            onDismiss = { args.sheets.onShowSpeed(false) },
         )
     }
 }
+
 /**
  * The 300ms poll loop: transport position, sponsor-block skips, periodic history writes.
  *
@@ -186,25 +238,52 @@ internal fun TvPlayerPositionLoop(
         sponsorSegments.sponsorSegments.filter { it.category in categories }
     }
     // Persist the final position on dispose — the phone's HistoryPersist equivalent.
-    var lastPosition by remember(videoInfo.videoID) { mutableLongStateOf(0L) }
-    var lastDuration by remember(videoInfo.videoID) { mutableLongStateOf(0L) }
+    val lastPositionState = remember(videoInfo.videoID) { mutableLongStateOf(0L) }
+    val lastDurationState = remember(videoInfo.videoID) { mutableLongStateOf(0L) }
+    TvPlayerHistoryPersistEffect(ypvm, videoInfo, lastPositionState, lastDurationState)
+    val pollArgs = TvPlayerPollArgs(
+        ypvm, videoInfo, segments, sponsorBlockEnabled, lastPositionState, lastDurationState,
+    )
+    TvPlayerPollEffect(controller, pollArgs)
+}
+
+@Composable
+private fun TvPlayerHistoryPersistEffect(
+    ypvm: YouPipeViewModel,
+    videoInfo: VideoInfo,
+    lastPositionState: MutableLongState,
+    lastDurationState: MutableLongState,
+) {
     DisposableEffect(videoInfo.videoID) {
         onDispose {
             ypvm.upsertHistoryVideo(
                 com.vayunmathur.youpipe.data.HistoryVideo.fromVideoData(
-                    videoInfo.copy(duration = lastDuration),
-                    lastPosition,
+                    videoInfo.copy(duration = lastDurationState.longValue),
+                    lastPositionState.longValue,
                 ),
             )
         }
     }
+}
+
+private data class TvPlayerPollArgs(
+    val ypvm: YouPipeViewModel,
+    val videoInfo: VideoInfo,
+    val segments: List<com.vayunmathur.youpipe.util.SponsorSegment>,
+    val sponsorBlockEnabled: Boolean,
+    val lastPositionState: MutableLongState,
+    val lastDurationState: MutableLongState,
+)
+
+@Composable
+private fun TvPlayerPollEffect(controller: MediaController?, args: TvPlayerPollArgs) {
     androidx.compose.runtime.LaunchedEffect(controller) {
         val player = controller ?: return@LaunchedEffect
         var lastHistoryUpsert = 0L
         while (true) {
             var position = player.currentPosition.coerceAtLeast(0L)
-            if (sponsorBlockEnabled) {
-                val current = segments.find { position in it.start until it.end }
+            if (args.sponsorBlockEnabled) {
+                val current = args.segments.find { position in it.start until it.end }
                 if (current != null) {
                     player.seekTo(current.end)
                     position = current.end
@@ -220,23 +299,25 @@ internal fun TvPlayerPositionLoop(
                     )
                 }
             }
-            lastPosition = position
-            lastDuration = player.duration.coerceAtLeast(0L)
+            args.lastPositionState.longValue = position
+            args.lastDurationState.longValue = player.duration.coerceAtLeast(0L)
             if (player.isPlaying) {
                 val now = System.currentTimeMillis()
                 if (now - lastHistoryUpsert >= TV_HISTORY_UPSERT_INTERVAL_MS) {
-                    ypvm.upsertHistoryVideo(
+                    args.ypvm.upsertHistoryVideo(
                         com.vayunmathur.youpipe.data.HistoryVideo.fromVideoData(
-                            videoInfo.copy(duration = lastDuration),
+                            args.videoInfo.copy(duration = args.lastDurationState.longValue),
                             position,
                         ),
                     )
                     lastHistoryUpsert = now
                 }
             }
-            kotlinx.coroutines.delay(300)
+            kotlinx.coroutines.delay(HISTORY_POLL_MS)
         }
     }
 }
 
 private const val TV_HISTORY_UPSERT_INTERVAL_MS = 5_000L
+
+private const val HISTORY_POLL_MS = 300L

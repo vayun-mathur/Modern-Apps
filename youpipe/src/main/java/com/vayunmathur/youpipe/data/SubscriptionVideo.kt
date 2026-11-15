@@ -19,6 +19,7 @@ import kotlin.time.Instant
         ),
     ],
 )
+/** Immutable value describing subscription video. */
 data class SubscriptionVideo(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0, // video id
     val name: String,

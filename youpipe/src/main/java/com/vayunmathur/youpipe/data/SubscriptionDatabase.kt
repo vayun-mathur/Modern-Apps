@@ -136,6 +136,7 @@ val MIGRATION_6_7 = Migration(6, 7) {
     it.execSQL("ALTER TABLE `PlaylistItem` ADD COLUMN `isPaid` INTEGER NOT NULL DEFAULT 0")
 }
 
+/** Contract for history video dao. */
 @Dao
 interface HistoryVideoDao {
     @Query("SELECT * FROM HistoryVideo")
@@ -163,6 +164,7 @@ interface HistoryVideoDao {
     suspend fun clearAll()
 }
 
+/** Contract for subscription dao. */
 @Dao
 interface SubscriptionDao {
     @Query("SELECT * FROM Subscription")
@@ -187,6 +189,7 @@ interface SubscriptionDao {
     suspend fun delete(value: Subscription): Int
 }
 
+/** Contract for subscription video dao. */
 @Dao
 interface SubscriptionVideoDao {
     @Query("SELECT * FROM SubscriptionVideo")
@@ -221,6 +224,7 @@ interface SubscriptionVideoDao {
     version = 7,
     exportSchema = false,
 )
+/** Subscription Database: a room database implementation for subscription database. */
 abstract class SubscriptionDatabase : RoomDatabase() {
     abstract fun subscriptionDao(): SubscriptionDao
     abstract fun subscriptionVideoDao(): SubscriptionVideoDao
@@ -235,6 +239,7 @@ abstract class SubscriptionDatabase : RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
     abstract fun playlistItemDao(): PlaylistItemDao
 
+    /** Shared constants and helpers for SubscriptionDatabase. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations: List<Migration> = listOf(
             MIGRATION_1_2,

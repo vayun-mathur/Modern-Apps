@@ -31,6 +31,7 @@ import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconRemove
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
+import com.vayunmathur.youpipe.data.RecommendationPreferences
 import com.vayunmathur.youpipe.ui.presetLabel
 import com.vayunmathur.youpipe.util.RecSource
 import com.vayunmathur.youpipe.util.RecommendationPreset
@@ -71,7 +72,6 @@ fun TvRecommendationsSettingsPage(
 ) {
     val recPrefs by ypvm.recommendationPreferences.collectAsState()
     val firstFocus = remember { FocusRequester() }
-
     TvInitialFocus(firstFocus)
     TvSettingsBody {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -80,95 +80,136 @@ fun TvRecommendationsSettingsPage(
                 Modifier.padding(start = 48.dp, end = 48.dp, bottom = 44.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-            RecommendationPreset.entries.forEachIndexed { index, preset ->
-                TvListRow(
-                    headline = presetLabel(preset),
-                    trailing = if (recPrefs.preset == preset.name) {
-                        { IconCheck() }
-                    } else {
-                        null
-                    },
-                    onClick = { ypvm.setPreset(preset) },
-                    modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
-                )
-            }
-            TvStepperRow(
-                label = stringResource(R.string.label_dial_discovery),
-                value = recPrefs.discoveryFamiliar,
-                onChange = { ypvm.setDiscoveryFamiliar(it) },
-            )
-            TvStepperRow(
-                label = stringResource(R.string.label_dial_fresh),
-                value = recPrefs.freshEvergreen,
-                onChange = { ypvm.setFreshEvergreen(it) },
-            )
-            TvStepperRow(
-                label = stringResource(R.string.label_dial_diverse),
-                value = recPrefs.focusedDiverse,
-                onChange = { ypvm.setFocusedDiverse(it) },
-            )
-            Text(
-                text = stringResource(R.string.label_rec_sources),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            TV_SOURCE_TOGGLES.forEach { (source, labelRes) ->
-                val enabled = when (source) {
-                    RecSource.RELATED -> recPrefs.sourceRelated
-                    RecSource.TRENDING -> recPrefs.sourceTrending
-                    RecSource.SUBSCRIPTION -> recPrefs.sourceSubscription
-                    RecSource.TOP_CHANNEL -> recPrefs.sourceTopChannel
-                    RecSource.SEARCH -> recPrefs.sourceSearch
-                }
-                TvSwitchRow(
-                    headline = stringResource(labelRes),
-                    checked = enabled,
-                    onCheckedChange = { ypvm.toggleSource(source) },
-                )
-            }
-            Text(
-                text = stringResource(R.string.label_rec_content_filters),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            TvSwitchRow(
-                headline = stringResource(R.string.label_hide_shorts),
-                checked = recPrefs.hideShorts,
-                onCheckedChange = { ypvm.setHideShorts(it) },
-            )
-            TvSwitchRow(
-                headline = stringResource(R.string.label_hide_live),
-                checked = recPrefs.hideLive,
-                onCheckedChange = { ypvm.setHideLive(it) },
-            )
-            TvSwitchRow(
-                headline = stringResource(R.string.label_hide_paid),
-                checked = recPrefs.hidePaid,
-                onCheckedChange = { ypvm.setHidePaid(it) },
-            )
-            TvStepperRow(
-                label = stringResource(R.string.label_min_duration),
-                value = recPrefs.minDurationSec.toFloat(),
-                step = 30f,
-                range = 0f..3600f,
-                onChange = { ypvm.setMinDuration(it.toLong()) },
-            )
-            TvStepperRow(
-                label = stringResource(R.string.label_max_duration),
-                value = recPrefs.maxDurationSec.toFloat(),
-                step = 60f,
-                range = 0f..7200f,
-                onChange = { ypvm.setMaxDuration(it.toLong()) },
-            )
-            TvListRow(
-                headline = stringResource(R.string.title_manage_interests),
-                onClick = { backStack.add(TvRoute.ManageInterests) },
-            )
-            TvButton(
-                text = stringResource(R.string.action_reset_algorithm),
-                onClick = { ypvm.resetAlgorithm() },
-            )
+                TvRecommendationPresets(ypvm, recPrefs, firstFocus)
+                TvRecommendationDials(ypvm, recPrefs)
+                TvRecommendationSources(ypvm, recPrefs)
+                TvRecommendationFilters(ypvm, recPrefs)
+                TvRecommendationActions(backStack, ypvm)
             }
         }
     }
+}
+
+@Composable
+private fun TvRecommendationPresets(
+    ypvm: YouPipeViewModel,
+    recPrefs: RecommendationPreferences,
+    firstFocus: FocusRequester,
+) {
+    RecommendationPreset.entries.forEachIndexed { index, preset ->
+        TvListRow(
+            headline = presetLabel(preset),
+            trailing = if (recPrefs.preset == preset.name) {
+                { IconCheck() }
+            } else {
+                null
+            },
+            onClick = { ypvm.setPreset(preset) },
+            modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
+        )
+    }
+}
+
+@Composable
+private fun TvRecommendationDials(
+    ypvm: YouPipeViewModel,
+    recPrefs: RecommendationPreferences,
+) {
+    TvStepperRow(
+        label = stringResource(R.string.label_dial_discovery),
+        value = recPrefs.discoveryFamiliar,
+        onChange = { ypvm.setDiscoveryFamiliar(it) },
+    )
+    TvStepperRow(
+        label = stringResource(R.string.label_dial_fresh),
+        value = recPrefs.freshEvergreen,
+        onChange = { ypvm.setFreshEvergreen(it) },
+    )
+    TvStepperRow(
+        label = stringResource(R.string.label_dial_diverse),
+        value = recPrefs.focusedDiverse,
+        onChange = { ypvm.setFocusedDiverse(it) },
+    )
+}
+
+@Composable
+private fun TvRecommendationSources(
+    ypvm: YouPipeViewModel,
+    recPrefs: RecommendationPreferences,
+) {
+    Text(
+        text = stringResource(R.string.label_rec_sources),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    TV_SOURCE_TOGGLES.forEach { (source, labelRes) ->
+        val enabled = when (source) {
+            RecSource.RELATED -> recPrefs.sourceRelated
+            RecSource.TRENDING -> recPrefs.sourceTrending
+            RecSource.SUBSCRIPTION -> recPrefs.sourceSubscription
+            RecSource.TOP_CHANNEL -> recPrefs.sourceTopChannel
+            RecSource.SEARCH -> recPrefs.sourceSearch
+        }
+        TvSwitchRow(
+            headline = stringResource(labelRes),
+            checked = enabled,
+            onCheckedChange = { ypvm.toggleSource(source) },
+        )
+    }
+}
+
+@Composable
+private fun TvRecommendationFilters(
+    ypvm: YouPipeViewModel,
+    recPrefs: RecommendationPreferences,
+) {
+    Text(
+        text = stringResource(R.string.label_rec_content_filters),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    TvSwitchRow(
+        headline = stringResource(R.string.label_hide_shorts),
+        checked = recPrefs.hideShorts,
+        onCheckedChange = { ypvm.setHideShorts(it) },
+    )
+    TvSwitchRow(
+        headline = stringResource(R.string.label_hide_live),
+        checked = recPrefs.hideLive,
+        onCheckedChange = { ypvm.setHideLive(it) },
+    )
+    TvSwitchRow(
+        headline = stringResource(R.string.label_hide_paid),
+        checked = recPrefs.hidePaid,
+        onCheckedChange = { ypvm.setHidePaid(it) },
+    )
+    TvStepperRow(
+        label = stringResource(R.string.label_min_duration),
+        value = recPrefs.minDurationSec.toFloat(),
+        step = 30f,
+        range = 0f..3600f,
+        onChange = { ypvm.setMinDuration(it.toLong()) },
+    )
+    TvStepperRow(
+        label = stringResource(R.string.label_max_duration),
+        value = recPrefs.maxDurationSec.toFloat(),
+        step = 60f,
+        range = 0f..7200f,
+        onChange = { ypvm.setMaxDuration(it.toLong()) },
+    )
+}
+
+@Composable
+private fun TvRecommendationActions(
+    backStack: NavBackStack<TvRoute>,
+    ypvm: YouPipeViewModel,
+) {
+    TvListRow(
+        headline = stringResource(R.string.title_manage_interests),
+        onClick = { backStack.add(TvRoute.ManageInterests) },
+    )
+    TvButton(
+        text = stringResource(R.string.action_reset_algorithm),
+        onClick = { ypvm.resetAlgorithm() },
+    )
 }
 
 /**

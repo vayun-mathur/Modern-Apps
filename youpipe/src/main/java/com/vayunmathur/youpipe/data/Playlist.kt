@@ -52,6 +52,7 @@ data class PlaylistItem(
     override fun withPosition(position: Double) = copy(position = position)
 }
 
+/** Contract for playlist dao. */
 @Dao
 interface PlaylistDao {
     @Query("SELECT * FROM Playlist")
@@ -73,6 +74,7 @@ interface PlaylistDao {
     suspend fun delete(value: Playlist): Int
 }
 
+/** Contract for playlist item dao. */
 @Dao
 interface PlaylistItemDao {
     @Query("SELECT * FROM PlaylistItem")

@@ -106,6 +106,7 @@ data class RecommendationWeights(
     /** Normalized-relevance above which a recently-shown video is kept anyway. */
     val recentSuppressionRelevanceThreshold: Double = 0.8,
 ) {
+    /** Shared constants and helpers for RecommendationWeights. */
     companion object {
         /**
          * Maps user-facing [RecommendationPreferences] dials onto ranking weights.

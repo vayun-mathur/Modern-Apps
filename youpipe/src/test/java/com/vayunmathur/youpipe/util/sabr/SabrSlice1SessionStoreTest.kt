@@ -20,6 +20,9 @@ import org.schabi.newpipe.extractor.services.youtube.sabrng.YoutubeSabrInfo
  */
 class SabrSlice1SessionStoreTest {
 
+    // height/bitrate mirror the parsed-format test fixture signature; the values
+    // come from the ItagItem table, so they are deliberately not read here.
+    @Suppress("UnusedParameter")
     private fun format(
         itag: Int,
         mime: String,

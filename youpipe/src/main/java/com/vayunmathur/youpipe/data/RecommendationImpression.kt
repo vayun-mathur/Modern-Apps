@@ -24,6 +24,7 @@ data class RecommendationImpression(
     val lastShownAt: Instant,
 )
 
+/** Contract for recommendation impression dao. */
 @Dao
 interface RecommendationImpressionDao {
     @Query("SELECT * FROM RecommendationImpression")

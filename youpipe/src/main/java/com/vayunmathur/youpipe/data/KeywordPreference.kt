@@ -18,6 +18,7 @@ data class KeywordPreference(
     val muted: Boolean = true,
 )
 
+/** Contract for keyword preference dao. */
 @Dao
 interface KeywordPreferenceDao {
     @Query("SELECT * FROM KeywordPreference")

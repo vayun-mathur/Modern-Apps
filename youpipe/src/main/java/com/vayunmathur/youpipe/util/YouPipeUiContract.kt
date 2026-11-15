@@ -53,8 +53,10 @@ data class SearchUiState(
 
 /** A row of the search overlay. The extractor returns videos and channels interleaved. */
 sealed interface SearchResultRow {
+    /** Immutable value describing video; carries video. */
     data class Video(val video: VideoRowState) : SearchResultRow
 
+    /** Immutable value describing channel. */
     data class Channel(
         val channelID: String,
         val name: String,
@@ -89,6 +91,7 @@ interface SearchActions {
     fun pinChannel(channelKey: String) {}
     fun blockChannel(channelKey: String) {}
 
+    /** Shared constants and helpers for SearchActions. */
     companion object {
         val Noop: SearchActions = object : SearchActions {}
     }
@@ -109,6 +112,7 @@ data class SubscriptionFeedUiState(
 interface SubscriptionFeedActions {
     fun openVideo(videoID: Long) {}
 
+    /** Shared constants and helpers for SubscriptionFeedActions. */
     companion object {
         val Noop: SubscriptionFeedActions = object : SubscriptionFeedActions {}
     }
@@ -147,6 +151,7 @@ interface VideoDetailActions {
     fun addToPlaylist() {}
     fun share() {}
 
+    /** Shared constants and helpers for VideoDetailActions. */
     companion object {
         val Noop: VideoDetailActions = object : VideoDetailActions {}
     }

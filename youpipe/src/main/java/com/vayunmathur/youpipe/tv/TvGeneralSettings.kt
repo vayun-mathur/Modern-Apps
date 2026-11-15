@@ -23,7 +23,6 @@ import com.vayunmathur.library.tv.TvListRow
 import com.vayunmathur.library.tv.TvScreenHeader
 import com.vayunmathur.library.tv.TvSwitchRow
 import com.vayunmathur.library.ui.IconCheck
-import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.util.YouPipeViewModel
 
@@ -36,7 +35,6 @@ import com.vayunmathur.youpipe.util.YouPipeViewModel
  */
 @Composable
 fun TvGeneralSettingsPage(
-    backStack: NavBackStack<TvRoute>,
     ypvm: YouPipeViewModel,
 ) {
     val deArrowEnabled by ypvm.deArrowEnabled.collectAsState()
@@ -61,65 +59,104 @@ fun TvGeneralSettingsPage(
                 Modifier.padding(start = 48.dp, end = 48.dp, bottom = 44.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.label_default_page),
-                    style = MaterialTheme.typography.titleMedium,
+                TvDefaultPageOptions(
+                    defaultPage = defaultPage,
+                    firstFocus = firstFocus,
+                    onSelect = { ypvm.setDefaultPage(it) },
                 )
-                com.vayunmathur.youpipe.DEFAULT_PAGE_OPTIONS.forEachIndexed { index, (key, labelRes) ->
-                    TvListRow(
-                        headline = stringResource(labelRes),
-                        trailing = if (defaultPage == key) {
-                            { IconCheck() }
-                        } else {
-                            null
-                        },
-                        onClick = { ypvm.setDefaultPage(key) },
-                        modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
-                    )
-                }
-                TvSwitchRow(
-                    headline = stringResource(R.string.label_dearrow),
-                    supporting = stringResource(R.string.label_dearrow_description),
-                    checked = deArrowEnabled,
-                    onCheckedChange = { ypvm.setDeArrowEnabled(it) },
+                TvGeneralSwitches(
+                    deArrowEnabled = deArrowEnabled, keepControlsVisible = keepControlsVisible,
+                    notificationStyleProgress = notificationStyleProgress,
+                    onDeArrowChange = { ypvm.setDeArrowEnabled(it) },
+                    onKeepControlsChange = { ypvm.setKeepPlayerControlsVisible(it) },
+                    onNotificationStyleChange = { ypvm.setNotificationStyleProgressBar(it) },
                 )
-                TvSwitchRow(
-                    headline = stringResource(R.string.label_keep_controls_visible),
-                    supporting = stringResource(R.string.label_keep_controls_visible_description),
-                    checked = keepControlsVisible,
-                    onCheckedChange = { ypvm.setKeepPlayerControlsVisible(it) },
+                TvLanguageOptions(
+                    youtubeLanguage = youtubeLanguage,
+                    onSelect = { ypvm.setYouTubeLanguage(it) },
                 )
-                TvSwitchRow(
-                    headline = stringResource(R.string.label_notification_style_progress),
-                    supporting = stringResource(R.string.label_notification_style_progress_description),
-                    checked = notificationStyleProgress,
-                    onCheckedChange = { ypvm.setNotificationStyleProgressBar(it) },
-                )
-                Text(
-                    text = stringResource(R.string.label_youtube_language),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                TvListRow(
-                    headline = stringResource(R.string.label_system_default),
-                    trailing = if (youtubeLanguage.isBlank()) {
-                        { IconCheck() }
-                    } else {
-                        null
-                    },
-                    onClick = { ypvm.setYouTubeLanguage("") },
-                )
-                YouPipeViewModel.Companion.YOUTUBE_LANGUAGES.forEach { (code, name) ->
-                    TvListRow(
-                        headline = name,
-                        trailing = if (youtubeLanguage == code) {
-                            { IconCheck() }
-                        } else {
-                            null
-                        },
-                        onClick = { ypvm.setYouTubeLanguage(code) },
-                    )
-                }
             }
         }
+    }
+}
+
+@Composable
+private fun TvDefaultPageOptions(
+    defaultPage: String,
+    firstFocus: FocusRequester,
+    onSelect: (String) -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.label_default_page),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    com.vayunmathur.youpipe.DEFAULT_PAGE_OPTIONS.forEachIndexed { index, (key, labelRes) ->
+        TvListRow(
+            headline = stringResource(labelRes),
+            trailing = if (defaultPage == key) {
+                { IconCheck() }
+            } else {
+                null
+            },
+            onClick = { onSelect(key) },
+            modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
+        )
+    }
+}
+
+@Composable
+private fun TvGeneralSwitches(
+    deArrowEnabled: Boolean,
+    keepControlsVisible: Boolean,
+    notificationStyleProgress: Boolean,
+    onDeArrowChange: (Boolean) -> Unit,
+    onKeepControlsChange: (Boolean) -> Unit,
+    onNotificationStyleChange: (Boolean) -> Unit,
+) {
+    TvSwitchRow(
+        headline = stringResource(R.string.label_dearrow),
+        supporting = stringResource(R.string.label_dearrow_description),
+        checked = deArrowEnabled,
+        onCheckedChange = onDeArrowChange,
+    )
+    TvSwitchRow(
+        headline = stringResource(R.string.label_keep_controls_visible),
+        supporting = stringResource(R.string.label_keep_controls_visible_description),
+        checked = keepControlsVisible,
+        onCheckedChange = onKeepControlsChange,
+    )
+    TvSwitchRow(
+        headline = stringResource(R.string.label_notification_style_progress),
+        supporting = stringResource(R.string.label_notification_style_progress_description),
+        checked = notificationStyleProgress,
+        onCheckedChange = onNotificationStyleChange,
+    )
+}
+
+@Composable
+private fun TvLanguageOptions(youtubeLanguage: String, onSelect: (String) -> Unit) {
+    Text(
+        text = stringResource(R.string.label_youtube_language),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    TvListRow(
+        headline = stringResource(R.string.label_system_default),
+        trailing = if (youtubeLanguage.isBlank()) {
+            { IconCheck() }
+        } else {
+            null
+        },
+        onClick = { onSelect("") },
+    )
+    YouPipeViewModel.Companion.YOUTUBE_LANGUAGES.forEach { (code, name) ->
+        TvListRow(
+            headline = name,
+            trailing = if (youtubeLanguage == code) {
+                { IconCheck() }
+            } else {
+                null
+            },
+            onClick = { onSelect(code) },
+        )
     }
 }

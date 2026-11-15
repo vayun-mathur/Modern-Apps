@@ -23,6 +23,7 @@ import kotlinx.serialization.Serializable
         ),
     ],
 )
+/** Immutable value describing subscription category. */
 data class SubscriptionCategory(
     @ColumnInfo(index = true)
     val subscriptionID: Long,
@@ -30,6 +31,7 @@ data class SubscriptionCategory(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0
 ): DatabaseItem
 
+/** Contract for subscription category dao. */
 @Dao
 interface SubscriptionCategoryDao {
     @Query("SELECT * FROM SubscriptionCategory")

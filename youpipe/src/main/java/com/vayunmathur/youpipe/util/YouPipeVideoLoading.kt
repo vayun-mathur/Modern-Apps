@@ -136,7 +136,7 @@ private suspend fun YouPipeViewModel.loadRelatedVideos(
 
 private suspend fun YouPipeViewModel.cacheRelatedVideos(videoID: Long, related: List<VideoInfo>) {
     if (related.isEmpty()) return
-    repository.upsertCachedRelatedVideos(related.map {
+    repository.recommendationStore.upsertCachedRelatedVideos(related.map {
         CachedRelatedVideo(
             sourceVideoID = videoID,
             videoItem = it,

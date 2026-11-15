@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -23,7 +24,6 @@ import com.vayunmathur.library.tv.TvInitialFocus
 import com.vayunmathur.library.tv.TvListRow
 import com.vayunmathur.library.tv.tvContentPadding
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.util.YouPipeViewModel
 import com.vayunmathur.youpipe.util.clearChannelPreference
@@ -42,14 +42,12 @@ import com.vayunmathur.youpipe.util.unmuteKeyword
  */
 @Composable
 fun TvManageInterestsPage(
-    backStack: NavBackStack<TvRoute>,
     ypvm: YouPipeViewModel,
 ) {
     val profile by ypvm.interestProfile.collectAsState()
     val channelPrefs by ypvm.channelPreferences.collectAsState()
     val keywordPrefs by ypvm.keywordPreferences.collectAsState()
     val firstFocus = remember { FocusRequester() }
-
     val blockedKeys = channelPrefs.filter { it.blocked }.map { it.channelKey }.toSet()
     val pinnedKeys = channelPrefs.filter { it.pinned }.map { it.channelKey }.toSet()
     val topChannels = remember(profile, blockedKeys) {
@@ -71,8 +69,26 @@ fun TvManageInterestsPage(
     val mutedKeywords = remember(keywordPrefs) {
         keywordPrefs.filter { it.muted }.map { it.keyword }
     }
-
     TvInitialFocus(firstFocus)
+    TvManageInterestsList(
+        ypvm = ypvm,
+        topChannels = topChannels,
+        pinnedKeys = pinnedKeys,
+        topKeywords = topKeywords,
+        blockedChannels = blockedChannels,
+        mutedKeywords = mutedKeywords,
+    )
+}
+
+@Composable
+private fun TvManageInterestsList(
+    ypvm: YouPipeViewModel,
+    topChannels: List<String>,
+    pinnedKeys: Set<String>,
+    topKeywords: List<String>,
+    blockedChannels: List<String>,
+    mutedKeywords: List<String>,
+) {
     TvSettingsBody {
         LazyColumn(
             state = rememberLazyListState(),
@@ -80,84 +96,109 @@ fun TvManageInterestsPage(
             contentPadding = tvContentPadding(top = 28.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-        item(key = "interests-title") {
-            Text(
-                text = stringResource(R.string.title_manage_interests),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            tvInterestsTitle()
+            tvChannelsSection(ypvm, topChannels, pinnedKeys)
+            tvKeywordsSection(ypvm, topKeywords)
+            tvBlockedSection(ypvm, blockedChannels)
+            tvMutedSection(ypvm, mutedKeywords)
         }
-        item(key = "ch-header") {
-            TvInterestSectionHeader(stringResource(R.string.label_your_channels))
+    }
+}
+
+private fun LazyListScope.tvInterestsTitle() {
+    item(key = "interests-title") {
+        Text(
+            text = stringResource(R.string.title_manage_interests),
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+private fun LazyListScope.tvChannelsSection(
+    ypvm: YouPipeViewModel,
+    topChannels: List<String>,
+    pinnedKeys: Set<String>,
+) {
+    item(key = "ch-header") {
+        TvInterestSectionHeader(stringResource(R.string.label_your_channels))
+    }
+    if (topChannels.isEmpty()) {
+        item(key = "ch-empty") {
+            TvInterestEmpty(stringResource(R.string.label_no_channels))
         }
-        if (topChannels.isEmpty()) {
-            item(key = "ch-empty") {
-                TvInterestEmpty(stringResource(R.string.label_no_channels))
-            }
+    }
+    items(topChannels, key = { "ch-$it" }) { channelKey ->
+        val pinned = channelKey in pinnedKeys
+        TvInterestRow(
+            label = channelKey.decodeHtml(),
+            badge = if (pinned) stringResource(R.string.label_pinned) else null,
+            onPrimary = {
+                if (pinned) ypvm.clearChannelPreference(channelKey) else ypvm.pinChannel(channelKey)
+            },
+            secondaryAction = stringResource(UiR.string.remove),
+            onSecondary = { ypvm.removeInterest(channelKey = channelKey) },
+        )
+    }
+}
+
+private fun LazyListScope.tvKeywordsSection(
+    ypvm: YouPipeViewModel,
+    topKeywords: List<String>,
+) {
+    item(key = "kw-header") {
+        TvInterestSectionHeader(stringResource(R.string.label_your_topics))
+    }
+    if (topKeywords.isEmpty()) {
+        item(key = "kw-empty") {
+            TvInterestEmpty(stringResource(R.string.label_no_topics))
         }
-        items(topChannels, key = { "ch-$it" }) { channelKey ->
-            val pinned = channelKey in pinnedKeys
-            TvInterestRow(
-                label = channelKey.decodeHtml(),
-                badge = if (pinned) stringResource(R.string.label_pinned) else null,
-                primaryAction = if (pinned) {
-                    stringResource(R.string.action_unpin)
-                } else {
-                    stringResource(R.string.action_pin)
-                },
-                onPrimary = {
-                    if (pinned) ypvm.clearChannelPreference(channelKey) else ypvm.pinChannel(channelKey)
-                },
-                secondaryAction = stringResource(UiR.string.remove),
-                onSecondary = { ypvm.removeInterest(channelKey = channelKey) },
-            )
+    }
+    items(topKeywords, key = { "kw-$it" }) { keyword ->
+        TvInterestRow(
+            label = keyword,
+            onPrimary = { ypvm.removeInterest(keyword = keyword) },
+        )
+    }
+}
+
+private fun LazyListScope.tvBlockedSection(
+    ypvm: YouPipeViewModel,
+    blockedChannels: List<String>,
+) {
+    item(key = "bl-header") {
+        TvInterestSectionHeader(stringResource(R.string.label_blocked_channels))
+    }
+    if (blockedChannels.isEmpty()) {
+        item(key = "bl-empty") {
+            TvInterestEmpty(stringResource(R.string.label_no_blocked_channels))
         }
-        item(key = "kw-header") {
-            TvInterestSectionHeader(stringResource(R.string.label_your_topics))
+    }
+    items(blockedChannels, key = { "bl-$it" }) { channelKey ->
+        TvInterestRow(
+            label = channelKey.decodeHtml(),
+            onPrimary = { ypvm.clearChannelPreference(channelKey) },
+        )
+    }
+}
+
+private fun LazyListScope.tvMutedSection(
+    ypvm: YouPipeViewModel,
+    mutedKeywords: List<String>,
+) {
+    item(key = "mk-header") {
+        TvInterestSectionHeader(stringResource(R.string.label_muted_keywords))
+    }
+    if (mutedKeywords.isEmpty()) {
+        item(key = "mk-empty") {
+            TvInterestEmpty(stringResource(R.string.label_no_muted_keywords))
         }
-        if (topKeywords.isEmpty()) {
-            item(key = "kw-empty") {
-                TvInterestEmpty(stringResource(R.string.label_no_topics))
-            }
-        }
-        items(topKeywords, key = { "kw-$it" }) { keyword ->
-            TvInterestRow(
-                label = keyword,
-                primaryAction = stringResource(UiR.string.remove),
-                onPrimary = { ypvm.removeInterest(keyword = keyword) },
-            )
-        }
-        item(key = "bl-header") {
-            TvInterestSectionHeader(stringResource(R.string.label_blocked_channels))
-        }
-        if (blockedChannels.isEmpty()) {
-            item(key = "bl-empty") {
-                TvInterestEmpty(stringResource(R.string.label_no_blocked_channels))
-            }
-        }
-        items(blockedChannels, key = { "bl-$it" }) { channelKey ->
-            TvInterestRow(
-                label = channelKey.decodeHtml(),
-                primaryAction = stringResource(R.string.action_unblock),
-                onPrimary = { ypvm.clearChannelPreference(channelKey) },
-            )
-        }
-        item(key = "mk-header") {
-            TvInterestSectionHeader(stringResource(R.string.label_muted_keywords))
-        }
-        if (mutedKeywords.isEmpty()) {
-            item(key = "mk-empty") {
-                TvInterestEmpty(stringResource(R.string.label_no_muted_keywords))
-            }
-        }
-        items(mutedKeywords, key = { "mk-$it" }) { keyword ->
-            TvInterestRow(
-                label = keyword,
-                primaryAction = stringResource(R.string.action_unmute),
-                onPrimary = { ypvm.unmuteKeyword(keyword) },
-            )
-        }
-        }
+    }
+    items(mutedKeywords, key = { "mk-$it" }) { keyword ->
+        TvInterestRow(
+            label = keyword,
+            onPrimary = { ypvm.unmuteKeyword(keyword) },
+        )
     }
 }
 
@@ -187,7 +228,6 @@ private fun TvInterestEmpty(text: String) {
 @Composable
 private fun TvInterestRow(
     label: String,
-    primaryAction: String,
     onPrimary: () -> Unit,
     modifier: Modifier = Modifier,
     badge: String? = null,

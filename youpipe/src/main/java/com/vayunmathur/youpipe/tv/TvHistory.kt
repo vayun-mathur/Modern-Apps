@@ -52,79 +52,123 @@ fun TvHistoryPage(
     val firstFocus = remember { FocusRequester() }
     TvInitialFocus(firstFocus)
     Column(Modifier.fillMaxSize()) {
-        TvScreenHeader(
-            title = if (inSelectionMode) {
-                stringResource(R.string.selected_count, selectedIds.size.toString())
-            } else {
-                stringResource(R.string.title_history)
+        TvHistoryHeader(
+            inSelectionMode = inSelectionMode, selectedCount = selectedIds.size,
+            hasRows = rows.isNotEmpty(),
+            onDelete = {
+                ypvm.deleteHistoryVideos(selectedIds.toList())
+                selectedIds = emptySet()
             },
-            actions = {
-                if (inSelectionMode) {
-                    TvButton(
-                        text = stringResource(UiR.string.delete),
-                        onClick = {
-                            ypvm.deleteHistoryVideos(selectedIds.toList())
-                            selectedIds = emptySet()
-                        },
-                        icon = { IconDelete() },
-                    )
-                    TvButton(
-                        text = stringResource(UiR.string.cancel),
-                        onClick = { selectedIds = emptySet() },
-                    )
-                } else if (rows.isNotEmpty()) {
-                    TvButton(
-                        text = stringResource(R.string.clear_history),
-                        onClick = { confirmClear = true },
-                        icon = { IconDelete() },
-                    )
-                }
-            },
+            onCancelSelection = { selectedIds = emptySet() },
+            onClearClick = { confirmClear = true },
         )
         if (rows.isEmpty()) {
             TvEmptyState(title = stringResource(R.string.empty_recommendations))
             return@Column
         }
-        TvGrid(columns = TV_GRID_COLUMNS, modifier = Modifier.fillMaxSize().weight(1f)) {
-            items(rows.size, key = { rows[it].row.videoID }) { index ->
-                val item = rows[index]
-                val isSelected = item.row.videoID in selectedIds
-                TvSelectableCard(
-                    item = item,
-                    selected = isSelected,
-                    inSelectionMode = inSelectionMode,
-                    onOpen = { backStack.playVideo(item.row.videoID) },
-                    onToggleSelect = {
-                        selectedIds = if (isSelected) {
-                            selectedIds - item.row.videoID
-                        } else {
-                            selectedIds + item.row.videoID
-                        }
-                    },
-                    modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
-                )
-            }
-        }
-    }
-    if (confirmClear) {
-        TvDialog(
-            title = stringResource(R.string.clear_history),
-            onDismissRequest = { confirmClear = false },
-            body = stringResource(R.string.are_you_sure_you_want_to_clear_all_watch),
-            buttons = {
-                TvButton(
-                    text = stringResource(UiR.string.clear),
-                    onClick = {
-                        ypvm.clearHistory()
-                        confirmClear = false
-                    },
-                    primary = true,
-                )
-                TvButton(
-                    text = stringResource(UiR.string.cancel),
-                    onClick = { confirmClear = false },
-                )
+        TvHistoryGrid(
+            modifier = Modifier.weight(1f), rows = rows, selectedIds = selectedIds,
+            inSelectionMode = inSelectionMode, firstFocus = firstFocus,
+            onOpen = { backStack.playVideo(it) },
+            onToggle = { id, isSelected ->
+                selectedIds = if (isSelected) {
+                    selectedIds - id
+                } else {
+                    selectedIds + id
+                }
             },
         )
     }
+    if (confirmClear) {
+        TvClearHistoryDialog(
+            onDismiss = { confirmClear = false },
+            onClear = {
+                ypvm.clearHistory()
+                confirmClear = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun TvHistoryHeader(
+    inSelectionMode: Boolean,
+    selectedCount: Int,
+    hasRows: Boolean,
+    onDelete: () -> Unit,
+    onCancelSelection: () -> Unit,
+    onClearClick: () -> Unit,
+) {
+    TvScreenHeader(
+        title = if (inSelectionMode) {
+            stringResource(R.string.selected_count, selectedCount.toString())
+        } else {
+            stringResource(R.string.title_history)
+        },
+        actions = {
+            if (inSelectionMode) {
+                TvButton(
+                    text = stringResource(UiR.string.delete),
+                    onClick = onDelete,
+                    icon = { IconDelete() },
+                )
+                TvButton(
+                    text = stringResource(UiR.string.cancel),
+                    onClick = onCancelSelection,
+                )
+            } else if (hasRows) {
+                TvButton(
+                    text = stringResource(R.string.clear_history),
+                    onClick = onClearClick,
+                    icon = { IconDelete() },
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun TvHistoryGrid(
+    modifier: Modifier = Modifier,
+    rows: List<TvVideoRow>,
+    selectedIds: Set<Long>,
+    inSelectionMode: Boolean,
+    firstFocus: FocusRequester,
+    onOpen: (Long) -> Unit,
+    onToggle: (Long, Boolean) -> Unit,
+) {
+    TvGrid(columns = TV_GRID_COLUMNS, modifier = Modifier.fillMaxSize().then(modifier)) {
+        items(rows.size, key = { rows[it].row.videoID }) { index ->
+            val item = rows[index]
+            val isSelected = item.row.videoID in selectedIds
+            TvSelectableCard(
+                item = item,
+                selected = isSelected,
+                inSelectionMode = inSelectionMode,
+                onOpen = { onOpen(item.row.videoID) },
+                onToggleSelect = { onToggle(item.row.videoID, isSelected) },
+                modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvClearHistoryDialog(onDismiss: () -> Unit, onClear: () -> Unit) {
+    TvDialog(
+        title = stringResource(R.string.clear_history),
+        onDismissRequest = onDismiss,
+        body = stringResource(R.string.are_you_sure_you_want_to_clear_all_watch),
+        buttons = {
+            TvButton(
+                text = stringResource(UiR.string.clear),
+                onClick = onClear,
+                primary = true,
+            )
+            TvButton(
+                text = stringResource(UiR.string.cancel),
+                onClick = onDismiss,
+            )
+        },
+    )
 }

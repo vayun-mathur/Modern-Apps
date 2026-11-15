@@ -63,7 +63,9 @@ import com.vayunmathur.youpipe.util.decodeHtml
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
+/** Contract for item info. */
 interface ItemInfo
+/** Immutable value describing channel info; carries name, channelID, subscribers, videos, avatar. */
 @Serializable
 data class ChannelInfo(val name: String, val channelID: String, val subscribers: Long, val videos: Int, val avatar: String): ItemInfo {
     fun toSubscription(): Subscription {
@@ -71,6 +73,7 @@ data class ChannelInfo(val name: String, val channelID: String, val subscribers:
     }
 }
 
+/** Immutable value describing video info; carries name, videoID, duration, views, uploadDate, thumbnailURL, author, isPaid. */
 @Serializable
 data class VideoInfo(val name: String, val videoID: Long, val duration: Long, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String, val isPaid: Boolean = false): ItemInfo
 

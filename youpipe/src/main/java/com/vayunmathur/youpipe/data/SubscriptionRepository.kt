@@ -41,23 +41,30 @@ class SubscriptionRepository internal constructor(
     private val downloadedVideoDao: DownloadedVideoDao get() = database.downloadedVideoDao()
     private val cachedRelatedVideoDao: CachedRelatedVideoDao get() = database.cachedRelatedVideoDao()
     private val recommendationImpressionDao: RecommendationImpressionDao get() = database.recommendationImpressionDao()
-    private val recommendationPreferencesDao: RecommendationPreferencesDao get() = database.recommendationPreferencesDao()
+    private val recommendationPreferencesDao: RecommendationPreferencesDao
+        get() = database.recommendationPreferencesDao()
     private val channelPreferenceDao: ChannelPreferenceDao get() = database.channelPreferenceDao()
     private val keywordPreferenceDao: KeywordPreferenceDao get() = database.keywordPreferenceDao()
     private val playlistDao: PlaylistDao get() = database.playlistDao()
     private val playlistItemDao: PlaylistItemDao get() = database.playlistItemDao()
 
     /** Category writes (split out: TooManyFunctions cap). Same module; behavior identical. */
-    internal val categoryStore by lazy { SubscriptionCategoryStore(subscriptionCategoryDao) }
+    val categoryStore by lazy { SubscriptionCategoryStore(subscriptionCategoryDao) }
+
+    /** Subscription reads/writes (split out: TooManyFunctions cap). */
+    val subscriptionStore by lazy { SubscriptionStore(subscriptionDao, subscriptionVideoDao) }
+
+    /** History and download reads/writes (split out: TooManyFunctions cap). */
+    val historyStore by lazy { HistoryStore(historyVideoDao, downloadedVideoDao) }
 
     /** Playlist writes (split out: TooManyFunctions cap). Same module; behavior identical. */
-    internal val playlistStore by lazy { PlaylistStore(playlistDao, playlistItemDao) }
+    val playlistStore by lazy { PlaylistStore(playlistDao, playlistItemDao) }
 
     /**
      * Recommendation reads/writes (split out: TooManyFunctions cap).
      * Same module; behavior identical.
      */
-    internal val recommendationStore by lazy {
+    val recommendationStore by lazy {
         RecommendationStore(
             cachedRelatedVideoDao,
             recommendationImpressionDao,
@@ -84,127 +91,10 @@ class SubscriptionRepository internal constructor(
     val channelPreferences: Flow<List<ChannelPreference>> get() = channelPreferenceDao.getAllFlow()
     val keywordPreferences: Flow<List<KeywordPreference>> get() = keywordPreferenceDao.getAllFlow()
 
-    // By-id flows
-    fun historyById(id: Long): Flow<HistoryVideo?> = historyVideoDao.getByIdFlow(id)
-    fun downloadedById(id: Long): Flow<DownloadedVideo?> = downloadedVideoDao.getByIdFlow(id)
-    fun playlistById(id: Long): Flow<Playlist?> = playlistDao.getByIdFlow(id)
-    fun subscriptionById(id: Long): Flow<Subscription?> = subscriptionDao.getByIdFlow(id)
-    fun subscriptionVideoById(id: Long): Flow<SubscriptionVideo?> = subscriptionVideoDao.getByIdFlow(id)
-    fun subscriptionCategoryById(id: Long): Flow<SubscriptionCategory?> = subscriptionCategoryDao.getByIdFlow(id)
-    fun playlistItemsFor(playlistId: Long): Flow<List<PlaylistItem>> = playlistItemDao.getForPlaylistFlow(playlistId)
+    // All writes live on the stores above (TooManyFunctions cap); call sites
+    // use `repository.<store>.<fn>` directly. Behavior is identical.
 
-    // ------------------------------------------------------------------
-    // Subscription
-    // ------------------------------------------------------------------
-
-    suspend fun getAllSubscriptions(): List<Subscription> = subscriptionDao.getAll()
-    suspend fun upsertSubscription(value: Subscription): Long = subscriptionDao.upsert(value)
-    suspend fun upsertSubscriptions(values: List<Subscription>) = subscriptionDao.upsertAll(values)
-    suspend fun deleteSubscription(value: Subscription): Int = subscriptionDao.delete(value)
-    suspend fun clearAllSubscriptions() = subscriptionDao.clearAll()
-
-    // Category writes live on [categoryStore]; recommendation reads/writes on
-    // [recommendationStore]; playlist writes on [playlistStore] (TooManyFunctions cap).
-    // Call sites use `repository.<store>.<fn>` directly; behavior is identical.
-
-    // ------------------------------------------------------------------
-    // SubscriptionVideo
-    // ------------------------------------------------------------------
-
-    suspend fun getAllSubscriptionVideos(): List<SubscriptionVideo> = subscriptionVideoDao.getAll()
-    suspend fun upsertSubscriptionVideos(values: List<SubscriptionVideo>) = subscriptionVideoDao.upsertAll(values)
-
-    // ------------------------------------------------------------------
-    // Category (delegates to SubscriptionCategoryStore; kept here so existing
-    // call sites using `repository.*` keep compiling)
-    // ------------------------------------------------------------------
-
-    suspend fun replaceCategory(originalCategoryName: String?, categoryName: String, ids: List<Long>) =
-        categoryStore.replaceCategory(originalCategoryName, categoryName, ids)
-
-    suspend fun deleteCategory(categoryName: String) = categoryStore.deleteCategory(categoryName)
-
-    suspend fun upsertSubscriptionCategories(items: List<SubscriptionCategory>) =
-        categoryStore.upsertSubscriptionCategories(items)
-
-    // ------------------------------------------------------------------
-    // Playlist (delegates to PlaylistStore)
-    // ------------------------------------------------------------------
-
-    suspend fun getAllPlaylists(): List<Playlist> = playlistStore.getAllPlaylists()
-    suspend fun upsertPlaylist(value: Playlist): Long = playlistStore.upsertPlaylist(value)
-    suspend fun upsertPlaylists(values: List<Playlist>) = playlistStore.upsertPlaylists(values)
-    suspend fun deletePlaylist(value: Playlist): Int = playlistStore.deletePlaylist(value)
-    suspend fun getPlaylistItemsForPlaylist(playlistId: Long): List<PlaylistItem> =
-        playlistStore.getPlaylistItemsForPlaylist(playlistId)
-    suspend fun upsertPlaylistItem(value: PlaylistItem): Long = playlistStore.upsertPlaylistItem(value)
-    suspend fun upsertPlaylistItems(values: List<PlaylistItem>) = playlistStore.upsertPlaylistItems(values)
-    suspend fun deletePlaylistItem(value: PlaylistItem): Int = playlistStore.deletePlaylistItem(value)
-
-    // ------------------------------------------------------------------
-    // Recommendation (delegates to RecommendationStore)
-    // ------------------------------------------------------------------
-
-    suspend fun getAllCachedRelatedVideos(): List<CachedRelatedVideo> =
-        recommendationStore.getAllCachedRelatedVideos()
-    suspend fun upsertCachedRelatedVideos(values: List<CachedRelatedVideo>) =
-        recommendationStore.upsertCachedRelatedVideos(values)
-    suspend fun deleteCachedRelatedOlderThan(cutoff: kotlin.time.Instant) =
-        recommendationStore.deleteCachedRelatedOlderThan(cutoff)
-    suspend fun getAllRecommendationImpressions(): List<RecommendationImpression> =
-        recommendationStore.getAllRecommendationImpressions()
-    suspend fun recordRecommendationImpression(
-        videoID: Long,
-        channelKey: String,
-        source: String,
-        now: kotlin.time.Instant,
-    ) = recommendationStore.recordRecommendationImpression(videoID, channelKey, source, now)
-    suspend fun deleteRecommendationImpressionsOlderThan(cutoff: kotlin.time.Instant) =
-        recommendationStore.deleteRecommendationImpressionsOlderThan(cutoff)
-    suspend fun clearAllRecommendationImpressions() = recommendationStore.clearAllRecommendationImpressions()
-    suspend fun getRecommendationPreferences(): RecommendationPreferences? =
-        recommendationStore.getRecommendationPreferences()
-    suspend fun upsertRecommendationPreferences(value: RecommendationPreferences) =
-        recommendationStore.upsertRecommendationPreferences(value)
-    suspend fun clearAllRecommendationPreferences() = recommendationStore.clearAllRecommendationPreferences()
-    suspend fun getAllChannelPreferences(): List<ChannelPreference> =
-        recommendationStore.getAllChannelPreferences()
-    suspend fun getChannelPreference(channelKey: String): ChannelPreference? =
-        recommendationStore.getChannelPreference(channelKey)
-    suspend fun upsertChannelPreference(value: ChannelPreference) =
-        recommendationStore.upsertChannelPreference(value)
-    suspend fun deleteChannelPreference(channelKey: String) =
-        recommendationStore.deleteChannelPreference(channelKey)
-    suspend fun clearAllChannelPreferences() = recommendationStore.clearAllChannelPreferences()
-    suspend fun getAllKeywordPreferences(): List<KeywordPreference> =
-        recommendationStore.getAllKeywordPreferences()
-    suspend fun upsertKeywordPreference(value: KeywordPreference) =
-        recommendationStore.upsertKeywordPreference(value)
-    suspend fun deleteKeywordPreference(keyword: String) =
-        recommendationStore.deleteKeywordPreference(keyword)
-    suspend fun clearAllKeywordPreferences() = recommendationStore.clearAllKeywordPreferences()
-
-    // ------------------------------------------------------------------
-    // HistoryVideo
-    // ------------------------------------------------------------------
-
-    suspend fun getAllHistoryVideos(): List<HistoryVideo> = historyVideoDao.getAll()
-    suspend fun upsertHistoryVideo(value: HistoryVideo): Long = historyVideoDao.upsert(value)
-    suspend fun upsertHistoryVideos(values: List<HistoryVideo>) = historyVideoDao.upsertAll(values)
-    suspend fun deleteHistoryVideosByIds(ids: List<Long>) = historyVideoDao.deleteByIds(ids)
-    suspend fun deleteHistoryVideo(value: HistoryVideo) = historyVideoDao.delete(value)
-    suspend fun clearAllHistory() = historyVideoDao.clearAll()
-
-    // ------------------------------------------------------------------
-    // DownloadedVideo
-    // ------------------------------------------------------------------
-
-    suspend fun upsertDownloadedVideo(value: DownloadedVideo): Long = downloadedVideoDao.upsert(value)
-    suspend fun deleteDownloadedVideo(value: DownloadedVideo): Int = downloadedVideoDao.delete(value)
-
-    // (CachedRelatedVideo / RecommendationImpression / RecommendationPreferences /
-    // ChannelPreference / KeywordPreference / Playlist / PlaylistItem live on the stores above.)
-
+    /** Shared constants and helpers for SubscriptionRepository. */
     companion object {
         @Volatile
         private var instance: SubscriptionRepository? = null

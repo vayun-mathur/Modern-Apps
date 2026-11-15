@@ -37,8 +37,8 @@ fun YouPipeViewModel.loadRecommendations() {
         try {
             // Read directly from the DAOs so a cold Search screen (with no active
             // collector on the history/sub flows) still sees the persisted data.
-            val history = repository.getAllHistoryVideos()
-            val subs = repository.getAllSubscriptions()
+            val history = repository.historyStore.getAllHistoryVideos()
+            val subs = repository.subscriptionStore.getAllSubscriptions()
             val subNames = subs.map { it.name.lowercase() }.toSet()
             val now = Clock.System.now()
 
@@ -56,7 +56,8 @@ fun YouPipeViewModel.loadRecommendations() {
             val channelPrefs = repository.recommendationStore.getAllChannelPreferences().associate {
                 it.channelKey to ChannelPref(it.multiplier, it.blocked, it.pinned)
             }
-            val mutedKeywords = repository.getAllKeywordPreferences().filter { it.muted }.map { it.keyword }.toSet()
+            val mutedKeywords = repository.recommendationStore.getAllKeywordPreferences()
+                .filter { it.muted }.map { it.keyword }.toSet()
 
             val impressions = repository.recommendationStore.getAllRecommendationImpressions()
             val watchedIds = history.map { it.id }.toSet()
@@ -137,7 +138,7 @@ internal suspend fun YouPipeViewModel.gatherCandidates(
     }
 
     val subscriptionCandidates = if (prefs.sourceSubscription) {
-        repository.getAllSubscriptionVideos().map {
+        repository.subscriptionStore.getAllSubscriptionVideos().map {
             Candidate(
                 VideoInfo(it.name, it.id, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author),
                 RecSource.SUBSCRIPTION,
@@ -182,22 +183,35 @@ internal suspend fun YouPipeViewModel.loadRelatedCandidates(
 }
 
 /** Trending candidates; a network failure here must not blank the feed. */
-internal suspend fun YouPipeViewModel.loadTrendingCandidates(): List<Candidate> = try {
-    cachedTrending().map { Candidate(it, RecSource.TRENDING) }
+/**
+ * Runs one candidate source, logging and returning empty on any extractor,
+ * IO, or unchecked extractor failure so one source cannot blank the feed.
+ */
+@Suppress("TooGenericExceptionCaught") // Extractor failures arrive as unchecked exceptions too.
+internal suspend fun YouPipeViewModel.candidatesOrEmpty(
+    label: String,
+    block: suspend () -> List<Candidate>,
+): List<Candidate> = try {
+    block()
 } catch (e: org.schabi.newpipe.extractor.exceptions.ExtractionException) {
-    Log.error(TAG, "Trending candidates error", e); emptyList()
+    Log.error(TAG, "$label candidates error", e); emptyList()
 } catch (e: java.io.IOException) {
-    Log.error(TAG, "Trending candidates error", e); emptyList()
+    Log.error(TAG, "$label candidates error", e); emptyList()
 } catch (e: RuntimeException) {
-    Log.error(TAG, "Trending candidates error", e); emptyList()
+    Log.error(TAG, "$label candidates error", e); emptyList()
 }
+
+internal suspend fun YouPipeViewModel.loadTrendingCandidates(): List<Candidate> =
+    candidatesOrEmpty("Trending") {
+        cachedTrending().map { Candidate(it, RecSource.TRENDING) }
+    }
 
 /** Top-channel candidates; one failing channel must not blank the feed. */
 internal suspend fun YouPipeViewModel.loadTopChannelCandidates(
     profile: InterestProfile,
     subs: List<Subscription>,
-): List<Candidate> = coroutineScope {
-    try {
+): List<Candidate> = candidatesOrEmpty("Top-channel") {
+    coroutineScope {
         val authors = profile.authorWeights.entries
             .sortedByDescending { it.value }
             .take(MAX_TOP_CHANNELS)
@@ -211,31 +225,19 @@ internal suspend fun YouPipeViewModel.loadTopChannelCandidates(
                     .toList()
             }
         }.awaitAll().flatten()
-    } catch (e: org.schabi.newpipe.extractor.exceptions.ExtractionException) {
-        Log.error(TAG, "Top-channel candidates error", e); emptyList()
-    } catch (e: java.io.IOException) {
-        Log.error(TAG, "Top-channel candidates error", e); emptyList()
-    } catch (e: RuntimeException) {
-        Log.error(TAG, "Top-channel candidates error", e); emptyList()
     }
 }
 
 /** Search candidates; a network failure here must not blank the feed. */
 internal suspend fun YouPipeViewModel.loadSearchCandidates(
     profile: InterestProfile,
-): List<Candidate> = coroutineScope {
-    try {
+): List<Candidate> = candidatesOrEmpty("Search") {
+    coroutineScope {
         searchQueries(profile).map { query ->
             async(Dispatchers.IO) {
                 searchVideos(query).map { Candidate(it, RecSource.SEARCH) }
             }
         }.awaitAll().flatten()
-    } catch (e: org.schabi.newpipe.extractor.exceptions.ExtractionException) {
-        Log.error(TAG, "Search candidates error", e); emptyList()
-    } catch (e: java.io.IOException) {
-        Log.error(TAG, "Search candidates error", e); emptyList()
-    } catch (e: RuntimeException) {
-        Log.error(TAG, "Search candidates error", e); emptyList()
     }
 }
 /** Trending results from the TTL cache, refetching only when stale. */

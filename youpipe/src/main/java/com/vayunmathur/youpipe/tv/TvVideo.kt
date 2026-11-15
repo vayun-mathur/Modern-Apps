@@ -1,6 +1,7 @@
 package com.vayunmathur.youpipe.tv
 
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -25,12 +26,19 @@ import com.vayunmathur.library.tv.tvGridHeader
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
+import com.vayunmathur.youpipe.data.DownloadedVideo
+import com.vayunmathur.youpipe.ui.AudioStream
+import com.vayunmathur.youpipe.ui.Comment
+import com.vayunmathur.youpipe.ui.VideoChapter
+import com.vayunmathur.youpipe.ui.VideoData
 import com.vayunmathur.youpipe.ui.VideoInfo
+import com.vayunmathur.youpipe.ui.VideoStream
 import com.vayunmathur.youpipe.util.DownloadManager
 import com.vayunmathur.youpipe.util.applyDownloadedStreams
 import com.vayunmathur.youpipe.util.clearVideoError
 import com.vayunmathur.youpipe.util.loadVideo
 import com.vayunmathur.youpipe.util.YouPipeViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
 /**
@@ -58,21 +66,9 @@ fun TvVideoPage(
     val downloadedFlow = remember(videoID) { ypvm.downloadedById(videoID) }
     val downloadedVideo by downloadedFlow.collectAsState(initial = null)
     val videoState by ypvm.videoState.collectAsState()
-
-    // Probe once per video: missing/outdated WebView means extraction can never succeed,
-    // so say so up front instead of stalling on the spinner.
     var webViewStatus by remember(videoID) { mutableStateOf<TvWebViewStatus?>(null) }
-    LaunchedEffect(videoID) {
-        webViewStatus = probeTvWebView(context)
-        if (TvLoadedVideo.id != videoID || videoState.error) {
-            TvLoadedVideo.id = videoID
-            ypvm.loadVideo(videoID, downloadedFlow.first())
-        }
-    }
-    LaunchedEffect(downloadedVideo) {
-        downloadedVideo?.let { ypvm.applyDownloadedStreams(it) }
-    }
-
+    TvVideoProbeAndLoadEffect(videoID, ypvm, downloadedFlow, videoState.error) { webViewStatus = it }
+    TvVideoDownloadedEffect(downloadedVideo, ypvm)
     val deArrowEnabled by ypvm.deArrowEnabled.collectAsState()
     val deArrowCache by ypvm.deArrowCache.collectAsState()
     val deArrowData = if (deArrowEnabled) deArrowCache[videoID] else null
@@ -90,7 +86,6 @@ fun TvVideoPage(
     val history by ypvm.historyVideos.collectAsState()
     val historyById = remember(history) { history.associate { it.id to it.progress } }
     val subscriptions by ypvm.subscriptions.collectAsState()
-
     var showDownloadSheet by remember { mutableStateOf(false) }
     var showDescription by remember { mutableStateOf(false) }
     var showOptions by remember { mutableStateOf(false) }
@@ -100,11 +95,119 @@ fun TvVideoPage(
     val addedToWatchLater = stringResource(R.string.tv_added_to_watch_later)
     val chaptersTitle = stringResource(R.string.tv_section_chapters)
     val relatedTitle = stringResource(R.string.label_related_videos)
+    TvVideoErrorOrLoading(
+        isError = videoState.error, downloadedVideo = downloadedVideo, webViewStatus = webViewStatus,
+        isLoading = videoData == null, backStack = backStack, ypvm = ypvm,
+    )?.let { return }
+    val loadedVideoData = videoData ?: return
+    val loadedArgs = TvVideoLoadedArgs(
+        backStack, ypvm, videoID, loadedVideoData, deArrowData != null, videoStreams, audioStreams,
+        comments, relatedVideos, chapters, historyById, subscriptions, playlists, messenger,
+        addedToWatchLater, chaptersTitle, relatedTitle, downloadedVideo, playFocus,
+        showDownloadSheet, showDescription, showOptions, { showDownloadSheet = true },
+        { showDescription = true }, { showOptions = true }, { showDownloadSheet = false },
+        { showDescription = false }, { showOptions = false },
+    )
+    TvVideoLoadedContent(loadedArgs, context)
+}
 
+private data class TvVideoLoadedArgs(
+    val backStack: NavBackStack<TvRoute>,
+    val ypvm: YouPipeViewModel,
+    val videoID: Long,
+    val videoData: VideoData,
+    val deArrowThumbnail: Boolean,
+    val videoStreams: List<VideoStream>,
+    val audioStreams: List<AudioStream>,
+    val comments: List<Comment>,
+    val relatedVideos: List<VideoInfo>,
+    val chapters: List<VideoChapter>,
+    val historyById: Map<Long, Long>,
+    val subscriptions: List<com.vayunmathur.youpipe.data.Subscription>,
+    val playlists: List<com.vayunmathur.youpipe.data.Playlist>,
+    val messenger: com.vayunmathur.library.ui.Messenger,
+    val addedToWatchLater: String,
+    val chaptersTitle: String,
+    val relatedTitle: String,
+    val downloadedVideo: DownloadedVideo?,
+    val playFocus: FocusRequester,
+    val showDownloadSheet: Boolean,
+    val showDescription: Boolean,
+    val showOptions: Boolean,
+    val onShowDownloadSheet: () -> Unit,
+    val onShowDescription: () -> Unit,
+    val onShowOptions: () -> Unit,
+    val onDismissDownloadSheet: () -> Unit,
+    val onDismissDescription: () -> Unit,
+    val onDismissOptions: () -> Unit,
+)
+
+@Composable
+private fun TvVideoLoadedContent(args: TvVideoLoadedArgs, context: android.content.Context) {
+    val relatedRows = rememberTvVideoRows(args.relatedVideos, args.ypvm, args.historyById)
+    val watchedMs = args.historyById[args.videoID] ?: 0L
+    val resumeAvailable = watchedMs > 0L && args.videoData.duration > 0
+    val existingSub = args.subscriptions.firstOrNull { it.channelID == args.videoData.authorURL }
+    val optionRow = tvVideoOptionRow(args.videoID, args.videoData)
+    TvInitialFocus(args.playFocus, args.videoID)
+    val rightArgs = TvVideoRightArgs(
+        args.chapters, args.chaptersTitle, relatedRows, args.relatedTitle, args.comments,
+        { args.backStack.playFromDetails(args.videoID) }, { args.backStack.playVideo(it) },
+    )
+    Row(Modifier.fillMaxSize()) {
+        TvVideoLeftPane(
+            backStack = args.backStack, ypvm = args.ypvm, videoID = args.videoID,
+            videoData = args.videoData, deArrowThumbnail = args.deArrowThumbnail,
+            watchedMs = watchedMs, resumeAvailable = resumeAvailable, existingSub = existingSub,
+            videoStreamsEmpty = args.videoStreams.isEmpty(), downloadedVideo = args.downloadedVideo,
+            playlists = args.playlists, messenger = args.messenger,
+            addedToWatchLater = args.addedToWatchLater, playFocus = args.playFocus,
+            onShowDownloadSheet = args.onShowDownloadSheet,
+            onShowDescription = args.onShowDescription, onShowOptions = args.onShowOptions,
+            modifier = Modifier.weight(TV_LEFT_PANE_WEIGHT),
+        )
+        TvVideoRightPane(rightArgs)
+    }
+    val dialogArgs = TvVideoDialogArgs(
+        args.showDescription, args.showOptions, args.showDownloadSheet, args.videoData, optionRow,
+        args.videoStreams, args.audioStreams, args.videoID, args.backStack, args.ypvm,
+        args.onDismissDescription, args.onDismissOptions, args.onDismissDownloadSheet,
+    )
+    TvVideoDialogs(dialogArgs, context)
+}
+
+@Composable
+private fun TvVideoProbeAndLoadEffect(
+    videoID: Long, ypvm: YouPipeViewModel, downloadedFlow: Flow<DownloadedVideo?>,
+    isError: Boolean, onWebViewStatus: (TvWebViewStatus?) -> Unit,
+) {
+    // Probe once per video: missing/outdated WebView means extraction can never succeed,
+    // so say so up front instead of stalling on the spinner.
+    LaunchedEffect(videoID) {
+        onWebViewStatus(probeTvWebView())
+        if (TvLoadedVideo.id != videoID || isError) {
+            TvLoadedVideo.id = videoID
+            ypvm.loadVideo(videoID, downloadedFlow.first())
+        }
+    }
+}
+
+@Composable
+private fun TvVideoDownloadedEffect(downloadedVideo: DownloadedVideo?, ypvm: YouPipeViewModel) {
+    LaunchedEffect(downloadedVideo) {
+        downloadedVideo?.let { ypvm.applyDownloadedStreams(it) }
+    }
+}
+
+@Composable
+private fun TvVideoErrorOrLoading(
+    isError: Boolean, downloadedVideo: DownloadedVideo?, webViewStatus: TvWebViewStatus?,
+    isLoading: Boolean, backStack: NavBackStack<TvRoute>, ypvm: YouPipeViewModel,
+): Unit? {
     // Error / unavailable states: a focused message, never a silent spinner.
     // Downloads play locally with no PO-token, so only the streaming path is gated
     // on WebView status; a downloaded file renders regardless.
-    if (videoState.error || (downloadedVideo == null && webViewStatus is TvWebViewStatus.Unavailable)) {
+    if (isError || (downloadedVideo == null && webViewStatus is TvWebViewStatus.Unavailable)) {
         val errorFocus = remember { FocusRequester() }
         TvInitialFocus(errorFocus)
         TvEmptyState(
@@ -125,18 +228,17 @@ fun TvVideoPage(
                 )
             },
         )
-        return
+        return Unit
     }
-    if (videoData == null) {
+    if (isLoading) {
         TvLoading()
-        return
+        return Unit
     }
+    return null
+}
 
-    val relatedRows = rememberTvVideoRows(relatedVideos, ypvm, historyById)
-    val watchedMs = historyById[videoID] ?: 0L
-    val resumeAvailable = watchedMs > 0L && videoData.duration > 0
-    val existingSub = subscriptions.firstOrNull { it.channelID == videoData.authorURL }
-    val optionRow = TvVideoRow(
+private fun tvVideoOptionRow(videoID: Long, videoData: VideoData): TvVideoRow {
+    return TvVideoRow(
         row = com.vayunmathur.youpipe.util.VideoRowState(
             videoID = videoID,
             title = videoData.title,
@@ -150,97 +252,107 @@ fun TvVideoPage(
             videoData.uploadDate, videoData.thumbnailURL, videoData.author,
         ),
     )
+}
 
-    TvInitialFocus(playFocus, videoID)
-    Row(Modifier.fillMaxSize()) {
-        TvVideoLeftPane(
-            backStack = backStack,
-            ypvm = ypvm,
-            videoID = videoID,
-            videoData = videoData,
-            deArrowThumbnail = deArrowData != null,
-            watchedMs = watchedMs,
-            resumeAvailable = resumeAvailable,
-            existingSub = existingSub,
-            videoStreamsEmpty = videoStreams.isEmpty(),
-            downloadedVideo = downloadedVideo,
-            playlists = playlists,
-            chapters = chapters,
-            messenger = messenger,
-            addedToWatchLater = addedToWatchLater,
-            playFocus = playFocus,
-            onShowDownloadSheet = { showDownloadSheet = true },
-            onShowDescription = { showDescription = true },
-            onShowOptions = { showOptions = true },
-            modifier = Modifier.weight(0.45f),
-        )
-        // Right: scrolling body — chapters, related, comments.
-        TvGrid(columns = 2, modifier = Modifier.weight(0.55f).fillMaxHeight()) {
-            if (chapters.isNotEmpty()) {
-                tvGridHeader(
-                    key = "chapters-header",
-                    title = chaptersTitle,
-                    first = true,
+private data class TvVideoRightArgs(
+    val chapters: List<VideoChapter>,
+    val chaptersTitle: String,
+    val relatedRows: List<TvVideoRow>,
+    val relatedTitle: String,
+    val comments: List<Comment>,
+    val onChapter: () -> Unit,
+    val onRelated: (Long) -> Unit,
+)
+
+@Composable
+private fun RowScope.TvVideoRightPane(args: TvVideoRightArgs) {
+    // Right: scrolling body — chapters, related, comments.
+    TvGrid(columns = 2, modifier = Modifier.weight(TV_RIGHT_PANE_WEIGHT).fillMaxHeight()) {
+        if (args.chapters.isNotEmpty()) {
+            tvGridHeader(
+                key = "chapters-header",
+                title = args.chaptersTitle,
+                first = true,
+            )
+            items(args.chapters.size, key = { args.chapters[it].time }) { index ->
+                TvChapterCard(
+                    chapter = args.chapters[index],
+                    onClick = args.onChapter,
                 )
-                items(chapters.size, key = { chapters[it].time }) { index ->
-                    TvChapterCard(
-                        chapter = chapters[index],
-                        onClick = { backStack.playFromDetails(videoID) },
-                    )
-                }
             }
-            if (relatedRows.isNotEmpty()) {
-                tvGridHeader(
-                    key = "related-header",
-                    title = relatedTitle,
-                    first = chapters.isEmpty(),
+        }
+        if (args.relatedRows.isNotEmpty()) {
+            tvGridHeader(
+                key = "related-header",
+                title = args.relatedTitle,
+                first = args.chapters.isEmpty(),
+            )
+            items(args.relatedRows.size, key = { args.relatedRows[it].row.videoID }) { index ->
+                val item = args.relatedRows[index]
+                TvVideoCard(
+                    item = item,
+                    onOpen = { args.onRelated(item.row.videoID) },
                 )
-                items(relatedRows.size, key = { relatedRows[it].row.videoID }) { index ->
-                    val item = relatedRows[index]
-                    TvVideoCard(
-                        item = item,
-                        onOpen = { backStack.playVideo(item.row.videoID) },
-                    )
-                }
             }
-            if (comments.isNotEmpty()) {
-                tvFullWidth(key = "comments") {
-                    TvVideoComments(comments)
-                }
+        }
+        if (args.comments.isNotEmpty()) {
+            tvFullWidth(key = "comments") {
+                TvVideoComments(args.comments)
             }
         }
     }
+}
 
-    if (showDescription) {
-        TvDescriptionDialog(videoData.title, videoData.description) { showDescription = false }
+private data class TvVideoDialogArgs(
+    val showDescription: Boolean,
+    val showOptions: Boolean,
+    val showDownloadSheet: Boolean,
+    val videoData: VideoData,
+    val optionRow: TvVideoRow,
+    val videoStreams: List<VideoStream>,
+    val audioStreams: List<AudioStream>,
+    val videoID: Long,
+    val backStack: NavBackStack<TvRoute>,
+    val ypvm: YouPipeViewModel,
+    val onDismissDescription: () -> Unit,
+    val onDismissOptions: () -> Unit,
+    val onDismissDownloadSheet: () -> Unit,
+)
+
+@Composable
+private fun TvVideoDialogs(args: TvVideoDialogArgs, context: android.content.Context) {
+    if (args.showDescription) {
+        TvDescriptionDialog(args.videoData.title, args.videoData.description, args.onDismissDescription)
     }
-    if (showOptions) {
+    if (args.showOptions) {
         TvVideoOptionsDialog(
-            item = optionRow,
-            onDismiss = { showOptions = false },
-            onOpen = { backStack.playFromDetails(videoID) },
-            ypvm = ypvm,
+            item = args.optionRow,
+            onDismiss = args.onDismissOptions,
+            onOpen = { args.backStack.playFromDetails(args.videoID) },
+            ypvm = args.ypvm,
         )
     }
-
-    val sheetData = videoData
-    if (showDownloadSheet && videoStreams.isNotEmpty()) {
+    val sheetData = args.videoData
+    if (args.showDownloadSheet && args.videoStreams.isNotEmpty()) {
         TvDownloadSheet(
-            videoStreams = videoStreams,
-            audioStreams = audioStreams,
+            videoStreams = args.videoStreams,
+            audioStreams = args.audioStreams,
             onConfirm = { videoUrl, audioUrl ->
                 DownloadManager.enqueueDownload(
                     context,
                     VideoInfo(
-                        sheetData.title, videoID, sheetData.duration, sheetData.views,
+                        sheetData.title, args.videoID, sheetData.duration, sheetData.views,
                         sheetData.uploadDate, sheetData.thumbnailURL, sheetData.author,
                     ),
                     videoUrl,
                     audioUrl,
                 )
-                showDownloadSheet = false
+                args.onDismissDownloadSheet()
             },
-            onDismiss = { showDownloadSheet = false },
+            onDismiss = args.onDismissDownloadSheet,
         )
     }
 }
+
+internal const val TV_LEFT_PANE_WEIGHT = 0.45f
+internal const val TV_RIGHT_PANE_WEIGHT = 0.55f

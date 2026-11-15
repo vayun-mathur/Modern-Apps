@@ -30,6 +30,8 @@ import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
+import com.vayunmathur.youpipe.data.Playlist
+import com.vayunmathur.youpipe.data.PlaylistItem
 import com.vayunmathur.youpipe.ui.VideoInfo
 import com.vayunmathur.youpipe.util.YouPipeViewModel
 
@@ -58,16 +60,7 @@ fun TvAddToPlaylistPage(
     if (data == null) {
         // Same fallback as the phone dialog: the video state went away (rotation, process
         // death) so there is nothing to add — back out instead of staging against nothing.
-        TvInitialFocus(closeFocus)
-        TvScreenHeader(
-            title = stringResource(R.string.add_to_playlist),
-            actions = {
-                TvButton(
-                    text = stringResource(R.string.action_close),
-                    onClick = { backStack.pop() },
-                )
-            },
-        )
+        TvAddToPlaylistCloseHeader(closeFocus = closeFocus, onClose = { backStack.pop() })
         return
     }
 
@@ -81,94 +74,158 @@ fun TvAddToPlaylistPage(
     var newName by remember { mutableStateOf("") }
     val watchLaterLabel = stringResource(R.string.playlist_watch_later)
 
-    fun confirm() {
-        val selectedIds = staged
-        playlists.forEach { playlist ->
-            val wasMember = playlist.id in membership
-            val nowMember = playlist.id in selectedIds
-            if (nowMember && !wasMember) {
-                ypvm.playlistOps.addVideoToPlaylist(playlist.id, video)
-            } else if (!nowMember && wasMember) {
-                allItems.firstOrNull {
-                    it.playlistId == playlist.id && it.videoItem.videoID == videoID
-                }?.let { ypvm.playlistOps.removeFromPlaylist(it) }
-            }
-        }
-        backStack.pop()
-    }
-
     TvInitialFocus(closeFocus)
     TvSettingsBody {
         Column(Modifier.fillMaxSize()) {
-            TvScreenHeader(
-                title = stringResource(R.string.add_to_playlist),
-                actions = {
-                    TvButton(
-                        text = stringResource(UiR.string.ok),
-                        onClick = ::confirm,
-                        primary = true,
-                    )
-                    TvButton(
-                        text = stringResource(UiR.string.cancel),
-                        onClick = { backStack.pop() },
-                    )
+            TvAddToPlaylistHeader(
+                onConfirm = {
+                    applyStagedMembership(playlists, membership, staged, allItems, video, videoID, ypvm)
+                    backStack.pop()
+                },
+                onCancel = { backStack.pop() },
+            )
+            TvAddToPlaylistList(
+                playlists = playlists, allPlaylists = allPlaylists, staged = staged,
+                watchLaterLabel = watchLaterLabel, newName = newName,
+                onNewNameChange = { newName = it },
+                onToggle = { playlist, checked ->
+                    staged = if (checked) staged - playlist.id else staged + playlist.id
+                },
+                onCreate = {
+                    ypvm.playlistOps.createPlaylistAndAddVideo(newName.trim(), video)
+                    backStack.pop()
                 },
             )
-            LazyColumn(
-                state = rememberLazyListState(),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = tvContentPadding(top = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-            items(playlists, key = { it.id }) { playlist ->
-                val checked = playlist.id in staged
-                TvListRow(
-                    headline = if (playlist.mandatory) watchLaterLabel else playlist.name,
-                    trailing = if (checked) {
-                        { IconCheck() }
-                    } else {
-                        null
-                    },
-                    selected = checked,
-                    onClick = {
-                        staged = if (checked) staged - playlist.id else staged + playlist.id
-                    },
-                )
-            }
-            item(key = "new-playlist") {
-                var nameOpen by remember { mutableStateOf(false) }
-                if (!nameOpen) {
-                    TvListRow(
-                        headline = stringResource(R.string.new_playlist),
-                        onClick = { nameOpen = true },
-                    )
-                } else {
-                    val canCreate = newName.isNotBlank() &&
-                        allPlaylists.none { it.name == newName.trim() }
-                    TvTextField(
-                        value = newName,
-                        onValueChange = { newName = it },
-                        placeholder = stringResource(R.string.label_playlist_name),
-                        onSubmit = {
-                            if (canCreate) {
-                                ypvm.playlistOps.createPlaylistAndAddVideo(newName.trim(), video)
-                                backStack.pop()
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    TvButton(
-                        text = stringResource(R.string.new_playlist),
-                        onClick = {
-                            ypvm.playlistOps.createPlaylistAndAddVideo(newName.trim(), video)
-                            backStack.pop()
-                        },
-                        enabled = canCreate,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
-            }
-            }
         }
+    }
+}
+
+private fun applyStagedMembership(
+    playlists: List<Playlist>,
+    membership: Set<Long>,
+    staged: Set<Long>,
+    allItems: List<PlaylistItem>,
+    video: VideoInfo,
+    videoID: Long,
+    ypvm: YouPipeViewModel,
+) {
+    playlists.forEach { playlist ->
+        val wasMember = playlist.id in membership
+        val nowMember = playlist.id in staged
+        if (nowMember && !wasMember) {
+            ypvm.playlistOps.addVideoToPlaylist(playlist.id, video)
+        } else if (!nowMember && wasMember) {
+            allItems.firstOrNull {
+                it.playlistId == playlist.id && it.videoItem.videoID == videoID
+            }?.let { ypvm.playlistOps.removeFromPlaylist(it) }
+        }
+    }
+}
+
+@Composable
+private fun TvAddToPlaylistCloseHeader(closeFocus: FocusRequester, onClose: () -> Unit) {
+    TvInitialFocus(closeFocus)
+    TvScreenHeader(
+        title = stringResource(R.string.add_to_playlist),
+        actions = {
+            TvButton(
+                text = stringResource(R.string.action_close),
+                onClick = onClose,
+            )
+        },
+    )
+}
+
+@Composable
+private fun TvAddToPlaylistHeader(onConfirm: () -> Unit, onCancel: () -> Unit) {
+    TvScreenHeader(
+        title = stringResource(R.string.add_to_playlist),
+        actions = {
+            TvButton(
+                text = stringResource(UiR.string.ok),
+                onClick = onConfirm,
+                primary = true,
+            )
+            TvButton(
+                text = stringResource(UiR.string.cancel),
+                onClick = onCancel,
+            )
+        },
+    )
+}
+
+@Composable
+private fun TvAddToPlaylistList(
+    playlists: List<Playlist>,
+    allPlaylists: List<Playlist>,
+    staged: Set<Long>,
+    watchLaterLabel: String,
+    newName: String,
+    onNewNameChange: (String) -> Unit,
+    onToggle: (Playlist, Boolean) -> Unit,
+    onCreate: () -> Unit,
+) {
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = tvContentPadding(top = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(playlists, key = { it.id }) { playlist ->
+            val checked = playlist.id in staged
+            TvListRow(
+                headline = if (playlist.mandatory) watchLaterLabel else playlist.name,
+                trailing = if (checked) {
+                    { IconCheck() }
+                } else {
+                    null
+                },
+                selected = checked,
+                onClick = { onToggle(playlist, checked) },
+            )
+        }
+        item(key = "new-playlist") {
+            TvNewPlaylistRow(
+                newName = newName,
+                canCreate = newName.isNotBlank() &&
+                    allPlaylists.none { it.name == newName.trim() },
+                onNewNameChange = onNewNameChange,
+                onCreate = onCreate,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvNewPlaylistRow(
+    newName: String,
+    canCreate: Boolean,
+    onNewNameChange: (String) -> Unit,
+    onCreate: () -> Unit,
+) {
+    var nameOpen by remember { mutableStateOf(false) }
+    if (!nameOpen) {
+        TvListRow(
+            headline = stringResource(R.string.new_playlist),
+            onClick = { nameOpen = true },
+        )
+    } else {
+        TvTextField(
+            value = newName,
+            onValueChange = onNewNameChange,
+            placeholder = stringResource(R.string.label_playlist_name),
+            onSubmit = {
+                if (canCreate) {
+                    onCreate()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        TvButton(
+            text = stringResource(R.string.new_playlist),
+            onClick = onCreate,
+            enabled = canCreate,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }

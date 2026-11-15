@@ -36,6 +36,7 @@ data class RecommendationPreferences(
     val maxDurationSec: Long = 0,
 )
 
+/** Contract for recommendation preferences dao. */
 @Dao
 interface RecommendationPreferencesDao {
     @Query("SELECT * FROM RecommendationPreferences WHERE id = 0")

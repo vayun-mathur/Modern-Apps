@@ -10,6 +10,7 @@ import com.vayunmathur.youpipe.ui.VideoInfo
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Instant
 
+/** Immutable value describing cached related video. */
 @Entity
 data class CachedRelatedVideo(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -18,6 +19,7 @@ data class CachedRelatedVideo(
     val cachedAt: Instant
 )
 
+/** Contract for cached related video dao. */
 @Dao
 interface CachedRelatedVideoDao {
     @Upsert

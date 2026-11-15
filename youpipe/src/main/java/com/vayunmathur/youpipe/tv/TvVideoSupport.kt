@@ -36,7 +36,7 @@ internal fun TvChapterCard(
         onClick = onClick,
         modifier = modifier,
         title = chapter.title,
-        subtitle = android.text.format.DateUtils.formatElapsedTime(chapter.time.toLong() / 1000),
+        subtitle = android.text.format.DateUtils.formatElapsedTime(chapter.time.toLong() / MS_PER_SECOND),
         image = {
             if (!chapter.previewURL.isNullOrEmpty()) {
                 AsyncImage(
@@ -63,7 +63,7 @@ internal sealed interface TvWebViewStatus {
  * Probe the system WebView once: missing package or a version too old to run the attestation
  * JS means every load would fail — surface it as a message, not a stall.
  */
-internal fun probeTvWebView(context: android.content.Context): TvWebViewStatus {
+internal fun probeTvWebView(): TvWebViewStatus {
     return try {
         val info = WebView.getCurrentWebViewPackage() ?: return TvWebViewStatus.Unavailable("missing")
         // Attestation JS needs a reasonably current Chromium; boxes that lag years behind
@@ -80,6 +80,7 @@ internal fun probeTvWebView(context: android.content.Context): TvWebViewStatus {
 }
 
 private const val MIN_TV_WEBVIEW_MAJOR = 100
+private const val MS_PER_SECOND = 1000L
 internal const val TV_VIDEO_COMMENTS_COUNT = 20
 
 /**

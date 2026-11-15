@@ -17,6 +17,7 @@ import java.security.MessageDigest
 import kotlin.io.encoding.Base64
 import kotlin.time.toKotlinInstant
 
+/** Immutable value describing sponsor segment. */
 @Serializable
 data class SponsorSegment(
     val category: String,
@@ -110,7 +111,10 @@ fun getChannelVideos(channelId: String): Sequence<VideoInfo> = sequence {
             item.toVideoInfo()?.let { yield(it) }
         }
         @Suppress("UNCHECKED_CAST")
-        val nextPage = nextChannelPage(ex, page) as org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage<org.schabi.newpipe.extractor.InfoItem>?
+        val nextPage = nextChannelPage(
+            ex,
+            page,
+        ) as org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage<org.schabi.newpipe.extractor.InfoItem>?
         page = nextPage ?: break
     }
 }
@@ -153,6 +157,7 @@ suspend fun getChannelInfoFromURL(url: String): ChannelInfo = coroutineScope {
     )
 }
 
+/** Immutable value describing de arrow title. */
 @Serializable
 data class DeArrowTitle(
     val title: String,
@@ -162,6 +167,7 @@ data class DeArrowTitle(
     @SerialName("UUID") val uuid: String,
 )
 
+/** Immutable value describing de arrow thumbnail. */
 @Serializable
 data class DeArrowThumbnail(
     val timestamp: Double? = null,
@@ -171,6 +177,7 @@ data class DeArrowThumbnail(
     @SerialName("UUID") val uuid: String,
 )
 
+/** Immutable value describing de arrow branding. */
 @Serializable
 data class DeArrowBranding(
     val titles: List<DeArrowTitle>,

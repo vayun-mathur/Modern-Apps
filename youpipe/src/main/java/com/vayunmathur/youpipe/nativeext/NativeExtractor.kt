@@ -92,6 +92,7 @@ object NativeExtractor {
     private const val DEFAULT_GL = "GB"
 }
 
+/** Native Extractor Exception: a string implementation for native extractor exception. */
 class NativeExtractorException(message: String) : Exception(message)
 
 /** Value used wherever YouTube reported no count. */
@@ -101,6 +102,7 @@ const val UNKNOWN_COUNT: Long = -1
 // Lists
 // ---------------------------------------------------------------------------
 
+/** Immutable value describing search result. */
 @Serializable
 data class SearchResult(
     val items: List<SearchItem> = emptyList(),
@@ -111,6 +113,7 @@ data class SearchResult(
     val errors: List<String> = emptyList(),
 )
 
+/** Immutable value describing items page. */
 @Serializable
 data class ItemsPage(
     val items: List<SearchItem> = emptyList(),
@@ -118,11 +121,13 @@ data class ItemsPage(
     val errors: List<String> = emptyList(),
 )
 
+/** Contract for search item. */
 @Serializable
 sealed interface SearchItem {
     val url: String
     val name: String
 
+    /** Immutable value describing stream. */
     @Serializable
     @SerialName("STREAM")
     data class Stream(
@@ -139,6 +144,7 @@ sealed interface SearchItem {
         @SerialName("is_short") val isShort: Boolean = false,
     ) : SearchItem
 
+    /** Immutable value describing channel. */
     @Serializable
     @SerialName("CHANNEL")
     data class Channel(
@@ -151,6 +157,7 @@ sealed interface SearchItem {
         val thumbnails: List<Thumbnail> = emptyList(),
     ) : SearchItem
 
+    /** Immutable value describing playlist. */
     @Serializable
     @SerialName("PLAYLIST")
     data class Playlist(
@@ -162,6 +169,7 @@ sealed interface SearchItem {
     ) : SearchItem
 }
 
+/** Immutable value describing thumbnail; carries url, width, height. */
 @Serializable
 data class Thumbnail(val url: String, val width: Long = 0, val height: Long = 0)
 
@@ -169,6 +177,7 @@ data class Thumbnail(val url: String, val width: Long = 0, val height: Long = 0)
 // Video playback
 // ---------------------------------------------------------------------------
 
+/** Kinds of stream kind. */
 @Serializable
 enum class StreamKind {
     @SerialName("VIDEO") VIDEO,
@@ -177,6 +186,7 @@ enum class StreamKind {
     @SerialName("POST_LIVE") POST_LIVE,
 }
 
+/** Immutable value describing stream info. */
 @Serializable
 data class StreamInfo(
     val id: String,
@@ -210,6 +220,7 @@ data class StreamInfo(
     val errors: List<String> = emptyList(),
 )
 
+/** Immutable value describing video stream. */
 @Serializable
 data class VideoStream(
     val url: String,
@@ -229,6 +240,7 @@ data class VideoStream(
     @SerialName("video_only") val videoOnly: Boolean = false,
 )
 
+/** Immutable value describing audio stream. */
 @Serializable
 data class AudioStream(
     val url: String,
@@ -254,6 +266,7 @@ data class AudioStream(
 // Channel / playlist / comments
 // ---------------------------------------------------------------------------
 
+/** Immutable value describing channel info. */
 @Serializable
 data class ChannelInfo(
     val id: String,
@@ -269,6 +282,7 @@ data class ChannelInfo(
     val errors: List<String> = emptyList(),
 )
 
+/** Immutable value describing playlist info. */
 @Serializable
 data class PlaylistInfo(
     val id: String,
@@ -284,6 +298,7 @@ data class PlaylistInfo(
     val errors: List<String> = emptyList(),
 )
 
+/** Immutable value describing comment. */
 @Serializable
 data class Comment(
     val id: String = "",
@@ -299,6 +314,7 @@ data class Comment(
     @SerialName("is_hearted") val isHearted: Boolean = false,
 )
 
+/** Immutable value describing comments page. */
 @Serializable
 data class CommentsPage(
     val comments: List<Comment> = emptyList(),

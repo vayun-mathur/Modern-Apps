@@ -33,6 +33,7 @@ import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getAnd
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getIosUserAgent
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getVisionOsUserAgent
 
+/** Playback Service: a media session service implementation for playback service. */
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
 
@@ -238,6 +239,7 @@ class PlaybackService : MediaSessionService() {
                 androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
             )
 
+    /** Shared constants and helpers for PlaybackService. */
     companion object {
         const val EXTRA_AUDIO_URI = "extra_audio_uri"
         const val EXTRA_AUDIO_TRACK_ID = "extra_audio_track_id"

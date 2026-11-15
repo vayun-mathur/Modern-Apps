@@ -30,21 +30,27 @@ sealed interface TvRoute : NavKey {
     @Serializable
     data class VideoPlayerRoute(val videoID: Long) : TvRoute
 
+    /** Immutable value describing channel; carries channelID. */
     @Serializable
     data class Channel(val channelID: String) : TvRoute
 
+    /** Immutable value describing subscription feed; carries category. */
     @Serializable
     data class SubscriptionFeed(val category: String?) : TvRoute
 
+    /** Immutable value describing create subscription category; carries id. */
     @Serializable
     data class CreateSubscriptionCategory(val id: String?) : TvRoute
 
+    /** Singleton holding downloads state and operations. */
     @Serializable
     data object Downloads : TvRoute
 
+    /** Immutable value describing playlist detail; carries playlistId. */
     @Serializable
     data class PlaylistDetail(val playlistId: Long) : TvRoute
 
+    /** Singleton holding create playlist state and operations. */
     @Serializable
     data object CreatePlaylist : TvRoute
 
@@ -52,18 +58,23 @@ sealed interface TvRoute : NavKey {
     @Serializable
     data class AddToPlaylist(val videoID: Long, val includeWatchLater: Boolean = true) : TvRoute
 
+    /** Singleton holding settings general state and operations. */
     @Serializable
     data object SettingsGeneral : TvRoute
 
+    /** Singleton holding settings sponsor block state and operations. */
     @Serializable
     data object SettingsSponsorBlock : TvRoute
 
+    /** Singleton holding settings recommendations state and operations. */
     @Serializable
     data object SettingsRecommendations : TvRoute
 
+    /** Singleton holding settings data state and operations. */
     @Serializable
     data object SettingsData : TvRoute
 
+    /** Singleton holding manage interests state and operations. */
     @Serializable
     data object ManageInterests : TvRoute
 }

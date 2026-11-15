@@ -21,6 +21,7 @@ data class ChannelPreference(
     val pinned: Boolean = false,
 )
 
+/** Contract for channel preference dao. */
 @Dao
 interface ChannelPreferenceDao {
     @Query("SELECT * FROM ChannelPreference")

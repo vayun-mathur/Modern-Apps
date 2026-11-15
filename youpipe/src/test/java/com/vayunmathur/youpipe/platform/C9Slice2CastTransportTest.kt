@@ -19,44 +19,55 @@ class C9Slice2CastTransportTest {
 
     private fun fakePlayer(): Player {
         val handler = java.lang.reflect.InvocationHandler { _, method, _ ->
-            when (method.name) {
-                "getPlaybackState" -> Player.STATE_IDLE
-                "getDuration", "getCurrentPosition", "getBufferedPosition" -> 0L
-                "getVolume" -> 1f
-                "getPlaybackSpeed" -> 1f
-                "isPlaying", "isLoading" -> false
-                "getAvailableCommands" -> null
-                "getDeviceInfo" -> null
-                "getAudioAttributes" -> null
-                "getSeekBackIncrement" -> 5000L
-                "getSeekForwardIncrement" -> 15000L
-                "getMaxSeekToPreviousPosition" -> 3000L
-                "getCurrentPosition" -> 0L
-                "getTotalBufferedDuration" -> 0L
-                "getCurrentLiveOffset" -> 0L
-                "getTargetLiveOffset" -> 0L
-                "getCurrentMediaItemIndex" -> 0
-                "getMediaItemCount" -> 0
-                "getRepeatMode" -> Player.REPEAT_MODE_OFF
-                "getShuffleModeEnabled", "getPlayWhenReady" -> false
-                "getPlayWhenReady" -> false
-                "getCurrentWindowIndex" -> 0
-                "getCurrentPeriodIndex" -> 0
-                "hashCode" -> System.identityHashCode(method)
-                else -> {
-                    val type = method.returnType
-                    when {
-                        type == Boolean::class.javaPrimitiveType -> false
-                        type == Int::class.javaPrimitiveType -> 0
-                        type == Long::class.javaPrimitiveType -> 0L
-                        type == Float::class.javaPrimitiveType -> 0f
-                        type == Double::class.javaPrimitiveType -> 0.0
-                        else -> null
-                    }
-                }
-            }
+            playerMethodValue(method)
         }
-        return Proxy.newProxyInstance(Player::class.java.classLoader, arrayOf(Player::class.java), handler) as Player
+        return Proxy.newProxyInstance(
+            Player::class.java.classLoader,
+            arrayOf(Player::class.java),
+            handler,
+        ) as Player
+    }
+
+    /** Canned answers for the fake [Player] proxy, by method name. */
+    private fun playerMethodValue(method: java.lang.reflect.Method): Any? =
+        playerLongValue(method.name) ?: playerOtherValue(method)
+
+    /** Long-valued canned answers for the fake player, or null when not one. */
+    private fun playerLongValue(name: String): Any? = when (name) {
+        "getDuration", "getCurrentPosition", "getBufferedPosition" -> 0L
+        "getSeekBackIncrement" -> 5000L
+        "getSeekForwardIncrement" -> 15000L
+        "getMaxSeekToPreviousPosition" -> 3000L
+        "getTotalBufferedDuration" -> 0L
+        "getCurrentLiveOffset" -> 0L
+        "getTargetLiveOffset" -> 0L
+        else -> null
+    }
+
+    /** Remaining canned answers for the fake player. */
+    private fun playerOtherValue(method: java.lang.reflect.Method): Any? = when (method.name) {
+        "getPlaybackState" -> Player.STATE_IDLE
+        "getVolume" -> 1f
+        "getPlaybackSpeed" -> 1f
+        "isPlaying", "isLoading" -> false
+        "getCurrentMediaItemIndex" -> 0
+        "getMediaItemCount" -> 0
+        "getRepeatMode" -> Player.REPEAT_MODE_OFF
+        "getShuffleModeEnabled", "getPlayWhenReady" -> false
+        "getCurrentWindowIndex" -> 0
+        "getCurrentPeriodIndex" -> 0
+        "hashCode" -> System.identityHashCode(method)
+        else -> defaultReturnValue(method.returnType)
+    }
+
+    /** A type-appropriate default for unlisted fake-player methods. */
+    private fun defaultReturnValue(type: Class<*>): Any? = when {
+        type == Boolean::class.javaPrimitiveType -> false
+        type == Int::class.javaPrimitiveType -> 0
+        type == Long::class.javaPrimitiveType -> 0L
+        type == Float::class.javaPrimitiveType -> 0f
+        type == Double::class.javaPrimitiveType -> 0.0
+        else -> null
     }
 
     @Test fun transport_updateMerges() {

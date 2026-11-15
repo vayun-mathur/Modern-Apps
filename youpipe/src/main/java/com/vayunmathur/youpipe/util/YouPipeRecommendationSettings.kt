@@ -18,8 +18,8 @@ private const val TAG = "YouPipeViewModel"
  */
 private fun YouPipeViewModel.updatePrefs(transform: (RecommendationPreferences) -> RecommendationPreferences) {
     viewModelScope.launch(Dispatchers.IO) {
-        val current = repository.getRecommendationPreferences() ?: RecommendationPreferences()
-        repository.upsertRecommendationPreferences(transform(current))
+        val current = repository.recommendationStore.getRecommendationPreferences() ?: RecommendationPreferences()
+        repository.recommendationStore.upsertRecommendationPreferences(transform(current))
     }
 }
 
@@ -61,8 +61,8 @@ private fun YouPipeViewModel.updateChannelPref(
 ) {
     val key = channelKey.lowercase()
     viewModelScope.launch(Dispatchers.IO) {
-        val current = repository.getChannelPreference(key) ?: ChannelPreference(key)
-        repository.upsertChannelPreference(transform(current))
+        val current = repository.recommendationStore.getChannelPreference(key) ?: ChannelPreference(key)
+        repository.recommendationStore.upsertChannelPreference(transform(current))
     }
 }
 
@@ -74,17 +74,21 @@ fun YouPipeViewModel.boostChannel(channelKey: String) =
 fun YouPipeViewModel.pinChannel(channelKey: String) = updateChannelPref(channelKey) { it.copy(pinned = true) }
 
 fun YouPipeViewModel.clearChannelPreference(channelKey: String) {
-    viewModelScope.launch(Dispatchers.IO) { repository.deleteChannelPreference(channelKey.lowercase()) }
+    viewModelScope.launch(Dispatchers.IO) {
+        repository.recommendationStore.deleteChannelPreference(channelKey.lowercase())
+    }
 }
 
 fun YouPipeViewModel.muteKeyword(keyword: String) {
     viewModelScope.launch(Dispatchers.IO) {
-        repository.upsertKeywordPreference(KeywordPreference(keyword.lowercase(), muted = true))
+        repository.recommendationStore.upsertKeywordPreference(KeywordPreference(keyword.lowercase(), muted = true))
     }
 }
 
 fun YouPipeViewModel.unmuteKeyword(keyword: String) {
-    viewModelScope.launch(Dispatchers.IO) { repository.deleteKeywordPreference(keyword.lowercase()) }
+    viewModelScope.launch(Dispatchers.IO) {
+        repository.recommendationStore.deleteKeywordPreference(keyword.lowercase())
+    }
 }
 
 /**
@@ -99,10 +103,10 @@ fun YouPipeViewModel.removeInterest(channelKey: String? = null, keyword: String?
 /** Clears all learned/overridden recommendation state and resets the dials. */
 fun YouPipeViewModel.resetAlgorithm() {
     viewModelScope.launch(Dispatchers.IO) {
-        repository.clearAllRecommendationImpressions()
-        repository.clearAllChannelPreferences()
-        repository.clearAllKeywordPreferences()
-        repository.clearAllRecommendationPreferences()
+        repository.recommendationStore.clearAllRecommendationImpressions()
+        repository.recommendationStore.clearAllChannelPreferences()
+        repository.recommendationStore.clearAllKeywordPreferences()
+        repository.recommendationStore.clearAllRecommendationPreferences()
         trendingCache = null
     }
 }

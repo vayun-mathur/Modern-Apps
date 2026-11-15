@@ -1,5 +1,6 @@
 package com.vayunmathur.youpipe.tv
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,7 +31,9 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
+import com.vayunmathur.youpipe.data.DownloadedVideo
 import com.vayunmathur.youpipe.util.DownloadManager
+import com.vayunmathur.youpipe.util.DownloadStatus
 import com.vayunmathur.youpipe.util.YouPipeViewModel
 
 /**
@@ -69,106 +72,191 @@ fun TvDownloadsPage(
 
     TvInitialFocus(firstFocus)
     Column(Modifier.fillMaxSize()) {
-        TvScreenHeader(
-            title = if (isSelectionMode) {
-                stringResource(R.string.selected_count, (selectedIds.size + selectedActiveIds.size).toString())
-            } else {
-                stringResource(R.string.title_downloads)
+        TvDownloadsContent(
+            modifier = Modifier.weight(1f),
+            activeDownloads = activeDownloads, rows = rows,
+            activeTitle = activeTitle, doneTitle = doneTitle,
+            selectedIds = selectedIds, selectedActiveIds = selectedActiveIds,
+            isSelectionMode = isSelectionMode,
+            onDelete = {
+                deleteSelectedDownloads(downloadedVideos, selectedIds, selectedActiveIds, context, ypvm)
+                selectedIds = emptySet()
+                selectedActiveIds = emptySet()
             },
-            actions = {
-                if (isSelectionMode) {
-                    TvButton(
-                        text = stringResource(UiR.string.delete),
-                        onClick = {
-                            selectedIds.forEach { id ->
-                                downloadedVideos.find { it.id == id }?.let { ypvm.deleteDownloadedVideo(it) }
-                            }
-                            selectedActiveIds.forEach { id ->
-                                DownloadManager.cancelDownload(context, id)
-                            }
-                            selectedIds = emptySet()
-                            selectedActiveIds = emptySet()
-                        },
-                        icon = { IconDelete() },
-                    )
-                    TvButton(
-                        text = stringResource(UiR.string.cancel),
-                        onClick = {
-                            selectedIds = emptySet()
-                            selectedActiveIds = emptySet()
-                        },
-                        icon = { IconClose() },
-                    )
-                }
+            onCancelSelection = { selectedIds = emptySet(); selectedActiveIds = emptySet() },
+            onToggleActive = { videoID, isSelected ->
+                selectedActiveIds = if (isSelected) selectedActiveIds - videoID else selectedActiveIds + videoID
             },
+            onToggleDone = { id, isSelected ->
+                selectedIds = if (isSelected) selectedIds - id else selectedIds + id
+            },
+            onOpen = { backStack.playVideo(it) },
         )
-        val activeList = remember(activeDownloads) { activeDownloads.toList() }
-        if (rows.isEmpty() && activeList.isEmpty()) {
-            TvEmptyState(title = stringResource(R.string.playlist_empty))
-            return@Column
-        }
-        TvGrid(columns = TV_GRID_COLUMNS, modifier = Modifier.fillMaxSize().weight(1f)) {
-            if (activeList.isNotEmpty()) {
-                tvGridHeader(
-                    key = "active-header",
-                    title = activeTitle,
-                    first = true,
+    }
+}
+
+private fun deleteSelectedDownloads(
+    downloadedVideos: List<DownloadedVideo>,
+    selectedIds: Set<Long>,
+    selectedActiveIds: Set<Long>,
+    context: Context,
+    ypvm: YouPipeViewModel,
+) {
+    selectedIds.forEach { id ->
+        downloadedVideos.find { it.id == id }?.let { ypvm.deleteDownloadedVideo(it) }
+    }
+    selectedActiveIds.forEach { id -> DownloadManager.cancelDownload(context, id) }
+}
+
+@Composable
+private fun TvDownloadsContent(
+    modifier: Modifier = Modifier,
+    activeDownloads: Map<Long, DownloadStatus>,
+    rows: List<TvVideoRow>,
+    activeTitle: String,
+    doneTitle: String,
+    selectedIds: Set<Long>,
+    selectedActiveIds: Set<Long>,
+    isSelectionMode: Boolean,
+    onDelete: () -> Unit,
+    onCancelSelection: () -> Unit,
+    onToggleActive: (Long, Boolean) -> Unit,
+    onToggleDone: (Long, Boolean) -> Unit,
+    onOpen: (Long) -> Unit,
+) {
+    TvDownloadsHeader(
+        isSelectionMode = isSelectionMode,
+        selectedCount = selectedIds.size + selectedActiveIds.size,
+        onDelete = onDelete,
+        onCancelSelection = onCancelSelection,
+    )
+    val activeList = remember(activeDownloads) { activeDownloads.toList() }
+    if (rows.isEmpty() && activeList.isEmpty()) {
+        TvEmptyState(title = stringResource(R.string.playlist_empty))
+        return
+    }
+    TvDownloadsGrid(
+        modifier = modifier, activeList = activeList, rows = rows,
+        activeTitle = activeTitle, doneTitle = doneTitle,
+        selectedIds = selectedIds, selectedActiveIds = selectedActiveIds,
+        isSelectionMode = isSelectionMode, onToggleActive = onToggleActive,
+        onToggleDone = onToggleDone, onOpen = onOpen,
+    )
+}
+
+@Composable
+private fun TvDownloadsHeader(
+    isSelectionMode: Boolean,
+    selectedCount: Int,
+    onDelete: () -> Unit,
+    onCancelSelection: () -> Unit,
+) {
+    TvScreenHeader(
+        title = if (isSelectionMode) {
+            stringResource(R.string.selected_count, selectedCount.toString())
+        } else {
+            stringResource(R.string.title_downloads)
+        },
+        actions = {
+            if (isSelectionMode) {
+                TvButton(
+                    text = stringResource(UiR.string.delete),
+                    onClick = onDelete,
+                    icon = { IconDelete() },
                 )
-                items(activeList.size, key = { index -> "active-${activeList[index].first}" }) { index ->
-                    val (videoID, status) = activeList[index]
-                    val isSelected = videoID in selectedActiveIds
-                    fun toggle() {
-                        selectedActiveIds = if (isSelected) {
-                            selectedActiveIds - videoID
-                        } else {
-                            selectedActiveIds + videoID
-                        }
-                    }
-                    TvInfoCard(
-                        title = status.videoInfo.name,
-                        onClick = { if (isSelectionMode) toggle() },
-                        subtitle = "${(status.progress * 100).toInt()}%" +
-                            if (isSelected) "  •  ✓" else "",
-                        leading = {
-                            if (status.videoInfo.thumbnailURL.isNotEmpty()) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context)
-                                        .data(status.videoInfo.thumbnailURL)
-                                        .memoryCacheKey("dl-thumb-$videoID")
-                                        .build(),
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop,
-                                )
-                            }
-                        },
-                        leadingSize = 96.dp,
-                        progress = status.progress.toFloat(),
-                        onLongClick = ::toggle,
-                    )
-                }
+                TvButton(
+                    text = stringResource(UiR.string.cancel),
+                    onClick = onCancelSelection,
+                    icon = { IconClose() },
+                )
             }
-            if (rows.isNotEmpty()) {
-                tvGridHeader(
-                    key = "done-header",
-                    title = doneTitle,
-                    first = activeList.isEmpty(),
+        },
+    )
+}
+
+@Composable
+private fun TvDownloadsGrid(
+    modifier: Modifier = Modifier,
+    activeList: List<Pair<Long, DownloadStatus>>,
+    rows: List<TvVideoRow>,
+    activeTitle: String,
+    doneTitle: String,
+    selectedIds: Set<Long>,
+    selectedActiveIds: Set<Long>,
+    isSelectionMode: Boolean,
+    onToggleActive: (Long, Boolean) -> Unit,
+    onToggleDone: (Long, Boolean) -> Unit,
+    onOpen: (Long) -> Unit,
+) {
+    TvGrid(columns = TV_GRID_COLUMNS, modifier = Modifier.fillMaxSize().then(modifier)) {
+        if (activeList.isNotEmpty()) {
+            tvGridHeader(
+                key = "active-header",
+                title = activeTitle,
+                first = true,
+            )
+            items(activeList.size, key = { index -> "active-${activeList[index].first}" }) { index ->
+                val (videoID, status) = activeList[index]
+                val isSelected = videoID in selectedActiveIds
+                TvActiveDownloadCard(
+                    videoID = videoID,
+                    status = status,
+                    isSelected = isSelected,
+                    isSelectionMode = isSelectionMode,
+                    onToggle = { onToggleActive(videoID, isSelected) },
                 )
-                items(rows.size, key = { rows[it].row.videoID }) { index ->
-                    val item = rows[index]
-                    val isSelected = item.info.videoID in selectedIds
-                    TvSelectableCard(
-                        item = item,
-                        selected = isSelected,
-                        inSelectionMode = isSelectionMode,
-                        onOpen = { backStack.playVideo(item.row.videoID) },
-                        onToggleSelect = {
-                            val id = item.info.videoID
-                            selectedIds = if (isSelected) selectedIds - id else selectedIds + id
-                        },
-                    )
-                }
+            }
+        }
+        if (rows.isNotEmpty()) {
+            tvGridHeader(
+                key = "done-header",
+                title = doneTitle,
+                first = activeList.isEmpty(),
+            )
+            items(rows.size, key = { rows[it].row.videoID }) { index ->
+                val item = rows[index]
+                val isSelected = item.info.videoID in selectedIds
+                TvSelectableCard(
+                    item = item,
+                    selected = isSelected,
+                    inSelectionMode = isSelectionMode,
+                    onOpen = { onOpen(item.row.videoID) },
+                    onToggleSelect = { onToggleDone(item.info.videoID, isSelected) },
+                )
             }
         }
     }
+}
+
+@Composable
+private fun TvActiveDownloadCard(
+    videoID: Long,
+    status: DownloadStatus,
+    isSelected: Boolean,
+    isSelectionMode: Boolean,
+    onToggle: () -> Unit,
+) {
+    val context = LocalContext.current
+    TvInfoCard(
+        title = status.videoInfo.name,
+        onClick = { if (isSelectionMode) onToggle() },
+        subtitle = "${(status.progress * 100).toInt()}%" +
+            if (isSelected) "  •  ✓" else "",
+        leading = {
+            if (status.videoInfo.thumbnailURL.isNotEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(status.videoInfo.thumbnailURL)
+                        .memoryCacheKey("dl-thumb-$videoID")
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        },
+        leadingSize = 96.dp,
+        progress = status.progress.toFloat(),
+        onLongClick = onToggle,
+    )
 }

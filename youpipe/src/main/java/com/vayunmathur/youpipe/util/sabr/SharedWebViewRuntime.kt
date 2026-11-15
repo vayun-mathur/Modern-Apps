@@ -37,10 +37,12 @@ import java.util.concurrent.atomic.AtomicReference
  */
 class SharedWebViewRuntime private constructor(context: Context) {
 
+    /** Contract for initialization failure callback. */
     fun interface InitializationFailureCallback {
         fun onInitializationFailure(throwable: Throwable)
     }
 
+    /** Contract for sabr local dom callbacks. */
     interface SabrLocalDomCallbacks {
         fun onJsInitializationError(error: String)
 
@@ -530,6 +532,7 @@ class SharedWebViewRuntime private constructor(context: Context) {
         }
     }
 
+    /** Shared constants and helpers for SharedWebViewRuntime. */
     companion object {
         const val BRIDGE_NAME = "PipePipeWebViewBridge"
 

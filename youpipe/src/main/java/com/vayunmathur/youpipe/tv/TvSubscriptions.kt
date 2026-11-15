@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -38,6 +39,7 @@ import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
+import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.util.YouPipeViewModel
 import com.vayunmathur.youpipe.util.decodeHtml
 
@@ -47,7 +49,6 @@ import com.vayunmathur.youpipe.util.decodeHtml
  * Category chips span the full width (All + each group, filtering the latest grid below),
  * then channels as compact avatar+name cards, then latest videos as 16:9 cards.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TvSubscriptionsPage(
     backStack: NavBackStack<TvRoute>,
@@ -58,88 +59,142 @@ fun TvSubscriptionsPage(
     val fetchProgress by ypvm.fetchProgress.collectAsState()
     val history by ypvm.historyVideos.collectAsState()
     val historyById = remember(history) { history.associate { it.id to it.progress } }
-
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     val latestSubs by remember(selectedCategory) { ypvm.subscriptionVideosFor(selectedCategory) }
         .collectAsState(initial = emptyList())
     val latestRows = rememberTvVideoRows(latestSubs, ypvm, historyById)
     val firstFocus = remember { FocusRequester() }
-    val channelsTitle = stringResource(R.string.tv_section_channels)
-    val allSubsTitle = stringResource(R.string.label_all_subscriptions)
-    val createCategoryLabel = stringResource(R.string.title_create_subscription_category)
-    val updateLabel = stringResource(R.string.action_update)
-
     if (subscriptions.isEmpty() && categories.isEmpty()) {
         TvEmptyState(title = stringResource(R.string.empty_recommendations))
         return
     }
-
     TvInitialFocus(firstFocus)
+    TvSubscriptionsGrid(
+        backStack = backStack,
+        subscriptions = subscriptions,
+        categories = categories,
+        fetchProgress = fetchProgress,
+        latestRows = latestRows,
+        selectedCategory = selectedCategory,
+        firstFocus = firstFocus,
+        onCategoryChange = { selectedCategory = it },
+    )
+}
+
+@Composable
+private fun TvSubscriptionsGrid(
+    backStack: NavBackStack<TvRoute>,
+    subscriptions: List<Subscription>,
+    categories: List<String>,
+    fetchProgress: Float,
+    latestRows: List<TvVideoRow>,
+    selectedCategory: String?,
+    firstFocus: FocusRequester,
+    onCategoryChange: (String?) -> Unit,
+) {
+    val channelsTitle = stringResource(R.string.tv_section_channels)
+    val allSubsTitle = stringResource(R.string.label_all_subscriptions)
     TvGrid(columns = TV_GRID_COLUMNS, modifier = Modifier.fillMaxSize()) {
-        if (fetchProgress in 0f..1f) {
-            tvFullWidth(key = "fetch-progress") {
-                TvProgressStrip(fetchProgress, Modifier.fillMaxWidth().padding(bottom = 8.dp))
-            }
+        tvSubscriptionsProgress(fetchProgress)
+        tvSubscriptionsChips(backStack, categories, selectedCategory, firstFocus, onCategoryChange)
+        tvGridHeader(key = "channels-header", title = channelsTitle, first = true)
+        tvSubscriptionsChannelItems(backStack, subscriptions)
+        tvGridHeader(key = "latest-header", title = selectedCategory ?: allSubsTitle)
+        tvSubscriptionsVideoItems(backStack, latestRows)
+    }
+}
+
+private fun LazyGridScope.tvSubscriptionsProgress(fetchProgress: Float) {
+    if (fetchProgress in 0f..1f) {
+        tvFullWidth(key = "fetch-progress") {
+            TvProgressStrip(fetchProgress, Modifier.fillMaxWidth().padding(bottom = 8.dp))
         }
-        tvFullWidth(key = "category-chips") {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TvChip(
-                    label = stringResource(R.string.label_all_subscriptions),
-                    selected = selectedCategory == null,
-                    onClick = { selectedCategory = null },
-                    modifier = Modifier.focusRequester(firstFocus),
-                )
-                categories.forEach { category ->
-                    TvChip(
-                        label = category,
-                        selected = selectedCategory == category,
-                        onClick = { selectedCategory = category },
-                    )
-                }
-                TvButton(
-                    text = createCategoryLabel,
-                    onClick = { backStack.add(TvRoute.CreateSubscriptionCategory(null)) },
-                    icon = { IconAdd() },
-                )
-                if (selectedCategory != null) {
-                    TvButton(
-                        text = updateLabel,
-                        onClick = {
-                            backStack.add(TvRoute.CreateSubscriptionCategory(selectedCategory))
-                        },
-                        icon = { IconEdit() },
-                    )
-                }
-            }
-        }
-        tvGridHeader(
-            key = "channels-header",
-            title = channelsTitle,
-            first = true,
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+private fun LazyGridScope.tvSubscriptionsChips(
+    backStack: NavBackStack<TvRoute>,
+    categories: List<String>,
+    selectedCategory: String?,
+    firstFocus: FocusRequester,
+    onCategoryChange: (String?) -> Unit,
+) {
+    tvFullWidth(key = "category-chips") {
+        TvSubscriptionsChipRow(backStack, categories, selectedCategory, firstFocus, onCategoryChange)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TvSubscriptionsChipRow(
+    backStack: NavBackStack<TvRoute>,
+    categories: List<String>,
+    selectedCategory: String?,
+    firstFocus: FocusRequester,
+    onCategoryChange: (String?) -> Unit,
+) {
+    val createCategoryLabel = stringResource(R.string.title_create_subscription_category)
+    val updateLabel = stringResource(R.string.action_update)
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TvChip(
+            label = stringResource(R.string.label_all_subscriptions),
+            selected = selectedCategory == null,
+            onClick = { onCategoryChange(null) },
+            modifier = Modifier.focusRequester(firstFocus),
         )
-        items(subscriptions.size, key = { subscriptions[it].id }) { index ->
-            val sub = subscriptions[index]
-            TvChannelAvatarCard(
-                name = sub.name.decodeHtml(),
-                avatarURL = sub.avatarURL,
-                cacheKey = "sub-avatar-${sub.id}",
-                onClick = { backStack.add(TvRoute.Channel(sub.channelID)) },
+        categories.forEach { category ->
+            TvChip(
+                label = category,
+                selected = selectedCategory == category,
+                onClick = { onCategoryChange(category) },
             )
         }
-        tvGridHeader(
-            key = "latest-header",
-            title = selectedCategory ?: allSubsTitle,
+        TvButton(
+            text = createCategoryLabel,
+            onClick = { backStack.add(TvRoute.CreateSubscriptionCategory(null)) },
+            icon = { IconAdd() },
         )
-        items(latestRows.size, key = { latestRows[it].row.videoID }) { index ->
-            val item = latestRows[index]
-            TvVideoCard(
-                item = item,
-                onOpen = { backStack.playVideo(item.row.videoID) },
+        if (selectedCategory != null) {
+            TvButton(
+                text = updateLabel,
+                onClick = {
+                    backStack.add(TvRoute.CreateSubscriptionCategory(selectedCategory))
+                },
+                icon = { IconEdit() },
             )
         }
+    }
+}
+
+private fun LazyGridScope.tvSubscriptionsChannelItems(
+    backStack: NavBackStack<TvRoute>,
+    subscriptions: List<Subscription>,
+) {
+    items(subscriptions.size, key = { subscriptions[it].id }) { index ->
+        val sub = subscriptions[index]
+        TvChannelAvatarCard(
+            name = sub.name.decodeHtml(),
+            avatarURL = sub.avatarURL,
+            cacheKey = "sub-avatar-${sub.id}",
+            onClick = { backStack.add(TvRoute.Channel(sub.channelID)) },
+        )
+    }
+}
+
+private fun LazyGridScope.tvSubscriptionsVideoItems(
+    backStack: NavBackStack<TvRoute>,
+    latestRows: List<TvVideoRow>,
+) {
+    items(latestRows.size, key = { latestRows[it].row.videoID }) { index ->
+        val item = latestRows[index]
+        TvVideoCard(
+            item = item,
+            onOpen = { backStack.playVideo(item.row.videoID) },
+        )
     }
 }
 

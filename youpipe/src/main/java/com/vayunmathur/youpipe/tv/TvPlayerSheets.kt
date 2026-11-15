@@ -61,7 +61,7 @@ internal fun TvChapterSheet(
                 (segments.getOrNull(index + 1)?.time?.let { transport.positionMs < it } ?: true)
             TvListRow(
                 headline = chapter.title,
-                supporting = DateUtils.formatElapsedTime(chapter.time.toLong() / 1000),
+                supporting = DateUtils.formatElapsedTime(chapter.time.toLong() / MS_PER_SECOND),
                 leading = if (!chapter.previewURL.isNullOrEmpty()) {
                     { TvChapterPreview(url = chapter.previewURL!!, time = chapter.time) }
                 } else {
@@ -253,3 +253,5 @@ internal val TV_SPEEDS = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 
 internal fun formatTvSpeedLabel(speed: Float): String =
     if (speed % 1f == 0f) "${speed.toInt()}x" else "${speed}x"
+
+private const val MS_PER_SECOND = 1000L

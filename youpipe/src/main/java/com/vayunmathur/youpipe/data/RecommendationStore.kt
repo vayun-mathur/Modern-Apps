@@ -9,7 +9,7 @@ import kotlin.time.Instant
  * Same package and module; behavior identical. Access via
  * [SubscriptionRepository.recommendationStore].
  */
-internal class RecommendationStore(
+class RecommendationStore(
     private val cachedRelatedVideoDao: CachedRelatedVideoDao,
     private val recommendationImpressionDao: RecommendationImpressionDao,
     private val recommendationPreferencesDao: RecommendationPreferencesDao,

@@ -22,7 +22,7 @@ class SubscriptionFetchTask(context: Context, params: WorkerParameters) :
         return try {
             val repository = SubscriptionRepository.get(applicationContext)
 
-            val subscriptions = repository.getAllSubscriptions()
+            val subscriptions = repository.subscriptionStore.getAllSubscriptions()
             Log.dev("SubscriptionFetchTask", "Fetched ${subscriptions.size} subscriptions")
 
             subscriptions.forEachIndexed { index, sub ->
@@ -71,7 +71,7 @@ private suspend fun fetchAndStoreChannelVideos(
                 channelID = sub.id
             )
         }
-        repository.upsertSubscriptionVideos(videosFromSub)
+        repository.subscriptionStore.upsertSubscriptionVideos(videosFromSub)
     } catch (e: java.nio.channels.UnresolvedAddressException) {
         // UnresolvedAddressException is unchecked (IllegalArgumentException), not an
         // IOException, so wrap it to reuse the offline retry path.

@@ -35,6 +35,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** Download Worker: a context implementation for download worker. */
 class DownloadWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
 
@@ -102,7 +103,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
                     audioPath = audioFile?.absolutePath,
                     timestamp = Clock.System.now()
                 )
-                input.repository.upsertDownloadedVideo(download)
+                input.repository.historyStore.upsertDownloadedVideo(download)
                 Result.success()
             } catch (e: java.io.IOException) {
                 // Cleanup on error or cancellation
@@ -207,7 +208,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
                     audioPath = null,
                     timestamp = Clock.System.now()
                 )
-            input.repository.upsertDownloadedVideo(download)
+            input.repository.historyStore.upsertDownloadedVideo(download)
             Result.success()
         } catch (e: java.io.IOException) {
             Log.error("DownloadWorker", "SABR download failed for ${input.videoID}", e)
@@ -395,6 +396,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
         }
     }
 
+    /** Shared constants and helpers for DownloadWorker. */
     companion object {
         private const val CHUNK_COUNT = 4
         private const val PROGRESS_VIDEO_WEIGHT = 0.5

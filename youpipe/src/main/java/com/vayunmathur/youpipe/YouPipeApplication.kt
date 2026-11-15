@@ -12,7 +12,9 @@ import com.vayunmathur.youpipe.util.sabr.LocalDomPoTokenProvider
 import com.vayunmathur.youpipe.util.youtubeLocalization
 import org.schabi.newpipe.extractor.NewPipe
 
+/** You Pipe Application: a application implementation for you pipe application. */
 class YouPipeApplication : Application() {
+    /** Shared constants and helpers for YouPipeApplication. */
     companion object {
         @JvmStatic
         lateinit var appContext: android.content.Context

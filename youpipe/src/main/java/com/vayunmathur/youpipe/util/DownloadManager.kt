@@ -8,11 +8,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+/** Immutable value describing download status. */
 data class DownloadStatus(
     val videoInfo: VideoInfo,
     val progress: Double
 )
 
+/** Singleton holding download manager state and operations. */
 object DownloadManager {
     private val _activeDownloads = MutableStateFlow<Map<Long, DownloadStatus>>(emptyMap())
     val activeDownloads: StateFlow<Map<Long, DownloadStatus>> = _activeDownloads.asStateFlow()

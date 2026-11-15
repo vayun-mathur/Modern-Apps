@@ -79,7 +79,8 @@ internal fun TvPlayerSeekBar(ypvm: YouPipeViewModel, focusRequester: FocusReques
                 emptyList()
             } else {
                 videoState.segments.map { it.time.toFloat() / duration } +
-                    videoState.sponsorSegments.filter { it.category in categories }.map { it.start.toFloat() / duration }
+                    videoState.sponsorSegments.filter { it.category in categories }
+                        .map { it.start.toFloat() / duration }
             }
         }
         Column(
@@ -119,7 +120,11 @@ internal fun TvPlayPauseButton(modifier: Modifier = Modifier) {
             if (player.isPlaying) player.pause() else player.play()
         },
         size = 72.dp,
-        icon = { Box(Modifier.size(32.dp)) { if (transport.playing) IconPause(Modifier.fillMaxSize()) else IconPlay(Modifier.fillMaxSize()) } },
+        icon = {
+            Box(Modifier.size(32.dp)) {
+                if (transport.playing) IconPause(Modifier.fillMaxSize()) else IconPlay(Modifier.fillMaxSize())
+            }
+        },
         modifier = modifier,
     )
 }
@@ -153,7 +158,11 @@ internal fun TvCaptionsButton(on: Boolean, onClick: () -> Unit, modifier: Modifi
     TvIconButton(
         onClick = onClick,
         modifier = modifier,
-        icon = { TvIcon { if (on) IconClosedCaption(tint = MaterialTheme.colorScheme.primary) else IconClosedCaption() } },
+        icon = {
+            TvIcon {
+                if (on) IconClosedCaption(tint = MaterialTheme.colorScheme.primary) else IconClosedCaption()
+            }
+        },
     )
 }
 
@@ -183,7 +192,10 @@ internal fun TvPlayerSettingsDialog(settings: TvPlayerSettings, onDismiss: () ->
                     TvListRow(headline = stringResource(R.string.language), onClick = pick(settings.onLanguage))
                 }
                 if (settings.hasChapters) {
-                    TvListRow(headline = stringResource(R.string.tv_section_chapters), onClick = pick(settings.onChapters))
+                    TvListRow(
+                        headline = stringResource(R.string.tv_section_chapters),
+                        onClick = pick(settings.onChapters),
+                    )
                 }
             }
         },

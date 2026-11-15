@@ -12,6 +12,7 @@ import com.vayunmathur.youpipe.ui.VideoInfo
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Instant
 
+/** Immutable value describing downloaded video. */
 @Entity
 data class DownloadedVideo(
     @PrimaryKey override val id: Long, // video id
@@ -21,6 +22,7 @@ data class DownloadedVideo(
     val timestamp: Instant
 ): DatabaseItem
 
+/** Contract for downloaded video dao. */
 @Dao
 interface DownloadedVideoDao {
     @Query("SELECT * FROM DownloadedVideo")

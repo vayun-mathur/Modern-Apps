@@ -105,7 +105,7 @@ class SabrSlice1ExtraTest {
         // Supplier wins when ahead, segment fallback wins when supplier is dead (null).
         val supplied = SabrNgSession(spec, tempDir(), null) { 8000L }
         supplied.setPlayerTimeMs(3000); assertEquals(8000L, supplied.currentPlayheadMs())
-        val throwing = SabrNgSession(spec, tempDir(), null) { throw RuntimeException("dead player") }
+        val throwing = SabrNgSession(spec, tempDir(), null) { throw IllegalStateException("dead player") }
         throwing.setPlayerTimeMs(4000); assertEquals(4000L, throwing.currentPlayheadMs())
         // updatePlayheadForSegment is monotonic.
         session.updatePlayheadForSegment(140, 2); assertEquals(5000L, session.currentPlayheadMs())

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -43,58 +44,96 @@ fun TvSettingsPage(
     val currentPreset = RecommendationPreset.entries.firstOrNull { it.name == recPrefs.preset }
     val presetSummary = currentPreset?.let { presetLabel(it) } ?: stringResource(R.string.preset_custom)
     val firstFocus = remember { FocusRequester() }
-
     TvInitialFocus(firstFocus)
     TvSettingsBody {
-        LazyColumn(
-            state = rememberLazyListState(),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = tvContentPadding(top = 0.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            item(key = "header") {
-                androidx.tv.material3.Text(
-                    text = stringResource(UiR.string.settings),
-                    style = androidx.tv.material3.MaterialTheme.typography.headlineLarge,
-                    color = androidx.tv.material3.MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 28.dp, bottom = 16.dp),
-                )
-            }
-            item(key = "general") {
-                TvListRow(
-                    headline = stringResource(R.string.settings_general_content),
-                    trailing = { IconChevronRight() },
-                    onClick = { backStack.add(TvRoute.SettingsGeneral) },
-                    modifier = Modifier.focusRequester(firstFocus),
-                )
-            }
-            item(key = "sponsorblock") {
-                TvListRow(
-                    headline = stringResource(R.string.settings_sponsorblock),
-                    supporting = stringResource(
-                        R.string.settings_sponsorblock_summary,
-                        blockedCount,
-                        ALL_SPONSOR_CATEGORIES.size,
-                    ),
-                    trailing = { IconChevronRight() },
-                    onClick = { backStack.add(TvRoute.SettingsSponsorBlock) },
-                )
-            }
-            item(key = "recommendations") {
-                TvListRow(
-                    headline = stringResource(R.string.label_recommendations),
-                    supporting = presetSummary,
-                    trailing = { IconChevronRight() },
-                    onClick = { backStack.add(TvRoute.SettingsRecommendations) },
-                )
-            }
-            item(key = "data") {
-                TvListRow(
-                    headline = stringResource(R.string.settings_data),
-                    trailing = { IconChevronRight() },
-                    onClick = { backStack.add(TvRoute.SettingsData) },
-                )
-            }
-        }
+        TvSettingsList(backStack, blockedCount, presetSummary, firstFocus)
+    }
+}
+
+@Composable
+private fun TvSettingsList(
+    backStack: NavBackStack<TvRoute>,
+    blockedCount: Int,
+    presetSummary: String,
+    firstFocus: FocusRequester,
+) {
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = tvContentPadding(top = 0.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        tvSettingsHeader()
+        tvSettingsGeneralRow(firstFocus, backStack)
+        tvSettingsSponsorRow(blockedCount, backStack)
+        tvSettingsRecommendationsRow(presetSummary, backStack)
+        tvSettingsDataRow(backStack)
+    }
+}
+
+private fun LazyListScope.tvSettingsHeader() {
+    item(key = "header") {
+        androidx.tv.material3.Text(
+            text = stringResource(UiR.string.settings),
+            style = androidx.tv.material3.MaterialTheme.typography.headlineLarge,
+            color = androidx.tv.material3.MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 28.dp, bottom = 16.dp),
+        )
+    }
+}
+
+private fun LazyListScope.tvSettingsGeneralRow(
+    firstFocus: FocusRequester,
+    backStack: NavBackStack<TvRoute>,
+) {
+    item(key = "general") {
+        TvListRow(
+            headline = stringResource(R.string.settings_general_content),
+            trailing = { IconChevronRight() },
+            onClick = { backStack.add(TvRoute.SettingsGeneral) },
+            modifier = Modifier.focusRequester(firstFocus),
+        )
+    }
+}
+
+private fun LazyListScope.tvSettingsSponsorRow(
+    blockedCount: Int,
+    backStack: NavBackStack<TvRoute>,
+) {
+    item(key = "sponsorblock") {
+        TvListRow(
+            headline = stringResource(R.string.settings_sponsorblock),
+            supporting = stringResource(
+                R.string.settings_sponsorblock_summary,
+                blockedCount,
+                ALL_SPONSOR_CATEGORIES.size,
+            ),
+            trailing = { IconChevronRight() },
+            onClick = { backStack.add(TvRoute.SettingsSponsorBlock) },
+        )
+    }
+}
+
+private fun LazyListScope.tvSettingsRecommendationsRow(
+    presetSummary: String,
+    backStack: NavBackStack<TvRoute>,
+) {
+    item(key = "recommendations") {
+        TvListRow(
+            headline = stringResource(R.string.label_recommendations),
+            supporting = presetSummary,
+            trailing = { IconChevronRight() },
+            onClick = { backStack.add(TvRoute.SettingsRecommendations) },
+        )
+    }
+}
+
+private fun LazyListScope.tvSettingsDataRow(backStack: NavBackStack<TvRoute>) {
+    item(key = "data") {
+        TvListRow(
+            headline = stringResource(R.string.settings_data),
+            trailing = { IconChevronRight() },
+            onClick = { backStack.add(TvRoute.SettingsData) },
+        )
     }
 }

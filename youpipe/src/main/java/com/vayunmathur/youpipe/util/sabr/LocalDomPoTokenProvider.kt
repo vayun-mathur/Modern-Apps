@@ -247,6 +247,7 @@ class LocalDomPoTokenProvider(context: Context) : YoutubeSessionPoTokenProvider 
         return parseYoutubePageAttestationBootstrap(response.responseBody())
     }
 
+    /** Shared constants and helpers for LocalDomPoTokenProvider. */
     companion object {
         private const val TAG = "SabrLocalDomPoToken"
         private const val YOUTUBE_HOME = "https://www.youtube.com"

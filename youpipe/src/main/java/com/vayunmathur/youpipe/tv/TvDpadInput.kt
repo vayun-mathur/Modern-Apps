@@ -36,24 +36,29 @@ object TvDpadInput {
     var sheetOpen: Boolean = false
 
     /** Handle a key before the focus system sees it. Returns true when claimed. */
-    fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_BACK) return handleBack(event)
-        if (player() == null) return false
-        if (event.action == KeyEvent.ACTION_UP && isScrubKey(event.keyCode)) {
-            // Only a scrub this map started is committed; otherwise the release belongs to
-            // whatever (or nothing) handled the press.
-            if (scrubPreviewMs == null) return false
-            commitScrub()
-            return true
-        }
-        if (event.action != KeyEvent.ACTION_DOWN) return false
-        if (isMediaKey(event.keyCode)) return handleMediaKey(event.keyCode)
-        if (sheetOpen) return false
-        if (TvTransportState.controlsHidden) return handleWhileHidden(event.keyCode)
+    fun onKeyEvent(event: KeyEvent): Boolean = when {
+        event.keyCode == KeyEvent.KEYCODE_BACK -> handleBack(event)
+        player() == null -> false
+        event.action == KeyEvent.ACTION_UP && isScrubKey(event.keyCode) -> handleScrubRelease()
+        event.action != KeyEvent.ACTION_DOWN -> false
+        isMediaKey(event.keyCode) -> handleMediaKey(event.keyCode)
+        sheetOpen -> false
+        TvTransportState.controlsHidden -> handleWhileHidden(event.keyCode)
+        else -> handleWhileVisible(event.keyCode)
+    }
+
+    /** Only a scrub this map started is committed; otherwise the release is not ours. */
+    private fun handleScrubRelease(): Boolean {
+        if (scrubPreviewMs == null) return false
+        commitScrub()
+        return true
+    }
+
+    private fun handleWhileVisible(keyCode: Int): Boolean {
         TvTransportState.reveal()
         // A scrub in progress keeps scrubbing even before focus has landed on the seek bar.
-        if ((seekFocused || scrubPreviewMs != null) && isScrubKey(event.keyCode)) {
-            scrubBy(if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) SCRUB_STEP_MS else -SCRUB_STEP_MS)
+        if ((seekFocused || scrubPreviewMs != null) && isScrubKey(keyCode)) {
+            scrubBy(if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) SCRUB_STEP_MS else -SCRUB_STEP_MS)
             return true
         }
         return false

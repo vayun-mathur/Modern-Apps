@@ -41,15 +41,16 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.ui.ChannelInfo
+import com.vayunmathur.youpipe.ui.ItemInfo
 import com.vayunmathur.youpipe.ui.VideoInfo
 import com.vayunmathur.youpipe.ui.countString
 import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.util.resolveWatchUrl
 
 /**
  * TV search: a [TvTextField] (IME only on CENTER) + suggestions/history chips + results
  * grid. Videos open the detail; channels open the channel page.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TvSearchPage(
     backStack: NavBackStack<TvRoute>,
@@ -60,11 +61,9 @@ fun TvSearchPage(
     val results by ypvm.searchResults.collectAsState()
     val history by ypvm.historyVideos.collectAsState()
     val historyById = remember(history) { history.associate { it.id to it.progress } }
-
     var fieldText by remember(query) { mutableStateOf(query) }
     var submitted by remember { mutableStateOf(false) }
     val fieldFocus = remember { FocusRequester() }
-
     fun submit(text: String) {
         fieldText = text
         ypvm.setSearchQuery(text)
@@ -76,87 +75,132 @@ fun TvSearchPage(
             submitted = true
         }
     }
-
     TvInitialFocus(fieldFocus, submitted)
     Column(Modifier.fillMaxSize()) {
-        TvTextField(
-            value = fieldText,
+        TvSearchField(
+            fieldText = fieldText,
+            fieldFocus = fieldFocus,
             onValueChange = {
                 fieldText = it
                 ypvm.setSearchQuery(it)
                 submitted = false
             },
-            placeholder = stringResource(UiR.string.search),
-            leading = { IconSearch() },
             onSubmit = { submit(fieldText) },
-            imeAction = ImeAction.Search,
-            focusRequester = fieldFocus,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = tvContentStart(), end = TvDimens.SafeHorizontal, top = TvDimens.SafeVertical),
         )
-        val videoResults = remember(results) { results.filterIsInstance<VideoInfo>() }
-        val channelResults = remember(results) { results.filterIsInstance<ChannelInfo>() }
-        val rows = rememberTvVideoRows(videoResults, ypvm, historyById)
-        val channelsTitle = stringResource(R.string.tv_section_channels)
-        val videosTitle = stringResource(R.string.tv_section_videos)
+        TvSearchContent(
+            backStack = backStack,
+            ypvm = ypvm,
+            results = results,
+            suggestions = suggestions,
+            submitted = submitted,
+            historyById = historyById,
+            onSubmit = { submit(it) },
+        )
+    }
+}
 
-        when {
-            results.isNotEmpty() -> {
-                TvGrid(columns = TV_GRID_COLUMNS, modifier = Modifier.fillMaxSize()) {
-                    if (channelResults.isNotEmpty()) {
-                        tvGridHeader(
-                            key = "channels-header",
-                            title = channelsTitle,
-                            first = true,
-                        )
-                    }
-                    items(
-                        channelResults.size,
-                        key = { "c-${channelResults[it].channelID}" },
-                        span = { GridItemSpan(2) },
-                    ) { index ->
-                        val channel = channelResults[index]
-                        TvChannelSearchCard(
-                            channel = channel,
-                            onClick = { backStack.add(TvRoute.Channel(channel.channelID)) },
-                        )
-                    }
-                    if (videoResults.isNotEmpty()) {
-                        tvGridHeader(
-                            key = "videos-header",
-                            title = videosTitle,
-                            first = channelResults.isEmpty(),
-                        )
-                    }
-                    items(rows.size, key = { rows[it].row.videoID }) { index ->
-                        val item = rows[index]
-                        TvVideoCard(
-                            item = item,
-                            onOpen = { backStack.playVideo(item.row.videoID) },
-                        )
-                    }
-                }
-            }
-            submitted -> TvLoading()
-            suggestions.isNotEmpty() -> {
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = tvContentStart(), end = TvDimens.SafeHorizontal, top = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    suggestions.forEach { suggestion ->
-                        TvChip(
-                            label = suggestion,
-                            selected = false,
-                            onClick = { submit(suggestion) },
-                        )
-                    }
-                }
-            }
-            else -> TvEmptyState(title = stringResource(R.string.tv_search_hint), icon = { IconSearch() })
+@Composable
+private fun TvSearchField(
+    fieldText: String,
+    fieldFocus: FocusRequester,
+    onValueChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    TvTextField(
+        value = fieldText,
+        onValueChange = onValueChange,
+        placeholder = stringResource(UiR.string.search),
+        leading = { IconSearch() },
+        onSubmit = onSubmit,
+        imeAction = ImeAction.Search,
+        focusRequester = fieldFocus,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = tvContentStart(), end = TvDimens.SafeHorizontal, top = TvDimens.SafeVertical),
+    )
+}
+
+@Composable
+private fun TvSearchContent(
+    backStack: NavBackStack<TvRoute>,
+    ypvm: YouPipeViewModel,
+    results: List<ItemInfo>,
+    suggestions: List<String>,
+    submitted: Boolean,
+    historyById: Map<Long, Long>,
+    onSubmit: (String) -> Unit,
+) {
+    val videoResults = remember(results) { results.filterIsInstance<VideoInfo>() }
+    val channelResults = remember(results) { results.filterIsInstance<ChannelInfo>() }
+    val rows = rememberTvVideoRows(videoResults, ypvm, historyById)
+    when {
+        results.isNotEmpty() -> TvSearchResultsGrid(backStack, channelResults, videoResults, rows)
+        submitted -> TvLoading()
+        suggestions.isNotEmpty() -> TvSearchSuggestions(suggestions, onSubmit)
+        else -> TvEmptyState(title = stringResource(R.string.tv_search_hint), icon = { IconSearch() })
+    }
+}
+
+@Composable
+private fun TvSearchResultsGrid(
+    backStack: NavBackStack<TvRoute>,
+    channelResults: List<ChannelInfo>,
+    videoResults: List<VideoInfo>,
+    rows: List<TvVideoRow>,
+) {
+    val channelsTitle = stringResource(R.string.tv_section_channels)
+    val videosTitle = stringResource(R.string.tv_section_videos)
+    TvGrid(columns = TV_GRID_COLUMNS, modifier = Modifier.fillMaxSize()) {
+        if (channelResults.isNotEmpty()) {
+            tvGridHeader(key = "channels-header", title = channelsTitle, first = true)
+        }
+        items(
+            channelResults.size,
+            key = { "c-${channelResults[it].channelID}" },
+            span = { GridItemSpan(2) },
+        ) { index ->
+            val channel = channelResults[index]
+            TvChannelSearchCard(
+                channel = channel,
+                onClick = { backStack.add(TvRoute.Channel(channel.channelID)) },
+            )
+        }
+        if (videoResults.isNotEmpty()) {
+            tvGridHeader(
+                key = "videos-header",
+                title = videosTitle,
+                first = channelResults.isEmpty(),
+            )
+        }
+        items(rows.size, key = { rows[it].row.videoID }) { index ->
+            val item = rows[index]
+            TvVideoCard(
+                item = item,
+                onOpen = { backStack.playVideo(item.row.videoID) },
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TvSearchSuggestions(
+    suggestions: List<String>,
+    onSubmit: (String) -> Unit,
+) {
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = tvContentStart(), end = TvDimens.SafeHorizontal, top = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        suggestions.forEach { suggestion ->
+            TvChip(
+                label = suggestion,
+                selected = false,
+                onClick = { onSubmit(suggestion) },
+            )
         }
     }
 }

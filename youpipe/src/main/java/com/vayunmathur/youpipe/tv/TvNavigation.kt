@@ -53,11 +53,11 @@ fun TvNavigation(ypvm: YouPipeViewModel, initialBackStack: List<TvRoute> = listO
         entry<TvRoute.PlaylistDetail> { TvPlaylistDetailPage(backStack, ypvm, it.playlistId) }
         entry<TvRoute.CreatePlaylist> { TvCreatePlaylistPage(backStack, ypvm) }
         entry<TvRoute.AddToPlaylist> { TvAddToPlaylistPage(backStack, ypvm, it.videoID, it.includeWatchLater) }
-        entry<TvRoute.SettingsGeneral> { TvGeneralSettingsPage(backStack, ypvm) }
-        entry<TvRoute.SettingsSponsorBlock> { TvSponsorBlockSettingsPage(backStack, ypvm) }
+        entry<TvRoute.SettingsGeneral> { TvGeneralSettingsPage(ypvm) }
+        entry<TvRoute.SettingsSponsorBlock> { TvSponsorBlockSettingsPage(ypvm) }
         entry<TvRoute.SettingsRecommendations> { TvRecommendationsSettingsPage(backStack, ypvm) }
-        entry<TvRoute.SettingsData> { TvDataSettingsPage(backStack, ypvm) }
-        entry<TvRoute.ManageInterests> { TvManageInterestsPage(backStack, ypvm) }
+        entry<TvRoute.SettingsData> { TvDataSettingsPage(ypvm) }
+        entry<TvRoute.ManageInterests> { TvManageInterestsPage(ypvm) }
     }
 }
 

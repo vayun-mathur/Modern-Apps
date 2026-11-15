@@ -31,6 +31,10 @@ class SabrNgSegmentDataSource(
     override fun addTransferListener(transferListener: TransferListener) {
     }
 
+    /** Fails the open with an IO error; keeps throw sites out of [open]. */
+    private fun failOpen(message: String, cause: Throwable? = null): Nothing =
+        throw IOException(message, cause)
+
     @Throws(IOException::class)
     override fun open(dataSpec: DataSpec): Long {
         uri = dataSpec.uri
@@ -39,27 +43,27 @@ class SabrNgSegmentDataSource(
         pos = maxOf(0, dataSpec.position).toInt()
         val itag = itagFromUri(dataSpec.uri)
         val lastSegment = dataSpec.uri.lastPathSegment
-            ?: throw IOException("Bad SABR segment uri: ${dataSpec.uri}")
+            ?: failOpen("Bad SABR segment uri: ${dataSpec.uri}")
 
         val availableRemaining: Long
         if (lastSegment == "init") {
             // Unknown itag means the manifest and the request disagree: fail loudly
             // so ExoPlayer retries/errors instead of choking on an empty resource.
             val initData = session.getInitialization(itag)
-                ?: throw IOException("No SABR init data for itag $itag")
+                ?: failOpen("No SABR init data for itag $itag")
             data = initData
             availableRemaining = maxOf(0, initData.size - pos).toLong()
         } else {
             val sequence = try {
                 lastSegment.toInt()
             } catch (e: NumberFormatException) {
-                throw IOException("Bad SABR segment uri: ${dataSpec.uri}", e)
+                failOpen("Bad SABR segment uri: ${dataSpec.uri}", e)
             }
             val segment = session.getMediaSegment(itag, sequence, segmentTimeoutMs)
             if (segment == null) {
                 // Pump timeout: a transient fetch failure. Throw so ExoPlayer takes its
                 // load-error/retry path instead of failing opaquely on an empty segment.
-                throw IOException("Timed out awaiting SABR segment itag=$itag seq=$sequence")
+                failOpen("Timed out awaiting SABR segment itag=$itag seq=$sequence")
             } else {
                 session.updatePlayheadForSegment(itag, sequence)
                 val stream = segment.openStream()

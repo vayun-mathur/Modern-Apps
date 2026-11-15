@@ -52,6 +52,7 @@ import com.vayunmathur.youpipe.util.SearchResultRow
 import com.vayunmathur.youpipe.util.SearchUiState
 import com.vayunmathur.youpipe.util.VideoRowState
 import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.util.resolveWatchUrl
 import com.vayunmathur.youpipe.util.blockChannel
 import com.vayunmathur.youpipe.util.boostChannel
 import com.vayunmathur.youpipe.util.loadRecommendations

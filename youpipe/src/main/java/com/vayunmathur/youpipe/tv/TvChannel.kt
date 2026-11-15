@@ -1,5 +1,6 @@
 package com.vayunmathur.youpipe.tv
 
+import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +29,7 @@ import com.vayunmathur.library.tv.TvScreenHeader
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.data.Subscription
+import com.vayunmathur.youpipe.ui.ChannelInfo
 import com.vayunmathur.youpipe.ui.countString
 import com.vayunmathur.youpipe.util.YouPipeViewModel
 import com.vayunmathur.youpipe.util.decodeHtml
@@ -63,65 +65,100 @@ fun TvChannelPage(
     TvInitialFocus(subscribeFocus, channelID)
     Column(Modifier.fillMaxSize()) {
         channelInfo?.let { info ->
-            TvScreenHeader(
-                title = info.name.decodeHtml(),
-                subtitle = stringResource(
-                    R.string.subscribers_count,
-                    countString(context, info.subscribers),
-                ),
-                actions = {
-                    val existing = subscriptions.firstOrNull { it.channelID == info.channelID }
-                    TvButton(
-                        text = stringResource(
-                            if (existing == null) R.string.action_subscribe
-                            else R.string.action_unsubscribe,
-                        ),
-                        onClick = {
-                            if (existing == null) {
-                                ypvm.upsertSubscription(
-                                    Subscription(
-                                        name = info.name,
-                                        channelID = info.channelID,
-                                        avatarURL = info.avatar,
-                                    ),
-                                )
-                            } else {
-                                ypvm.deleteSubscription(existing)
-                            }
-                        },
-                        primary = existing == null,
-                        modifier = Modifier.focusRequester(subscribeFocus),
-                    )
-                },
+            TvChannelHeader(
+                info = info,
+                subscriptions = subscriptions,
+                subscribeFocus = subscribeFocus,
+                context = context,
+                ypvm = ypvm,
             )
-            if (info.avatar.isNotEmpty()) {
-                Row(
-                    Modifier.padding(start = 48.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(info.avatar)
-                            .memoryCacheKey("channel-avatar-${info.channelID}")
-                            .build(),
-                        contentDescription = null,
-                        modifier = Modifier.tvCircularAvatar(),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-            }
         }
-        when {
-            channelInfo == null -> TvLoading()
-            rows.isEmpty() -> TvEmptyState(title = stringResource(R.string.empty_recommendations))
-            else -> TvGrid(columns = TV_GRID_COLUMNS, modifier = Modifier.fillMaxSize()) {
-                items(rows.size, key = { rows[it].row.videoID }) { index ->
-                    val item = rows[index]
-                    TvVideoCard(
-                        item = item,
-                        onOpen = { backStack.playVideo(item.row.videoID) },
-                    )
-                }
+        TvChannelBody(
+            channelInfo = channelInfo,
+            rows = rows,
+            onOpen = { backStack.playVideo(it) },
+        )
+    }
+}
+
+@Composable
+private fun TvChannelHeader(
+    info: ChannelInfo,
+    subscriptions: List<Subscription>,
+    subscribeFocus: FocusRequester,
+    context: Context,
+    ypvm: YouPipeViewModel,
+) {
+    TvScreenHeader(
+        title = info.name.decodeHtml(),
+        subtitle = stringResource(
+            R.string.subscribers_count,
+            countString(context, info.subscribers),
+        ),
+        actions = {
+            val existing = subscriptions.firstOrNull { it.channelID == info.channelID }
+            TvButton(
+                text = stringResource(
+                    if (existing == null) R.string.action_subscribe
+                    else R.string.action_unsubscribe,
+                ),
+                onClick = {
+                    if (existing == null) {
+                        ypvm.upsertSubscription(
+                            Subscription(
+                                name = info.name,
+                                channelID = info.channelID,
+                                avatarURL = info.avatar,
+                            ),
+                        )
+                    } else {
+                        ypvm.deleteSubscription(existing)
+                    }
+                },
+                primary = existing == null,
+                modifier = Modifier.focusRequester(subscribeFocus),
+            )
+        },
+    )
+    TvChannelAvatar(info = info, context = context)
+}
+
+@Composable
+private fun TvChannelAvatar(info: ChannelInfo, context: Context) {
+    if (info.avatar.isNotEmpty()) {
+        Row(
+            Modifier.padding(start = 48.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(info.avatar)
+                    .memoryCacheKey("channel-avatar-${info.channelID}")
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier.tvCircularAvatar(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvChannelBody(
+    channelInfo: ChannelInfo?,
+    rows: List<TvVideoRow>,
+    onOpen: (Long) -> Unit,
+) {
+    when {
+        channelInfo == null -> TvLoading()
+        rows.isEmpty() -> TvEmptyState(title = stringResource(R.string.empty_recommendations))
+        else -> TvGrid(columns = TV_GRID_COLUMNS, modifier = Modifier.fillMaxSize()) {
+            items(rows.size, key = { rows[it].row.videoID }) { index ->
+                val item = rows[index]
+                TvVideoCard(
+                    item = item,
+                    onOpen = { onOpen(item.row.videoID) },
+                )
             }
         }
     }

@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.tv.TvInitialFocus
 import com.vayunmathur.library.tv.TvScreenHeader
 import com.vayunmathur.library.tv.TvSwitchRow
-import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.util.YouPipeViewModel
 import com.vayunmathur.youpipe.util.YouPipeViewModel.Companion.ALL_SPONSOR_CATEGORIES
@@ -30,7 +29,6 @@ import com.vayunmathur.youpipe.util.YouPipeViewModel.Companion.ALL_SPONSOR_CATEG
  */
 @Composable
 fun TvSponsorBlockSettingsPage(
-    backStack: NavBackStack<TvRoute>,
     ypvm: YouPipeViewModel,
 ) {
     val sponsorBlockCategories by ypvm.sponsorBlockCategories.collectAsState()

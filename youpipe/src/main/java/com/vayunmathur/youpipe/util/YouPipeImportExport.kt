@@ -58,8 +58,8 @@ private suspend fun YouPipeViewModel.importTakeoutZip(ctx: Application, uri: Uri
             entry = zipInputStream.nextEntry
         }
 
-        if (subs.isNotEmpty()) repository.upsertSubscriptions(subs)
-        if (history.isNotEmpty()) repository.upsertHistoryVideos(history)
+        if (subs.isNotEmpty()) repository.subscriptionStore.upsertSubscriptions(subs)
+        if (history.isNotEmpty()) repository.historyStore.upsertHistoryVideos(history)
     }
 }
 
@@ -180,7 +180,7 @@ fun YouPipeViewModel.exportSubscriptions(uri: Uri) {
     val ctx = getApplication<Application>()
     viewModelScope.launch(Dispatchers.IO) {
         try {
-            val subs = repository.getAllSubscriptions()
+            val subs = repository.subscriptionStore.getAllSubscriptions()
             val json = Json.encodeToString(subs)
             ctx.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
         } catch (e: java.io.IOException) {
@@ -205,8 +205,8 @@ fun YouPipeViewModel.restoreSubscriptions(uri: Uri) {
                 Log.error(TAG, "Unsupported subscription backup format")
                 AppMessages.show(ctx.getString(R.string.restore_unsupported_format))
             } else {
-                repository.clearAllSubscriptions()
-                repository.upsertSubscriptions(subs)
+                repository.subscriptionStore.clearAllSubscriptions()
+                repository.subscriptionStore.upsertSubscriptions(subs)
             }
         } catch (e: java.io.IOException) {
             Log.error(TAG, "Error restoring subscriptions", e)
@@ -257,8 +257,8 @@ fun YouPipeViewModel.importNewPipe(uri: Uri) {
                     }
                     importProgressMutable.value = (index + 1).toFloat() / total
                 }
-                repository.clearAllSubscriptions()
-                repository.upsertSubscriptions(subs)
+                repository.subscriptionStore.clearAllSubscriptions()
+                repository.subscriptionStore.upsertSubscriptions(subs)
             }
         } catch (e: java.io.IOException) {
             Log.error(TAG, "Error importing NewPipe subscriptions", e)

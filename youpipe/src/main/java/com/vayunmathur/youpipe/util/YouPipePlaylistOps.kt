@@ -20,28 +20,28 @@ internal class YouPipePlaylistOps(private val vm: YouPipeViewModel) {
 
     fun createPlaylist(name: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val maxPosition = repository.getAllPlaylists().maxOfOrNull { it.position } ?: 0.0
-            repository.upsertPlaylist(Playlist(name = name, position = maxPosition + 1))
+            val maxPosition = repository.playlistStore.getAllPlaylists().maxOfOrNull { it.position } ?: 0.0
+            repository.playlistStore.upsertPlaylist(Playlist(name = name, position = maxPosition + 1))
         }
     }
 
     /** Deletes a user playlist. Mandatory playlists (Watch later) can never be removed. */
     fun deletePlaylist(playlist: Playlist) {
         if (playlist.mandatory) return
-        viewModelScope.launch(Dispatchers.IO) { repository.deletePlaylist(playlist) }
+        viewModelScope.launch(Dispatchers.IO) { repository.playlistStore.deletePlaylist(playlist) }
     }
 
     fun reorderPlaylists(list: List<Playlist>) {
-        viewModelScope.launch(Dispatchers.IO) { repository.upsertPlaylists(list) }
+        viewModelScope.launch(Dispatchers.IO) { repository.playlistStore.upsertPlaylists(list) }
     }
 
     /** Adds [video] to [playlistId], deduped by videoID; a no-op if already present. */
     fun addVideoToPlaylist(playlistId: Long, video: VideoInfo) {
         viewModelScope.launch(Dispatchers.IO) {
-            val existing = repository.getPlaylistItemsForPlaylist(playlistId)
+            val existing = repository.playlistStore.getPlaylistItemsForPlaylist(playlistId)
             if (existing.any { it.videoItem.videoID == video.videoID }) return@launch
             val maxPosition = existing.maxOfOrNull { it.position } ?: 0.0
-            repository.upsertPlaylistItem(
+            repository.playlistStore.upsertPlaylistItem(
                 PlaylistItem(
                     playlistId = playlistId,
                     videoItem = video,
@@ -53,15 +53,15 @@ internal class YouPipePlaylistOps(private val vm: YouPipeViewModel) {
     }
 
     fun removeFromPlaylist(item: PlaylistItem) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deletePlaylistItem(item) }
+        viewModelScope.launch(Dispatchers.IO) { repository.playlistStore.deletePlaylistItem(item) }
     }
 
     /** Creates a playlist and immediately adds [video] to it (the dialog's "New playlist" option). */
     fun createPlaylistAndAddVideo(name: String, video: VideoInfo) {
         viewModelScope.launch(Dispatchers.IO) {
-            val maxPosition = repository.getAllPlaylists().maxOfOrNull { it.position } ?: 0.0
-            val id = repository.upsertPlaylist(Playlist(name = name, position = maxPosition + 1))
-            repository.upsertPlaylistItem(
+            val maxPosition = repository.playlistStore.getAllPlaylists().maxOfOrNull { it.position } ?: 0.0
+            val id = repository.playlistStore.upsertPlaylist(Playlist(name = name, position = maxPosition + 1))
+            repository.playlistStore.upsertPlaylistItem(
                 PlaylistItem(
                     playlistId = id,
                     videoItem = video,
@@ -73,6 +73,6 @@ internal class YouPipePlaylistOps(private val vm: YouPipeViewModel) {
     }
 
     fun reorderPlaylistItems(list: List<PlaylistItem>) {
-        viewModelScope.launch(Dispatchers.IO) { repository.upsertPlaylistItems(list) }
+        viewModelScope.launch(Dispatchers.IO) { repository.playlistStore.upsertPlaylistItems(list) }
     }
 }

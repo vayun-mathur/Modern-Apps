@@ -47,89 +47,89 @@ class RepositoryPass3Test {
 
     @Test
     fun subscriptionCrudThroughRepository() = runTest {
-        val a = repo.upsertSubscription(Subscription(name = "A", channelID = "UCA", avatarURL = ""))
-        val b = repo.upsertSubscription(Subscription(name = "B", channelID = "UCB", avatarURL = ""))
-        repo.upsertSubscriptions(listOf(Subscription(name = "C", channelID = "UCC", avatarURL = "")))
-        assertEquals(listOf("A", "B", "C"), repo.getAllSubscriptions().map { it.name })
-        assertEquals("B", repo.subscriptionById(b).first()?.name)
+        val a = repo.subscriptionStore.upsertSubscription(Subscription(name = "A", channelID = "UCA", avatarURL = ""))
+        val b = repo.subscriptionStore.upsertSubscription(Subscription(name = "B", channelID = "UCB", avatarURL = ""))
+        repo.subscriptionStore.upsertSubscriptions(listOf(Subscription(name = "C", channelID = "UCC", avatarURL = "")))
+        assertEquals(listOf("A", "B", "C"), repo.subscriptionStore.getAllSubscriptions().map { it.name })
+        assertEquals("B", repo.subscriptionStore.subscriptionById(b).first()?.name)
         assertEquals(3, repo.subscriptions.first().size)
-        assertEquals(1, repo.deleteSubscription(repo.getAllSubscriptions().first { it.name == "C" }))
-        repo.clearAllSubscriptions()
-        assertEquals(emptyList(), repo.getAllSubscriptions())
+        assertEquals(1, repo.subscriptionStore.deleteSubscription(repo.subscriptionStore.getAllSubscriptions().first { it.name == "C" }))
+        repo.subscriptionStore.clearAllSubscriptions()
+        assertEquals(emptyList(), repo.subscriptionStore.getAllSubscriptions())
         assertTrue(a > 0)
     }
 
     @Test
     fun subscriptionVideosAndCategories() = runTest {
-        val subId = repo.upsertSubscription(Subscription(name = "A", channelID = "UCA", avatarURL = ""))
-        repo.upsertSubscriptionVideos(
+        val subId = repo.subscriptionStore.upsertSubscription(Subscription(name = "A", channelID = "UCA", avatarURL = ""))
+        repo.subscriptionStore.upsertSubscriptionVideos(
             listOf(
                 SubscriptionVideo(name = "sv1", duration = 1, views = 1, uploadDate = Instant.fromEpochSeconds(1), thumbnailURL = "", author = "A", channelID = subId),
             ),
         )
-        assertEquals(listOf("sv1"), repo.getAllSubscriptionVideos().map { it.name })
-        assertEquals("sv1", repo.subscriptionVideoById(repo.getAllSubscriptionVideos()[0].id).first()?.name)
+        assertEquals(listOf("sv1"), repo.subscriptionStore.getAllSubscriptionVideos().map { it.name })
+        assertEquals("sv1", repo.subscriptionStore.subscriptionVideoById(repo.subscriptionStore.getAllSubscriptionVideos()[0].id).first()?.name)
         assertEquals(1, repo.subscriptionVideos.first().size)
 
-        repo.replaceCategory(null, "News", listOf(subId))
+        repo.categoryStore.replaceCategory(null, "News", listOf(subId))
         assertEquals("News", repo.subscriptionCategories.first().single().category)
-        assertEquals(subId, repo.subscriptionCategoryById(
+        assertEquals(subId, repo.categoryStore.subscriptionCategoryById(
             repo.subscriptionCategories.first().single().id,
         ).first()?.subscriptionID)
-        repo.upsertSubscriptionCategories(listOf(SubscriptionCategory(subId, "Tech")))
+        repo.categoryStore.upsertSubscriptionCategories(listOf(SubscriptionCategory(subId, "Tech")))
         assertEquals(setOf("News", "Tech"), repo.subscriptionCategories.first().map { it.category }.toSet())
-        repo.deleteCategory("Tech")
+        repo.categoryStore.deleteCategory("Tech")
         assertEquals(listOf("News"), repo.subscriptionCategories.first().map { it.category })
     }
 
     @Test
     fun historyAndDownloadsThroughRepository() = runTest {
         val row = HistoryVideo(progress = 5, videoItem = info(1), timestamp = Instant.fromEpochSeconds(10))
-        val id = repo.upsertHistoryVideo(row)
-        repo.upsertHistoryVideos(
+        val id = repo.historyStore.upsertHistoryVideo(row)
+        repo.historyStore.upsertHistoryVideos(
             listOf(HistoryVideo(progress = 6, videoItem = info(2), timestamp = Instant.fromEpochSeconds(11))),
         )
-        assertEquals(2, repo.getAllHistoryVideos().size)
-        assertEquals(5L, repo.historyById(id).first()?.progress)
+        assertEquals(2, repo.historyStore.getAllHistoryVideos().size)
+        assertEquals(5L, repo.historyStore.historyById(id).first()?.progress)
         assertEquals(2, repo.historyVideos.first().size)
 
         val dl = DownloadedVideo(
             id = 9, videoItem = info(9), filePath = "/dl/9.mp4",
             timestamp = Instant.fromEpochSeconds(12),
         )
-        assertEquals(9L, repo.upsertDownloadedVideo(dl))
-        assertEquals("/dl/9.mp4", repo.downloadedById(9).first()?.filePath)
+        assertEquals(9L, repo.historyStore.upsertDownloadedVideo(dl))
+        assertEquals("/dl/9.mp4", repo.historyStore.downloadedById(9).first()?.filePath)
         assertEquals(1, repo.downloadedVideos.first().size)
-        assertEquals(1, repo.deleteDownloadedVideo(dl))
+        assertEquals(1, repo.historyStore.deleteDownloadedVideo(dl))
 
-        repo.deleteHistoryVideosByIds(listOf(id))
-        assertEquals(1, repo.getAllHistoryVideos().size)
-        repo.deleteHistoryVideo(repo.getAllHistoryVideos().single())
-        assertEquals(emptyList(), repo.getAllHistoryVideos())
-        repo.upsertHistoryVideo(row)
-        repo.clearAllHistory()
+        repo.historyStore.deleteHistoryVideosByIds(listOf(id))
+        assertEquals(1, repo.historyStore.getAllHistoryVideos().size)
+        repo.historyStore.deleteHistoryVideo(repo.historyStore.getAllHistoryVideos().single())
+        assertEquals(emptyList(), repo.historyStore.getAllHistoryVideos())
+        repo.historyStore.upsertHistoryVideo(row)
+        repo.historyStore.clearAllHistory()
         assertEquals(emptyList(), repo.historyVideos.first())
     }
 
     @Test
     fun playlistsThroughRepository() = runTest {
-        val pid = repo.upsertPlaylist(Playlist(name = "Mix"))
-        repo.upsertPlaylists(listOf(Playlist(name = "Second")))
-        assertEquals(listOf("Mix", "Second"), repo.getAllPlaylists().map { it.name })
-        assertEquals("Mix", repo.playlistById(pid).first()?.name)
+        val pid = repo.playlistStore.upsertPlaylist(Playlist(name = "Mix"))
+        repo.playlistStore.upsertPlaylists(listOf(Playlist(name = "Second")))
+        assertEquals(listOf("Mix", "Second"), repo.playlistStore.getAllPlaylists().map { it.name })
+        assertEquals("Mix", repo.playlistStore.playlistById(pid).first()?.name)
         assertEquals(2, repo.playlists.first().size)
 
         val item = PlaylistItem(playlistId = pid, videoItem = info(31), timestamp = Instant.fromEpochSeconds(3))
-        val itemId = repo.upsertPlaylistItem(item)
-        repo.upsertPlaylistItems(
+        val itemId = repo.playlistStore.upsertPlaylistItem(item)
+        repo.playlistStore.upsertPlaylistItems(
             listOf(PlaylistItem(playlistId = pid, videoItem = info(32), timestamp = Instant.fromEpochSeconds(4))),
         )
-        assertEquals(listOf(31L, 32L), repo.getPlaylistItemsForPlaylist(pid).map { it.videoItem.videoID })
-        assertEquals(2, repo.playlistItemsFor(pid).first().size)
+        assertEquals(listOf(31L, 32L), repo.playlistStore.getPlaylistItemsForPlaylist(pid).map { it.videoItem.videoID })
+        assertEquals(2, repo.playlistStore.playlistItemsFor(pid).first().size)
         assertEquals(2, repo.playlistItems.first().size)
-        val first = repo.getPlaylistItemsForPlaylist(pid).first { it.id == itemId }
-        assertEquals(1, repo.deletePlaylistItem(first))
-        assertEquals(1, repo.deletePlaylist(repo.getAllPlaylists().first { it.name == "Second" }))
+        val first = repo.playlistStore.getPlaylistItemsForPlaylist(pid).first { it.id == itemId }
+        assertEquals(1, repo.playlistStore.deletePlaylistItem(first))
+        assertEquals(1, repo.playlistStore.deletePlaylist(repo.playlistStore.getAllPlaylists().first { it.name == "Second" }))
         // The store splits are reachable through the repository too.
         assertSame(repo.playlistStore, repo.playlistStore)
         assertSame(repo.categoryStore, repo.categoryStore)
@@ -138,54 +138,54 @@ class RepositoryPass3Test {
 
     @Test
     fun recommendationsThroughRepository() = runTest {
-        repo.upsertCachedRelatedVideos(
+        repo.recommendationStore.upsertCachedRelatedVideos(
             listOf(
                 CachedRelatedVideo(sourceVideoID = 1, videoItem = info(41), cachedAt = Instant.fromEpochSeconds(100)),
                 CachedRelatedVideo(sourceVideoID = 1, videoItem = info(42), cachedAt = Instant.fromEpochSeconds(200)),
             ),
         )
-        assertEquals(2, repo.getAllCachedRelatedVideos().size)
+        assertEquals(2, repo.recommendationStore.getAllCachedRelatedVideos().size)
         assertEquals(2, repo.cachedRelatedVideos.first().size)
-        repo.deleteCachedRelatedOlderThan(Instant.fromEpochSeconds(150))
-        assertEquals(listOf(42L), repo.getAllCachedRelatedVideos().map { it.videoItem.videoID })
+        repo.recommendationStore.deleteCachedRelatedOlderThan(Instant.fromEpochSeconds(150))
+        assertEquals(listOf(42L), repo.recommendationStore.getAllCachedRelatedVideos().map { it.videoItem.videoID })
 
-        repo.recordRecommendationImpression(7, "chan", "RELATED", Instant.fromEpochSeconds(500))
-        repo.recordRecommendationImpression(7, "chan", "RELATED", Instant.fromEpochSeconds(600))
-        val impressions = repo.getAllRecommendationImpressions()
+        repo.recommendationStore.recordRecommendationImpression(7, "chan", "RELATED", Instant.fromEpochSeconds(500))
+        repo.recommendationStore.recordRecommendationImpression(7, "chan", "RELATED", Instant.fromEpochSeconds(600))
+        val impressions = repo.recommendationStore.getAllRecommendationImpressions()
         assertEquals(1, impressions.size)
         assertEquals(2, impressions[0].shownCount)
         assertEquals(1, repo.recommendationImpressions.first().size)
         // The cutoff compares lastShownAt (600s), not firstShownAt.
-        repo.deleteRecommendationImpressionsOlderThan(Instant.fromEpochSeconds(550))
-        assertEquals(listOf(7L), repo.getAllRecommendationImpressions().map { it.videoID })
-        repo.deleteRecommendationImpressionsOlderThan(Instant.fromEpochSeconds(650))
-        assertEquals(emptyList(), repo.getAllRecommendationImpressions())
-        repo.recordRecommendationImpression(8, "chan", "SEARCH", Instant.fromEpochSeconds(700))
-        repo.clearAllRecommendationImpressions()
-        assertEquals(emptyList(), repo.getAllRecommendationImpressions())
+        repo.recommendationStore.deleteRecommendationImpressionsOlderThan(Instant.fromEpochSeconds(550))
+        assertEquals(listOf(7L), repo.recommendationStore.getAllRecommendationImpressions().map { it.videoID })
+        repo.recommendationStore.deleteRecommendationImpressionsOlderThan(Instant.fromEpochSeconds(650))
+        assertEquals(emptyList(), repo.recommendationStore.getAllRecommendationImpressions())
+        repo.recommendationStore.recordRecommendationImpression(8, "chan", "SEARCH", Instant.fromEpochSeconds(700))
+        repo.recommendationStore.clearAllRecommendationImpressions()
+        assertEquals(emptyList(), repo.recommendationStore.getAllRecommendationImpressions())
 
-        assertNull(repo.getRecommendationPreferences())
-        repo.upsertRecommendationPreferences(RecommendationPreferences(preset = "FOCUSED"))
-        assertEquals("FOCUSED", repo.getRecommendationPreferences()?.preset)
+        assertNull(repo.recommendationStore.getRecommendationPreferences())
+        repo.recommendationStore.upsertRecommendationPreferences(RecommendationPreferences(preset = "FOCUSED"))
+        assertEquals("FOCUSED", repo.recommendationStore.getRecommendationPreferences()?.preset)
         assertEquals("FOCUSED", repo.recommendationPreferencesFlow.first()?.preset)
-        repo.clearAllRecommendationPreferences()
-        assertNull(repo.getRecommendationPreferences())
+        repo.recommendationStore.clearAllRecommendationPreferences()
+        assertNull(repo.recommendationStore.getRecommendationPreferences())
 
-        repo.upsertChannelPreference(ChannelPreference("chan", multiplier = 0.5))
-        assertEquals(0.5, repo.getChannelPreference("chan")?.multiplier)
+        repo.recommendationStore.upsertChannelPreference(ChannelPreference("chan", multiplier = 0.5))
+        assertEquals(0.5, repo.recommendationStore.getChannelPreference("chan")?.multiplier)
         assertEquals(1, repo.channelPreferences.first().size)
-        repo.deleteChannelPreference("chan")
-        assertNull(repo.getChannelPreference("chan"))
-        repo.upsertChannelPreference(ChannelPreference("x"))
-        repo.clearAllChannelPreferences()
-        assertEquals(emptyList(), repo.getAllChannelPreferences())
+        repo.recommendationStore.deleteChannelPreference("chan")
+        assertNull(repo.recommendationStore.getChannelPreference("chan"))
+        repo.recommendationStore.upsertChannelPreference(ChannelPreference("x"))
+        repo.recommendationStore.clearAllChannelPreferences()
+        assertEquals(emptyList(), repo.recommendationStore.getAllChannelPreferences())
 
-        repo.upsertKeywordPreference(KeywordPreference("spoiler"))
+        repo.recommendationStore.upsertKeywordPreference(KeywordPreference("spoiler"))
         assertEquals(1, repo.keywordPreferences.first().size)
-        repo.deleteKeywordPreference("spoiler")
-        repo.upsertKeywordPreference(KeywordPreference("ad"))
-        repo.clearAllKeywordPreferences()
-        assertEquals(emptyList(), repo.getAllKeywordPreferences())
+        repo.recommendationStore.deleteKeywordPreference("spoiler")
+        repo.recommendationStore.upsertKeywordPreference(KeywordPreference("ad"))
+        repo.recommendationStore.clearAllKeywordPreferences()
+        assertEquals(emptyList(), repo.recommendationStore.getAllKeywordPreferences())
     }
 
     @Test

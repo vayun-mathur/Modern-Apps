@@ -97,6 +97,21 @@ class YouPipeViewModel(
     internal val repository: SubscriptionRepository,
 ) : AndroidViewModel(application) {
 
+    /** Subscription persistence (delegates to the repository's store). */
+    val subscriptionStore get() = repository.subscriptionStore
+
+    /** Category persistence (delegates to the repository's store). */
+    val categoryStore get() = repository.categoryStore
+
+    /** Playlist persistence (delegates to the repository's store). */
+    val playlistStore get() = repository.playlistStore
+
+    /** History/download persistence (delegates to the repository's store). */
+    val historyStore get() = repository.historyStore
+
+    /** Recommendation persistence (delegates to the repository's store). */
+    val recommendationStore get() = repository.recommendationStore
+
     // ===================== Data StateFlows =====================
 
     val subscriptions: StateFlow<List<Subscription>> = repository.subscriptions
@@ -182,39 +197,39 @@ class YouPipeViewModel(
 
     // ===================== By-id flows =====================
 
-    fun historyById(id: Long): Flow<HistoryVideo?> = repository.historyById(id)
-    fun downloadedById(id: Long): Flow<DownloadedVideo?> = repository.downloadedById(id)
+    fun historyById(id: Long): Flow<HistoryVideo?> = repository.historyStore.historyById(id)
+    fun downloadedById(id: Long): Flow<DownloadedVideo?> = repository.historyStore.downloadedById(id)
 
-    fun playlistById(id: Long): Flow<Playlist?> = repository.playlistById(id)
+    fun playlistById(id: Long): Flow<Playlist?> = repository.playlistStore.playlistById(id)
 
     /** The items of [playlistId], sorted by their persisted [PlaylistItem.position]. */
     fun playlistItemsFor(playlistId: Long): Flow<List<PlaylistItem>> =
-        repository.playlistItemsFor(playlistId).map { list -> list.sortedBy { it.position } }
+        repository.playlistStore.playlistItemsFor(playlistId).map { list -> list.sortedBy { it.position } }
 
     // ===================== Mutations =====================
 
     fun upsertSubscription(item: Subscription) {
-        viewModelScope.launch(Dispatchers.IO) { repository.upsertSubscription(item) }
+        viewModelScope.launch(Dispatchers.IO) { repository.subscriptionStore.upsertSubscription(item) }
     }
 
     fun deleteSubscription(item: Subscription) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteSubscription(item) }
+        viewModelScope.launch(Dispatchers.IO) { repository.subscriptionStore.deleteSubscription(item) }
     }
 
     fun upsertHistoryVideo(item: HistoryVideo) {
-        viewModelScope.launch(Dispatchers.IO) { repository.upsertHistoryVideo(item) }
+        viewModelScope.launch(Dispatchers.IO) { repository.historyStore.upsertHistoryVideo(item) }
     }
 
     fun deleteHistoryVideos(ids: List<Long>) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteHistoryVideosByIds(ids) }
+        viewModelScope.launch(Dispatchers.IO) { repository.historyStore.deleteHistoryVideosByIds(ids) }
     }
 
     fun clearHistory() {
-        viewModelScope.launch(Dispatchers.IO) { repository.clearAllHistory() }
+        viewModelScope.launch(Dispatchers.IO) { repository.historyStore.clearAllHistory() }
     }
 
     fun deleteDownloadedVideo(item: DownloadedVideo) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteDownloadedVideo(item) }
+        viewModelScope.launch(Dispatchers.IO) { repository.historyStore.deleteDownloadedVideo(item) }
     }
 
     // ===================== Playlists =====================
@@ -226,7 +241,7 @@ class YouPipeViewModel(
 
     suspend fun replaceCategory(originalCategoryName: String?, categoryName: String, ids: List<Long>) {
         withContext(Dispatchers.IO) {
-            repository.replaceCategory(originalCategoryName, categoryName, ids)
+            repository.categoryStore.replaceCategory(originalCategoryName, categoryName, ids)
         }
     }
 
@@ -293,12 +308,6 @@ class YouPipeViewModel(
         }
     }
 
-    /** Returns the resolved videoID if the query is a watch URL, else null. */
-    fun resolveWatchUrl(): Long? {
-        val q = _searchQuery.value
-        return if (q.contains("/watch?v=")) videoURLtoID(q) else null
-    }
-
     fun performSearch() {
         val q = _searchQuery.value
         searchJob?.cancel()
@@ -332,6 +341,7 @@ class YouPipeViewModel(
 
     // ===================== Channel =====================
 
+    /** Immutable value describing channel state. */
     data class ChannelState(
         val info: ChannelInfo? = null,
         val videos: List<VideoInfo> = emptyList(),
@@ -348,7 +358,8 @@ class YouPipeViewModel(
             try {
                 val info = getChannelInfo(channelID)
                 _channelState.update { it.copy(info = info) }
-                val hidePaid = (repository.getRecommendationPreferences() ?: RecommendationPreferences()).hidePaid
+                val preferences = repository.recommendationStore.getRecommendationPreferences()
+                val hidePaid = (preferences ?: RecommendationPreferences()).hidePaid
                 val channelVideos = mutableListOf<VideoInfo>()
                 getChannelVideos(info.channelID).forEach { video ->
                     if (hidePaid && video.isPaid) return@forEach
@@ -366,6 +377,7 @@ class YouPipeViewModel(
 
     // ===================== Video =====================
 
+    /** Immutable value describing video state. */
     data class VideoState(
         val data: VideoData? = null,
         val videoStreams: List<VideoStream> = emptyList(),
@@ -401,6 +413,7 @@ class YouPipeViewModel(
 
     // ===================== DeArrow cache =====================
 
+    /** Immutable value describing de arrow data; carries title, thumbnailUrl. */
     data class DeArrowData(val title: String?, val thumbnailUrl: String?)
 
     private val _deArrowCache = MutableStateFlow<Map<Long, DeArrowData>>(emptyMap())
@@ -560,17 +573,20 @@ class YouPipeViewModel(
         }
         viewModelScope.launch(Dispatchers.IO) {
             val cutoff = Clock.System.now() - 30.days
-            repository.deleteCachedRelatedOlderThan(cutoff)
-            repository.deleteRecommendationImpressionsOlderThan(cutoff)
+            repository.recommendationStore.deleteCachedRelatedOlderThan(cutoff)
+            repository.recommendationStore.deleteRecommendationImpressionsOlderThan(cutoff)
         }
         // Seed the mandatory "Watch later" playlist once (covers fresh installs and upgrades).
         viewModelScope.launch(Dispatchers.IO) {
-            if (repository.getAllPlaylists().none { it.mandatory }) {
-                repository.upsertPlaylist(Playlist(name = "Watch later", position = 0.0, mandatory = true))
+            if (repository.playlistStore.getAllPlaylists().none { it.mandatory }) {
+                repository.playlistStore.upsertPlaylist(
+                    Playlist(name = "Watch later", position = 0.0, mandatory = true),
+                )
             }
         }
     }
 
+    /** Shared constants and helpers for YouPipeViewModel. */
     companion object {
         private const val TAG = "YouPipeViewModel"
 
@@ -647,4 +663,10 @@ class YouPipeViewModelFactory(
             repository,
         ) as T
     }
+}
+
+/** Returns the resolved videoID if the current search query is a watch URL, else null. */
+fun YouPipeViewModel.resolveWatchUrl(): Long? {
+    val q = searchQuery.value
+    return if (q.contains("/watch?v=")) videoURLtoID(q) else null
 }
