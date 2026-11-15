@@ -33,6 +33,8 @@ import com.vayunmathur.shop.network.ShopBackendException
 import com.vayunmathur.shop.network.ShopHttpBackend
 import kotlinx.coroutines.launch
 
+private const val MAX_QUANTITY = 99
+
 /** Session catalog state plus persisted cart and pending checkout history. */
 class ShopViewModel(
     private val backend: ShopBackend = ShopHttpBackend,
@@ -246,14 +248,16 @@ class ShopViewModel(
 
     fun addToCart(product: com.vayunmathur.shop.data.UcpProduct, variantId: String, quantity: Int, context: Context) {
         val variant = product.variants.firstOrNull { it.id == variantId } ?: return
-        if (!variant.available || !product.checkoutEligible || quantity !in 1..99) return
+        if (!variant.available || !product.checkoutEligible || quantity !in 1..MAX_QUANTITY) return
         val existing = cart.indexOfFirst {
             it.variantId == variantId && it.platformId == product.platformId &&
                 it.shopDomain == product.shopDomain
         }
         cart = if (existing >= 0) {
             cart.toMutableList().also {
-                it[existing] = it[existing].copy(quantity = (it[existing].quantity + quantity).coerceAtMost(99))
+                it[existing] = it[existing].copy(
+                    quantity = (it[existing].quantity + quantity).coerceAtMost(MAX_QUANTITY),
+                )
             }
         } else {
             cart + CartLine(

@@ -8,11 +8,15 @@ import java.util.Locale
 sealed interface MerchantLink {
     val host: String
 
+    /** Immutable value describing product; carries host, handle. */
     data class Product(override val host: String, val handle: String) : MerchantLink
+    /** Immutable value describing search; carries host, query. */
     data class Search(override val host: String, val query: String) : MerchantLink
+    /** Immutable value describing merchant; carries host. */
     data class Merchant(override val host: String) : MerchantLink
 }
 
+/** Singleton holding merchant links state and operations. */
 object MerchantLinks {
     private val handlePattern = Regex("^[a-z0-9][a-z0-9-]{0,199}$")
     private val webSchemes = setOf("https", "http")

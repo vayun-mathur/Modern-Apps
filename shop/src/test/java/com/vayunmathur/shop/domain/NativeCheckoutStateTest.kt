@@ -1,10 +1,27 @@
 package com.vayunmathur.shop.domain
 
-import com.vayunmathur.shop.data.*
-import kotlinx.coroutines.*
+import com.vayunmathur.shop.data.CartLine
+import com.vayunmathur.shop.data.CheckoutInputs
+import com.vayunmathur.shop.data.CheckoutPhase
+import com.vayunmathur.shop.data.NativeCheckoutState
+import com.vayunmathur.shop.data.PlacedOrder
+import com.vayunmathur.shop.data.SubmittedLine
+import com.vayunmathur.shop.data.UcpCheckout
+import com.vayunmathur.shop.data.UcpError
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class NativeCheckoutStateTest {
     private class FakeGateway : NativeCheckoutGateway {

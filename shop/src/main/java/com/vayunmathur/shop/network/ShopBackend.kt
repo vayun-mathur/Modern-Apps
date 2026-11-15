@@ -31,7 +31,12 @@ import java.net.URLEncoder
  * write → uncertain (never auto-retried).
  */
 interface ShopBackend {
-    suspend fun search(query: String, shop: String? = null, limit: Int = 20, country: String = "US"): Result<List<UcpProduct>>
+    suspend fun search(
+        query: String,
+        shop: String? = null,
+        limit: Int = 20,
+        country: String = "US",
+    ): Result<List<UcpProduct>>
     suspend fun getProduct(
         shop: String,
         productId: String,
@@ -40,9 +45,20 @@ interface ShopBackend {
         selectedOptions: List<CatalogOptionSelection> = emptyList(),
     ): Result<UcpProduct>
     suspend fun getProductByHandle(shop: String, handle: String): Result<UcpProduct>
-    suspend fun createCheckout(shop: String, lines: List<CartLine>, inputs: CheckoutInputs, idempotencyKey: String): Result<UcpCheckout>
+    suspend fun createCheckout(
+        shop: String,
+        lines: List<CartLine>,
+        inputs: CheckoutInputs,
+        idempotencyKey: String,
+    ): Result<UcpCheckout>
     suspend fun getCheckout(shop: String, sessionId: String): Result<UcpCheckout>
-    suspend fun updateCheckout(shop: String, sessionId: String, lines: List<CartLine>, inputs: CheckoutInputs, idempotencyKey: String): Result<UcpCheckout>
+    suspend fun updateCheckout(
+        shop: String,
+        sessionId: String,
+        lines: List<CartLine>,
+        inputs: CheckoutInputs,
+        idempotencyKey: String,
+    ): Result<UcpCheckout>
     /** Latest tracking per token; tokens without a merchant update yet are omitted. */
     suspend fun orderStatus(orders: List<OrderStatusQuery>): Result<Map<String, OrderTracking>>
     /**
@@ -53,12 +69,17 @@ interface ShopBackend {
     suspend fun merchantFor(host: String): Result<MerchantListing?>
 }
 
+/** Shop Backend Exception: a ucp error implementation for shop backend exception. */
 class ShopBackendException(val error: UcpError) : Exception(error.toString())
 
 internal object ShopHttpBackend : ShopBackend {
     internal const val BASE = "https://api.maproj.org/shop/v1"
     internal val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = false }
-    internal var request: suspend (method: String, url: String, body: String?) -> BackendRawResponse = { method, url, body ->
+    internal var request: suspend (
+        method: String,
+        url: String,
+        body: String?,
+    ) -> BackendRawResponse = { method, url, body ->
         val response = withTimeout(30_000) {
             NetworkClient.execute(
                 url, method,
@@ -77,8 +98,8 @@ internal object ShopHttpBackend : ShopBackend {
 
     override suspend fun search(query: String, shop: String?, limit: Int, country: String): Result<List<UcpProduct>> =
         catching {
-            require(query.isNotBlank() && query.length <= 200) { "Invalid query" }
-            require(limit in 1..50) { "Invalid limit" }
+            require(query.isNotBlank() && query.length <= MAX_QUERY_LENGTH) { "Invalid query" }
+            require(limit in 1..MAX_SEARCH_LIMIT) { "Invalid limit" }
             require(country.matches(Regex("^[A-Z]{2}$"))) { "Invalid country" }
             val url = buildString {
                 append("$BASE/search?query=").append(query.encode())
@@ -119,11 +140,22 @@ internal object ShopHttpBackend : ShopBackend {
         get(url).parse<ShopProductResponse>().product.toModel()
     }
 
-    override suspend fun createCheckout(shop: String, lines: List<CartLine>, inputs: CheckoutInputs, idempotencyKey: String): Result<UcpCheckout> =
+    override suspend fun createCheckout(
+        shop: String,
+        lines: List<CartLine>,
+        inputs: CheckoutInputs,
+        idempotencyKey: String,
+    ): Result<UcpCheckout> =
         catching {
             checkLines(lines, shop)
-            require(idempotencyKey.isNotBlank() && idempotencyKey.length <= 256) { "Invalid idempotency key" }
-            val request = ShopCreateCheckoutRequest(shop, lines.map { it.toRequestLine() }, inputs.toRequestInputs(), idempotencyKey)
+            require(idempotencyKey.isNotBlank()) { "Invalid idempotency key" }
+            require(idempotencyKey.length <= MAX_IDEMPOTENCY_KEY_LENGTH) { "Invalid idempotency key" }
+            val request = ShopCreateCheckoutRequest(
+                shop,
+                lines.map { it.toRequestLine() },
+                inputs.toRequestInputs(),
+                idempotencyKey,
+            )
             post("$BASE/checkout-sessions", json.encodeToString(request)).parseSession()
         }
 
@@ -142,8 +174,15 @@ internal object ShopHttpBackend : ShopBackend {
     ): Result<UcpCheckout> = catching {
         checkLines(lines, shop)
         require(sessionId.isNotBlank()) { "Invalid checkout request" }
-        require(idempotencyKey.isNotBlank() && idempotencyKey.length <= 256) { "Invalid idempotency key" }
-        val request = ShopUpdateCheckoutRequest(shop, sessionId, lines.map { it.toRequestLine() }, inputs.toRequestInputs(), idempotencyKey)
+        require(idempotencyKey.isNotBlank()) { "Invalid idempotency key" }
+            require(idempotencyKey.length <= MAX_IDEMPOTENCY_KEY_LENGTH) { "Invalid idempotency key" }
+        val request = ShopUpdateCheckoutRequest(
+            shop,
+            sessionId,
+            lines.map { it.toRequestLine() },
+            inputs.toRequestInputs(),
+            idempotencyKey,
+        )
         put("$BASE/checkout-sessions", json.encodeToString(request)).parseSession()
     }
 
@@ -162,22 +201,35 @@ internal object ShopHttpBackend : ShopBackend {
 
     override suspend fun merchantFor(host: String): Result<MerchantListing?> =
         catching {
-            require(host.isNotBlank() && host.length <= 253) { "Invalid merchant host" }
+            require(host.isNotBlank() && host.length <= MAX_HOST_LENGTH) { "Invalid merchant host" }
             try {
                 get("$BASE/merchant?host=${host.encode()}").parse<ShopMerchant>().toModel()
             } catch (error: ShopBackendException) {
                 // Unknown host: the caller falls back to the raw link host.
                 val http = error.error as? UcpError.Http
-                if (http?.status == 404) null else throw error
+                if (http?.status == HTTP_NOT_FOUND) null else throw error
             }
         }
 
+    private const val MAX_QUERY_LENGTH = 200
+    private const val MAX_SEARCH_LIMIT = 50
+    private const val MAX_HOST_LENGTH = 253
+    private const val MAX_IDEMPOTENCY_KEY_LENGTH = 256
+    private const val MAX_QUANTITY = 99
+    private const val HTTP_OK_MIN = 200
+    private const val HTTP_OK_MAX = 299
+    private const val HTTP_NOT_FOUND = 404
+    private const val HTTP_TOO_MANY_REQUESTS = 429
+    private const val MILLIS_PER_SECOND = 1_000L
     private const val MAX_STATUS_TOKENS = 50
     private const val MAX_ORDER_ID_LENGTH = 500
     private val TOKEN = Regex("^[0-9a-f]{32}$")
 
     private fun checkLines(lines: List<CartLine>, shop: String) {
-        require(lines.isNotEmpty() && lines.all { it.shopDomain == shop && it.quantity in 1..99 }) { "Invalid checkout lines" }
+        require(lines.isNotEmpty()) { "Invalid checkout lines" }
+        require(lines.all { it.shopDomain == shop && it.quantity in 1..MAX_QUANTITY }) {
+            "Invalid checkout lines"
+        }
     }
 
     private suspend fun get(url: String): BackendRawResponse = request("GET", url, null)
@@ -187,29 +239,49 @@ internal object ShopHttpBackend : ShopBackend {
     private inline fun <reified T> BackendRawResponse.parse(): T {
         checkStatus()
         return runCatching { json.decodeFromString<T>(body) }
-            .getOrElse { throw ShopBackendException(UcpError.Malformed("The server sent an unexpected response. Please try again.")) }
+            .getOrElse {
+                throw ShopBackendException(
+                    UcpError.Malformed("The server sent an unexpected response. Please try again."),
+                )
+            }
     }
 
     private fun BackendRawResponse.parseSession(): UcpCheckout {
         checkStatus()
         val session = runCatching { json.decodeFromString<ShopCheckoutSession>(body) }
-            .getOrElse { throw ShopBackendException(UcpError.Malformed("The server sent an unexpected response. Please try again.")) }
+            .getOrElse {
+                throw ShopBackendException(
+                    UcpError.Malformed("The server sent an unexpected response. Please try again."),
+                )
+            }
         return session.toModel()
     }
 
+    /** Throws [error] as a backend failure; keeps throw sites out of status handling. */
+    private fun failStatus(error: UcpError): Nothing = throw ShopBackendException(error)
+
     private fun BackendRawResponse.checkStatus() {
-        if (status in 200..299) return
+        if (status in HTTP_OK_MIN..HTTP_OK_MAX) return
         // The server's error envelope mirrors the former UcpError codes.
         val envelope = runCatching { json.decodeFromString<ShopErrorEnvelope>(body) }.getOrNull()?.error
         if (envelope != null) {
-            throw ShopBackendException(
+            failStatus(
                 when (envelope.code) {
-                    "transport" -> UcpError.Transport(envelope.message.ifBlank { "Couldn't reach the store. Check your connection and try again." })
-                    "rate_limited" -> UcpError.RateLimited(envelope.retryAfterMs ?: retryAfter?.toLongOrNull()?.times(1000))
+                    "transport" -> UcpError.Transport(
+                        envelope.message.ifBlank { "Couldn't reach the store. Check your connection and try again." },
+                    )
+                    "rate_limited" -> UcpError.RateLimited(
+                        envelope.retryAfterMs ?: retryAfter?.toLongOrNull()?.times(MILLIS_PER_SECOND),
+                    )
                     "http" -> UcpError.Http(status, "")
-                    "malformed" -> UcpError.Malformed(envelope.message.ifBlank { "The store sent an unexpected response. Please try again." })
+                    "malformed" -> UcpError.Malformed(
+                        envelope.message.ifBlank { "The store sent an unexpected response. Please try again." },
+                    )
                     "rpc" -> UcpError.Rpc(envelope.message.ifBlank { "The merchant couldn't process the request." })
-                    "uncertain" -> UcpError.Transport("The request may have reached the merchant. Do not retry; check the session or use its website.")
+                    "uncertain" -> UcpError.Transport(
+                        "The request may have reached the merchant. " +
+                            "Do not retry; check the session or use its website.",
+                    )
                     "unsupported" -> UcpError.Unsupported(
                         envelope.message.ifBlank { "These requirements need the merchant website." },
                         envelope.continueUrl,
@@ -219,8 +291,10 @@ internal object ShopHttpBackend : ShopBackend {
                 },
             )
         }
-        if (status == 429) throw ShopBackendException(UcpError.RateLimited(retryAfter?.toLongOrNull()?.times(1000)))
-        throw ShopBackendException(UcpError.Http(status, ""))
+        if (status == HTTP_TOO_MANY_REQUESTS) {
+            failStatus(UcpError.RateLimited(retryAfter?.toLongOrNull()?.times(MILLIS_PER_SECOND)))
+        }
+        failStatus(UcpError.Http(status, ""))
     }
 
     private suspend fun <T> catching(block: suspend () -> T): Result<T> = try {
@@ -235,7 +309,11 @@ internal object ShopHttpBackend : ShopBackend {
     } catch (_: IllegalArgumentException) {
         Result.failure(ShopBackendException(UcpError.Malformed("Invalid shop request")))
     } catch (_: Exception) {
-        Result.failure(ShopBackendException(UcpError.Transport("Couldn't reach the store. Check your connection and try again.")))
+        Result.failure(
+            ShopBackendException(
+                UcpError.Transport("Couldn't reach the store. Check your connection and try again."),
+            ),
+        )
     }
 }
 

@@ -25,6 +25,7 @@ data class ShopCheckoutLine(
     val quantity: Int,
 )
 
+/** Immutable value describing shop checkout inputs. */
 @Serializable
 data class ShopCheckoutInputs(
     val firstName: String = "",
@@ -41,6 +42,7 @@ data class ShopCheckoutInputs(
     val shippingRequested: Boolean = false,
 )
 
+/** Immutable value describing shop create checkout request. */
 @Serializable
 data class ShopCreateCheckoutRequest(
     val shop: String,
@@ -49,6 +51,7 @@ data class ShopCreateCheckoutRequest(
     val idempotencyKey: String,
 )
 
+/** Immutable value describing shop update checkout request. */
 @Serializable
 data class ShopUpdateCheckoutRequest(
     val shop: String,
@@ -58,18 +61,21 @@ data class ShopUpdateCheckoutRequest(
     val idempotencyKey: String,
 )
 
+/** Immutable value describing shop submitted line. */
 @Serializable
 data class ShopSubmittedLine(
     val variantId: String = "",
     val quantity: Int = 0,
 )
 
+/** Immutable value describing shop money. */
 @Serializable
 data class ShopMoney(
     val amount: Long = 0,
     val currency: String = "USD",
 )
 
+/** Immutable value describing shop total entry. */
 @Serializable
 data class ShopTotalEntry(
     val type: String = "",
@@ -78,6 +84,7 @@ data class ShopTotalEntry(
     val currency: String = "USD",
 )
 
+/** Immutable value describing shop message. */
 @Serializable
 data class ShopMessage(
     val type: String = "",
@@ -87,6 +94,7 @@ data class ShopMessage(
     val severity: String? = null,
 )
 
+/** Immutable value describing shop shipping option. */
 @Serializable
 data class ShopShippingOption(
     val id: String = "",
@@ -95,6 +103,7 @@ data class ShopShippingOption(
     val totals: List<ShopTotalEntry> = emptyList(),
 )
 
+/** Immutable value describing shop shipping group. */
 @Serializable
 data class ShopShippingGroup(
     val id: String = "",
@@ -102,12 +111,14 @@ data class ShopShippingGroup(
     val options: List<ShopShippingOption> = emptyList(),
 )
 
+/** Immutable value describing shop shipping method. */
 @Serializable
 data class ShopShippingMethod(
     val id: String = "",
     val groups: List<ShopShippingGroup> = emptyList(),
 )
 
+/** Immutable value describing shop legal link. */
 @Serializable
 data class ShopLegalLink(
     val type: String = "",
@@ -115,6 +126,7 @@ data class ShopLegalLink(
     val url: String = "",
 )
 
+/** Immutable value describing shop review. */
 @Serializable
 data class ShopReview(
     val shipping: List<ShopShippingMethod> = emptyList(),
@@ -123,12 +135,14 @@ data class ShopReview(
     val availableShippingLineIds: List<String> = emptyList(),
 )
 
+/** Immutable value describing shop totals. */
 @Serializable
 data class ShopTotals(
     val subtotal: ShopMoney = ShopMoney(),
     val total: ShopMoney = ShopMoney(),
 )
 
+/** Immutable value describing shop checkout session. */
 @Serializable
 data class ShopCheckoutSession(
     val checkoutId: String = "",
@@ -145,9 +159,11 @@ data class ShopCheckoutSession(
     val trackingToken: String = "",
 )
 
+/** Immutable value describing shop order status request; carries orders. */
 @Serializable
 data class ShopOrderStatusRequest(val orders: List<OrderStatusQuery>)
 
+/** Immutable value describing shop order status. */
 @Serializable
 data class ShopOrderStatus(
     val token: String = "",
@@ -155,15 +171,18 @@ data class ShopOrderStatus(
     val tracking: OrderTracking? = null,
 )
 
+/** Immutable value describing shop order status response; carries orders. */
 @Serializable
 data class ShopOrderStatusResponse(val orders: List<ShopOrderStatus> = emptyList())
 
+/** Immutable value describing shop product image. */
 @Serializable
 data class ShopProductImage(
     val url: String = "",
     val alt: String? = null,
 )
 
+/** Immutable value describing shop catalog option. */
 @Serializable
 data class ShopCatalogOption(
     val name: String = "",
@@ -171,6 +190,7 @@ data class ShopCatalogOption(
     val id: String? = null,
 )
 
+/** Immutable value describing shop variant. */
 @Serializable
 data class ShopVariant(
     val id: String = "",
@@ -184,6 +204,7 @@ data class ShopVariant(
     val selectedOptions: List<ShopCatalogOption> = emptyList(),
 )
 
+/** Immutable value describing shop product. */
 @Serializable
 data class ShopProduct(
     val id: String = "",
@@ -201,11 +222,13 @@ data class ShopProduct(
     val storeName: String = "",
 )
 
+/** Immutable value describing shop search response. */
 @Serializable
 data class ShopSearchResponse(
     val products: List<ShopProduct> = emptyList(),
 )
 
+/** Immutable value describing shop product response. */
 @Serializable
 data class ShopProductResponse(
     val product: ShopProduct = ShopProduct(),
@@ -223,6 +246,7 @@ data class ShopMerchant(
     val directoryVerifiedAt: String? = null,
 )
 
+/** Immutable value describing shop error body. */
 @Serializable
 data class ShopErrorBody(
     val code: String = "",
@@ -231,6 +255,7 @@ data class ShopErrorBody(
     val continueUrl: String? = null,
 )
 
+/** Immutable value describing shop error envelope. */
 @Serializable
 data class ShopErrorEnvelope(
     val error: ShopErrorBody = ShopErrorBody(),
@@ -288,7 +313,11 @@ internal fun ShopCheckoutSession.toModel(): UcpCheckout = UcpCheckout(
         total = totals.total.toModel(),
     ),
     totalEntries = totalEntries.map {
-        com.vayunmathur.shop.data.UcpTotalEntry(it.type, it.displayText.ifBlank { it.type }, it.amount.toModel(it.currency))
+        com.vayunmathur.shop.data.UcpTotalEntry(
+            it.type,
+            it.displayText.ifBlank { it.type },
+            it.amount.toModel(it.currency),
+        )
     },
     continueUrl = continueUrl,
     expiresAt = expiresAt,

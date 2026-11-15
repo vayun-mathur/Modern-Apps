@@ -8,12 +8,15 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 data class Money(val amount: Long = 0, val currency: String = "USD")
 
+/** Immutable value describing product image; carries url, alt. */
 @Serializable
 data class ProductImage(val url: String = "", val alt: String? = null)
 
+/** Immutable value describing catalog option selection; carries name, label, id. */
 @Serializable
 data class CatalogOptionSelection(val name: String, val label: String, val id: String? = null)
 
+/** Immutable value describing product variant. */
 @Serializable
 data class ProductVariant(
     val id: String = "",
@@ -27,6 +30,7 @@ data class ProductVariant(
     val selectedOptions: List<CatalogOptionSelection> = emptyList(),
 )
 
+/** Immutable value describing ucp product. */
 @Serializable
 data class UcpProduct(
     val id: String = "",
@@ -44,6 +48,7 @@ data class UcpProduct(
     val priceRangeMax: Money? = null,
 )
 
+/** Immutable value describing cart line. */
 @Serializable
 data class CartLine(
     val variantId: String = "",
@@ -59,6 +64,7 @@ data class CartLine(
     val displayName: String get() = storeName.ifBlank { shopDomain }
 }
 
+/** Immutable value describing ucp totals. */
 @Serializable
 data class UcpTotals(
     val subtotal: Money = Money(),
@@ -67,16 +73,25 @@ data class UcpTotals(
     val total: Money = Money(),
 )
 
+/** Immutable value describing ucp total entry; carries type, label, money. */
 @Serializable
 data class UcpTotalEntry(val type: String, val label: String, val money: Money)
 
+/** Immutable value describing ucp message; carries type, text, path, code, severity. */
 @Serializable
-data class UcpMessage(val type: String = "", val text: String = "", val path: String? = null, val code: String? = null, val severity: String? = null)
+data class UcpMessage(
+    val type: String = "",
+    val text: String = "",
+    val path: String? = null,
+    val code: String? = null,
+    val severity: String? = null,
+)
 
 /** Server-echoed cart fingerprint: the variant ids + quantities the proxy sent to the merchant. */
 @Serializable
 data class SubmittedLine(val variantId: String = "", val quantity: Int = 0)
 
+/** Immutable value describing ucp checkout. */
 @Serializable
 data class UcpCheckout(
     val checkoutId: String = "",
@@ -98,6 +113,7 @@ data class UcpCheckout(
     override fun toString(): String = "UcpCheckout(redacted)"
 }
 
+/** Immutable value describing order shipment. */
 @Serializable
 data class OrderShipment(
     val trackingNumber: String? = null,
@@ -153,12 +169,19 @@ data class PlacedOrder(
     val displayName: String get() = storeName.ifBlank { shopDomain }
 }
 
+/** Contract for ucp error. */
 sealed interface UcpError {
+    /** Immutable value describing transport; carries reason. */
     data class Transport(val reason: String) : UcpError
+    /** Immutable value describing rate limited; carries retryAfterMs. */
     data class RateLimited(val retryAfterMs: Long?) : UcpError
+    /** Immutable value describing http; carries status, snippet. */
     data class Http(val status: Int, val snippet: String) : UcpError
+    /** Immutable value describing malformed; carries reason. */
     data class Malformed(val reason: String) : UcpError
+    /** Immutable value describing rpc; carries message. */
     data class Rpc(val message: String) : UcpError
+    /** Immutable value describing unsupported; carries reason, continueUrl. */
     data class Unsupported(val reason: String, val continueUrl: String? = null) : UcpError
 }
 

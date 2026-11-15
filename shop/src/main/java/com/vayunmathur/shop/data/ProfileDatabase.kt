@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 const val PROFILE_DB_NAME = "shop-profile-db"
 
+/** Contract for profile dao. */
 @Dao
 interface ProfileDao {
     @Query("SELECT * FROM ShopProfile WHERE id = 0")
@@ -18,6 +19,7 @@ interface ProfileDao {
     suspend fun upsert(profile: ShopProfile)
 }
 
+/** Profile Database: a room database implementation for profile database. */
 @Database(entities = [ShopProfile::class], version = 1, exportSchema = false)
 abstract class ProfileDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao

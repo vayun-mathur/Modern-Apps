@@ -7,6 +7,7 @@ import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.shop.platform.AppInit
 import com.vayunmathur.shop.platform.ShopViewModel
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private val viewModel: ShopViewModel by viewModels()
 
@@ -35,6 +36,7 @@ class MainActivity : MaActivity() {
         intent.dataString?.let(viewModel::openLink)
     }
 
+    /** Shared constants and helpers for MainActivity. */
     companion object {
         const val ACTION_SHOW_ORDERS = "com.vayunmathur.shop.action.SHOW_ORDERS"
     }

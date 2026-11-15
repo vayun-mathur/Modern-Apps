@@ -15,6 +15,7 @@ object OrderTrackingUpdates {
             .take(MAX_TOKENS)
             .map { OrderStatusQuery(it.trackingToken, it.orderId.ifBlank { null }) }
 
+    /** Immutable value describing merge; carries orders, changed. */
     data class Merge(val orders: List<PlacedOrder>, val changed: List<PlacedOrder>)
 
     /** Applies newer tracking; [Merge.changed] holds orders whose status moved past the initial confirmation. */
@@ -23,7 +24,8 @@ object OrderTrackingUpdates {
         val merged = orders.map { order ->
             val update = updates[order.trackingToken]
             val previous = order.tracking
-            if (order.trackingToken.isBlank() || update == null || (previous != null && previous.updatedAtMs > update.updatedAtMs)) {
+            val stale = previous != null && update != null && previous.updatedAtMs > update.updatedAtMs
+            if (order.trackingToken.isBlank() || update == null || stale) {
                 return@map order
             }
             val next = order.copy(tracking = update, orderId = order.orderId.ifBlank { update.orderId })

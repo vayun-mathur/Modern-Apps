@@ -3,6 +3,7 @@ package com.vayunmathur.shop.network
 /** Labels only. Merchant endpoint and access permissions are resolved server-side, not inferred. */
 data class UcpPlatform(val id: String, val displayName: String, val globalCatalogMcp: String? = null)
 
+/** Singleton holding ucp platforms state and operations. */
 object UcpPlatforms {
     val SHOPIFY = UcpPlatform("shopify", "Shopify", "https://catalog.shopify.com/api/ucp/mcp")
     val GENERIC = UcpPlatform("generic", "UCP merchant")

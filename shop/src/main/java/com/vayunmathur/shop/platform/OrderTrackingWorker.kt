@@ -93,6 +93,7 @@ fun trackingStatusRes(status: String): Int = when (status) {
     else -> R.string.tracking_confirmed
 }
 
+/** Background worker performing order tracking. */
 class OrderTrackingWorker(
     appContext: Context,
     params: WorkerParameters,

@@ -22,13 +22,19 @@ object MerchantUrls {
         return uri.host.lowercase(Locale.US)
     }
 
+private const val MAX_LABEL_LENGTH = 63
+
+/** One DNS label: alphanumeric ends, alphanumeric-or-dash inside, at most 63 chars. */
+    private fun validLabel(label: String): Boolean {
+        if (label.isEmpty() || label.length > MAX_LABEL_LENGTH) return false
+        if (!label.first().isLetterOrDigit() || !label.last().isLetterOrDigit()) return false
+        return label.all { it in 'a'..'z' || it.isDigit() || it == '-' }
+    }
+
     private fun publicHostname(host: String): Boolean {
-        if (!host.contains('.') || host.contains(':') || host.all { it.isDigit() || it == '.' }) return false
+        val numericOnly = host.all { it.isDigit() || it == '.' }
+        if (!host.contains('.') || host.contains(':') || numericOnly) return false
         if (host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) return false
-        return host.split('.').all { label ->
-            label.isNotEmpty() && label.length <= 63 &&
-                label.first().isLetterOrDigit() && label.last().isLetterOrDigit() &&
-                label.all { it in 'a'..'z' || it.isDigit() || it == '-' }
-        }
+        return host.split('.').all { label -> validLabel(label) }
     }
 }

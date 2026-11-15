@@ -57,6 +57,7 @@ import kotlinx.coroutines.CancellationException
 
 /** Search snapshots paint immediately, but only a live, exact-variant refresh permits purchase. */
 @Composable
+@Suppress("TooGenericExceptionCaught") // Refresh failures all show the same retry message.
 fun ProductScreen(
     viewModel: ShopViewModel,
     variantId: String,

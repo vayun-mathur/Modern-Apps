@@ -14,10 +14,15 @@ import kotlinx.serialization.json.put
 
 /** What the host should do with one message from the merchant's Embedded Checkout. */
 sealed interface EcAction {
+    /** Immutable value describing reply; carries json. */
     data class Reply(val json: String) : EcAction
+    /** Immutable value describing open window; carries id, url. */
     data class OpenWindow(val id: JsonElement, val url: String) : EcAction
+    /** Immutable value describing completed; carries orderId, permalinkUrl, totalMinor. */
     data class Completed(val orderId: String, val permalinkUrl: String?, val totalMinor: Long?) : EcAction
+    /** Immutable value describing failed; carries message. */
     data class Failed(val message: String) : EcAction
+    /** Singleton holding ignore state and operations. */
     data object Ignore : EcAction
 }
 
