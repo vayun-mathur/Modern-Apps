@@ -56,9 +56,19 @@ class TaxiPass3TrackingScreenTest {
     }
 
     private fun waitForText(text: String, timeoutMs: Long = 20_000) {
-        rule.waitUntil(timeoutMs) {
-            rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+        // Screens load via LaunchedEffect + IO, then resume on the main
+        // looper, which Robolectric keeps paused: compose waitUntil
+        // alone never pumps it, so pump while polling in real time.
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+            // Poll loops delay() on the compose clock, not the looper.
+            runCatching { rule.mainClock.advanceTimeBy(500) }
+            if (rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()) return
+            Thread.sleep(20)
         }
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+        rule.onNodeWithText(text).assertExists()
     }
 
     private fun rideJson(status: String): String =
@@ -173,11 +183,16 @@ class TaxiPass3TrackingScreenTest {
         // Active fails with an error, so the screen keeps polling and shows
         // the error - it settles out of its initial state without crashing
         // (loading or error, never a stuck spinner assertion here).
-        rule.waitUntil(20_000) {
-            rule.onAllNodesWithText(str(R.string.tracking_loading)).fetchSemanticsNodes().isNotEmpty() ||
+        val deadline = System.currentTimeMillis() + 20_000
+        var settled = false
+        while (!settled && System.currentTimeMillis() < deadline) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+            settled = rule.onAllNodesWithText(str(R.string.tracking_loading)).fetchSemanticsNodes().isNotEmpty() ||
                 rule.onAllNodesWithText(str(R.string.tracking_error, "Lyft returned HTTP 500: kaput"))
                     .fetchSemanticsNodes().isNotEmpty()
+            if (!settled) Thread.sleep(20)
         }
+        assertTrue(settled)
     }
 
     @Test

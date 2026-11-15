@@ -102,9 +102,18 @@ class TaxiPass3ScreensTest {
     }
 
     private fun waitForText(text: String, timeoutMs: Long = 15_000) {
-        rule.waitUntil(timeoutMs) {
-            rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+        // Screens load via LaunchedEffect + IO, then resume on the main
+        // looper, which Robolectric keeps paused: compose waitUntil
+        // alone never pumps it, so pump while polling in real time.
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+            runCatching { rule.mainClock.advanceTimeBy(500) }
+            if (rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()) return
+            Thread.sleep(20)
         }
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+        rule.onNodeWithText(text).assertExists()
     }
 
     // --- Accounts ---
@@ -219,8 +228,12 @@ class TaxiPass3ScreensTest {
             androidx.compose.ui.test.hasText("Add") and androidx.compose.ui.test.hasClickAction(),
         ).performSemanticsAction(SemanticsActions.OnClick)
         // The dialog closes once the card is added.
-        rule.waitUntil(20_000) {
-            rule.onAllNodesWithText(str(R.string.add_card_title)).fetchSemanticsNodes().isEmpty()
+        val dialogDeadline = System.currentTimeMillis() + 20_000
+        while (System.currentTimeMillis() < dialogDeadline &&
+            rule.onAllNodesWithText(str(R.string.add_card_title)).fetchSemanticsNodes().isNotEmpty()
+        ) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+            Thread.sleep(20)
         }
         assertTrue(http.callsTo("tokenization_strategies").isNotEmpty())
         assertTrue(http.callsTo("charge-accounts-multi-provider").any { it.method == "POST" })
@@ -336,7 +349,11 @@ class TaxiPass3ScreensTest {
         rule.onNodeWithText(str(R.string.verify)).performClick()
         waitForText(str(R.string.uber_next_screen, "HOME"))
         rule.onNodeWithText(str(R.string.uber_use_webview)).performSemanticsAction(SemanticsActions.OnClick)
-        rule.waitUntil(10_000) { webView == 1 }
+        val webDeadline = System.currentTimeMillis() + 10_000
+        while (webView != 1 && System.currentTimeMillis() < webDeadline) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+            Thread.sleep(20)
+        }
         assertEquals(1, webView)
     }
 
