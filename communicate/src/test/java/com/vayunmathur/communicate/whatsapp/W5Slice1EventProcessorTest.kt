@@ -55,20 +55,23 @@ class W5Slice1EventProcessorTest {
 
     private suspend fun emit(e: WhatsAppEvent) {
         events.emit(e)
-        // start() collects on Dispatchers.IO; poll until the row lands (bounded).
-        var waited = 0
-        while (waited < 200 && !settled(e)) {
-            kotlinx.coroutines.delay(10)
-            waited++
-        }
+        awaitSettled { settled(e) }
     }
 
-    /** Poll until [cond] holds (bounded); fails the test on timeout via empty result. */
+    /**
+     * Poll until [cond] holds (bounded). The wait runs on a real-time
+     * dispatcher: these tests use runTest, whose virtual clock burns a
+     * delay budget instantly, while the processor drains on
+     * Dispatchers.IO in real time — polling on the test scheduler lost
+     * that race under load.
+     */
     private suspend fun awaitSettled(cond: suspend () -> Boolean) {
-        var waited = 0
-        while (waited < 200 && !cond()) {
-            kotlinx.coroutines.delay(10)
-            waited++
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            var waited = 0
+            while (waited < 200 && !cond()) {
+                kotlinx.coroutines.delay(10)
+                waited++
+            }
         }
     }
 

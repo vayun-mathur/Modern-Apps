@@ -65,7 +65,11 @@ class RcsSlice3Pass2UiTest {
     }
 
     private fun waitForText(text: String, timeoutMs: Long = 10_000) {
+        // Idle Robolectric's paused main looper per poll: the screens load
+        // through Dispatchers.Main, whose queued resumes waitUntil alone
+        // does not run, so the text could sit unlanded past the timeout.
         rule.waitUntil(timeoutMs) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         }
     }

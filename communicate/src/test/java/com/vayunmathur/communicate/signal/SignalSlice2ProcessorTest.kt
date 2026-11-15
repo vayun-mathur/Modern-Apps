@@ -59,19 +59,23 @@ class SignalSlice2ProcessorTest {
 
     private suspend fun emit(e: SignalEvent) {
         events.emit(e)
-        var waited = 0
-        while (waited < 500 && !settled(e)) {
-            kotlinx.coroutines.delay(10)
-            waited++
-        }
+        awaitSettled { settled(e) }
     }
 
-    /** Poll until [cond] holds (bounded); mirrors the WhatsApp slice's processor test. */
+    /**
+     * Poll until [cond] holds (bounded); mirrors the WhatsApp slice's
+     * processor test. The wait runs on a real-time dispatcher: this class
+     * uses runTest, whose virtual clock burns a delay budget instantly,
+     * while the processor drains on Dispatchers.IO in real time — polling
+     * on the test scheduler lost that race under load.
+     */
     private suspend fun awaitSettled(cond: suspend () -> Boolean) {
-        var waited = 0
-        while (waited < 500 && !cond()) {
-            kotlinx.coroutines.delay(10)
-            waited++
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            var waited = 0
+            while (waited < 500 && !cond()) {
+                kotlinx.coroutines.delay(10)
+                waited++
+            }
         }
     }
 
