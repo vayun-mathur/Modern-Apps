@@ -18,13 +18,14 @@ class PqcTest {
     @BeforeTest
     fun checkNative() {
         nativeAvailable = runCatching { Pqc.generateKem() }.isSuccess
-        // Skipped when native lib not loadable on this host — was Assume.assumeTrue before.
-        if (!nativeAvailable) return
+        // The host lib is built for JVM tests (cargoBuildHost, like every other
+        // Rust module): unavailable here is a build failure, not a skip.
+        assertTrue(nativeAvailable, "host e2ee_pqc lib unavailable: cargoBuildHost must produce it for JVM tests")
     }
 
     @Test
     fun ml_kem_encrypt_decrypt_roundtrip() {
-        if (!nativeAvailable) return
+        assertTrue(nativeAvailable)
         val (kemPub, kemPriv) = Pqc.generateKem()
         val (dsaPub, _) = Pqc.generateDsa()
         val bundle = Pqc.bundle(kemPub, dsaPub)
@@ -35,7 +36,7 @@ class PqcTest {
 
     @Test
     fun ml_dsa_sign_verify() {
-        if (!nativeAvailable) return
+        assertTrue(nativeAvailable)
         val (kemPub, _) = Pqc.generateKem()
         val (dsaPub, dsaPriv) = Pqc.generateDsa()
         val bundle = Pqc.bundle(kemPub, dsaPub)
@@ -51,7 +52,7 @@ class PqcTest {
 
     @Test
     fun security_code_matches_both_sides() {
-        if (!nativeAvailable) return
+        assertTrue(nativeAvailable)
         val a = Pqc.bundle(Pqc.generateKem().first, Pqc.generateDsa().first)
         val b = Pqc.bundle(Pqc.generateKem().first, Pqc.generateDsa().first)
         assertTrue(Pqc.securityCode(a, b) == Pqc.securityCode(b, a)) // order-independent

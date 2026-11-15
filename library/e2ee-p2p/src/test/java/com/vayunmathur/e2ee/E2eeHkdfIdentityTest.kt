@@ -100,9 +100,10 @@ class E2eeHkdfIdentityTest {
 
     @Test
     fun identityLoadOrCreatePersistsAndReloads() = runBlocking {
-        // Native-gated like PqcTest: skip the keygen paths when the Rust lib is absent.
+        // Native like PqcTest: the host lib is built for JVM tests, so an
+        // unavailable lib is a build failure, not a silent pass.
         val nativeAvailable = runCatching { Pqc.generateKem() }.isSuccess
-        if (!nativeAvailable) return@runBlocking
+        assertTrue(nativeAvailable, "host e2ee_pqc lib unavailable: cargoBuildHost must produce it for JVM tests")
         val store = MemStore()
         val first = PqcIdentity.loadOrCreate(store)
         assertTrue(store.map.keys.containsAll(setOf("pqcKemPub", "pqcKemPriv", "pqcDsaPub", "pqcDsaPriv")))
@@ -124,7 +125,7 @@ class E2eeHkdfIdentityTest {
     @Test
     fun identityIncompleteStoreRegenerates() = runBlocking {
         val nativeAvailable = runCatching { Pqc.generateKem() }.isSuccess
-        if (!nativeAvailable) return@runBlocking
+        assertTrue(nativeAvailable, "host e2ee_pqc lib unavailable: cargoBuildHost must produce it for JVM tests")
         val store = MemStore()
         // Only half an identity persisted: treated as absent, not as a broken identity.
         store.map["pqcKemPub"] = byteArrayOf(1, 2, 3)
