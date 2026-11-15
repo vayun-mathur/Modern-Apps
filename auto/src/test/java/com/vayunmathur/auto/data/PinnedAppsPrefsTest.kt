@@ -21,10 +21,25 @@ class PinnedAppsPrefsTest {
     private val context: android.content.Context
         get() = ApplicationProvider.getApplicationContext()
 
+    /**
+     * [PinnedAppsPrefs.pinnedNow] reads a DataStore mirror collected on
+     * an IO scope, so it can lag a just-completed write. Poll it (bounded)
+     * until it reflects [expected], then assert exactly.
+     */
+    private fun awaitPinned(expected: List<String>) {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (PinnedAppsPrefs.pinnedNow(context) != expected &&
+            System.currentTimeMillis() < deadline
+        ) {
+            Thread.sleep(20)
+        }
+        assertEquals(expected, PinnedAppsPrefs.pinnedNow(context))
+    }
+
     @Test
     fun `empty until the user pins something`() = runTest {
         PinnedAppsPrefs.setPinned(context, emptyList())
-        assertEquals(emptyList(), PinnedAppsPrefs.pinnedNow(context))
+        awaitPinned(emptyList())
         assertEquals(emptyList(), PinnedAppsPrefs.pinnedFlow(context).first())
     }
 
@@ -32,7 +47,7 @@ class PinnedAppsPrefsTest {
     fun `pin order round-trips through the flow`() = runTest {
         val ids = listOf("com.a/.Car", "com.b/.Car")
         PinnedAppsPrefs.setPinned(context, ids)
-        assertEquals(ids, PinnedAppsPrefs.pinnedNow(context))
+        awaitPinned(ids)
         assertEquals(ids, PinnedAppsPrefs.pinnedFlow(context).first())
         PinnedAppsPrefs.setPinned(context, emptyList())
     }
@@ -41,7 +56,7 @@ class PinnedAppsPrefsTest {
     fun `writes truncate to the max dock size`() = runTest {
         val ids = (1..8).map { "com.app$it/.Car" }
         PinnedAppsPrefs.setPinned(context, ids)
-        assertEquals(ids.take(PinnedAppsPrefs.MAX_PINNED), PinnedAppsPrefs.pinnedNow(context))
+        awaitPinned(ids.take(PinnedAppsPrefs.MAX_PINNED))
         PinnedAppsPrefs.setPinned(context, emptyList())
     }
 
@@ -51,8 +66,10 @@ class PinnedAppsPrefsTest {
         assertTrue(PinnedAppsPrefs.pin(context, "com.a/.Car"))
         // Re-pinning is a no-op success.
         assertTrue(PinnedAppsPrefs.pin(context, "com.a/.Car"))
-        assertEquals(listOf("com.a/.Car"), PinnedAppsPrefs.pinnedNow(context))
-        PinnedAppsPrefs.setPinned(context, (1..PinnedAppsPrefs.MAX_PINNED).map { "com.app$it/.Car" })
+        awaitPinned(listOf("com.a/.Car"))
+        val full = (1..PinnedAppsPrefs.MAX_PINNED).map { "com.app$it/.Car" }
+        PinnedAppsPrefs.setPinned(context, full)
+        awaitPinned(full)
         assertFalse(PinnedAppsPrefs.pin(context, "com.full/.Car"))
         assertEquals(PinnedAppsPrefs.MAX_PINNED, PinnedAppsPrefs.pinnedNow(context).size)
         PinnedAppsPrefs.setPinned(context, emptyList())
@@ -62,16 +79,16 @@ class PinnedAppsPrefsTest {
     fun `unpin and move reorder the dock`() = runTest {
         PinnedAppsPrefs.setPinned(context, listOf("a", "b", "c"))
         PinnedAppsPrefs.unpin(context, "b")
-        assertEquals(listOf("a", "c"), PinnedAppsPrefs.pinnedNow(context))
+        awaitPinned(listOf("a", "c"))
         // Unpinning an absent id is a no-op.
         PinnedAppsPrefs.unpin(context, "zzz")
-        assertEquals(listOf("a", "c"), PinnedAppsPrefs.pinnedNow(context))
+        awaitPinned(listOf("a", "c"))
         PinnedAppsPrefs.move(context, "c", 0)
-        assertEquals(listOf("c", "a"), PinnedAppsPrefs.pinnedNow(context))
+        awaitPinned(listOf("c", "a"))
         // Moving an absent id is a no-op; out-of-range indices clamp.
         PinnedAppsPrefs.move(context, "zzz", 0)
         PinnedAppsPrefs.move(context, "a", 99)
-        assertEquals(listOf("c", "a"), PinnedAppsPrefs.pinnedNow(context))
+        awaitPinned(listOf("c", "a"))
         PinnedAppsPrefs.setPinned(context, emptyList())
     }
 }

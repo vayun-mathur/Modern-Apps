@@ -31,28 +31,54 @@ object PinnedAppsPrefs {
         DataStoreUtils.getInstance(context).setString(KEY_PINNED, ids.take(MAX_PINNED).joinToString(SEPARATOR))
     }
 
-    /** Pins [id] at the end; no-op when full or already pinned. Returns false when rejected. */
+    /**
+     * Pins [id] at the end; no-op when full or already pinned. Returns false when rejected.
+     *
+     * The read-modify-write runs inside a single DataStore edit
+     * ([DataStoreUtils.updateString]) rather than reading [pinnedNow]
+     * first: [pinnedNow] is a mirror of the store collected on an IO
+     * scope, so right after a write it can still hold the previous
+     * value, and a following unpin/move computed from that stale
+     * snapshot would silently resurrect the old order.
+     */
     suspend fun pin(context: Context, id: String): Boolean {
-        val current = pinnedNow(context)
-        if (id in current) return true
-        if (current.size >= MAX_PINNED) return false
-        setPinned(context, current + id)
-        return true
+        var pinned = false
+        DataStoreUtils.getInstance(context).updateString(KEY_PINNED) { raw ->
+            val current = raw.orEmpty().toIdList()
+            when {
+                id in current -> {
+                    pinned = true
+                    raw.orEmpty()
+                }
+                current.size >= MAX_PINNED -> raw.orEmpty()
+                else -> {
+                    pinned = true
+                    (current + id).joinToString(SEPARATOR)
+                }
+            }
+        }
+        return pinned
     }
 
     /** Unpins [id]; no-op when absent. */
     suspend fun unpin(context: Context, id: String) {
-        val current = pinnedNow(context)
-        if (id !in current) return
-        setPinned(context, current - id)
+        DataStoreUtils.getInstance(context).updateString(KEY_PINNED) { raw ->
+            val current = raw.orEmpty().toIdList()
+            if (id in current) (current - id).joinToString(SEPARATOR) else raw.orEmpty()
+        }
     }
 
     /** Moves [id] to [toIndex] within the pinned order; no-op when absent. */
     suspend fun move(context: Context, id: String, toIndex: Int) {
-        val current = pinnedNow(context).toMutableList()
-        if (!current.remove(id)) return
-        current.add(toIndex.coerceIn(0, current.size), id)
-        setPinned(context, current)
+        DataStoreUtils.getInstance(context).updateString(KEY_PINNED) { raw ->
+            val current = raw.orEmpty().toIdList().toMutableList()
+            if (!current.remove(id)) {
+                raw.orEmpty()
+            } else {
+                current.add(toIndex.coerceIn(0, current.size), id)
+                current.joinToString(SEPARATOR)
+            }
+        }
     }
 
     private fun String.toIdList(): List<String> =
