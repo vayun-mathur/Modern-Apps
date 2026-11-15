@@ -16,6 +16,7 @@ class OpenAssistantVoiceInteractionService : VoiceInteractionService() {
         Log.debug(TAG, "VoiceInteractionService ready")
     }
 
+    /** Shared constants and helpers for OpenAssistantVoiceInteractionService. */
     companion object {
         private const val TAG = "OAVoiceInteraction"
     }

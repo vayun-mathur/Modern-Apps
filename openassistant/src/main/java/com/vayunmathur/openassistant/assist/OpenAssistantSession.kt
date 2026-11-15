@@ -106,6 +106,7 @@ class OpenAssistantSession(context: Context) : VoiceInteractionSession(context) 
         startVoiceActivity(intent)
     }
 
+    /** Shared constants and helpers for OpenAssistantSession. */
     companion object {
         private const val TAG = "OpenAssistantSession"
         private const val MAX_CHARS = 6000

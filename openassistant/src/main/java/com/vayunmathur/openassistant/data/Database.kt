@@ -14,6 +14,7 @@ import com.vayunmathur.library.util.DefaultConverters
 import androidx.room3.migration.Migration
 import kotlinx.coroutines.flow.Flow
 
+/** Immutable value describing conversation. */
 @Entity
 data class Conversation(
     val title: String,
@@ -22,6 +23,7 @@ data class Conversation(
     override val id: Long = 0,
 ): DatabaseItem
 
+/** Immutable value describing message. */
 @Entity
 data class Message(
     val conversationId: Long,
@@ -37,6 +39,7 @@ data class Message(
     override val id: Long = 0,
 ): DatabaseItem
 
+/** Immutable value describing memory. */
 @Entity
 data class Memory(
     val content: String,
@@ -44,6 +47,7 @@ data class Memory(
     override val id: Long = 0,
 ): DatabaseItem
 
+/** Contract for conversation dao. */
 @Dao
 interface ConversationDao {
     @Query("SELECT * FROM Conversation ORDER BY timestamp DESC")
@@ -62,6 +66,7 @@ interface ConversationDao {
     suspend fun delete(value: Conversation): Int
 }
 
+/** Contract for message dao. */
 @Dao
 interface MessageDao {
     @Query("SELECT * FROM Message WHERE conversationId = :conversationId ORDER BY timestamp ASC")
@@ -83,6 +88,7 @@ interface MessageDao {
     suspend fun delete(value: Message): Int
 }
 
+/** Contract for memory dao. */
 @Dao
 interface MemoryDao {
     @Query("SELECT * FROM Memory ORDER BY id ASC")
@@ -101,6 +107,7 @@ interface MemoryDao {
     suspend fun delete(value: Memory): Int
 }
 
+/** App Database: a room database implementation for app database. */
 @ColumnTypeConverters(DefaultConverters::class)
 @Database(entities = [Conversation::class, Message::class, Memory::class], version = 4, exportSchema = false)
 abstract class AppDatabase: RoomDatabase() {
@@ -108,6 +115,7 @@ abstract class AppDatabase: RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun memoryDao(): MemoryDao
 
+    /** Shared constants and helpers for AppDatabase. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations = listOf(
             Migration(1, 2) { it.execSQL("ALTER TABLE Message ADD COLUMN missingAppPackage TEXT") },

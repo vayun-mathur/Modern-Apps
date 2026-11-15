@@ -236,14 +236,18 @@ internal class AssistantToolIntents(private val context: Context) {
     }
 }
 
+/** Missing App Exception: a string implementation for missing app exception. */
 class MissingAppException(val packageName: String) : Exception("App $packageName is not installed.")
 
+/** Immutable value describing weather lat lon request; carries latitude, longitude. */
 @kotlinx.serialization.Serializable
 data class WeatherLatLonRequest(val latitude: Double, val longitude: Double)
 
+/** Immutable value describing weather name request; carries name. */
 @kotlinx.serialization.Serializable
 data class WeatherNameRequest(val name: String)
 
+/** Immutable value describing create link request; carries name, expiryMillis. */
 @kotlinx.serialization.Serializable
 data class CreateLinkRequest(val name: String, val expiryMillis: Long)
 

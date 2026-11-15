@@ -30,12 +30,7 @@ fun decodeWavMono16k(bytes: ByteArray, maxSamples: Int = WAV_SAMPLE_RATE * WAV_M
         val body = at + CHUNK_HEADER
         when (chunkId(bytes, at)) {
             "fmt " -> {
-                if (size < FMT_MIN || body + FMT_MIN > bytes.size) return null
-                val ok = wav.getShort(body).toInt() == PCM &&
-                    wav.getShort(body + 2).toInt() == 1 &&
-                    wav.getInt(body + 4) == WAV_SAMPLE_RATE &&
-                    wav.getShort(body + 14).toInt() == BITS
-                if (!ok) return null
+                if (!isSupportedFmt(wav, body, size, bytes.size)) return null
                 described = true
             }
             "data" -> {
@@ -51,4 +46,13 @@ fun decodeWavMono16k(bytes: ByteArray, maxSamples: Int = WAV_SAMPLE_RATE * WAV_M
     return FloatArray(count) { pcm.get(it) / PCM_SCALE }
 }
 
-private fun chunkId(bytes: ByteArray, at: Int): String = String(bytes, at, 4, Charsets.US_ASCII)
+    /** True when the fmt chunk describes 16 kHz mono 16-bit PCM. */
+    private fun isSupportedFmt(wav: ByteBuffer, body: Int, size: Int, total: Int): Boolean {
+        if (size < FMT_MIN || body + FMT_MIN > total) return false
+        return wav.getShort(body).toInt() == PCM &&
+            wav.getShort(body + 2).toInt() == 1 &&
+            wav.getInt(body + 4) == WAV_SAMPLE_RATE &&
+            wav.getShort(body + 14).toInt() == BITS
+    }
+
+    private fun chunkId(bytes: ByteArray, at: Int): String = String(bytes, at, 4, Charsets.US_ASCII)

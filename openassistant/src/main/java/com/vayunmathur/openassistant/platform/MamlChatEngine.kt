@@ -31,6 +31,7 @@ import java.util.concurrent.Executors
 /** One stored message, text only: media is only ever attached to the current turn. */
 data class HistoryTurn(val fromUser: Boolean, val text: String)
 
+/** Immutable value describing chat request. */
 data class ChatRequest(
     val system: String,
     val history: List<HistoryTurn>,
@@ -39,9 +40,13 @@ data class ChatRequest(
     val audioPath: String? = null,
 )
 
+/** Contract for chat result. */
 sealed interface ChatResult {
+    /** Immutable value describing reply; carries text, halted. */
     data class Reply(val text: String, val halted: Boolean) : ChatResult
+    /** Singleton holding too long state and operations. */
     data object TooLong : ChatResult
+    /** Singleton holding unavailable state and operations. */
     data object Unavailable : ChatResult
 }
 
@@ -154,12 +159,16 @@ open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
             val sampling = Sampling.Chat.copy(seed = System.nanoTime())
             val generator = ChatGenerator { continuation, onRaw ->
                 withContext(engineThread) {
-                    model.generate(conversation, request.system, declarations, CHAT_REPLY_LIMIT, continuation, sampling, onRaw)
+                    model.generate(
+                        conversation, request.system, declarations, CHAT_REPLY_LIMIT, continuation, sampling, onRaw,
+                    )
                 }
             }
             val outcome = runToolLoop(
                 generator = generator,
-                parseCall = { reply -> Gemma4Handle.parseToolCall(reply)?.let { ParsedToolCall(it.name, it.arguments) } },
+                parseCall = { reply ->
+                    Gemma4Handle.parseToolCall(reply)?.let { ParsedToolCall(it.name, it.arguments) }
+                },
                 executeTool = { call ->
                     withContext(Dispatchers.IO) { tools.invoke(call) }.also {
                         Log.status(TAG, "tool ${call.name} -> ${it.take(LOG_CHARS)}")
@@ -176,7 +185,12 @@ open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
         }
 
     /** Single-turn structured extraction: greedy, no tools, no history. Null when unavailable. */
-    open suspend fun extract(system: String, userText: String, imagePaths: List<String>, onText: (String) -> Boolean): String? =
+    open suspend fun extract(
+        system: String,
+        userText: String,
+        imagePaths: List<String>,
+        onText: (String) -> Boolean,
+    ): String? =
         mutex.withLock {
             withContext(engineThread) {
                 val model = model() ?: return@withContext null

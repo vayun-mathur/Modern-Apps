@@ -276,6 +276,7 @@ class AssistantViewModel(
         }
     }
 
+    /** Shared constants and helpers for AssistantViewModel. */
     companion object {
         private const val TAG = "AssistantViewModel"
         private val LEGACY_SIGLIP_FILES = listOf(

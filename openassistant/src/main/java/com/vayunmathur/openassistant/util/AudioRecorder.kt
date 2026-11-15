@@ -18,6 +18,7 @@ import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+/** Wav Recorder: a context implementation for wav recorder. */
 class WavRecorder(val context: Context, val outputFile: File, val scope: CoroutineScope) {
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
@@ -107,6 +108,7 @@ class WavRecorder(val context: Context, val outputFile: File, val scope: Corouti
         }
     }
 
+    /** Shared constants and helpers for WavRecorder. */
     companion object {
         /** The canonical PCM WAV header this writes, and the size a silent file will be. */
         const val WAV_HEADER_BYTES = 44

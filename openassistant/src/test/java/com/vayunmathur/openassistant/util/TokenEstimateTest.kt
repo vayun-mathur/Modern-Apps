@@ -19,23 +19,21 @@ class TokenEstimateTest {
         var tokens = 0
         var inWord = false
         for (c in text) {
-            if (c.isWhitespace()) {
-                inWord = false
-                continue
-            }
             // CJK code points carry a full token each; other scripts split on words.
             val isCjk = c in '一'..'鿿' || c in '぀'..'ヿ'
-            if (isCjk) {
-                tokens++
-                inWord = false
-                continue
-            }
-            // Surrogate halves (emoji, pictographs) ride with surrounding
-            // words rather than starting new ones.
-            if (c.isHighSurrogate() || c.isLowSurrogate()) continue
-            if (!inWord) {
-                tokens++
-                inWord = true
+            when {
+                c.isWhitespace() -> inWord = false
+                isCjk -> {
+                    tokens++
+                    inWord = false
+                }
+                // Surrogate halves (emoji, pictographs) ride with surrounding
+                // words rather than starting new ones.
+                c.isHighSurrogate() || c.isLowSurrogate() -> Unit
+                !inWord -> {
+                    tokens++
+                    inWord = true
+                }
             }
         }
         // Non-blank input with no word starts (a lone emoji) still costs one.

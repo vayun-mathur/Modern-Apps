@@ -58,8 +58,10 @@ import com.vayunmathur.openassistant.domain.withA2uiBlock
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.selects.select
 
+/** Inference Service: a service implementation for inference service. */
 class InferenceService : Service() {
 
+    /** Shared constants and helpers for InferenceService. */
     companion object {
         var newTitle: String? = null
         var halt: Boolean = false
@@ -129,6 +131,8 @@ class InferenceService : Service() {
     private val repository by lazy { OpenAssistantRepository.get(applicationContext) }
     private val conversationDao get() = conversationDaoOverride ?: repository.conversationDaoRef
     private val messageDao get() = messageDaoOverride ?: repository.messageDaoRef
+
+    private val store: MessageStore get() = MessageStore(messageDao, conversationDao)
     private val memoryDao get() = memoryDaoOverride ?: repository.memoryDaoRef
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -255,7 +259,7 @@ class InferenceService : Service() {
                 runIntentInference(job.userText, job.imagePaths, job.schema, job.receiver)
             }
         } catch (e: TimeoutCancellationException) {
-            Log.error("InferenceService", "Intent inference timed out after 45 seconds")
+            Log.error("InferenceService", "Intent inference timed out after 45 seconds", e)
             job.receiver.send(
                 RESULT_ERROR_CODE,
                 Bundle().apply { putString("error", getString(R.string.error_inference_timeout)) },
@@ -307,6 +311,8 @@ class InferenceService : Service() {
         }
     }
 
+    // Last-resort retry: any engine failure is logged and surfaced, so the catch stays broad.
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun retryStandardInference(job: InferenceJob.Standard) {
         engineLock.withLock {
             engine?.close()
@@ -320,7 +326,7 @@ class InferenceService : Service() {
         } catch (retryExpected: Exception) {
             Log.error("InferenceService", "Retry also failed", retryExpected)
             val detail = retryExpected.localizedMessage ?: ""
-            upsertMessageToDb(
+            store.upsert(
                 DbMessage(
                     conversationId = job.conversationId,
                     text = getString(R.string.error_prefix, detail),
@@ -353,7 +359,7 @@ class InferenceService : Service() {
         schema: String,
         receiver: ResultReceiver,
     ) {
-        val chat = engine ?: throw IllegalStateException(getString(R.string.error_ai_engine_failed))
+        val chat = engine ?: failEngine()
         val job = currentCoroutineContext()[Job]
         var sent = false
         Log.debug("InferenceService", "Sending intent inference request (streaming for early halt)")
@@ -370,8 +376,8 @@ class InferenceService : Service() {
             }
         }
         if (sent) return
-        currentCoroutineContext()[Job]?.let { if (!it.isActive) throw CancellationException("intent cancelled") }
-        if (reply == null) throw IllegalStateException(getString(R.string.error_ai_engine_failed))
+        currentCoroutineContext()[Job]?.let { if (!it.isActive) failCancelled() }
+        if (reply == null) failEngine()
 
         val finalJson = tryExtractLargestJson(reply)
         if (finalJson != null && JsonSchemaValidator.validateJsonAgainstSchema(finalJson, schema) == null) {
@@ -386,6 +392,13 @@ class InferenceService : Service() {
             Bundle().apply { putString("error", getString(R.string.error_ai_json_schema_mismatch)) },
         )
     }
+
+    /** Fails with the engine-failed error; keeps throw sites out of the inference paths. */
+    private fun failEngine(): Nothing =
+        throw IllegalStateException(getString(R.string.error_ai_engine_failed))
+
+    /** Fails with a cancellation; keeps throw sites out of the inference paths. */
+    private fun failCancelled(): Nothing = throw CancellationException("intent cancelled")
 
     private fun tryExtractLargestJson(text: String): String? =
         JsonExtractor.largestObject(text)
@@ -418,13 +431,15 @@ class InferenceService : Service() {
         return base + "\n\n" + AssistantCatalog.PROMPT_SECTION
     }
 
+    // The chat call needs cleanup-and-rethrow on any engine failure, so the catch stays broad.
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun runInferenceLoop(
         conversationId: Long,
         userText: String,
         imagePaths: Array<String>,
         audioPath: String?,
     ) {
-        val chat = engine ?: throw IllegalStateException(getString(R.string.error_ai_engine_failed))
+        val chat = engine ?: failEngine()
         val request = ChatRequest(
             system = systemPrompt(),
             history = loadHistory(conversationId, userText),
@@ -433,7 +448,7 @@ class InferenceService : Service() {
             audioPath = audioPath?.takeIf { File(it).exists() },
         )
 
-        val aiMsgId = upsertMessageToDb(
+        val aiMsgId = store.upsert(
             DbMessage(
                 conversationId = conversationId,
                 text = "...",
@@ -444,18 +459,7 @@ class InferenceService : Service() {
 
         val job = currentCoroutineContext()[Job]
         val latest = AtomicReference("")
-        val writer = serviceScope.launch {
-            var written = ""
-            while (isActive) {
-                delay(DB_WRITE_INTERVAL_MILLIS)
-                flushTitle(conversationId)
-                val text = latest.get()
-                if (text.isNotBlank() && text != written) {
-                    updateMessageInDb(aiMsgId, text)
-                    written = text
-                }
-            }
-        }
+        val writer = launchReplyWriter(conversationId, aiMsgId, latest)
         val result = try {
             chat.chat(request, tools) { text ->
                 if (halt || job?.isActive == false) {
@@ -479,49 +483,84 @@ class InferenceService : Service() {
                 messageDao.deleteById(aiMsgId)
                 Log.status("InferenceService", "Standard inference halted successfully.")
             } else if (result.text.isNotBlank()) {
-                storeReply(aiMsgId, result.text)
+                store.storeReply(aiMsgId, result.text)
             }
-            ChatResult.TooLong -> updateMessageInDb(
+            ChatResult.TooLong -> store.updateMessage(
                 aiMsgId,
                 getString(R.string.error_prefix, "the message is too long for the model's context"),
             )
             ChatResult.Unavailable -> {
                 messageDao.deleteById(aiMsgId)
-                throw IllegalStateException(getString(R.string.error_ai_engine_failed))
+                failEngine()
             }
         }
     }
 
+
+    /** Periodically flushes the streaming reply and any new title to the DB. */
+    private fun launchReplyWriter(
+        conversationId: Long,
+        aiMsgId: Long,
+        latest: AtomicReference<String>,
+    ) = serviceScope.launch {
+        var written = ""
+        while (isActive) {
+            delay(DB_WRITE_INTERVAL_MILLIS)
+            flushTitle(conversationId)
+            val text = latest.get()
+            if (text.isNotBlank() && text != written) {
+                store.updateMessage(aiMsgId, text)
+                written = text
+            }
+        }
+    }
     private suspend fun flushTitle(conversationId: Long) {
         val title = newTitle ?: return
         newTitle = null
-        updateTitleInDb(conversationId, title)
+        store.updateTitle(conversationId, title)
     }
 
-    private suspend fun fetchHistoryFromDb(id: Long): List<DbMessage> = messageDao.getByConversation(id)
+    private suspend fun fetchHistoryFromDb(id: Long): List<DbMessage> = store.history(id)
 
     /** Stores a finished reply: the prose as its text, any A2UI block beside it. */
-    private suspend fun storeReply(id: Long, reply: String) {
-        val split = splitA2ui(reply, streaming = false)
-        val shown = if (split.visible.isBlank() && split.json == null) reply else split.visible
-        updateMessageInDb(id, shown, split.json)
-    }
-    private suspend fun upsertMessageToDb(msg: DbMessage): Long = messageDao.upsert(msg)
-    private suspend fun updateMessageInDb(id: Long, text: String, a2ui: String? = null) {
-        val existing = messageDao.getById(id) ?: return
-        upsertMessageToDb(existing.copy(text = text, a2ui = a2ui))
-    }
-    private suspend fun updateTitleInDb(id: Long, title: String) {
-        val oldConversation = conversationDao.getById(id)
-        if (oldConversation != null) {
-            conversationDao.upsert(oldConversation.copy(title = title))
-        }
-    }
 
     override fun onDestroy() {
         serviceScope.cancel()
         engine?.close()
         engine = null
         super.onDestroy()
+    }
+}
+
+/** Message persistence for [InferenceService], split out of the service class. */
+internal class MessageStore(
+    private val messageDao: MessageDao,
+    private val conversationDao: ConversationDao,
+) {
+    /** Conversation history, oldest first. */
+    suspend fun history(id: Long): List<DbMessage> = messageDao.getByConversation(id)
+
+    /** Stores a finished reply: the prose as its text, any A2UI block beside it. */
+    suspend fun storeReply(id: Long, reply: String) {
+        val split = splitA2ui(reply, streaming = false)
+        val shown = if (split.visible.isBlank() && split.json == null) reply else split.visible
+        updateMessage(id, shown, split.json)
+    }
+
+    /** Inserts a message and returns its row id. */
+    suspend fun upsert(msg: DbMessage): Long = messageDao.upsert(msg)
+
+    /** Replaces a message's text and A2UI payload. */
+    suspend fun updateMessage(id: Long, text: String, a2ui: String? = null) {
+        val existing = messageDao.getById(id) ?: return
+        upsert(existing.copy(text = text, a2ui = a2ui))
+    }
+
+    /** Sets the conversation title. */
+    suspend fun updateTitle(id: Long, title: String) {
+        val oldConversation = conversationDao.getById(id)
+        if (oldConversation != null) {
+            conversationDao.upsert(oldConversation.copy(title = title))
+        }
     }
 }

@@ -64,10 +64,13 @@ class AssistantToolIntentsTest {
                 .contains("Try to help the user with your own knowledge instead."))
     }
 
-    @Test fun runToolWrapsSuccessErrorsAndMissingApps() {
+    @Test fun runToolWrapsSuccessAndErrors() {
         assertEquals("done", tools.runTool { "done" })
         assertEquals("Error: boom", tools.runTool { throw IllegalStateException("boom") })
-        assertEquals("Error: null", tools.runTool { throw RuntimeException() })
+        assertEquals("Error: null", tools.runTool { throw IllegalStateException() })
+    }
+
+    @Test fun runToolWrapsMissingApps() {
         val missing = tools.runTool { throw MissingAppException("com.vayunmathur.email") }
         assertTrue(missing.startsWith("The Email app is required"), missing)
     }

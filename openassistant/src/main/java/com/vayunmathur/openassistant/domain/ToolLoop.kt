@@ -6,11 +6,15 @@ fun interface ChatGenerator {
     suspend fun generate(continuation: String, onText: (String) -> Boolean): String?
 }
 
+/** Contract for tool loop outcome. */
 sealed interface ToolLoopOutcome {
     val text: String
 
+    /** Immutable value describing finished; carries text. */
     data class Finished(override val text: String) : ToolLoopOutcome
+    /** Immutable value describing halted; carries text. */
     data class Halted(override val text: String) : ToolLoopOutcome
+    /** Immutable value describing failed; carries text. */
     data class Failed(override val text: String) : ToolLoopOutcome
 }
 

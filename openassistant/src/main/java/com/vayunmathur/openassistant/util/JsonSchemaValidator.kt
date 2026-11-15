@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+/** Singleton holding json schema validator state and operations. */
 object JsonSchemaValidator {
     fun validateJsonAgainstSchema(jsonString: String, schemaString: String): String? {
         val json = try {

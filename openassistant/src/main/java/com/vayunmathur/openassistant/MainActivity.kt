@@ -21,8 +21,10 @@ import com.vayunmathur.openassistant.ui.LiteRTChatUi
 import com.vayunmathur.openassistant.ui.SettingsPage
 import com.vayunmathur.openassistant.util.AssistantViewModel
 
+/** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
 
+    /** Shared constants and helpers for MainActivity. */
     companion object {
         lateinit var intentLauncher: IntentLauncher
     }
@@ -72,10 +74,13 @@ class MainActivity : MaActivity() {
     }
 }
 
+/** Contract for route. */
 @Serializable
 sealed interface Route: NavKey {
+    /** Immutable value describing conversation page; carries id. */
     @Serializable
     data class ConversationPage(val id: Long): Route
+    /** Singleton holding settings page state and operations. */
     @Serializable
     data object SettingsPage: Route
 }

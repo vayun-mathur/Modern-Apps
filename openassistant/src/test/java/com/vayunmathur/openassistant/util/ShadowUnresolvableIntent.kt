@@ -9,6 +9,8 @@ import org.robolectric.annotation.Implements
 /** Every intent reads as unresolvable, so cross-app launches take the missing-app path. */
 @Implements(Intent::class)
 class ShadowUnresolvableIntent {
+    // Signature must mirror Intent.resolveActivity for Robolectric; the manager is not needed.
+    @Suppress("UnusedParameter", "FunctionOnlyReturningConstant")
     @Implementation
     fun resolveActivity(pm: PackageManager): ResolveInfo? = null
 }

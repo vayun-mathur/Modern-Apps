@@ -47,6 +47,7 @@ interface ChatActions {
     fun cancelMedia() {}
     fun send() {}
 
+    /** Shared constants and helpers for ChatActions. */
     companion object {
         val Noop: ChatActions = object : ChatActions {}
     }
@@ -68,6 +69,7 @@ interface SettingsActions {
     /** Restore the system prompt to the built-in default. */
     fun resetSystemPrompt() {}
 
+    /** Shared constants and helpers for SettingsActions. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }

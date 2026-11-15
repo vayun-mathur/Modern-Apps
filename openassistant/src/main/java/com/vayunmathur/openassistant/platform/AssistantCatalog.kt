@@ -44,6 +44,7 @@ class AssistantCatalog(urlOpener: A2uiUrlOpener, messageFormatter: A2uiMessageFo
         override val propertySchema: A2uiSchema = A2uiObjectSchema(properties = props, required = required)
     }
 
+    /** Shared constants and helpers for AssistantCatalog. */
     companion object {
         const val ID = "https://vayunmathur.com/openassistant/a2ui/catalog/v1"
 

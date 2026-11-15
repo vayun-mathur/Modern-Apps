@@ -3,11 +3,13 @@ package com.vayunmathur.openassistant.domain
 /** A tool call the model emitted, with every argument still as its raw text. */
 data class ParsedToolCall(val name: String, val arguments: Map<String, String>)
 
+/** Kinds of tool param type. */
 enum class ToolParamType(val gemmaName: String) {
     STRING("STRING"),
     NUMBER("NUMBER"),
 }
 
+/** Immutable value describing tool param spec. */
 data class ToolParamSpec(
     val name: String,
     val description: String,
@@ -15,6 +17,7 @@ data class ToolParamSpec(
     val required: Boolean = true,
 )
 
+/** Immutable value describing tool spec. */
 data class ToolSpec(
     val name: String,
     val description: String,
@@ -27,8 +30,11 @@ class ToolArgs(private val values: Map<String, Any>) {
     fun number(name: String): Double = values[name] as? Double ?: 0.0
 }
 
+/** Contract for tool args result. */
 sealed interface ToolArgsResult {
+    /** Immutable value describing ok; carries args. */
     data class Ok(val args: ToolArgs) : ToolArgsResult
+    /** Immutable value describing invalid; carries message. */
     data class Invalid(val message: String) : ToolArgsResult
 }
 

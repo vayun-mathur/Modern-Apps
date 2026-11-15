@@ -129,14 +129,17 @@ class InferenceServiceFakeEngineTest {
         service.conversationDaoOverride = conversationDao
         service.memoryDaoOverride = FakeMemoryDao()
         service.nowMillis = { clock.get() }
-        service.engineFactory = { engineQueue.removeFirstOrNull() ?: FakeEngine().also { engines += it } }
+        service.engineFactory = {
+            val next = engineQueue.removeFirstOrNull()
+            if (next != null) next else FakeEngine().also { engines += it }
+        }
         c.create()
         return service
     }
 
     private fun await(desc: String, cond: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 20_000
-        while (System.currentTimeMillis() < deadline) { if (cond()) return; Thread.sleep(25) }
+        while (System.currentTimeMillis() < deadline && !cond()) { Thread.sleep(25) }
         assertTrue(cond(), "timed out: $desc")
     }
 
@@ -204,7 +207,7 @@ class InferenceServiceFakeEngineTest {
     }
 
     @Test fun failingTwiceStoresErrorMessage() {
-        val boom = { _: ChatRequest, _: (String) -> Boolean -> throw RuntimeException("boom-native") }
+        val boom = { _: ChatRequest, _: (String) -> Boolean -> throw IllegalStateException("boom-native") }
         val service = startService(FakeEngine(chatBehavior = boom), FakeEngine(chatBehavior = boom))
         service.onStartCommand(standardIntent(6L, "fail"), 0, 1)
         await("error stored") { messageDao.assistantTexts(6L).any { it.contains("boom-native") } }

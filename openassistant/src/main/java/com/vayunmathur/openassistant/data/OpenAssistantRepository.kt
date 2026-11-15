@@ -52,6 +52,7 @@ class OpenAssistantRepository private constructor(context: Context) :
     internal val messageDaoRef get(): MessageDao = messageDao
     internal val memoryDaoRef get(): MemoryDao = memoryDao
 
+    /** Shared constants and helpers for OpenAssistantRepository. */
     companion object {
         @Volatile
         private var instance: OpenAssistantRepository? = null
