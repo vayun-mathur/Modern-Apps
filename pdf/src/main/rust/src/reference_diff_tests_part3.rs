@@ -16,7 +16,6 @@
 /// future change to `cmyk_to_argb` shows up here as a change in the printed
 /// deltas.
 #[test]
-#[ignore]
 fn refdiff_devicecmyk_diverges_because_the_reference_is_colour_managed() {
     let patches: [[f64; 4]; 6] = [
         [0.0, 1.0, 1.0, 0.0],
@@ -69,7 +68,6 @@ fn refdiff_devicecmyk_diverges_because_the_reference_is_colour_managed() {
 /// Nonzero vs even-odd on a self-intersecting star: the classic place to get
 /// §8.5.3.3.2 backwards and never notice, because both rules look plausible.
 #[test]
-#[ignore]
 fn refdiff_winding_rules_on_a_self_intersecting_star() {
     let star = |close: &str| {
         let pts = [(100.0, 190.0), (145.0, 55.0), (30.0, 140.0), (170.0, 140.0), (55.0, 55.0)];
@@ -92,7 +90,6 @@ fn refdiff_winding_rules_on_a_self_intersecting_star() {
 /// tint→alternate direction backwards, or the Indexed lookup stride wrong, is a
 /// misreading no self-referential test can catch.
 #[test]
-#[ignore]
 fn refdiff_indexed_and_separation_colour() {
     let mut doc = Document::with_version("1.7");
     // Indexed palette: 3 entries of DeviceRGB.
@@ -174,7 +171,6 @@ fn refdiff_indexed_and_separation_colour() {
 /// highest-value entry in the corpus: `functions.rs` is 58 kB of formula, every
 /// line of it verified only against our own reading of §7.10.
 #[test]
-#[ignore]
 fn refdiff_all_four_function_types_via_separation() {
     let mut doc = Document::with_version("1.7");
 
@@ -287,7 +283,6 @@ fn refdiff_all_four_function_types_via_separation() {
 /// Axial and radial shadings with `/Extend`. §8.7.4.5.3 and §8.7.4.5.4 are dense
 /// and the extend/`t` mapping is easy to read two ways.
 #[test]
-#[ignore]
 fn refdiff_axial_and_radial_shadings() {
     let mut doc = Document::with_version("1.7");
     let f = doc.add_object(Stream::new(
@@ -359,7 +354,6 @@ fn refdiff_axial_and_radial_shadings() {
 /// are both easy to invert silently — a flipped image still "looks like an
 /// image".
 #[test]
-#[ignore]
 fn refdiff_image_placement_decode_and_stencil() {
     let mut doc = Document::with_version("1.7");
     // 2x2 RGB, deliberately asymmetric so a flip in either axis is visible.

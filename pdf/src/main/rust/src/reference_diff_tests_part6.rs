@@ -14,7 +14,6 @@
 /// would show nothing at all in that region, which is a 100%-vs-0% difference,
 /// far outside any tolerance in this file.
 #[test]
-#[ignore]
 fn refdiff_luminosity_soft_mask_backdrop_colour() {
     let build = |bc: Option<[f64; 3]>| {
         let mut doc = Document::with_version("1.7");
@@ -113,7 +112,6 @@ fn refdiff_luminosity_soft_mask_backdrop_colour() {
 /// roughly 140 device px across — because chord error scales with radius and a
 /// small curve would pass whatever the step count.
 #[test]
-#[ignore]
 fn refdiff_bezier_flattening_at_scale() {
     // Four cubics approximating a circle, the classic 0.5523 magic number.
     let (cx, cy, r) = (100.0f64, 100.0f64, 70.0);
@@ -190,7 +188,6 @@ fn refdiff_bezier_flattening_at_scale() {
 /// by the Kotlin consumer, which is a cross-boundary loss this harness cannot
 /// see either, because it measures the prim stream and the loss happens after.
 #[test]
-#[ignore]
 fn refdiff_harness_refuses_a_page_it_cannot_draw() {
     // Minimal 8x8 greyscale baseline JPEG.
     let jpeg: Vec<u8> = {
@@ -304,7 +301,6 @@ fn refdiff_harness_refuses_a_page_it_cannot_draw() {
 /// zoom. The same circle painted as a fill carries ~0.42 device px of chord
 /// error at this scale — small, but it is the thing that does not scale away.
 #[test]
-#[ignore]
 fn refdiff_curved_clip_is_zoom_correct() {
     let (cx, cy, r) = (100.0f64, 100.0f64, 70.0);
     let k = 0.552_284_749_8 * r;

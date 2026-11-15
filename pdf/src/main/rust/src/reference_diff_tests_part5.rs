@@ -96,7 +96,6 @@
 /// leaked digit, which is why the `None` arm of `ops.get_mut(i + 1)` still
 /// renames.
 #[test]
-#[ignore]
 fn refdiff_root_cause_d0_mangles_the_next_operator() {
     let cases: [(&str, &str, usize); 2] = [
         ("700 0 d0\n50 0 600 600 re\nf", "re", 4),
@@ -168,7 +167,6 @@ fn spec_lab_to_srgb(l: f64, a: f64, b: f64, wp: [f64; 3]) -> [f64; 3] {
 /// which is defensible as a colour-management policy but is not the XYZ that
 /// §8.6.5.4 defines. NO PATCH PROPOSED.
 #[test]
-#[ignore]
 fn refdiff_lab_and_calrgb_colour() {
     const WP: [f64; 3] = [0.9505, 1.0, 1.089];
     let lab = Object::Array(vec![
@@ -260,7 +258,6 @@ fn refdiff_lab_and_calrgb_colour() {
 /// the shading's target space, and applying it in the wrong direction still
 /// produces a plausible-looking gradient.
 #[test]
-#[ignore]
 fn refdiff_function_based_shading_matrix_and_domain() {
     let mut doc = Document::with_version("1.7");
     let f = doc.add_object(Stream::new(
@@ -302,7 +299,6 @@ fn refdiff_function_based_shading_matrix_and_domain() {
 /// page with `/Decode [0 1]`, and `/Decode [1 0]` reverses that. Inverting a
 /// stencil is invisible to any test that only asserts "some ink appeared".
 #[test]
-#[ignore]
 fn refdiff_image_mask_decode_polarity() {
     let mut doc = Document::with_version("1.7");
     let stencil: Vec<u8> = (0..8).map(|_| 0xF0u8).collect();
@@ -360,7 +356,6 @@ fn refdiff_image_mask_decode_polarity() {
 /// bitmap plus a lattice (`Prim::ImageTiled`), which is a representation choice
 /// nothing outside this crate has ever checked.
 #[test]
-#[ignore]
 fn refdiff_tiling_pattern_step_and_matrix() {
     let mut doc = Document::with_version("1.7");
     let cell = Content {

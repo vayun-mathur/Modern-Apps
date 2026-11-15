@@ -1,6 +1,5 @@
 /// A `/Decode` array that inverts a grayscale image (§8.9.5.2, Table 89).
 #[test]
-#[ignore]
 fn refdiff_image_decode_array_inversion() {
     let mut doc = Document::with_version("1.7");
     let gray = vec![0u8, 64, 128, 255];
@@ -42,7 +41,6 @@ fn refdiff_image_decode_array_inversion() {
 /// canonical self-consistent mistake here: the content still appears, just in
 /// the wrong place or unclipped.
 #[test]
-#[ignore]
 fn refdiff_form_xobject_matrix_and_bbox_clip() {
     let mut doc = Document::with_version("1.7");
     let inner = Content {
@@ -85,7 +83,6 @@ fn refdiff_form_xobject_matrix_and_bbox_clip() {
 /// Nested clipping with both winding rules, and the `W n` deferral rule
 /// (§8.5.4: the clip takes effect only after the path-painting operator).
 #[test]
-#[ignore]
 fn refdiff_nested_and_evenodd_clipping() {
     let ops = vec![
         op("q", vec![]),
@@ -124,7 +121,6 @@ fn refdiff_nested_and_evenodd_clipping() {
 /// on the glyph's first painting operator. The square glyph in this fixture
 /// disappeared entirely; the triangle glyph was drawn from the wrong start point.
 #[test]
-#[ignore]
 fn refdiff_type3_font_text_positioning() {
     let mut doc = Document::with_version("1.7");
     // Glyph "a": a filled square in the left 700/1000 of the em.
@@ -215,7 +211,6 @@ fn refdiff_type3_font_text_positioning() {
 /// Constant alpha (`/ca`) with overlapping fills — §11.6.4.4. The compositing
 /// arithmetic is a place where "close enough" hides a systematic error.
 #[test]
-#[ignore]
 fn refdiff_constant_alpha_compositing() {
     let mut doc = Document::with_version("1.7");
     let gs = doc.add_object(dictionary! { "Type" => "ExtGState", "ca" => Object::Real(0.5) });
@@ -252,7 +247,6 @@ fn refdiff_constant_alpha_compositing() {
 /// `/Rotate` and a `/CropBox` offset from the `/MediaBox` origin (§7.7.3.3,
 /// §14.11.2). Both renderers must independently agree on where the ink lands.
 #[test]
-#[ignore]
 fn refdiff_rotate_and_cropbox() {
     for rotate in [0i64, 90, 180, 270] {
         let ops = vec![
@@ -278,7 +272,6 @@ fn refdiff_rotate_and_cropbox() {
 /// Dash patterns (§8.4.3.6): phase handling and the odd-length-array rule are
 /// both easy to read two ways.
 #[test]
-#[ignore]
 fn refdiff_dash_patterns() {
     let ops = vec![
         op("w", vec![n(6.0)]),
@@ -309,7 +302,6 @@ fn refdiff_dash_patterns() {
 
 /// Luminosity soft mask (§11.6.5.2) driven by an axial shading.
 #[test]
-#[ignore]
 fn refdiff_luminosity_soft_mask() {
     let mut doc = Document::with_version("1.7");
     let f = doc.add_object(Stream::new(

@@ -198,11 +198,12 @@
 //!
 //! # Running
 //!
-//! Every test here is `#[ignore]`d, following `perf_tests.rs`, so the normal
-//! suite is unchanged:
+//! Every test here runs in the normal suite (they compare against the
+//! independent `hayro` renderer, so the assertions stay meaningful without
+//! any stored reference images):
 //!
 //! ```text
-//! cargo test -p pdf_render reference_diff -- --ignored --nocapture
+//! cargo test -p pdf_render reference_diff -- --nocapture
 //! ```
 
 use crate::*;

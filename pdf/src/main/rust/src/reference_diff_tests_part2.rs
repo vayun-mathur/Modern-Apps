@@ -357,7 +357,6 @@ fn n(v: f64) -> Object {
 /// [`DIFF_BUDGET`] — the flagged fraction printed here is the metric's noise
 /// floor for a page that is by construction identical.
 #[test]
-#[ignore]
 fn refdiff_solid_fills_calibrate_the_metric() {
     let ops = vec![
         op("rg", vec![n(0.9), n(0.1), n(0.1)]),

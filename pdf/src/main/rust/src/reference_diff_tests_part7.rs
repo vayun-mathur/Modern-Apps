@@ -74,7 +74,6 @@
 /// Not applied here: `interpret.rs` belongs to `fix-interp`. This test RECORDS
 /// the numbers and bounds them loosely so a change in either direction shows up.
 #[test]
-#[ignore]
 fn refdiff_flatness_operator_amplifies_faceting() {
     let (cx, cy, r) = (100.0f64, 100.0f64, 70.0);
     let k = 0.552_284_749_8 * r;

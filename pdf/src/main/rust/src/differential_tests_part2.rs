@@ -18,20 +18,18 @@
 /// slightly stronger than what shallow dictionary equality actually buys, and
 /// that gap should be written down rather than rediscovered.
 ///
-/// IGNORED, and it FAILS when run, exactly as its predecessor did before the fix.
+/// This originally FAILED exactly as its predecessor did before the fix.
 /// Verified 2026-08-29 against the `ObjectId` + stored-dictionary key: the
 /// 900/1000 document was served the 500/1000 document's metrics, giving an
 /// advance of 10.0 (= 500/1000 x 20pt) where 18.0 (= 900/1000 x 20pt) is correct,
-/// and glyph origins at 10/20/30 instead of 10/28/46. Ignored because no caller
-/// can reach it, NOT because the finding is doubtful. Routed to `residuals`.
+/// and glyph origins at 10/20/30 instead of 10/28/46. It was then ignored
+/// because no caller could reach it, NOT because the finding was doubtful.
 ///
-/// A deep fix does not need a deep dictionary compare: including the resolved
-/// generation of each indirect target would cost as much as the parse being
-/// cached. Cheaper is to scope the cache to a document identity that cannot be
-/// recycled — a monotonic id minted per `Document` load — which closes the class
-/// rather than another instance of it.
-#[ignore = "latent, not live: stale hit through shallow /Widths dictionary equality, unreachable \
-            by any current caller; see the doc comment and the note routed to residuals"]
+/// The cache now keys on `font_identity`, which resolves through the
+/// dictionary's indirect references, so the two documents no longer collide
+/// and this test passes. It runs in the default suite as the regression
+/// guard for that identity: a key that goes back to shallow dictionary
+/// equality turns it red again.
 #[test]
 fn font_cache_distinguishes_documents_whose_font_dicts_are_equal_but_indirect_targets_differ() {
     let build = |width: i64| {
