@@ -1,12 +1,13 @@
 //! The renderer's reader against a REAL planet archive (`planet4.mamaps` / `planet5.mamaps`, or the
 //! byte-identical local build `scripts/maps/inputs/world.mamaps`).
 //!
-//! Ignored by default and gated on `MAMAPS_REAL_ARCHIVE`, so a normal `cargo test` never
-//! needs the 80 GB input:
+//! By default these tests run against a small SYNTHETIC archive built
+//! in-test (see `fixture.rs`): the same reader paths, without the
+//! 80 GB input. Set the env var to run them against the planet instead:
 //!
 //! ```text
 //! MAMAPS_REAL_ARCHIVE=/path/to/world.mamaps \
-//!   cargo test -p map_renderer --test real_archive -- --ignored --nocapture --test-threads=1
+//!   cargo test -p map_renderer --test real_archive -- --nocapture --test-threads=1
 //! ```
 //!
 //! Everything goes through the code the app runs: `FileRangeReader` (the device's
@@ -28,7 +29,8 @@ use tilecodec::mamaps::body::Body;
 use tilecodec::mamaps::header::Header;
 use tilecodec::mamaps::read::{LeafCache, MamapsArchive, TileSource};
 
-const ENV: &str = "MAMAPS_REAL_ARCHIVE";
+#[path = "real_archive/fixture.rs"]
+mod fixture;
 
 // planet4 claims FLAG_RINGS_VALIDATED without earning it; the renderer must keep repairing.
 const _: () = assert!(!geometry::TRUST_RINGS_VALIDATED);
@@ -42,14 +44,12 @@ const CITIES: &[(&str, f64, f64)] = &[
 ];
 const ZOOMS: &[u8] = &[0, 4, 8, 10, 12, 13, 14];
 
-fn archive_path() -> Option<PathBuf> {
-    match std::env::var(ENV) {
-        Ok(p) if !p.trim().is_empty() && Path::new(&p).is_file() => Some(PathBuf::from(p)),
-        _ => {
-            eprintln!("{ENV} not set (or not a file): real-archive test skipped");
-            None
-        }
-    }
+fn acquire(tag: &str, build: impl FnOnce(&Path)) -> (PathBuf, bool) {
+    fixture::acquire(tag, build)
+}
+
+fn tile_of(lat: f64, lon: f64, z: u8) -> (u32, u32) {
+    fixture::tile_of(lat, lon, z)
 }
 
 fn open(path: &Path) -> MamapsArchive<FileRangeReader> {
@@ -58,16 +58,6 @@ fn open(path: &Path) -> MamapsArchive<FileRangeReader> {
         Arc::new(LeafCache::new()),
     )
     .expect("the app's reader refused the archive")
-}
-
-/// Slippy-map tile containing (lat, lon) at zoom `z`.
-fn tile_of(lat: f64, lon: f64, z: u8) -> (u32, u32) {
-    let n = (1u64 << z) as f64;
-    let x = ((lon + 180.0) / 360.0 * n).floor();
-    let lat_r = lat.to_radians();
-    let y = ((1.0 - (lat_r.tan() + 1.0 / lat_r.cos()).ln() / std::f64::consts::PI) / 2.0 * n).floor();
-    let max = n as u32 - 1;
-    ((x as u32).min(max), (y as u32).min(max))
 }
 
 fn all_on() -> LayerToggles {
@@ -79,9 +69,10 @@ fn layer_name(id: u8) -> &'static str {
 }
 
 #[test]
-#[ignore = "needs MAMAPS_REAL_ARCHIVE (80 GB planet archive)"]
 fn header_version_and_dictionary_are_accepted() {
-    let Some(path) = archive_path() else { return };
+    let (path, planet) = acquire("header", |p| {
+        fixture::write_archive(p, &[(0, 0, 0, fixture::rich_body(120))]);
+    });
     let mut head = vec![0u8; tilecodec::mamaps::header::HEADER_LEN];
     {
         use std::io::Read as _;
@@ -93,13 +84,25 @@ fn header_version_and_dictionary_are_accepted() {
         head[7], header.flags, header.compression, header.layer_count, header.min_zoom,
         header.max_zoom, header.build_id, header.file_len
     );
-    // planet4 is a v9 archive; planet5 a v10 one (dictionary-zstd bodies). Both must open.
-    match head[7] {
-        tilecodec::mamaps::header::FORMAT_VERSION_V9 => {}
-        tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V10 | tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V11 => {
-            assert_eq!(header.compression, tilecodec::mamaps::header::COMPRESSION_ZSTD_DICT);
+    if planet {
+        // planet4 is a v9 archive; planet5 a v10 one (dictionary-zstd bodies). Both must open.
+        match head[7] {
+            tilecodec::mamaps::header::FORMAT_VERSION_V9 => {}
+            tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V10 | tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V11 => {
+                assert_eq!(header.compression, tilecodec::mamaps::header::COMPRESSION_ZSTD_DICT);
+            }
+            v => panic!("planet4 is v9 and planet5 v10/v11 (superblocks), got v{v}"),
         }
-        v => panic!("planet4 is v9 and planet5 v10/v11 (superblocks), got v{v}"),
+    } else {
+        // The synthetic writer's header must sit in the reader's accepted set.
+        match head[7] {
+            tilecodec::mamaps::header::FORMAT_VERSION
+            | tilecodec::mamaps::header::FORMAT_VERSION_V9
+            | tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V10
+            | tilecodec::mamaps::header::FORMAT_VERSION_HEADER_V11 => {}
+            v => panic!("synthetic archive carries a version the reader refuses, got v{v}"),
+        }
+        assert_eq!(header.build_id, fixture::BUILD_ID);
     }
     assert_eq!(header.file_len, std::fs::metadata(&path).unwrap().len());
     assert!(header.compressed() && header.rings_validated() && header.leaves_compressed());
@@ -124,9 +127,11 @@ fn header_version_and_dictionary_are_accepted() {
 }
 
 #[test]
-#[ignore = "needs MAMAPS_REAL_ARCHIVE (80 GB planet archive)"]
 fn section_directory_carries_every_kind_the_app_reads() {
-    let Some(path) = archive_path() else { return };
+    let (path, _planet) = acquire("sections", |p| {
+        fixture::write_archive(p, &[(0, 0, 0, fixture::rich_body(120))]);
+        fixture::append_sidecar(p);
+    });
     let file = std::fs::File::open(&path).unwrap();
     // SAFETY: read-only mapping of a file nobody writes while the test runs.
     let bytes = unsafe { memmap2::Mmap::map(&file) }.expect("mmap");
@@ -165,9 +170,17 @@ struct LayerTally {
 }
 
 #[test]
-#[ignore = "needs MAMAPS_REAL_ARCHIVE (80 GB planet archive)"]
 fn every_layer_decodes_and_tessellates_in_four_cities() {
-    let Some(path) = archive_path() else { return };
+    let (path, planet) = acquire("cities", |p| {
+        let mut tiles = Vec::new();
+        for &(_, lat, lon) in CITIES {
+            for &z in ZOOMS {
+                let (x, y) = tile_of(lat, lon, z);
+                tiles.push((z, x, y, fixture::rich_body(120)));
+            }
+        }
+        fixture::write_archive(p, &tiles);
+    });
     let archive = open(&path);
     let layers = style::layers();
     let rings_validated = archive.header.rings_validated() && geometry::TRUST_RINGS_VALIDATED;
@@ -235,24 +248,42 @@ fn every_layer_decodes_and_tessellates_in_four_cities() {
     for (name, t) in &tally {
         println!("layer {name:<10} tiles {:3} features {}", t.tiles, t.features);
     }
-    for name in tilecodec::mamaps::dict::LAYERS {
-        if *name == "junction" {
-            // planet5 (~50 GB revision) builds with --no-junction-layer: lane connectors are drawn
-            // only by the carriageway style layers, which style::LANE_RENDERING drops for release.
-            // planet4 still carries them; either is valid.
-            continue;
+    if planet {
+        for name in tilecodec::mamaps::dict::LAYERS {
+            if *name == "junction" {
+                // planet5 (~50 GB revision) builds with --no-junction-layer: lane connectors are drawn
+                // only by the carriageway style layers, which style::LANE_RENDERING drops for release.
+                // planet4 still carries them; either is valid.
+                continue;
+            }
+            if *name == "traffic" {
+                // The writer stopped emitting `traffic` features (mamaps_build extract_part3.rs:
+                // "dropped as of the NA diet"); the layer stays in the dictionary with zero
+                // features. Pinned so a rebuild that brings it back is noticed.
+                assert!(!tally.contains_key(name), "traffic layer is back: wire up and test it");
+                continue;
+            }
+            assert!(
+                tally.get(name).is_some_and(|t| t.features > 0),
+                "layer {name} never appeared in {tiles} city tiles"
+            );
         }
-        if *name == "traffic" {
-            // The writer stopped emitting `traffic` features (mamaps_build extract_part3.rs:
-            // "dropped as of the NA diet"); the layer stays in the dictionary with zero
-            // features. Pinned so a rebuild that brings it back is noticed.
-            assert!(!tally.contains_key(name), "traffic layer is back: wire up and test it");
-            continue;
-        }
+        // planet4 carries v10 bodies, planet5 v11 (MED-residual heightmaps); never a mix.
         assert!(
-            tally.get(name).is_some_and(|t| t.features > 0),
-            "layer {name} never appeared in {tiles} city tiles"
+            versions.len() == 1 && versions.keys().all(|&v| (10..=12).contains(&v)),
+            "expected one body version, v10 (planet4) or v11/v12 (planet5), got {versions:?}"
         );
+    } else {
+        // The synthetic body carries every layer but `traffic` (which the
+        // writer no longer emits, exactly as on the planet).
+        for name in ["landtype", "roads", "boundaries", "buildings", "places", "poi", "transit", "junction", "safety"] {
+            assert!(
+                tally.get(name).is_some_and(|t| t.features > 0),
+                "layer {name} never appeared in {tiles} synthetic tiles"
+            );
+        }
+        assert!(!tally.contains_key("traffic"), "traffic layer is back: wire up and test it");
+        assert!(versions.len() == 1, "expected one body version, got {versions:?}");
     }
     assert!(buildings > 0, "no 3D buildings tessellated");
     // Lane rendering is switched off in the style (style::LANE_RENDERING, z16+ overzoom), so
@@ -264,26 +295,33 @@ fn every_layer_decodes_and_tessellates_in_four_cities() {
     assert!(regions > 0, "no region-mask shapes (boundaries)");
     assert!(extra.contains_key("heightmap"), "no heightmap on any city tile");
     assert!(extra.contains_key("region_links"), "no region-link tables decoded");
-    // planet4 carries v10 bodies, planet5 v11 (MED-residual heightmaps); never a mix.
-    assert!(
-        versions.len() == 1 && versions.keys().all(|&v| (10..=12).contains(&v)),
-        "expected one body version, v10 (planet4) or v11/v12 (planet5), got {versions:?}"
-    );
 }
 
 #[test]
-#[ignore = "needs MAMAPS_REAL_ARCHIVE (80 GB planet archive)"]
 fn dem_heightmaps_sample_and_drape() {
-    let Some(path) = archive_path() else { return };
+    // (name, lat, lon, zoom, min peak metres, synthetic heightmap lo..hi)
+    type DemCase = (&'static str, f64, f64, u8, i32, (i32, i32));
+    let cases: &[DemCase] = &[
+        ("Fuji", 35.3606, 138.7274, 12, 2500, (100, 3000)),
+        ("Fuji", 35.3606, 138.7274, 10, 2000, (100, 3000)),
+        ("SF Twin Peaks", 37.7544, -122.4477, 12, 150, (20, 220)),
+        ("Denver flat", 39.7392, -104.9903, 12, 1400, (1500, 1700)),
+    ];
+    let (path, _planet) = acquire("dem", |p| {
+        let tiles: Vec<(u8, u32, u32, Body)> = cases
+            .iter()
+            .map(|&(_, lat, lon, z, _, (lo, hi))| {
+                let (x, y) = tile_of(lat, lon, z);
+                (z, x, y, fixture::dem_body(lo, hi))
+            })
+            .collect();
+        fixture::write_archive(p, &tiles);
+    });
     let archive = open(&path);
     let layers = style::layers();
-    // Mount Fuji (3776 m) and the SF hills: relief must come through with real metres.
-    for &(name, lat, lon, z, min_peak) in &[
-        ("Fuji", 35.3606, 138.7274, 12u8, 2500i32),
-        ("Fuji", 35.3606, 138.7274, 10u8, 2000i32),
-        ("SF Twin Peaks", 37.7544, -122.4477, 12u8, 150i32),
-        ("Denver flat", 39.7392, -104.9903, 12u8, 1400i32),
-    ] {
+    // Mount Fuji (3776 m) and the SF hills on the planet; synthetic
+    // heightmaps encode the same relief ranges in-test.
+    for &(name, lat, lon, z, min_peak, _) in cases {
         let (x, y) = tile_of(lat, lon, z);
         let body = archive.tile(z, x, y).unwrap().expect("tile present");
         let hm = body.heightmap.as_ref().unwrap_or_else(|| panic!("{name} {z}/{x}/{y}: no heightmap"));
@@ -300,10 +338,22 @@ fn dem_heightmaps_sample_and_drape() {
 }
 
 #[test]
-#[ignore = "needs MAMAPS_REAL_ARCHIVE (80 GB planet archive)"]
 fn an_overlay_segment_is_discovered_and_served_patch_first() {
     use tilecodec::mamaps::write::{Options, StreamWriter};
-    let Some(path) = archive_path() else { return };
+    let (path, _planet) = acquire("overlay-base", |p| {
+        let tiles: Vec<(u8, u32, u32, Body)> = [
+            (37.7749, -122.4194),
+            (51.5074, -0.1278),
+            (40.7580, -73.9855),
+        ]
+        .iter()
+        .map(|&(lat, lon)| {
+            let (x, y) = tile_of(lat, lon, 14);
+            (14, x, y, fixture::rich_body(120))
+        })
+        .collect();
+        fixture::write_archive(p, &tiles);
+    });
     let base = open(&path);
     let build = base.header.build_id;
     let len = base.header.file_len;
@@ -319,11 +369,14 @@ fn an_overlay_segment_is_discovered_and_served_patch_first() {
     patched.buildings.clear();
     assert!(patched.layers.len() < before, "SF z14 had no buildings layer to drop");
 
-    let dir = std::env::temp_dir().join(format!("real-archive-overlay-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("synthetic-overlay-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("overlays/0001")).unwrap();
     let base_link = dir.join("basemap.mamaps");
+    #[cfg(unix)]
     std::os::unix::fs::symlink(&path, &base_link).unwrap();
+    #[cfg(not(unix))]
+    std::fs::copy(&path, &base_link).unwrap();
     let mut writer = StreamWriter::new(Options {
         build_id: 0xabcd,
         rings_validated: true,
@@ -340,7 +393,7 @@ fn an_overlay_segment_is_discovered_and_served_patch_first() {
     );
     std::fs::write(dir.join("overlays/manifest.json"), manifest).unwrap();
 
-    let found = discover(&base_link, Arc::new(LeafCache::new())).expect("discover refused a valid overlay over the real base");
+    let found = discover(&base_link, Arc::new(LeafCache::new())).expect("discover refused a valid overlay over the base");
     assert_eq!(found.seq, 1);
     let overlay = found.overlay;
     assert_eq!(overlay.header().build_id, build, "the overlay keeps the base identity");
@@ -391,6 +444,10 @@ impl map_renderer::tile::source::RangeFetcher for CurlFetcher {
 /// fetch first, the origin marker it keys the disk cache on, then a cold tile read through
 /// `CachingRangeReader` + `RangeCache` + the shared decoder — compared byte-for-byte with the
 /// local copy when `MAMAPS_REAL_ARCHIVE` is set too. Gated on `MAMAPS_LIVE=1` (network).
+///
+/// Planet-only by construction (it pins the published file's build id and
+/// length), so it stays ignored; the synthetic tests above cover the same
+/// reader paths offline.
 #[test]
 #[ignore = "needs MAMAPS_LIVE=1 and network to data.maproj.org"]
 fn live_planet4_reads_through_the_range_cache() {
@@ -429,7 +486,7 @@ fn live_planet4_reads_through_the_range_cache() {
     println!("live: SF z14 has {} layers; {cached} ranges cached under {origin}", body.layers.len());
     assert!(cached > 0, "nothing landed in the range cache");
     assert_eq!(std::fs::read_to_string(dir.join(".origin")).unwrap().trim(), origin);
-    if let Some(path) = archive_path() {
+    if let Some(path) = fixture::planet_path() {
         let local = open(&path);
         assert_eq!(local.header, header, "local world.mamaps is not the published planet4");
         assert_eq!(local.tile(14, x, y).unwrap().unwrap(), body, "live and local bodies differ");
