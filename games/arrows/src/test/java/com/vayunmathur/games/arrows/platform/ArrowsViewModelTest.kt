@@ -15,11 +15,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,8 +33,26 @@ import kotlin.test.assertTrue
 class ArrowsViewModelTest {
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
 
-    @BeforeTest fun setUp() { Dispatchers.setMain(Dispatchers.Unconfined) }
-    @AfterTest fun tearDown() { Dispatchers.resetMain() }
+    // Main is installed once for the whole class and never reset between
+    // methods: ViewModels created here are never cleared, so their
+    // viewModelScope coroutines keep reading Dispatchers.Main after a
+    // method ends. A per-method setMain/resetMain races those readers
+    // ("Dispatchers.Main is used concurrently with setting it") and the
+    // failed reset then cascades into the following methods. The
+    // Robolectric sandbox is per-class, so leaving Main installed for
+    // the class's lifetime leaks nothing into other test classes.
+    @BeforeTest fun setUp() {
+        synchronized(Companion) {
+            if (!mainInstalled) {
+                Dispatchers.setMain(Dispatchers.Unconfined)
+                mainInstalled = true
+            }
+        }
+    }
+
+    private companion object {
+        var mainInstalled = false
+    }
 
     /**
      * runBlocking with a deadline, so a wedged store fails the test instead of hanging the whole

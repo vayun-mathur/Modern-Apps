@@ -131,11 +131,46 @@ class GeneratedBoardPropertiesTest {
         // Generation is off the main thread behind a spinner, so this is about not leaving the player
         // watching it. Deliberately loose: it is a guard against a pathological regression, not a target.
         // Generates fresh rather than reusing the shared ladder, since the point is to time the work.
-        val started = System.nanoTime()
+        //
+        // The budget is charged in thread CPU time, not wall clock: wall
+        // clock under a fully loaded test host mostly measures scheduler
+        // contention from the other test workers (this test measured
+        // 33.75 s of wall time in a loaded full-suite run), which says
+        // nothing about whether generation itself regressed. CPU time
+        // alone is not host-independent either - the same generation
+        // costs ~21 s of CPU on this host and several times less on a
+        // faster one - so the budget is expressed in units of a fixed
+        // reference workload (SHA-256 over a fixed buffer) timed in
+        // the same process immediately beforehand. Host speed and
+        // load move the reference and the ladder together, while a
+        // generator regression moves only the ladder. On this host the
+        // ladder costs ~18 reference units; the budget allows 55
+        // (the same roughly-3x looseness the old absolute budget had).
+        val refStart = threadCpuTimeNanos()
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val buf = ByteArray(65_536) { (it * 31).toByte() }
+        repeat(REF_ITERATIONS) { digest.digest(buf) }
+        val refMillis = (threadCpuTimeNanos() - refStart) / 1_000_000
+        val cpu = threadCpuTimeNanos()
         val boards = ladder.count { generate(it) != null }
-        val millis = (System.nanoTime() - started) / 1_000_000
+        val millis = (threadCpuTimeNanos() - cpu) / 1_000_000
         assertEquals(LADDER_DEPTH, boards)
-        assertTrue(millis < BUDGET_MILLIS, "generating $LADDER_DEPTH boards took ${millis}ms")
+        assertTrue(
+            millis < refMillis * MAX_LADDER_REF_RATIO,
+            "generating $LADDER_DEPTH boards took ${millis}ms of CPU " +
+                "(${millis / refMillis.coerceAtLeast(1)}x the ${refMillis}ms reference, " +
+                "budget ${MAX_LADDER_REF_RATIO}x)",
+        )
+    }
+
+    /** Current thread's CPU time, falling back to wall clock where the bean is unsupported. */
+    private fun threadCpuTimeNanos(): Long {
+        val bean = java.lang.management.ManagementFactory.getThreadMXBean()
+        return if (bean.isCurrentThreadCpuTimeSupported) {
+            bean.currentThreadCpuTime
+        } else {
+            System.nanoTime()
+        }
     }
 
     /**
@@ -161,8 +196,14 @@ class GeneratedBoardPropertiesTest {
 
         const val LEVEL_SEED = 104_729L
 
-        /** Roughly three times the measured cost, so ordinary variation does not turn this red. */
-        const val BUDGET_MILLIS = 25_000L
+        /** Fixed reference workload size for the affordability budget (see the test). */
+        const val REF_ITERATIONS = 20_000
+
+        /**
+         * Ladder budget in reference-workload units: roughly three times the
+         * measured ~18x ratio, so ordinary variation does not turn this red.
+         */
+        const val MAX_LADDER_REF_RATIO = 55L
 
         fun generate(level: Int): ArrowsPuzzle? = ArrowsGenerator.generateSeeded(
             cols = boardSizeForLevel(level).first,

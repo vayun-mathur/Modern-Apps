@@ -14,12 +14,10 @@ import com.vayunmathur.games.arrows.platform.ArrowsViewModel
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,12 +32,23 @@ class PagesTest {
     private fun str(id: Int) = ctx.getString(id)
 
     @BeforeTest fun setUp() {
-        Dispatchers.setMain(Dispatchers.Unconfined)
+        // As in ArrowsViewModelTest: install Main once per class, never
+        // reset per method - uncleared ViewModels keep reading it, and
+        // resetting races them (and cascades into later methods).
+        synchronized(Companion) {
+            if (!mainInstalled) {
+                Dispatchers.setMain(Dispatchers.Unconfined)
+                mainInstalled = true
+            }
+        }
         runCatching {
             androidx.work.WorkManager.initialize(app, androidx.work.Configuration.Builder().build())
         }
     }
-    @AfterTest fun tearDown() { Dispatchers.resetMain() }
+
+    private companion object {
+        var mainInstalled = false
+    }
 
     private fun await(desc: String, cond: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 30_000
