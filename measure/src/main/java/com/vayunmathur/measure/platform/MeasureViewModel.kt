@@ -17,6 +17,7 @@ import com.vayunmathur.measure.platform.sensor.ImuRecorder
 import com.vayunmathur.measure.platform.sensor.TiltSensor
 import com.vayunmathur.measure.domain.polygonArea
 import com.vayunmathur.measure.domain.polygonPerimeter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -94,7 +95,11 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
         val (pitch, roll, edge) = tiltSensor.captureZero()
         levelState.value = levelState.value.copy(isCalibrated = true)
         settingsState.value = settingsState.value.copy(levelCalibrated = true)
-        viewModelScope.launch {
+        // IO, not Main: a DataStore edit suspended on the main
+        // dispatcher can strand the store's write lock if that
+        // dispatcher stops being pumped (Robolectric resets it
+        // between tests, wedging every later edit in the process).
+        viewModelScope.launch(Dispatchers.IO) {
             ds.setDouble(KEY_LEVEL_PITCH, pitch)
             ds.setDouble(KEY_LEVEL_ROLL, roll)
             ds.setDouble(KEY_LEVEL_EDGE, edge)
@@ -105,7 +110,7 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
         tiltSensor.clearCalibration()
         levelState.value = levelState.value.copy(isCalibrated = false)
         settingsState.value = settingsState.value.copy(levelCalibrated = false)
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             // Remove the keys rather than writing NaN sentinels: a stored
             // NaN reads back as a non-null Double, so the loader treated
             // the level as calibrated forever and subtracted NaN offsets
@@ -224,7 +229,9 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
     // ---- DiagnosticsActions ----
 
     private fun persistBoolean(key: String, value: Boolean) {
-        viewModelScope.launch { ds.setBoolean(key, value) }
+        // IO for the same reason as calibrateZero: never hold a
+        // DataStore edit on the main dispatcher.
+        viewModelScope.launch(Dispatchers.IO) { ds.setBoolean(key, value) }
     }
 
     override fun onCleared() {

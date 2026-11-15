@@ -15,6 +15,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.launch
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
@@ -197,12 +198,32 @@ class MeasureViewModelTest {
         // fresh load applies them all at once.
         run {
             val store = vm.ds
-            kotlinx.coroutines.runBlocking {
+            // Write off the main thread and pump while waiting:
+            // runBlocking here parks the Robolectric main thread
+            // forever once a previous test (settingsActions...) has
+            // left a DataStore edit suspended on the main dispatcher
+            // - Robolectric discards that queue between tests, the
+            // store's write lock is never released, and every later
+            // edit blocks with no IO thread progressing (the class
+            // run's deadlocked sandbox main thread). The ViewModel
+            // now writes on IO; this test does the same.
+            val written = java.util.concurrent.CountDownLatch(1)
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                 store.setBoolean(KEY_IMPERIAL, true)
                 store.setBoolean(KEY_FRACTIONAL, false)
                 store.setBoolean(KEY_DIAGNOSTICS, true)
+                written.countDown()
             }
+            val writeDeadline = System.currentTimeMillis() + 15_000
+            while (written.count > 0 && System.currentTimeMillis() < writeDeadline) {
+                pump()
+                Thread.sleep(10)
+            }
+            assertTrue(written.count == 0L, "timed out writing preferences")
         }
+        // The synchronous getters read the IO-mirrored snapshot; wait
+        // for the mirror to catch up before loading.
+        await("preferences mirrored") { vm.ds.getBoolean(KEY_IMPERIAL, false) }
         vm.loadPreferencesImpl()
         assertEquals(UnitSystem.Imperial, vm.settings.value.unitSystem)
         assertFalse(vm.settings.value.useFractionalInches)

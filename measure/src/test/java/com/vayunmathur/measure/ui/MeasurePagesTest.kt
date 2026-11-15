@@ -2,9 +2,12 @@ package com.vayunmathur.measure.ui
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.measure.R
@@ -36,11 +39,13 @@ class MeasurePagesTest {
         val vm = MeasureViewModel(app)
         val backStack = stack(Route.Compass)
         rule.setContent { CompassPage(backStack, vm) }
-        rule.onNodeWithText(str(R.string.tool_level)).performClick()
+        // The app-bar title also reads "Compass", so match the
+        // clickable bottom-bar tab, not just the text.
+        rule.onNode(hasText(str(R.string.tool_level)) and hasClickAction()).performClick()
         assertEquals(Route.Level, backStack.last())
-        rule.onNodeWithText(str(R.string.tool_ruler)).performClick()
+        rule.onNode(hasText(str(R.string.tool_ruler)) and hasClickAction()).performClick()
         assertEquals(Route.Ruler, backStack.last())
-        rule.onNodeWithText(str(R.string.tool_compass)).performClick()
+        rule.onNode(hasText(str(R.string.tool_compass)) and hasClickAction()).performClick()
         assertEquals(Route.Compass, backStack.last())
     }
 
@@ -75,7 +80,9 @@ class MeasurePagesTest {
         // in state, then the row appears and navigates.
         vm.setShowDiagnostics(true)
         rule.waitForIdle()
-        rule.onNodeWithText(str(R.string.settings_open_diagnostics)).performClick()
+        // The row sits at the bottom of a scrollable column; scroll
+        // it into view or the click lands outside the window.
+        rule.onNodeWithText(str(R.string.settings_open_diagnostics)).performScrollTo().performClick()
         assertEquals(Route.Diagnostics, backStack.last())
     }
 
