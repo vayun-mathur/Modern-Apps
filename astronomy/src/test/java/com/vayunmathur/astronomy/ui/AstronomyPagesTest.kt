@@ -47,8 +47,21 @@ class AstronomyPagesTest {
         await("catalog") { vm.catalogReady.value }
         vm.setManualLocation(37.0, -122.0)
         vm.selectObject("SUN")
+        // The detail resolves from visibleSky, which is recomputed on
+        // Dispatchers.Default after the location lands: catalogReady alone
+        // does not mean the Sun is in the sky snapshot yet. Composing
+        // before that emission renders "object not found" and the
+        // assertExists below races the recompute under load.
+        await("visible sun") { vm.visibleSky.value.sun != null }
         rule.setContent { ObjectDetailPage(backStack = stack(), viewModel = vm, objectId = "SUN") }
-        rule.onNodeWithText("Sun", substring = true).assertExists()
+        // The page collects visibleSky asynchronously even once composed,
+        // so poll for the node rather than asserting on the first frame.
+        await("sun node") {
+            runCatching {
+                rule.onNodeWithText("Sun", substring = true).assertExists()
+                true
+            }.getOrDefault(false)
+        }
     }
 
     @Test fun `settings page renders through the view model`() {
