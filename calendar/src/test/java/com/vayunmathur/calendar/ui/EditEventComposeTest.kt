@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.calendar.CalendarTestData as D
@@ -41,6 +42,23 @@ class EditEventComposeTest {
 
     @get:Rule
     val rule = createComposeRule()
+
+    // Timed instances render in the system zone by design, and the test
+    // data's instants are built in UTC: pin the default zone so the wall
+    // times (and the hourly grid's vertical positions) are the same on
+    // every host instead of depending on where the suite runs.
+    private lateinit var defaultTimeZone: java.util.TimeZone
+
+    @kotlin.test.BeforeTest
+    fun pinTimeZone() {
+        defaultTimeZone = java.util.TimeZone.getDefault()
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+    }
+
+    @kotlin.test.AfterTest
+    fun restoreTimeZone() {
+        java.util.TimeZone.setDefault(defaultTimeZone)
+    }
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private fun backStack() = NavBackStack<Route>(arrayOf(Route.Calendar))
@@ -313,12 +331,15 @@ class EditEventComposeTest {
         var clicked: com.vayunmathur.calendar.data.Instance? = null
         val inst = D.instance()
         val timed = mapOf(D.TODAY to mapOf(9 to listOf(inst)))
-        rule.mainClock.autoAdvance = false
         rule.setContent {
             HourlyGrid(context, timed, listOf(D.TODAY), shrinkEmptyHours = false, onEventClick = { clicked = it }, innerPadding = androidx.compose.foundation.layout.PaddingValues(0.dp))
         }
         rule.mainClock.advanceTimeBy(500)
-        rule.onNodeWithText("Team standup").assertIsDisplayed()
+        // The 09:00 chip sits below the fold of the 24-hour scrollable grid
+        // (24 rows x 56dp); scroll it into view before asserting display.
+        rule.onNodeWithText("Team standup")
+            .performScrollTo()
+            .assertIsDisplayed()
         rule.onNodeWithText("Team standup").performClick()
         assertEquals(inst, clicked)
     }
