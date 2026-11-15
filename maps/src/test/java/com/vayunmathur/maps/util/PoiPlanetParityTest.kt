@@ -50,6 +50,30 @@ class PoiPlanetParityTest {
         return (System.nanoTime() - t) / 1_000.0 / n
     }
 
+    private fun probeAnswers(m: PoiIndex.Mapped, planet: Boolean, lines: ArrayList<String>): Answers {
+        val rnd = Random(SEED)
+        val probes = if (planet) ATTR_PROBES else m.count
+        val ords = IntArray(probes) { if (planet) rnd.nextInt(m.count) else it }
+        fun attrPass(): Unit = ords.forEach { o -> lines.add("attrs $o: ${PoiIndex.attributesAt(o)}") }
+        val attrCold = nanosPer(ords.size) { attrPass() }
+        val keep3 = lines.size
+        val attrWarm = nanosPer(ords.size) { attrPass() }
+        while (lines.size > keep3) lines.removeAt(lines.size - 1)
+        val timings = LinkedHashMap<String, Pair<Double, Double>>()
+        timings["attributesAt random (us/call)"] = attrCold to attrWarm
+        val regionProbes = if (planet) REGION_PROBES else m.count
+        val ords2 = IntArray(regionProbes) { if (planet) rnd.nextInt(m.count) else it }
+        fun regionPass(): Unit = ords2.forEach { o ->
+            lines.add("region $o: ${m.regionId(o)} ${PoiIndex.localityAt(o, english = true)}")
+        }
+        val regCold = nanosPer(ords2.size) { regionPass() }
+        val keep4 = lines.size
+        val regWarm = nanosPer(ords2.size) { regionPass() }
+        while (lines.size > keep4) lines.removeAt(lines.size - 1)
+        timings["regionId+locality random (us/call)"] = regCold to regWarm
+        return Answers(lines, timings)
+    }
+
     private fun answers(file: File): Answers {
         assertTrue(PoiIndex.reloadArchive(file), "the app could not map POI sections from $file")
         val m = kotlin.test.assertNotNull(PoiIndex.mappedForQuery())
@@ -84,28 +108,8 @@ class PoiPlanetParityTest {
         }
         timings["nearest+viewport (us/city)"] = timedPair(lines, cities.size) { spatialPass() }
 
-        // Place sheet: attributes of random ordinals (each one a different block when cold).
-        val rnd = Random(SEED)
-        val probes = if (planet) ATTR_PROBES else m.count
-        val ords = IntArray(probes) { if (planet) rnd.nextInt(m.count) else it }
-        fun attrPass(): Unit = ords.forEach { o -> lines.add("attrs $o: ${PoiIndex.attributesAt(o)}") }
-        val attrCold = nanosPer(ords.size) { attrPass() }
-        val keep3 = lines.size
-        val attrWarm = nanosPer(ords.size) { attrPass() }
-        while (lines.size > keep3) lines.removeAt(lines.size - 1)
-        timings["attributesAt random (us/call)"] = attrCold to attrWarm
-
-        // Boundary link + locality of random ordinals (search rows of far-apart places).
-        val regionProbes = if (planet) REGION_PROBES else m.count
-        val ords2 = IntArray(regionProbes) { if (planet) rnd.nextInt(m.count) else it }
-        fun regionPass(): Unit = ords2.forEach { o ->
-            lines.add("region $o: ${m.regionId(o)} ${PoiIndex.localityAt(o, english = true)}")
-        }
-        val regCold = nanosPer(ords2.size) { regionPass() }
-        val keep4 = lines.size
-        val regWarm = nanosPer(ords2.size) { regionPass() }
-        while (lines.size > keep4) lines.removeAt(lines.size - 1)
-        timings["regionId+locality random (us/call)"] = regCold to regWarm
+        val probed = probeAnswers(m, planet, lines)
+        timings.putAll(probed.timings)
         return Answers(lines, timings)
     }
 
