@@ -20,9 +20,9 @@ import kotlin.math.sqrt
  * circularity looks like from outside. So this file drives the same pipeline from a decoded
  * recording and reports frames-named, not notes-per-frame alone.
  *
- * The recording is not in the tree - it is 2.4 MB of PCM and this is a measurement tool, not a
- * regression gate. [RealAudioHarness.pcmOrNull] returns null when it is absent and every caller
- * skips, so a checkout without it still builds and tests green.
+ * [RealAudioHarness.pcmOrNull] returns null when the recording is absent; callers then fall
+ * back to [RealAudioHarness.syntheticPcm] (the same C/Am/F progression, synthesised), so the
+ * harness runs hermetically in CI instead of silently passing.
  */
 object RealAudioHarness {
     /** Mono 32-bit float, little endian, decoded to [RATE]. See `docs` in the report header. */
@@ -48,6 +48,32 @@ object RealAudioHarness {
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         return DoubleArray(bytes.size / 4) { buffer.getFloat(it * 4).toDouble() }
     }
+
+    /**
+     * A synthetic stand-in for the recording: ukulele-voiced C, Am and F
+     * strums (the [GROUND_TRUTH] progression), generated with the same
+     * [Signals.strum] shape the synthetic corpus uses. Hermetic tests run
+     * the production pipeline over this when no recording is present, so
+     * the harness is exercised in CI instead of silently passing; the real
+     * recording still wins whenever it is on disk.
+     */
+    fun syntheticPcm(): DoubleArray {
+        val chords = listOf(
+            listOf(67, 60, 64, 72), // C: G C E C
+            listOf(69, 60, 64, 69), // Am: A C E A
+            listOf(65, 69, 60, 65), // F: F A C F
+        )
+        val perChord = (RATE * 1.5).toInt()
+        val out = DoubleArray(perChord * chords.size)
+        chords.forEachIndexed { i, midis ->
+            val strum = Signals.strum(midis, perChord, seed = 100 + i)
+            strum.copyInto(out, destinationOffset = i * perChord)
+        }
+        return out
+    }
+
+    /** The real recording when present, otherwise [syntheticPcm]. */
+    fun pcmOrSynthetic(): DoubleArray = pcmOrNull() ?: syntheticPcm()
 
     /**
      * The recording's tuning offset in cents, negative for flat, modulo one semitone.

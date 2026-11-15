@@ -11,10 +11,10 @@ import kotlin.test.assertTrue
 /**
  * Drives NNLS and the constrained sieve over the same real recording and writes both scores out.
  *
- * Not a gate. Everything here either skips (no recording) or asserts something that is true of
- * the harness rather than of the detector, because the whole point of the file is that the
- * numbers are currently bad and hard thresholds would either be vacuous or permanently red.
- * `build/real-audio-report.txt` is the deliverable.
+ * The report (`build/real-audio-report.txt`) is the deliverable, and the thresholds stay
+ * deliberately loose — the point is that real numbers are currently bad — but the harness
+ * does gate on the production detector naming some frames correctly, over the real
+ * recording when present and over a synthesised C/Am/F progression otherwise.
  */
 class RealAudioHarnessTest {
     private val catalog = InstrumentCatalog.parse(File("src/main/assets/instruments.json").readText())
@@ -31,11 +31,7 @@ class RealAudioHarnessTest {
 
     @Test
     fun realAudioComparison() {
-        val pcm = RealAudioHarness.pcmOrNull()
-        if (pcm == null) {
-            println("SKIP: no ${RealAudioHarness.PCM_PATH}; see RealAudioHarness for how to make it")
-            return
-        }
+        val pcm = RealAudioHarness.pcmOrSynthetic()
 
         val fraction = RealAudioHarness.tuningOffsetCents(pcm)
         val report = StringBuilder()
@@ -60,6 +56,13 @@ class RealAudioHarnessTest {
         File("build").mkdirs()
         File("build/real-audio-report.txt").writeText(report.toString())
         println(report)
+        // The harness must actually measure the production pipeline, not
+        // just print: on the synthetic progression (or the recording) the
+        // shipping detector names at least some frames, correctly.
+        val (productionScore, _) = production(pcm, ChordExtractor.CHROMA_HMM)
+        assertTrue(productionScore.tonal > 0, "no tonal frames measured: ${productionScore.report()}")
+        assertTrue(productionScore.named > 0, "production detector named no frames: ${productionScore.report()}")
+        assertTrue(productionScore.correct > 0, "production detector named no frame correctly: ${productionScore.report()}")
     }
 
     private fun appendHeader(report: StringBuilder, pcm: DoubleArray, fraction: Double) {
@@ -256,11 +259,7 @@ class RealAudioHarnessTest {
      */
     @Test
     fun c4SurvivesTheProvisionalBoundary() {
-        val pcm = RealAudioHarness.pcmOrNull()
-        if (pcm == null) {
-            println("SKIP: no ${RealAudioHarness.PCM_PATH}")
-            return
-        }
+        val pcm = RealAudioHarness.pcmOrSynthetic()
         val cents = RealAudioHarness.tuningOffsetCents(pcm) - 100.0
         val constantQ = RealAudioHarness.compensated(cents)
         val frames = RealAudioHarness.hops(pcm, constantQ.requiredSamples, RealAudioHarness.HOP)
