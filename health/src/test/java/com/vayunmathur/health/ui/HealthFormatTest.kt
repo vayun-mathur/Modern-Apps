@@ -21,6 +21,28 @@ class HealthFormatTest {
 
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
+    // The formatters render in the device zone/locale by design, so the
+    // expected wall-clock strings below are only meaningful under a pinned
+    // zone and locale: 2026-03-04T09:30:00Z is 09:30 in UTC, 04:30 in
+    // New York and 01:30 in Los Angeles, and the suite must not depend on
+    // the host it happens to run on.
+    private lateinit var defaultTimeZone: java.util.TimeZone
+    private lateinit var defaultLocale: java.util.Locale
+
+    @kotlin.test.BeforeTest
+    fun pinZoneAndLocale() {
+        defaultTimeZone = java.util.TimeZone.getDefault()
+        defaultLocale = java.util.Locale.getDefault()
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+        java.util.Locale.setDefault(java.util.Locale.US)
+    }
+
+    @kotlin.test.AfterTest
+    fun restoreZoneAndLocale() {
+        java.util.TimeZone.setDefault(defaultTimeZone)
+        java.util.Locale.setDefault(defaultLocale)
+    }
+
     @Test
     fun `durations render as hours and minutes`() {
         assertEquals("1h 30m", hoursMinutesString(context, 90))
@@ -40,8 +62,10 @@ class HealthFormatTest {
     fun `medical datetimes carry the time of day`() {
         val text = medicalDateTimeString(java.time.Instant.parse("2026-03-04T09:30:00Z"), true)
         // Short date plus the time: this is the compact form for dose timestamps.
+        // Zone and locale are pinned to UTC / US in setup, so the instant
+        // renders as its UTC wall time.
         assertTrue("3/4/26" in text || "2026" in text, "date missing from $text")
-        assertTrue("1:30" in text || "01:30" in text, "time missing from $text")
+        assertTrue("09:30" in text, "time missing from $text")
     }
 
     @Test
