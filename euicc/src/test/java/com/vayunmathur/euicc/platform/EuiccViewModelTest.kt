@@ -56,21 +56,36 @@ class EuiccViewModelTest {
         }
     }
 
+    /** Awaits the terminal Failed state of a download started with no channel. */
+    private fun awaitFailed(vm: EuiccViewModel) {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (vm.download !is DownloadState.Failed && System.currentTimeMillis() < deadline) Thread.sleep(10)
+        assertTrue(vm.download is DownloadState.Failed, "download=${vm.download}")
+    }
+
     @Test fun `startDownload fails cleanly without channel and can be retried from Failed`() {
         val vm = vm()
         awaitSettled(vm)
         vm.startDownload("LPA:1\$smdp.example.com\$MATCH1", imei = "123", confirmationCode = null)
-        assertEquals(DownloadState.Preparing, vm.download)
-        val deadline = System.currentTimeMillis() + 10_000
-        while (vm.download !is DownloadState.Failed && System.currentTimeMillis() < deadline) Thread.sleep(10)
-        assertTrue(vm.download is DownloadState.Failed, "download=${vm.download}")
+        // Preparing is set synchronously, but the IO authenticate that
+        // fails it runs concurrently: under load the terminal Failed can
+        // land before the test thread reads the transient state, so
+        // asserting Preparing exactly races the failure it precedes.
+        // Assert the flow left Idle (Preparing or already Failed), then
+        // await the terminal state.
+        assertTrue(
+            vm.download is DownloadState.Preparing || vm.download is DownloadState.Failed,
+            "download=${vm.download}",
+        )
+        awaitFailed(vm)
         assertNull((vm.download as DownloadState.Failed).message)
         // Failed is a re-entry point.
         vm.startDownload("LPA:1\$smdp.example.com\$MATCH1")
-        assertEquals(DownloadState.Preparing, vm.download)
-        val deadline2 = System.currentTimeMillis() + 10_000
-        while (vm.download !is DownloadState.Failed && System.currentTimeMillis() < deadline2) Thread.sleep(10)
-        assertTrue(vm.download is DownloadState.Failed)
+        assertTrue(
+            vm.download is DownloadState.Preparing || vm.download is DownloadState.Failed,
+            "download=${vm.download}",
+        )
+        awaitFailed(vm)
     }
 
     @Test fun `confirm submit cancel and clear are no-ops without pending session`() {
