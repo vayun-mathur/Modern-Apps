@@ -25,6 +25,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
+/** Clip Worker: a context implementation for clip worker. */
 class ClipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): WorkResult = withContext(Dispatchers.IO) {
@@ -44,6 +45,7 @@ class ClipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         text = "Indexing photos for visual search on-device...",
     )
 
+    /** Shared constants and helpers for ClipWorker. */
     companion object {
         const val WORK_NAME = "ClipWorker"
         private val clipMutex = Mutex()

@@ -131,6 +131,7 @@ data class PhotoFilterAdj(
     }
 }
 
+/** Kinds of selective color range. */
 enum class SelectiveColorRange { Reds, Yellows, Greens, Cyans, Blues, Magentas, Neutrals }
 
 /**

@@ -8,8 +8,10 @@ private const val ALPHA_SHIFT = 24
 private const val RED_SHIFT = 16
 private const val GREEN_SHIFT = 8
 
+/** Kinds of mask type. */
 enum class MaskType { Brush, RadialGradient, LinearGradient }
 
+/** Immutable value describing selective mask. */
 data class SelectiveMask(
     val type: MaskType = MaskType.Brush,
     val brushPoints: List<Pair<Float, Float>> = emptyList(),
@@ -21,6 +23,7 @@ data class SelectiveMask(
     val adjustments: ImageAdjustments = ImageAdjustments(),
 )
 
+/** Immutable value describing selective edits. */
 data class SelectiveEdits(
     val masks: List<SelectiveMask> = emptyList(),
 ) {

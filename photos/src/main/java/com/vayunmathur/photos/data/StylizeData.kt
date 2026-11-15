@@ -4,8 +4,10 @@ import android.graphics.Bitmap
 import androidx.core.graphics.createBitmap
 import com.vayunmathur.photos.util.PhotosNative
 
+/** Kinds of stylize mode. */
 enum class StylizeMode { None, FindEdges, Emboss }
 
+/** Immutable value describing stylize params. */
 data class StylizeParams(
     val mode: StylizeMode = StylizeMode.None,
 ) {

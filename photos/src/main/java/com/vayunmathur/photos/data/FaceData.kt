@@ -85,6 +85,7 @@ data class FaceClusterRow(
     val clusterable: Boolean,
 )
 
+/** Contract for face dao. */
 @Dao
 interface FaceDao {
     @Insert

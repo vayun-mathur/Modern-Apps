@@ -27,6 +27,7 @@ private const val TINT_HALF_MIX = 0.5f
 private const val SHARPEN_GAIN = 1.5f
 private const val SHARPEN_CENTER_WEIGHT = 4f
 
+/** Immutable value describing image adjustments. */
 data class ImageAdjustments(
     val brightness: Float = 0f,
     val contrast: Float = 0f,
@@ -42,11 +43,13 @@ data class ImageAdjustments(
     val tint: Float = 0f,
 )
 
+/** Immutable value describing photo filter. */
 data class PhotoFilter(
     val name: String,
     val adjustments: ImageAdjustments,
 )
 
+/** Singleton holding photo filters state and operations. */
 object PhotoFilters {
     val all: List<PhotoFilter> = listOf(
         PhotoFilter("None", ImageAdjustments()),

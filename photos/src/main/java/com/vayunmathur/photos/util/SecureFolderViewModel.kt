@@ -328,6 +328,7 @@ class SecureFolderViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    /** Shared constants and helpers for SecureFolderViewModel. */
     companion object {
         private const val TAG = "SecureFolderViewModel"
         const val RELOCK_ON_EXIT_KEY = "secure_folder_relock_on_exit"

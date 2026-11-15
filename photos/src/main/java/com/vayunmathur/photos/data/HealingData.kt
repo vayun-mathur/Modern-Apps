@@ -8,8 +8,10 @@ private const val ALPHA_SHIFT = 24
 private const val RED_SHIFT = 16
 private const val GREEN_SHIFT = 8
 
+/** Kinds of heal mode. */
 enum class HealMode { Heal, Clone, SpotHeal }
 
+/** Immutable value describing healing stroke. */
 data class HealingStroke(
     val sourceX: Float,
     val sourceY: Float,
@@ -18,6 +20,7 @@ data class HealingStroke(
     val mode: HealMode = HealMode.Heal,
 )
 
+/** Immutable value describing healing strokes. */
 data class HealingStrokes(
     val strokes: List<HealingStroke> = emptyList(),
 ) {

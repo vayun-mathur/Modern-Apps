@@ -37,6 +37,7 @@ class LayerMask(
     override fun equals(other: Any?): Boolean = other is LayerMask && other.id == id
     override fun hashCode(): Int = id.hashCode()
 
+    /** Shared constants and helpers for LayerMask. */
     companion object {
         fun full(width: Int, height: Int): LayerMask =
             LayerMask(FloatArray(width * height) { 1f }, width, height)
@@ -88,60 +89,70 @@ sealed interface LayerAdjustment {
     val label: String
 }
 
+/** Immutable value describing basic adjustment; carries adjustments. */
 data class BasicAdjustment(val adjustments: ImageAdjustments = ImageAdjustments()) : LayerAdjustment {
     override fun isIdentity(): Boolean = adjustments == ImageAdjustments()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = adjustments.applyToBitmap(bitmap)
     override val label: String get() = "Adjustments"
 }
 
+/** Immutable value describing curves adj; carries curves. */
 data class CurvesAdj(val curves: CurvesAdjustment = CurvesAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = curves.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = curves.applyLutToBitmap(bitmap)
     override val label: String get() = "Curves"
 }
 
+/** Immutable value describing hsl adj; carries hsl. */
 data class HslAdj(val hsl: HslAdjustments = HslAdjustments()) : LayerAdjustment {
     override fun isIdentity(): Boolean = hsl.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = hsl.applyHslToBitmap(bitmap)
     override val label: String get() = "HSL"
 }
 
+/** Immutable value describing blur adj; carries blur. */
 data class BlurAdj(val blur: BlurParams = BlurParams()) : LayerAdjustment {
     override fun isIdentity(): Boolean = blur.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = blur.applyBlurToBitmap(bitmap)
     override val label: String get() = "Blur"
 }
 
+/** Immutable value describing selective adj; carries selective. */
 data class SelectiveAdj(val selective: SelectiveEdits = SelectiveEdits()) : LayerAdjustment {
     override fun isIdentity(): Boolean = selective.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = selective.applySelectiveEdits(bitmap)
     override val label: String get() = "Selective"
 }
 
+/** Immutable value describing levels adj; carries levels. */
 data class LevelsAdj(val levels: LevelsAdjustment = LevelsAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = levels.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = levels.applyToBitmap(bitmap)
     override val label: String get() = "Levels"
 }
 
+/** Immutable value describing color balance adj; carries balance. */
 data class ColorBalanceAdj(val balance: ColorBalanceAdjustment = ColorBalanceAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = balance.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = balance.applyToBitmap(bitmap)
     override val label: String get() = "Color Balance"
 }
 
+/** Immutable value describing channel mixer adj; carries mixer. */
 data class ChannelMixerAdj(val mixer: ChannelMixerAdjustment = ChannelMixerAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = mixer.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = mixer.applyToBitmap(bitmap)
     override val label: String get() = "Channel Mixer"
 }
 
+/** Immutable value describing gradient map adj; carries gradient. */
 data class GradientMapAdj(val gradient: GradientMapAdjustment = GradientMapAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = gradient.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = gradient.applyToBitmap(bitmap)
     override val label: String get() = "Gradient Map"
 }
 
+/** Immutable value describing black and white adj. */
 data class BlackAndWhiteAdj(
     val bw: BlackAndWhiteAdjustment = BlackAndWhiteAdjustment(enabled = true),
 ) : LayerAdjustment {
@@ -180,6 +191,7 @@ sealed class Layer {
     ): Layer
 }
 
+/** Immutable value describing pixel layer. */
 data class PixelLayer(
     val bitmapRef: BitmapReference,
     override val id: String = Uuid.random().toString(),
@@ -207,6 +219,7 @@ data class PixelLayer(
     )
 }
 
+/** Immutable value describing adjustment layer. */
 data class AdjustmentLayer(
     val adjustment: LayerAdjustment,
     override val id: String = Uuid.random().toString(),
@@ -234,6 +247,7 @@ data class AdjustmentLayer(
     )
 }
 
+/** Immutable value describing text layer. */
 data class TextLayer(
     val textElement: TextElement,
     override val id: String = Uuid.random().toString(),
@@ -261,6 +275,7 @@ data class TextLayer(
     )
 }
 
+/** Immutable value describing drawing layer. */
 data class DrawingLayer(
     val strokes: List<SerializedStroke>,
     val sourceWidth: Float,

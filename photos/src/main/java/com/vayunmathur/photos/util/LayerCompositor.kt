@@ -35,6 +35,7 @@ class LayerCompositor {
     private var belowKey: String? = null
     private var belowCache: IntArray? = null
 
+    /** Shared constants and helpers for LayerCompositor. */
     companion object {
         private const val CHANNEL_MAX_F = 255f
         private const val MAX_PARALLEL_CORES = 8

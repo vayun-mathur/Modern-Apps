@@ -8,12 +8,14 @@ private const val ALPHA_SHIFT = 24
 private const val RED_SHIFT = 16
 private const val GREEN_SHIFT = 8
 
+/** Immutable value describing smudge stroke. */
 data class SmudgeStroke(
     val points: List<Pair<Float, Float>>,
     val strength: Float = 0.5f,
     val brushSize: Float = 0.05f,
 )
 
+/** Immutable value describing smudge strokes. */
 data class SmudgeStrokes(
     val strokes: List<SmudgeStroke> = emptyList(),
 ) {

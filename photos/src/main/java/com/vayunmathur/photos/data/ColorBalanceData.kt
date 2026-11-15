@@ -7,6 +7,7 @@ private const val ALPHA_SHIFT = 24
 private const val RED_SHIFT = 16
 private const val GREEN_SHIFT = 8
 
+/** Immutable value describing color balance adjustment. */
 data class ColorBalanceAdjustment(
     val shadowsRedCyan: Float = 0f,
     val shadowsGreenMagenta: Float = 0f,

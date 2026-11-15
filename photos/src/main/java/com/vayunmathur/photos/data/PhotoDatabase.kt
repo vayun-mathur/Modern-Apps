@@ -11,6 +11,7 @@ import androidx.room3.migration.Migration
 import androidx.sqlite.execSQL
 import kotlinx.coroutines.flow.Flow
 
+/** Contract for photo dao. */
 @Dao
 interface PhotoDao {
     // Excludes the heavy clipEmbedding BLOB, ocrText and ocrBoxes, which the
@@ -292,12 +293,14 @@ data class ExifResult(
     val pano: PanoData?,
 )
 
+/** Photo Database: a room database implementation for photo database. */
 @Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 20, exportSchema = false)
 abstract class PhotoDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
     abstract fun photoScanDao(): PhotoScanDao
     abstract fun faceDao(): FaceDao
 
+    /** Shared constants and helpers for PhotoDatabase. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations: List<Migration> = listOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,

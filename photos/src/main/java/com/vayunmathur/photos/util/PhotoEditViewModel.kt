@@ -232,6 +232,7 @@ class PhotoEditViewModel(
         _document.value = EditDocument()
     }
 
+    /** Shared constants and helpers for PhotoEditViewModel. */
     companion object {
         private const val TAG = "PhotoEditViewModel"
         private const val PREVIEW_MAX_DIM = 2048

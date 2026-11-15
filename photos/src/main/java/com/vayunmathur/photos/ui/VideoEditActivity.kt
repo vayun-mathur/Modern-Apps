@@ -23,6 +23,7 @@ import com.vayunmathur.photos.util.VideoEditViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** Video Edit Activity: a component activity implementation for video edit activity. */
 class VideoEditActivity : ComponentActivity() {
     private val videoEditViewModel: VideoEditViewModel by viewModels {
         VideoEditViewModelFactory(application, PhotosRepository.get(application))

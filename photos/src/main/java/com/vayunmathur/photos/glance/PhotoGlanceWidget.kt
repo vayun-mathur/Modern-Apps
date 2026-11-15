@@ -29,6 +29,7 @@ import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** Photo Glance Widget: a ma widget implementation for photo glance widget. */
 class PhotoGlanceWidget : MaWidget<List<String>>() {
     override suspend fun loadData(context: Context, id: GlanceId): List<String> =
         PhotoScanRepository.get(context.applicationContext).getStillPhotoUris().map { it.toString() }

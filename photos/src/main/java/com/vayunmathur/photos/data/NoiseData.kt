@@ -11,6 +11,7 @@ private const val NOISE_SCALE = 80f
 private const val PERCENT_DIVISOR = 100f
 private const val NOISE_SEED = 42
 
+/** Immutable value describing noise params. */
 data class NoiseParams(
     val amount: Float = 0f,
     val monochrome: Boolean = true,

@@ -24,6 +24,7 @@ import com.vayunmathur.photos.util.PhotoEditViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** Edit Activity: a component activity implementation for edit activity. */
 class EditActivity : ComponentActivity() {
     private val photoEditViewModel: PhotoEditViewModel by viewModels {
         PhotoEditViewModelFactory(application, PhotosRepository.get(application))

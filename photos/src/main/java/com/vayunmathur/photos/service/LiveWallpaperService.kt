@@ -192,6 +192,7 @@ class LiveWallpaperService : WallpaperService() {
         }
     }
 
+    /** Shared constants and helpers for LiveWallpaperService. */
     companion object {
         const val KEY_WALLPAPER_URI = "wallpaper_uri"
         const val KEY_WALLPAPER_IS_VIDEO = "wallpaper_is_video"

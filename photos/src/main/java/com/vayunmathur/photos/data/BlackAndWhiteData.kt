@@ -11,6 +11,7 @@ private const val CHANNEL_MAX = 255
 private const val CHANNEL_MAX_F = 255f
 private const val FULL_CIRCLE_DEGREES = 360f
 
+/** Immutable value describing black and white adjustment. */
 data class BlackAndWhiteAdjustment(
     val enabled: Boolean = false,
     val reds: Float = 40f,

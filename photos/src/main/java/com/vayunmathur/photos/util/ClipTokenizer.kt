@@ -124,6 +124,7 @@ class ClipTokenizer private constructor(
         return merged
     }
 
+    /** Shared constants and helpers for ClipTokenizer. */
     companion object {
         const val MERGES_ASSET = "clip/bpe_simple_vocab_16e6.txt"
 

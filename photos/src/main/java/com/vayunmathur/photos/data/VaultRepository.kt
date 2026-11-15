@@ -32,6 +32,7 @@ class VaultRepository private constructor(
     /** Expose DAO for internal wiring (e.g. SecureFolderViewModel still needs Flow wiring). */
     fun dao(): VaultPhotoDao = vaultPhotoDao
 
+    /** Shared constants and helpers for VaultRepository. */
     companion object {
         // One instance per password; unsynchronized map is guarded by synchronized block.
         private val instances = mutableMapOf<String, VaultRepository>()

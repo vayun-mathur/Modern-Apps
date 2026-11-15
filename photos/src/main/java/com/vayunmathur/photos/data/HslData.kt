@@ -21,6 +21,7 @@ private const val HUE_THIRD = 1f / 3f
 private const val HUE_TWO_THIRDS = 2f / 3f
 private const val HUE_BLEND_SCALE = 6f
 
+/** Kinds of hsl color range. */
 enum class HslColorRange(@StringRes val labelRes: Int, val hueCenter: Float) {
     Red(R.string.color_red, hueCenter = 0f),
     Orange(R.string.color_orange, hueCenter = 30f),
@@ -32,12 +33,14 @@ enum class HslColorRange(@StringRes val labelRes: Int, val hueCenter: Float) {
     Magenta(R.string.magenta, hueCenter = 300f),
 }
 
+/** Immutable value describing hsl channel adjustment. */
 data class HslChannelAdjustment(
     val hue: Float = 0f,
     val saturation: Float = 0f,
     val luminance: Float = 0f,
 )
 
+/** Immutable value describing hsl adjustments. */
 data class HslAdjustments(
     val channels: Map<HslColorRange, HslChannelAdjustment> =
         HslColorRange.entries.associateWith { HslChannelAdjustment() },

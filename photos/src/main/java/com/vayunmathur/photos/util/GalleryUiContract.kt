@@ -107,6 +107,7 @@ interface GalleryActions {
      */
     fun addSelectionToAlbum(name: String) {}
 
+    /** Shared constants and helpers for GalleryActions. */
     companion object {
         val Noop: GalleryActions = object : GalleryActions {}
     }

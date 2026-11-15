@@ -62,6 +62,7 @@ import android.database.CursorIndexOutOfBoundsException
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+/** Face Worker: a context implementation for face worker. */
 class FaceWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): WorkResult = withContext(Dispatchers.IO) {
@@ -82,6 +83,7 @@ class FaceWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         text = "Grouping photos of the same person on-device...",
     )
 
+    /** Shared constants and helpers for FaceWorker. */
     companion object {
         const val WORK_NAME = "FaceWorker"
         private val faceMutex = Mutex()

@@ -7,6 +7,7 @@ private const val RED_SHIFT = 16
 private const val GREEN_SHIFT = 8
 private const val CHANNEL_MAX = 255
 
+/** Immutable value describing channel mixer adjustment. */
 data class ChannelMixerAdjustment(
     val rFromR: Float = 1f,
     val rFromG: Float = 0f,

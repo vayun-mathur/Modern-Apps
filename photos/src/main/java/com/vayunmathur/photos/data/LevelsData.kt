@@ -11,6 +11,7 @@ private const val CHANNEL_MAX_F = 255f
 private const val LUT_SIZE = 256
 private const val MIN_GAMMA = 0.01f
 
+/** Immutable value describing levels adjustment. */
 data class LevelsAdjustment(
     val inBlack: Float = 0f,
     val inWhite: Float = 255f,

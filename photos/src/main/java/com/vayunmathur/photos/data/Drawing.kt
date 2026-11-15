@@ -5,6 +5,7 @@ import androidx.ink.brush.Brush
 import androidx.ink.brush.StockBrushes
 import kotlinx.serialization.Serializable
 
+/** Kinds of drawing tool. */
 @Serializable
 enum class DrawingTool { Pointer, Pen, Highlighter, Eraser, Text }
 
@@ -24,6 +25,7 @@ fun DrawingTool.toBrush(color: Int, size: Float): Brush? = when (this) {
     else -> null
 }
 
+/** Immutable value describing text element. */
 @Serializable
 data class TextElement(
     val id: String,
@@ -45,6 +47,7 @@ val textFontFamilies: List<String> = listOf(
     "sans-serif", "serif", "monospace", "sans-serif-condensed", "sans-serif-light", "cursive",
 )
 
+/** Immutable value describing serializable offset; carries x, y. */
 @Serializable
 data class SerializableOffset(val x: Float, val y: Float)
 

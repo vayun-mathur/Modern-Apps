@@ -11,12 +11,14 @@ private const val CHANNEL_MAX = 255
 private const val RED_DOMINANCE_FACTOR = 1.5f
 private const val DESATURATE_FACTOR = 0.8f
 
+/** Immutable value describing red eye spot. */
 data class RedEyeSpot(
     val x: Float,
     val y: Float,
     val radius: Float = 0.03f,
 )
 
+/** Immutable value describing red eye spots. */
 data class RedEyeSpots(
     val spots: List<RedEyeSpot> = emptyList(),
 ) {

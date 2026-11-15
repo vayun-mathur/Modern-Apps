@@ -63,6 +63,7 @@ class FaceRepository private constructor(context: Context) :
             scanDao.setFaceScanned(photoIds)
         }
 
+    /** Shared constants and helpers for FaceRepository. */
     companion object {
         /** Below SQLite's 999 bound-parameter limit, leaving room for the cluster id. */
         private const val ASSIGN_CHUNK = 900

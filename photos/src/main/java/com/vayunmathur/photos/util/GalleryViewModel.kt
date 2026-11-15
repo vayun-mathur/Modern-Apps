@@ -528,6 +528,7 @@ class GalleryViewModel(
         viewModelScope.launch { dataStore.setString(ALBUM_COVERS_KEY, Json.encodeToString(updated)) }
     }
 
+    /** Shared constants and helpers for GalleryViewModel. */
     companion object {
         private const val TAG = "GalleryViewModel"
 
@@ -580,10 +581,12 @@ interface PhotoStore {
     suspend fun getAll(): List<Photo>
 }
 
+/** Contract for photo scan store. */
 interface PhotoScanStore {
     suspend fun getClipEmbeddings(): List<com.vayunmathur.photos.data.PhotoEmbedding>
 }
 
+/** Contract for face store. */
 interface FaceStore {
     fun personsFlow(): Flow<List<com.vayunmathur.photos.data.Person>>
     fun faceGeometryFlow(): Flow<List<com.vayunmathur.photos.data.FaceGeometry>>
@@ -591,7 +594,10 @@ interface FaceStore {
     suspend fun setPersonName(id: Long, name: String?)
 }
 
-private class PhotoStoreRepository(application: Application, val delegate: PhotosRepository = PhotosRepository.get(application)) : PhotoStore {
+private class PhotoStoreRepository(
+    application: Application,
+    val delegate: PhotosRepository = PhotosRepository.get(application),
+) : PhotoStore {
     private val repository = delegate
     override fun getAllFlow(): Flow<List<Photo>> = repository.getAllFlow()
     override fun getOCRCountFlow(): Flow<Int> = repository.getOCRCountFlow()
@@ -607,15 +613,22 @@ private class PhotoStoreRepository(application: Application, val delegate: Photo
     override suspend fun getAll(): List<Photo> = repository.getAll()
 }
 
-private class PhotoScanStoreRepository(application: Application, delegate: PhotoScanRepository = PhotoScanRepository.get(application)) : PhotoScanStore {
+private class PhotoScanStoreRepository(
+    application: Application,
+    delegate: PhotoScanRepository = PhotoScanRepository.get(application),
+) : PhotoScanStore {
     private val scanRepository = delegate
     override suspend fun getClipEmbeddings() = scanRepository.getClipEmbeddings()
 }
 
-private class FaceStoreRepository(application: Application, delegate: FaceRepository = FaceRepository.get(application)) : FaceStore {
+private class FaceStoreRepository(
+    application: Application,
+    delegate: FaceRepository = FaceRepository.get(application),
+) : FaceStore {
     private val faceRepository = delegate
     override fun personsFlow(): Flow<List<com.vayunmathur.photos.data.Person>> = faceRepository.personsFlow()
-    override fun faceGeometryFlow(): Flow<List<com.vayunmathur.photos.data.FaceGeometry>> = faceRepository.faceGeometryFlow()
+    override fun faceGeometryFlow(): Flow<List<com.vayunmathur.photos.data.FaceGeometry>> =
+        faceRepository.faceGeometryFlow()
     override suspend fun photoIdsForCluster(clusterId: Long): List<Long> = faceRepository.photoIdsForCluster(clusterId)
     override suspend fun setPersonName(id: Long, name: String?) = faceRepository.setPersonName(id, name)
 }
@@ -686,6 +699,7 @@ data class Album(
     /** Photo count shown under the album tile. */
     val count: Int get() = photos.size
 
+    /** Shared constants and helpers for Album. */
     companion object {
         const val UNKNOWN_NAME = "__unknown__"
     }

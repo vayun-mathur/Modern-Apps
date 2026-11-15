@@ -41,6 +41,7 @@ open class PhotosRepository internal constructor(context: Context) :
     open suspend fun setFavorite(ids: List<Long>, value: Boolean) = photoDao.setFavorite(ids, value)
     suspend fun searchPhotos(query: String): List<Photo> = photoDao.searchPhotos(query)
 
+    /** Shared constants and helpers for PhotosRepository. */
     companion object {
         @Volatile
         private var instance: PhotosRepository? = null

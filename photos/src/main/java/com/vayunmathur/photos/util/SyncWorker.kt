@@ -59,6 +59,7 @@ import android.database.CursorIndexOutOfBoundsException
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+/** Sync Worker: a context implementation for sync worker. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): WorkResult = withContext(Dispatchers.IO) {
         setForeground(createForegroundInfo())
@@ -107,6 +108,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         text = "Indexing photos and extracting text...",
     )
 
+    /** Shared constants and helpers for SyncWorker. */
     companion object {
         const val WORK_NAME = "SyncWorker"
 
@@ -140,6 +142,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     }
 }
 
+/** OCR Worker: a context implementation for ocr worker. */
 class OCRWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): WorkResult = withContext(Dispatchers.IO) {
@@ -159,6 +162,7 @@ class OCRWorker(context: Context, params: WorkerParameters) : CoroutineWorker(co
         text = "Reading text in your photos...",
     )
 
+    /** Shared constants and helpers for OCRWorker. */
     companion object {
         private const val WORK_NAME = "OCRWorker"
         private val ocrMutex = Mutex() // Shared across all instances of OCRWorker

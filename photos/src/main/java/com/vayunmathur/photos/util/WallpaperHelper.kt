@@ -29,8 +29,10 @@ import kotlin.math.roundToInt
 
 // --- ViewModel ------------------------------------------------------------------
 
+/** Kinds of wallpaper load state. */
 enum class WallpaperLoadState { Idle, Loading, Loaded, Failed }
 
+/** Wallpaper View Model: a application implementation for wallpaper view model. */
 class WallpaperViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _bitmap = MutableStateFlow<Bitmap?>(null)
@@ -83,6 +85,7 @@ class WallpaperViewModel(application: Application) : AndroidViewModel(applicatio
         _bitmap.value = null
     }
 
+    /** Shared constants and helpers for WallpaperViewModel. */
     companion object {
         private const val TAG = "WallpaperViewModel"
     }
@@ -96,6 +99,7 @@ fun WallpaperViewModelFactory(application: Application): ViewModelProvider.Facto
 
 // --- Wallpaper application utility ----------------------------------------------
 
+/** Singleton holding wallpaper util state and operations. */
 object WallpaperUtil {
 
     const val TAG = "WallpaperUtil"
@@ -110,7 +114,9 @@ object WallpaperUtil {
      * Result of the set-wallpaper operation.
      */
     sealed class SetResult {
+        /** Singleton holding success state and operations. */
         data object Success : SetResult()
+        /** Immutable value describing failure; carries exception. */
         data class Failure(val exception: Exception) : SetResult()
     }
 

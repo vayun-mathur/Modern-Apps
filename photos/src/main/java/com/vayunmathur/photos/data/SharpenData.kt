@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.core.graphics.createBitmap
 import com.vayunmathur.photos.util.PhotosNative
 
+/** Immutable value describing unsharp mask. */
 data class UnsharpMask(
     val amount: Float = 0f,
     val radius: Float = 2f,

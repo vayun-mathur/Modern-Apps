@@ -10,18 +10,21 @@ data class FilterBlurAdj(val blur: FilterBlur = FilterBlur()) : LayerAdjustment 
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = blur.applyToBitmap(bitmap)
 }
 
+/** Immutable value describing unsharp adj; carries mask. */
 data class UnsharpAdj(val mask: UnsharpMask = UnsharpMask()) : LayerAdjustment {
     override fun isIdentity(): Boolean = mask.isIdentity()
     override val label: String get() = "Sharpen"
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = mask.applyToBitmap(bitmap)
 }
 
+/** Immutable value describing noise adj; carries noise. */
 data class NoiseAdj(val noise: NoiseParams = NoiseParams()) : LayerAdjustment {
     override fun isIdentity(): Boolean = noise.isIdentity()
     override val label: String get() = "Noise"
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = noise.applyToBitmap(bitmap)
 }
 
+/** Immutable value describing stylize adj; carries stylize. */
 data class StylizeAdj(val stylize: StylizeParams = StylizeParams()) : LayerAdjustment {
     override fun isIdentity(): Boolean = stylize.isIdentity()
     override val label: String get() = "Stylize"

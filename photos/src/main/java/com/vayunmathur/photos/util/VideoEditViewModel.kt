@@ -210,6 +210,8 @@ class VideoEditViewModel(
      * unrecoverable failure; the overwrite-permission path resumes via
      * [onWritePermissionGranted].
      */
+    // Transformer.start can fail synchronously with any runtime failure; all tear down alike.
+    @Suppress("TooGenericExceptionCaught")
     fun export(context: Context, photo: Photo, asCopy: Boolean, onComplete: () -> Unit) {
         if (_exporting.value) return
         val state = _state.value
@@ -374,6 +376,7 @@ class VideoEditViewModel(
         pendingExportFile?.delete()
     }
 
+    /** Shared constants and helpers for VideoEditViewModel. */
     companion object {
         private const val TAG = "VideoEditViewModel"
 

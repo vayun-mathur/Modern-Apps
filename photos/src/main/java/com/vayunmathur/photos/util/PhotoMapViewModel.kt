@@ -114,6 +114,7 @@ class PhotoMapViewModel(application: Application) : AndroidViewModel(application
         return "$l,$lo"
     }
 
+    /** Shared constants and helpers for PhotoMapViewModel. */
     companion object {
         private const val TAG = "PhotoMapViewModel"
 

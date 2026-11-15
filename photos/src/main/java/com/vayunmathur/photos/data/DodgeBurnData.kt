@@ -10,10 +10,13 @@ private const val RED_SHIFT = 16
 private const val GREEN_SHIFT = 8
 private const val CHANNEL_MAX = 255
 
+/** Kinds of dodge burn mode. */
 enum class DodgeBurnMode { Dodge, Burn }
 
+/** Kinds of tonal range. */
 enum class TonalRange { Shadows, Midtones, Highlights }
 
+/** Immutable value describing dodge burn stroke. */
 data class DodgeBurnStroke(
     val points: List<Pair<Float, Float>>,
     val mode: DodgeBurnMode,
@@ -22,6 +25,7 @@ data class DodgeBurnStroke(
     val brushSize: Float = 0.05f,
 )
 
+/** Immutable value describing dodge burn strokes. */
 data class DodgeBurnStrokes(
     val strokes: List<DodgeBurnStroke> = emptyList(),
 ) {

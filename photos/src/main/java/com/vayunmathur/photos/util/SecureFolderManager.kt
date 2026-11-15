@@ -24,6 +24,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
+/** Secure Folder Manager: a context implementation for secure folder manager. */
 class SecureFolderManager(val context: Context) {
     private val secureFolder = File(context.filesDir, "secure_vault")
 
@@ -52,6 +53,7 @@ class SecureFolderManager(val context: Context) {
     // until doFinal() (OpenSSLAeadCipher.appendToBuf), causing OutOfMemoryError
     // for +100MB files. We split into 1MiB chunks, each encrypted independently
     // with a fresh random IV and written as: [MAGIC(4)][IV(12)][len(4)][ciphertext].
+    /** Shared constants and helpers for SecureFolderManager. */
     companion object {
         private const val GCM_IV_LENGTH = 12
         private const val CHUNK_SIZE = 1024 * 1024 // 1 MiB

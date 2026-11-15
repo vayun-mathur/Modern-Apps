@@ -95,6 +95,7 @@ class Selection(
         return hash
     }
 
+    /** Shared constants and helpers for Selection. */
     companion object {
         fun rectangle(
             width: Int,

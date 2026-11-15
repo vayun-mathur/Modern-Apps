@@ -12,6 +12,7 @@ import com.vayunmathur.library.util.DatabaseItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
+/** Immutable value describing vault photo. */
 @Serializable
 @Entity
 data class VaultPhoto(
@@ -26,6 +27,7 @@ data class VaultPhoto(
     val videoDuration: Long? = null,
 ) : DatabaseItem
 
+/** Contract for vault photo dao. */
 @Dao
 interface VaultPhotoDao {
     @Query("SELECT * FROM VaultPhoto")
@@ -41,6 +43,7 @@ interface VaultPhotoDao {
     suspend fun delete(value: VaultPhoto): Int
 }
 
+/** Vault Database: a room database implementation for vault database. */
 @Database(entities = [VaultPhoto::class], version = 1, exportSchema = false)
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun vaultPhotoDao(): VaultPhotoDao

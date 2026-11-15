@@ -174,6 +174,7 @@ class PhotoEditSaver(private val vm: PhotoEditViewModel) {
         return WriteResult.NeedsPermission(pendingIntent.intentSender, bytes, uri)
     }
 
+    /** Shared constants and helpers for PhotoEditSaver. */
     companion object {
         private const val TAG = "PhotoEditSaver"
     }

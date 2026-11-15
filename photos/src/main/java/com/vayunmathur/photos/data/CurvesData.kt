@@ -9,10 +9,13 @@ private const val GREEN_SHIFT = 8
 private const val CHANNEL_MAX = 255
 private const val CHANNEL_MAX_F = 255f
 
+/** Immutable value describing curve control point; carries x, y. */
 data class CurveControlPoint(val x: Float, val y: Float)
 
+/** Kinds of curve channel. */
 enum class CurveChannel { Combined, Red, Green, Blue }
 
+/** Immutable value describing curves adjustment. */
 data class CurvesAdjustment(
     val combined: List<CurveControlPoint> = listOf(CurveControlPoint(0f, 0f), CurveControlPoint(1f, 1f)),
     val red: List<CurveControlPoint> = listOf(CurveControlPoint(0f, 0f), CurveControlPoint(1f, 1f)),

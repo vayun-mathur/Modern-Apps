@@ -105,39 +105,45 @@ object ClipEmbedder {
 
     private fun ensureInit(context: Context): Boolean {
         clip?.let { return true }
-        synchronized(lock) {
-            clip?.let { return true }
-            if (initTried) return false
-            initTried = true
-            val app = context.applicationContext
-            val tok = ClipTokenizer.load(app)
-            if (tok == null) {
-                Log.error(TAG, "CLIP merges asset missing")
-                return false
-            }
-            // Construction never throws: an absent, compressed or malformed asset, a missing
-            // `libmodelrunner.so` and a device without fp16 compute all come back unavailable.
-            // A linkage failure inside the native bring-up is an Error, so guard
-            // it here to keep that guarantee on incomplete host/device libraries.
-            val handle = try {
-                ClipHandle.inAssets(app.assets)
-            } catch (_: LinkageError) {
-                Log.error(TAG, "TinyCLIP native library incomplete")
-                return false
-            } catch (_: RuntimeException) {
-                Log.error(TAG, "TinyCLIP bring-up failed")
-                return false
-            }
-            if (!handle.isAvailable) {
-                Log.error(TAG, "cannot bring up $handle")
-                handle.close()
-                return false
-            }
-            clip = handle
-            tokenizer = tok
-            Log.status(TAG, "TinyCLIP embedder ready (dim=${ClipHandle.DIMENSION})")
-            return true
+        return synchronized(lock) { initLocked(context) }
+    }
+
+    /** Loads the native handle; null (logged) when bring-up fails in any way. */
+    private fun loadHandle(app: Context): ClipHandle? = try {
+        ClipHandle.inAssets(app.assets)
+    } catch (_: LinkageError) {
+        Log.error(TAG, "TinyCLIP native library incomplete")
+        null
+    } catch (_: RuntimeException) {
+        Log.error(TAG, "TinyCLIP bring-up failed")
+        null
+    }
+
+    /** One-time bring-up under [lock]; false leaves the embedder unavailable. */
+    private fun initLocked(context: Context): Boolean {
+        clip?.let { return true }
+        if (initTried) return false
+        initTried = true
+        val app = context.applicationContext
+        val tok = ClipTokenizer.load(app)
+        if (tok == null) {
+            Log.error(TAG, "CLIP merges asset missing")
+            return false
         }
+        // Construction never throws: an absent, compressed or malformed asset, a missing
+        // `libmodelrunner.so` and a device without fp16 compute all come back unavailable.
+        // A linkage failure inside the native bring-up is an Error, so guard
+        // it here to keep that guarantee on incomplete host/device libraries.
+        val handle = loadHandle(app) ?: return false
+        if (!handle.isAvailable) {
+            Log.error(TAG, "cannot bring up $handle")
+            handle.close()
+            return false
+        }
+        clip = handle
+        tokenizer = tok
+        Log.status(TAG, "TinyCLIP embedder ready (dim=${ClipHandle.DIMENSION})")
+        return true
     }
 
     /**

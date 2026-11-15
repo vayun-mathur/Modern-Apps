@@ -12,8 +12,10 @@ private const val OP_DY = 3
 private const val OP_RADIUS = 4
 private const val OP_STRENGTH = 5
 
+/** Kinds of liquify tool. */
 enum class LiquifyTool { Push, Twirl, Pucker, Bloat, Reconstruct }
 
+/** Immutable value describing liquify op. */
 data class LiquifyOp(
     val tool: LiquifyTool,
     val x: Float,            // normalized 0..1 center
@@ -24,6 +26,7 @@ data class LiquifyOp(
     val strength: Float = 0.5f,
 )
 
+/** Immutable value describing liquify params; carries ops. */
 data class LiquifyParams(val ops: List<LiquifyOp> = emptyList()) {
     fun isIdentity(): Boolean = ops.isEmpty()
 }

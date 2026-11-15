@@ -9,8 +9,10 @@ private const val CHANNEL_MAX = 255
 private const val CHANNEL_MAX_F = 255f
 private const val GRADIENT_LUT_SIZE = 256
 
+/** Immutable value describing gradient stop; carries position, color. */
 data class GradientStop(val position: Float, val color: Int)
 
+/** Immutable value describing gradient map adjustment; carries stops. */
 data class GradientMapAdjustment(val stops: List<GradientStop> = emptyList()) {
     fun isIdentity(): Boolean = stops.size < 2
 }

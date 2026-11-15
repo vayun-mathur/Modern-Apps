@@ -54,6 +54,7 @@ import com.vayunmathur.library.map.VectorMap
 import com.vayunmathur.library.map.rememberCameraState
 
 // Helper class to hold cluster data
+/** Immutable value describing map cluster. */
 data class MapCluster(
     /**
      * Geographic, not screen space. The marker layer places itself from the live camera, so

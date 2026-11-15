@@ -151,6 +151,7 @@ fun DrawingSettingsPage(
     }
 }
 
+/** Immutable value describing drawing settings result. */
 data class DrawingSettingsResult(
     val tool: DrawingTool,
     val color: Int,

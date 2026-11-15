@@ -36,6 +36,7 @@ import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.R
 
+/** Singleton holding image loader state and operations. */
 object ImageLoader {
     private const val VIDEO_FRAME_MILLIS = 1000L
     private const val THUMBNAIL_SIZE = 256

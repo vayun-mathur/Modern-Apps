@@ -125,6 +125,7 @@ data class EditDocument(
         return this.copy(layers = newLayers, activeLayerIndex = index + 1)
     }
 
+    /** Shared constants and helpers for EditDocument. */
     companion object {
         val FULL_CROP: Rect = Rect(0f, 0f, 1f, 1f)
 

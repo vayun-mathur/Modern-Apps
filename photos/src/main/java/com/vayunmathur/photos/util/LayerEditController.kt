@@ -119,6 +119,7 @@ class LayerEditController(private val vm: PhotoEditViewModel) {
         return layer.copyBase(mask = sel.toLayerMask())
     }
 
+    /** Shared constants and helpers for LayerEditController. */
     companion object {
         private const val TEXT_LAYER_NAME_LENGTH = 16
     }

@@ -7,6 +7,7 @@ import androidx.room3.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
 import kotlinx.serialization.Serializable
 
+/** Immutable value describing video data; carries duration. */
 @Serializable
 data class VideoData(val duration: Long)
 
@@ -35,6 +36,7 @@ data class PanoData(
     val isSphere: Boolean get() = !projectionType.equals("cylindrical", ignoreCase = true)
 }
 
+/** Immutable value describing photo. */
 @Serializable
 @Entity(indices = [Index(value = ["date"]), Index(value = ["isTrashed", "duration"])])
 data class Photo(

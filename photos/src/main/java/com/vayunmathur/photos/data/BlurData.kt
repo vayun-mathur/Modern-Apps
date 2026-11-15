@@ -4,8 +4,10 @@ import android.graphics.Bitmap
 import androidx.core.graphics.createBitmap
 import com.vayunmathur.photos.util.PhotosNative
 
+/** Kinds of blur mode. */
 enum class BlurMode { Radial, Linear, Lens }
 
+/** Immutable value describing blur params. */
 data class BlurParams(
     val mode: BlurMode = BlurMode.Radial,
     val centerX: Float = 0.5f,
@@ -29,6 +31,7 @@ fun BlurParams.applyBlurToBitmap(bitmap: Bitmap): Bitmap {
 
 // --- Full-image filter blurs ----------------------------------------------------
 
+/** Kinds of filter blur mode. */
 enum class FilterBlurMode { Gaussian, Motion, Radial, Spin }
 
 /** Full-image blur filter (destructive), distinct from the masked [BlurParams] lens blur. */

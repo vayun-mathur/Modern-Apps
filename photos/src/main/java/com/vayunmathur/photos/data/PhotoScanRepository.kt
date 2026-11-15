@@ -31,6 +31,7 @@ open class PhotoScanRepository internal constructor(context: Context) :
     suspend fun getStillPhotoUris(): List<String> = scanDao.getStillPhotoUris()
     suspend fun setOcrBoxes(id: Long, json: String?) = scanDao.setOcrBoxes(id, json)
 
+    /** Shared constants and helpers for PhotoScanRepository. */
     companion object {
         @Volatile
         private var instance: PhotoScanRepository? = null

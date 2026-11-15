@@ -161,6 +161,7 @@ class PixelEditController(private val vm: PhotoEditViewModel) {
         return (av + (bv - av) * t).toInt().coerceIn(0, CHANNEL_MAX)
     }
 
+    /** Shared constants and helpers for PixelEditController. */
     companion object {
         private const val ALPHA_SHIFT = 24
         private const val RED_SHIFT = 16

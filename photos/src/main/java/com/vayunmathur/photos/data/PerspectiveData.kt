@@ -5,6 +5,7 @@ import android.graphics.Matrix
 
 private const val CORNER_POINT_COUNT = 4
 
+/** Immutable value describing perspective corners. */
 data class PerspectiveCorners(
     val topLeft: Pair<Float, Float> = 0f to 0f,
     val topRight: Pair<Float, Float> = 1f to 0f,
