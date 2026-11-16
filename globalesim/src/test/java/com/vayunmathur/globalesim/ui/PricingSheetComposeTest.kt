@@ -110,6 +110,8 @@ class PricingSheetComposeTest {
         val vm = EsimViewModel(app)
         composeRule.setContent { DynamicTheme { Navigation(viewModel = vm) } }
         composeRule.onAllNodesWithText("Purchase")[0].assertIsDisplayed()
-        assertEquals(Route.Tabs, Route.Tabs)
+        composeRule.onAllNodesWithText("Pricing")[0].performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Search countries", substring = true).assertExists()
     }
 }

@@ -143,8 +143,8 @@ class EsimViewModelTest {
     @Test fun routeAndStateValueSemantics() {
         val encoded = kotlinx.serialization.json.Json.encodeToString(
             com.vayunmathur.globalesim.Route.serializer(),
-            com.vayunmathur.globalesim.Route.Tabs)
-        assertTrue(encoded.contains("Tabs"), encoded)
+            com.vayunmathur.globalesim.Route.Purchase)
+        assertTrue(encoded.contains("Purchase"), encoded)
         val s = EsimUiState(loading = true, simId = "x")
         assertEquals(s, s.copy())
         assertEquals(s.hashCode(), s.copy().hashCode())

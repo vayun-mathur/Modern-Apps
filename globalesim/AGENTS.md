@@ -19,7 +19,7 @@ _Install: ./install globalesim (dev by default)._
 - Rate catalog (server-scaled to the wallet's face value), Stripe card and NOWPayments crypto (+5%) top-ups, $5–$20 per payment
 - One-tap install via the standard `https://esimsetup.android.com/esim_qrcode_provisioning?carddata=LPA:1$<smdp>$<code>` link (unpinned ACTION_VIEW, raw carddata)
 **Architecture / data-flow:** `ui/` screens → `platform/EsimViewModel` (single `EsimUiState`) → `data/api/EsimApi` (own `/esim/v1/*` on api.maproj.org, FIRST_PARTY) with pure `domain/QuoteMath` and `data/AnonymousIdStore` (DataStore UUID). The reseller vendor is server-only (`location_share_server/src/handlers/esim*.rs`) and never named here.
-**Entry points + reading order:** `Route.Tabs` (Purchase + Pricing tabs, no other routes) → `MainActivity.kt` → `Navigation.kt` → `platform/EsimViewModel.kt` → `data/api/EsimApi.kt`.
+**Entry points + reading order:** `Route.Purchase` / `Route.Pricing` (sibling tab routes, no other routes) → `MainActivity.kt` → `Navigation.kt` → `platform/EsimViewModel.kt` → `data/api/EsimApi.kt`.
 **Gotchas:**
 - After any payment the ViewModel polls `/status` until the wallet rises (server-owned pending checkout + `pending_credit_cents` keep it going); pull-to-refresh on Purchase reloads status
 - One open crypto checkout per account, owned by the server and restored from `/status`

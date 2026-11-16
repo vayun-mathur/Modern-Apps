@@ -1,7 +1,6 @@
 package com.vayunmathur.globalesim
 
 import android.content.Intent
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
@@ -12,31 +11,22 @@ import com.vayunmathur.globalesim.ui.HomeScreen
 import com.vayunmathur.globalesim.ui.PricingScreen
 import com.vayunmathur.library.ui.IconGlobe
 import com.vayunmathur.library.ui.IconSim
-import com.vayunmathur.library.ui.PagerTab
-import com.vayunmathur.library.ui.TabStyle
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 
-@Composable
-fun Navigation(viewModel: EsimViewModel, launchers: CardPaymentLaunchers? = null) {
-    val backStack = rememberNavBackStack<Route>(Route.Tabs)
-
-    MainNavigation(backStack) {
-        entry<Route.Tabs> {
-            EsimTabs(viewModel = viewModel, launchers = launchers)
-        }
-    }
-}
-
 /**
- * The two bottom-nav tabs: Purchase (your eSIM + top-ups) and Pricing
- * (searchable per-country rates). ViewModel messages are shown here, once,
- * rather than by each tab (both tabs stay composed in the pager).
+ * The two bottom-nav tabs as sibling routes: Purchase (your eSIM + top-ups)
+ * and Pricing (searchable per-country rates), switched by resetting the
+ * back stack. ViewModel messages are shown here at the host, once, rather
+ * than by each tab screen.
  */
 @Composable
-private fun EsimTabs(viewModel: EsimViewModel, launchers: CardPaymentLaunchers?) {
+fun Navigation(viewModel: EsimViewModel, launchers: CardPaymentLaunchers? = null) {
+    val backStack = rememberNavBackStack<Route>(Route.Purchase)
     val context = LocalContext.current
     val messenger = rememberMessenger()
     val message = viewModel.state.message
@@ -46,26 +36,32 @@ private fun EsimTabs(viewModel: EsimViewModel, launchers: CardPaymentLaunchers?)
             viewModel.dismissMessage()
         }
     }
-    val pagerState = rememberPagerState(pageCount = { 2 })
-    val tabs = listOf(
-        PagerTab("Purchase", { IconSim() }) {
-            HomeScreen(
-                state = viewModel.state,
-                launchers = launchers,
-                onStartCardPurchase = viewModel::startCardPurchase,
-                onStartCryptoPurchase = { cents ->
-                    viewModel.startCryptoPurchase(cents) { url ->
-                        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-                    }
-                },
-                onClearCryptoInvoice = viewModel::clearPendingInvoice,
-                onClaim = viewModel::claim,
-                onRefresh = viewModel::refresh,
-            )
-        },
-        PagerTab("Pricing", { IconGlobe() }) {
-            PricingScreen(state = viewModel.state, onRefresh = viewModel::refreshRates)
-        },
-    )
-    TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)
+    TabbedPagerScaffold(
+        backStack = backStack,
+        tabs = listOf<RouteTab<Route>>(
+            RouteTab(Route.Purchase, "Purchase") { IconSim() },
+            RouteTab(Route.Pricing, "Pricing") { IconGlobe() },
+        ),
+    ) {
+        MainNavigation(backStack) {
+            entry<Route.Purchase>(metadata = SiblingPage()) {
+                HomeScreen(
+                    state = viewModel.state,
+                    launchers = launchers,
+                    onStartCardPurchase = viewModel::startCardPurchase,
+                    onStartCryptoPurchase = { cents ->
+                        viewModel.startCryptoPurchase(cents) { url ->
+                            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                        }
+                    },
+                    onClearCryptoInvoice = viewModel::clearPendingInvoice,
+                    onClaim = viewModel::claim,
+                    onRefresh = viewModel::refresh,
+                )
+            }
+            entry<Route.Pricing>(metadata = SiblingPage()) {
+                PricingScreen(state = viewModel.state, onRefresh = viewModel::refreshRates)
+            }
+        }
+    }
 }

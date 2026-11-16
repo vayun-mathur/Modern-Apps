@@ -6,7 +6,11 @@ import kotlinx.serialization.Serializable
 /** Contract for route. */
 @Serializable
 sealed interface Route : NavKey {
-    /** Tab host: Purchase + Pricing. */
+    /** Purchase tab (sibling route): your eSIM, balance and top-ups. */
     @Serializable
-    data object Tabs : Route
+    data object Purchase : Route
+
+    /** Pricing tab (sibling route): searchable per-country rates. */
+    @Serializable
+    data object Pricing : Route
 }
