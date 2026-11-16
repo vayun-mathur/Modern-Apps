@@ -15,6 +15,8 @@ import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+
+
 class ComposingWidget : MaWidget<String>() {
     override suspend fun loadData(context: Context, id: GlanceId): String = "loaded-data"
     override fun previewData(context: Context): String = "preview-data"

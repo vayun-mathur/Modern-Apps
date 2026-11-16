@@ -226,6 +226,14 @@ inline fun <reified V> readWidgetState(
     prefs: Preferences,
     key: String,
     serializer: KSerializer<V>
+): V? = readWidgetStateOrNull(prefs, key, serializer)
+
+/** Non-inline core of [readWidgetState] (kept in one compiled body). */
+@PublishedApi
+internal fun <V> readWidgetStateOrNull(
+    prefs: Preferences,
+    key: String,
+    serializer: KSerializer<V>
 ): V? {
     val prefsKey = stringPreferencesKey(key)
     val json = prefs[prefsKey] ?: return null
