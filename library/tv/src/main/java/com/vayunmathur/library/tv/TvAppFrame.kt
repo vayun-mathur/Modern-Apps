@@ -35,9 +35,23 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.SelectableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.library.util.NavKey
 
 /** One top-level destination in the rail. [icon] is an `IconXxx()` from `:library:ui`. */
 class TvDestination(val label: String, val icon: @Composable () -> Unit)
+
+/**
+ * One top-level destination in the rail of the route-backed [TvAppFrame]:
+ * a label, an `IconXxx()` from `:library:ui`, and the [route] it selects.
+ * The destination's content is the caller's entry for [route] (see the
+ * route-backed overload below).
+ */
+class TvRouteDestination<T : NavKey>(
+    val route: T,
+    val label: String,
+    val icon: @Composable () -> Unit,
+)
 
 /**
  * The TV app shell: a slim fixed rail (icon over a short label, like the phone's bottom bar
@@ -46,6 +60,13 @@ class TvDestination(val label: String, val icon: @Composable () -> Unit)
  * from the content returns to the rail so the next BACK exits.
  *
  * @param backReturnsToRail pass `false` when this frame is not the top of the back stack.
+ *
+ * This index-based overload is for a rail whose selection genuinely lives
+ * inside one screen. App-level TV destinations — the major screens of an
+ * app — are navigation destinations, not an index: use the route-backed
+ * overload below, where each destination is a route on a
+ * [NavBackStack] and focusing/clicking it resets the stack (sibling
+ * semantics), so back, deep links, and process restore see the real screen.
  */
 @Composable
 fun TvAppFrame(
@@ -58,12 +79,15 @@ fun TvAppFrame(
 ) {
     var railFocused by remember { mutableStateOf(false) }
     val requesters = remember(destinations.size) { List(destinations.size) { FocusRequester() } }
-    val selectedRequester = requesters.getOrElse(selected) { FocusRequester.Default }
+    // Null when nothing is selected (route-backed frame showing a non-rail
+    // destination): restoring focus to a default requester would land on the
+    // first rail item and its focus-select would hijack the destination.
+    val selectedRequester = requesters.getOrNull(selected)
     val focusManager = LocalFocusManager.current
 
     // Registered before content so screen-level BackHandlers (closing a panel, clearing search) win.
     BackHandler(enabled = backReturnsToRail && !railFocused) {
-        runCatching { selectedRequester.requestFocus() }
+        selectedRequester?.let { runCatching { it.requestFocus() } }
     }
     Row(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
@@ -71,7 +95,7 @@ fun TvAppFrame(
                 .fillMaxHeight()
                 .width(TvDimens.Rail)
                 .onFocusChanged { railFocused = it.hasFocus }
-                .focusRestorer(selectedRequester)
+                .then(if (selectedRequester != null) Modifier.focusRestorer(selectedRequester) else Modifier)
                 .focusGroup()
                 .padding(horizontal = 8.dp, vertical = TvDimens.SafeVertical),
             verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
@@ -96,6 +120,49 @@ fun TvAppFrame(
             }
         }
     }
+}
+
+/**
+ * Route-backed TV app shell: the same rail UI as the index-based
+ * [TvAppFrame], but destinations are keyed by [NavKey] routes on a
+ * [NavBackStack].
+ *
+ * Focusing or clicking a rail item calls `backStack.reset(destination.route)`
+ * — sibling semantics: destinations are siblings, so switching replaces the
+ * stack rather than pushing, and re-selecting the current destination is a
+ * no-op. Register each destination with `SiblingPage()` metadata in
+ * `MainNavigation` so switches crossfade instead of sliding like a push.
+ *
+ * [content] is invoked with the route on top of [backStack] and renders that
+ * destination — either directly (`when (route) { ... }`) or by hosting the
+ * `MainNavigation` for [backStack] inside the content slot, in which case
+ * non-rail destinations pushed over a destination render here with no rail
+ * item selected.
+ *
+ * The parameter list mirrors the index-based overload so migrations are
+ * mechanical: `selected`/`onSelect` are replaced by [backStack], and each
+ * `TvDestination(label, icon)` becomes a
+ * `TvRouteDestination(route, label, icon)`.
+ */
+@Composable
+fun <T : NavKey> TvAppFrame(
+    backStack: NavBackStack<T>,
+    destinations: List<TvRouteDestination<T>>,
+    modifier: Modifier = Modifier,
+    backReturnsToRail: Boolean = true,
+    content: @Composable (T) -> Unit,
+) {
+    val current = backStack.last()
+    TvAppFrame(
+        destinations = destinations.map { TvDestination(it.label, it.icon) },
+        selected = destinations.indexOfFirst { it.route == current },
+        onSelect = { index ->
+            val route = destinations[index].route
+            if (current != route) backStack.reset(route)
+        },
+        modifier = modifier,
+        backReturnsToRail = backReturnsToRail,
+    ) { content(current) }
 }
 
 @Composable
