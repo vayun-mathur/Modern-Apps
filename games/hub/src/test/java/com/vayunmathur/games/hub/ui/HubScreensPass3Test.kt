@@ -142,7 +142,7 @@ class HubScreensPass3Test {
     @Test
     fun gameDetailShowsStatsAchievementsAndSessions() {
         seedLibrary()
-        val stack = NavBackStack<MainRoute>(arrayOf(MainRoute.Main))
+        val stack = NavBackStack<MainRoute>(arrayOf(MainRoute.Dashboard))
         rule.setContent { DynamicTheme { GameDetailScreen("chess", vm, stack) } }
         rule.onAllNodesWithText("Chess")[0].assertIsDisplayed()
         rule.onNodeWithText("Board game").assertIsDisplayed()
@@ -155,7 +155,7 @@ class HubScreensPass3Test {
 
     @Test
     fun gameDetailMissingGameShowsNotFound() {
-        val stack = NavBackStack<MainRoute>(arrayOf(MainRoute.Main))
+        val stack = NavBackStack<MainRoute>(arrayOf(MainRoute.Dashboard))
         rule.setContent { DynamicTheme { GameDetailScreen("no-such-game", vm, stack) } }
         rule.onNodeWithText("Game not found").assertIsDisplayed()
     }
@@ -171,7 +171,7 @@ class HubScreensPass3Test {
     @Test
     fun settingsClearCacheConfirmsAndClears() {
         seedLibrary()
-        val stack = NavBackStack<MainRoute>(arrayOf(MainRoute.Main, MainRoute.Settings))
+        val stack = NavBackStack<MainRoute>(arrayOf(MainRoute.Dashboard, MainRoute.Settings))
         rule.setContent { DynamicTheme { SettingsScreen(vm, stack) } }
         rule.onNodeWithText("Settings").assertIsDisplayed()
         rule.onNodeWithText("Clear cache").performClick()

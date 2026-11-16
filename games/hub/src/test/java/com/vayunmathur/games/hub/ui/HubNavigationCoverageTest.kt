@@ -55,7 +55,7 @@ class HubNavigationCoverageTest {
     }
 
     @Test fun playOnTvScreenShowsDiscovery() {
-        val stack = NavBackStack<MainRoute>(arrayOf(MainRoute.Main, MainRoute.PlayOnTv))
+        val stack = NavBackStack<MainRoute>(arrayOf(MainRoute.Dashboard, MainRoute.PlayOnTv))
         rule.setContent { PlayOnTvScreen(stack) }
         rule.waitForIdle()
         // Discovery state renders (no hosts on the test network): reaching
@@ -66,7 +66,7 @@ class HubNavigationCoverageTest {
     @Test fun mainRouteValuesAreDistinct() {
         // Singleton routes must stay singletons: navigation equality depends
         // on it, and the detail routes carry their game id verbatim.
-        assertEquals(MainRoute.Main, MainRoute.Main)
+        assertEquals(MainRoute.Dashboard, MainRoute.Dashboard)
         assertEquals(MainRoute.PlayOnTv, MainRoute.PlayOnTv)
         assertEquals("chess", MainRoute.GameDetail("chess").gameId)
         assertEquals("chess", MainRoute.AchievementsForGame("chess").gameId)
