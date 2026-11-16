@@ -55,6 +55,7 @@ class TvPagesTest {
 
     private lateinit var db: SubscriptionDatabase
     private lateinit var vm: YouPipeViewModel
+    private val vmStore = androidx.lifecycle.ViewModelStore()
     private var musicPlaylistId: Long = -1
     private var stack: NavBackStack<TvRoute>? = null
 
@@ -67,12 +68,19 @@ class TvPagesTest {
         db = Room.inMemoryDatabaseBuilder(app, SubscriptionDatabase::class.java)
             .allowMainThreadQueries().build()
         vm = YouPipeViewModel(app, SubscriptionRepository(app, db))
+        vmStore.put("vm", vm)
         runBlocking { seed() }
     }
 
     @AfterTest
     fun tearDown() {
         TvLoadedVideo.id = null
+        // Cancel viewModelScope BEFORE closing the DB: the VM's
+        // WhileSubscribed flows and init IO work otherwise query the
+        // closed database from a background dispatcher, and Room's
+        // "connection pool is closed" SQLException surfaces as an
+        // uncaught exception in a later test on the shared CI box.
+        vmStore.clear()
         db.close()
     }
 

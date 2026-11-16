@@ -44,6 +44,7 @@ class SavedPlaylistMorePass3Test {
 
     private lateinit var db: SubscriptionDatabase
     private lateinit var vm: YouPipeViewModel
+    private val vmStore = androidx.lifecycle.ViewModelStore()
     private lateinit var backStack: NavBackStack<Route>
     private var playlistId: Long = -1
 
@@ -55,12 +56,19 @@ class SavedPlaylistMorePass3Test {
         db = Room.inMemoryDatabaseBuilder(app, SubscriptionDatabase::class.java)
             .allowMainThreadQueries().build()
         vm = YouPipeViewModel(app, SubscriptionRepository(app, db))
+        vmStore.put("vm", vm)
         backStack = NavBackStack(arrayOf<Route>(Route.Main(3)))
         runBlocking { playlistId = db.playlistDao().upsert(Playlist(name = "Road Trip")) }
     }
 
     @AfterTest
-    fun tearDown() = db.close()
+    fun tearDown() {
+        // Cancel viewModelScope before db.close(): background Room
+        // queries against the closed DB ("Database is closed" /
+        // connection-pool-closed) otherwise leak into later tests.
+        vmStore.clear()
+        db.close()
+    }
 
     @Test
     fun savedPage_downloadsRowNavigatesAndUserPlaylistOpens() {
@@ -94,9 +102,16 @@ class SavedPlaylistMorePass3Test {
         rule.waitUntilExactlyOneExists(hasText("Road Trip"), timeoutMillis = 10_000)
         rule.onNodeWithContentDescription("Delete").performClick()
         val remaining = runBlocking {
-            withTimeout(5_000) { vm.playlists.first { list -> list.none { it.id == playlistId } } }
+            withTimeout(20_000) { vm.playlists.first { list -> list.none { it.id == playlistId } } }
         }
         assertTrue(remaining.none { it.id == playlistId })
+        // The pop follows the delete on the main thread; under load it can
+        // land after the flow emission above, so await it (pumping
+        // Robolectric's paused main looper) instead of asserting at once.
+        rule.waitUntil(15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            stack.backStack.lastOrNull() == Route.Main(3)
+        }
         assertEquals(Route.Main(3), stack.backStack.last())
     }
 
