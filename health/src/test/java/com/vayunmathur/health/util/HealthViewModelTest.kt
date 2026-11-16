@@ -67,10 +67,15 @@ class HealthViewModelTest {
     }
 
     private suspend fun settle(cond: suspend () -> Boolean) {
-        repeat(200) {
+        // Step counted in real time (parkNanos), not runTest virtual time:
+        // the old 200 x delay(5) loop burned its whole budget instantly in
+        // virtual time while the real IO write was still in flight on a
+        // loaded CI box, then asserted against a stale database.
+        var steps = 0
+        while (steps++ < 800) {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
             if (cond()) return
-            delay(5)
+            try { Thread.sleep(25) } catch (_: InterruptedException) { }
         }
     }
 
