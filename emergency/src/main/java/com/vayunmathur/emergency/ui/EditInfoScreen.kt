@@ -2,13 +2,8 @@ package com.vayunmathur.emergency.ui
 
 import android.Manifest
 import android.content.Intent
-import android.os.Bundle
 import android.provider.ContactsContract
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -52,29 +47,9 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
  * `READ_CONTACTS`, requested here. Allergies and medications are never typed here -
  * they are read from Health Connect, which this screen only offers to connect.
  */
-class EditInfoActivity : ComponentActivity() {
-
-    private val viewModel: EmergencyViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            DynamicTheme {
-                EditInfoPage(viewModel = viewModel)
-            }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        viewModel.refresh()
-    }
-}
-
 /** Binds the ViewModel to the stateless screen, owning the pick/permission launchers. */
 @Composable
-private fun EditInfoPage(viewModel: EmergencyViewModel) {
+fun EditInfoPage(viewModel: EmergencyViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pickContact = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),

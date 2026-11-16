@@ -92,8 +92,20 @@
           ViewInfoActivity. No launcher entry - reached from Settings, the lock screen and
           the SOS flow, the same way EmergencyInfo is.
         -->
+        <!--
+          The single info host. Every former activity entry point below is an alias
+          onto this host, keeping its own label, exported flag, intent-filter and
+          Settings meta-data; MainActivity.routeFor turns the arriving intent into
+          the start route (ViewInfo for EMERGENCY_ASSISTANCE, EditInfo for the edit
+          actions). singleTask so a second Settings tap re-routes the running host
+          via onNewIntent instead of stacking hosts. showWhenLocked and
+          directBootAware are preserved from the old ViewInfoActivity so the view
+          card still opens over the lock screen before unlock; the editor is only
+          launched from Settings after unlock. SOS deliberately does NOT route
+          here: SosActivity keeps its own entry below.
+        -->
         <activity
-            android:name=".ui.ViewInfoActivity"
+            android:name=".MainActivity"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:directBootAware="true"
             android:exported="true"
@@ -101,12 +113,20 @@
             android:launchMode="singleTask"
             android:showWhenLocked="true"
             android:taskAffinity="com.android.settings"
-            android:theme="@style/Theme.General">
+            android:theme="@style/Theme.General" />
+
+        <!-- The lock-screen view card, answering EMERGENCY_ASSISTANCE. -->
+        <activity-alias
+            android:name=".ui.ViewInfoActivity"
+            android:directBootAware="true"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.telephony.action.EMERGENCY_ASSISTANCE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <!--
           Edit entry: contacts + medical info. Answers android.settings.EDIT_EMERGENCY_INFO
@@ -115,14 +135,12 @@
           our editor already covers both, so both filters land here and the legacy action
           keeps resolving.
         -->
-        <activity
+        <!-- The editor entry: EDIT_EMERGENCY_INFO plus the legacy EDIT_MEDICAL_INFO. -->
+        <activity-alias
             android:name=".ui.EditInfoActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/app_name"
-            android:launchMode="singleTask"
-            android:taskAffinity="com.android.settings"
-            android:theme="@style/Theme.General">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.settings.EDIT_EMERGENCY_INFO" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -131,7 +149,7 @@
                 <action android:name="android.emergency.EDIT_MEDICAL_INFO" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <!--
           Settings first-run suggestion, independent of the edit activity so it can be
@@ -142,7 +160,7 @@
             android:name=".ui.EditInfoSuggestion"
             android:exported="true"
             android:label="@string/app_name"
-            android:targetActivity=".ui.EditInfoActivity">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="com.android.settings.suggested.category.FIRST_IMPRESSION" />
@@ -170,7 +188,7 @@
             android:exported="false"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
-            android:targetActivity=".ui.EditInfoActivity">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="com.android.settings.action.IA_SETTINGS" />
                 <category android:name="android.intent.category.DEFAULT" />

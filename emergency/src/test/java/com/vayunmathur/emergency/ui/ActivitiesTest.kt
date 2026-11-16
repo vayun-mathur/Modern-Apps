@@ -1,6 +1,8 @@
 package com.vayunmathur.emergency.ui
 
 import android.content.Context
+import com.vayunmathur.emergency.MainActivity
+import com.vayunmathur.emergency.Route
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import org.junit.runner.RunWith
@@ -63,19 +65,29 @@ class ActivitiesTest {
     }
 
     @Test
-    fun `view info activity is direct-boot aware for pre-unlock responders`() {
+    fun `host activity is direct-boot aware for pre-unlock responders`() {
         // The lock-screen card must open after a reboot before the owner has
         // unlocked: the repository reads device-protected storage for exactly
         // this, which only works if the activity may run in direct-boot mode.
         val info = ctx.packageManager.getActivityInfo(
-            android.content.ComponentName(ctx, ViewInfoActivity::class.java), 0,
+            android.content.ComponentName(ctx, MainActivity::class.java), 0,
         )
         assertTrue(info.directBootAware)
     }
 
     @Test
-    fun `view info activity renders and refreshes on resume`() {
-        val controller = Robolectric.buildActivity(ViewInfoActivity::class.java)
+    fun `entry intents route to view and edit destinations`() {
+        assertEquals(Route.ViewInfo, MainActivity.routeFor(Intent(MainActivity.ACTION_EMERGENCY_ASSISTANCE)))
+        assertEquals(Route.EditInfo, MainActivity.routeFor(Intent(MainActivity.ACTION_EDIT_EMERGENCY_INFO)))
+        assertEquals(Route.EditInfo, MainActivity.routeFor(Intent(MainActivity.ACTION_EDIT_MEDICAL_INFO)))
+        assertEquals(Route.ViewInfo, MainActivity.routeFor(null))
+    }
+
+    @Test
+    fun `view info entry renders and refreshes on resume`() {
+        val controller = Robolectric.buildActivity(
+            MainActivity::class.java, Intent(MainActivity.ACTION_EMERGENCY_ASSISTANCE),
+        )
         val activity = controller.create().start().resume().visible().get()
         ShadowLooper.idleMainLooper()
         assertNotNull(activity)
@@ -85,8 +97,10 @@ class ActivitiesTest {
     }
 
     @Test
-    fun `edit info activity renders and refreshes on resume`() {
-        val controller = Robolectric.buildActivity(EditInfoActivity::class.java)
+    fun `edit info entry renders and refreshes on resume`() {
+        val controller = Robolectric.buildActivity(
+            MainActivity::class.java, Intent(MainActivity.ACTION_EDIT_EMERGENCY_INFO),
+        )
         val activity = controller.create().start().resume().visible().get()
         ShadowLooper.idleMainLooper()
         assertNotNull(activity)

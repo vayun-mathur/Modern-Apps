@@ -30,7 +30,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.emergency.R
 import com.vayunmathur.emergency.platform.SosActions
 import com.vayunmathur.emergency.platform.SosCoordinator
@@ -72,8 +71,7 @@ class SosActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             DynamicTheme {
-                val state by coordinator.state.collectAsStateWithLifecycle()
-                SosScreen(state = state, actions = coordinator)
+                com.vayunmathur.emergency.SosNavigation(coordinator)
             }
         }
     }

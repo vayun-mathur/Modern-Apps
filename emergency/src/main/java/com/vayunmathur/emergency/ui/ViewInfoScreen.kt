@@ -1,10 +1,5 @@
 package com.vayunmathur.emergency.ui
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.emergency.R
 import com.vayunmathur.emergency.data.AllergyCriticality
 import com.vayunmathur.emergency.data.EmergencyInfo
@@ -29,42 +23,10 @@ import com.vayunmathur.emergency.data.normalizeOrganDonor
 import com.vayunmathur.emergency.platform.EmergencyUiState
 import com.vayunmathur.emergency.platform.EmergencyViewModel
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.verticalShape
-
-/**
- * Read-only emergency info, reachable over the lock screen.
- *
- * Answers `android.telephony.action.EMERGENCY_ASSISTANCE` like GrapheneOS's
- * ViewInfoActivity: the owner's medical details and emergency contacts for a first
- * responder. Editing lives only in Settings (the ia.emergency injection) - there is
- * deliberately no edit entry here and no top bar: a responder reads this under stress,
- * so the content starts at the top and every datum is a large centered segment in a
- * labelled group. Groups use [verticalShape] so each reads as one block.
- */
-class ViewInfoActivity : ComponentActivity() {
-
-    private val viewModel: EmergencyViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            DynamicTheme {
-                val state by viewModel.state.collectAsStateWithLifecycle()
-                ViewInfoScreen(state = state)
-            }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        viewModel.refresh()
-    }
-}
 
 /** The read-only info + contacts view. Stateless; the activity wires the ViewModel. */
 @Composable

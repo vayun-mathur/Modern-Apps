@@ -6,7 +6,7 @@ _Install: ./install emergency (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :emergency / dir: emergency/
 - Package roots present: ui, data, domain, platform, service, notifications
-- Entry files: ui/SosScreen.kt + ui/ViewInfoScreen.kt (no MainActivity/Route — system SOS surfaces, not a nav app)
+- Entry files: MainActivity.kt, Route.kt, Navigation.kt + ui/SosScreen.kt (SosActivity stays separate; see Navigation.kt)
 - Deps: (none declared)
 - Metadata: metadata_data/emergency.md (present)
 - Rust: no / screenshotTest: yes
@@ -14,7 +14,7 @@ _Install: ./install emergency (dev by default)._
 ## Overview
 **Purpose:** OS emergency surfaces — lockscreen medical info (Health Connect allergies/meds), emergency contacts, SOS countdown with slide-cancel + warning sound. 100% offline.
 **Key features:** `data/EmergencyRepository` (info, imported FHIR medical, contacts) → `platform/SosCoordinator` → `service/SosCountdownService` + `receiver/SosActionReceiver` → `notifications/SosNotifications`; gesture trigger provider + number lookup with override.
-**Entry points:** `ui/SosScreen.kt` / `ui/ViewInfoScreen.kt` → `platform/SosCoordinator.kt` → `service/SosCountdownService.kt` → `data/EmergencyRepository.kt`.
+**Entry points:** `MainActivity.kt` (ViewInfo/EditInfo host) + `ui/SosScreen.kt` SosActivity (Route.Sos host) → `platform/SosCoordinator.kt` → `service/SosCountdownService.kt` → `data/EmergencyRepository.kt`.
 **Gotchas:**
 - `receiver/` is NOT a closed package root — pending migration; don't add more files there
 - SOS dials the real local emergency number — never trigger calls in tests, previews, or screenshots
@@ -22,6 +22,9 @@ _Install: ./install emergency (dev by default)._
 
 ## Key files
 ### ui/ — SOS + info surfaces (the entries)
+- com/vayunmathur/emergency/MainActivity.kt
+- com/vayunmathur/emergency/Route.kt
+- com/vayunmathur/emergency/Navigation.kt
 - com/vayunmathur/emergency/ui/SosScreen.kt
 - com/vayunmathur/emergency/ui/ViewInfoScreen.kt
 - com/vayunmathur/emergency/ui/EditInfoScreen.kt
