@@ -168,35 +168,28 @@ fun MainPage(
     platform: Platform,
     backStack: NavBackStack<Route>,
     ffViewModel: FindFamilyViewModel,
-    initialUserId: Long? = null,
-    initialWaypointId: Long? = null
 ) {
-    // Mirror the original `remember(initialUserId)` behaviour: apply the
-    // navigation-supplied selection whenever it changes.
-    LaunchedEffect(initialUserId, initialWaypointId) {
-        ffViewModel.applyInitialSelection(initialUserId, initialWaypointId)
-    }
-
-    val selectedUserId by ffViewModel.selectedUserId.collectAsState()
-    val selectedWaypointId by ffViewModel.mapState.selectedWaypointId.collectAsState()
+    // Selection lives in the back stack: the top destination (if it is a
+    // sheet) supplies the ids the map/camera react to. This page itself
+    // always shows the family list; the sheet destinations host the
+    // person/waypoint UI.
+    val topRoute = backStack.backStack.lastOrNull()
+    val selectedUserId = (topRoute as? Route.PersonSheet)?.userId
+    val selectedWaypointId = (topRoute as? Route.WaypointSheet)?.waypointId
     val isShowingPresent by ffViewModel.isShowingPresent.collectAsState()
     val historicalPosition by ffViewModel.historicalPosition.collectAsState()
-    var showSecurityCode by remember { mutableStateOf(false) }
     var showGpsWarning by remember { mutableStateOf(false) }
     val usingGpsFallback by ffViewModel.usingGpsFallback.collectAsState()
 
-    val waypointName by ffViewModel.waypointName.collectAsState()
     val waypointRange by ffViewModel.waypointRange.collectAsState()
 
     // History mode = a contact is selected and we're viewing their past track.
     val historyMode = selectedUserId != null && !isShowingPresent
 
-    BackHandler(selectedUserId != null || (selectedWaypointId != null && selectedWaypointId != 0L)) {
-        if (historyMode) {
-            ffViewModel.mapState.setShowingPresent(true)
-        } else {
-            ffViewModel.mapState.clearSelection()
-        }
+    // Back from history returns to the person's present location; back
+    // anywhere else pops the sheet destination off the stack (NavDisplay).
+    BackHandler(selectedUserId != null && historyMode) {
+        ffViewModel.mapState.setShowingPresent(true)
     }
 
     val temporaryLinks by ffViewModel.temporaryLinks.collectAsState()
@@ -211,41 +204,21 @@ fun MainPage(
 
     val context = LocalContext.current
 
-    // The selected contact, resolved from the full user list (the same source
-    // `userByIdState` reads). Drives the person sheet, the history title and delete.
+    // The selected contact (from the sheet route on top of the stack),
+    // resolved from the full user list. Drives the map highlight.
     val users by ffViewModel.users.collectAsState()
     val selectedUser = selectedUserId?.let { id -> users.firstOrNull { it.id == id } }
 
-    // Contact re-pick launcher: created unconditionally (activity-result launchers must
-    // be registered during composition) and reused by the hoisted PersonActions. The
-    // callback re-reads the current selection when a contact is actually picked.
-    val requestPickContact = platform.requestPickContact { name, photo ->
-        selectedUser?.let { ffViewModel.updateContactNamePhoto(it.id, name, photo) }
-    }
-
-    val (familyActions, personActions, mainActions) = rememberMainPageActions(
+    val (familyActions, mainActions) = rememberMainPageActions(
         ffViewModel = ffViewModel,
         backStack = backStack,
         platform = platform,
-        selectedUser = selectedUser,
-        selectedWaypointId = selectedWaypointId,
-        waypoints = waypoints,
         onShowGpsWarning = { showGpsWarning = it },
-        onShowSecurityCode = { showSecurityCode = it },
-        requestPickContact = requestPickContact,
     )
     
 
     val state = MainPageUiState(
-        selectedUserId = selectedUserId,
-        selectedWaypointId = selectedWaypointId,
-        isShowingPresent = isShowingPresent,
         usingGpsFallback = usingGpsFallback,
-        uwbAvailable = UwbSessionManager.isAvailable(context),
-        selfUserId = Networking.userid,
-        selectedUser = selectedUser,
-        waypointName = waypointName,
-        waypointRange = waypointRange,
         familyList = FamilyListUiState(
             connectedUsers = connectedUsers,
             awaitingRequestUsers = awaitingRequestUsers,
@@ -254,19 +227,6 @@ fun MainPage(
             locationByUser = userPositions,
             userNamesByLocationName = usersByLocationName
         ),
-        person = selectedUser?.let {
-            PersonUiState(
-                it,
-                userPositions[it.id],
-                waypoints,
-                globalSharingEnabled,
-                crowdFindingEnabled,
-                // Only the user's own sheet shows the powered-off controls, and it is the only
-                // one that needs a peer list. Passing it unconditionally keeps the state a plain
-                // projection rather than something that depends on which row was tapped.
-                connectedUsers,
-            )
-        }
     )
 
     // Owned here, not by MapView: the two animateTo effects below drive it, and MapView is
@@ -288,22 +248,8 @@ fun MainPage(
     MainPageContent(
         state = state,
         familyActions = familyActions,
-        personActions = personActions,
         actions = mainActions,
         backupPassphrase = ffViewModel.backupPassphrase,
-        historyScrubber = {
-            if (historyMode) {
-                // Scoped to the person: a deep link can swap the selection while history
-                // mode stays on, and the scrubber must restart from now for the new person
-                // rather than inherit the previous one's instant.
-                key(selectedUserId) {
-                    HistoryScrubber(
-                        backStack,
-                        ffViewModel
-                    ) { ffViewModel.mapState.setHistoricalPosition(it) }
-                }
-            }
-        },
         map = {
             MainMapSlot(
                 ffViewModel = ffViewModel,
@@ -314,6 +260,17 @@ fun MainPage(
                 historicalPosition = historicalPosition,
                 selectedWaypointId = selectedWaypointId,
                 waypointRange = waypointRange,
+                onUserClick = { userId ->
+                    ffViewModel.mapState.onPersonOpened()
+                    backStack.add(Route.PersonSheet(userId))
+                },
+                onMapClick = {
+                    // Tapping the map away from any marker dismisses an open
+                    // sheet (normally unreachable under the sheet's scrim).
+                    if (topRoute is Route.PersonSheet || topRoute is Route.WaypointSheet) {
+                        backStack.pop()
+                    }
+                },
             )
             
         }
@@ -323,14 +280,12 @@ fun MainPage(
         ffViewModel = ffViewModel,
         camera = camera,
         selectedUserId = selectedUserId,
-        selfUserId = state.selfUserId,
+        selfUserId = Networking.userid,
         isShowingPresent = isShowingPresent,
         historicalPosition = historicalPosition,
         userPositions = userPositions,
         selectedWaypointId = selectedWaypointId,
         waypoints = waypoints,
-        showSecurityCode = showSecurityCode,
-        onShowSecurityCode = { showSecurityCode = it },
         showGpsWarning = showGpsWarning,
         onShowGpsWarning = { showGpsWarning = it },
     )

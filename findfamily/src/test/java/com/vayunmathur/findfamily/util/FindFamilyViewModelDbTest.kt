@@ -105,13 +105,12 @@ class FindFamilyViewModelDbTest {
         // Repository one-shot sees the fix (same getLatest DAO query the VM flow wraps).
         assertEquals(80f, kotlinx.coroutines.runBlocking { repo.latestLocationsOnce().firstOrNull()?.battery })
         assertEquals(alice, kotlinx.coroutines.runBlocking { repo.latestLocationByUser.first().keys.firstOrNull() })
-        // Selection + history
-        vm.selectUser(alice)
-        awaitTrue("location history") { vm.locationHistory.value.size == 1 }
+        // History is keyed by the person-sheet route arg, passed explicitly.
+        awaitTrue("location history") { kotlinx.coroutines.runBlocking { vm.locationHistory(alice).first().size == 1 } }
         vm.mapState.setShowingPresent(false)
         assertEquals(false, vm.isShowingPresent.value)
-        vm.mapState.clearSelection()
-        assertEquals(null, vm.selectedUserId.value)
+        vm.mapState.onPersonOpened()
+        assertEquals(true, vm.isShowingPresent.value)
         collectJob.cancel()
     }
 
@@ -125,7 +124,7 @@ class FindFamilyViewModelDbTest {
             CoroutineScope(Dispatchers.Default).async { vm.usersByLocationName.collect { } },
             CoroutineScope(Dispatchers.Default).async { vm.waypoints.collect { } },
             CoroutineScope(Dispatchers.Default).async { vm.latestLocationByUser.collect { } },
-            CoroutineScope(Dispatchers.Default).async { vm.locationHistory.collect { } },
+            CoroutineScope(Dispatchers.Default).async { vm.locationHistory(0L).collect { } },
             CoroutineScope(Dispatchers.Default).async { vm.temporaryLinks.collect { } },
         )
         jobs.forEach { it.await() }
@@ -142,7 +141,7 @@ class FindFamilyViewModelDbTest {
         assertEquals("Gym", vm.waypointName.value)
         vm.mapState.setWaypointName("Gym2")
         vm.mapState.setWaypointRange("75")
-        vm.mapState.saveCurrentWaypoint()
+        assertTrue(vm.mapState.saveCurrentWaypoint(wpId))
         awaitTrue("waypoint saved") { kotlinx.coroutines.runBlocking { repo.waypointStore.get(wpId).name == "Gym2" } }
         vm.deleteWaypoint(repo.waypointStore.get(wpId))
         awaitTrue("waypoint deleted") { kotlinx.coroutines.runBlocking { repo.waypointStore.getAll().isEmpty() } }
@@ -158,19 +157,20 @@ class FindFamilyViewModelDbTest {
     }
 
     @Test
-    fun waypointFormCreateAndInitialSelection() = runBlocking {
+    fun waypointFormCreateAndPersonOpenedReset() = runBlocking {
         val vm = FindFamilyViewModel(app, repo)
         vm.mapState.beginCreateWaypoint()
         vm.mapState.setWaypointName("Park")
         vm.mapState.setWaypointRange("200")
         vm.mapState.setWaypointCoord(Coord(5.0, 6.0))
-        vm.mapState.saveCurrentWaypoint()
+        assertTrue(vm.mapState.saveCurrentWaypoint(0L))
         awaitTrue("waypoint created") { kotlinx.coroutines.runBlocking { repo.waypointStore.getAll().any { it.name == "Park" } } }
-        val uid = repo.upsertUser(user("Frank"))
-        vm.applyInitialSelection(uid, null)
-        assertEquals(uid, vm.selectedUserId.value)
-        vm.applyInitialSelection(null, repo.waypointStore.getAll().first().id)
-        assertNotNull(vm.mapState.selectedWaypointId.value)
+        // Opening a person sheet resets history mode and drops any stale pin.
+        vm.mapState.setShowingPresent(false)
+        vm.mapState.setHistoricalPosition(com.vayunmathur.library.map.GeoPoint(1.0, 2.0))
+        vm.mapState.onPersonOpened()
+        assertEquals(true, vm.isShowingPresent.value)
+        assertEquals(null, vm.historicalPosition.value)
         vm.refreshPermissions()
         // Permission flags must be readable (values depend on Robolectric grants).
         @Suppress("UNUSED_EXPRESSION") vm.hasForeground.value; vm.hasBackground.value; vm.hasBluetooth.value

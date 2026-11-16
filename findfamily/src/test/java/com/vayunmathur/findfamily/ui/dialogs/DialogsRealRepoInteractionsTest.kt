@@ -61,7 +61,7 @@ class DialogsRealRepoInteractionsTest {
         vm = FindFamilyViewModel(app, repo)
     }
 
-    private fun stack(): NavBackStack<Route> = NavBackStack(arrayOf(Route.MainPage()))
+    private fun stack(): NavBackStack<Route> = NavBackStack(arrayOf(Route.MainPage))
 
     private fun user(id: Long, name: String, status: RequestStatus = RequestStatus.MUTUAL_CONNECTION) = User(
         name = name, photo = null, locationName = "Home", sendingEnabled = true,

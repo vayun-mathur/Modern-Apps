@@ -162,8 +162,6 @@ internal fun MainPageEffects(
     userPositions: Map<Long, LocationValue>,
     selectedWaypointId: Long?,
     waypoints: List<Waypoint>,
-    showSecurityCode: Boolean,
-    onShowSecurityCode: (Boolean) -> Unit,
     showGpsWarning: Boolean,
     onShowGpsWarning: (Boolean) -> Unit,
 ) {
@@ -225,11 +223,6 @@ internal fun MainPageEffects(
                 )
             }
         }
-    }
-
-    if (showSecurityCode && selectedUserId != null && selectedUserId != Networking.userid) {
-        val user by ffViewModel.userByIdState(selectedUserId)
-        user?.let { SecurityCodeDialog(it, ffViewModel) { onShowSecurityCode(false) } }
     }
 
     if (showGpsWarning) {

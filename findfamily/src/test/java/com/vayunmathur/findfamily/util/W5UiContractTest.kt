@@ -15,7 +15,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Pure-JVM tests for the map-page UI contract ([MainPageUiState] derived flags
+ * Pure-JVM tests for the map-page UI contract ([MainPageUiState] defaults
  * and action-interface no-op defaults) plus `Long.encodeBase26` /
  * `String.decodeBase26` round-trips from AddPersonDialog.
  */
@@ -31,26 +31,12 @@ class W5UiContractTest {
     )
 
     @Test
-    fun historyModeNeedsSelectedUserAndHistoryView() {
-        assertFalse(MainPageUiState().historyMode)
-        assertFalse(MainPageUiState(selectedUserId = 1L, isShowingPresent = true).historyMode)
-        assertTrue(MainPageUiState(selectedUserId = 1L, isShowingPresent = false).historyMode)
-        // A waypoint selection alone is not history mode.
-        assertFalse(MainPageUiState(selectedWaypointId = 2L, isShowingPresent = false).historyMode)
-    }
-
-    @Test
-    fun isSelfSelectedComparesIds() {
-        assertTrue(MainPageUiState(selectedUserId = 5L, selfUserId = 5L).isSelfSelected)
-        assertFalse(MainPageUiState(selectedUserId = 6L, selfUserId = 5L).isSelfSelected)
-        assertFalse(MainPageUiState(selfUserId = 5L).isSelfSelected)
-    }
-
-    @Test
-    fun nothingSelectedNeedsBothNull() {
-        assertTrue(MainPageUiState().nothingSelected)
-        assertFalse(MainPageUiState(selectedUserId = 1L).nothingSelected)
-        assertFalse(MainPageUiState(selectedWaypointId = 1L).nothingSelected)
+    fun mainPageStateDefaultsToFamilyList() {
+        // Selection is absent from the map-page state by design: it lives
+        // in the back stack (Route.PersonSheet / Route.WaypointSheet).
+        val state = MainPageUiState()
+        assertFalse(state.usingGpsFallback)
+        assertTrue(state.familyList.connectedUsers.isEmpty())
     }
 
     @Test
@@ -70,12 +56,11 @@ class W5UiContractTest {
         person.setUserArrivalToggle(u, null)
         person.setCrowdFinding(true)
         val main = MainPageActions.Noop
-        main.clearSelection()
-        main.setShowingPresent(true)
         main.beginCreateWaypoint()
-        main.enterHistory()
-        main.setWaypointName("home")
-        main.setWaypointRange("100")
+        main.addPerson()
+        main.addLink()
+        main.addTracker()
+        main.onGpsWarningClick()
     }
 
     @Test

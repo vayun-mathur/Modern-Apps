@@ -65,7 +65,7 @@ class MainPageInteractionsTest {
             override fun acceptRequest(userId: Long) { accepted = userId }
         }
         rule.setContent {
-            MainPageContent(state = state, familyActions = actions, personActions = PersonActions.Noop,
+            MainPageContent(state = state, familyActions = actions,
                 actions = MainPageActions.Noop, map = {}, backupPassphrase = "pw")
         }
         rule.waitForIdle()

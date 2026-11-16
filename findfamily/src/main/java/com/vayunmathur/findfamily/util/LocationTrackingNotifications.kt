@@ -148,7 +148,7 @@ internal fun Context.notifyNoShowAlert(
     FindFamilyNotificationChannels.ensureNoShowChannel(this, user.id, user.name)
     val channelId = FindFamilyNotificationChannels.noShowChannelId(user.id)
     // Deep-link to the watched person / expected place: MainActivity routes
-    // Route.MainPage(selectedUserId, selectedWaypointId) from these extras.
+    // Route.PersonSheet(watchedUserId) from these extras.
     val openIntent = Intent(this, MainActivity::class.java).apply {
         putExtra(EXTRA_NOSHOW_USER_ID, user.id)
         if (waypointId != null) putExtra(EXTRA_NOSHOW_WAYPOINT_ID, waypointId)

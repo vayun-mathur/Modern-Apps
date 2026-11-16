@@ -134,12 +134,11 @@ class MainPageChromeRealRepoTest {
         assertTrue(rule.onAllNodesWithText("home-place", substring = true).fetchSemanticsNodes().isNotEmpty())
     }
 
-    @Test fun pageEffectsShowSecurityAndGpsDialogs() = runBlocking {
+    @Test fun pageEffectsShowGpsDialog() = runBlocking {
         val alice = repo.upsertUser(User(
             name = "Alice", photo = null, locationName = "Home", sendingEnabled = true,
             requestStatus = RequestStatus.MUTUAL_CONNECTION, lastLocationChangeTime = Clock.System.now(),
         ))
-        var security = true
         var gps = true
         rule.setContent {
             DynamicTheme {
@@ -149,7 +148,6 @@ class MainPageChromeRealRepoTest {
                     selfUserId = Networking.userid, isShowingPresent = true,
                     historicalPosition = null, userPositions = emptyMap(),
                     selectedWaypointId = null, waypoints = emptyList(),
-                    showSecurityCode = security, onShowSecurityCode = { security = it },
                     showGpsWarning = gps, onShowGpsWarning = { gps = it },
                 )
             }
@@ -157,7 +155,7 @@ class MainPageChromeRealRepoTest {
         rule.waitForIdle()
         Thread.sleep(300)
         rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("Alice", substring = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("GPS", substring = true).fetchSemanticsNodes().isNotEmpty())
         Unit
     }
 

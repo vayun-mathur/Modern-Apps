@@ -193,7 +193,6 @@ class MetadataPreviews {
             MainPageContent(
                 state = MainPageUiState(familyList = sampleFamilyList()),
                 familyActions = FamilyListActions.Noop,
-                personActions = PersonActions.Noop,
                 actions = MainPageActions.Noop,
                 map = { StaticMapBackdrop() },
             )
@@ -205,17 +204,15 @@ class MetadataPreviews {
     @Composable
     fun Preview2Person() {
         DynamicTheme(darkTheme = true) {
-            MainPageContent(
-                state = MainPageUiState(
-                    selectedUserId = maya.id,
-                    selectedUser = maya,
-                    person = PersonUiState(user = maya, location = mayaLocation, waypoints = sampleWaypoints),
-                ),
-                familyActions = FamilyListActions.Noop,
-                personActions = PersonActions.Noop,
-                actions = MainPageActions.Noop,
-                map = { StaticMapBackdrop() },
-            )
+            // Person UI is now the Route.PersonSheet destination; preview
+            // its sheet content directly over the static map backdrop.
+            Box(Modifier.fillMaxSize()) {
+                StaticMapBackdrop()
+                PersonDetailSheet(
+                    PersonUiState(user = maya, location = mayaLocation, waypoints = sampleWaypoints),
+                    PersonActions.Noop,
+                )
+            }
         }
     }
 

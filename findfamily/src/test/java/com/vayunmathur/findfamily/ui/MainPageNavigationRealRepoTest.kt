@@ -41,7 +41,8 @@ import kotlin.time.Clock
  * entries never executed. Here the ViewModel is backed by genuine Room
  * rows (see [TestFindFamilyRepository]) and the full graph composes:
  * family sheet, person sheet, waypoint form, history scrubber and every
- * dialog entry the deep links can push.
+ * dialog entry the deep links can push. Selection is route-carried
+ * (PersonSheet/WaypointSheet destinations), never ViewModel state.
  */
 @RunWith(AndroidJUnit4::class)
 class MainPageNavigationRealRepoTest {
@@ -144,35 +145,36 @@ class MainPageNavigationRealRepoTest {
         assertTrue(rule.onAllNodesWithText("Alice", substring = true).fetchSemanticsNodes().isNotEmpty())
     }
 
-    @Test fun mainPageDirectWithSelectedUserShowsPersonSheet() { runBlocking {
+    @Test fun personSheetShowsPersonDetail() { runBlocking {
         seedFamily()
         val alice = repo.getAllUsers().first { it.name == "Alice" }
-        vm.selectUser(alice.id)
-        rule.setContent { androidx.compose.runtime.CompositionLocalProvider(com.vayunmathur.library.util.LocalNavResultRegistry provides com.vayunmathur.library.util.NavResultRegistry()) { DynamicTheme { MainPage(Platform(app), stack(), vm, alice.id, null) } } }
+        rule.setContent { androidx.compose.runtime.CompositionLocalProvider(com.vayunmathur.library.util.LocalNavResultRegistry provides com.vayunmathur.library.util.NavResultRegistry()) { DynamicTheme { PersonSheet(stack(), vm, Platform(app), alice.id) } } }
         rule.waitForIdle()
-        rule.onNodeWithText("Alice", substring = true).assertIsDisplayed()
+        // Person detail shows Alice in both the header and the name field.
+        rule.onAllNodesWithText("Alice", substring = true)[0].assertIsDisplayed()
     } }
 
-    @Test fun mainPageDirectWithSelectedWaypointShowsForm() = runBlocking {
+    @Test fun waypointSheetShowsEditorForm() = runBlocking {
         seedFamily()
         val wp = repo.waypointStore.getAll().single()
         vm.beginEditWaypoint(wp)
-        rule.setContent { androidx.compose.runtime.CompositionLocalProvider(com.vayunmathur.library.util.LocalNavResultRegistry provides com.vayunmathur.library.util.NavResultRegistry()) { DynamicTheme { MainPage(Platform(app), stack(), vm, null, wp.id) } } }
+        rule.setContent { androidx.compose.runtime.CompositionLocalProvider(com.vayunmathur.library.util.LocalNavResultRegistry provides com.vayunmathur.library.util.NavResultRegistry()) { DynamicTheme { WaypointSheet(stack(), vm, wp.id) } } }
         rule.waitForIdle()
         assertTrue(rule.onAllNodesWithText("Home", substring = true).fetchSemanticsNodes().isNotEmpty())
     }
 
-    @Test fun mainPageDirectInHistoryModeShowsScrubber() = runBlocking {
+    @Test fun personSheetInHistoryModeShowsScrubber() = runBlocking {
         seedFamily()
         val alice = repo.getAllUsers().first { it.name == "Alice" }
-        vm.selectUser(alice.id)
+        // PersonSheet resets to present on open; enter history explicitly.
+        rule.setContent { androidx.compose.runtime.CompositionLocalProvider(com.vayunmathur.library.util.LocalNavResultRegistry provides com.vayunmathur.library.util.NavResultRegistry()) { DynamicTheme { PersonSheet(stack(), vm, Platform(app), alice.id) } } }
+        rule.waitForIdle()
         vm.mapState.setShowingPresent(false)
-        rule.setContent { androidx.compose.runtime.CompositionLocalProvider(com.vayunmathur.library.util.LocalNavResultRegistry provides com.vayunmathur.library.util.NavResultRegistry()) { DynamicTheme { MainPage(Platform(app), stack(), vm, alice.id, null) } } }
         rule.waitForIdle()
         assertTrue(rule.onAllNodesWithText("Alice", substring = true).fetchSemanticsNodes().isNotEmpty())
     }
 
     private fun stack() = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.findfamily.Route>(
-        arrayOf(com.vayunmathur.findfamily.Route.MainPage())
+        arrayOf(com.vayunmathur.findfamily.Route.MainPage)
     )
 }

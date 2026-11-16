@@ -50,13 +50,12 @@ class FindFamilyViewModelProbeTest {
         assertFalse(vm.hasForeground.value)
     }
 
-    @Test fun selectionDelegatesToMapState() {
-        assertNull(vm.selectedUserId.value)
-        vm.selectUser(11L)
-        assertEquals(11L, vm.selectedUserId.value)
+    @Test fun personOpenedAndWaypointFormDelegateToMapState() {
+        // Selection lives in the back stack now; the VM only resets history
+        // state when a person sheet opens and prefills the waypoint form.
+        vm.mapState.setShowingPresent(false)
+        vm.mapState.onPersonOpened()
         assertTrue(vm.isShowingPresent.value)
-        vm.applyInitialSelection(3L, 4L)
-        assertEquals(3L, vm.selectedUserId.value)
         val waypoint = com.vayunmathur.findfamily.data.Waypoint(
             "Home", 100.0, com.vayunmathur.findfamily.data.Coord(1.0, 2.0), id = 8L)
         vm.beginEditWaypoint(waypoint)

@@ -29,7 +29,9 @@ import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.findfamily.data.FindFamilyRepository
 import com.vayunmathur.findfamily.ui.MainPage
+import com.vayunmathur.findfamily.ui.PersonSheet
 import com.vayunmathur.findfamily.ui.UwbRangingScreen
+import com.vayunmathur.findfamily.ui.WaypointSheet
 import com.vayunmathur.findfamily.ui.dialogs.AddLinkDialog
 import com.vayunmathur.findfamily.ui.dialogs.AddPersonDialog
 import com.vayunmathur.findfamily.ui.dialogs.AddTrackerDialog
@@ -234,8 +236,16 @@ fun MissingFeaturesDialog(backStack: NavBackStack<Route>) {
 /** Navigation destinations for FindFamily's single-activity graph. */
 sealed interface Route: NavKey {
     @Serializable
-    /** Map home destination, optionally preselecting a person or waypoint. */
-    data class MainPage(val selectedUserId: Long? = null, val selectedWaypointId: Long? = null): Route
+    /** Map home destination. Selection lives in [PersonSheet]/[WaypointSheet], not here. */
+    data object MainPage: Route
+
+    @Serializable
+    /** Sheet for the given person, shown over the map. */
+    data class PersonSheet(val userId: Long): Route
+
+    @Serializable
+    /** Sheet for the given waypoint (0 = create a new one), shown over the map. */
+    data class WaypointSheet(val waypointId: Long): Route
 
     @Serializable
     /** Dialog for picking the date whose location history to show. */
@@ -273,7 +283,7 @@ fun Navigation(
     noShowTarget: Pair<Long, Long?>? = null,
     onNoShowTargetConsumed: () -> Unit = {},
 ) {
-    val backStack = rememberNavBackStack<Route>(Route.MainPage())
+    val backStack = rememberNavBackStack<Route>(Route.MainPage)
 
     LaunchedEffect(showMissingFeatures) {
         if (showMissingFeatures) {
@@ -296,17 +306,26 @@ fun Navigation(
         }
     }
 
-    // A tapped no-show notification opens the map on the watched person/place.
+    // A tapped no-show notification opens the watched person's sheet over
+    // the map. The expected place rides along in the alert itself; selection
+    // holds one destination, and the person is what the sheet showed first
+    // before this refactor too.
     LaunchedEffect(noShowTarget) {
         if (noShowTarget != null) {
-            backStack.add(Route.MainPage(noShowTarget.first, noShowTarget.second))
+            backStack.add(Route.PersonSheet(noShowTarget.first))
             onNoShowTargetConsumed()
         }
     }
 
     MainNavigation(backStack) {
         entry<Route.MainPage> {
-            MainPage(platform, backStack, ffViewModel, it.selectedUserId, it.selectedWaypointId)
+            MainPage(platform, backStack, ffViewModel)
+        }
+        entry<Route.PersonSheet>(metadata = DialogPage()) {
+            PersonSheet(backStack, ffViewModel, platform, it.userId)
+        }
+        entry<Route.WaypointSheet>(metadata = DialogPage()) {
+            WaypointSheet(backStack, ffViewModel, it.waypointId)
         }
         entry<Route.UserPageHistoryDatePicker>(metadata = DialogPage()) {
             DatePickerDialog(

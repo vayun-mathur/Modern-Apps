@@ -155,18 +155,25 @@ internal fun rememberMainPageActions(
     ffViewModel: FindFamilyViewModel,
     backStack: NavBackStack<Route>,
     platform: Platform,
-    selectedUser: User?,
-    selectedWaypointId: Long?,
-    waypoints: List<Waypoint>,
     onShowGpsWarning: (Boolean) -> Unit,
-    onShowSecurityCode: (Boolean) -> Unit,
-    requestPickContact: () -> Unit,
-): Triple<FamilyListActions, PersonActions, MainPageActions> {
+): Pair<FamilyListActions, MainPageActions> {
     // The sheets/layout are stateless so the store-listing previews can render them (the
     // map behind them cannot be rendered off-device). The ViewModel supplies the actions
     // it already implements; the ones needing the nav stack or the clipboard go here.
+    // Selection actions push the sheet destinations: the back stack is the
+    // single place selection lives.
     val familyActions = remember(ffViewModel, backStack, platform) {
         object : FamilyListActions by ffViewModel {
+            override fun selectUser(userId: Long) {
+                ffViewModel.mapState.onPersonOpened()
+                backStack.add(Route.PersonSheet(userId))
+            }
+
+            override fun beginEditWaypoint(waypoint: Waypoint) {
+                ffViewModel.beginEditWaypoint(waypoint)
+                backStack.add(Route.WaypointSheet(waypoint.id))
+            }
+
             override fun acceptRequest(userId: Long) {
                 backStack.add(Route.AddPersonDialog(userId))
             }
@@ -184,33 +191,15 @@ internal fun rememberMainPageActions(
         }
     }
 
-    val personActions = object : PersonActions by ffViewModel {
-        override fun changeConnectedContact() = requestPickContact()
-    }
-
     val mainActions = object : MainPageActions {
-        override fun clearSelection() = ffViewModel.mapState.clearSelection()
-        override fun setShowingPresent(present: Boolean) = ffViewModel.mapState.setShowingPresent(present)
         override fun onGpsWarningClick() { onShowGpsWarning(true) }
-        override fun onShowSecurityCode() { onShowSecurityCode(true) }
-        override fun openUwbRanging(userId: Long) { backStack.add(Route.UwbRangingPage(userId)) }
-        override fun deleteSelectedUser() {
-            selectedUser?.let { ffViewModel.deleteUser(it) }
-            ffViewModel.mapState.setSelectedUserId(null)
-        }
-        override fun deleteSelectedWaypoint() {
-            selectedWaypointId?.let { id -> waypoints.firstOrNull { it.id == id } }
-                ?.let { ffViewModel.deleteWaypoint(it) }
-            ffViewModel.mapState.setSelectedWaypointId(null)
-        }
         override fun addPerson() { backStack.add(Route.AddPersonDialog()) }
-        override fun beginCreateWaypoint() = ffViewModel.mapState.beginCreateWaypoint()
+        override fun beginCreateWaypoint() {
+            ffViewModel.mapState.beginCreateWaypoint()
+            backStack.add(Route.WaypointSheet(0L))
+        }
         override fun addLink() { backStack.add(Route.AddLinkDialog) }
         override fun addTracker() { backStack.add(Route.AddTrackerDialog) }
-        override fun saveCurrentWaypoint() = ffViewModel.mapState.saveCurrentWaypoint()
-        override fun enterHistory() = ffViewModel.mapState.setShowingPresent(false)
-        override fun setWaypointName(name: String) = ffViewModel.mapState.setWaypointName(name)
-        override fun setWaypointRange(range: String) = ffViewModel.mapState.setWaypointRange(range)
     }
-    return Triple(familyActions, personActions, mainActions)
+    return Pair(familyActions, mainActions)
 }

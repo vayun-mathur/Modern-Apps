@@ -18,7 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 
-/** MapPageState form/selection logic and LocationServiceController persisted flags. */
+/** MapPageState form/history logic and LocationServiceController persisted flags. */
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 class MapAndControllerTest {
 
@@ -29,16 +29,14 @@ class MapAndControllerTest {
     private fun mapState(): MapPageState =
         MapPageState(CoroutineScope(Dispatchers.Unconfined), FindFamilyRepository.get(app))
 
-    @Test fun selectionTransitionsClearHistory() {
+    @Test fun personOpenedClearsHistory() {
         val s = mapState()
-        assertNull(s.selectedUserId.value)
         assertTrue(s.isShowingPresent.value)
         s.setHistoricalPosition(GeoPoint(1.0, 2.0))
-        s.selectUser(42L)
-        assertEquals(42L, s.selectedUserId.value)
-        assertNull(s.selectedWaypointId.value)
+        // Opening a person sheet drops any stale historical pin and
+        // returns to present mode (selection itself lives in the stack).
+        s.onPersonOpened()
         assertTrue(s.isShowingPresent.value)
-        // Selecting a person drops any stale historical pin.
         assertNull(s.historicalPosition.value)
 
         s.setHistoricalPosition(GeoPoint(3.0, 4.0))
@@ -47,42 +45,26 @@ class MapAndControllerTest {
         s.setShowingPresent(false)
         s.setHistoricalPosition(GeoPoint(5.0, 6.0))
         assertEquals(GeoPoint(5.0, 6.0), s.historicalPosition.value)
-        s.clearSelection()
-        assertNull(s.selectedUserId.value)
+        s.onPersonOpened()
         assertNull(s.historicalPosition.value)
-    }
-
-    @Test fun initialSelectionAppliesAndDropsPin() {
-        val s = mapState()
-        s.setHistoricalPosition(GeoPoint(1.0, 1.0))
-        s.applyInitialSelection(7L, 9L)
-        assertEquals(7L, s.selectedUserId.value)
-        assertEquals(9L, s.selectedWaypointId.value)
-        assertNull(s.historicalPosition.value)
-        s.applyInitialSelection(null, null)
-        assertNull(s.selectedUserId.value)
     }
 
     @Test fun waypointFormCreateEditAndInvalidSaves() {
         val s = mapState()
         s.beginCreateWaypoint()
-        assertEquals(0L, s.selectedWaypointId.value)
         assertEquals("", s.waypointName.value)
         assertEquals("100", s.waypointRange.value)
-        // Invalid forms silently no-op (no selection change, no DB write).
-        s.saveCurrentWaypoint()
-        assertEquals(0L, s.selectedWaypointId.value)
+        // Invalid forms silently no-op (return false, no DB write).
+        assertFalse(s.saveCurrentWaypoint(0L))
         s.setWaypointName("Home")
         s.setWaypointRange("not-a-number")
-        s.saveCurrentWaypoint()
-        assertEquals(0L, s.selectedWaypointId.value)
+        assertFalse(s.saveCurrentWaypoint(0L))
         s.setWaypointRange("250")
         s.setWaypointCoord(Coord(38.7, -9.1))
         assertEquals(Coord(38.7, -9.1), s.waypointCoord.value)
 
         val existing = Waypoint("Work", 500.0, Coord(1.0, 2.0), id = 12L)
         s.beginEditWaypoint(existing)
-        assertEquals(12L, s.selectedWaypointId.value)
         assertEquals("Work", s.waypointName.value)
         assertEquals("500.0", s.waypointRange.value)
         assertEquals(Coord(1.0, 2.0), s.waypointCoord.value)

@@ -37,10 +37,8 @@ class MainPageContentTest {
     private class RecordingActions : MainPageActions {
         var addPerson = 0
         var addLink = 0
-        var clear = 0
         override fun addPerson() { addPerson++ }
         override fun addLink() { addLink++ }
-        override fun clearSelection() { clear++ }
     }
 
     private fun content(state: MainPageUiState, actions: MainPageActions) {
@@ -49,7 +47,6 @@ class MainPageContentTest {
                 MainPageContent(
                     state = state,
                     familyActions = FamilyListActions.Noop,
-                    personActions = PersonActions.Noop,
                     actions = actions,
                     map = { Text("MAP-SLOT") })
             }
@@ -64,22 +61,20 @@ class MainPageContentTest {
         composeRule.onNodeWithText("Ann").assertIsDisplayed()
     }
 
-    @Test fun personSelectedShowsPersonSheet() {
+    @Test fun personSheetContentShowsDetail() {
+        // Person UI moved to the Route.PersonSheet destination; the sheet
+        // content itself is still PersonDetailSheet over PersonUiState.
         val ann = user(2L, "Ann")
-        val state = MainPageUiState(
-            selectedUserId = 2L,
-            selectedUser = ann,
-            person = PersonUiState(user = ann),
-            familyList = FamilyListUiState(connectedUsers = listOf(ann)))
-        content(state, RecordingActions())
+        composeRule.setContent {
+            DynamicTheme {
+                PersonDetailSheet(PersonUiState(user = ann), PersonActions.Noop)
+            }
+        }
         composeRule.onNodeWithText("Ann").assertIsDisplayed()
     }
 
-    @Test fun waypointSelectedShowsWaypointForm() {
+    @Test fun familySheetListsWaypoints() {
         val state = MainPageUiState(
-            selectedWaypointId = 5L,
-            waypointName = "Home",
-            waypointRange = "150",
             familyList = FamilyListUiState(
                 waypoints = listOf(Waypoint("Home", 150.0, Coord(1.0, 2.0), id = 5L))))
         content(state, RecordingActions())

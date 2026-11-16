@@ -37,8 +37,11 @@ data class FamilyListUiState(
  * Family-sheet callbacks. Every method has a no-op default so a preview can render the
  * sheet without supplying behaviour — [Noop] is the whole implementation a preview needs.
  *
- * [FindFamilyViewModel] implements the three that are pure state changes; the two that
- * need the nav back stack or the clipboard are supplied by the caller.
+ * [selectUser] and [beginEditWaypoint] are navigation actions (they push
+ * `Route.PersonSheet` / `Route.WaypointSheet`); the caller that owns the back
+ * stack supplies them. [FindFamilyViewModel] implements only the pure
+ * data change ([deleteTemporaryLink], plus the waypoint-form prefill behind
+ * `beginEditWaypoint`).
  */
 interface FamilyListActions {
     fun selectUser(userId: Long) {}
@@ -102,58 +105,34 @@ interface PersonActions {
 
 /**
  * Everything the stateless map-page layout (`MainPageContent`) needs to lay out its chrome:
- * which sheet to show, the top-bar contents and the floating action button. It carries plain
+ * the family sheet, the top-bar contents and the floating action button. It carries plain
  * data only — no ViewModel — so both the real app and the store-listing previews can build it.
+ *
+ * Selection is deliberately absent: `MainPage` always shows the family list.
+ * The selected person/place lives in the back stack (`Route.PersonSheet` /
+ * `Route.WaypointSheet`) and its UI is hosted by those destinations.
  *
  * The map itself is passed to `MainPageContent` as a slot, so this state deliberately says
  * nothing about map tiles or the camera.
  */
 data class MainPageUiState(
-    val selectedUserId: Long? = null,
-    val selectedWaypointId: Long? = null,
-    /** False while viewing a contact's past track (history mode). */
-    val isShowingPresent: Boolean = true,
     val usingGpsFallback: Boolean = false,
-    /** Whether UWB "Find Nearby" is available on this device (controls the overlay entry). */
-    val uwbAvailable: Boolean = false,
-    /** This device's own user id, so the layout can hide self-only controls. */
-    val selfUserId: Long = -1L,
-    /** The selected contact, resolved for the person sheet, history title and delete action. */
-    val selectedUser: User? = null,
-    val waypointName: String = "",
-    val waypointRange: String = "",
     val familyList: FamilyListUiState = FamilyListUiState(),
-    /** Built for [selectedUser] when a person (not a place) is selected. */
-    val person: PersonUiState? = null,
-) {
-    /** A contact is selected and we're viewing their past track. */
-    val historyMode: Boolean get() = selectedUserId != null && !isShowingPresent
-    val isSelfSelected: Boolean get() = selectedUserId != null && selectedUserId == selfUserId
-    val nothingSelected: Boolean get() = selectedUserId == null && selectedWaypointId == null
-}
+)
 
 /**
  * Map-overlay and FAB callbacks for the map page. Same no-op-default arrangement as the sheet
  * action interfaces so [Noop] is all a preview needs. The stateful `MainPage` wires these to
- * the ViewModel and nav back stack.
+ * the ViewModel and nav back stack. Selection-scoped actions (delete, UWB,
+ * history, waypoint save) live on the `PersonSheet` / `WaypointSheet`
+ * destinations, not here.
  */
 interface MainPageActions {
-    fun clearSelection() {}
-    fun setShowingPresent(present: Boolean) {}
     fun onGpsWarningClick() {}
-    fun onShowSecurityCode() {}
-    fun openUwbRanging(userId: Long) {}
-    fun deleteSelectedUser() {}
-    fun deleteSelectedWaypoint() {}
     fun addPerson() {}
     fun beginCreateWaypoint() {}
     fun addLink() {}
     fun addTracker() {}
-    fun saveCurrentWaypoint() {}
-    /** Enter history mode for the selected contact. */
-    fun enterHistory() {}
-    fun setWaypointName(name: String) {}
-    fun setWaypointRange(range: String) {}
 
     /** No-op [MainPageActions] for previews. */
     companion object {

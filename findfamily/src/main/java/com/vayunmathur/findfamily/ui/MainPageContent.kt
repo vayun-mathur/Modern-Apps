@@ -39,10 +39,8 @@ import kotlin.time.ExperimentalTime
 fun MainPageContent(
     state: MainPageUiState,
     familyActions: FamilyListActions,
-    personActions: PersonActions,
     actions: MainPageActions,
     map: @Composable () -> Unit,
-    historyScrubber: @Composable BoxScope.() -> Unit = {},
     backupPassphrase: String? = null,
 ) {
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -54,20 +52,11 @@ fun MainPageContent(
     // Expanded windows use the side-panel layout below instead of the bottom sheet.
     val expanded = isExpandedWidth() && !inPreview
 
-    // In history mode the sheet is effectively gone - the name moves to the app bar, the drag
-    // handle is removed and swiping is disabled - but the peek must stay NON-ZERO.
-    //
-    // A peek of 0.dp crashes. `rememberBottomSheetScaffoldState` defaults to
-    // `skipHiddenState = true`, so `Hidden` is not a legal anchor, and Material3 only creates a
-    // `PartiallyExpanded` anchor when the peek height is greater than zero. At 0.dp the sheet
-    // therefore has exactly one anchor, `Expanded`, while the state is still targeting
-    // `PartiallyExpanded` - and the next measure pass throws
-    // `AnchoredDraggableUninitializedException` from `DraggableAnchorsNode.checkOffsetIsValid`.
-    // That is a hard FATAL on the main thread, not a layout glitch.
-    //
-    // 1.dp is below a pixel boundary on every supported density once the sheet is undecorated,
-    // so this keeps the anchor alive without showing anything.
-    val peekHeight = if (state.historyMode) 1.dp else SheetPeekHeight
+    // The peek stays NON-ZERO: a peek of 0.dp crashes (Material3 keeps only
+    // the Expanded anchor while the state targets PartiallyExpanded). This
+    // page always shows the family list — person/waypoint sheets are
+    // separate destinations — so the peek never collapses for history mode.
+    val peekHeight = SheetPeekHeight
 
     // The FAB sits on top of the always-light map, so color it from a light dynamic
     // scheme regardless of the app's (possibly dark) theme. Captured OUTSIDE the
@@ -90,27 +79,11 @@ fun MainPageContent(
                 val st = scaffoldState.bottomSheetState
                 val settled = st.currentValue == SheetValue.PartiallyExpanded &&
                     st.targetValue == SheetValue.PartiallyExpanded
-                val hist = state.historyMode
-                if (settled && !hist) runCatching { st.requireOffset() }.getOrNull() else null
+                if (settled) runCatching { st.requireOffset() }.getOrNull() else null
             }.collect { off ->
                 if (off != null && collapsedSheetOffset.floatValue.isNaN()) {
                     collapsedSheetOffset.floatValue = off
                 }
-            }
-        }
-
-        // Changing the peek does not relocate a sheet that is already settled, in either
-        // direction. Entering history drops the peek to its 1dp sliver, but a tall person
-        // sheet stays put, shows the empty history content, and covers the scrubber card
-        // floating underneath it (GitHub #818). Leaving history restores the peek without
-        // pulling the sliver back up. Nudge toward the peek on both transitions, retrying
-        // until the anchor is ready.
-        LaunchedEffect(state.historyMode) {
-            repeat(10) {
-                if (runCatching { scaffoldState.bottomSheetState.partialExpand() }.isSuccess) {
-                    return@LaunchedEffect
-                }
-                kotlinx.coroutines.delay(50)
             }
         }
     }
@@ -119,20 +92,9 @@ fun MainPageContent(
         FindFamilyWideLayout(
             map = { map() },
             panel = { modifier ->
-                if (state.nothingSelected) {
-                    FamilyListSheet(state.familyList, familyActions)
-                } else if (state.selectedUserId != null) {
-                    Column(modifier) {
-                        state.person?.let { PersonDetailSheet(it, personActions) }
-                        if (state.historyMode) {
-                            // The phone layout floats the scrubber over the map; the side
-                            // panel hosts it instead, under the person's card, so history
-                            // is usable here rather than an empty panel (GitHub #818).
-                            Spacer(Modifier.weight(1f))
-                            Box(Modifier.fillMaxWidth()) { historyScrubber() }
-                        }
-                    }
-                }
+                // Always the family list: person/waypoint sheets are
+                // separate destinations over the map, on every form factor.
+                FamilyListSheet(state.familyList, familyActions)
             },
         )
         return
@@ -141,8 +103,8 @@ fun MainPageContent(
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetPeekHeight = peekHeight,
-        sheetSwipeEnabled = !state.historyMode,
-        sheetDragHandle = if (state.historyMode) null else { { BottomSheetDefaults.DragHandle() } },
+        sheetSwipeEnabled = true,
+        sheetDragHandle = { BottomSheetDefaults.DragHandle() },
         sheetContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         // No top bar: the chrome floats over the map as a TopAppBarOverlay in the content
         // slot below, so the map gets the whole window (GitHub #680).
@@ -150,8 +112,6 @@ fun MainPageContent(
             MainSheetContent(
                 state = state,
                 familyActions = familyActions,
-                personActions = personActions,
-                actions = actions,
             )
         }
     ) { _ ->
@@ -177,8 +137,6 @@ fun MainPageContent(
                     MapOverlayBar(state, actions, backupPassphrase)
                 }
             }
-
-            historyScrubber()
 
             MainFabOverlay(
                 state = state,

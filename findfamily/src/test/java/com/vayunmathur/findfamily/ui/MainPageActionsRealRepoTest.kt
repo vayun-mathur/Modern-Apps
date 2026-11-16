@@ -63,28 +63,21 @@ class MainPageActionsRealRepoTest {
         ))
         val alice = repo.getUser(aliceId)!!
         val wpId = repo.waypointStore.upsert(Waypoint(name = "Home", range = 100.0, coord = Coord(1.0, 2.0)))
-        val stack = NavBackStack<Route>(arrayOf(Route.MainPage()))
+        val stack = NavBackStack<Route>(arrayOf(Route.MainPage))
         var gpsShown = false
-        var securityShown = false
-        var contactPicks = 0
-        var captured: Triple<
+        var captured: Pair<
             com.vayunmathur.findfamily.util.FamilyListActions,
-            com.vayunmathur.findfamily.util.PersonActions,
             MainPageActions>? = null
         rule.setContent {
             DynamicTheme {
                 captured = rememberMainPageActions(
                     ffViewModel = vm, backStack = stack, platform = Platform(ctx),
-                    selectedUser = alice, selectedWaypointId = wpId,
-                    waypoints = runBlocking { repo.waypointStore.getAll() },
                     onShowGpsWarning = { gpsShown = it },
-                    onShowSecurityCode = { securityShown = it },
-                    requestPickContact = { contactPicks++ },
                 )
             }
         }
         rule.waitForIdle()
-        val (family, person, main) = captured!!
+        val (family, main) = captured!!
         // Family actions: accepting a request pushes the prefilled Add Person dialog.
         family.acceptRequest(777L)
         assertEquals(Route.AddPersonDialog(777L), stack.last())
@@ -98,14 +91,19 @@ class MainPageActionsRealRepoTest {
             pqcPublicKey = "bundle", pqcKey = "full-key", id = 124L))
         assertTrue(clipboard.primaryClip?.getItemAt(0)?.text?.toString()?.endsWith("#pqc_key=full-key") == true)
         family.deleteTemporaryLink(TemporaryLink(name = "x", deleteAt = Clock.System.now(), pqcPublicKey = "b", id = 1L))
+        // Selection is navigation: tapping a person/waypoint pushes its sheet
+        // destination (the stack is the only selection holder).
         family.selectUser(aliceId)
+        assertEquals(Route.PersonSheet(aliceId), stack.last())
+        stack.pop()
         family.beginEditWaypoint(repo.waypointStore.get(wpId))
-        // Person actions delegate to the contact picker.
-        person.changeConnectedContact()
-        assertEquals(1, contactPicks)
-        person.setUserSharing(alice, false)
+        assertEquals(Route.WaypointSheet(wpId), stack.last())
+        assertEquals("Home", vm.waypointName.value)
+        stack.pop()
+        // Person-scoped actions live on the sheet destination / ViewModel.
+        vm.setUserSharing(alice, false)
         assertTrue(awaitFamilyCondition { repo.getUser(aliceId)?.sendingEnabled == false })
-        // Main actions: dialogs, selection and waypoint form.
+        // Main actions: dialogs and waypoint creation.
         main.addPerson()
         assertEquals(Route.AddPersonDialog(), stack.last())
         stack.pop()
@@ -115,31 +113,22 @@ class MainPageActionsRealRepoTest {
         main.addTracker()
         assertEquals(Route.AddTrackerDialog, stack.last())
         stack.pop()
-        main.openUwbRanging(aliceId)
-        assertEquals(Route.UwbRangingPage(aliceId), stack.last())
-        stack.pop()
         main.onGpsWarningClick()
         assertTrue(gpsShown)
-        main.onShowSecurityCode()
-        assertTrue(securityShown)
-        main.setWaypointName("Cabin")
-        main.setWaypointRange("250")
-        assertEquals("Cabin", vm.waypointName.value)
-        assertEquals("250", vm.waypointRange.value)
         main.beginCreateWaypoint()
-        main.setWaypointName("New Place")
-        main.saveCurrentWaypoint()
+        assertEquals(Route.WaypointSheet(0L), stack.last())
+        vm.mapState.setWaypointName("New Place")
+        assertTrue(vm.mapState.saveCurrentWaypoint(0L))
         assertTrue(awaitFamilyCondition { repo.waypointStore.getAll().any { it.name == "New Place" } })
-        main.enterHistory()
+        stack.pop()
+        // History present/history toggling is MapPageState, driven by the sheet.
+        vm.mapState.setShowingPresent(false)
         assertEquals(false, vm.isShowingPresent.value)
-        main.setShowingPresent(true)
+        vm.mapState.onPersonOpened()
         assertEquals(true, vm.isShowingPresent.value)
-        vm.selectUser(aliceId)
-        main.clearSelection()
-        assertNull(vm.selectedUserId.value)
-        // Deletes remove the rows and clear the selection.
-        main.deleteSelectedWaypoint()
-        main.deleteSelectedUser()
+        // Deletes remove the rows (sheet destinations pop themselves after).
+        vm.deleteWaypoint(repo.waypointStore.get(wpId))
+        vm.deleteUser(alice)
         assertTrue(awaitFamilyCondition { repo.getUser(aliceId) == null })
         Unit
     }

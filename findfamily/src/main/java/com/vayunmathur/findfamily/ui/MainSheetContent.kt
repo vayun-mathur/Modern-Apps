@@ -154,8 +154,6 @@ import kotlin.time.Instant
 internal fun MainSheetContent(
     state: MainPageUiState,
     familyActions: FamilyListActions,
-    personActions: PersonActions,
-    actions: MainPageActions,
 ) {
     // The sheet's own content MUST be taller than the peek, or Material3 emits a single
     // anchor and the scaffold crashes.
@@ -167,41 +165,10 @@ internal fun MainSheetContent(
     // measure pass. That is a hard FATAL, and it is reached by an ordinary route: a fresh
     // install has no family members, so FamilyListSheet is close to empty.
     //
-    // Enforced here, around every branch, rather than inside each one: the history-mode
-    // branch below is deliberately empty, and a future branch would inherit the same trap.
+    // Person/waypoint sheets are separate destinations (Route.PersonSheet /
+    // Route.WaypointSheet) over the map; this in-page sheet always shows the
+    // family list.
     Box(Modifier.heightIn(min = SheetPeekHeight + SheetMinContentMargin)) {
-        if (state.nothingSelected) {
         FamilyListSheet(state.familyList, familyActions)
-    } else if (state.historyMode) {
-        // History mode has no sheet; the name is shown in the map overlay.
-    } else if (state.selectedUserId != null) {
-        state.person?.let { PersonDetailSheet(it, personActions) }
-    } else if (state.selectedWaypointId != null) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 4.dp)) {
-            OutlinedTextField(
-                state.waypointName,
-                { actions.setWaypointName(it) },
-                Modifier.fillMaxWidth(),
-                isError = state.waypointName.isBlank(),
-                supportingText = if (state.waypointName.isBlank()) {
-                    { Text(stringResource(R.string.waypoint_name_blank_error)) }
-                } else null
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                state.waypointRange,
-                { actions.setWaypointRange(it) },
-                Modifier.fillMaxWidth(),
-                suffix = { Text(stringResource(R.string.waypoint_range_suffix)) },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal
-                ),
-                isError = state.waypointRange.toDoubleOrNull() == null,
-                supportingText = if (state.waypointRange.toDoubleOrNull() == null) {
-                    { Text(stringResource(R.string.waypoint_range_error)) }
-                } else null
-            )
-        }
-    }
     }
 }

@@ -34,85 +34,43 @@ internal fun MapOverlayBar(
 
     val gpsWarningDescription = stringResource(R.string.gps_fallback_warning_content_description)
     val menuDescription = stringResource(R.string.map_menu_content_description)
-    val findNearbyDescription = stringResource(R.string.find_nearby_content_description)
-    val verifyDescription = stringResource(R.string.verify_security_code_content_description)
-    val deletePersonDescription = stringResource(R.string.delete_person_content_description)
-    val deletePlaceDescription = stringResource(R.string.delete_place_content_description)
 
-    val selectedUserId = state.selectedUserId
-    val selectedWaypointId = state.selectedWaypointId
-
-    val overlayActions: List<OverlayAction> =
-        if (selectedUserId == null && (selectedWaypointId == null || selectedWaypointId == 0L)) {
-            listOfNotNull(
-                if (state.usingGpsFallback) {
-                    OverlayAction(
-                        icon = {
-                            // Use Image (not the tinting IconWarning) so the
-                            // custom yellow-and-red drawable keeps both colors.
-                            Image(
-                                painter = painterResource(R.drawable.ic_warning_gps),
-                                contentDescription = gpsWarningDescription
-                            )
-                        },
-                        contentDescription = gpsWarningDescription,
-                        onClick = { actions.onGpsWarningClick() }
+    // Selection-scoped actions (Find Nearby / verify / delete) live on the
+    // PersonSheet / WaypointSheet destinations. The map's own overlay only
+    // carries the GPS warning and the backup menu; dismissal of a sheet is
+    // the back stack's job, so there is no navigate-back affordance here.
+    val overlayActions: List<OverlayAction> = listOfNotNull(
+        if (state.usingGpsFallback) {
+            OverlayAction(
+                icon = {
+                    // Use Image (not the tinting IconWarning) so the
+                    // custom yellow-and-red drawable keeps both colors.
+                    Image(
+                        painter = painterResource(R.drawable.ic_warning_gps),
+                        contentDescription = gpsWarningDescription
                     )
-                } else null,
-                // Singular backup entry point: one overflow button whose menu holds
-                // "Back up" and "Restore" (GitHub #879). Null in previews, where no
-                // passphrase exists and the button stays hidden.
-                backupPassphrase?.let { passphrase ->
-                    OverlayAction(
-                        icon = {
-                            BackupMenuButton(passphrase, backupMenuExpanded, { backupMenuExpanded = it })
-                        },
-                        contentDescription = menuDescription,
-                        onClick = { backupMenuExpanded = !backupMenuExpanded }
-                    )
-                }
+                },
+                contentDescription = gpsWarningDescription,
+                onClick = { actions.onGpsWarningClick() }
             )
-        } else if (selectedUserId != null && !state.historyMode) {
-            if (state.isSelfSelected) emptyList() else listOfNotNull(
-                // Find Nearby (UWB) needs both the public android.ranging API
-                // (Android 16+) and an actual UWB radio. Hide the entry point otherwise.
-                if (state.uwbAvailable) {
-                    OverlayAction({ IconNavigationArrow() }, findNearbyDescription) {
-                        actions.openUwbRanging(selectedUserId)
-                    }
-                } else null,
-                OverlayAction({ IconVerify() }, verifyDescription) { actions.onShowSecurityCode() },
-                OverlayAction({ IconDelete() }, deletePersonDescription) { actions.deleteSelectedUser() }
+        } else null,
+        // Singular backup entry point: one overflow button whose menu holds
+        // "Back up" and "Restore" (GitHub #879). Null in previews, where no
+        // passphrase exists and the button stays hidden.
+        backupPassphrase?.let { passphrase ->
+            OverlayAction(
+                icon = {
+                    BackupMenuButton(passphrase, backupMenuExpanded, { backupMenuExpanded = it })
+                },
+                contentDescription = menuDescription,
+                onClick = { backupMenuExpanded = !backupMenuExpanded }
             )
-        } else if (selectedWaypointId != null && selectedWaypointId != 0L) {
-            listOf(
-                OverlayAction({ IconDelete() }, deletePlaceDescription) { actions.deleteSelectedWaypoint() }
-            )
-        } else {
-            emptyList()
         }
+    )
 
     TopAppBarOverlay(
-        onNavigateBack = if (selectedUserId != null || selectedWaypointId != null) {
-            {
-                if (state.historyMode) actions.setShowingPresent(true) else actions.clearSelection()
-            }
-        } else null,
+        onNavigateBack = null,
         actions = overlayActions,
-        // The overlay draws no container of its own, so the history title carries its own
-        // surface to stay legible over the map.
-        title = if (state.historyMode) {
-            {
-                Card(Modifier.padding(start = Spacing.sm)) {
-                    Text(
-                        stringResource(R.string.history_title, state.selectedUser?.name ?: ""),
-                        Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        } else null
+        title = null
     )
 }

@@ -15,7 +15,6 @@ import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.util.MainPageActions
 import com.vayunmathur.findfamily.util.MainPageUiState
-import com.vayunmathur.findfamily.util.PersonUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test
@@ -33,16 +32,10 @@ class OverlayBarsTest {
         rule.setContent { MapOverlayBar(MainPageUiState(usingGpsFallback = true), MainPageActions.Noop, "pw") }
         rule.waitForIdle()
     }
-    @Test fun overlayBarUserSelected() {
-        val u = user(3L)
-        rule.setContent {
-            MapOverlayBar(MainPageUiState(selectedUserId = 3L, selectedUser = u, person = PersonUiState(user = u)), MainPageActions.Noop)
-        }
-        rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("Alice", substring = true).fetchSemanticsNodes().isNotEmpty() || true)
-    }
-    @Test fun overlayBarWaypointSelected() {
-        rule.setContent { MapOverlayBar(MainPageUiState(selectedWaypointId = 5L), MainPageActions.Noop) }
+    @Test fun overlayBarWithoutGpsFallback() {
+        // Selection-scoped overlay actions moved to the sheet destinations;
+        // the map overlay renders in its only (unselected) shape.
+        rule.setContent { MapOverlayBar(MainPageUiState(), MainPageActions.Noop, "pw") }
         rule.waitForIdle()
     }
     @Test fun fabOverlayNothingSelected() {
@@ -55,10 +48,10 @@ class OverlayBarsTest {
         }
         rule.waitForIdle()
     }
-    @Test fun fabOverlayUserSelected() {
+    @Test fun fabOverlayInPreview() {
         rule.setContent {
             Box(Modifier.fillMaxSize()) {
-                MainFabOverlay(MainPageUiState(selectedUserId = 1L), MainPageActions.Noop, 80.dp, { 0 },
+                MainFabOverlay(MainPageUiState(), MainPageActions.Noop, 80.dp, { 0 },
                     MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primary,
                     MaterialTheme.colorScheme.onPrimaryContainer, lightColorScheme(), inPreview = true)
             }

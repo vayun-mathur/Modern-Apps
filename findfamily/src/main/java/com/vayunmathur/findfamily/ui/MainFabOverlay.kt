@@ -171,7 +171,10 @@ internal fun BoxScope.MainFabOverlay(
             .offset { IntOffset(0, sheetLiftPx()) }
     ) {
         MaterialTheme(colorScheme = lightScheme) {
-            if (state.nothingSelected) {
+            // MainPage always shows the family list (selection lives in the
+            // PersonSheet/WaypointSheet destinations, which carry their own
+            // actions), so the FAB is always the add menu.
+            run {
                 if (inPreview) {
                     // The expressive FloatingActionButtonMenu is animation-driven and
                     // does not render under Layoutlib; show the representative collapsed
@@ -212,23 +215,6 @@ internal fun BoxScope.MainFabOverlay(
                                 { IconNavigationArrow() })
                         }
                     }
-                }
-            } else if (state.selectedWaypointId != null) {
-                FloatingActionButton(
-                    { actions.saveCurrentWaypoint() },
-                    containerColor = fabContainerColor,
-                    contentColor = fabContentColor
-                ) {
-                    IconSave()
-                }
-            } else if (state.selectedUserId != null && state.isShowingPresent) {
-                // Enter history mode; exit is via back.
-                FloatingActionButton(
-                    { actions.enterHistory() },
-                    containerColor = fabContainerColor,
-                    contentColor = fabContentColor
-                ) {
-                    IconRestore()
                 }
             }
         }

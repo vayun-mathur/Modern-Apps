@@ -135,45 +135,44 @@ class FindFamilyViewModelRealRepoTest {
         assertEquals(10.minutes, alert.grace)
     }
 
-    @Test fun selectionAndWaypointFormState() = runBlocking {
+    @Test fun waypointFormAndHistoryState() = runBlocking {
         val wpId = repo.waypointStore.upsert(Waypoint(name = "Office", range = 250.0, coord = Coord(3.0, 4.0)))
-        vm.applyInitialSelection(7L, wpId)
-        assertEquals(7L, vm.selectedUserId.value)
-        assertEquals(wpId, vm.mapState.selectedWaypointId.value)
         vm.beginEditWaypoint(repo.waypointStore.get(wpId))
         assertEquals("Office", vm.waypointName.value)
         assertEquals("250.0", vm.waypointRange.value)
         vm.mapState.setWaypointName("Office 2")
         vm.mapState.setWaypointRange("300")
-        vm.mapState.saveCurrentWaypoint()
+        assertTrue(vm.mapState.saveCurrentWaypoint(wpId))
         await("waypoint saved") { repo.waypointStore.get(wpId).name == "Office 2" }
         assertEquals(300.0, repo.waypointStore.get(wpId).range)
         vm.mapState.beginCreateWaypoint()
-        assertEquals(0L, vm.mapState.selectedWaypointId.value)
         assertEquals("100", vm.waypointRange.value)
         vm.mapState.setWaypointName("New Place")
         vm.mapState.setWaypointCoord(Coord(5.0, 6.0))
-        vm.mapState.saveCurrentWaypoint()
+        assertTrue(vm.mapState.saveCurrentWaypoint(0L))
         await("waypoint created") { repo.waypointStore.getAll().any { it.name == "New Place" } }
-        vm.selectUser(9L)
         vm.mapState.setShowingPresent(false)
         assertFalse(vm.isShowingPresent.value)
         vm.mapState.setHistoricalPosition(com.vayunmathur.library.map.GeoPoint(1.0, 2.0))
         assertNotNull(vm.historicalPosition.value)
         vm.mapState.setShowingPresent(true)
         assertNull(vm.historicalPosition.value)
-        vm.mapState.clearSelection()
-        assertNull(vm.selectedUserId.value)
+        // Opening another person also drops the pin and returns to present.
+        vm.mapState.setShowingPresent(false)
+        vm.mapState.setHistoricalPosition(com.vayunmathur.library.map.GeoPoint(3.0, 4.0))
+        vm.mapState.onPersonOpened()
+        assertTrue(vm.isShowingPresent.value)
+        assertNull(vm.historicalPosition.value)
     }
 
     @Test fun invalidWaypointFormDoesNotPersist() = runBlocking {
         vm.mapState.beginCreateWaypoint()
         vm.mapState.setWaypointName("")
-        vm.mapState.saveCurrentWaypoint()
+        assertFalse(vm.mapState.saveCurrentWaypoint(0L))
         assertTrue(repo.waypointStore.getAll().isEmpty())
         vm.mapState.setWaypointName("Named")
         vm.mapState.setWaypointRange("not-a-number")
-        vm.mapState.saveCurrentWaypoint()
+        assertFalse(vm.mapState.saveCurrentWaypoint(0L))
         assertTrue(repo.waypointStore.getAll().isEmpty())
     }
 
@@ -227,7 +226,7 @@ class FindFamilyViewModelRealRepoTest {
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch { vm.connectedUsers.collect {} },
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch { vm.awaitingRequestUsers.collect {} },
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch { vm.usersById.collect {} },
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch { vm.locationHistory.collect {} },
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch { vm.locationHistory(0L).collect {} },
         )
         val alice = repo.upsertUser(user(name = "Alice"))
         repo.upsertUser(user(name = "Bob", status = RequestStatus.AWAITING_REQUEST))
@@ -248,9 +247,8 @@ class FindFamilyViewModelRealRepoTest {
         assertEquals(listOf("Bob"), vm.awaitingRequestUsers.value.map { it.name })
         await("by-id projected") { vm.usersById.value[alice]?.name == "Alice" }
         assertEquals("Alice", vm.usersById.value[alice]?.name)
-        vm.selectUser(alice)
-        await("history projected") { vm.locationHistory.value.size == 1 }
-        assertEquals(66f, vm.locationHistory.value.single().battery)
+        await("history projected") { vm.locationHistory(alice).first().size == 1 }
+        assertEquals(66f, vm.locationHistory(alice).first().single().battery)
         collectors.forEach { it.cancel() }
     }
 

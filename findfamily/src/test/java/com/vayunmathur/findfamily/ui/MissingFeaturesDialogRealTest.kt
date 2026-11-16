@@ -25,10 +25,10 @@ class MissingFeaturesDialogRealTest {
     private val ctx: Context get() = app
 
     @Test fun dialogDismissesThroughBackStack() {
-        val stack = NavBackStack<Route>(arrayOf(Route.MainPage(), Route.AddLinkDialog))
+        val stack = NavBackStack<Route>(arrayOf(Route.MainPage, Route.AddLinkDialog))
         rule.setContent { MissingFeaturesDialog(stack) }
         rule.onNodeWithText("Required Features Disabled").assertIsDisplayed()
         rule.onNodeWithText("OK").performClick()
-        assertEquals(Route.MainPage(), stack.last())
+        assertEquals(Route.MainPage, stack.last())
     }
 }

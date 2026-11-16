@@ -51,7 +51,7 @@ class DialogsWithVmTest {
         vm = FindFamilyViewModel(app, repo)
     }
 
-    private fun stack(): NavBackStack<Route> = NavBackStack(arrayOf(Route.MainPage()))
+    private fun stack(): NavBackStack<Route> = NavBackStack(arrayOf(Route.MainPage))
 
     private fun user(name: String = "Alice") = User(
         name = name, photo = null, locationName = "Home", sendingEnabled = true,

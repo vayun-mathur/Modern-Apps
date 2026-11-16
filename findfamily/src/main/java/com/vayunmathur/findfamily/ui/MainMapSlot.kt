@@ -161,6 +161,8 @@ internal fun MainMapSlot(
     historicalPosition: GeoPoint?,
     selectedWaypointId: Long?,
     waypointRange: String,
+    onUserClick: (Long) -> Unit,
+    onMapClick: () -> Unit,
 ) {
     val selectedUserObj = if (selectedUserId != null) {
         selectedUser?.let { SelectedUser(it, isShowingPresent, historicalPosition) }
@@ -176,12 +178,8 @@ internal fun MainMapSlot(
     MapView(
         ffViewModel,
         camera = camera,
-        onUserClick = {
-            ffViewModel.selectUser(it)
-        },
-        onMapClick = {
-            ffViewModel.mapState.clearSelection()
-        },
+        onUserClick = onUserClick,
+        onMapClick = onMapClick,
         selectedUser = selectedUserObj,
         selectedWaypoint = selectedWaypointObj
     )

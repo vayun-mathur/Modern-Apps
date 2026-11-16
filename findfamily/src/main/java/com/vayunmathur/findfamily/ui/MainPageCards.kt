@@ -55,6 +55,7 @@ internal val SheetMinContentMargin = 48.dp
 fun BoxScope.HistoryScrubber(
     backStack: NavBackStack<Route>,
     ffViewModel: FindFamilyViewModel,
+    userId: Long,
     setHistoricalPosition: (GeoPoint?) -> Unit
 ) {
     val state = rememberHistoryScrubberState(
@@ -82,7 +83,7 @@ fun BoxScope.HistoryScrubber(
         state.setDate(it)
     }
 
-    val locs by ffViewModel.locationHistory.collectAsState()
+    val locs by ffViewModel.locationHistory(userId).collectAsState(initial = emptyList())
 
     LaunchedEffect(state.instant, locs) {
         if (locs.isNotEmpty()) {

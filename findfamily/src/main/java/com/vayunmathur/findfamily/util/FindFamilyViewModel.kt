@@ -30,13 +30,11 @@ import com.vayunmathur.findfamily.R
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DatabaseHelper
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -51,7 +49,9 @@ import kotlin.time.Duration.Companion.minutes
  * ViewModel for the FindFamily app.
  *
  * Owns:
- *  - selection state (selected user / waypoint, history vs present, historical position)
+ *  - history-vs-present state, the historical position, and the waypoint
+ *    editing form (which person/place is selected lives in the navigation
+ *    back stack — `Route.PersonSheet` / `Route.WaypointSheet` — not here)
  *  - waypoint editing form state + persistence
  *  - exposed DB-backed flows for users / waypoints / temporary links and the
  *    latest LocationValue per user (`latestLocationByUser`)
@@ -225,26 +225,15 @@ class FindFamilyViewModel(
     // ------------------------------------------------------------------
 
     /**
-     * Which user / waypoint is selected, present-vs-history, the historical
-     * position, and the waypoint editing form. Lives in [MapPageState] so this
-     * class stays under the function cap; the StateFlows below are the same
-     * observables as before.
+     * Present-vs-history, the historical position, and the waypoint editing
+     * form. Lives in [MapPageState] so this class stays under the function
+     * cap; the StateFlows below are the same observables as before. Selection
+     * itself is not here — it is the top of the navigation back stack.
      */
     val mapState = MapPageState(viewModelScope, repository)
 
-    val selectedUserId: StateFlow<Long?> = mapState.selectedUserId
     val isShowingPresent: StateFlow<Boolean> = mapState.isShowingPresent
     val historicalPosition: StateFlow<GeoPoint?> = mapState.historicalPosition
-
-    override fun selectUser(userId: Long) = mapState.selectUser(userId)
-
-    /**
-     * Apply the initial selection passed in via navigation. Called from the
-     * MainPage entry so that opening the screen with a deep-linked user or
-     * waypoint id selects it on arrival.
-     */
-    fun applyInitialSelection(initialUserId: Long?, initialWaypointId: Long?) =
-        mapState.applyInitialSelection(initialUserId, initialWaypointId)
 
     val waypointName: StateFlow<String> = mapState.waypointName
     val waypointRange: StateFlow<String> = mapState.waypointRange
@@ -253,16 +242,16 @@ class FindFamilyViewModel(
     override fun beginEditWaypoint(waypoint: Waypoint) = mapState.beginEditWaypoint(waypoint)
 
     // ------------------------------------------------------------------
-    // Per-user location history (raw, filtered by selected user)
+    // Per-user location history (raw, keyed by the person-sheet route arg)
     // ------------------------------------------------------------------
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val locationHistory: StateFlow<List<LocationValue>> = mapState.selectedUserId
-        .flatMapLatest { userId ->
-            if (userId == null) flowOf(emptyList())
-            else repository.locationHistory(userId)
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /**
+     * Raw location history for [userId]. The id comes from the
+     * `Route.PersonSheet` route argument at the call site — the ViewModel
+     * holds no selection to key this off.
+     */
+    fun locationHistory(userId: Long): Flow<List<LocationValue>> =
+        repository.locationHistory(userId)
 
     // ------------------------------------------------------------------
     // Permissions
