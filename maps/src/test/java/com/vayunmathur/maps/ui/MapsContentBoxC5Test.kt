@@ -123,7 +123,7 @@ class MapsContentBoxC5Test {
             navSession = NavigationSessionManager.NavSession(),
             navProgress = null, isNavigating = isNavigating, browsing = true,
             searchBarVisible = true, searchBarLiftPx = 0, onSearchBarLift = {},
-            sheetState = null, searchSheetState = null, searchRequest = null,
+            sheetState = null, searchSheetState = null, searchRoute = null,
             openSearch = { _, _ -> }, settingsAction = emptyList(), wide = false,
         )
     }

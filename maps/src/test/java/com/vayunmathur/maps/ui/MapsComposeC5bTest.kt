@@ -65,7 +65,6 @@ class MapsComposeC5bTest {
                         // not this effect's.
                         sheetState = null,
                         searchSheetState = null,
-                        searchHost = rememberMapSearchHost(searchVm, camera),
                     )
                 }
             }
@@ -133,7 +132,6 @@ class MapsComposeC5bTest {
                         isNavigating = false,
                         sheetState = null,
                         searchSheetState = null,
-                        searchHost = rememberMapSearchHost(searchVm, camera),
                     )
                 }
             }

@@ -118,7 +118,7 @@ class WideHostSlice3ExtraTest {
             navSession = NavigationSessionManager.NavSession(),
             navProgress = navProgress, isNavigating = isNavigating, browsing = true,
             searchBarVisible = searchBarVisible, searchBarLiftPx = 0, onSearchBarLift = {},
-            sheetState = null, searchSheetState = null, searchRequest = null,
+            sheetState = null, searchSheetState = null, searchRoute = null,
             openSearch = { _, _ -> }, settingsAction = emptyList(), wide = true,
         )
     }

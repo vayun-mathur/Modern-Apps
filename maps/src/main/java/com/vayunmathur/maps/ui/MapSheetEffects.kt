@@ -20,53 +20,7 @@ import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.util.MapsSearchViewModel
 import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.searchBiasPoint
-import com.vayunmathur.maps.util.visibleBoundsOrWorld
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-
-/**
- * State the sheet effects own: the open search request plus the latched
- * search-was-open flag. A holder (rather than bare `remember`s in MapPage)
- * so [MapSheetEffects] can own both the state and the effects that drive it.
- */
-internal class MapSearchHost(
-    val searchViewModel: MapsSearchViewModel,
-    val camera: CameraState,
-    private val userPosition: StateFlow<GeoPoint> = NoFix,
-) {
-    var searchRequest by mutableStateOf<SearchRequest?>(null)
-
-    // Latched rather than derived, so the hand-back below cannot fire on first composition. A
-    // cold start can arrive with a place already selected and a deep link about to focus it, and
-    // that path owns the pane — see the `pendingFocus` effect in MapSheetEffects.
-    var searchWasOpen by mutableStateOf(false)
-
-    fun openSearch(query: String? = null, waypointIndex: Int? = null) {
-        val near = searchBiasPoint(camera.visibleBoundsOrWorld(), userPosition.value)
-        val nearLat = near.latitude
-        val nearLon = near.longitude
-        // The category chips and the voice transcript both arrive as a query to run, which used
-        // to be a route argument the destination replayed on arrival. There is no arrival any
-        // more, so it runs here.
-        if (!query.isNullOrBlank()) searchViewModel.setQuery(query, nearLat, nearLon)
-        searchRequest = SearchRequest(waypointIndex, nearLat, nearLon)
-    }
-}
-
-/** "No fix yet" for hosts built without a location source (previews, tests). */
-private val NoFix: StateFlow<GeoPoint> = MutableStateFlow(GeoPoint(0.0, 0.0))
-
-/** Remembers a [MapSearchHost] bound to this composition. */
-@Composable
-internal fun rememberMapSearchHost(
-    searchViewModel: MapsSearchViewModel,
-    camera: CameraState,
-    userPosition: StateFlow<GeoPoint> = NoFix,
-): MapSearchHost = remember(searchViewModel, camera, userPosition) {
-    MapSearchHost(searchViewModel, camera, userPosition)
-}
 
 /**
  * Sheet-driving effects, back handling and the settings action.
@@ -86,9 +40,11 @@ internal fun MapSheetEffects(
     isNavigating: Boolean,
     sheetState: FreeHeightSheetState?,
     searchSheetState: FreeHeightSheetState?,
-    searchHost: MapSearchHost,
+    sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute> =
+        com.vayunmathur.library.util.NavBackStack(arrayOf(com.vayunmathur.maps.SheetRoute.Browse)),
+    searchRoute: com.vayunmathur.maps.SheetRoute.Search? = null,
 ) {
-    val searchRequest = searchHost.searchRequest
+    val searchRequest = searchRoute
 
     LaunchedEffect(Unit, wide) {
         // Raise the sheet if something is already selected — unless a deep link is about to open
@@ -165,14 +121,18 @@ internal fun MapSheetEffects(
     // on the way out. The selection is read off the ViewModel rather than the collected state
     // because picking a result sets it and closes search in the same breath, and the flow has not
     // necessarily delivered by the time this effect restarts.
+    // Search is a stack entry: while it is on top the search sheet is up
+    // and the place sheet is down; popping it hands the place sheet back.
+    // No latch is needed — the previous top is still on the stack.
+    var searchWasOpen by remember { mutableStateOf(false) }
     LaunchedEffect(searchRequest, wide) {
         if (wide) return@LaunchedEffect
         if (searchRequest != null) {
-            searchHost.searchWasOpen = true
+            searchWasOpen = true
             launch { sheetState?.hide() }
             searchSheetState?.partialExpand()
-        } else if (searchHost.searchWasOpen) {
-            searchHost.searchWasOpen = false
+        } else if (searchWasOpen) {
+            searchWasOpen = false
             launch { searchSheetState?.hide() }
             if (viewModel.selectedFeature.value != null) sheetState?.partialExpand()
         }
@@ -182,7 +142,9 @@ internal fun MapSheetEffects(
     // found what they were looking for by pointing at it. Guarded the same way
     // as the sheet effects below: in wide mode the panel reads this state directly.
     LaunchedEffect(selectedFeature, wide) {
-        if (!wide && selectedFeature != null) searchHost.searchRequest = null
+        if (!wide && selectedFeature != null && sheetStack.last() is com.vayunmathur.maps.SheetRoute.Search) {
+            sheetStack.pop()
+        }
     }
 
     // Clearing the selection is enough: the `LaunchedEffect(selectedFeature)` above is the single
@@ -199,7 +161,7 @@ internal fun MapSheetEffects(
     // Registered last so it wins: back out of search before back does anything to the selection
     // the search sheet is currently covering.
     BackHandler(searchRequest != null) {
-        searchHost.searchRequest = null
+        sheetStack.pop()
     }
 }
 

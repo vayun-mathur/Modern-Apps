@@ -101,7 +101,7 @@ class Slice3Pass5SheetsTest {
             searchBarVisible = true, searchBarLiftPx = 0, onSearchBarLift = {},
             sheetState = FreeHeightSheetState(SheetValue.PartiallyExpanded),
             searchSheetState = FreeHeightSheetState(SheetValue.PartiallyExpanded),
-            searchRequest = null,
+            searchRoute = null,
             openSearch = { _, _ -> }, settingsAction = emptyList(), wide = false,
         )
     }

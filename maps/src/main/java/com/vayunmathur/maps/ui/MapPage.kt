@@ -80,6 +80,7 @@ import com.vayunmathur.maps.util.RouteService
 import com.vayunmathur.maps.util.SavedPlacesViewModel
 import com.vayunmathur.maps.util.SearchActions
 import com.vayunmathur.maps.util.SearchUiState
+import com.vayunmathur.maps.util.visibleBoundsOrWorld
 import com.vayunmathur.maps.util.SelectedFeatureViewModel
 import kotlinx.coroutines.launch
 import com.vayunmathur.maps.R as MapsR
@@ -241,8 +242,7 @@ fun MapPage(
     // How much of the bottom the collapsed search bar is occupying, so the FAB stack and the
     // scale bar can clear it the same way they clear a sheet. Zero whenever the bar is not drawn.
     var searchBarLiftPx by remember { mutableIntStateOf(0) }
-    val searchHost = rememberMapSearchHost(searchViewModel, camera, viewModel.userPosition)
-    val searchRequest = searchHost.searchRequest
+    val searchRoute = sheetTop as? SheetRoute.Search
     val searchState = SearchUiState(
         query = searchQuery,
         results = searchResults,
@@ -253,12 +253,16 @@ fun MapPage(
     // The bar is chrome, not a sheet, so it is composed away rather than animated out. Its
     // measured height therefore has to be discounted explicitly — a stale one would leave the
     // FAB stack floating above a bar that is no longer there.
-    val searchBarVisible = browsing && searchRequest == null
+    val searchBarVisible = browsing && searchRoute == null
     // Expanded widths show this content in the side panel instead of a sheet.
-    val panelSearch = wide && searchRequest != null
-    val panelPlace = wide && searchRequest == null &&
+    val panelSearch = wide && searchRoute != null
+    val panelPlace = wide && searchRoute == null &&
         (selectedFeature != null || route != null || inactiveNavigation != null)
-    fun openSearch(query: String? = null, waypointIndex: Int? = null) = searchHost.openSearch(query, waypointIndex)
+    fun openSearch(query: String? = null, waypointIndex: Int? = null) {
+        val near = com.vayunmathur.maps.util.searchBiasPoint(camera.visibleBoundsOrWorld(), userPosition)
+        if (!query.isNullOrBlank()) searchViewModel.setQuery(query, near.latitude, near.longitude)
+        sheetStack.add(SheetRoute.Search(waypointIndex, near.latitude, near.longitude))
+    }
     val settingsAction = rememberSettingsAction(backStack)
     MapSheetEffects(
         wide = wide,
@@ -269,16 +273,17 @@ fun MapPage(
         isNavigating = isNavigating,
         sheetState = wideSheetState,
         searchSheetState = wideSearchSheetState,
-        searchHost = searchHost,
+        sheetStack = sheetStack,
+        searchRoute = searchRoute,
     )
     NavigationCameraFollow(camera, chrome, navProgress, isNavigating)
 
     val searchActions = rememberSearchActions(
-        searchRequest = searchRequest,
+        searchRequest = searchRoute,
         searchViewModel = searchViewModel,
         viewModel = viewModel,
         coroutineScope = coroutineScope,
-        onCloseSearch = { searchHost.searchRequest = null },
+        onCloseSearch = { sheetStack.popSheet() },
     )
 
     val scope = MapPageScope(
@@ -331,7 +336,7 @@ fun MapPage(
         onSearchBarLift = { searchBarLiftPx = it },
         sheetState = if (wide) null else sheetState,
         searchSheetState = if (wide) null else searchSheetState,
-        searchRequest = searchRequest,
+        searchRoute = searchRoute,
         openSearch = ::openSearch,
         settingsAction = settingsAction,
         wide = wide,

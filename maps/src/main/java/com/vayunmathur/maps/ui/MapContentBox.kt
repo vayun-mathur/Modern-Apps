@@ -104,7 +104,7 @@ internal fun MapPageScope.MapContentBox(
                 // this box: while search is up, a drop in the bottom third lands on the sheet
                 // rather than the map, and half a working drag is worse than no peg.
                 // Also gated on the Google services opt-in: no opt-in, no peg, no tiles.
-                if (browsing && searchRequest == null && googleServices) StreetViewPegman(camera, onOpenStreetView = { lat, lon -> backStack.add(com.vayunmathur.maps.Route.StreetView(lat, lon)) })
+                if (browsing && searchRoute == null && googleServices) StreetViewPegman(camera, onOpenStreetView = { lat, lon -> backStack.add(com.vayunmathur.maps.Route.StreetView(lat, lon)) })
 
                 // The chrome's inset, in one place. `windowInsetsPadding` *consumes* what it
                 // applies, so the pieces below that inset themselves — the FAB stack, the scale
@@ -266,7 +266,7 @@ internal fun MapPageScope.MapContentBox(
                     // Ambient speed readout: the navigation speedometer while moving,
                     // even outside navigation; see [AmbientSpeedOverlay].
                     AmbientSpeedOverlay(
-                        visible = browsing && searchRequest == null,
+                        visible = browsing && searchRoute == null,
                         speedMps = userSpeedMps,
                         postedLimit = chrome.postedLimit,
                         darkBasemap = darkMap,

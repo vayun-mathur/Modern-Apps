@@ -58,21 +58,6 @@ data class PoiEnrichmentKey(
     }
 }
 
-/**
- * An open search sheet.
- *
- * Search used to be a nav destination, so these three lived in the route. They are still needed —
- * the bias centre because the offline index search ranks by distance to what the user can see, and
- * [waypointIndex] because picking a result while editing a route replaces that leg rather than
- * selecting a place — but now they are the identity of a sheet, not of a page. `null` is the
- * closed state, which is why the whole thing is one nullable value rather than a flag plus three
- * fields that only mean anything while the flag is set.
- */
-internal data class SearchRequest(
-    val waypointIndex: Int?,
-    val nearLat: Double,
-    val nearLon: Double,
-)
 
 /**
  * Everything MapContentBox closes over, bundled so the box is one function
@@ -150,7 +135,7 @@ internal class MapPageScope(
     val onSearchBarLift: (Int) -> Unit,
     val sheetState: FreeHeightSheetState?,
     val searchSheetState: FreeHeightSheetState?,
-    val searchRequest: SearchRequest?,
+    val searchRoute: SheetRoute.Search?,
     val openSearch: (String?, Int?) -> Unit,
     val settingsAction: List<OverlayAction>,
     val wide: Boolean,

@@ -67,7 +67,7 @@ internal fun MapPageScope.MapSheets(
         // The phase, not just "is search open": the three phases with nothing to list are a fixed
         // height, so a sheet that opened on one of them has learned a ceiling that would trap the
         // results list at it once results arrive.
-        contentKey = searchState.phase.takeIf { searchRequest != null },
+        contentKey = searchState.phase.takeIf { searchRoute != null },
     ) { _ ->
         FreeHeightBottomSheetScaffold({
             // Padding only when there is something to pad. An unconditional wrapper measures its

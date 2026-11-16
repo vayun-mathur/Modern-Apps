@@ -12,12 +12,12 @@ import kotlinx.coroutines.launch
 
 /**
  * The search adapter: hoisted out of the sheet so the wide side panel can
- * pass the same callbacks — building it needs the open request, and both
- * hosts close through the same `onCloseSearch`.
+ * pass the same callbacks — building it needs the open [SheetRoute.Search],
+ * and both hosts close through the same `onCloseSearch`.
  */
 @Composable
 internal fun rememberSearchActions(
-    searchRequest: SearchRequest?,
+    searchRequest: com.vayunmathur.maps.SheetRoute.Search?,
     searchViewModel: MapsSearchViewModel,
     viewModel: SelectedFeatureViewModel,
     coroutineScope: CoroutineScope,

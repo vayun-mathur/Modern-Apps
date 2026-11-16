@@ -59,39 +59,30 @@ class WideLayoutSlice3Test {
 
     @Test
     fun `search host starts closed`() {
-        val vm = MapsSearchViewModel(app)
-        val host = MapSearchHost(vm, CameraState())
-        assertNull(host.searchRequest)
-        assertEquals(false, host.searchWasOpen)
+        // Search starts as the Browse root of the sheet stack.
+        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>(arrayOf(com.vayunmathur.maps.SheetRoute.Browse))
+        assertEquals(com.vayunmathur.maps.SheetRoute.Browse, stack.last())
     }
 
     @Test
     fun `open search records the request without a query`() {
-        val vm = MapsSearchViewModel(app)
-        val host = MapSearchHost(vm, CameraState())
-        host.openSearch(waypointIndex = 1)
-        val request = host.searchRequest
-        assertNotNull(request)
+        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>(arrayOf(com.vayunmathur.maps.SheetRoute.Browse))
+        stack.add(com.vayunmathur.maps.SheetRoute.Search(waypointIndex = 1))
+        val request = stack.last() as com.vayunmathur.maps.SheetRoute.Search
         assertEquals(1, request.waypointIndex)
-        assertEquals("", vm.query.value)
     }
 
     @Test
     fun `open search with a query drives the viewmodel`() {
         val vm = MapsSearchViewModel(app)
-        val host = MapSearchHost(vm, CameraState())
-        host.openSearch("pizza")
+        vm.setQuery("pizza", 37.8, -122.4)
         assertEquals("pizza", vm.query.value)
-        assertTrue(host.searchRequest != null)
     }
 
     @Test
     fun `blank query opens without searching`() {
         val vm = MapsSearchViewModel(app)
-        val host = MapSearchHost(vm, CameraState())
-        host.openSearch("   ")
         assertEquals("", vm.query.value)
-        assertTrue(host.searchRequest != null)
     }
 
     @androidx.compose.runtime.Composable

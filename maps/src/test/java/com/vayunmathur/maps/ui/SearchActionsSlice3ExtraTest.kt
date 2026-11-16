@@ -41,7 +41,7 @@ class SearchActionsSlice3ExtraTest {
         rule.setContent {
             val scope = rememberCoroutineScope()
             nullActions = rememberSearchActions(null, searchVm, selectedVm, scope) { closed++ }
-            actions = rememberSearchActions(SearchRequest(null, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
+            actions = rememberSearchActions(com.vayunmathur.maps.SheetRoute.Search(null, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
             DynamicTheme { androidx.compose.foundation.layout.Box {} }
         }
         assertNull(nullActions)
@@ -61,7 +61,7 @@ class SearchActionsSlice3ExtraTest {
         var actions: SearchActions? = null
         rule.setContent {
             val scope = rememberCoroutineScope()
-            actions = rememberSearchActions(SearchRequest(null, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
+            actions = rememberSearchActions(com.vayunmathur.maps.SheetRoute.Search(null, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
             DynamicTheme { androidx.compose.foundation.layout.Box {} }
         }
         val result = com.vayunmathur.maps.util.SearchResult("id1", "Blue Bottle", null, 37.8, -122.4, null)
@@ -96,7 +96,7 @@ class SearchActionsSlice3ExtraTest {
         selectedVm.set(SpecificFeature.Route(listOf(from, to)))
         rule.setContent {
             val scope = rememberCoroutineScope()
-            actions = rememberSearchActions(SearchRequest(1, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
+            actions = rememberSearchActions(com.vayunmathur.maps.SheetRoute.Search(1, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
             DynamicTheme { androidx.compose.foundation.layout.Box {} }
         }
         actions!!.selectResult(com.vayunmathur.maps.util.SearchResult("id2", "Middle", null, 37.85, -122.35, null))
