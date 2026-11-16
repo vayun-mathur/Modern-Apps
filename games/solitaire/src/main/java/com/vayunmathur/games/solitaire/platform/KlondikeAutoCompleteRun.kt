@@ -6,15 +6,6 @@ import kotlinx.coroutines.flow.update
 // ---- Klondike auto-complete: the run on the view model ----
 // Planning is pure and lives in KlondikeAutoComplete.kt; this drives it on live state.
 
-/** Instant auto-complete: applies the whole plan in one step (one history entry). */
-internal fun SolitaireViewModel.klondikeAutoCompleteImpl() {
-    val state = uiStateInternal.value.klondike ?: return
-    val finished = planKlondikeAutoComplete(state)?.lastOrNull()?.after ?: return
-    saveHistory()
-    uiStateInternal.update { it.copy(klondike = finished) }
-    checkKlondikeWin()
-}
-
 /**
  * Animated auto-complete entry: the button tap (and re-tap) lands here. Merely
  * offering the button locks nothing; only a started run pauses board input, and
