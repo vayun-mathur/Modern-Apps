@@ -108,6 +108,36 @@ class ShopScreensCoverage2Test {
         composeRule.waitForIdle()
         composeRule.onNodeWithText(str(R.string.no_products_found)).assertIsDisplayed()
         composeRule.onNodeWithText(str(R.string.cart)).assertIsDisplayed()
+        // Sibling tabs are routes: tapping a tab resets the stack to that tab.
+        composeRule.onNode(
+            androidx.compose.ui.test.hasText(str(R.string.cart)) and androidx.compose.ui.test.hasClickAction(),
+        ).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(str(R.string.cart_empty)).assertIsDisplayed()
+        composeRule.onNode(
+            androidx.compose.ui.test.hasText(str(R.string.orders)) and androidx.compose.ui.test.hasClickAction(),
+        ).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(str(R.string.no_orders_yet)).assertIsDisplayed()
+        composeRule.onNode(
+            androidx.compose.ui.test.hasText("Profile") and androidx.compose.ui.test.hasClickAction(),
+        ).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("First name").assertIsDisplayed()
+        composeRule.onNode(
+            androidx.compose.ui.test.hasText(str(R.string.search)) and androidx.compose.ui.test.hasClickAction(),
+        ).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(str(R.string.no_products_found)).assertIsDisplayed()
+    }
+
+    @Test fun navigation_ordersRequestStartsOnOrdersTab() {
+        val vm = ShopViewModel(); stubProfileRepository(vm)
+        setVmField(vm, "profile", ShopProfile(firstName="Ada", lastName="L", email="ada@example.com", phone="+14155550123"))
+        setVmField(vm, "profileLoaded", true)
+        composeRule.setContent { Navigation(vm, ordersRequest = 1) }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(str(R.string.no_orders_yet)).assertIsDisplayed()
     }
 
     @Test fun productScreen_liveRefreshVerifiesAndAddsToCart() {

@@ -177,19 +177,19 @@ class ShopViewModelTest {
     fun openLink_productSuccessRoutesToDetailAndCapsLinked() {
         backend.merchant = MerchantListing("m1", "Cool Store", "cool.example", "https://cool.example")
         backend.productResult = Result.success(product())
-        vm.openLink("https://cool.example/products/trail-shoes")
-        await { vm.pendingRoute != null }
-        assertEquals(Route.ProductDetail("v1", "shopify", "cool.example"), vm.pendingRoute)
+        val routes = mutableListOf<Route>()
+        vm.openLink("https://cool.example/products/trail-shoes") { routes += it }
+        await { routes.isNotEmpty() }
+        assertEquals(listOf<Route>(Route.ProductDetail("v1", "shopify", "cool.example")), routes)
         assertEquals(1, vm.linkedProducts.size)
-        vm.consumePendingRoute()
-        assertNull(vm.pendingRoute)
     }
 
     @Test
     fun openLink_productFailureFallsBackToScopedSearch() {
         backend.productResult = Result.failure(IllegalStateException("404"))
-        vm.openLink("https://unknown.example/products/red-shoes")
-        await { vm.pendingRoute == Route.Search }
+        val routes = mutableListOf<Route>()
+        vm.openLink("https://unknown.example/products/red-shoes") { routes += it }
+        await { routes == listOf(Route.Search) }
         assertEquals("unknown.example", vm.scopeDomain)
         assertEquals("red shoes", vm.query)
         assertTrue(vm.focusSearchRequest > 0)
@@ -197,11 +197,12 @@ class ShopViewModelTest {
 
     @Test
     fun openLink_merchantAndInvalidUrls() {
-        vm.openLink("not a url")
-        assertNull(vm.pendingRoute)
+        val routes = mutableListOf<Route>()
+        vm.openLink("not a url") { routes += it }
+        assertTrue(routes.isEmpty())
         backend.merchant = MerchantListing("m1", "Kitchen Co", "kitchen.example", "https://kitchen.example")
-        vm.openLink("https://kitchen.example/collections/all")
-        await { vm.pendingRoute == Route.Search }
+        vm.openLink("https://kitchen.example/collections/all") { routes += it }
+        await { routes == listOf(Route.Search) }
         assertEquals("kitchen.example", vm.scopeDomain)
         assertEquals("Kitchen Co", vm.scopeName)
     }
@@ -261,8 +262,6 @@ class ShopViewModelTest {
         vm2.loadOrders(context)
         await { !vm2.refreshingTracking }
         assertTrue(vm2.orders.isEmpty())
-        vm2.showOrders()
-        assertTrue(vm2.focusOrdersRequest > 0)
     }
 
     @Test

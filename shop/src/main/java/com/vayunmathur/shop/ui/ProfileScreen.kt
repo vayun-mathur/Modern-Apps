@@ -10,7 +10,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -25,12 +26,28 @@ import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.shop.data.ShopProfile
 import com.vayunmathur.shop.platform.ShopViewModel
 
+/** Draft edits survive tab switches and process recreation, so the draft is saveable state. */
+private val ShopProfileSaver = listSaver<ShopProfile, String>(
+    save = {
+        listOf(
+            it.firstName, it.lastName, it.email, it.phone, it.street, it.extendedAddress,
+            it.city, it.region, it.country, it.postalCode,
+        )
+    },
+    restore = {
+        ShopProfile(
+            firstName = it[0], lastName = it[1], email = it[2], phone = it[3], street = it[4],
+            extendedAddress = it[5], city = it[6], region = it[7], country = it[8], postalCode = it[9],
+        )
+    },
+)
+
 /** Buyer profile. With [required] it is the first-run gate and the rest of the app stays locked until saved. */
 @Composable
 fun ProfileScreen(viewModel: ShopViewModel, required: Boolean) {
     val messenger = rememberMessenger()
     val saved = viewModel.profile
-    var draft by remember(saved) { mutableStateOf(saved ?: ShopProfile()) }
+    var draft by rememberSaveable(saved, stateSaver = ShopProfileSaver) { mutableStateOf(saved ?: ShopProfile()) }
     val error = draft.validationError()
     AppScaffold(title = "Profile", scrollBehavior = appBarScrollBehavior()) { padding ->
         LazyColumn(

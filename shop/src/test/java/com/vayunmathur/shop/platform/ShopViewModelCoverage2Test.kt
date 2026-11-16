@@ -130,7 +130,7 @@ class ShopViewModelCoverage2Test {
         await { vm.scopeDomain == "shoes.example" }
         assertEquals("trail shoes", vm.query); assertEquals("shoes.example", vm.scopeName)
         vm.openLink("https://shoes.example/products/no-variants")
-        // product failure path falls back to scoped search with handle words; pendingRoute Search
+        // product failure path falls back to scoped search with handle words; navigate(Search)
         await { vm.query == "no variants" }
     }
 

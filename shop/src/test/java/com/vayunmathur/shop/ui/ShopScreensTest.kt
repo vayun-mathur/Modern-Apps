@@ -256,18 +256,6 @@ class ShopScreensTest {
     }
 
     @Test
-    fun shopTabs_rendersSearchTabAndBottomTabs() {
-        val vm = ShopViewModel()
-        composeRule.setContent {
-            ShopTabs(vm, onProductClick = { _, _, _ -> }, onPayInApp = {})
-        }
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.no_products_found)).assertIsDisplayed()
-        composeRule.onNodeWithText(str(R.string.cart)).assertIsDisplayed()
-        composeRule.onNodeWithText(str(R.string.orders)).assertIsDisplayed()
-    }
-
-    @Test
     fun cartScreenWrapper_showsVmCartAndRemoveEmptiesIt() {
         val vm = ShopViewModel()
         vm.addToCart(product(), "v1", 2, context)

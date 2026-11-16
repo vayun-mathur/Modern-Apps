@@ -26,6 +26,10 @@ sealed interface Route : NavKey {
     @Serializable
     data object Orders : Route
 
+    /** Singleton holding profile state and operations. */
+    @Serializable
+    data object Profile : Route
+
     /** Request (with its secret-bearing URL) lives in ShopViewModel, never in saved state. */
     @Serializable
     data object EmbeddedCheckout : Route

@@ -107,10 +107,7 @@ class ShopPlatformCoverageTest {
         // Invalid profile -> null inputs
         setState(vm, "profile", ShopProfile())
         assertNull(vm.checkoutInputs(state)); assertFalse(vm.profileComplete)
-        // showOrders / consumePendingRoute / updateQuery
-        vm.showOrders(); assertTrue(vm.focusOrdersRequest > 0)
         vm.updateQuery("shoes"); assertEquals("shoes", vm.query)
-        vm.consumePendingRoute(); assertNull(vm.pendingRoute)
         vm.closeEmbeddedCheckout(); assertNull(vm.embeddedCheckout)
     }
 }

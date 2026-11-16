@@ -47,14 +47,10 @@ class ShopViewModel(
         private set
     var focusSearchRequest by mutableStateOf(0)
         private set
-    var focusOrdersRequest by mutableIntStateOf(0)
-        private set
     var refreshingTracking by mutableStateOf(false)
         private set
     /** Set after an order is placed so the UI can ask for the delivery-notification permission. */
     var notificationPermissionRequest by mutableIntStateOf(0)
-        private set
-    var pendingRoute by mutableStateOf<Route?>(null)
         private set
     var linkedProducts by mutableStateOf<List<UcpProduct>>(emptyList())
         private set
@@ -150,8 +146,6 @@ class ShopViewModel(
 
     fun updateQuery(value: String) { query = value }
 
-    fun consumePendingRoute() { pendingRoute = null }
-
     fun clearScope() {
         scopeDomain = null
         scopeName = null
@@ -159,8 +153,13 @@ class ShopViewModel(
         search()
     }
 
-    /** Opens a merchant web link: product pages in-app, anything else as a search scoped to that store. */
-    fun openLink(url: String) {
+    /**
+     * Opens a merchant web link: product pages in-app, anything else as a search scoped to that store.
+     * Navigation is the caller's job: [navigate] is invoked directly with the destination
+     * (a product detail, or [Route.Search] for a scoped search) instead of parking a route
+     * in this ViewModel for a UI effect to pick up.
+     */
+    fun openLink(url: String, navigate: (Route) -> Unit = {}) {
         val link = MerchantLinks.parse(url) ?: return
         viewModelScope.launch {
             AppInit.awaitReady()
@@ -174,27 +173,27 @@ class ShopViewModel(
                     onSuccess = { product ->
                         val variant = product.variants.firstOrNull()
                         if (variant == null) {
-                            scopedSearch(domain, name, link.handle.replace('-', ' '))
+                            scopedSearch(domain, name, link.handle.replace('-', ' '), navigate)
                         } else {
                             linkedProducts = (linkedProducts + product).takeLast(LINKED_PRODUCT_LIMIT)
                             val publisher = variant.shopDomain.ifBlank { product.shopDomain }
-                            pendingRoute = Route.ProductDetail(variant.id, product.platformId, publisher)
+                            navigate(Route.ProductDetail(variant.id, product.platformId, publisher))
                         }
                     },
-                    onFailure = { scopedSearch(domain, name, link.handle.replace('-', ' ')) },
+                    onFailure = { scopedSearch(domain, name, link.handle.replace('-', ' '), navigate) },
                 )
-                is MerchantLink.Search -> scopedSearch(domain, name, link.query)
-                is MerchantLink.Merchant -> scopedSearch(domain, name, "")
+                is MerchantLink.Search -> scopedSearch(domain, name, link.query, navigate)
+                is MerchantLink.Merchant -> scopedSearch(domain, name, "", navigate)
             }
         }
     }
 
-    private fun scopedSearch(domain: String, name: String, scopedQuery: String) {
+    private fun scopedSearch(domain: String, name: String, scopedQuery: String, navigate: (Route) -> Unit) {
         scopeDomain = domain
         scopeName = name
         query = scopedQuery
         results = emptyList()
-        pendingRoute = Route.Search
+        navigate(Route.Search)
         focusSearchRequest++
         if (scopedQuery.isNotBlank()) search()
     }
@@ -209,8 +208,6 @@ class ShopViewModel(
             OrderTrackingSync.schedule(context, orders)
         }
     }
-
-    fun showOrders() { focusOrdersRequest++ }
 
     fun refreshTracking(context: Context) {
         if (refreshingTracking) return
