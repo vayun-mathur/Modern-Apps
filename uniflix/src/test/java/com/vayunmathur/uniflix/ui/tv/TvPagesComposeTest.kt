@@ -51,7 +51,7 @@ class TvPagesComposeTest {
 
     @Test fun detailPageShowsFailureAndBackPops() {
         uniflixTransport = { throw java.io.IOException("offline test double") }
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main(), TvRoute.Detail("movie", 42)))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home, TvRoute.Detail("movie", 42)))
         composeRule.setContent {
             DynamicTheme {
                 TvDetailPage(backStack = stack, mediaType = "movie", tmdbId = 42)
@@ -63,7 +63,7 @@ class TvPagesComposeTest {
         composeRule.onNodeWithText("Detail failed to load.").assertIsDisplayed()
         composeRule.onNode(hasClickAction())
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
-        assertEquals(TvRoute.Main(), stack.backStack.last())
+        assertEquals(TvRoute.Home, stack.backStack.last())
         assertEquals(1, stack.backStack.size)
     }
 }

@@ -125,7 +125,7 @@ class C9DetailSuccessComposeTest {
     }
 
     @Test fun tvDetail_successViaFakeTmdb() {
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         rule.setContent { TvDetailPage(stack, "movie", 10) }
         rule.waitUntil(5000) {
             rule.onAllNodesWithText("Detail Film").fetchSemanticsNodes().isNotEmpty()
@@ -134,13 +134,13 @@ class C9DetailSuccessComposeTest {
     }
 
     @Test fun tvWatch_withAddon_resolvesSource() {
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         rule.setContent { TvWatchPage(stack, "movie", 10, 0, 0) }
         rule.waitForIdle()
     }
 
     @Test fun tvWatch_rendersWithFakeTmdb() {
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         rule.setContent { TvWatchPage(stack, "movie", 10, 0, 0) }
         rule.waitForIdle()
     }

@@ -41,7 +41,7 @@ fun TvHomeTab(
     onOpenDetail: (MediaItem) -> Unit,
     onResume: (ContinueWatchingEntry) -> Unit,
     onOpenGrid: (kind: String) -> Unit,
-    onOpenTab: (tab: Int) -> Unit,
+    onOpenTab: (tab: TvRoute) -> Unit,
 ) {
     val vm: HomeViewModel = viewModel()
     val state = vm.state
@@ -104,7 +104,7 @@ fun TvHomeTab(
             firstKey = firstKey,
             firstFocus = firstFocus,
             seeAll = seeAll,
-            onSeeAll = { onOpenTab(TV_TAB_MOVIES) },
+            onSeeAll = { onOpenTab(TvRoute.Movies) },
             onOpenDetail = onOpenDetail,
         )
         posterSection(
@@ -115,7 +115,7 @@ fun TvHomeTab(
             firstKey = firstKey,
             firstFocus = firstFocus,
             seeAll = seeAll,
-            onSeeAll = { onOpenTab(TV_TAB_SHOWS) },
+            onSeeAll = { onOpenTab(TvRoute.Shows) },
             onOpenDetail = onOpenDetail,
         )
         posterSection(

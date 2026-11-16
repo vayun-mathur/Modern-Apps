@@ -82,7 +82,7 @@ class TvPopulatedCoverageTest {
     }
 
     @Test fun topMoviesGridShowsPosterAndOpensDetail() {
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         rule.setContent { DynamicTheme { TvGridPage(stack, TV_GRID_TOP_MOVIES) } }
         rule.waitUntil(timeoutMillis = 8_000) {
             runCatching { rule.onNodeWithText("Pop Top Film").assertIsDisplayed(); true }.getOrDefault(false)
@@ -97,7 +97,7 @@ class TvPopulatedCoverageTest {
 
     @Test fun continueGridShowsResumeAndOpensWatch() {
         seedLibrary()
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         rule.setContent { DynamicTheme { TvGridPage(stack, TV_GRID_CONTINUE) } }
         rule.waitUntil(timeoutMillis = 8_000) {
             runCatching { rule.onNodeWithText("Resume Show").assertIsDisplayed(); true }.getOrDefault(false)

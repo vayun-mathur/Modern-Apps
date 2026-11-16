@@ -27,7 +27,8 @@ class UniflixRoutesW6Test {
     @Test
     fun tvRoutes_roundTrip() {
         val routes: List<TvRoute> = listOf(
-            TvRoute.Main(), TvRoute.Main(3),
+            TvRoute.Search, TvRoute.Home, TvRoute.Movies, TvRoute.Shows,
+            TvRoute.MyList, TvRoute.Addons,
             TvRoute.Detail("movie", 10), TvRoute.Watch("tv", 20, 1, 1),
             TvRoute.Grid("movies"), TvRoute.AddonDetail(3L),
         )

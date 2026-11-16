@@ -22,37 +22,37 @@ class TvGridAndListCoverageTest {
 
     @Test fun gridPageContinueWatchingEmpty() {
         uniflixTransport = { throw java.io.IOException("offline") }
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         composeRule.setContent { DynamicTheme { TvGridPage(stack, TV_GRID_CONTINUE) } }
         composeRule.waitForIdle()
-        assertEquals(TvRoute.Main(), stack.last())
+        assertEquals(TvRoute.Home, stack.last())
     }
 
     @Test fun gridPageTopMoviesLoading() {
         uniflixTransport = { throw java.io.IOException("offline") }
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         composeRule.setContent { DynamicTheme { TvGridPage(stack, TV_GRID_TOP_MOVIES) } }
         composeRule.waitForIdle()
-        assertEquals(TvRoute.Main(), stack.last())
+        assertEquals(TvRoute.Home, stack.last())
     }
 
     @Test fun gridPageTopTvLoading() {
         uniflixTransport = { throw java.io.IOException("offline") }
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         composeRule.setContent { DynamicTheme { TvGridPage(stack, TV_GRID_TOP_TV) } }
         composeRule.waitForIdle()
     }
 
     @Test fun gridPageTrendingMoviesLoading() {
         uniflixTransport = { throw java.io.IOException("offline") }
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         composeRule.setContent { DynamicTheme { TvGridPage(stack, TV_GRID_TRENDING_MOVIES) } }
         composeRule.waitForIdle()
     }
 
     @Test fun gridPageUnknownKindFallsToTrendingSeries() {
         uniflixTransport = { throw java.io.IOException("offline") }
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         composeRule.setContent { DynamicTheme { TvGridPage(stack, "something-else") } }
         composeRule.waitForIdle()
     }

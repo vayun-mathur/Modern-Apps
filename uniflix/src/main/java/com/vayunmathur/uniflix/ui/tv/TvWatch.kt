@@ -206,7 +206,7 @@ fun TvWatchPage(
                         text = stringResource(R.string.open_addon_manager),
                         onClick = {
                             backStack.pop()
-                            backStack.setLast(TvRoute.Main(TV_TAB_ADDONS))
+                            backStack.setLast(TvRoute.Addons)
                         },
                         primary = true,
                     )

@@ -139,7 +139,7 @@ class C9DbScreensTest {
     }
 
     @Test fun tvAddonDetail_renders() {
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         rule.setContent { TvAddonDetailPage(stack, addonDbId = 1L) }
         rule.waitForIdle()
     }

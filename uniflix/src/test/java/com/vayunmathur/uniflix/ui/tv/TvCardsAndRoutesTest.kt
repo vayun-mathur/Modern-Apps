@@ -37,7 +37,10 @@ class TvCardsAndRoutesTest {
     val composeRule = createComposeRule()
 
     @Test fun routesAndTabConstants() {
-        assertEquals(TV_TAB_HOME, TvRoute.Main().initialTab)
+        assertEquals(TvRoute.Home, tvRouteForTab(TV_TAB_HOME))
+        assertEquals(TvRoute.Addons, tvRouteForTab(TV_TAB_ADDONS))
+        assertEquals(TvRoute.Search, tvRouteForTab(-1))
+        assertEquals(TvRoute.Addons, tvRouteForTab(99))
         assertEquals(0, TvRoute.Watch("tv", 7).season)
         assertEquals(TvRoute.Detail("movie", 3), TvRoute.Detail("movie", 3))
         assertEquals(TvRoute.Grid(TV_GRID_CONTINUE), TvRoute.Grid("continue"))
@@ -143,7 +146,7 @@ class TvCardsAndRoutesTest {
         val app = ApplicationProvider.getApplicationContext<android.app.Application>()
         val vm = DetailViewModel(app)
         vm.streamProviders = listOf(FakeProvider())
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         val detail = MediaDetail(tmdbId = 42, mediaType = MediaType.MOVIE, title = "Film")
         composeRule.setContent {
             DynamicTheme {
@@ -168,7 +171,7 @@ class TvCardsAndRoutesTest {
         val app = ApplicationProvider.getApplicationContext<android.app.Application>()
         val vm = DetailViewModel(app)
         vm.streamProviders = listOf(FakeProvider())
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         val detail = MediaDetail(tmdbId = 7, mediaType = MediaType.TV, title = "Show")
         composeRule.setContent {
             DynamicTheme {

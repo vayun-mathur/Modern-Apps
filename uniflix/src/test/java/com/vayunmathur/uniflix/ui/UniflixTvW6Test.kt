@@ -86,7 +86,7 @@ class UniflixTvW6Test {
 
     @Test
     fun tvWatch_resolvedSource_overlayAndPickers() {
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         rule.setContent { TvWatchPage(stack, "movie", 10, 0, 0) }
         rule.waitForIdle()
         // Tap the surface to toggle the overlay, then open each picker if offered.
@@ -106,7 +106,7 @@ class UniflixTvW6Test {
 
     @Test
     fun tvDetail_series_episodeRows() {
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         rule.setContent { TvDetailPage(stack, "tv", 20) }
         rule.waitUntil(8_000) {
             rule.onAllNodesWithText("Detail Show", substring = true).fetchSemanticsNodes().isNotEmpty()
@@ -120,7 +120,7 @@ class UniflixTvW6Test {
 
     @Test
     fun tvWatch_seriesEpisode_resolves() {
-        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+        val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
         rule.setContent { TvWatchPage(stack, "tv", 20, 1, 1) }
         rule.waitForIdle()
     }

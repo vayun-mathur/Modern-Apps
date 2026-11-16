@@ -40,7 +40,7 @@ class C9TvPagesTest {
         UniflixRepository.resetInstanceForTest()
     }
 
-    private fun stack() = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))
+    private fun stack() = NavBackStack<TvRoute>(arrayOf(TvRoute.Home))
 
     @Test fun tvNavigation_renders() {
         rule.setContent { TvNavigation() }
