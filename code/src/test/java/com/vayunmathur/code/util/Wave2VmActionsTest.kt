@@ -168,10 +168,15 @@ class Wave2VmActionsTest {
             val idx = v.nodes.indexOfFirst { it.entry.name == "new.kt" }
             assertTrue(idx >= 0)
             v.actions.renameNode(idx, "renamed.kt")
-            await("renamed") { File(dir, "renamed.kt").exists() }
+            // Await the VM's observed state, not just the disk: the rename lands on disk
+            // (Dispatchers.IO) before the viewModelScope continuation updates nodes on
+            // Main, so a disk-only wait can return while nodes still says "new.kt".
+            // The index read below would then be -1 and deleteNode(-1) a silent no-op.
+            await("renamed") { File(dir, "renamed.kt").exists() && v.nodes.any { it.entry.name == "renamed.kt" } }
             val ridx = v.nodes.indexOfFirst { it.entry.name == "renamed.kt" }
+            assertTrue(ridx >= 0)
             v.actions.deleteNode(ridx)
-            await("deleted") { !File(dir, "renamed.kt").exists() }
+            await("deleted") { !File(dir, "renamed.kt").exists() && v.nodes.none { it.entry.name == "renamed.kt" } }
             // Settings actions.
             v.actions.setFontSize(20); assertEquals(20, v.fontSize)
             v.actions.setTabWidth(2); assertEquals(2, v.tabWidth)
