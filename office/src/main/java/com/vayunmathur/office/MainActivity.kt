@@ -122,8 +122,10 @@ private fun OfficeAppTheme(content: @Composable () -> Unit) {
 /** Top-level navigation routes for the Office app (shared nav framework). */
 @Serializable
 sealed interface OfficeRoute : NavKey {
-    /** Singleton holding main state and operations. */
-    @Serializable data object Main : OfficeRoute
+    /** Offline home tab (sibling route, the start destination). */
+    @Serializable data object OfflineHome : OfficeRoute
+    /** Online cloud-docs home tab (sibling route). */
+    @Serializable data object OnlineHome : OfficeRoute
     /** Editing a local/offline document (optionally identified by its source uri). */
     @Serializable data class OfflineEditor(val uri: String? = null) : OfficeRoute
     /** Editing a cloud-synced document, identified by its document id. */
@@ -164,7 +166,7 @@ class MainActivity : MaActivity() {
         var documentUri by rememberSaveable { mutableStateOf(intentUri) }
         val state by viewModel.state.collectAsState()
         val backStack = rememberNavBackStack<OfficeRoute>(
-            if (intentUri != null) OfficeRoute.OfflineEditor(intentUri.toString()) else OfficeRoute.Main
+            if (intentUri != null) OfficeRoute.OfflineEditor(intentUri.toString()) else OfficeRoute.OfflineHome
         )
 
         LaunchedEffect(Unit) { viewModel.initSync() }
@@ -241,21 +243,17 @@ class MainActivity : MaActivity() {
                     contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             }
         }
-        MainNavigation(backStack) {
-            entry<OfficeRoute.Main> {
-                OfficeTabs(
-                    viewModel = viewModel,
-                    onOpenDocument = { filePickerLauncher.launch(odfMimeTypes) },
-                    onNavigateEditor = { backStack.add(OfficeRoute.OfflineEditor()) },
-                    onOpenOnlineDoc = { meta ->
-                        viewModel.openOnlineDocument(meta)
-                        backStack.add(OfficeRoute.OnlineEditor(meta.docId))
-                    }
-                )
-            }
-            entry<OfficeRoute.OfflineEditor> { editorContent() }
-            entry<OfficeRoute.OnlineEditor> { editorContent() }
-        }
+        OfficeTabs(
+            backStack = backStack,
+            viewModel = viewModel,
+            onOpenDocument = { filePickerLauncher.launch(odfMimeTypes) },
+            onNavigateEditor = { backStack.add(OfficeRoute.OfflineEditor()) },
+            onOpenOnlineDoc = { meta ->
+                viewModel.openOnlineDocument(meta)
+                backStack.add(OfficeRoute.OnlineEditor(meta.docId))
+            },
+            editorContent = editorContent,
+        )
     }
 
     /** MIME types accepted by the document picker. */

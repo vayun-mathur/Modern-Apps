@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,41 +21,55 @@ import com.vayunmathur.library.ui.IconDownload
 import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
-import com.vayunmathur.library.ui.PagerTab
-import com.vayunmathur.library.ui.TabStyle
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.office.util.OfficeViewModel
 import com.vayunmathur.office.util.createNewPresentation
 import com.vayunmathur.office.util.createNewSpreadsheet
 import com.vayunmathur.office.util.createNewTextDocument
 
 /**
- * The two bottom-nav tabs, hosted in a swipeable pager (see [TabbedPagerScaffold]).
- * OfflineEditor and OnlineEditor are pushed on top of this host as ordinary routes.
+ * The two bottom-nav home tabs as sibling [OfficeRoute] destinations:
+ * route-backed [TabbedPagerScaffold] chrome with [MainNavigation] hosted
+ * in its content slot, so the editor routes pushed over a home tab render
+ * with no tab selected. Switching tabs resets the stack.
  */
 @Composable
 internal fun OfficeTabs(
+    backStack: NavBackStack<OfficeRoute>,
     viewModel: OfficeViewModel,
     onOpenDocument: () -> Unit,
     onNavigateEditor: () -> Unit,
     onOpenOnlineDoc: (com.vayunmathur.office.util.OfficeDocMeta) -> Unit,
+    editorContent: @Composable () -> Unit = {},
 ) {
-    val pagerState = rememberPagerState(pageCount = { 2 })
-    val tabs = listOf(
-        PagerTab("Offline", { IconHome() }) {
-            InitialScreen(
-                viewModel = viewModel,
-                onOpenDocument = onOpenDocument,
-                onNavigateEditor = onNavigateEditor
-            )
-        },
-        PagerTab("Online", { IconDownload() }) {
-            OnlineTab(viewModel = viewModel, onOpenDoc = onOpenOnlineDoc)
-        },
-    )
-    TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)
+    TabbedPagerScaffold(
+        backStack = backStack,
+        tabs = listOf<RouteTab<OfficeRoute>>(
+            RouteTab(OfficeRoute.OfflineHome, "Offline") { IconHome() },
+            RouteTab(OfficeRoute.OnlineHome, "Online") { IconDownload() },
+        ),
+    ) {
+        MainNavigation(backStack) {
+            entry<OfficeRoute.OfflineHome>(metadata = SiblingPage()) {
+                InitialScreen(
+                    viewModel = viewModel,
+                    onOpenDocument = onOpenDocument,
+                    onNavigateEditor = onNavigateEditor
+                )
+            }
+            entry<OfficeRoute.OnlineHome>(metadata = SiblingPage()) {
+                OnlineTab(viewModel = viewModel, onOpenDoc = onOpenOnlineDoc)
+            }
+            entry<OfficeRoute.OfflineEditor> { editorContent() }
+            entry<OfficeRoute.OnlineEditor> { editorContent() }
+        }
+    }
 }
 
 @Composable

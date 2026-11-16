@@ -87,7 +87,7 @@ class Slice4ScreenTest {
         assertEquals("content://x", off.uri)
         val on = OfficeRoute.OnlineEditor("doc1")
         assertEquals("doc1", on.docId)
-        assertTrue(OfficeRoute.Main is OfficeRoute)
+        assertTrue(OfficeRoute.OfflineHome is OfficeRoute)
     }
 
     @Test fun lightThemeWrapsContent() {

@@ -134,6 +134,7 @@ class Slice4Pass2OnlineHomeTest {
         var editorNavs = 0
         rule.setContent {
             OfficeTabs(
+                backStack = com.vayunmathur.library.util.NavBackStack(arrayOf(OfficeRoute.OfflineHome)),
                 viewModel = viewModel,
                 onOpenDocument = {},
                 onNavigateEditor = { editorNavs++ },
@@ -144,6 +145,8 @@ class Slice4Pass2OnlineHomeTest {
         rule.onNodeWithText(str(R.string.open_document)).assertExists()
         rule.onNodeWithText("Online").assertExists()
         rule.onNodeWithText("Offline").assertExists()
+        rule.onNodeWithText("Online").performClick()
+        rule.waitForIdle()
         assertEquals(0, editorNavs)
     }
 
@@ -195,8 +198,8 @@ class Slice4Pass2OnlineHomeTest {
             Json.decodeFromString(OfficeRoute.serializer(), Json.encodeToString(OfficeRoute.serializer(), OfficeRoute.OnlineEditor("doc9"))),
         )
         assertEquals(
-            OfficeRoute.Main,
-            Json.decodeFromString(OfficeRoute.serializer(), Json.encodeToString(OfficeRoute.serializer(), OfficeRoute.Main)),
+            OfficeRoute.OfflineHome,
+            Json.decodeFromString(OfficeRoute.serializer(), Json.encodeToString(OfficeRoute.serializer(), OfficeRoute.OfflineHome)),
         )
         assertEquals(null, OfficeRoute.OfflineEditor().uri)
     }
