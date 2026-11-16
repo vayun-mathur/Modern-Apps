@@ -1,7 +1,6 @@
 package com.vayunmathur.flashcards
 
 import androidx.activity.viewModels
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
@@ -23,15 +22,14 @@ import com.vayunmathur.library.ui.IconDashboard
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.IconStyle
 import com.vayunmathur.library.ui.MaActivity
-import com.vayunmathur.library.ui.PagerTab
-import com.vayunmathur.library.ui.TabStyle
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
-import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
@@ -62,11 +60,19 @@ class MainActivity : MaActivity() {
 /** Navigation destinations for decks, notes, note types, review, and stats. */
 @Serializable
 sealed interface Route : NavKey {
-    /** The deck-list main screen. */
+    /** The deck-list tab (sibling route, the start destination). */
     @Serializable
-    data object Main : Route
+    data object Decks : Route
 
-    /** The review-statistics screen. */
+    /** The settings tab (sibling route). */
+    @Serializable
+    data object Settings : Route
+
+    /**
+     * The review-statistics screen: both a sibling tab and a destination
+     * pushed over a deck's note list (NoteListPage.openStats) — one route
+     * for both, not a tab duplicate.
+     */
     @Serializable
     data object Stats : Route
 
@@ -99,10 +105,19 @@ sealed interface Route : NavKey {
 
 @Composable
 fun Navigation(viewModel: FlashcardsViewModel) {
-    val backStack = rememberNavBackStack<Route>(Route.Main)
+    val backStack = rememberNavBackStack<Route>(Route.Decks)
+    TabbedPagerScaffold(
+        backStack = backStack,
+        tabs = listOf<RouteTab<Route>>(
+            RouteTab(Route.Decks, stringResource(R.string.nav_decks)) { IconStyle() },
+            RouteTab(Route.Stats, stringResource(R.string.nav_stats)) { IconDashboard() },
+            RouteTab(Route.Settings, stringResource(R.string.nav_settings)) { IconSettings() },
+        ),
+    ) {
     MainNavigation(backStack) {
-        entry<Route.Main>(metadata = ListPage()) { FlashcardsTabs(backStack, viewModel) }
-        entry<Route.Stats>(metadata = ListDetailPage()) { StatsPage(backStack, viewModel) }
+        entry<Route.Decks>(metadata = ListPage() + SiblingPage()) { DeckListPage(backStack, viewModel) }
+        entry<Route.Settings>(metadata = SiblingPage()) { SettingsPage(backStack, viewModel) }
+        entry<Route.Stats>(metadata = ListDetailPage() + SiblingPage()) { StatsPage(backStack, viewModel) }
         entry<Route.NoteTypeList>(metadata = ListDetailPage()) { NoteTypeListPage(backStack, viewModel) }
         entry<Route.NoteTypeEdit>(metadata = ListDetailPage()) { NoteTypeEditPage(backStack, viewModel, it.noteTypeId) }
         entry<Route.CardList>(metadata = ListDetailPage() + MorphPage()) {
@@ -113,24 +128,6 @@ fun Navigation(viewModel: FlashcardsViewModel) {
             ReviewPage(backStack, viewModel, it.deckId, it.mode, it.count, it.daysAhead, it.tags)
         }
     }
+    }
 }
 
-/**
- * The three bottom-nav tabs, hosted in a swipeable pager (see [TabbedPagerScaffold]).
- * NoteTypeList, NoteTypeEdit, CardList, NoteEdit and Review are pushed on top of this host
- * as ordinary routes. Stats is kept as a standalone pushed route because
- * NoteListPage.openStats() pushes Route.Stats via backStack.add().
- */
-@Composable
-private fun FlashcardsTabs(
-    backStack: NavBackStack<Route>,
-    viewModel: FlashcardsViewModel,
-) {
-    val pagerState = rememberPagerState(pageCount = { 3 })
-    val tabs = listOf(
-        PagerTab(stringResource(R.string.nav_decks), { IconStyle() }) { DeckListPage(backStack, viewModel) },
-        PagerTab(stringResource(R.string.nav_stats), { IconDashboard() }) { StatsPage(backStack, viewModel) },
-        PagerTab(stringResource(R.string.nav_settings), { IconSettings() }) { SettingsPage(backStack, viewModel) },
-    )
-    TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)
-}

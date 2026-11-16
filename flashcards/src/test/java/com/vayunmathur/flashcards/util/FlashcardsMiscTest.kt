@@ -158,7 +158,7 @@ class FlashcardsMiscTest {
     @Test
     fun routesSerializeRoundTrip() {
         val json = Json { classDiscriminator = "type" }
-        assertTrue(json.encodeToString(Route.serializer(), Route.Main).contains("Main") || json.encodeToString(Route.serializer(), Route.Main).isNotBlank())
+        assertTrue(json.encodeToString(Route.serializer(), Route.Decks).contains("Decks") || json.encodeToString(Route.serializer(), Route.Decks).isNotBlank())
         val review = Route.Review(deckId = 42, mode = 4, count = 9, daysAhead = 2, tags = listOf("a", "b"))
         val encoded = json.encodeToString(Route.serializer(), review)
         assertTrue(encoded.contains("42"))

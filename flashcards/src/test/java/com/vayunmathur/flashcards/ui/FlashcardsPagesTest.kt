@@ -119,7 +119,7 @@ class FlashcardsPagesTest {
         // Pin this deck to the top of the list so it is composed in the shared-database list.
         vm.upsertDeckImpl(deck.copy(position = -1000.0))
         await("deck pinned") { vm.decks.value.firstOrNull { it.id == deck.id }?.position == -1000.0 }
-        val stack = NavBackStack<Route>(arrayOf(Route.Main))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks))
         rule.setContent { DynamicTheme { DeckListPage(stack, vm) } }
         rule.onNodeWithText("PageDeckList").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("PageDeckList").performScrollTo().performClick()
@@ -129,7 +129,7 @@ class FlashcardsPagesTest {
     @Test
     fun deckListPagePlayPushesReview() {
         deckWithNote("PageDeckPlay", "PagePlayFront")
-        val stack = NavBackStack<Route>(arrayOf(Route.Main))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks))
         rule.setContent { DynamicTheme { DeckListPage(stack, vm) } }
         rule.onAllNodesWithContentDescription("Play")[0].performClick()
         assertTrue(stack.last() is Route.Review)
@@ -138,7 +138,7 @@ class FlashcardsPagesTest {
     @Test
     fun noteListPageBindsAndNavigates() {
         val deck = deckWithNote("PageNoteDeck", "PageNoteFront")
-        val stack = NavBackStack<Route>(arrayOf(Route.Main, Route.CardList(deck.id)))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks, Route.CardList(deck.id)))
         rule.setContent { DynamicTheme { NoteListPage(stack, vm, deck.id) } }
         rule.onNodeWithText("PageNoteFront").assertIsDisplayed()
         rule.onNodeWithText("Study").assertIsDisplayed()
@@ -155,19 +155,19 @@ class FlashcardsPagesTest {
     fun noteEditPageBindsAndSaves() {
         val deck = deckWithNote("PageEditDeck", "PageEditFront")
         val note = runBlocking { repo.getAllNotesImpl().first { it.sortField == "PageEditFront" } }
-        val stack = NavBackStack<Route>(arrayOf(Route.Main, Route.NoteEdit(deck.id, note.id)))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks, Route.NoteEdit(deck.id, note.id)))
         rule.setContent { DynamicTheme { NoteEditPage(stack, vm, deck.id, note.id) } }
         rule.onNodeWithText("Edit card").assertIsDisplayed()
         rule.onNodeWithText("PageEditDeck").assertIsDisplayed()
         rule.onNodeWithContentDescription("Save").performClick()
         // Saving pops the editor off the stack.
         await("editor popped") { stack.backStack.size == 1 }
-        assertEquals(Route.Main, stack.last())
+        assertEquals(Route.Decks, stack.last())
     }
 
     @Test
     fun noteTypePagesBind() {
-        val stack = NavBackStack<Route>(arrayOf(Route.Main))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks))
         rule.setContent { DynamicTheme { NoteTypeListPage(stack, vm) } }
         // "Basic" can match two semantics nodes while the list is still
         // settling (the built-in row plus its substring sibling row in the
@@ -184,7 +184,7 @@ class FlashcardsPagesTest {
 
     @Test
     fun noteTypeEditPageBindsExisting() {
-        val stack = NavBackStack<Route>(arrayOf(Route.Main, Route.NoteTypeEdit(1L)))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks, Route.NoteTypeEdit(1L)))
         rule.setContent { DynamicTheme { NoteTypeEditPage(stack, vm, 1L) } }
         rule.onNodeWithText("Edit note type").assertIsDisplayed()
         rule.onNodeWithText("Basic").assertIsDisplayed()
@@ -192,7 +192,7 @@ class FlashcardsPagesTest {
 
     @Test
     fun noteTypeEditPageBindsNew() {
-        val stack = NavBackStack<Route>(arrayOf(Route.Main))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks))
         rule.setContent { DynamicTheme { NoteTypeEditPage(stack, vm, 0L) } }
         rule.onNodeWithText("New note type").assertIsDisplayed()
     }
@@ -200,7 +200,7 @@ class FlashcardsPagesTest {
     @Test
     fun reviewPageBindsAndGrades() {
         val deck = deckWithNote("PageReviewDeck", "PageReviewFront")
-        val stack = NavBackStack<Route>(arrayOf(Route.Main, Route.Review(deck.id)))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks, Route.Review(deck.id)))
         rule.setContent { DynamicTheme { ReviewPage(stack, vm, deck.id) } }
         await("review front") {
             runCatching { rule.onNodeWithText("PageReviewFront").assertIsDisplayed(); true }.getOrDefault(false)
@@ -215,7 +215,7 @@ class FlashcardsPagesTest {
     @Test
     fun reviewPageWithModeParamsStartsCramSession() {
         val deck = deckWithNote("PageCramDeck", "PageCramFront")
-        val stack = NavBackStack<Route>(arrayOf(Route.Main))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks))
         // mode 4 = CRAM
         rule.setContent { DynamicTheme { ReviewPage(stack, vm, deck.id, mode = 4, count = 5, daysAhead = 2, tags = listOf("pagetag")) } }
         await("cram front") {
@@ -226,7 +226,7 @@ class FlashcardsPagesTest {
     @Test
     fun statsPageBinds() {
         deckWithNote("PageStatsDeck", "PageStatsFront")
-        val stack = NavBackStack<Route>(arrayOf(Route.Main))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks))
         rule.setContent { DynamicTheme { StatsPage(stack, vm) } }
         rule.onNodeWithText("Stats").assertIsDisplayed()
         rule.onNodeWithText("All decks").assertExists()
@@ -237,7 +237,7 @@ class FlashcardsPagesTest {
 
     @Test
     fun settingsPageBindsAndWritesThrough() {
-        val stack = NavBackStack<Route>(arrayOf(Route.Main))
+        val stack = NavBackStack<Route>(arrayOf(Route.Decks))
         rule.setContent { DynamicTheme { SettingsPage(stack, vm) } }
         rule.onNodeWithText("Settings").assertIsDisplayed()
         rule.onNodeWithText("Dark").performScrollTo().performClick()
