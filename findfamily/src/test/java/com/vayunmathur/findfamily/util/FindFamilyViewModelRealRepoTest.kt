@@ -240,7 +240,13 @@ class FindFamilyViewModelRealRepoTest {
         await("connected projected") {
             vm.connectedUsers.value.map { it.name }.containsAll(listOf("Alice", "Carol"))
         }
+        // Each derived flow projects independently; awaitingRequest and
+        // usersById can still hold their initial empty values when the
+        // connected projection lands, so await them too (the DbTest
+        // sibling failed in CI for exactly this snapshot race).
+        await("awaiting projected") { vm.awaitingRequestUsers.value.map { it.name } == listOf("Bob") }
         assertEquals(listOf("Bob"), vm.awaitingRequestUsers.value.map { it.name })
+        await("by-id projected") { vm.usersById.value[alice]?.name == "Alice" }
         assertEquals("Alice", vm.usersById.value[alice]?.name)
         vm.selectUser(alice)
         await("history projected") { vm.locationHistory.value.size == 1 }

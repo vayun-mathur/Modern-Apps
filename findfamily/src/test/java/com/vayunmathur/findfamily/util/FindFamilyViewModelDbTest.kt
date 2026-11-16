@@ -61,11 +61,15 @@ class FindFamilyViewModelDbTest {
     private fun pump() = Shadows.shadowOf(Looper.getMainLooper()).idle()
 
     private suspend fun awaitTrue(desc: String, timeoutMs: Long = 8_000, cond: () -> Boolean) {
-        val dl = System.currentTimeMillis() + timeoutMs
-        while (System.currentTimeMillis() < dl) {
+        // Step counted: Robolectric's substituted clock can run ahead of
+        // real time, expiring a wall-clock deadline before background
+        // flow work lands on a loaded box.
+        var steps = 0
+        val maxSteps = (timeoutMs / 25).toInt()
+        while (steps++ < maxSteps) {
             pump()
             if (cond()) return
-            delay(40)
+            try { Thread.sleep(25) } catch (_: InterruptedException) { }
         }
         throw AssertionError("timed out waiting for: $desc")
     }
@@ -86,8 +90,16 @@ class FindFamilyViewModelDbTest {
             launchCollect(vm)
         }
         awaitTrue("connected users") { vm.connectedUsers.value.map { it.name }.containsAll(listOf("Alice", "Carol")) }
+        // Each derived WhileSubscribed flow computes independently; on a
+        // loaded box awaitingRequest/usersByLocationName can still hold
+        // their initial empty values when connectedUsers lands, so await
+        // each condition instead of asserting the first snapshot (the CI
+        // failure was awaiting == [] for exactly this reason).
+        awaitTrue("awaiting request users") { vm.awaitingRequestUsers.value.map { it.name } == listOf("Bob") }
         assertEquals(listOf("Bob"), vm.awaitingRequestUsers.value.map { it.name })
+        awaitTrue("users by id") { vm.usersById.value.values.any { it.name == "Bob" } }
         assertEquals("Office", vm.usersById.value.values.first { it.name == "Bob" }.locationName)
+        awaitTrue("users by location") { vm.usersByLocationName.value["Office"]?.sorted() == listOf("Bob", "Carol") }
         assertEquals(listOf("Bob", "Carol"), vm.usersByLocationName.value["Office"]?.sorted())
         awaitTrue("waypoints") { vm.waypoints.value.size == 1 }
         // Repository one-shot sees the fix (same getLatest DAO query the VM flow wraps).

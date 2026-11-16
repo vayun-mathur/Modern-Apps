@@ -142,6 +142,13 @@ class FixCeilingAlarmTest {
     @Test
     fun everyCheckMovesTheAlarmToOneCeilingLater() {
         service.updateFixCeiling(true)
+        // The service's own heartbeat can fire a keep-alive tick while
+        // Robolectric idles the looper during setup, consuming the
+        // "never attempted" due-ness (lastForcedFixAttemptMs) before this
+        // test's first tick — whether it does is pure scheduling, which
+        // is why this only failed in loaded combined runs. Reset the
+        // attempt bookkeeping so the first tick is deterministic.
+        service.lastForcedFixAttemptMs = null
         val first = now()
         await(service.fixCeilingAlarmTick())
         assertEquals(listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER), forcedCalls.toList())
