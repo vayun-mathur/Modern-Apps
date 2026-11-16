@@ -131,8 +131,7 @@ class GameLoaderPageDeepTest {
         pollUntil { vm.gameMode.value == GameMode.COMPETITIVE }
         rule.setContent {
             DynamicTheme {
-                val backStack = rememberNavBackStack<Route>(Route.Game)
-                WordMakerGameLoader(backStack, vm)
+                com.vayunmathur.games.wordmaker.Navigation(vm)
             }
         }
         rule.onNodeWithText("Start").assertIsDisplayed()

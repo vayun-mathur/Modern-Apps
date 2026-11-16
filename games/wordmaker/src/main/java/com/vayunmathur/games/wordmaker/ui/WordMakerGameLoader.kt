@@ -23,7 +23,6 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, viewModel: WordMakerView
     val crosswordData by viewModel.crosswordData.collectAsState()
     val error by viewModel.error.collectAsState()
     val gameMode by viewModel.gameMode.collectAsState()
-    val competitiveActive by viewModel.competitiveActive.collectAsState()
 
     val achievementsManager = rememberAchievementsManager(viewModel.levelDataStore)
     if (achievementsManager == null) {
@@ -40,14 +39,9 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, viewModel: WordMakerView
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when {
-            gameMode == GameMode.COMPETITIVE && !competitiveActive -> {
-                CompetitiveLobbyPage(
-                    viewModel = viewModel,
-                    onOpenGameCenter = { backStack.add(Route.GameCenter) },
-                    onOpenSettings = { backStack.add(Route.Settings) }
-                )
-            }
-
+            // The competitive lobby is Route.CompetitiveLobby, swapped with
+            // this board destination by Navigation's route sync; the arms
+            // below are this destination's own loading/error/content.
             // Inside the normal scaffold (mode chooser, settings) with a Retry button, rather
             // than a bare line of text the player could not get away from.
             error != null -> {
