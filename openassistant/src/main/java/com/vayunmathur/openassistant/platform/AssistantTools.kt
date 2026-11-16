@@ -13,14 +13,20 @@ import com.vayunmathur.library.intents.todo.InsertTodoData
 import com.vayunmathur.library.ml.Gemma4Handle
 import com.vayunmathur.openassistant.data.MemoryDao
 import com.vayunmathur.openassistant.domain.ASSISTANT_TOOL_SPECS
+import com.vayunmathur.openassistant.domain.InMemoryPendingToolCallStore
 import com.vayunmathur.openassistant.domain.ParsedToolCall
+import com.vayunmathur.openassistant.domain.PendingToolCall
+import com.vayunmathur.openassistant.domain.PendingToolCallStore
 import com.vayunmathur.openassistant.domain.ToolArgs
 import com.vayunmathur.openassistant.domain.ToolArgsResult
+import com.vayunmathur.openassistant.domain.ToolRisk
 import com.vayunmathur.openassistant.domain.ToolSpec
 import com.vayunmathur.openassistant.domain.coerceToolArgs
+import com.vayunmathur.openassistant.domain.pendingToolSummary
 import com.vayunmathur.openassistant.util.AssistantDeviceTools
 import com.vayunmathur.openassistant.util.AssistantToolIntents
 import kotlinx.coroutines.CancellationException
+import java.util.UUID
 
 fun ToolSpec.toDeclaration(): Gemma4Handle.ToolDeclaration = Gemma4Handle.ToolDeclaration(
     name = name,
@@ -31,7 +37,13 @@ fun ToolSpec.toDeclaration(): Gemma4Handle.ToolDeclaration = Gemma4Handle.ToolDe
 )
 
 /** The assistant's tools: [ASSISTANT_TOOL_SPECS] bound to the intent and device back ends. */
-class AssistantTools(context: Context, private val memoryDao: MemoryDao?) {
+class AssistantTools(
+    context: Context,
+    private val memoryDao: MemoryDao?,
+    private val pendingStore: PendingToolCallStore = InMemoryPendingToolCallStore(),
+    private val nowMillis: () -> Long = { System.currentTimeMillis() },
+    private val idGenerator: () -> String = { UUID.randomUUID().toString() },
+) {
     private val intents = AssistantToolIntents(context)
     private val device = AssistantDeviceTools(context)
     private val specs = ASSISTANT_TOOL_SPECS.associateBy { it.name }
@@ -134,18 +146,70 @@ class AssistantTools(context: Context, private val memoryDao: MemoryDao?) {
         check(handlers.keys == specs.keys) { "tool handlers and specs disagree" }
     }
 
+    fun specFor(name: String): ToolSpec? = specs[name]
+
+    /** Creates a pending call for a WRITE_CONFIRM tool, or null if not gated/invalid. */
+    fun createPending(call: ParsedToolCall): PendingToolCall? {
+        val spec = specs[call.name] ?: return null
+        if (spec.risk != ToolRisk.WRITE_CONFIRM) return null
+        if (coerceToolArgs(spec, call.arguments) is ToolArgsResult.Invalid) return null
+        val now = nowMillis()
+        val pending = PendingToolCall(
+            id = idGenerator(),
+            name = call.name,
+            args = call.arguments,
+            summary = pendingToolSummary(call.name, call.arguments),
+            createdAtMillis = now,
+        )
+        pendingStore.put(pending)
+        return pending
+    }
+
+    fun pendingById(id: String): PendingToolCall? = pendingStore.get(id)
+
+    fun restorePending(pending: PendingToolCall) = pendingStore.put(pending)
+
+    fun removePending(id: String) = pendingStore.remove(id)
+
     /** Runs [call]. Never throws: unknown tools and bad arguments come back as an error string. */
     fun invoke(call: ParsedToolCall): String {
         val spec = specs[call.name] ?: return "Error: unknown tool '${call.name}'"
         return when (val coerced = coerceToolArgs(spec, call.arguments)) {
             is ToolArgsResult.Invalid -> coerced.message
-            is ToolArgsResult.Ok -> try {
-                handlers.getValue(spec.name)(coerced.args)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (expected: Exception) {
-                "Error: ${expected.message}"
+            is ToolArgsResult.Ok -> {
+                if (spec.risk == ToolRisk.WRITE_CONFIRM) {
+                    return "Error: confirmation required for ${spec.name}"
+                }
+                execute(spec.name, coerced.args)
             }
         }
+    }
+
+    /**
+     * Executes a pending call exactly once. Unknown, expired or consumed ids
+     * return an error and never execute the handler.
+     */
+    fun invokeConfirmed(pendingId: String): String {
+        val pending = pendingStore.get(pendingId)
+            ?: return "Error: pending tool call not found"
+        if (pending.consumed) return "Error: pending tool call already consumed"
+        if (pending.isExpired(nowMillis())) return "Error: pending tool call expired"
+        val spec = specs[pending.name] ?: return "Error: unknown tool '${pending.name}'"
+        val coerced = when (val result = coerceToolArgs(spec, pending.args)) {
+            is ToolArgsResult.Invalid -> return result.message
+            is ToolArgsResult.Ok -> result.args
+        }
+        if (!pendingStore.markConsumed(pendingId)) {
+            return "Error: pending tool call already consumed"
+        }
+        return execute(spec.name, coerced)
+    }
+
+    private fun execute(name: String, args: ToolArgs): String = try {
+        handlers.getValue(name)(args)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (expected: Exception) {
+        "Error: ${expected.message}"
     }
 }

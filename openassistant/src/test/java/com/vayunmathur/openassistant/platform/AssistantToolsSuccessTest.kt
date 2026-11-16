@@ -60,8 +60,10 @@ class AssistantToolsSuccessTest {
         val listed = tools.invoke(call("get_memories"))
         assertTrue(listed.contains("likes tea"), listed)
         val id = listed.substringAfter("[").substringBefore("]").toLong()
-        assertEquals("Success: Removed memory with id $id",
+        assertEquals("Error: confirmation required for remove_memory",
             tools.invoke(call("remove_memory", "id" to id.toString())))
+        val pending = tools.createPending(call("remove_memory", "id" to id.toString()))!!
+        assertEquals("Success: Removed memory with id $id", tools.invokeConfirmed(pending.id))
         assertTrue(!tools.invoke(call("get_memories")).contains("likes tea"))
     }
 }

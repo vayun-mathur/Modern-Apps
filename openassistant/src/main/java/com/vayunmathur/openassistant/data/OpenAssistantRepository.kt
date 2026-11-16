@@ -13,6 +13,8 @@ class OpenAssistantRepository private constructor(context: Context) :
     private val conversationDao get() = db.conversationDao()
     private val messageDao get() = db.messageDao()
     private val memoryDao get() = db.memoryDao()
+    private val pendingToolCallDao get() = db.pendingToolCallDao()
+    private val auditRecordDao get() = db.auditRecordDao()
 
     // ------------------------------------------------------------------
     // Conversation
@@ -47,10 +49,24 @@ class OpenAssistantRepository private constructor(context: Context) :
     suspend fun upsertMemory(value: Memory): Long = memoryDao.upsert(value)
     suspend fun deleteMemory(value: Memory): Int = memoryDao.delete(value)
 
+    // ------------------------------------------------------------------
+    // Pending tool calls + audit
+    // ------------------------------------------------------------------
+
+    suspend fun getPendingToolCall(id: String): PendingToolCallEntity? = pendingToolCallDao.getById(id)
+    suspend fun getPendingToolCalls(conversationId: Long): List<PendingToolCallEntity> =
+        pendingToolCallDao.getByConversation(conversationId)
+    suspend fun upsertPendingToolCall(value: PendingToolCallEntity): Long = pendingToolCallDao.upsert(value)
+    suspend fun deletePendingToolCallById(id: String) = pendingToolCallDao.deleteById(id)
+    suspend fun insertAuditRecord(value: AuditRecord): Long = auditRecordDao.upsert(value)
+    suspend fun getRecentAuditRecords(limit: Int = 100): List<AuditRecord> = auditRecordDao.getRecent(limit)
+
     /** Backing DAOs for [com.vayunmathur.openassistant.platform.AssistantTools] and similar consumers. */
     internal val conversationDaoRef get(): ConversationDao = conversationDao
     internal val messageDaoRef get(): MessageDao = messageDao
     internal val memoryDaoRef get(): MemoryDao = memoryDao
+    internal val pendingToolCallDaoRef get(): PendingToolCallDao = pendingToolCallDao
+    internal val auditRecordDaoRef get(): AuditRecordDao = auditRecordDao
 
     /** Shared constants and helpers for OpenAssistantRepository. */
     companion object {

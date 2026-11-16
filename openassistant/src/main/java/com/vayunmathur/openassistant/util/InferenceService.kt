@@ -42,9 +42,21 @@ import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Clock
+import com.vayunmathur.openassistant.data.AuditRecord
+import com.vayunmathur.openassistant.data.AuditRecordDao
 import com.vayunmathur.openassistant.data.ConversationDao
 import com.vayunmathur.openassistant.data.MemoryDao
 import com.vayunmathur.openassistant.data.MessageDao
+import com.vayunmathur.openassistant.data.PendingToolCallDao
+import com.vayunmathur.openassistant.data.PendingToolCallEntity
+import com.vayunmathur.openassistant.domain.PendingToolCall
+import com.vayunmathur.openassistant.domain.redactedArgsSummary
+import com.vayunmathur.openassistant.platform.A2uiTemplates
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import com.vayunmathur.openassistant.data.Message as DbMessage
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
 import com.vayunmathur.openassistant.R
@@ -74,6 +86,9 @@ class InferenceService : Service() {
         private const val INTENT_QUEUE_TTL_MILLIS = 45000L
         private const val HISTORY_RECENCY_MILLIS = 1000L
         private const val DB_WRITE_INTERVAL_MILLIS = 100L
+        private const val AUDIT_OUTCOME_CHARS = 200
+        private val HOST_CONFIRM = Regex("""\[HostConfirm ([^\]]+)]""")
+        private val HOST_CANCEL = Regex("""\[HostCancel ([^\]]+)]""")
 
         /** The system prompt used when the user has not set a custom one. */
         val DEFAULT_SYSTEM_PROMPT = """
@@ -125,6 +140,8 @@ class InferenceService : Service() {
     internal var conversationDaoOverride: ConversationDao? = null
     internal var messageDaoOverride: MessageDao? = null
     internal var memoryDaoOverride: MemoryDao? = null
+    internal var pendingDaoOverride: PendingToolCallDao? = null
+    internal var auditDaoOverride: AuditRecordDao? = null
     internal var nowMillis: () -> Long = { System.currentTimeMillis() }
     private val tools by lazy { AssistantTools(applicationContext, memoryDao) }
 
@@ -134,6 +151,10 @@ class InferenceService : Service() {
 
     private val store: MessageStore get() = MessageStore(messageDao, conversationDao)
     private val memoryDao get() = memoryDaoOverride ?: repository.memoryDaoRef
+    private val pendingDao: PendingToolCallDao?
+        get() = pendingDaoOverride ?: runCatching { repository.pendingToolCallDaoRef }.getOrNull()
+    private val auditDao: AuditRecordDao?
+        get() = auditDaoOverride ?: runCatching { repository.auditRecordDaoRef }.getOrNull()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -431,6 +452,82 @@ class InferenceService : Service() {
         return base + "\n\n" + AssistantCatalog.PROMPT_SECTION
     }
 
+    private fun PendingToolCallEntity.toDomain(): PendingToolCall = PendingToolCall(
+        id = id,
+        name = toolName,
+        args = runCatching {
+            Json.parseToJsonElement(argsJson).jsonObject
+                .mapValues { it.value.jsonPrimitive.content }
+        }.getOrDefault(emptyMap()),
+        summary = summary,
+        createdAtMillis = createdAt,
+        expiresAtMillis = expiresAt,
+        consumed = consumed,
+    )
+
+    private fun PendingToolCall.toEntity(conversationId: Long): PendingToolCallEntity =
+        PendingToolCallEntity(
+            id = id,
+            conversationId = conversationId,
+            toolName = name,
+            argsJson = JsonObject(args.mapValues { JsonPrimitive(it.value) }).toString(),
+            summary = summary,
+            createdAt = createdAtMillis,
+            expiresAt = expiresAtMillis,
+            consumed = consumed,
+        )
+
+    private suspend fun loadPendingDomain(id: String): PendingToolCall? {
+        tools.pendingById(id)?.let { return it }
+        val entity = runCatching { pendingDao?.getById(id) }.getOrNull() ?: return null
+        return entity.toDomain().also { tools.restorePending(it) }
+    }
+
+    private suspend fun persistPending(conversationId: Long, pending: PendingToolCall) {
+        runCatching { pendingDao?.upsert(pending.toEntity(conversationId)) }
+    }
+
+    /** Returns the model-turn text for a host marker, or null when [userText] is not one. */
+    private suspend fun handleHostMarker(conversationId: Long, userText: String): String? {
+        val trimmed = userText.trim()
+        val confirmId = HOST_CONFIRM.matchEntire(trimmed)?.groupValues?.get(1)
+        val cancelId = HOST_CANCEL.matchEntire(trimmed)?.groupValues?.get(1)
+        if (cancelId != null) {
+            val pending = loadPendingDomain(cancelId)
+            tools.removePending(cancelId)
+            runCatching { pendingDao?.deleteById(cancelId) }
+            return "[Cancelled \"${pending?.name ?: "tool"}\"]"
+        }
+        if (confirmId == null) return null
+        val pending = loadPendingDomain(confirmId)
+            ?: return "[Confirmed tool call could not be completed: Error: pending tool call not found]"
+        val wasValid = !pending.consumed && !pending.isExpired(nowMillis())
+        val result = tools.invokeConfirmed(confirmId)
+        if (!wasValid) {
+            return "[Confirmed \"${pending.name}\" could not be completed: $result]"
+        }
+        runCatching {
+            auditDao?.upsert(
+                AuditRecord(
+                    toolName = pending.name,
+                    argsSummary = redactedArgsSummary(pending.args),
+                    outcome = result.take(AUDIT_OUTCOME_CHARS),
+                    timestamp = nowMillis(),
+                ),
+            )
+        }
+        runCatching { pendingDao?.upsert(pending.copy(consumed = true).toEntity(conversationId)) }
+        store.upsert(
+            DbMessage(
+                conversationId = conversationId,
+                text = "Confirmed \"${pending.name}\": $result",
+                role = "assistant",
+                timestamp = Clock.System.now().toEpochMilliseconds(),
+            ),
+        )
+        return "[Confirmed \"${pending.name}\": $result]"
+    }
+
     // The chat call needs cleanup-and-rethrow on any engine failure, so the catch stays broad.
     @Suppress("TooGenericExceptionCaught")
     private suspend fun runInferenceLoop(
@@ -440,10 +537,11 @@ class InferenceService : Service() {
         audioPath: String?,
     ) {
         val chat = engine ?: failEngine()
+        val effectiveUserText = handleHostMarker(conversationId, userText) ?: userText
         val request = ChatRequest(
             system = systemPrompt(),
             history = loadHistory(conversationId, userText),
-            userText = userText,
+            userText = effectiveUserText,
             imagePaths = imagePaths.toList(),
             audioPath = audioPath?.takeIf { File(it).exists() },
         )
@@ -484,6 +582,18 @@ class InferenceService : Service() {
                 Log.status("InferenceService", "Standard inference halted successfully.")
             } else if (result.text.isNotBlank()) {
                 store.storeReply(aiMsgId, result.text)
+            }
+            is ChatResult.Pending -> {
+                val pending = tools.pendingById(result.pendingId) ?: PendingToolCall(
+                    id = result.pendingId,
+                    name = "tool",
+                    args = emptyMap(),
+                    summary = result.summary,
+                    createdAtMillis = nowMillis(),
+                )
+                persistPending(conversationId, pending)
+                val shown = result.text.ifBlank { "Please confirm to continue." }
+                store.updateMessage(aiMsgId, shown, A2uiTemplates.confirmCard(pending))
             }
             ChatResult.TooLong -> store.updateMessage(
                 aiMsgId,

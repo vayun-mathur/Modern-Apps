@@ -89,4 +89,20 @@ class ToolLoopTest {
         val outcome = runToolLoop(FakeGenerator(emptyList()), parse, { "x" }, render) { true }
         assertIs<ToolLoopOutcome.Failed>(outcome)
     }
+
+    @Test
+    fun pendingForShortCircuitsWithoutExecuting() = runBlocking<Unit> {
+        val generator = FakeGenerator(listOf("<|tool_call>call:create_note{title:T,content:C}<tool_call|>"))
+        var executed = 0
+        val pending = PendingToolCall("p1", "create_note", mapOf("title" to "T"), "create_note: title=T", 0L)
+        val outcome = runToolLoop(
+            generator, parse, { executed++; "ok" }, render,
+            pendingFor = { pending },
+        ) { true }
+        val pendingOutcome = assertIs<ToolLoopOutcome.PendingConfirmation>(outcome)
+        assertEquals("create_note", pendingOutcome.callName)
+        assertEquals("p1", pendingOutcome.pendingId)
+        assertEquals(0, executed)
+        assertEquals(1, generator.continuations.size)
+    }
 }

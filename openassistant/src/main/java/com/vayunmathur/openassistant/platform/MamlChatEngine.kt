@@ -44,6 +44,8 @@ data class ChatRequest(
 sealed interface ChatResult {
     /** Immutable value describing reply; carries text, halted. */
     data class Reply(val text: String, val halted: Boolean) : ChatResult
+    /** A WRITE_CONFIRM call awaits host confirmation; nothing was executed. */
+    data class Pending(val pendingId: String, val summary: String, val text: String = "") : ChatResult
     /** Singleton holding too long state and operations. */
     data object TooLong : ChatResult
     /** Singleton holding unavailable state and operations. */
@@ -175,12 +177,18 @@ open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
                     }
                 },
                 renderToolResponse = Gemma4Handle::renderToolResponse,
+                pendingFor = { call -> tools.createPending(call) },
                 onVisible = onText,
             )
             when (outcome) {
                 is ToolLoopOutcome.Finished -> ChatResult.Reply(outcome.text, halted = false)
                 is ToolLoopOutcome.Halted -> ChatResult.Reply(outcome.text, halted = true)
                 is ToolLoopOutcome.Failed -> ChatResult.Unavailable
+                is ToolLoopOutcome.PendingConfirmation -> ChatResult.Pending(
+                    pendingId = outcome.pendingId,
+                    summary = tools.pendingById(outcome.pendingId)?.summary ?: outcome.callName,
+                    text = outcome.text,
+                )
             }
         }
 

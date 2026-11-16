@@ -90,11 +90,43 @@ class AssistantViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Renders the A2UI surfaces on assistant messages; their events come back as user turns. */
-    val a2ui = A2uiController(application, viewModelScope) { conversationId, text ->
+    val a2ui = A2uiController(
+        application,
+        viewModelScope,
+        onAction = { conversationId, text ->
+            viewModelScope.launch {
+                upsertMessage(Message(conversationId, text, "user"))
+                requestInference(conversationId, text, emptyList(), null)
+            }
+        },
+        onHostAction = { conversationId, eventName, context ->
+            handleHostAction(conversationId, eventName, context)
+        },
+    )
+
+    /**
+     * Intercepts confirm/cancel host actions before they become model turns.
+     * InferenceService detects the [HostConfirm]/[HostCancel] marker, executes
+     * (or discards) the stored call exactly once, and then runs the model turn.
+     */
+    private fun handleHostAction(
+        conversationId: Long,
+        eventName: String,
+        context: Map<String, Any?>,
+    ): Boolean {
+        val marker = when (eventName) {
+            "confirm.tool" -> "HostConfirm"
+            "cancel.tool" -> "HostCancel"
+            else -> return false
+        }
+        val id = context["id"]?.toString().orEmpty()
+        if (id.isBlank()) return false
+        val text = "[$marker $id]"
         viewModelScope.launch {
             upsertMessage(Message(conversationId, text, "user"))
             requestInference(conversationId, text, emptyList(), null)
         }
+        return true
     }
 
     init {

@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
 class AppDatabaseMigrationTest {
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
 
-    @Test fun migratesV1ToV4PreservingRows() = runTest {
+    @Test fun migratesV1ToV5PreservingRows() = runTest {
         val name = "migration-test.db"
         ctx.deleteDatabase(name)
         val path = ctx.getDatabasePath(name)
@@ -40,17 +40,23 @@ class AppDatabaseMigrationTest {
             val conv = db.conversationDao().getById(1L)
             assertNotNull(conv); assertEquals("Old chat", conv.title)
             val msg = db.messageDao().getByConversation(1L).single()
-            assertEquals("old msg", msg.text); assertNull(msg.missingAppPackage); assertNull(msg.a2ui)
-            // v2-v4 additions are writable after migration.
-            db.messageDao().upsert(msg.copy(a2ui = "{}", missingAppPackage = "com.example"))
+            assertEquals("old msg", msg.text); assertNull(msg.missingAppPackage); assertNull(msg.a2ui); assertNull(msg.a2uiData)
+            // v2-v5 additions are writable after migration.
+            db.messageDao().upsert(msg.copy(a2ui = "{}", a2uiData = "{\"x\":1}", missingAppPackage = "com.example"))
             assertEquals("{}", db.messageDao().getById(msg.id)?.a2ui)
+            assertEquals("{\"x\":1}", db.messageDao().getById(msg.id)?.a2uiData)
+            db.pendingToolCallDao().upsert(
+                PendingToolCallEntity("p1", 1L, "create_note", "{}", "create_note", 10L, 610_010L, false))
+            assertEquals("create_note", db.pendingToolCallDao().getById("p1")?.toolName)
+            db.auditRecordDao().upsert(AuditRecord("create_note", "content(len=3)", "ok", 11L))
+            assertEquals("content(len=3)", db.auditRecordDao().getRecent().single().argsSummary)
             val memId = db.memoryDao().upsert(Memory("remembered"))
             assertTrue(memId > 0)
             assertEquals(listOf("remembered"), db.memoryDao().getAllFlow().first().map { it.content })
         } finally {
             db.close()
             val check = SQLiteDatabase.openDatabase(path.path, null, SQLiteDatabase.OPEN_READONLY)
-            assertEquals(4, check.version)
+            assertEquals(5, check.version)
             check.close()
             ctx.deleteDatabase(name)
             File(path.path + "-wal").delete(); File(path.path + "-shm").delete()

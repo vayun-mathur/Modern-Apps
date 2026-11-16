@@ -17,11 +17,15 @@ data class ToolParamSpec(
     val required: Boolean = true,
 )
 
+/** Risk classification for a tool; host metadata, not model supplied. */
+enum class ToolRisk { READ, WRITE_CONFIRM, HANDOFF_PREP }
+
 /** Immutable value describing tool spec. */
 data class ToolSpec(
     val name: String,
     val description: String,
     val params: List<ToolParamSpec> = emptyList(),
+    val risk: ToolRisk = ToolRisk.READ,
 )
 
 /** Coerced arguments: strings stay strings, numbers are Doubles as LiteRT passed them. */

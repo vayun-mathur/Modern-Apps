@@ -32,6 +32,9 @@ import kotlinx.coroutines.launch
 class A2uiController(
     context: Context,
     scope: CoroutineScope,
+    private val onHostAction: (
+        (conversationId: Long, eventName: String, context: Map<String, Any?>) -> Boolean
+    )? = null,
     private val onAction: (conversationId: Long, text: String) -> Unit,
 ) {
     private val appContext = context.applicationContext
@@ -52,8 +55,9 @@ class A2uiController(
         scope.launch {
             processor.outboundEvents.collect { event ->
                 when (event) {
-                    is A2uiClientEventMessage -> conversationOf[event.surfaceId]?.let {
-                        onAction(it, actionTurnText(event.type, event.context))
+                    is A2uiClientEventMessage -> conversationOf[event.surfaceId]?.let { convId ->
+                        val handled = onHostAction?.invoke(convId, event.type, event.context) ?: false
+                        if (!handled) onAction(convId, actionTurnText(event.type, event.context))
                     }
                     is A2uiClientErrorMessage ->
                         Log.status(TAG, "${event.code} on ${event.surfaceId}: ${event.message}")

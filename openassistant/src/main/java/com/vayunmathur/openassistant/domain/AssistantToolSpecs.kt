@@ -2,6 +2,7 @@ package com.vayunmathur.openassistant.domain
 
 import com.vayunmathur.openassistant.domain.ToolParamType.NUMBER
 import com.vayunmathur.openassistant.domain.ToolParamType.STRING
+import com.vayunmathur.openassistant.domain.ToolRisk.WRITE_CONFIRM
 
 private fun p(name: String, type: ToolParamType = STRING, description: String = "", required: Boolean = true) =
     ToolParamSpec(name, description, type, required)
@@ -14,8 +15,8 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
     ToolSpec("get_notes", "Get a list of all notes"),
     ToolSpec(
         "create_note",
-        "Create a new note in the notes app. Should only be used with EXPLICIT request by user",
-        listOf(p("title"), p("content")),
+        "Create a new note in the notes app (requires confirmation). Should only be used with EXPLICIT request by user",
+        listOf(p("title"), p("content")), risk = WRITE_CONFIRM,
     ),
     ToolSpec(
         "get_todos",
@@ -25,53 +26,53 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
     ),
     ToolSpec(
         "create_todo",
-        "Create a task in the todo app. Should only be used with EXPLICIT request by user. The title may " +
+        "Create a task in the todo app (requires confirmation). Should only be used with EXPLICIT request by user. The title may " +
             "include words like 'tomorrow 6pm' or '#tag', which are understood when no due time is given.",
         listOf(
             p("title"),
             p("due", NUMBER, "optional due time as epoch milliseconds", required = false),
             p("notes", required = false),
             p("priority", NUMBER, "optional priority, 1 (highest) to 4", required = false),
-        ),
+        ), risk = WRITE_CONFIRM,
     ),
     ToolSpec(
         "complete_todo",
-        "Mark a task done. Should only be used with EXPLICIT request by user.",
+        "Mark a task done (requires confirmation). Should only be used with EXPLICIT request by user.",
         listOf(
             p("id", description = "task id from get_todos", required = false),
             p("title", description = "exact task title, used when no id is given", required = false),
-        ),
+        ), risk = WRITE_CONFIRM,
     ),
     ToolSpec("get_contacts", "Get a list of all contacts"),
-    ToolSpec("create_contact", "Create a new contact", listOf(p("name"), p("phone_number"))),
+    ToolSpec("create_contact", "Create a new contact (requires confirmation)", listOf(p("name"), p("phone_number")), risk = WRITE_CONFIRM),
     ToolSpec(
         "get_calendar_events",
         "Get a list of calendar events. Each event's start and end times are epoch milliseconds.",
     ),
     ToolSpec(
         "create_calendar_event",
-        "Create a new calendar event. Start and end times must be epoch milliseconds.",
+        "Create a new calendar event (requires confirmation). Start and end times must be epoch milliseconds.",
         listOf(
             p("title"),
             p("start", NUMBER, "start time as epoch milliseconds"),
             p("end", NUMBER, "end time as epoch milliseconds"),
             p("location", required = false),
-        ),
+        ), risk = WRITE_CONFIRM,
     ),
     ToolSpec("get_family_locations", "Get a list of family members and their current locations"),
     ToolSpec(
         "create_location_share_link",
-        "Create a temporary FindFamily link that shares the user's live location.",
+        "Create a temporary FindFamily link that shares the user's live location (requires confirmation).",
         listOf(
             p("name", description = "name or label for who the link is for"),
             p("duration_millis", NUMBER, "how long the link stays active, in milliseconds"),
-        ),
+        ), risk = WRITE_CONFIRM,
     ),
     ToolSpec("search_music", "Search for music (songs, albums, artists, or playlists)", listOf(p("query"))),
     ToolSpec(
         "play_music",
-        "Play music given its id and type (song, album, artist, or playlist)",
-        listOf(p("id", NUMBER), p("type")),
+        "Play music given its id and type (song, album, artist, or playlist) (requires confirmation)",
+        listOf(p("id", NUMBER), p("type")), risk = WRITE_CONFIRM,
     ),
     ToolSpec("search_emails", "Search emails by keyword", listOf(p("query"))),
     ToolSpec("get_recent_emails", "Get recent emails from the inbox"),
@@ -82,20 +83,20 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
     ToolSpec("make_phone_call", "Make a phone call", listOf(p("recipient"))),
     ToolSpec(
         "set_alarm",
-        "Set an alarm in the Clock app at a specific hour and minute (24-hour time).",
+        "Set an alarm in the Clock app at a specific hour and minute (24-hour time) (requires confirmation).",
         listOf(
             p("hour", NUMBER, "hour in 24-hour format, 0-23"),
             p("minute", NUMBER, "minute, 0-59"),
             p("label", description = "optional label for the alarm", required = false),
-        ),
+        ), risk = WRITE_CONFIRM,
     ),
     ToolSpec(
         "set_timer",
-        "Start a countdown timer in the Clock app for a number of seconds.",
+        "Start a countdown timer in the Clock app for a number of seconds (requires confirmation).",
         listOf(
             p("seconds", NUMBER, "timer length in seconds"),
             p("label", description = "optional label for the timer", required = false),
-        ),
+        ), risk = WRITE_CONFIRM,
     ),
     ToolSpec(
         "set_conversation_title",
@@ -113,6 +114,6 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
         listOf(p("location", description = "city or place name")),
     ),
     ToolSpec("get_memories", "Get a list of all memories"),
-    ToolSpec("remove_memory", "Remove a memory by its id", listOf(p("id", NUMBER))),
+    ToolSpec("remove_memory", "Remove a memory by its id (requires confirmation)", listOf(p("id", NUMBER)), risk = WRITE_CONFIRM),
     ToolSpec("add_to_memory", "Add a new memory to the list of memories", listOf(p("content"))),
 )

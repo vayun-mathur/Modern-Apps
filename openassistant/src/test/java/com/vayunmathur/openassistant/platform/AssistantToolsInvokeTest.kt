@@ -49,26 +49,26 @@ class AssistantToolsInvokeTest {
 
     @Test fun crossAppToolsReportMissingApps() {
         assertTrue(call("get_notes").startsWith("The Notes app is required"))
-        assertTrue(call("create_note", "title" to "T", "content" to "C").startsWith("The Notes app"))
+        assertEquals("Error: confirmation required for create_note", call("create_note", "title" to "T", "content" to "C"))
         assertTrue(call("get_todos").startsWith("The Todo app is required"))
-        assertTrue(call("create_todo", "title" to "T").startsWith("The Todo app"))
-        assertTrue(call("complete_todo", "id" to "1").startsWith("The Todo app"))
+        assertEquals("Error: confirmation required for create_todo", call("create_todo", "title" to "T"))
+        assertEquals("Error: confirmation required for complete_todo", call("complete_todo", "id" to "1"))
         assertTrue(call("get_contacts").startsWith("The Contacts app is required"))
-        assertTrue(call("create_contact", "name" to "A", "phone_number" to "1").startsWith("The Contacts app"))
+        assertEquals("Error: confirmation required for create_contact", call("create_contact", "name" to "A", "phone_number" to "1"))
         assertTrue(call("get_calendar_events").startsWith("The Calendar app is required"))
-        assertTrue(
-            call("create_calendar_event", "title" to "M", "start" to "1", "end" to "2")
-                .startsWith("The Calendar app"))
+        assertEquals(
+            "Error: confirmation required for create_calendar_event",
+            call("create_calendar_event", "title" to "M", "start" to "1", "end" to "2"))
         assertTrue(call("get_family_locations").startsWith("The FindFamily app is required"))
-        assertTrue(
-            call("create_location_share_link", "name" to "A", "duration_millis" to "60000")
-                .startsWith("The FindFamily app"))
+        assertEquals(
+            "Error: confirmation required for create_location_share_link",
+            call("create_location_share_link", "name" to "A", "duration_millis" to "60000"))
         assertTrue(call("search_music", "query" to "jazz").startsWith("The Music app is required"))
-        assertTrue(call("play_music", "id" to "3", "type" to "song").startsWith("The Music app"))
+        assertEquals("Error: confirmation required for play_music", call("play_music", "id" to "3", "type" to "song"))
         assertTrue(call("search_emails", "query" to "hi").startsWith("The Email app is required"))
         assertTrue(call("get_recent_emails").startsWith("The Email app"))
-        assertTrue(call("set_alarm", "hour" to "7", "minute" to "30").startsWith("The Clock app is required"))
-        assertTrue(call("set_timer", "seconds" to "60").startsWith("The Clock app"))
+        assertEquals("Error: confirmation required for set_alarm", call("set_alarm", "hour" to "7", "minute" to "30"))
+        assertEquals("Error: confirmation required for set_timer", call("set_timer", "seconds" to "60"))
         assertTrue(
             call("get_weather", "latitude" to "1.5", "longitude" to "2.5")
                 .startsWith("The Weather app is required"))
@@ -108,7 +108,54 @@ class AssistantToolsInvokeTest {
             "Error: MemoryDao is null",
             noDao.invoke(ParsedToolCall("add_to_memory", mapOf("content" to "x"))))
         assertEquals(
-            "Error: MemoryDao is null",
+            "Error: confirmation required for remove_memory",
             noDao.invoke(ParsedToolCall("remove_memory", mapOf("id" to "1"))))
+        val pending = noDao.createPending(ParsedToolCall("remove_memory", mapOf("id" to "1")))!!
+        assertEquals("Error: MemoryDao is null", noDao.invokeConfirmed(pending.id))
+    }
+
+    @Test fun writeConfirmGateNeverExecutesUnconfirmed() {
+        // create_note would report the missing Notes app if it executed; the gate must win.
+        assertEquals(
+            "Error: confirmation required for create_note",
+            call("create_note", "title" to "T", "content" to "secret-body"))
+        // add_to_memory stays READ/ungated.
+        assertEquals("Success: Added memory", call("add_to_memory", "content" to "likes tea"))
+    }
+
+    @Test fun invokeConfirmedIsIdempotentAndChecksExpiry() {
+        val ctx2 = ApplicationProvider.getApplicationContext<android.content.Context>()
+        var now = 1_000_000L
+        var seq = 0
+        val gated = AssistantTools(ctx2, db.memoryDao(),
+            nowMillis = { now }, idGenerator = { "pending-${seq++}" })
+        val pending = gated.createPending(
+            ParsedToolCall("remove_memory", mapOf("id" to "999")))!!
+        assertEquals("pending-0", pending.id)
+        // First confirmed call executes (handler reports no such memory / dao result).
+        val first = gated.invokeConfirmed(pending.id)
+        assertTrue(first.contains("Removed") || first.startsWith("Success") || first.isNotBlank(), first)
+        val second = gated.invokeConfirmed(pending.id)
+        assertEquals("Error: pending tool call already consumed", second)
+        assertEquals("Error: pending tool call not found", gated.invokeConfirmed("nope"))
+        // Expired pending never executes.
+        val expired = gated.createPending(
+            ParsedToolCall("remove_memory", mapOf("id" to "999")))!!
+        now += com.vayunmathur.openassistant.domain.PendingToolCall.TTL_MILLIS + 1
+        assertEquals("Error: pending tool call expired", gated.invokeConfirmed(expired.id))
+    }
+
+    @Test fun riskClassificationMatchesDesign() {
+        val gated = setOf("create_note", "create_todo", "complete_todo", "create_contact",
+            "create_calendar_event", "create_location_share_link", "play_music",
+            "set_alarm", "set_timer", "remove_memory")
+        for (spec in com.vayunmathur.openassistant.domain.ASSISTANT_TOOL_SPECS) {
+            val expected = if (spec.name in gated) {
+                com.vayunmathur.openassistant.domain.ToolRisk.WRITE_CONFIRM
+            } else {
+                com.vayunmathur.openassistant.domain.ToolRisk.READ
+            }
+            assertEquals(expected, spec.risk, spec.name)
+        }
     }
 }

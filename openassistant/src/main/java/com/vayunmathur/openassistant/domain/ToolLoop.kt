@@ -16,6 +16,12 @@ sealed interface ToolLoopOutcome {
     data class Halted(override val text: String) : ToolLoopOutcome
     /** Immutable value describing failed; carries text. */
     data class Failed(override val text: String) : ToolLoopOutcome
+    /** A WRITE_CONFIRM call is pending host confirmation; it was not executed. */
+    data class PendingConfirmation(
+        override val text: String,
+        val callName: String,
+        val pendingId: String,
+    ) : ToolLoopOutcome
 }
 
 const val MAX_TOOL_ROUNDS = 6
@@ -33,6 +39,7 @@ suspend fun runToolLoop(
     executeTool: suspend (ParsedToolCall) -> String,
     renderToolResponse: (name: String, value: String) -> String,
     maxRounds: Int = MAX_TOOL_ROUNDS,
+    pendingFor: (ParsedToolCall) -> PendingToolCall? = { null },
     onVisible: (String) -> Boolean,
 ): ToolLoopOutcome {
     var continuation = ""
@@ -51,6 +58,11 @@ suspend fun runToolLoop(
         if (halted) return ToolLoopOutcome.Halted(visible)
         if (!hasCompleteToolCall(reply) || round == maxRounds - 1) break
         val call = parseCall(reply)
+        if (call != null) {
+            pendingFor(call)?.let { pending ->
+                return ToolLoopOutcome.PendingConfirmation(visible, call.name, pending.id)
+            }
+        }
         val (name, result) = if (call == null) {
             toolCallNameGuess(reply) to "Error: malformed tool call; use name{arg:value}"
         } else {
