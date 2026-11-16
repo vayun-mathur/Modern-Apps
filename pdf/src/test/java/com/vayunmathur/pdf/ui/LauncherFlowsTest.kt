@@ -146,9 +146,14 @@ class LauncherFlowsTest {
     @Test fun captureGalleryPickOpensCrop() {
         val png = pngFile("gallery.png")
         val vm = PdfViewModel(ctx as Application)
+        var selected: Int? = null
+        var cropped: Int? = null
         rule.setContent {
             CompositionLocalProvider(LocalActivityResultRegistryOwner provides fakeOwner(Uri.fromFile(png))) {
-                DynamicTheme { CapturePdfScreen(vm, onBack = {}, onPdfCreated = {}) }
+                DynamicTheme {
+                    CapturePdfScreen(vm, selectedIndex = null, onBack = {}, onPdfCreated = {},
+                        onSelectPage = { selected = it }, onOpenCrop = { cropped = it })
+                }
             }
         }
         rule.onNodeWithText("Upload Image").assertIsDisplayed().performClick()
@@ -157,8 +162,10 @@ class LauncherFlowsTest {
         }
         assertEquals(1, vm.capturedImages.value.size)
         rule.waitForIdle()
-        // Picking enters crop mode for the new image
-        rule.onNodeWithText("Crop Image").assertIsDisplayed()
+        // Picking selects the new page and pushes its Crop route (rendered by
+        // Navigation, not inside this screen any more).
+        assertEquals(0, selected)
+        assertEquals(0, cropped)
     }
 
     @Test fun captureSaveViaCreateDocument() {
@@ -169,7 +176,7 @@ class LauncherFlowsTest {
         var created: Uri? = null
         rule.setContent {
             CompositionLocalProvider(LocalActivityResultRegistryOwner provides fakeOwner(Uri.fromFile(out))) {
-                DynamicTheme { CapturePdfScreen(vm, onBack = {}, onPdfCreated = { created = it }) }
+                DynamicTheme { CapturePdfScreen(vm, selectedIndex = null, onBack = {}, onPdfCreated = { created = it }, onSelectPage = {}, onOpenCrop = {}) }
             }
         }
         rule.waitForIdle()

@@ -6,7 +6,7 @@ _Install: ./install pdf (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :pdf / dir: pdf/
 - Package roots present: ui
-- Entry files: MainActivity.kt (no Route.kt — mode flags, not nav destinations)
+- Entry files: MainActivity.kt, Route.kt, Navigation.kt (Route host; see Navigation.kt)
 - Deps: :library:image, :library:ocr
 - Metadata: metadata_data/pdf.md (present)
 - Rust: yes / screenshotTest: yes
@@ -17,17 +17,18 @@ _Install: ./install pdf (dev by default)._
 - Full viewer: text search, text selection, form fields, outlines, zoom state, print via share menu; several documents open as separate Recents entries
 - Capture mode: photograph pages with auto-framing, crop, and compose them into a PDF; cut-and-glue screen for assembling pages
 - Native Rust PDF engine (`PdfNative`) for parsing, rendering, and export
-**Architecture / data-flow:** `MainActivity` mode-flags (`data` / `isCapturing` / `isCutGlue`) over a single `util/PdfViewModel` + `util/PdfStateStore`, with `SafePdf*` utils wrapping the Rust engine for document access, page rendering, and edits; capture flows through `model/CapturedImage` → `AutoFrameDetector` → `ComposePdfDocument` → `PdfExporter`. `onCreateBeforeContent` only captures the launch intent's data URI; `Content()` picks viewer vs capture vs cut-glue vs picker.
-**Entry points + reading order:** `MainActivity.kt` (`InitialScreen` → viewer/capture/cut-glue) → `ui/SafePdfViewerScreen.kt` → `util/PdfViewModel.kt` → `util/SafePdfDocument.kt` → `util/SafePdfParser.kt`.
+**Architecture / data-flow:** `MainActivity` hosts `Navigation.kt` (`Route.Home/Viewer/Capture/CapturePage/Crop/CutGlue`) over a single `util/PdfViewModel` + `util/PdfStateStore`, with `SafePdf*` utils wrapping the Rust engine for document access, page rendering, and edits; capture flows through `model/CapturedImage` → `AutoFrameDetector` → `ComposePdfDocument` → `PdfExporter`. `onCreateBeforeContent` only captures the launch intent's data URI; `Content()` picks viewer vs capture vs cut-glue vs picker.
+**Entry points + reading order:** `MainActivity.kt` + `Route.kt` + `Navigation.kt` (`InitialScreen` → viewer/capture/cut-glue) → `ui/SafePdfViewerScreen.kt` → `util/PdfViewModel.kt` → `util/SafePdfDocument.kt` → `util/SafePdfParser.kt`.
 **Gotchas:**
-- No navigation graph at all — the three modes are `rememberSaveable` flags in `Content()`, so don't add a `Route.kt` here
 - Started-with-intent launches `finish()` on back instead of returning to the picker; in-app launches reset to the picker
 - Card drift fixed: `util/` gained `FrameGeometry`, `FrameImageOps`, `SafePdfDocumentEdits`, `SafePdfPrimitives`; `ui/` is `SafePdf*` + capture/crop/cut-glue screens (no separate `domain/` or `platform/`)
 - Extra non-conforming dirs (`model/`, `util/`) hold real code — closed-roots migration pending
 
 ## Key files
-### Root — entry (mode flags, no Route.kt)
-- com/vayunmathur/pdf/MainActivity.kt — InitialScreen, viewer/capture/cut-glue switch
+### Root — entry + navigation
+- com/vayunmathur/pdf/MainActivity.kt — host, intent → Route.Viewer routing
+- com/vayunmathur/pdf/Route.kt — Home/Viewer(uri)/Capture/CapturePage(index)/Crop(index)/CutGlue
+- com/vayunmathur/pdf/Navigation.kt — MainNavigation host
 ### model/ — capture model
 - com/vayunmathur/pdf/model/CapturedImage.kt
 ### ui/ — viewer chrome + state

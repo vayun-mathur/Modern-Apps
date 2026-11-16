@@ -50,7 +50,7 @@ class CaptureCropComposeTest {
 
     @Test fun captureScreenWithoutPermissionShowsRequestAndUpload() {
         val vm = PdfViewModel(app)
-        rule.setContent { DynamicTheme { CapturePdfScreen(vm, onBack = {}, onPdfCreated = {}) } }
+        rule.setContent { DynamicTheme { CapturePdfScreen(vm, selectedIndex = null, onBack = {}, onPdfCreated = {}, onSelectPage = {}, onOpenCrop = {}) } }
         rule.onNodeWithText("Capture PDF").assertIsDisplayed()
         rule.onNodeWithText("Request Camera Permission").assertIsDisplayed()
         rule.onNodeWithText("Upload Image").assertIsDisplayed()
@@ -59,7 +59,7 @@ class CaptureCropComposeTest {
     @Test fun captureScreenWithImagesShowsThumbnails() {
         val vm = PdfViewModel(app)
         vm.addCapturedImage(pngUri("cap1.png")); vm.addCapturedImage(pngUri("cap2.png"))
-        rule.setContent { DynamicTheme { CapturePdfScreen(vm, onBack = {}, onPdfCreated = {}) } }
+        rule.setContent { DynamicTheme { CapturePdfScreen(vm, selectedIndex = null, onBack = {}, onPdfCreated = {}, onSelectPage = {}, onOpenCrop = {}) } }
         rule.waitForIdle()
         rule.onNodeWithText("Capture PDF").assertIsDisplayed()
     }

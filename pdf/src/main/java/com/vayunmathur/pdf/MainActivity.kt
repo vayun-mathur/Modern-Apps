@@ -1,8 +1,7 @@
 package com.vayunmathur.pdf
 
+import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -12,75 +11,66 @@ import androidx.compose.foundation.layout.padding
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
-import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.pdf.R
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.pdf.ui.CapturePdfScreen
-import com.vayunmathur.pdf.ui.CutGlueScreen
-import com.vayunmathur.pdf.ui.SafePdfViewerScreen
 import com.vayunmathur.pdf.util.PdfViewModel
 
-/** Main Activity: a ma activity implementation for main activity. */
+/**
+ * The single PDF host.
+ *
+ * External VIEW intents arrive as a [Route.Viewer] start destination (see
+ * [routeFor]); leaving that viewer finishes the host because the caller
+ * owns the document task, while documents opened in-app return to home.
+ * Intents that arrive while the host is running are re-routed through
+ * [pendingRoute] instead of stacking a second activity.
+ */
 class MainActivity : MaActivity() {
     private val pdfViewModel: PdfViewModel by viewModels()
     private var intentData: Uri? = null
 
+    private var initialRoute: Route = Route.Home
+    private var pendingRoute by mutableStateOf<Route?>(null)
+    private var startedWithIntent = false
+
     override fun onCreateBeforeContent() {
         intentData = intent.data
+        startedWithIntent = intentData != null
+        initialRoute = routeFor(intent)
     }
 
     @Composable
     override fun Content() {
-        val startedWithIntent = remember { intentData != null }
-        var data: Uri? by rememberSaveable { mutableStateOf(intentData) }
-        var isCapturing by rememberSaveable { mutableStateOf(false) }
-        var isCutGlue by rememberSaveable { mutableStateOf(false) }
+        Navigation(
+            viewModel = pdfViewModel,
+            initialRoute = initialRoute,
+            externalRoute = pendingRoute,
+            onExternalRouteConsumed = { pendingRoute = null },
+            startedWithIntent = startedWithIntent,
+            onFinish = { finish() },
+        )
+    }
 
-        val filePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            uri?.let { data = it }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.data?.let {
+            startedWithIntent = true
+            pendingRoute = routeFor(intent)
         }
+    }
 
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            if (isCutGlue) {
-                CutGlueScreen(onBack = { isCutGlue = false })
-            } else if (isCapturing) {
-                CapturePdfScreen(
-                    viewModel = pdfViewModel,
-                    onBack = { isCapturing = false },
-                    onPdfCreated = { uri ->
-                        data = uri
-                        isCapturing = false
-                    }
-                )
-            } else if (data != null) {
-                SafePdfViewerScreen(
-                    uri = data!!,
-                    onBack = {
-                        if (startedWithIntent) finish() else data = null
-                    }
-                )
-            } else {
-                InitialScreen(
-                    onOpenPdf = { filePickerLauncher.launch(arrayOf("application/pdf")) },
-                    onCapturePdf = { isCapturing = true },
-                    onCutGlue = { isCutGlue = true }
-                )
-            }
-        }
+    companion object {
+        /** The route an entry intent names; home is the default landing. */
+        fun routeFor(intent: Intent?): Route =
+            intent?.data?.let { Route.Viewer(it.toString()) } ?: Route.Home
     }
 }
 

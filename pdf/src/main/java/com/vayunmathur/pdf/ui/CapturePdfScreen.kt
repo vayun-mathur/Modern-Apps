@@ -3,7 +3,6 @@ package com.vayunmathur.pdf.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -32,13 +31,11 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,15 +64,16 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 @Composable
 fun CapturePdfScreen(
     viewModel: PdfViewModel,
+    selectedIndex: Int?,
     onBack: () -> Unit,
     onPdfCreated: (Uri) -> Unit,
+    onSelectPage: (Int?) -> Unit,
+    onOpenCrop: (Int) -> Unit,
 ) {
     val context = LocalContext.current
     val pdfSavedMsg = stringResource(R.string.pdf_saved)
     val pdfSaveFailedMsg = stringResource(R.string.failed_to_save_pdf)
     val images by viewModel.capturedImages.collectAsState()
-    var selectedIndex by rememberSaveable { mutableStateOf<Int?>(null) }
-    var isCropping by rememberSaveable { mutableStateOf(false) }
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -92,8 +90,8 @@ fun CapturePdfScreen(
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             val newIndex = viewModel.addCapturedImage(it)
-            selectedIndex = newIndex
-            isCropping = true
+            onSelectPage(newIndex)
+            onOpenCrop(newIndex)
         }
     }
 
@@ -124,47 +122,19 @@ fun CapturePdfScreen(
         }
     }
 
-    // Reset the in-memory captured-images list when leaving this screen so the
-    // VM doesn't retain it for the entire process lifetime.
-    DisposableEffect(Unit) {
-        onDispose { viewModel.clearCapturedImages() }
-    }
-
-    BackHandler {
-        if (isCropping) {
-            isCropping = false
-        } else if (selectedIndex != null) {
-            selectedIndex = null
-        } else {
-            onBack()
-        }
-    }
-
-    val currentSelected = selectedIndex
-    if (isCropping && currentSelected != null && currentSelected in images.indices) {
-        val currentImage = images[currentSelected]
-        CropScreen(
-            uri = currentImage.uri,
-            initialQuadrilateral = currentImage.quadrilateral,
-            onCropDone = { newQuadrilateral ->
-                viewModel.updateQuadrilateral(currentSelected, newQuadrilateral)
-                isCropping = false
-            },
-            onBack = { isCropping = false }
-        )
-    } else {
+    run {
         AppScaffold(
             title = stringResource(R.string.capture_pdf_title),
             onNavigateBack = onBack,
             actions = {
                     val sel = selectedIndex
                     if (sel != null) {
-                        IconButton(onClick = { isCropping = true }) {
+                        IconButton(onClick = { onOpenCrop(sel) }) {
                             IconCrop()
                         }
                         IconButton(onClick = {
                             viewModel.removeCapturedImage(sel)
-                            selectedIndex = null
+                            onSelectPage(null)
                         }) {
                             IconDelete()
                         }
@@ -238,7 +208,7 @@ fun CapturePdfScreen(
                                             color = if (selectedIndex == index) MaterialTheme.colorScheme.primary else Color.Transparent,
                                             shape = RoundedCornerShape(8.dp)
                                         )
-                                        .clickable { selectedIndex = index },
+                                        .clickable { onSelectPage(index) },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     SubcroppedImage(
@@ -253,7 +223,7 @@ fun CapturePdfScreen(
                                     .size(80.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .clickable { selectedIndex = null },
+                                    .clickable { onSelectPage(null) },
                                 contentAlignment = Alignment.Center
                             ) {
                                 IconAdd()
@@ -278,8 +248,8 @@ fun CapturePdfScreen(
                         CameraPreview(
                             onImageCaptured = { uri ->
                                 val newIndex = viewModel.addCapturedImage(uri)
-                                selectedIndex = newIndex
-                                isCropping = true
+                                onSelectPage(newIndex)
+                                onOpenCrop(newIndex)
                             }
                         )
                     } else {
