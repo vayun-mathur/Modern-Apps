@@ -50,6 +50,7 @@ import com.vayunmathur.maps.util.formatDistance
 import com.vayunmathur.maps.util.formatDuration
 import com.vayunmathur.maps.util.formatEta
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 
 /**
  * The directions panel: one segment per travel mode, then the turn-by-turn step list.
@@ -73,6 +74,9 @@ fun RouteSheet(
     userPosition: GeoPoint? = null,
     modifier: Modifier = Modifier,
     onStartNavigation: ((String, RouteService.TravelMode) -> Unit)? = null,
+    alternatives: List<RouteService.Route> = emptyList(),
+    selectedAlternative: RouteService.Route? = null,
+    onSelectAlternative: (RouteService.Route?) -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -181,6 +185,14 @@ fun RouteSheet(
                 destLabel = rideDest.name,
             )
             return@Column
+        }
+
+        if (alternatives.isNotEmpty()) {
+            AlternativesSection(
+                alternatives = alternatives,
+                selected = selectedAlternative,
+                onSelect = onSelectAlternative,
+            )
         }
 
         val routeForMode = route[selectedRouteType]
@@ -334,5 +346,47 @@ internal fun transitSupportingText(details: RouteService.API.TransitDetails): St
         headsign != null && stops != null ->
             stringResource(R.string.transit_detail_separator, headsign, stops)
         else -> headsign ?: stops ?: ""
+    }
+}
+
+/**
+ * Genuinely different alternatives for the shown mode (already gated by
+ * [com.vayunmathur.maps.util.AlternativeRoutes]): duration/distance, and
+ * for transit the boarded lines, so the difference is visible rather than
+ * asserted. Tapping one swaps it in as the shown route; tapping the
+ * selected one again returns to the primary.
+ */
+@Composable
+private fun AlternativesSection(
+    alternatives: List<RouteService.Route>,
+    selected: RouteService.Route?,
+    onSelect: (RouteService.Route?) -> Unit,
+) {
+    val context = LocalContext.current
+    Column(Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm)) {
+        Text(
+            stringResource(R.string.alternative_routes_title),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        alternatives.forEach { alternative ->
+            val lines = alternative.step.mapNotNull {
+                it.transitDetails?.transitLine?.let { line -> line.nameShort ?: line.name }
+            }.distinct()
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm)
+                    .clickable { onSelect(if (selected == alternative) null else alternative) },
+            ) {
+                ListItem({
+                    Text(
+                        listOfNotNull(
+                            formatDuration(context, alternative.duration),
+                            formatDistance(alternative.distanceMeters),
+                            lines.joinToString(" · ").takeIf { it.isNotBlank() },
+                            stringResource(R.string.alternative_selected).takeIf { selected == alternative },
+                        ).joinToString(" · "),
+                    )
+                })
+            }
+        }
     }
 }

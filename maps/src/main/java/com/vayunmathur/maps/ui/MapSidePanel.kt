@@ -52,6 +52,9 @@ fun MapSidePanel(
     navState: NavigationSessionManager.NavState,
     onClosePanel: () -> Unit,
     onStartNavigation: ((String, RouteService.TravelMode) -> Unit)? = null,
+    alternatives: List<RouteService.Route> = emptyList(),
+    selectedAlternative: RouteService.Route? = null,
+    onSelectAlternative: (RouteService.Route?) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier) {
@@ -93,6 +96,9 @@ fun MapSidePanel(
                             onSelectedRouteType,
                             navState,
                             onStartNavigation = onStartNavigation,
+                            alternatives = alternatives,
+                            selectedAlternative = selectedAlternative,
+                            onSelectAlternative = onSelectAlternative,
                         )
                     }
                 }

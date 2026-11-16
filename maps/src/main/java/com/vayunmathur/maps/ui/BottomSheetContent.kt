@@ -101,6 +101,9 @@ fun BottomSheetContent(
     setSelectedRouteType: (RouteService.TravelMode) -> Unit,
     navState: NavigationSessionManager.NavState = NavigationSessionManager.NavState.Idle,
     onStartNavigation: ((String, RouteService.TravelMode) -> Unit)? = null,
+    alternatives: List<RouteService.Route> = emptyList(),
+    selectedAlternative: RouteService.Route? = null,
+    onSelectAlternative: (RouteService.Route?) -> Unit = {},
 ) {
     when (selectedFeature) {
         is SpecificFeature.Admin0Label ->
@@ -137,7 +140,7 @@ fun BottomSheetContent(
         is SpecificFeature.Route -> {
             val currentRoute = route
             if (currentRoute != null) {
-                RouteSheet(selectedFeature, currentRoute, selectedRouteType, setSelectedRouteType, navState, panelState.userPosition, onStartNavigation = onStartNavigation)
+                RouteSheet(selectedFeature, currentRoute, selectedRouteType, setSelectedRouteType, navState, panelState.userPosition, onStartNavigation = onStartNavigation, alternatives = alternatives, selectedAlternative = selectedAlternative, onSelectAlternative = onSelectAlternative)
             } else {
                 // Routes arrive asynchronously and start out null, so this is the state right
                 // after asking for directions. It used to render nothing at all, inside a sheet

@@ -133,3 +133,67 @@ internal object OfflineRouterRoadRoutes {
         )
     }
 }
+
+/**
+ * Primary plus genuinely different alternatives for a two-point route.
+ *
+ * Candidate generation is deliberately bounded — one extra plan per
+ * mode, on top of the single-route native planners: a via-detour plan
+ * (midpoint pushed perpendicular to the direct corridor) for road
+ * modes, and a later-departure RAPTOR plan for transit. Every candidate
+ * then has to pass [AlternativeRoutes.diverseAlternatives]; when none
+ * does, the result is exactly the primary. Multi-waypoint routes get
+ * no generated candidates (a via point would rewrite the user's legs).
+ */
+/** See [AlternativeRoutes] for the gating this feeds. */
+internal suspend fun planWithAlternatives(
+    context: android.content.Context,
+    route: SpecificFeature.Route,
+    userPosition: GeoPoint,
+    mode: RouteService.TravelMode,
+): List<RouteService.Route> {
+    val primary = OfflineRouterRoadRoutes.getRouteForMode(context, route, userPosition, mode)
+        ?: return emptyList()
+    val positions = route.waypoints.map { it?.position ?: userPosition }
+    if (positions.size != 2) return listOf(primary)
+    val start = positions.first()
+    val end = positions.last()
+    val candidate = try {
+        if (mode == RouteService.TravelMode.TRANSIT) {
+            OfflineRouterTransit.getTransitRouteOffline(context, start, end, departureOffsetSecs = 900)
+        } else {
+            val via = viaPoint(start, end)
+            val viaFeature = SpecificFeature.GenericPlace("via", null, null, null, via)
+            OfflineRouterRoadRoutes.getRouteMulti(
+                context,
+                SpecificFeature.Route(listOf(route.waypoints.first(), viaFeature, route.waypoints.last())),
+                userPosition,
+                mode,
+            )
+        }
+    } catch (_: Exception) {
+        null
+    }
+    val candidates = listOfNotNull(candidate)
+    return listOf(primary) + AlternativeRoutes.diverseAlternatives(
+        primary, candidates, transit = mode == RouteService.TravelMode.TRANSIT,
+    )
+}
+
+/**
+ * The midpoint of start→end pushed perpendicular by the larger of
+ * 400 m or 20% of the direct distance: far enough to force a different
+ * corridor where one exists, near enough that the detour is a route a
+ * person might actually take.
+ */
+private fun viaPoint(start: GeoPoint, end: GeoPoint): GeoPoint {
+    val midLat = (start.latitude + end.latitude) / 2
+    val midLon = (start.longitude + end.longitude) / 2
+    val dLat = end.latitude - start.latitude
+    val dLon = (end.longitude - start.longitude) * kotlin.math.cos(Math.toRadians(midLat))
+    val len = kotlin.math.sqrt(dLat * dLat + dLon * dLon).coerceAtLeast(1e-9)
+    val offsetDeg = maxOf(400.0, 0.2 * len * 111_320.0) / 111_320.0
+    val perpLat = -dLon / len * offsetDeg
+    val perpLon = dLat / len * offsetDeg / kotlin.math.cos(Math.toRadians(midLat)).coerceAtLeast(0.2)
+    return GeoPoint(midLon + perpLon, midLat + perpLat)
+}

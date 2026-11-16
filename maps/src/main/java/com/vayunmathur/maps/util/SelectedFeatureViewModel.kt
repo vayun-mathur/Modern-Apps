@@ -264,6 +264,34 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
     // re-plan every mode on each tab switch.
     //
     // The scan seed: one null per travel mode, merged over as each plan lands.
+    /**
+     * Genuinely different alternatives for the visible plan's mode
+     * (primary excluded), gated by [AlternativeRoutes]. Only the
+     * selected mode is planned, so this costs one extra plan.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val alternatives: kotlinx.coroutines.flow.StateFlow<List<RouteService.Route>> = sheetRoute
+        .flatMapLatest { route ->
+            val plan = route as? SheetRoute.RoutePlan
+                ?: return@flatMapLatest flowOf(emptyList())
+            flow {
+                emit(emptyList())
+                emit(
+                    planWithAlternatives(
+                        getApplication(),
+                        SpecificFeature.Route(plan.waypoints),
+                        userPosition.value,
+                        plan.mode,
+                    ).drop(1),
+                )
+            }.flowOn(Dispatchers.Default)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList(),
+        )
+
     private fun emptyRoutes(): Map<RouteService.TravelMode, RouteService.RouteType?> =
         RouteService.TravelMode.entries.associateWith { null as RouteService.RouteType? }
     @OptIn(ExperimentalCoroutinesApi::class)

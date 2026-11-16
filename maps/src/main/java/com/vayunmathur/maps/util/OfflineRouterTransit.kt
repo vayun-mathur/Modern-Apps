@@ -129,13 +129,26 @@ internal object OfflineRouterTransit {
             context: Context,
             start: GeoPoint,
             end: GeoPoint
+    ): RouteService.Route? = getTransitRouteOffline(context, start, end, departureOffsetSecs = 0)
+
+    /**
+     * The journey the planner finds [departureOffsetSecs] later: the raw
+     * material for a transit alternative. Same-line next-bus results are
+     * filtered out downstream by [AlternativeRoutes]; a different line or
+     * service sequence survives.
+     */
+    suspend fun getTransitRouteOffline(
+            context: Context,
+            start: GeoPoint,
+            end: GeoPoint,
+            departureOffsetSecs: Int,
     ): RouteService.Route? = withContext(Dispatchers.Default) {
         val base = OfflineRouterLifecycle.transitBase(context) ?: return@withContext null
         val feeds = transitFeeds(base)
         if (feeds.isEmpty()) return@withContext null
 
         for (feed in feeds) {
-            planFeed(context, base, feed, start, end)?.let { return@withContext it }
+            planFeed(context, base, feed, start, end, departureOffsetSecs)?.let { return@withContext it }
         }
         null
     }
@@ -146,6 +159,7 @@ internal object OfflineRouterTransit {
         feed: String,
         start: GeoPoint,
         end: GeoPoint,
+        departureOffsetSecs: Int = 0,
     ): RouteService.Route? {
         // The index is world-merged, so query times must be in the feed's
         // timezone. Journeys spanning two zones use the origin's — a known
@@ -155,13 +169,14 @@ internal object OfflineRouterTransit {
                 OfflineRouter.getFeedTimezoneNative(base, feed, start.latitude, start.longitude)
             }.getOrNull()
         )
-        val scheduled = planJourney(base, feed, start, end, clock, Overlay.EMPTY)
+        val shifted = if (departureOffsetSecs == 0) clock else clock.copy(depSecs = clock.depSecs + departureOffsetSecs)
+        val scheduled = planJourney(base, feed, start, end, shifted, Overlay.EMPTY)
             ?.takeIf { it.isNotEmpty() } ?: return null
         val overlay = realtimeOverlay(context, journeyStops(scheduled), clock)
         val raw = if (overlay.isEmpty) {
             scheduled
         } else {
-            planJourney(base, feed, start, end, clock, overlay) ?: scheduled
+            planJourney(base, feed, start, end, shifted, overlay) ?: scheduled
         }
         return OfflineRouterRouteBuilder.buildRoute(context, raw, RouteService.TravelMode.TRANSIT)
     }

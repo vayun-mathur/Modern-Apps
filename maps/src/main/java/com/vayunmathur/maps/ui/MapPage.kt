@@ -156,7 +156,16 @@ fun MapPage(
     // the route back (setLast), and routes plans that mode first.
     val activeRoutePlan = sheetStack.backStack.routePlan()
     val selectedRouteType = activeRoutePlan?.mode ?: RouteService.TravelMode.DRIVE
-    val route by viewModel.routes.collectAsState(null)
+    val routesByMode by viewModel.routes.collectAsState(null)
+    val alternatives by viewModel.alternatives.collectAsState()
+    var selectedAlternative by remember { mutableStateOf<RouteService.Route?>(null) }
+    LaunchedEffect(sheetStack.backStack.engineRoute()) { selectedAlternative = null }
+    val route = remember(routesByMode, selectedAlternative, activeRoutePlan) {
+        val base = routesByMode ?: return@remember null
+        val alt = selectedAlternative ?: return@remember base
+        val mode = activeRoutePlan?.mode ?: return@remember base
+        base.toMutableMap().apply { this[mode] = alt }
+    }
     // Collected here (rather than inside the sheet) so the inner place sheet's
     // contentKey can name them: the tab switch and the late-arriving reviews
     // each change the sheet's content height, and without them in the key the
@@ -359,6 +368,9 @@ fun MapPage(
         wide = wide,
         sheetStack = sheetStack,
         pushDepartures = ::pushDepartures,
+        alternatives = alternatives,
+        selectedAlternative = selectedAlternative,
+        onSelectAlternative = { selectedAlternative = it },
         onStartNavigating = onStartNavigating,
         onExitNavigating = {
             stopNavigation(context)
