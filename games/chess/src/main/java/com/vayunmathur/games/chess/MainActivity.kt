@@ -73,6 +73,12 @@ class MainActivity : MaActivity() {
             achievementsManager.checkExistingAchievements()
         }
 
+        // One online ViewModel for both online destinations: the lobby and
+        // the live game are two entries, but the session (event stream,
+        // board, clocks) is one and must not restart between them.
+        val onlineViewModel: OnlineChessViewModel = viewModel()
+        OnlineGameRouteEffect(backStack, onlineViewModel)
+
         Box(Modifier.fillMaxSize()) {
             val pages: List<BottomBarItem<out Route>> = bottomBarPages()
             MainNavigation(
@@ -88,8 +94,10 @@ class MainActivity : MaActivity() {
                     GameEntry(backStack, achievementsManager)
                 }
                 entry<Route.Online>(metadata = SiblingPage()) {
-                    val onlineViewModel: OnlineChessViewModel = viewModel()
-                    ChessOnlineScreens(onlineViewModel)
+                    ChessOnlineLobbyDestination(onlineViewModel)
+                }
+                entry<Route.OnlineGame> { route ->
+                    ChessOnlineGameDestination(onlineViewModel, route.gameId)
                 }
                 entry<Route.Puzzles>(metadata = SiblingPage()) {
                     val puzzleViewModel: PuzzleViewModel = viewModel()
@@ -192,4 +200,49 @@ class MainActivity : MaActivity() {
 private fun Route.isMainTabRoute(): Boolean = when (this) {
     is Route.Game, is Route.Online, is Route.Puzzles, is Route.Learn -> true
     else -> false
+}
+
+/**
+ * Keeps [Route.OnlineGame] on the stack exactly while an online game is
+ * live: the ViewModel's connection is the session engine, and this
+ * effect projects its Playing state onto the stack (pushing the game
+ * over the lobby, popping back to it when the session leaves Playing —
+ * resign/abort resolution, sign-out, or Back-to-lobby).
+ */
+@Composable
+private fun OnlineGameRouteEffect(
+    backStack: com.vayunmathur.library.util.NavBackStack<Route>,
+    onlineViewModel: OnlineChessViewModel,
+) {
+    val state by onlineViewModel.uiState.collectAsState()
+    val top = backStack.backStack.lastOrNull()
+    LaunchedEffect(state.connection, top) {
+        syncOnlineGameRoute(backStack, state.connection)
+    }
+}
+
+/**
+ * The connection-to-stack projection behind [OnlineGameRouteEffect],
+ * kept free of composition so unit tests can drive it with a plain
+ * back stack. Idempotent while the same game stays live.
+ */
+internal fun syncOnlineGameRoute(
+    backStack: com.vayunmathur.library.util.NavBackStack<Route>,
+    connection: com.vayunmathur.games.chess.platform.OnlineConnection,
+) {
+    val playing = connection as? com.vayunmathur.games.chess.platform.OnlineConnection.Playing
+    val top = backStack.backStack.lastOrNull()
+    if (playing != null) {
+        when {
+            top is Route.OnlineGame && top.gameId == playing.gameId -> Unit
+            top is Route.OnlineGame -> backStack.setLast(Route.OnlineGame(playing.gameId))
+            backStack.backStack.any { it is Route.OnlineGame } -> backStack.reset(
+                *backStack.backStack.filterNot { it is Route.OnlineGame }.toTypedArray(),
+                Route.OnlineGame(playing.gameId),
+            )
+            else -> backStack.add(Route.OnlineGame(playing.gameId))
+        }
+    } else if (top is Route.OnlineGame) {
+        backStack.pop()
+    }
 }

@@ -66,13 +66,55 @@ private const val SECONDS_PER_MINUTE = 60L
 @Composable
 fun ChessOnlineScreens(viewModel: OnlineChessViewModel) {
     val state by viewModel.uiState.collectAsState()
+    OfflineAware {
+        when (val connection = state.connection) {
+            is OnlineConnection.Playing -> ChessOnlineGameDestination(viewModel, connection.gameId)
+            else -> ChessOnlineLobbyDestination(viewModel)
+        }
+    }
+}
+
+/**
+ * The `Route.Online` destination: sign-in and the lobby only. The
+ * auth-header swap (signed-out CTA / signing-in / signed-in identity)
+ * stays in-screen state here, as does seeking/challenging status.
+ */
+@Composable
+internal fun ChessOnlineLobbyDestination(viewModel: OnlineChessViewModel) {
+    val state by viewModel.uiState.collectAsState()
     val online by rememberIsOnline()
     val messenger = rememberMessenger()
     OfflineAware {
-        when (val connection = state.connection) {
-            is OnlineConnection.Playing -> ChessOnlineGame(
+        LobbyMessages(state = state, viewModel = viewModel, messenger = messenger)
+        ChessOnlineLobbyScreen(
+            state = state,
+            online = online,
+            onSignIn = viewModel::signIn,
+            onSignOut = viewModel::signOut,
+            onSelectTimeControl = viewModel::selectTimeControl,
+            onQuickSeek = viewModel::quickSeek,
+            onCancelSeek = viewModel::cancelSeek,
+            onChallengeUsernameChange = viewModel::onChallengeUsernameChange,
+            onChallenge = viewModel::challenge,
+        )
+    }
+}
+
+/**
+ * The `Route.OnlineGame` destination for [gameId]: the live board from
+ * the ViewModel's Playing connection. A restored destination whose game
+ * has not (re)attached yet shows the reconnecting wait instead of the
+ * lobby underneath.
+ */
+@Composable
+internal fun ChessOnlineGameDestination(viewModel: OnlineChessViewModel, gameId: String) {
+    val state by viewModel.uiState.collectAsState()
+    OfflineAware {
+        val playing = state.connection as? OnlineConnection.Playing
+        if (playing != null && playing.gameId == gameId) {
+            ChessOnlineGame(
                 state = state,
-                playing = connection,
+                playing = playing,
                 onSquareClick = viewModel::onSquareClick,
                 onSquareDrop = viewModel::onSquareDrop,
                 onPromote = viewModel::onPromote,
@@ -81,19 +123,21 @@ fun ChessOnlineScreens(viewModel: OnlineChessViewModel) {
                 onAbortConfirm = viewModel::onAbortConfirm,
                 onBackToLobby = viewModel::backToLobby,
             )
-            else -> {
-                LobbyMessages(state = state, viewModel = viewModel, messenger = messenger)
-                ChessOnlineLobbyScreen(
-                    state = state,
-                    online = online,
-                    onSignIn = viewModel::signIn,
-                    onSignOut = viewModel::signOut,
-                    onSelectTimeControl = viewModel::selectTimeControl,
-                    onQuickSeek = viewModel::quickSeek,
-                    onCancelSeek = viewModel::cancelSeek,
-                    onChallengeUsernameChange = viewModel::onChallengeUsernameChange,
-                    onChallenge = viewModel::challenge,
-                )
+        } else {
+            AppScaffold(
+                title = stringResource(R.string.tab_online),
+                scrollBehavior = appBarScrollBehavior(),
+            ) { innerPadding ->
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator()
+                    Text(stringResource(R.string.online_reconnecting))
+                }
             }
         }
     }

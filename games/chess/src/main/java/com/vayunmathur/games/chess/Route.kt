@@ -12,6 +12,13 @@ sealed interface Route: NavKey {
     /** Singleton holding online state and operations. */
     @Serializable
     data object Online: Route
+    /**
+     * One live online game, pushed over [Online] while its session is
+     * playing. Carries only the game id; the board lives in the online
+     * ViewModel's Playing connection for that game.
+     */
+    @Serializable
+    data class OnlineGame(val gameId: String): Route
     /** Singleton holding puzzles state and operations. */
     @Serializable
     data object Puzzles: Route
