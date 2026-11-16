@@ -6,6 +6,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import com.vayunmathur.email.Route
+import com.vayunmathur.email.addAccountEntries
+import com.vayunmathur.email.data.PROVIDER_GMAIL
+import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.NavBackStack
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule
@@ -14,8 +19,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Drives the real [AddAccountScreen] through provider picking and form
- * validation. Picking a provider never touches the network (connection
+ * Drives the real add-account destinations through provider picking and
+ * form validation: picking a provider pushes [Route.AddAccountForm] and
+ * Back pops to the picker. Picking never touches the network (connection
  * testing only starts on the save button), so these render for real.
  *
  * A miswired picker strands new users with no way to add an account; a
@@ -29,9 +35,18 @@ class AddAccountScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    /** Hosts the picker+form destinations on a real stack, as Navigation does. */
+    private fun composeAddAccount(onAccountAdded: () -> Unit = {}): NavBackStack<Route> {
+        val stack = NavBackStack(arrayOf<Route>(Route.AddAccount))
+        composeRule.setContent {
+            MainNavigation(stack) { addAccountEntries(stack, onAccountAdded = onAccountAdded) }
+        }
+        return stack
+    }
+
     @Test
     fun `provider list shows every preset`() {
-        composeRule.setContent { AddAccountScreen(onBack = {}, onAccountAdded = {}) }
+        composeAddAccount()
         composeRule.onNodeWithText("Gmail").assertIsDisplayed()
         composeRule.onNodeWithText("Outlook / Microsoft 365", substring = true).performScrollTo()
         composeRule.onNodeWithText("Outlook / Microsoft 365", substring = true).assertIsDisplayed()
@@ -42,18 +57,19 @@ class AddAccountScreenTest {
     @Test
     fun `picking gmail opens the app-password form`() {
         var added = 0
-        composeRule.setContent { AddAccountScreen(onBack = {}, onAccountAdded = { added++ }) }
+        val stack = composeAddAccount { added++ }
         composeRule.onNodeWithText("Gmail").performClick()
         composeRule.waitForIdle()
         // Gmail's instructions mention the app-passwords page.
         composeRule.onNodeWithText("apppasswords", substring = true, ignoreCase = true).performScrollTo()
         composeRule.onNodeWithText("apppasswords", substring = true, ignoreCase = true).assertIsDisplayed()
+        assertEquals(Route.AddAccountForm(PROVIDER_GMAIL), stack.backStack.last())
         assertEquals(0, added)
     }
 
     @Test
     fun `picking outlook opens the oauth form`() {
-        composeRule.setContent { AddAccountScreen(onBack = {}, onAccountAdded = {}) }
+        composeAddAccount()
         composeRule.onNodeWithText("Outlook / Microsoft 365", substring = true).performScrollTo()
         composeRule.onNodeWithText("Outlook / Microsoft 365", substring = true).performClick()
         composeRule.waitForIdle()
@@ -63,18 +79,21 @@ class AddAccountScreenTest {
 
     @Test
     fun `back from a provider returns to the picker`() {
-        var backs = 0
-        composeRule.setContent { AddAccountScreen(onBack = { backs++ }, onAccountAdded = {}) }
+        val stack = composeAddAccount()
         composeRule.onNodeWithText("Gmail").performClick()
         composeRule.waitForIdle()
-        // Provider form is showing (help link); the picker back wasn't consumed.
+        // Provider form is showing (help link) over the picker destination.
         composeRule.onNodeWithText("Open Gmail app-password help", substring = true).assertExists()
-        assertEquals(0, backs)
+        assertEquals(Route.AddAccountForm(PROVIDER_GMAIL), stack.backStack.last())
+        composeRule.runOnUiThread { stack.pop() }
+        composeRule.waitForIdle()
+        assertEquals(listOf<Route>(Route.AddAccount), stack.backStack)
+        composeRule.onNodeWithText("Gmail").assertIsDisplayed()
     }
 
     @Test
     fun `gmail form accepts input and toggles password visibility`() {
-        composeRule.setContent { AddAccountScreen(onBack = {}, onAccountAdded = {}) }
+        composeAddAccount()
         composeRule.onNodeWithText("Gmail").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Email address").performScrollTo()
@@ -92,7 +111,7 @@ class AddAccountScreenTest {
 
     @Test
     fun `custom form reveals username field when toggled`() {
-        composeRule.setContent { AddAccountScreen(onBack = {}, onAccountAdded = {}) }
+        composeAddAccount()
         composeRule.onNodeWithText("Other (IMAP / SMTP)", substring = true).performScrollTo()
         composeRule.onNodeWithText("Other (IMAP / SMTP)", substring = true).performClick()
         composeRule.waitForIdle()
@@ -106,7 +125,7 @@ class AddAccountScreenTest {
 
     @Test
     fun `outlook form reveals app password fields when toggled`() {
-        composeRule.setContent { AddAccountScreen(onBack = {}, onAccountAdded = {}) }
+        composeAddAccount()
         composeRule.onNodeWithText("Outlook / Microsoft 365", substring = true).performScrollTo()
         composeRule.onNodeWithText("Outlook / Microsoft 365", substring = true).performClick()
         composeRule.waitForIdle()
@@ -121,7 +140,7 @@ class AddAccountScreenTest {
 
     @Test
     fun `custom provider shows manual server fields`() {
-        composeRule.setContent { AddAccountScreen(onBack = {}, onAccountAdded = {}) }
+        composeAddAccount()
         composeRule.onNodeWithText("Other (IMAP / SMTP)", substring = true).performScrollTo()
         composeRule.onNodeWithText("Other (IMAP / SMTP)", substring = true).performClick()
         composeRule.waitForIdle()

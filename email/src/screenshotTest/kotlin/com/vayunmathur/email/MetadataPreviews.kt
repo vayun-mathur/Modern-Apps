@@ -102,7 +102,7 @@ class MetadataPreviews {
     @Composable
     fun Preview4AddAccount() {
         DynamicTheme(darkTheme = true) {
-            AddAccountScreen(onBack = {}, onAccountAdded = {})
+            AddAccountScreen(onBack = {}, onPickProvider = {})
         }
     }
 

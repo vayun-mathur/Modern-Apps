@@ -16,6 +16,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.vayunmathur.email.FakeAndroidKeyStore
+import com.vayunmathur.email.Route
+import com.vayunmathur.email.addAccountEntries
+import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.email.data.CredentialCrypto
 import com.vayunmathur.email.data.EmailDatabase
 import com.vayunmathur.email.data.EmailRepository
@@ -35,7 +39,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
- * [AddAccountScreen] submit flows: the custom-provider form must test
+ * Add-account submit flows: the custom-provider form must test
  * the entered server before saving (a saved-but-dead account is worse
  * than an error), persist the account with the password encrypted, and
  * fire onAccountAdded; the Outlook form's sign-in button must start
@@ -47,6 +51,15 @@ class AddAccountSubmitTest {
 
     @get:Rule
     val composeRule = createComposeRule()
+
+    /** Hosts the picker+form destinations on a real stack, as Navigation does. */
+    private fun composeAddAccount(onAccountAdded: () -> Unit = {}): NavBackStack<Route> {
+        val stack = NavBackStack(arrayOf<Route>(Route.AddAccount))
+        composeRule.setContent {
+            MainNavigation(stack) { addAccountEntries(stack, onAccountAdded = onAccountAdded) }
+        }
+        return stack
+    }
 
     private val context get() = ApplicationProvider.getApplicationContext<Application>()
     private lateinit var db: EmailDatabase
@@ -93,7 +106,7 @@ class AddAccountSubmitTest {
     @Test
     fun `custom form tests the fake server and saves the account`() {
         var added = 0
-        composeRule.setContent { AddAccountScreen(onBack = {}, onAccountAdded = { added++ }) }
+        composeAddAccount { added++ }
         composeRule.onNodeWithText("Other (IMAP / SMTP)", substring = true).performScrollTo()
         composeRule.onNodeWithText("Other (IMAP / SMTP)", substring = true).performClick()
         composeRule.waitForIdle()
@@ -128,7 +141,7 @@ class AddAccountSubmitTest {
 
     @Test
     fun `outlook sign-in stores the pkce session and launches microsoft`() {
-        composeRule.setContent { AddAccountScreen(onBack = {}, onAccountAdded = {}) }
+        composeAddAccount()
         composeRule.onNodeWithText("Outlook / Microsoft 365", substring = true).performScrollTo()
         composeRule.onNodeWithText("Outlook / Microsoft 365", substring = true).performClick()
         composeRule.waitForIdle()

@@ -120,7 +120,7 @@ class ComposerAndAccountW5Test {
     @Test
     fun addAccountScreenShowsOAuthAndPasswordPaths() {
         rule.setContent {
-            AddAccountScreen(onBack = {}, onAccountAdded = {})
+            AddAccountScreen(onBack = {}, onPickProvider = {})
         }
         rule.waitForIdle()
         assertTrue(

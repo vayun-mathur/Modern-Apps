@@ -29,8 +29,11 @@ sealed interface Route : NavKey {
     /** Destination showing saved drafts. */
     object Drafts : Route
     @Serializable
-    /** Destination for adding a new mail account. */
+    /** Destination for adding a new mail account (the provider picker). */
     object AddAccount : Route
+    @Serializable
+    /** Destination for the account form of the provider picked on [AddAccount]. */
+    data class AddAccountForm(val providerId: String) : Route
     @Serializable
     /** Destination showing email settings. */
     object Settings : Route
