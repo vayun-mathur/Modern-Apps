@@ -91,10 +91,25 @@ class TranslateViewModel(app: Application) : AndroidViewModel(app) {
 
     private val sharedImageCache = SharedImageCache.inCacheDir(app.cacheDir)
 
+    /**
+     * Set once the user (or a history-reuse request) picks a language
+     * explicitly. The init read below must not clobber such a pick: it
+     * resumes whenever the DataStore read lands, which can be AFTER an
+     * early setSource/setTarget — overwriting the just-picked pair with
+     * the stale persisted one (seen in tests as sourceLang snapping
+     * back to "auto" after a reuse had set it).
+     */
+    @Volatile
+    private var languagesTouched = false
+
     init {
         viewModelScope.launch {
-            _sourceLang.value = settings.source()
-            _targetLang.value = settings.target()
+            val persistedSource = settings.source()
+            val persistedTarget = settings.target()
+            if (!languagesTouched) {
+                _sourceLang.value = persistedSource
+                _targetLang.value = persistedTarget
+            }
             _recentSourceLangs.value = settings.recentSources()
             _recentTargetLangs.value = settings.recentTargets()
             _translationAvailable.value = translator.isAvailable()
@@ -102,6 +117,7 @@ class TranslateViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setSource(code: String) {
+        languagesTouched = true
         _sourceLang.value = code
         viewModelScope.launch {
             settings.setSource(code)
@@ -111,6 +127,7 @@ class TranslateViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setTarget(code: String) {
+        languagesTouched = true
         _targetLang.value = code
         viewModelScope.launch {
             settings.setTarget(code)

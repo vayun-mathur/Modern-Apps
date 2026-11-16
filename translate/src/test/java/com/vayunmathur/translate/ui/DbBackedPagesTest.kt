@@ -163,8 +163,24 @@ class DbBackedPagesTest {
                 onOpenLanguagePicker = {},
             )
         }
-        rule.waitUntil(8_000) { consumed == 1 }
-        rule.waitUntil(8_000) { viewModel.sourceLang.value == "en" && viewModel.targetLang.value == "es" }
+        // Step-counted pump, not rule.waitUntil: waitUntil does not idle
+        // Robolectric's paused main looper, so the page's LaunchedEffect
+        // (which runs on Main) can sit unexecuted for the whole timeout
+        // on a loaded box — exactly the CI/local combined-run failure.
+        var steps = 0
+        while (consumed != 1 && steps++ < 6000) {
+            idle()
+            rule.waitForIdle()
+            if (consumed == 1) break
+            try { Thread.sleep(25) } catch (_: InterruptedException) { }
+        }
+        assertEquals(1, consumed)
+        steps = 0
+        while (!(viewModel.sourceLang.value == "en" && viewModel.targetLang.value == "es") && steps++ < 6000) {
+            idle()
+            if (viewModel.sourceLang.value == "en" && viewModel.targetLang.value == "es") break
+            try { Thread.sleep(25) } catch (_: InterruptedException) { }
+        }
         assertEquals("en", viewModel.sourceLang.value)
         assertEquals("es", viewModel.targetLang.value)
         rule.onNodeWithText("reuse hello").assertIsDisplayed()
