@@ -136,7 +136,7 @@ class InteractionsPass2Test {
                 LocalNavResultRegistry provides NavResultRegistry()
             ) {
                 DynamicTheme {
-                    EditContactPage(NavBackStack<Route>(arrayOf(Route.Main)), vm, Route.EditContact(contactId = 7))
+                    EditContactPage(NavBackStack<Route>(arrayOf(Route.ContactsList)), vm, Route.EditContact(contactId = 7))
                 }
             }
         }
@@ -173,7 +173,7 @@ class InteractionsPass2Test {
     @Test
     fun editPageNewContactSaveWithNameSucceeds() {
         val vm = vm()
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             androidx.compose.runtime.CompositionLocalProvider(
                 LocalNavResultRegistry provides NavResultRegistry()
@@ -249,7 +249,7 @@ class InteractionsPass2Test {
     fun settingsPageScrollsAndShowsExportRow() {
         val vm = vm()
         rule.setContent {
-            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.Main))) }
+            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.ContactsList))) }
         }
         rule.onNodeWithText(str(R.string.calendar_sync), substring = true).assertExists()
         val scroller = rule.onAllNodes(hasScrollAction())

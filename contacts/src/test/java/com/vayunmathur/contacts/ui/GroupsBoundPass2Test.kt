@@ -47,7 +47,7 @@ class GroupsBoundPass2Test {
     fun groupsPageShowsProviderGroupAndOpensMember() {
         val vm = ContactViewModel(app)
         runBlocking { vm.syncFromSystem() }
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             DynamicTheme { GroupsPage(vm, backStack, expandGroupId = 11L) }
         }
@@ -71,7 +71,7 @@ class GroupsBoundPass2Test {
     fun groupsPageCollapseAndReExpand() {
         val vm = ContactViewModel(app)
         runBlocking { vm.syncFromSystem() }
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             DynamicTheme { GroupsPage(vm, backStack) }
         }

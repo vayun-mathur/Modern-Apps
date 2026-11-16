@@ -77,7 +77,7 @@ class SettingsInteractionsPass2Test {
         val vm = vm()
         assertTrue(vm.accounts.value.any { it.name == "a@gmail.com" }, "accounts=${vm.accounts.value}")
         rule.setContent {
-            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.Main))) }
+            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.ContactsList))) }
         }
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(str(R.string.visible_accounts), substring = true))
         rule.onNodeWithText("a@gmail.com", substring = true).assertExists()
@@ -106,7 +106,7 @@ class SettingsInteractionsPass2Test {
     fun calendarSyncAndLabelSwitchesRender() {
         val vm = vm()
         rule.setContent {
-            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.Main))) }
+            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.ContactsList))) }
         }
         rule.onNodeWithText(str(R.string.calendar_sync), substring = true).assertExists()
         rule.onNodeWithText(str(R.string.show_account_labels), substring = true).assertExists()
@@ -136,7 +136,7 @@ class SettingsInteractionsPass2Test {
     fun exportAndImportRowsRender() {
         val vm = vm()
         rule.setContent {
-            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.Main))) }
+            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.ContactsList))) }
         }
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(str(R.string.export_contacts), substring = true))
         rule.onNodeWithText(str(R.string.export_contacts), substring = true).assertExists()

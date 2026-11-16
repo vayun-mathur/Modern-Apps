@@ -23,7 +23,6 @@ import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.util.ContactListUiState
 import com.vayunmathur.contacts.util.ContactsActions
-import com.vayunmathur.contacts.util.ContactsTab
 import com.vayunmathur.contacts.util.GroupWithContacts
 import com.vayunmathur.contacts.util.GroupsUiState
 import com.vayunmathur.library.ui.DynamicTheme

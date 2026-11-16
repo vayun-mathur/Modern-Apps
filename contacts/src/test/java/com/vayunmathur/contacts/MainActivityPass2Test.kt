@@ -67,7 +67,6 @@ class MainActivityPass2Test {
         fun <T> roundTrip(value: T, serializer: kotlinx.serialization.KSerializer<T>) {
             assertEquals(value, json.decodeFromString(serializer, json.encodeToString(serializer, value)))
         }
-        roundTrip(Route.Main, Route.Main.serializer())
         roundTrip(Route.ContactsList, Route.ContactsList.serializer())
         roundTrip(Route.GroupsList(3L), Route.GroupsList.serializer())
         roundTrip(Route.GroupsList(), Route.GroupsList.serializer())
@@ -91,7 +90,7 @@ class MainActivityPass2Test {
         assertEquals(7L, Route.ContactDetail(7L).contactId)
         assertEquals(null, Route.GroupsList().expandGroupId)
         assertEquals(listOf("content://a", "content://b"), Route.ImportVcf(listOf("content://a", "content://b")).uris)
-        assertTrue(Route.Main is Route)
+        assertTrue(Route.ContactsList is Route)
     }
 
     @Test

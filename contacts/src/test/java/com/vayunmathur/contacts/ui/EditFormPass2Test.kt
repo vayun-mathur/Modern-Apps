@@ -163,7 +163,7 @@ class EditFormPass2Test {
             Event(5, LocalDate(2020, 6, 1), CDKEvent.TYPE_ANNIVERSARY),
             Event(6, LocalDate(1992, 3, 15), CDKEvent.TYPE_BIRTHDAY), // skipped by this section
         )
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             androidx.compose.runtime.CompositionLocalProvider(
                 LocalNavResultRegistry provides NavResultRegistry()

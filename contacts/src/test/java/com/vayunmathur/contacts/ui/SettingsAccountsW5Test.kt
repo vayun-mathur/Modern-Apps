@@ -85,7 +85,7 @@ class SettingsAccountsW5Test {
         )
 
         rule.setContent {
-            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.Main))) }
+            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.ContactsList))) }
         }
         rule.waitForIdle()
         runCatching {

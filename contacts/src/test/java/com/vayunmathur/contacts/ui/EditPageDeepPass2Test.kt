@@ -124,7 +124,7 @@ class EditPageDeepPass2Test {
 
     @Test
     fun birthdaySectionOpensPickerAndClears() {
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         var birthday: LocalDate? = LocalDate(1992, 3, 15)
         rule.setContent {
             CompositionLocalProvider(LocalNavResultRegistry provides NavResultRegistry()) {
@@ -151,7 +151,7 @@ class EditPageDeepPass2Test {
 
     @Test
     fun birthdayFieldTapPushesPickerRoute() {
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             CompositionLocalProvider(LocalNavResultRegistry provides NavResultRegistry()) {
                 DynamicTheme {
@@ -176,7 +176,7 @@ class EditPageDeepPass2Test {
     @Test
     fun editPageScrollsThroughAllSections() {
         val vm = vm()
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         setEditPage(vm, backStack, Route.EditContact(contactId = 7))
         assertEquals("Aisha", vm.editDraft.value?.firstName)
 

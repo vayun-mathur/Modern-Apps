@@ -100,7 +100,7 @@ class VcfImportPass2Test {
             DynamicTheme {
                 ImportVcfScreen(
                     vm,
-                    NavBackStack<Route>(arrayOf(Route.Main)),
+                    NavBackStack<Route>(arrayOf(Route.ContactsList)),
                     uris = listOf(vcfFile().toString()),
                 )
             }

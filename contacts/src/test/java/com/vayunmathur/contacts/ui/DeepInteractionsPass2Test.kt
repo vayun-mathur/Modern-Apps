@@ -260,7 +260,7 @@ class DeepInteractionsPass2Test {
         )
         val vm = ContactViewModel(ctx as android.app.Application)
         runBlocking { vm.syncFromSystem() }
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         val prefill = ContactPrefill(
             name = "New Number",
             phones = listOf(PrefillValue("+14155550199")),
@@ -290,7 +290,7 @@ class DeepInteractionsPass2Test {
     fun insertOrEditEmptyStateAfterLoad() {
         val vm = ContactViewModel(ctx as android.app.Application)
         runBlocking { vm.syncFromSystem() }
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             DynamicTheme {
                 InsertOrEditContactScreen(vm, backStack, Route.InsertOrEditContact()) {}

@@ -5,7 +5,10 @@ import android.app.Application
 import android.provider.ContactsContract
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.contacts.data.FakeProviderPass2Test
 import com.vayunmathur.contacts.data.SimProviderPass2Test
@@ -51,7 +54,18 @@ class NavigationRoutesW5Test {
         assertTrue(rule.onAllNodes(isRoot()).fetchSemanticsNodes().isNotEmpty(), "route $route should render")
     }
 
-    @Test fun mainRoute() = render(Route.Main)
+    @Test fun contactsListRoute() = render(Route.ContactsList)
+
+    @Test
+    fun tabSelectSwapsToGroupsTab() {
+        val vm = ContactViewModel(app)
+        rule.setContent { Navigation(vm, initialRoute = Route.ContactsList) }
+        rule.waitForIdle()
+        rule.onNodeWithText("Groups").performClick()
+        rule.waitForIdle()
+        // The Groups sibling destination renders its groups.
+        rule.onNodeWithText("Family").assertIsDisplayed()
+    }
     @Test fun settingsRoute() = render(Route.Settings)
     @Test fun groupsRoute() = render(Route.GroupsList(11L))
     @Test fun contactDetailRoute() = render(Route.ContactDetail(7L))

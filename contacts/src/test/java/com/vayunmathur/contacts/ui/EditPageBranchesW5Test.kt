@@ -83,7 +83,7 @@ class EditPageBranchesW5Test {
     @Test
     fun editExistingContactSaveExits() {
         val vm = vm()
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main, Route.EditContact(7L)))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList, Route.EditContact(7L)))
         var exits = 0
         rule.setContent {
             CompositionLocalProvider(LocalNavResultRegistry provides NavResultRegistry()) {
@@ -101,7 +101,7 @@ class EditPageBranchesW5Test {
     @Test
     fun newContactSaveAndPhotoPickPushesCrop() {
         val vm = vm()
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main, Route.EditContact(null)))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList, Route.EditContact(null)))
         rule.setContent {
             CompositionLocalProvider(
                 LocalActivityResultRegistryOwner provides ImmediateOwner(Uri.parse("file:///tmp/pic.jpg")),
@@ -131,7 +131,7 @@ class EditPageBranchesW5Test {
     @Test
     fun photoPickCancelledStaysOnEditor() {
         val vm = vm()
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main, Route.EditContact(null)))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList, Route.EditContact(null)))
         rule.setContent {
             CompositionLocalProvider(
                 LocalActivityResultRegistryOwner provides ImmediateOwner(null),
@@ -157,7 +157,7 @@ class EditPageBranchesW5Test {
         val vm = vm()
         runBlocking { vm.loadAccountsInternal() }
         val exportFile = java.io.File(app.cacheDir, "export-w5.vcf")
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             CompositionLocalProvider(
                 LocalActivityResultRegistryOwner provides ImmediateOwner(Uri.fromFile(exportFile)),

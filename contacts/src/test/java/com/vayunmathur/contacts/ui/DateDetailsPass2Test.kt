@@ -34,7 +34,7 @@ class DateDetailsPass2Test {
     private val anniversary = Event(5, LocalDate(2020, 6, 1), CDKEvent.TYPE_ANNIVERSARY)
 
     private fun render(events: List<Event>, changes: MutableList<List<Event>>): NavBackStack<Route> {
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             CompositionLocalProvider(LocalNavResultRegistry provides NavResultRegistry()) {
                 DynamicTheme {

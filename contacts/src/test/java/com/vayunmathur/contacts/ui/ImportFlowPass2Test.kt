@@ -86,7 +86,7 @@ class ImportFlowPass2Test {
     fun importIntoExistingAccountPopsBack() {
         val vm = ContactViewModel(app)
         runBlocking { vm.syncFromSystem() }
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main, Route.ImportVcf(listOf("x"))))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList, Route.ImportVcf(listOf("x"))))
         renderImport(vm, backStack)
         // summary shows both parsed contacts
         assertTrue(
@@ -97,14 +97,14 @@ class ImportFlowPass2Test {
         // FAB is typically the last clickable; click it and expect a pop
         clickables[clickables.fetchSemanticsNodes().lastIndex].performClick()
         rule.waitUntil(30_000) { backStack.backStack.size == 1 }
-        assertEquals(Route.Main, backStack.backStack.last())
+        assertEquals(Route.ContactsList, backStack.backStack.last())
     }
 
     @Test
     fun importIntoNewAccountCreatesAndImports() {
         val vm = ContactViewModel(app)
         runBlocking { vm.syncFromSystem() }
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main, Route.ImportVcf(listOf("x"))))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList, Route.ImportVcf(listOf("x"))))
         renderImport(vm, backStack)
 
         rule.onNodeWithText(str(R.string.create_new_account_option), substring = true).performClick()
@@ -117,7 +117,7 @@ class ImportFlowPass2Test {
         clickables[clickables.fetchSemanticsNodes().lastIndex].performClick()
         // create + import completes and pops back to Main
         rule.waitUntil(60_000) { backStack.backStack.size == 1 }
-        assertEquals(Route.Main, backStack.backStack.last())
+        assertEquals(Route.ContactsList, backStack.backStack.last())
     }
 
     @Test
@@ -125,7 +125,7 @@ class ImportFlowPass2Test {
         val vm = ContactViewModel(app)
         runBlocking { vm.syncFromSystem() }
         val empty = File(app.cacheDir, "empty.vcf").apply { writeText("") }
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             DynamicTheme {
                 ImportVcfScreen(vm, backStack, uris = listOf(Uri.fromFile(empty).toString()))

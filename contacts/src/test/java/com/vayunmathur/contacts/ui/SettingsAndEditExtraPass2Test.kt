@@ -78,7 +78,7 @@ class SettingsAndEditExtraPass2Test {
             vm.loadAccountsInternal()
         }
         rule.setContent {
-            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.Main))) }
+            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.ContactsList))) }
         }
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Family", substring = true))
         rule.onNodeWithText("Family", substring = true).assertExists()
@@ -110,7 +110,7 @@ class SettingsAndEditExtraPass2Test {
     fun settingsExportRowExistsAndIsClickable() {
         val vm = vm()
         rule.setContent {
-            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.Main))) }
+            DynamicTheme { SettingsPage(vm, NavBackStack<Route>(arrayOf(Route.ContactsList))) }
         }
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(str(R.string.export_contacts), substring = true))
         rule.onNodeWithText(str(R.string.export_contacts), substring = true).assertExists()
@@ -124,7 +124,7 @@ class SettingsAndEditExtraPass2Test {
         vm.lastSelectedAccountState.value = ContactAccount("5", SIM_ACCOUNT_TYPE)
         vm.initEditDraft(null)
         assertEquals(SIM_ACCOUNT_TYPE, vm.editDraft.value?.accountType)
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             CompositionLocalProvider(LocalNavResultRegistry provides NavResultRegistry()) {
                 DynamicTheme { EditContactPage(backStack, vm, Route.EditContact(contactId = null)) }
@@ -142,7 +142,7 @@ class SettingsAndEditExtraPass2Test {
         vm.initEditDraft(7L)
         assertEquals("Aisha", vm.editDraft.value?.firstName)
         vm.updateEditDraft { it.copy(genderCode = "O", genderText = "") }
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             CompositionLocalProvider(LocalNavResultRegistry provides NavResultRegistry()) {
                 DynamicTheme { EditContactPage(backStack, vm, Route.EditContact(contactId = 7)) }

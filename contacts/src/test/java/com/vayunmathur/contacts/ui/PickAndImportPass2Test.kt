@@ -176,7 +176,7 @@ class PickAndImportPass2Test {
                 """.trimIndent()
             )
         }
-        val backStack = NavBackStack<Route>(arrayOf(Route.Main))
+        val backStack = NavBackStack<Route>(arrayOf(Route.ContactsList))
         rule.setContent {
             DynamicTheme {
                 ImportVcfScreen(vm, backStack, uris = listOf(Uri.fromFile(vcf).toString()))

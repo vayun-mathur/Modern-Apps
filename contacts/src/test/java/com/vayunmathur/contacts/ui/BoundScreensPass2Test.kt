@@ -58,7 +58,7 @@ class BoundScreensPass2Test {
         return vm
     }
 
-    private fun backStack() = NavBackStack<Route>(arrayOf(Route.Main))
+    private fun backStack() = NavBackStack<Route>(arrayOf(Route.ContactsList))
 
     private fun fixtureContact(): Contact = Contact(
         id = 7, accountType = null, accountName = null, isFavorite = true,

@@ -30,7 +30,6 @@ import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.util.ContactDetailsUiState
 import com.vayunmathur.contacts.util.ContactListUiState
 import com.vayunmathur.contacts.util.ContactsActions
-import com.vayunmathur.contacts.util.ContactsTab
 import com.vayunmathur.contacts.util.GroupWithContacts
 import com.vayunmathur.contacts.util.GroupsUiState
 import com.vayunmathur.library.ui.DynamicTheme
@@ -57,13 +56,11 @@ class ContactsScreensPass2Test {
         val queries = mutableListOf<String>()
         val addedGroups = mutableListOf<String>()
         val deletedGroups = mutableListOf<Long>()
-        val tabs = mutableListOf<ContactsTab>()
         var addContactCalls = 0
         override fun openContact(contact: Contact) { opened += contact }
         override fun setSearchQuery(query: String) { queries += query }
         override fun addGroup(name: String) { addedGroups += name }
         override fun deleteGroup(groupId: Long) { deletedGroups += groupId }
-        override fun selectTab(tab: ContactsTab) { tabs += tab }
         override fun addContact() { addContactCalls++ }
     }
 
@@ -225,10 +222,8 @@ class ContactsScreensPass2Test {
         noop.addGroup("g"); noop.deleteGroup(1); noop.openContact(aisha); noop.addContact()
         noop.editContact(1); noop.confirmDeleteContact(aisha); noop.closeContact()
         noop.pickRingtone(aisha); noop.addToGroup(listOf(1)); noop.moveContacts(listOf(1))
-        noop.shareContacts(listOf(aisha), "x.vcf"); noop.selectTab(ContactsTab.Groups)
+        noop.shareContacts(listOf(aisha), "x.vcf")
         assertEquals(null, noop.decodePhoto("AAAA"))
-        assertEquals(ContactsTab.Contacts, ContactsTab.valueOf("Contacts"))
-        assertEquals(3, ContactsTab.entries.size)
 
         val listState = ContactListUiState()
         assertTrue(listState.contacts.isEmpty())

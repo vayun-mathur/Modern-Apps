@@ -12,14 +12,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.pager.rememberPagerState
 import com.vayunmathur.library.ui.AppPermissionsGate
 import com.vayunmathur.library.ui.AppPermissionsSpec
 import com.vayunmathur.library.ui.MaActivity
-import com.vayunmathur.library.ui.PagerTab
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.PermissionRequirement
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.TabStyle
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,11 +60,11 @@ import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
+import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.onFileDrop
 import com.vayunmathur.library.util.rememberNavBackStack
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
@@ -341,29 +338,50 @@ fun Navigation(
     onExit: () -> Unit = {},
     onImportClear: () -> Unit = {},
 ) {
-    // Deep-link handling: tab routes (ContactsList, GroupsList, Settings) now live inside the
-    // pager host (Route.Main). A groups deep-link (Route.GroupsList(groupId)) is remembered
-    // so the pager can expand that group; other tab routes just collapse to the host.
+    // Deep-link handling: tab routes (ContactsList, GroupsList, Settings) are
+    // real sibling destinations. A tab deep link is the start destination
+    // itself; a groups deep-link's expand arg is remembered separately so the
+    // start route can be the plain GroupsList tab (keeping it selected in the
+    // bottom bar) while GroupsPage still expands that group. The App Info
+    // entry point starts on the Settings tab.
     val groupsExpandId = (initialRoute as? Route.GroupsList)?.expandGroupId
-    val startRoute: Route = initialRoute?.toHostRoute() ?: Route.Main
-    val backStack = rememberNavBackStack<Route>(startRoute)
-    // Route.Settings is now inside the pager host (Route.Main). The App Info entry-point
-    // is handled by starting the pager on its Settings page; pushing Route.Main again would
-    // just duplicate the host, so do not use openSettingsIfRequested with a tab route.
-    // Keep the helper for non-tab deep-links only: if the app was launched from App Info
-    // we ensure the back stack is at least the host (already is) and the pager shows Settings.
     val activity = LocalActivity.current
     val launchedFromAppInfo = activity?.intent?.action == Intent.ACTION_APPLICATION_PREFERENCES
     val startOnSettings = launchedFromAppInfo || initialRoute is Route.Settings
+    val startTab: Route = when {
+        startOnSettings -> Route.Settings
+        initialRoute is Route.GroupsList -> Route.GroupsList()
+        initialRoute is Route.Settings -> Route.Settings
+        initialRoute is Route.ContactsList -> Route.ContactsList
+        groupsExpandId != null -> Route.GroupsList()
+        else -> Route.ContactsList
+    }
+    // Non-tab deep links (detail/edit/import) keep their previous shape: the
+    // route itself is the root, with the bottom bar showing no tab selected.
+    val startRoute: Route = when (initialRoute) {
+        is Route.ContactsList, is Route.GroupsList, is Route.Settings, null -> startTab
+        else -> initialRoute
+    }
+    val backStack = rememberNavBackStack<Route>(startRoute)
 
     LaunchedEffect(initialRoute) {
-        // Only push non-tab routes (detail/edit/import etc.) that are not already the host.
-        // Tab routes are represented by the pager host and must not be pushed as separate entries
-        // (GroupsList with an expand arg is handled via groupsExpandId above).
-        val pending = initialRoute
-        if (pending != null && pending.shouldPushOnto(backStack)) {
-            backStack.add(pending)
+        // Warm deep links: a tab route resets the stack to that sibling (the
+        // groups expand arg travels via groupsExpandId above); a non-tab route
+        // pushes if it is not already on top.
+        val pending = initialRoute ?: return@LaunchedEffect
+        when (pending) {
+            is Route.ContactsList -> backStack.reset(Route.ContactsList)
+            is Route.GroupsList -> backStack.reset(Route.GroupsList())
+            is Route.Settings -> backStack.reset(Route.Settings)
+            else -> if (pending.shouldPushOnto(backStack)) backStack.add(pending)
         }
+    }
+
+    // Contacts is the home tab: system back from Groups/Settings returns
+    // there instead of exiting the app (the pager's old behaviour). Back from
+    // Contacts falls through to the nav host, which exits at the root.
+    BackHandler(enabled = backStack.last() is Route.GroupsList || backStack.last() is Route.Settings) {
+        backStack.reset(Route.ContactsList)
     }
 
     // Clear import URIs when leaving ImportVcf screen
@@ -396,7 +414,6 @@ fun Navigation(
         backStack = backStack,
         tabsCallbacks = tabsCallbacks,
         groupsExpandId = groupsExpandId,
-        startOnSettings = startOnSettings,
         goBack = ::goBack,
     )
 }
@@ -407,19 +424,30 @@ private fun NavGraphEntries(
     backStack: NavBackStack<Route>,
     tabsCallbacks: TabsCallbacks,
     groupsExpandId: Long?,
-    startOnSettings: Boolean,
     goBack: () -> Unit,
 ) {
+    TabbedPagerScaffold(
+        backStack = backStack,
+        tabs = listOf<RouteTab<Route>>(
+            RouteTab(Route.ContactsList, stringResource(UiR.string.contacts)) { IconPerson() },
+            RouteTab(Route.GroupsList(), stringResource(R.string.groups)) { IconGroup() },
+            RouteTab(Route.Settings, stringResource(com.vayunmathur.library.ui.R.string.settings)) { IconSettings() },
+        ),
+    ) {
     MainNavigation(backStack) {
-        entry<Route.Main>(metadata = ListPage()) {
-            ContactsTabs(
+        entry<Route.ContactsList>(metadata = ListPage() + SiblingPage()) {
+            ContactList(
                 viewModel = viewModel,
                 backStack = backStack,
                 onContactClick = tabsCallbacks.onContactClick,
                 onAddContactClick = tabsCallbacks.onAddContactClick,
-                initialGroupsExpandId = groupsExpandId,
-                startOnSettings = startOnSettings,
             )
+        }
+        entry<Route.GroupsList>(metadata = ListPage() + SiblingPage()) { key ->
+            GroupsPage(viewModel, backStack, key.expandGroupId ?: groupsExpandId)
+        }
+        entry<Route.Settings>(metadata = ListPage() + SiblingPage()) {
+            SettingsPage(viewModel, backStack)
         }
 
         entry<Route.ContactDetail>(metadata = ListDetailPage() + MorphPage()) { key ->
@@ -475,6 +503,7 @@ private fun NavGraphEntries(
             ImportVcfScreen(viewModel, backStack, key.uris)
         }
     }
+    }
 }
 
 @Composable
@@ -499,16 +528,10 @@ private fun EventDeleteConfirmEntry(
     )
 }
 
-/** Tab routes collapse to the pager host; every other route pushes as-is. */
-private fun Route.toHostRoute(): Route =
-    when (this) {
-        is Route.ContactsList, is Route.GroupsList, is Route.Settings -> Route.Main
-        else -> this
-    }
 
 /** True for a non-tab deep-link that is not already on top of [backStack]. */
 private fun Route?.shouldPushOnto(backStack: NavBackStack<Route>): Boolean {
-    if (this == null || this == Route.Main) return false
+    if (this == null) return false
     if (this is Route.ContactsList || this is Route.GroupsList || this is Route.Settings) {
         return false
     }
@@ -560,64 +583,14 @@ private fun CropPhotoEntry(
     )
 }
 
-/**
- * The three bottom-nav tabs, hosted in a swipeable pager (see [TabbedPagerScaffold]).
- * ContactDetail, EditContact, InsertOrEditContact and ImportVcf are pushed on top
- * of this host as ordinary routes. Groups deep-links pass their expand arg through.
- */
-@Composable
-private fun ContactsTabs(
-    viewModel: ContactViewModel,
-    backStack: NavBackStack<Route>,
-    onContactClick: (com.vayunmathur.contacts.data.Contact) -> Unit,
-    onAddContactClick: () -> Unit,
-    initialGroupsExpandId: Long? = null,
-    startOnSettings: Boolean = false,
-) {
-    val startPage = when {
-        startOnSettings -> 2
-        initialGroupsExpandId != null -> 1
-        else -> 0
-    }
-    val pagerState = rememberPagerState(initialPage = startPage, pageCount = { 3 })
-    // Contacts (page 0) is the home tab: system back from Groups/Settings returns
-    // there instead of exiting the app. Back from Contacts falls through to the
-    // nav host, which exits when it is the only entry.
-    val scope = rememberCoroutineScope()
-    BackHandler(enabled = pagerState.currentPage != 0) {
-        scope.launch { pagerState.animateScrollToPage(0) }
-    }
-    val tabs = listOf(
-        PagerTab(stringResource(UiR.string.contacts), { IconPerson() }) {
-            ContactList(
-                viewModel = viewModel,
-                backStack = backStack,
-                onContactClick = onContactClick,
-                onAddContactClick = onAddContactClick,
-            )
-        },
-        PagerTab(stringResource(R.string.groups), { IconGroup() }) {
-            GroupsPage(viewModel, backStack, initialGroupsExpandId)
-        },
-        PagerTab(stringResource(com.vayunmathur.library.ui.R.string.settings), { IconSettings() }) {
-            SettingsPage(viewModel, backStack)
-        },
-    )
-    TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)
-}
-
-/** Navigation destinations for the contacts host: tab routes collapse to [Main], the rest push onto the back stack. */
+/** Navigation destinations for the contacts host: sibling tab routes, the rest push onto the back stack. */
 sealed interface Route: NavKey {
     @Serializable
-    /** Pager host holding the Contacts, Groups and Settings tabs. */
-    object Main : Route
-
-    @Serializable
-    /** Contacts tab destination; represented by the pager host rather than pushed. */
+    /** Contacts tab destination (sibling route, the home tab). */
     object ContactsList : Route
 
     @Serializable
-    /** Groups tab destination, optionally expanding the group with [expandGroupId]. */
+    /** Groups tab destination (sibling route), optionally expanding the group with [expandGroupId]. */
     data class GroupsList(val expandGroupId: Long? = null) : Route
 
     @Serializable
@@ -650,7 +623,7 @@ sealed interface Route: NavKey {
     data class EventDeleteConfirmDialog(val contactId: Long, val contactName: String?): Route
 
     @Serializable
-    /** Settings tab destination; represented by the pager host rather than pushed. */
+    /** Settings tab destination (sibling route). */
     object Settings : Route
 
     @Serializable

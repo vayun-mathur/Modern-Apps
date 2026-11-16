@@ -4,9 +4,6 @@ import android.graphics.Bitmap
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactGroup
 
-/** Bottom-nav destination. */
-enum class ContactsTab { Contacts, Groups, Settings }
-
 /** A group together with its members, so a row can show its count without its own flow. */
 data class GroupWithContacts(val group: ContactGroup, val contacts: List<Contact>)
 
@@ -74,7 +71,6 @@ interface ContactsActions {
 
     /** Exports [contacts] to a VCF named [filename] and opens a share chooser. */
     fun shareContacts(contacts: List<Contact>, filename: String) {}
-    fun selectTab(tab: ContactsTab) {}
 
     /** Shared no-op implementation for previews and stateless screens. */
     companion object {
