@@ -88,6 +88,30 @@ class NotePageBlocksCoverageTest {
         assertEquals(0, rule.onAllNodesWithContentDescription("Down").fetchSemanticsNodes().size)
     }
 
+    @Test fun notePageAddDrawingPushesInkEditorRoute() {
+        val id = seedBlockNote()
+        val stack = NavBackStack<Route>(arrayOf(Route.NotesList, Route.Note(id)))
+        val vm = vm()
+        rule.setContent { NotePage(stack, vm, id) }
+        rule.waitUntil(timeoutMillis = 8000) {
+            runCatching { rule.onNodeWithText("Block Note").assertIsDisplayed(); true }.getOrDefault(false)
+        }
+        rule.onNodeWithContentDescription("Add drawing").performClick()
+        idle()
+        // The ink editor is a route, not in-page state: the note stays under
+        // a new InkEditor entry carrying this note's id and a fresh block id.
+        val top = stack.last()
+        assertTrue(top is Route.InkEditor, "expected InkEditor route, got $top")
+        top as Route.InkEditor
+        assertEquals(id, top.noteId)
+        assertTrue(top.blockId.isNotBlank(), "new ink block id must not be blank")
+        assertEquals(Route.Note(id), stack.backStack[stack.backStack.size - 2])
+        // Popping the editor route (InkEditorPage onDone/onCancel) returns here.
+        rule.runOnUiThread { stack.pop() }
+        idle()
+        assertEquals(Route.Note(id), stack.last())
+    }
+
     @Test fun listPageTagRenameAndDeleteForwardToRepository() {
         runBlocking {
             repo.upsert(Note(title = "Home Note", content = "h", tags = listOf("Home"), syncId = "lp1"))

@@ -89,6 +89,12 @@ class IntentsAndRouteTest {
         assertEquals(Route.Note(42), Route.Note(42))
         assertEquals("content://x/a.md", Route.ExternalNote("content://x/a.md").uri)
         assertNotNull(Route.Note.serializer())
+        // Ink blocks are identified by their stable String block id.
+        val ink = Route.InkEditor(noteId = 42L, blockId = "ink-block-1")
+        assertEquals(42L, ink.noteId)
+        assertEquals("ink-block-1", ink.blockId)
+        assertEquals(Route.InkEditor(42L, "ink-block-1"), ink)
+        assertNotNull(Route.InkEditor.serializer())
     }
 
     @Test fun backupAgentProperties() {
@@ -122,5 +128,7 @@ class IntentsAndRouteTest {
         assertEquals(Route.Note(77), note)
         val ext = Json.decodeFromString(Route.serializer(), json.encodeToString(Route.serializer(), Route.ExternalNote("content://a/b.md")))
         assertEquals(Route.ExternalNote("content://a/b.md"), ext)
+        val ink = Json.decodeFromString(Route.serializer(), json.encodeToString(Route.serializer(), Route.InkEditor(77L, "block-9")))
+        assertEquals(Route.InkEditor(77L, "block-9"), ink)
     }
 }

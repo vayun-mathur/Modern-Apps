@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
@@ -11,6 +12,7 @@ import com.vayunmathur.library.util.MorphPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.notes.platform.NotesViewModel
 import com.vayunmathur.notes.ui.ExternalNoteScreen
+import com.vayunmathur.notes.ui.InkEditorPage
 import com.vayunmathur.notes.ui.NotePage
 import com.vayunmathur.notes.ui.NotesListPage
 
@@ -33,6 +35,9 @@ fun Navigation(notesViewModel: NotesViewModel) {
         }
         entry<Route.ExternalNote>(metadata = ListDetailPage()) {
             ExternalNoteScreen(backStack, notesViewModel, it.uri)
+        }
+        entry<Route.InkEditor>(metadata = FullscreenPage()) {
+            InkEditorPage(backStack, notesViewModel, it.noteId, it.blockId)
         }
     }
 }

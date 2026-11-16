@@ -3,7 +3,6 @@ package com.vayunmathur.notes.ui
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,9 +70,21 @@ fun NotePage(
     val blocks = remember(noteID) { mutableStateListOf<NoteBlock>().apply { addAll(note.body().blocks) } }
     fun commit() { note = note.withBody(NoteBody(blocks.toList())) }
 
-    var editingInk by remember { mutableStateOf<NoteBlock.Ink?>(null) }
-    // Where inserted media lands: the text block that had focus when the picker or the
-    // drawing editor was opened. Kept here because the insert completes after a trip out
+    // The ink editor is a separate route (Route.InkEditor) and saves through its
+    // own editableNote binding, so adopt a body written by that screen (or any
+    // other writer) instead of overwriting it with this page's stale block list
+    // on the next local edit. Local commits encode exactly [blocks], so this is
+    // a no-op for this page's own edits.
+    LaunchedEffect(note.blocks) {
+        val parsed = note.body().blocks
+        if (parsed != blocks.toList()) {
+            blocks.clear()
+            blocks.addAll(parsed)
+        }
+    }
+
+    // Where inserted media lands: the text block that had focus when the picker
+    // was opened. Kept here because the insert completes after a trip out
     // of the app, by which time focus is gone.
     var insertAfterId by remember { mutableStateOf<String?>(null) }
 
@@ -116,27 +127,6 @@ fun NotePage(
         }
     }
 
-    // The drawing editor takes over the whole screen while open.
-    val ink = editingInk
-    if (ink != null) {
-        BackHandler { editingInk = null }
-        InkEditor(
-            initialStrokes = ink.strokes,
-            onDone = { newStrokes ->
-                val i = blocks.indexOfFirst { it.id == ink.id }
-                if (i >= 0) {
-                    blocks[i] = ink.copy(strokes = newStrokes)
-                    commit()
-                } else {
-                    insertBlock(ink.copy(strokes = newStrokes))
-                }
-                editingInk = null
-            },
-            onCancel = { editingInk = null },
-        )
-        return
-    }
-
     NoteScreen(
         state = NoteUiState(title = note.title, blocks = blocks.toList(), tags = note.tags, knownTags = knownTags),
         sharedTextKey = "note-title-$noteID",
@@ -168,11 +158,17 @@ fun NotePage(
             }
 
             override fun addDrawing(afterBlockId: String?) {
-                insertAfterId = afterBlockId
-                editingInk = NoteBlock.Ink(emptyList(), id = randomBlockId())
+                // A fresh block id that is not in the note yet: InkEditorPage
+                // inserts the block under this id when the drawing is confirmed
+                // (and inserts nothing on cancel, as before). [afterBlockId] is
+                // not carried in the route, so a confirmed new drawing lands at
+                // the end of the note.
+                backStack.add(Route.InkEditor(noteID, randomBlockId()))
             }
 
-            override fun editDrawing(block: NoteBlock.Ink) { editingInk = block }
+            override fun editDrawing(block: NoteBlock.Ink) {
+                backStack.add(Route.InkEditor(noteID, block.id))
+            }
 
             override fun resizeImage(id: String, widthFraction: Float) {
                 val i = blocks.indexOfFirst { it.id == id }

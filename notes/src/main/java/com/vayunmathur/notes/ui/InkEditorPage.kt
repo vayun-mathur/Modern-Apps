@@ -48,7 +48,16 @@ import com.vayunmathur.library.ink.InkCanvasView
 import com.vayunmathur.library.ink.SerializedStroke
 import com.vayunmathur.library.ink.deserialize
 import com.vayunmathur.library.ink.serialize
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.notes.R
+import com.vayunmathur.notes.Route
+import com.vayunmathur.notes.data.Note
+import com.vayunmathur.notes.data.NoteBlock
+import com.vayunmathur.notes.data.NoteBody
+import com.vayunmathur.notes.data.body
+import com.vayunmathur.notes.data.randomBlockId
+import com.vayunmathur.notes.data.withBody
+import com.vayunmathur.notes.platform.NotesViewModel
 
 private enum class InkTool { Pen, Highlighter, Eraser }
 
@@ -63,6 +72,56 @@ private val inkColors = listOf(
     Color(0xFF37474F), Color(0xFFB0BEC5), Color(0xFFE53935), Color(0xFFFB8C00),
     Color(0xFFFDD835), Color(0xFF43A047), Color(0xFF1E88E5), Color(0xFF8E24AA),
 )
+
+/**
+ * Route binder for [Route.InkEditor]: loads the note with [noteId] through the
+ * ViewModel, hands the strokes of the ink block with [blockId] to [InkEditor],
+ * and saves back through the same editable-note binding [NotePage] uses.
+ *
+ * A [blockId] that is not in the note yet is a new drawing (see
+ * `NotePage`'s addDrawing): confirming inserts it at the end of the note with
+ * a trailing text block; cancelling inserts nothing. Confirming an existing
+ * block replaces its strokes in place. Either way, confirming or cancelling
+ * (including the scaffold close / system back, which pops the route) returns
+ * to the note without saving on cancel, as the in-page editor did before.
+ */
+@Composable
+fun InkEditorPage(
+    backStack: NavBackStack<Route>,
+    notesViewModel: NotesViewModel,
+    noteId: Long,
+    blockId: String,
+) {
+    var note by notesViewModel.editableNote(noteId) { Note(0, "", "") }
+
+    // Wait for the stored note (mirrors NotePage): rendering InkEditor with
+    // the default note first would seed its strokes from emptyList() and the
+    // later database value would never be adopted by its remember.
+    if (noteId != 0L && note.id == 0L) return
+
+    val ink = note.body().blocks.firstOrNull { it.id == blockId } as? NoteBlock.Ink
+
+    InkEditor(
+        initialStrokes = ink?.strokes ?: emptyList(),
+        onDone = { newStrokes ->
+            val blocks = note.body().blocks.toMutableList()
+            val i = blocks.indexOfFirst { it.id == blockId }
+            if (i >= 0) {
+                val existing = blocks[i] as? NoteBlock.Ink
+                blocks[i] = existing?.copy(strokes = newStrokes)
+                    ?: NoteBlock.Ink(newStrokes, id = blockId)
+            } else {
+                blocks.add(NoteBlock.Ink(newStrokes, id = blockId))
+                // Keep a text block after inserted media so the user can keep
+                // typing below it (same rule as NotePage.insertBlock).
+                blocks.add(NoteBlock.Text("", randomBlockId()))
+            }
+            note = note.withBody(NoteBody(blocks))
+            backStack.pop()
+        },
+        onCancel = { backStack.pop() },
+    )
+}
 
 /**
  * Full-screen handwriting editor for a single ink block. Supports pen /
