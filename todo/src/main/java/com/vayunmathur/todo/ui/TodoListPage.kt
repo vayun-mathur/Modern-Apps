@@ -10,28 +10,35 @@ import com.vayunmathur.todo.data.Todo
 import com.vayunmathur.todo.data.newSyncId
 import com.vayunmathur.todo.domain.QuickAddParser
 import com.vayunmathur.todo.domain.SortMode
+import com.vayunmathur.todo.domain.TodoView
 import com.vayunmathur.todo.platform.TodoListActions
 import com.vayunmathur.todo.platform.TodoListUiState
 import com.vayunmathur.todo.platform.TodoViewModel
 
 /** Binds [TodoViewModel] and the nav back stack to the stateless [TodoListScreen]. */
 @Composable
-fun TodoListPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel, onMenu: (() -> Unit)?) {
-    val model by viewModel.model.collectAsStateWithLifecycle()
+fun TodoListPage(
+    backStack: NavBackStack<Route>,
+    viewModel: TodoViewModel,
+    route: Route.TodoList,
+    onMenu: (() -> Unit)?,
+) {
+    val view = TodoView.fromKey(route.viewKey)
+    val modelFlow = remember(viewModel, view) { viewModel.modelFor(view) }
+    val model by modelFlow.collectAsStateWithLifecycle()
     val query by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val view by viewModel.view.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val quickAddRequest by viewModel.quickAddRequest.collectAsStateWithLifecycle()
 
-    val actions = remember(backStack, viewModel, onMenu) {
+    val actions = remember(backStack, viewModel, onMenu, view) {
         object : TodoListActions {
             override fun openTodo(id: Long) { backStack.add(Route.TodoDetail(id)) }
             override fun createTodo() { backStack.add(Route.TodoDetail(0, newSyncId())) }
             override fun setSearchQuery(query: String) = viewModel.setSearchQuery(query)
             override fun openDrawer() { onMenu?.invoke() }
             override fun setSort(sort: SortMode) = viewModel.setSort(sort)
-            override fun quickAdd(texts: List<String>) = viewModel.quickAdd(texts)
+            override fun quickAdd(texts: List<String>) = viewModel.quickAdd(texts, view)
             override fun toggleDone(todo: Todo) = viewModel.toggleDone(todo)
             override fun delete(todos: List<Todo>) = viewModel.delete(todos)
             override fun restore(todos: List<Todo>) = viewModel.restore(todos)
@@ -62,7 +69,7 @@ fun TodoListPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel, onMen
         QuickAddSheet(
             initialText = text,
             lists = remember(lists) { lists.map { QuickAddParser.ListName(it.syncId, it.name) } },
-            onAdd = viewModel::quickAdd,
+            onAdd = { texts -> viewModel.quickAdd(texts, view) },
             onDismiss = viewModel::clearQuickAddRequest,
         )
     }

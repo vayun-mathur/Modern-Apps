@@ -17,17 +17,22 @@ fun IntentEffect(backStack: NavBackStack<Route>, viewModel: TodoViewModel) {
     LaunchedEffect(request) {
         when (val r = request ?: return@LaunchedEffect) {
             is IntentRouter.Request.OpenTask -> viewModel.idForSyncId(r.syncId)?.let { id ->
-                backStack.reset(Route.TodoList, Route.TodoDetail(id))
+                backStack.reset(Route.TodoList(currentViewKey(backStack)), Route.TodoDetail(id))
             }
             is IntentRouter.Request.OpenView -> {
-                viewModel.setView(TodoView.fromKey(r.viewKey))
-                backStack.reset(Route.TodoList)
+                viewModel.clearSearchQuery()
+                backStack.reset(Route.TodoList(TodoView.fromKey(r.viewKey).key))
             }
             is IntentRouter.Request.QuickAdd -> {
-                backStack.reset(Route.TodoList)
+                backStack.reset(Route.TodoList(currentViewKey(backStack)))
                 viewModel.requestQuickAdd(r.text)
             }
         }
         IntentRouter.consume()
     }
 }
+
+/** The view of the list entry already in the stack, so resets keep showing it. */
+private fun currentViewKey(backStack: NavBackStack<Route>): String =
+    backStack.backStack.filterIsInstance<Route.TodoList>().lastOrNull()?.viewKey
+        ?: TodoView.Inbox.key

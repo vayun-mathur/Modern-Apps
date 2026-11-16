@@ -139,9 +139,7 @@ class TodoRepoDeviceTest {
         val app = context.applicationContext as Application
         val settings = TodoSettings(context)
         val vm = TodoViewModel(app, repo, settings, SavedStateHandle())
-        vm.setView(TodoView.Today)
-        pollUntil { vm.view.value == TodoView.Today }
-        vm.setView(TodoView.InList("x")); pollUntil { vm.view.value == TodoView.InList("x") }
+        // No VM view state: the selected view is Route.TodoList(viewKey).
         vm.setSort(SortMode.TITLE); pollUntil { vm.sort.value == SortMode.TITLE }
         vm.setSearchQuery("hello"); assertEquals("hello", vm.searchQuery.value)
         vm.setSearchQuery("")
@@ -149,7 +147,7 @@ class TodoRepoDeviceTest {
         vm.clearQuickAddRequest(); assertNull(vm.quickAddRequest.value)
         // quick add creates a task
         val before = repo.getAll().size
-        vm.quickAdd(listOf("Device quick task tomorrow #devtag", "  ", "Second device task"))
+        vm.quickAdd(listOf("Device quick task tomorrow #devtag", "  ", "Second device task"), TodoView.Today)
         // viewModel launches on io; poll
         val deadline = System.currentTimeMillis() + 10000
         while (System.currentTimeMillis() < deadline && repo.getAll().none { it.title == "Device quick task" }) Thread.sleep(50)
@@ -171,7 +169,7 @@ class TodoRepoDeviceTest {
         assertTrue(repo.getBySyncId(tid)!!.done)
         assertEquals(repo.getBySyncId(tid)!!.id, vm.idForSyncId(tid))
         assertNull(vm.idForSyncId("nope-xyz"))
-        val editor = vm.openEditor(repo.getBySyncId(tid)!!.id, null)
+        val editor = vm.openEditor(repo.getBySyncId(tid)!!.id, null, TodoView.Inbox)
         assertNotNull(editor.state)
         Unit
     }
@@ -180,7 +178,7 @@ class TodoRepoDeviceTest {
         val app = context.applicationContext as Application
         val vm = TodoViewModel(app, repo, TodoSettings(context), SavedStateHandle())
         val newId = uid("ednew")
-        val editor = vm.openEditor(0L, newId)
+        val editor = vm.openEditor(0L, newId, TodoView.Inbox)
         // wait for load
         val dl = System.currentTimeMillis() + 10000
         while (System.currentTimeMillis() < dl && editor.state.value == null) Thread.sleep(50)
@@ -192,7 +190,7 @@ class TodoRepoDeviceTest {
         assertEquals("Editor created", repo.getBySyncId(newId)?.title)
         // edit existing, add subtask, setDone, duplicate, delete
         val existing = repo.getBySyncId(newId)!!
-        val ed2 = vm.openEditor(existing.id, null)
+        val ed2 = vm.openEditor(existing.id, null, TodoView.Inbox)
         val dl3 = System.currentTimeMillis() + 10000
         while (System.currentTimeMillis() < dl3 && (ed2.state.value == null || ed2.state.value?.id == 0L)) Thread.sleep(50)
         ed2.addSubtask("Editor sub")
@@ -493,7 +491,7 @@ class TodoRepoDeviceTest {
         val tid = uid("dup")
         repo.upsert(Todo(syncId = tid, title = "Dup original"))
         val existing = repo.getBySyncId(tid)!!
-        val editor = vm.openEditor(existing.id, null)
+        val editor = vm.openEditor(existing.id, null, TodoView.Inbox)
         pollUntil { editor.state.value?.id == existing.id }
         var createdId = -1L
         editor.duplicate { createdId = it }

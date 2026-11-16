@@ -5,8 +5,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 sealed interface Route : NavKey {
+    /** The task list showing [viewKey] (a `TodoView.key`); the route is the source of truth for the selected view. */
     @Serializable
-    data object TodoList : Route
+    data class TodoList(val viewKey: String) : Route
 
     /** [id] 0 opens a new task, identified across saves by [newSyncId]. */
     @Serializable

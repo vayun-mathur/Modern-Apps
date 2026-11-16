@@ -1,6 +1,8 @@
 package com.vayunmathur.todo
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
@@ -17,13 +19,24 @@ import com.vayunmathur.todo.ui.rememberTodoShellState
 
 @Composable
 fun Navigation(todoViewModel: TodoViewModel) {
-    val backStack = rememberNavBackStack<Route>(Route.TodoList)
+    // The initial route is the user's default view. Wait for its first emission
+    // so the retained back stack is created with that view, not a placeholder;
+    // later default-view changes do not rewrite the live stack.
+    val defaultView by todoViewModel.settings.defaultView
+        .collectAsStateWithLifecycle(initialValue = null)
+    val initialView = defaultView ?: return
+    val backStack = rememberNavBackStack<Route>(Route.TodoList(initialView.key))
     val shell = rememberTodoShellState()
     IntentEffect(backStack, todoViewModel)
     TodoShell(shell, todoViewModel, backStack) {
         MainNavigation(backStack) {
-            entry<Route.TodoList>(metadata = ListPage()) {
-                TodoListPage(backStack, todoViewModel, onMenu = if (shell.permanent) null else shell::openDrawer)
+            entry<Route.TodoList>(metadata = ListPage()) { route ->
+                TodoListPage(
+                    backStack,
+                    todoViewModel,
+                    route,
+                    onMenu = if (shell.permanent) null else shell::openDrawer,
+                )
             }
             entry<Route.TodoDetail>(metadata = ListDetailPage() + MorphPage()) {
                 TodoDetailPage(backStack, todoViewModel, it)

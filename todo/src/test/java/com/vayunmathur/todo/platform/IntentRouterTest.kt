@@ -68,7 +68,10 @@ class IntentRouterTest {
         IntentRouter.consume()
     }
     @Test fun routeTypes() {
-        assertEquals(com.vayunmathur.todo.Route.TodoList, com.vayunmathur.todo.Route.TodoList)
+        assertEquals(
+            com.vayunmathur.todo.Route.TodoList(TodoView.Today.key),
+            com.vayunmathur.todo.Route.TodoList("today"),
+        )
         assertEquals(5L, com.vayunmathur.todo.Route.TodoDetail(5L, "n").id)
         assertEquals("n", com.vayunmathur.todo.Route.TodoDetail(5L, "n").newSyncId)
         assertNull(com.vayunmathur.todo.Route.TodoDetail(0L).newSyncId)

@@ -47,9 +47,6 @@ class TodoViewModel(
     private val io = repository.io
 
     val searchQuery: StateFlow<String> = savedState.getStateFlow(KEY_QUERY, "")
-    val view: StateFlow<TodoView> = savedState.getStateFlow(KEY_VIEW, TodoView.Inbox.key)
-        .map { TodoView.fromKey(it) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, TodoView.Inbox)
     val sort: StateFlow<SortMode> = savedState.getStateFlow(KEY_SORT, SortMode.MANUAL.name)
         .map { runCatching { SortMode.valueOf(it) }.getOrDefault(SortMode.MANUAL) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, SortMode.MANUAL)
@@ -67,14 +64,20 @@ class TodoViewModel(
     val lists: StateFlow<List<TodoList>> = repository.lists
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
 
-    private data class Params(val view: TodoView, val query: String, val sort: SortMode, val now: Long)
+    private data class Params(val query: String, val sort: SortMode, val now: Long)
 
-    private val params = combine(view, searchQuery, sort, clock) { v, q, s, now -> Params(v, q, s, now) }
+    private val params = combine(searchQuery, sort, clock) { q, s, now -> Params(q, s, now) }
 
-    val model: StateFlow<Pair<TodoListModel, Long>> =
+    /**
+     * The list model for [view] (the view named by the current `Route.TodoList` entry).
+     * The route is authoritative: callers pass its view explicitly and this flow is
+     * derived from it, never from persisted view state. Each call creates a flow
+     * scoped to [viewModelScope]; pages should remember one instance per view.
+     */
+    fun modelFor(view: TodoView): StateFlow<Pair<TodoListModel, Long>> =
         combine(todos, lists, params, settings.showCompleted) { todos, lists, p, showDone ->
             val zone = TimeZone.currentSystemDefault()
-            val built = TodoQuery.build(TodoQuery.Input(todos, lists, p.view, p.query, p.sort, p.now, zone))
+            val built = TodoQuery.build(TodoQuery.Input(todos, lists, view, p.query, p.sort, p.now, zone))
             (if (showDone) built else built.copy(completed = emptyList())) to p.now
         }.stateIn(
             viewModelScope,
@@ -93,7 +96,6 @@ class TodoViewModel(
     init {
         viewModelScope.launch(io) { repository.maintain() }
         viewModelScope.launch {
-            if (!savedState.contains(KEY_VIEW)) savedState[KEY_VIEW] = settings.defaultView.first().key
             if (!savedState.contains(KEY_SORT)) savedState[KEY_SORT] = settings.defaultSort.first().name
         }
     }
@@ -121,7 +123,8 @@ class TodoViewModel(
     }
 
     fun deleteList(list: TodoList) {
-        if (view.value == TodoView.InList(list.syncId)) setView(TodoView.Inbox)
+        // Fallback to Inbox when the deleted list is being viewed is a routing
+        // decision: the shell resets the back stack, not this ViewModel.
         viewModelScope.launch(io) { repository.tombstoneList(list) }
     }
 
@@ -162,8 +165,8 @@ class TodoViewModel(
         savedState[KEY_QUERY] = query
     }
 
-    fun setView(view: TodoView) {
-        savedState[KEY_VIEW] = view.key
+    /** Changing view (a route change) starts with an empty search, as before. */
+    fun clearSearchQuery() {
         savedState[KEY_QUERY] = ""
     }
 
@@ -171,8 +174,8 @@ class TodoViewModel(
         savedState[KEY_SORT] = sort.name
     }
 
-    fun quickAdd(texts: List<String>) {
-        val currentView = view.value
+    fun quickAdd(texts: List<String>, view: TodoView) {
+        val currentView = view
         viewModelScope.launch(io) {
             val lists = repository.getLists().map { QuickAddParser.ListName(it.syncId, it.name) }
             val zone = TimeZone.currentSystemDefault()
@@ -237,14 +240,14 @@ class TodoViewModel(
 
     fun setPriority(todos: List<Todo>, priority: Int) = upsertAll(todos.map { it.copy(priority = priority) })
 
-    fun openEditor(id: Long, newSyncId: String?): TodoEditor {
-        val template = templateFor(view.value, System.currentTimeMillis(), TimeZone.currentSystemDefault())
+    /** [view] is the route's current view, used only as the template for a new task. */
+    fun openEditor(id: Long, newSyncId: String?, view: TodoView): TodoEditor {
+        val template = templateFor(view, System.currentTimeMillis(), TimeZone.currentSystemDefault())
         return TodoEditor(repository, repository.appScope, id, newSyncId, template)
     }
 
     companion object {
         private const val KEY_QUERY = "search_query"
-        private const val KEY_VIEW = "view"
         private const val KEY_SORT = "sort"
         private const val STOP_TIMEOUT_MS = 5_000L
         private const val TICK_MS = 60_000L

@@ -64,7 +64,9 @@ class TodoViewModelTest {
         assertTrue(awaitCondition { condition() }, "Timed out waiting for: $description")
     }
 
-    @Test fun savedStateRestoresViewSortAndQuery() {
+    @Test fun savedStateRestoresSortAndQueryButNotView() {
+        // The selected view lives in Route.TodoList, not SavedState: a stale
+        // "view" entry must not resurrect a view (there is no view state to read).
         val vm = viewModel(
             mapOf(
                 "search_query" to "report",
@@ -73,22 +75,19 @@ class TodoViewModelTest {
             ),
         )
         assertEquals("report", vm.searchQuery.value)
-        assertEquals(TodoView.InList("work"), vm.view.value)
         assertEquals(SortMode.TITLE, vm.sort.value)
     }
 
-    @Test fun invalidSavedSortFallsBackToManualAndUnknownViewToInbox() {
-        val vm = viewModel(mapOf("view" to "nonsense", "sort" to "not-a-sort"))
-        assertEquals(TodoView.Inbox, vm.view.value)
+    @Test fun invalidSavedSortFallsBackToManual() {
+        val vm = viewModel(mapOf("sort" to "not-a-sort"))
         assertEquals(SortMode.MANUAL, vm.sort.value)
     }
 
-    @Test fun setViewClearsSearchAndSetSortAndQueryUpdateState() {
+    @Test fun clearSearchQueryAndSetSortAndQueryUpdateState() {
         val vm = viewModel()
         vm.setSearchQuery("milk")
         assertEquals("milk", vm.searchQuery.value)
-        vm.setView(TodoView.Today)
-        assertEquals(TodoView.Today, vm.view.value)
+        vm.clearSearchQuery()
         assertEquals("", vm.searchQuery.value)
         vm.setSort(SortMode.PRIORITY)
         assertEquals(SortMode.PRIORITY, vm.sort.value)
@@ -108,8 +107,7 @@ class TodoViewModelTest {
     @Test fun quickAddCreatesParsedTaskInCurrentListContext() { runBlocking {
         repo.upsertList(TodoList(syncId = "home", name = "Home"))
         val vm = viewModel()
-        vm.setView(TodoView.InList("home"))
-        vm.quickAdd(listOf("Buy milk tomorrow #errands", "  ", ""))
+        vm.quickAdd(listOf("Buy milk tomorrow #errands", "  ", ""), TodoView.InList("home"))
         await("quick add writes one task") { repo.getAll().size == 1 }
         val task = repo.getAll().single()
         assertEquals("Buy milk", task.title)
@@ -120,21 +118,18 @@ class TodoViewModelTest {
 
     @Test fun quickAddInTodayViewDatesTaskTodayAndInPriorityViewPrioritises() = runBlocking {
         val vm = viewModel()
-        vm.setView(TodoView.Today)
-        vm.quickAdd(listOf("Call plumber"))
+        vm.quickAdd(listOf("Call plumber"), TodoView.Today)
         await("today quick add") { repo.getAll().any { it.title == "Call plumber" } }
         assertNotNull(repo.getAll().first { it.title == "Call plumber" }.dueAt)
 
-        vm.setView(TodoView.Priority)
-        vm.quickAdd(listOf("Urgent fix"))
+        vm.quickAdd(listOf("Urgent fix"), TodoView.Priority)
         await("priority quick add") { repo.getAll().any { it.title == "Urgent fix" } }
         assertEquals(1, repo.getAll().first { it.title == "Urgent fix" }.priority)
     }
 
     @Test fun quickAddInTaggedViewAppliesTheTag() = runBlocking {
         val vm = viewModel()
-        vm.setView(TodoView.Tagged("errands"))
-        vm.quickAdd(listOf("Post parcel"))
+        vm.quickAdd(listOf("Post parcel"), TodoView.Tagged("errands"))
         await("tagged quick add") { repo.getAll().size == 1 }
         assertEquals(listOf("errands"), repo.getAll().single().tags)
     }
@@ -190,21 +185,20 @@ class TodoViewModelTest {
         assertTrue(repo.getAll().isEmpty())
     }
 
-    @Test fun saveListAssignsPositionToNewListAndDeleteListResetsView() = runBlocking {
+    @Test fun saveListAssignsPositionToNewListAndDeleteListTombstonesIt() = runBlocking {
         val vm = viewModel()
         vm.saveList(TodoList(syncId = "work", name = "Work"))
         await("save list") { repo.getListBySyncId("work") != null }
         val saved = repo.getListBySyncId("work")!!
         assertTrue(saved.position != 0.0 || repo.getLists().size == 1)
 
-        vm.setView(TodoView.InList("work"))
         vm.deleteList(saved)
         await("delete list") {
             runCatching { harness!!.database.todoListDao().getBySyncId("work")!!.deleted }
                 .getOrDefault(false)
         }
-        // Deleting the list being viewed returns the user to the Inbox.
-        assertEquals(TodoView.Inbox, vm.view.value)
+        // Resetting the route to Inbox when the viewed list is deleted is the
+        // shell's job (it owns the back stack), not the ViewModel's.
     }
 
     @Test fun reorderListsPersistsGivenOrder() = runBlocking {
@@ -232,12 +226,12 @@ class TodoViewModelTest {
         repo.upsert(Todo(syncId = "a", title = "Report", listSyncId = "work", tags = listOf("office")))
         repo.upsert(Todo(syncId = "b", title = "Done", done = true, completedAt = 1L, tags = listOf("home")))
         val vm = viewModel()
-        vm.setView(TodoView.All)
+        val model = vm.modelFor(TodoView.All)
 
         // StateFlows are WhileSubscribed: collect them, then wait for real values.
         val todosJob = launch { vm.todos.collect {} }
         val listsJob = launch { vm.lists.collect {} }
-        val modelJob = launch { vm.model.collect {} }
+        val modelJob = launch { model.collect {} }
         val countsJob = launch { vm.counts.collect {} }
         val tagsJob = launch { vm.tags.collect {} }
         try {
@@ -246,7 +240,7 @@ class TodoViewModelTest {
             await("tags flow") { vm.tags.value.containsAll(listOf("office", "home")) }
             await("counts") { vm.counts.value.values.sum() >= 1 }
             await("model") {
-                vm.model.value.first.groups.flatMap { it.rows }.any { it.todo.syncId == "a" }
+                model.value.first.groups.flatMap { it.rows }.any { it.todo.syncId == "a" }
             }
             assertEquals(1, vm.counts.value[TodoView.InList("work")])
             assertFalse(TodoView.All in vm.counts.value.keys)
@@ -255,20 +249,47 @@ class TodoViewModelTest {
         }
     }
 
+    @Test fun modelForComputesPerRouteView() = runBlocking {
+        repo.upsertList(TodoList(syncId = "work", name = "Work"))
+        repo.upsert(Todo(syncId = "in", title = "In inbox"))
+        repo.upsert(Todo(syncId = "wk", title = "In work", listSyncId = "work"))
+        val vm = viewModel()
+        val inboxModel = vm.modelFor(TodoView.Inbox)
+        val workModel = vm.modelFor(TodoView.InList("work"))
+        val inboxJob = launch { inboxModel.collect {} }
+        val workJob = launch { workModel.collect {} }
+        try {
+            await("inbox model") {
+                inboxModel.value.first.groups.flatMap { it.rows }.any { it.todo.syncId == "in" }
+            }
+            await("work model") {
+                workModel.value.first.groups.flatMap { it.rows }.any { it.todo.syncId == "wk" }
+            }
+            assertTrue(
+                inboxModel.value.first.groups.flatMap { it.rows }.none { it.todo.syncId == "wk" },
+            )
+            assertTrue(
+                workModel.value.first.groups.flatMap { it.rows }.none { it.todo.syncId == "in" },
+            )
+        } finally {
+            inboxJob.cancel(); workJob.cancel()
+        }
+    }
+
     @Test fun modelHidesCompletedWhenSettingOff() = runBlocking {
         repo.upsert(Todo(syncId = "open", title = "Open"))
         repo.upsert(Todo(syncId = "done", title = "Done", done = true, completedAt = 1L))
         val vm = viewModel()
-        vm.setView(TodoView.All)
+        val model = vm.modelFor(TodoView.All)
         vm.updateSettings { setShowCompleted(false) }
-        val job = launch { vm.model.collect {} }
+        val job = launch { model.collect {} }
         try {
             await("completed row hidden") {
-                vm.model.value.first.groups.flatMap { it.rows }.any { it.todo.syncId == "open" } &&
-                    vm.model.value.first.completed.isEmpty()
+                model.value.first.groups.flatMap { it.rows }.any { it.todo.syncId == "open" } &&
+                    model.value.first.completed.isEmpty()
             }
             assertTrue(
-                vm.model.value.first.groups.flatMap { it.rows }.any { it.todo.syncId == "open" },
+                model.value.first.groups.flatMap { it.rows }.any { it.todo.syncId == "open" },
             )
         } finally {
             job.cancel()
@@ -302,12 +323,11 @@ class TodoViewModelTest {
     @Test fun openEditorForExistingAndNewTasks() = runBlocking {
         repo.upsert(Todo(syncId = "a", title = "Existing"))
         val vm = viewModel()
-        val existing = vm.openEditor(repo.getBySyncId("a")!!.id, null)
+        val existing = vm.openEditor(repo.getBySyncId("a")!!.id, null, TodoView.Inbox)
         await("editor loads existing") { existing.state.value?.title == "Existing" }
         existing.close()
 
-        vm.setView(TodoView.InList("work"))
-        val fresh = vm.openEditor(0L, "brand-new-sync")
+        val fresh = vm.openEditor(0L, "brand-new-sync", TodoView.InList("work"))
         await("editor loads template") { fresh.state.value != null }
         assertEquals("brand-new-sync", fresh.state.value!!.syncId)
         assertEquals("work", fresh.state.value!!.listSyncId)

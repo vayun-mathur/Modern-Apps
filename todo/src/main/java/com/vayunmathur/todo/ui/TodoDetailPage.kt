@@ -9,6 +9,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.todo.Route
 import com.vayunmathur.todo.data.Todo
 import com.vayunmathur.todo.domain.TodoQuery
+import com.vayunmathur.todo.domain.TodoView
 import com.vayunmathur.todo.platform.TodoActions
 import com.vayunmathur.todo.platform.TodoUiState
 import com.vayunmathur.todo.platform.TodoViewModel
@@ -16,7 +17,10 @@ import com.vayunmathur.todo.platform.TodoViewModel
 /** Binds a [TodoEditor][com.vayunmathur.todo.platform.TodoEditor] session to the stateless [TodoDetailScreen]. */
 @Composable
 fun TodoDetailPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel, route: Route.TodoDetail) {
-    val editor = remember(route) { viewModel.openEditor(route.id, route.newSyncId) }
+    // A new task's template (list/tag/date) comes from the list route under this detail.
+    val currentView = backStack.backStack.filterIsInstance<Route.TodoList>().lastOrNull()
+        ?.let { TodoView.fromKey(it.viewKey) } ?: TodoView.Inbox
+    val editor = remember(route, currentView) { viewModel.openEditor(route.id, route.newSyncId, currentView) }
     DisposableEffect(editor) { onDispose { editor.close() } }
     val todo by editor.state.collectAsStateWithLifecycle()
     val subtasks by editor.subtasks.collectAsStateWithLifecycle(emptyList())

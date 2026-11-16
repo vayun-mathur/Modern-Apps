@@ -112,9 +112,9 @@ class TodoComposePagesTest {
     @Test fun todoListPageShowsSeededTasksAndViewTitle() {
         seed()
         val vm = viewModel()
-        vm.setView(TodoView.All)
-        val stack = NavBackStack<Route>(arrayOf(Route.TodoList))
-        rule.setContent { DynamicTheme { TodoListPage(stack, vm, onMenu = {}) } }
+        val route = Route.TodoList(TodoView.All.key)
+        val stack = NavBackStack<Route>(arrayOf(route))
+        rule.setContent { DynamicTheme { TodoListPage(stack, vm, route, onMenu = {}) } }
         rule.onNodeWithText("Page task alpha").assertIsDisplayed()
         rule.onNodeWithText("Page task beta").assertIsDisplayed()
     }
@@ -122,8 +122,9 @@ class TodoComposePagesTest {
     @Test fun todoListPageQuickAddRequestShowsSheet() {
         seed()
         val vm = viewModel()
-        val stack = NavBackStack<Route>(arrayOf(Route.TodoList))
-        rule.setContent { DynamicTheme { TodoListPage(stack, vm, onMenu = null) } }
+        val route = Route.TodoList(TodoView.Inbox.key)
+        val stack = NavBackStack<Route>(arrayOf(route))
+        rule.setContent { DynamicTheme { TodoListPage(stack, vm, route, onMenu = null) } }
         rule.runOnIdle { vm.requestQuickAdd("Sheet task") }
         rule.onNodeWithText("Sheet task").assertExists()
     }
@@ -135,7 +136,7 @@ class TodoComposePagesTest {
         }
         val vm = viewModel()
         val id = runBlocking { repo.getBySyncId("p")!!.id }
-        val stack = NavBackStack<Route>(arrayOf(Route.TodoList, Route.TodoDetail(id)))
+        val stack = NavBackStack<Route>(arrayOf(Route.TodoList(TodoView.Inbox.key), Route.TodoDetail(id)))
         rule.setContent { DynamicTheme { TodoDetailPage(stack, vm, Route.TodoDetail(id)) } }
         rule.onNodeWithText("Detail parent").assertIsDisplayed()
         rule.onNodeWithText("Detail child").assertExists()
@@ -143,7 +144,7 @@ class TodoComposePagesTest {
 
     @Test fun todoDetailPageForNewTaskShowsTitleField() {
         val vm = viewModel()
-        val stack = NavBackStack<Route>(arrayOf(Route.TodoList, Route.TodoDetail(0, "fresh-page")))
+        val stack = NavBackStack<Route>(arrayOf(Route.TodoList(TodoView.Inbox.key), Route.TodoDetail(0, "fresh-page")))
         rule.setContent { DynamicTheme { TodoDetailPage(stack, vm, Route.TodoDetail(0, "fresh-page")) } }
         // The page returns early until the editor's async load lands.
         rule.waitUntil(timeoutMillis = 5_000) {
@@ -174,16 +175,16 @@ class TodoComposePagesTest {
     @Test fun todoShellShowsDrawerContentAndLists() {
         seed()
         val vm = viewModel()
-        // Default view resolves to Today, which filters out the undated
-        // seeded tasks; All shows them in the shell's list pane.
-        vm.setView(TodoView.All)
-        val stack = NavBackStack<Route>(arrayOf(Route.TodoList))
+        // The route names All, which shows the undated seeded tasks in the
+        // shell's list pane (Today would filter them out).
+        val route = Route.TodoList(TodoView.All.key)
+        val stack = NavBackStack<Route>(arrayOf(route))
         lateinit var shell: TodoShellState
         rule.setContent {
             DynamicTheme {
                 shell = rememberTodoShellState()
                 TodoShell(shell, vm, stack) {
-                    TodoListPage(stack, vm, onMenu = {})
+                    TodoListPage(stack, vm, route, onMenu = {})
                 }
             }
         }
@@ -195,21 +196,21 @@ class TodoComposePagesTest {
 
     @Test fun todoShellSelectsSmartViewThroughDrawerActions() {
         val vm = viewModel()
-        val stack = NavBackStack<Route>(arrayOf(Route.TodoList))
+        val stack = NavBackStack<Route>(arrayOf(Route.TodoList(TodoView.Inbox.key)))
+        lateinit var shell: TodoShellState
         rule.setContent {
             DynamicTheme {
-                val shell = rememberTodoShellState()
+                shell = rememberTodoShellState()
                 TodoShell(shell, vm, stack) {
                     com.vayunmathur.library.ui.Text("content")
                 }
-                // Expose the shell so the test can open the drawer if needed.
-                androidx.compose.runtime.SideEffect { }
             }
         }
         rule.onNodeWithText("content").assertIsDisplayed()
-        assertEquals(TodoView.Inbox, vm.view.value)
-        rule.runOnIdle { vm.setView(TodoView.Today) }
-        assertEquals(TodoView.Today, vm.view.value)
-        assertTrue(stack.last() == Route.TodoList)
+        assertEquals(Route.TodoList(TodoView.Inbox.key), stack.last())
+        // Drawer selection is a route reset carrying the view key.
+        rule.runOnIdle { shell.openDrawer() }
+        rule.onNodeWithText("Today").performClick()
+        assertEquals(Route.TodoList(TodoView.Today.key), stack.last())
     }
 }

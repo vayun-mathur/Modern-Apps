@@ -37,7 +37,10 @@ fun TodoShell(
     backStack: NavBackStack<Route>,
     content: @Composable () -> Unit,
 ) {
-    val view by viewModel.view.collectAsStateWithLifecycle()
+    // The selected view lives in the back stack: the deepest TodoList entry is
+    // the list underneath any detail/settings entry pushed on top of it.
+    val currentRoute = backStack.backStack.filterIsInstance<Route.TodoList>().lastOrNull()
+    val view = currentRoute?.let { TodoView.fromKey(it.viewKey) } ?: TodoView.Inbox
     val counts by viewModel.counts.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val tags by viewModel.tags.collectAsStateWithLifecycle()
@@ -49,8 +52,8 @@ fun TodoShell(
     val state = DrawerUiState(view, counts, lists, tags, syncStatus(lastSync))
     val actions = object : DrawerActions {
         override fun select(view: TodoView) {
-            viewModel.setView(view)
-            backStack.reset(Route.TodoList)
+            viewModel.clearSearchQuery()
+            backStack.reset(Route.TodoList(view.key))
             shell.closeDrawer()
         }
         override fun newList() { creating = true }
@@ -83,7 +86,10 @@ fun TodoShell(
             list = editing,
             onSave = { list ->
                 viewModel.saveList(list)
-                if (editing == null) viewModel.setView(TodoView.InList(list.syncId))
+                if (editing == null) {
+                    viewModel.clearSearchQuery()
+                    backStack.reset(Route.TodoList(TodoView.InList(list.syncId).key))
+                }
                 creating = false
                 editing = null
             },
@@ -103,6 +109,9 @@ fun TodoShell(
             destructive = true,
             onConfirm = {
                 viewModel.deleteList(list)
+                if (view == TodoView.InList(list.syncId)) {
+                    backStack.reset(Route.TodoList(TodoView.Inbox.key))
+                }
                 deleting = null
                 editing = null
             },

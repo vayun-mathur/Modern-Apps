@@ -21,6 +21,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -69,8 +71,9 @@ class NavigationAndMainActivityTest {
 
     @Test fun navigationComposesListPageFromRealViewModel() {
         seed()
+        // The initial Route.TodoList is the settings default view.
+        runBlocking { TodoSettings(context).setDefaultView(TodoView.All) }
         val vm = viewModel()
-        vm.setView(TodoView.All)
         rule.setContent { DynamicTheme { Navigation(vm) } }
         rule.onNodeWithText("Nav alpha task").assertIsDisplayed()
         rule.onNodeWithText("Nav beta task").assertIsDisplayed()
@@ -101,7 +104,11 @@ class NavigationAndMainActivityTest {
         IntentRouter.handle(Intent().putExtra(IntentRouter.EXTRA_VIEW, TodoView.All.key))
         rule.setContent { DynamicTheme { Navigation(vm) } }
         rule.waitUntil(timeoutMillis = 5_000) { IntentRouter.pending.value == null }
-        assertEquals(TodoView.All, vm.view.value)
+        // OpenView reset the stack to Route.TodoList(All.key), so both undated
+        // seeded tasks are visible (the dedicated route test below pins the
+        // exact viewKey round-trip).
+        rule.onNodeWithText("Nav alpha task").assertIsDisplayed()
+        rule.onNodeWithText("Nav beta task").assertIsDisplayed()
         // A later quick-add request resets to the list and pre-fills the sheet.
         rule.runOnIdle {
             IntentRouter.handle(
@@ -113,7 +120,12 @@ class NavigationAndMainActivityTest {
     }
 
     @Test fun routeTypesAreDistinctNavKeys() {
-        assertEquals(Route.TodoList, Route.TodoList)
+        assertEquals(Route.TodoList(TodoView.All.key), Route.TodoList("all"))
+        assertTrue(Route.TodoList(TodoView.All.key) != Route.TodoList(TodoView.Inbox.key))
+        // viewKey round-trips through TodoView and through serialization.
+        val route = Route.TodoList(TodoView.InList("work").key)
+        assertEquals(TodoView.InList("work"), TodoView.fromKey(route.viewKey))
+        assertEquals(route, Json.decodeFromString<Route.TodoList>(Json.encodeToString(route)))
         assertEquals(Route.Settings, Route.Settings)
         assertEquals(Route.TodoDetail(7L, "sync"), Route.TodoDetail(7L, "sync"))
         assertTrue(Route.TodoDetail(7L) != Route.TodoDetail(8L))
@@ -127,8 +139,9 @@ class NavigationAndMainActivityTest {
         val controller = Robolectric.buildActivity(MainActivity::class.java, intent).setup()
         // The activity's own Navigation graph consumes the recorded view
         // request as soon as it composes.
-        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-        assertNull(IntentRouter.pending.value)
+        // Navigation waits for the settings default view before creating the
+        // retained stack, so consumption is asynchronous.
+        rule.waitUntil(timeoutMillis = 5_000) { IntentRouter.pending.value == null }
         // A fresh intent arriving while alive is recorded the same way and
         // likewise recorded by the live activity (its graph may or may not
         // have a frame in flight under Robolectric to consume it yet).
