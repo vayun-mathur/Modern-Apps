@@ -62,7 +62,7 @@ class AlarmSettingsRingtoneTest {
 
     @Test fun ringtonePickPersistsAndCancelKeeps() {
         val ds = DataStoreUtils.getInstance(ctx)
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(), Route.AlarmSettings))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.AlarmSettings))
         rule.setContent { AlarmSettingsPage(stack, ds) }
         rule.waitForIdle()
 

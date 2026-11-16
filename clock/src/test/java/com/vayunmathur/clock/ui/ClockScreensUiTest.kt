@@ -45,7 +45,7 @@ class ClockScreensUiTest {
     @get:Rule
     val rule = createComposeRule()
 
-    private fun backStack() = NavBackStack(arrayOf<Route>(Route.Main()))
+    private fun backStack() = NavBackStack(arrayOf<Route>(Route.Alarm))
 
     private fun clickRow(text: String) {
         rule.onNode(hasClickAction() and hasAnyDescendant(hasText(text)), useUnmergedTree = true)

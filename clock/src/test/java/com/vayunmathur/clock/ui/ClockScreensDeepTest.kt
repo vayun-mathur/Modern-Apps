@@ -50,7 +50,7 @@ class ClockScreensDeepTest {
 
     @get:Rule val rule = createComposeRule()
 
-    private fun backStack() = NavBackStack(arrayOf<Route>(Route.Main()))
+    private fun backStack() = NavBackStack(arrayOf<Route>(Route.Alarm))
     private fun alarm(days: Int = 0, id: Long = 1) =
         Alarm(LocalTime(7, 30), "gym", true, days, id = id)
 

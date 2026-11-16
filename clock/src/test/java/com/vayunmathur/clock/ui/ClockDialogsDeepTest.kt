@@ -53,7 +53,7 @@ class ClockDialogsDeepTest {
     private fun vm() = ClockViewModel(ctx as Application, ClockRepository.get(ctx))
 
     @Test fun newTimerDialogFiltersNonDigitsAndCancels() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(), Route.NewTimerDialog()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.NewTimerDialog()))
         val sizeBefore = stack.backStack.size
         rule.setContent { NewTimerDialog(stack, vm(), initialLengthSeconds = 300, initialMessage = "tea") }
         rule.waitForIdle()
@@ -69,7 +69,7 @@ class ClockDialogsDeepTest {
     }
 
     @Test fun newAlarmDialogEditsLabelAndCancels() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(), Route.NewAlarmDialog()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.NewAlarmDialog()))
         val sizeBefore = stack.backStack.size
         rule.setContent {
             NewAlarmDialog(stack, vm(), initialHour = 8, initialMinutes = 15, initialMessage = "wake", initialDays = arrayListOf(2))

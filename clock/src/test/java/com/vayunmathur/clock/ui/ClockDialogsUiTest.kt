@@ -55,7 +55,7 @@ class ClockDialogsUiTest {
 
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
     private fun vm() = ClockViewModel(ctx as android.app.Application, ClockRepository.get(ctx))
-    private fun backStack() = NavBackStack(arrayOf<Route>(Route.Main()))
+    private fun backStack() = NavBackStack(arrayOf<Route>(Route.Alarm))
 
     private fun clickRow(text: String) {
         rule.onNode(hasClickAction() and hasAnyDescendant(hasText(text)), useUnmergedTree = true)
@@ -93,7 +93,7 @@ class ClockDialogsUiTest {
 
     @Test
     fun newTimerDialogCancelPops() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(), Route.NewTimerDialog()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.NewTimerDialog()))
         rule.setContent { NewTimerDialog(stack, vm()) }
         clickRow("Cancel")
         assertEquals(1, stack.backStack.size)

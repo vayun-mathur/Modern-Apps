@@ -129,7 +129,7 @@ class CardsAndDialogSaveTest {
 
     @Test fun alarmCardControlsReportThroughActions() {
         val actions = RecordingAlarmActions()
-        val stack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm))
         val target = alarm()
         rule.setContent { androidx.compose.runtime.CompositionLocalProvider(LocalNavResultRegistry provides NavResultRegistry()) { AlarmCard(stack, target, is24Hour = false, actions = actions, initialExpanded = true) } }
         rule.waitForIdle()
@@ -168,7 +168,7 @@ class CardsAndDialogSaveTest {
 
     @Test fun alarmCardSnoozeAndGradualDropdownsReportSelections() {
         val actions = RecordingAlarmActions()
-        val stack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm))
         rule.setContent { androidx.compose.runtime.CompositionLocalProvider(LocalNavResultRegistry provides NavResultRegistry()) { AlarmCard(stack, alarm(), is24Hour = true, actions = actions, initialExpanded = true) } }
         rule.waitForIdle()
         rule.onNodeWithText("5 min").performClick()
@@ -211,7 +211,7 @@ class CardsAndDialogSaveTest {
     }
 
     @Test fun newTimerDialogSaveDisabledAtZero() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(), Route.NewTimerDialog()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.NewTimerDialog()))
         rule.setContent { NewTimerDialog(stack, vm(), initialLengthSeconds = null, initialMessage = null) }
         rule.waitForIdle()
         rule.onAllNodes(hasSetTextAction())[1].performTextReplacement("0")

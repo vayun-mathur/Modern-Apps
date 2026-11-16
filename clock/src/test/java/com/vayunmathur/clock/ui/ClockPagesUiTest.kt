@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -41,7 +42,7 @@ class ClockPagesUiTest {
     @Test
     fun routeSerializationRoundTrips() {
         val routes: List<Route> = listOf(
-            Route.Main(2), Route.Alarm, Route.Clock, Route.Timer, Route.Stopwatch,
+            Route.Alarm, Route.Clock, Route.Timer, Route.Stopwatch,
             Route.AlarmSettings, Route.SelectTimeZonesDialog,
             Route.NewTimerDialog(300, "tea"), Route.NewAlarmDialog(7, 30, "wake", arrayListOf(1, 3), false),
         )
@@ -57,11 +58,28 @@ class ClockPagesUiTest {
 
     @Test
     fun tabsRenderWithStopwatchInitialTab() {
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main()))
-        rule.setContent { ClockTabs(backStack, ds(), vm(), initialTab = 3) }
+        val backStack = NavBackStack(arrayOf<Route>(Route.Stopwatch))
+        rule.setContent { ClockTabs(backStack, ds(), vm()) }
         rule.waitForIdle()
         // Bottom navigation labels for the four tabs are composed.
         rule.onNodeWithText("Alarm").assertExists()
+        assertEquals(listOf(Route.Stopwatch), backStack.backStack)
+    }
+
+    @Test
+    fun tabSelectSwapsDestinationAndDetailStillPushes() {
+        val backStack = NavBackStack(arrayOf<Route>(Route.Stopwatch))
+        rule.setContent { ClockTabs(backStack, ds(), vm()) }
+        rule.waitForIdle()
+        rule.onNodeWithText("Clock").performClick()
+        rule.waitForIdle()
+        // Selecting a tab resets the stack to exactly that sibling route.
+        assertEquals(listOf(Route.Clock), backStack.backStack)
+        // A pushed destination still goes on top and pops back to the tab.
+        backStack.add(Route.AlarmSettings)
+        assertEquals(Route.AlarmSettings, backStack.last())
+        backStack.pop()
+        assertEquals(listOf(Route.Clock), backStack.backStack)
     }
 
     @Test
@@ -78,7 +96,7 @@ class ClockPagesUiTest {
 
     @Test
     fun clockPageBindsViewModel() {
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Alarm))
         rule.setContent { ClockPage(backStack, ds(), vm()) }
         rule.waitForIdle()
     }

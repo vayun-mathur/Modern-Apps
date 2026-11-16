@@ -48,7 +48,7 @@ class ClockPageDeepTest {
         val picked = cities.keys.take(2)
         runBlocking { WorldClockCities.set(ds(), picked) }
 
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Alarm))
         rule.setContent { ClockPage(backStack, ds(), vm) }
         rule.waitForIdle()
         for (city in picked) rule.onNodeWithText(city).assertExists()

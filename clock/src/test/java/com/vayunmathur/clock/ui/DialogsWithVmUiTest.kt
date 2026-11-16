@@ -54,7 +54,7 @@ class DialogsWithVmUiTest {
 
     @Test
     fun newAlarmDialogShowsPickerAndCancels() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(), Route.NewAlarmDialog()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.NewAlarmDialog()))
         val sizeBefore = stack.backStack.size
         rule.setContent {
             NewAlarmDialog(stack, vm(), initialHour = 7, initialMinutes = 30, initialMessage = "wake", initialDays = arrayListOf(1, 3))
@@ -67,7 +67,7 @@ class DialogsWithVmUiTest {
 
     @Test
     fun newAlarmDialogDefaultsToNow() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(), Route.NewAlarmDialog()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.NewAlarmDialog()))
         rule.setContent { NewAlarmDialog(stack, vm(), null, null, null, null) }
         rule.onNodeWithText("Alarm").assertIsDisplayed()
         rule.waitForIdle()
@@ -78,7 +78,7 @@ class DialogsWithVmUiTest {
         val v = vm()
         awaitCities(v)
         val ds = DataStoreUtils.getInstance(ctx)
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(), Route.SelectTimeZonesDialog))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.SelectTimeZonesDialog))
         rule.setContent { SelectTimeZonesDialog(stack, ds, v) }
         rule.onNodeWithText("Select Cities", substring = true).assertExists()
         rule.waitForIdle()
@@ -94,7 +94,7 @@ class DialogsWithVmUiTest {
         val v = vm()
         awaitCities(v)
         val ds = DataStoreUtils.getInstance(ctx)
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(), Route.SelectTimeZonesDialog))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.SelectTimeZonesDialog))
         rule.setContent { SelectTimeZonesDialog(stack, ds, v) }
         rule.waitForIdle()
         val city = v.cities.value!!.keys.first()

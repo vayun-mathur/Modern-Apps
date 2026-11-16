@@ -57,7 +57,7 @@ class ClockPageDragTest {
         val ds = DataStoreUtils.getInstance(ctx)
         runBlocking { WorldClockCities.set(ds, listOf("Tokyo", "London")) }
         val vm = ClockViewModel(ctx, ClockRepository.get(ctx))
-        val stack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm))
         rule.setContent { ClockPage(stack, ds, vm) }
         // Cities load from the VM's asset parse; wait for both rows.
         val deadline = System.currentTimeMillis() + 15_000

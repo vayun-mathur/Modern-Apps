@@ -135,7 +135,7 @@ class ScreensDirectTest {
     }
 
     @Test fun alarmScreenEmptyPushesNewAlarmRoute() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm))
         rule.setContent {
             AlarmScreen(stack, AlarmUiState(alarms = emptyList()), com.vayunmathur.clock.platform.AlarmActions.Noop)
         }
@@ -145,7 +145,7 @@ class ScreensDirectTest {
     }
 
     @Test fun alarmScreenPopulatedRoutesAndCards() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm))
         val alarms = listOf(
             Alarm(LocalTime(7, 30), "Gym", true, 0b0100010, id = 1),
             Alarm(LocalTime(22, 15), "", false, 0, id = 2),
@@ -165,7 +165,7 @@ class ScreensDirectTest {
     }
 
     @Test fun clockScreenRowsAndAddRoute() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm))
         val now = Clock.System.now()
         val state = ClockUiState(
             now = { now },
@@ -184,7 +184,7 @@ class ScreensDirectTest {
     }
 
     @Test fun clockScreenDragReordersCities() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Alarm))
         val now = Clock.System.now()
         var reordered: List<String>? = null
         val state = ClockUiState(

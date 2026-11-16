@@ -4,12 +4,9 @@ import com.vayunmathur.library.util.NavKey
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 
-/** Navigation destinations for the clock app: the tabbed main screen and its dialogs. */
+/** Navigation destinations for the clock app: sibling tab routes and their dialogs. */
 @Serializable
 sealed interface Route : NavKey {
-    /** The tabbed main screen, opening on [initialTab]. */
-    @Serializable
-    data class Main(val initialTab: Int = 0) : Route
     /** The alarm tab destination. */
     @Serializable
     data object Alarm : Route
