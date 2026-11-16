@@ -164,6 +164,31 @@ class A2uiTemplatesTest {
         assertTrue(!A2uiTemplates.messageComposer("Ann", "+1", "Sim", "Hi").contains("thread_remote_id"))
     }
 
+    @Test fun foodTemplatesAreEnvelopeValid() {
+        assertEquals("$12.34", formatCents(1234))
+        assertEquals("$0.05", formatCents(5))
+        val menu = A2uiTemplates.foodMenu(
+            "Sushi Place", 7,
+            listOf(MenuItemRow(1, "Salmon Roll", 1200, true, 1), MenuItemRow(2, "Miso Soup", 400, false)),
+        )
+        assertEnvelopeValid(menu)
+        assertEquals("QuantityStepper", componentsOf(menu).getValue("stepper")["component"])
+        assertTrue(menu.contains("cart.food.update") && menu.contains("Salmon Roll"), menu)
+        assertTrue(menu.contains("unavailable"), menu)
+
+        val cart = A2uiTemplates.foodCart("Sushi Place", 7, listOf(CartLineRow(1, "Salmon Roll", 2, 2400)), 2400)
+        assertEnvelopeValid(cart)
+        assertTrue(cart.contains("Total $24.00"), cart)
+
+        val summary = A2uiTemplates.foodOrderSummary(
+            "Sushi Place", listOf("Salmon Roll × 2 — $24.00"), 2400, 200, 2600,
+            "fooddelivery://checkout", 7,
+        )
+        assertEnvelopeValid(summary)
+        assertTrue(summary.contains("handoff.food_checkout"), summary)
+        assertTrue(summary.contains("fooddelivery://checkout"), summary)
+    }
+
     @Test fun redactedSummaryShowsLengthsOnly() {
         assertEquals(
             "content(len=12), title(len=1)",

@@ -25,8 +25,20 @@ import com.vayunmathur.library.intents.communicate.FindConversationsQuery
 import com.vayunmathur.library.intents.communicate.GetMessagesQuery
 import com.vayunmathur.library.intents.communicate.SendMessageRequest
 import com.vayunmathur.library.intents.communicate.SendMessageResult
+import com.vayunmathur.library.intents.fooddelivery.CartData as FoodCartData
+import com.vayunmathur.library.intents.fooddelivery.FindRestaurants
+import com.vayunmathur.library.intents.fooddelivery.GetCart as FoodGetCart
+import com.vayunmathur.library.intents.fooddelivery.GetMenu
+import com.vayunmathur.library.intents.fooddelivery.GetOrders as FoodGetOrders
+import com.vayunmathur.library.intents.fooddelivery.MenuData
+import com.vayunmathur.library.intents.fooddelivery.OrderData as FoodOrderData
 import com.vayunmathur.library.intents.fooddelivery.OrderLookupRequest
 import com.vayunmathur.library.intents.fooddelivery.OrderLookupResult
+import com.vayunmathur.library.intents.fooddelivery.OrderSummaryData
+import com.vayunmathur.library.intents.fooddelivery.PrepareOrder
+import com.vayunmathur.library.intents.fooddelivery.RestaurantData
+import com.vayunmathur.library.intents.fooddelivery.SetCart
+import com.vayunmathur.library.intents.fooddelivery.SetCartItem
 import com.vayunmathur.library.intents.maps.DirectionsRequest
 import com.vayunmathur.library.intents.maps.DirectionsResult
 import com.vayunmathur.library.intents.taxi.RideEstimateRequest
@@ -42,6 +54,7 @@ import kotlinx.coroutines.runBlocking
 import com.vayunmathur.openassistant.MainActivity
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.serializer
 
 /**
@@ -304,6 +317,48 @@ internal class AssistantToolIntents(private val context: Context) {
         request,
     )
 
+    suspend fun findRestaurants(query: String, lat: Double, lng: Double, limit: Int): List<RestaurantData> = launchIntent(
+        context,
+        "com.vayunmathur.fooddelivery",
+        "com.vayunmathur.fooddelivery.intents.FindRestaurantsIntent",
+        FindRestaurants(query.takeIf { it.isNotBlank() }, lat, lng, limit),
+    )
+
+    suspend fun getRestaurantMenu(merchantId: Int): MenuData = launchIntent(
+        context,
+        "com.vayunmathur.fooddelivery",
+        "com.vayunmathur.fooddelivery.intents.GetMenuIntent",
+        GetMenu(merchantId),
+    )
+
+    suspend fun getFoodCart(): FoodCartData = launchIntent(
+        context,
+        "com.vayunmathur.fooddelivery",
+        "com.vayunmathur.fooddelivery.intents.GetCartIntent",
+        FoodGetCart(),
+    )
+
+    suspend fun setFoodCart(merchantId: Int, items: List<SetCartItem>): FoodCartData = launchIntent(
+        context,
+        "com.vayunmathur.fooddelivery",
+        "com.vayunmathur.fooddelivery.intents.SetCartIntent",
+        SetCart(merchantId, items),
+    )
+
+    suspend fun prepareFoodOrder(request: PrepareOrder): OrderSummaryData = launchIntent(
+        context,
+        "com.vayunmathur.fooddelivery",
+        "com.vayunmathur.fooddelivery.intents.PrepareOrderIntent",
+        request,
+    )
+
+    suspend fun getFoodOrders(): List<FoodOrderData> = launchIntent(
+        context,
+        "com.vayunmathur.fooddelivery",
+        "com.vayunmathur.fooddelivery.intents.GetOrdersIntent",
+        FoodGetOrders(),
+    )
+
     suspend fun getContactsList(): List<ContactData> = launchIntent<Unit, List<ContactData>>(
         context,
         "com.vayunmathur.contacts",
@@ -427,6 +482,73 @@ fun summarizeConversationMessages(list: List<ConversationMessageData>): String =
             "[$dir ${m.line}] ${m.body.take(200)}"
         }
     }
+
+/** Host-truncated restaurant list for the model. */
+fun summarizeRestaurants(list: List<RestaurantData>): String =
+    if (list.isEmpty()) {
+        "No restaurants found"
+    } else {
+        list.joinToString("\n") { r ->
+            val rating = r.rating?.let { " ★$it" } ?: ""
+            "merchant_id=${r.id} ${r.name}$rating ${if (r.isOpen) "open" else "closed"} ${r.address.take(60)}"
+        }
+    }
+
+/** Host-truncated menu for the model: ids, names, cents, availability, modifier rules. */
+fun summarizeMenu(menu: MenuData, cap: Int = 24): String {
+    if (menu.error != null) return "Error: menu unavailable (${menu.error})"
+    if (menu.items.isEmpty()) return "No menu items for ${menu.merchantName}"
+    val shown = menu.items.take(cap)
+    val lines = shown.joinToString("\n") { item ->
+        val mods = item.modifierGroups.joinToString(";") { g ->
+            "${g.name}[${g.modifiers.joinToString(",") { "${it.id}:${it.name}" }}] req=${g.required} min=${g.minSelections} max=${g.maxSelections}"
+        }
+        "item_id=${item.id} ${item.name} ${item.priceCents}c ${if (item.available) "available" else "unavailable"} ${item.category}${if (mods.isBlank()) "" else " $mods"}"
+    }
+    val more = if (menu.items.size > cap) "\n(${menu.items.size - cap} more items not shown)" else ""
+    return "Menu ${menu.merchantName} (merchant_id=${menu.merchantId}):\n$lines$more"
+}
+
+/** Cart summary for the model; also the success string of every cart write. */
+fun summarizeFoodCart(cart: FoodCartData): String {
+    if (cart.error != null) return "Error: cart not updated (${cart.error})"
+    if (cart.items.isEmpty()) return "Cart is empty"
+    val lines = cart.items.joinToString("\n") { "item_id=${it.itemId} ${it.name} x${it.qty} ${it.lineTotalCents}c" }
+    return "Cart ${cart.merchantName} (merchant_id=${cart.merchantId}):\n$lines\nTotal ${cart.totalCents}c"
+}
+
+/** Priced-order summary for the model; taxes/fee unknown until in-app checkout. */
+fun summarizeOrderSummary(summary: OrderSummaryData): String {
+    if (summary.error != null) return "Error: order not priced (${summary.error})"
+    val lines = summary.items.joinToString("\n") { "${it.name} x${it.qty} ${it.lineTotalCents}c" }
+    return "Order summary ${summary.merchantName} (${if (summary.isPickup) "pickup" else "delivery"}):\n$lines\n" +
+        "subtotal=${summary.subtotalCents}c tip=${summary.tipCents}c total=${summary.totalCents}c " +
+        "(taxes/delivery fee confirmed in FoodDelivery) checkout=${summary.checkoutDeepLink}"
+}
+
+/** Host-truncated past orders for the model. */
+fun summarizeFoodOrders(list: List<FoodOrderData>, cap: Int = 10): String =
+    if (list.isEmpty()) {
+        "No past orders"
+    } else {
+        list.take(cap).joinToString("\n") { o ->
+            "order_id=${o.id} ${o.merchantName} ${o.status} ${o.totalCents}c items=${o.itemCount}"
+        }
+    }
+
+/** Parses the food_set_cart items_json arg ([{itemId, qty, modifierIds}]). */
+fun parseSetCartItems(itemsJson: String): List<SetCartItem>? {
+    val root = runCatching { Json.parseToJsonElement(itemsJson) }.getOrNull() ?: return null
+    val array = root as? kotlinx.serialization.json.JsonArray ?: return null
+    return array.map { element ->
+        val obj = element as? kotlinx.serialization.json.JsonObject ?: return null
+        val itemId = (obj["itemId"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return null
+        val qty = (obj["qty"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return null
+        val mods = (obj["modifierIds"] as? kotlinx.serialization.json.JsonArray)
+            ?.map { (it as? JsonPrimitive)?.content?.toIntOrNull() ?: return null } ?: emptyList()
+        SetCartItem(itemId, qty, mods)
+    }
+}
 
 /** Maps a provider send outcome to the model-facing string; GV is typed. */
 fun summarizeSendResult(result: SendMessageResult): String = when {

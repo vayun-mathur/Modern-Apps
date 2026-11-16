@@ -238,6 +238,109 @@ class AssistantTools(
                 com.vayunmathur.openassistant.util.summarizeSendResult(result)
             }
         },
+        "find_restaurants" to { a ->
+            intents.runTool {
+                val limit = a.number("limit").toInt().takeIf { it > 0 } ?: 5
+                val list = intents.findRestaurants(
+                    a.string("query"), a.number("lat"), a.number("lng"), limit)
+                if (list.isNotEmpty()) {
+                    pendingRenderUi = A2uiTemplates.listPicker(
+                        "Restaurants",
+                        list.map {
+                            PickerItem(
+                                it.id.toString(), it.name,
+                                "${if (it.isOpen) "Open" else "Closed"} · ${it.address.take(50)}",
+                                it.imageUrl.takeIf { u -> u.isNotBlank() },
+                            )
+                        },
+                        actionName = "pick.restaurant",
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeRestaurants(list)
+            }
+        },
+        "get_restaurant_menu" to { a ->
+            intents.runTool {
+                val menu = intents.getRestaurantMenu(a.number("merchant_id").toInt())
+                if (menu.error == null && menu.items.isNotEmpty()) {
+                    pendingRenderUi = A2uiTemplates.foodMenu(
+                        menu.merchantName, menu.merchantId,
+                        menu.items.take(24).map {
+                            MenuItemRow(it.id, it.name, it.priceCents, it.available)
+                        },
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeMenu(menu)
+            }
+        },
+        "food_get_cart" to { _ ->
+            intents.runTool {
+                val cart = intents.getFoodCart()
+                if (cart.error == null && cart.items.isNotEmpty()) {
+                    pendingRenderUi = A2uiTemplates.foodCart(
+                        cart.merchantName, cart.merchantId,
+                        cart.items.map { CartLineRow(it.itemId, it.name, it.qty, it.lineTotalCents) },
+                        cart.totalCents,
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeFoodCart(cart)
+            }
+        },
+        "food_set_cart" to { a ->
+            val items = com.vayunmathur.openassistant.util.parseSetCartItems(a.string("items_json"))
+                ?: return@to "Error: items_json must be a JSON array of {itemId, qty, modifierIds}"
+            intents.runTool {
+                val cart = intents.setFoodCart(a.number("merchant_id").toInt(), items)
+                // Light write (design §2): executed immediately, always rendered back.
+                if (cart.error == null) {
+                    pendingRenderUi = A2uiTemplates.foodCart(
+                        cart.merchantName, cart.merchantId,
+                        cart.items.map { CartLineRow(it.itemId, it.name, it.qty, it.lineTotalCents) },
+                        cart.totalCents,
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeFoodCart(cart)
+            }
+        },
+        "food_prepare_order" to { a ->
+            intents.runTool {
+                com.vayunmathur.openassistant.util.summarizeOrderSummary(
+                    intents.prepareFoodOrder(
+                        com.vayunmathur.library.intents.fooddelivery.PrepareOrder(
+                            merchantId = a.number("merchant_id").toInt(),
+                            isPickup = a.number("is_pickup").toInt() == 1,
+                            addressId = a.string("address_id").takeIf { it.isNotBlank() },
+                            tipCents = a.number("tip_cents").toInt(),
+                            promo = a.string("promo").takeIf { it.isNotBlank() },
+                        ),
+                    ),
+                )
+            }
+        },
+        "place_food_order" to { a ->
+            intents.runTool {
+                val summary = intents.prepareFoodOrder(
+                    com.vayunmathur.library.intents.fooddelivery.PrepareOrder(
+                        merchantId = a.number("merchant_id").toInt(),
+                    ),
+                )
+                if (summary.error == null) {
+                    pendingRenderUi = A2uiTemplates.foodOrderSummary(
+                        summary.merchantName,
+                        summary.items.map { "${it.name} × ${it.qty} — ${formatCents(it.lineTotalCents)}" },
+                        summary.subtotalCents, summary.tipCents, summary.totalCents,
+                        summary.checkoutDeepLink, summary.merchantId,
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeOrderSummary(summary) +
+                    " Show the user this summary; they place the order in FoodDelivery."
+            }
+        },
+        "get_food_orders" to { _ ->
+            intents.runTool {
+                com.vayunmathur.openassistant.util.summarizeFoodOrders(intents.getFoodOrders())
+            }
+        },
         "web_search" to { a ->
             val count = a.number("count").toInt().takeIf { it > 0 } ?: 5
             val result = runBlocking { webTools.webSearch(a.string("query"), count, a.string("kind", "text")) }

@@ -148,6 +148,12 @@ class AssistantViewModel(
                 }
                 return true
             }
+            "handoff.food_checkout" -> {
+                val link = context["deepLink"]?.toString().orEmpty()
+                if (link.isBlank()) return false
+                openUrl(link)
+                return true
+            }
             "open.conversation" -> {
                 val address = context["address"]?.toString().orEmpty()
                 if (address.isBlank()) return false

@@ -18,6 +18,30 @@ data class PickerItem(
     val imageUrl: String? = null,
 )
 
+/** One menu row in a [A2uiTemplates.foodMenu] card. */
+data class MenuItemRow(
+    val id: Int,
+    val name: String,
+    val priceCents: Int,
+    val available: Boolean,
+    val qty: Int = 0,
+)
+
+/** One cart/order line row in the food and order-summary cards. */
+data class CartLineRow(
+    val itemId: Int,
+    val name: String,
+    val qty: Int,
+    val lineTotalCents: Int,
+)
+
+/** Formats integer cents as a dollar string ($12.34, -$1.00). */
+fun formatCents(cents: Int): String {
+    val sign = if (cents < 0) "-" else ""
+    val abs = kotlin.math.abs(cents)
+    return "$sign\$${abs / 100}.${(abs % 100).toString().padStart(2, '0')}"
+}
+
 /** One web search result in a [A2uiTemplates.searchResults] card. */
 data class SearchResultItem(
     val index: Int,
@@ -215,6 +239,159 @@ object A2uiTemplates {
             put("line", line)
             put("body", body)
             threadRemoteId?.takeIf { it.isNotBlank() }?.let { put("threadRemoteId", it) }
+        }
+        return envelope(components, data)
+    }
+
+    /**
+     * Menu card (design §3.2 item card): one row per item with a
+     * [QuantityStepper] bound to that item's qty. Steppers only edit card
+     * data; the single Update cart button (`cart.food.update`) snapshots
+     * every qty back to the model in one turn.
+     */
+    fun foodMenu(merchantName: String, merchantId: Int, items: List<MenuItemRow>): String {
+        val components = buildJsonArray {
+            add(obj("id" to s("root"), "component" to s("Card"), "child" to s("col")))
+            add(
+                obj(
+                    "id" to s("col"), "component" to s("Column"),
+                    "children" to JsonArray(listOf(s("title"), s("items"), s("btnUpdate"))),
+                ),
+            )
+            add(text("title", merchantName, "title"))
+            add(
+                obj(
+                    "id" to s("items"), "component" to s("List"),
+                    "children" to buildJsonObject {
+                        put("componentId", "item")
+                        put("path", "/items")
+                    },
+                ),
+            )
+            add(
+                obj(
+                    "id" to s("item"), "component" to s("Row"),
+                    "children" to JsonArray(listOf(s("itemBody"), s("stepper"))),
+                ),
+            )
+            add(
+                obj(
+                    "id" to s("itemBody"), "component" to s("Column"),
+                    "children" to JsonArray(listOf(s("itemName"), s("itemPrice"))),
+                ),
+            )
+            add(boundText("itemName", "/name", "body"))
+            add(boundText("itemPrice", "/priceText", "caption"))
+            add(
+                obj(
+                    "id" to s("stepper"), "component" to s("QuantityStepper"),
+                    "value" to path("/qty"),
+                    "min" to JsonPrimitive(0), "max" to JsonPrimitive(99),
+                ),
+            )
+            add(
+                actionButton(
+                    "btnUpdate", "Update cart", "cart.food.update",
+                    mapOf("merchantId" to JsonPrimitive(merchantId), "items" to pathValue("/items")),
+                    primary = true,
+                ),
+            )
+        }
+        val data = buildJsonObject {
+            put("merchantId", merchantId)
+            put(
+                "items",
+                JsonArray(
+                    items.map { item ->
+                        buildJsonObject {
+                            put("id", item.id)
+                            put("name", item.name)
+                            put("priceCents", item.priceCents)
+                            put("priceText", formatCents(item.priceCents) + if (item.available) "" else " · unavailable")
+                            put("qty", item.qty)
+                        }
+                    },
+                ),
+            )
+        }
+        return envelope(components, data)
+    }
+
+    /** Cart card: lines, total, and (when non-empty) a checkout handoff button. */
+    fun foodCart(merchantName: String, merchantId: Int, items: List<CartLineRow>, totalCents: Int): String =
+        cartCard(
+            title = merchantName.ifBlank { "Your cart" },
+            lines = items.map { "${it.name} × ${it.qty} — ${formatCents(it.lineTotalCents)}" },
+            totalLine = "Total ${formatCents(totalCents)}",
+            dataExtra = mapOf("merchantId" to JsonPrimitive(merchantId)),
+        )
+
+    /** Order-summary card: the primary button is the food checkout host handoff. */
+    fun foodOrderSummary(
+        merchantName: String,
+        lines: List<String>,
+        subtotalCents: Int,
+        tipCents: Int,
+        totalCents: Int,
+        checkoutDeepLink: String,
+        merchantId: Int,
+    ): String {
+        val allLines = lines + listOf(
+            "Subtotal ${formatCents(subtotalCents)}",
+            "Tip ${formatCents(tipCents)}",
+            "Total ${formatCents(totalCents)} (final total confirmed in FoodDelivery)",
+        )
+        val lineIds = allLines.indices.map { "line$it" }
+        val components = buildJsonArray {
+            add(obj("id" to s("root"), "component" to s("Card"), "child" to s("col")))
+            add(
+                obj(
+                    "id" to s("col"), "component" to s("Column"),
+                    "children" to JsonArray(
+                        listOf(s("title")) + lineIds.map { s(it) } + listOf(s("btnCheckout")),
+                    ),
+                ),
+            )
+            add(text("title", merchantName.ifBlank { "Order" }, "title"))
+            allLines.forEachIndexed { i, line -> add(text("line$i", line, "body")) }
+            add(
+                actionButton(
+                    "btnCheckout", "Place order in FoodDelivery", "handoff.food_checkout",
+                    mapOf("deepLink" to s(checkoutDeepLink), "merchantId" to JsonPrimitive(merchantId)),
+                    primary = true,
+                ),
+            )
+        }
+        val data = buildJsonObject {
+            put("merchantId", merchantId)
+            put("checkoutDeepLink", checkoutDeepLink)
+            put("totalCents", totalCents)
+        }
+        return envelope(components, data)
+    }
+
+    private fun cartCard(
+        title: String,
+        lines: List<String>,
+        totalLine: String,
+        dataExtra: Map<String, JsonElement>,
+    ): String {
+        val lineIds = lines.indices.map { "line$it" }
+        val components = buildJsonArray {
+            add(obj("id" to s("root"), "component" to s("Card"), "child" to s("col")))
+            add(
+                obj(
+                    "id" to s("col"), "component" to s("Column"),
+                    "children" to JsonArray(listOf(s("title")) + lineIds.map { s(it) } + listOf(s("total"))),
+                ),
+            )
+            add(text("title", title, "title"))
+            lines.forEachIndexed { i, line -> add(text("line$i", line, "body")) }
+            add(text("total", totalLine, "title"))
+        }
+        val data = buildJsonObject {
+            put("title", title)
+            dataExtra.forEach { (k, v) -> put(k, v) }
         }
         return envelope(components, data)
     }

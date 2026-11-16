@@ -14,7 +14,7 @@ class AssistantToolsTest {
     @Test
     fun namesAreUniqueSnakeCase() {
         val names = ASSISTANT_TOOL_SPECS.map { it.name }
-        assertEquals(40, names.size)
+        assertEquals(47, names.size)
         assertEquals(names.size, names.toSet().size)
         for (spec in ASSISTANT_TOOL_SPECS) {
             assertTrue(snake.matches(spec.name), spec.name)
@@ -63,6 +63,10 @@ class AssistantToolsTest {
                 "food_order_lookup.lat", "food_order_lookup.lng",
                 "web_search.count", "web_read_result.index", "web_read_result.offset",
                 "find_conversations.limit", "get_conversation_messages.limit",
+                "find_restaurants.lat", "find_restaurants.lng", "find_restaurants.limit",
+                "get_restaurant_menu.merchant_id", "food_set_cart.merchant_id",
+                "food_prepare_order.merchant_id", "food_prepare_order.is_pickup",
+                "food_prepare_order.tip_cents", "place_food_order.merchant_id",
             ),
             numeric,
         )

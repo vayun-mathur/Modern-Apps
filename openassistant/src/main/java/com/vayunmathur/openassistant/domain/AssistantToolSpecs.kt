@@ -227,6 +227,53 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
             p("thread_remote_id", description = "optional existing thread id to reply into", required = false),
         ), risk = WRITE_CONFIRM,
     ),
+    ToolSpec(
+        "find_restaurants",
+        "Find restaurants near a location via the FoodDelivery app, optionally filtered by name or tag.",
+        listOf(
+            p("query", description = "optional name or tag filter", required = false),
+            p("lat", NUMBER, "latitude"),
+            p("lng", NUMBER, "longitude"),
+            p("limit", NUMBER, "optional max results (default 5)", required = false),
+        ),
+    ),
+    ToolSpec(
+        "get_restaurant_menu",
+        "Get the menu of a restaurant (merchant_id from find_restaurants). Items carry ids, " +
+            "prices in cents, availability and modifier groups.",
+        listOf(p("merchant_id", NUMBER, "merchant id from find_restaurants")),
+    ),
+    ToolSpec("food_get_cart", "Get the current FoodDelivery cart (items and total)"),
+    ToolSpec(
+        "food_set_cart",
+        "Replace the FoodDelivery cart with items_json: a JSON array like " +
+            "[{\"itemId\":1,\"qty\":2,\"modifierIds\":[]}]. The cart is re-validated and shown " +
+            "back to the user right away; no order is placed and no money moves.",
+        listOf(
+            p("merchant_id", NUMBER, "merchant id the items belong to"),
+            p("items_json", description = "JSON array of {itemId, qty, modifierIds}"),
+        ), risk = WRITE_LIGHT,
+    ),
+    ToolSpec(
+        "food_prepare_order",
+        "Price the current cart for an order (pickup or delivery) without creating an order. " +
+            "Returns the summary the user will confirm in the FoodDelivery app.",
+        listOf(
+            p("merchant_id", NUMBER, "merchant id of the cart"),
+            p("is_pickup", NUMBER, "1 for pickup, 0 (default) for delivery", required = false),
+            p("address_id", description = "optional saved address id", required = false),
+            p("tip_cents", NUMBER, "optional tip in cents", required = false),
+            p("promo", description = "optional promo code", required = false),
+        ),
+    ),
+    ToolSpec(
+        "place_food_order",
+        "Show the order summary for the current cart. The user places and pays for the order " +
+            "in the FoodDelivery app itself; this never creates an order or charges a card.",
+        listOf(p("merchant_id", NUMBER, "merchant id of the cart")),
+        risk = HANDOFF_PREP,
+    ),
+    ToolSpec("get_food_orders", "Get the user's past FoodDelivery orders"),
     ToolSpec("get_memories", "Get a list of all memories"),
     ToolSpec("remove_memory", "Remove a memory by its id (requires confirmation)", listOf(p("id", NUMBER)), risk = WRITE_CONFIRM),
     ToolSpec("add_to_memory", "Add a new memory to the list of memories", listOf(p("content"))),

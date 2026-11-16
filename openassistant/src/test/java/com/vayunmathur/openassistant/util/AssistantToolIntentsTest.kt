@@ -161,6 +161,29 @@ class AssistantToolIntentsTest {
                 .contains("Google Voice"))
     }
 
+    @Test fun foodToolsThrowMissingAppAndSummariesParse() = runTest {
+        assertFailsWith<MissingAppException> { tools.findRestaurants("sushi", 1.0, 2.0, 5) }
+        assertFailsWith<MissingAppException> { tools.getRestaurantMenu(7) }
+        assertFailsWith<MissingAppException> { tools.getFoodCart() }
+        assertFailsWith<MissingAppException> { tools.getFoodOrders() }
+        val parsed = parseSetCartItems("[{\"itemId\":1,\"qty\":2,\"modifierIds\":[3]}]")
+        assertEquals(1, parsed?.size)
+        assertEquals(3, parsed?.first()?.modifierIds?.first())
+        assertEquals(null, parseSetCartItems("nope"))
+        assertEquals(null, parseSetCartItems("[{\"qty\":2}]"))
+        val cart = summarizeFoodCart(
+            com.vayunmathur.library.intents.fooddelivery.CartData(
+                merchantId = 7, merchantName = "Sushi",
+                items = listOf(
+                    com.vayunmathur.library.intents.fooddelivery.CartItemData(1, "Roll", 2, emptyList(), 2400)),
+                totalCents = 2400))
+        assertTrue(cart.contains("Roll") && cart.contains("2400c"), cart)
+        assertEquals("Cart is empty", summarizeFoodCart(
+            com.vayunmathur.library.intents.fooddelivery.CartData()))
+        assertTrue(summarizeMenu(
+            com.vayunmathur.library.intents.fooddelivery.MenuData(error = "DOWN")).contains("DOWN"))
+    }
+
     @Test fun requestPayloadShapes() {
         assertEquals(3.5, WeatherLatLonRequest(3.5, -1.25).latitude)
         assertEquals("Lisbon", WeatherNameRequest("Lisbon").name)

@@ -118,6 +118,10 @@ class InferenceService : Service() {
             - find_conversations searches conversations (thread_key identifies each); get_conversation_messages reads one.
             - To compose a message, prefer draft_message: it shows an editable composer card and sends nothing. When the user taps Send (msg.send) or confirms send_message_v2, the app shows a confirmation card first — never claim a message was sent until the tool result says so.
             - send_message_v2 requires explicit user confirmation; GoogleVoice cannot send here, so offer to open the conversation instead. The legacy send_message only opens a pre-filled SMS screen.
+
+            FOOD (FoodDelivery app):
+            - find_restaurants needs a latitude/longitude; get_restaurant_menu shows items with ids and prices in cents. Build carts only from menu item ids, with modifier ids from that item's groups.
+            - food_set_cart replaces the cart and is shown back to the user immediately; then food_prepare_order prices it. place_food_order only shows the summary: the user taps Place order in FoodDelivery to pay. Never claim an order was placed or paid for from here.
             """.trimIndent()
     }
 

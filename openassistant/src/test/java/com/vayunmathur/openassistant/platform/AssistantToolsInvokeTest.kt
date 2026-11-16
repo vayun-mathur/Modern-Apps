@@ -44,7 +44,7 @@ class AssistantToolsInvokeTest {
         assertEquals("Error: create_note needs title", call("create_note", "content" to "x"))
         assertTrue(
             call("set_timer", "seconds" to "abc").contains("must be a number"))
-        assertEquals(40, tools.declarations.size)
+        assertEquals(47, tools.declarations.size)
     }
 
     @Test fun crossAppToolsReportMissingApps() {
@@ -231,15 +231,33 @@ class AssistantToolsInvokeTest {
         assertTrue(card != null && card.contains("msg.send") && card.contains("Running late"), "$card")
     }
 
+    @Test fun foodToolsMissingAppAndLightWriteExecutes() {
+        assertTrue(call("find_restaurants", "lat" to "1.0", "lng" to "2.0").startsWith("The FoodDelivery app is required"))
+        assertTrue(call("get_restaurant_menu", "merchant_id" to "3").startsWith("The FoodDelivery app is required"))
+        assertTrue(call("food_get_cart").startsWith("The FoodDelivery app is required"))
+        assertTrue(call("get_food_orders").startsWith("The FoodDelivery app is required"))
+        // Light write: no confirmation gate — it executes (and reports the missing app here).
+        val light = call("food_set_cart", "merchant_id" to "3", "items_json" to "[{\"itemId\":1,\"qty\":2}]")
+        assertTrue(light.startsWith("The FoodDelivery app is required"), light)
+        assertEquals(
+            "Error: items_json must be a JSON array of {itemId, qty, modifierIds}",
+            call("food_set_cart", "merchant_id" to "3", "items_json" to "not json"))
+        // Handoff-prep executes its read side only; it never gates and never orders.
+        assertTrue(call("place_food_order", "merchant_id" to "3").startsWith("The FoodDelivery app is required"))
+    }
+
     @Test fun riskClassificationMatchesDesign() {
         val gated = setOf("create_note", "create_todo", "complete_todo", "create_contact",
             "create_calendar_event", "create_location_share_link", "play_music",
             "set_alarm", "set_timer", "remove_memory", "send_message_v2")
+        val light = setOf("food_set_cart")
+        val handoff = setOf("place_food_order")
         for (spec in com.vayunmathur.openassistant.domain.ASSISTANT_TOOL_SPECS) {
-            val expected = if (spec.name in gated) {
-                com.vayunmathur.openassistant.domain.ToolRisk.WRITE_CONFIRM
-            } else {
-                com.vayunmathur.openassistant.domain.ToolRisk.READ
+            val expected = when (spec.name) {
+                in gated -> com.vayunmathur.openassistant.domain.ToolRisk.WRITE_CONFIRM
+                in light -> com.vayunmathur.openassistant.domain.ToolRisk.WRITE_LIGHT
+                in handoff -> com.vayunmathur.openassistant.domain.ToolRisk.HANDOFF_PREP
+                else -> com.vayunmathur.openassistant.domain.ToolRisk.READ
             }
             assertEquals(expected, spec.risk, spec.name)
         }
