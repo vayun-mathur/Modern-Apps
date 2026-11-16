@@ -68,8 +68,19 @@ class RcsSlice3Pass2UiTest {
         // Idle Robolectric's paused main looper per poll: the screens load
         // through Dispatchers.Main, whose queued resumes waitUntil alone
         // does not run, so the text could sit unlanded past the timeout.
-        rule.waitUntil(timeoutMs) {
+        // Step counted in real time (parkNanos) rather than waitUntil's
+        // clock: on the loaded CI box the compose test clock and the
+        // paused looper starve each other and 30s of waitUntil can elapse
+        // without the IO resume ever being pumped through.
+        var steps = 0
+        val maxSteps = (timeoutMs / 25).toInt()
+        while (steps++ < maxSteps) {
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            if (rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()) return
+            try { Thread.sleep(25) } catch (_: InterruptedException) { }
+        }
+        // Final direct check so the failure message names the missing text.
+        rule.waitUntil(1_000) {
             rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         }
     }
@@ -251,6 +262,13 @@ class RcsSlice3Pass2UiTest {
         // the members still render.
         testDb.conversationDao().upsert(
             RcsConversation(remoteId = "conv-ui-2", participants = "+15552002002"),
+        )
+        // Warm the bundled SQLite driver + DAO on this thread before
+        // composing: first-use driver init inside the screen's IO query
+        // is the slowest step on a cold, loaded CI box.
+        assertEquals(
+            "+15552002002",
+            testDb.conversationDao().getConversation("conv-ui-2")?.participants,
         )
         rule.setContent {
             DynamicTheme(darkTheme = false) {
