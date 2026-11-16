@@ -20,43 +20,43 @@ class CallRouteSyncTest {
 
     @Test
     fun `leaving idle pushes the call over the current screen`() {
-        val stack = stackOf(Route.Main, Route.Accounts)
+        val stack = stackOf(Route.Messages, Route.Accounts)
         syncCallRoute(stack, InAppCallPhase.Incoming)
-        assertEquals(listOf(Route.Main, Route.Accounts, Route.Call), stack.backStack)
+        assertEquals(listOf(Route.Messages, Route.Accounts, Route.Call), stack.backStack)
     }
 
     @Test
     fun `live phases keep a single call destination on top`() {
-        val stack = stackOf(Route.Main)
+        val stack = stackOf(Route.Messages)
         syncCallRoute(stack, InAppCallPhase.Outgoing)
         syncCallRoute(stack, InAppCallPhase.Connecting)
         syncCallRoute(stack, InAppCallPhase.Active)
         syncCallRoute(stack, InAppCallPhase.Ended)
-        assertEquals(listOf(Route.Main, Route.Call), stack.backStack)
+        assertEquals(listOf(Route.Messages, Route.Call), stack.backStack)
     }
 
     @Test
     fun `returning to idle pops the call and reveals the previous screen`() {
         val conversation = Route.Conversation(threadId = 7L, address = "+15551234567")
-        val stack = stackOf(Route.Main, conversation)
+        val stack = stackOf(Route.Messages, conversation)
         syncCallRoute(stack, InAppCallPhase.Active)
         syncCallRoute(stack, InAppCallPhase.Idle)
-        assertEquals(listOf(Route.Main, conversation), stack.backStack)
+        assertEquals(listOf(Route.Messages, conversation), stack.backStack)
     }
 
     @Test
     fun `idle without a call on top leaves the stack untouched`() {
-        val stack = stackOf(Route.Main)
+        val stack = stackOf(Route.Messages)
         syncCallRoute(stack, InAppCallPhase.Idle)
-        assertEquals(listOf(Route.Main), stack.backStack)
+        assertEquals(listOf(Route.Messages), stack.backStack)
     }
 
     @Test
     fun `a destination pushed over the call does not bury it`() {
-        val stack = stackOf(Route.Main)
+        val stack = stackOf(Route.Messages)
         syncCallRoute(stack, InAppCallPhase.Active)
         stack.add(Route.Accounts)
         syncCallRoute(stack, InAppCallPhase.Active)
-        assertEquals(listOf(Route.Main, Route.Accounts, Route.Call), stack.backStack)
+        assertEquals(listOf(Route.Messages, Route.Accounts, Route.Call), stack.backStack)
     }
 }
