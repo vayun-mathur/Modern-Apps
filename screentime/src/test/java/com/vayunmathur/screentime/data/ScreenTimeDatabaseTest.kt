@@ -19,6 +19,24 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class ScreenTimeDatabaseTest {
 
+    companion object {
+        /**
+         * Other classes' background writes reach the SQLCipher-backed rules
+         * store, whose native error kotlinx-coroutines-test stores and
+         * rethrows at the next runTest (this class). Drain it at class level.
+         */
+        @org.junit.BeforeClass @JvmStatic fun drainStoredDbErrors() {
+            repeat(8) {
+                try {
+                    kotlinx.coroutines.test.runTest { }
+                } catch (e: IllegalStateException) {
+                    if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
+                }
+                Thread.sleep(400)
+            }
+        }
+    }
+
     private lateinit var db: ScreenTimeDatabase
     @BeforeTest fun open() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
