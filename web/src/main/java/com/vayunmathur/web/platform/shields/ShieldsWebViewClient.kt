@@ -14,6 +14,7 @@ import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.vayunmathur.web.domain.EffectiveShields
+import com.vayunmathur.web.domain.shields.HostShieldsCache
 import com.vayunmathur.web.domain.shields.ResourceTypes
 import com.vayunmathur.web.domain.shields.UrlCleaner
 import com.vayunmathur.web.platform.AdultSites
@@ -61,6 +62,13 @@ open class ShieldsWebViewClient(
     @Volatile
     private var pageUrl: String = ""
 
+    /**
+     * Resolved shields for [pageUrl]'s host, memoised for the page load.
+     * Every subresource of a page shares its host's shields, so resolving
+     * per request only repeats one answer; a new page host re-resolves.
+     */
+    private val shieldsCache = HostShieldsCache(shieldsFor)
+
     /** Per-session salt; combined with the site's host it gives Brave's per-origin seed. */
     private val sessionSalt: Int = Random.nextInt()
 
@@ -99,7 +107,7 @@ open class ShieldsWebViewClient(
             pageUrl = request.url.toString()
             blockedByContentFilter(request)?.let { return it }
         }
-        return ShieldsRequestFilter.intercept(context, request, pageUrl, shieldsFor, onBlocked)
+        return ShieldsRequestFilter.intercept(context, request, pageUrl, shieldsCache::forHost, onBlocked)
     }
 
     /**

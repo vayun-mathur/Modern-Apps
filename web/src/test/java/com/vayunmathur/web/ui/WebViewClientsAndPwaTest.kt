@@ -161,6 +161,19 @@ class WebViewClientsAndPwaTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun settingsSpecChangesOnlyWhenAnAppliedInputChanges() {
+        val v = vm()
+        val before = webViewSettingsSpec(v)
+        // Stable while nothing the settings read has changed: recomposition
+        // alone must not re-apply WebView settings.
+        kotlin.test.assertEquals(before, webViewSettingsSpec(v))
+        v.desktopMode = true
+        kotlin.test.assertNotEquals(before, webViewSettingsSpec(v))
+        val desktop = webViewSettingsSpec(v)
+        v.jsEnabled = false
+        kotlin.test.assertNotEquals(desktop, webViewSettingsSpec(v))
+    }
+
     @Test fun pwaActivityWithoutUrlShowsEmptyShell() {
         val controller = Robolectric.buildActivity(PwaActivity::class.java, Intent(context, PwaActivity::class.java))
         val activity = controller.create().start().resume().get()

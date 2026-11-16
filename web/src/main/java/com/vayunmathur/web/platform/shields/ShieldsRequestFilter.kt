@@ -10,6 +10,7 @@ import com.vayunmathur.web.R
 import com.vayunmathur.web.domain.EffectiveShields
 import com.vayunmathur.web.domain.LanPolicy
 import com.vayunmathur.web.domain.LocalNetwork
+import com.vayunmathur.web.domain.shields.RequestGate
 import com.vayunmathur.web.domain.shields.ResourceTypes
 import java.io.ByteArrayInputStream
 import java.util.Base64
@@ -57,7 +58,7 @@ object ShieldsRequestFilter {
         cleartextBlockResponse(context, request, scheme)?.let { return it }
 
         if (request.isForMainFrame) return null
-        return shieldBlockResponse(request, url, pageUrl, shieldsFor, onBlocked)
+        return shieldBlockResponse(request, url, pageUrl, shieldsFor, onBlocked, scheme)
     }
 
     /** Non-null when a cleartext request targets a host the LAN policy forbids. */
@@ -88,10 +89,16 @@ object ShieldsRequestFilter {
         pageUrl: String,
         shieldsFor: (host: String) -> EffectiveShields,
         onBlocked: (pageUrl: String, blockedUrl: String) -> Unit,
+        scheme: String?,
     ): WebResourceResponse? {
         val source = pageUrl.ifEmpty { url }
         val shields = shieldsFor(hostOf(source))
-        if (!shields.blockTrackers) return null
+        // The gate is checked before touching requestHeaders / ResourceTypes:
+        // with the engine still loading, ShieldsEngine.check can only return
+        // null, so classifying the resource would be pure waste per request.
+        if (!RequestGate.shouldShieldCheck(scheme, false, ShieldsEngine.ready, shields.blockTrackers)) {
+            return null
+        }
 
         val type = ResourceTypes.of(url, isMainFrame = false, headers = request.requestHeaders)
         val result = ShieldsEngine.check(url, source, type) ?: return null

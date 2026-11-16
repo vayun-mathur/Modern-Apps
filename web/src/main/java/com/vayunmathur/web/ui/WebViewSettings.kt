@@ -23,6 +23,51 @@ internal fun WebSettings.applySystemDarkMode() {
     }
 }
 
+/**
+ * The inputs [applyWebViewSettings] actually reads. Recomposition during
+ * a load (progress, title, URL, blocked count) used to re-apply every
+ * setting — a default-user-agent lookup, a cookie-manager call, a
+ * geolocation-path call and a reflective Safe Browsing probe — on the
+ * main thread, several times per page. Callers compare specs and only
+ * re-apply when one of these values changed.
+ */
+internal data class WebViewSettingsSpec(
+    val jsEnabled: Boolean,
+    val cacheMode: Int,
+    val desktopMode: Boolean,
+    val blockThirdPartyCookies: Boolean,
+    val httpsOnly: Boolean,
+)
+
+internal fun webViewSettingsSpec(viewModel: WebViewModel): WebViewSettingsSpec {
+    val globalShields = com.vayunmathur.web.domain.EffectiveShields.resolve(viewModel.shields)
+    return WebViewSettingsSpec(
+        jsEnabled = viewModel.jsEnabled,
+        cacheMode = viewModel.cacheMode.webSettingsValue,
+        desktopMode = viewModel.desktopMode,
+        blockThirdPartyCookies = viewModel.blockThirdPartyCookies,
+        httpsOnly = globalShields.httpsOnly,
+    )
+}
+
+/** Process-wide: the default UA is a system string, identical for every WebView in the process. */
+@Volatile
+private var cachedDefaultUserAgent: String? = null
+
+private fun defaultUserAgent(context: android.content.Context): String =
+    cachedDefaultUserAgent ?: WebSettings.getDefaultUserAgent(context).also { cachedDefaultUserAgent = it }
+
+/** Process-wide: Safe Browsing support is a property of the installed WebView, not of a page. */
+@Volatile
+private var safeBrowsingSupported: Boolean? = null
+
+private fun applySafeBrowsing(settings: WebSettings) {
+    val supported = safeBrowsingSupported ?: runCatching {
+        WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_ENABLE)
+    }.getOrDefault(false).also { safeBrowsingSupported = it }
+    if (supported) runCatching { WebSettingsCompat.setSafeBrowsingEnabled(settings, true) }
+}
+
 internal fun applyWebViewSettings(webView: WebView, viewModel: WebViewModel) {
     val settings = webView.settings
 
@@ -73,23 +118,14 @@ internal fun applyWebViewSettings(webView: WebView, viewModel: WebViewModel) {
     settings.userAgentString = if (viewModel.desktopMode) {
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     } else {
-        WebSettings.getDefaultUserAgent(webView.context)
+        defaultUserAgent(webView.context)
     }
 
     settings.mediaPlaybackRequiresUserGesture = false
 
     settings.applySystemDarkMode()
 
-    // Safe browsing
-    try {
-        val compat = Class.forName("androidx.webkit.WebSettingsCompat")
-        val feature = Class.forName("androidx.webkit.WebViewFeature")
-        val isSupported = feature.getMethod("isFeatureSupported", String::class.java).invoke(null, "SAFE_BROWSING_ENABLE") as Boolean
-        if (isSupported) {
-            compat.getMethod("setSafeBrowsingEnabled", WebSettings::class.java, Boolean::class.javaPrimitiveType)
-                .invoke(null, settings, true)
-        }
-    } catch (_: Exception) {}
+    applySafeBrowsing(settings)
 }
 
 internal fun WebView.evalJsForStorageInfo(origin: String, cookieCount: Int, vm: WebViewModel) {

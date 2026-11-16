@@ -35,6 +35,7 @@ import com.vayunmathur.web.platform.requestFileChooser
 import com.vayunmathur.web.platform.requestGeolocation
 import com.vayunmathur.web.platform.requestWebPermission
 import com.vayunmathur.web.platform.resetBlockedCount
+import com.vayunmathur.web.domain.shields.OriginProbeGate
 import com.vayunmathur.web.platform.shields.ShieldsWebViewClient
 import com.vayunmathur.web.platform.shieldsFor
 
@@ -68,6 +69,9 @@ internal fun createBrowserWebViewClient(
         view.loadUrl(rewritten)
     },
 ) {
+    /** One probe per origin change for this tab; reloads of one origin do not re-probe. */
+    private val probeGate = OriginProbeGate()
+
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val scheme = request.url.scheme ?: return false
         if (scheme !in setOf("about", "data", "blob", "javascript") && !BrowserUtils.isWebScheme(scheme)) {
@@ -107,7 +111,12 @@ internal fun createBrowserWebViewClient(
             viewModel.recordHistoryVisit(url ?: "", title, isPrivateTab)
         }
         url?.let { u ->
-            if (BrowserUtils.isWebUrl(u)) {
+            // Both JS probes are a full evaluateJavascript round trip (the
+            // storage one walks every localStorage entry). They only earn
+            // that on the first finish for an origin: reloads and redirect
+            // finishes of the same origin cannot change the answers enough
+            // to matter, and this callback is on the load critical path.
+            if (BrowserUtils.isWebUrl(u) && probeGate.shouldProbe(BrowserUtils.originFromUrl(u))) {
                 runCatching {
                     val origin = BrowserUtils.originFromUrl(u)
                     val cookies = CookieManager.getInstance().getCookie(u)
@@ -130,7 +139,11 @@ internal fun createBrowserWebViewClient(
                 }
             }
         }
-        viewModel.captureThumbnail(tabId, view)
+        // No thumbnail here: drawing the WebView into a bitmap is a main-
+        // thread raster taken at the exact moment the page becomes usable.
+        // Thumbnails are captured when the tab actually leaves the
+        // foreground (tab switch, switcher opening), which is the only
+        // moment a tile can be seen.
     }
 
     override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {

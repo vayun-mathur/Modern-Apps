@@ -149,7 +149,17 @@ fun WebViewBrowser(
         factory = { ctx ->
             webViewPool[tabId]?.let { existing ->
                 (existing.parent as? ViewGroup)?.removeView(existing)
-                applyWebViewSettings(existing, viewModel)
+                existing.onResume()
+                val spec = webViewSettingsSpec(viewModel)
+                if (holder.lastSettingsSpec != spec) {
+                    applyWebViewSettings(existing, viewModel)
+                    holder.lastSettingsSpec = spec
+                }
+                if (holder.lastFarblingConfig != farblingConfig) {
+                    (existing.webViewClient as? ShieldsWebViewClient)
+                        ?.installFarbling(existing, farblingConfig)
+                    holder.lastFarblingConfig = farblingConfig
+                }
                 existing.setOnLongClickListener {
                     val hit = existing.hitTestResult
                     val url = linkUrlFromHitTest(hit?.type, hit?.extra)
@@ -231,7 +241,12 @@ fun WebViewBrowser(
                 loadUrl(if (BrowserUtils.canLoadInWebView(toLoad)) toLoad else "about:blank")
             }.also {
                 webViewPool[tabId] = it
-                applyWebViewSettings(it, viewModel)
+                // Settings were already applied inside the factory above; the
+                // second application the pool registration used to do was
+                // pure main-thread repetition.
+                holder.lastSettingsSpec = webViewSettingsSpec(viewModel)
+                holder.lastFarblingConfig = farblingConfig
+                holder.webView = it
             }
         },
         update = { webView ->
@@ -249,9 +264,20 @@ fun WebViewBrowser(
                     webView.loadUrl(desired)
                 }
             }
-            applyWebViewSettings(webView, viewModel)
-            (webView.webViewClient as? ShieldsWebViewClient)
-                ?.installFarbling(webView, farblingConfig)
+            // Recomposition fires for progress/title/URL changes all through
+            // a load. Neither the settings nor the farbling script (a ~10 KB
+            // string rebuilt to compare equal) may be re-applied for those;
+            // only a real input change earns that main-thread work.
+            val spec = webViewSettingsSpec(viewModel)
+            if (holder.lastSettingsSpec != spec) {
+                applyWebViewSettings(webView, viewModel)
+                holder.lastSettingsSpec = spec
+            }
+            if (holder.lastFarblingConfig != farblingConfig) {
+                (webView.webViewClient as? ShieldsWebViewClient)
+                    ?.installFarbling(webView, farblingConfig)
+                holder.lastFarblingConfig = farblingConfig
+            }
             // Keep the long-press handler in sync after pool reuse / recomposition
             webView.setOnLongClickListener {
                 val hit = webView.hitTestResult
@@ -266,7 +292,19 @@ fun WebViewBrowser(
         }
     )
 
-    DisposableEffect(tabId) { onDispose { } }
+    DisposableEffect(tabId) {
+        onDispose {
+            // The pooled WebView stays alive for a fast tab switch, but a
+            // detached page must not keep running timers/rendering: that
+            // CPU competes directly with the foreground page's load.
+            // The factory branch resumes it on reuse.
+            holder.webView?.onPause()
+        }
+    }
 }
 
-private class WebViewHolder { var webView: WebView? = null }
+private class WebViewHolder {
+    var webView: WebView? = null
+    var lastSettingsSpec: WebViewSettingsSpec? = null
+    var lastFarblingConfig: FarblingConfig? = null
+}
