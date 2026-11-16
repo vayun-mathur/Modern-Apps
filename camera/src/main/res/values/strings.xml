@@ -117,6 +117,16 @@
     <string name="no_app_to_open_url">No app can open this link</string>
     <!-- QrResultOverlay: button to copy QR text to clipboard. Verb. -->
     <string name="copy_text">Copy</string>
+    <!-- WifiQrCard: button to connect to the scanned WiFi network. Verb. -->
+    <string name="connect_to_wifi">Connect to WiFi</string>
+    <!-- WifiQrCard: suggestion accepted; system will prompt to join. %1$s = SSID -->
+    <string name="wifi_connect_suggested">Connecting to <xliff:g id="ssid" example="HomeNet">%1$s</xliff:g>…</string>
+    <!-- WifiQrCard: this app already suggested the same network. %1$s = SSID -->
+    <string name="wifi_already_suggested"><xliff:g id="ssid" example="HomeNet">%1$s</xliff:g> is already suggested</string>
+    <!-- WifiQrCard: suggestion unavailable, WiFi settings opened instead. %1$s = SSID -->
+    <string name="wifi_connect_use_settings">Join <xliff:g id="ssid" example="HomeNet">%1$s</xliff:g> from WiFi settings</string>
+    <!-- WifiQrCard: connecting failed outright. %1$s = SSID -->
+    <string name="wifi_connect_failed">Could not connect to <xliff:g id="ssid" example="HomeNet">%1$s</xliff:g></string>
     <!-- CameraScreen overlay pill: the bound camera session has no analysis stream (some vendor
          night extensions cannot host one), so the viewfinder cannot look for QR codes -->
     <string name="qr_scanning_paused">QR scanning paused</string>

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.domain.isFidoDeepLink
+import com.vayunmathur.camera.domain.isWifiQr
 import com.vayunmathur.library.ui.Text
 
 @Composable
@@ -34,9 +35,10 @@ internal fun BoxScope.CameraStatusIndicators(
     focusLocked: Boolean,
     focusTopPadding: Dp,
 ) {
-    // FIDO deep links and eSIM codes render in CameraSettingsColumn directly
-    // above the zoom bar — never in the generic QR popup here.
-    qrResult?.takeUnless { isFidoDeepLink(it) || isEsimActivationCode(it) }?.let { qr ->
+    // FIDO deep links, eSIM codes and WiFi codes render in
+    // CameraSettingsColumn directly above the zoom bar — never in the
+    // generic QR popup here.
+    qrResult?.takeUnless { isFidoDeepLink(it) || isEsimActivationCode(it) || isWifiQr(it) }?.let { qr ->
         QrResultOverlay(
             text = qr,
             onDismiss = onDismissQr,

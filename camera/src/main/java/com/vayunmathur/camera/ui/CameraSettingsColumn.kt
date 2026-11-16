@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.domain.isFidoDeepLink
+import com.vayunmathur.camera.domain.parseWifiQr
 import com.vayunmathur.camera.util.CameraMode
 import com.vayunmathur.library.ui.IconBlur
 import com.vayunmathur.library.ui.IconContrast
@@ -69,6 +70,14 @@ internal fun CameraSettingsColumn(
                     onDismiss = onDismissQr,
                     context = LocalContext.current,
                 )
+            } else {
+                parseWifiQr(qrResult)?.let { wifiConfig ->
+                    WifiQrCard(
+                        config = wifiConfig,
+                        onDismiss = onDismissQr,
+                        context = LocalContext.current,
+                    )
+                }
             }
         }
         when (activeSetting) {
