@@ -168,6 +168,8 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DragHandle
@@ -1968,3 +1970,11 @@ private val HelpOutlineVector: ImageVector by lazy {
         fill = SolidColor(Color.Black),
     ).build()
 }
+
+@Composable
+fun IconBugReport(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.BugReport, "Bug report", modifier, tint)
+
+@Composable
+fun IconInstall(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.SystemUpdateAlt, "Install", modifier, tint)
