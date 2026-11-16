@@ -118,6 +118,24 @@ class TunerScreensTest {
     }
 
     @Test
+    fun tabSelectSwapsSiblingDestination() {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val vm = com.vayunmathur.tuner.platform.TunerViewModel(app)
+        val stack = com.vayunmathur.library.util.NavBackStack(
+            arrayOf<com.vayunmathur.tuner.Route>(com.vayunmathur.tuner.Route.Note),
+        )
+        composeRule.setContent { TunerTabs(stack, vm) }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(str(R.string.tab_chord)).performClick()
+        composeRule.waitForIdle()
+        // Selecting a tab resets the stack to exactly that sibling route.
+        assertEquals(listOf(com.vayunmathur.tuner.Route.Chord), stack.backStack)
+        composeRule.onNodeWithText(str(R.string.tab_note)).performClick()
+        composeRule.waitForIdle()
+        assertEquals(listOf(com.vayunmathur.tuner.Route.Note), stack.backStack)
+    }
+
+    @Test
     fun chordScreenListeningPrompt() {
         composeRule.setContent { ChordScreen(state(listening = true)) { } }
         composeRule.onNodeWithText(str(R.string.chord_prompt)).assertIsDisplayed()
