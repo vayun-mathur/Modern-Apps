@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Rational
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -19,13 +18,13 @@ import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.IconCall
 import com.vayunmathur.library.ui.IconHistory
 import com.vayunmathur.library.ui.IconSms
-import com.vayunmathur.library.ui.PagerTab
-import com.vayunmathur.library.ui.TabStyle
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
+import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.EntryProviderScope
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
@@ -66,8 +65,12 @@ import kotlinx.serialization.Serializable
 
 /** Navigation routes for the communicate app (type-safe back stack keys). */
 sealed interface Route : NavKey {
-    /** The conversation list (home) route. */
-    @Serializable data object Main : Route
+    /** The conversation list tab (home). Sibling of [Dialer] and [CallLogs]. */
+    @Serializable data object Messages : Route
+    /** The dialer tab. Sibling of [Messages] and [CallLogs]. */
+    @Serializable data object Dialer : Route
+    /** The call-logs tab. Sibling of [Messages] and [Dialer]. */
+    @Serializable data object CallLogs : Route
     /** The accounts / line management route. */
     @Serializable data object Accounts : Route
     /** The Google Voice sign-in route. */
@@ -175,10 +178,10 @@ private fun CommunicateApp(initialDeepLink: DeepLink? = null) {
     AppSyncEffects(context, waSignedIn, sigSignedIn, gvSignedIn, session)
     AppTelecomEffects(context, waSignedIn, sigSignedIn)
 
-    val backStack = rememberNavBackStack<Route>(Route.Main)
+    val backStack = rememberNavBackStack<Route>(Route.Messages)
 
     DeepLinkEffect(backStack, initialDeepLink)
-    CommunicateNavGraph(backStack)
+    CommunicateTabs(backStack)
     InAppCallOverlay()
 }
 
@@ -222,8 +225,32 @@ private fun CommunicateNavGraph(backStack: NavBackStack<Route>) {
 }
 
 private fun EntryProviderScope<Route>.coreEntries(backStack: NavBackStack<Route>) {
-    entry<Route.Main>(metadata = ListPage()) {
-        CommunicateTabs(backStack)
+    entry<Route.Messages>(metadata = ListPage() + SiblingPage()) {
+        MessagesScreen(
+            onOpenThread = { thread ->
+                val route = Route.Conversation(
+                    threadId = thread.threadId,
+                    address = thread.address,
+                    line = thread.line,
+                    remoteId = thread.remoteId,
+                    subscriptionId = thread.subscriptionId,
+                    isGroup = thread.isGroup,
+                    participants = thread.participants,
+                    groupTitle = thread.groupTitle,
+                )
+                // Re-tapping another thread replaces the detail instead of stacking
+                // Conversation on Conversation.
+                if (backStack.last() is Route.Conversation) backStack.setLast(route)
+                else backStack.add(route)
+            },
+            onOpenAccounts = { backStack.add(Route.Accounts) },
+        )
+    }
+    entry<Route.Dialer>(metadata = SiblingPage()) {
+        DialerScreen()
+    }
+    entry<Route.CallLogs>(metadata = SiblingPage()) {
+        CallLogsScreen()
     }
     entry<Route.Accounts>(metadata = ListDetailPage()) {
         AccountsScreen(
@@ -395,33 +422,27 @@ private fun AppTelecomEffects(
     }
 }
 
+/**
+ * Route-backed tab host for the three top-level tabs ([Route.Messages],
+ * [Route.Dialer], [Route.CallLogs]).
+ *
+ * The tabs are sibling routes: [TabbedPagerScaffold] selects one by
+ * `backStack.reset(tab.route)` (see its [RouteTab] overload), and each tab's
+ * screen is the `SiblingPage()` entry for that route in [CommunicateNavGraph],
+ * hosted inside the scaffold's content slot. A destination pushed over a tab
+ * (a conversation, accounts, a registration flow) renders in the same slot
+ * with no tab selected, and picking a tab resets back to that tab.
+ * There is no pager: the old host declared `pageCount = { 4 }` for only
+ * three tabs, and tab selection lived in pager state instead of the stack.
+ */
 @Composable
 private fun CommunicateTabs(backStack: NavBackStack<Route>) {
-    val pagerState = rememberPagerState(pageCount = { 4 })
-    val tabs = listOf(
-        PagerTab(stringResource(R.string.messages_title), { IconSms() }) {
-            MessagesScreen(
-                onOpenThread = { thread ->
-                    val route = Route.Conversation(
-                        threadId = thread.threadId,
-                        address = thread.address,
-                        line = thread.line,
-                        remoteId = thread.remoteId,
-                        subscriptionId = thread.subscriptionId,
-                        isGroup = thread.isGroup,
-                        participants = thread.participants,
-                        groupTitle = thread.groupTitle,
-                    )
-                    // Re-tapping another thread replaces the detail instead of stacking
-                    // Conversation on Conversation.
-                    if (backStack.last() is Route.Conversation) backStack.setLast(route)
-                    else backStack.add(route)
-                },
-                onOpenAccounts = { backStack.add(Route.Accounts) },
-            )
-        },
-        PagerTab(stringResource(R.string.dialer_title), { IconCall() }) { DialerScreen() },
-        PagerTab(stringResource(R.string.call_logs_title), { IconHistory() }) { CallLogsScreen() },
+    val tabs = listOf<RouteTab<Route>>(
+        RouteTab(Route.Messages, stringResource(R.string.messages_title), { IconSms() }),
+        RouteTab(Route.Dialer, stringResource(R.string.dialer_title), { IconCall() }),
+        RouteTab(Route.CallLogs, stringResource(R.string.call_logs_title), { IconHistory() }),
     )
-    TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)
+    TabbedPagerScaffold(backStack = backStack, tabs = tabs) {
+        CommunicateNavGraph(backStack)
+    }
 }

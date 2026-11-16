@@ -64,12 +64,14 @@ class RouteSlice6Test {
 
     @Test
     fun objectRoutesAreSingletons() {
-        assertEquals(Route.Main, Route.Main)
+        assertEquals(Route.Messages, Route.Messages)
         assertEquals(Route.Accounts, Route.Accounts)
-        assertTrue(Route.Main != Route.Accounts)
+        assertTrue(Route.Messages != Route.Accounts)
+        assertTrue(Route.Messages != Route.Dialer)
+        assertTrue(Route.Dialer != Route.CallLogs)
         assertTrue(Route.GoogleVoiceSignIn != Route.WhatsAppRegistration)
         assertTrue(Route.WhatsAppBackupImport != Route.SignalRegistration)
-        assertTrue(Route.RcsStatus != Route.Main)
+        assertTrue(Route.RcsStatus != Route.Messages)
     }
 
     @Test
@@ -83,7 +85,9 @@ class RouteSlice6Test {
     @Test
     fun everyRouteIsANavKey() {
         val routes: List<Route> = listOf(
-            Route.Main,
+            Route.Messages,
+            Route.Dialer,
+            Route.CallLogs,
             Route.Accounts,
             Route.GoogleVoiceSignIn,
             Route.WhatsAppRegistration,
@@ -94,7 +98,7 @@ class RouteSlice6Test {
             Route.RcsGroupMembers("conv-1"),
             Route.Conversation(threadId = 1L, address = "x"),
         )
-        assertEquals(10, routes.size)
+        assertEquals(12, routes.size)
         routes.forEach { assertIs<com.vayunmathur.library.util.NavKey>(it) }
     }
 
@@ -126,7 +130,7 @@ class RouteSlice6Test {
         // The back stack persists routes by kotlinx serialization; each subtype must keep
         // its @Serializable annotation or restoring navigation state breaks at runtime.
         val subtypes = Route::class.sealedSubclasses
-        assertEquals(10, subtypes.size)
+        assertEquals(12, subtypes.size)
         subtypes.forEach { subtype ->
             assertTrue(
                 subtype.annotations.any { it.annotationClass.qualifiedName == "kotlinx.serialization.Serializable" },
@@ -136,11 +140,13 @@ class RouteSlice6Test {
     }
 
     @Test
-    fun allTenRouteSubtypesArePresent() {
+    fun allTwelveRouteSubtypesArePresent() {
         val names = Route::class.sealedSubclasses.mapNotNull { it.simpleName }.toSet()
         assertEquals(
             setOf(
-                "Main",
+                "Messages",
+                "Dialer",
+                "CallLogs",
                 "Accounts",
                 "GoogleVoiceSignIn",
                 "WhatsAppRegistration",
