@@ -59,6 +59,8 @@ class AlternativeRoutesTest {
         legs: List<Triple<String, String, String>>,
         walkMeters: Double = 200.0,
         rideMeters: Double = 5_000.0,
+        durationMinutes: Int = 20,
+        polyline: List<GeoPoint> = listOf(pt(0.0, 0.0), pt(0.02, 0.0)),
     ): RouteService.Route {
         val steps = mutableListOf<RouteService.Step>()
         if (walkMeters > 0) {
@@ -87,9 +89,9 @@ class AlternativeRoutesTest {
             )
         }
         return RouteService.Route(
-            duration = 20.minutes,
+            duration = durationMinutes.minutes,
             distanceMeters = walkMeters + rideMeters * legs.size,
-            polyline = listOf(pt(0.0, 0.0), pt(0.02, 0.0)),
+            polyline = polyline,
             step = steps,
         )
     }
@@ -123,6 +125,45 @@ class AlternativeRoutesTest {
         val walkHeavy = transitRoute(listOf(Triple("Blue", "B", "C")), walkMeters = 6_000.0, rideMeters = 2_000.0)
         assertTrue(AlternativeRoutes.walkShare(walkHeavy) > AlternativeRoutes.MAX_WALK_SHARE)
         assertEquals(emptyList(), AlternativeRoutes.diverseAlternatives(full, listOf(walkHeavy), transit = true))
+    }
+
+    @Test
+    fun `alight early and transfer to a parallel bus on the same corridor is rejected`() {
+        // (a) Ride-through on Red vs alight at B and continue on the
+        // parallel Blue over the same stops and geometry: the transfer
+        // re-covers the primary's corridor, so it is not an alternative.
+        val primary = transitRoute(listOf(Triple("Red", "A", "C")))
+        val parallel = transitRoute(
+            listOf(Triple("Red", "A", "B"), Triple("Blue", "B", "C")),
+        )
+        assertEquals(emptyList(), AlternativeRoutes.diverseAlternatives(primary, listOf(parallel), transit = true))
+    }
+
+    @Test
+    fun `one extra transfer arriving about the same time is rejected`() {
+        // (b) A different second service on a different corridor, but the
+        // extra transfer buys no time: transfer count is a cost, and
+        // ~0 minutes of saving does not pay for it.
+        val primary = transitRoute(listOf(Triple("Red", "A", "C")), durationMinutes = 20)
+        val sameTime = transitRoute(
+            listOf(Triple("Blue", "A", "D"), Triple("Green", "D", "E")),
+            durationMinutes = 19,
+            polyline = listOf(pt(0.0, 0.0), pt(0.01, 0.01), pt(0.02, 0.01), pt(0.03, 0.0)),
+        )
+        assertEquals(emptyList(), AlternativeRoutes.diverseAlternatives(primary, listOf(sameTime), transit = true))
+    }
+
+    @Test
+    fun `extra transfer substantially faster on a different line is accepted`() {
+        // (c) One more transfer, but 9 minutes faster on genuinely
+        // different services and geometry: the saving pays for it.
+        val primary = transitRoute(listOf(Triple("Red", "A", "C")), durationMinutes = 25)
+        val faster = transitRoute(
+            listOf(Triple("Blue", "A", "D"), Triple("Green", "D", "E")),
+            durationMinutes = 16,
+            polyline = listOf(pt(0.0, 0.0), pt(0.01, 0.01), pt(0.02, 0.01), pt(0.03, 0.0)),
+        )
+        assertEquals(listOf(faster), AlternativeRoutes.diverseAlternatives(primary, listOf(faster), transit = true))
     }
 
     @Test

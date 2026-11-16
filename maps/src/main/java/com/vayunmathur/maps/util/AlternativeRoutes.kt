@@ -31,6 +31,12 @@ import kotlin.math.sqrt
  *   sequence equals, or is a subset/truncation of, an already-shown
  *   journey's is the same ride taken less far (early alight + longer
  *   walk), however it is re-padded.
+ * - Extra transfers are a cost: a transit candidate with more
+ *   transfers than a shown journey is rejected when it re-covers
+ *   that journey's corridor/stops (served-stop overlap >= 0.67 or
+ *   shared geometry >= 0.70 — the early-alight + parallel-bus
+ *   rejoin), and otherwise must arrive at least 5 minutes earlier
+ *   or use a genuinely different corridor (both overlaps < 0.5).
  *
  * The primary is always kept, and candidates keep their input order
  * (fastest first as generated), so ETA ordering among shown routes
@@ -43,6 +49,24 @@ object AlternativeRoutes {
 
     /** Above this walking share a transit candidate is not a transit route. */
     const val MAX_WALK_SHARE = 0.45
+
+    /**
+     * Minimum arrival saving that can pay for an extra transfer: 5 whole
+     * minutes of journey duration. Feed headways on the corridors the pack
+     * covers are typically 6-15 minutes, so a saving smaller than one
+     * headway step is timetable noise, not a reason to change vehicles.
+     */
+    const val EXTRA_TRANSFER_MIN_SAVING_MINUTES = 5
+
+    /**
+     * At/above this served-stop overlap an added transfer merely re-covers
+     * the corridor (shared origin/destination alone reach only 0.5 against
+     * a two-stop primary, so the bar sits at two-thirds).
+     */
+    const val RE_COVER_STOP_OVERLAP = 0.67
+
+    /** Below both overlaps a corridor counts as genuinely different. */
+    const val DIFFERENT_CORRIDOR_MAX_OVERLAP = 0.5
 
     /** Geometry match tolerance (m) for the shared-length measurement. */
     private const val MATCH_TOLERANCE_M = 30.0
@@ -134,9 +158,43 @@ object AlternativeRoutes {
             // different board/alight stops.
             val lines = signature.map { it.line }
             val otherLines = otherSignature.map { it.line }
-            otherSignature == signature || isSubsetOrTruncation(signature, otherSignature) ||
+            if (otherSignature == signature || isSubsetOrTruncation(signature, otherSignature) ||
                 lines == otherLines || lines.toSet().all { it in otherLines.toSet() }
+            ) {
+                return@none true
+            }
+            // Transfer count is a cost, not a difference. A candidate with
+            // more transfers than an accepted journey must either arrive
+            // meaningfully earlier (>= EXTRA_TRANSFER_MIN_SAVING_MINUTES of
+            // duration) or be a genuinely different corridor — and one that
+            // re-covers the accepted corridor/stop sequence via an added
+            // transfer (early alight, parallel bus, rejoin) is neither,
+            // however its service sequence is dressed up.
+            val extraTransfers = signature.size > otherSignature.size
+            if (!extraTransfers) return@none false
+            val stopOverlap = servedStopOverlap(signature, otherSignature)
+            val geometryOverlap = sharedGeometryRatio(other, candidate)
+            val reCovers = stopOverlap >= RE_COVER_STOP_OVERLAP ||
+                geometryOverlap >= MAX_SHARED_GEOMETRY_RATIO
+            if (reCovers) return@none true
+            val savingMinutes = (other.duration - candidate.duration).inWholeMinutes
+            val corridorDifferent = stopOverlap < DIFFERENT_CORRIDOR_MAX_OVERLAP &&
+                geometryOverlap < DIFFERENT_CORRIDOR_MAX_OVERLAP
+            savingMinutes < EXTRA_TRANSFER_MIN_SAVING_MINUTES && !corridorDifferent
         }
+    }
+
+    /** Board+alight stops a signature serves, as a set. */
+    private fun servedStops(signature: List<TransitLegKey>): Set<String> =
+        signature.flatMapTo(mutableSetOf()) { listOf(it.board, it.alight) }
+
+    /** Shared served stops over the smaller journey's stop count. */
+    private fun servedStopOverlap(a: List<TransitLegKey>, b: List<TransitLegKey>): Double {
+        val aStops = servedStops(a)
+        val bStops = servedStops(b)
+        val smaller = minOf(aStops.size, bStops.size)
+        if (smaller == 0) return 0.0
+        return aStops.intersect(bStops).size.toDouble() / smaller
     }
 
     /** True when [a]'s leg set is contained in [b]'s, or [a] is a prefix of [b]. */
