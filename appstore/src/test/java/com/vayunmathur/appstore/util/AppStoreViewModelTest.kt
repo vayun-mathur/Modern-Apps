@@ -107,14 +107,17 @@ class AppStoreViewModelTest {
     @Test
     fun `detail and browse states follow their flows`() {
         val selected = app("com.example.detail", name = "Detail App")
-        vm.selectedAppFlow.value = selected
+        vm.detailAppFlow.value = selected
         vm.isLoadingDetailsFlow.value = true
         await("detail") { vm.detail.value.app?.packageName == "com.example.detail" }
         assertTrue(vm.detail.value.isLoadingDetails)
 
-        vm.browseSectionFlow.value = "games"
-        vm.browseTitleFlow.value = "Games"
-        vm.browseAppsFlow.value = listOf(selected)
+        vm.browseContentFlow.value = BrowseUiState(
+            sectionId = "games",
+            title = "Games",
+            apps = listOf(selected),
+            isLoading = false,
+        )
         await("browse") { vm.browse.value.title == "Games" }
         assertEquals("games", vm.browse.value.sectionId)
         assertEquals(listOf(selected), vm.browse.value.apps)

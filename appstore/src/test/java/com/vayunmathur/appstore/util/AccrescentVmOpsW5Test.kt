@@ -163,8 +163,7 @@ class AccrescentVmOpsW5Test {
         await("accrescent search") {
             vm.search.value.results.any { it.packageName == "app.alpha" }
         }
-        val alpha = UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha")
-        vm.selectApp(alpha)
+        vm.loadDetail("app.alpha")
         await("accrescent detail") { vm.detail.value.app?.versionCode == 999_999L }
         assertEquals(999_999L, vm.detail.value.app?.versionCode)
 
@@ -196,8 +195,7 @@ class AccrescentVmOpsW5Test {
         await("tv accrescent search") {
             vm.search.value.results.any { it.packageName == "app.beta" }
         }
-        val alpha = UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha")
-        vm.selectApp(alpha)
+        vm.loadDetail("app.alpha")
         await("tv detail") { vm.detail.value.app?.packageName == "app.alpha" }
         vm.checkForUpdates()
         await("tv update check settles") { !vm.isCheckingUpdatesFlow.value }
@@ -209,7 +207,7 @@ class AccrescentVmOpsW5Test {
     fun phoneVmInstallAccrescentAppAttemptsDownloadAndSettles() {
         val vm = AppStoreViewModel(app, db, accrescentOverride = repo)
         val alpha = UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha", versionCode = 999_999L)
-        vm.selectApp(alpha)
+        vm.loadDetail(alpha.packageName)
         await("detail") { vm.detail.value.app?.packageName == "app.alpha" }
         vm.install(alpha)
         // Download from example.org fails offline; the install state must
@@ -231,13 +229,12 @@ class AccrescentVmOpsW5Test {
         }
         val section = vm.home.value.sections.firstOrNull()
         if (section != null) {
-            vm.openBrowse(section)
+            vm.loadBrowse(section.id)
             await("browse") { vm.browse.value.apps.isNotEmpty() || vm.browse.value.title == section.title }
+            assertEquals(section.id, vm.browse.value.sectionId)
         }
-        vm.selectPackage("app.alpha")
+        vm.loadDetail("app.alpha")
         await("package detail") { vm.detail.value.app?.packageName == "app.alpha" }
-        vm.clearSelection()
-        await("detail cleared") { vm.detail.value.app == null }
         vm.refreshInstalled()
         vm.refreshUpdateCheckStatus()
         vm.setSearchFilter(com.vayunmathur.appstore.util.SourceFilter.ACCRESCENT)
@@ -255,15 +252,19 @@ class AccrescentVmOpsW5Test {
         vm.home.value.categories.firstOrNull()?.let { vm.selectCategory(it) }
         vm.selectCategory(null)
         val section = vm.home.value.sections.firstOrNull() ?: com.vayunmathur.appstore.tv.TvSection(id = "w5", title = "W5 Picks", apps = listOf(UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha")))
-        vm.openBrowse(section)
-        await("tv browse settles") { !vm.isLoadingBrowseFlow.value }
+        // Browse loads by route id, so the section must be the home state
+        // that produced it (as a real home row would be).
+        if (vm.home.value.sections.none { it.id == section.id }) {
+            vm.sectionsFlow.value = listOf(section)
+        }
+        vm.loadBrowse(section.id)
+        await("tv browse settles") { !vm.browse.value.isLoading }
         assertTrue(vm.browse.value.apps.isNotEmpty() || vm.browse.value.title == section.title,
             "browse=${vm.browse.value}")
-        vm.clearBrowse()
-        assertTrue(vm.browse.value.apps.isEmpty() || vm.browseSectionFlow.value.isEmpty())
+        assertEquals(section.id, vm.browse.value.sectionId)
 
         val alpha = UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha", versionCode = 999_999L)
-        vm.selectApp(alpha)
+        vm.loadDetail(alpha.packageName)
         await("tv detail for install") { vm.detail.value.app?.packageName == "app.alpha" }
         vm.install(alpha)
         await("tv install settles") {
@@ -271,8 +272,6 @@ class AccrescentVmOpsW5Test {
             stage == null || stage.toString().contains("Fail", ignoreCase = true)
         }
         vm.dismissInstallFailure("app.alpha")
-        vm.clearSelection()
-        await("tv detail cleared") { vm.detail.value.app == null }
 
         // Installed-app actions should be safe no-ops/records under Robolectric.
         vm.openApp(ownPackage)

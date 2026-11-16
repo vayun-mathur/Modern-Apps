@@ -91,10 +91,11 @@ class TvMainActivity : MaActivity() {
 /**
  * The TV navigation host: [rememberNavBackStack] + [MainNavigation] over [TvStoreRoute].
  *
- * The browse and detail destinations read the selection the rail already set via
- * [TvStoreViewModel.openBrowse]/[TvStoreViewModel.selectApp] — popping clears them,
- * so BACK from either always lands on the destination that opened it with no stale
- * selection behind it.
+ * The browse and detail destinations bind to their route arguments
+ * ([TvStoreRoute.Browse.sectionId] / [TvStoreRoute.Detail.packageName]);
+ * their entries load exactly the section/app they name, so BACK and a
+ * restored stack always land on the destination that opened them with no
+ * ViewModel selection behind it.
  */
 @Composable
 private fun TvStoreNavigation(viewModel: TvStoreViewModel) {
@@ -103,26 +104,21 @@ private fun TvStoreNavigation(viewModel: TvStoreViewModel) {
         entry<TvStoreRoute.Main> {
             TvStoreRail(backStack = backStack, viewModel = viewModel)
         }
-        entry<TvStoreRoute.Browse> {
+        entry<TvStoreRoute.Browse> { route ->
             TvStoreBrowse(
                 viewModel = viewModel,
+                sectionId = route.sectionId,
                 onAppClick = { app ->
-                    viewModel.selectApp(app)
                     backStack.add(TvStoreRoute.Detail(app.packageName))
                 },
-                onBack = {
-                    backStack.pop()
-                    viewModel.clearBrowse()
-                },
+                onBack = { backStack.pop() },
             )
         }
-        entry<TvStoreRoute.Detail> {
+        entry<TvStoreRoute.Detail> { route ->
             TvStoreDetail(
                 viewModel = viewModel,
-                onBack = {
-                    backStack.pop()
-                    viewModel.clearSelection()
-                },
+                packageName = route.packageName,
+                onBack = { backStack.pop() },
             )
         }
     }
@@ -173,7 +169,6 @@ private fun TvStoreRail(
     var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
 
     fun openDetail(app: UnifiedApp) {
-        viewModel.selectApp(app)
         backStack.add(TvStoreRoute.Detail(app.packageName))
     }
 
@@ -199,7 +194,6 @@ private fun TvStoreRail(
                 onAppClick = ::openDetail,
                 onOpenUpdates = { selectedIndex = TV_DEST_UPDATES },
                 onOpenBrowse = { section ->
-                    viewModel.openBrowse(section)
                     backStack.add(TvStoreRoute.Browse(section.id))
                 },
             )

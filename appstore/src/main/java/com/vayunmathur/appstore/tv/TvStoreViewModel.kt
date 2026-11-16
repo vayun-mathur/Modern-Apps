@@ -79,15 +79,14 @@ class TvStoreViewModel(
     internal val categoryAppsFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
     internal val isLoadingFlow = MutableStateFlow(true)
     internal val statusMessageFlow = MutableStateFlow("")
-    internal val selectedAppFlow = MutableStateFlow<UnifiedApp?>(null)
+    /** The listing loaded for the package the Detail route names; see loadDetail. */
+    internal val detailAppFlow = MutableStateFlow<UnifiedApp?>(null)
     internal val isLoadingDetailsFlow = MutableStateFlow(false)
     internal var detailJob: Job? = null
 
     // --- Browse (one home section's full catalogue) -----------------------------------
-    internal val browseSectionFlow = MutableStateFlow("")
-    internal val browseTitleFlow = MutableStateFlow("")
-    internal val browseAppsFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
-    internal val isLoadingBrowseFlow = MutableStateFlow(false)
+    /** Loaded Browse content for the section the Browse route names; see loadBrowse. */
+    internal val browseContentFlow = MutableStateFlow(TvBrowseUiState())
     internal var browseJob: Job? = null
 
     // --- Search hub state -----------------------------------------------------------
@@ -122,7 +121,7 @@ class TvStoreViewModel(
 
     val detail: StateFlow<TvDetailUiState> = combine(
         combine(
-            selectedAppFlow,
+            detailAppFlow,
             isLoadingDetailsFlow,
             combine(installedRepo.apps, installedRepo.icons) { installed, icons -> installed to icons },
         ) { app, loading, installedPair -> Triple(app, loading, installedPair) },
@@ -287,18 +286,12 @@ class TvStoreViewModel(
 
     /** One home section's full catalogue, A–Z. Same shape as the phone's `BrowseUiState`. */
     val browse: StateFlow<TvBrowseUiState> = combine(
-        combine(browseSectionFlow, browseTitleFlow) { sectionId, title -> sectionId to title },
-        browseAppsFlow,
-        isLoadingBrowseFlow,
+        browseContentFlow,
         combine(installedRepo.apps, installedRepo.icons, installer.stages) { installed, icons, stages ->
             Triple(installed, icons, stages)
         },
-    ) { (sectionId, title), apps, loading, (installed, icons, stages) ->
-        TvBrowseUiState(
-            sectionId = sectionId,
-            title = title,
-            apps = apps,
-            isLoading = loading,
+    ) { content, (installed, icons, stages) ->
+        content.copy(
             installedPackages = installed.map { it.packageName }.toSet(),
             installedIcons = icons,
             stages = stages,
@@ -380,76 +373,111 @@ class TvStoreViewModel(
     }
 
     /**
-     * Fill the Browse screen with one home section's full catalogue, A–Z.
-     * Mirrors the phone's `openBrowse`: the whole offline repo for an offline row,
-     * the whole paged catalogue for Accrescent, the uncapped cluster for a Play row.
+     * Fill the Browse screen with the full catalogue behind [sectionId] —
+     * the argument of `TvStoreRoute.Browse`. Mirrors the phone's loadBrowse:
+     * the whole offline repo for an offline row, the whole paged catalogue
+     * for Accrescent, the uncapped cluster for a Play row.
+     *
+     * The section is looked up in the home state that produced it (title,
+     * source and capped apps), so the entry binds only to its route
+     * argument: a restored Browse entry re-resolves the section it names
+     * instead of reading whatever section a ViewModel flow last held.
      */
-    fun openBrowse(section: TvSection) {
+    fun loadBrowse(sectionId: String) {
         browseJob?.cancel()
-        browseSectionFlow.value = section.id
-        browseTitleFlow.value = section.title
-        browseAppsFlow.value = emptyList()
-        isLoadingBrowseFlow.value = true
+        val section = home.value.sections.find { it.id == sectionId }
+            ?: sectionsFlow.value.find { it.id == sectionId }
+        val title = section?.title ?: browseFallbackTitle(sectionId)
+        browseContentFlow.value = TvBrowseUiState(
+            sectionId = sectionId,
+            title = title,
+            apps = emptyList(),
+            isLoading = true,
+        )
         browseJob = viewModelScope.launch {
             val apps = when {
-                section.id == "category" -> catalog.allByCategory(section.title)
-                section.source != null && section.source != AppSource.PLAYSTORE &&
+                sectionId == "category" ->
+                    section?.let { catalog.allByCategory(it.title).ifEmpty { it.apps } }
+                        ?: emptyList()
+                section?.source != null && section.source != AppSource.PLAYSTORE &&
                     section.source != AppSource.ACCRESCENT ->
                     catalog.allBySource(section.source)
-                section.id == "accrescent" -> accrescent.allListings()
-                else -> playFullClustersFlow.value[section.id] ?: section.apps
+                sectionId == "modern" || sectionId == "modern-recent" ->
+                    catalog.allBySource(AppSource.MODERN_APPS)
+                sectionId == "proprietary-recent" ->
+                    catalog.allBySource(AppSource.PROPRIETARY)
+                sectionId == "fdroid-recent" ->
+                    catalog.allBySource(AppSource.FDROID)
+                sectionId == "izzy-recent" ->
+                    catalog.allBySource(AppSource.IZZY)
+                sectionId == "accrescent" -> accrescent.allListings()
+                else -> playFullClustersFlow.value[sectionId] ?: section?.apps ?: emptyList()
             }
-            browseAppsFlow.value = apps.sortedBy { it.name.lowercase() }
-            isLoadingBrowseFlow.value = false
+            browseContentFlow.value = TvBrowseUiState(
+                sectionId = sectionId,
+                title = title,
+                apps = apps.sortedBy { it.name.lowercase() },
+                isLoading = false,
+            )
         }
     }
 
-    fun clearBrowse() {
-        browseJob?.cancel()
-        browseSectionFlow.value = ""
-        browseTitleFlow.value = ""
-        browseAppsFlow.value = emptyList()
+    /** Title for a known section id when home has not (re)built its row yet. */
+    private fun browseFallbackTitle(sectionId: String): String = when (sectionId) {
+        "modern", "modern-recent" -> context.getString(R.string.section_modern_apps_recent)
+        "proprietary-recent" -> context.getString(R.string.section_proprietary_recent)
+        "fdroid-recent" -> context.getString(R.string.section_fdroid_recent)
+        "izzy-recent" -> context.getString(R.string.section_izzy_recent)
+        "accrescent" -> context.getString(R.string.section_accrescent)
+        "play-top" -> context.getString(R.string.section_play_top_charts)
+        else -> sectionId.removePrefix("play-")
     }
 
-    fun selectApp(app: UnifiedApp) {
+    /**
+     * Load the detail page for [packageName] — the argument of
+     * `TvStoreRoute.Detail`. The route, not a ViewModel selection, decides
+     * which app is on screen, and the previous listing is dropped
+     * synchronously so a new destination never renders the last one's app.
+     *
+     * Resolution mirrors the phone's loadDetail: the catalogue row wins
+     * whenever there is one (it carries the signer and hash an install would
+     * use), then Accrescent's allowlist, then Play, with a Play shell for a
+     * package none of them knows.
+     */
+    fun loadDetail(packageName: String) {
         detailJob?.cancel()
-        selectedAppFlow.value = app
+        detailAppFlow.value = null
+        isLoadingDetailsFlow.value = true
         detailJob = viewModelScope.launch {
-            // The catalogue row wins whenever there is one, even if the user tapped a Play
-            // tile for the same package. It is the row an install would actually use — it
-            // carries the signer and hash an authenticated index published — so showing
-            // the Play listing here would describe a download this store is not going to
-            // make. Mirrors the phone's selectApp.
-            val cached = catalog.byPackage(app.packageName)
+            val cached = catalog.byPackage(packageName)
             if (cached != null) {
-                selectedAppFlow.value = cached
-                return@launch
-            }
-            // Accrescent listings from the home carousel are shells (no version code, no
-            // signer yet); fetch the full listing before the page settles.
-            if (app.source == AppSource.ACCRESCENT) {
-                isLoadingDetailsFlow.value = true
-                val details = accrescent.details(app.packageName)
-                if (details != null) selectedAppFlow.value = details
+                detailAppFlow.value = cached
                 isLoadingDetailsFlow.value = false
                 return@launch
             }
-            // Play listings from a cluster are shells: no description, no screenshots, no
-            // version code. Fill them in before the page settles.
-            if (app.source == AppSource.PLAYSTORE && app.screenshots.isEmpty() &&
-                AppSource.PLAYSTORE in enabledSourcesFlow.value
+            if (AppSource.ACCRESCENT in enabledSourcesFlow.value &&
+                packageName in accrescentPackagesFlow.value
             ) {
-                isLoadingDetailsFlow.value = true
-                val details = play.details(app.packageName)
-                if (details != null) selectedAppFlow.value = details
+                val details = accrescent.details(packageName)
+                detailAppFlow.value = details ?: UnifiedApp(
+                    packageName = packageName,
+                    source = AppSource.ACCRESCENT,
+                    name = packageName.substringAfterLast('.'),
+                )
                 isLoadingDetailsFlow.value = false
+                return@launch
             }
+            detailAppFlow.value = UnifiedApp(
+                packageName = packageName,
+                source = AppSource.PLAYSTORE,
+                name = packageName.substringAfterLast('.'),
+            )
+            if (AppSource.PLAYSTORE in enabledSourcesFlow.value) {
+                val details = play.details(packageName)
+                if (details != null) detailAppFlow.value = details
+            }
+            isLoadingDetailsFlow.value = false
         }
-    }
-
-    fun clearSelection() {
-        detailJob?.cancel()
-        selectedAppFlow.value = null
     }
 
     // --- Search hub: body in TvStoreOps.kt -------------------------------------------------
@@ -479,7 +507,6 @@ class TvStoreViewModel(
             val next = if (enabled) enabledSourcesFlow.value + source else enabledSourcesFlow.value - source
             enabledSourcesFlow.value = next
             if (!enabled) forgetSource(source)
-            clearBrowse()
             settings.setSourceEnabled(source, enabled)
             catalog.purgeDisabled(next)
             categoriesFlow.value = catalog.categories()

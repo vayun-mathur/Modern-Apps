@@ -131,10 +131,8 @@ class AppStoreViewModel(
     internal val categoriesFlow = MutableStateFlow<List<String>>(emptyList())
     internal val selectedCategoryFlow = MutableStateFlow<String?>(null)
     internal val categoryAppsFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
-    internal val browseSectionFlow = MutableStateFlow<String?>(null)
-    internal val browseTitleFlow = MutableStateFlow("")
-    internal val browseAppsFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
-    internal val isLoadingBrowseFlow = MutableStateFlow(false)
+    /** Loaded Browse content for the section the Browse route names; see loadBrowse. */
+    internal val browseContentFlow = MutableStateFlow(BrowseUiState())
 
     internal val queryFlow = MutableStateFlow("")
     internal val searchResultsFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
@@ -144,7 +142,8 @@ class AppStoreViewModel(
     /** Play's half of the last search failed (e.g. 429, issue #797); shown above the list. */
     internal val searchPlayErrorFlow = MutableStateFlow("")
 
-    internal val selectedAppFlow = MutableStateFlow<UnifiedApp?>(null)
+    /** The listing loaded for the package the Detail route names; see loadDetail. */
+    internal val detailAppFlow = MutableStateFlow<UnifiedApp?>(null)
     internal val isLoadingDetailsFlow = MutableStateFlow(false)
 
     internal val catalogUpdatesFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
@@ -285,17 +284,10 @@ class AppStoreViewModel(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 
     val browse: StateFlow<BrowseUiState> = combine(
-        browseSectionFlow,
-        browseTitleFlow,
-        browseAppsFlow,
-        isLoadingBrowseFlow,
+        browseContentFlow,
         chrome,
-    ) { sectionId, title, apps, loading, rows ->
-        BrowseUiState(
-            sectionId = sectionId.orEmpty(),
-            title = title,
-            apps = apps,
-            isLoading = loading,
+    ) { content, rows ->
+        content.copy(
             installedPackages = rows.installedPackages,
             installedIcons = rows.icons,
             stages = rows.stages,
@@ -327,7 +319,7 @@ class AppStoreViewModel(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SearchUiState())
 
     val detail: StateFlow<AppDetailUiState> = combine(
-        selectedAppFlow,
+        detailAppFlow,
         isLoadingDetailsFlow,
         chrome,
         installer.verification,

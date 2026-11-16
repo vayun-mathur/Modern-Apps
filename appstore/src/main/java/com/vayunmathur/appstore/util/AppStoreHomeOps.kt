@@ -172,41 +172,73 @@ internal fun AppStoreViewModel.syncIfNeverSynced(enabled: Set<AppSource>) {
 }
 
 /**
- * Fill the Browse page with one home section's full catalogue.
+ * Fill the Browse page with the full catalogue behind [sectionId] — the
+ * argument of `Route.Browse`.
  *
- * Each home carousel is a capped slice — the 20 newest builds, the first 20 tiles.
- * Browse lists literally every app behind that section, A–Z: the whole offline repo
- * for an offline row, the whole paged catalogue for Accrescent, the uncapped cluster
- * for a Play row. The rows use the same [AppRow] as search.
+ * Each home carousel is a capped slice — the 20 newest builds, the first 20
+ * tiles. Browse lists literally every app behind that section, A–Z: the whole
+ * offline repo for an offline row, the whole paged catalogue for Accrescent,
+ * the uncapped cluster for a Play row. The rows use the same [AppRow] as
+ * search.
+ *
+ * The section the id names is looked up in the home state that produced it
+ * (its title and, for a Play row, its capped apps are the fallback), so the
+ * entry binds only to its route argument: a restored Browse entry re-resolves
+ * the section it names instead of reading whatever section a ViewModel flow
+ * last held. Known offline ids also resolve if home has not rebuilt the row
+ * yet; a category section's name is its title, which only the home row knows,
+ * so an unrestorable category id settles empty rather than guessing.
  */
-fun AppStoreViewModel.openBrowse(section: AppSection) {
+fun AppStoreViewModel.loadBrowse(sectionId: String) {
     browseJob?.cancel()
-    browseSectionFlow.value = section.id
-    browseTitleFlow.value = section.title
-    browseAppsFlow.value = emptyList()
-    isLoadingBrowseFlow.value = true
+    val section = home.value.sections.find { it.id == sectionId }
+    val title = section?.title ?: browseFallbackTitle(sectionId)
+    browseContentFlow.value = BrowseUiState(
+        sectionId = sectionId,
+        title = title,
+        apps = emptyList(),
+        isLoading = true,
+    )
     browseJob = viewModelScope.launch {
         val apps = when {
-            section.id == "category" ->
-                catalog.allByCategory(section.title)
-            section.id == "modern" || section.id == "modern-recent" ->
+            sectionId == "category" ->
+                // The row's own list is the fallback: a sync pruning the
+                // cache mid-load must not empty a section the user is in.
+                section?.let { catalog.allByCategory(it.title).ifEmpty { it.apps } }
+                    ?: emptyList()
+            sectionId == "modern" || sectionId == "modern-recent" ->
                 catalog.allBySource(AppSource.MODERN_APPS)
-            section.id == "proprietary-recent" ->
+            sectionId == "proprietary-recent" ->
                 catalog.allBySource(AppSource.PROPRIETARY)
-            section.id == "fdroid-recent" ->
+            sectionId == "fdroid-recent" ->
                 catalog.allBySource(AppSource.FDROID)
-            section.id == "izzy-recent" ->
+            sectionId == "izzy-recent" ->
                 catalog.allBySource(AppSource.IZZY)
-            section.id == "accrescent" ->
+            sectionId == "accrescent" ->
                 accrescent.allListings()
             else ->
-                playFullClustersFlow.value[section.id] ?: section.apps
+                playFullClustersFlow.value[sectionId] ?: section?.apps ?: emptyList()
         }
         // A section tapped twice in a row re-resolves: the visible row may predate a
         // sync, and stale full lists are worse than a re-read.
-        browseAppsFlow.value = apps.sortedBy { it.name.lowercase() }
-        isLoadingBrowseFlow.value = false
+        browseContentFlow.value = BrowseUiState(
+            sectionId = sectionId,
+            title = title,
+            apps = apps.sortedBy { it.name.lowercase() },
+            isLoading = false,
+        )
     }
+}
+
+/** Title for a known section id when home has not (re)built its row yet. */
+private fun AppStoreViewModel.browseFallbackTitle(sectionId: String): String = when (sectionId) {
+    "modern", "modern-recent" -> context.getString(R.string.section_modern_apps_recent)
+    "proprietary-recent" -> context.getString(R.string.section_proprietary_recent)
+    "fdroid-recent" -> context.getString(R.string.section_fdroid_recent)
+    "izzy-recent" -> context.getString(R.string.section_izzy_recent)
+    "accrescent" -> context.getString(R.string.section_accrescent)
+    "play-top" -> context.getString(R.string.section_play_top_charts)
+    else -> sectionId.removePrefix("play-")
 }
 
 /** Re-download both offline catalogues, then reload the home rows from them. */

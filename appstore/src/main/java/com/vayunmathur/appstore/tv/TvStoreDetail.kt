@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,9 +57,13 @@ private const val DETAIL_IDENTITY_WEIGHT = 0.65f
 @Composable
 fun TvStoreDetail(
     viewModel: TvStoreViewModel,
+    packageName: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // The Detail route's argument, reloaded whenever it changes so a
+    // restored entry shows its own app.
+    LaunchedEffect(packageName) { viewModel.loadDetail(packageName) }
     val state by viewModel.detail.collectAsState()
     BackHandler(onBack = onBack)
     TvStoreDetailScreen(

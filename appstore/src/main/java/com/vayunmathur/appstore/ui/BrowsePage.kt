@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.util.AppStoreViewModel
 import com.vayunmathur.appstore.util.BrowseUiState
+import com.vayunmathur.appstore.util.loadBrowse
 import com.vayunmathur.library.ui.AppBarAlignment
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.CircularProgressIndicator
@@ -24,13 +26,19 @@ import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.appBarScrollBehavior
 
-/** Binds [AppStoreViewModel] to the stateless [BrowseScreen]. */
+/**
+ * Binds [AppStoreViewModel] to the stateless [BrowseScreen] for the section
+ * [sectionId] — the `Route.Browse` argument, reloaded whenever it changes so
+ * a restored entry shows its own section.
+ */
 @Composable
 fun BrowsePage(
     viewModel: AppStoreViewModel,
+    sectionId: String,
     onAppClick: (UnifiedApp) -> Unit,
     onBack: () -> Unit,
 ) {
+    LaunchedEffect(sectionId) { viewModel.loadBrowse(sectionId) }
     val state by viewModel.browse.collectAsState()
     BrowseScreen(
         state = state,

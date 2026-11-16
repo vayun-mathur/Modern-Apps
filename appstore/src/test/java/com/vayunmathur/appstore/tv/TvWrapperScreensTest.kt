@@ -13,6 +13,7 @@ import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.toEntity
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -101,20 +102,15 @@ class TvWrapperScreensTest {
     }
 
     @Test
-    fun `browse wrapper renders the opened section`() {
-        vm.openBrowse(
-            TvSection(
-                id = "modern",
-                title = "Modern Row",
-                apps = listOf(
-                    UnifiedApp(ownPackage, AppSource.MODERN_APPS, "This Store"),
-                ),
-            ),
-        )
+    fun `browse wrapper renders the section its argument names`() {
+        // "modern" is a known offline section id: the wrapper resolves it
+        // from its route argument against the catalogue (which holds this
+        // store) without any ViewModel browse state set first.
         rule.setContent {
-            TvStoreBrowse(viewModel = vm, onAppClick = {}, onBack = {})
+            TvStoreBrowse(viewModel = vm, sectionId = "modern", onAppClick = {}, onBack = {})
         }
         rule.waitForIdle()
-        assertTrue(exists("Modern Row") || exists("This Store"))
+        assertTrue(exists("This Store") || exists("Modern"))
+        assertEquals("modern", vm.browse.value.sectionId)
     }
 }

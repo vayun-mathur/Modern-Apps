@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Looper
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
@@ -12,6 +13,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.appstore.data.AppDatabase
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
+import com.vayunmathur.appstore.data.toEntity
 import com.vayunmathur.appstore.data.installer.InstallStage
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -65,16 +67,28 @@ class TvDetailWrapperAndActionsTest {
     private fun nextStarted(): Intent? = Shadows.shadowOf(app).nextStartedActivity
 
     @Test
-    fun `detail wrapper renders the selected app`() {
-        vm.selectApp(
-            UnifiedApp(
-                packageName = "com.example.wrapper",
-                source = AppSource.FDROID,
-                name = "Wrapper App",
-            ),
-        )
-        await("selected") { vm.detail.value.app?.packageName == "com.example.wrapper" }
-        rule.setContent { TvStoreDetail(viewModel = vm, onBack = {}) }
+    fun `detail wrapper renders the app its package argument names`() {
+        // Seed the catalogue the way the store would: the wrapper binds to
+        // its route argument and resolves that package, with no selection
+        // set on the ViewModel first. Seeding waits out the startup sync,
+        // whose offline repo refresh would otherwise prune the row.
+        await("startup settled") { !vm.isLoadingFlow.value }
+        kotlinx.coroutines.runBlocking {
+            db.cachedAppDao().upsert(
+                UnifiedApp(
+                    packageName = "com.example.wrapper",
+                    source = AppSource.FDROID,
+                    name = "Wrapper App",
+                ).toEntity(),
+            )
+        }
+        rule.setContent {
+            TvStoreDetail(viewModel = vm, packageName = "com.example.wrapper", onBack = {})
+        }
+        await("loaded") { vm.detail.value.app?.name == "Wrapper App" }
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.onAllNodesWithText("Wrapper App").fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Wrapper App").assertIsDisplayed()
     }
 

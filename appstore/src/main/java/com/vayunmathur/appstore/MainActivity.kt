@@ -30,10 +30,6 @@ import com.vayunmathur.appstore.util.AppSection
 import com.vayunmathur.appstore.util.AppStoreViewModel
 import com.vayunmathur.appstore.util.AppStoreViewModelFactory
 import com.vayunmathur.appstore.util.RemoteImageFetchers
-import com.vayunmathur.appstore.util.clearSelection
-import com.vayunmathur.appstore.util.openBrowse
-import com.vayunmathur.appstore.util.selectApp
-import com.vayunmathur.appstore.util.selectPackage
 import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
@@ -119,8 +115,8 @@ sealed interface Route : NavKey {
     @Serializable data object Main : Route
     /** Destination showing source trust information. */
     @Serializable data object Trust : Route
-    /** Destination showing one app's detail page. */
-    @Serializable data object Detail : Route
+    /** Destination showing one app's detail page, named by its package. */
+    @Serializable data class Detail(val packageName: String) : Route
     /** Destination browsing one home-page section by its ID. */
     @Serializable data class Browse(val sectionId: String) : Route
 
@@ -150,18 +146,20 @@ private fun AppRoot(
 
     LaunchedEffect(externalPackage) {
         val pkg = externalPackage ?: return@LaunchedEffect
-        viewModel.selectPackage(pkg)
-        if (backStack.last() !is Route.Detail) backStack.add(Route.Detail)
+        // The route carries the package; the Detail entry loads it. No
+        // ViewModel selection is set here, so a restored stack cannot show
+        // a different app from the one its top entry names.
+        if (backStack.last() != Route.Detail(pkg)) backStack.add(Route.Detail(pkg))
         onExternalPackageHandled()
     }
 
     fun openDetail(app: UnifiedApp) {
-        viewModel.selectApp(app)
-        if (backStack.last() !is Route.Detail) backStack.add(Route.Detail)
+        if (backStack.last() != Route.Detail(app.packageName)) {
+            backStack.add(Route.Detail(app.packageName))
+        }
     }
 
     fun openBrowse(section: AppSection) {
-        viewModel.openBrowse(section)
         backStack.add(Route.Browse(section.id))
     }
 
@@ -174,9 +172,10 @@ private fun AppRoot(
                 onOpenBrowse = ::openBrowse,
             )
         }
-        entry<Route.Browse> {
+        entry<Route.Browse> { route ->
             BrowsePage(
                 viewModel = viewModel,
+                sectionId = route.sectionId,
                 onAppClick = ::openDetail,
                 onBack = { backStack.pop() },
             )
@@ -187,13 +186,11 @@ private fun AppRoot(
                 onBack = { backStack.pop() },
             )
         }
-        entry<Route.Detail>(metadata = MorphPage()) {
+        entry<Route.Detail>(metadata = MorphPage()) { route ->
             AppDetailPage(
                 viewModel = viewModel,
-                onBack = {
-                    backStack.pop()
-                    viewModel.clearSelection()
-                },
+                packageName = route.packageName,
+                onBack = { backStack.pop() },
                 onOpenTrust = { backStack.add(Route.Trust) },
                 onOpenScreenshot = { index ->
                     val app = viewModel.detail.value.app

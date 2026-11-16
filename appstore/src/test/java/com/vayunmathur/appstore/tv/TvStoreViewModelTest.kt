@@ -12,7 +12,6 @@ import com.vayunmathur.appstore.util.SourceFilter
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -73,29 +72,37 @@ class TvStoreViewModelTest {
     }
 
     @Test
-    fun `select and clear an app drives the detail state`() {
-        val selected = app("com.example.detail", name = "Detail")
-        vm.selectApp(selected)
-        await("detail selected") { vm.detail.value.app?.packageName == "com.example.detail" }
-        vm.clearSelection()
-        await("detail cleared") { vm.detail.value.app == null }
-        assertNull(vm.detail.value.app)
+    fun `loadDetail by package drives the detail state, replacing the previous app`() {
+        // Detail is loaded by the route's package argument: a second
+        // argument replaces the first instead of rendering a stale app.
+        vm.loadDetail("com.example.detail")
+        await("detail loaded") { vm.detail.value.app?.packageName == "com.example.detail" }
+        vm.loadDetail("com.example.other")
+        await("detail replaced") { vm.detail.value.app?.packageName == "com.example.other" }
+        assertEquals("com.example.other", vm.detail.value.app?.packageName)
     }
 
     @Test
-    fun `browse opens a section and clears`() {
+    fun `browse loads the section the route argument names`() {
         val section = TvSection(
             id = "play-cluster",
             title = "Top apps",
             apps = listOf(app("com.example.b", name = "Beta"), app("com.example.a", name = "Alpha")),
         )
-        vm.openBrowse(section)
+        vm.sectionsFlow.value = listOf(section)
+        vm.loadBrowse("play-cluster")
         await("browse apps sorted") {
             vm.browse.value.apps.map { it.name } == listOf("Alpha", "Beta")
         }
+        assertEquals("play-cluster", vm.browse.value.sectionId)
         assertEquals("Top apps", vm.browse.value.title)
-        vm.clearBrowse()
-        await("browse cleared") { vm.browse.value.apps.isEmpty() && vm.browse.value.title.isEmpty() }
+
+        // A different argument loads its own (empty) section, not the last one.
+        vm.loadBrowse("modern")
+        await("browse replaced") {
+            vm.browse.value.sectionId == "modern" && !vm.browse.value.isLoading
+        }
+        assertTrue(vm.browse.value.apps.none { it.name == "Alpha" })
     }
 
     @Test

@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -25,10 +26,14 @@ import com.vayunmathur.library.ui.IconPackage
 @Composable
 fun TvStoreBrowse(
     viewModel: TvStoreViewModel,
+    sectionId: String,
     onAppClick: (UnifiedApp) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // The Browse route's argument, reloaded whenever it changes so a
+    // restored entry shows its own section.
+    LaunchedEffect(sectionId) { viewModel.loadBrowse(sectionId) }
     val state by viewModel.browse.collectAsState()
     BackHandler(onBack = onBack)
     TvStoreBrowseScreen(

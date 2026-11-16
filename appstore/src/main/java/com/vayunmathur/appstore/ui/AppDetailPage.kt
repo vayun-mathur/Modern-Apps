@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +21,7 @@ import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.util.AppDetailActions
 import com.vayunmathur.appstore.util.AppDetailUiState
 import com.vayunmathur.appstore.util.AppStoreViewModel
+import com.vayunmathur.appstore.util.loadDetail
 import com.vayunmathur.library.ui.AppBarAlignment
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ConfirmDialog
@@ -29,14 +31,20 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 
-/** Binds [AppStoreViewModel] to the stateless [AppDetailScreen]. */
+/**
+ * Binds [AppStoreViewModel] to the stateless [AppDetailScreen] for
+ * [packageName] — the `Route.Detail` argument, reloaded whenever it changes
+ * so a restored entry shows its own app.
+ */
 @Composable
 fun AppDetailPage(
     viewModel: AppStoreViewModel,
+    packageName: String,
     onBack: () -> Unit,
     onOpenTrust: () -> Unit = {},
     onOpenScreenshot: (Int) -> Unit = {},
 ) {
+    LaunchedEffect(packageName) { viewModel.loadDetail(packageName) }
     val state by viewModel.detail.collectAsState()
     AppDetailScreen(
         state = state,
