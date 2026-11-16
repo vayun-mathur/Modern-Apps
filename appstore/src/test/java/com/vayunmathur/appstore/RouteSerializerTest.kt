@@ -42,7 +42,9 @@ class RouteSerializerTest {
         assertEquals(detail, restoredDetail)
         assertEquals("com.example.app", assertIs<Route.Detail>(restoredDetail).packageName)
 
-        for (route in listOf<Route>(Route.Main, Route.Trust)) {
+        for (route in listOf<Route>(
+            Route.Home, Route.Search, Route.Updates, Route.Library, Route.Sources, Route.Trust,
+        )) {
             val restored = json.decodeFromString(
                 Route.serializer(),
                 json.encodeToString(Route.serializer(), route),

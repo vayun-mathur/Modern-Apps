@@ -3,12 +3,10 @@ package com.vayunmathur.appstore
 import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,15 +38,15 @@ import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconPackage
 import com.vayunmathur.library.ui.IconProvider
 import com.vayunmathur.library.ui.IconSearch
-import com.vayunmathur.library.ui.PagerTab
-import com.vayunmathur.library.ui.TabStyle
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
+import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
-import kotlinx.coroutines.launch
 
 /** Entry activity that wires the store UI, navigation and catalog startup. */
 class MainActivity : MaActivity() {
@@ -111,8 +109,16 @@ class MainActivity : MaActivity() {
 @Serializable
 /** Navigation destinations for the phone store UI. */
 sealed interface Route : NavKey {
-    /** Destination showing the store home page. */
-    @Serializable data object Main : Route
+    /** Tab destination showing the store home page. */
+    @Serializable data object Home : Route
+    /** Tab destination showing store search. */
+    @Serializable data object Search : Route
+    /** Tab destination showing available updates. */
+    @Serializable data object Updates : Route
+    /** Tab destination showing the installed-app library. */
+    @Serializable data object Library : Route
+    /** Tab destination showing store sources. */
+    @Serializable data object Sources : Route
     /** Destination showing source trust information. */
     @Serializable data object Trust : Route
     /** Destination showing one app's detail page, named by its package. */
@@ -142,7 +148,9 @@ private fun AppRoot(
     externalPackage: String?,
     onExternalPackageHandled: () -> Unit,
 ) {
-    val backStack = rememberNavBackStack<Route>(Route.Main)
+    // Home is the start (and deep-link base) tab: an external package pushes
+    // Detail over it, so popping Detail lands back on Home.
+    val backStack = rememberNavBackStack<Route>(Route.Home)
 
     LaunchedEffect(externalPackage) {
         val pkg = externalPackage ?: return@LaunchedEffect
@@ -163,99 +171,107 @@ private fun AppRoot(
         backStack.add(Route.Browse(section.id))
     }
 
-    MainNavigation(backStack) {
-        entry<Route.Main> {
-            AppTabs(
-                viewModel = viewModel,
-                onAppClick = ::openDetail,
-                onOpenTrust = { backStack.add(Route.Trust) },
-                onOpenBrowse = ::openBrowse,
-            )
-        }
-        entry<Route.Browse> { route ->
-            BrowsePage(
-                viewModel = viewModel,
-                sectionId = route.sectionId,
-                onAppClick = ::openDetail,
-                onBack = { backStack.pop() },
-            )
-        }
-        entry<Route.Trust> {
-            TrustPage(
-                ownSigningCertificates = viewModel.ownSigningCertificates,
-                onBack = { backStack.pop() },
-            )
-        }
-        entry<Route.Detail>(metadata = MorphPage()) { route ->
-            AppDetailPage(
-                viewModel = viewModel,
-                packageName = route.packageName,
-                onBack = { backStack.pop() },
-                onOpenTrust = { backStack.add(Route.Trust) },
-                onOpenScreenshot = { index ->
-                    val app = viewModel.detail.value.app
-                    if (app != null && app.screenshots.isNotEmpty()) {
-                        backStack.add(Route.Screenshots(app.name, app.screenshots, index))
-                    }
-                },
-            )
-        }
-        entry<Route.Screenshots> { route ->
-            ScreenshotViewerScreen(
-                appName = route.appName,
-                urls = route.urls,
-                initialIndex = route.index,
-                onClose = { backStack.pop() },
-            )
-        }
-    }
+    AppTabs(
+        backStack = backStack,
+        viewModel = viewModel,
+        onAppClick = ::openDetail,
+        onOpenBrowse = ::openBrowse,
+    )
 }
 
 /**
- * The five bottom-nav tabs, hosted in a swipeable pager (see [TabbedPagerScaffold]).
- * Trust and Detail are pushed on top of this host as ordinary routes.
+ * The five bottom-nav tabs as sibling routes (see [TabbedPagerScaffold]'s
+ * route-backed overload). Selecting a tab resets the stack to that tab, so
+ * tab state is the back stack itself — visible to back, deep links and
+ * process restore — and each tab entry below is registered [SiblingPage]
+ * so switches crossfade instead of sliding like a push. Browse, Trust,
+ * Detail and Screenshots are pushed over the tab host as ordinary routes;
+ * while one is on top no tab is selected. Per-tab screen state stays in
+ * the shared ViewModel (and each entry's saveable state), as with the pager.
  */
 @Composable
 private fun AppTabs(
+    backStack: NavBackStack<Route>,
     viewModel: AppStoreViewModel,
     onAppClick: (UnifiedApp) -> Unit,
-    onOpenTrust: () -> Unit,
     onOpenBrowse: (AppSection) -> Unit,
 ) {
-    val pagerState = rememberPagerState(pageCount = { 5 })
-    val scope = rememberCoroutineScope()
-    val tabs = listOf(
-        PagerTab(stringResource(R.string.nav_home), { IconHome() }) {
-            HomePage(
-                viewModel = viewModel,
-                onAppClick = onAppClick,
-                onOpenUpdates = { scope.launch { pagerState.animateScrollToPage(PAGE_UPDATES) } },
-                onOpenBrowse = onOpenBrowse,
-            )
-        },
-        PagerTab(stringResource(R.string.nav_search), { IconSearch() }) {
-            // settledPage, not currentPage: currentPage flips to the nearest page part-way
-            // through a swipe or an animated jump, and search grabbing focus at that moment
-            // pulls the pager onto itself — so going home -> updates would land on search
-            // with the keyboard up.
-            SearchPage(
-                viewModel = viewModel,
-                onAppClick = onAppClick,
-                isActive = pagerState.settledPage == PAGE_SEARCH,
-            )
-        },
-        PagerTab(stringResource(R.string.nav_updates), { IconDownload() }) {
-            UpdatesPage(viewModel = viewModel, onAppClick = onAppClick)
-        },
-        PagerTab(stringResource(R.string.nav_library), { IconPackage() }) {
-            LibraryPage(viewModel = viewModel, onAppClick = onAppClick)
-        },
-        PagerTab(stringResource(R.string.nav_sources), { IconProvider() }) {
-            SourcesPage(viewModel = viewModel, onOpenTrust = onOpenTrust)
-        },
+    val tabs = listOf<RouteTab<Route>>(
+        RouteTab(Route.Home, stringResource(R.string.nav_home), { IconHome() }),
+        RouteTab(Route.Search, stringResource(R.string.nav_search), { IconSearch() }),
+        RouteTab(Route.Updates, stringResource(R.string.nav_updates), { IconDownload() }),
+        RouteTab(Route.Library, stringResource(R.string.nav_library), { IconPackage() }),
+        RouteTab(Route.Sources, stringResource(R.string.nav_sources), { IconProvider() }),
     )
-    TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)
+    TabbedPagerScaffold(backStack = backStack, tabs = tabs) {
+        MainNavigation(backStack) {
+            entry<Route.Home>(metadata = SiblingPage()) {
+                HomePage(
+                    viewModel = viewModel,
+                    onAppClick = onAppClick,
+                    // Cross-tab jump: a sibling switch, not a push.
+                    onOpenUpdates = { backStack.reset(Route.Updates) },
+                    onOpenBrowse = onOpenBrowse,
+                )
+            }
+            entry<Route.Search>(metadata = SiblingPage()) {
+                // This entry only renders while Search is on top, so the
+                // page is active by construction: opening it may autofocus,
+                // and a neighbour can no longer grab focus mid-swipe.
+                SearchPage(
+                    viewModel = viewModel,
+                    onAppClick = onAppClick,
+                    isActive = true,
+                )
+            }
+            entry<Route.Updates>(metadata = SiblingPage()) {
+                UpdatesPage(viewModel = viewModel, onAppClick = onAppClick)
+            }
+            entry<Route.Library>(metadata = SiblingPage()) {
+                LibraryPage(viewModel = viewModel, onAppClick = onAppClick)
+            }
+            entry<Route.Sources>(metadata = SiblingPage()) {
+                SourcesPage(
+                    viewModel = viewModel,
+                    onOpenTrust = { backStack.add(Route.Trust) },
+                )
+            }
+            entry<Route.Browse> { route ->
+                BrowsePage(
+                    viewModel = viewModel,
+                    sectionId = route.sectionId,
+                    onAppClick = onAppClick,
+                    onBack = { backStack.pop() },
+                )
+            }
+            entry<Route.Trust> {
+                TrustPage(
+                    ownSigningCertificates = viewModel.ownSigningCertificates,
+                    onBack = { backStack.pop() },
+                )
+            }
+            entry<Route.Detail>(metadata = MorphPage()) { route ->
+                AppDetailPage(
+                    viewModel = viewModel,
+                    packageName = route.packageName,
+                    onBack = { backStack.pop() },
+                    onOpenTrust = { backStack.add(Route.Trust) },
+                    onOpenScreenshot = { index ->
+                        val app = viewModel.detail.value.app
+                        if (app != null && app.screenshots.isNotEmpty()) {
+                            backStack.add(Route.Screenshots(app.name, app.screenshots, index))
+                        }
+                    },
+                )
+            }
+            entry<Route.Screenshots> { route ->
+                ScreenshotViewerScreen(
+                    appName = route.appName,
+                    urls = route.urls,
+                    initialIndex = route.index,
+                    onClose = { backStack.pop() },
+                )
+            }
+        }
+    }
 }
-
-private const val PAGE_SEARCH = 1
-private const val PAGE_UPDATES = 2

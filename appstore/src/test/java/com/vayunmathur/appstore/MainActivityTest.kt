@@ -57,7 +57,7 @@ private class AppStoreSeedRule : TestRule {
 
 /**
  * The phone entry point under Robolectric: MainActivity wires its
- * ViewModel, renders the five-tab pager, and each tab can be selected.
+ * ViewModel, renders the five route-backed tabs, and each tab can be selected.
  */
 @RunWith(RobolectricTestRunner::class)
 class MainActivityTest {
