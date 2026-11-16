@@ -31,6 +31,7 @@ import com.vayunmathur.library.ui.IconBack
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconHistory
+import com.vayunmathur.library.ui.IconLocationOn
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
@@ -88,7 +89,7 @@ fun SearchSheet(
                 title = stringResource(R.string.no_results_found),
                 modifier = Modifier.height(StatusBlockHeight),
             )
-            SearchPhase.Results -> ResultsList(state.results, actions)
+            SearchPhase.Results -> ResultsList(state.results, actions, state.nearLat, state.nearLon)
             SearchPhase.Recents -> RecentsList(state.recents, actions)
             SearchPhase.Idle -> Box(
                 Modifier.fillMaxWidth().height(StatusBlockHeight),
@@ -150,11 +151,27 @@ private fun SearchField(query: String, actions: SearchActions, autoFocus: Boolea
 }
 
 @Composable
-private fun ResultsList(results: List<SearchResult>, actions: SearchActions) {
+private fun ResultsList(
+    results: List<SearchResult>,
+    actions: SearchActions,
+    nearLat: Double = 0.0,
+    nearLon: Double = 0.0,
+) {
     LazyColumn(Modifier.fillMaxWidth()) {
         items(results, key = { it.id }) { result ->
+            val distanceText = if (nearLat != 0.0 || nearLon != 0.0) {
+                com.vayunmathur.maps.util.formatDistance(
+                    kotlin.math.hypot(
+                        (result.lon - nearLon) * 111_320.0 * kotlin.math.cos(Math.toRadians(nearLat)),
+                        (result.lat - nearLat) * 110_540.0,
+                    ),
+                )
+            } else {
+                null
+            }
             ListItem(
                 content = { Text(result.title) },
+                leadingContent = { IconLocationOn(tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 supportingContent = {
                     Text(
                         result.subtitle
@@ -164,17 +181,27 @@ private fun ResultsList(results: List<SearchResult>, actions: SearchActions) {
                 // Where the place is, so two same-named rows (every "Starbucks") can be told
                 // apart at a glance. Capped in width and lines so a long "City, State,
                 // Country" never squeezes the name itself.
-                trailingContent = result.locality?.let { locality ->
-                    {
-                        Text(
-                            locality,
-                            modifier = Modifier.widthIn(max = LocalityMaxWidth),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.End,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                trailingContent = {
+                    Column(horizontalAlignment = Alignment.End) {
+                        distanceText?.let { distance ->
+                            Text(
+                                distance,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.End,
+                            )
+                        }
+                        result.locality?.let { locality ->
+                            Text(
+                                locality,
+                                modifier = Modifier.widthIn(max = LocalityMaxWidth),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.End,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 },
                 modifier = Modifier.clickable { actions.selectResult(result) },

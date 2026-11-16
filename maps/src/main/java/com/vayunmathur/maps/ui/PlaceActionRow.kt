@@ -2,6 +2,7 @@ package com.vayunmathur.maps.ui
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,13 +50,35 @@ internal fun PlaceActionRow(
 ) {
     val context = LocalContext.current
 
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PlaceAction(
-            Modifier.weight(1f),
-            { IconDirections() },
-            stringResource(if (inactiveNavigation == null) R.string.directions else R.string.add_stop_to_route),
-            onClick = requestDirections,
-        )
+    Row(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Directions is the primary action: a filled pill, Google-Maps style,
+        // rather than one more circular icon button in the row.
+        Surface(
+            shape = RoundedCornerShape(percent = 50),
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .weight(1.3f)
+                .clip(RoundedCornerShape(percent = 50))
+                .clickable(onClick = requestDirections),
+        ) {
+            Row(
+                Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconDirections(tint = MaterialTheme.colorScheme.onPrimary)
+                Text(
+                    stringResource(if (inactiveNavigation == null) R.string.directions else R.string.add_stop_to_route),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.padding(start = 6.dp),
+                )
+            }
+        }
         phone?.let {
             PlaceAction(Modifier.weight(1f), { IconCall() }, stringResource(UiR.string.call)) {
                 goto(context, "tel:$it")
@@ -104,7 +127,13 @@ private fun PlaceAction(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(44.dp)) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier
+                .size(44.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+        ) {
             Box(contentAlignment = Alignment.Center) { icon() }
         }
         Text(

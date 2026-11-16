@@ -74,7 +74,9 @@ class RouteSheetSlice3ExtraTest {
         }
         rule.onNodeWithText("Head north on Main St").assertIsDisplayed()
         rule.onNodeWithText("Leave at", substring = true).assertIsDisplayed()
-        rule.onNodeWithText("Arrive at", substring = true).assertIsDisplayed()
+        // The selected route card sits above the steps now, so the last
+        // step row is composed but below the test viewport fold.
+        rule.onNodeWithText("Arrive at", substring = true).assertExists()
         // Start Navigation is offered for the drive route while Idle
         rule.onNodeWithText("Start Navigation").assertIsDisplayed()
         // Walk tab -> EmptyRoute message

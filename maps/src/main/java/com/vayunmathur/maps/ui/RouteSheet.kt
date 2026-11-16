@@ -50,6 +50,7 @@ import com.vayunmathur.maps.util.formatDistance
 import com.vayunmathur.maps.util.formatDuration
 import com.vayunmathur.maps.util.formatEta
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 
 /**
@@ -197,6 +198,14 @@ fun RouteSheet(
 
         val routeForMode = route[selectedRouteType]
         if (routeForMode != null) {
+            if (routeForMode is RouteService.Route) {
+                RouteOptionCard(
+                    route = routeForMode,
+                    selected = selectedAlternative == null,
+                    onClick = { onSelectAlternative(null) },
+                    modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+                )
+            }
             if (routeForMode !is RouteService.EmptyRoute) {
                 // Time and distance live in the selector now, so the summary row that
                 // used to sit here would only repeat the selected tab.
@@ -372,20 +381,71 @@ private fun AlternativesSection(
             val lines = alternative.step.mapNotNull {
                 it.transitDetails?.transitLine?.let { line -> line.nameShort ?: line.name }
             }.distinct()
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm)
-                    .clickable { onSelect(if (selected == alternative) null else alternative) },
-            ) {
-                ListItem({
-                    Text(
-                        listOfNotNull(
-                            formatDuration(context, alternative.duration),
-                            formatDistance(alternative.distanceMeters),
-                            lines.joinToString(" · ").takeIf { it.isNotBlank() },
-                            stringResource(R.string.alternative_selected).takeIf { selected == alternative },
-                        ).joinToString(" · "),
+            RouteOptionCard(
+                route = alternative,
+                selected = selected == alternative,
+                onClick = { onSelect(if (selected == alternative) null else alternative) },
+                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
+            )
+        }
+    }
+}
+
+/**
+ * One selectable route option: big duration, then distance/arrival and —
+ * for transit — the boarded line chips in their line colours. The shown
+ * route's card is highlighted with the primary outline.
+ */
+@Composable
+internal fun RouteOptionCard(
+    route: RouteService.Route,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val lines = route.step.mapNotNull { it.transitDetails?.transitLine }.distinctBy { it.name }
+    Card(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .then(
+                if (selected) {
+                    Modifier.border(
+                        2.dp, MaterialTheme.colorScheme.primary,
+                        androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
                     )
-                })
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        Column(Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    formatDuration(context, route.duration),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                route.arrivalTime?.let { arrival ->
+                    Text(
+                        " · $arrival",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = Spacing.sm),
+                    )
+                }
+            }
+            Text(
+                formatDistance(route.distanceMeters),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (lines.isNotEmpty()) {
+                Row(
+                    Modifier.padding(top = Spacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    lines.forEach { line -> LineBadge(line.nameShort ?: line.name, line.color) }
+                }
             }
         }
     }

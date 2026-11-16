@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.ClipEntry
@@ -197,6 +198,25 @@ private fun PlaceSheetContent(
         showGoogleHours = openingHours == null,
         modifier = modifier,
     ) {
+        // Overview opens with the photo strip when the enrichment brought
+        // photos (the full gallery stays on the Photos tab).
+        if (poi?.photoUrls?.isNotEmpty() == true) {
+            androidx.compose.foundation.lazy.LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                items(poi.photoUrls.size) { index ->
+                    com.vayunmathur.library.image.compose.AsyncImage(
+                        model = poi.photoUrls[index],
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(width = 160.dp, height = 96.dp)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    )
+                }
+            }
+        }
         // Departures (train/transit stations): resolve the nearest Transitous
         // stop by coordinate and open its live board (see MapPage DeparturesSheet).
         onDepartures?.let { open ->

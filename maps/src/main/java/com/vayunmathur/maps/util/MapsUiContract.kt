@@ -20,6 +20,9 @@ data class SearchUiState(
     val recents: List<String> = emptyList(),
     /** Whether a search is running. See [SearchPhase]. */
     val searching: Boolean = false,
+    /** Search bias centre, for per-result distances. 0 = unknown. */
+    val nearLat: Double = 0.0,
+    val nearLon: Double = 0.0,
 ) {
     /**
      * What the results area should show.

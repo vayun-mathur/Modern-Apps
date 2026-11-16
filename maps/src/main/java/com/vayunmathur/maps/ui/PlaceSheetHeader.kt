@@ -188,7 +188,23 @@ private fun PlaceSheetHeaderContent(
     val orderDeepLink by rememberOrderDeepLink(context, feature, poi?.category)
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PlaceHeader(feature.name, poi, feature as? SpecificFeature.GenericPlace)
+        val userPos = panelState.userPosition
+        val distanceText = if (userPos != null && (userPos.latitude != 0.0 || userPos.longitude != 0.0)) {
+            com.vayunmathur.maps.util.formatDistance(
+                com.vayunmathur.maps.util.AlternativeRoutes.run {
+                    // Straight-line distance for the subtitle line; the
+                    // routed distance lives on the route sheet.
+                    kotlin.math.hypot(
+                        (feature.position.longitude - userPos.longitude) * 111_320.0 *
+                            kotlin.math.cos(Math.toRadians(userPos.latitude)),
+                        (feature.position.latitude - userPos.latitude) * 110_540.0,
+                    )
+                },
+            )
+        } else {
+            null
+        }
+        PlaceHeader(feature.name, poi, feature as? SpecificFeature.GenericPlace, distanceText)
         PlaceActionRow(
             feature = feature,
             // OSM first, Google as the fallback. These used to be handed the OSM
@@ -260,13 +276,17 @@ private fun PlaceHeader(
     name: String,
     poi: GooglePoiInfo?,
     offline: SpecificFeature.GenericPlace?,
+    distanceText: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(name, style = MaterialTheme.typography.titleLarge)
+        Text(name, style = MaterialTheme.typography.headlineSmall)
 
-        val subtitle = listOfNotNull(poi?.category?.ifBlank { null }, poi?.priceText?.ifBlank { null })
-            .joinToString(" \u00B7 ")
+        val subtitle = listOfNotNull(
+            poi?.category?.ifBlank { null },
+            poi?.priceText?.ifBlank { null },
+            distanceText,
+        ).joinToString(" \u00B7 ")
         if (subtitle.isNotBlank()) {
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

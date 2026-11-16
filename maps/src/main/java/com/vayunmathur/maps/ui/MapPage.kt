@@ -265,6 +265,8 @@ fun MapPage(
         results = searchResults,
         recents = searchRecents,
         searching = searching,
+        nearLat = searchRoute?.nearLat ?: 0.0,
+        nearLon = searchRoute?.nearLon ?: 0.0,
     )
     val browsing = selectedFeature == null && !isNavigating
     // The bar is chrome, not a sheet, so it is composed away rather than animated out. Its

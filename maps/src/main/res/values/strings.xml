@@ -61,7 +61,7 @@
     <string name="poi_fuel_price_header">Fuel price</string>
     <!-- Place detail: Label of the first tab under the action buttons, holding the
          description, address and opening hours. Noun, plural. -->
-    <string name="poi_tab_details">Details</string>
+    <string name="poi_tab_details">Overview</string>
     <!-- Place detail: Photos section header. Noun. -->
     <string name="poi_photos_header">Photos</string>
     <!-- Place detail: Popular times section header. Noun phrase. -->
