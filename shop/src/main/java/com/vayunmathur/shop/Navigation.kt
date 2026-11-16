@@ -17,6 +17,7 @@ import com.vayunmathur.library.ui.IconShoppingCart
 import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.shop.platform.ShopViewModel
@@ -27,6 +28,28 @@ import com.vayunmathur.shop.ui.ProductScreen
 import com.vayunmathur.shop.ui.ProfileScreen
 import com.vayunmathur.shop.ui.SearchScreen
 
+/** Graph root for the current profile state: the gate until the profile validates, then Search. */
+internal fun shopStartRoute(profileComplete: Boolean): Route =
+    if (profileComplete) Route.Search else Route.ProfileSetup
+
+/**
+ * Lifts the profile gate. Only fires once the profile has loaded and validates,
+ * and only while [Route.ProfileSetup] is still on the stack — later edits via
+ * the Profile tab (which also keep the profile complete) must not reset the
+ * user's stack. reset() rather than add(): there is no going back to the gate.
+ * Returns true when the stack was reset.
+ */
+internal fun applyShopProfileGate(
+    backStack: NavBackStack<Route>,
+    profileLoaded: Boolean,
+    profileComplete: Boolean,
+): Boolean {
+    if (!profileLoaded || !profileComplete) return false
+    if (Route.ProfileSetup !in backStack.backStack) return false
+    backStack.reset(Route.Search)
+    return true
+}
+
 @Composable
 fun Navigation(
     viewModel: ShopViewModel,
@@ -35,21 +58,31 @@ fun Navigation(
 ) {
     val context = LocalContext.current
     LaunchedEffect(viewModel) { viewModel.observeProfile(context) }
-    if (!viewModel.profileLoaded) return
-    if (!viewModel.profileComplete) {
-        ProfileScreen(viewModel, required = true)
-        return
+    // The gate is a graph root, not an early return: before the profile loads
+    // it is not known to be complete, so the stack starts at ProfileSetup and
+    // the gate effect below lifts it to Search once a complete profile loads
+    // (or is saved from the gate itself). A user whose profile is already
+    // complete at first composition starts at Search directly.
+    val backStack = rememberNavBackStack<Route>(shopStartRoute(viewModel.profileComplete))
+    LaunchedEffect(viewModel.profileLoaded, viewModel.profileComplete) {
+        applyShopProfileGate(backStack, viewModel.profileLoaded, viewModel.profileComplete)
     }
-    // Deep-link initial tab: a cold-start Orders link starts on Orders, not Search.
-    val backStack = rememberNavBackStack<Route>(if (ordersRequest > 0) Route.Orders else Route.Search)
     // A later Orders link: direct sibling reset (no ViewModel route handoff).
-    LaunchedEffect(ordersRequest) {
-        if (ordersRequest > 0 && backStack.last() != Route.Orders) backStack.reset(Route.Orders)
+    // While the gate is up the reset is deferred — the gate effect lifts to
+    // Search first and this effect re-runs on the stack change.
+    LaunchedEffect(ordersRequest, backStack.backStack.lastOrNull()) {
+        if (ordersRequest > 0 && backStack.last() != Route.Orders &&
+            backStack.backStack.lastOrNull() != Route.ProfileSetup
+        ) {
+            backStack.reset(Route.Orders)
+        }
     }
     // Merchant links resolve in the ViewModel, which calls back with the destination;
     // this is the direct backStack call that replaces the old pendingRoute effect.
-    LaunchedEffect(linkRequest) {
+    // While gated, the link is left unconsumed and applies after the gate lifts.
+    LaunchedEffect(linkRequest, backStack.backStack.lastOrNull()) {
         val url = linkRequest?.second ?: return@LaunchedEffect
+        if (backStack.backStack.lastOrNull() == Route.ProfileSetup) return@LaunchedEffect
         viewModel.openLink(url) { route ->
             if (route is Route.ProductDetail) backStack.reset(Route.Search, route) else backStack.reset(route)
         }
@@ -68,6 +101,11 @@ fun Navigation(
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
+    if (backStack.backStack.lastOrNull() == Route.ProfileSetup) {
+        // Gate up: no tab bar — the required profile form is the whole graph.
+        MainNavigation(backStack) { shopEntries(backStack, viewModel, context) }
+        return
+    }
     val tabs = listOf<RouteTab<Route>>(
         RouteTab(Route.Search, stringResource(R.string.search)) { IconSearch() },
         RouteTab(Route.Cart, stringResource(R.string.cart)) { IconShoppingCart() },
@@ -79,40 +117,52 @@ fun Navigation(
     // pushed over a tab render here with no tab selected, and each entry keeps its
     // own rememberSaveable state under its route.
     TabbedPagerScaffold(backStack = backStack, tabs = tabs) {
-        MainNavigation(backStack) {
-            entry<Route.Search>(metadata = SiblingPage()) {
-                SearchScreen(
-                    viewModel = viewModel,
-                    onProductClick = { variantId, platformId, shopDomain ->
-                        backStack.add(Route.ProductDetail(variantId, platformId, shopDomain))
-                    },
-                )
-            }
-            entry<Route.Cart>(metadata = SiblingPage()) {
-                CartScreen(viewModel, onPayInApp = { backStack.add(Route.EmbeddedCheckout) })
-            }
-            entry<Route.Orders>(metadata = SiblingPage()) {
-                LaunchedEffect(Unit) { viewModel.refreshTracking(context) }
-                OrdersScreen(viewModel = viewModel)
-            }
-            entry<Route.Profile>(metadata = SiblingPage()) {
-                ProfileScreen(viewModel, required = false)
-            }
-            entry<Route.ProductDetail> { route ->
-                ProductScreen(
-                    viewModel = viewModel,
-                    variantId = route.variantId,
-                    platformId = route.platformId,
-                    shopDomain = route.shopDomain,
-                    onBack = { backStack.pop() },
-                    onPayInApp = { backStack.add(Route.EmbeddedCheckout) },
-                )
-            }
-            entry<Route.EmbeddedCheckout> {
-                EmbeddedCheckoutScreen(viewModel = viewModel, onClose = {
-                    if (backStack.backStack.lastOrNull() == Route.EmbeddedCheckout) backStack.pop()
-                })
-            }
-        }
+        MainNavigation(backStack) { shopEntries(backStack, viewModel, context) }
+    }
+}
+
+private fun com.vayunmathur.library.util.EntryProviderScope<Route>.shopEntries(
+    backStack: NavBackStack<Route>,
+    viewModel: ShopViewModel,
+    context: android.content.Context,
+) {
+    entry<Route.ProfileSetup> {
+        // Still inside the graph while loading: nothing renders until the
+        // repository emits, matching the previous blank-until-loaded gate,
+        // then the same required profile form as before.
+        if (viewModel.profileLoaded) ProfileScreen(viewModel, required = true)
+    }
+    entry<Route.Search>(metadata = SiblingPage()) {
+        SearchScreen(
+            viewModel = viewModel,
+            onProductClick = { variantId, platformId, shopDomain ->
+                backStack.add(Route.ProductDetail(variantId, platformId, shopDomain))
+            },
+        )
+    }
+    entry<Route.Cart>(metadata = SiblingPage()) {
+        CartScreen(viewModel, onPayInApp = { backStack.add(Route.EmbeddedCheckout) })
+    }
+    entry<Route.Orders>(metadata = SiblingPage()) {
+        LaunchedEffect(Unit) { viewModel.refreshTracking(context) }
+        OrdersScreen(viewModel = viewModel)
+    }
+    entry<Route.Profile>(metadata = SiblingPage()) {
+        ProfileScreen(viewModel, required = false)
+    }
+    entry<Route.ProductDetail> { route ->
+        ProductScreen(
+            viewModel = viewModel,
+            variantId = route.variantId,
+            platformId = route.platformId,
+            shopDomain = route.shopDomain,
+            onBack = { backStack.pop() },
+            onPayInApp = { backStack.add(Route.EmbeddedCheckout) },
+        )
+    }
+    entry<Route.EmbeddedCheckout> {
+        EmbeddedCheckoutScreen(viewModel = viewModel, onClose = {
+            if (backStack.backStack.lastOrNull() == Route.EmbeddedCheckout) backStack.pop()
+        })
     }
 }

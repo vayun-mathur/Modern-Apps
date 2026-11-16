@@ -6,6 +6,15 @@ import kotlinx.serialization.Serializable
 /** Contract for route. */
 @Serializable
 sealed interface Route : NavKey {
+    /**
+     * First-run profile gate. The graph root while the saved profile is
+     * incomplete; replaced by [Search] via reset once it validates, so Back
+     * can never return to the gate. Later profile edits stay in the Profile
+     * tab inside [Search] and never use this route.
+     */
+    @Serializable
+    data object ProfileSetup : Route
+
     /** Singleton holding search state and operations. */
     @Serializable
     data object Search : Route

@@ -100,6 +100,20 @@ class ShopScreensCoverage2Test {
         composeRule.onNodeWithText("Add your details to start shopping.").assertIsDisplayed()
     }
 
+    @Test fun navigation_gateResetsToSearchWhenProfileCompletes() {
+        val vm = ShopViewModel(); stubProfileRepository(vm)
+        setVmField(vm, "profileLoaded", true)
+        composeRule.setContent { Navigation(vm) }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Add your details to start shopping.").assertIsDisplayed()
+        // Saving a valid profile (as the gate's Continue does via the repository
+        // flow) flips profileComplete; the gate root must reset to Search.
+        setVmField(vm, "profile", ShopProfile(firstName="Ada", lastName="L", email="ada@example.com", phone="+14155550123"))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(str(R.string.no_products_found)).assertIsDisplayed()
+        composeRule.onNodeWithText("Add your details to start shopping.").assertDoesNotExist()
+    }
+
     @Test fun navigation_completeProfileShowsSearchTabs() {
         val vm = ShopViewModel(); stubProfileRepository(vm)
         setVmField(vm, "profile", ShopProfile(firstName="Ada", lastName="L", email="ada@example.com", phone="+14155550123"))

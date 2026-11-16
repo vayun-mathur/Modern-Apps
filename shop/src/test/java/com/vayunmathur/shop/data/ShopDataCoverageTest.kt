@@ -54,6 +54,7 @@ class ShopDataCoverageTest {
     }
 
     @Test fun routeEqualityAndSerialization() {
+        assertEquals(Route.ProfileSetup, Route.ProfileSetup)
         assertEquals(Route.Search, Route.Search); assertEquals(Route.Cart, Route.Cart)
         assertEquals(Route.Orders, Route.Orders); assertEquals(Route.EmbeddedCheckout, Route.EmbeddedCheckout)
         val detail = Route.ProductDetail("v1","shopify","s.example")
@@ -64,5 +65,6 @@ class ShopDataCoverageTest {
         val encoded = json.encodeToString<Route>(detail)
         assertEquals(detail, json.decodeFromString<Route>(encoded))
         assertEquals(Route.Search, json.decodeFromString<Route>(json.encodeToString<Route>(Route.Search)))
+        assertEquals(Route.ProfileSetup, json.decodeFromString<Route>(json.encodeToString<Route>(Route.ProfileSetup)))
     }
 }
