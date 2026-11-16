@@ -57,13 +57,11 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.vayunmathur.games.voxels.data.GameSettingsStore
 import com.vayunmathur.games.voxels.data.WorldMode
-import com.vayunmathur.games.voxels.domain.BackTarget
 import com.vayunmathur.games.voxels.domain.NetStatus
 import com.vayunmathur.games.voxels.network.JoinRequests
 import com.vayunmathur.games.voxels.network.MultiplayerPump
 import com.vayunmathur.games.voxels.network.VoxelsSync
-import com.vayunmathur.games.voxels.domain.OverlayFlags
-import com.vayunmathur.games.voxels.domain.backTarget
+import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.games.voxels.ui.BossBar
 import com.vayunmathur.games.voxels.ui.ChestOverlay
 import com.vayunmathur.games.voxels.ui.DebugOverlay
@@ -158,7 +156,6 @@ class MainActivity : ComponentActivity() {
                 var healthJson by remember { mutableStateOf("{}") }
                 // Player settings (gear button). The debug readout is now one of them, off by default.
                 var settings by remember { mutableStateOf(GameSettingsStore.load(this@MainActivity)) }
-                var settingsOpen by remember { mutableStateOf(false) }
                 LaunchedEffect(settings) {
                     com.vayunmathur.games.voxels.platform.MusicFx.setVolume(settings.musicVolume)
                     com.vayunmathur.games.voxels.platform.SoundFx.volume = settings.sfxVolume
@@ -167,22 +164,44 @@ class MainActivity : ComponentActivity() {
                 }
                 var flying by remember { mutableStateOf(false) }
                 var sneaking by remember { mutableStateOf(false) }
-                var inventoryOpen by remember { mutableStateOf(false) }
                 val activity = LocalActivity.current
-                var invStartTab by remember { mutableStateOf(0) }
+                // The full-screen screens over the world are destinations pushed over the
+                // game, not open/closed booleans: Back pops the top one, so the closing order
+                // is the stack order. This stack is state only — the surface and HUD below are
+                // composed unconditionally and the overlays are drawn over them in stack
+                // order, exactly where the old `if (xOpen)` blocks sat, so pushing or popping
+                // an overlay never disturbs the Vulkan surface or the render loop.
+                val backStack = rememberNavBackStack<Route>(Route.Game(worldId))
+                // Overlay presence, derived from the stack for the engine polls below.
+                val inventoryOpen = backStack.backStack.any { it is Route.Inventory }
+                val furnaceOpen = backStack.backStack.any { it is Route.Furnace }
+                val chestOpen = backStack.backStack.any { it is Route.Chest }
+                val settingsOpen = backStack.backStack.any { it is Route.Settings }
+                // Opening a screen that is already on the stack refreshes its arguments
+                // (a second furnace tap re-reads blast-ness) instead of stacking a duplicate.
+                fun openOverlay(route: Route) {
+                    val idx = backStack.backStack.indexOfLast { it::class == route::class }
+                    if (idx >= 0) backStack.set(idx, route) else backStack.add(route)
+                }
+                fun closeOverlay(route: Route) {
+                    if (backStack.backStack.lastOrNull() == route) backStack.pop()
+                    else if (backStack.backStack.contains(route)) {
+                        backStack.reset(*backStack.backStack.filterNot { it == route }.toTypedArray())
+                    }
+                }
+                // Closing a chest also tells the engine it is closed, on every close path.
+                fun closeChest() {
+                    closeOverlay(Route.Chest)
+                    try { VoxelsNative.closeContainer() } catch (_: Exception) {}
+                }
                 var recipesJson by remember { mutableStateOf("[]") }
                 var blessingsJson by remember { mutableStateOf("""{"slots":[]}""") }
                 var blessingCatalogJson by remember { mutableStateOf("[]") }
                 var smeltingJson by remember { mutableStateOf("[]") }
                 var smeltJson by remember { mutableStateOf("{}") }
                 var containerJson by remember { mutableStateOf("""{"slots":[]}""") }
-                var furnaceOpen by remember { mutableStateOf(false) }
-                var furnaceIsBlast by remember { mutableStateOf(false) }
-                var chestOpen by remember { mutableStateOf(false) }
                 var cutsJson by remember { mutableStateOf("[]") }
-                var stonecutterOpen by remember { mutableStateOf(false) }
                 var tradesJson by remember { mutableStateOf("{}") }
-                var tradeOpen by remember { mutableStateOf(false) }
                 // Online multiplayer HUD state.
                 var netStatus by remember { mutableStateOf<NetStatus>(NetStatus.Connecting) }
                 var peersJson by remember { mutableStateOf("[]") }
@@ -215,27 +234,26 @@ class MainActivity : ComponentActivity() {
                                 if (code == 1) com.vayunmathur.games.voxels.platform.SoundFx.playBreak()
                             } else when (code) {
                                 1 -> com.vayunmathur.games.voxels.platform.SoundFx.playPlace()
-                                11 -> { invStartTab = 2; inventoryOpen = true } // crafting table
+                                11 -> openOverlay(Route.Inventory(startTab = 2)) // crafting table
                                 12, 14 -> { // furnace / blast furnace
-                                    furnaceIsBlast = code == 14
                                     smeltJson = try { VoxelsNative.getSmeltJson() } catch (_: Exception) { "{}" }
-                                    furnaceOpen = true
+                                    openOverlay(Route.Furnace(isBlast = code == 14))
                                 }
                                 13 -> { // jukebox: play the held disc (or stop)
                                     val inv = try { com.vayunmathur.games.voxels.ui.voxelsJson.decodeFromString<com.vayunmathur.games.voxels.ui.InventoryState>(inventoryJson) } catch (_: Exception) { null }
                                     val held = inv?.slots?.getOrNull(inv.selected)?.id ?: 0
                                     com.vayunmathur.games.voxels.platform.MusicFx.toggle(this@MainActivity, com.vayunmathur.games.voxels.ui.discTrack[held])
                                 }
-                                15 -> stonecutterOpen = true // stonecutter
+                                15 -> openOverlay(Route.Stonecutter) // stonecutter
                                 // Every villager has its own profession and level, so the stall is
                                 // read fresh from the one that was tapped.
                                 20 -> {
                                     tradesJson = try { VoxelsNative.getTradesJson() } catch (_: Exception) { "{}" }
-                                    tradeOpen = true
+                                    openOverlay(Route.Trade)
                                 }
                                 30 -> { // chest
                                     containerJson = try { VoxelsNative.getContainerJson() } catch (_: Exception) { """{"slots":[]}""" }
-                                    chestOpen = true
+                                    openOverlay(Route.Chest)
                                     // Online clients mirror host state: ask for the real contents.
                                     if (online) try { VoxelsNative.netRequestContainer() } catch (_: Exception) {}
                                     com.vayunmathur.games.voxels.platform.SoundFx.playPlace()
@@ -385,24 +403,15 @@ class MainActivity : ComponentActivity() {
                     } catch (_: Exception) {}
                 }
 
-                // Back closes the top-most overlay or opens the pause menu; it never quits the world.
+                // Back pops the top-most overlay, or opens the pause menu; it never quits the
+                // world. The pause menu is not a destination (it is this screen's own state),
+                // so with no overlay up Back still toggles it: open -> resume, closed -> pause.
+                // An overlay up while paused (e.g. after onStop) still closes first, as before.
                 BackHandler {
-                    val open = OverlayFlags(
-                        chest = chestOpen, trade = tradeOpen, furnace = furnaceOpen,
-                        stonecutter = stonecutterOpen, inventory = inventoryOpen, settings = settingsOpen, paused = paused,
-                    )
-                    when (backTarget(open)) {
-                        BackTarget.CHEST -> {
-                            chestOpen = false
-                            try { VoxelsNative.closeContainer() } catch (_: Exception) {}
-                        }
-                        BackTarget.TRADE -> tradeOpen = false
-                        BackTarget.FURNACE -> furnaceOpen = false
-                        BackTarget.STONECUTTER -> stonecutterOpen = false
-                        BackTarget.INVENTORY -> inventoryOpen = false
-                        BackTarget.SETTINGS -> settingsOpen = false
-                        BackTarget.RESUME -> paused = false
-                        BackTarget.PAUSE -> paused = true
+                    when (val top = backStack.backStack.lastOrNull()) {
+                        is Route.Chest -> closeChest()
+                        is Route.Game, null -> if (paused) paused = false else paused = true
+                        else -> closeOverlay(top)
                     }
                 }
 
@@ -545,7 +554,7 @@ class MainActivity : ComponentActivity() {
                         Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)) {
                             Hotbar(inventoryJson = inventoryJson,
                                 onSelect = { slot -> if (VoxelsNative.isAvailable) try { VoxelsNative.selectSlot(slot) } catch (_: Exception) {} },
-                                onOpenInventory = { invStartTab = 0; inventoryOpen = true })
+                                onOpenInventory = { openOverlay(Route.Inventory(startTab = 0)) })
                         }
 
                         Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = 36.dp, start = 12.dp, end = 12.dp),
@@ -555,7 +564,7 @@ class MainActivity : ComponentActivity() {
                                     // Dark disc + white glyph so the buttons read over bright snow or sky too.
                                     val hudButton = Modifier.background(Color.Black.copy(alpha = 0.38f), CircleShape)
                                     IconButton(onClick = { paused = true }, modifier = hudButton) { IconMenu(tint = Color.White) }
-                                    IconButton(onClick = { settingsOpen = true }, modifier = hudButton) { IconSettings(tint = Color.White) }
+                                    IconButton(onClick = { openOverlay(Route.Settings) }, modifier = hudButton) { IconSettings(tint = Color.White) }
                                 }
                                 // Debug readout under the buttons (left), clear of the online chips (right).
                                 if (settings.showDebug) { DebugOverlay(debugJson = debugJson, modifier = Modifier.widthIn(max = 280.dp)) }
@@ -600,40 +609,40 @@ class MainActivity : ComponentActivity() {
                     }
                     }
 
-                    if (inventoryOpen && VoxelsNative.isAvailable) {
-                        InventoryOverlay(
-                            inventoryJson = inventoryJson, recipesJson = recipesJson,
-                            blessingsJson = blessingsJson, blessingCatalogJson = blessingCatalogJson,
-                            onClose = { inventoryOpen = false }, startTab = invStartTab, creative = creative,
-                            worldAchievements = achievements?.world,
-                        )
-                    }
-
-                    if (tradeOpen && VoxelsNative.isAvailable) {
-                        TradeOverlay(tradesJson = tradesJson, onClose = { tradeOpen = false })
-                    }
-
-                    if (furnaceOpen && VoxelsNative.isAvailable) {
-                        FurnaceOverlay(
-                            smeltingJson = smeltingJson, smeltJson = smeltJson,
-                            isBlast = furnaceIsBlast, onClose = { furnaceOpen = false }
-                        )
-                    }
-
-                    if (chestOpen && VoxelsNative.isAvailable) {
-                        ChestOverlay(containerJson = containerJson, inventoryJson = inventoryJson, onClose = {
-                            chestOpen = false
-                            try { VoxelsNative.closeContainer() } catch (_: Exception) {}
-                        })
-                    }
-
-                    if (stonecutterOpen && VoxelsNative.isAvailable) {
-                        StonecutterOverlay(cutsJson = cutsJson, inventoryJson = inventoryJson,
-                            onClose = { stonecutterOpen = false })
-                    }
-
-                    if (settingsOpen) {
-                        SettingsSheet(settings = settings, onChange = { settings = it.sanitized() }, onClose = { settingsOpen = false })
+                    // Overlays in stack order over the surface: the last entry draws on top,
+                    // as the stacked `if (xOpen)` blocks did. Settings has no engine gate.
+                    for (route in backStack.backStack.drop(1)) {
+                        when (route) {
+                            is Route.Inventory -> if (VoxelsNative.isAvailable) {
+                                InventoryOverlay(
+                                    inventoryJson = inventoryJson, recipesJson = recipesJson,
+                                    blessingsJson = blessingsJson, blessingCatalogJson = blessingCatalogJson,
+                                    onClose = { closeOverlay(route) }, startTab = route.startTab, creative = creative,
+                                    worldAchievements = achievements?.world,
+                                )
+                            }
+                            is Route.Trade -> if (VoxelsNative.isAvailable) {
+                                TradeOverlay(tradesJson = tradesJson, onClose = { closeOverlay(route) })
+                            }
+                            is Route.Furnace -> if (VoxelsNative.isAvailable) {
+                                FurnaceOverlay(
+                                    smeltingJson = smeltingJson, smeltJson = smeltJson,
+                                    isBlast = route.isBlast, onClose = { closeOverlay(route) }
+                                )
+                            }
+                            is Route.Chest -> if (VoxelsNative.isAvailable) {
+                                ChestOverlay(containerJson = containerJson, inventoryJson = inventoryJson,
+                                    onClose = { closeChest() })
+                            }
+                            is Route.Stonecutter -> if (VoxelsNative.isAvailable) {
+                                StonecutterOverlay(cutsJson = cutsJson, inventoryJson = inventoryJson,
+                                    onClose = { closeOverlay(route) })
+                            }
+                            is Route.Settings -> SettingsSheet(
+                                settings = settings, onChange = { settings = it.sanitized() },
+                                onClose = { closeOverlay(route) })
+                            else -> Unit
+                        }
                     }
 
                     if (loadPhase != LoadPhase.READY && VoxelsNative.isAvailable) {
