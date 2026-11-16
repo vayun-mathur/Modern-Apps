@@ -153,12 +153,6 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Selects the commit shown on the commit detail screen. */
-    fun selectCommit(name: String, sha: String) {
-        val current = state.browsers[name] ?: return
-        updateBrowser(RepoBrowser.selectCommit(current, sha))
-    }
-
     private fun updateBrowser(browser: RepoBrowserState) {
         state = state.copy(browsers = state.browsers + (browser.repoName to browser))
     }

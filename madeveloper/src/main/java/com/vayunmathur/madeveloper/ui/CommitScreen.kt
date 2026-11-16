@@ -28,9 +28,8 @@ import com.vayunmathur.madeveloper.platform.MaDevViewModel
 fun CommitScreen(repoName: String, sha: String, viewModel: MaDevViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     LaunchedEffect(repoName) { viewModel.loadRepo(repoName) }
-    val commit = viewModel.browser(repoName)?.let { browser ->
-        browser.commits.firstOrNull { it.sha == sha } ?: browser.selectedCommit
-    }
+    // The commit is identified by the route's sha alone; no VM selection state.
+    val commit = viewModel.browser(repoName)?.commits?.firstOrNull { it.sha == sha }
     AppScaffold(
         title = commit?.shortSha?.ifBlank { sha.take(8) } ?: sha.take(8),
         onNavigateBack = onBack, scrollBehavior = appBarScrollBehavior(),

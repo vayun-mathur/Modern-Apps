@@ -25,15 +25,13 @@ class RepoBrowserTest {
         assertEquals("", state.path)
     }
 
-    @Test fun selectBranchResetsPathCommitsAndSelection() {
+    @Test fun selectBranchResetsPathAndCommits() {
         var state = RepoBrowser.open(detail)
         state = RepoBrowser.navigateTo(state, "src/main")
-        state = RepoBrowser.selectCommit(state, "a".repeat(40))
         val switched = RepoBrowser.selectBranch(state, "dev")
         assertEquals("dev", switched.branch)
         assertEquals("", switched.path)
         assertTrue(switched.commits.isEmpty())
-        assertNull(switched.selectedCommit)
         // Re-selecting the same branch is a no-op.
         assertEquals(switched, RepoBrowser.selectBranch(switched, "dev"))
     }
@@ -62,11 +60,5 @@ class RepoBrowserTest {
         state = RepoBrowser.commitsAppended(state, listOf(GitCommit("4".repeat(40))), pageSize = 2)
         assertTrue(state.commitsExhausted)
         assertNull(state.nextCommitCursor)
-    }
-
-    @Test fun selectCommitResolvesSelectedCommit() {
-        var state = RepoBrowser.open(detail)
-        state = RepoBrowser.selectCommit(state, "a".repeat(40))
-        assertEquals("head", state.selectedCommit?.subject)
     }
 }

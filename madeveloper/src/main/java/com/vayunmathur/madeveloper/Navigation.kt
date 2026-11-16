@@ -36,7 +36,6 @@ fun Navigation(viewModel: MaDevViewModel) {
                 onOpenFile = { branch, path -> backStack.add(Route.File(route.name, path, branch)) },
                 onOpenCommits = { branch -> backStack.add(Route.Commits(route.name, branch)) },
                 onOpenCommit = { branch, sha ->
-                    viewModel.selectCommit(route.name, sha)
                     backStack.add(Route.Commit(route.name, branch, sha))
                 },
                 onBack = { backStack.pop() },
@@ -46,7 +45,6 @@ fun Navigation(viewModel: MaDevViewModel) {
             CommitsScreen(
                 repoName = route.repo, branch = route.branch, viewModel = viewModel,
                 onOpenCommit = { sha ->
-                    viewModel.selectCommit(route.repo, sha)
                     backStack.add(Route.Commit(route.repo, route.branch, sha))
                 },
                 onBack = { backStack.pop() },

@@ -2,9 +2,10 @@ package com.vayunmathur.madeveloper.domain
 
 /**
  * Pure navigation state for browsing one repository via the git host JSON
- * API: the selected branch, the current tree path, the loaded commit page
- * and the selected commit. No Android imports, so every transition is
- * unit-testable.
+ * API: the selected branch, the current tree path and the loaded commit
+ * page. The commit shown on the detail screen is identified by
+ * `Route.Commit.sha`, not by state here. No Android imports, so every
+ * transition is unit-testable.
  */
 data class RepoBrowserState(
     val repoName: String = "",
@@ -13,11 +14,7 @@ data class RepoBrowserState(
     val path: String = "",
     val commits: List<GitCommit> = emptyList(),
     val commitsExhausted: Boolean = false,
-    val selectedCommitSha: String = "",
 ) {
-    /** The commit currently shown on the commit detail screen, if loaded. */
-    val selectedCommit: GitCommit? get() = commits.firstOrNull { it.sha == selectedCommitSha }
-
     /** Breadcrumb segments of [path] as (label, cumulative path) pairs. */
     val breadcrumbs: List<Pair<String, String>>
         get() {
@@ -45,7 +42,7 @@ object RepoBrowser {
     fun selectBranch(state: RepoBrowserState, branch: String): RepoBrowserState =
         if (branch == state.branch) state else state.copy(
             branch = branch, path = "", commits = emptyList(),
-            commitsExhausted = false, selectedCommitSha = "",
+            commitsExhausted = false,
         )
 
     /** Descends into a tree entry; blobs do not change the tree path. */
@@ -70,8 +67,4 @@ object RepoBrowser {
             commits = (state.commits + page).distinctBy { it.sha },
             commitsExhausted = page.size < pageSize,
         )
-
-    /** Selects the commit shown on the detail screen. */
-    fun selectCommit(state: RepoBrowserState, sha: String): RepoBrowserState =
-        state.copy(selectedCommitSha = sha)
 }
