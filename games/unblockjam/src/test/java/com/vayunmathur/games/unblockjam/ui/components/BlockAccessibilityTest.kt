@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
@@ -78,7 +79,23 @@ class BlockAccessibilityTest {
         setBoard({ changed = it })
         val node = rule.onNodeWithContentDescription(describe(R.string.cd_block, level.blocks[1]))
         node.requestFocus()
+        // The key event only reaches the block once focus actually lands;
+        // on a loaded box requestFocus is still in flight when the key is
+        // pressed, the move never happens, and the stray key/focus work
+        // surfaces as an uncaught exception around the test. Await the
+        // focused state (pumping the paused main looper), then the move.
+        rule.waitUntil(15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            runCatching {
+                node.assertIsFocused()
+                true
+            }.getOrDefault(false)
+        }
         node.performKeyInput { pressKey(Key.DirectionLeft) }
+        rule.waitUntil(15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            changed?.blocks?.get(1)?.position == Coord(2, 5)
+        }
         assertEquals(Coord(2, 5), assertNotNull(changed).blocks[1].position)
     }
 
