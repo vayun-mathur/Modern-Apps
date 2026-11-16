@@ -67,7 +67,7 @@ class TravelInteractionsTest {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         return TravelViewModel(ctx as android.app.Application, repo)
     }
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
     private fun slice() = SliceDto(origin = "SFO", destination = "JFK", departureAt = "2026-06-24T07:15:00", arrivalAt = "2026-06-24T15:50:00", segments = listOf(SegmentDto(carrierIata = "AS", flightNumber = "100", origin = "SFO", destination = "JFK", departureAt = "2026-06-24T07:15:00", arrivalAt = "2026-06-24T15:50:00")))
     private fun offer() = OfferDto(offerId = "off_1", totalAmount = "250.00", passengerIds = listOf("pax_1"), passengers = listOf(OfferPassengerDto(id = "pax_1", type = "adult")), slices = listOf(slice()))
 

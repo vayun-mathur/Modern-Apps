@@ -57,7 +57,7 @@ class TravelPopulatedPagesTest {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         return TravelViewModel(ctx as android.app.Application, repo)
     }
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
 
     private fun offer() = OfferDto(
         offerId = "off_1", itineraryId = "itin_1", totalAmount = "250.00", currency = "USD",
@@ -121,7 +121,7 @@ class TravelPopulatedPagesTest {
     @Test fun home_withRecentsAndTrips_showsCards() {
         repo.trips.value = listOf(trip())
         repo.recents.value = listOf(RecentSearch(vertical = "flights", label = "SFO → JFK"))
-        rule.setContent { HomePage(stack(), vm()) }
+        rule.setContent { HomePage(stack(), vm(), Route.FlightsHome) }
         rule.onNodeWithText("Recent searches").assertExists()
     }
 

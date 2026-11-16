@@ -43,20 +43,14 @@ import com.vayunmathur.travel.data.RecentSearch
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.clearRecents
 import androidx.compose.ui.res.stringResource
-import androidx.annotation.StringRes
 import com.vayunmathur.travel.R
-
-private enum class Product(@StringRes val label: Int, val icon: @Composable () -> Unit) {
-    FLIGHTS(R.string.flights, { IconFlight() }),
-    STAYS(R.string.stays, { IconHotel() }),
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
+fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel, homeRoute: Route) {
     val recents by viewModel.recentSearches.collectAsStateWithLifecycle()
     val trips by viewModel.bookedTrips.collectAsStateWithLifecycle()
-    var product by rememberSaveable { mutableStateOf(Product.FLIGHTS) }
+    val isStays = homeRoute is Route.StaysHome
     // Hoisted (and saved) so both forms are still filled in when the user
     // comes back from results or switches tabs.
     var flightForm by rememberSaveable(stateSaver = FlightFormSaver) { mutableStateOf(FlightFormState()) }
@@ -75,14 +69,18 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
         scrollBehavior = appBarScrollBehavior(),
         bottomBar = {
             BottomNavBar {
-                Product.entries.forEach { p ->
-                    BottomNavBarItem(
-                        selected = product == p,
-                        onClick = { product = p },
-                        icon = p.icon,
-                        label = stringResource(p.label),
-                    )
-                }
+                BottomNavBarItem(
+                    selected = !isStays,
+                    onClick = { backStack.reset(Route.FlightsHome) },
+                    icon = { IconFlight() },
+                    label = stringResource(R.string.flights),
+                )
+                BottomNavBarItem(
+                    selected = isStays,
+                    onClick = { backStack.reset(Route.StaysHome) },
+                    icon = { IconHotel() },
+                    label = stringResource(R.string.stays),
+                )
             }
         },
     ) { padding ->
@@ -93,8 +91,8 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
                 .verticalScroll(rememberScrollState()),
         ) {
 
-            when (product) {
-                Product.FLIGHTS -> FlightSearchForm(
+            if (!isStays) {
+                FlightSearchForm(
                     viewModel,
                     state = flightForm,
                     onState = { flightForm = it },
@@ -124,7 +122,8 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
                         }
                     },
                 )
-                Product.STAYS -> StaySearchForm(viewModel, stayForm, { stayForm = it }) { place, checkIn, checkOut, rooms, adults, lat, lng ->
+            } else {
+                StaySearchForm(viewModel, stayForm, { stayForm = it }) { place, checkIn, checkOut, rooms, adults, lat, lng ->
                     backStack.add(
                         Route.StayResults(
                             place = place,

@@ -75,7 +75,7 @@ fun CancellationPage(
                     Button(
                         onClick = {
                             viewModel.resetCancellation()
-                            backStack.reset(Route.Home, Route.Trips)
+                            backStack.reset(Route.FlightsHome, Route.Trips)
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(stringResource(UiR.string.done)) }

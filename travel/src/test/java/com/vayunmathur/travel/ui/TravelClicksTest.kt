@@ -58,7 +58,7 @@ class TravelClicksTest {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         return TravelViewModel(ctx as android.app.Application, repo)
     }
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
 
     @Test fun seatMapPage_renders() {
         rule.setContent { SeatMapPage(stack(), vm(), Route.SeatMap("off_1", "seg_1")) }

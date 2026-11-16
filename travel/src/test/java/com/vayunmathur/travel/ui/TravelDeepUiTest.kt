@@ -78,7 +78,7 @@ class TravelDeepUiTest {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         return TravelViewModel(ctx as android.app.Application, repo)
     }
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
     private fun slice() = SliceDto(origin = "SFO", destination = "JFK", departureAt = "2027-06-24T07:15:00", arrivalAt = "2027-06-24T15:50:00", segments = listOf(SegmentDto(carrierIata = "AS", flightNumber = "100", origin = "SFO", destination = "JFK", departureAt = "2027-06-24T07:15:00", arrivalAt = "2027-06-24T15:50:00", operatingCarrierIata = "OO")))
     private fun offer() = OfferDto(offerId = "off_1", totalAmount = "250.00", ownerIata = "AS", passengerIds = listOf("pax_1"), passengers = listOf(OfferPassengerDto(id = "pax_1", type = "adult")), refundPolicy = "Refundable", slices = listOf(slice()))
 
@@ -141,7 +141,7 @@ class TravelDeepUiTest {
     @Test fun home_tripCardClick_navigates() {
         repo.trips.value = listOf(BookedTrip(orderId = "ord_1", bookingReference = "ABC123", route = "SFO → JFK", departDate = "2027-06-24", amount = "250", currency = "USD"))
         val s = stack()
-        rule.setContent { HomePage(s, vm()) }
+        rule.setContent { HomePage(s, vm(), Route.FlightsHome) }
         rule.onAllNodesWithText("SFO → JFK")[0].performScrollTo().performClick()
         rule.runOnIdle { assertTrue(s.backStack.last() is Route.Confirmation, "last=${s.backStack.last()}") }
     }

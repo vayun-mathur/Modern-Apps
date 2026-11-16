@@ -102,7 +102,7 @@ fun ConfirmationPage(
         ) {
             if (trip == null) {
                 Text(stringResource(R.string.trip_not_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Button(onClick = { backStack.reset(Route.Home) }, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { backStack.reset(Route.FlightsHome) }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.back_to_search))
                 }
                 return@Column
@@ -189,7 +189,7 @@ fun ConfirmationPage(
                 ) { Text(stringResource(R.string.refresh_status)) }
             }
 
-            Button(onClick = { backStack.reset(Route.Home) }, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { backStack.reset(Route.FlightsHome) }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(UiR.string.done))
             }
             OutlinedButton(
@@ -197,7 +197,7 @@ fun ConfirmationPage(
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.view_full_itinerary)) }
             OutlinedButton(
-                onClick = { backStack.reset(Route.Home, Route.Trips) },
+                onClick = { backStack.reset(Route.FlightsHome, Route.Trips) },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.view_my_trips)) }
         }

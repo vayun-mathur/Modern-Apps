@@ -41,7 +41,7 @@ class TravelOpsW6Test {
     @Test
     fun everyRoute_serializesAndRoundTrips() {
         val routes: List<Route> = listOf(
-            Route.Home, Route.Trips, Route.Settings, Route.StayGuests,
+            Route.FlightsHome, Route.StaysHome, Route.Trips, Route.Settings, Route.StayGuests,
             Route.OfferReview("off_1"), Route.Ancillaries("off_1"), Route.SeatMap("off_1", "seg_1"),
             Route.Passengers("off_1"), Route.Payment("off_1"), Route.Confirmation("ord_1"),
             Route.OrderDetail("ord_1"), Route.Cancel("ord_1"), Route.Change("ord_1"),
@@ -53,6 +53,18 @@ class TravelOpsW6Test {
             assertTrue(text.isNotBlank())
             assertEquals(route, Json.decodeFromString(Route.serializer(), text))
         }
+    }
+
+    @Test
+    fun flightsAndStaysHome_areDistinctSiblingRoutes() {
+        // Selection lives in the route: the two homes are distinct keys and
+        // serialize to different payloads, so the back stack (not local
+        // state) decides which search form MainGraph renders.
+        val flights = Json.encodeToString(Route.serializer(), Route.FlightsHome)
+        val stays = Json.encodeToString(Route.serializer(), Route.StaysHome)
+        assertTrue(flights != stays)
+        assertEquals(Route.FlightsHome, Json.decodeFromString(Route.serializer(), flights))
+        assertEquals(Route.StaysHome, Json.decodeFromString(Route.serializer(), stays))
     }
 
     @Test

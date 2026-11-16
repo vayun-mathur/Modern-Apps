@@ -82,7 +82,7 @@ class TravelPagesC5bTest {
         return TravelViewModel(ctx as android.app.Application, repo)
     }
 
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
 
     private fun segment(id: String, origin: String, destination: String) = SegmentDto(
         id = id, carrier = "Alaska Airlines", carrierIata = "AS", flightNumber = "100",
@@ -225,6 +225,6 @@ class TravelPagesC5bTest {
         rule.onAllNodesWithText("Operated by", substring = true)[0].performScrollTo().assertExists()
         rule.onNodeWithText("Fare policies").performScrollTo().assertExists()
         rule.onAllNodesWithText("$250", substring = true)[0].performScrollTo().assertExists()
-        assertTrue(s.backStack.last() is Route.Home)
+        assertTrue(s.backStack.last() is Route.FlightsHome)
     }
 }

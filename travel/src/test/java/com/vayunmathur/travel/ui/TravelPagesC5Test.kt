@@ -84,7 +84,7 @@ class TravelPagesC5Test {
         return TravelViewModel(ctx as android.app.Application, repo)
     }
 
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
 
     private fun slice(origin: String = "SFO", destination: String = "JFK", id: String = "sli_1") = SliceDto(
         id = id, origin = origin, destination = destination,
@@ -402,7 +402,7 @@ class TravelPagesC5Test {
         rule.setContent { ConfirmationPage(s, v, Route.Confirmation("missing")) }
         rule.onNodeWithText("Trip not found.").assertIsDisplayed()
         rule.onNodeWithText("Back to search").performClick()
-        rule.runOnIdle { assertTrue(s.backStack.last() is Route.Home) }
+        rule.runOnIdle { assertTrue(s.backStack.last() is Route.FlightsHome) }
     }
 
     @Test

@@ -78,7 +78,7 @@ class TravelW6Test {
         return TravelViewModel(ctx as android.app.Application, repo)
     }
 
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
 
     private fun slice(origin: String = "SFO", dest: String = "JFK", id: String = "sli_1") = SliceDto(
         id = id, origin = origin, destination = dest,
@@ -248,7 +248,7 @@ class TravelW6Test {
             BookedTrip(orderId = "ord_1", bookingReference = "ABC123", route = "SFO → JFK", departDate = "2027-06-24", amount = "250.00", currency = "USD", status = "confirmed", tripId = "trip_1"),
         )
         val s = stack()
-        rule.setContent { HomePage(s, v) }
+        rule.setContent { HomePage(s, v, Route.FlightsHome) }
         rule.waitForIdle()
         rule.onAllNodesWithText("SFO", substring = true)[0].performScrollTo().assertExists()
         // Switch to the stays product tab and back.

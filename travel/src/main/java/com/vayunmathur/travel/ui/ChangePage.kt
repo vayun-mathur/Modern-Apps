@@ -83,7 +83,7 @@ fun ChangePage(
                 Button(
                     onClick = {
                         viewModel.resetChange()
-                        backStack.reset(Route.Home, Route.Trips)
+                        backStack.reset(Route.FlightsHome, Route.Trips)
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(UiR.string.done)) }

@@ -146,7 +146,7 @@ fun StayConfirmationPage(
                     ) { Text(stringResource(R.string.refresh_status)) }
                 }
             }
-            Button(onClick = { backStack.reset(Route.Home) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(UiR.string.done)) }
+            Button(onClick = { backStack.reset(Route.StaysHome) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(UiR.string.done)) }
         }
     }
 }

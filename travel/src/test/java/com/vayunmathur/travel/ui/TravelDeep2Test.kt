@@ -78,7 +78,7 @@ class TravelDeep2Test {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         return TravelViewModel(ctx as android.app.Application, repo)
     }
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
     private fun offer(identity: Boolean) = OfferDto(
         offerId = "off_1", totalAmount = "250.00", passengerIdentityDocumentsRequired = identity,
         passengerIds = listOf("pax_1"), passengers = listOf(OfferPassengerDto(id = "pax_1", type = "adult")),

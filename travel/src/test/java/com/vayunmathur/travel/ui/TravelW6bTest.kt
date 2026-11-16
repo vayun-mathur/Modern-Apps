@@ -71,7 +71,7 @@ class TravelW6bTest {
         return TravelViewModel(ctx as android.app.Application, repo)
     }
 
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
 
     private fun offer() = OfferDto(
         offerId = "off_1", totalAmount = "250.00", currency = "USD", owner = "Alaska", ownerIata = "AS",
@@ -130,11 +130,9 @@ class TravelW6bTest {
     @Test
     fun home_staysTab_searchFormTyping() {
         val v = vm()
-        rule.setContent { HomePage(stack(), v) }
-        rule.waitForIdle()
-        rule.onAllNodesWithText("Stays", substring = true).fetchSemanticsNodes().let {
-            if (it.isNotEmpty()) rule.onAllNodesWithText("Stays", substring = true)[0].performClick()
-        }
+        // Stays is its own route now: render the stays home directly (the
+        // bottom nav only resets the stack to Route.StaysHome).
+        rule.setContent { HomePage(stack(), v, Route.StaysHome) }
         rule.waitForIdle()
         val fields = rule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
         assertTrue(fields.isNotEmpty(), "stay form should have a destination field")

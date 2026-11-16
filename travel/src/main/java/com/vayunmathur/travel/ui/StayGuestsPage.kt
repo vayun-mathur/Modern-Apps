@@ -65,7 +65,7 @@ fun StayGuestsPage(
         when (result) {
             CardPaymentResult.Completed -> {
                 viewModel.confirmPaidTrip(tripId)
-                backStack.reset(Route.Home, Route.StayConfirmation(tripId))
+                backStack.reset(Route.StaysHome, Route.StayConfirmation(tripId))
             }
             CardPaymentResult.Canceled -> Unit
             is CardPaymentResult.Failed -> AppMessages.show(result.message)

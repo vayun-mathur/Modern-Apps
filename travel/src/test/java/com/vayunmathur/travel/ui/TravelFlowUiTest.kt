@@ -76,7 +76,7 @@ class TravelFlowUiTest {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         return TravelViewModel(ctx as android.app.Application, repo)
     }
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
 
     @Test fun changePage_loadsOrderAndOffersFlow() {
         val v = vm()

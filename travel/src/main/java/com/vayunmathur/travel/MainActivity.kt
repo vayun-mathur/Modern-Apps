@@ -16,6 +16,7 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.travel.data.TravelRepository
 import com.vayunmathur.travel.ui.AncillariesPage
@@ -94,9 +95,13 @@ class MainActivity : MaActivity() {
 /** Contract for route. */
 @Serializable
 sealed interface Route : NavKey {
-    /** Singleton holding home state and operations. */
+    /** Singleton holding flights-home state and operations. */
     @Serializable
-    data object Home : Route
+    data object FlightsHome : Route
+
+    /** Singleton holding stays-home state and operations. */
+    @Serializable
+    data object StaysHome : Route
 
     /** Immutable value describing flight results. */
     @Serializable
@@ -196,12 +201,13 @@ sealed interface Route : NavKey {
 
 @Composable
 fun MainGraph(viewModel: TravelViewModel) {
-    val backStack = rememberNavBackStack<Route>(Route.Home)
+    val backStack = rememberNavBackStack<Route>(Route.FlightsHome)
     // Land on settings when opened from the system App Info page.
     backStack.openSettingsIfRequested(Route.Settings)
     Box(Modifier.fillMaxSize()) {
         MainNavigation(backStack) {
-            entry<Route.Home> { HomePage(backStack, viewModel) }
+            entry<Route.FlightsHome>(metadata = SiblingPage()) { HomePage(backStack, viewModel, it) }
+            entry<Route.StaysHome>(metadata = SiblingPage()) { HomePage(backStack, viewModel, it) }
             entry<Route.FlightResults>(metadata = ListPage()) { FlightResultsPage(backStack, viewModel, it) }
             entry<Route.OutboundSelect> { OutboundSelectPage(backStack, viewModel, it) }
             entry<Route.FareSelect> { FareSelectPage(backStack, viewModel, it) }

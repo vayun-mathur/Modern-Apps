@@ -79,7 +79,7 @@ class TravelPagesC5cTest {
         return TravelViewModel(ctx as android.app.Application, repo)
     }
 
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
 
     private fun rates() = StayRatesDto(
         name = "C5 Grand Hotel",
@@ -216,6 +216,6 @@ class TravelPagesC5cTest {
         rule.onNodeWithText("Continue").performScrollTo().performClick()
         rule.waitForIdle()
         // Disabled button: no navigation happened.
-        assertEquals(Route.Home, s.last())
+        assertEquals(Route.FlightsHome, s.last())
     }
 }

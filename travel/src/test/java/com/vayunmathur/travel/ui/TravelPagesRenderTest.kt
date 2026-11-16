@@ -16,6 +16,7 @@ import com.vayunmathur.travel.data.TravelRepository
 import com.vayunmathur.travel.util.TravelViewModel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
@@ -52,12 +53,22 @@ class TravelPagesRenderTest {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         return TravelViewModel(ctx as android.app.Application, repo)
     }
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.FlightsHome))
 
     @Test fun home_showsFlightsAndStays() {
-        rule.setContent { HomePage(stack(), vm()) }
+        val s = stack()
+        rule.setContent { HomePage(s, vm(), Route.FlightsHome) }
         rule.onNodeWithText("Flights").assertIsDisplayed()
+        // Bottom nav is route selection now: tapping Stays resets the stack
+        // to the sibling stays home (MainGraph then renders the stays form).
         rule.onNodeWithText("Stays").performClick()
+        rule.onNodeWithText("Stays").assertIsDisplayed()
+        rule.runOnIdle { assertTrue(s.last() is Route.StaysHome, "last=${s.last()}") }
+    }
+
+    @Test fun staysHome_showsStaysForm() {
+        rule.setContent { HomePage(stack(), vm(), Route.StaysHome) }
+        rule.onNodeWithText("Search hotels").assertIsDisplayed()
         rule.onNodeWithText("Stays").assertIsDisplayed()
     }
 

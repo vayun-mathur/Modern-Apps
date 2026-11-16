@@ -104,9 +104,9 @@ class TravelJourneyW6Test {
 
     @Test
     fun flightSearchForm_fillAndSearch() {
-        val stack = NavBackStack<Route>(arrayOf(Route.Home))
+        val stack = NavBackStack<Route>(arrayOf(Route.FlightsHome))
         val v = vm()
-        rule.setContent { HomePage(stack, v) }
+        rule.setContent { HomePage(stack, v, Route.FlightsHome) }
         rule.waitForIdle()
         // Type into the From/To fields; catalog suggestions should appear for SFO.
         val fields = rule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
