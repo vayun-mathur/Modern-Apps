@@ -11,12 +11,57 @@ import androidx.camera.core.ImageProxy
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 
 /** Shutter-timer countdown tick (1s). */
 internal const val TIMER_TICK_MS = 1000L
+
+/** Poll step while waiting for AE to converge before a ZSL capture. */
+private const val AE_CONVERGENCE_POLL_MS = 50L
+
+/**
+ * Longest the shutter waits for AE convergence before a ZSL capture. AE normally
+ * reconverges in a few hundred ms after a lighting change; past this the shot is
+ * taken anyway (a slightly-off exposure beats a dead shutter, e.g. under flickering
+ * light where AE keeps searching).
+ */
+private const val AE_CONVERGENCE_TIMEOUT_MS = 1200L
+
+/**
+ * Whether [state] (a CameraMetadata.CONTROL_AE_STATE_*) means the newest ZSL-buffered
+ * frame is exposed for the current scene. CONVERGED is the steady state; LOCKED is the
+ * user's own AE lock, whose exposure is intentional. A null state (the HAL hasn't
+ * reported yet, so the ring buffer can't hold a stale frame either) doesn't gate.
+ * SEARCHING / PRECAPTURE / FLASH_REQUIRED mean AE hasn't settled on this scene yet:
+ * the buffer's newest converged frame still carries the previous scene's exposure,
+ * which is the intermittent strong overexposure seen in auto mode.
+ */
+internal fun aeStateReadyForCapture(state: Int?): Boolean = when (state) {
+    null,
+    android.hardware.camera2.CameraMetadata.CONTROL_AE_STATE_CONVERGED,
+    android.hardware.camera2.CameraMetadata.CONTROL_AE_STATE_LOCKED -> true
+    else -> false
+}
+
+/** True when the preview's AE has converged (or never reported) for this scene. */
+internal fun CameraViewModel.isAeConvergedForCapture(): Boolean = aeStateReadyForCapture(lastAeState)
+
+/**
+ * Waits until AE reports convergence, bounded by [timeoutMs]. Only meaningful for a
+ * ZSL-bound still capture: the regular pipeline runs its own precapture convergence,
+ * so it never waits. Returns false on timeout (the caller captures anyway).
+ */
+internal suspend fun CameraViewModel.awaitAeConvergence(timeoutMs: Long = AE_CONVERGENCE_TIMEOUT_MS): Boolean {
+    if (!stillCaptureIsZsl() || isAeConvergedForCapture()) return true
+    return withTimeoutOrNull(timeoutMs) {
+        while (!isAeConvergedForCapture()) delay(AE_CONVERGENCE_POLL_MS)
+        true
+    } ?: false
+}
 
 fun CameraViewModel.takePhoto() {
     // Second tap cancels an armed timer, mirroring toggleRecording().
@@ -47,6 +92,24 @@ internal fun CameraViewModel.capturePhoto() {
     // can't start a concurrent capture. Every path clears it once its frame is captured
     // (Motion Photo) or saved (the other paths) — never later.
     isCapturingMutable.value = true
+    // A ZSL press reprocesses the ring buffer's newest converged frame. While AE is
+    // still searching after a lighting change that frame is exposed for the previous
+    // scene (the intermittent strong overexposure in auto mode), so hold the shutter
+    // until AE converges — zero added latency in steady light, where it already has.
+    if (stillCaptureIsZsl() && !isAeConvergedForCapture()) {
+        viewModelScope.launch {
+            awaitAeConvergence()
+            // Teardown claims the flag while we wait; a dead session must not capture.
+            if (!isCapturingMutable.value || imageCapture == null) return@launch
+            routeAndCapture()
+        }
+    } else {
+        routeAndCapture()
+    }
+}
+
+/** Routes the claimed shutter press to its capture path (see [routeStillCapture]). */
+private fun CameraViewModel.routeAndCapture() {
     when (routeStillCapture()) {
         StillRoute.NIGHT -> captureNightPhoto()
         StillRoute.MOTION_PHOTO -> captureMotionPhoto()
@@ -165,7 +228,16 @@ fun CameraViewModel.startBurst() {
             }
         )
     }
-    shootNext(1)
+    // Same ZSL stale-frame gate as capturePhoto(): only the first frame can predate
+    // AE convergence — once it lands, AE has settled for the rest of the burst.
+    if (stillCaptureIsZsl() && !isAeConvergedForCapture()) {
+        viewModelScope.launch {
+            awaitAeConvergence()
+            if (burstActiveMutable.value) shootNext(1) else finishBurst()
+        }
+    } else {
+        shootNext(1)
+    }
 }
 
 fun CameraViewModel.stopBurst() {

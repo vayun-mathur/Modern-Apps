@@ -331,6 +331,13 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     @Volatile internal var lastAeIso: Int? = null
     @Volatile internal var lastAeExposureNanos: Long? = null
 
+    // Last CONTROL_AE_STATE reported by the preview stream (CameraMetadata.CONTROL_AE_STATE_*),
+    // or null before the first result. The ZSL capture gate (CameraPhotoCapture.kt) reads it:
+    // CameraX's zero-shutter-lag ring buffer only holds converged frames, so while AE is still
+    // searching after a lighting change the newest buffered frame is exposed for the previous
+    // scene and a press would save that stale exposure.
+    @Volatile internal var lastAeState: Int? = null
+
     internal val aeSnapshotCallback = object : android.hardware.camera2.CameraCaptureSession.CaptureCallback() {
         override fun onCaptureCompleted(
             session: android.hardware.camera2.CameraCaptureSession,
@@ -339,6 +346,7 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
         ) {
             result.get(android.hardware.camera2.CaptureResult.SENSOR_SENSITIVITY)?.let { lastAeIso = it }
             result.get(android.hardware.camera2.CaptureResult.SENSOR_EXPOSURE_TIME)?.let { lastAeExposureNanos = it }
+            result.get(android.hardware.camera2.CaptureResult.CONTROL_AE_STATE)?.let { lastAeState = it }
         }
     }
 
