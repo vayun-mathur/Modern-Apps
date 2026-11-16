@@ -6,7 +6,7 @@ _Install: ./install games/voxels (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :games:voxels / dir: games/voxels/
 - Package roots present: ui, data, platform, network
-- Entry files: MainActivity.kt + platform/MenuActivity.kt (menu/world select; no Route.kt)
+- Entry files: MainActivity.kt + platform/MenuActivity.kt (menu/world select) + Route.kt (menu hosts Route.Worlds / Route.CreateWorld)
 - Deps: :sdk:games, :library:network, :library:e2ee-p2p
 - Metadata: metadata_data/games-voxels.md (present)
 - Rust: yes / screenshotTest: hand-committed

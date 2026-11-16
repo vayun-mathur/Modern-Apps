@@ -24,12 +24,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.vayunmathur.games.voxels.MainActivity
 import com.vayunmathur.games.voxels.R
+import com.vayunmathur.games.voxels.Route
 import com.vayunmathur.games.voxels.ui.MenuScreen
 import com.vayunmathur.games.voxels.ui.ShareOnlineDialog
 import com.vayunmathur.games.voxels.ui.WorldCreatorScreen
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.util.AppMessages
+import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.library.util.rememberIsOnline
 import com.vayunmathur.games.voxels.domain.playerSuffix
 import com.vayunmathur.games.voxels.network.JoinRequests
@@ -103,7 +105,10 @@ class MenuActivity : ComponentActivity() {
             DynamicTheme {
                 val scope = rememberCoroutineScope()
                 val online by rememberIsOnline()
-                var creating by remember { mutableStateOf(false) }
+                // Which menu screen is showing is a destination, not a flag: the creator is
+                // pushed over the world list, so Back (system or the creator's Cancel) pops
+                // back to the list. Playing a world still starts MainActivity by Intent.
+                val backStack = rememberNavBackStack<Route>(Route.Worlds)
                 var worlds by remember { mutableStateOf(localWorlds()) }
                 var onlineWorlds by remember { mutableStateOf(onlineWorldList()) }
                 var deviceId by remember { mutableStateOf("") }
@@ -156,20 +161,21 @@ class MenuActivity : ComponentActivity() {
                     toast(getString(if (ok) R.string.join_request_sent else R.string.invite_failed))
                 }
 
-                Surface(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxSize()) {
-                        if (creating) {
+                Box(Modifier.fillMaxSize()) {
+                    MainNavigation(backStack) {
+                        entry<Route.CreateWorld> {
                             WorldCreatorScreen(
-                                onBack = { creating = false },
+                                onBack = { backStack.pop() },
                                 onCreate = { name, seedText, mode ->
                                     val seed = WorldManager.resolveSeed(seedText)
                                     val world = WorldManager.createWorld(this@MenuActivity, name, seed, System.currentTimeMillis(), mode)
                                     reload()
-                                    creating = false
+                                    backStack.pop()
                                     play(world)
                                 }
                             )
-                        } else {
+                        }
+                        entry<Route.Worlds> {
                             MenuScreen(
                                 worlds = worlds,
                                 onlineWorlds = onlineWorlds,
@@ -180,7 +186,7 @@ class MenuActivity : ComponentActivity() {
                                     WorldManager.deleteWorld(this@MenuActivity, world.id)
                                     reload()
                                 },
-                                onCreate = { creating = true },
+                                onCreate = { backStack.add(Route.CreateWorld) },
                                 onHostOnline = {
                                     scope.launch {
                                         val ok = withContext(Dispatchers.IO) { runCatching { VoxelsSync.init(this@MenuActivity) }.getOrDefault(false) }
@@ -215,8 +221,9 @@ class MenuActivity : ComponentActivity() {
                                 },
                             )
                         }
+                    }
 
-                        shareTarget?.let { world ->
+                    shareTarget?.let { world ->
                             ShareOnlineDialog(
                                 world = world,
                                 onDismiss = { shareTarget = null },
@@ -248,7 +255,6 @@ class MenuActivity : ComponentActivity() {
                                 },
                             )
                         }
-                    }
                 }
             }
         }
