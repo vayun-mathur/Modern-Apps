@@ -234,7 +234,18 @@ class WeatherViewModel(
         }
     }
 
-    fun addLocation(name: String, country: String, latitude: Double, longitude: Double) {
+    /**
+     * Adds (or, for an exact-coordinate duplicate, re-selects) a location.
+     * [onAdded] receives the new or existing row id so the caller can put
+     * the selection in the back stack as `Route.Home(id)`.
+     */
+    fun addLocation(
+        name: String,
+        country: String,
+        latitude: Double,
+        longitude: Double,
+        onAdded: (Long) -> Unit = {},
+    ) {
         viewModelScope.launch {
             addMutex.withLock {
                 val existing = repository.getLocations()
@@ -243,10 +254,14 @@ class WeatherViewModel(
                 // only ever matches true duplicates — never two distinct
                 // nearby places. The live-GPS row is excluded: pinning the
                 // city you're standing in is deliberate, not a duplicate.
-                if (existing.any { !it.isCurrent && it.latitude == latitude && it.longitude == longitude }) {
+                val duplicate = existing.firstOrNull {
+                    !it.isCurrent && it.latitude == latitude && it.longitude == longitude
+                }
+                if (duplicate != null) {
+                    onAdded(duplicate.id)
                     return@withLock
                 }
-                repository.insertLocation(
+                val newId = repository.insertLocation(
                     SavedLocation(
                         name = name,
                         country = country,
@@ -256,6 +271,7 @@ class WeatherViewModel(
                         isCurrent = false,
                     )
                 )
+                onAdded(newId)
             }
         }
     }

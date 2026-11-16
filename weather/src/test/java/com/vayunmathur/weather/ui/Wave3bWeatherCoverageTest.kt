@@ -59,7 +59,7 @@ class Wave3bWeatherCoverageTest {
             SavedLocation(2, "Paris", "France", 48.85, 2.35),
         )
         val vm = WeatherViewModel(app, repo)
-        val stack = NavBackStack<Route>(arrayOf(Route.Home))
+        val stack = NavBackStack<Route>(arrayOf(Route.Home()))
         rule.setContent { HomePage(stack, vm) }
         rule.waitForIdle()
         // Tapping the search bar opens the locations drawer (LocationsPage binding).
@@ -72,7 +72,7 @@ class Wave3bWeatherCoverageTest {
     }
 
     @Test fun weatherMapPageMeasureSelectorInteraction() {
-        val stack = NavBackStack<Route>(arrayOf(Route.Home))
+        val stack = NavBackStack<Route>(arrayOf(Route.Home()))
         rule.setContent { WeatherMapPage(stack, 52.5, 13.4, "2026-07-15T14:00", "Temperature") }
         rule.waitForIdle()
         rule.mainClock.advanceTimeBy(3_000)
@@ -122,7 +122,7 @@ class Wave3bWeatherCoverageTest {
         val repo = FakeRepository(app)
         repo.rows.value = listOf(SavedLocation(1, "Berlin", "Germany", 52.5, 13.4))
         val vm = WeatherViewModel(app, repo)
-        val stack = NavBackStack<Route>(arrayOf(Route.Home))
+        val stack = NavBackStack<Route>(arrayOf(Route.Home()))
         // Forecast with no current: headline/blocks skipped, hourly/daily remain.
         rule.setContent { HomePage(stack, vm) }
         rule.waitForIdle()

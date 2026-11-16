@@ -38,9 +38,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -76,10 +73,18 @@ import com.vayunmathur.weather.platform.rememberDisplayUnits
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Binds [WeatherViewModel] and the back stack to the stateless [HomeScreen]. */
+/**
+ * Binds [WeatherViewModel] and the back stack to the stateless [HomeScreen].
+ * [locationId] is the selected location carried by `Route.Home`; null (or a
+ * since-deleted id) resolves to the first saved location.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomePage(backStack: NavBackStack<Route>, viewModel: WeatherViewModel) {
+fun HomePage(
+    backStack: NavBackStack<Route>,
+    viewModel: WeatherViewModel,
+    locationId: Long? = null,
+) {
     val locations = viewModel.savedLocations.collectAsState().value
 
     if (locations == null) {
@@ -100,8 +105,7 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: WeatherViewModel) {
         return
     }
 
-    var activeLocationId by remember { mutableStateOf(locations.first().id) }
-    val activeLocation = locations.firstOrNull { it.id == activeLocationId } ?: locations.first()
+    val activeLocation = locations.firstOrNull { it.id == locationId } ?: locations.first()
 
     val forecasts by viewModel.forecasts.collectAsState()
     val selected by viewModel.selectedDateOrTime.collectAsState()
@@ -165,7 +169,13 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: WeatherViewModel) {
                 viewModel = viewModel,
                 activeLocation = activeLocation,
                 onLocationSelect = { picked ->
-                    activeLocationId = picked.id
+                    // The selection lives exactly in the back stack: rewrite
+                    // the current Home entry (never push a second Home).
+                    if (backStack.backStack.lastOrNull() is Route.Home) {
+                        backStack.setLast(Route.Home(picked.id))
+                    } else {
+                        backStack.reset(Route.Home(picked.id))
+                    }
                     viewModel.clearSelection()
                     closeDrawer()
                 },

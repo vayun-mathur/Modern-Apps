@@ -53,7 +53,8 @@ import kotlinx.coroutines.flow.flow
  * Search-location screen registered as a `DialogPage()` route entry.
  * Hosted by Navigation3's `DialogSceneStrategy` so it renders as a system
  * dialog instead of a full page. Picking a result inserts the location
- * and pops the back stack.
+ * and resets the back stack to `Route.Home(newId)` so the new location is
+ * the selected one.
  */
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -184,8 +185,12 @@ fun SearchLocationPage(backStack: NavBackStack<Route>, viewModel: WeatherViewMod
                                                 country = r.country.orEmpty(),
                                                 latitude = r.latitude,
                                                 longitude = r.longitude,
-                                            )
-                                            backStack.pop()
+                                            ) { newId ->
+                                                // Select the added location in the
+                                                // stack itself (replaces this dialog
+                                                // entry and any default Home beneath).
+                                                backStack.reset(Route.Home(newId))
+                                            }
                                         },
                                 )
                             }

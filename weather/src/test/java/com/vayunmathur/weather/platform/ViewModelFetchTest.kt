@@ -196,6 +196,19 @@ class ViewModelAddLocationTest {
         assertEquals(1, repo.rows.value.size, "rows=${repo.rows.value}")
     }
 
+    @Test fun addLocationCallbackReportsNewAndDuplicateIds() {
+        var addedId: Long? = null
+        vm.addLocation("Berlin", "Germany", 52.52006, 13.40495) { addedId = it }
+        drainMain()
+        assertEquals(100L, addedId)
+        // A duplicate tap re-selects the existing row instead of adding one.
+        var duplicateId: Long? = null
+        vm.addLocation("Berlin", "Germany", 52.52006, 13.40495) { duplicateId = it }
+        drainMain()
+        assertEquals(100L, duplicateId)
+        assertEquals(1, repo.rows.value.size, "rows=${repo.rows.value}")
+    }
+
     @Test fun distinctNearbyPlacesBothKept() {
         vm.addLocation("Home", "Germany", 52.52006, 13.40495)
         vm.addLocation("Office", "Germany", 52.52007, 13.40496)

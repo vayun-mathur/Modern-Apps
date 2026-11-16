@@ -78,7 +78,7 @@ class PagesTest {
     )
 
     @Test fun homePageEmptyStateNavigatesToSearch() {
-        val backStack = NavBackStack<Route>(arrayOf(Route.Home))
+        val backStack = NavBackStack<Route>(arrayOf(Route.Home()))
         rule.setContent { HomePage(backStack, vm) }
         rule.onNodeWithText("No locations yet").assertIsDisplayed()
         rule.onNodeWithText("Add a location").performClick()
@@ -89,15 +89,23 @@ class PagesTest {
         repo.rows.value = listOf(loc())
         // Seed a forecast directly so the column renders without network.
         vm.ensureForecast(loc())
-        val backStack = NavBackStack<Route>(arrayOf(Route.Home))
+        val backStack = NavBackStack<Route>(arrayOf(Route.Home()))
         rule.setContent { HomePage(backStack, vm) }
         rule.waitForIdle()
         rule.onAllNodesWithText("Berlin", substring = true)[0].assertIsDisplayed()
     }
 
+    @Test fun homePageShowsLocationSelectedByRouteArg() {
+        repo.rows.value = listOf(loc(1, "Berlin"), loc(2, "Paris"))
+        val backStack = NavBackStack<Route>(arrayOf(Route.Home(locationId = 2L)))
+        rule.setContent { HomePage(backStack, vm, locationId = 2L) }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Paris", substring = true)[0].assertIsDisplayed()
+    }
+
     @Test fun locationsPageRendersRows() {
         repo.rows.value = listOf(loc(1, "Berlin"), loc(2, "Paris"))
-        val backStack = NavBackStack<Route>(arrayOf(Route.Home))
+        val backStack = NavBackStack<Route>(arrayOf(Route.Home()))
         rule.setContent {
             LocationsPage(
                 backStack = backStack, viewModel = vm, activeLocation = loc(),
@@ -109,7 +117,7 @@ class PagesTest {
     }
 
     @Test fun searchPageTypingShowsField() {
-        val backStack = NavBackStack<Route>(arrayOf(Route.Home, Route.SearchLocation))
+        val backStack = NavBackStack<Route>(arrayOf(Route.Home(), Route.SearchLocation))
         rule.setContent { SearchLocationPage(backStack, vm) }
         rule.onNodeWithText("Search location").assertIsDisplayed()
         rule.onNodeWithText("City name").performTextInput("Ber")
@@ -161,11 +169,24 @@ class PagesTest {
     }
 
     @Test fun navigationRoutesConstruct() {
-        val stack = NavBackStack<Route>(arrayOf(Route.Home))
+        val stack = NavBackStack<Route>(arrayOf(Route.Home()))
         stack.add(Route.WeatherMap(52.0, 13.0, "Berlin", null, "Temperature"))
         assertEquals("Berlin", (stack.last() as Route.WeatherMap).name)
         stack.pop()
-        assertEquals(Route.Home, stack.last())
+        assertEquals(Route.Home(), stack.last())
+    }
+
+    @Test fun homeLocationSelectionLivesInBackStack() {
+        // Drawer selection rewrites the Home entry in place (setLast), it
+        // never pushes a second Home; the arg is the selected location id.
+        val stack = NavBackStack<Route>(arrayOf(Route.Home()))
+        stack.setLast(Route.Home(locationId = 7L))
+        assertEquals(1, stack.backStack.size)
+        assertEquals(7L, (stack.last() as Route.Home).locationId)
+        // Search-add selection resets the stack to the new location's Home.
+        stack.add(Route.SearchLocation)
+        stack.reset(Route.Home(locationId = 9L))
+        assertEquals(listOf(Route.Home(locationId = 9L)), stack.backStack.toList())
     }
 }
 

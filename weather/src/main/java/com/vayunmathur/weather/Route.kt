@@ -6,9 +6,15 @@ import kotlinx.serialization.Serializable
 /** Contract for route. */
 @Serializable
 sealed interface Route : NavKey {
-    /** Singleton holding home state and operations. */
+    /**
+     * Home forecast for [locationId]. Null (the start destination and any
+     * restored entry without a selection) means the first saved location;
+     * [com.vayunmathur.weather.ui.HomePage] resolves null — and any id whose
+     * row was deleted — to that first location, so the selection lives
+     * exactly here in the back stack, never in remembered UI state.
+     */
     @Serializable
-    data object Home : Route
+    data class Home(val locationId: Long? = null) : Route
 
     /** Singleton holding search location state and operations. */
     @Serializable

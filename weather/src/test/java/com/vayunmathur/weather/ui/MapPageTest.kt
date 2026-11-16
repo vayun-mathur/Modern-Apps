@@ -14,7 +14,7 @@ class MapPageTest {
     @get:Rule val rule = createComposeRule()
 
     @Test fun weatherMapPageRenders() {
-        val backStack = NavBackStack<Route>(arrayOf(Route.Home))
+        val backStack = NavBackStack<Route>(arrayOf(Route.Home()))
         rule.setContent {
             WeatherMapPage(backStack, 52.5, 13.4, "2026-07-15T14:00", "Temperature")
         }
@@ -22,7 +22,7 @@ class MapPageTest {
     }
 
     @Test fun weatherMapPageBadMetricRenders() {
-        val backStack = NavBackStack<Route>(arrayOf(Route.Home))
+        val backStack = NavBackStack<Route>(arrayOf(Route.Home()))
         rule.setContent {
             WeatherMapPage(backStack, 0.0, 0.0, null, "bogus")
         }

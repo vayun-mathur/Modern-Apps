@@ -319,7 +319,7 @@ class Wave3WeatherCoverageTest {
         rule.setContent { Navigation(vm) }
         rule.waitForIdle()
         assertTrue(rule.onAllNodesWithText("Berlin", substring = true).fetchSemanticsNodes().isNotEmpty())
-        val stack = NavBackStack<Route>(arrayOf(Route.Home))
-        assertEquals(Route.Home, stack.last())
+        val stack = NavBackStack<Route>(arrayOf(Route.Home()))
+        assertEquals(Route.Home(), stack.last())
     }
 }

@@ -239,8 +239,16 @@ class ComposeScreensTest {
 
     @Test fun routeSerialization() {
         val json = Json { ignoreUnknownKeys = true }
-        val home = json.encodeToString(Route.serializer(), Route.Home)
-        assertEquals(Route.Home, json.decodeFromString(Route.serializer(), home))
+        // Default Home carries no selection (null -> first saved location).
+        val home = json.encodeToString(Route.serializer(), Route.Home())
+        assertEquals(Route.Home(), json.decodeFromString(Route.serializer(), home))
+        assertEquals(null, Route.Home().locationId)
+        // A selected location round-trips through the route arg.
+        val selected = Route.Home(locationId = 42L)
+        val decodedHome = json.decodeFromString(
+            Route.serializer(), json.encodeToString(Route.serializer(), selected),
+        ) as Route.Home
+        assertEquals(42L, decodedHome.locationId)
         val map = Route.WeatherMap(52.5, 13.4, "Berlin", "2026-07-15T14:00", "Temperature")
         val decoded = json.decodeFromString(
             Route.serializer(), json.encodeToString(Route.serializer(), map),

@@ -87,7 +87,7 @@ class HomeAndLocationsExtraTest {
     @Test fun homePageHoldsPlaceholderWhileLocationsLoad() {
         val repo = NeverLocationsRepository(app)
         val vm = WeatherViewModel(app, repo)
-        val backStack = NavBackStack<Route>(arrayOf(Route.Home))
+        val backStack = NavBackStack<Route>(arrayOf(Route.Home()))
         rule.setContent { HomePage(backStack, vm) }
         rule.waitForIdle()
         // Neither the empty state nor a forecast is shown yet.
