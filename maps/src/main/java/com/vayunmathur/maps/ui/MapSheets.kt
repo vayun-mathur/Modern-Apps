@@ -10,7 +10,14 @@ import com.vayunmathur.library.ui.FreeHeightBottomSheetScaffold
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.maps.ui.theme.MapChromeMetrics
 import com.vayunmathur.maps.util.SearchActions
+import com.vayunmathur.maps.directionsTo
+import com.vayunmathur.maps.popSheet
+import com.vayunmathur.maps.selectFeature
+import com.vayunmathur.maps.util.PlacePanelActions
+import com.vayunmathur.maps.util.rememberPlacePanelState
+import androidx.compose.runtime.remember
 import com.vayunmathur.maps.util.SearchUiState
+import com.vayunmathur.maps.data.SpecificFeature
 
 /**
  * The compact bottom sheets: search over place, both wrapping the shared map
@@ -73,18 +80,18 @@ internal fun MapPageScope.MapSheets(
             // Padding only when there is something to pad. An unconditional wrapper measures its
             // own padding even with no content, which defeats the scaffold's "don't place a sheet
             // that measured to nothing" guard and leaves a bare handle on screen.
-            if (selectedFeature != null || route != null || inactiveNavigation != null) {
+            if (selectedFeature != null) {
+                val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel, poiSection)
+                val panelActions = rememberPanelActions()
                 Column(Modifier.padding(horizontal = Spacing.lg).padding(top = Spacing.sm)) {
                     BottomSheetContent(
-                        viewModel,
-                        selectedFeature,
-                        route,
-                        chrome.selectedRouteType,
-                        { chrome.selectedRouteType = it },
-                        savedPlacesViewModel,
-                        transitViewModel,
-                        navState,
-                        openDepartures = { lat, lon -> pushDepartures(lat, lon, null) },
+                        panelState = panelState,
+                        panelActions = panelActions,
+                        selectedFeature = selectedFeature,
+                        route = route,
+                        selectedRouteType = selectedRouteType,
+                        setSelectedRouteType = onRouteMode,
+                        navState = navState,
                     )
                 }
             }
@@ -96,13 +103,15 @@ internal fun MapPageScope.MapSheets(
             // peeks at exactly its title through its action row whatever the font scale. A
             // selection with no header falls back to the fixed height.
             sheetHeader = {
+                val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel, poiSection)
+                val panelActions = rememberPanelActions()
                 BottomSheetHeader(
-                    viewModel,
-                    selectedFeature,
-                    { viewModel.set(it) },
-                    inactiveNavigation,
-                    savedPlacesViewModel,
-                    Modifier.padding(horizontal = Spacing.lg).padding(top = Spacing.sm),
+                    panelState = panelState,
+                    panelActions = panelActions,
+                    selectedFeature = selectedFeature,
+                    setSelectedFeature = onSelectFeature(),
+                    inactiveNavigation = inactiveNavigation,
+                    modifier = Modifier.padding(horizontal = Spacing.lg).padding(top = Spacing.sm),
                 )
             },
             // The selection, the route-type, the POI tab AND the enrichment
@@ -113,9 +122,43 @@ internal fun MapPageScope.MapSheets(
             // Coarse (counts/presence, not the lists) so progressive streaming
             // settles the key instead of resetting it on every partial. Wide
             // layout has no sheet (MapSidePanel) and needs no key.
-            contentKey = listOf(selectedFeature, chrome.selectedRouteType, poiSection, poiEnrichmentKey),
+            contentKey = listOf(selectedFeature, selectedRouteType, poiSection, poiEnrichmentKey),
         ) { _ ->
             MapContentBox(Modifier.fillMaxSize())
         }
+    }
+}
+
+/** Panel actions binding the sheet-stack setters for this host. */
+@androidx.compose.runtime.Composable
+internal fun MapPageScope.rememberPanelActions(): PlacePanelActions {
+    val feature = selectedFeature
+    return remember(feature, sheetStack) {
+        object : PlacePanelActions {
+            override fun setPoiSection(section: com.vayunmathur.maps.data.google.PoiSection) {
+                onPoiSection(section)
+            }
+            override fun addSaved() {
+                (feature as? SpecificFeature.RoutableFeature)?.let { savedPlacesViewModel.addSaved(it) }
+            }
+            override fun removeSaved(place: com.vayunmathur.maps.data.SavedPlace) {
+                savedPlacesViewModel.removeSaved(place)
+            }
+            override fun openNearestStop(lat: Double, lon: Double) {
+                pushDepartures(lat, lon, null)
+            }
+        }
+    }
+}
+
+/** Interpret a header/content selection callback as a stack transition. */
+internal fun MapPageScope.onSelectFeature(): (SpecificFeature?) -> Unit = { feature ->
+    when {
+        feature == null -> sheetStack.popSheet()
+        feature is SpecificFeature.Route -> {
+            val dest = feature.waypoints.lastOrNull()
+            if (dest != null) sheetStack.directionsTo(dest) else sheetStack.selectFeature(feature)
+        }
+        else -> sheetStack.selectFeature(feature)
     }
 }

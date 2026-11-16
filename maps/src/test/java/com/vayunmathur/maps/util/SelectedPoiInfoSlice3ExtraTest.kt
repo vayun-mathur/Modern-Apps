@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.toFeature
+import com.vayunmathur.maps.toSheetRoute
 
 import android.app.Application
 import android.os.Looper
@@ -85,7 +87,7 @@ class SelectedPoiInfoSlice3ExtraTest {
         }
         try {
             val vm = SelectedFeatureViewModel(app)
-            vm.set(SpecificFeature.GenericPlace(name, "555", null, null, GeoPoint(-122.4, 37.8)))
+            vm.setSheetRoute(SpecificFeature.GenericPlace(name, "555", null, null, GeoPoint(-122.4, 37.8)).toSheetRoute())
             val seen = java.util.concurrent.atomic.AtomicReference<com.vayunmathur.maps.data.google.GooglePoiInfo?>(null)
             val job = CoroutineScope(Dispatchers.Default).launch {
                 vm.currentPoiInfo.collect { if (it != null) seen.set(it) }
@@ -118,7 +120,7 @@ class SelectedPoiInfoSlice3ExtraTest {
         GooglePoiDataSource.httpGet = { Payload().searchBody() } // zero entries -> NoMatch
         try {
             val vm = SelectedFeatureViewModel(app)
-            vm.set(SpecificFeature.GenericPlace("Nowhere Place", "555", null, null, GeoPoint(-122.4, 37.8)))
+            vm.setSheetRoute(SpecificFeature.GenericPlace("Nowhere Place", "555", null, null, GeoPoint(-122.4, 37.8)).toSheetRoute())
             val seen = java.util.concurrent.atomic.AtomicReference<com.vayunmathur.maps.data.google.GooglePoiInfo?>(null)
             val job = CoroutineScope(Dispatchers.Default).launch {
                 vm.currentPoiInfo.collect { seen.set(it) }

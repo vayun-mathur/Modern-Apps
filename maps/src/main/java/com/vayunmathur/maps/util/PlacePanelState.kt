@@ -60,9 +60,9 @@ interface PlacePanelActions {
 fun rememberPlacePanelState(
     viewModel: SelectedFeatureViewModel,
     savedPlacesViewModel: SavedPlacesViewModel,
+    poiSection: PoiSection = PoiSection.DETAILS,
 ): PlacePanelState {
     val poi by viewModel.currentPoiInfo.collectAsState()
-    val poiSection by viewModel.poiSection.collectAsState()
     val saved by savedPlacesViewModel.saved.collectAsState()
     val userPosition by viewModel.userPosition.collectAsState()
     return PlacePanelState(

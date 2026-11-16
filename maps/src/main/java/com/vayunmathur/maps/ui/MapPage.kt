@@ -46,6 +46,10 @@ import com.vayunmathur.maps.ui.map.rememberInitialCamera
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.SheetRoute
 import com.vayunmathur.maps.popSheet
+import com.vayunmathur.maps.effectiveFeature
+import com.vayunmathur.maps.engineRoute
+import com.vayunmathur.maps.parkedRoutePlan
+import com.vayunmathur.maps.routePlan
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SpecificFeature
@@ -138,22 +142,24 @@ fun MapPage(
         }
     }
 
-    val selectedFeature by viewModel.selectedFeature.collectAsState()
-    // Keep the router's plan order on the visible tab: routes plans the
-    // selected mode first, so a tab switch made before the flow restarts must
-    // still reach it. A plain assignment (not a flow input) so switching tabs
-    // never re-plans every mode — the flow restarts on selection change only.
-    val selectedRouteType = chrome.selectedRouteType
-    LaunchedEffect(selectedRouteType) {
-        viewModel.selectedRouteMode = selectedRouteType
+    // What is showing is the top of the sheet stack; the VM only mirrors
+    // the engine route (place to enrich / waypoints to plan) from it.
+    val selectedFeature = sheetStack.backStack.effectiveFeature()
+    val parkedRoutePlan = sheetStack.backStack.parkedRoutePlan()
+    val inactiveNavigation = parkedRoutePlan?.let { SpecificFeature.Route(it.waypoints) }
+    LaunchedEffect(sheetStack.backStack.toList()) {
+        viewModel.setSheetRoute(sheetStack.backStack.engineRoute())
     }
-    val inactiveNavigation by viewModel.inactiveNavigation.collectAsState()
+    // The visible route tab is the RoutePlan's mode: switching it writes
+    // the route back (setLast), and routes plans that mode first.
+    val activeRoutePlan = sheetStack.backStack.routePlan()
+    val selectedRouteType = activeRoutePlan?.mode ?: chrome.selectedRouteType
     val route by viewModel.routes.collectAsState(null)
     // Collected here (rather than inside the sheet) so the inner place sheet's
     // contentKey can name them: the tab switch and the late-arriving reviews
     // each change the sheet's content height, and without them in the key the
     // learned ceiling from Details traps the taller Reviews list.
-    val poiSection by viewModel.poiSection.collectAsState()
+    val poiSection = (sheetTop as? SheetRoute.Place)?.section ?: PoiSection.DETAILS
     val currentPoiInfo by viewModel.currentPoiInfo.collectAsState()
     val userPosition by viewModel.userPosition.collectAsState()
     val userBearing by viewModel.userBearing.collectAsState()
@@ -249,15 +255,14 @@ fun MapPage(
         recents = searchRecents,
         searching = searching,
     )
-    val browsing = selectedFeature == null && inactiveNavigation == null && !isNavigating
+    val browsing = selectedFeature == null && !isNavigating
     // The bar is chrome, not a sheet, so it is composed away rather than animated out. Its
     // measured height therefore has to be discounted explicitly — a stale one would leave the
     // FAB stack floating above a bar that is no longer there.
     val searchBarVisible = browsing && searchRoute == null
     // Expanded widths show this content in the side panel instead of a sheet.
     val panelSearch = wide && searchRoute != null
-    val panelPlace = wide && searchRoute == null &&
-        (selectedFeature != null || route != null || inactiveNavigation != null)
+    val panelPlace = wide && searchRoute == null && selectedFeature != null
     fun openSearch(query: String? = null, waypointIndex: Int? = null) {
         val near = com.vayunmathur.maps.util.searchBiasPoint(camera.visibleBoundsOrWorld(), userPosition)
         if (!query.isNullOrBlank()) searchViewModel.setQuery(query, near.latitude, near.longitude)
@@ -282,6 +287,7 @@ fun MapPage(
         searchRequest = searchRoute,
         searchViewModel = searchViewModel,
         viewModel = viewModel,
+        sheetStack = sheetStack,
         coroutineScope = coroutineScope,
         onCloseSearch = { sheetStack.popSheet() },
     )
@@ -304,6 +310,15 @@ fun MapPage(
         inactiveNavigation = inactiveNavigation,
         route = route,
         poiSection = poiSection,
+        onPoiSection = { section ->
+            (sheetTop as? SheetRoute.Place)?.let { sheetStack.setLast(it.copy(section = section)) }
+        },
+        onRouteMode = { mode ->
+            val plan = sheetStack.backStack.routePlan()
+            if (plan != null && sheetTop is SheetRoute.RoutePlan) sheetStack.setLast(plan.copy(mode = mode))
+            else chrome.selectedRouteType = mode
+        },
+        selectedRouteType = selectedRouteType,
         poiEnrichmentKey = PoiEnrichmentKey.of(currentPoiInfo),
         userPosition = userPosition,
         userBearing = userBearing,

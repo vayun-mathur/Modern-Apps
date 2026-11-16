@@ -149,3 +149,41 @@ fun NavBackStack<SheetRoute>.directionsTo(destination: SpecificFeature.RoutableF
 fun NavBackStack<SheetRoute>.popSheet() {
     if (backStack.size > 1) pop()
 }
+
+/** The destination the VM flows key off: topmost Place/AdminLabel/RoutePlan. */
+fun List<SheetRoute>.engineRoute(): SheetRoute? = reversed().firstOrNull {
+    it is SheetRoute.Place || it is SheetRoute.AdminLabel || it is SheetRoute.RoutePlan
+}
+
+/** Replace the stack entry holding [old] with [replacement], keeping its slot. */
+fun NavBackStack<SheetRoute>.replaceFeature(old: SpecificFeature, replacement: SpecificFeature) {
+    val index = backStack.indexOfFirst { route ->
+        (route is SheetRoute.Place && route.feature === old) ||
+            (route is SheetRoute.AdminLabel && route.feature === old)
+    }
+    if (index < 0) return
+    val current = backStack[index]
+    set(
+        index,
+        when (current) {
+            is SheetRoute.Place -> SheetRoute.Place(replacement, current.section)
+            else -> SheetRoute.AdminLabel(replacement)
+        },
+    )
+}
+
+/** The feature a single route shows, or null for Browse/dialog/search. */
+fun SheetRoute?.toFeature(): SpecificFeature? = when (this) {
+    is SheetRoute.Place -> feature
+    is SheetRoute.AdminLabel -> feature
+    is SheetRoute.RoutePlan -> SpecificFeature.Route(waypoints)
+    else -> null
+}
+
+/** The sheet route that shows [this] feature. */
+fun SpecificFeature.toSheetRoute(): SheetRoute = when (this) {
+    is SpecificFeature.Route -> SheetRoute.RoutePlan(waypoints)
+    is SpecificFeature.Admin0Label, is SpecificFeature.Admin1Label, is SpecificFeature.Admin2Label ->
+        SheetRoute.AdminLabel(this)
+    else -> SheetRoute.Place(this)
+}

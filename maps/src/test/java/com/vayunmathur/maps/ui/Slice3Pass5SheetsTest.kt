@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.toFeature
+import com.vayunmathur.maps.toSheetRoute
 
 import android.app.Application
 import androidx.compose.material3.SheetValue
@@ -125,7 +127,7 @@ class Slice3Pass5SheetsTest {
         )
         rule.setContent {
             val scope = compactScope(place)
-            scope.viewModel.set(place)
+            scope.viewModel.setSheetRoute(place.toSheetRoute())
             DynamicTheme {
                 with(scope) {
                     MapSheets(searchActions = null, searchState = SearchUiState())
@@ -143,7 +145,7 @@ class Slice3Pass5SheetsTest {
         )
         rule.setContent {
             val vm = SelectedFeatureViewModel(app)
-            vm.set(place)
+            vm.setSheetRoute(place.toSheetRoute())
             DynamicTheme {
                 PlaceSheet(viewModel = vm, feature = place)
             }
@@ -158,7 +160,7 @@ class Slice3Pass5SheetsTest {
         )
         rule.setContent {
             val vm = SelectedFeatureViewModel(app)
-            vm.set(restaurant)
+            vm.setSheetRoute(restaurant.toSheetRoute())
             DynamicTheme {
                 PlaceSheet(viewModel = vm, feature = restaurant)
             }

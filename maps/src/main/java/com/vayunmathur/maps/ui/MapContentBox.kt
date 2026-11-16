@@ -33,6 +33,8 @@ import com.vayunmathur.maps.ui.map.MapChromeState
 import com.vayunmathur.maps.ui.map.MapFabStack
 import com.vayunmathur.maps.SheetRoute
 import com.vayunmathur.maps.popSheet
+import com.vayunmathur.maps.selectFeature
+import com.vayunmathur.maps.directionsTo
 import com.vayunmathur.maps.ui.map.MapOverlays
 import com.vayunmathur.maps.ui.map.MapSurface
 import com.vayunmathur.maps.ui.map.NavigationCameraFollow
@@ -168,7 +170,7 @@ internal fun MapPageScope.MapContentBox(
                         if (routeFeature != null) {
                             WaypointList(
                                 route = routeFeature,
-                                onReorder = { viewModel.set(it) },
+                                onReorder = { sheetStack.selectFeature(it) },
                                 onEditWaypoint = { index -> openSearch(null, index) },
                             )
                         } else {
@@ -296,8 +298,7 @@ internal fun MapPageScope.MapContentBox(
                             if (spot != null) {
                                 val feature = spot.toFeature(context.getString(MapsR.string.parking_title))
                                 sheetStack.popSheet()
-                                viewModel.stashRouteSelection()
-                                viewModel.set(SpecificFeature.Route(listOf(null, feature)))
+                                sheetStack.selectFeature(SpecificFeature.Route(listOf(null, feature)))
                             }
                         },
                         onParkingNoteChange = { parkingViewModel.updateNote(it) },

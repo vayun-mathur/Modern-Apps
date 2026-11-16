@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.toFeature
+import com.vayunmathur.maps.toSheetRoute
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -7,6 +9,9 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.parkedRoutePlan
+import com.vayunmathur.maps.popSheet
+import com.vayunmathur.maps.selectFeature
 import com.vayunmathur.maps.data.ThemeMode
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -94,19 +99,18 @@ class ViewModelsSlice3Test {
     @Test
     fun `selection starts empty and clears`() {
         val vm = SelectedFeatureViewModel(app)
-        assertNull(vm.selectedFeature.value)
-        vm.set(place())
-        assertEquals(place(), vm.selectedFeature.value)
-        vm.set(null)
-        assertNull(vm.selectedFeature.value)
+        assertNull(vm.sheetRoute.value.toFeature())
+        vm.setSheetRoute(place().toSheetRoute())
+        assertEquals(place(), vm.sheetRoute.value.toFeature())
+        vm.setSheetRoute(null)
+        assertNull(vm.sheetRoute.value.toFeature())
     }
 
     @Test
     fun `selecting resets the poi section to details`() {
-        val vm = SelectedFeatureViewModel(app)
-        vm.setPoiSection(com.vayunmathur.maps.data.google.PoiSection.PHOTOS)
-        vm.set(place())
-        assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, vm.poiSection.value)
+        // A fresh Place route carries the Details section by default.
+        val route = place().toSheetRoute() as com.vayunmathur.maps.SheetRoute.Place
+        assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, route.section)
     }
 
     @Test
@@ -129,31 +133,21 @@ class ViewModelsSlice3Test {
     }
 
     @Test
-    fun `stashRouteSelection parks the current route`() {
-        val vm = SelectedFeatureViewModel(app)
-        assertNull(vm.inactiveNavigation.value)
+    fun `a place over a route parks it as stack depth`() {
+        // The parked route is just a RoutePlan under a Place on the stack:
+        // parkedRoutePlan reads it, and popping the place returns to it.
         val route = SpecificFeature.Route(waypoints = listOf(place()))
-        vm.set(route)
-        vm.stashRouteSelection()
-        assertEquals(route, vm.inactiveNavigation.value)
-    }
-
-    @Test
-    fun `stashRouteSelection ignores non-route selections`() {
-        val vm = SelectedFeatureViewModel(app)
-        vm.set(place())
-        vm.stashRouteSelection()
-        assertNull(vm.inactiveNavigation.value)
-    }
-
-    @Test
-    fun `setInactiveNavigation replaces the parked route`() {
-        val vm = SelectedFeatureViewModel(app)
-        val route = SpecificFeature.Route(waypoints = listOf(place()))
-        vm.setInactiveNavigation(route)
-        assertEquals(route, vm.inactiveNavigation.value)
-        vm.setInactiveNavigation(null)
-        assertNull(vm.inactiveNavigation.value)
+        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>(
+            arrayOf(com.vayunmathur.maps.SheetRoute.Browse),
+        )
+        stack.selectFeature(route)
+        stack.selectFeature(place())
+        assertEquals(
+            com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(place())),
+            stack.backStack.parkedRoutePlan(),
+        )
+        stack.popSheet()
+        assertEquals(com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(place())), stack.last())
     }
 
     // --- SavedPlacesViewModel ---

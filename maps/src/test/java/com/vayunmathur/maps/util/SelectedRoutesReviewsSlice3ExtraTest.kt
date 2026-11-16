@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.toFeature
+import com.vayunmathur.maps.toSheetRoute
 
 import android.app.Application
 import android.os.Looper
@@ -90,7 +92,7 @@ class SelectedRoutesReviewsSlice3ExtraTest {
         GooglePoiDataSource.httpGet = { url -> requested.add(url); Payload().searchBody(entry) }
         try {
             val vm = SelectedFeatureViewModel(app)
-            vm.set(SpecificFeature.GenericPlace(name, "555", null, null, GeoPoint(-122.4, 37.8)))
+            vm.setSheetRoute(SpecificFeature.GenericPlace(name, "555", null, null, GeoPoint(-122.4, 37.8)).toSheetRoute())
             val seen = java.util.concurrent.atomic.AtomicReference<com.vayunmathur.maps.data.google.GooglePoiInfo?>(null)
             val job = CoroutineScope(Dispatchers.Default).launch {
                 vm.currentPoiInfo.collect { if (it != null) seen.set(it) }
@@ -116,7 +118,7 @@ class SelectedRoutesReviewsSlice3ExtraTest {
         val vm = SelectedFeatureViewModel(app)
         val from = SpecificFeature.GenericPlace("From", null, null, null, GeoPoint(-122.4, 37.8))
         val to = SpecificFeature.GenericPlace("To", null, null, null, GeoPoint(-122.3, 37.9))
-        vm.set(SpecificFeature.Route(listOf(from, to)))
+        vm.setSheetRoute(com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(from, to)))
         val seen = java.util.concurrent.atomic.AtomicReference<Map<RouteService.TravelMode, RouteService.RouteType?>?>(null)
         val job = CoroutineScope(Dispatchers.Default).launch {
             vm.routes.collect { if (it != null) seen.set(it) }

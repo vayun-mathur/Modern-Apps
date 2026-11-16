@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -141,11 +142,12 @@ private fun PlaceSheetHeaderContent(
     website: String?,
     requestDirections: () -> Unit,
 ) {
-    val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel)
+    var section by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(PoiSection.DETAILS) }
+    val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel, section)
     val panelActions = remember(feature) {
         object : PlacePanelActions {
-            override fun setPoiSection(section: PoiSection) {
-                viewModel.setPoiSection(section)
+            override fun setPoiSection(s: PoiSection) {
+                section = s
             }
             override fun addSaved() {
                 savedPlacesViewModel.addSaved(feature)

@@ -3,6 +3,7 @@ package com.vayunmathur.maps.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.selectFeature
 import com.vayunmathur.maps.util.MapsSearchViewModel
 import com.vayunmathur.maps.util.SearchActions
 import com.vayunmathur.maps.util.SearchResult
@@ -21,6 +22,7 @@ internal fun rememberSearchActions(
     searchViewModel: MapsSearchViewModel,
     viewModel: SelectedFeatureViewModel,
     coroutineScope: CoroutineScope,
+    sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>? = null,
     onCloseSearch: () -> Unit,
 ): SearchActions? {
     val openRequest = searchRequest ?: return null
@@ -42,25 +44,37 @@ internal fun rememberSearchActions(
                 coroutineScope.launch {
                     val feature = searchViewModel.toFeature(result)
                     val index = openRequest.waypointIndex
-                    // The selection can have changed under the sheet — the map is live —
-                    // so tolerate a non-Route current selection rather than crashing.
-                    val current = viewModel.selectedFeature.value
-                    if (index != null && current is SpecificFeature.Route) {
-                        viewModel.set(
-                            current.copy(
-                                waypoints = current.waypoints.mapIndexed { i, waypoint ->
-                                    if (i == index) feature else waypoint
+                    // Editing a waypoint: rewrite that leg of the plan under
+                    // the search sheet, then pop back to it.
+                    val planIndex = sheetStack?.backStack?.indexOfLast {
+                        it is com.vayunmathur.maps.SheetRoute.RoutePlan
+                    } ?: -1
+                    val plan = sheetStack?.backStack?.getOrNull(planIndex)
+                        as? com.vayunmathur.maps.SheetRoute.RoutePlan
+                    if (index != null && plan != null && sheetStack != null) {
+                        sheetStack.set(
+                            planIndex,
+                            plan.copy(
+                                waypoints = plan.waypoints.mapIndexed { i, waypoint ->
+                                    if (i == index) feature as SpecificFeature.RoutableFeature else waypoint
                                 },
                             ),
                         )
+                        onCloseSearch()
                     } else {
                         // Focus as well as select: without the camera move a
                         // distant result opened its card over a map still
                         // showing somewhere else (and any region mask with
                         // it off-screen). selectAndFocus is the same path
                         // deep links use.
-                        viewModel.selectAndFocus(feature)
-                        onCloseSearch()
+                        if (sheetStack != null) {
+                            onCloseSearch()
+                            sheetStack.selectFeature(feature)
+                            viewModel.focusFeature(feature)
+                        } else {
+                            viewModel.selectAndFocus(feature)
+                            onCloseSearch()
+                        }
                     }
                 }
             }

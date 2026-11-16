@@ -28,6 +28,7 @@ import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.osmPlace
 import com.vayunmathur.maps.data.transit.TransitStop
 import com.vayunmathur.maps.SheetRoute
+import com.vayunmathur.maps.selectFeature
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.ipc.FamilyMember
 import com.vayunmathur.maps.ui.map.MapFeaturePicker.Companion.NATIVE_LABEL_LAYER_IDS
@@ -240,7 +241,6 @@ fun MapSurface(
                     is MapHit.Stop -> {
                         // Whatever place sheet was up is replaced, not stacked under: one tap
                         // should take one back to undo, and a board over a stale sheet takes two.
-                        viewModel.set(null)
                         sheetStack?.reset(SheetRoute.Browse, SheetRoute.Departures(hit.stop.id, hit.stop.name, hit.stop.lat, hit.stop.lon))
                         return@launch
                     }
@@ -249,13 +249,11 @@ fun MapSurface(
                         // baked stop and open its board instead of selecting the POI.
                         val station = hit.feature as? SpecificFeature.GenericPlace
                         if (station?.poiType == STATION_POI_TYPE) {
-                            viewModel.set(null)
                             val stop = transitViewModel.resolveNearestStop(station.position.latitude, station.position.longitude)
                             sheetStack?.reset(SheetRoute.Browse, SheetRoute.Departures(stop.id, stop.name, stop.lat, stop.lon))
                             return@launch
                         }
-                        viewModel.stashRouteSelection()
-                        viewModel.set(hit.feature)
+                        sheetStack?.selectFeature(hit.feature)
                         // Compact only: in wide the side panel reads the selection
                         // directly, and a null state means the sheets never open.
                         sheetState?.partialExpand()
@@ -274,7 +272,6 @@ fun MapSurface(
                     // A transit stop carries no stop id, so its tap opens the nearest baked
                     // stop's departure board rather than a place sheet.
                     if (PoiCategories.opensDepartureBoard(poi.kind)) {
-                        viewModel.set(null)
                         val stop = transitViewModel.resolveNearestStop(poi.position.latitude, poi.position.longitude, poi.name.ifBlank { null })
                         sheetStack?.reset(SheetRoute.Browse, SheetRoute.Departures(stop.id, stop.name, stop.lat, stop.lon))
                         return@launch
@@ -282,8 +279,7 @@ fun MapSurface(
                     // The archive carries a POI's kind, name and point and nothing else, so
                     // phone, website, hours and address are still joined from the offline
                     // index on IO inside `osmPlace`.
-                    viewModel.stashRouteSelection()
-                    viewModel.set(osmPlace(poi.name, poi.position, poiType = type))
+                    sheetStack?.selectFeature(osmPlace(poi.name, poi.position, poiType = type))
                     sheetState?.partialExpand()
                     return@launch
                 }
@@ -306,8 +302,7 @@ fun MapSurface(
                     ).mapNotNull { it.toFeature1() }
                 )
                 if (label != null) {
-                    viewModel.stashRouteSelection()
-                    viewModel.set(label)
+                    sheetStack?.selectFeature(label)
                     sheetState?.partialExpand()
                     return@launch
                 }
@@ -326,8 +321,7 @@ fun MapSurface(
                 val geo = click.position
                 searchViewModel.reverseGeocode(geo.latitude, geo.longitude) { place ->
                     if (place != null) {
-                        viewModel.stashRouteSelection()
-                        viewModel.set(place)
+                        sheetStack?.selectFeature(place)
                         coroutineScope.launch { sheetState?.partialExpand() }
                     }
                 }

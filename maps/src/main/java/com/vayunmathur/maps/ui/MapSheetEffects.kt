@@ -18,6 +18,10 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.effectiveFeature
+import com.vayunmathur.maps.popSheet
+import com.vayunmathur.maps.replaceFeature
+import com.vayunmathur.maps.selectFeature
 import com.vayunmathur.maps.util.MapsSearchViewModel
 import com.vayunmathur.maps.util.SelectedFeatureViewModel
 import kotlinx.coroutines.launch
@@ -54,6 +58,25 @@ internal fun MapSheetEffects(
         }
     }
 
+    // A place requested by a non-composition caller (deep link, contact
+    // shortcut) is pushed on the stack here; the focus effect below flies.
+    val pendingPlace by viewModel.pendingPlace.collectAsState()
+    LaunchedEffect(pendingPlace) {
+        val feature = pendingPlace ?: return@LaunchedEffect
+        sheetStack.selectFeature(feature)
+        viewModel.consumePendingPlace()
+    }
+
+    // Offline enrichment of a bare GenericPlace, written back onto its
+    // stack entry (the choke point the ViewModel selection used to be).
+    LaunchedEffect(selectedFeature) {
+        val place = selectedFeature as? SpecificFeature.GenericPlace ?: return@LaunchedEffect
+        val enriched = viewModel.enrichedOrNull(place) ?: return@LaunchedEffect
+        if (sheetStack.backStack.effectiveFeature() === place) {
+            sheetStack.replaceFeature(place, enriched)
+        }
+    }
+
     // Contact-address auto-select and external geo:/maps deep links land here. A StateFlow-backed
     // request survives a cold start, so a link that selected a place before the map composed
     // still animates and peeks once it is ready.
@@ -74,7 +97,7 @@ internal fun MapSheetEffects(
         // admin label of the same name at this spot when one is linked —
         // the mask and admin card follow from the selection as they do
         // for a tapped label. No name match, no upgrade.
-        val place = viewModel.selectedFeature.value as? SpecificFeature.GenericPlace
+        val place = sheetStack.backStack.effectiveFeature() as? SpecificFeature.GenericPlace
             ?: return@LaunchedEffect
         val projection = camera.projection ?: return@LaunchedEffect
         val centre = runCatching {
@@ -101,8 +124,8 @@ internal fun MapSheetEffects(
         val upgrade = com.vayunmathur.maps.ui.map.adminUpgradeFor(place, parsed)
         // The selection may have moved on while parsing; only upgrade the
         // exact selection this focus was for.
-        if (upgrade != null && viewModel.selectedFeature.value === place) {
-            viewModel.set(upgrade)
+        if (upgrade != null && sheetStack.backStack.effectiveFeature() === place) {
+            sheetStack.replaceFeature(place, upgrade)
         }
     }
 
@@ -134,7 +157,7 @@ internal fun MapSheetEffects(
         } else if (searchWasOpen) {
             searchWasOpen = false
             launch { searchSheetState?.hide() }
-            if (viewModel.selectedFeature.value != null) sheetState?.partialExpand()
+            if (sheetStack.backStack.effectiveFeature() != null) sheetState?.partialExpand()
         }
     }
 
@@ -147,21 +170,13 @@ internal fun MapSheetEffects(
         }
     }
 
-    // Clearing the selection is enough: the `LaunchedEffect(selectedFeature)` above is the single
-    // dismissal path for every sheet state, so back does not hide the sheet itself. Doing both
-    // raced two `hide()` coroutines against each other for no benefit.
-    BackHandler(selectedFeature != null) {
-        viewModel.set(null)
-    }
-
-    BackHandler(selectedFeature == null && inactiveNavigation != null) {
-        viewModel.setInactiveNavigation(null)
-    }
-
-    // Registered last so it wins: back out of search before back does anything to the selection
-    // the search sheet is currently covering.
-    BackHandler(searchRequest != null) {
-        sheetStack.pop()
+    // One back handler for the whole sheet stack: search pops back to the
+    // place/route it covered, a place over a parked route pops back to the
+    // route, a route pops back to its place, and Browse lets the outer
+    // graph handle back. The old three stacked handlers were this stack
+    // spelled out in registration order.
+    BackHandler(sheetStack.backStack.size > 1) {
+        sheetStack.popSheet()
     }
 }
 

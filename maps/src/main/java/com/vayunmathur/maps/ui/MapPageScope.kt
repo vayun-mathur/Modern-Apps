@@ -94,6 +94,9 @@ internal class MapPageScope(
      * a sheet opened on Details keeps its low learned ceiling on Reviews.
      */
     val poiSection: PoiSection,
+    val onPoiSection: (PoiSection) -> Unit = {},
+    val onRouteMode: (RouteService.TravelMode) -> Unit = {},
+    val selectedRouteType: RouteService.TravelMode = RouteService.TravelMode.DRIVE,
     /**
      * Coarse enrichment signature for the inner place sheet's contentKey.
      * Late-arriving reviews/photos grow the content after measurement, which

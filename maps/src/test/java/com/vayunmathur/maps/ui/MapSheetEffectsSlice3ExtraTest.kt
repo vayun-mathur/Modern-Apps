@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.toFeature
+import com.vayunmathur.maps.toSheetRoute
 
 import android.app.Application
 import androidx.activity.ComponentActivity
@@ -84,7 +86,7 @@ class MapSheetEffectsSlice3ExtraTest {
         rule.waitForIdle()
         // Back with a selection clears the selection via the search BackHandler chain:
         // set the VM selection the way the sheet would see it first
-        rule.runOnUiThread { vm.set(feature) }
+        rule.runOnUiThread { vm.setSheetRoute(feature!!.toSheetRoute()) }
         rule.waitForIdle()
     }
 

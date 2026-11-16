@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.toFeature
+import com.vayunmathur.maps.toSheetRoute
 
 import android.app.Application
 import android.os.Looper
@@ -39,7 +41,7 @@ class MapsSelectedFeatureC5Test {
                 SpecificFeature.GenericPlace("To", null, null, null, pt(-122.0, 37.002)),
             ),
         )
-        vm.set(routeFeature)
+        vm.setSheetRoute(routeFeature.toSheetRoute())
         // stateIn(WhileSubscribed) only runs while collected.
         val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
         val collectJob = scope.launch {
@@ -70,7 +72,7 @@ class MapsSelectedFeatureC5Test {
     @Test
     fun `clearing the selection empties planned routes`() {
         val vm = SelectedFeatureViewModel(app)
-        vm.set(null)
+        vm.setSheetRoute(null)
         Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertNull(vm.routes.value)
     }
@@ -96,7 +98,7 @@ class MapsSelectedFeatureC5Test {
         val vm = SelectedFeatureViewModel(app)
         val place = SpecificFeature.GenericPlace("C5 Town", null, null, null, pt(-122.4, 37.8))
         vm.selectAndFocus(place, zoom = 15.0)
-        assertEquals(place, vm.selectedFeature.value)
+        assertEquals(place, vm.pendingPlace.value)
         assertEquals(15.0, vm.pendingFocus.value?.zoom)
         vm.consumeFocus()
         assertNull(vm.pendingFocus.value)

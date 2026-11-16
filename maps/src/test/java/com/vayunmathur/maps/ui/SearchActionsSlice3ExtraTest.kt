@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.toFeature
+import com.vayunmathur.maps.toSheetRoute
 
 import android.app.Application
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,12 +70,12 @@ class SearchActionsSlice3ExtraTest {
         actions!!.selectResult(result)
         // selectResult launches on the passed scope (paused Main under Robolectric): pump + wait
         withTimeout(10000) {
-            while (selectedVm.selectedFeature.value == null) {
+            while (selectedVm.pendingPlace.value == null) {
                 Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
                 delay(50)
             }
         }
-        assertEquals("Blue Bottle", (selectedVm.selectedFeature.value as SpecificFeature.GenericPlace).name)
+        assertEquals("Blue Bottle", (selectedVm.pendingPlace.value as SpecificFeature.GenericPlace).name)
         withTimeout(5000) {
             while (closed == 0) {
                 Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
@@ -90,23 +92,30 @@ class SearchActionsSlice3ExtraTest {
         val selectedVm = SelectedFeatureViewModel(app)
         var closed = 0
         var actions: SearchActions? = null
-        // Current selection is a Route with two waypoints; picking for waypoint 1 replaces it
+        // A RoutePlan under a Search sheet: picking for waypoint 1 rewrites
+        // that leg on the stack and pops the search back to the plan.
         val from = SpecificFeature.GenericPlace("From", null, null, null, GeoPoint(-122.4, 37.8))
         val to = SpecificFeature.GenericPlace("To", null, null, null, GeoPoint(-122.3, 37.9))
-        selectedVm.set(SpecificFeature.Route(listOf(from, to)))
+        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>(
+            arrayOf(
+                com.vayunmathur.maps.SheetRoute.Browse,
+                com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(from, to)),
+                com.vayunmathur.maps.SheetRoute.Search(1, 37.8, -122.4),
+            ),
+        )
         rule.setContent {
             val scope = rememberCoroutineScope()
-            actions = rememberSearchActions(com.vayunmathur.maps.SheetRoute.Search(1, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
+            actions = rememberSearchActions(com.vayunmathur.maps.SheetRoute.Search(1, 37.8, -122.4), searchVm, selectedVm, scope, sheetStack = stack) { closed++ }
             DynamicTheme { androidx.compose.foundation.layout.Box {} }
         }
         actions!!.selectResult(com.vayunmathur.maps.util.SearchResult("id2", "Middle", null, 37.85, -122.35, null))
         withTimeout(10000) {
-            while ((selectedVm.selectedFeature.value as? SpecificFeature.Route)?.waypoints?.getOrNull(1)?.name != "Middle") {
+            while ((stack.backStack.filterIsInstance<com.vayunmathur.maps.SheetRoute.RoutePlan>().lastOrNull())?.waypoints?.getOrNull(1)?.name != "Middle") {
                 Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
                 delay(50)
             }
         }
-        assertEquals(0, closed) // route replacement does not close the sheet
+        assertTrue(closed > 0) // picking a waypoint pops the search sheet
         Unit
     } }
 
@@ -122,7 +131,7 @@ class SearchActionsSlice3ExtraTest {
         val vm = SelectedFeatureViewModel(app)
         val from = SpecificFeature.GenericPlace("From", null, null, null, GeoPoint(-122.4, 37.8))
         val to = SpecificFeature.GenericPlace("To", null, null, null, GeoPoint(-122.3, 37.9))
-        vm.set(SpecificFeature.Route(listOf(from, to)))
+        vm.setSheetRoute(com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(from, to)))
         // WhileSubscribed flow on viewModelScope (paused Main) + IO planning: pump both
         var latest: Map<RouteService.TravelMode, RouteService.RouteType?>? = null
         val job = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {

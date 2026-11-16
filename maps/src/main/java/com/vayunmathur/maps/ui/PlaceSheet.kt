@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -91,7 +92,7 @@ fun PlaceSheet(
     modifier: Modifier = Modifier,
 ) {
     val poi by viewModel.currentPoiInfo.collectAsState()
-    val selectedSection by viewModel.poiSection.collectAsState()
+    var selectedSection by rememberSaveable { mutableStateOf(PoiSection.DETAILS) }
     PlaceSheetContent(
         poi = poi,
         selectedSection = selectedSection,
@@ -109,7 +110,7 @@ fun PlaceSheet(
     onDepartures: (() -> Unit)? = null,
 ) {
     val poi by viewModel.currentPoiInfo.collectAsState()
-    val selectedSection by viewModel.poiSection.collectAsState()
+    var selectedSection by rememberSaveable { mutableStateOf(PoiSection.DETAILS) }
     PlaceSheetContent(
         poi = poi,
         selectedSection = selectedSection,

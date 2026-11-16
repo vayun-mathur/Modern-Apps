@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.toFeature
+import com.vayunmathur.maps.toSheetRoute
 
 import android.app.Application
 import androidx.compose.runtime.rememberCoroutineScope
@@ -141,7 +143,7 @@ class WideHostSlice3ExtraTest {
         )
         rule.setContent {
             val scope = buildScope(place)
-            scope.viewModel.set(place)
+            scope.viewModel.setSheetRoute(place.toSheetRoute())
             DynamicTheme {
                 with(scope) {
                     MapWideHost(searchActions = null, searchState = SearchUiState(), panelSearch = false, panelPlace = true)

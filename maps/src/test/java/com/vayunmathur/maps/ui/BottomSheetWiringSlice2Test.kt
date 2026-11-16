@@ -55,7 +55,6 @@ class BottomSheetWiringSlice2Test {
         var opened: Pair<Double, Double>? = null
         val actions = object : PlacePanelActions {
             override fun setPoiSection(s: PoiSection) {
-                selected.setPoiSection(s)
                 section = s
             }
 
@@ -76,7 +75,6 @@ class BottomSheetWiringSlice2Test {
             actions.openNearestStop(37.8, -122.4)
         }
         assertEquals(PoiSection.PHOTOS, section)
-        assertEquals(PoiSection.PHOTOS, selected.poiSection.value)
         assertEquals(37.8, opened?.first)
         assertEquals(-122.4, opened?.second)
     }
@@ -85,10 +83,9 @@ class BottomSheetWiringSlice2Test {
     fun `added places read back as saved through the panel state`() {
         val selected = SelectedFeatureViewModel(app)
         val savedVm = SavedPlacesViewModel(app)
-        rule.runOnIdle { selected.setPoiSection(PoiSection.PHOTOS) }
         var panel: PlacePanelState? = null
         rule.setContent {
-            panel = rememberPlacePanelState(selected, savedVm)
+            panel = rememberPlacePanelState(selected, savedVm, PoiSection.PHOTOS)
         }
         rule.waitForIdle()
         assertEquals(PoiSection.PHOTOS, panel?.poiSection)

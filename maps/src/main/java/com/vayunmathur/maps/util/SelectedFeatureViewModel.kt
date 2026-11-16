@@ -9,7 +9,8 @@ import com.vayunmathur.maps.data.osmPlace
 import com.vayunmathur.maps.data.google.GooglePoiDataSource
 import com.vayunmathur.maps.data.google.GooglePoiInfo
 import com.vayunmathur.maps.data.parse
-import com.vayunmathur.maps.data.google.PoiSection
+import com.vayunmathur.maps.SheetRoute
+import com.vayunmathur.maps.effectiveFeature
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,37 +31,27 @@ import com.vayunmathur.maps.data.MapPreferences
 
 /** Selected Feature View Model: a application implementation for selected feature view model. */
 class SelectedFeatureViewModel(application: Application): AndroidViewModel(application) {
-    private val _selectedFeature = MutableStateFlow<SpecificFeature?>(null)
-    val selectedFeature = _selectedFeature.asStateFlow()
-
-    private val _inactiveNavigation = MutableStateFlow<SpecificFeature.Route?>(null)
-    val inactiveNavigation = _inactiveNavigation.asStateFlow()
-
     /**
-     * Which of the place sheet's Details / Photos / Reviews tabs is showing.
-     *
-     * On the ViewModel rather than remembered in the sheet because the tab row and the panel it
-     * switches are no longer the same composable: the row is part of the sheet's measured header,
-     * so that it is visible at the peek and the other tabs are discoverable without expanding,
-     * and the panel is below the fold. Two sibling slots cannot share a `remember`, and this is
-     * selection-scoped state that already has a home — which also means the reset lives with the
-     * selection it belongs to instead of a `remember(key)` in the UI.
+     * The sheet-stack destination the derived flows are keyed off: the top
+     * Place/AdminLabel/RoutePlan of the MapPage sheet stack, synced from
+     * composition by MapPage. This is an engine input (which place to
+     * enrich, which waypoints to plan), not selection state — the stack
+     * in the UI owns what is showing.
      */
-    private val _poiSection = MutableStateFlow(PoiSection.DETAILS)
-    val poiSection = _poiSection.asStateFlow()
+    private val _sheetRoute = MutableStateFlow<SheetRoute?>(null)
+    val sheetRoute = _sheetRoute.asStateFlow()
 
-    fun setPoiSection(section: PoiSection) {
-        _poiSection.value = section
+    fun setSheetRoute(route: SheetRoute?) {
+        _sheetRoute.value = route
     }
 
-    /**
-     * The route tab the sheet is showing (DRIVE by default). Read once per
-     * selection by [routes] so the visible tab's mode plans first; the flow
-     * restarts on the next selection change anyway, so this is a plain var
-     * rather than a collected flow (collecting it would re-plan every mode
-     * on each tab switch). Synced from the chrome tab in MapPage.
-     */
-    var selectedRouteMode: RouteService.TravelMode = RouteService.TravelMode.DRIVE
+    /** A place a non-composition caller (deep link, contact shortcut) asked to open. */
+    private val _pendingPlace = MutableStateFlow<SpecificFeature?>(null)
+    val pendingPlace = _pendingPlace.asStateFlow()
+
+    fun consumePendingPlace() {
+        _pendingPlace.value = null
+    }
 
     private companion object {
         /**
@@ -159,31 +150,16 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
     }
 
     /**
-     * The single choke point every selection flows through. Most selection paths construct a bare
-     * `GenericPlace(name, null, null, null, pos)` and bypass the `poi_attrs.bin` sidecar lookup,
-     * so an unenriched place is re-enriched here: the sheet opens instantly with the title, then
-     * the OSM fields (hours, phone, website, address) fill in when the lookup lands.
-     *
-     * The identity check keeps a slow lookup from overwriting a newer selection, and the enriched
-     * write goes through [setDirect] rather than [set] so it cannot recurse. Restaurants already
-     * carry their OSM fields from their own construction path and are left alone.
+     * Enrich a bare [SpecificFeature.GenericPlace] from the offline sidecar,
+     * or null when it already carries OSM fields or the lookup finds none.
+     * The caller (the sheet-stack host) writes the result back onto the
+     * stack entry it came from.
      */
-    fun set(feature: SpecificFeature?) {
-        setDirect(feature)
-        val place = feature as? SpecificFeature.GenericPlace ?: return
-        if (!needsEnrichment(place)) return
-        viewModelScope.launch {
-            val enriched = runCatching { osmPlace(place.name, place.position, place.poiType) }.getOrNull()
-                ?: return@launch
-            if (hasAnyOsmField(enriched) && _selectedFeature.value === feature) {
-                setDirect(enriched)
-            }
-        }
-    }
-
-    private fun setDirect(feature: SpecificFeature?) {
-        _selectedFeature.value = feature
-        _poiSection.value = PoiSection.DETAILS
+    suspend fun enrichedOrNull(place: SpecificFeature.GenericPlace): SpecificFeature.GenericPlace? {
+        if (!needsEnrichment(place)) return null
+        val enriched = runCatching { osmPlace(place.name, place.position, place.poiType) }.getOrNull()
+            ?: return null
+        return enriched.takeIf { hasAnyOsmField(it) }
     }
 
     private fun needsEnrichment(place: SpecificFeature.GenericPlace): Boolean =
@@ -199,8 +175,14 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
      * intent handler (geo:/maps links). Selecting a [SpecificFeature.RoutableFeature]
      * triggers [currentPoiInfo] enrichment so the pane fills with details.
      */
+    /** Ask the map to fly to [feature] without changing the sheet stack. */
+    fun focusFeature(feature: SpecificFeature, zoom: Double? = null) {
+        val pos = (feature as? SpecificFeature.RoutableFeature)?.position
+        _pendingFocus.value = pos?.let { PlaceFocus(it, zoom) }
+    }
+
     fun selectAndFocus(feature: SpecificFeature, zoom: Double? = null) {
-        set(feature)
+        _pendingPlace.value = feature
         val pos = (feature as? SpecificFeature.RoutableFeature)?.position
         _pendingFocus.value = pos?.let { PlaceFocus(it, zoom) }
     }
@@ -208,22 +190,6 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
     /** Clear a consumed [pendingFocus] once the map has flown there + opened the pane. */
     fun consumeFocus() {
         _pendingFocus.value = null
-    }
-
-    fun setInactiveNavigation(route: SpecificFeature.Route?) {
-        _inactiveNavigation.value = route
-    }
-
-    /**
-     * Park the current route, if the selection is one, before selecting something else.
-     *
-     * Tapping a place while directions are up should keep the route recoverable rather than
-     * discard it, which is why every such tap handler did this. They each did it with an
-     * unchecked `as SpecificFeature.Route` guarded by a separate `is` check, so the cast was
-     * only safe by inspection; reading the selection once here makes it safe by construction.
-     */
-    fun stashRouteSelection() {
-        (_selectedFeature.value as? SpecificFeature.Route)?.let { _inactiveNavigation.value = it }
     }
 
     /**
@@ -251,9 +217,10 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
      * touching the network — zero Google traffic.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val currentPoiInfo: StateFlow<GooglePoiInfo?> = selectedFeature
-        .flatMapLatest { feature ->
+    val currentPoiInfo: StateFlow<GooglePoiInfo?> = sheetRoute
+        .flatMapLatest { route ->
             if (!googleServicesEnabled()) return@flatMapLatest flowOf(null)
+            val feature = (route as? SheetRoute.Place)?.feature
             val (name, pos) = when (feature) {
                 is SpecificFeature.Restaurant -> feature.name to feature.position
                 is SpecificFeature.GenericPlace -> feature.name to feature.position
@@ -279,19 +246,20 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
     // `scan`, and every emission re-resolved the route overlay/traffic tables
     // and re-pushed to the renderer. The remaining modes compute lazily off
     // the critical path and arrive in a single coalesced map. [selectedRouteMode]
-    // is read once per selection (not collected): the flow restarts on the
-    // next selection change anyway, and collecting the tab here would re-plan
-    // every mode on each tab switch.
+    // is read once per route-plan change (not collected): the flow restarts
+    // on the next plan change anyway, and collecting the tab here would
+    // re-plan every mode on each tab switch.
     //
     // The scan seed: one null per travel mode, merged over as each plan lands.
     private fun emptyRoutes(): Map<RouteService.TravelMode, RouteService.RouteType?> =
         RouteService.TravelMode.entries.associateWith { null as RouteService.RouteType? }
     @OptIn(ExperimentalCoroutinesApi::class)
-    val routes = selectedFeature
-        .flatMapLatest { feature ->
+    val routes = sheetRoute
+        .flatMapLatest { route ->
             val pos = userPosition.value
-            val selectedMode = selectedRouteMode
-            val routeFeature = feature as? SpecificFeature.Route ?: return@flatMapLatest flowOf(null)
+            val plan = route as? SheetRoute.RoutePlan ?: return@flatMapLatest flowOf(null)
+            val selectedMode = plan.mode
+            val routeFeature = SpecificFeature.Route(plan.waypoints)
 
             flow {
                 emit(emptyMap())

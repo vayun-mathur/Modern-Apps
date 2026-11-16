@@ -53,7 +53,8 @@ fun rememberInitialCamera(viewModel: SelectedFeatureViewModel): CameraState {
     )
 
     val userPosition by viewModel.userPosition.collectAsState()
-    val selectedFeature by viewModel.selectedFeature.collectAsState()
+    val sheetRoute by viewModel.sheetRoute.collectAsState()
+    val selectedFeature = sheetRoute
     val pendingFocus by viewModel.pendingFocus.collectAsState()
     var centeredOnFix by remember { mutableStateOf(false) }
     LaunchedEffect(userPosition, selectedFeature, pendingFocus) {

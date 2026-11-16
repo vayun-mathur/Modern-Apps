@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,11 +51,12 @@ fun BottomSheetContent(
     navState: NavigationSessionManager.NavState = NavigationSessionManager.NavState.Idle,
     openDepartures: ((Double, Double) -> Unit)? = null,
 ) {
-    val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel)
+    var section by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(PoiSection.DETAILS) }
+    val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel, section)
     val panelActions = remember(selectedFeature) {
         object : PlacePanelActions {
-            override fun setPoiSection(section: PoiSection) {
-                viewModel.setPoiSection(section)
+            override fun setPoiSection(s: PoiSection) {
+                section = s
             }
             override fun addSaved() {
                 (selectedFeature as? SpecificFeature.RoutableFeature)?.let {

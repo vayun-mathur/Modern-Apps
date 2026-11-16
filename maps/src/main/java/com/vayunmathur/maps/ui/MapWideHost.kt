@@ -25,6 +25,8 @@ import com.vayunmathur.maps.R as MapsR
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.SheetRoute
+import com.vayunmathur.maps.popSheet
 import com.vayunmathur.maps.data.google.PoiSection
 import com.vayunmathur.maps.ui.map.LayerToggles
 import com.vayunmathur.maps.ui.map.MapChromeState
@@ -70,25 +72,8 @@ internal fun MapPageScope.MapWideHost(
     panelSearch: Boolean,
     panelPlace: Boolean,
 ) {
-    val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel)
-    val panelActions: PlacePanelActions = remember(selectedFeature) {
-        object : PlacePanelActions {
-            override fun setPoiSection(section: PoiSection) {
-                viewModel.setPoiSection(section)
-            }
-            override fun addSaved() {
-                (selectedFeature as? SpecificFeature.RoutableFeature)?.let {
-                    savedPlacesViewModel.addSaved(it)
-                }
-            }
-            override fun removeSaved(place: SavedPlace) {
-                savedPlacesViewModel.removeSaved(place)
-            }
-            override fun openNearestStop(lat: Double, lon: Double) {
-                pushDepartures(lat, lon, null)
-            }
-        }
-    }
+    val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel, poiSection)
+    val panelActions = rememberPanelActions()
     val panelContent: (@Composable (Modifier) -> Unit)? = when {
         panelSearch && searchActions != null -> { modifier ->
             MapSidePanel(
@@ -98,13 +83,13 @@ internal fun MapPageScope.MapWideHost(
                 panelState = panelState,
                 panelActions = panelActions,
                 selectedFeature = selectedFeature,
-                onSelectFeature = { viewModel.set(it) },
+                onSelectFeature = onSelectFeature(),
                 route = route,
-                selectedRouteType = chrome.selectedRouteType,
-                onSelectedRouteType = { chrome.selectedRouteType = it },
+                selectedRouteType = selectedRouteType,
+                onSelectedRouteType = onRouteMode,
                 inactiveNavigation = inactiveNavigation,
                 navState = navState,
-                onClosePanel = { viewModel.set(null) },
+                onClosePanel = { sheetStack.popSheet() },
                 modifier = modifier,
             )
         }
@@ -116,16 +101,13 @@ internal fun MapPageScope.MapWideHost(
                 panelState = panelState,
                 panelActions = panelActions,
                 selectedFeature = selectedFeature,
-                onSelectFeature = { viewModel.set(it) },
+                onSelectFeature = onSelectFeature(),
                 route = route,
-                selectedRouteType = chrome.selectedRouteType,
-                onSelectedRouteType = { chrome.selectedRouteType = it },
+                selectedRouteType = selectedRouteType,
+                onSelectedRouteType = onRouteMode,
                 inactiveNavigation = inactiveNavigation,
                 navState = navState,
-                onClosePanel = {
-                    viewModel.set(null)
-                    viewModel.setInactiveNavigation(null)
-                },
+                onClosePanel = { sheetStack.reset(SheetRoute.Browse) },
                 modifier = modifier,
             )
         }

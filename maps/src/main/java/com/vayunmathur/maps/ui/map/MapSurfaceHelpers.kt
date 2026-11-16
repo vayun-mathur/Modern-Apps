@@ -288,7 +288,6 @@ internal suspend fun openVehicleTrip(
     sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>? = null,
 ): Boolean {
     val marker = pickVehicle(vehicles, projection, offset) ?: return false
-    viewModel.set(null)
     if (sheetStack != null) {
         sheetStack.reset(com.vayunmathur.maps.SheetRoute.Browse, com.vayunmathur.maps.SheetRoute.Trip(marker.id, marker.position.latitude, marker.position.longitude))
     } else {

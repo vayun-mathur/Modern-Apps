@@ -31,9 +31,9 @@ internal fun MapPageScope.MapSearchBarSection(
                 val near = searchBiasPoint(camera.visibleBoundsOrWorld(), userPosition)
                 searchViewModel.resolveAndSelect(address, near.latitude, near.longitude) { place ->
                     if (place != null) {
-                        viewModel.stashRouteSelection()
                         // Fly there and open the peek pane, the same direct-open
-                        // path a geo:/maps deep link takes.
+                        // path a geo:/maps deep link takes (pendingPlace is
+                        // pushed on the sheet stack by MapSheetEffects).
                         viewModel.selectAndFocus(
                             place,
                             zoom = (camera.position.zoom).coerceAtLeast(14.0),

@@ -1,4 +1,6 @@
 package com.vayunmathur.maps
+import com.vayunmathur.maps.toFeature
+import com.vayunmathur.maps.toSheetRoute
 
 import android.content.Intent
 import android.net.Uri
@@ -196,7 +198,7 @@ class MainActivitySlice3Test {
         val controller = launch("geo:37.7749,-122.4194?q=Pier+39")
         val activity = controller.get()
         val vm = selectedOf(activity)
-        val selected = vm.selectedFeature.value
+        val selected = vm.sheetRoute.value.toFeature()
         assertIs<SpecificFeature.GenericPlace>(selected)
         assertTrue(selected.name.contains("Pier"))
         assertEquals(37.7749, selected.position.latitude, 1e-6)
@@ -214,7 +216,7 @@ class MainActivitySlice3Test {
         }
         val controller = Robolectric.buildActivity(MainActivity::class.java, intent).setup()
         val vm = selectedOf(controller.get())
-        assertNull(vm.selectedFeature.value)
+        assertNull(vm.sheetRoute.value.toFeature())
         assertNull(vm.pendingFocus.value)
         controller.destroy()
     }
@@ -223,7 +225,7 @@ class MainActivitySlice3Test {
     fun `cold start with unparseable view link selects nothing and does not crash`() {
         val controller = launch("https://example.com/not-a-maps-link")
         val vm = selectedOf(controller.get())
-        assertNull(vm.selectedFeature.value)
+        assertNull(vm.sheetRoute.value.toFeature())
         assertNull(vm.pendingFocus.value)
         controller.destroy()
     }
@@ -236,7 +238,7 @@ class MainActivitySlice3Test {
         }
         val controller = Robolectric.buildActivity(MainActivity::class.java, intent).setup()
         val vm = selectedOf(controller.get())
-        assertNull(vm.selectedFeature.value)
+        assertNull(vm.sheetRoute.value.toFeature())
         assertNull(vm.pendingFocus.value)
         controller.destroy()
     }
@@ -246,9 +248,9 @@ class MainActivitySlice3Test {
         val controller = launch(null)
         val activity = controller.get()
         val vm = selectedOf(activity)
-        assertNull(vm.selectedFeature.value)
+        assertNull(vm.sheetRoute.value.toFeature())
         controller.newIntent(viewIntent("geo:37.7749,-122.4194?q=Pier+39"))
-        val selected = vm.selectedFeature.value
+        val selected = vm.sheetRoute.value.toFeature()
         assertIs<SpecificFeature.GenericPlace>(selected)
         assertTrue(selected.name.contains("Pier"))
         controller.destroy()
@@ -259,10 +261,10 @@ class MainActivitySlice3Test {
         val controller = launch("geo:37.7749,-122.4194?q=Pier+39")
         val activity = controller.get()
         val vm = selectedOf(activity)
-        val before = vm.selectedFeature.value
+        val before = vm.sheetRoute.value.toFeature()
         assertNotNull(before)
         controller.newIntent(viewIntent("https://example.com/not-a-maps-link"))
-        assertEquals(before, vm.selectedFeature.value)
+        assertEquals(before, vm.sheetRoute.value.toFeature())
         controller.destroy()
     }
 
@@ -409,7 +411,7 @@ class MainActivitySlice3Test {
         val controller = launch("google.navigation:q=37.7849,-122.4094&mode=d")
         val vm = selectedOf(controller.get())
         awaitSelection(vm)
-        val selected = vm.selectedFeature.value
+        val selected = vm.sheetRoute.value.toFeature()
         assertIs<SpecificFeature.GenericPlace>(selected, "destination place should be selected")
         assertEquals(37.7849, selected.position.latitude, 1e-6)
         assertEquals(-122.4094, selected.position.longitude, 1e-6)
@@ -425,7 +427,7 @@ class MainActivitySlice3Test {
         val controller = launch("geo:37.7849,-122.4094")
         val vm = selectedOf(controller.get())
         awaitSelection(vm)
-        val selected = vm.selectedFeature.value
+        val selected = vm.sheetRoute.value.toFeature()
         assertIs<SpecificFeature.GenericPlace>(selected)
         assertEquals(context.getString(R.string.dropped_pin), selected.name)
         assertEquals(37.7849, selected.position.latitude, 1e-6)
@@ -440,7 +442,7 @@ class MainActivitySlice3Test {
         val controller = launch("google.navigation:mode=d")
         val vm = selectedOf(controller.get())
         awaitQuiescence()
-        assertNull(vm.selectedFeature.value)
+        assertNull(vm.sheetRoute.value.toFeature())
         controller.destroy()
     }
 
@@ -453,7 +455,7 @@ class MainActivitySlice3Test {
         val controller = launch("google.navigation:q=37.7849,-122.4094&mode=d")
         val vm = selectedOf(controller.get())
         awaitSelection(vm, maxIters = 2_000)
-        val selected = vm.selectedFeature.value
+        val selected = vm.sheetRoute.value.toFeature()
         assertIs<SpecificFeature.GenericPlace>(selected, "destination place should be selected")
         assertEquals(37.7849, selected.position.latitude, 1e-6)
         assertEquals(-122.4094, selected.position.longitude, 1e-6)
@@ -473,7 +475,7 @@ class MainActivitySlice3Test {
         awaitFix(vm)
         controller.newIntent(viewIntent("google.navigation:q=37.7849,-122.4094&mode=d"))
         awaitSelection(vm)
-        val selected = vm.selectedFeature.value
+        val selected = vm.sheetRoute.value.toFeature()
         assertIs<SpecificFeature.GenericPlace>(selected, "destination place should be selected")
         assertEquals(37.7849, selected.position.latitude, 1e-6)
         assertEquals(-122.4094, selected.position.longitude, 1e-6)
@@ -490,7 +492,7 @@ class MainActivitySlice3Test {
         awaitFix(vm)
         controller.newIntent(viewIntent("google.navigation:q=37.7849,-122.4094"))
         awaitSelection(vm)
-        val selected = vm.selectedFeature.value
+        val selected = vm.sheetRoute.value.toFeature()
         assertIs<SpecificFeature.GenericPlace>(selected, "destination place should be selected")
         assertEquals(37.7849, selected.position.latitude, 1e-6)
         controller.destroy()
@@ -513,7 +515,7 @@ class MainActivitySlice3Test {
         val controller = launch("google.navigation:q=zz-unresolvable-place-xyzzy&mode=d")
         val vm = selectedOf(controller.get())
         awaitQuiescence()
-        assertNull(vm.selectedFeature.value)
+        assertNull(vm.sheetRoute.value.toFeature())
         controller.destroy()
     }
 
@@ -523,7 +525,7 @@ class MainActivitySlice3Test {
         val controller = launch("geo:0,0?q=zz-unresolvable-place-xyzzy")
         val vm = selectedOf(controller.get())
         awaitQuiescence()
-        assertNull(vm.selectedFeature.value)
+        assertNull(vm.sheetRoute.value.toFeature())
         controller.destroy()
     }
 
@@ -562,7 +564,7 @@ class MainActivitySlice3Test {
         repeat(maxIters) {
             Robolectric.flushForegroundThreadScheduler()
             shadow.idle()
-            if (vm.selectedFeature.value != null) return
+            if (vm.sheetRoute.value.toFeature() != null) return
             Thread.yield()
         }
     }
@@ -588,7 +590,7 @@ class MainActivitySlice3Test {
         // No offline index under Robolectric, so no selection happens; what this
         // pins is that the fallback path runs without crashing and leaves the
         // query path (not the point path) taken — nothing selected, no focus.
-        assertNull(vm.selectedFeature.value)
+        assertNull(vm.sheetRoute.value.toFeature())
         assertNull(vm.pendingFocus.value)
         controller.destroy()
     }
@@ -602,7 +604,7 @@ class MainActivitySlice3Test {
             val activity = controller.get()
             val vm = selectedOf(activity)
             awaitSelection(vm)
-            val selected = vm.selectedFeature.value
+            val selected = vm.sheetRoute.value.toFeature()
             assertIs<SpecificFeature.GenericPlace>(selected)
             assertEquals("Pier 39", selected.name)
             assertNotNull(vm.pendingFocus.value)
@@ -626,7 +628,7 @@ class MainActivitySlice3Test {
             val controller = launch("geo:37.7849,-122.4094")
             val vm = selectedOf(controller.get())
             awaitSelection(vm)
-            val selected = vm.selectedFeature.value
+            val selected = vm.sheetRoute.value.toFeature()
             assertIs<SpecificFeature.GenericPlace>(selected)
             assertEquals("Pier 39", selected.name)
             controller.destroy()
@@ -646,7 +648,7 @@ class MainActivitySlice3Test {
             // Routing still fails without an archive, so the resolved destination
             // degrades to an opened place — but the destination came from the
             // index, not from raw coordinates.
-            val selected = vm.selectedFeature.value
+            val selected = vm.sheetRoute.value.toFeature()
             assertIs<SpecificFeature.GenericPlace>(selected)
             assertEquals("Pier 39", selected.name)
             controller.destroy()
@@ -675,7 +677,7 @@ class MainActivitySlice3Test {
                 ViewModelProvider(activity)
                     [com.vayunmathur.maps.util.MapsSearchViewModel::class.java].query.value,
             )
-            assertNull(vm.selectedFeature.value)
+            assertNull(vm.sheetRoute.value.toFeature())
             controller.destroy()
         } finally {
             // (0,0) is the "no fix stored" sentinel: restore it so sibling
