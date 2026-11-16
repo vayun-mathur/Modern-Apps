@@ -459,8 +459,8 @@ class Y2TopLevelScreensTest {
         assertEquals(null, route.remoteId)
         assertEquals(emptyList<String>(), route.participants)
         assertFalse(route.isGroup)
-        assertEquals(Route.Main, Route.Main)
-        assertFalse(Route.Accounts == Route.Main)
+        assertEquals(Route.Messages, Route.Messages)
+        assertFalse(Route.Accounts == Route.Messages)
     }
 
     // ---- registration request-code failure transitions ----
