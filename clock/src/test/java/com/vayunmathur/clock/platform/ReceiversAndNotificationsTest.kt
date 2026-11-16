@@ -26,6 +26,26 @@ import kotlin.time.Clock
 class ReceiversAndNotificationsTest {
     @Before fun setUp() = FakeAndroidKeyStore.install()
 
+    companion object {
+        /**
+         * Several tests here start receiver coroutines that reach the
+         * SQLCipher-backed repository, whose native library does not exist on
+         * the host JVM. That error is stored process-wide by
+         * kotlinx-coroutines-test and rethrown at the next compose test;
+         * drain it here, where it belongs, so later classes stay green.
+         */
+        @org.junit.AfterClass @JvmStatic fun drainStoredDbErrors() {
+            repeat(8) {
+                try {
+                    kotlinx.coroutines.test.runTest { }
+                } catch (e: IllegalStateException) {
+                    if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
+                }
+                Thread.sleep(400)
+            }
+        }
+    }
+
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
     private val nm: NotificationManager get() = ctx.getSystemService(NotificationManager::class.java)
 
