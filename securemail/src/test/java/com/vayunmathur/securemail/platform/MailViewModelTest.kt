@@ -104,18 +104,16 @@ class MailViewModelTest {
         viewModel.removeDraftRecipient(0, "ghost@x.org") // no-op, no crash
     }
 
-    @Test fun `selectFolder drives folderMessages from the store`() = runBlocking {
+    @Test fun `folderMessages is keyed by the folder argument`() = runBlocking {
         val store = FakeMailStore()
         store.messages.upsert(stored("in1", MailFolder.INBOX))
         store.messages.upsert(stored("sp1", MailFolder.SPAM))
         val viewModel = vm(store)
-        assertEquals(MailFolder.INBOX, viewModel.selectedFolder)
-        assertEquals(listOf("in1"), viewModel.folderMessages.first().map { it.id })
-        viewModel.selectFolder(MailFolder.SPAM)
-        assertEquals(MailFolder.SPAM, viewModel.selectedFolder)
-        assertEquals(listOf("sp1"), viewModel.folderMessages.first().map { it.id })
-        viewModel.selectFolder(MailFolder.TRASH)
-        assertEquals(emptyList(), viewModel.folderMessages.first())
+        assertEquals(listOf("in1"), viewModel.folderMessages(MailFolder.INBOX).first().map { it.id })
+        assertEquals(listOf("sp1"), viewModel.folderMessages(MailFolder.SPAM).first().map { it.id })
+        assertEquals(emptyList(), viewModel.folderMessages(MailFolder.TRASH).first())
+        // Re-querying a folder is unaffected by any previously queried folder.
+        assertEquals(listOf("in1"), viewModel.folderMessages(MailFolder.INBOX).first().map { it.id })
     }
 
     @Test fun `claimAddress rejects invalid local part and short passphrase synchronously`() {

@@ -1,6 +1,7 @@
 package com.vayunmathur.securemail
 
 import com.vayunmathur.library.util.NavKey
+import com.vayunmathur.securemail.data.MailFolder
 import kotlinx.serialization.Serializable
 
 /** Holds a pending deep-link/share route until Navigation consumes it. */
@@ -19,9 +20,9 @@ sealed interface Route : NavKey {
     @Serializable
     data object Lock : Route
 
-    /** Singleton holding inbox state and operations. */
+    /** Inbox list for [folder]; the folder is part of the route, not held selection state. */
     @Serializable
-    data object Inbox : Route
+    data class Inbox(val folder: MailFolder = MailFolder.INBOX) : Route
 
     /** Immutable value describing composer. */
     @Serializable

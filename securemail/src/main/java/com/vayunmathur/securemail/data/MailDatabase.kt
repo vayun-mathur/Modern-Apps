@@ -13,6 +13,7 @@ import androidx.room3.migration.Migration
 import androidx.sqlite.execSQL
 import com.vayunmathur.library.util.DatabaseMigrations
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.Serializable
 
 /**
  * Mail folders. Stored as the enum name in [StoredMessage.folder]; the Outbox
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.Flow
  * server verdict at ingest ([InboundStore]); Trash is local-only. Drafts are
  * local, unsent compositions (see [com.vayunmathur.securemail.platform.DraftsController]).
  */
+@Serializable
 enum class MailFolder {
     INBOX,
     SENT,

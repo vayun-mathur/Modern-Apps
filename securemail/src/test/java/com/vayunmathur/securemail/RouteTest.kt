@@ -1,5 +1,6 @@
 package com.vayunmathur.securemail
 
+import com.vayunmathur.securemail.data.MailFolder
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -37,9 +38,19 @@ class RouteTest {
         assertEquals(Route.Reader("m1"), Route.Reader("m1"))
         assertNotEquals(Route.Reader("m1"), Route.Reader("m2"))
         assertEquals("m1", Route.Reader("m1").messageId)
-        assertNotEquals(Route.Inbox as Route, Route.Settings as Route)
+        assertNotEquals(Route.Inbox() as Route, Route.Settings as Route)
         assertNotEquals(Route.Onboarding as Route, Route.Lock as Route)
-        assertNotEquals(Route.Out as Route, Route.Inbox as Route)
+        assertNotEquals(Route.Out as Route, Route.Inbox() as Route)
+    }
+
+    @Test fun `inbox route carries its folder and defaults to inbox`() {
+        assertEquals(MailFolder.INBOX, Route.Inbox().folder)
+        assertEquals(Route.Inbox(MailFolder.INBOX), Route.Inbox())
+        assertEquals(MailFolder.SPAM, Route.Inbox(MailFolder.SPAM).folder)
+        assertNotEquals(Route.Inbox(MailFolder.INBOX), Route.Inbox(MailFolder.SPAM))
+        assertNotEquals(Route.Inbox(MailFolder.SPAM), Route.Inbox(MailFolder.TRASH))
+        assertEquals(Route.Inbox(MailFolder.SPAM), Route.Inbox(MailFolder.SPAM).copy())
+        assertEquals(Route.Inbox(MailFolder.TRASH), Route.Inbox(MailFolder.SPAM).copy(folder = MailFolder.TRASH))
     }
 
     @Test fun `routes serialize through their generated serializers`() {
@@ -49,16 +60,18 @@ class RouteTest {
         assertEquals(composer, json.decodeFromString(Route.Composer.serializer(), encoded))
         val reader = Route.Reader("msg-9")
         assertEquals(reader, json.decodeFromString(Route.Reader.serializer(), json.encodeToString(Route.Reader.serializer(), reader)))
+        val inbox = Route.Inbox(MailFolder.SPAM)
         assertEquals(
-            Route.Inbox,
-            json.decodeFromString(Route.Inbox.serializer(), json.encodeToString(Route.Inbox.serializer(), Route.Inbox)),
+            inbox,
+            json.decodeFromString(Route.Inbox.serializer(), json.encodeToString(Route.Inbox.serializer(), inbox)),
         )
+        assertEquals(MailFolder.SPAM, json.decodeFromString(Route.Inbox.serializer(), json.encodeToString(Route.Inbox.serializer(), inbox)).folder)
     }
 
     @Test fun `sealed route serializer round trips every variant`() {
         val json = Json { ignoreUnknownKeys = true }
         val routes: List<Route> = listOf(
-            Route.Onboarding, Route.Lock, Route.Inbox, Route.Out, Route.Settings,
+            Route.Onboarding, Route.Lock, Route.Inbox(), Route.Inbox(MailFolder.TRASH), Route.Out, Route.Settings,
             Route.Composer(to = "a@x.org", subject = "S", draftId = "d1"),
             Route.Reader("m-1"),
         )

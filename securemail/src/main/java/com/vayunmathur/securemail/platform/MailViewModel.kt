@@ -31,10 +31,8 @@ import com.vayunmathur.securemail.service.MailSocketService
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -91,20 +89,10 @@ class MailViewModel(
     private val aliases = AliasController(repo)
 
     /**
-     * Selected folder driving the message list (drawer selection). Outbox is
-     * not a folder — it renders from [outboxMessages] directly.
+     * Live messages for [folder] (the folder carried by the Inbox route).
+     * Outbox is not a folder — it renders from [outboxMessages] directly.
      */
-    var selectedFolder by mutableStateOf(MailFolder.INBOX)
-        private set
-
-    fun selectFolder(folder: MailFolder) {
-        selectedFolder = folder
-    }
-
-    /** Live messages for the currently selected folder. */
-    val folderMessages = snapshotFlow { selectedFolder }.flatMapLatest { folder ->
-        repo.messageDao().observeFolder(folder)
-    }
+    fun folderMessages(folder: MailFolder) = repo.messageDao().observeFolder(folder)
 
     // ------------------------------------------------------------------
     // Compose draft: recipients survive picker navigation (ViewModel, not

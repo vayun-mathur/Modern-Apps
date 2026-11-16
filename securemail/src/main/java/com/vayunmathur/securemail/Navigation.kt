@@ -43,7 +43,6 @@ import com.vayunmathur.securemail.ui.tab
 fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
     val state = viewModel.state
     val context = LocalContext.current
-    val folderMessages by viewModel.folderMessages.collectAsState(emptyList())
     val allMessages by viewModel.messages.collectAsState(emptyList())
     val outbox by viewModel.outboxCount.collectAsState(0)
     // The stack follows the account flag, not navigation events: once an address
@@ -52,7 +51,7 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
     val start = when {
         !state.onboarded -> Route.Onboarding
         state.locked -> Route.Lock
-        else -> Route.Inbox
+        else -> Route.Inbox(MailFolder.INBOX)
     }
     val backStack = rememberNavBackStack<Route>(start)
 
@@ -60,7 +59,7 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
         val target = when {
             !state.onboarded -> Route.Onboarding
             state.locked -> Route.Lock
-            backStack.last() == Route.Onboarding || backStack.last() == Route.Lock -> Route.Inbox
+            backStack.last() == Route.Onboarding || backStack.last() == Route.Lock -> Route.Inbox(MailFolder.INBOX)
             else -> return@LaunchedEffect
         }
         if (backStack.last() != target) backStack.reset(target)
@@ -91,12 +90,12 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
     MainNavigation(
         backStack,
         bottomBar = {
-            currentTab(backStack.last(), viewModel.selectedFolder)?.let { tab ->
-                MailBottomBar(selected = tab, outboxCount = outbox) { selectTab(it, backStack, viewModel) }
+            currentTab(backStack.last())?.let { tab ->
+                MailBottomBar(selected = tab, outboxCount = outbox) { selectTab(it, backStack) }
             }
         },
     ) {
-        mainEntries(viewModel, backStack, state, folderMessages, allMessages, folderActions, context)
+        mainEntries(viewModel, backStack, state, allMessages, folderActions, context)
         composerEntry(viewModel, backStack)
         outEntry(viewModel, backStack)
     }
@@ -108,7 +107,6 @@ private fun EntryProviderScope<Route>.mainEntries(
     viewModel: MailViewModel,
     backStack: NavBackStack<Route>,
     state: MailUiState,
-    folderMessages: List<StoredMessage>,
     allMessages: List<StoredMessage>,
     folderActions: FolderActions,
     context: android.content.Context,
@@ -135,15 +133,17 @@ private fun EntryProviderScope<Route>.mainEntries(
             onDismissMessages = viewModel::dismissMessages,
         )
     }
-    entry<Route.Inbox>(metadata = SiblingPage()) {
+    entry<Route.Inbox>(metadata = SiblingPage()) { route ->
+        val folderFlow = remember(route.folder) { viewModel.folderMessages(route.folder) }
+        val folderMessages by folderFlow.collectAsState(emptyList())
         InboxScreen(
             state = state,
-            folder = viewModel.selectedFolder,
+            folder = route.folder,
             actions = folderActions,
             messages = folderMessages,
         )
     }
-    readerEntry(viewModel, backStack, state, folderMessages, allMessages)
+    readerEntry(viewModel, backStack, state, allMessages)
     entry<Route.Settings>(metadata = SiblingPage()) {
         val identities by viewModel.identities.collectAsState(emptyList())
         SettingsScreen(
@@ -164,13 +164,11 @@ private fun EntryProviderScope<Route>.readerEntry(
     viewModel: MailViewModel,
     backStack: NavBackStack<Route>,
     state: MailUiState,
-    folderMessages: List<StoredMessage>,
     allMessages: List<StoredMessage>,
 ) {
 entry<Route.Reader> { route ->
-    val msg = remember(route.messageId, allMessages, folderMessages) {
-        folderMessages.firstOrNull { it.id == route.messageId }
-            ?: allMessages.firstOrNull { it.id == route.messageId }
+    val msg = remember(route.messageId, allMessages) {
+        allMessages.firstOrNull { it.id == route.messageId }
     }
     LaunchedEffect(route.messageId) {
         viewModel.decryptStored(route.messageId)
@@ -319,27 +317,20 @@ private fun EntryProviderScope<Route>.outEntry(viewModel: MailViewModel, backSta
 }
 
 /** The bottom-bar tab for the top route, or null when the bar should hide (reader, composer, gates). */
-private fun currentTab(top: Route, folder: MailFolder): MailTab? = when (top) {
-    Route.Inbox -> folder.tab()
+private fun currentTab(top: Route): MailTab? = when (top) {
+    is Route.Inbox -> top.folder.tab()
     Route.Out -> MailTab.OUT
     Route.Settings -> MailTab.SETTINGS
     else -> null
 }
 
-private fun selectTab(tab: MailTab, backStack: NavBackStack<Route>, viewModel: MailViewModel) {
-    val target = when (tab) {
+private fun selectTab(tab: MailTab, backStack: NavBackStack<Route>) {
+    val target: Route = when (tab) {
         MailTab.OUT -> Route.Out
         MailTab.SETTINGS -> Route.Settings
-        MailTab.INBOX, MailTab.SPAM, MailTab.TRASH -> {
-            viewModel.selectFolder(
-                when (tab) {
-                    MailTab.SPAM -> MailFolder.SPAM
-                    MailTab.TRASH -> MailFolder.TRASH
-                    else -> MailFolder.INBOX
-                },
-            )
-            Route.Inbox
-        }
+        MailTab.INBOX -> Route.Inbox(MailFolder.INBOX)
+        MailTab.SPAM -> Route.Inbox(MailFolder.SPAM)
+        MailTab.TRASH -> Route.Inbox(MailFolder.TRASH)
     }
     if (backStack.last() != target) backStack.reset(target)
 }

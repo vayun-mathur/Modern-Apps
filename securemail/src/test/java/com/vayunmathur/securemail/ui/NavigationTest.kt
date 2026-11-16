@@ -56,9 +56,32 @@ class NavigationTest {
             store.messages.upsert(message("n1", "Nav inbox one", MailFolder.INBOX))
             store.messages.upsert(message("n2", "Spam one", MailFolder.SPAM))
         }
-        rule.setContent { Navigation(viewModel(store), initialRoute = Route.Inbox) }
+        rule.setContent { Navigation(viewModel(store), initialRoute = Route.Inbox(MailFolder.INBOX)) }
         rule.onNodeWithText("Nav inbox one").assertExists()
         rule.onNodeWithText("Inbox").assertExists()
+    }
+
+    @Test fun `navigation inbox route with spam folder renders spam messages`() {
+        val store = FakeMailStore()
+        runBlocking {
+            store.messages.upsert(message("n1", "Nav inbox one", MailFolder.INBOX))
+            store.messages.upsert(message("n2", "Spam one", MailFolder.SPAM))
+            store.messages.upsert(message("n3", "Trash one", MailFolder.TRASH))
+        }
+        rule.setContent { Navigation(viewModel(store), initialRoute = Route.Inbox(MailFolder.SPAM)) }
+        rule.onNodeWithText("Spam one").assertExists()
+        rule.onNodeWithText("Spam").assertExists()
+    }
+
+    @Test fun `navigation inbox route with trash folder renders trash messages`() {
+        val store = FakeMailStore()
+        runBlocking {
+            store.messages.upsert(message("n1", "Nav inbox one", MailFolder.INBOX))
+            store.messages.upsert(message("n3", "Trash one", MailFolder.TRASH))
+        }
+        rule.setContent { Navigation(viewModel(store), initialRoute = Route.Inbox(MailFolder.TRASH)) }
+        rule.onNodeWithText("Trash one").assertExists()
+        rule.onNodeWithText("Trash").assertExists()
     }
 
     @Test fun `navigation out route renders drafts outbox and sent from the store`() {
