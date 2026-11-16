@@ -44,6 +44,9 @@ import com.vayunmathur.library.map.MapBody
 import com.vayunmathur.library.map.MoonTextures
 import com.vayunmathur.maps.ui.map.rememberInitialCamera
 import com.vayunmathur.maps.Route
+import com.vayunmathur.maps.SheetRoute
+import com.vayunmathur.maps.popSheet
+import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.parse
@@ -51,7 +54,6 @@ import com.vayunmathur.maps.data.transit.TransitStop
 import com.vayunmathur.maps.ipc.FamilyMember
 import com.vayunmathur.maps.ui.map.LayerToggles
 import com.vayunmathur.maps.ui.map.MapFabStack
-import com.vayunmathur.maps.ui.map.MapOverlay
 import com.vayunmathur.maps.ui.map.MapOverlays
 import com.vayunmathur.maps.ui.map.MapSearchBar
 import com.vayunmathur.maps.ui.map.MapSurface
@@ -112,6 +114,28 @@ fun MapPage(
 
     val chrome = rememberMapChromeState()
     val camera = rememberInitialCamera(viewModel)
+    val sheetStack = rememberNavBackStack<SheetRoute>(SheetRoute.Browse)
+    val sheetTop = sheetStack.backStack.last()
+    // Dialog destinations drive the transit engine: the board/trip flows
+    // re-key off the top route, not off a VM-held selection.
+    LaunchedEffect(sheetTop) {
+        when (val top = sheetTop) {
+            is SheetRoute.Departures -> transitViewModel.openStop(
+                com.vayunmathur.maps.data.transit.TransitStop(top.stopId, top.name, top.lat, top.lon),
+            )
+            is SheetRoute.Trip -> transitViewModel.openTrip(top.vehicleId, top.lat, top.lon)
+            else -> {
+                transitViewModel.closeTrip()
+                if (sheetStack.backStack.none { it is SheetRoute.Departures }) transitViewModel.closeStop()
+            }
+        }
+    }
+    fun pushDepartures(lat: Double, lon: Double, name: String? = null) {
+        coroutineScope.launch {
+            val stop = transitViewModel.resolveNearestStop(lat, lon, name)
+            sheetStack.add(SheetRoute.Departures(stop.id, stop.name, stop.lat, stop.lon))
+        }
+    }
 
     val selectedFeature by viewModel.selectedFeature.collectAsState()
     // Keep the router's plan order on the visible tab: routes plans the
@@ -311,6 +335,8 @@ fun MapPage(
         openSearch = ::openSearch,
         settingsAction = settingsAction,
         wide = wide,
+        sheetStack = sheetStack,
+        pushDepartures = ::pushDepartures,
     )
     if (!googleConsentDone) {
         GoogleConsentDialog(settingsViewModel) { googleConsentDone = true }

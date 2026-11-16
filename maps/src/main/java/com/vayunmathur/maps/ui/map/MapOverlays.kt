@@ -1,8 +1,8 @@
 package com.vayunmathur.maps.ui.map
 
 import androidx.compose.runtime.Composable
+import com.vayunmathur.maps.SheetRoute
 import com.vayunmathur.maps.data.ParkingSpot
-import com.vayunmathur.maps.data.transit.TransitStop
 import com.vayunmathur.maps.data.transit.TripStop
 import com.vayunmathur.maps.data.transit.Departure
 import com.vayunmathur.maps.ui.DeparturesSheet
@@ -25,39 +25,29 @@ class LayerToggles(
 )
 
 /**
- * The modal sheets over the map.
- *
- * A single `when` on [MapOverlay] rather than an `if` per boolean: the sheets are mutually
- * exclusive, and independent flags could not express that — two could be true at once and the
- * second would draw over the first.
- *
- * The departure board is deliberately NOT part of that `when`. It is driven by whether a stop is
- * selected, which is ViewModel state rather than a chrome choice, and it can legitimately coexist
- * with nothing else being open.
+ * The dialog destinations over the map, rendered from the top of the
+ * sheet stack: Layers / Parking / Departures / Trip are [SheetRoute]
+ * dialog destinations (DialogPage-style modal sheets), pushed and
+ * popped like any other stack entry. A Trip pushed over a Departures
+ * board returns to that board on pop.
  */
 @Composable
 fun MapOverlays(
-    overlay: MapOverlay,
+    top: SheetRoute,
     onDismiss: () -> Unit,
     layers: LayerToggles,
     parkingSpot: ParkingSpot?,
     onClearParking: () -> Unit,
     onParkingDirections: () -> Unit,
     onParkingNoteChange: (String) -> Unit,
-    selectedStop: TransitStop?,
     departures: DeparturesState,
-    onCloseStop: () -> Unit,
     onRefreshDepartures: () -> Unit,
     onTrainTap: (Departure) -> Unit,
     tripSheet: TripItineraryState,
-    onCloseTrip: () -> Unit,
     onTripStopTap: (TripStop) -> Unit,
 ) {
-    when (overlay) {
-        MapOverlay.None -> Unit
-
-        // Map-layers toggle sheet (P6), opened from the LayersButton.
-        MapOverlay.Layers -> LayersSheet(
+    when (top) {
+        SheetRoute.Layers -> LayersSheet(
             onDismiss = onDismiss,
             trafficEnabled = layers.traffic,
             onTrafficChange = layers.onTraffic,
@@ -68,10 +58,7 @@ fun MapOverlays(
             transitEnabled = layers.transit,
             onTransitChange = layers.onTransit,
         )
-
-        // Parking sheet (P9): saved time + note, clear, and directions back to the car
-        // through the existing routing path. Nothing to show without a saved spot.
-        MapOverlay.Parking -> parkingSpot?.let { spot ->
+        SheetRoute.Parking -> parkingSpot?.let { spot ->
             ParkingSheet(
                 spot = spot,
                 onDismiss = onDismiss,
@@ -80,31 +67,23 @@ fun MapOverlays(
                 onNoteChange = onParkingNoteChange,
             )
         }
-    }
-
-    // Departure board (P10): opened by tapping a transit stop. Live board from Transitous
-    // (online-only); dismiss clears the selection. A tapped train opens its
-    // trip sheet, replacing the board (one tap, one back).
-    if (selectedStop != null) {
-        DeparturesSheet(
+        is SheetRoute.Departures -> DeparturesSheet(
             state = departures,
-            onDismiss = onCloseStop,
+            onDismiss = onDismiss,
             onRefresh = onRefreshDepartures,
             onTrainTap = onTrainTap,
         )
-    }
-
-    // Vehicle trip sheet: opened by tapping a vehicle sprite or a train on a
-    // board. A tapped station opens its departure board, replacing this sheet.
-    // Shown whenever a trip is selected, including over the board it came from.
-    if (tripSheet is TripItineraryState.Loaded ||
-        tripSheet is TripItineraryState.Loading ||
-        tripSheet is TripItineraryState.Missing
-    ) {
-        TripSheet(
-            state = tripSheet,
-            onDismiss = onCloseTrip,
-            onStopTap = onTripStopTap,
-        )
+        is SheetRoute.Trip -> if (
+            tripSheet is TripItineraryState.Loaded ||
+            tripSheet is TripItineraryState.Loading ||
+            tripSheet is TripItineraryState.Missing
+        ) {
+            TripSheet(
+                state = tripSheet,
+                onDismiss = onDismiss,
+                onStopTap = onTripStopTap,
+            )
+        }
+        else -> Unit
     }
 }

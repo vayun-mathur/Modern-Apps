@@ -84,6 +84,7 @@ internal fun MapPageScope.MapSheets(
                         savedPlacesViewModel,
                         transitViewModel,
                         navState,
+                        openDepartures = { lat, lon -> pushDepartures(lat, lon, null) },
                     )
                 }
             }

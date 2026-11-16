@@ -14,21 +14,12 @@ import com.vayunmathur.maps.ui.MapCategory
 import com.vayunmathur.maps.util.RouteService
 
 /**
- * Which modal surface is showing over the map.
- *
- * One value rather than a boolean each, because they are mutually exclusive and were not
- * enforced as such: two independent flags can both be true, and the second sheet then draws
- * over the first.
- */
-enum class MapOverlay { None, Layers, Parking }
-
-/**
  * Everything the map chrome remembers, and the single place where retain-vs-remember is decided.
  *
  * The rule, applied once here instead of at ten scattered declarations:
  *
  *  * **`retain`** for anything the user *chose* — the travel mode, the category filter, which
- *    sheet is open, whether the camera follows, whether it is north-up. Losing a choice on
+ *    whether the camera follows, whether it is north-up. Losing a choice on
  *    rotation reads as the app forgetting what you told it, and all but one of these were
  *    `remember`, so it did.
  *  * **`retain`** also for [postedLimit], which is neither a choice nor cheap: it is re-queried
@@ -45,7 +36,6 @@ enum class MapOverlay { None, Layers, Parking }
 class MapChromeState internal constructor(
     selectedRouteTypeState: MutableState<RouteService.TravelMode>,
     selectedCategoryState: MutableState<MapCategory?>,
-    overlayState: MutableState<MapOverlay>,
     autoFollowState: MutableState<Boolean>,
     northUpState: MutableState<Boolean>,
     postedLimitState: MutableState<PostedLimit?>,
@@ -64,9 +54,6 @@ class MapChromeState internal constructor(
      * Earth. A view, not a setting.
      */
     var body: MapBody by mutableStateOf(MapBody.Earth)
-
-    /** Which modal sheet is up. */
-    var overlay by overlayState
 
     /** Whether the camera follows the puck during navigation. Cleared by a user pan. */
     var autoFollow by autoFollowState
@@ -90,13 +77,6 @@ class MapChromeState internal constructor(
         selectedCategory = if (selectedCategory == category) null else category
     }
 
-    fun show(overlay: MapOverlay) {
-        this.overlay = overlay
-    }
-
-    fun dismissOverlay() {
-        overlay = MapOverlay.None
-    }
 }
 
 /** The map chrome state for this screen. */
@@ -104,7 +84,6 @@ class MapChromeState internal constructor(
 fun rememberMapChromeState(): MapChromeState {
     val selectedRouteType = retain { mutableStateOf(RouteService.TravelMode.DRIVE) }
     val selectedCategory = retain { mutableStateOf<MapCategory?>(null) }
-    val overlay = retain { mutableStateOf(MapOverlay.None) }
     val autoFollow = retain { mutableStateOf(true) }
     val northUp = retain { mutableStateOf(false) }
     val postedLimit = retain { mutableStateOf<PostedLimit?>(null) }
@@ -114,7 +93,6 @@ fun rememberMapChromeState(): MapChromeState {
         MapChromeState(
             selectedRouteTypeState = selectedRouteType,
             selectedCategoryState = selectedCategory,
-            overlayState = overlay,
             autoFollowState = autoFollow,
             northUpState = northUp,
             postedLimitState = postedLimit,

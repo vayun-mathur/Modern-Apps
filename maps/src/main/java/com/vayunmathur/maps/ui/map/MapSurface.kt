@@ -27,6 +27,8 @@ import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.osmPlace
 import com.vayunmathur.maps.data.transit.TransitStop
+import com.vayunmathur.maps.SheetRoute
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.ipc.FamilyMember
 import com.vayunmathur.maps.ui.map.MapFeaturePicker.Companion.NATIVE_LABEL_LAYER_IDS
 import com.vayunmathur.maps.ui.map.MapFeaturePicker.Companion.toFeature1
@@ -85,6 +87,7 @@ fun MapSurface(
     body: MapBody,
     moonTextures: MoonTextures?,
     selectedTransitStop: TransitStop?,
+    sheetStack: NavBackStack<SheetRoute>? = null,
     darkBasemap: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -231,14 +234,14 @@ fun MapSurface(
 
                 when (hit) {
                     MapHit.Parking -> {
-                        chrome.show(MapOverlay.Parking)
+                        sheetStack?.add(SheetRoute.Parking)
                         return@launch
                     }
                     is MapHit.Stop -> {
                         // Whatever place sheet was up is replaced, not stacked under: one tap
                         // should take one back to undo, and a board over a stale sheet takes two.
                         viewModel.set(null)
-                        transitViewModel.openStop(hit.stop)
+                        sheetStack?.reset(SheetRoute.Browse, SheetRoute.Departures(hit.stop.id, hit.stop.name, hit.stop.lat, hit.stop.lon))
                         return@launch
                     }
                     is MapHit.Place -> {
@@ -247,10 +250,8 @@ fun MapSurface(
                         val station = hit.feature as? SpecificFeature.GenericPlace
                         if (station?.poiType == STATION_POI_TYPE) {
                             viewModel.set(null)
-                            transitViewModel.openNearestStop(
-                                station.position.latitude,
-                                station.position.longitude,
-                            )
+                            val stop = transitViewModel.resolveNearestStop(station.position.latitude, station.position.longitude)
+                            sheetStack?.reset(SheetRoute.Browse, SheetRoute.Departures(stop.id, stop.name, stop.lat, stop.lon))
                             return@launch
                         }
                         viewModel.stashRouteSelection()
@@ -274,13 +275,8 @@ fun MapSurface(
                     // stop's departure board rather than a place sheet.
                     if (PoiCategories.opensDepartureBoard(poi.kind)) {
                         viewModel.set(null)
-                        transitViewModel.openNearestStop(
-                            poi.position.latitude,
-                            poi.position.longitude,
-                            // The pack names a stop by its MOTIS id, which is a machine string.
-                            // The tapped POI already has the name a person would recognise.
-                            name = poi.name.ifBlank { null },
-                        )
+                        val stop = transitViewModel.resolveNearestStop(poi.position.latitude, poi.position.longitude, poi.name.ifBlank { null })
+                        sheetStack?.reset(SheetRoute.Browse, SheetRoute.Departures(stop.id, stop.name, stop.lat, stop.lon))
                         return@launch
                     }
                     // The archive carries a POI's kind, name and point and nothing else, so
@@ -320,7 +316,7 @@ fun MapSurface(
                 // check; vehicles sit outside the GPU pick path).
                 if (openVehicleTrip(
                         vehicles, projection, offset,
-                        viewModel, transitViewModel, sheetState,
+                        viewModel, transitViewModel, sheetState, sheetStack,
                     )
                 ) {
                     return@launch

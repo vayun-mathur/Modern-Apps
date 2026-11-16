@@ -67,4 +67,5 @@ data class PoiHourBusyness(val hour: Int, val occupancy: Int)
  * the sheet's measured header) and the panel it switches (below the fold) can agree, and
  * a view model naming a type from the `ui` package would invert the module's layering.
  */
+@kotlinx.serialization.Serializable
 enum class PoiSection { DETAILS, PHOTOS }

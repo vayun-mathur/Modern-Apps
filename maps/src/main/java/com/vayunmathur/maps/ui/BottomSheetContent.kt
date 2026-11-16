@@ -47,6 +47,7 @@ fun BottomSheetContent(
     savedPlacesViewModel: SavedPlacesViewModel,
     transitViewModel: TransitStopsViewModel,
     navState: NavigationSessionManager.NavState = NavigationSessionManager.NavState.Idle,
+    openDepartures: ((Double, Double) -> Unit)? = null,
 ) {
     val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel)
     val panelActions = remember(selectedFeature) {
@@ -63,7 +64,8 @@ fun BottomSheetContent(
                 savedPlacesViewModel.removeSaved(place)
             }
             override fun openNearestStop(lat: Double, lon: Double) {
-                transitViewModel.openNearestStop(lat, lon)
+                if (openDepartures != null) openDepartures(lat, lon)
+                else transitViewModel.openNearestStop(lat, lon)
             }
         }
     }

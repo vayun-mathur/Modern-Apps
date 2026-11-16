@@ -20,7 +20,6 @@ import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.PoiSection
 import com.vayunmathur.maps.ui.map.MapChromeState
-import com.vayunmathur.maps.ui.map.MapOverlay
 import com.vayunmathur.maps.util.DeparturesState
 import com.vayunmathur.maps.util.MapSettingsViewModel
 import com.vayunmathur.maps.util.MapsSearchViewModel
@@ -69,7 +68,6 @@ class Slice3Pass5SheetsTest {
                 MapChromeState(
                     mutableStateOf(RouteService.TravelMode.DRIVE),
                     mutableStateOf(null),
-                    mutableStateOf(MapOverlay.None),
                     mutableStateOf(true),
                     mutableStateOf(false),
                     mutableStateOf(null),

@@ -143,15 +143,17 @@ class TransitStopsViewModel(application: Application) : AndroidViewModel(applica
      * [name] is the tapped POI's name, so the header reads "Palo Alto" rather
      * than a raw MOTIS id string while the board loads.
      */
-    fun openNearestStop(lat: Double, lon: Double, name: String? = null) {
-        viewModelScope.launch {
-            val resolved = withContext(Dispatchers.IO) {
-                OfflineRouterTransit.nearestStop(getApplication(), lat, lon)
-            }
-            val stop = resolved?.let { if (name != null) it.copy(name = name) else it }
-                ?: TransitStop(id = "", name = name.orEmpty(), lat = lat, lon = lon)
-            openStop(stop)
+    /** Resolve the stop nearest [lat],[lon] without opening any sheet. */
+    suspend fun resolveNearestStop(lat: Double, lon: Double, name: String? = null): TransitStop {
+        val resolved = withContext(Dispatchers.IO) {
+            OfflineRouterTransit.nearestStop(getApplication(), lat, lon)
         }
+        return resolved?.let { if (name != null) it.copy(name = name) else it }
+            ?: TransitStop(id = "", name = name.orEmpty(), lat = lat, lon = lon)
+    }
+
+    fun openNearestStop(lat: Double, lon: Double, name: String? = null) {
+        viewModelScope.launch { openStop(resolveNearestStop(lat, lon, name)) }
     }
 
     /** Close the board. */

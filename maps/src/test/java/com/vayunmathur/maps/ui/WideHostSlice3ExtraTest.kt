@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.compose.runtime.rememberCoroutineScope
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.maps.ui.map.MapChromeState
-import com.vayunmathur.maps.ui.map.MapOverlay
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
@@ -88,7 +87,6 @@ class WideHostSlice3ExtraTest {
                 MapChromeState(
                     mutableStateOf(RouteService.TravelMode.DRIVE),
                     mutableStateOf(null),
-                    mutableStateOf(MapOverlay.None),
                     mutableStateOf(true),
                     mutableStateOf(false),
                     mutableStateOf(null),

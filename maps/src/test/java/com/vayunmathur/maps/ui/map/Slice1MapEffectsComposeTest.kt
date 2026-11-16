@@ -92,7 +92,6 @@ class Slice1MapEffectsComposeTest {
         }
         rule.waitForIdle()
         val c = chrome ?: error("expected chrome state")
-        assertEquals(MapOverlay.None, c.overlay)
         assertEquals(true, c.autoFollow)
         assertEquals(false, c.northUp)
         assertEquals(null, c.postedLimit)

@@ -31,7 +31,8 @@ import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.ui.map.LayerToggles
 import com.vayunmathur.maps.ui.map.MapChromeState
 import com.vayunmathur.maps.ui.map.MapFabStack
-import com.vayunmathur.maps.ui.map.MapOverlay
+import com.vayunmathur.maps.SheetRoute
+import com.vayunmathur.maps.popSheet
 import com.vayunmathur.maps.ui.map.MapOverlays
 import com.vayunmathur.maps.ui.map.MapSurface
 import com.vayunmathur.maps.ui.map.NavigationCameraFollow
@@ -92,6 +93,7 @@ internal fun MapPageScope.MapContentBox(
                     body = body,
                     moonTextures = moonTextures,
                     selectedTransitStop = selectedTransitStop,
+                    sheetStack = sheetStack,
                     darkBasemap = darkMap,
                 )
 
@@ -208,7 +210,7 @@ internal fun MapPageScope.MapContentBox(
                                 camera.animateTo(camera.position.copy(bearing = 0.0))
                             }
                         },
-                        onLayers = { chrome.show(MapOverlay.Layers) },
+                        onLayers = { sheetStack.add(SheetRoute.Layers) },
                         onParking = {
                             val spot = parkingSpot
                             if (spot == null) {
@@ -225,7 +227,7 @@ internal fun MapPageScope.MapContentBox(
                                         )
                                     )
                                 }
-                                chrome.show(MapOverlay.Parking)
+                                sheetStack.add(SheetRoute.Parking)
                             }
                         },
                         onMyLocation = {
@@ -272,8 +274,8 @@ internal fun MapPageScope.MapContentBox(
                     )
 
                     MapOverlays(
-                        overlay = chrome.overlay,
-                        onDismiss = { chrome.dismissOverlay() },
+                        top = sheetTop,
+                        onDismiss = { sheetStack.popSheet() },
                         layers = LayerToggles(
                             traffic = trafficEnabled,
                             satellite = satelliteEnabled,
@@ -287,44 +289,30 @@ internal fun MapPageScope.MapContentBox(
                         parkingSpot = parkingSpot,
                         onClearParking = {
                             parkingViewModel.clear()
-                            chrome.dismissOverlay()
+                            sheetStack.popSheet()
                         },
                         onParkingDirections = {
                             val spot = parkingSpot
                             if (spot != null) {
                                 val feature = spot.toFeature(context.getString(MapsR.string.parking_title))
+                                sheetStack.popSheet()
                                 viewModel.stashRouteSelection()
                                 viewModel.set(SpecificFeature.Route(listOf(null, feature)))
-                                chrome.dismissOverlay()
                             }
                         },
                         onParkingNoteChange = { parkingViewModel.updateNote(it) },
-                        selectedStop = selectedTransitStop,
                         departures = departuresState,
-                        onCloseStop = { transitViewModel.closeStop() },
                         onRefreshDepartures = { transitViewModel.refresh() },
-                        // A tapped train opens its trip sheet, replacing the
-                        // board (one tap, one back): the board's stop stays
-                        // selected underneath so dismissing the trip returns
-                        // to it rather than to the bare map.
                         onTrainTap = { dep ->
-                            transitViewModel.openTripForDeparture(
-                                dep,
-                                selectedTransitStop?.lat ?: 0.0,
-                                selectedTransitStop?.lon ?: 0.0,
-                            )
+                            dep.tripVehicleId?.let { id ->
+                                val depRoute = sheetTop as? SheetRoute.Departures
+                                sheetStack.add(SheetRoute.Trip(id, depRoute?.lat ?: 0.0, depRoute?.lon ?: 0.0))
+                            }
                         },
                         tripSheet = tripItineraryState,
-                        onCloseTrip = { transitViewModel.closeTrip() },
-                        // A tapped station opens its departure board,
-                        // replacing the trip sheet (one tap, one back).
                         onTripStopTap = { stop ->
-                            transitViewModel.closeTrip()
-                            transitViewModel.openNearestStop(
-                                stop.lat,
-                                stop.lon,
-                                stop.name.ifBlank { null },
-                            )
+                            sheetStack.popSheet()
+                            pushDepartures(stop.lat, stop.lon, stop.name.ifBlank { null })
                         },
                     )
                 }

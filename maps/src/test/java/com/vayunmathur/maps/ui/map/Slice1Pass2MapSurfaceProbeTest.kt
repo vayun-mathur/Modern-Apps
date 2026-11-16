@@ -39,7 +39,6 @@ class Slice1Pass2MapSurfaceProbeTest {
     private fun chrome() = MapChromeState(
         selectedRouteTypeState = mutableStateOf(RouteService.TravelMode.DRIVE),
         selectedCategoryState = mutableStateOf(null),
-        overlayState = mutableStateOf(MapOverlay.None),
         autoFollowState = mutableStateOf(true),
         northUpState = mutableStateOf(false),
         postedLimitState = mutableStateOf<PostedLimit?>(null),

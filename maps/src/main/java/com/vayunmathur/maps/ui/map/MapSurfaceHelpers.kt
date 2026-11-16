@@ -285,14 +285,15 @@ internal suspend fun openVehicleTrip(
     viewModel: SelectedFeatureViewModel,
     transitViewModel: TransitStopsViewModel,
     sheetState: com.vayunmathur.library.ui.FreeHeightSheetState?,
+    sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>? = null,
 ): Boolean {
     val marker = pickVehicle(vehicles, projection, offset) ?: return false
     viewModel.set(null)
-    transitViewModel.openTrip(
-        marker.id,
-        marker.position.latitude,
-        marker.position.longitude,
-    )
+    if (sheetStack != null) {
+        sheetStack.reset(com.vayunmathur.maps.SheetRoute.Browse, com.vayunmathur.maps.SheetRoute.Trip(marker.id, marker.position.latitude, marker.position.longitude))
+    } else {
+        transitViewModel.openTrip(marker.id, marker.position.latitude, marker.position.longitude)
+    }
     sheetState?.partialExpand()
     return true
 }

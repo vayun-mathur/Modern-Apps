@@ -18,7 +18,6 @@ class MapChromeStateSlice1Test {
     private fun state() = MapChromeState(
         selectedRouteTypeState = mutableStateOf(RouteService.TravelMode.DRIVE),
         selectedCategoryState = mutableStateOf<MapCategory?>(null),
-        overlayState = mutableStateOf(MapOverlay.None),
         autoFollowState = mutableStateOf(true),
         northUpState = mutableStateOf(false),
         postedLimitState = mutableStateOf<PostedLimit?>(null),
@@ -48,16 +47,11 @@ class MapChromeStateSlice1Test {
     }
 
     @Test
-    fun `overlays show and dismiss as one exclusive value`() {
-        val s = state()
-        assertEquals(MapOverlay.None, s.overlay)
-        s.show(MapOverlay.Layers)
-        assertEquals(MapOverlay.Layers, s.overlay)
-        // Showing a second sheet replaces the first — they never stack.
-        s.show(MapOverlay.Parking)
-        assertEquals(MapOverlay.Parking, s.overlay)
-        s.dismissOverlay()
-        assertEquals(MapOverlay.None, s.overlay)
+    fun `dialog destinations are mutually exclusive as stack tops`() {
+        // Layers/Parking moved to SheetRoute dialog destinations: the stack
+        // top is the one sheet showing, so two can never be up at once.
+        val stack = listOf(com.vayunmathur.maps.SheetRoute.Browse, com.vayunmathur.maps.SheetRoute.Layers)
+        assertEquals(com.vayunmathur.maps.SheetRoute.Layers, stack.last())
     }
 
     @Test

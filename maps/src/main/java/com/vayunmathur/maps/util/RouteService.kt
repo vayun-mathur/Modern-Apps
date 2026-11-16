@@ -8,6 +8,7 @@ import kotlin.time.Duration.Companion.seconds
 /** Singleton holding route service state and operations. */
 object RouteService {
     /** Kinds of travel mode. */
+    @Serializable
     enum class TravelMode { DRIVE, TRANSIT, WALK, BICYCLE }
     /** Singleton holding api state and operations. */
     object API {

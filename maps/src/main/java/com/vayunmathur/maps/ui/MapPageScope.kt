@@ -10,6 +10,8 @@ import com.vayunmathur.library.ui.Messenger
 import com.vayunmathur.library.ui.OverlayAction
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.Route
+import com.vayunmathur.maps.SheetRoute
+import com.vayunmathur.library.util.NavBackStack as SheetBackStack
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
@@ -152,4 +154,9 @@ internal class MapPageScope(
     val openSearch: (String?, Int?) -> Unit,
     val settingsAction: List<OverlayAction>,
     val wide: Boolean,
-)
+    val sheetStack: SheetBackStack<SheetRoute> = SheetBackStack(arrayOf(SheetRoute.Browse)),
+    val pushDepartures: (Double, Double, String?) -> Unit = { _, _, _ -> },
+) {
+    /** Top of the sheet stack: which sheet/panel/dialog is showing. */
+    val sheetTop: SheetRoute get() = sheetStack.backStack.last()
+}

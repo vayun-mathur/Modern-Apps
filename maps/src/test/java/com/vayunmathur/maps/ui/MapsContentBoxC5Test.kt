@@ -21,9 +21,9 @@ import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.popSheet
 import com.vayunmathur.maps.data.google.PoiSection
 import com.vayunmathur.maps.ui.map.MapChromeState
-import com.vayunmathur.maps.ui.map.MapOverlay
 import com.vayunmathur.maps.util.DeparturesState
 import com.vayunmathur.maps.util.MapSettingsViewModel
 import com.vayunmathur.maps.util.MapsSearchViewModel
@@ -74,7 +74,6 @@ class MapsContentBoxC5Test {
             MapChromeState(
                 mutableStateOf(RouteService.TravelMode.DRIVE),
                 mutableStateOf(null),
-                mutableStateOf(MapOverlay.None),
                 mutableStateOf(true),
                 mutableStateOf(false),
                 mutableStateOf(null),
@@ -155,29 +154,31 @@ class MapsContentBoxC5Test {
 
     @Test
     fun layersFab_opensOverlaySheet() {
-        var chrome: MapChromeState? = null
+        var captured: MapPageScope? = null
         rule.setContent {
-            val scope = buildScope(chromeRef = { chrome = it })
+            val scope = buildScope()
+            captured = scope
             DynamicTheme { scope.MapContentBox() }
         }
         rule.waitForIdle()
-        rule.runOnUiThread { chrome!!.show(MapOverlay.Layers) }
+        rule.runOnUiThread { captured!!.sheetStack.add(com.vayunmathur.maps.SheetRoute.Layers) }
         rule.waitForIdle()
-        assertEquals(MapOverlay.Layers, chrome!!.overlay)
+        assertEquals(com.vayunmathur.maps.SheetRoute.Layers, captured!!.sheetTop)
         // The layers sheet content renders (toggle rows).
         assertTrue(
             rule.onAllNodesWithText("Traffic", substring = true).fetchSemanticsNodes().isNotEmpty() ||
                 rule.onAllNodesWithText("Satellite", substring = true).fetchSemanticsNodes().isNotEmpty(),
             "layers sheet shows toggles",
         )
-        rule.runOnUiThread { chrome!!.dismissOverlay() }
+        rule.runOnUiThread { captured!!.sheetStack.popSheet() }
         rule.waitForIdle()
-        assertEquals(MapOverlay.None, chrome!!.overlay)
+        assertEquals(com.vayunmathur.maps.SheetRoute.Browse, captured!!.sheetTop)
     }
 
     @Test
     fun parkingFab_withSpot_fliesCameraAndOpensSheet() {
         var chrome: MapChromeState? = null
+        var capturedScope: MapPageScope? = null
         var camera: CameraState? = null
         val spot = ParkingSpot(37.85, -122.35, System.currentTimeMillis(), null)
         rule.setContent {
@@ -186,6 +187,7 @@ class MapsContentBoxC5Test {
                 chromeRef = { chrome = it },
                 cameraRef = { camera = it },
             )
+            capturedScope = scope
             DynamicTheme { scope.MapContentBox() }
         }
         rule.waitForIdle()
@@ -194,10 +196,10 @@ class MapsContentBoxC5Test {
         repeat(50) {
             rule.mainClock.advanceTimeBy(100)
             rule.waitForIdle()
-            if (chrome!!.overlay == MapOverlay.Parking) return@repeat
+            if (capturedScope!!.sheetTop == com.vayunmathur.maps.SheetRoute.Parking) return@repeat
             Thread.sleep(10)
         }
-        assertEquals(MapOverlay.Parking, chrome!!.overlay)
+        assertEquals(com.vayunmathur.maps.SheetRoute.Parking, capturedScope!!.sheetTop)
         assertEquals(-122.35, camera!!.position.target.longitude, 0.01)
     }
 

@@ -14,6 +14,7 @@ import com.vayunmathur.library.map.CameraPosition
 import com.vayunmathur.library.map.CameraState
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.R as MapsR
+import com.vayunmathur.maps.SheetRoute
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.transit.TransitStop
@@ -165,28 +166,24 @@ class Slice1MapChromeComposeTest {
     )
 
     private fun overlays(
-        overlay: MapOverlay,
+        top: SheetRoute,
         parkingSpot: ParkingSpot? = null,
-        selectedStop: TransitStop? = null,
         departures: DeparturesState = DeparturesState.Idle,
         tripSheet: TripItineraryState = TripItineraryState.Idle,
     ) {
         rule.setContent {
             MapOverlays(
-                overlay = overlay,
+                top = top,
                 onDismiss = {},
                 layers = toggles(),
                 parkingSpot = parkingSpot,
                 onClearParking = {},
                 onParkingDirections = {},
                 onParkingNoteChange = {},
-                selectedStop = selectedStop,
                 departures = departures,
-                onCloseStop = {},
                 onRefreshDepartures = {},
                 onTrainTap = {},
                 tripSheet = tripSheet,
-                onCloseTrip = {},
                 onTripStopTap = {},
             )
         }
@@ -195,30 +192,29 @@ class Slice1MapChromeComposeTest {
 
     @Test
     fun `no overlay and no selection renders nothing`() {
-        overlays(MapOverlay.None)
+        overlays(SheetRoute.Browse)
     }
 
     @Test
     fun `the layers sheet opens from the overlay`() {
-        overlays(MapOverlay.Layers)
+        overlays(SheetRoute.Layers)
     }
 
     @Test
     fun `the parking sheet shows with a spot`() {
-        overlays(MapOverlay.Parking, parkingSpot = ParkingSpot(37.7, -122.4, 0L))
+        overlays(SheetRoute.Parking, parkingSpot = ParkingSpot(37.7, -122.4, 0L))
     }
 
     @Test
     fun `the parking overlay is a no-op without a spot`() {
-        overlays(MapOverlay.Parking, parkingSpot = null)
+        overlays(SheetRoute.Parking, parkingSpot = null)
     }
 
     @Test
     fun `a selected stop opens its board and a loading trip its sheet`() {
         val stop = TransitStop("m1", "Slice1 Station", 37.7, -122.0)
         overlays(
-            MapOverlay.None,
-            selectedStop = stop,
+            SheetRoute.Departures(stop.id, stop.name, stop.lat, stop.lon),
             departures = DeparturesState.Loaded(stop, emptyList()),
             tripSheet = TripItineraryState.Loading,
         )

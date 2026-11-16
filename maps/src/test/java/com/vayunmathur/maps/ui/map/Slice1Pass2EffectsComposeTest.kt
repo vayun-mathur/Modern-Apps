@@ -44,7 +44,6 @@ class Slice1Pass2EffectsComposeTest {
     private fun chrome(autoFollow: Boolean = true, northUp: Boolean = false) = MapChromeState(
         selectedRouteTypeState = mutableStateOf(com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE),
         selectedCategoryState = mutableStateOf(null),
-        overlayState = mutableStateOf(MapOverlay.None),
         autoFollowState = mutableStateOf(autoFollow),
         northUpState = mutableStateOf(northUp),
         postedLimitState = mutableStateOf<PostedLimit?>(null),

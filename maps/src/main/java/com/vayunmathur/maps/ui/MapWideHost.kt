@@ -29,7 +29,6 @@ import com.vayunmathur.maps.data.google.PoiSection
 import com.vayunmathur.maps.ui.map.LayerToggles
 import com.vayunmathur.maps.ui.map.MapChromeState
 import com.vayunmathur.maps.ui.map.MapFabStack
-import com.vayunmathur.maps.ui.map.MapOverlay
 import com.vayunmathur.maps.ui.map.MapOverlays
 import com.vayunmathur.maps.ui.map.MapSearchBar
 import com.vayunmathur.maps.ui.map.MapSurface
@@ -86,7 +85,7 @@ internal fun MapPageScope.MapWideHost(
                 savedPlacesViewModel.removeSaved(place)
             }
             override fun openNearestStop(lat: Double, lon: Double) {
-                transitViewModel.openNearestStop(lat, lon)
+                pushDepartures(lat, lon, null)
             }
         }
     }
