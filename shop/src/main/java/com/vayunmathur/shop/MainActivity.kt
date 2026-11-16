@@ -23,6 +23,9 @@ class MainActivity : MaActivity() {
      */
     private var ordersRequest by mutableIntStateOf(0)
 
+    /** Counts `shop://cart` handoffs, sequenced like [ordersRequest]. */
+    private var cartRequest by mutableIntStateOf(0)
+
     /** Latest merchant link to open, sequenced so re-delivering the same URL re-navigates. */
     private var linkRequest by mutableStateOf<Pair<Int, String>?>(null)
     private var linkSequence = 0
@@ -48,6 +51,13 @@ class MainActivity : MaActivity() {
             ordersRequest++
             return
         }
+        // Assistant checkout handoff (shop://cart): open the cart only;
+        // preparing a cart is not a checkout and never a paid order.
+        val data = intent?.data
+        if (intent?.action == Intent.ACTION_VIEW && data?.scheme == "shop" && data.host == "cart") {
+            cartRequest++
+            return
+        }
         if (intent?.action != Intent.ACTION_VIEW) return
         intent.dataString?.let { linkRequest = ++linkSequence to it }
     }
@@ -59,6 +69,11 @@ class MainActivity : MaActivity() {
 
     @Composable
     override fun Content() {
-        Navigation(viewModel, ordersRequest = ordersRequest, linkRequest = linkRequest)
+        Navigation(
+            viewModel,
+            ordersRequest = ordersRequest,
+            cartRequest = cartRequest,
+            linkRequest = linkRequest,
+        )
     }
 }

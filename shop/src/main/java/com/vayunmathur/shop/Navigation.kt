@@ -72,6 +72,7 @@ internal fun applyShopPendingRoute(
 fun Navigation(
     viewModel: ShopViewModel,
     ordersRequest: Int = 0,
+    cartRequest: Int = 0,
     linkRequest: Pair<Int, String>? = null,
 ) {
     val context = LocalContext.current
@@ -93,6 +94,14 @@ fun Navigation(
             backStack.backStack.lastOrNull() != Route.ProfileSetup
         ) {
             backStack.reset(Route.Orders)
+        }
+    }
+    // Assistant cart handoff (shop://cart): same deferred-until-ungated reset.
+    LaunchedEffect(cartRequest, backStack.backStack.lastOrNull()) {
+        if (cartRequest > 0 && backStack.last() != Route.Cart &&
+            backStack.backStack.lastOrNull() != Route.ProfileSetup
+        ) {
+            backStack.reset(Route.Cart)
         }
     }
     // Merchant links resolve in the ViewModel, which calls back with the destination;

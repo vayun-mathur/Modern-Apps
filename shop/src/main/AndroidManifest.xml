@@ -7,6 +7,12 @@
     <!-- Sensors permission at install instead of auto-granting it. -->
     <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
 
+    <!-- Assistant tools (search / product / cart / orders) for openassistant.
+         Signature-level: only apps signed with the Modern Apps key can call. -->
+    <permission
+        android:name="com.vayunmathur.shop.permissions.ACCESS_SHOP"
+        android:protectionLevel="signature" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Delivery updates for placed orders (shipped, out for delivery, delivered). -->
@@ -42,7 +48,46 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Assistant checkout handoff: prepare-only, opens the cart;
+                 checkout itself remains a one-tap user action in the app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="shop" android:host="cart" />
+            </intent-filter>
         </activity>
+
+        <activity
+            android:name=".intents.SearchProductsIntent"
+            android:exported="true"
+            android:permission="com.vayunmathur.shop.permissions.ACCESS_SHOP"
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name=".intents.GetProductIntent"
+            android:exported="true"
+            android:permission="com.vayunmathur.shop.permissions.ACCESS_SHOP"
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name=".intents.GetCartIntent"
+            android:exported="true"
+            android:permission="com.vayunmathur.shop.permissions.ACCESS_SHOP"
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name=".intents.AddToCartIntent"
+            android:exported="true"
+            android:permission="com.vayunmathur.shop.permissions.ACCESS_SHOP"
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name=".intents.RemoveFromCartIntent"
+            android:exported="true"
+            android:permission="com.vayunmathur.shop.permissions.ACCESS_SHOP"
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name=".intents.GetOrdersIntent"
+            android:exported="true"
+            android:permission="com.vayunmathur.shop.permissions.ACCESS_SHOP"
+            android:theme="@android:style/Theme.NoDisplay" />
     </application>
 
 </manifest>
