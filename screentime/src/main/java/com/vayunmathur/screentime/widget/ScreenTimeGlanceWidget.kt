@@ -28,7 +28,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.vayunmathur.library.widgets.MaWidget
 import com.vayunmathur.screentime.R
-import com.vayunmathur.screentime.ui.DashboardActivity
+import com.vayunmathur.screentime.MainActivity
 
 internal val TotalMinutesKey = longPreferencesKey("screentime_total_minutes")
 internal val TopLabelKey = stringPreferencesKey("screentime_top_label")
@@ -88,7 +88,7 @@ private fun ScreenTimeWidgetContent(
             .padding(16.dp)
             .clickable(
                 actionStartActivity(
-                    Intent(LocalContext.current, DashboardActivity::class.java).apply {
+                    Intent(LocalContext.current, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     },
                 ),

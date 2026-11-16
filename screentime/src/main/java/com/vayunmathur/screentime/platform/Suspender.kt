@@ -21,7 +21,7 @@ private const val TAG = "ScreenTimeSuspender"
  *
  * A suspended app's icon greys out and launches cancel: the platform shows the standard
  * paused treatment with a button into our `ACTION_SHOW_SUSPENDED_APP_DETAILS` activity
- * (see `AppDetailsActivity`), which is where the timer/pause reason lives. Unsuspending is
+ * (see `Route.AppDetails`), which is where the timer/pause reason lives. Unsuspending is
  * unconditional: reconcile recomputes the full paused set every time, so a stale suspend
  * cannot survive a rule change, a reboot, or a timer deletion.
  */
@@ -46,7 +46,7 @@ class Suspender(private val context: Context) {
         runCatching {
             // 5-arg overload: (String[], boolean, PersistableBundle, PersistableBundle,
             // SuspendDialogInfo). Null extras and null dialog: the platform shows its default
-            // paused treatment, whose details button resolves to our AppDetailsActivity.
+            // paused treatment, whose details button resolves to our AppDetails route.
             method.invoke(pm, packages, suspended, null, null, null)
             if (suspended) rememberPaused(packages.toSet()) else forgetPaused(packages.toSet())
         }.onFailure { Log.status(TAG, "could not set suspended=$suspended for ${packages.toList()}", it) }

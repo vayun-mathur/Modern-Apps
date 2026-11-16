@@ -1,11 +1,5 @@
 package com.vayunmathur.screentime.ui
 
-import android.content.Intent
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,9 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.ui.AlertDialog
-import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconArrowForward
 import com.vayunmathur.library.ui.IconBack
 import com.vayunmathur.library.ui.LazyListScaffold
@@ -49,68 +41,10 @@ import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.screentime.R
 import com.vayunmathur.screentime.platform.AppDetailsUiState
-import com.vayunmathur.screentime.platform.ScreenTimeViewModel
 import com.vayunmathur.screentime.platform.UsagePeriod
 import java.time.LocalDate
 
-/**
- * Per-app drill-down
- * Per-app drill-down: the same week/day usage chart as the dashboard, scoped to one app, plus
- * its daily limit and manual pause.
- *
- * Also answers `ACTION_SHOW_SUSPENDED_APP_DETAILS`: when the user taps a paused app, the
- * platform routes the details button here, so the "why is this paused" question lands on the
- * screen that can answer (and lift) it. The suspended package arrives as the intent data.
- */
-class AppDetailsActivity : ComponentActivity() {
-
-    private val viewModel: ScreenTimeViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        viewModel.openDetail(suspendedPackage())
-        setContent {
-            DynamicTheme {
-                val state by viewModel.detailState.collectAsStateWithLifecycle()
-                AppDetailsScreen(
-                    state = state,
-                    onBack = { finish() },
-                    onSetPeriod = viewModel::setPeriod,
-                    onStep = viewModel::stepAnchor,
-                    onTimerChange = { minutes ->
-                        state.packageName?.let { viewModel.setTimer(it, minutes) }
-                    },
-                    onPausedChange = { paused ->
-                        state.packageName?.let { viewModel.setAppPaused(it, paused) }
-                    },
-                )
-            }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        viewModel.refresh()
-    }
-
-    private fun suspendedPackage(): String? {
-        // String literal, not Intent.ACTION_SHOW_SUSPENDED_APP_DETAILS: the constant is absent
-        // from this SDK's Intent, and the action string is stable platform surface.
-        if (intent.action == ACTION_SHOW_SUSPENDED_APP_DETAILS) {
-            intent.data?.schemeSpecificPart?.removePrefix("package:")?.let { return it }
-        }
-        return intent.getStringExtra(EXTRA_DETAILS_PACKAGE)
-    }
-
-    companion object {
-        const val EXTRA_DETAILS_PACKAGE = "com.vayunmathur.screentime.extra.DETAILS_PACKAGE"
-
-        private const val ACTION_SHOW_SUSPENDED_APP_DETAILS =
-            "android.intent.action.SHOW_SUSPENDED_APP_DETAILS"
-    }
-}
-
+/** Per-app drill-down: week/day usage scoped to one app, plus its timer and pause. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppDetailsScreen(

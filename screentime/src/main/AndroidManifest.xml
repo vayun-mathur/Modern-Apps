@@ -59,18 +59,27 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.General">
         <!--
-          The dashboard. Reached from Settings only - no launcher icon. The intent-filter
-          below registers the activity as a Settings row (ia.homepage + summary), so
-          Settings > Digital Wellbeing and search land on the dashboard alongside
-          Wind Down. Stock Wellbeing spreads its rows across homepage/apps/gestures/bedtime
-          with summary URIs; ours registers the same homepage rows against our own activities.
+          The single navigation host. Reached from Settings only - no launcher icon.
+          Every former activity entry point below is an alias onto this host, keeping
+          its own label, intent-filter and Settings meta-data, so Settings rows and
+          external intents land exactly where they did; MainActivity.routeFor turns
+          the arriving intent into the start route. singleTask so a second Settings
+          tap re-routes the running host via onNewIntent instead of stacking hosts.
         -->
         <activity
-            android:name=".ui.DashboardActivity"
+            android:name=".MainActivity"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.General">
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.General" />
+
+        <!-- The dashboard Settings row (ia.homepage + summary). -->
+        <activity-alias
+            android:name=".ui.DashboardActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="com.vayunmathur.screentime.action.DASHBOARD" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -81,19 +90,14 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/dashboard_summary" />
-        </activity>
+        </activity-alias>
 
-        <!--
-          Settings rows. Stock Wellbeing spreads these across the homepage, apps, gestures and
-          bedtime categories with summary URIs; ours registers the same rows against our own
-          activities so Settings > Digital Wellbeing (and search) lands here.
-        -->
-        <activity
+        <!-- The Wind Down Settings row, answering the platform bedtime action. -->
+        <activity-alias
             android:name=".ui.WindDownActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/winddown_title"
-            android:theme="@style/Theme.General">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.settings.BEDTIME_SETTINGS" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -104,19 +108,25 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/winddown_summary" />
-        </activity>
+        </activity-alias>
 
-        <activity
+        <!-- Per-app details: our own action, plus the suspended-app details action
+             the platform's paused treatment resolves (package in the data URI). -->
+        <activity-alias
             android:name=".ui.AppDetailsActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/details_title"
-            android:theme="@style/Theme.General">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="com.vayunmathur.screentime.action.APP_DETAILS" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </activity>
+            <intent-filter>
+                <action android:name="android.intent.action.SHOW_SUSPENDED_APP_DETAILS" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </activity-alias>
 
         <!--
           Friction sheets and the expired-timer notice. Started explicitly by our own

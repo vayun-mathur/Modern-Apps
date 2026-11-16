@@ -6,7 +6,7 @@ _Install: ./install screentime (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :screentime / dir: screentime/
 - Package roots present: ui, data, domain, platform, service, widget, notifications
-- Entry files: ui/DashboardActivity.kt (activity-entry OS module; no MainActivity/Route)
+- Entry files: MainActivity.kt + Route.kt + Navigation.kt (single host; FrictionActivity stays a system-triggered activity)
 - Deps: :library:room, :library:widgets
 - Metadata: metadata_data/screentime.md (present)
 - Rust: no / screenshotTest: no
@@ -14,7 +14,7 @@ _Install: ./install screentime (dev by default)._
 ## Overview
 **Purpose:** On-device screen-time dashboard — per-app usage, app timers + instant pauses, Wind Down (grayscale + DND), friction nudges, Glance widget. Sibling of `parentalcontrols/` (self-control vs supervised control). No account, nothing uploaded.
 **Key features:** `platform/UsageHistory` + `domain/HourBuckets` feed dashboard/charts; `AppTimers`/`Suspender`/`Coordinator` enforce limits; `WindDownApplier` + `WindowScheduler` run bedtime; widget mirrors the dashboard.
-**Entry points:** `ui/DashboardActivity.kt` → `ui/DashboardScreen.kt` → `platform/ScreenTimeViewModel.kt` → `platform/Coordinator.kt` → `data/Rules.kt`.
+**Entry points:** `MainActivity.kt` → `Navigation.kt` (`Route.Dashboard/AppDetails(packageName)/WindDown`) → `ui/DashboardScreen.kt` → `platform/ScreenTimeViewModel.kt` → `platform/Coordinator.kt` → `data/Rules.kt`.
 **Gotchas:**
 - `receiver/` is NOT a closed package root — pending migration; don't add more files there
 - Usage access is a special grant — behavior without it is an empty dashboard, not an error; handle gracefully
@@ -40,7 +40,9 @@ _Install: ./install screentime (dev by default)._
 - com/vayunmathur/screentime/receiver/Receivers.kt
 - com/vayunmathur/screentime/service/Services.kt
 ### ui/ + widget/ — dashboard + widget (the entries)
-- com/vayunmathur/screentime/ui/DashboardActivity.kt
+- com/vayunmathur/screentime/MainActivity.kt
+- com/vayunmathur/screentime/Route.kt
+- com/vayunmathur/screentime/Navigation.kt
 - com/vayunmathur/screentime/ui/DashboardScreen.kt
 - com/vayunmathur/screentime/ui/AppDetailsScreen.kt
 - com/vayunmathur/screentime/ui/FocusScreen.kt

@@ -17,8 +17,8 @@ import kotlin.test.assertFalse
 class ActivitiesDeepTest {
     @Before fun setUp() = FakeAndroidKeyStore.install()
 
-    @Test fun dashboardActivityResumesAndRefreshes() {
-        val controller = Robolectric.buildActivity(DashboardActivity::class.java).create().start().resume().visible()
+    @Test fun mainActivityDashboardResumesAndRefreshes() {
+        val controller = Robolectric.buildActivity(com.vayunmathur.screentime.MainActivity::class.java).create().start().resume().visible()
         repeat(10) {
             shadowOf(Looper.getMainLooper()).idle()
             shadowOf(Looper.getMainLooper()).idleFor(50, TimeUnit.MILLISECONDS)
@@ -48,26 +48,26 @@ class ActivitiesDeepTest {
         }
     }
 
-    @Test fun windDownActivityResumesAndRefreshes() {
-        val controller = Robolectric.buildActivity(WindDownActivity::class.java).create().start().resume().visible()
+    @Test fun mainActivityWindDownResumesAndRefreshes() {
+        val controller = Robolectric.buildActivity(com.vayunmathur.screentime.MainActivity::class.java, android.content.Intent("android.settings.BEDTIME_SETTINGS")).create().start().resume().visible()
         pump()
         assertFalse(controller.get().isFinishing)
         controller.pause().stop().destroy()
         drain()
     }
 
-    @Test fun appDetailsActivityResumesWithPackageAndSuspendedUri() {
+    @Test fun mainActivityAppDetailsResumesWithPackageAndSuspendedUri() {
         val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
-        val intent = android.content.Intent(ctx, AppDetailsActivity::class.java)
-            .putExtra(AppDetailsActivity.EXTRA_DETAILS_PACKAGE, "com.a.app")
-        val controller = Robolectric.buildActivity(AppDetailsActivity::class.java, intent).create().start().resume().visible()
+        val intent = android.content.Intent(ctx, com.vayunmathur.screentime.MainActivity::class.java)
+            .putExtra(com.vayunmathur.screentime.MainActivity.EXTRA_DETAILS_PACKAGE, "com.a.app")
+        val controller = Robolectric.buildActivity(com.vayunmathur.screentime.MainActivity::class.java, intent).create().start().resume().visible()
         pump()
         assertFalse(controller.get().isFinishing)
         controller.pause().stop().destroy()
 
         val uriIntent = android.content.Intent("android.intent.action.SHOW_SUSPENDED_APP_DETAILS")
             .setData(android.net.Uri.parse("package:com.b.app"))
-        val second = Robolectric.buildActivity(AppDetailsActivity::class.java, uriIntent).create().start().resume().visible()
+        val second = Robolectric.buildActivity(com.vayunmathur.screentime.MainActivity::class.java, uriIntent).create().start().resume().visible()
         pump()
         assertFalse(second.get().isFinishing)
         second.pause().stop().destroy()

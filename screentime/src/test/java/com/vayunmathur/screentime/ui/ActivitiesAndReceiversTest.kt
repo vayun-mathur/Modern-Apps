@@ -26,30 +26,30 @@ class ActivitiesAndReceiversTest {
 
     private fun ctx() = ApplicationProvider.getApplicationContext<android.content.Context>()
 
-    @Test fun dashboardActivity_creates() {
-        val controller = Robolectric.buildActivity(DashboardActivity::class.java).create()
+    @Test fun mainActivity_creates() {
+        val controller = Robolectric.buildActivity(com.vayunmathur.screentime.MainActivity::class.java).create()
         assertNotNull(controller.get())
         controller.destroy()
     }
 
-    @Test fun appDetailsActivity_withPackageExtra() {
-        val intent = Intent(ctx(), AppDetailsActivity::class.java)
-            .putExtra(AppDetailsActivity.EXTRA_DETAILS_PACKAGE, "com.a.app")
-        val controller = Robolectric.buildActivity(AppDetailsActivity::class.java, intent).create()
+    @Test fun mainActivity_appDetailsWithPackageExtra() {
+        val intent = Intent(ctx(), com.vayunmathur.screentime.MainActivity::class.java)
+            .putExtra(com.vayunmathur.screentime.MainActivity.EXTRA_DETAILS_PACKAGE, "com.a.app")
+        val controller = Robolectric.buildActivity(com.vayunmathur.screentime.MainActivity::class.java, intent).create()
         assertNotNull(controller.get())
         controller.destroy()
     }
 
-    @Test fun appDetailsActivity_suspendedDataUri() {
+    @Test fun mainActivity_appDetailsSuspendedDataUri() {
         val intent = Intent("android.intent.action.SHOW_SUSPENDED_APP_DETAILS")
             .setData(Uri.parse("package:com.b.app"))
-        val controller = Robolectric.buildActivity(AppDetailsActivity::class.java, intent).create()
+        val controller = Robolectric.buildActivity(com.vayunmathur.screentime.MainActivity::class.java, intent).create()
         assertNotNull(controller.get())
         controller.destroy()
     }
 
-    @Test fun windDownActivity_creates() {
-        val controller = Robolectric.buildActivity(WindDownActivity::class.java).create()
+    @Test fun mainActivity_windDownCreates() {
+        val controller = Robolectric.buildActivity(com.vayunmathur.screentime.MainActivity::class.java, Intent("android.settings.BEDTIME_SETTINGS")).create()
         assertNotNull(controller.get())
         controller.destroy()
     }

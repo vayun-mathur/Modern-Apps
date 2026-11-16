@@ -1,10 +1,5 @@
 package com.vayunmathur.screentime.ui
 
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
-import android.os.Bundle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,7 +18,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.ui.AlertDialog
-import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.SettingsSection
@@ -33,47 +27,6 @@ import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.screentime.R
 import com.vayunmathur.screentime.platform.ScreenTimeUiState
-import com.vayunmathur.screentime.platform.ScreenTimeViewModel
-
-/**
- * Overnight wind-down, reached from Settings (`BEDTIME_SETTINGS`) and the dashboard.
- *
- * Nothing is blocked here - the screen just goes quiet at the scheduled hour: grayscale
- * first, Do Not Disturb alongside when configured. Both halves apply and clear together on
- * every reconcile, so a mid-window edit takes effect without waiting for a boundary.
- */
-class WindDownActivity : ComponentActivity() {
-
-    private val viewModel: ScreenTimeViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            DynamicTheme {
-                val state by viewModel.state.collectAsStateWithLifecycle()
-                WindDownScreen(
-                    state = state,
-                    onEnabledChange = { viewModel.setWindDown(enabled = it) },
-                    onStartChange = { h, m -> viewModel.setWindDown(startMinute = h * 60 + m) },
-                    onEndChange = { h, m -> viewModel.setWindDown(endMinute = h * 60 + m) },
-                    onToggleDay = { day ->
-                        viewModel.setWindDown(
-                            daysMask = state.windDown.daysMask xor (1 shl day),
-                        )
-                    },
-                    onGrayscaleChange = { viewModel.setWindDown(grayscale = it) },
-                    onDndChange = { viewModel.setWindDown(doNotDisturb = it) },
-                )
-            }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        viewModel.refresh()
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
