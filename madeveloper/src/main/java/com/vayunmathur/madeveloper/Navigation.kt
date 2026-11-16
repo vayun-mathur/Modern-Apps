@@ -6,6 +6,8 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.madeveloper.platform.MaDevViewModel
 import com.vayunmathur.madeveloper.ui.CatalogScreen
+import com.vayunmathur.madeveloper.ui.CommitScreen
+import com.vayunmathur.madeveloper.ui.CommitsScreen
 import com.vayunmathur.madeveloper.ui.FileScreen
 import com.vayunmathur.madeveloper.ui.HomeScreen
 import com.vayunmathur.madeveloper.ui.PushScreen
@@ -31,11 +33,33 @@ fun Navigation(viewModel: MaDevViewModel) {
         entry<Route.Repo> { route ->
             RepoScreen(
                 repoName = route.name, viewModel = viewModel,
-                onOpenFile = { backStack.add(Route.File(route.name, it)) }, onBack = { backStack.pop() },
+                onOpenFile = { branch, path -> backStack.add(Route.File(route.name, path, branch)) },
+                onOpenCommits = { branch -> backStack.add(Route.Commits(route.name, branch)) },
+                onOpenCommit = { branch, sha ->
+                    viewModel.selectCommit(route.name, sha)
+                    backStack.add(Route.Commit(route.name, branch, sha))
+                },
+                onBack = { backStack.pop() },
             )
         }
+        entry<Route.Commits> { route ->
+            CommitsScreen(
+                repoName = route.repo, branch = route.branch, viewModel = viewModel,
+                onOpenCommit = { sha ->
+                    viewModel.selectCommit(route.repo, sha)
+                    backStack.add(Route.Commit(route.repo, route.branch, sha))
+                },
+                onBack = { backStack.pop() },
+            )
+        }
+        entry<Route.Commit> { route ->
+            CommitScreen(repoName = route.repo, sha = route.sha, viewModel = viewModel, onBack = { backStack.pop() })
+        }
         entry<Route.File> { route ->
-            FileScreen(repoName = route.repo, path = route.path, viewModel = viewModel, onBack = { backStack.pop() })
+            FileScreen(
+                repoName = route.repo, path = route.path, branch = route.branch,
+                viewModel = viewModel, onBack = { backStack.pop() },
+            )
         }
         entry<Route.Tests> { TestsScreen(state = viewModel.state, onBack = { backStack.pop() }) }
         entry<Route.Catalog> {

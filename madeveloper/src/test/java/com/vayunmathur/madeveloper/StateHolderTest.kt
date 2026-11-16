@@ -15,7 +15,9 @@ class StateHolderTest {
     }
 
     @Test fun repoShortSha() {
-        val repo = GitRepo("Modern-Apps", "https://git.maproj.org/Modern-Apps.git", null)
+        val repo = GitRepo("Modern-Apps", "main", "abc12345deadbeef")
         assertEquals("Modern-Apps", repo.name)
+        assertEquals("abc12345", repo.shortHeadSha)
+        assertEquals("https://git.maproj.org/Modern-Apps.git", repo.cloneUrl)
     }
 }

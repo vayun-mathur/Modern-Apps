@@ -3,6 +3,7 @@ package com.vayunmathur.madeveloper.domain
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
@@ -12,42 +13,100 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
 /**
- * Pure parsers for the machine-readable forms the git host and F-Droid repo
- * actually expose. The git host has no repository-browsing pages: repositories
- * are the fixed clone set, refs come from the smart-HTTP advertisement, and
- * issues, pull requests and CI all serve JSON next to their HTML pages.
+ * Pure parsers for the git host's first-party JSON API (`/api/repos…`),
+ * its dashboard JSON (`/tests.json`, `/issues.json`, `/prs.json`) and the
+ * F-Droid repo index. Times may arrive as ISO-8601 strings or epoch
+ * seconds; both are normalised to a display string by [t].
  */
 object GitParsers {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    /** Repositories known to the host, from its landing-page clone URLs. */
-    val knownRepos: List<GitRepo> = listOf(
-        GitRepo("Modern-Apps", "https://git.maproj.org/Modern-Apps.git", "vayun-mathur/Modern-Apps"),
-        GitRepo("MAOS", "https://git.maproj.org/MAOS.git", "vayun-mathur/MAOS"),
-        GitRepo(
-            "location_share_server",
-            "https://git.maproj.org/location_share_server.git", "vayun-mathur/location_share_server",
-        ),
-    )
-
-    /** Parses the pkt-line ref advertisement of `GET /<repo>/info/refs?service=git-upload-pack`. */
-    fun parseRefs(body: ByteArray): List<GitRef> {
-        val text = body.toString(Charsets.UTF_8)
-        val refs = mutableListOf<GitRef>()
-        for (line in text.split('\n')) {
-            val clean = line.trim()
-            if (clean.length < 45) continue
-            val payload = clean.drop(4)
-            val parts = payload.split(' ', '\t', '\u0000')
-            if (parts.size < 2) continue
-            val sha = parts[0].trim()
-            val ref = parts[1].trim().removeSuffix("^{}")
-            if (sha.length in 40..64 && ref.startsWith("refs/")) {
-                refs += GitRef(ref.removePrefix("refs/heads/").removePrefix("refs/tags/"), sha)
-            }
+    /** Parses `GET /api/repos` into the hosted repository list. */
+    fun parseRepos(text: String): List<GitRepo> {
+        val root = json.parseToJsonElement(text) as? JsonArray ?: return emptyList()
+        return root.mapNotNull { element ->
+            val obj = element as? JsonObject ?: return@mapNotNull null
+            val name = obj.s("name")
+            if (name.isBlank()) null else GitRepo(
+                name = name,
+                defaultBranch = obj.s("defaultBranch"),
+                headSha = obj.s("headSha"),
+                headSubject = obj.s("headSubject"),
+                headTime = obj.t("headTime"),
+            )
         }
-        return refs.distinctBy { it.name }
     }
+
+    /** Parses `GET /api/repos/<repo>` into branches plus recent commits. */
+    fun parseRepoDetail(text: String): RepoDetail {
+        val root = json.parseToJsonElement(text).jsonObject
+        return RepoDetail(
+            name = root.s("name"),
+            defaultBranch = root.s("defaultBranch"),
+            branches = (root["branches"] as? JsonArray).orEmpty().mapNotNull { element ->
+                val obj = element as? JsonObject ?: return@mapNotNull null
+                val name = obj.s("name")
+                if (name.isBlank()) null else GitBranch(name, obj.s("sha"), obj.t("time"))
+            },
+            recentCommits = parseCommitArray(root["recentCommits"] as? JsonArray),
+        )
+    }
+
+    /** Parses `GET /api/repos/<repo>/commits` into one page of commits. */
+    fun parseCommits(text: String): List<GitCommit> {
+        val root = json.parseToJsonElement(text) as? JsonArray ?: return emptyList()
+        return parseCommitArray(root)
+    }
+
+    /** Parses one commit object; shared by detail and commits responses. */
+    fun parseCommit(obj: JsonObject): GitCommit {
+        val sha = obj.s("sha")
+        return GitCommit(
+            sha = sha,
+            shortSha = obj.s("shortSha").ifBlank { sha.take(8) },
+            author = obj.s("author"),
+            time = obj.t("time"),
+            subject = obj.s("subject"),
+            body = obj.s("body"),
+        )
+    }
+
+    /**
+     * Parses `GET /api/repos/<repo>/tree` for [parentPath] (blank = root).
+     * Entries carry only a name, so the full path is joined here; trees
+     * sort before blobs, each group by name.
+     */
+    fun parseTree(text: String, parentPath: String): List<TreeEntry> {
+        val root = json.parseToJsonElement(text) as? JsonArray ?: return emptyList()
+        val parent = parentPath.trim('/')
+        return root.mapNotNull { element ->
+            val obj = element as? JsonObject ?: return@mapNotNull null
+            val name = obj.s("name")
+            if (name.isBlank()) null else TreeEntry(
+                name = name,
+                path = if (parent.isEmpty()) name else "$parent/$name",
+                isDir = obj.s("type") == "tree",
+                size = obj["size"]?.jsonPrimitive?.longOrNull,
+            )
+        }.sortedWith(compareByDescending<TreeEntry> { it.isDir }.thenBy { it.name.lowercase() })
+    }
+
+    /** Parses `GET /api/repos/<repo>/file`. */
+    fun parseFile(text: String): GitFile {
+        val root = json.parseToJsonElement(text).jsonObject
+        return GitFile(
+            path = root.s("path"),
+            size = root["size"]?.jsonPrimitive?.longOrNull ?: 0,
+            isBinary = root.b("isBinary"),
+            content = root["content"]?.jsonPrimitive?.contentOrNull,
+            truncated = root.b("truncated"),
+            sha = root.s("sha"),
+        )
+    }
+
+    private fun parseCommitArray(array: JsonArray?): List<GitCommit> =
+        array.orEmpty().mapNotNull { (it as? JsonObject)?.let(::parseCommit) }
+
 
     /** Parses `/tests.json` into the latest state plus recent history. */
     fun parseTests(text: String): TestsStatus {
@@ -169,4 +228,13 @@ object GitParsers {
     private fun JsonArray?.orEmpty(): List<kotlinx.serialization.json.JsonElement> = this ?: emptyList()
     private fun JsonObject.s(key: String): String = this[key]?.jsonPrimitive?.contentOrNull ?: ""
     private fun JsonObject.i(key: String): Int = this[key]?.jsonPrimitive?.intOrNull ?: 0
+    private fun JsonObject.b(key: String): Boolean = this[key]?.jsonPrimitive?.booleanOrNull ?: false
+
+    /** Time fields arrive as ISO strings or epoch seconds; normalise both. */
+    private fun JsonObject.t(key: String): String {
+        val prim = this[key]?.jsonPrimitive ?: return ""
+        prim.contentOrNull?.takeIf { it.isNotBlank() && prim.isString }?.let { return it }
+        val epoch = prim.longOrNull ?: return prim.contentOrNull ?: ""
+        return epoch.toString()
+    }
 }

@@ -18,7 +18,7 @@ class MetadataPreviews {
     fun PreviewHome() {
         DynamicTheme(darkTheme = true) {
             HomeScreen(
-                state = MaDevUiState(repos = listOf(GitRepo("Modern-Apps", "https://git.maproj.org/Modern-Apps.git", "vayun-mathur/Modern-Apps")), pairingCode = "ABC234"),
+                state = MaDevUiState(repos = listOf(GitRepo("Modern-Apps", "main", "abc12345", "Demo commit", "2026-11-16T00:00:00Z")), pairingCode = "ABC234"),
                 onRefresh = {}, onOpenRepo = {}, onOpenTests = {}, onOpenCatalog = {}, onOpenPush = {},
             )
         }

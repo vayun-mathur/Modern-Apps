@@ -16,12 +16,16 @@ import com.vayunmathur.madeveloper.data.WebSocketDevTransport
 import com.vayunmathur.madeveloper.domain.CatalogApp
 import com.vayunmathur.madeveloper.domain.DevMessage
 import com.vayunmathur.madeveloper.domain.DevProtocol
+import com.vayunmathur.madeveloper.domain.GitFile
 import com.vayunmathur.madeveloper.domain.GitIssue
 import com.vayunmathur.madeveloper.domain.GitPr
 import com.vayunmathur.madeveloper.domain.GitRepo
 import com.vayunmathur.madeveloper.domain.InstallPhase
 import com.vayunmathur.madeveloper.domain.InstalledAppInfo
 import com.vayunmathur.madeveloper.domain.PendingInstall
+import com.vayunmathur.madeveloper.domain.RepoBrowser
+import com.vayunmathur.madeveloper.domain.RepoBrowserState
+import com.vayunmathur.madeveloper.domain.RepoDetail
 import com.vayunmathur.madeveloper.domain.TestsStatus
 import com.vayunmathur.madeveloper.domain.TreeEntry
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +44,9 @@ data class MaDevUiState(
     val issues: List<GitIssue> = emptyList(),
     val prs: List<GitPr> = emptyList(),
     val catalog: List<CatalogApp> = emptyList(),
+    val repoDetails: Map<String, RepoDetail> = emptyMap(),
+    val browsers: Map<String, RepoBrowserState> = emptyMap(),
+    val repoError: String? = null,
     val connected: Boolean = false,
     val pairingCode: String = "",
     val paired: Boolean = false,
@@ -89,14 +96,80 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Tree entries for [gitRepo] at [path]. */
-    suspend fun tree(gitRepo: GitRepo, path: String): List<TreeEntry> = repo.tree(gitRepo, path)
-
-    /** File contents for [path] in the repo named [repoName]. */
-    suspend fun file(repoName: String, path: String): String {
-        val gitRepo = state.repos.firstOrNull { it.name == repoName } ?: return ""
-        return repo.file(gitRepo, path)
+    /** Loads repo detail (branches + recent commits) and opens its browser. */
+    fun loadRepo(name: String) {
+        if (state.browsers.containsKey(name)) return
+        viewModelScope.launch {
+            try {
+                val detail = repo.repo(name)
+                state = state.copy(
+                    repoDetails = state.repoDetails + (name to detail),
+                    browsers = state.browsers + (name to RepoBrowser.open(detail)),
+                    repoError = null,
+                )
+            } catch (e: java.io.IOException) {
+                state = state.copy(repoError = e.message ?: "Could not load $name")
+            }
+        }
     }
+
+    /** The browser state for [name], if its detail has loaded. */
+    fun browser(name: String): RepoBrowserState? = state.browsers[name]
+
+    /** Switches [name] to [branch]; resets tree path and commits, then reloads. */
+    fun selectBranch(name: String, branch: String) {
+        val current = state.browsers[name] ?: return
+        updateBrowser(RepoBrowser.selectBranch(current, branch))
+        loadCommits(name, loadMore = false)
+    }
+
+    /** Navigates the tree browser for [name] to [path]. */
+    fun navigateTree(name: String, path: String) {
+        val current = state.browsers[name] ?: return
+        updateBrowser(RepoBrowser.navigateTo(current, path))
+    }
+
+    /** Loads the first commits page, or appends the next when [loadMore]. */
+    fun loadCommits(name: String, loadMore: Boolean) {
+        val browser = state.browsers[name] ?: return
+        if (loadMore && browser.commitsExhausted) return
+        viewModelScope.launch {
+            try {
+                val page = repo.commits(
+                    name, browser.branch, GitHostRepository.COMMITS_PAGE_SIZE,
+                    if (loadMore) browser.nextCommitCursor else null,
+                )
+                val current = state.browsers[name] ?: return@launch
+                updateBrowser(
+                    if (loadMore) {
+                        RepoBrowser.commitsAppended(current, page, GitHostRepository.COMMITS_PAGE_SIZE)
+                    } else {
+                        RepoBrowser.commitsLoaded(current, page, GitHostRepository.COMMITS_PAGE_SIZE)
+                    },
+                )
+            } catch (e: java.io.IOException) {
+                state = state.copy(repoError = e.message ?: "Could not load commits")
+            }
+        }
+    }
+
+    /** Selects the commit shown on the commit detail screen. */
+    fun selectCommit(name: String, sha: String) {
+        val current = state.browsers[name] ?: return
+        updateBrowser(RepoBrowser.selectCommit(current, sha))
+    }
+
+    private fun updateBrowser(browser: RepoBrowserState) {
+        state = state.copy(browsers = state.browsers + (browser.repoName to browser))
+    }
+
+    /** Tree entries for [repoName] on [branch] at [path]. */
+    suspend fun tree(repoName: String, branch: String, path: String): List<TreeEntry> =
+        repo.tree(repoName, branch, path)
+
+    /** File at [path] in [repoName] on [branch]. */
+    suspend fun file(repoName: String, branch: String, path: String): GitFile =
+        repo.file(repoName, branch, path)
 
     /** Finds a repo by display name. */
     fun repoByName(name: String): GitRepo? = state.repos.firstOrNull { it.name == name }

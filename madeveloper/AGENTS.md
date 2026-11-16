@@ -14,13 +14,13 @@ _Install: ./install madeveloper (dev by default)._
 ## Overview
 **Purpose:** Developer companion for the maproj infrastructure: git host pages, CI status, a read-only build catalog, and server-pushed dev installs.
 **Key features:**
-- Git pages over the host JSON (`/tests.json`, `/issues.json`, `/prs.json`) and smart-HTTP refs; the host has no repo-browsing pages, so files read via its GitHub push-mirror
+- Git pages over the host JSON (`/tests.json`, `/issues.json`, `/prs.json`) and native repo browsing via the first-party JSON API (`/api/repos[/<repo>]`, `/commits`, `/tree`, `/file` on git.maproj.org) with branch switching and commit detail (no diff endpoint: metadata + link-out)
 - Read-only F-Droid catalog (`static.maproj.org/fdroid/repo/index-v2.json`, newest build per package)
 - Pushed installs: paired WebSocket to `wss://api.maproj.org/dev/ws`, download + SHA-256 verify, then a user-tapped PackageInstaller session (never silent)
 **Architecture / data-flow:** `ui/` screens → `platform/MaDevViewModel` → `data/GitHostRepository` (NetworkClient, FIRST_PARTY) + `data/DevPushClient` seam over `WebSocketClient`; pure parsing and the install state machine live in `domain/` (`GitParsers`, `DevProtocol`) with no Android imports.
 **Entry points + reading order:** `Route` → `MainActivity.kt` → `Navigation.kt` → `platform/MaDevViewModel.kt` → `data/GitHostRepository.kt` / `domain/DevProtocol.kt`.
 **Gotchas:**
-- The git host exposes no commits/tree/file endpoints — do not invent them; mirror reads plus a link-out are the honest v1
+- The JSON API has no diff endpoint — commit detail shows metadata (subject/body/author/time) plus a link-out to the git host; do not invent a diff view. The API may 404 until deployed server-side
 - Android forbids silent installs here by design: a push only downloads and verifies, the Install button and system prompt do the rest
 - The `/dev/ws` server endpoint is built in parallel; the client is coded to the agreed JSON contract behind `DevSocketTransport`
 
@@ -35,6 +35,7 @@ _Install: ./install madeveloper (dev by default)._
 ### domain/ — pure models, parsers and push protocol
 - com/vayunmathur/madeveloper/domain/GitModels.kt
 - com/vayunmathur/madeveloper/domain/GitParsers.kt
+- com/vayunmathur/madeveloper/domain/RepoBrowser.kt
 - com/vayunmathur/madeveloper/domain/DevProtocol.kt
 ### platform/ — view model, pairing, notifications, installer
 - com/vayunmathur/madeveloper/platform/MaDevViewModel.kt
@@ -45,6 +46,8 @@ _Install: ./install madeveloper (dev by default)._
 ### ui/ — screens
 - com/vayunmathur/madeveloper/ui/HomeScreen.kt
 - com/vayunmathur/madeveloper/ui/RepoScreen.kt
+- com/vayunmathur/madeveloper/ui/CommitsScreen.kt
+- com/vayunmathur/madeveloper/ui/CommitScreen.kt
 - com/vayunmathur/madeveloper/ui/FileScreen.kt
 - com/vayunmathur/madeveloper/ui/TestsScreen.kt
 - com/vayunmathur/madeveloper/ui/CatalogScreen.kt

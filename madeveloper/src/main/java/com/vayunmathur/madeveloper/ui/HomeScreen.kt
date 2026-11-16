@@ -53,7 +53,12 @@ fun HomeScreen(state: MaDevUiState, onRefresh: () -> Unit, onOpenRepo: (String) 
             items(state.repos) { repo ->
                 ListItem(
                     headlineContent = { Text(repo.name) },
-                    supportingContent = { Text(repo.refs.firstOrNull()?.let { it.name + " " + it.shortSha } ?: repo.cloneUrl) },
+                    supportingContent = {
+                        Text(
+                            listOf(repo.defaultBranch, repo.shortHeadSha, repo.headSubject)
+                                .filter { it.isNotBlank() }.joinToString(" · ").ifBlank { repo.cloneUrl },
+                        )
+                    },
                     leadingContent = { IconCode() },
                     modifier = Modifier.fillMaxWidth(),
                 )

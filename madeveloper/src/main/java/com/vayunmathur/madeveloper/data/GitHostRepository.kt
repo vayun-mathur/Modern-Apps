@@ -2,42 +2,43 @@ package com.vayunmathur.madeveloper.data
 
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.madeveloper.domain.CatalogApp
+import com.vayunmathur.madeveloper.domain.GitCommit
+import com.vayunmathur.madeveloper.domain.GitFile
 import com.vayunmathur.madeveloper.domain.GitIssue
 import com.vayunmathur.madeveloper.domain.GitParsers
 import com.vayunmathur.madeveloper.domain.GitPr
 import com.vayunmathur.madeveloper.domain.GitRepo
+import com.vayunmathur.madeveloper.domain.RepoDetail
 import com.vayunmathur.madeveloper.domain.TestsStatus
 import com.vayunmathur.madeveloper.domain.TreeEntry
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.longOrNull
-import java.util.Base64
+import java.net.URLEncoder
 
 /**
- * Reads the maproj git host through [NetworkClient] (FIRST_PARTY trust is set
- * once by the activity). The host serves clone + dashboards only, so code
- * browsing reads the host's own GitHub push-mirror contents API; every screen
- * still links out to the canonical git host page as a fallback.
+ * Reads the maproj git host through [NetworkClient] (FIRST_PARTY trust is
+ * set once by the activity). Repositories, branches, commits, trees and
+ * files all come from the host's first-party JSON API under `/api/repos`;
+ * CI, issues, pull requests and the F-Droid catalog keep their existing
+ * endpoints. The JSON API may not be deployed yet — callers surface the
+ * HTTP error (e.g. 404) rather than falling back to any mirror.
  */
 class GitHostRepository {
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private var treeCache: Map<String, List<TreeEntry>> = emptyMap()
-    private var fileCache: Map<String, String> = emptyMap()
+    private var fileCache: Map<String, GitFile> = emptyMap()
 
-    /** Repositories with their advertised refs filled in. */
-    suspend fun repos(): List<GitRepo> = GitParsers.knownRepos.map { repo ->
-        val refs = runCatching {
-            val refsUrl = repo.cloneUrl.removeSuffix(".git") + ".git/info/refs?service=git-upload-pack"
-            val (status, bytes) = NetworkClient.performRequestBytes(refsUrl)
-            if (status in 200..299) GitParsers.parseRefs(bytes) else emptyList()
-        }.getOrDefault(emptyList())
-        repo.copy(refs = refs)
+    /** Repositories from `GET /api/repos`. */
+    suspend fun repos(): List<GitRepo> = GitParsers.parseRepos(fetchText("$GIT_HOST/api/repos"))
+
+    /** Branches and recent commits from `GET /api/repos/<repo>`. */
+    suspend fun repo(name: String): RepoDetail =
+        GitParsers.parseRepoDetail(fetchText("$GIT_HOST/api/repos/${enc(name)}"))
+
+    /** One page of commits; [after] is the previous page's last sha. */
+    suspend fun commits(name: String, branch: String, limit: Int, after: String?): List<GitCommit> {
+        val query = buildString {
+            append("?branch=").append(enc(branch)).append("&limit=").append(limit)
+            if (!after.isNullOrBlank()) append("&after=").append(enc(after))
+        }
+        return GitParsers.parseCommits(fetchText("$GIT_HOST/api/repos/${enc(name)}/commits$query"))
     }
 
     /** CI status from `/tests.json`. */
@@ -53,41 +54,24 @@ class GitHostRepository {
     suspend fun catalog(): List<CatalogApp> =
         GitParsers.parseFdroidIndex(fetchText("$FDROID_BASE/index-v2.json"), FDROID_BASE)
 
-    /** Tree of [path] in [repo] via the mirror contents API; cached per repo+path. */
-    suspend fun tree(repo: GitRepo, path: String): List<TreeEntry> {
-        val key = repo.name + ":" + path
+    /** Tree of [path] in [repo] on [branch]; cached per repo+branch+path. */
+    suspend fun tree(repo: String, branch: String, path: String): List<TreeEntry> {
+        val key = "$repo:$branch:$path"
         treeCache[key]?.let { return it }
-        val github = repo.github ?: return emptyList()
-        val url = "https://api.github.com/repos/$github/contents/$path"
-        val entries = parseTree(fetchText(url))
+        val url = "$GIT_HOST/api/repos/${enc(repo)}/tree?branch=${enc(branch)}&path=${enc(path)}"
+        val entries = GitParsers.parseTree(fetchText(url), path)
         treeCache = treeCache + (key to entries)
         return entries
     }
 
-    /** File text of [path] in [repo] via the mirror contents API; cached. */
-    suspend fun file(repo: GitRepo, path: String): String {
-        val key = repo.name + ":" + path
+    /** File at [path] in [repo] on [branch]; cached per repo+branch+path. */
+    suspend fun file(repo: String, branch: String, path: String): GitFile {
+        val key = "$repo:$branch:$path"
         fileCache[key]?.let { return it }
-        val github = repo.github ?: return ""
-        val root = json.parseToJsonElement(fetchText("https://api.github.com/repos/$github/contents/$path")).jsonObject
-        val encoded = root["content"]?.jsonPrimitive?.contentOrNull ?: return ""
-        val text = withContext(Dispatchers.IO) { String(Base64.getMimeDecoder().decode(encoded), Charsets.UTF_8) }
-        fileCache = fileCache + (key to text)
-        return text
-    }
-
-    private fun parseTree(text: String): List<TreeEntry> {
-        val root = json.parseToJsonElement(text)
-        val array = root as? JsonArray ?: return emptyList()
-        return array.mapNotNull { element ->
-            val obj = element as? JsonObject ?: return@mapNotNull null
-            TreeEntry(
-                name = obj["name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
-                path = obj["path"]?.jsonPrimitive?.contentOrNull ?: "",
-                isDir = obj["type"]?.jsonPrimitive?.contentOrNull == "dir",
-                size = obj["size"]?.jsonPrimitive?.longOrNull,
-            )
-        }.sortedWith(compareByDescending<TreeEntry> { it.isDir }.thenBy { it.name.lowercase() })
+        val url = "$GIT_HOST/api/repos/${enc(repo)}/file?branch=${enc(branch)}&path=${enc(path)}"
+        val file = GitParsers.parseFile(fetchText(url))
+        fileCache = fileCache + (key to file)
+        return file
     }
 
     private suspend fun fetchText(url: String): String {
@@ -102,5 +86,11 @@ class GitHostRepository {
         const val GIT_HOST = "https://git.maproj.org"
         const val FDROID_BASE = "https://static.maproj.org/fdroid/repo"
         const val DEV_WS_URL = "wss://api.maproj.org/dev/ws"
+
+        /** Default commits page size for the commits screen. */
+        const val COMMITS_PAGE_SIZE = 30
     }
 }
+
+/** URL-encodes one path segment or query value. */
+private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")

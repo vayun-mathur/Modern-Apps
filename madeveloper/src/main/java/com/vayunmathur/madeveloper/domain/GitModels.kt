@@ -1,13 +1,56 @@
 package com.vayunmathur.madeveloper.domain
 
-/** A repository hosted on the maproj git host. */
-data class GitRepo(val name: String, val cloneUrl: String, val github: String?, val refs: List<GitRef> = emptyList())
+/** A repository hosted on the maproj git host, from `GET /api/repos`. */
+data class GitRepo(
+    val name: String,
+    val defaultBranch: String = "",
+    val headSha: String = "",
+    val headSubject: String = "",
+    val headTime: String = "",
+) {
+    /** Short form of [headSha] for display. */
+    val shortHeadSha: String get() = headSha.take(8)
 
-/** One advertised git reference (branch or tag) from `info/refs`. */
-data class GitRef(val name: String, val sha: String) {
+    /** Clone URL on the git host. */
+    val cloneUrl: String get() = "https://git.maproj.org/$name.git"
+
+    /** Human web page for this repository on the git host. */
+    val webUrl: String get() = "https://git.maproj.org/$name"
+}
+
+/** One branch of a repository, from `GET /api/repos/<repo>`. */
+data class GitBranch(val name: String, val sha: String, val time: String = "") {
     /** Short form of [sha] for display. */
     val shortSha: String get() = sha.take(8)
 }
+
+/** One commit, from the repo detail or `GET /api/repos/<repo>/commits`. */
+data class GitCommit(
+    val sha: String,
+    val shortSha: String = sha.take(8),
+    val author: String = "",
+    val time: String = "",
+    val subject: String = "",
+    val body: String = "",
+)
+
+/** Full repository detail from `GET /api/repos/<repo>`. */
+data class RepoDetail(
+    val name: String,
+    val defaultBranch: String = "",
+    val branches: List<GitBranch> = emptyList(),
+    val recentCommits: List<GitCommit> = emptyList(),
+)
+
+/** One file read from `GET /api/repos/<repo>/file`. */
+data class GitFile(
+    val path: String,
+    val size: Long = 0,
+    val isBinary: Boolean = false,
+    val content: String? = null,
+    val truncated: Boolean = false,
+    val sha: String = "",
+)
 
 /** One issue as served by `/issues.json`. */
 data class GitIssue(
@@ -30,7 +73,7 @@ data class TestsStatus(
     val history: List<TestRun>, val coveragePct: Double?,
 )
 
-/** One entry in a repository tree listing. */
+/** One entry in a repository tree listing from `GET /api/repos/<repo>/tree`. */
 data class TreeEntry(val name: String, val path: String, val isDir: Boolean, val size: Long?)
 
 /** One installable build in the read-only F-Droid catalog. */
