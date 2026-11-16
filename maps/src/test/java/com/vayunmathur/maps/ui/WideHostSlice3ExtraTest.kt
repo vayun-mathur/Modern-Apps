@@ -87,7 +87,6 @@ class WideHostSlice3ExtraTest {
             noResultsMessage = "No results",
             chrome = remember {
                 MapChromeState(
-                    mutableStateOf(RouteService.TravelMode.DRIVE),
                     mutableStateOf(null),
                     mutableStateOf(true),
                     mutableStateOf(false),

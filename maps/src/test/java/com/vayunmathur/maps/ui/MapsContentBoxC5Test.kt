@@ -72,7 +72,6 @@ class MapsContentBoxC5Test {
         val cs = rememberCoroutineScope()
         val chrome = remember {
             MapChromeState(
-                mutableStateOf(RouteService.TravelMode.DRIVE),
                 mutableStateOf(null),
                 mutableStateOf(true),
                 mutableStateOf(false),

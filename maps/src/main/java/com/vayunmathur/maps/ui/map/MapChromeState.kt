@@ -11,14 +11,13 @@ import androidx.compose.runtime.setValue
 import com.vayunmathur.library.map.MapBody
 import com.vayunmathur.maps.data.PostedLimit
 import com.vayunmathur.maps.ui.MapCategory
-import com.vayunmathur.maps.util.RouteService
 
 /**
  * Everything the map chrome remembers, and the single place where retain-vs-remember is decided.
  *
  * The rule, applied once here instead of at ten scattered declarations:
  *
- *  * **`retain`** for anything the user *chose* — the travel mode, the category filter, which
+ *  * **`retain`** for anything the user *chose* — the category filter,
  *    whether the camera follows, whether it is north-up. Losing a choice on
  *    rotation reads as the app forgetting what you told it, and all but one of these were
  *    `remember`, so it did.
@@ -34,16 +33,12 @@ import com.vayunmathur.maps.util.RouteService
  */
 @Stable
 class MapChromeState internal constructor(
-    selectedRouteTypeState: MutableState<RouteService.TravelMode>,
     selectedCategoryState: MutableState<MapCategory?>,
     autoFollowState: MutableState<Boolean>,
     northUpState: MutableState<Boolean>,
     postedLimitState: MutableState<PostedLimit?>,
     lastProgrammaticMoveMsState: MutableState<Long>,
 ) {
-    /** Which travel mode's route the sheet is showing. */
-    var selectedRouteType by selectedRouteTypeState
-
     /** Active browse-category POI filter, or null for no filter. */
     var selectedCategory by selectedCategoryState
 
@@ -82,7 +77,6 @@ class MapChromeState internal constructor(
 /** The map chrome state for this screen. */
 @Composable
 fun rememberMapChromeState(): MapChromeState {
-    val selectedRouteType = retain { mutableStateOf(RouteService.TravelMode.DRIVE) }
     val selectedCategory = retain { mutableStateOf<MapCategory?>(null) }
     val autoFollow = retain { mutableStateOf(true) }
     val northUp = retain { mutableStateOf(false) }
@@ -91,7 +85,6 @@ fun rememberMapChromeState(): MapChromeState {
 
     return remember {
         MapChromeState(
-            selectedRouteTypeState = selectedRouteType,
             selectedCategoryState = selectedCategory,
             autoFollowState = autoFollow,
             northUpState = northUp,

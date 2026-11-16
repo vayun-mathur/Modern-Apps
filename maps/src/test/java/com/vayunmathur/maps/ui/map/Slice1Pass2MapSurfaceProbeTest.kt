@@ -37,7 +37,6 @@ class Slice1Pass2MapSurfaceProbeTest {
     private val app: Application get() = ApplicationProvider.getApplicationContext()
 
     private fun chrome() = MapChromeState(
-        selectedRouteTypeState = mutableStateOf(RouteService.TravelMode.DRIVE),
         selectedCategoryState = mutableStateOf(null),
         autoFollowState = mutableStateOf(true),
         northUpState = mutableStateOf(false),

@@ -155,7 +155,7 @@ fun MapPage(
     // The visible route tab is the RoutePlan's mode: switching it writes
     // the route back (setLast), and routes plans that mode first.
     val activeRoutePlan = sheetStack.backStack.routePlan()
-    val selectedRouteType = activeRoutePlan?.mode ?: chrome.selectedRouteType
+    val selectedRouteType = activeRoutePlan?.mode ?: RouteService.TravelMode.DRIVE
     val route by viewModel.routes.collectAsState(null)
     // Collected here (rather than inside the sheet) so the inner place sheet's
     // contentKey can name them: the tab switch and the late-arriving reviews
@@ -316,9 +316,9 @@ fun MapPage(
             (sheetTop as? SheetRoute.Place)?.let { sheetStack.setLast(it.copy(section = section)) }
         },
         onRouteMode = { mode ->
-            val plan = sheetStack.backStack.routePlan()
-            if (plan != null && sheetTop is SheetRoute.RoutePlan) sheetStack.setLast(plan.copy(mode = mode))
-            else chrome.selectedRouteType = mode
+            if (sheetTop is SheetRoute.RoutePlan) {
+                sheetStack.setLast((sheetTop as SheetRoute.RoutePlan).copy(mode = mode))
+            }
         },
         selectedRouteType = selectedRouteType,
         poiEnrichmentKey = PoiEnrichmentKey.of(currentPoiInfo),

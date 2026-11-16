@@ -16,7 +16,6 @@ import kotlin.test.assertNull
 class MapChromeStateSlice1Test {
 
     private fun state() = MapChromeState(
-        selectedRouteTypeState = mutableStateOf(RouteService.TravelMode.DRIVE),
         selectedCategoryState = mutableStateOf<MapCategory?>(null),
         autoFollowState = mutableStateOf(true),
         northUpState = mutableStateOf(false),
@@ -57,17 +56,14 @@ class MapChromeStateSlice1Test {
     @Test
     fun `chrome choices start at their documented defaults`() {
         val s = state()
-        assertEquals(RouteService.TravelMode.DRIVE, s.selectedRouteType)
         assertEquals(true, s.autoFollow)
         assertEquals(false, s.northUp)
         assertNull(s.postedLimit)
         assertEquals(0L, s.lastProgrammaticMoveMs)
-        s.selectedRouteType = RouteService.TravelMode.TRANSIT
         s.autoFollow = false
         s.northUp = true
         s.postedLimit = PostedLimit(kmh = 50, mph = 30, displayIsMph = false)
         s.lastProgrammaticMoveMs = 123L
-        assertEquals(RouteService.TravelMode.TRANSIT, s.selectedRouteType)
         assertEquals(50, s.postedLimit?.kmh)
         assertEquals(123L, s.lastProgrammaticMoveMs)
     }

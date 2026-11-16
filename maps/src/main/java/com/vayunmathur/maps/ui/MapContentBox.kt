@@ -79,7 +79,7 @@ internal fun MapPageScope.MapContentBox(
                     transitViewModel = transitViewModel,
                     sheetState = sheetState,
                     selectedFeature = selectedFeature,
-                    route = route?.get(chrome.selectedRouteType),
+                    route = route?.get(selectedRouteType),
                     userPosition = userPosition,
                     userBearing = userBearing,
                     navProgress = navProgress,

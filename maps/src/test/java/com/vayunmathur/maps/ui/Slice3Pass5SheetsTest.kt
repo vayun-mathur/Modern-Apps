@@ -68,7 +68,6 @@ class Slice3Pass5SheetsTest {
             noResultsMessage = "No results",
             chrome = remember {
                 MapChromeState(
-                    mutableStateOf(RouteService.TravelMode.DRIVE),
                     mutableStateOf(null),
                     mutableStateOf(true),
                     mutableStateOf(false),
