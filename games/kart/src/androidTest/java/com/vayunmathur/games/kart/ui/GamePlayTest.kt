@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
  * Journey test: launches kart, taps Start Race, and asserts the race HUD stays
  * put rather than dropping back to the garage or crashing.
  *
- * Kart boots into the garage lobby (Route.Game) with the stable Start Race
+ * Kart boots into the garage lobby (Route.Lobby) with the stable Start Race
  * button; tapping it runs the 3-2-1 countdown into the placeholder race, whose
  * HUD carries the stable "Lap 1 of 3" readout for the whole first lap. The
  * wait covers the countdown plus race start.

@@ -6,7 +6,19 @@ import kotlinx.serialization.Serializable
 /** Contract for route. */
 @Serializable
 sealed interface Route : NavKey {
-    /** The garage screen: which karts/tracks are unlocked and what the next race looks like. */
+    /** The garage/lobby: seats filling up before a race. */
     @Serializable
-    data object Game : Route
+    data object Lobby : Route
+
+    /**
+     * A live race. The countdown is in-screen state of this destination
+     * (a few seconds of "3-2-1-GO" before controls go live), not a
+     * destination of its own.
+     */
+    @Serializable
+    data object Race : Route
+
+    /** The results after a race; leaving it returns to [Lobby]. */
+    @Serializable
+    data object Results : Route
 }
