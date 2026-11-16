@@ -23,12 +23,14 @@ import com.vayunmathur.library.util.DailyStreakReporter
 import com.vayunmathur.library.work.DailyPuzzleReminder
 import com.vayunmathur.library.work.DailyReminderSettings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -96,6 +98,15 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
                 dailyStore.currentStreak,
                 _generationAttempt,
             ) { mode, level, markMode, streak, attempt -> Session(mode, level, markMode, streak, attempt) }
+                // distinctUntilChanged is load-bearing, not an optimisation:
+                // the upstream flows are maps over the whole preferences
+                // snapshot, so EVERY store write (each board mark a tap
+                // persists!) re-emits them. Without this, each write made
+                // collectLatest cancel the in-flight load and start it
+                // again — with several ViewModels alive (or repeated writes
+                // in production) the current load could be cancelled
+                // continuously and the board never appeared.
+                .distinctUntilChanged()
                 .collectLatest { session -> load(session) }
         }
     }
@@ -136,7 +147,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
                 NonogramGenerator.DEFAULT_ROUNDS +
                     session.attempt * NonogramGenerator.RETRY_EXTRA_ROUNDS
                 ).coerceAtMost(MAX_GENERATION_ROUNDS)
-            cached ?: NonogramGenerator.generateSeeded(size, seed, rounds)
+            cached ?: NonogramGenerator.generateSeeded(size, seed, rounds) { coroutineContext.isActive }
         }
 
         if (puzzle == null) {

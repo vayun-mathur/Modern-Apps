@@ -47,6 +47,19 @@ import kotlin.test.assertTrue
 @RunWith(RobolectricTestRunner::class)
 class NonogramScreensTest {
     @get:Rule val rule = createComposeRule()
+
+    @kotlin.test.BeforeTest
+    fun setUp() {
+        // Real-ViewModel tests reach the reminder/WorkManager path; an
+        // uninitialized WorkManager throws inside DataStore writes and
+        // poisons the shared store (see NonogramViewModelTest.setUp).
+        runCatching {
+            androidx.work.WorkManager.initialize(
+                ApplicationProvider.getApplicationContext<android.app.Application>(),
+                androidx.work.Configuration.Builder().build(),
+            )
+        }
+    }
     private val ctx get() = ApplicationProvider.getApplicationContext<Context>()
     private fun str(id: Int, vararg args: Any) = if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)
 
@@ -331,10 +344,24 @@ class NonogramScreensTest {
     @Test fun settingsPageWithRealViewModelRenders() {
         val vm = com.vayunmathur.games.nonogram.platform.NonogramViewModel(
             androidx.test.core.app.ApplicationProvider.getApplicationContext<android.app.Application>())
-        var backed = false
-        rule.setContent { SettingsPage(vm, onBack = { backed = true }) }
-        rule.onNodeWithText(str(UiR.string.settings)).assertExists()
-        assertTrue(!backed)
+        try {
+            var backed = false
+            rule.setContent { SettingsPage(vm, onBack = { backed = true }) }
+            // Await the title (pumping Robolectric's paused main looper,
+            // which the real VM's collectors run on) instead of asserting
+            // the first frame: under load the first composition lands
+            // late and the immediate assert raced it.
+            rule.waitUntil(15_000) {
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                rule.onAllNodesWithText(str(UiR.string.settings)).fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText(str(UiR.string.settings)).assertExists()
+            assertTrue(!backed)
+        } finally {
+            // No ViewModelStore.clear(): cancelling the scope can cancel
+            // an in-flight DataStore edit and strand the store (see
+            // NonogramViewModelTest's tearDown note).
+        }
     }
 
     @Test fun settingsScreenRendersAndToggles() {

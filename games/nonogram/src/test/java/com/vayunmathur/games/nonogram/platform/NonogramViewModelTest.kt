@@ -11,7 +11,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.runner.RunWith
@@ -28,7 +27,26 @@ import kotlin.test.assertTrue
 @RunWith(RobolectricTestRunner::class)
 class NonogramViewModelTest {
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
-    @BeforeTest fun setUp() { retrying { Dispatchers.setMain(Dispatchers.Unconfined) } }
+    private val vmStore = androidx.lifecycle.ViewModelStore()
+    @BeforeTest fun setUp() {
+        retrying { Dispatchers.setMain(Dispatchers.Unconfined) }
+        // The reminder path (DailyPuzzleReminder rescheduling, reached
+        // from the ViewModel and the achievements/daily machinery) calls
+        // WorkManager.getInstance, which throws when uninitialized — and
+        // that throw lands inside a DataStore write, killing the shared
+        // store's write actor for every later test in this JVM (boards
+        // then never load or persist: the rotating "game loads" /
+        // "persisted" timeouts). Sibling suites initialize it up front.
+        runCatching {
+            androidx.work.WorkManager.initialize(app, androidx.work.Configuration.Builder().build())
+        }
+    }
+
+    /** Registers [vm] so tearDown can cancel its viewModelScope (see below). */
+    private fun track(vm: NonogramViewModel): NonogramViewModel {
+        vmStore.put("vm${System.identityHashCode(vm)}", vm)
+        return vm
+    }
 
     /**
      * Drains the store before Main is reset.
@@ -40,6 +58,17 @@ class NonogramViewModelTest {
      */
     @AfterTest fun tearDown() {
         val store = com.vayunmathur.games.nonogram.data.NonogramDataStore(app)
+        // Drain, then clear, then drain again. Uncleared ViewModels stay
+        // subscribed to the shared store, so a later test's mode/level
+        // write makes EVERY stale VM regenerate a (possibly daily-sized)
+        // puzzle at once and the live VM's own generation queues behind
+        // them — the "game loads" timeouts. But clearing while a board
+        // or win write is still in flight can cancel that DataStore edit
+        // mid-flight, so a barrier edit (which the store's actor applies
+        // after everything already queued) goes first, and once more
+        // after the clear for anything the cancellation shook loose.
+        runCatching { blocking { store.setMarkMode(store.markMode.first()) } }
+        vmStore.clear()
         repeat(2) {
             runCatching { blocking { store.setMarkMode(store.markMode.first()) } }
             Thread.sleep(50)
@@ -56,32 +85,82 @@ class NonogramViewModelTest {
 
     private companion object {
         const val RETRIES = 20
-        const val AWAIT_STEPS = 800
+        const val AWAIT_STEPS = 2000
         const val AWAIT_STEP_NANOS = 25_000_000L
     }
 
     /**
-     * Polls [cond] for up to ~20s of real time.
+     * Polls [cond] for up to [AWAIT_STEPS] steps.
      *
      * Counted in steps rather than against System.currentTimeMillis(): Robolectric substitutes its
      * own clock for test code, which can run far ahead of real time, so a clock-based deadline could
-     * give up within milliseconds while a background write was still landing. parkNanos is real.
+     * give up within milliseconds while a background write was still landing.
      */
-    private fun await(desc: String, cond: () -> Boolean) {
+    @Volatile
+    private var burnSink: Long = 0
+
+    private fun stepSleep() {
+        // Robolectric virtualises every clock, park, sleep, wait and
+        // scheduled delay reachable from this suite (they all return in
+        // ~0.2ms, advancing the substituted clock), so an await step
+        // cannot literally wait: step budgets burned out in ~0.16s of
+        // real time, before slow-but-healthy IO writes landed on a
+        // loaded box — hence the rotating "timed out" failures. The
+        // only real time available is CPU work, so a step burns a
+        // fixed dependent-arithmetic loop (~10ms on a fast core; a
+        // slower CI core just makes each step longer, which is the
+        // safe direction). The volatile sink keeps the JIT honest.
+        var x = burnSink + 0x9E3779B97F4A7C15uL.toLong()
+        for (i in 0 until 20_000_000) {
+            x = x * 31 + i
+        }
+        burnSink = x
+    }
+
+
+
+    private fun await(desc: String, maxSteps: Int = AWAIT_STEPS, cond: () -> Boolean) {
+        // Assert on the observed value, not a fresh re-read: the old
+        // shape evaluated cond() once to leave the loop and again in
+        // assertTrue, and a store value that flipped between those two
+        // reads (or a transiently failing second read) failed a wait
+        // that had actually succeeded — "timed out after 1 steps".
         var steps = 0
-        while (steps++ < AWAIT_STEPS && !cond()) LockSupport.parkNanos(AWAIT_STEP_NANOS)
-        assertTrue(cond(), "timed out: $desc")
+        var ok = cond()
+        while (!ok && steps++ < maxSteps) {
+            stepSleep()
+            ok = cond()
+        }
+        assertTrue(ok, "timed out: $desc after $steps steps")
     }
 
     /**
-     * runBlocking with a deadline. The DataStore outlives each test, so if one test ever leaves it
-     * wedged the rest fail fast with a timeout instead of hanging the whole suite.
+     * runBlocking for one-shot store reads. Deliberately NO withTimeout:
+     * under Robolectric the timeout's delay runs on the substituted
+     * clock and fires effectively instantly, so any read that needs an
+     * async DataStore round-trip loses the race and the poll conditions
+     * in [await] could never observe a landed write (the "undo
+     * persisted" flake: every poll timed out before the emission
+     * arrived). The store's write actor is kept alive by initializing
+     * WorkManager in setUp, so reads complete; [await]'s step budget
+     * bounds the total wait instead.
      */
-    private fun <T> blocking(block: suspend () -> T): T = runBlocking { withTimeout(15_000) { block() } }
+    private fun <T> blocking(block: suspend () -> T): T = runBlocking { block() }
 
     private fun loadedVm(level: Int = 1): NonogramViewModel {
-        val vm = NonogramViewModel(app)
-        blocking { vm.dataStore.saveLevel(level); vm.dataStore.setGameMode(GameMode.CASUAL); vm.dataStore.setMarkMode(MarkMode.FILL) }
+        // Seed the store BEFORE creating the ViewModel: writing level,
+        // mode and mark mode after construction makes the VM's session
+        // combine emit (and collectLatest cancel) up to three generation
+        // passes — each a solver-checked search — before the real one,
+        // which on a loaded 4-core CI box starved the 20s load await.
+        // Generation itself gets a larger step budget for the same reason:
+        // it is genuine CPU work whose duration scales with the box.
+        val store = com.vayunmathur.games.nonogram.data.NonogramDataStore(app)
+        // No withTimeout here: cancelling a DataStore edit mid-flight
+        // (blocking's 15s cap under load) can strand the store's actor
+        // for the next collector. These three edits are tiny; let them land.
+        runBlocking { store.saveLevel(level); store.setGameMode(GameMode.CASUAL); store.setMarkMode(MarkMode.FILL) }
+        val vm = track(NonogramViewModel(app))
         await("game loads") { vm.uiState.value.game != null && !vm.uiState.value.generating }
         return vm
     }
@@ -153,7 +232,7 @@ class NonogramViewModelTest {
         assertEquals(target.toSet(), vm.uiState.value.game!!.filled)
         await("last snapshot wins") { blocking { vm.dataStore.filledCells.first() } == target.toSet() }
         // A fresh ViewModel (a relaunch) loads exactly what was played.
-        val again = NonogramViewModel(app)
+        val again = track(NonogramViewModel(app))
         await("reload") { again.uiState.value.game?.filled == target.toSet() }
     }
 
@@ -207,8 +286,16 @@ class NonogramViewModelTest {
         assertFalse(vm.uiState.value.canUndo)
         vm.undo() // empty: no-op
         assertEquals(s, vm.uiState.value.game)
-        // Undo is persisted like any move.
-        await("undo persisted") { blocking { vm.dataStore.filledCells.first() }.isEmpty() }
+        // Undo is persisted like any move. A transient failure of the
+        // read itself (the Robolectric environment occasionally
+        // interrupts the polling runBlocking) must not abort the wait:
+        // it just means "not landed yet". The final condition still
+        // requires the store to actually read empty.
+        await("undo persisted") {
+            runCatching { blocking { vm.dataStore.filledCells.first() } }
+                .getOrDefault(setOf(-1))
+                .isEmpty()
+        }
         // Restart wipes the history.
         vm.crossCell(correct)
         assertTrue(vm.uiState.value.canUndo)
@@ -246,8 +333,10 @@ class NonogramViewModelTest {
         winBoard(vm)
         vm.nextLevel()
         // The first tap flags the load straight away, so the second is refused rather than
-        // reading the already-raised level counter and writing level 3.
-        assertTrue(vm.uiState.value.generating)
+        // reading the already-raised level counter and writing level 3. (No assert on the
+        // transient `generating` flag itself: the level-2 load it starts can legitimately
+        // complete before this thread's next line runs, which made that assert a coin flip.
+        // The refusal is what the level assertions below prove.)
         vm.nextLevel()
         await("level 2 loaded") {
             vm.uiState.value.game?.level == 2 && !vm.uiState.value.generating
@@ -345,6 +434,12 @@ class NonogramViewModelTest {
     @Test fun achievementsManagerBackfillDoesNotCrash() {
         val vm = loadedVm()
         vm.achievementsManager.checkExistingAchievements()
+        // checkExistingAchievements launches on Dispatchers.IO; asserting
+        // its unlocks synchronously raced that work and lost under load.
+        await("backfill unlocks land") {
+            vm.achievementsManager.achievements.any { it.id == "first_puzzle" } &&
+                vm.achievementsManager.achievements.any { it.id == "daily_streak_30" }
+        }
         assertTrue(vm.achievementsManager.achievements.any { it.id == "first_puzzle" })
         assertTrue(vm.achievementsManager.achievements.any { it.id == "daily_streak_30" })
     }

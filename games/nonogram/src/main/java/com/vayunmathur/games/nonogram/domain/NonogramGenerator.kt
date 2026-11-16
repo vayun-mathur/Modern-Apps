@@ -27,8 +27,16 @@ object NonogramGenerator {
         rng: Random,
         fillRatio: Double = DEFAULT_FILL_RATIO,
         attempts: Int = DEFAULT_ATTEMPTS,
+        shouldContinue: () -> Boolean = { true },
     ): NonogramPuzzle? {
         repeat(attempts) {
+            // Cooperative cancellation: this loop is pure CPU with no
+            // suspension points, so a cancelled caller (collectLatest
+            // dropping a stale load when the level/mode flips) would
+            // otherwise keep burning a core to the end of the search and
+            // starve its own replacement — on a 4-core box a handful of
+            // zombie searches can stall the live one past any timeout.
+            if (!shouldContinue()) return null
             val candidate = paint(size, rng, fillRatio)
             // An all-blank grid is technically line-solvable and completely pointless to play.
             if (candidate.none { it }) return@repeat
@@ -44,9 +52,16 @@ object NonogramGenerator {
      * Every seed is a pure function of [seed], so the same level number always yields the same
      * puzzle however many rounds it takes — that is what lets saved progress stay valid.
      */
-    fun generateSeeded(size: Int, seed: Long, rounds: Int = DEFAULT_ROUNDS): NonogramPuzzle? {
+    fun generateSeeded(
+        size: Int,
+        seed: Long,
+        rounds: Int = DEFAULT_ROUNDS,
+        shouldContinue: () -> Boolean = { true },
+    ): NonogramPuzzle? {
         for (round in 0 until rounds) {
-            generate(size, Random(seed + round * SEED_STRIDE))?.let { return it }
+            if (!shouldContinue()) return null
+            generate(size, Random(seed + round * SEED_STRIDE), shouldContinue = shouldContinue)
+                ?.let { return it }
         }
         return null
     }
