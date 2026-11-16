@@ -167,6 +167,32 @@ class MeasureViewModelTest {
         assertTrue(vm.ar.value.anchors.isEmpty())
     }
 
+    @Test fun trackingLostClearsAnchorsAndMeasurements() {
+        val vm = MeasureViewModel(app)
+        vm.onTrackingUpdate(TrackingQuality.Good, hasPlane = true)
+        vm.addResolvedAnchor(0.0, 0.0, 0.0, onPlane = true)
+        vm.addResolvedAnchor(3.0, 4.0, 0.0, onPlane = true)
+        vm.addResolvedAnchor(3.0, 0.0, 0.0, onPlane = true)
+        vm.closePolygon()
+        assertTrue(vm.ar.value.polygonClosed)
+        assertNotNull(vm.ar.value.distanceM)
+        // Losing tracking invalidates the world frame: anchors and every
+        // derived measurement must go, or the UI quotes unanchored numbers.
+        vm.onTrackingUpdate(TrackingQuality.Lost, hasPlane = false)
+        assertEquals(TrackingQuality.Lost, vm.ar.value.quality)
+        assertTrue(vm.ar.value.anchors.isEmpty())
+        assertNull(vm.ar.value.distanceM)
+        assertNull(vm.ar.value.areaM2)
+        assertNull(vm.ar.value.perimeterM)
+        assertFalse(vm.ar.value.polygonClosed)
+        assertFalse(vm.ar.value.hasPlane)
+        // A non-Lost update keeps whatever anchors exist.
+        vm.addResolvedAnchor(1.0, 1.0, 0.0, onPlane = false)
+        vm.onTrackingUpdate(TrackingQuality.Limited, hasPlane = true)
+        assertEquals(1, vm.ar.value.anchors.size)
+        assertTrue(vm.ar.value.hasPlane)
+    }
+
     @Test fun sensorFeedsDriveCompassAndLevelState() {
         val vm = MeasureViewModel(app)
         vm.updateLocation(37.8, -122.4)
