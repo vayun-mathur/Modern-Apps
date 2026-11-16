@@ -5,7 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import com.vayunmathur.communicate.ui.signal.SignalRegistrationScreen
+import com.vayunmathur.communicate.ui.signal.SignalRegistrationNumberScreen
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -21,7 +21,7 @@ class SignalSlice2Pass2RegistrationScreenTest {
 
     @Test fun `number entry starts with actions disabled until a number is typed`() {
         var backs = 0; var registered = 0
-        rule.setContent { SignalRegistrationScreen(onBack = { backs++ }, onRegistered = { registered++ }) }
+        rule.setContent { SignalRegistrationNumberScreen(onBack = { backs++ }, onCaptchaRequired = { _, _, _ -> }, onCodeRequested = { _, _ -> registered++ }) }
         rule.onNodeWithText("Register Signal").assertExists()
         rule.onNodeWithText("Request SMS code").assertIsNotEnabled()
         rule.onNodeWithText("Phone number").performTextInput("4155552671")
@@ -33,7 +33,7 @@ class SignalSlice2Pass2RegistrationScreenTest {
     }
 
     @Test fun `country code defaults to 1 and only digits survive typing`() {
-        rule.setContent { SignalRegistrationScreen(onBack = {}, onRegistered = {}) }
+        rule.setContent { SignalRegistrationNumberScreen(onBack = {}, onCaptchaRequired = { _, _, _ -> }, onCodeRequested = { _, _ -> }) }
         rule.onNodeWithText("CC").assertExists()
         rule.onNodeWithText("Check number (no SMS)").assertIsNotEnabled()
         rule.onNodeWithText("Phone number").performTextInput("abc415")

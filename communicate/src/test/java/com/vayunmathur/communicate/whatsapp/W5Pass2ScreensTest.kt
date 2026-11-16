@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.vayunmathur.communicate.ui.whatsapp.WhatsAppBackupImportScreen
-import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationScreen
+import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationNumberScreen
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -30,7 +30,7 @@ class W5Pass2ScreensTest {
     @Test
     fun `registration starts on the number step with actions gated on input`() {
         var backed = false
-        rule.setContent { DynamicTheme { WhatsAppRegistrationScreen(onBack = { backed = true }, onRegistered = {}) } }
+        rule.setContent { DynamicTheme { WhatsAppRegistrationNumberScreen(onBack = { backed = true }, onCodeRequested = { _, _ -> }) } }
         rule.onNodeWithText("Register WhatsApp").assertIsDisplayed()
         rule.onNodeWithText("Registers this number as the PRIMARY WhatsApp device.", substring = true).assertIsDisplayed()
         rule.onNodeWithText("CC").assertIsDisplayed()

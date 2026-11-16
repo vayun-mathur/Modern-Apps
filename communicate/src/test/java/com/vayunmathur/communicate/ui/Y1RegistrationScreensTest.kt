@@ -8,9 +8,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.vayunmathur.communicate.ui.rcs.RcsVerifyScreen
 import com.vayunmathur.communicate.ui.signal.SignalCaptchaWebView
-import com.vayunmathur.communicate.ui.signal.SignalRegistrationScreen
+import com.vayunmathur.communicate.ui.signal.SignalRegistrationNumberScreen
 import com.vayunmathur.communicate.ui.whatsapp.WhatsAppBackupImportScreen
-import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationScreen
+import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationNumberScreen
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -20,8 +20,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Y1 registration screens: `SignalRegistrationScreenKt`,
- * `WhatsAppRegistrationScreenKt`, `WhatsAppBackupImportScreenKt`,
+ * Y1 registration screens: `SignalRegistrationNumberScreenKt`,
+ * `WhatsAppRegistrationNumberScreenKt`, `WhatsAppBackupImportScreenKt`,
  * `SignalCaptchaScreen` (the hCaptcha WebView) and `RcsVerifyScreen`.
  *
  * No live server is contacted: these drive the number-entry / key-entry steps
@@ -40,7 +40,7 @@ class Y1RegistrationScreensTest {
 
     @Test fun `signal registration gates every request on a typed number`() {
         var backs = 0
-        rule.setContent { SignalRegistrationScreen(onBack = { backs++ }, onRegistered = {}) }
+        rule.setContent { SignalRegistrationNumberScreen(onBack = { backs++ }, onCaptchaRequired = { _, _, _ -> }, onCodeRequested = { _, _ -> }) }
         rule.onNodeWithText("Register Signal").assertIsDisplayed()
         rule.onNodeWithText("PRIMARY Signal device", substring = true).assertIsDisplayed()
         rule.onNodeWithText("Request SMS code").assertIsNotEnabled()
@@ -55,7 +55,7 @@ class Y1RegistrationScreensTest {
     }
 
     @Test fun `signal number and country code fields keep digits only`() {
-        rule.setContent { SignalRegistrationScreen(onBack = {}, onRegistered = {}) }
+        rule.setContent { SignalRegistrationNumberScreen(onBack = {}, onCaptchaRequired = { _, _, _ -> }, onCodeRequested = { _, _ -> }) }
         rule.onNodeWithText("CC").assertExists()
         rule.onNodeWithText("Phone number").performTextInput("abc415def2671")
         rule.waitForIdle()
@@ -78,7 +78,7 @@ class Y1RegistrationScreensTest {
 
     @Test fun `whatsApp registration mirrors the signal gating and warns about logout`() {
         var backs = 0
-        rule.setContent { WhatsAppRegistrationScreen(onBack = { backs++ }, onRegistered = {}) }
+        rule.setContent { WhatsAppRegistrationNumberScreen(onBack = { backs++ }, onCodeRequested = { _, _ -> }) }
         rule.onNodeWithText("Register WhatsApp").assertIsDisplayed()
         rule.onNodeWithText("log WhatsApp out", substring = true).assertIsDisplayed()
         rule.onNodeWithText("Request SMS code").assertIsNotEnabled()
@@ -91,7 +91,7 @@ class Y1RegistrationScreensTest {
     }
 
     @Test fun `whatsApp country code defaults to 1`() {
-        rule.setContent { WhatsAppRegistrationScreen(onBack = {}, onRegistered = {}) }
+        rule.setContent { WhatsAppRegistrationNumberScreen(onBack = {}, onCodeRequested = { _, _ -> }) }
         rule.onNodeWithText("1", substring = true).assertExists()
         rule.onNodeWithText("CC").assertExists()
     }

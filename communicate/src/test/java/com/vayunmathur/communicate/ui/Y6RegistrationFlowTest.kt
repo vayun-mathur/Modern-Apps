@@ -14,8 +14,10 @@ import androidx.test.core.app.ApplicationProvider
 import com.sun.net.httpserver.HttpServer
 import com.vayunmathur.communicate.data.signal.SignalDatabase
 import com.vayunmathur.communicate.data.whatsapp.WhatsAppDatabase
-import com.vayunmathur.communicate.ui.signal.SignalRegistrationScreen
-import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationScreen
+import com.vayunmathur.communicate.Route
+import com.vayunmathur.communicate.registrationEntries
+import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.NavBackStack
 import java.net.InetSocketAddress
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -100,20 +102,29 @@ class Y6RegistrationFlowTest {
         scripted["code"] = 200 to """{"status":"sent","method":"sms","length":6}"""
         scripted["register"] = 200 to """{"status":"security_code"}"""
         scripted["security"] = 200 to """{"status":"ok","new_jid":"15550102030@s.whatsapp.net","server_time":99}"""
-        var registered = 0
-        rule.setContent { WhatsAppRegistrationScreen(onBack = {}, onRegistered = { registered++ }) }
+        val stack = NavBackStack(arrayOf<Route>(Route.Accounts, Route.WhatsAppRegistration.Number))
+        rule.setContent {
+            MainNavigation(stack) {
+                entry<Route.Accounts> { androidx.compose.material3.Text("Accounts") }
+                registrationEntries(stack)
+            }
+        }
         rule.onNodeWithText("Phone number").performTextInput("5550102030")
         rule.onNodeWithText("Request SMS code").performClick()
         awaitText("6-digit code")
+        assertEquals(Route.WhatsAppRegistration.Code("1", "5550102030"), stack.backStack.last())
         rule.onNodeWithText("6-digit code").performTextInput("123456")
         rule.onNodeWithText("Verify").performClick()
         awaitText("2FA PIN")
+        assertEquals(Route.WhatsAppRegistration.Pin("1", "5550102030"), stack.backStack.last())
         rule.onNodeWithText("2FA PIN").performTextInput("654321")
         rule.onNodeWithText("Submit PIN").performClick()
         awaitText("Registered ✓", substring = true)
+        assertEquals(Route.WhatsAppRegistration.Done("1", "5550102030"), stack.backStack.last())
         rule.onNodeWithText("Done").performClick()
         rule.waitForIdle()
-        assertEquals(1, registered)
+        // Done replaced the registration sub-stack, so leaving it exits registration.
+        assertEquals(listOf<Route>(Route.Accounts), stack.backStack)
         assertTrue(requests.any { it.startsWith("/code") }, "$requests")
         assertTrue(requests.any { it.startsWith("/security") }, "$requests")
     }
@@ -121,16 +132,24 @@ class Y6RegistrationFlowTest {
     @Test fun whatsAppDirectRegisterToDone() {
         scripted["code"] = 200 to """{"status":"sent"}"""
         scripted["register"] = 200 to """{"status":"ok","new_jid":"15550102030@s.whatsapp.net"}"""
-        var registered = 0
-        rule.setContent { WhatsAppRegistrationScreen(onBack = {}, onRegistered = { registered++ }) }
+        val stack = NavBackStack(arrayOf<Route>(Route.Accounts, Route.WhatsAppRegistration.Number))
+        rule.setContent {
+            MainNavigation(stack) {
+                entry<Route.Accounts> { androidx.compose.material3.Text("Accounts") }
+                registrationEntries(stack)
+            }
+        }
         rule.onNodeWithText("Phone number").performTextInput("5550102030")
         rule.onNodeWithText("Request SMS code").performClick()
         awaitText("6-digit code")
         rule.onNodeWithText("6-digit code").performTextInput("111111")
         rule.onNodeWithText("Verify").performClick()
         awaitText("Registered ✓", substring = true)
+        // No PIN step without a security_code response: Code verified straight to Done.
+        assertEquals(Route.WhatsAppRegistration.Done("1", "5550102030"), stack.backStack.last())
         rule.onNodeWithText("Done").performClick()
-        assertEquals(1, registered)
+        rule.waitForIdle()
+        assertEquals(listOf<Route>(Route.Accounts), stack.backStack)
     }
 
 

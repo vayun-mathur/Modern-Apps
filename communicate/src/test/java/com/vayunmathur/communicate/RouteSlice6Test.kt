@@ -69,8 +69,8 @@ class RouteSlice6Test {
         assertTrue(Route.Messages != Route.Accounts)
         assertTrue(Route.Messages != Route.Dialer)
         assertTrue(Route.Dialer != Route.CallLogs)
-        assertTrue(Route.GoogleVoiceSignIn != Route.WhatsAppRegistration)
-        assertTrue(Route.WhatsAppBackupImport != Route.SignalRegistration)
+        assertTrue(Route.GoogleVoiceSignIn != Route.WhatsAppRegistration.Number)
+        assertTrue(Route.WhatsAppBackupImport != Route.SignalRegistration.Number)
         assertTrue(Route.RcsStatus != Route.Messages)
         assertEquals(Route.Call, Route.Call)
         assertTrue(Route.Call != Route.Messages)
@@ -92,9 +92,9 @@ class RouteSlice6Test {
             Route.CallLogs,
             Route.Accounts,
             Route.GoogleVoiceSignIn,
-            Route.WhatsAppRegistration,
+            Route.WhatsAppRegistration.Number,
             Route.WhatsAppBackupImport,
-            Route.SignalRegistration,
+            Route.SignalRegistration.Number,
             Route.RcsStatus,
             Route.RcsVerify("+15551234567"),
             Route.RcsGroupMembers("conv-1"),

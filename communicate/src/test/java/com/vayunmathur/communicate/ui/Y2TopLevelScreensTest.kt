@@ -40,8 +40,8 @@ import com.vayunmathur.communicate.data.signal.SignalDatabase
 import com.vayunmathur.communicate.data.whatsapp.WhatsAppCachedMessage
 import com.vayunmathur.communicate.data.whatsapp.WhatsAppDatabase
 import com.vayunmathur.communicate.ui.rcs.RcsGroupMembersScreen
-import com.vayunmathur.communicate.ui.signal.SignalRegistrationScreen
-import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationScreen
+import com.vayunmathur.communicate.ui.signal.SignalRegistrationNumberScreen
+import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationNumberScreen
 import com.vayunmathur.library.util.DataStoreUtils
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.AfterTest
@@ -467,7 +467,7 @@ class Y2TopLevelScreensTest {
 
     @Test
     fun `signal request code with no server surfaces an error and stays on the number step`() {
-        rule.setContent { SignalRegistrationScreen(onBack = {}, onRegistered = {}) }
+        rule.setContent { SignalRegistrationNumberScreen(onBack = {}, onCaptchaRequired = { _, _, _ -> }, onCodeRequested = { _, _ -> }) }
         rule.onNodeWithText("Phone number").performTextInput("4155552671")
         rule.waitForIdle()
         rule.onNodeWithText("Request SMS code").assertIsEnabled()
@@ -494,7 +494,7 @@ class Y2TopLevelScreensTest {
 
     @Test
     fun `whatsApp request code with no server surfaces an error and stays on the number step`() {
-        rule.setContent { WhatsAppRegistrationScreen(onBack = {}, onRegistered = {}) }
+        rule.setContent { WhatsAppRegistrationNumberScreen(onBack = {}, onCodeRequested = { _, _ -> }) }
         rule.onNodeWithText("Phone number").performTextInput("4155552671")
         rule.waitForIdle()
         rule.onNodeWithText("Request SMS code").assertIsEnabled()
@@ -511,7 +511,7 @@ class Y2TopLevelScreensTest {
     fun `whatsApp verify stays gated below six digits on the number step`() {
         // Client-side gate complement to the network tests above: without a
         // successful request there is no code step at all.
-        rule.setContent { WhatsAppRegistrationScreen(onBack = {}, onRegistered = {}) }
+        rule.setContent { WhatsAppRegistrationNumberScreen(onBack = {}, onCodeRequested = { _, _ -> }) }
         rule.onNodeWithText("Verify").assertDoesNotExist()
         rule.onNodeWithText("Request SMS code").assertIsNotEnabled()
         rule.onNodeWithText("Phone number").performTextInput("415")

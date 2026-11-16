@@ -49,7 +49,10 @@ import com.vayunmathur.communicate.data.whatsapp.call.WhatsAppCallBridge
 import com.vayunmathur.communicate.telephony.InAppCallTelecom
 import com.vayunmathur.communicate.ui.call.InAppCallScreen
 import com.vayunmathur.communicate.ui.googlevoice.GoogleVoiceSignInScreen
-import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationScreen
+import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationCodeScreen
+import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationDoneScreen
+import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationNumberScreen
+import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationPinScreen
 import com.vayunmathur.communicate.telephony.WhatsAppSyncService
 import com.vayunmathur.communicate.data.whatsapp.WhatsAppLineSession
 import com.vayunmathur.communicate.data.signal.SignalFeature
@@ -60,7 +63,10 @@ import com.vayunmathur.communicate.data.rcs.RcsRegistrationState
 import com.vayunmathur.communicate.data.rcs.RcsSipTransport
 import com.vayunmathur.communicate.telephony.RcsSyncService
 import com.vayunmathur.communicate.ui.rcs.RcsRegistrationScreen
-import com.vayunmathur.communicate.ui.signal.SignalRegistrationScreen
+import com.vayunmathur.communicate.ui.signal.SignalRegistrationCaptchaScreen
+import com.vayunmathur.communicate.ui.signal.SignalRegistrationCodeScreen
+import com.vayunmathur.communicate.ui.signal.SignalRegistrationDoneScreen
+import com.vayunmathur.communicate.ui.signal.SignalRegistrationNumberScreen
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.serialization.Serializable
 
@@ -76,12 +82,49 @@ sealed interface Route : NavKey {
     @Serializable data object Accounts : Route
     /** The Google Voice sign-in route. */
     @Serializable data object GoogleVoiceSignIn : Route
-    /** The WhatsApp phone-number registration route. */
-    @Serializable data object WhatsAppRegistration : Route
+    /**
+     * The WhatsApp phone-number registration wizard: one sub-destination
+     * per step, pushed in flow order. [Pin] is conditional (only numbers
+     * with two-step verification reach it), and reaching [Done] replaces
+     * the whole sub-stack so leaving Done exits registration. The entered
+     * country code and number travel in the step arguments.
+     */
+    @Serializable
+    sealed interface WhatsAppRegistration : Route {
+        /** Enter the number and request an OTP. */
+        @Serializable data object Number : WhatsAppRegistration
+        /** Enter the OTP for [number]. */
+        @Serializable data class Code(val cc: String, val number: String) : WhatsAppRegistration
+        /** Enter the two-step PIN for [number] (conditional on the Code result). */
+        @Serializable data class Pin(val cc: String, val number: String) : WhatsAppRegistration
+        /** Registration succeeded for [number]. */
+        @Serializable data class Done(val cc: String, val number: String) : WhatsAppRegistration
+    }
     /** The WhatsApp backup import route. */
     @Serializable data object WhatsAppBackupImport : Route
-    /** The Signal phone-number registration route. */
-    @Serializable data object SignalRegistration : Route
+    /**
+     * The Signal phone-number registration wizard: one sub-destination
+     * per step, pushed in flow order. [Captcha] is conditional (only
+     * challenged numbers reach it, carrying the transport to resume),
+     * and reaching [Done] replaces the whole sub-stack so leaving Done
+     * exits registration. The entered country code and number travel in
+     * the step arguments.
+     */
+    @Serializable
+    sealed interface SignalRegistration : Route {
+        /** Enter the number and request an OTP. */
+        @Serializable data object Number : SignalRegistration
+        /** Solve the captcha for [number] and resume requesting via [transport]. */
+        @Serializable data class Captcha(
+            val cc: String,
+            val number: String,
+            val transport: String,
+        ) : SignalRegistration
+        /** Enter the OTP for [number]. */
+        @Serializable data class Code(val cc: String, val number: String) : SignalRegistration
+        /** Registration succeeded for [number]. */
+        @Serializable data class Done(val cc: String, val number: String) : SignalRegistration
+    }
 
     /** The RCS status / provisioning route. */
     @Serializable data object RcsStatus : Route
@@ -315,7 +358,7 @@ private fun EntryProviderScope<Route>.coreEntries(backStack: NavBackStack<Route>
             onSignIn = { backStack.add(Route.GoogleVoiceSignIn) },
             onRegisterWhatsApp = {
                 if (com.vayunmathur.communicate.data.whatsapp.WhatsAppFeature.enabled) {
-                    backStack.add(Route.WhatsAppRegistration)
+                    backStack.add(Route.WhatsAppRegistration.Number)
                 }
             },
             onImportBackup = {
@@ -325,7 +368,7 @@ private fun EntryProviderScope<Route>.coreEntries(backStack: NavBackStack<Route>
             },
             onRegisterSignal = {
                 if (SignalFeature.enabled) {
-                    backStack.add(Route.SignalRegistration)
+                    backStack.add(Route.SignalRegistration.Number)
                 }
             },
             onShowRcsStatus = {
@@ -337,15 +380,60 @@ private fun EntryProviderScope<Route>.coreEntries(backStack: NavBackStack<Route>
     }
 }
 
-private fun EntryProviderScope<Route>.registrationEntries(backStack: NavBackStack<Route>) {
+/**
+ * Replaces the WhatsApp registration steps on the stack with Done.
+ *
+ * Done is the terminal step: leaving it must exit registration (as the
+ * single-screen flow's Done/Back buttons did), not step back into the
+ * code/PIN steps for an already-registered number.
+ */
+internal fun NavBackStack<Route>.showWhatsAppRegistrationDone(cc: String, number: String) {
+    while (backStack.lastOrNull() is Route.WhatsAppRegistration) pop()
+    add(Route.WhatsAppRegistration.Done(cc, number))
+}
+
+/** Replaces the Signal registration steps on the stack with Done; see [showWhatsAppRegistrationDone]. */
+internal fun NavBackStack<Route>.showSignalRegistrationDone(cc: String, number: String) {
+    while (backStack.lastOrNull() is Route.SignalRegistration) pop()
+    add(Route.SignalRegistration.Done(cc, number))
+}
+
+internal fun EntryProviderScope<Route>.registrationEntries(backStack: NavBackStack<Route>) {
     entry<Route.GoogleVoiceSignIn>(metadata = ListDetailPage()) {
         GoogleVoiceSignInScreen(
             onBack = { backStack.pop() },
             onSignedIn = { backStack.pop() },
         )
     }
-    entry<Route.WhatsAppRegistration>(metadata = ListDetailPage()) {
-        WhatsAppRegistrationScreen(
+    entry<Route.WhatsAppRegistration.Number>(metadata = ListDetailPage()) {
+        WhatsAppRegistrationNumberScreen(
+            onBack = { backStack.pop() },
+            onCodeRequested = { cc, number ->
+                backStack.add(Route.WhatsAppRegistration.Code(cc, number))
+            },
+        )
+    }
+    entry<Route.WhatsAppRegistration.Code>(metadata = ListDetailPage()) { route ->
+        WhatsAppRegistrationCodeScreen(
+            cc = route.cc,
+            number = route.number,
+            onBack = { backStack.pop() },
+            onPinRequired = { cc, number ->
+                backStack.add(Route.WhatsAppRegistration.Pin(cc, number))
+            },
+            onVerified = { cc, number -> backStack.showWhatsAppRegistrationDone(cc, number) },
+        )
+    }
+    entry<Route.WhatsAppRegistration.Pin>(metadata = ListDetailPage()) { route ->
+        WhatsAppRegistrationPinScreen(
+            cc = route.cc,
+            number = route.number,
+            onBack = { backStack.pop() },
+            onVerified = { cc, number -> backStack.showWhatsAppRegistrationDone(cc, number) },
+        )
+    }
+    entry<Route.WhatsAppRegistration.Done>(metadata = ListDetailPage()) {
+        WhatsAppRegistrationDoneScreen(
             onBack = { backStack.pop() },
             onRegistered = { backStack.pop() },
         )
@@ -355,8 +443,41 @@ private fun EntryProviderScope<Route>.registrationEntries(backStack: NavBackStac
             onBack = { backStack.pop() },
         )
     }
-    entry<Route.SignalRegistration>(metadata = ListDetailPage()) {
-        SignalRegistrationScreen(
+    entry<Route.SignalRegistration.Number>(metadata = ListDetailPage()) {
+        SignalRegistrationNumberScreen(
+            onBack = { backStack.pop() },
+            onCaptchaRequired = { cc, number, transport ->
+                backStack.add(Route.SignalRegistration.Captcha(cc, number, transport))
+            },
+            onCodeRequested = { cc, number ->
+                backStack.add(Route.SignalRegistration.Code(cc, number))
+            },
+        )
+    }
+    entry<Route.SignalRegistration.Captcha>(metadata = ListDetailPage()) { route ->
+        SignalRegistrationCaptchaScreen(
+            cc = route.cc,
+            number = route.number,
+            transport = route.transport,
+            onBack = { backStack.pop() },
+            // Replace (not push) the captcha, so Code's Back/Change-number
+            // lands on Number as the single-screen flow's buttons did.
+            onCodeRequested = { cc, number ->
+                backStack.setLast(Route.SignalRegistration.Code(cc, number))
+            },
+            onCaptchaRejected = { backStack.pop() },
+        )
+    }
+    entry<Route.SignalRegistration.Code>(metadata = ListDetailPage()) { route ->
+        SignalRegistrationCodeScreen(
+            cc = route.cc,
+            number = route.number,
+            onBack = { backStack.pop() },
+            onVerified = { cc, number -> backStack.showSignalRegistrationDone(cc, number) },
+        )
+    }
+    entry<Route.SignalRegistration.Done>(metadata = ListDetailPage()) {
+        SignalRegistrationDoneScreen(
             onBack = { backStack.pop() },
             onRegistered = { backStack.pop() },
         )
