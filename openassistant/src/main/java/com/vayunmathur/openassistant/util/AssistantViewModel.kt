@@ -2,6 +2,7 @@ package com.vayunmathur.openassistant.util
 
 import android.app.Application
 import android.content.Intent
+import androidx.core.net.toUri
 import com.vayunmathur.library.log.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -113,15 +114,39 @@ class AssistantViewModel(
     )
 
     /**
-     * Intercepts confirm/cancel host actions before they become model turns.
-     * InferenceService detects the [HostConfirm]/[HostCancel] marker, executes
-     * (or discards) the stored call exactly once, and then runs the model turn.
+     * Intercepts host actions before they become model turns.
+     * confirm/cancel: InferenceService detects the [HostConfirm]/[HostCancel]
+     * marker, executes (or discards) the stored call exactly once, then runs
+     * the model turn. web.open opens the URL in the browser/web app. web.read
+     * fetches the page host-side and injects the extraction as the user turn,
+     * saving a model round-trip through web_read_result.
      */
     private fun handleHostAction(
         conversationId: Long,
         eventName: String,
         context: Map<String, Any?>,
     ): Boolean {
+        when (eventName) {
+            "web.open" -> {
+                val url = context["url"]?.toString().orEmpty()
+                if (url.isBlank()) return false
+                openUrl(url)
+                return true
+            }
+            "web.read" -> {
+                val index = contextIndex(context) ?: return false
+                viewModelScope.launch {
+                    // Fresh instance: NetworkClient is already inited in
+                    // MainActivity, and the last-search slot is process-wide
+                    // (see AssistantWebTools), so index resolution works here.
+                    val fetched = AssistantWebTools().webReadResultText(index)
+                    val text = "[Web read $index: $fetched]"
+                    upsertMessage(Message(conversationId, text, "user"))
+                    requestInference(conversationId, text, emptyList(), null)
+                }
+                return true
+            }
+        }
         val marker = when (eventName) {
             "confirm.tool" -> "HostConfirm"
             "cancel.tool" -> "HostCancel"
@@ -135,6 +160,23 @@ class AssistantViewModel(
             requestInference(conversationId, text, emptyList(), null)
         }
         return true
+    }
+
+    private fun contextIndex(context: Map<String, Any?>): Int? {
+        val raw = context["index"] ?: return null
+        return (raw as? Number)?.toInt() ?: raw.toString().toDoubleOrNull()?.toInt()
+    }
+
+    private fun openUrl(url: String) {
+        try {
+            val app = getApplication<Application>()
+            app.startActivity(
+                Intent(Intent.ACTION_VIEW, url.toUri())
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (expected: Exception) {
+            Log.status(TAG, "Failed to open $url", expected)
+        }
     }
 
     init {

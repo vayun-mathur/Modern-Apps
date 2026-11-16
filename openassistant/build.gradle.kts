@@ -41,6 +41,9 @@ dependencies {
 
     implementation(project(":library:downloadservice"))
 
+    // web search/reading via api.maproj.org (Phase W)
+    implementation(project(":library:network"))
+
     // generative UI: the model emits A2UI components, rendered natively in chat
     implementation(libs.androidx.a2ui.model)
     implementation(libs.androidx.a2ui.engine)

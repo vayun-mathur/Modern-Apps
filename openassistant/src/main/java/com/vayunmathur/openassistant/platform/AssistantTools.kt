@@ -26,7 +26,9 @@ import com.vayunmathur.openassistant.domain.coerceToolArgs
 import com.vayunmathur.openassistant.domain.pendingToolSummary
 import com.vayunmathur.openassistant.util.AssistantDeviceTools
 import com.vayunmathur.openassistant.util.AssistantToolIntents
+import com.vayunmathur.openassistant.util.AssistantWebTools
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -47,9 +49,13 @@ class AssistantTools(
     private val pendingStore: PendingToolCallStore = InMemoryPendingToolCallStore(),
     private val nowMillis: () -> Long = { System.currentTimeMillis() },
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
+    private val webTools: AssistantWebTools = AssistantWebTools(),
 ) {
     private val intents = AssistantToolIntents(context)
     private val device = AssistantDeviceTools(context)
+
+    /** Exposed for tests / host code that need the web tool's stored results. */
+    fun webTools(): AssistantWebTools = webTools
     private val specs = ASSISTANT_TOOL_SPECS.associateBy { it.name }
 
     val declarations: List<Gemma4Handle.ToolDeclaration> = ASSISTANT_TOOL_SPECS.map { it.toDeclaration() }
@@ -174,6 +180,16 @@ class AssistantTools(
             }
         },
         "search_contacts" to { a -> intents.runTool { intents.searchContacts(a.string("query")) } },
+        "web_search" to { a ->
+            val count = a.number("count").toInt().takeIf { it > 0 } ?: 5
+            val result = runBlocking { webTools.webSearch(a.string("query"), count, a.string("kind", "text")) }
+            webTools.takeTemplate()?.let { pendingRenderUi = it }
+            result
+        },
+        "web_read" to { a -> runBlocking { webTools.webRead(a.string("url")) } },
+        "web_read_result" to { a ->
+            runBlocking { webTools.webReadResult(a.number("index").toInt(), a.number("offset").toInt()) }
+        },
         "render_ui" to { a -> renderUi(a.string("components_json"), a.string("data_json")) },
         "get_memories" to { _ -> intents.runTool { device.getMemories(memoryDao) } },
         "remove_memory" to { a -> intents.runTool { device.removeMemory(memoryDao, a.number("id")) } },

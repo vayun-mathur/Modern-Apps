@@ -44,7 +44,7 @@ class AssistantToolsInvokeTest {
         assertEquals("Error: create_note needs title", call("create_note", "content" to "x"))
         assertTrue(
             call("set_timer", "seconds" to "abc").contains("must be a number"))
-        assertEquals(33, tools.declarations.size)
+        assertEquals(36, tools.declarations.size)
     }
 
     @Test fun crossAppToolsReportMissingApps() {
@@ -189,6 +189,32 @@ class AssistantToolsInvokeTest {
             call("render_ui", "components_json" to """[{"id":"root","component":"Text","text":"Yo"}]"""),
         )
         tools.consumePendingRenderUi()
+    }
+
+    @Test fun webToolsRunThroughHandlersWithFakeTransport() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val fake = com.vayunmathur.openassistant.util.AssistantWebTools(
+            transport = { url ->
+                if (url.contains("/api/search")) {
+                    """{"type":"text","query":"sushi","text":[{"title":"Sushi Guide","url":"https://example.com/sushi","snippet":"All about sushi"}]}"""
+                } else {
+                    """{"title":"Sushi Guide","url":"https://example.com/sushi","text":"Raw fish, explained.","truncated":false}"""
+                }
+            },
+            nowMillis = { 1_000L },
+        )
+        val webbed = AssistantTools(ctx, db.memoryDao(), webTools = fake)
+        val search = webbed.invoke(
+            ParsedToolCall("web_search", mapOf("query" to "sushi", "count" to "5")))
+        assertTrue(search.contains("[1] Sushi Guide"), search)
+        // The results card rides the same pendingRenderUi channel as render_ui.
+        val card = webbed.consumePendingRenderUi()
+        assertTrue(card != null && card.contains("web.read"), "$card")
+        val read = webbed.invoke(ParsedToolCall("web_read_result", mapOf("index" to "1")))
+        assertTrue(read.contains("Raw fish, explained."), read)
+        val direct = webbed.invoke(
+            ParsedToolCall("web_read", mapOf("url" to "https://example.com/sushi")))
+        assertTrue(direct.contains("Raw fish, explained."), direct)
     }
 
     @Test fun riskClassificationMatchesDesign() {

@@ -15,6 +15,8 @@ import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
+import com.vayunmathur.library.network.NetworkClient
+import com.vayunmathur.library.network.TrustBundle
 import kotlinx.serialization.Serializable
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
 import com.vayunmathur.openassistant.ui.LiteRTChatUi
@@ -38,6 +40,7 @@ class MainActivity : MaActivity() {
     }
 
     override fun onCreateBeforeContent() {
+        NetworkClient.init(this, TrustBundle.FIRST_PARTY)
         intentLauncher = IntentLauncher(this)
         readAssistScreenContext(intent)
     }
@@ -45,11 +48,9 @@ class MainActivity : MaActivity() {
     @Composable
     override fun Content() {
         val ds = DataStoreUtils.getInstance(this)
-        // No OfflineAware banner: openassistant takes no :library:network
-        // dependency, so the connectivity-monitor UI (which needs
-        // ACCESS_NETWORK_STATE from :library:network) cannot live here without
-        // reintroducing the #884 leak. Download gating already surfaces
-        // offline state via InitialModelDownloadChecker.
+        // No OfflineAware banner here: download gating already surfaces
+        // offline state via InitialModelDownloadChecker, and web tools
+        // report their own clean error strings when the network is down.
         InitialModelDownloadChecker(ds, ModelUrls.INITIAL) {
             Navigation(assistantViewModel)
         }

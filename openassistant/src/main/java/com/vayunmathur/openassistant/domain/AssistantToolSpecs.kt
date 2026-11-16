@@ -161,6 +161,29 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
         "Search contacts by name or phone number substring (case-insensitive, max 10 results).",
         listOf(p("query", description = "name or phone substring to search for")),
     ),
+    ToolSpec(
+        "web_search",
+        "Search the web for current or external facts. Returns numbered results; " +
+            "use web_read_result to read the most relevant ones before answering.",
+        listOf(
+            p("query", description = "search query"),
+            p("count", NUMBER, "optional result count, 1-10 (default 5)", required = false),
+            p("kind", description = "optional: text (default) or news", required = false),
+        ),
+    ),
+    ToolSpec(
+        "web_read",
+        "Read a web page by URL and return its extracted text.",
+        listOf(p("url", description = "page URL to read")),
+    ),
+    ToolSpec(
+        "web_read_result",
+        "Read a result from the last web_search by its 1-based index.",
+        listOf(
+            p("index", NUMBER, "1-based index into the last web_search results"),
+            p("offset", NUMBER, "optional character offset for long pages", required = false),
+        ),
+    ),
     ToolSpec("get_memories", "Get a list of all memories"),
     ToolSpec("remove_memory", "Remove a memory by its id (requires confirmation)", listOf(p("id", NUMBER)), risk = WRITE_CONFIRM),
     ToolSpec("add_to_memory", "Add a new memory to the list of memories", listOf(p("content"))),
