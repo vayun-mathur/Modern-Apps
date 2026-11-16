@@ -40,7 +40,9 @@ private class FinishedStrokesView(context: Context) : View(context) {
     var textElements: List<CanvasTextElement> = emptyList()
     var selectedStrokeIndex: Int? = null
     var selectedTextIndex: Int? = null
-    private val renderer = CanvasStrokeRenderer.create()
+    // Lazy: a view showing only text elements (or nothing yet) must not
+    // require libink; the renderer is created on the first stroke draw.
+    private val renderer by lazy { CanvasStrokeRenderer.create() }
     private val identityMatrix = Matrix()
     private val textPaint = Paint().apply { isAntiAlias = true }
     private val selectionPaint = Paint().apply {
