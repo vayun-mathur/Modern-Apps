@@ -123,13 +123,13 @@ class Y3AutoCoreTest {
     }
 
     @Test fun routesAreDistinct() {
-        val routes = listOf(Route.Home, Route.Pairing, Route.PinnedApps)
-        assertEquals(3, routes.toSet().size)
+        val routes = listOf(Route.Home, Route.Pairing, Route.PinnedApps, Route.LauncherHome, Route.App("maps"))
+        assertEquals(5, routes.toSet().size)
     }
 
     @Test fun routeSerializationRoundTrip() {
         val json = kotlinx.serialization.json.Json
-        for (route in listOf<Route>(Route.Home, Route.Pairing, Route.PinnedApps)) {
+        for (route in listOf<Route>(Route.Home, Route.Pairing, Route.PinnedApps, Route.LauncherHome, Route.App("maps"))) {
             val text = json.encodeToString(Route.serializer(), route)
             assertEquals(route, json.decodeFromString(Route.serializer(), text))
         }

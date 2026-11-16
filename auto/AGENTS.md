@@ -28,7 +28,7 @@ _Install: ./install auto (dev by default)._
 ### Root — entry + navigation
 - com/vayunmathur/auto/MainActivity.kt
 - com/vayunmathur/auto/Navigation.kt
-- com/vayunmathur/auto/Route.kt
+- com/vayunmathur/auto/Route.kt — phone Home/Pairing/PinnedApps + car LauncherHome/App(appId) (car stack synced from CarLauncherState.selectedApp)
 ### network/ — head-unit transports
 - com/vayunmathur/auto/network/HeadUnitServer.kt
 - com/vayunmathur/auto/network/TransportIntake.kt

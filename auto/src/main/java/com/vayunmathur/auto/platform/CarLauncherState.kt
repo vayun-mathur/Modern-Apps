@@ -64,7 +64,10 @@ object CarLauncherState {
 
     /**
      * Selected app id (`DiscoveredApp.id`); null means the home grid.
-     * Written by launcher taps, read by the body + the session focus.
+     * Written by launcher taps, read by the session focus, and projected
+     * onto the car-side `Route` stack by the launcher (Route.kt's
+     * `syncCarRoute`): this flow stays the selection engine, the stack
+     * is only its screen.
      */
     val selectedApp: StateFlow<String?> = _selectedApp.asStateFlow()
 
