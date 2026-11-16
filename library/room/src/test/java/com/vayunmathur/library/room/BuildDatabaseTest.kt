@@ -146,6 +146,40 @@ class BuildDatabaseTest {
     }
 
     @Test
+    fun `reified overload with partially omitted arguments uses the defaults mask`() {
+        // Each call omits a different subset, exercising the synthetic
+        // $default constructor-mask branches of the reified wrapper.
+        val a = context.buildDatabase<TestDatabase>(encryptionPassword = "pw", dbName = "mask-a-db")
+        assertSame(a, databases[TestDatabase::class])
+        databases.clear()
+        val b = context.buildDatabase<TestDatabase>(null, "pw", "mask-b-db", false)
+        assertSame(b, databases[TestDatabase::class])
+        databases.clear()
+        val c = context.buildDatabase<TestDatabase>(migrations = emptyList(), encryptionPassword = "pw")
+        assertSame(c, databases[TestDatabase::class])
+    }
+
+    @Test
+    fun `synthetic defaults method refuses direct invocation for the reified overload`() {
+        // The reified wrapper's $default synthetic exists only for the
+        // compiler: invoked directly it must refuse, because a reified
+        // type parameter has no runtime value. This is why those 40-odd
+        // instructions are unreachable from any test (see coverage note).
+        val method = Class.forName("com.vayunmathur.library.room.SqlCipherKt")
+            .getDeclaredMethod(
+                "buildDatabase\u0024default",
+                Context::class.java, List::class.java, String::class.java,
+                String::class.java, Boolean::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType, Any::class.java,
+            )
+        method.isAccessible = true
+        val thrown = kotlin.test.assertFailsWith<java.lang.reflect.InvocationTargetException> {
+            method.invoke(null, context, null, "pw", "defaultmask-db", false, 1, null)
+        }
+        kotlin.test.assertTrue(thrown.cause is UnsupportedOperationException)
+    }
+
+    @Test
     fun `the dao is reachable without opening the database`() {
         // Opening is deferred until first use: the generated DAO must already
         // be handable-out here. (Actually opening needs the SQLCipher native
