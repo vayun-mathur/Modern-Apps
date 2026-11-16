@@ -114,13 +114,27 @@
           supervision dashboard - is what the user sees. Exported because Settings launches it
           from another process; the page is read-only and every change is behind the parent PIN.
         -->
+        <!--
+          The single navigation host. Every former editor activity below is an alias
+          onto this host, keeping its own label, permission, intent-filter and Settings
+          meta-data, so Settings rows land exactly where they did; MainActivity.routeFor
+          turns the arriving intent into the start route (gated editors start at their
+          PIN gate). singleTask so a second Settings tap re-routes via onNewIntent.
+        -->
         <activity
-            android:name=".ui.DashboardActivity"
+            android:name=".MainActivity"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/dashboard_title"
             android:launchMode="singleTask"
-            android:theme="@style/Theme.General">
+            android:theme="@style/Theme.General" />
+
+        <!-- The top-level "Parental controls" page (was DashboardActivity). -->
+        <activity-alias
+            android:name=".ui.DashboardActivity"
+            android:exported="true"
+            android:label="@string/dashboard_title"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="com.vayunmathur.parentalcontrols.action.DASHBOARD" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -129,19 +143,15 @@
                 <action android:name="android.app.supervision.action.INTERSTITIAL_SCREEN" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
-        <!--
-          Web content filters, opened from the dashboard. Not exported: launched explicitly by
-          our own dashboard, and guarded by MANAGE_SUPERVISION like the other editors.
-        -->
-        <activity
+        <!-- Web content filters: dashboard-only, so no intent-filter (was WebContentFiltersActivity). -->
+        <activity-alias
             android:name=".ui.WebContentFiltersActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="false"
             android:label="@string/web_filters_title"
             android:permission="android.permission.MANAGE_SUPERVISION"
-            android:theme="@style/Theme.General" />
+            android:targetActivity=".MainActivity" />
 
         <!--
           The parental-control features themselves.
@@ -155,13 +165,12 @@
           Still no launcher entry: these are reached from Settings, and an icon would be a second
           route to a screen that only makes sense in that context.
         -->
-        <activity
+        <activity-alias
             android:name=".ui.BedtimeActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/bedtime_title"
             android:permission="android.permission.MANAGE_SUPERVISION"
-            android:theme="@style/Theme.General">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="com.vayunmathur.parentalcontrols.action.BEDTIME" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -172,15 +181,14 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/bedtime_summary" />
-        </activity>
+        </activity-alias>
 
-        <activity
+        <activity-alias
             android:name=".ui.AppLimitsActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/limits_title"
             android:permission="android.permission.MANAGE_SUPERVISION"
-            android:theme="@style/Theme.General">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="com.vayunmathur.parentalcontrols.action.APP_LIMITS" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -191,22 +199,21 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/limits_summary" />
-        </activity>
+        </activity-alias>
 
         <!--
           The Family Link set: downtime, school time and the device-wide daily limit. Same
           Settings-dashboard integration as bedtime and app limits - one row each, filled only
-          because of the supervision category tags. All three are parent-gated in code (see
-          PinGatedActivity); the MANAGE_SUPERVISION permission here keeps other apps from
+          because of the supervision category tags. All three are parent-gated in the host
+          (Route.PinGate); the MANAGE_SUPERVISION permission here keeps other apps from
           opening them directly.
         -->
-        <activity
+        <activity-alias
             android:name=".ui.DowntimeActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/downtime_title"
             android:permission="android.permission.MANAGE_SUPERVISION"
-            android:theme="@style/Theme.General">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="com.vayunmathur.parentalcontrols.action.DOWNTIME" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -217,15 +224,14 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/downtime_summary" />
-        </activity>
+        </activity-alias>
 
-        <activity
+        <activity-alias
             android:name=".ui.SchoolTimeActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/school_title"
             android:permission="android.permission.MANAGE_SUPERVISION"
-            android:theme="@style/Theme.General">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="com.vayunmathur.parentalcontrols.action.SCHOOL_TIME" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -236,15 +242,14 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/school_summary" />
-        </activity>
+        </activity-alias>
 
-        <activity
+        <activity-alias
             android:name=".ui.DailyLimitActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:label="@string/daily_title"
             android:permission="android.permission.MANAGE_SUPERVISION"
-            android:theme="@style/Theme.General">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="com.vayunmathur.parentalcontrols.action.DAILY_LIMIT" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -255,7 +260,7 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/daily_summary" />
-        </activity>
+        </activity-alias>
 
         <!--
           Where Settings sends the user for "app settings" of a supervision app. Without an
@@ -268,7 +273,7 @@
             android:exported="true"
             android:label="@string/app_name"
             android:permission="android.permission.MANAGE_SUPERVISION"
-            android:targetActivity=".ui.BedtimeActivity">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.settings.MANAGE_SUPERVISION_APP_SETTINGS" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -316,19 +321,15 @@
         </activity>
 
         <!--
-          The parent-PIN challenge and its first-run setup. Neither is exported: both are
-          started explicitly by our own editors and lock screens, and the PIN must never be
-          reachable - or even visible - to another app. Both are guarded by MANAGE_SUPERVISION
-          as well, so even an explicit intent from elsewhere cannot open them.
+          The parent-PIN challenge as an activity, kept for the lock screens: they run
+          outside the navigation host and start it for a result (RESULT_VERIFIED grants
+          bonus time), a contract a route cannot answer. Inside the host the same
+          PinGateScreen is Route.PinGate. Not exported and guarded by MANAGE_SUPERVISION,
+          so even an explicit intent from elsewhere cannot open it. (PIN setup is now
+          Route.PinSetup in the host, so its former activity is gone.)
         -->
         <activity
             android:name=".ui.PinGateActivity"
-            android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
-            android:exported="false"
-            android:permission="android.permission.MANAGE_SUPERVISION"
-            android:theme="@style/Theme.General" />
-        <activity
-            android:name=".ui.PinSetupActivity"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="false"
             android:permission="android.permission.MANAGE_SUPERVISION"

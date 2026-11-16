@@ -71,32 +71,3 @@ class PinGateActivity : ComponentActivity() {
         const val RESULT_VERIFIED = RESULT_FIRST_USER + 1
     }
 }
-
-/**
- * First-run PIN creation, and later PIN change (after [PinGateActivity] passes).
- *
- * Nothing else in the app opens until a PIN exists: the setup flow lands here when
- * [ParentPin.isSet] is false, so imposed enforcement always has a gatekeeper.
- */
-class PinSetupActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        val pin = ParentPin.get(this)
-        enableEdgeToEdge()
-        setContent {
-            DynamicTheme {
-                PinSetupScreen(
-                    actions = PinSetupActions(
-                        onSet = { entry ->
-                            lifecycleScope.launch(Dispatchers.IO) { pin.set(entry) }
-                            setResult(RESULT_OK)
-                            finish()
-                            true
-                        },
-                        onCancel = { finish() },
-                    ),
-                )
-            }
-        }
-    }
-}

@@ -6,7 +6,7 @@ _Install: ./install parentalcontrols (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :parentalcontrols / dir: parentalcontrols/
 - Package roots present: ui, data, domain, platform, service, notifications, auth
-- Entry files: ui/DashboardActivity.kt + ui/SetupActivity.kt (activity-per-surface OS module; no MainActivity/Route)
+- Entry files: MainActivity.kt + Route.kt + Navigation.kt (single host) + ui/SetupActivity.kt and ui/PinActivities.kt (PinGateActivity, kept for lock-screen activity-result) + ui/LockActivities.kt (kept OS lock surfaces)
 - Deps: :library:room, :library:aosp-stubs
 - Metadata: metadata_data/parentalcontrols.md (present)
 - Rust: no / screenshotTest: no
@@ -14,7 +14,7 @@ _Install: ./install parentalcontrols (dev by default)._
 ## Overview
 **Purpose:** On-device parental controls over Android's supervision APIs — screen-time/bedtime/app-limits, web filters, install restrictions, all PIN-gated (`auth/ParentPin`). No account, nothing uploaded.
 **Key features:** `platform/SupervisionMaster` + `SupervisionPolicies`/`Apis`/`Caller` enforce `data/` rules + `domain/TimeWindow`; `platform/Enforcer` + `AppLimits` + `BedtimeScheduler` apply limits; `service/` supervision messengers bridge the system.
-**Entry points:** `ui/SetupActivity.kt` → `ui/DashboardActivity.kt` → `platform/SupervisionViewModel.kt` → `platform/SupervisionMaster.kt` → `data/Rules.kt`.
+**Entry points:** `MainActivity.kt` → `Navigation.kt` (`Route.Dashboard/DailyLimit/AppLimits/Bedtime/Downtime/SchoolTime/WebFilters/PinSetup/PinGate`) → `platform/SupervisionViewModel.kt`; `ui/SetupActivity.kt` hands off to the host's PinSetup route then the platform setup flow → `platform/SupervisionMaster.kt` → `data/Rules.kt`.
 **Gotchas:**
 - `receiver/` is NOT a closed package root — pending migration; don't add more files there
 - Enforcement is system-mediated (supervision APIs) — sideloaded builds can't enforce; PIN loss locks parents out by design, no backdoor
@@ -45,23 +45,21 @@ _Install: ./install parentalcontrols (dev by default)._
 - com/vayunmathur/parentalcontrols/service/SupervisionMessengerService.kt
 - com/vayunmathur/parentalcontrols/notifications/LockNotifier.kt
 ### ui/ — PIN-gated activities (the entries)
-- com/vayunmathur/parentalcontrols/ui/DashboardActivity.kt
+- com/vayunmathur/parentalcontrols/MainActivity.kt
+- com/vayunmathur/parentalcontrols/Route.kt
+- com/vayunmathur/parentalcontrols/Navigation.kt
 - com/vayunmathur/parentalcontrols/ui/DashboardScreen.kt
 - com/vayunmathur/parentalcontrols/ui/SetupActivity.kt
 - com/vayunmathur/parentalcontrols/ui/PinSetupScreen.kt
 - com/vayunmathur/parentalcontrols/ui/PinGateScreen.kt
-- com/vayunmathur/parentalcontrols/ui/PinGatedActivity.kt
 - com/vayunmathur/parentalcontrols/ui/PinActivities.kt
 - com/vayunmathur/parentalcontrols/ui/LockScreen.kt
 - com/vayunmathur/parentalcontrols/ui/LockActivities.kt
-- com/vayunmathur/parentalcontrols/ui/AppLimitsActivity.kt
 - com/vayunmathur/parentalcontrols/ui/AppLimitsScreen.kt
 - com/vayunmathur/parentalcontrols/ui/DailyLimitScreen.kt
-- com/vayunmathur/parentalcontrols/ui/BedtimeActivity.kt
 - com/vayunmathur/parentalcontrols/ui/BedtimeScreen.kt
-- com/vayunmathur/parentalcontrols/ui/WindowActivities.kt
 - com/vayunmathur/parentalcontrols/ui/WindowScheduleScreen.kt
-- com/vayunmathur/parentalcontrols/ui/WebContentFiltersActivity.kt
+- com/vayunmathur/parentalcontrols/ui/WebContentFiltersScreen.kt
 
 ## Verify (this module only)
 ```

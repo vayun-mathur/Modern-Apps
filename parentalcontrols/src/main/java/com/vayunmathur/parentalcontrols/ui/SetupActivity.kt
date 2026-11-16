@@ -5,13 +5,13 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.parentalcontrols.MainActivity
 import com.vayunmathur.parentalcontrols.auth.ParentPin
 
 private const val TAG = "ParentalControlsSetup"
 
 /**
- * Where `android.app.supervision.action.INSTALL_SUPERVISION_APP` lands, and the only activity
- * this app has.
+ * Where `android.app.supervision.action.INSTALL_SUPERVISION_APP` lands.
  *
  * **It draws nothing.** Settings looks for an activity answering that action so it can show the
  * Parental controls entry on a device where the supervision app still needs installing, and it is
@@ -21,8 +21,9 @@ private const val TAG = "ParentalControlsSetup"
  * to hand straight to the platform's own setup flow.
  *
  * A screen here would be a dead end. Every control - the PIN, schedules, app limits, content
- * filters - belongs to Settings, so anything drawn in this app could only tell the user to go
- * back to where they already were.
+ * filters - lives in the navigation host, so anything drawn in this activity could only tell
+ * the user to go back to where they already were. When no PIN exists yet, the host is
+ * started at its PIN-setup destination first (behind the platform flow started below).
  */
 class SetupActivity : Activity() {
 
@@ -32,7 +33,7 @@ class SetupActivity : Activity() {
         // make sure a parent PIN exists. First run lands on PIN creation; afterwards the
         // platform flow proceeds as before.
         if (!ParentPin.get(this).isSet()) {
-            startActivity(Intent(this, PinSetupActivity::class.java))
+            startActivity(MainActivity.pinSetupIntent(this))
         }
         val enable = Intent(ACTION_ENABLE_SUPERVISION).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

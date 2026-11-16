@@ -37,23 +37,52 @@ class ParentalActivitiesTest {
             .setSingleConnectionPool()
             .allowMainThreadQueries().build().also { sharedDb = it }
         synchronized(databases) { databases[ParentalControlsDatabase::class] = mem }
+        // Force the database open: closing a prior activity scenario can drop an
+        // in-memory database's tables, and the first query re-creates them.
+        runCatching { kotlinx.coroutines.runBlocking { mem.appRuleDao().all() } }
     }
 
     @Test
-    fun dashboardActivityShowsDashboardAndOpensEditors() {
+    fun dashboardShowsDashboardAndOpensEditorsThroughGate() {
         seedDatabase()
-        ActivityScenario.launch(DashboardActivity::class.java).use { scenario ->
+        com.vayunmathur.parentalcontrols.platform.FakeAndroidKeyStore.install()
+        com.vayunmathur.parentalcontrols.auth.ParentPin.get(
+            ApplicationProvider.getApplicationContext(),
+        ).set("1234")
+        ActivityScenario.launch(com.vayunmathur.parentalcontrols.MainActivity::class.java).use { scenario ->
             composeRule.onNodeWithText("Parental controls").assertIsDisplayed()
             composeRule.onNodeWithText("Controls for this phone").assertIsDisplayed()
-            var started: Intent? = null
-            scenario.onActivity { started = shadowOf(it).nextStartedActivity }
             composeRule.onNodeWithText("Daily limit").performClick()
-            scenario.onActivity { started = shadowOf(it).peekNextStartedActivity() }
-            assertEquals(DailyLimitActivity::class.java.name, started?.component?.className)
+            composeRule.onNodeWithText("Parent PIN").assertIsDisplayed()
+            composeRule.onNodeWithText("PIN").performTextInput("1234")
+            composeRule.onNodeWithText("Unlock").performClick()
+            waitForText("Daily limit")
+            composeRule.onNodeWithText("Daily limit").assertIsDisplayed()
+            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
             composeRule.onNodeWithText("App limits").performClick()
-            scenario.onActivity { started = shadowOf(it).peekNextStartedActivity() }
-            assertEquals(AppLimitsActivity::class.java.name, started?.component?.className)
+            composeRule.onNodeWithText("PIN").performTextInput("1234")
+            composeRule.onNodeWithText("Unlock").performClick()
+            waitForText("App limits")
+            composeRule.onNodeWithText("App limits").assertIsDisplayed()
+            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            composeRule.onNodeWithText("Web content filters").performClick()
+            composeRule.onNodeWithText("PIN").performTextInput("1234")
+            composeRule.onNodeWithText("Unlock").performClick()
+            waitForText("Web content filters")
+            composeRule.onNodeWithText("Web content filters").assertIsDisplayed()
         }
+    }
+
+    private fun waitForText(text: String) {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (System.currentTimeMillis() < deadline) {
+            val found = runCatching {
+                composeRule.onNodeWithText(text).assertIsDisplayed(); true
+            }.getOrDefault(false)
+            if (found) return
+            Thread.sleep(50)
+        }
+        composeRule.onNodeWithText(text).assertIsDisplayed()
     }
 
     @Test
@@ -67,12 +96,17 @@ class ParentalActivitiesTest {
     }
 
     @Test
-    fun pinSetupActivityRendersAndCancels() {
-        ActivityScenario.launch(PinSetupActivity::class.java).use {
+    fun pinSetupRouteRendersAndCancelsToDashboard() {
+        seedDatabase()
+        ActivityScenario.launch<com.vayunmathur.parentalcontrols.MainActivity>(
+            com.vayunmathur.parentalcontrols.MainActivity.pinSetupIntent(
+                ApplicationProvider.getApplicationContext(),
+            ),
+        ).use {
             composeRule.onNodeWithText("Set parent PIN").assertIsDisplayed()
             composeRule.onNodeWithText("New PIN").assertIsDisplayed()
             composeRule.onNodeWithText("Cancel").performClick()
-            it.onActivity { activity -> assertTrue(activity.isFinishing) }
+            composeRule.onNodeWithText("Parental controls").assertIsDisplayed()
         }
     }
 
@@ -100,50 +134,49 @@ class ParentalActivitiesTest {
     }
 
     @Test
-    fun pinGatedActivitiesShowContentAfterVerification() {
+    fun gatedRoutesShowContentAfterVerification() {
         seedDatabase()
         com.vayunmathur.parentalcontrols.platform.FakeAndroidKeyStore.install()
         com.vayunmathur.parentalcontrols.auth.ParentPin.get(
             ApplicationProvider.getApplicationContext(),
         ).set("1234")
         val cases = listOf(
-            BedtimeActivity::class.java to "Child bedtime",
-            AppLimitsActivity::class.java to "App limits",
-            DailyLimitActivity::class.java to "Daily limit",
-            DowntimeActivity::class.java to "Downtime",
-            SchoolTimeActivity::class.java to "School time",
-            WebContentFiltersActivity::class.java to "Web content filters",
+            com.vayunmathur.parentalcontrols.MainActivity.ACTION_BEDTIME to "Child bedtime",
+            com.vayunmathur.parentalcontrols.MainActivity.ACTION_APP_LIMITS to "App limits",
+            com.vayunmathur.parentalcontrols.MainActivity.ACTION_DAILY_LIMIT to "Daily limit",
+            com.vayunmathur.parentalcontrols.MainActivity.ACTION_DOWNTIME to "Downtime",
+            com.vayunmathur.parentalcontrols.MainActivity.ACTION_SCHOOL_TIME to "School time",
         )
-        for ((activity, title) in cases) {
-            ActivityScenario.launch<android.app.Activity>(Intent(ApplicationProvider.getApplicationContext(), activity)).use { scenario ->
-                var delivered = false
-                scenario.onActivity { launched ->
-                    val shadow = shadowOf(launched)
-                    val forResult = shadow.nextStartedActivityForResult
-                    if (forResult != null) {
-                        shadow.receiveResult(forResult.intent, PinGateActivity.RESULT_VERIFIED, null)
-                        delivered = true
-                    }
-                }
-                assertTrue(delivered, "no gate launched for $activity")
+        for ((action, title) in cases) {
+            val intent = Intent(action)
+                .setClass(
+                    ApplicationProvider.getApplicationContext(),
+                    com.vayunmathur.parentalcontrols.MainActivity::class.java,
+                )
+            ActivityScenario.launch<android.app.Activity>(intent).use {
+                composeRule.onNodeWithText("Parent PIN").assertIsDisplayed()
+                composeRule.onNodeWithText("PIN").performTextInput("1234")
+                composeRule.onNodeWithText("Unlock").performClick()
+                waitForText(title)
                 composeRule.onNodeWithText(title).assertIsDisplayed()
             }
         }
     }
 
     @Test
-    fun pinGatedActivityFinishesWhenGateCancelled() {
+    fun gatedHostFinishesWhenGateCancelled() {
         seedDatabase()
         com.vayunmathur.parentalcontrols.platform.FakeAndroidKeyStore.install()
         com.vayunmathur.parentalcontrols.auth.ParentPin.get(
             ApplicationProvider.getApplicationContext(),
         ).set("1234")
-        ActivityScenario.launch(BedtimeActivity::class.java).use { scenario ->
-            scenario.onActivity { launched ->
-                val shadow = shadowOf(launched)
-                val forResult = shadow.nextStartedActivityForResult
-                shadow.receiveResult(forResult.intent, android.app.Activity.RESULT_CANCELED, null)
-            }
+        val intent = Intent(com.vayunmathur.parentalcontrols.MainActivity.ACTION_BEDTIME)
+            .setClass(
+                ApplicationProvider.getApplicationContext(),
+                com.vayunmathur.parentalcontrols.MainActivity::class.java,
+            )
+        ActivityScenario.launch<android.app.Activity>(intent).use { scenario ->
+            composeRule.onNodeWithText("Cancel").performClick()
             scenario.onActivity { launched -> assertTrue(launched.isFinishing) }
         }
     }
