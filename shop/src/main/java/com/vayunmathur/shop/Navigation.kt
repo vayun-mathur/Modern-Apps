@@ -50,6 +50,24 @@ internal fun applyShopProfileGate(
     return true
 }
 
+
+/**
+ * Applies a resolved deep-link route. While the profile is incomplete the
+ * route is left unconsumed (returns false) so it still applies after the gate
+ * lifts; the caller re-runs this when completeness changes. Returns true when
+ * the route was applied and can be consumed.
+ */
+internal fun applyShopPendingRoute(
+    backStack: NavBackStack<Route>,
+    pendingRoute: Route?,
+    profileComplete: Boolean,
+): Boolean {
+    val route = pendingRoute ?: return false
+    if (!profileComplete) return false
+    if (route == Route.Search) backStack.reset(Route.Search) else backStack.reset(Route.Search, route)
+    return true
+}
+
 @Composable
 fun Navigation(
     viewModel: ShopViewModel,
@@ -84,7 +102,11 @@ fun Navigation(
         val url = linkRequest?.second ?: return@LaunchedEffect
         if (backStack.backStack.lastOrNull() == Route.ProfileSetup) return@LaunchedEffect
         viewModel.openLink(url) { route ->
-            if (route is Route.ProductDetail) backStack.reset(Route.Search, route) else backStack.reset(route)
+            if (route is Route.ProductDetail || route == Route.Search) {
+                applyShopPendingRoute(backStack, route, profileComplete = true)
+            } else {
+                backStack.reset(route)
+            }
         }
     }
     LaunchedEffect(viewModel) {
