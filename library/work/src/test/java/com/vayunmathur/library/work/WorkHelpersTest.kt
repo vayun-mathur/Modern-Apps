@@ -66,6 +66,20 @@ class WorkHelpersTest {
     }
 
     @Test
+    fun startRepeatedTaskHonoursReplacePoliciesAndInterval() {
+        startRepeatedTask<SampleWorker>(
+            app, "replace_job", 6.hours,
+            oneTimeWorkPolicy = androidx.work.ExistingWorkPolicy.REPLACE,
+            periodicWorkPolicy = androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
+        )
+        val periodic = uniqueWork("replace_job_periodic").single()
+        assertEquals(6 * 60L, periodic.periodicityInfo?.repeatIntervalMillis?.div(60_000L))
+        // Re-scheduling with KEEP leaves the original periodic work untouched.
+        startRepeatedTask<SampleWorker>(app, "replace_job", 2.hours)
+        assertEquals(1, uniqueWork("replace_job_periodic").size)
+    }
+
+    @Test
     fun dailyReminderUpdateSchedulesThenCancels() {
         DailyPuzzleReminder.update(app, "wordle", notificationId = 5101, enabled = true, hour = 23, minute = 59)
         val scheduled = uniqueWork("wordle_reminder")
