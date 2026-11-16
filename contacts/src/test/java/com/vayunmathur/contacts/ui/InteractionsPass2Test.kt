@@ -65,6 +65,14 @@ class InteractionsPass2Test {
 
     @BeforeTest fun setUp() { Dispatchers.setMain(Dispatchers.Unconfined) }
 
+    /** waitUntil that also idles Robolectric's paused main looper per poll. */
+    private fun pumpWait(timeoutMs: Long = 15_000, cond: () -> Boolean) {
+        rule.waitUntil(timeoutMs) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            cond()
+        }
+    }
+
     private fun vm(): ContactViewModel {
         val vm = ContactViewModel(app)
         runBlocking { vm.syncFromSystem() }
@@ -134,19 +142,23 @@ class InteractionsPass2Test {
         }
         // the VM's debounced init sync can overwrite the fixture with the
         // (empty) provider list in a busy full-suite JVM, leaving a blank
-        // draft: re-seed and re-init until the fixture draft lands
-        val deadline = System.nanoTime() + 15_000_000_000L
-        while (vm.editDraft.value?.firstName != "Aisha" && System.nanoTime() < deadline) {
+        // draft: re-seed and re-init until the fixture draft lands. Step
+        // counted, not wall-clock: Robolectric's substituted clock can run
+        // ahead of real time and expire the loop before the sync lands.
+        var steps = 0
+        while (vm.editDraft.value?.firstName != "Aisha" && steps++ < 600) {
             vm.allContactsState.value = listOf(fixtureContact())
             vm.clearEditDraft()
             vm.initEditDraft(7L)
             if (vm.editDraft.value?.firstName == "Aisha") break
-            Thread.sleep(50)
+            try { Thread.sleep(25) } catch (_: InterruptedException) { }
         }
         assertEquals("Aisha", vm.editDraft.value?.firstName)
 
         // first name is the first text field on the form
+        pumpWait { rule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
         rule.onAllNodes(hasSetTextAction())[0].performTextReplacement("Alicia")
+        pumpWait { vm.editDraft.value?.firstName == "Alicia" }
         assertEquals("Alicia", vm.editDraft.value?.firstName)
 
         // company field is further down the (scrollable, fully composed) form
@@ -154,6 +166,7 @@ class InteractionsPass2Test {
         assertTrue(fields.fetchSemanticsNodes().size >= 4, "edit form should expose many fields")
         // scroll the form and type into the last visible text field (note/company area)
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("hello note", substring = true))
+        pumpWait { rule.onAllNodesWithText("hello note", substring = true).fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("hello note", substring = true).assertExists()
     }
 
@@ -168,13 +181,18 @@ class InteractionsPass2Test {
                 DynamicTheme { EditContactPage(backStack, vm, Route.EditContact(contactId = null)) }
             }
         }
-        rule.waitForIdle()
+        pumpWait { rule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
         rule.onAllNodes(hasSetTextAction())[0].performTextReplacement("Zoe")
+        pumpWait { vm.editDraft.value?.firstName == "Zoe" }
         assertEquals("Zoe", vm.editDraft.value?.firstName)
         rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.save), substring = true).performClick()
-        rule.waitForIdle()
-        // saving a named new contact exits the page (back stack popped / draft saved)
-        assertTrue(vm.editDraft.value != null || backStack.backStack.isNotEmpty())
+        // A successful save clears the draft and exits via onExit (pop).
+        // Assert that completed state, not the mid-save one: the old
+        // assertion passed only while the IO save was still in flight and
+        // failed precisely when the save finished first (CI timing).
+        pumpWait(20_000) { backStack.backStack.isEmpty() }
+        assertTrue(backStack.backStack.isEmpty(), "saving a named new contact should pop the page")
+        assertEquals(null, vm.editDraft.value)
     }
 
     @Test

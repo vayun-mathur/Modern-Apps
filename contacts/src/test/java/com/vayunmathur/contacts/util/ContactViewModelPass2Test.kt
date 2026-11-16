@@ -111,7 +111,10 @@ class ContactViewModelPass2Test {
     @Test
     fun syncFromSystemMarksLoadedWithEmptyProvider() {
         val vm = ContactViewModel(app)
-        assertEquals(false, vm.hasLoadedContacts.value)
+        // No assertion on the pre-sync value: the VM's own init sync is
+        // already in flight (Unconfined Main + IO), so whether it has
+        // landed by this line is a scheduling race, not behaviour — it
+        // failed combined runs precisely when the init sync won.
         runBlocking { vm.syncFromSystem() }
         assertEquals(true, vm.hasLoadedContacts.value)
         // loadContacts only emits a sync trigger; calling it must not throw

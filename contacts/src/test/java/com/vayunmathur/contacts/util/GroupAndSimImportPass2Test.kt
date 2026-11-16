@@ -69,18 +69,23 @@ class GroupAndSimImportPass2Test {
         ),
     )
 
-    private fun awaitContacts(vm: ContactViewModel, expectedSize: Int) {
+    private fun awaitContacts(vm: ContactViewModel, expected: List<Contact>) {
         val job = kotlinx.coroutines.CoroutineScope(Dispatchers.Default).launch {
             vm.contacts.collect {}
         }
         try {
-            val deadline = System.nanoTime() + 15_000_000_000L
-            while (System.nanoTime() < deadline) {
+            // The VM's init/debounced sync overwrites allContactsState with
+            // the provider+SIM list whenever it lands, so a single seeding
+            // races it: keep re-seeding until the derived list is exactly
+            // the fixture set. Step counted (Robolectric clock runs ahead).
+            var steps = 0
+            while (steps++ < 800) {
                 Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-                if (vm.contacts.value.size == expectedSize) return
-                Thread.sleep(10)
+                if (vm.contacts.value == expected) return
+                vm.allContactsState.value = expected
+                try { Thread.sleep(25) } catch (_: InterruptedException) { }
             }
-            assertEquals(expectedSize, vm.contacts.value.size)
+            assertEquals(expected, vm.contacts.value)
         } finally {
             job.cancel()
         }
@@ -99,11 +104,14 @@ class GroupAndSimImportPass2Test {
         val bob = contact(2, "Bob", groupIds = listOf(12))
         val cara = contact(3, "Cara", groupIds = listOf(11, 12))
         vm.allContactsState.value = listOf(aisha, bob, cara)
-        awaitContacts(vm, 3)
+        awaitContacts(vm, listOf(aisha, bob, cara))
 
-        assertEquals(listOf(aisha, cara), withTimeout(15_000) { vm.contactsInGroup(11).first() })
-        assertEquals(listOf(bob, cara), withTimeout(15_000) { vm.contactsInGroup(12).first() })
-        assertEquals(emptyList(), withTimeout(15_000) { vm.contactsInGroup(99).first() })
+        // first { it == expected }, not first(): the WhileSubscribed
+        // membership flow can still hold its empty initial value when the
+        // collector starts under load.
+        assertEquals(listOf(aisha, cara), withTimeout(15_000) { vm.contactsInGroup(11).first { it == listOf(aisha, cara) } })
+        assertEquals(listOf(bob, cara), withTimeout(15_000) { vm.contactsInGroup(12).first { it == listOf(bob, cara) } })
+        assertEquals(emptyList(), withTimeout(15_000) { vm.contactsInGroup(99).first { it.isEmpty() && vm.contacts.value.size == 3 } })
         assertEquals(aisha, vm.findContact(1))
         assertEquals(null, vm.findContact(999))
     }
