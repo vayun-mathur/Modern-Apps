@@ -221,6 +221,7 @@ dependencies {
     // shadows so the pilot lookup (and its permission/dual-SIM fallbacks) can be asserted
     // on the JVM; same reason emergency/pdf use it.
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.car.app.testing)
     testImplementation(libs.androidx.test.core)
     // Compile-only hidden-API stubs (SipMessage etc.) so RCS inbound tests can reference
     // them; Robolectric's android-all supplies the real implementations at runtime.
