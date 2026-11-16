@@ -113,6 +113,16 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
         "Get the current weather conditions for a named place (city, address, landmark).",
         listOf(p("location", description = "city or place name")),
     ),
+    ToolSpec(
+        "render_ui",
+        "Render a rich UI card (A2UI) attached to your reply. Prefer this over writing a ```a2ui fence. " +
+            "components_json is a JSON string: {\"components\":[...]} (or a bare component array) using the RICH UI types; " +
+            "data_json is an optional JSON object string with initial data values.",
+        listOf(
+            p("components_json", description = "A2UI components as a JSON string"),
+            p("data_json", description = "optional initial data model as a JSON object string", required = false),
+        ),
+    ),
     ToolSpec("get_memories", "Get a list of all memories"),
     ToolSpec("remove_memory", "Remove a memory by its id (requires confirmation)", listOf(p("id", NUMBER)), risk = WRITE_CONFIRM),
     ToolSpec("add_to_memory", "Add a new memory to the list of memories", listOf(p("content"))),

@@ -44,7 +44,7 @@ class AssistantToolsInvokeTest {
         assertEquals("Error: create_note needs title", call("create_note", "content" to "x"))
         assertTrue(
             call("set_timer", "seconds" to "abc").contains("must be a number"))
-        assertEquals(28, tools.declarations.size)
+        assertEquals(29, tools.declarations.size)
     }
 
     @Test fun crossAppToolsReportMissingApps() {
@@ -143,6 +143,37 @@ class AssistantToolsInvokeTest {
             ParsedToolCall("remove_memory", mapOf("id" to "999")))!!
         now += com.vayunmathur.openassistant.domain.PendingToolCall.TTL_MILLIS + 1
         assertEquals("Error: pending tool call expired", gated.invokeConfirmed(expired.id))
+    }
+
+    @Test fun renderUiValidatesAndStashesEnvelope() {
+        // Invalid JSON and unusable components are errors and stash nothing.
+        assertTrue(call("render_ui", "components_json" to "{not json").startsWith("Error:"), "bad json")
+        assertEquals(null, tools.pendingRenderUi)
+        assertTrue(
+            call("render_ui", "components_json" to """{"components":[]}""").startsWith("Error: invalid A2UI"),
+        )
+        assertEquals(null, tools.pendingRenderUi)
+        // Oversize payloads are rejected before stashing.
+        val big = """{"components":[{"id":"root","component":"Text","text":"${"x".repeat(13_000)}"}]}"""
+        assertTrue(call("render_ui", "components_json" to big).contains("too large"))
+        assertEquals(null, tools.pendingRenderUi)
+        // Valid UI succeeds, merges data_json, and is consumable exactly once by the engine.
+        val ok = call(
+            "render_ui",
+            "components_json" to """{"components":[{"id":"root","component":"Text","text":"Hi"}]}""",
+            "data_json" to """{"name":"Ada"}""",
+        )
+        assertEquals("UI rendered", ok)
+        val stashed = tools.pendingRenderUi
+        assertTrue(stashed != null && stashed.contains("Ada"), "$stashed")
+        assertEquals(stashed, tools.consumePendingRenderUi())
+        assertEquals(null, tools.consumePendingRenderUi())
+        // Bare component arrays are accepted too.
+        assertEquals(
+            "UI rendered",
+            call("render_ui", "components_json" to """[{"id":"root","component":"Text","text":"Yo"}]"""),
+        )
+        tools.consumePendingRenderUi()
     }
 
     @Test fun riskClassificationMatchesDesign() {

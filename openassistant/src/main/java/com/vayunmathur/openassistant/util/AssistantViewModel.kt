@@ -102,6 +102,14 @@ class AssistantViewModel(
         onHostAction = { conversationId, eventName, context ->
             handleHostAction(conversationId, eventName, context)
         },
+        onSurfaceData = { messageId, dataJson ->
+            viewModelScope.launch {
+                val existing = runCatching { repository.getMessage(messageId) }.getOrNull()
+                if (existing != null && existing.a2uiData != dataJson) {
+                    upsertMessage(existing.copy(a2uiData = dataJson))
+                }
+            }
+        },
     )
 
     /**

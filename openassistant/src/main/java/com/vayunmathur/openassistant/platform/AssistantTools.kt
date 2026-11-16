@@ -21,11 +21,15 @@ import com.vayunmathur.openassistant.domain.ToolArgs
 import com.vayunmathur.openassistant.domain.ToolArgsResult
 import com.vayunmathur.openassistant.domain.ToolRisk
 import com.vayunmathur.openassistant.domain.ToolSpec
+import com.vayunmathur.openassistant.domain.buildA2uiEnvelope
 import com.vayunmathur.openassistant.domain.coerceToolArgs
 import com.vayunmathur.openassistant.domain.pendingToolSummary
 import com.vayunmathur.openassistant.util.AssistantDeviceTools
 import com.vayunmathur.openassistant.util.AssistantToolIntents
 import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import java.util.UUID
 
 fun ToolSpec.toDeclaration(): Gemma4Handle.ToolDeclaration = Gemma4Handle.ToolDeclaration(
@@ -49,6 +53,13 @@ class AssistantTools(
     private val specs = ASSISTANT_TOOL_SPECS.associateBy { it.name }
 
     val declarations: List<Gemma4Handle.ToolDeclaration> = ASSISTANT_TOOL_SPECS.map { it.toDeclaration() }
+
+    /**
+     * Envelope JSON stashed by the last successful `render_ui` call. AssistantTools cannot
+     * write the DB, so [MamlChatEngine] consumes this after the loop and appends it to the
+     * reply as an a2ui fence, which the normal split/persist path then stores.
+     */
+    var pendingRenderUi: String? = null
 
     private val handlers: Map<String, (ToolArgs) -> String> = mapOf(
         "get_notes" to { _ -> intents.runTool { intents.getNotes() } },
@@ -137,6 +148,7 @@ class AssistantTools(
             intents.runTool { intents.getWeather(a.number("latitude"), a.number("longitude")) }
         },
         "get_weather_by_name" to { a -> intents.runTool { intents.getWeatherByName(a.string("location")) } },
+        "render_ui" to { a -> renderUi(a.string("components_json"), a.string("data_json")) },
         "get_memories" to { _ -> intents.runTool { device.getMemories(memoryDao) } },
         "remove_memory" to { a -> intents.runTool { device.removeMemory(memoryDao, a.number("id")) } },
         "add_to_memory" to { a -> intents.runTool { device.addToMemory(memoryDao, a.string("content")) } },
@@ -205,11 +217,67 @@ class AssistantTools(
         return execute(spec.name, coerced)
     }
 
+    /** Takes and clears the stashed [pendingRenderUi] envelope, if any. */
+    fun consumePendingRenderUi(): String? {
+        val pending = pendingRenderUi
+        pendingRenderUi = null
+        return pending
+    }
+
+    /**
+     * Validates a `render_ui` payload and stashes it in [pendingRenderUi] for the engine
+     * to attach to the current assistant message. Never throws; bad UI comes back as an
+     * error string so the model can fix it.
+     */
+    private fun renderUi(componentsJson: String, dataJson: String): String {
+        if (componentsJson.isBlank()) return "Error: render_ui needs components_json"
+        val combined = buildRenderUiJson(componentsJson, dataJson)
+            ?: return "Error: invalid A2UI: components_json/data_json is not valid JSON"
+        if (combined.length > MAX_RENDER_UI_CHARS) {
+            return "Error: render_ui payload too large (${combined.length} chars, max $MAX_RENDER_UI_CHARS)"
+        }
+        if (buildA2uiEnvelope(TEMP_SURFACE_ID, AssistantCatalog.ID, combined) == null) {
+            return "Error: invalid A2UI: no usable components"
+        }
+        pendingRenderUi = combined
+        return "UI rendered"
+    }
+
+    /** Merges components_json (+ optional data_json object) into one {"components","data"} string. */
+    private fun buildRenderUiJson(componentsJson: String, dataJson: String): String? {
+        val componentsRoot = runCatching { Json.parseToJsonElement(componentsJson) }.getOrNull() ?: return null
+        val dataOverride = if (dataJson.isBlank()) {
+            null
+        } else {
+            runCatching { Json.parseToJsonElement(dataJson) }.getOrNull() as? JsonObject ?: return null
+        }
+        return when (componentsRoot) {
+            is JsonArray -> JsonObject(
+                buildMap {
+                    put("components", componentsRoot)
+                    if (dataOverride != null) put("data", dataOverride)
+                },
+            ).toString()
+            is JsonObject -> {
+                if (componentsRoot["components"] !is JsonArray) return null
+                val merged = LinkedHashMap(componentsRoot)
+                if (dataOverride != null) merged["data"] = dataOverride
+                JsonObject(merged).toString()
+            }
+            else -> null
+        }
+    }
+
     private fun execute(name: String, args: ToolArgs): String = try {
         handlers.getValue(name)(args)
     } catch (e: CancellationException) {
         throw e
     } catch (expected: Exception) {
         "Error: ${expected.message}"
+    }
+
+    private companion object {
+        const val TEMP_SURFACE_ID = "temp"
+        const val MAX_RENDER_UI_CHARS = 12_000
     }
 }

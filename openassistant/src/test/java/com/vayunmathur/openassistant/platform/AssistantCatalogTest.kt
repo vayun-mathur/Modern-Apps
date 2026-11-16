@@ -96,6 +96,34 @@ class AssistantCatalogTest {
     }
 
     @Test
+    fun pickerStepperAndMultilineTextFieldRenderWithoutErrors() = runBlocking {
+        val processor = processor()
+        val loop = launch { processor.collectMessages() }
+        val json = """{"components":[
+            {"id":"root","component":"Column","children":["p","s","t"]},
+            {"id":"p","component":"Picker","label":"Pick one",
+             "options":{"path":"/items"},"value":{"path":"/selected"},
+             "action":{"event":{"name":"pick.item","context":{"id":{"path":"/selected"}}}}},
+            {"id":"s","component":"QuantityStepper","label":"Qty",
+             "value":{"path":"/qty"},"min":1,"max":5},
+            {"id":"t","component":"TextField","label":"Notes","value":{"path":"/notes"},"multiline":true}
+        ],"data":{"items":[{"id":"a","title":"A"},{"id":"b","title":"B"}],"selected":"a","qty":2,"notes":""}}"""
+        buildA2uiEnvelope("m9", AssistantCatalog.ID, json)!!.forEach(processor::processMessage)
+        val surface = processor.awaitSurface()
+        val registry = surface.componentRegistry as ComposeComponentRegistry
+        registry.awaitSettled(4)
+        assertEquals(setOf("root", "p", "s", "t"), registry.components.keys)
+        assertTrue(registry.errors.isEmpty(), "errors: ${registry.errors}")
+        assertEquals(2L, surface.dataModel[A2uiDataPath("/qty")])
+        // Prompt lines for the new components are generated from the same definitions.
+        assertTrue(AssistantCatalog.PROMPT_SECTION.contains("- Picker: "))
+        assertTrue(AssistantCatalog.PROMPT_SECTION.contains("- QuantityStepper: "))
+        assertTrue(AssistantCatalog.PROMPT_SECTION.contains("multiline"))
+        assertTrue(AssistantCatalog.PROMPT_SECTION.contains("render_ui"))
+        loop.cancel()
+    }
+
+    @Test
     fun promptListsEveryComponentAndItsExampleParses() {
         AssistantCatalog.COMPONENT_NAMES.forEach {
             assertTrue(AssistantCatalog.PROMPT_SECTION.contains("- $it: "), "prompt is missing $it")

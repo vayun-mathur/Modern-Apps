@@ -45,6 +45,28 @@ class A2uiEnvelopeTest {
     }
 
     @Test
+    fun dataOverrideSeedsAndMergesDataModel() {
+        val json = """{"components":[{"id":"root","component":"Text","text":"x"}],"data":{"name":"Ada","qty":1}}"""
+        val messages = buildA2uiEnvelope("m1", "cat", json, dataOverride = """{"qty":3,"extra":true}""")!!
+        assertEquals(3, messages.size)
+        assertEquals(
+            A2uiUpdateDataModelMessage("m1", "/", mapOf("name" to "Ada", "qty" to 3L, "extra" to true)),
+            messages[2],
+        )
+        // Override alone (no block data) still seeds; a bad override is ignored.
+        val only = buildA2uiEnvelope(
+            "m1", "cat", """{"components":[{"id":"root","component":"Text","text":"x"}]}""",
+            dataOverride = """{"qty":2}""",
+        )!!
+        assertEquals(A2uiUpdateDataModelMessage("m1", "/", mapOf("qty" to 2L)), only[2])
+        val bad = buildA2uiEnvelope("m1", "cat", json, dataOverride = "{nope")!!
+        assertEquals(
+            A2uiUpdateDataModelMessage("m1", "/", mapOf("name" to "Ada", "qty" to 1L)),
+            bad[2],
+        )
+    }
+
+    @Test
     fun acceptsBareComponentArrayAndSkipsBadEntries() {
         val messages = buildA2uiEnvelope("m1", "cat", """[{"id":"root","component":"Text","text":"x"},{"id":"bad"},3]""")!!
         assertEquals(2, messages.size)

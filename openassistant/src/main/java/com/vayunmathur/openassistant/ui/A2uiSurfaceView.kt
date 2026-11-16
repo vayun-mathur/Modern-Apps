@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
+import com.vayunmathur.library.ui.RadioButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.openassistant.platform.ComposeComponentRegistry
 import com.vayunmathur.openassistant.platform.ComposeDataModel
@@ -44,10 +46,10 @@ private const val MAX_DEPTH = 12
  * state, so edits recompose whatever is bound to them.
  */
 @Composable
-fun A2uiSurfaceView(surface: A2uiCoreSurfaceModel, modifier: Modifier = Modifier) {
+fun A2uiSurfaceView(surface: A2uiCoreSurfaceModel, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val registry = surface.componentRegistry as? ComposeComponentRegistry ?: return
     val data = surface.dataModel as? ComposeDataModel ?: return
-    val renderer = remember(surface) { SurfaceRenderer(surface, registry, data) }
+    val renderer = remember(surface, enabled) { SurfaceRenderer(surface, registry, data, enabled) }
     Box(modifier.widthIn(max = 400.dp)) { renderer.Node(ROOT_ID, A2uiDataPath("/"), 0) }
 }
 
@@ -55,6 +57,7 @@ private class SurfaceRenderer(
     val surface: A2uiCoreSurfaceModel,
     val registry: ComposeComponentRegistry,
     val data: ComposeDataModel,
+    val enabled: Boolean = true,
 ) {
     private val resolver = A2uiCoreValueResolver { data[it] }
 
@@ -79,6 +82,7 @@ private class SurfaceRenderer(
      */
     @Suppress("UNCHECKED_CAST")
     fun dispatch(componentId: String, dataPath: A2uiDataPath, action: Any?) {
+        if (!enabled) return
         val map = action as? Map<String, Any?> ?: return
         val event = map["event"] as? Map<String, Any?>
         val context = event?.get("context") as? Map<String, Any?>
@@ -90,6 +94,18 @@ private class SurfaceRenderer(
         }
         surface.dispatchAction(componentId, resolved)
     }
+
+    /** [action] with one extra literal entry merged into its event context. */
+    @Suppress("UNCHECKED_CAST")
+    fun actionWith(action: Any?, key: String, value: Any?): Any? {
+        val map = action as? Map<String, Any?> ?: return action
+        val event = map["event"] as? Map<String, Any?> ?: return action
+        val context = event["context"] as? Map<String, Any?> ?: emptyMap()
+        return mapOf("event" to (event + ("context" to (context + (key to value)))))
+    }
+
+    fun formatNumber(value: Double): String =
+        if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
 
     @Composable
     fun Node(id: String, dataPath: A2uiDataPath, depth: Int) {
@@ -124,22 +140,91 @@ private class SurfaceRenderer(
             "Button" -> {
                 val onClick = { dispatch(id, dataPath, props["action"]) }
                 if (props["primary"] == true) {
-                    Button(onClick) { Text(str("label")) }
+                    Button(onClick, enabled = enabled) { Text(str("label")) }
                 } else {
-                    OutlinedButton(onClick) { Text(str("label")) }
+                    OutlinedButton(onClick, enabled = enabled) { Text(str("label")) }
                 }
             }
-            "TextField" -> OutlinedTextField(
-                value = str("value"),
-                onValueChange = { text -> boundPath(dataPath, props["value"])?.let { data.update(it, text) } },
-                modifier = Modifier.fillMaxWidth(),
-                label = props["label"]?.let { { Text(str("label")) } },
-                singleLine = true,
-            )
+            "TextField" -> {
+                val multiline = props["multiline"] == true
+                OutlinedTextField(
+                    value = str("value"),
+                    onValueChange = { text -> if (enabled) boundPath(dataPath, props["value"])?.let { data.update(it, text) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    label = props["label"]?.let { { Text(str("label")) } },
+                    singleLine = !multiline,
+                    minLines = if (multiline) 3 else 1,
+                )
+            }
+            "Picker" -> {
+                val options = evaluate(id, dataPath, props["options"]) as? List<*> ?: emptyList<Any?>()
+                val selected = evaluate(id, dataPath, props["value"])?.toString().orEmpty()
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    props["label"]?.let { Text(str("label"), style = MaterialTheme.typography.titleSmall) }
+                    options.forEach { option ->
+                        val map = option as? Map<*, *> ?: return@forEach
+                        val optionId = map["id"]?.toString().orEmpty()
+                        val optionTitle = (map["label"] ?: map["title"] ?: map["name"] ?: optionId).toString()
+                        val optionCaption = map["caption"]?.toString().orEmpty()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = optionId == selected,
+                                onClick = {
+                                    if (enabled) {
+                                        // Update the bound value first, then fire the action
+                                        // with the chosen id in its context.
+                                        boundPath(dataPath, props["value"])?.let { data.update(it, optionId) }
+                                        dispatch(id, dataPath, actionWith(props["action"], "id", optionId))
+                                    }
+                                },
+                                enabled = enabled,
+                            )
+                            map["imageUrl"]?.toString()?.takeIf { it.isNotEmpty() }?.let { url ->
+                                AsyncImage(
+                                    ImageRequest.Builder(LocalContext.current).data(url).build(),
+                                    null,
+                                    Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop,
+                                )
+                            }
+                            Column {
+                                Text(optionTitle)
+                                if (optionCaption.isNotEmpty()) {
+                                    Text(optionCaption, style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            "QuantityStepper" -> {
+                // Steppers mutate the surface data model locally only; they never
+                // dispatch on their own. If an optional `action` prop is present it
+                // is dispatched on change with the new value in its context.
+                val current = (evaluate(id, dataPath, props["value"]) as? Number)?.toDouble() ?: 0.0
+                val min = (props["min"] as? Number)?.toDouble() ?: 0.0
+                val max = (props["max"] as? Number)?.toDouble() ?: current.coerceAtLeast(min)
+                fun step(delta: Double) {
+                    if (!enabled) return
+                    val next = (current + delta).coerceIn(min, max)
+                    if (next == current) return
+                    val stored: Any = if (next % 1.0 == 0.0) next.toLong() else next
+                    boundPath(dataPath, props["value"])?.let { data.update(it, stored) }
+                    props["action"]?.let { dispatch(id, dataPath, actionWith(it, "value", stored)) }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    props["label"]?.let { Text(str("label")) }
+                    OutlinedButton({ step(-1.0) }, enabled = enabled && current > min) { Text("-") }
+                    Text(formatNumber(current))
+                    OutlinedButton({ step(1.0) }, enabled = enabled && current < max) { Text("+") }
+                }
+            }
             "CheckBox" -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = evaluate(id, dataPath, props["value"]) == true,
-                    onCheckedChange = { checked -> boundPath(dataPath, props["value"])?.let { data.update(it, checked) } },
+                    onCheckedChange = { checked -> if (enabled) boundPath(dataPath, props["value"])?.let { data.update(it, checked) } },
+                    enabled = enabled,
                 )
                 Text(str("label"))
             }

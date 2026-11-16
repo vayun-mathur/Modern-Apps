@@ -87,6 +87,32 @@ class MamlChatEngineFakeModelTest {
         e.close()
     }
 
+    @Test fun renderUiCallAttachesA2uiFenceToReply() = runBlocking {
+        var calls = 0
+        val uiJson = """{"components":[{"id":"root","component":"Text","text":"Pick one"}]}"""
+        val quoted = "<|\"|>" + uiJson + "<|\"|>"
+        val fake = FakeTextModel(script = { _, onToken ->
+            calls++
+            if (calls == 1) {
+                "<|tool_call>call:render_ui{components_json:$quoted}<tool_call|>"
+            } else {
+                onToken("here you go"); "here you go"
+            }
+        })
+        val e = engine(fake)
+        val toolSet = tools()
+        val result = e.chat(ChatRequest("sys", emptyList(), "show a card"), toolSet) { true }
+        assertTrue(result is ChatResult.Reply, "$result")
+        val text = (result as ChatResult.Reply).text
+        assertTrue(text.contains("here you go"), text)
+        assertTrue(text.contains("```a2ui"), text)
+        assertTrue(text.contains("Pick one"), text)
+        assertEquals(2, calls)
+        // The stash was consumed by the engine, exactly once.
+        assertEquals(null, toolSet.pendingRenderUi)
+        e.close()
+    }
+
     @Test fun haltedStreamAndTooLongAndUnavailable() = runBlocking {
         val fake = FakeTextModel()
         val e = engine(fake)

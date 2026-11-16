@@ -14,6 +14,7 @@ import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.domain.a2uiSurfaceId
 import com.vayunmathur.openassistant.domain.actionTurnText
 import com.vayunmathur.openassistant.domain.buildA2uiEnvelope
+import com.vayunmathur.openassistant.domain.valueToJson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,8 +27,9 @@ import kotlinx.coroutines.launch
  * turns the events those surfaces fire into user turns via [onAction].
  *
  * Surfaces are keyed by message ([a2uiSurfaceId]), so [sync] is idempotent and reopening a
- * conversation recreates its surfaces from Room. Values typed into a surface are not stored;
- * what matters reaches the model, and so the history, through the action turn.
+ * conversation recreates its surfaces from Room. When an action fires, the surface's current
+ * data model is snapshotted through [onSurfaceData] (when set) so the host can persist it as
+ * Message.a2uiData and replay it via the envelope's data seeding.
  */
 class A2uiController(
     context: Context,
@@ -35,6 +37,7 @@ class A2uiController(
     private val onHostAction: (
         (conversationId: Long, eventName: String, context: Map<String, Any?>) -> Boolean
     )? = null,
+    private val onSurfaceData: ((messageId: Long, dataJson: String) -> Unit)? = null,
     private val onAction: (conversationId: Long, text: String) -> Unit,
 ) {
     private val appContext = context.applicationContext
@@ -45,6 +48,7 @@ class A2uiController(
     )
     private val fed = HashMap<Long, String>()
     private val conversationOf = HashMap<String, Long>()
+    private val messageOf = HashMap<String, Long>()
 
     val surfaces: StateFlow<Map<String, A2uiCoreSurfaceModel>> = processor.activeSurfaces
         .map { list -> list.filterIsInstance<A2uiCoreSurfaceModel>().associateBy { it.id } }
@@ -56,6 +60,14 @@ class A2uiController(
             processor.outboundEvents.collect { event ->
                 when (event) {
                     is A2uiClientEventMessage -> conversationOf[event.surfaceId]?.let { convId ->
+                        // Snapshot the surface data before the turn, so typed/stepped
+                        // values survive a restart even when they were not in the context.
+                        messageOf[event.surfaceId]?.let { messageId ->
+                            val data = surfaces.value[event.surfaceId]?.dataModel as? ComposeDataModel
+                            if (onSurfaceData != null && data != null) {
+                                onSurfaceData.invoke(messageId, valueToJson(data.snapshot()).toString())
+                            }
+                        }
                         val handled = onHostAction?.invoke(convId, event.type, event.context) ?: false
                         if (!handled) onAction(convId, actionTurnText(event.type, event.context))
                     }
@@ -70,15 +82,18 @@ class A2uiController(
     fun sync(messages: List<Message>) {
         for (message in messages) {
             val json = message.a2ui
-            if (json != null && fed[message.id] != json) feed(message, json)
+            val fedKey = json?.let { it + "\u0000" + (message.a2uiData ?: "") }
+            if (json != null && fed[message.id] != fedKey) feed(message, json)
         }
     }
 
     private fun feed(message: Message, json: String) {
         val surfaceId = a2uiSurfaceId(message.id)
-        if (fed.put(message.id, json) != null) processor.processMessage(A2uiDeleteSurfaceMessage(surfaceId))
+        val fedKey = json + "\u0000" + (message.a2uiData ?: "")
+        if (fed.put(message.id, fedKey) != null) processor.processMessage(A2uiDeleteSurfaceMessage(surfaceId))
         conversationOf[surfaceId] = message.conversationId
-        val envelope = buildA2uiEnvelope(surfaceId, AssistantCatalog.ID, json)
+        messageOf[surfaceId] = message.id
+        val envelope = buildA2uiEnvelope(surfaceId, AssistantCatalog.ID, json, dataOverride = message.a2uiData)
         if (envelope == null) {
             Log.status(TAG, "unusable a2ui block on message ${message.id}")
             return

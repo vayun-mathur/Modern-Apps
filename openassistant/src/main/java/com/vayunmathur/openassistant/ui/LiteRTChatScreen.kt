@@ -81,8 +81,14 @@ fun ChatScreen(
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         SelectionContainer {
+            // Only the latest A2UI surface stays interactive; older cards are inert scrollback.
+            val latestA2uiMessageId = remember(state.messages) {
+                state.messages.lastOrNull { it.a2ui != null }?.id
+            }
             LazyColumn(state = listState, modifier = Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(state.messages, key = { it.id }) { ChatBubble(it, state.surfaces[a2uiSurfaceId(it.id)]) }
+                items(state.messages, key = { it.id }) {
+                    ChatBubble(it, state.surfaces[a2uiSurfaceId(it.id)], a2uiEnabled = it.id == latestA2uiMessageId)
+                }
             }
         }
     }

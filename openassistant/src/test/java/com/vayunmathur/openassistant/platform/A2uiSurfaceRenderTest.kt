@@ -87,6 +87,78 @@ class A2uiSurfaceRenderTest {
         }
     }
 
+    @Test fun pickerAndStepperRenderAndMutateData() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val actions = mutableListOf<Pair<Long, String>>()
+        val dataSnapshots = mutableListOf<Pair<Long, String>>()
+        val controller = A2uiController(
+            ctx, scope,
+            onSurfaceData = { id, data -> dataSnapshots.add(id to data) },
+        ) { id, text -> actions.add(id to text) }
+        val pickerJson = """
+            {"components":[
+              {"id":"root","component":"Column","children":["p","s"]},
+              {"id":"p","component":"Picker","label":"Pick one",
+               "options":{"path":"/items"},"value":{"path":"/selected"},
+               "action":{"event":{"name":"pick.item","context":{"id":{"path":"/selected"}}}}},
+              {"id":"s","component":"QuantityStepper","label":"Qty",
+               "value":{"path":"/qty"},"min":1,"max":3}
+            ],"data":{"items":[{"id":"a","title":"Alpha"},{"id":"b","title":"Beta"}],"selected":"a","qty":1}}
+        """.trimIndent()
+        try {
+            controller.sync(listOf(Message(9L, "hi", "assistant", a2ui = pickerJson, id = 11L)))
+            assertTrue(await { controller.surfaces.value.containsKey("m11") })
+            val surface = controller.surfaces.value.getValue("m11")
+            composeRule.setContent { DynamicTheme { A2uiSurfaceView(surface) } }
+            composeRule.onNodeWithText("Pick one").assertIsDisplayed()
+            composeRule.onNodeWithText("Alpha").assertIsDisplayed()
+            composeRule.onNodeWithText("Beta").assertIsDisplayed()
+            composeRule.onNodeWithText("Qty").assertIsDisplayed()
+            // Stepper mutates the data model locally without firing an action.
+            composeRule.onNodeWithText("+").performClick()
+            assertEquals(2L, surface.dataModel[A2uiDataPath("/qty")])
+            assertTrue(actions.isEmpty(), "stepper must not fire turns: $actions")
+            // Clamped at max.
+            composeRule.onNodeWithText("+").performClick()
+            composeRule.onNodeWithText("+").performClick()
+            assertEquals(3L, surface.dataModel[A2uiDataPath("/qty")])
+            assertTrue(actions.isEmpty(), "$actions")
+            // Firing the picker action snapshots the current data model for a2uiData.
+            @Suppress("UNCHECKED_CAST")
+            val pickerAction = (surface.componentRegistry as ComposeComponentRegistry)
+                .components.getValue("p").properties["action"] as Map<String, Any?>
+            surface.dispatchAction("p", pickerAction)
+            assertTrue(await { actions.isNotEmpty() }, "actions=$actions")
+            assertTrue(actions[0].second.contains("pick.item"), actions[0].second)
+            assertTrue(await { dataSnapshots.isNotEmpty() }, "snapshots=$dataSnapshots")
+            assertEquals(11L, dataSnapshots[0].first)
+            assertTrue(dataSnapshots[0].second.contains("\"qty\":3"), dataSnapshots[0].second)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test fun disabledSurfaceIgnoresButtons() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val actions = mutableListOf<Pair<Long, String>>()
+        val controller = A2uiController(ctx, scope) { id, text -> actions.add(id to text) }
+        try {
+            controller.sync(listOf(Message(9L, "hi", "assistant", a2ui = json, id = 12L)))
+            assertTrue(await { controller.surfaces.value.containsKey("m12") })
+            val surface = controller.surfaces.value.getValue("m12")
+            composeRule.setContent { DynamicTheme { A2uiSurfaceView(surface, enabled = false) } }
+            composeRule.onNodeWithText("RSVP").assertIsDisplayed()
+            // Disabled controls do not dispatch (click is a no-op / not performed on disabled node).
+            runCatching { composeRule.onNodeWithText("RSVP").performClick() }
+            Thread.sleep(300)
+            assertTrue(actions.isEmpty(), "disabled surface fired: $actions")
+        } finally {
+            scope.cancel()
+        }
+    }
+
     @Test fun dataModelPathWritesAndReads() {
         val model = ComposeDataModel()
         model.update(A2uiDataPath("/name"), "Ada")

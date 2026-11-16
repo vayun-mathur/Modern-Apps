@@ -14,6 +14,7 @@ import com.vayunmathur.openassistant.domain.ToolLoopOutcome
 import com.vayunmathur.openassistant.domain.decodeWavMono16k
 import com.vayunmathur.openassistant.domain.fitConversation
 import com.vayunmathur.openassistant.domain.runToolLoop
+import com.vayunmathur.openassistant.domain.withA2uiBlock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -181,7 +182,14 @@ open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
                 onVisible = onText,
             )
             when (outcome) {
-                is ToolLoopOutcome.Finished -> ChatResult.Reply(outcome.text, halted = false)
+                is ToolLoopOutcome.Finished -> {
+                    // A render_ui call stashed its envelope on the tools (it cannot write
+                    // the DB); append it as an a2ui fence so storeReply/splitA2ui persists
+                    // it on this assistant message.
+                    val pendingUi = tools.consumePendingRenderUi()
+                    val text = if (pendingUi != null) withA2uiBlock(outcome.text, pendingUi) else outcome.text
+                    ChatResult.Reply(text, halted = false)
+                }
                 is ToolLoopOutcome.Halted -> ChatResult.Reply(outcome.text, halted = true)
                 is ToolLoopOutcome.Failed -> ChatResult.Unavailable
                 is ToolLoopOutcome.PendingConfirmation -> ChatResult.Pending(

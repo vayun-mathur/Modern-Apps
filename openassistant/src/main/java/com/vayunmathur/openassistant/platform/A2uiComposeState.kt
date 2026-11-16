@@ -60,6 +60,9 @@ class ComposeDataModel : A2uiCoreDataModel {
         return node
     }
 
+    /** The whole data-model tree, for persisting a snapshot (Message.a2uiData). */
+    fun snapshot(): Any? = synchronized(lock) { root }
+
     override fun close() {
         synchronized(lock) { root = emptyMap<String, Any?>() }
     }

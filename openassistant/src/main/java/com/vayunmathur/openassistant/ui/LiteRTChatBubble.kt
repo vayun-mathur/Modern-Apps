@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatBubble(message: Message, surface: A2uiCoreSurfaceModel? = null) {
+fun ChatBubble(message: Message, surface: A2uiCoreSurfaceModel? = null, a2uiEnabled: Boolean = true) {
     val context = LocalContext.current
     val isUser = message.role == "user"
     val isTool = message.role == "tool"
@@ -132,7 +132,7 @@ fun ChatBubble(message: Message, surface: A2uiCoreSurfaceModel? = null) {
             )
         }
         if (surface != null && !isUser) {
-            A2uiSurfaceView(surface, Modifier.padding(vertical = 4.dp))
+            A2uiSurfaceView(surface, Modifier.padding(vertical = 4.dp), enabled = a2uiEnabled)
         }
         if (message.text.isNotBlank() && !isTool) {
             IconButton(

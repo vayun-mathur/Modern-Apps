@@ -8,6 +8,7 @@ import androidx.a2ui.model.catalog.basiccatalog.createBasicCatalogFunctions
 import androidx.a2ui.model.catalog.functions.A2uiMessageFormatter
 import androidx.a2ui.model.catalog.functions.A2uiUrlOpener
 import androidx.a2ui.model.schema.A2uiBooleanSchema
+import androidx.a2ui.model.schema.A2uiNumberSchema
 import androidx.a2ui.model.schema.A2uiObjectSchema
 import androidx.a2ui.model.schema.A2uiSchema
 import androidx.a2ui.model.schema.A2uiSchemaKeyword
@@ -83,9 +84,38 @@ class AssistantCatalog(urlOpener: A2uiUrlOpener, messageFormatter: A2uiMessageFo
                 required = setOf("label", "action"),
             ),
             Component(
-                "TextField", "A single-line text input bound to the data model.", BINDING_PROPS,
-                mapOf("label" to text, "value" to binding),
+                "TextField", "A text input bound to the data model.",
+                "$BINDING_PROPS, multiline (true|false, optional)",
+                mapOf(
+                    "label" to text, "value" to binding,
+                    "multiline" to A2uiBooleanSchema.INSTANCE,
+                ),
                 required = setOf("value"),
+            ),
+            Component(
+                "Picker", "A single-select list bound to the data model; selecting fires its action.",
+                "label (optional), options {\"path\":\"/items\"} (items are {\"id\",\"title\",\"caption\"}), " +
+                    "value {\"path\":\"/selected\"}, action {\"event\":{\"name\":\"pick...\",\"context\":{...}}}",
+                mapOf(
+                    "label" to text,
+                    "options" to binding,
+                    "value" to binding,
+                    "action" to A2uiActionSchema.DEFAULT_INSTANCE,
+                ),
+                required = setOf("options", "value", "action"),
+            ),
+            Component(
+                "QuantityStepper", "A -/value/+ stepper bound to a numeric data value.",
+                "label (optional), value {\"path\":\"/qty\"}, min (number), max (number), " +
+                    "action (optional, same shape as Button action)",
+                mapOf(
+                    "label" to text,
+                    "value" to binding,
+                    "min" to A2uiNumberSchema.INSTANCE,
+                    "max" to A2uiNumberSchema.INSTANCE,
+                    "action" to A2uiActionSchema.DEFAULT_INSTANCE,
+                ),
+                required = setOf("value", "min", "max"),
             ),
             Component(
                 "CheckBox", "A checkbox bound to a boolean in the data model.", BINDING_PROPS,
@@ -115,8 +145,10 @@ class AssistantCatalog(urlOpener: A2uiUrlOpener, messageFormatter: A2uiMessageFo
             appendLine("RICH UI:")
             appendLine(
                 "When a card, list, set of choices or form would help more than plain text " +
-                    "(collecting details, offering options, showing structured results), " +
-                    "add ONE block after your text:",
+                    "(collecting details, offering options, showing structured results), prefer the " +
+                    "render_ui tool (components_json, optional data_json) over writing UI in your reply. " +
+                    "The app also shows host-templated cards after some tool results; you do not write those. " +
+                    "Only when render_ui is unavailable, add ONE block after your text as a fallback:",
             )
             appendLine(A2UI_FENCE_OPEN)
             appendLine("""{"components":[...],"data":{...}}""")
@@ -125,9 +157,17 @@ class AssistantCatalog(urlOpener: A2uiUrlOpener, messageFormatter: A2uiMessageFo
             appendLine("""The component with id "root" is shown. Types:""")
             COMPONENTS.forEach { appendLine("- ${it.name}: ${it.promptProps}") }
             appendLine("""Any text may be {"path":"/field"} to show a data value. "data" sets initial values.""")
-            appendLine("""Button context values may be {"path":"/field"} to send what the user entered.""")
-            appendLine("""When the user taps a button you receive a turn like [UI action "name": {...}].""")
-            appendLine("Respond to it.")
+            appendLine("""Button/Picker context values may be {"path":"/field"} to send what the user entered or picked.""")
+            appendLine(
+                "Steppers and text fields only edit the card's data; they do not send a turn. " +
+                    "Buttons and Picker selections do.",
+            )
+            appendLine("""When the user taps a control you receive a turn like [UI action "name": {...}]. Respond to it.""")
+            appendLine(
+                "Action names are namespaced: pick.* (a Picker/list choice, context has \"id\"), " +
+                    "confirm.tool / cancel.tool (host confirmation, do not invent these), " +
+                    "web.read ({\"index\": n}) and web.open ({\"url\": ...}). Use those names exactly.",
+            )
             appendLine("Keep blocks small (under 15 components). Never use a block for a plain answer. Example:")
             appendLine(A2UI_FENCE_OPEN)
             appendLine(EXAMPLE)

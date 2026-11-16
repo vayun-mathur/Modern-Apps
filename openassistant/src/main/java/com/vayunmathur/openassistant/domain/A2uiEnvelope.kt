@@ -25,19 +25,33 @@ fun a2uiSurfaceId(messageId: Long): String = "m$messageId"
  * envelope (`createSurface`, surface and catalog ids) is supplied here. A bare component array
  * is accepted too, since that is the commonest way a small model drops the wrapper.
  */
-fun buildA2uiEnvelope(surfaceId: String, catalogId: String, json: String): List<A2uiServerToClientMessage>? {
+fun buildA2uiEnvelope(
+    surfaceId: String,
+    catalogId: String,
+    json: String,
+    dataOverride: String? = null,
+): List<A2uiServerToClientMessage>? {
     val root = runCatching { Json.parseToJsonElement(json) }.getOrNull() ?: return null
     val (componentsJson, dataJson) = when (root) {
         is JsonArray -> root to null
         is JsonObject -> (root["components"] as? JsonArray ?: return null) to root["data"] as? JsonObject
         else -> return null
     }
+    // A persisted data-model snapshot (Message.a2uiData) seeds replay: its values
+    // augment/replace the block's initial data, so typed/stepped state survives.
+    val overrideJson = dataOverride?.let {
+        runCatching { Json.parseToJsonElement(it) }.getOrNull() as? JsonObject
+    }
+    val seededData: JsonObject? = when {
+        dataJson != null && overrideJson != null -> JsonObject(dataJson + overrideJson)
+        else -> overrideJson ?: dataJson
+    }
     val components = componentsJson.mapNotNull { toComponent(it) }
     if (components.isEmpty()) return null
     return buildList {
         add(A2uiCreateSurfaceMessage(surfaceId, catalogId))
         add(A2uiUpdateComponentsMessage(surfaceId, components))
-        if (dataJson != null) add(A2uiUpdateDataModelMessage(surfaceId, "/", jsonToValue(dataJson)))
+        if (seededData != null) add(A2uiUpdateDataModelMessage(surfaceId, "/", jsonToValue(seededData)))
     }
 }
 
