@@ -6,9 +6,22 @@ import kotlinx.serialization.Serializable
 /** Contract for route. */
 @Serializable
 sealed interface Route : NavKey {
-    /** Immutable value describing main; carries initialTab. */
+    /** The Tunnels tab: a sibling destination switched with `backStack.reset`. */
     @Serializable
-    data class Main(val initialTab: Int = 0) : Route
+    data object Tunnels : Route
+
+    /**
+     * The Logging tab: a sibling destination switched with `backStack.reset`.
+     * [tab] is the in-screen leaderboard tab the Logging screen last showed, so
+     * leaving and returning to Logging restores it; the sub-tabs themselves stay
+     * in-screen state of the Logging destination (see `LoggingContent`).
+     */
+    @Serializable
+    data class Logging(val tab: Int = 0) : Route
+
+    /** The Settings tab: a sibling destination switched with `backStack.reset`. */
+    @Serializable
+    data object Settings : Route
 
     /** Immutable value describing detail; carries id. */
     @Serializable

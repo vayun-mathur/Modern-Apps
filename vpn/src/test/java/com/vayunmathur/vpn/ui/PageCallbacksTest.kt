@@ -40,7 +40,7 @@ class PageCallbacksTest {
         val vm = VpnViewModel(app, dao, VpnViewModelTest.FakeLogDao())
         rule.setContent {
             DynamicTheme {
-                val bs = rememberNavBackStack<Route>(Route.Main())
+                val bs = rememberNavBackStack<Route>(Route.Tunnels)
                 ConfigListPage(bs, vm)
             }
         }

@@ -50,7 +50,7 @@ class MainActivityAndBypassSwitchTest {
         }
         rule.setContent {
             DynamicTheme {
-                val bs = rememberNavBackStack<Route>(Route.Main())
+                val bs = rememberNavBackStack<Route>(Route.Tunnels)
                 BypassListPage(bs)
             }
         }

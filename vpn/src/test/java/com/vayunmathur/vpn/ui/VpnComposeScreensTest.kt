@@ -127,7 +127,7 @@ class VpnComposeScreensTest {
         val vm = vm(dao)
         rule.setContent {
             DynamicTheme {
-                val bs = rememberNavBackStack<Route>(Route.Main())
+                val bs = rememberNavBackStack<Route>(Route.Tunnels)
                 ConfigDetailPage(bs, vm, 7)
             }
         }
@@ -145,7 +145,7 @@ class VpnComposeScreensTest {
     @Test fun settingsPageRows() {
         rule.setContent {
             DynamicTheme {
-                val bs = rememberNavBackStack<Route>(Route.Main())
+                val bs = rememberNavBackStack<Route>(Route.Tunnels)
                 SettingsPage(bs)
             }
         }
@@ -156,7 +156,7 @@ class VpnComposeScreensTest {
     @Test fun bypassListPageLoadsApps() {
         rule.setContent {
             DynamicTheme {
-                val bs = rememberNavBackStack<Route>(Route.Main())
+                val bs = rememberNavBackStack<Route>(Route.Tunnels)
                 BypassListPage(bs)
             }
         }
@@ -172,8 +172,8 @@ class VpnComposeScreensTest {
         val vm = vm()
         rule.setContent {
             DynamicTheme {
-                val bs = rememberNavBackStack<Route>(Route.Main())
-                VpnTabs(bs, vm, 0)
+                val bs = rememberNavBackStack<Route>(Route.Tunnels)
+                VpnTabs(bs, vm)
             }
         }
         rule.waitForIdle()
@@ -181,7 +181,9 @@ class VpnComposeScreensTest {
     }
 
     @Test fun routeKeys() {
-        assertEquals(Route.Main(2), Route.Main(initialTab = 2))
+        assertEquals(Route.Logging(2), Route.Logging(tab = 2))
+        assertEquals(Route.Tunnels, Route.Tunnels)
+        assertEquals(Route.Settings, Route.Settings)
         assertEquals(Route.Detail(5), Route.Detail(id = 5))
         assertEquals(Route.BypassList, Route.BypassList)
     }

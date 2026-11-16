@@ -3,29 +3,20 @@ package com.vayunmathur.vpn
 import android.content.Intent
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
-import com.vayunmathur.library.util.ListDetailPage
-import com.vayunmathur.library.util.ListPage
-import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.MorphPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.vpn.platform.VpnViewModel
-import com.vayunmathur.vpn.ui.BypassListPage
-import com.vayunmathur.vpn.ui.ConfigDetailPage
 import com.vayunmathur.vpn.ui.VpnTabs
 
 @Composable
 fun Navigation(vm: VpnViewModel) {
-    // Land on the Settings tab when opened from the system App Info page.
+    // Land on the Settings tab when opened from the system App Info page: the
+    // deep-linked tab is the stack's start route, not an initial pager page.
     val activity = LocalActivity.current
-    val startTab = if (activity?.intent?.action == Intent.ACTION_APPLICATION_PREFERENCES) {
-        2
+    val startRoute: Route = if (activity?.intent?.action == Intent.ACTION_APPLICATION_PREFERENCES) {
+        Route.Settings
     } else {
-        0
+        Route.Tunnels
     }
-    val backStack = rememberNavBackStack<Route>(Route.Main(startTab))
-    MainNavigation(backStack) {
-        entry<Route.Main>(metadata = ListPage()) { VpnTabs(backStack, vm, it.initialTab) }
-        entry<Route.Detail>(metadata = ListDetailPage() + MorphPage()) { ConfigDetailPage(backStack, vm, it.id) }
-        entry<Route.BypassList>(metadata = ListDetailPage()) { BypassListPage(backStack) }
-    }
+    val backStack = rememberNavBackStack<Route>(startRoute)
+    VpnTabs(backStack, vm)
 }

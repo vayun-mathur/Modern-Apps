@@ -83,7 +83,7 @@ class NavigationAndPagesTest {
         rule.setContent {
             CompositionLocalProvider(LocalActivityResultRegistryOwner provides fakeOwner(Uri.fromFile(conf))) {
                 DynamicTheme {
-                    val bs = com.vayunmathur.library.util.rememberNavBackStack<com.vayunmathur.vpn.Route>(com.vayunmathur.vpn.Route.Main())
+                    val bs = com.vayunmathur.library.util.rememberNavBackStack<com.vayunmathur.vpn.Route>(com.vayunmathur.vpn.Route.Tunnels)
                     com.vayunmathur.vpn.ui.ConfigListPage(bs, vm)
                 }
             }
@@ -105,7 +105,7 @@ class NavigationAndPagesTest {
         val vm = VpnViewModel(app, dao, VpnViewModelTest.FakeLogDao())
         rule.setContent {
             DynamicTheme {
-                val bs = com.vayunmathur.library.util.rememberNavBackStack<com.vayunmathur.vpn.Route>(com.vayunmathur.vpn.Route.Main())
+                val bs = com.vayunmathur.library.util.rememberNavBackStack<com.vayunmathur.vpn.Route>(com.vayunmathur.vpn.Route.Tunnels)
                 ConfigListPage(bs, vm)
             }
         }

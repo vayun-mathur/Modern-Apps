@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,9 +65,13 @@ fun LoggingContent(
      * given tab can be captured without driving the UI to get there.
      */
     initialTab: Int = 0,
+    /** Notified when the in-screen leaderboard tab changes, so the host can mirror it. */
+    onTabChange: (Int) -> Unit = {},
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var tabIndex by remember { mutableIntStateOf(initialTab) }
+    // In-screen sub-tabs of the Logging destination: saveable so the chosen
+    // leaderboard survives rotation/process recreation, not routed destinations.
+    var tabIndex by rememberSaveable { mutableIntStateOf(initialTab) }
 
     AppScaffold(
         title = "",
@@ -82,7 +87,7 @@ fun LoggingContent(
                 TABS.forEachIndexed { i, label ->
                     Tab(
                         selected = tabIndex == i,
-                        onClick = { tabIndex = i },
+                        onClick = { tabIndex = i; onTabChange(i) },
                         text = { Text(label, maxLines = 1, fontSize = 13.sp) },
                     )
                 }

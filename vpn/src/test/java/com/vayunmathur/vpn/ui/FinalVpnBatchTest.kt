@@ -43,8 +43,12 @@ class FinalVpnBatchTest {
 
     @Test fun routeSerializationRoundTrip() {
         val json = Json
-        val main = json.decodeFromString(Route.serializer(), json.encodeToString(Route.serializer(), Route.Main(2)))
-        assertEquals(Route.Main(2), main)
+        val logging = json.decodeFromString(Route.serializer(), json.encodeToString(Route.serializer(), Route.Logging(2)))
+        assertEquals(Route.Logging(2), logging)
+        val tunnels = json.decodeFromString(Route.serializer(), json.encodeToString(Route.serializer(), Route.Tunnels))
+        assertEquals(Route.Tunnels, tunnels)
+        val settings = json.decodeFromString(Route.serializer(), json.encodeToString(Route.serializer(), Route.Settings))
+        assertEquals(Route.Settings, settings)
         val detail = json.decodeFromString(Route.serializer(), json.encodeToString(Route.serializer(), Route.Detail(9)))
         assertEquals(Route.Detail(9), detail)
         val bypass = json.decodeFromString(Route.serializer(), json.encodeToString(Route.serializer(), Route.BypassList))

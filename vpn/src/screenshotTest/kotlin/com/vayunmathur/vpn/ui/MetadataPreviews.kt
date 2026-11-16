@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -13,8 +12,7 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconDashboard
 import com.vayunmathur.library.ui.IconHistory
 import com.vayunmathur.library.ui.IconSettings
-import com.vayunmathur.library.ui.PagerTab
-import com.vayunmathur.library.ui.TabStyle
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.vpn.Route
@@ -160,31 +158,33 @@ class MetadataPreviews {
     @Composable
     private fun ChromePreview(selectedTab: Int, loggingTab: Int = 0) {
         DynamicTheme(darkTheme = true) {
-            val tabs = listOf(
-                PagerTab("Tunnels", { IconDashboard() }) {
-                    ConfigListContent(
-                        configs = tunnels,
-                        connectingId = 1L,
-                        activeId = 1L,
-                    )
-                },
-                PagerTab("Logging", { IconHistory() }) {
-                    LoggingContent(
+            val startRoute: Route = when (selectedTab) {
+                1 -> Route.Logging(loggingTab)
+                2 -> Route.Settings
+                else -> Route.Tunnels
+            }
+            val backStack = NavBackStack(arrayOf(startRoute))
+            val tabs = listOf<RouteTab<Route>>(
+                RouteTab(Route.Tunnels, "Tunnels") { IconDashboard() },
+                RouteTab(Route.Logging(loggingTab), "Logging") { IconHistory() },
+                RouteTab(Route.Settings, "Settings") { IconSettings() },
+            )
+            TabbedPagerScaffold(backStack = backStack, tabs = tabs) { route ->
+                when (route) {
+                    is Route.Logging -> LoggingContent(
                         topApps = topApps,
                         domainsByCount = domainsByCount,
                         domainsByBytes = domainsByBytes,
                         initialTab = loggingTab,
                     )
-                },
-                PagerTab("Settings", { IconSettings() }) {
-                    SettingsPage(backStack = NavBackStack(arrayOf(Route.Main())))
-                },
-            )
-            TabbedPagerScaffold(
-                tabs = tabs,
-                pagerState = rememberPagerState(initialPage = selectedTab, pageCount = { tabs.size }),
-                tabStyle = TabStyle.BottomNav,
-            )
+                    Route.Settings -> SettingsPage(backStack = backStack)
+                    else -> ConfigListContent(
+                        configs = tunnels,
+                        connectingId = 1L,
+                        activeId = 1L,
+                    )
+                }
+            }
         }
     }
 }
