@@ -10,6 +10,18 @@ sealed interface Route : NavKey {
     @Serializable
     data object Home : Route
 
+    /** Albums tab: sibling of [Home], switched with `backStack.reset`. */
+    @Serializable
+    data object Albums : Route
+
+    /** Artists tab: sibling of [Home], switched with `backStack.reset`. */
+    @Serializable
+    data object Artists : Route
+
+    /** Playlists tab: sibling of [Home], switched with `backStack.reset`. */
+    @Serializable
+    data object Playlists : Route
+
     /** Singleton holding song state and operations. */
     @Serializable
     data object Song : Route

@@ -1,65 +1,50 @@
 package com.vayunmathur.music.ui
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.library.ui.IconAlbum
+import com.vayunmathur.library.ui.IconLibraryMusic
+import com.vayunmathur.library.ui.IconPerson
+import com.vayunmathur.library.ui.R as UiR
+import com.vayunmathur.library.ui.RouteTab
+import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.isNavLeaving
-import com.vayunmathur.library.util.sinksBelow
+import com.vayunmathur.music.R
 import com.vayunmathur.music.Route
 import com.vayunmathur.music.platform.MusicViewModel
-import com.vayunmathur.music.platform.SyncWorker
-import com.vayunmathur.music.ui.components.MusicTabsBar
 import com.vayunmathur.music.ui.components.PlayingBottomBar
-import kotlinx.coroutines.launch
 
 /**
- * Hosts the four main tabs (Songs / Albums / Artists / Playlists) in a swipeable
- * pager, with the now-playing controls and the tab bar pinned across all four.
+ * Hosts one of the four main tabs (Songs / Albums / Artists / Playlists) with
+ * the now-playing controls and the tab bar / rail pinned across all four.
  *
- * A plain [Column] rather than a scaffold: each tab page brings its own, and
- * `MainNavigation` already owns the outer one, so a third would only nest.
+ * Tabs are sibling [Route]s, not pager pages: each tab is registered as its
+ * own entry in `Navigation` with `SiblingPage()` metadata, and the
+ * route-backed [TabbedPagerScaffold] switches between them with
+ * `backStack.reset(tab.route)` on tab select — so back, deep links (the
+ * start destination is [Route.Home]) and process restore see the real
+ * screen, and a detail pushed over a tab (tap an album → AlbumDetail →
+ * back) returns to that tab. [currentTab] is the route this instance was
+ * registered for; it, not the (possibly detail) top of the stack, decides
+ * which tab's content renders, so a list pane beside a detail still shows
+ * its tab. Per-tab `rememberSaveable` state (search, scroll) lives in the
+ * tab contents themselves and survives via their entry's saved state.
  *
- * Tab selection lives in the pager's own state, NOT in the nav backstack - so deep
- * navigation (tap an album → AlbumDetail → back) returns the user to whatever tab
- * they were on, scroll position intact.
+ * The library refresh kickoff lives in `Navigation`, not here: there is
+ * one instance of this host per tab entry, and doing it here would fire
+ * it on every tab switch.
  */
 @Composable
 fun MusicTabsScreen(
     backStack: NavBackStack<Route>,
     musicViewModel: MusicViewModel,
+    currentTab: Route = Route.Home,
 ) {
-    val context = LocalContext.current
-
-    // Single kickoff for all four tabs (the pager composes them lazily, so doing this per-tab
-    // would fire it four times).
-    //
-    // The refresh runs here rather than being left to WorkManager because this is the first point
-    // at which the audio permission is definitely granted - PermissionsChecker gates the whole
-    // navigation graph - and because going through the scheduler would put the list behind a job
-    // dispatch for no reason. `enqueue` only registers the content-URI triggers that notice later
-    // changes to the library.
-    LaunchedEffect(Unit) {
-        musicViewModel.refreshLibrary()
-        SyncWorker.enqueue(context)
-    }
-
-    val pagerState = rememberPagerState(pageCount = { 4 })
-    val scope = rememberCoroutineScope()
-
     // Which element the song morph should use as its counterpart.
     //
     // The graph loops here: a row tap carries the song up to the player, but coming back the song
@@ -72,43 +57,35 @@ fun MusicTabsScreen(
     val leaving = isNavLeaving()
     val barOwnsSongKeys = !leaving || !tappedSongRow
 
-    Column(Modifier.fillMaxSize()) {
-        HorizontalPager(
-            state = pagerState,
-            // The bars below already cover the navigation bar, so a page's own
-            // scaffold must not inset for it again and leave a gap.
-            modifier = Modifier
-                .weight(1f)
-                .consumeWindowInsets(WindowInsets.navigationBars),
-        ) { page ->
-            when (page) {
-                0 -> HomeTabContent(
-                    backStack,
-                    musicViewModel,
-                    rowOwnsSongKeys = leaving && tappedSongRow,
-                    onSongTapped = { tappedSongRow = true },
-                )
-                1 -> AlbumsTabContent(backStack, musicViewModel)
-                2 -> ArtistsTabContent(backStack, musicViewModel)
-                else -> PlaylistsTabContent(backStack, musicViewModel)
-            }
+    TabbedPagerScaffold(
+        backStack = backStack,
+        tabs = listOf(
+            RouteTab(Route.Home, stringResource(UiR.string.home)) { IconLibraryMusic() },
+            RouteTab(Route.Albums, stringResource(R.string.label_albums)) { IconAlbum() },
+            RouteTab(Route.Artists, stringResource(R.string.nav_artists)) { IconPerson() },
+            RouteTab(Route.Playlists, stringResource(R.string.nav_playlists)) { IconLibraryMusic() },
+        ),
+        leadingBottomBar = {
+            PlayingBottomBar(
+                musicViewModel,
+                backStack,
+                owsSharedKeys = barOwnsSongKeys,
+                onOpen = { tappedSongRow = false; backStack.add(Route.Song) },
+            )
+        },
+    ) {
+        // Ignore the scaffold's top-of-stack route: on a detail destination
+        // this host is the list pane underneath, and must keep showing its tab.
+        when (currentTab) {
+            Route.Albums -> AlbumsTabContent(backStack, musicViewModel)
+            Route.Artists -> ArtistsTabContent(backStack, musicViewModel)
+            Route.Playlists -> PlaylistsTabContent(backStack, musicViewModel)
+            else -> HomeTabContent(
+                backStack,
+                musicViewModel,
+                rowOwnsSongKeys = leaving && tappedSongRow,
+                onSongTapped = { tappedSongRow = true },
+            )
         }
-        PlayingBottomBar(
-            musicViewModel,
-            backStack,
-            owsSharedKeys = barOwnsSongKeys,
-            onOpen = { tappedSongRow = false; backStack.add(Route.Song) },
-        )
-        MusicTabsBar(
-            selectedTab = pagerState.currentPage,
-            onSelectTab = { index ->
-                if (pagerState.currentPage != index) {
-                    scope.launch { pagerState.animateScrollToPage(index) }
-                }
-            },
-            // The bar belongs to Home, not to the detail pages Home pushes, so it leaves the way it
-            // would be dismissed rather than dissolving where it sits.
-            modifier = Modifier.sinksBelow(),
-        )
     }
 }

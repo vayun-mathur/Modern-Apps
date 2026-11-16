@@ -36,7 +36,7 @@ class NavigationRouteTest {
 
     @Test fun routesSerialiseAndRoundTrip() {
         val routes: List<Route> = listOf(
-            Route.Home, Route.Song, Route.AlbumDetail(7L), Route.ArtistDetail(11L),
+            Route.Home, Route.Albums, Route.Artists, Route.Playlists, Route.Song, Route.AlbumDetail(7L), Route.ArtistDetail(11L),
             Route.PlaylistDetail(3L), Route.AddToPlaylistDialog(42L))
         for (route in routes) {
             val encoded = Json.encodeToString(Route.serializer(), route)
