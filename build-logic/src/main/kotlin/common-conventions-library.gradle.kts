@@ -176,6 +176,14 @@ tasks.register<JacocoReport>(MERGED_COVERAGE_TASK) {
     }
 }
 
+// Compile-only stub modules have no meaningful merged coverage; see
+// COMPILE_ONLY_STUB_MODULES in TestCoverage.kt for the rationale.
+if (project.path in COMPILE_ONLY_STUB_MODULES) {
+    tasks.named(MERGED_COVERAGE_TASK) {
+        onlyIf("compile-only stub module (see TestCoverage.kt)") { false }
+    }
+}
+
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions.optIn.addAll(
         "androidx.compose.material3.ExperimentalMaterial3Api",

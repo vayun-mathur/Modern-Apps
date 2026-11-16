@@ -45,6 +45,32 @@ const val MERGED_COVERAGE_JACOCO_VERSION = "0.8.14"
 const val ROBOLECTRIC_DEFAULT_SDK = 34
 
 /**
+ * Modules whose merged coverage report is suppressed entirely.
+ *
+ * `:library:aosp-stubs` is compile-only: its classes are `@SystemApi`/hidden-API
+ * stubs that consumers depend on with `compileOnly`, they are never packaged
+ * into an APK, and at runtime the framework's real implementations replace
+ * them (see that module's `build.gradle.kts`). Its stub bodies either throw
+ * `RuntimeException("stub")` or are signature-only shells, so a coverage
+ * percentage for it can only measure how much of a compile-time fiction the
+ * tests exercised — the number has no runtime meaning, and chasing it would
+ * mean writing tests that assert stubs throw, forever, for 37 classes.
+ *
+ * This is deliberately a module list, not a class-file pattern: a broad
+ * `android/...` exclude would also hide real code in any module that ever
+ * legitimately shadows a framework package. `:library:locationprovider`
+ * is also compile-only stubs but is NOT listed: it has a real test suite
+ * pinning the stub contract its consumers subclass against, so its report
+ * stays meaningful and counted.
+ *
+ * The suppression lives in `common-conventions-library` (the only convention
+ * that registers a merged report for these modules) as an `onlyIf` on the
+ * report task: with no report file, coverage tooling treats the module as
+ * not-a-coverage-module rather than as 0%.
+ */
+val COMPILE_ONLY_STUB_MODULES: Set<String> = setOf(":library:aosp-stubs")
+
+/**
  * Class-file excludes applied to every merged coverage report.
  *
  * JaCoCo file-tree excludes are purely name-based, which settles two of the requested cases:
