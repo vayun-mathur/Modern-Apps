@@ -20,6 +20,7 @@ import com.vayunmathur.library.ui.IconHistory
 import com.vayunmathur.library.ui.IconSms
 import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
+import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
@@ -92,6 +93,16 @@ sealed interface Route : NavKey {
     /** The RCS group member list route. */
     @Serializable
     data class RcsGroupMembers(val conversationId: String) : Route
+
+    /**
+     * The full-screen in-app call. Pushed by the call-route sync while
+     * [InAppCallRegistry] reports a phase other than Idle, and popped when
+     * the call ends: the registry is the session engine, this destination
+     * is only its screen. It carries no arguments because the live call
+     * state (peer, capabilities, media) changes under it and is read from
+     * the registry inside the call screen.
+     */
+    @Serializable data object Call : Route
 
     /** One open conversation: its thread, peer address and line. */
     @Serializable
@@ -181,8 +192,8 @@ private fun CommunicateApp(initialDeepLink: DeepLink? = null) {
     val backStack = rememberNavBackStack<Route>(Route.Messages)
 
     DeepLinkEffect(backStack, initialDeepLink)
+    CallRouteEffect(backStack)
     CommunicateTabs(backStack)
-    InAppCallOverlay()
 }
 
 /** Deep links open the conversation they name, including links arriving at a running instance. */
@@ -215,12 +226,58 @@ private fun DeepLinkEffect(
     }
 }
 
+/**
+ * Keeps [Route.Call] on top of the stack exactly while a call is live.
+ *
+ * [InAppCallRegistry] stays the session engine: lines bind, ring, connect
+ * and end without touching navigation, and this effect projects its phase
+ * onto the stack. Leaving Idle pushes the call screen over whatever the
+ * user was doing; returning to Idle pops it and reveals that screen again.
+ * A back press that pops the call screen mid-call is undone by the same
+ * projection (the phase is still live), so the call UI cannot be lost
+ * while the call itself continues.
+ */
+@Composable
+private fun CallRouteEffect(backStack: NavBackStack<Route>) {
+    val inAppCallState by InAppCallRegistry.state.collectAsState()
+    val top = backStack.backStack.lastOrNull()
+    LaunchedEffect(inAppCallState.phase, top) {
+        syncCallRoute(backStack, inAppCallState.phase)
+    }
+}
+
+/**
+ * The phase-to-stack projection behind [CallRouteEffect], kept free of
+ * composition so unit tests can drive it with a plain [NavBackStack].
+ *
+ * Idempotent: a live phase with the call already on top, and Idle with no
+ * call on top, both leave the stack untouched.
+ */
+internal fun syncCallRoute(backStack: NavBackStack<Route>, phase: InAppCallPhase) {
+    val top = backStack.backStack.lastOrNull()
+    if (phase != InAppCallPhase.Idle) {
+        when {
+            top is Route.Call -> Unit
+            // A deep link pushed over the call: bring the existing call
+            // destination back on top instead of stacking a second one.
+            backStack.backStack.any { it is Route.Call } -> backStack.reset(
+                *backStack.backStack.filterNot { it is Route.Call }.toTypedArray(),
+                Route.Call,
+            )
+            else -> backStack.add(Route.Call)
+        }
+    } else if (top is Route.Call) {
+        backStack.pop()
+    }
+}
+
 @Composable
 private fun CommunicateNavGraph(backStack: NavBackStack<Route>) {
     MainNavigation(backStack) {
         coreEntries(backStack)
         registrationEntries(backStack)
         conversationEntries(backStack)
+        callEntries(backStack)
     }
 }
 
@@ -343,13 +400,21 @@ private fun EntryProviderScope<Route>.conversationEntries(backStack: NavBackStac
 
 /**
  * One call screen for every in-app line. Google Voice, WhatsApp and Signal all publish into
- * InAppCallRegistry, and the screen renders whatever the active line supports.
+ * InAppCallRegistry, and the screen renders whatever the active line supports. The phase-to-controls
+ * choice stays inside [InAppCallScreen]; only the screen's presence is navigation, synced by
+ * [CallRouteEffect]. Closing is the stack pop back to Idle already performs, so the screen's
+ * [InAppCallScreen.onClose] only clears the terminal registry state.
  */
-@Composable
-private fun InAppCallOverlay() {
-    val inAppCallState by InAppCallRegistry.state.collectAsState()
-    if (inAppCallState.phase != InAppCallPhase.Idle) {
-        InAppCallScreen(onClose = { InAppCallRegistry.clearEnded() })
+private fun EntryProviderScope<Route>.callEntries(backStack: NavBackStack<Route>) {
+    entry<Route.Call>(metadata = FullscreenPage()) {
+        InAppCallScreen(
+            onClose = {
+                InAppCallRegistry.clearEnded()
+                // If the registry is already Idle the sync pop may have run;
+                // only pop while the call destination is actually on top.
+                if (backStack.backStack.lastOrNull() is Route.Call) backStack.pop()
+            },
+        )
     }
 }
 

@@ -72,6 +72,8 @@ class RouteSlice6Test {
         assertTrue(Route.GoogleVoiceSignIn != Route.WhatsAppRegistration)
         assertTrue(Route.WhatsAppBackupImport != Route.SignalRegistration)
         assertTrue(Route.RcsStatus != Route.Messages)
+        assertEquals(Route.Call, Route.Call)
+        assertTrue(Route.Call != Route.Messages)
     }
 
     @Test
@@ -97,8 +99,9 @@ class RouteSlice6Test {
             Route.RcsVerify("+15551234567"),
             Route.RcsGroupMembers("conv-1"),
             Route.Conversation(threadId = 1L, address = "x"),
+            Route.Call,
         )
-        assertEquals(12, routes.size)
+        assertEquals(13, routes.size)
         routes.forEach { assertIs<com.vayunmathur.library.util.NavKey>(it) }
     }
 
@@ -130,7 +133,7 @@ class RouteSlice6Test {
         // The back stack persists routes by kotlinx serialization; each subtype must keep
         // its @Serializable annotation or restoring navigation state breaks at runtime.
         val subtypes = Route::class.sealedSubclasses
-        assertEquals(12, subtypes.size)
+        assertEquals(13, subtypes.size)
         subtypes.forEach { subtype ->
             assertTrue(
                 subtype.annotations.any { it.annotationClass.qualifiedName == "kotlinx.serialization.Serializable" },
@@ -140,7 +143,7 @@ class RouteSlice6Test {
     }
 
     @Test
-    fun allTwelveRouteSubtypesArePresent() {
+    fun allThirteenRouteSubtypesArePresent() {
         val names = Route::class.sealedSubclasses.mapNotNull { it.simpleName }.toSet()
         assertEquals(
             setOf(
@@ -156,6 +159,7 @@ class RouteSlice6Test {
                 "RcsVerify",
                 "RcsGroupMembers",
                 "Conversation",
+                "Call",
             ),
             names,
         )
