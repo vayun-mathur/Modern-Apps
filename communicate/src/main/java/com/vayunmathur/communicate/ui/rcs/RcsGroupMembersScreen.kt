@@ -29,8 +29,6 @@ import com.vayunmathur.communicate.data.rcs.focusMembers
 import com.vayunmathur.communicate.data.rcs.hostedFocusFor
 import com.vayunmathur.communicate.data.rcs.inviteFocusMember
 import com.vayunmathur.communicate.data.rcs.removeFocusMember
-import com.vayunmathur.communicate.data.rcs.e2e.groupIdFor
-import com.vayunmathur.communicate.data.rcs.e2e.localE164
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.DetailScaffold

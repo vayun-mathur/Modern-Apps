@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.communicate.R
 import com.vayunmathur.communicate.data.rcs.e2e.RcsE2E
 import com.vayunmathur.communicate.data.rcs.e2e.RcsPeerKeys
-import com.vayunmathur.communicate.data.rcs.e2e.localE164
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.DetailScaffold

@@ -20,8 +20,6 @@ import com.vayunmathur.communicate.data.rcs.buildRevokeBody
 import com.vayunmathur.communicate.data.rcs.cacheInboundRcsWithImdn
 import com.vayunmathur.communicate.data.rcs.chunkLargeMessage
 import com.vayunmathur.communicate.data.rcs.sendRcsDisplayReports
-import com.vayunmathur.communicate.data.rcs.e2e.groupIdFor
-import com.vayunmathur.communicate.data.rcs.e2e.localE164
 import com.vayunmathur.library.util.AppMessages
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope

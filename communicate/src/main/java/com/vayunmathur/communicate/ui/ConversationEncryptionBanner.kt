@@ -9,7 +9,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.communicate.data.CommunicateLine
-import com.vayunmathur.communicate.data.rcs.e2e.groupIdFor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

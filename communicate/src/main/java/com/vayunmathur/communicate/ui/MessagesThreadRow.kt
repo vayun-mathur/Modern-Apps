@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.communicate.R
 import com.vayunmathur.communicate.data.SmsThread
-import com.vayunmathur.communicate.data.rcs.e2e.groupIdFor
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconGroup
 import com.vayunmathur.library.ui.IconMoreVert

@@ -7,7 +7,6 @@ import com.vayunmathur.communicate.data.rcs.e2e.RcsE2E
 import com.vayunmathur.communicate.data.rcs.e2e.RcsKeyDirectory
 import com.vayunmathur.communicate.data.rcs.e2e.RcsPeerKeys
 import com.vayunmathur.communicate.data.rcs.e2e.RcsPendingGroups
-import com.vayunmathur.communicate.data.rcs.e2e.localE164
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

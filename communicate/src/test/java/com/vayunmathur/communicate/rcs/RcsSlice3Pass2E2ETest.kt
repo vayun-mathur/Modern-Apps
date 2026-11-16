@@ -10,10 +10,7 @@ import com.vayunmathur.communicate.data.rcs.e2e.RcsKeyDirectory
 import com.vayunmathur.communicate.data.rcs.e2e.RcsPeerKeys
 import com.vayunmathur.communicate.data.rcs.e2e.RustMlsCrypto
 import com.vayunmathur.communicate.data.rcs.e2e.e2eThreadFor
-import com.vayunmathur.communicate.data.rcs.e2e.groupIdFor
 import com.vayunmathur.communicate.data.rcs.e2e.hex
-import com.vayunmathur.communicate.data.rcs.e2e.isMlsPayload
-import com.vayunmathur.communicate.data.rcs.e2e.localE164
 import com.vayunmathur.communicate.data.rcs.e2e.parseMembers
 import com.vayunmathur.communicate.data.rcs.e2e.pruneMembers
 import kotlinx.coroutines.test.runTest
