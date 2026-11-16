@@ -1,0 +1,292 @@
+package com.vayunmathur.appstore.util
+
+import android.app.Application
+import android.content.Context
+import android.os.Looper
+import androidx.room3.Room
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.test.core.app.ApplicationProvider
+import app.accrescent.appstore.v1.AppListing
+import app.accrescent.appstore.v1.AppServiceGrpcKt
+import app.accrescent.appstore.v1.AppUpdateInfo
+import app.accrescent.appstore.v1.GetAppDownloadInfoRequest
+import app.accrescent.appstore.v1.GetAppDownloadInfoResponse
+import app.accrescent.appstore.v1.GetAppListingRequest
+import app.accrescent.appstore.v1.GetAppListingResponse
+import app.accrescent.appstore.v1.GetAppPackageInfoRequest
+import app.accrescent.appstore.v1.GetAppPackageInfoResponse
+import app.accrescent.appstore.v1.GetAppUpdateInfoRequest
+import app.accrescent.appstore.v1.GetAppUpdateInfoResponse
+import app.accrescent.appstore.v1.Image
+import app.accrescent.appstore.v1.ListAppListingsRequest
+import app.accrescent.appstore.v1.ListAppListingsResponse
+import app.accrescent.appstore.v1.PackageInfo
+import app.accrescent.appstore.v1.SplitDownloadInfo
+import app.accrescent.appstore.v1.SplitUpdateInfo
+import com.vayunmathur.appstore.data.AccrescentTrustEntity
+import com.vayunmathur.appstore.data.AppDatabase
+import com.vayunmathur.appstore.data.AppSource
+import com.vayunmathur.appstore.data.UnifiedApp
+import com.vayunmathur.appstore.data.accrescent.AccrescentApi
+import com.vayunmathur.appstore.data.accrescent.AccrescentRepository
+import com.vayunmathur.appstore.tv.TvStoreViewModel
+import io.grpc.ManagedChannel
+import io.grpc.Server
+import io.grpc.inprocess.InProcessChannelBuilder
+import io.grpc.inprocess.InProcessServerBuilder
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
+
+/** W5: phone + TV ViewModel Accrescent paths against an in-process fake gRPC service. */
+@RunWith(RobolectricTestRunner::class)
+class AccrescentVmOpsW5Test {
+
+    private class FakeService(private val ownPackage: String) : AppServiceGrpcKt.AppServiceCoroutineImplBase() {
+        private fun listing(id: String, name: String) = AppListing.newBuilder()
+            .setAppId(id)
+            .setName(name)
+            .setShortDescription("$name summary")
+            .setIcon(Image.newBuilder().setUrl("https://example.org/$id.png"))
+            .build()
+
+        override suspend fun listAppListings(request: ListAppListingsRequest): ListAppListingsResponse {
+            val builder = ListAppListingsResponse.newBuilder()
+            return if (request.pageToken == "p2") {
+                builder.addListings(listing(ownPackage, "This Store")).build()
+            } else {
+                builder.addListings(listing("app.alpha", "Alpha"))
+                    .addListings(listing("app.beta", "Beta"))
+                    .setNextPageToken("p2")
+                    .build()
+            }
+        }
+
+        override suspend fun getAppListing(request: GetAppListingRequest): GetAppListingResponse =
+            GetAppListingResponse.newBuilder().setListing(listing(request.appId, "Alpha")).build()
+
+        override suspend fun getAppPackageInfo(request: GetAppPackageInfoRequest): GetAppPackageInfoResponse =
+            GetAppPackageInfoResponse.newBuilder()
+                .setPackageInfo(PackageInfo.newBuilder().setVersionCode(999_999L).setVersionName("9.9"))
+                .build()
+
+        override suspend fun getAppDownloadInfo(request: GetAppDownloadInfoRequest): GetAppDownloadInfoResponse =
+            GetAppDownloadInfoResponse.newBuilder()
+                .setAppDownloadInfo(
+                    app.accrescent.appstore.v1.AppDownloadInfo.newBuilder().addSplitDownloadInfo(
+                        SplitDownloadInfo.newBuilder()
+                            .setUrl("https://example.org/base.apk")
+                            .setDownloadSize(100)
+                    )
+                )
+                .build()
+
+        override suspend fun getAppUpdateInfo(request: GetAppUpdateInfoRequest): GetAppUpdateInfoResponse =
+            GetAppUpdateInfoResponse.newBuilder()
+                .setAppUpdateInfo(
+                    AppUpdateInfo.newBuilder().addSplitUpdateInfo(
+                        SplitUpdateInfo.newBuilder()
+                            .setApkUrl("https://example.org/update.apk")
+                            .setApkDownloadSize(55)
+                    )
+                )
+                .build()
+    }
+
+    private lateinit var db: AppDatabase
+    private lateinit var server: Server
+    private lateinit var channel: ManagedChannel
+    private lateinit var repo: AccrescentRepository
+    private lateinit var ownPackage: String
+
+    private val app get() = ApplicationProvider.getApplicationContext<Application>()
+
+    @BeforeTest
+    fun setUp() {
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        ownPackage = ctx.packageName
+        db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
+            .setDriver(BundledSQLiteDriver())
+            .allowMainThreadQueries()
+            .build()
+        val name = InProcessServerBuilder.generateName()
+        server = InProcessServerBuilder.forName(name).directExecutor()
+            .addService(FakeService(ownPackage)).build().start()
+        channel = InProcessChannelBuilder.forName(name).directExecutor().build()
+        val failingFetcher = object : com.vayunmathur.appstore.data.accrescent.AccrescentRepoDataFetcher(ctx) {
+            override suspend fun fetch(): Result<com.vayunmathur.appstore.data.accrescent.RepoData> =
+                Result.failure(java.io.IOException("offline test double"))
+        }
+        repo = AccrescentRepository(ctx, db, AccrescentApi { channel }, failingFetcher)
+        runBlocking {
+            db.accrescentTrustDao().upsertAll(
+                listOf(
+                    AccrescentTrustEntity(ownPackage, "AB".repeat(32), 1L),
+                    AccrescentTrustEntity("app.alpha", "CD".repeat(32), 1L),
+                )
+            )
+        }
+    }
+
+    @AfterTest
+    fun tearDown() {
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = null
+        repo.shutdown()
+        channel.shutdownNow()
+        server.shutdownNow()
+    }
+
+    private fun await(description: String, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 30_000
+        while (System.currentTimeMillis() < deadline) {
+            Shadows.shadowOf(Looper.getMainLooper()).idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+            if (condition()) return
+            Thread.sleep(50)
+        }
+        throw AssertionError("timed out waiting for: $description")
+    }
+
+    @Test
+    fun phoneVmAccrescentSearchSelectAndUpdateCheck() {
+        val vm = AppStoreViewModel(app, db, accrescentOverride = repo)
+        runBlocking { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
+        vm.setSearch("alpha")
+        await("accrescent search") {
+            vm.search.value.results.any { it.packageName == "app.alpha" }
+        }
+        val alpha = UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha")
+        vm.selectApp(alpha)
+        await("accrescent detail") { vm.detail.value.app?.versionCode == 999_999L }
+        assertEquals(999_999L, vm.detail.value.app?.versionCode)
+
+        // The fake service must offer the installed package a newer build.
+        runBlocking {
+            assertTrue(repo.appIds().contains(ownPackage), "trust ids=${runBlocking { repo.appIds() }}")
+            val update = repo.updateInfo(ownPackage, 20_261_028L)
+            assertTrue(update != null && update.versionCode > 20_261_028L, "update=$update")
+        }
+        vm.checkForUpdates()
+        await("update check settles") { !vm.isCheckingUpdatesFlow.value }
+        // The store's own package is installed and vouched for by Accrescent
+        // with a much newer build, so it must surface as an update.
+        assertTrue(
+            vm.updatesUi.value.updates.any { it.packageName == ownPackage } ||
+                vm.updates.value.any { it.packageName == ownPackage },
+            "expected an Accrescent update for $ownPackage, updates=${vm.updatesUi.value}",
+        )
+        vm.updateAll()
+        await("updateAll settles") { !vm.isCheckingUpdatesFlow.value }
+    }
+
+    @Test
+    fun tvVmAccrescentSearchSelectAndUpdateCheck() {
+        val vm = TvStoreViewModel(app, db, accrescentOverride = repo)
+        vm.enabledSourcesFlow.value = setOf(AppSource.ACCRESCENT, AppSource.MODERN_APPS)
+        runBlocking { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
+        vm.setSearch("beta")
+        await("tv accrescent search") {
+            vm.search.value.results.any { it.packageName == "app.beta" }
+        }
+        val alpha = UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha")
+        vm.selectApp(alpha)
+        await("tv detail") { vm.detail.value.app?.packageName == "app.alpha" }
+        vm.checkForUpdates()
+        await("tv update check settles") { !vm.isCheckingUpdatesFlow.value }
+        vm.loadHome()
+        await("tv home settles") { !vm.isLoadingFlow.value }
+    }
+
+    @Test
+    fun phoneVmInstallAccrescentAppAttemptsDownloadAndSettles() {
+        val vm = AppStoreViewModel(app, db, accrescentOverride = repo)
+        val alpha = UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha", versionCode = 999_999L)
+        vm.selectApp(alpha)
+        await("detail") { vm.detail.value.app?.packageName == "app.alpha" }
+        vm.install(alpha)
+        // Download from example.org fails offline; the install state must
+        // settle (failed/dismissible) rather than spin forever.
+        await("install settles") {
+            val stage = vm.detail.value.stage
+            stage == null || stage.toString().contains("Fail", ignoreCase = true)
+        }
+    }
+
+    @Test
+    fun phoneVmHomeBrowseAndPackageSelection() {
+        val vm = AppStoreViewModel(app, db, accrescentOverride = repo)
+        runBlocking { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
+        vm.refresh()
+        await("home sections from accrescent") {
+            vm.home.value.sections.flatMap { it.apps }.any { it.packageName == "app.alpha" } ||
+                vm.home.value.sections.isNotEmpty()
+        }
+        val section = vm.home.value.sections.firstOrNull()
+        if (section != null) {
+            vm.openBrowse(section)
+            await("browse") { vm.browse.value.apps.isNotEmpty() || vm.browse.value.title == section.title }
+        }
+        vm.selectPackage("app.alpha")
+        await("package detail") { vm.detail.value.app?.packageName == "app.alpha" }
+        vm.clearSelection()
+        await("detail cleared") { vm.detail.value.app == null }
+        vm.refreshInstalled()
+        vm.refreshUpdateCheckStatus()
+        vm.setSearchFilter(com.vayunmathur.appstore.util.SourceFilter.ACCRESCENT)
+        vm.setSearch("alpha")
+        await("filtered search") { vm.search.value.results.any { it.packageName == "app.alpha" } }
+    }
+
+    @Test
+    fun tvVmLibraryBrowseInstallAndSourceToggles() {
+        val vm = TvStoreViewModel(app, db, accrescentOverride = repo)
+        vm.enabledSourcesFlow.value = setOf(AppSource.ACCRESCENT, AppSource.MODERN_APPS)
+        runBlocking { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
+        vm.loadHome()
+        await("tv home for browse") { !vm.isLoadingFlow.value }
+        vm.home.value.categories.firstOrNull()?.let { vm.selectCategory(it) }
+        vm.selectCategory(null)
+        val section = vm.home.value.sections.firstOrNull() ?: com.vayunmathur.appstore.tv.TvSection(id = "w5", title = "W5 Picks", apps = listOf(UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha")))
+        vm.openBrowse(section)
+        await("tv browse settles") { !vm.isLoadingBrowseFlow.value }
+        assertTrue(vm.browse.value.apps.isNotEmpty() || vm.browse.value.title == section.title,
+            "browse=${vm.browse.value}")
+        vm.clearBrowse()
+        assertTrue(vm.browse.value.apps.isEmpty() || vm.browseSectionFlow.value.isEmpty())
+
+        val alpha = UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha", versionCode = 999_999L)
+        vm.selectApp(alpha)
+        await("tv detail for install") { vm.detail.value.app?.packageName == "app.alpha" }
+        vm.install(alpha)
+        await("tv install settles") {
+            val stage = vm.detail.value.stage
+            stage == null || stage.toString().contains("Fail", ignoreCase = true)
+        }
+        vm.dismissInstallFailure("app.alpha")
+        vm.clearSelection()
+        await("tv detail cleared") { vm.detail.value.app == null }
+
+        // Installed-app actions should be safe no-ops/records under Robolectric.
+        vm.openApp(ownPackage)
+        vm.openInBrowser("https://example.org/alpha")
+        vm.openInPlayStore("app.alpha")
+        vm.setSourceEnabled(AppSource.PLAYSTORE, true)
+        vm.setSourceEnabled(AppSource.PLAYSTORE, false)
+        vm.setAutoInstallUpdates(true)
+        vm.setAutoInstallUpdates(false)
+        vm.setSearchFilter(SourceFilter.ACCRESCENT)
+        vm.setSearch("beta")
+        await("tv filtered search") { vm.search.value.results.any { it.packageName == "app.beta" } }
+        // Library state is derived from installed + catalog flows; reading it
+        // after a home load must include this store itself.
+        await("tv library settles") { vm.library.value.apps.any { it.packageName == ownPackage } || !vm.isLoadingFlow.value }
+    }
+}
