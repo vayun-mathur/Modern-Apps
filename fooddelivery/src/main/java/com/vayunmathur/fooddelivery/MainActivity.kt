@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -26,8 +25,7 @@ import com.vayunmathur.library.ui.IconPerson
 import com.vayunmathur.library.ui.IconShoppingCart
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.PagerTab
-import com.vayunmathur.library.ui.TabStyle
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
@@ -37,6 +35,7 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
+import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.fooddelivery.data.CartItem
 import com.vayunmathur.fooddelivery.data.CartStore
@@ -77,8 +76,16 @@ internal fun List<CartItem>.canAddFromSameMerchant(item: CartItem): Boolean {
 
 /** Navigation destinations for browsing, checkout, order tracking, and email verification. */
 sealed interface Route : NavKey {
-    /** The tabbed main screen, opening on [initialTab]. */
-    @Serializable data class Main(val initialTab: Int = 0) : Route
+    /** The Home tab (restaurant browse). Sibling of the other tab routes. */
+    @Serializable data object Home : Route
+    /** The Cart tab. Sibling of the other tab routes. */
+    @Serializable data object Cart : Route
+    /** The Deals tab. Sibling of the other tab routes. */
+    @Serializable data object Deals : Route
+    /** The Orders tab. Sibling of the other tab routes. */
+    @Serializable data object Orders : Route
+    /** The Account tab. Sibling of the other tab routes. */
+    @Serializable data object Account : Route
     /** The menu page for the restaurant identified by [id]. */
     @Serializable data class Restaurant(val id: Int) : Route
     /** The checkout flow for the current cart. */
@@ -87,6 +94,19 @@ sealed interface Route : NavKey {
     @Serializable data class OrderTracking(val orderId: Int) : Route
     /** Email-verification screen for [customerId] carrying its verification [token]. */
     @Serializable data class EmailVerification(val customerId: String, val token: String) : Route
+}
+
+/**
+ * The tab route for a legacy `initialTab` index (0=Home, 1=Cart, 2=Deals,
+ * 3=Orders, 4=Account), coerced into range. Tabs are sibling routes now, so
+ * an initial tab is simply the back stack's start route.
+ */
+internal fun tabRouteFor(initialTab: Int): Route = when (initialTab.coerceIn(0, 4)) {
+    0 -> Route.Home
+    1 -> Route.Cart
+    2 -> Route.Deals
+    3 -> Route.Orders
+    else -> Route.Account
 }
 
 /** Entry activity that initialises Stripe and app state and routes notification and deep-link intents into the UI. */
@@ -191,7 +211,7 @@ private fun FoodDeliveryApp(
     verifyEmail: MutableState<Route.EmailVerification?>,
 ) {
     val context = LocalContext.current
-    val backStack = rememberNavBackStack<Route>(Route.Main())
+    val backStack = rememberNavBackStack<Route>(Route.Home)
 
     // A notification tap deep-links to that order's tracking screen.
     LaunchedEffect(trackOrderId.value) {
@@ -284,12 +304,41 @@ private fun FoodDeliveryNavigation(
 ) {
     val context = LocalContext.current
     MainNavigation(backStack) {
-        entry<Route.Main>(metadata = ListPage()) { route ->
-            FoodDeliveryTabs(
-                initialTab = route.initialTab,
-                backStack = backStack,
-                cart = cart,
-            )
+        entry<Route.Home>(metadata = ListPage() + SiblingPage()) {
+            FoodDeliveryTabs(backStack) {
+                HomeScreen(onMerchantClick = { id -> backStack.pushDetail(Route.Restaurant(id)) })
+            }
+        }
+        entry<Route.Cart>(metadata = ListPage() + SiblingPage()) {
+            FoodDeliveryTabs(backStack) {
+                CartScreen(
+                    items = cart,
+                    onRemoveItem = {
+                        cart.removeAt(it)
+                        CartStore.save(context, cart)
+                    },
+                    onCheckout = { backStack.add(Route.Checkout) },
+                    onEditModifiers = { index, modifiers ->
+                        cart[index] = cart[index].copy(selectedModifiers = modifiers)
+                        CartStore.save(context, cart)
+                    },
+                )
+            }
+        }
+        entry<Route.Deals>(metadata = ListPage() + SiblingPage()) {
+            FoodDeliveryTabs(backStack) {
+                DealsScreen(onMerchantClick = { id -> backStack.pushDetail(Route.Restaurant(id)) })
+            }
+        }
+        entry<Route.Orders>(metadata = ListPage() + SiblingPage()) {
+            FoodDeliveryTabs(backStack) {
+                OrdersScreen(onTrackOrder = { id -> backStack.pushDetail(Route.OrderTracking(id)) })
+            }
+        }
+        entry<Route.Account>(metadata = ListPage() + SiblingPage()) {
+            FoodDeliveryTabs(backStack) {
+                AccountScreen()
+            }
         }
         entry<Route.Restaurant>(metadata = ListDetailPage() + MorphPage()) { route ->
             RestaurantScreen(
@@ -311,7 +360,7 @@ private fun FoodDeliveryNavigation(
                 items = cart,
                 onBack = { backStack.pop() },
                 onOrderPlaced = {
-                    backStack.reset(Route.Main(initialTab = 3))
+                    backStack.reset(Route.Orders)
                 },
                 onOrderCompleted = {
                     cart.clear()
@@ -335,46 +384,26 @@ private fun FoodDeliveryNavigation(
 }
 
 /**
- * The five bottom-nav tabs, hosted in a swipeable pager (see [TabbedPagerScaffold]).
- * Restaurant, Checkout and OrderTracking are pushed on top of this host as ordinary routes.
+ * The five bottom-nav tabs as sibling routes (see the route-backed
+ * [TabbedPagerScaffold] overload). Selecting a tab resets the back stack to
+ * that tab's route; each tab entry renders this scaffold with its own screen
+ * as [content], so detail routes (Restaurant, Checkout, OrderTracking) pushed
+ * over a tab keep the tab as their list pane on wide layouts. Per-tab
+ * `rememberSaveable` state lives in each route's navigation entry.
  */
 @Composable
 private fun FoodDeliveryTabs(
-    initialTab: Int,
     backStack: NavBackStack<Route>,
-    cart: androidx.compose.runtime.snapshots.SnapshotStateList<CartItem>,
+    content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val pagerState = rememberPagerState(initialPage = initialTab.coerceIn(0, 4), pageCount = { 5 })
-    val tabs = remember(backStack, cart, context) {
-        listOf(
-            PagerTab("Home", { IconHome() }) {
-                HomeScreen(onMerchantClick = { id -> backStack.pushDetail(Route.Restaurant(id)) })
-            },
-            PagerTab("Cart", { IconShoppingCart() }) {
-                CartScreen(
-                    items = cart,
-                    onRemoveItem = {
-                        cart.removeAt(it)
-                        CartStore.save(context, cart)
-                    },
-                    onCheckout = { backStack.add(Route.Checkout) },
-                    onEditModifiers = { index, modifiers ->
-                        cart[index] = cart[index].copy(selectedModifiers = modifiers)
-                        CartStore.save(context, cart)
-                    },
-                )
-            },
-            PagerTab("Deals", { IconLocalOffer() }) {
-                DealsScreen(onMerchantClick = { id -> backStack.pushDetail(Route.Restaurant(id)) })
-            },
-            PagerTab("Orders", { IconPackage() }) {
-                OrdersScreen(onTrackOrder = { id -> backStack.pushDetail(Route.OrderTracking(id)) })
-            },
-            PagerTab("Account", { IconPerson() }) {
-                AccountScreen()
-            },
+    val tabs = remember {
+        listOf<RouteTab<Route>>(
+            RouteTab(Route.Home, "Home", { IconHome() }),
+            RouteTab(Route.Cart, "Cart", { IconShoppingCart() }),
+            RouteTab(Route.Deals, "Deals", { IconLocalOffer() }),
+            RouteTab(Route.Orders, "Orders", { IconPackage() }),
+            RouteTab(Route.Account, "Account", { IconPerson() }),
         )
     }
-    TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)
+    TabbedPagerScaffold(backStack = backStack, tabs = tabs) { content() }
 }

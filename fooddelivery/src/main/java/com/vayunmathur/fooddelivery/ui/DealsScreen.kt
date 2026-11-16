@@ -127,9 +127,9 @@ private fun DealCard(deal: Deal, progress: DealProgress?, onClick: () -> Unit) {
                 Text(deal.title, style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold)
                 if (deal.merchantName.isNotEmpty()) {
-                    // Shares the restaurant's name key with the Home card. Both are pages of the
-                    // same pager with Cart between them, and TabbedPagerScaffold composes only the
-                    // settled page, so the morph never has two origins to choose from. Guarded on
+                    // Shares the restaurant's name key with the Home card. Home and Deals are
+                    // sibling routes, so only one tab destination is composed at a time and the
+                    // morph never has two origins to choose from. Guarded on
                     // merchantId because a deal without one opens nothing and several such deals
                     // would collide on the same key.
                     Text(deal.merchantName, style = MaterialTheme.typography.bodySmall,

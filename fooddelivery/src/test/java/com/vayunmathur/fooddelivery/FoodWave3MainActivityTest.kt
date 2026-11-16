@@ -84,8 +84,18 @@ class FoodWave3MainActivityTest {
         assertFalse(listOf(line(7)).canAddFromSameMerchant(line(8)))
     }
 
+    @Test fun tabRouteForMapsInitialTabToSiblingRoute() {
+        assertEquals(Route.Home, tabRouteFor(0))
+        assertEquals(Route.Cart, tabRouteFor(1))
+        assertEquals(Route.Deals, tabRouteFor(2))
+        assertEquals(Route.Orders, tabRouteFor(3))
+        assertEquals(Route.Account, tabRouteFor(4))
+        assertEquals(Route.Home, tabRouteFor(-1))
+        assertEquals(Route.Account, tabRouteFor(99))
+    }
+
     @Test fun pushDetailReplacesSameClassOnly() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main()))
+        val stack = NavBackStack(arrayOf<Route>(Route.Home))
         with(stack) { pushDetail(Route.Restaurant(1)) }
         assertEquals(2, stack.backStack.size)
         // A second restaurant replaces the first instead of stacking.
