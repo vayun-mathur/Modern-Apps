@@ -17,6 +17,7 @@ android {
 }
 
 dependencies {
+    testImplementation(libs.mockito.core)
     implementation(project(":sdk:games"))
     implementation(project(":library:work"))
     implementation(libs.androidx.datastore.preferences)
