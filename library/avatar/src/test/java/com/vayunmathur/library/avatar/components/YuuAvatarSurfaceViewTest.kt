@@ -22,6 +22,19 @@ class YuuAvatarSurfaceViewTest {
     }
 
     @Test
+    fun `changed only forwards after create and destroy resets the gate`() {
+        val view = YuuAvatarSurfaceView(context, surfaceId = 9)
+        // Not ready yet: a stray changed callback must not reach native.
+        view.surfaceChanged(view.holder, PixelFormat.RGBA_8888, 10, 10)
+        view.surfaceCreated(view.holder)
+        view.surfaceChanged(view.holder, PixelFormat.RGBA_8888, 640, 480)
+        view.surfaceChanged(view.holder, PixelFormat.RGB_565, 320, 240)
+        view.surfaceDestroyed(view.holder)
+        // After destroy the gate is closed again.
+        view.surfaceChanged(view.holder, PixelFormat.RGBA_8888, 10, 10)
+    }
+
+    @Test
     fun `lifecycle callbacks are safe without native`() {
         val view = YuuAvatarSurfaceView(context, surfaceId = 3)
         // Without libyuu_avatar every callback must return before touching JNI.

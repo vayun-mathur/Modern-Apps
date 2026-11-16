@@ -5,6 +5,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -46,6 +48,26 @@ class YuuAvatar3DTest {
             )
         }
         rule.onNodeWithText("fallback hero").assertIsDisplayed()
+    }
+
+    @Test
+    fun `recomposing with a new pose reconfigures the surface`() {
+        var pose by androidx.compose.runtime.mutableStateOf("idle")
+        var config by androidx.compose.runtime.mutableStateOf("{\"skin\":1}")
+        rule.setContent {
+            YuuAvatar3D(
+                configJson = config,
+                poseId = pose,
+                surfaceId = 5,
+                fallback = { Text("hero $pose") },
+            )
+        }
+        rule.runOnIdle {
+            pose = "wave"
+            config = "{\"skin\":2}"
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("hero wave").assertIsDisplayed()
     }
 
     @Test
