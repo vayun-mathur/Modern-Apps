@@ -16,6 +16,7 @@ import com.vayunmathur.library.ui.AppPermissionsSpec
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.PermissionRequirement
+import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.OfflineAware
@@ -331,6 +332,9 @@ sealed interface Route: NavKey {
     /** Singleton holding saved places page state and operations. */
     @Serializable
     data object SavedPlacesPage: Route
+    /** Full-screen Street View viewer for the nearest pano to a point. */
+    @Serializable
+    data class StreetView(val lat: Double, val lon: Double): Route
 }
 
 @Composable
@@ -365,6 +369,11 @@ fun Navigation(
         }
         entry<Route.SavedPlacesPage>(metadata = ListDetailPage()) {
             SavedPlacesPage(backStack, savedPlacesViewModel)
+        }
+        entry<Route.StreetView>(metadata = FullscreenPage()) { route ->
+            com.vayunmathur.maps.ui.streetview.StreetViewRoute(
+                lat = route.lat, lon = route.lon, onClose = { backStack.pop() },
+            )
         }
     }
 }

@@ -29,8 +29,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.vayunmathur.library.map.CameraState
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconDirectionsWalk
@@ -39,7 +37,6 @@ import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.google.StreetViewDataSource
-import com.vayunmathur.maps.data.google.StreetViewPano
 import com.vayunmathur.maps.ui.theme.MapChromeMetrics
 import kotlinx.coroutines.launch
 
@@ -62,7 +59,7 @@ private val PEG_SIZE = 48.dp
  * than opening an empty viewer.
  */
 @Composable
-fun BoxScope.StreetViewPegman(camera: CameraState, modifier: Modifier = Modifier) {
+fun BoxScope.StreetViewPegman(camera: CameraState, onOpenStreetView: (Double, Double) -> Unit = { _, _ -> }, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val messenger = rememberMessenger()
@@ -76,7 +73,6 @@ fun BoxScope.StreetViewPegman(camera: CameraState, modifier: Modifier = Modifier
     // Where the finger is, in this box's coordinates. Null when not dragging.
     var dragPoint by remember { mutableStateOf<Offset?>(null) }
     var resolving by remember { mutableStateOf(false) }
-    var pano by remember { mutableStateOf<StreetViewPano?>(null) }
 
     fun drop(point: Offset) {
         val projection = camera.projection ?: return
@@ -87,7 +83,7 @@ fun BoxScope.StreetViewPegman(camera: CameraState, modifier: Modifier = Modifier
         scope.launch {
             val found = StreetViewDataSource.nearest(target.latitude, target.longitude)
             resolving = false
-            if (found == null) messenger.show(noImagery) else pano = found
+            if (found == null) messenger.show(noImagery) else onOpenStreetView(target.latitude, target.longitude)
         }
     }
 
@@ -128,14 +124,6 @@ fun BoxScope.StreetViewPegman(camera: CameraState, modifier: Modifier = Modifier
             CircularProgressIndicator(Modifier.align(Alignment.Center))
         }
 
-        pano?.let { p ->
-            Dialog(
-                onDismissRequest = { pano = null },
-                properties = DialogProperties(usePlatformDefaultWidth = false),
-            ) {
-                StreetViewScreen(initialPano = p, onClose = { pano = null })
-            }
-        }
     }
 }
 

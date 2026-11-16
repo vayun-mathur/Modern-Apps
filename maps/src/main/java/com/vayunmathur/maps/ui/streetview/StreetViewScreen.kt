@@ -43,6 +43,28 @@ import kotlinx.coroutines.launch
  * NAVIGATION: arrows drawn into the scene by [StreetViewArrows], one per walkable
  * neighbour, pinned to their compass bearings. Tapping one travels there.
  */
+/**
+ * Route entry for Street View: resolves the nearest pano to [lat]/[lon],
+ * then hosts [StreetViewScreen]. No imagery nearby closes straight back.
+ */
+@Composable
+fun StreetViewRoute(lat: Double, lon: Double, onClose: () -> Unit) {
+    var pano by remember { mutableStateOf<StreetViewPano?>(null) }
+    var resolved by remember { mutableStateOf(false) }
+    LaunchedEffect(lat, lon) {
+        pano = StreetViewDataSource.nearest(lat, lon)
+        resolved = true
+        if (pano == null) onClose()
+    }
+    when {
+        pano != null -> StreetViewScreen(initialPano = pano!!, onClose = onClose)
+        !resolved -> Box(Modifier.fillMaxSize().background(Color.Black)) {
+            CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
+        }
+        else -> Unit
+    }
+}
+
 @Composable
 fun StreetViewScreen(initialPano: StreetViewPano, onClose: () -> Unit) {
     var pano by remember { mutableStateOf(initialPano) }
