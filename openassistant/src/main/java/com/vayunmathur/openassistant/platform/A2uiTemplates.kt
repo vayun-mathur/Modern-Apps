@@ -27,6 +27,19 @@ data class MenuItemRow(
     val qty: Int = 0,
 )
 
+/** One selectable variant in a [A2uiTemplates.productCard]. */
+data class ProductVariantRow(
+    val variantId: String,
+    val title: String,
+    val price: Long,
+    val currency: String = "USD",
+    val available: Boolean = true,
+)
+
+/** Formats minor-unit money as $x.xx for the USD shop catalog. */
+fun formatMoney(amount: Long, currency: String = "USD"): String =
+    if (currency == "USD") formatCents(amount.toInt()) else "$amount $currency"
+
 /** One cart/order line row in the food and order-summary cards. */
 data class CartLineRow(
     val itemId: Int,
@@ -366,6 +379,129 @@ object A2uiTemplates {
             put("merchantId", merchantId)
             put("checkoutDeepLink", checkoutDeepLink)
             put("totalCents", totalCents)
+        }
+        return envelope(components, data)
+    }
+
+    /**
+     * Product card (design §3.2): image/title/store, a variant [Picker],
+     * a quantity stepper and one Add button (`shop.add`) whose context
+     * snapshots the picked variant and qty. Picking/stepping alone sends
+     * no turn.
+     */
+    fun productCard(
+        title: String,
+        storeName: String,
+        shopDomain: String,
+        imageUrl: String,
+        variants: List<ProductVariantRow>,
+    ): String {
+        val hasImage = imageUrl.isNotBlank()
+        val children = listOf("title", "store") +
+            (if (hasImage) listOf("image") else emptyList()) +
+            listOf("variants", "stepper", "btnAdd")
+        val components = buildJsonArray {
+            add(obj("id" to s("root"), "component" to s("Card"), "child" to s("col")))
+            add(
+                obj(
+                    "id" to s("col"), "component" to s("Column"),
+                    "children" to JsonArray(children.map { s(it) }),
+                ),
+            )
+            add(text("title", title, "title"))
+            add(text("store", storeName, "caption"))
+            if (hasImage) {
+                add(obj("id" to s("image"), "component" to s("Image"), "url" to s(imageUrl), "description" to s(title)))
+            }
+            add(
+                obj(
+                    "id" to s("variants"), "component" to s("Picker"),
+                    "options" to path("/variants"), "value" to path("/variant"),
+                    "action" to action("shop.variant", mapOf("id" to pathValue("/variant"))),
+                ),
+            )
+            add(
+                obj(
+                    "id" to s("stepper"), "component" to s("QuantityStepper"),
+                    "label" to s("Quantity"), "value" to path("/qty"),
+                    "min" to JsonPrimitive(1), "max" to JsonPrimitive(99),
+                ),
+            )
+            add(
+                actionButton(
+                    "btnAdd", "Add to cart", "shop.add",
+                    mapOf(
+                        "shop_domain" to s(shopDomain),
+                        "variant_id" to pathValue("/variant"),
+                        "quantity" to pathValue("/qty"),
+                    ),
+                    primary = true,
+                ),
+            )
+        }
+        val data = buildJsonObject {
+            put("shopDomain", shopDomain)
+            put(
+                "variants",
+                JsonArray(
+                    variants.map { v ->
+                        buildJsonObject {
+                            put("id", v.variantId)
+                            put("title", v.title)
+                            put(
+                                "caption",
+                                formatMoney(v.price, v.currency) + if (v.available) "" else " · unavailable",
+                            )
+                        }
+                    },
+                ),
+            )
+            put("variant", variants.firstOrNull()?.variantId ?: "")
+            put("qty", 1)
+        }
+        return envelope(components, data)
+    }
+
+    /** Shop cart card: every store's lines and per-store totals. */
+    fun shopCart(stores: List<Pair<String, List<String>>>, totalItems: Int): String {
+        val lines = stores.flatMap { (store, storeLines) -> listOf(store) + storeLines }
+        return cartCard(
+            title = "Shop cart ($totalItems items)",
+            lines = lines,
+            totalLine = if (lines.isEmpty()) "Cart is empty" else "$totalItems item(s) in cart",
+            dataExtra = emptyMap(),
+        )
+    }
+
+    /** Per-store checkout summary; the button deep-links the store's Shop cart. */
+    fun shopCheckoutSummary(
+        storeName: String,
+        shopDomain: String,
+        lines: List<String>,
+        checkoutDeepLink: String = "shop://cart",
+    ): String {
+        val lineIds = lines.indices.map { "line$it" }
+        val components = buildJsonArray {
+            add(obj("id" to s("root"), "component" to s("Card"), "child" to s("col")))
+            add(
+                obj(
+                    "id" to s("col"), "component" to s("Column"),
+                    "children" to JsonArray(listOf(s("title")) + lineIds.map { s(it) } + listOf(s("btnCheckout"))),
+                ),
+            )
+            add(text("title", storeName.ifBlank { "Checkout" }, "title"))
+            lines.forEachIndexed { i, line -> add(text("line$i", line, "body")) }
+            add(
+                actionButton(
+                    "btnCheckout", "Open $storeName checkout in Shop", "handoff.shop_checkout",
+                    mapOf("deepLink" to s(checkoutDeepLink), "shopDomain" to s(shopDomain)),
+                    primary = true,
+                ),
+            )
+        }
+        val data = buildJsonObject {
+            put("shopDomain", shopDomain)
+            put("checkoutDeepLink", checkoutDeepLink)
         }
         return envelope(components, data)
     }

@@ -184,6 +184,32 @@ class AssistantToolIntentsTest {
             com.vayunmathur.library.intents.fooddelivery.MenuData(error = "DOWN")).contains("DOWN"))
     }
 
+    @Test fun shopToolsThrowMissingAppAndSummaries() = runTest {
+        assertFailsWith<MissingAppException> { tools.searchProducts("mug", 5) }
+        assertFailsWith<MissingAppException> { tools.getProductDetail("s.example", "p1", null) }
+        assertFailsWith<MissingAppException> { tools.getShopCart() }
+        assertFailsWith<MissingAppException> { tools.getShopOrders() }
+        assertTrue(
+            AssistantToolIntents.getMissingAppMessage("com.vayunmathur.shop").contains("The Shop app"))
+        val products = summarizeProducts(
+            listOf(
+                com.vayunmathur.library.intents.shop.ProductData(
+                    "Mug", "p1", "v1", "s.example", "Store", 1500, "USD", "", true)))
+        assertTrue(products.contains("variant_id=v1"), products)
+        val cart = summarizeShopCart(
+            com.vayunmathur.library.intents.shop.CartData(
+                stores = listOf(
+                    com.vayunmathur.library.intents.shop.CartStoreData(
+                        "s.example", "Store",
+                        listOf(
+                            com.vayunmathur.library.intents.shop.CartLineData(
+                                "Mug", "Blue", "v1", "s.example", "Store", 1500, "USD", 2)))),
+                totalItems = 2))
+        assertTrue(cart.contains("Mug") && cart.contains("Store"), cart)
+        assertEquals("Shop cart is empty", summarizeShopCart(
+            com.vayunmathur.library.intents.shop.CartData()))
+    }
+
     @Test fun requestPayloadShapes() {
         assertEquals(3.5, WeatherLatLonRequest(3.5, -1.25).latitude)
         assertEquals("Lisbon", WeatherNameRequest("Lisbon").name)

@@ -274,6 +274,51 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
         risk = HANDOFF_PREP,
     ),
     ToolSpec("get_food_orders", "Get the user's past FoodDelivery orders"),
+    ToolSpec(
+        "search_products",
+        "Search the Shop catalog. Each result is one purchasable variant with its variant_id, " +
+            "store and exact price.",
+        listOf(
+            p("query", description = "search text"),
+            p("limit", NUMBER, "optional max results (default 5)", required = false),
+        ),
+    ),
+    ToolSpec(
+        "get_product_detail",
+        "Get one product's variants with exact prices and availability. Confirm the exact " +
+            "variant with the user before adding it to the cart.",
+        listOf(
+            p("shop_domain", description = "store domain from search_products"),
+            p("product_id", description = "product id from search_products"),
+            p("variant_id", description = "optional variant to price", required = false),
+        ),
+    ),
+    ToolSpec("shop_get_cart", "Get the current Shop cart, grouped by store"),
+    ToolSpec(
+        "shop_add_to_cart",
+        "Add an exact variant to the Shop cart. The variant is re-verified before writing " +
+            "and the cart is shown back to the user; no checkout is started.",
+        listOf(
+            p("shop_domain", description = "store domain from search_products"),
+            p("variant_id", description = "exact variant id from get_product_detail"),
+            p("quantity", NUMBER, "quantity 1-99 (default 1)", required = false),
+        ), risk = WRITE_LIGHT,
+    ),
+    ToolSpec(
+        "shop_remove_from_cart",
+        "Remove a variant from the Shop cart; the cart is shown back to the user.",
+        listOf(p("variant_id", description = "variant id to remove")),
+        risk = WRITE_LIGHT,
+    ),
+    ToolSpec(
+        "start_shop_checkout",
+        "Show the per-store cart summary for one store. The user checks out in the Shop app " +
+            "itself; this never creates a checkout or charges anything, and opening the cart " +
+            "is not a paid order.",
+        listOf(p("shop_domain", description = "store domain to check out")),
+        risk = HANDOFF_PREP,
+    ),
+    ToolSpec("get_shop_orders", "Get the user's Shop order summaries"),
     ToolSpec("get_memories", "Get a list of all memories"),
     ToolSpec("remove_memory", "Remove a memory by its id (requires confirmation)", listOf(p("id", NUMBER)), risk = WRITE_CONFIRM),
     ToolSpec("add_to_memory", "Add a new memory to the list of memories", listOf(p("content"))),

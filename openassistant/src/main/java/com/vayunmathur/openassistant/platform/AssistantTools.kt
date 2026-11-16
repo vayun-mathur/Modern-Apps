@@ -341,6 +341,119 @@ class AssistantTools(
                 com.vayunmathur.openassistant.util.summarizeFoodOrders(intents.getFoodOrders())
             }
         },
+        "search_products" to { a ->
+            intents.runTool {
+                val limit = a.number("limit").toInt().takeIf { it > 0 } ?: 5
+                val list = intents.searchProducts(a.string("query"), limit)
+                // One product card per call would flood the chat; the first hit's card
+                // demonstrates variants/stepper, the rest stay model-readable text.
+                list.firstOrNull()?.let { first ->
+                    intents.getProductDetail(first.shopDomain, first.productId, first.variantId)
+                        .takeIf { it.error == null && it.variants.isNotEmpty() }
+                        ?.let { detail ->
+                            pendingRenderUi = A2uiTemplates.productCard(
+                                detail.title, detail.storeName, detail.shopDomain, detail.imageUrl,
+                                detail.variants.map {
+                                    ProductVariantRow(it.variantId, it.title, it.price, it.currency, it.available)
+                                },
+                            )
+                        }
+                }
+                com.vayunmathur.openassistant.util.summarizeProducts(list)
+            }
+        },
+        "get_product_detail" to { a ->
+            intents.runTool {
+                val detail = intents.getProductDetail(
+                    a.string("shop_domain"), a.string("product_id"),
+                    a.string("variant_id").takeIf { it.isNotBlank() },
+                )
+                if (detail.error == null && detail.variants.isNotEmpty()) {
+                    pendingRenderUi = A2uiTemplates.productCard(
+                        detail.title, detail.storeName, detail.shopDomain, detail.imageUrl,
+                        detail.variants.map {
+                            ProductVariantRow(it.variantId, it.title, it.price, it.currency, it.available)
+                        },
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeProductDetail(detail)
+            }
+        },
+        "shop_get_cart" to { _ ->
+            intents.runTool {
+                val cart = intents.getShopCart()
+                if (cart.error == null && cart.totalItems > 0) {
+                    pendingRenderUi = A2uiTemplates.shopCart(
+                        cart.stores.map { store ->
+                            store.storeName to store.lines.map {
+                                "${it.title} ${it.variantTitle} × ${it.quantity} — ${formatMoney(it.price * it.quantity, it.currency)}"
+                            }
+                        },
+                        cart.totalItems,
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeShopCart(cart)
+            }
+        },
+        "shop_add_to_cart" to { a ->
+            val quantity = a.number("quantity").toInt().takeIf { it > 0 } ?: 1
+            intents.runTool {
+                val cart = intents.addToShopCart(
+                    com.vayunmathur.library.intents.shop.AddToCartRequest(
+                        a.string("shop_domain"), a.string("variant_id"), quantity,
+                    ),
+                )
+                // Light write: executed once, cart rendered back, never auto-retried.
+                if (cart.error == null) {
+                    pendingRenderUi = A2uiTemplates.shopCart(
+                        cart.stores.map { store ->
+                            store.storeName to store.lines.map {
+                                "${it.title} ${it.variantTitle} × ${it.quantity} — ${formatMoney(it.price * it.quantity, it.currency)}"
+                            }
+                        },
+                        cart.totalItems,
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeShopCart(cart)
+            }
+        },
+        "shop_remove_from_cart" to { a ->
+            intents.runTool {
+                val cart = intents.removeFromShopCart(a.string("variant_id"))
+                if (cart.error == null) {
+                    pendingRenderUi = A2uiTemplates.shopCart(
+                        cart.stores.map { store ->
+                            store.storeName to store.lines.map {
+                                "${it.title} ${it.variantTitle} × ${it.quantity} — ${formatMoney(it.price * it.quantity, it.currency)}"
+                            }
+                        },
+                        cart.totalItems,
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeShopCart(cart)
+            }
+        },
+        "start_shop_checkout" to { a ->
+            intents.runTool {
+                val cart = intents.getShopCart()
+                val store = cart.stores.firstOrNull { it.shopDomain == a.string("shop_domain") }
+                if (cart.error == null && store != null && store.lines.isNotEmpty()) {
+                    pendingRenderUi = A2uiTemplates.shopCheckoutSummary(
+                        store.storeName, store.shopDomain,
+                        store.lines.map {
+                            "${it.title} ${it.variantTitle} × ${it.quantity} — ${formatMoney(it.price * it.quantity, it.currency)}"
+                        },
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeShopCart(cart) +
+                    " Show the user this summary; they check out in Shop. This is not a paid order."
+            }
+        },
+        "get_shop_orders" to { _ ->
+            intents.runTool {
+                com.vayunmathur.openassistant.util.summarizeShopOrders(intents.getShopOrders())
+            }
+        },
         "web_search" to { a ->
             val count = a.number("count").toInt().takeIf { it > 0 } ?: 5
             val result = runBlocking { webTools.webSearch(a.string("query"), count, a.string("kind", "text")) }

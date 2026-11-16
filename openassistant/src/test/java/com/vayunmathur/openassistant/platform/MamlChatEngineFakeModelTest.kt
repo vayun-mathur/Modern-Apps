@@ -169,6 +169,27 @@ class MamlChatEngineFakeModelTest {
         e.close()
     }
 
+    @Test fun shopScriptSearchesAddsAndHandsOff() = runBlocking {
+        var calls = 0
+        val quoted = { s: String -> "<|\"|>" + s + "<|\"|>" }
+        val script = listOf(
+            "<|tool_call>call:search_products{query:${quoted("mug")}}<tool_call|>",
+            "<|tool_call>call:get_product_detail{shop_domain:${quoted("kitchen.example")},product_id:${quoted("p1")}}<tool_call|>",
+            "<|tool_call>call:shop_add_to_cart{shop_domain:${quoted("kitchen.example")},variant_id:${quoted("v1")},quantity:1}<tool_call|>",
+            "<|tool_call>call:shop_get_cart{}<tool_call|>",
+            "<|tool_call>call:start_shop_checkout{shop_domain:${quoted("kitchen.example")}}<tool_call|>",
+        )
+        val fake = FakeTextModel(script = { _, onToken ->
+            calls++
+            if (calls <= script.size) script[calls - 1] else { onToken("done"); "done" }
+        })
+        val e = engine(fake)
+        val result = e.chat(ChatRequest("sys", emptyList(), "buy a mug"), tools()) { true }
+        assertEquals(ChatResult.Reply("done", halted = false), result)
+        assertEquals(6, calls)
+        e.close()
+    }
+
     @Test fun haltedStreamAndTooLongAndUnavailable() = runBlocking {
         val fake = FakeTextModel()
         val e = engine(fake)

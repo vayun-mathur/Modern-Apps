@@ -170,6 +170,8 @@ class AssistantCatalog(urlOpener: A2uiUrlOpener, messageFormatter: A2uiMessageFo
                     "msg.send (composer Send; host-gated, do not invent) and msg.cancel, " +
                     "cart.food.update ({\"merchantId\": n, \"items\": [...]}) after stepping menu quantities, " +
                     "handoff.food_checkout (opens FoodDelivery checkout; host action, do not invent), " +
+                    "shop.add ({\"shop_domain\": ..., \"variant_id\": ..., \"quantity\": n}) from the product card, " +
+                    "handoff.shop_checkout (opens the Shop cart; host action, do not invent), " +
                     "open.conversation (opens a message thread in Communicate), " +
                     "web.read ({\"index\": n}) and web.open ({\"url\": ...}). Use those names exactly.",
             )

@@ -189,6 +189,27 @@ class A2uiTemplatesTest {
         assertTrue(summary.contains("fooddelivery://checkout"), summary)
     }
 
+    @Test fun shopTemplatesAreEnvelopeValid() {
+        val product = A2uiTemplates.productCard(
+            "Enamel Mug", "Kitchen Co", "kitchen.example", "https://example.com/mug.png",
+            listOf(ProductVariantRow("v1", "Blue", 1500), ProductVariantRow("v2", "Red", 1600, available = false)),
+        )
+        assertEnvelopeValid(product)
+        assertEquals("Picker", componentsOf(product).getValue("variants")["component"])
+        assertEquals("QuantityStepper", componentsOf(product).getValue("stepper")["component"])
+        assertTrue(product.contains("shop.add") && product.contains("Enamel Mug"), product)
+
+        val cart = A2uiTemplates.shopCart(listOf("Kitchen Co" to listOf("Enamel Mug Blue × 1 — $15.00")), 1)
+        assertEnvelopeValid(cart)
+        assertTrue(cart.contains("Kitchen Co"), cart)
+
+        val summary = A2uiTemplates.shopCheckoutSummary(
+            "Kitchen Co", "kitchen.example", listOf("Enamel Mug Blue × 1 — $15.00"))
+        assertEnvelopeValid(summary)
+        assertTrue(summary.contains("handoff.shop_checkout"), summary)
+        assertTrue(summary.contains("shop://cart"), summary)
+    }
+
     @Test fun redactedSummaryShowsLengthsOnly() {
         assertEquals(
             "content(len=12), title(len=1)",

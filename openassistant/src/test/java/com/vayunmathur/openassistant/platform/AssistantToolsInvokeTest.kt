@@ -44,7 +44,7 @@ class AssistantToolsInvokeTest {
         assertEquals("Error: create_note needs title", call("create_note", "content" to "x"))
         assertTrue(
             call("set_timer", "seconds" to "abc").contains("must be a number"))
-        assertEquals(47, tools.declarations.size)
+        assertEquals(54, tools.declarations.size)
     }
 
     @Test fun crossAppToolsReportMissingApps() {
@@ -246,12 +246,26 @@ class AssistantToolsInvokeTest {
         assertTrue(call("place_food_order", "merchant_id" to "3").startsWith("The FoodDelivery app is required"))
     }
 
+    @Test fun shopToolsMissingAppAndPrepareOnly() {
+        assertTrue(call("search_products", "query" to "mug").startsWith("The Shop app is required"))
+        assertTrue(call("get_product_detail", "shop_domain" to "s.example", "product_id" to "p1").startsWith("The Shop app is required"))
+        assertTrue(call("shop_get_cart").startsWith("The Shop app is required"))
+        assertTrue(call("get_shop_orders").startsWith("The Shop app is required"))
+        // Light writes execute without a gate (missing app surfaces here).
+        assertTrue(call("shop_add_to_cart", "shop_domain" to "s.example", "variant_id" to "v1").startsWith("The Shop app is required"))
+        assertTrue(call("shop_remove_from_cart", "variant_id" to "v1").startsWith("The Shop app is required"))
+        // Handoff reads the cart only; there is no checkout tool at all.
+        assertTrue(call("start_shop_checkout", "shop_domain" to "s.example").startsWith("The Shop app is required"))
+        assertEquals(null, tools.specFor("shop_checkout"))
+        assertEquals(null, tools.specFor("create_checkout"))
+    }
+
     @Test fun riskClassificationMatchesDesign() {
         val gated = setOf("create_note", "create_todo", "complete_todo", "create_contact",
             "create_calendar_event", "create_location_share_link", "play_music",
             "set_alarm", "set_timer", "remove_memory", "send_message_v2")
-        val light = setOf("food_set_cart")
-        val handoff = setOf("place_food_order")
+        val light = setOf("food_set_cart", "shop_add_to_cart", "shop_remove_from_cart")
+        val handoff = setOf("place_food_order", "start_shop_checkout")
         for (spec in com.vayunmathur.openassistant.domain.ASSISTANT_TOOL_SPECS) {
             val expected = when (spec.name) {
                 in gated -> com.vayunmathur.openassistant.domain.ToolRisk.WRITE_CONFIRM

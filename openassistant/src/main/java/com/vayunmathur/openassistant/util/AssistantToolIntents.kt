@@ -40,6 +40,14 @@ import com.vayunmathur.library.intents.fooddelivery.RestaurantData
 import com.vayunmathur.library.intents.fooddelivery.SetCart
 import com.vayunmathur.library.intents.fooddelivery.SetCartItem
 import com.vayunmathur.library.intents.maps.DirectionsRequest
+import com.vayunmathur.library.intents.shop.AddToCartRequest
+import com.vayunmathur.library.intents.shop.CartData as ShopCartData
+import com.vayunmathur.library.intents.shop.GetProductQuery
+import com.vayunmathur.library.intents.shop.OrderData as ShopOrderData
+import com.vayunmathur.library.intents.shop.ProductData
+import com.vayunmathur.library.intents.shop.ProductDetailData
+import com.vayunmathur.library.intents.shop.RemoveFromCartRequest
+import com.vayunmathur.library.intents.shop.SearchProductsQuery
 import com.vayunmathur.library.intents.maps.DirectionsResult
 import com.vayunmathur.library.intents.taxi.RideEstimateRequest
 import com.vayunmathur.library.intents.taxi.RideEstimateResult
@@ -359,6 +367,48 @@ internal class AssistantToolIntents(private val context: Context) {
         FoodGetOrders(),
     )
 
+    suspend fun searchProducts(query: String, limit: Int): List<ProductData> = launchIntent(
+        context,
+        "com.vayunmathur.shop",
+        "com.vayunmathur.shop.intents.SearchProductsIntent",
+        SearchProductsQuery(query, limit),
+    )
+
+    suspend fun getProductDetail(shopDomain: String, productId: String, variantId: String?): ProductDetailData = launchIntent(
+        context,
+        "com.vayunmathur.shop",
+        "com.vayunmathur.shop.intents.GetProductIntent",
+        GetProductQuery(shopDomain, productId, variantId),
+    )
+
+    suspend fun getShopCart(): ShopCartData = launchIntent(
+        context,
+        "com.vayunmathur.shop",
+        "com.vayunmathur.shop.intents.GetCartIntent",
+        Unit,
+    )
+
+    suspend fun addToShopCart(request: AddToCartRequest): ShopCartData = launchIntent(
+        context,
+        "com.vayunmathur.shop",
+        "com.vayunmathur.shop.intents.AddToCartIntent",
+        request,
+    )
+
+    suspend fun removeFromShopCart(variantId: String): ShopCartData = launchIntent(
+        context,
+        "com.vayunmathur.shop",
+        "com.vayunmathur.shop.intents.RemoveFromCartIntent",
+        RemoveFromCartRequest(variantId),
+    )
+
+    suspend fun getShopOrders(): List<ShopOrderData> = launchIntent(
+        context,
+        "com.vayunmathur.shop",
+        "com.vayunmathur.shop.intents.GetOrdersIntent",
+        Unit,
+    )
+
     suspend fun getContactsList(): List<ContactData> = launchIntent<Unit, List<ContactData>>(
         context,
         "com.vayunmathur.contacts",
@@ -549,6 +599,47 @@ fun parseSetCartItems(itemsJson: String): List<SetCartItem>? {
         SetCartItem(itemId, qty, mods)
     }
 }
+
+/** Host-truncated product hits for the model: one line per purchasable variant. */
+fun summarizeProducts(list: List<ProductData>): String =
+    if (list.isEmpty()) {
+        "No products found"
+    } else {
+        list.joinToString("\n") { p ->
+            "variant_id=${p.variantId} product_id=${p.productId} ${p.title} ${p.price} ${p.currency} @ ${p.storeName} (${p.shopDomain}) checkout=${p.checkoutEligible}"
+        }
+    }
+
+/** Product detail for the model: every variant's exact price/availability. */
+fun summarizeProductDetail(detail: ProductDetailData): String {
+    if (detail.error != null) return "Error: product unavailable (${detail.error})"
+    val variants = detail.variants.joinToString("\n") { v ->
+        "variant_id=${v.variantId} ${v.title} ${v.price} ${v.currency} ${if (v.available) "available" else "unavailable"}"
+    }
+    return "Product ${detail.title} @ ${detail.storeName} (${detail.shopDomain}) from ${detail.price} ${detail.currency}:\n$variants"
+}
+
+/** Shop cart for the model, grouped per store; a refused write leaves it unchanged. */
+fun summarizeShopCart(cart: ShopCartData): String {
+    if (cart.error != null) return "Error: cart not updated (${cart.error})"
+    if (cart.stores.isEmpty() || cart.totalItems == 0) return "Shop cart is empty"
+    return cart.stores.joinToString("\n") { store ->
+        val lines = store.lines.joinToString("\n") { l ->
+            "variant_id=${l.variantId} ${l.title} ${l.variantTitle} x${l.quantity} ${l.price} ${l.currency}"
+        }
+        "Store ${store.storeName} (${store.shopDomain}):\n$lines"
+    }
+}
+
+/** Host-truncated shop order summaries; a pending handoff is never a paid order. */
+fun summarizeShopOrders(list: List<ShopOrderData>, cap: Int = 10): String =
+    if (list.isEmpty()) {
+        "No shop orders"
+    } else {
+        list.take(cap).joinToString("\n") { o ->
+            "order_id=${o.orderId} ${o.storeName} ${o.status} ${o.total} ${o.currency} items=${o.itemCount}"
+        }
+    }
 
 /** Maps a provider send outcome to the model-facing string; GV is typed. */
 fun summarizeSendResult(result: SendMessageResult): String = when {

@@ -122,6 +122,11 @@ class InferenceService : Service() {
             FOOD (FoodDelivery app):
             - find_restaurants needs a latitude/longitude; get_restaurant_menu shows items with ids and prices in cents. Build carts only from menu item ids, with modifier ids from that item's groups.
             - food_set_cart replaces the cart and is shown back to the user immediately; then food_prepare_order prices it. place_food_order only shows the summary: the user taps Place order in FoodDelivery to pay. Never claim an order was placed or paid for from here.
+
+            SHOPPING (Shop app, prepare-only):
+            - search_products returns one row per variant; get_product_detail confirms the exact variant, price and availability before any cart add. Ask the user to confirm the exact variant when more than one fits.
+            - shop_add_to_cart / shop_remove_from_cart write the local cart and are shown back immediately. A failed add is uncertain: report it, never retry it automatically.
+            - start_shop_checkout only shows a per-store summary and opens the cart in Shop; checkout happens there. Never call the handoff a placed or paid order, and never invent profile details: Shop handles checkout inputs itself.
             """.trimIndent()
     }
 
