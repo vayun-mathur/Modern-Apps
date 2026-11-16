@@ -45,12 +45,19 @@ import java.io.File
  * In-app folder picker. Android has no "pick a folder → get a path" system API once we work over
  * real [File] paths, so this drills through directories from external storage and lets the user
  * open the current one as the project root. Replaces the old SAF `OpenDocumentTree` launcher.
+ *
+ * Each directory level is its own [Route.FolderBrowser] entry (the files app's
+ * `Route.Directory(path)` pattern), so Back — scaffold button, system gesture, and the
+ * ".." row — pops exactly one level instead of exiting the picker from any depth.
+ * FolderBrowser is a top-level destination pushed from the editor, not a component
+ * hosted inside another destination, so the per-level stack is the app back stack
+ * itself rather than a nested stack inside a host.
  */
 @Composable
-fun FolderBrowserPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
+fun FolderBrowserPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>, path: String) {
     val storageRoot = remember { Environment.getExternalStorageDirectory() }
-    var currentDir by remember { mutableStateOf(storageRoot) }
-    var dirs by remember { mutableStateOf<List<File>>(emptyList()) }
+    val currentDir = remember(path) { File(path) }
+    var dirs by remember(path) { mutableStateOf<List<File>>(emptyList()) }
 
     LaunchedEffect(currentDir) {
         dirs = withContext(Dispatchers.IO) {
@@ -71,7 +78,9 @@ fun FolderBrowserPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>
             Button(
                 onClick = {
                     viewModel.openFolder(currentDir)
-                    backStack.pop()
+                    // Opening a folder exits the picker entirely, however deep
+                    // the drill-down stack has grown.
+                    backStack.reset(Route.Editor)
                 },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             ) { Text(stringResource(R.string.open_this_folder)) }
@@ -79,14 +88,17 @@ fun FolderBrowserPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>
             HorizontalDivider()
 
             LazyColumn(Modifier.fillMaxSize()) {
-                val parent = currentDir.parentFile
-                if (parent != null && currentDir.absolutePath != storageRoot.absolutePath) {
+                if (currentDir.absolutePath != storageRoot.absolutePath) {
                     item(key = "..") {
-                        FolderRow(name = "..", onClick = { currentDir = parent })
+                        // The parent is the previous stack entry: popping lands on it.
+                        FolderRow(name = "..", onClick = { backStack.pop() })
                     }
                 }
                 items(dirs, key = { it.absolutePath }) { dir ->
-                    FolderRow(name = dir.name, onClick = { currentDir = dir })
+                    FolderRow(
+                        name = dir.name,
+                        onClick = { backStack.add(Route.FolderBrowser(dir.absolutePath)) },
+                    )
                 }
             }
         }

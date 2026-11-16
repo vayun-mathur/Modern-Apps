@@ -37,7 +37,7 @@ class MainAndExpandedUiTest {
     @Test
     fun routeSerializationRoundTrips() {
         val routes: List<Route> = listOf(
-            Route.Editor, Route.Settings, Route.Search, Route.FolderBrowser,
+            Route.Editor, Route.Settings, Route.Search, Route.FolderBrowser("/sdcard"),
             Route.Git, Route.Terminal, Route.Preview, Route.Snippets,
         )
         for (route in routes) {

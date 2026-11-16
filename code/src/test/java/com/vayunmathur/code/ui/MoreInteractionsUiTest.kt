@@ -142,7 +142,7 @@ class MoreInteractionsUiTest {
         val probe = File(root, "zzcovprobe${System.nanoTime() % 100000}")
         probe.mkdirs()
         try {
-            rule.setContent { FolderBrowserPage(vm(), NavBackStack(arrayOf(Route.Editor))) }
+            rule.setContent { FolderBrowserPage(vm(), NavBackStack(arrayOf(Route.Editor)), Environment.getExternalStorageDirectory().absolutePath) }
             rule.waitUntil(10_000) {
                 rule.onAllNodesWithText(probe.name).fetchSemanticsNodes().isNotEmpty()
             }

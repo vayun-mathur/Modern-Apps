@@ -1,5 +1,6 @@
 package com.vayunmathur.code.ui
 
+import android.os.Environment
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -128,7 +129,7 @@ class ExperimentalAndPagesUiTest {
 
     @Test
     fun folderBrowserShowsCurrentPathAndOpenButton() {
-        rule.setContent { FolderBrowserPage(vm(), backStack()) }
+        rule.setContent { FolderBrowserPage(vm(), backStack(), Environment.getExternalStorageDirectory().absolutePath) }
         rule.onNodeWithText("Open this folder").assertIsDisplayed()
         rule.waitForIdle()
     }

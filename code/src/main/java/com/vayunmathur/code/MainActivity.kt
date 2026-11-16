@@ -1,6 +1,7 @@
 package com.vayunmathur.code
 
 import android.content.Intent
+import android.os.Environment
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -90,8 +91,9 @@ sealed interface Route : NavKey {
     @Serializable
     data object Search : Route
 
+    /** One directory level of the folder picker; Back pops one level. */
     @Serializable
-    data object FolderBrowser : Route
+    data class FolderBrowser(val path: String) : Route
 
     @Serializable
     data object Git : Route
@@ -117,7 +119,9 @@ fun Navigation(viewModel: EditorViewModel) {
                 viewModel,
                 onOpenSettings = { backStack.add(Route.Settings) },
                 onOpenSearch = { backStack.add(Route.Search) },
-                onOpenFolder = { backStack.add(Route.FolderBrowser) },
+                onOpenFolder = {
+                    backStack.add(Route.FolderBrowser(Environment.getExternalStorageDirectory().absolutePath))
+                },
                 onOpenGit = { backStack.add(Route.Git) },
                 onOpenTerminal = { backStack.add(Route.Terminal) },
                 onOpenPreview = { backStack.add(Route.Preview) },
@@ -125,7 +129,7 @@ fun Navigation(viewModel: EditorViewModel) {
         }
         entry<Route.Settings> { SettingsPage(viewModel, backStack) }
         entry<Route.Search> { SearchPage(viewModel, backStack) }
-        entry<Route.FolderBrowser> { FolderBrowserPage(viewModel, backStack) }
+        entry<Route.FolderBrowser> { route -> FolderBrowserPage(viewModel, backStack, route.path) }
         entry<Route.Git> { GitPage(viewModel, backStack) }
         entry<Route.Terminal> { TerminalPage(viewModel, backStack) }
         entry<Route.Preview> { PreviewPage(viewModel, backStack) }
