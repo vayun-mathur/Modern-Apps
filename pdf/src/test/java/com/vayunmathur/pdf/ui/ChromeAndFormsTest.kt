@@ -162,31 +162,44 @@ class ChromeAndFormsTest {
         assertTrue(true)
     } }
 
+    /** Step-counted await: wall-clock timeouts expire early under CI load. */
+    private suspend fun awaitAnnot(desc: String, cond: suspend () -> Boolean) {
+        var steps = 0
+        while (!cond() && steps++ < 800) delay(25)
+        assertTrue(cond(), "timed out: $desc")
+    }
+
     @Test fun viewerStateWithRealDocumentUndoRedoAndText() { runBlocking {
         val doc = openDoc()
         val state = SafePdfViewerState(CoroutineScope(Dispatchers.Default))
         try {
             state.createNote(doc, 0, Offset(60f, 60f), "hello note")
-            withTimeout(5000) { while (doc.annotations(0).isEmpty()) delay(25) }
+            awaitAnnot("note created") { doc.annotations(0).isNotEmpty() }
             val id = doc.annotations(0).first().id
             assertTrue(state.undoStack.isNotEmpty())
             state.undo(doc)
-            withTimeout(5000) { while (state.redoStack.isEmpty()) delay(25) }
+            awaitAnnot("redo available") { state.redoStack.isNotEmpty() }
             state.redo(doc)
-            withTimeout(5000) { while (doc.annotations(0).none { it.id == id } && false) delay(25); delay(100) }
+            // The old wait here was `while (none { it.id == id } && false)`:
+            // never waited at all, so the redo could still be in flight
+            // when the text commit below counted annotations.
+            awaitAnnot("note redone") { doc.annotations(0).any { it.id == id } }
             // Text session commit adds a FreeText annotation
             state.textSession = TextSession(0, Offset(100f, 650f), 12f, 0xFF000000.toInt(), null,
                 androidx.compose.ui.text.input.TextFieldValue("Typed text"))
             val before = doc.annotations(0).size
             state.commitTextAndClear(doc)
-            withTimeout(5000) { while (doc.annotations(0).size <= before) delay(25) }
+            awaitAnnot("text committed") { doc.annotations(0).size > before }
             assertTrue(doc.annotations(0).size > before)
-            // delete + duplicate via selection
+            // delete + duplicate via selection: await the count changes
+            // instead of fixed sleeps that expire under load.
             state.selected = 0 to doc.annotations(0).first().id
+            val preDup = doc.annotations(0).size
             state.duplicateSelected(doc)
-            withTimeout(5000) { delay(150) }
+            awaitAnnot("duplicated") { doc.annotations(0).size > preDup }
+            val preDelete = doc.annotations(0).size
             state.deleteSelected(doc)
-            withTimeout(5000) { delay(150) }
+            awaitAnnot("deleted") { doc.annotations(0).size < preDelete }
             assertNotNull(doc)
         } finally { doc.close() }
     } }
