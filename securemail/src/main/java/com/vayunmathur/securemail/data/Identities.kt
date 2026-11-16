@@ -25,17 +25,32 @@ object Identities {
             val settings = MailConfig(app).settings.first()
             if (!settings.isConfigured) return
             val secret = runCatching { KeyManager(app).getSecretArmor() }.getOrNull() ?: return
-            dao.upsert(
-                MailIdentity(
-                    address = settings.address,
-                    publicArmor = settings.publicArmor,
-                    fingerprintHex = settings.fingerprintHex,
-                    secretArmor = secret,
-                    isPrimary = true,
-                    createdMillis = 0L,
-                ),
-            )
+            upsertPrimary(dao, settings, secret)
         }
+    }
+
+    /** Testable core of [ensureMigrated]: backfill from already-read settings/secret. */
+    internal suspend fun ensureMigrated(dao: IdentityDao, settings: MailSettings, secretProvider: () -> String?) {
+        if (dao.count() > 0) return
+        migrateLock.withLock {
+            if (dao.count() > 0) return
+            if (!settings.isConfigured) return
+            val secret = runCatching { secretProvider() }.getOrNull() ?: return
+            upsertPrimary(dao, settings, secret)
+        }
+    }
+
+    private suspend fun upsertPrimary(dao: IdentityDao, settings: MailSettings, secret: String) {
+        dao.upsert(
+            MailIdentity(
+                address = settings.address,
+                publicArmor = settings.publicArmor,
+                fingerprintHex = settings.fingerprintHex,
+                secretArmor = secret,
+                isPrimary = true,
+                createdMillis = 0L,
+            ),
+        )
     }
 
     suspend fun active(context: Context): List<MailIdentity> {
@@ -47,14 +62,24 @@ object Identities {
     suspend fun forDelivery(context: Context, deliveredTo: String?): MailIdentity? {
         ensureMigrated(context)
         val dao = MailRepository.get(context.applicationContext).identityDao()
-        return deliveredTo?.let { dao.get(it.lowercase()) } ?: dao.primary()
+        return forDelivery(dao, deliveredTo)
     }
+
+    /** DAO-level [forDelivery]: exact (lowercased) match, else the primary. */
+    internal suspend fun forDelivery(dao: IdentityDao, deliveredTo: String?): MailIdentity? =
+        deliveredTo?.let { dao.get(it.lowercase()) } ?: dao.primary()
 
     /** Signs a relay SUB challenge payload with [address]'s key; null when unavailable. */
     suspend fun sign(context: Context, address: String, payload: ByteArray): ByteArray? {
         val app = context.applicationContext
         val identity = MailRepository.get(app).identityDao().get(address) ?: return null
         val passphrase = KeyManager(app).getKeyPassphrase() ?: return null
+        return sign(identity, passphrase, payload)
+    }
+
+    /** Testable core of [sign]: detached signature, null on missing key/passphrase or crypto failure. */
+    internal fun sign(identity: MailIdentity?, passphrase: String?, payload: ByteArray): ByteArray? {
+        if (identity == null || passphrase == null) return null
         return runCatching { PgpCrypto.signDetached(identity.secretArmor, passphrase, payload) }.getOrNull()
     }
 }

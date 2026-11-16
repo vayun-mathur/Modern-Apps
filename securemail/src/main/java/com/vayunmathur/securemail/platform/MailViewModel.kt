@@ -200,8 +200,11 @@ class MailViewModel(
         state = state.copy(message = "Trash emptied.")
     }
 
+    /** Test seam: defaults to the Keystore-sealed passphrase. */
+    internal var passphraseLoader: () -> String? = { keyManager.getKeyPassphrase() }
+
     private fun requirePassphrase(): String =
-        passphraseCache ?: keyManager.getKeyPassphrase()?.also { passphraseCache = it }
+        passphraseCache ?: passphraseLoader()?.also { passphraseCache = it }
         ?: error("No key passphrase stored — restore from your recovery passphrase.")
 
     init {
@@ -361,7 +364,7 @@ class MailViewModel(
                     config.settings.first().publicArmor.ifBlank { null }
                 }.getOrNull()
             }
-            state = state.copy(exportArmor = armor, error = armor?.let { null } ?: "Unlock first.")
+            state = state.copy(exportArmor = armor, error = if (armor != null) null else "Unlock first.")
         }
     }
 
@@ -389,7 +392,7 @@ class MailViewModel(
                     // S2K passphrase loads transparently from Keystore-wrapped
                     // storage (sealed at claim time) — never asked for again.
                     val passphrase = requirePassphrase()
-                    val ownSecret = Identities.forDelivery(getApplication(), stored.deliveredTo)
+                    val ownSecret = Identities.forDelivery(repo.identityDao(), stored.deliveredTo)
                         ?.secretArmor ?: return@runCatching
                     val raw = Base64.decode(stored.blobBase64, Base64.NO_WRAP)
                     val pgpBytes = extractPgpPayload(raw) ?: raw
@@ -400,7 +403,7 @@ class MailViewModel(
                     // Same two-step as arrival: resolve sender key post-decrypt,
                     // re-verify for the badge.
                     val (mime, verified) = if (from.isNotBlank()) {
-                        val senderKey = SenderKeys.resolve(getApplication(), from)
+                        val senderKey = SenderKeys.resolve(from, repo)
                         if (senderKey != null) {
                             val checked = PgpCrypto.decryptVerify(
                                 pgpBytes,
@@ -588,7 +591,7 @@ class MailViewModel(
 
     /** The own identity to send from ([from] or the primary); rejects disabled aliases. */
     private suspend fun senderIdentity(from: String?): MailIdentity {
-        val identity = Identities.forDelivery(getApplication(), from)
+        val identity = Identities.forDelivery(repo.identityDao(), from)
             ?: error("Set up your address first.")
         if (identity.disabled) error("${identity.address} is disabled — enable it in Settings to send.")
         return identity

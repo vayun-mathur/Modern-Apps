@@ -16,85 +16,98 @@ import com.vayunmathur.securemail.platform.crypto.KeyManager
  */
 object InboundStore {
 
-    /**
-     * Stores one inbound frame. Encrypted frames decrypt on arrival with the
-     * key of the own address they were delivered to (primary or alias);
-     * unencrypted frames parse their MIME envelope directly; undecryptable
-     * frames persist as locked blobs for later retry. The server spam verdict
-     * ([MailSocket.MsgFlags.spam]) routes to the Spam folder — independent of
-     * PGP signing (unsigned mail is accepted, not spam).
-     */
-
     /** Decrypts an encrypted frame into a stored message; null when it stays locked. */
     private suspend fun storeEncrypted(
-        app: Context,
         msg: MailSocket.InboundMsg,
         deliveredTo: String,
         folder: MailFolder,
         raw: ByteArray,
         identity: MailIdentity?,
+        passphrase: String?,
+        senderKeyResolver: suspend (String) -> String?,
     ): StoredMessage? {
-    val passphrase = KeyManager(app).getKeyPassphrase()
-    return if (passphrase != null && identity != null) {
-        runCatching {
-            val pgpB64 = MimeCodec.extractPgpPayloadB64(raw)
-            val pgpBytes = if (pgpB64 != null) {
-                Base64.decode(pgpB64, Base64.DEFAULT)
-            } else {
-                raw
-            }
-            // Sender address is inside the encrypted payload — decrypt
-            // first (verifier empty = no check yet), then resolve the
-            // sender key and re-verify for the badge. Two-step because
-            // the verifier key is only known after decryption.
-            val provisional = PgpCrypto.decrypt(
-                pgpBytes,
-                identity.secretArmor,
-                passphrase,
-            ).toString(Charsets.UTF_8)
-            val (_, _, claimedFrom) = MimeCodec.parseMime(provisional)
-            val (mime, verified) = if (claimedFrom.isNotBlank()) {
-                val senderKey = SenderKeys.resolve(app, claimedFrom)
-                if (senderKey != null) {
-                    val checked = PgpCrypto.decryptVerify(
-                        pgpBytes,
-                        identity.secretArmor,
-                        passphrase,
-                        senderKey,
-                    )
-                    checked.payload.toString(Charsets.UTF_8) to
-                        checked.signerFingerprintHex.ifBlank { null }
+        return if (passphrase != null && identity != null) {
+            runCatching {
+                val pgpB64 = MimeCodec.extractPgpPayloadB64(raw)
+                val pgpBytes = if (pgpB64 != null) {
+                    Base64.decode(pgpB64, Base64.DEFAULT)
+                } else {
+                    raw
+                }
+                // Sender address is inside the encrypted payload — decrypt
+                // first (verifier empty = no check yet), then resolve the
+                // sender key and re-verify for the badge. Two-step because
+                // the verifier key is only known after decryption.
+                val provisional = PgpCrypto.decrypt(
+                    pgpBytes,
+                    identity.secretArmor,
+                    passphrase,
+                ).toString(Charsets.UTF_8)
+                val (_, _, claimedFrom) = MimeCodec.parseMime(provisional)
+                val (mime, verified) = if (claimedFrom.isNotBlank()) {
+                    val senderKey = senderKeyResolver(claimedFrom)
+                    if (senderKey != null) {
+                        val checked = PgpCrypto.decryptVerify(
+                            pgpBytes,
+                            identity.secretArmor,
+                            passphrase,
+                            senderKey,
+                        )
+                        checked.payload.toString(Charsets.UTF_8) to
+                            checked.signerFingerprintHex.ifBlank { null }
+                    } else {
+                        provisional to null
+                    }
                 } else {
                     provisional to null
                 }
-            } else {
-                provisional to null
-            }
-            val (subject, body, from, html) = MimeCodec.parseMime(mime)
-            StoredMessage(
-                id = msg.id,
-                from = from,
-                toJson = deliveredTo,
-                dateMillis = System.currentTimeMillis(),
-                messageId = msg.id,
-                blobBase64 = Base64.encodeToString(raw, Base64.NO_WRAP),
-                decryptedBody = body,
-                decryptedSubject = subject,
-                verifiedSigner = verified,
-                unencrypted = false,
-                folder = folder,
-                decryptedHtml = html,
-                deliveredTo = deliveredTo,
-            )
-        }.getOrNull()
-    } else {
-        null
+                val (subject, body, from, html) = MimeCodec.parseMime(mime)
+                StoredMessage(
+                    id = msg.id,
+                    from = from,
+                    toJson = deliveredTo,
+                    dateMillis = System.currentTimeMillis(),
+                    messageId = msg.id,
+                    blobBase64 = Base64.encodeToString(raw, Base64.NO_WRAP),
+                    decryptedBody = body,
+                    decryptedSubject = subject,
+                    verifiedSigner = verified,
+                    unencrypted = false,
+                    folder = folder,
+                    decryptedHtml = html,
+                    deliveredTo = deliveredTo,
+                )
+            }.getOrNull()
+        } else {
+            null
+        }
     }
-    }
+
     suspend fun store(context: Context, msg: MailSocket.InboundMsg) {
         val app = context.applicationContext
         val repo = MailRepository.get(app)
         val identity = Identities.forDelivery(app, msg.deliveredTo)
+        store(
+            msg = msg,
+            repo = repo,
+            identity = identity,
+            passphraseProvider = { KeyManager(app).getKeyPassphrase() },
+            senderKeyResolver = { SenderKeys.resolve(app, it) },
+        )
+    }
+
+    /**
+     * Testable core of [store]: [identity]/[passphraseProvider]/
+     * [senderKeyResolver] are resolved by the production entry point above;
+     * tests inject fakes so no Keystore/SQLCipher/socket is touched.
+     */
+    internal suspend fun store(
+        msg: MailSocket.InboundMsg,
+        repo: MailStore,
+        identity: MailIdentity?,
+        passphraseProvider: () -> String?,
+        senderKeyResolver: suspend (String) -> String?,
+    ) {
         val deliveredTo = msg.deliveredTo.ifBlank { identity?.address.orEmpty() }
         val folder = if (msg.flags.spam) MailFolder.SPAM else MailFolder.INBOX
         val raw = msg.raw
@@ -118,7 +131,8 @@ object InboundStore {
             )
             return
         }
-        val stored = storeEncrypted(app, msg, deliveredTo, folder, raw, identity)
+        val passphrase = runCatching { passphraseProvider() }.getOrNull()
+        val stored = storeEncrypted(msg, deliveredTo, folder, raw, identity, passphrase, senderKeyResolver)
         repo.messageDao().upsert(
             stored ?: StoredMessage(
                 id = msg.id,
