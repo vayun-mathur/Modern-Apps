@@ -120,6 +120,10 @@ class MainActivity : MaActivity() {
     // onNewIntent can re-deep-link into the running UI.
     private val openRestaurantId = mutableStateOf<Int?>(null)
 
+    // fooddelivery://checkout — the assistant handoff: the cart was prepared
+    // provider-side, and the user places/pays for the order here in-app.
+    private val openCheckout = mutableStateOf(false)
+
     private val verifyEmail = mutableStateOf<Route.EmailVerification?>(null)
 
     private val requestNotificationPermission =
@@ -137,6 +141,7 @@ class MainActivity : MaActivity() {
         AppInit.start(this)
         trackOrderId.value = intent.trackOrderIdOrNull()
         openRestaurantId.value = intent.restaurantIdOrNull()
+        openCheckout.value = intent.isCheckoutDeepLink()
         verifyEmail.value = intent.emailVerificationOrNull()
         requestNotificationPermissionIfNeeded()
         // The TLS trust bundle and the saved auth token are warmed up off the main thread by
@@ -150,7 +155,7 @@ class MainActivity : MaActivity() {
 
     @Composable
     override fun Content() {
-        FoodDeliveryApp(trackOrderId, openRestaurantId, verifyEmail)
+        FoodDeliveryApp(trackOrderId, openRestaurantId, openCheckout, verifyEmail)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -158,6 +163,7 @@ class MainActivity : MaActivity() {
         setIntent(intent)
         intent.trackOrderIdOrNull()?.let { trackOrderId.value = it }
         intent.restaurantIdOrNull()?.let { openRestaurantId.value = it }
+        if (intent.isCheckoutDeepLink()) openCheckout.value = true
         intent.emailVerificationOrNull()?.let { verifyEmail.value = it }
     }
 
@@ -179,6 +185,14 @@ private fun Intent.restaurantIdOrNull(): Int? {
     if (uri.scheme != OrderLookupContract.DEEP_LINK_SCHEME) return null
     if (uri.host != OrderLookupContract.DEEP_LINK_HOST) return null
     return uri.lastPathSegment?.toIntOrNull()?.takeIf { it > 0 }
+}
+
+// fooddelivery://checkout — opens Route.Checkout for the current cart (the
+// assistant's order handoff; payment still happens in-app via Stripe).
+internal fun Intent.isCheckoutDeepLink(): Boolean {
+    val uri = data ?: return false
+    return uri.scheme == OrderLookupContract.DEEP_LINK_SCHEME &&
+        uri.host == OrderLookupContract.DEEP_LINK_CHECKOUT_HOST
 }
 
 private const val EMAIL_VERIFICATION = "email-verification"
@@ -208,6 +222,7 @@ private fun Intent.emailVerificationOrNull(): Route.EmailVerification? {
 private fun FoodDeliveryApp(
     trackOrderId: MutableState<Int?>,
     openRestaurantId: MutableState<Int?>,
+    openCheckout: MutableState<Boolean>,
     verifyEmail: MutableState<Route.EmailVerification?>,
 ) {
     val context = LocalContext.current
@@ -225,6 +240,13 @@ private fun FoodDeliveryApp(
         val id = openRestaurantId.value ?: return@LaunchedEffect
         backStack.add(Route.Restaurant(id))
         openRestaurantId.value = null
+    }
+
+    // A fooddelivery://checkout deep link opens checkout for the current cart.
+    LaunchedEffect(openCheckout.value) {
+        if (!openCheckout.value) return@LaunchedEffect
+        backStack.add(Route.Checkout)
+        openCheckout.value = false
     }
 
     LaunchedEffect(verifyEmail.value) {

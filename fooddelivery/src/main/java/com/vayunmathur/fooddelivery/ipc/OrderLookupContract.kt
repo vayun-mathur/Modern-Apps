@@ -18,4 +18,10 @@ object OrderLookupContract {
 
     /** Build the deep link that opens merchant [id]'s order page. */
     fun deepLink(id: Int): String = "$DEEP_LINK_SCHEME://$DEEP_LINK_HOST/$id"
+
+    // ---- deep link (open checkout for the current cart, assistant handoff) ----
+    const val DEEP_LINK_CHECKOUT_HOST = "checkout"
+
+    /** Build the deep link that opens checkout for the current cart. */
+    fun checkoutDeepLink(): String = "$DEEP_LINK_SCHEME://$DEEP_LINK_CHECKOUT_HOST"
 }

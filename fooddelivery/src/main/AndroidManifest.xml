@@ -42,6 +42,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="fooddelivery" android:host="restaurant" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="fooddelivery" android:host="checkout" />
+            </intent-filter>
             <!-- Email verification links, in both forms the official Bites app accepts: the
                  custom scheme the withbites.com verify page hands off to, and the web link in
                  the email itself. Not autoVerify — we can't serve assetlinks on withbites.com,
@@ -65,6 +71,40 @@
 
         <activity
             android:name=".intents.OrderLookupIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.fooddelivery.permissions.ACCESS_ORDERS" />
+
+        <!-- Assistant provider intents (P4): same ACCESS_ORDERS signature
+             permission as OrderLookupIntent. The assistant never creates
+             orders; checkout happens in-app via fooddelivery://checkout. -->
+        <activity
+            android:name=".intents.FindRestaurantsIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.fooddelivery.permissions.ACCESS_ORDERS" />
+        <activity
+            android:name=".intents.GetMenuIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.fooddelivery.permissions.ACCESS_ORDERS" />
+        <activity
+            android:name=".intents.GetCartIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.fooddelivery.permissions.ACCESS_ORDERS" />
+        <activity
+            android:name=".intents.SetCartIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.fooddelivery.permissions.ACCESS_ORDERS" />
+        <activity
+            android:name=".intents.PrepareOrderIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.fooddelivery.permissions.ACCESS_ORDERS" />
+        <activity
+            android:name=".intents.GetOrdersIntent"
             android:exported="true"
             android:theme="@android:style/Theme.NoDisplay"
             android:permission="com.vayunmathur.fooddelivery.permissions.ACCESS_ORDERS" />
