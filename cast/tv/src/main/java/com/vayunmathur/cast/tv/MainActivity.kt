@@ -10,7 +10,6 @@ import com.vayunmathur.cast.tv.platform.ReceiverController
 import com.vayunmathur.cast.tv.platform.ReceiverPhase
 import com.vayunmathur.cast.tv.service.ReceiverService
 import com.vayunmathur.cast.tv.ui.CastTvTheme
-import com.vayunmathur.cast.tv.ui.ReceiverContent
 import com.vayunmathur.library.ui.MaActivity
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
@@ -22,8 +21,10 @@ import kotlinx.coroutines.launch
  * mDNS registration alive whether or not this Activity is in front, which is why nothing here owns any
  * session state.
  *
- * No `Route.kt` or `Navigation.kt`: there is one screen, and a nav graph over a single destination
- * would be scaffolding around nothing.
+ * The screens are [Route] destinations on a one-deep host (Navigation.kt):
+ * the controller's phase is the session engine, the route is only its
+ * projection onto the screen. There is no back behaviour between receiver
+ * states; the graph buys typed destinations and restore.
  */
 class MainActivity : MaActivity() {
     override val edgeToEdge: Boolean = false
@@ -51,6 +52,6 @@ class MainActivity : MaActivity() {
     @Composable
     override fun Content() {
         val state by ReceiverController.state.collectAsState()
-        ReceiverContent(state)
+        ReceiverNavigation(state)
     }
 }

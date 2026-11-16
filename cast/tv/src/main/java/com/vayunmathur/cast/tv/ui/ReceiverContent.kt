@@ -13,8 +13,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.cast.tv.R
+import com.vayunmathur.cast.tv.Route
 import com.vayunmathur.cast.tv.platform.ReceiverFailure
-import com.vayunmathur.cast.tv.platform.ReceiverPhase
 import com.vayunmathur.cast.tv.platform.ReceiverUiState
 import com.vayunmathur.library.tv.TvButton
 import com.vayunmathur.library.tv.TvEmptyState
@@ -27,44 +27,43 @@ import com.vayunmathur.library.ui.IconWarning
 /**
  * Every full-screen state of the receiver that is not the picture itself.
  *
- * A dispatcher, not a layout: each arm is its own screen in its own file, sharing only the
- * theme. The picture gets `MirrorActivity`; the now-playing artwork screen lives there too,
- * beside the surface it accompanies. Nothing here paints a base background - the overlay case
- * above a decoder surface needs transparency, so screens that want colour say so themselves.
+ * Renders one [Route] destination: the navigation host (Navigation.kt)
+ * chooses the destination from the controller's phase, and this renders
+ * only what that destination names — destination arguments first, and the
+ * beside-the-phase state (device/network labels) from [state]. The picture
+ * gets `MirrorActivity`; the now-playing artwork screen lives there too,
+ * beside the surface it accompanies. Nothing here paints a base background
+ * - the overlay case above a decoder surface needs transparency, so
+ * screens that want colour say so themselves.
  */
 @Composable
-fun ReceiverContent(state: ReceiverUiState, modifier: Modifier = Modifier) {
+fun ReceiverContent(route: Route, state: ReceiverUiState, modifier: Modifier = Modifier) {
     if (state.localNetworkBlocked) {
         NetworkBlockedScreen(modifier)
         return
     }
-    when (val phase = state.phase) {
-        ReceiverPhase.Starting -> StartingScreen(modifier)
+    when (route) {
+        Route.Starting -> StartingScreen(modifier)
 
-        ReceiverPhase.Advertising -> ReadyScreen(
+        Route.Ready -> ReadyScreen(
             deviceName = state.deviceName.ifBlank { stringResource(R.string.tv_name_unknown) },
             networkLabel = state.networkLabel,
             modifier = modifier,
         )
 
-        is ReceiverPhase.Pairing -> PairingScreen(
-            senderName = phase.senderName,
-            code = phase.code,
-            attemptsLeft = phase.attemptsLeft,
-            codeChanged = phase.codeChanged,
+        is Route.Pairing -> PairingScreen(
+            senderName = route.senderName,
+            code = route.code,
+            attemptsLeft = route.attemptsLeft,
+            codeChanged = route.codeChanged,
             modifier = modifier,
         )
 
         // Paired; the stream is being set up. `MainActivity` moves on to `MirrorActivity` the
-        // moment frames arrive, so this is a held breath rather than a destination.
-        is ReceiverPhase.Connected -> ConnectedScreen(senderName = phase.senderName, modifier = modifier)
+        // moment frames arrive, so this is a held breath rather than a place anyone stays.
+        is Route.Connected -> ConnectedScreen(senderName = route.senderName, modifier = modifier)
 
-        // The mirror has its own full-screen Activity, so this is only ever seen for the
-        // moment between the stream starting and that Activity coming up.
-        is ReceiverPhase.Mirroring ->
-            ConnectedScreen(senderName = phase.sourceName, mirroring = true, modifier = modifier)
-
-        is ReceiverPhase.Failed -> FailedScreen(reason = phase.reason, modifier = modifier)
+        is Route.Failed -> FailedScreen(reason = route.reason, modifier = modifier)
     }
 }
 

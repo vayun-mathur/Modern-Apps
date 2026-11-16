@@ -7,6 +7,7 @@ import androidx.compose.ui.test.performClick
 import com.vayunmathur.cast.protocol.LyricLine
 import com.vayunmathur.cast.protocol.NowPlaying
 import com.vayunmathur.cast.protocol.PlaybackState
+import com.vayunmathur.cast.tv.Route
 import com.vayunmathur.cast.tv.platform.PlaybackSnapshot
 import com.vayunmathur.cast.tv.platform.ReceiverFailure
 import com.vayunmathur.cast.tv.platform.ReceiverPhase
@@ -26,20 +27,20 @@ class TvUiComposeTest {
         PlaybackSnapshot(PlaybackState(pos, duration, playing, buffering, speed = speed, hasNext = true, hasPrevious = true), 1000)
 
     @Test fun receiverContentStarting() {
-        rule.setContent { CastTvTheme { ReceiverContent(ReceiverUiState(phase = ReceiverPhase.Starting)) } }
+        rule.setContent { CastTvTheme { ReceiverContent(Route.Starting, ReceiverUiState(phase = ReceiverPhase.Starting)) } }
         rule.waitForIdle()
     }
     @Test fun receiverContentAdvertisingShowsDeviceAndNetwork() {
-        rule.setContent { CastTvTheme { ReceiverContent(ReceiverUiState(phase = ReceiverPhase.Advertising, deviceName = "Living Room TV", networkLabel = "HomeWiFi · 192.168.1.4")) } }
+        rule.setContent { CastTvTheme { ReceiverContent(Route.Ready, ReceiverUiState(phase = ReceiverPhase.Advertising, deviceName = "Living Room TV", networkLabel = "HomeWiFi · 192.168.1.4")) } }
         rule.onNodeWithText("Living Room TV").assertIsDisplayed()
         rule.onNodeWithText("HomeWiFi · 192.168.1.4", substring = true).assertIsDisplayed()
     }
     @Test fun receiverContentPairing() {
-        rule.setContent { CastTvTheme { ReceiverContent(ReceiverUiState(phase = ReceiverPhase.Pairing("Pixel 9", "123456", 2))) } }
+        rule.setContent { CastTvTheme { ReceiverContent(Route.Pairing("Pixel 9", "123456", 2), ReceiverUiState(phase = ReceiverPhase.Pairing("Pixel 9", "123456", 2))) } }
         rule.onNodeWithText("123  456").assertIsDisplayed()
     }
     @Test fun receiverContentConnectedAndMirroring() {
-        rule.setContent { CastTvTheme { ReceiverContent(ReceiverUiState(phase = ReceiverPhase.Connected("Pixel 9"))) } }
+        rule.setContent { CastTvTheme { ReceiverContent(Route.Connected("Pixel 9"), ReceiverUiState(phase = ReceiverPhase.Connected("Pixel 9"))) } }
         rule.waitForIdle()
     }
     @Test fun pairingScreenChangedCode() {
@@ -47,20 +48,20 @@ class TvUiComposeTest {
         rule.onNodeWithText("654  321").assertIsDisplayed()
     }
     @Test fun receiverContentMirroring() {
-        rule.setContent { CastTvTheme { ReceiverContent(ReceiverUiState(phase = ReceiverPhase.Mirroring("Pixel 9", 1920, 1080, appLabel = "YouPipe"))) } }
+        rule.setContent { CastTvTheme { ReceiverContent(Route.Connected("YouPipe"), ReceiverUiState(phase = ReceiverPhase.Mirroring("Pixel 9", 1920, 1080, appLabel = "YouPipe"))) } }
         rule.waitForIdle()
     }
     @Test fun receiverContentAllFailures() {
-        rule.setContent { CastTvTheme { ReceiverContent(ReceiverUiState(phase = ReceiverPhase.Failed(ReceiverFailure.NoDecoder))) } }
+        rule.setContent { CastTvTheme { ReceiverContent(Route.Failed(ReceiverFailure.NoDecoder), ReceiverUiState(phase = ReceiverPhase.Failed(ReceiverFailure.NoDecoder))) } }
         rule.waitForIdle()
     }
     @Test fun receiverContentFailureVariants() {
         // remaining failures share the FailedScreen shape; rendered in platform-level state tests plus this smoke of each message branch via separate compositions is done in individual tests below
-        rule.setContent { CastTvTheme { ReceiverContent(ReceiverUiState(phase = ReceiverPhase.Failed(ReceiverFailure.StreamEnded))) } }
+        rule.setContent { CastTvTheme { ReceiverContent(Route.Failed(ReceiverFailure.StreamEnded), ReceiverUiState(phase = ReceiverPhase.Failed(ReceiverFailure.StreamEnded))) } }
         rule.waitForIdle()
     }
     @Test fun receiverContentNetworkBlocked() {
-        rule.setContent { CastTvTheme { ReceiverContent(ReceiverUiState(localNetworkBlocked = true)) } }
+        rule.setContent { CastTvTheme { ReceiverContent(Route.Starting, ReceiverUiState(localNetworkBlocked = true)) } }
         rule.waitForIdle()
         // The settings button fires an app-details intent; Robolectric shadows the start.
         runCatching { rule.onNodeWithText("Open Settings", substring = true).performClick() }

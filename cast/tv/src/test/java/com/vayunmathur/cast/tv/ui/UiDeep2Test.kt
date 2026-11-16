@@ -11,6 +11,7 @@ import com.vayunmathur.cast.protocol.ContentSession
 import com.vayunmathur.cast.protocol.LyricLine
 import com.vayunmathur.cast.protocol.NowPlaying
 import com.vayunmathur.cast.protocol.PlaybackState
+import com.vayunmathur.cast.tv.Route
 import com.vayunmathur.cast.tv.platform.ArtworkFetcher
 import com.vayunmathur.cast.tv.platform.PlaybackSnapshot
 import com.vayunmathur.cast.tv.platform.ReceiverFailure
@@ -40,7 +41,7 @@ class UiDeep2Test {
     @Test fun everyFailureRendersItsScreen() {
         val failureState = androidx.compose.runtime.mutableStateOf(ReceiverFailure.entries.first())
         rule.setContent {
-            CastTvTheme { ReceiverContent(ReceiverUiState(phase = ReceiverPhase.Failed(failureState.value))) }
+            CastTvTheme { ReceiverContent(Route.Failed(failureState.value), ReceiverUiState(phase = ReceiverPhase.Failed(failureState.value))) }
         }
         for (next in ReceiverFailure.entries) {
             failureState.value = next
@@ -50,7 +51,7 @@ class UiDeep2Test {
 
     @Test fun networkBlockedButtonFiresSettingsIntent() {
         rule.setContent {
-            CastTvTheme { ReceiverContent(ReceiverUiState(localNetworkBlocked = true)) }
+            CastTvTheme { ReceiverContent(Route.Starting, ReceiverUiState(localNetworkBlocked = true)) }
         }
         rule.waitForIdle()
         rule.onNodeWithText("Open Settings", substring = true).performClick()

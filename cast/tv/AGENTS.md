@@ -6,7 +6,7 @@ _Install: ./install cast/tv (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :cast:tv / dir: cast/tv/
 - Package roots present: ui, platform, service
-- Entry files: MainActivity.kt (receiver shell — NOT a phone app; no Route/Navigation, TV panel modes instead)
+- Entry files: MainActivity.kt, Route.kt, Navigation.kt (receiver shell — NOT a phone app; one-deep Route host, TV panel modes instead)
 - Deps: :cast:protocol, :library:e2ee-p2p
 - Metadata: metadata_data/cast-tv.md (present)
 - Rust: no / screenshotTest: no
@@ -25,8 +25,10 @@ _Install: ./install cast/tv (dev by default)._
 - Pairing store persists trust; clearing it force-drops all senders
 
 ## Key files
-### Root — receiver shell (no Route/Navigation)
+### Root — receiver shell + navigation
 - com/vayunmathur/cast/tv/MainActivity.kt
+- com/vayunmathur/cast/tv/Route.kt — Starting/Ready/Pairing/Connected/Failed destinations
+- com/vayunmathur/cast/tv/Navigation.kt — one-deep MainNavigation host (phase → Route)
 ### platform/ — receiver pipeline
 - com/vayunmathur/cast/tv/platform/ReceiverController.kt
 - com/vayunmathur/cast/tv/platform/ReceiverUiContract.kt
