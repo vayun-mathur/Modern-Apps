@@ -18,7 +18,18 @@ data class ToolParamSpec(
 )
 
 /** Risk classification for a tool; host metadata, not model supplied. */
-enum class ToolRisk { READ, WRITE_CONFIRM, HANDOFF_PREP }
+enum class ToolRisk {
+    READ,
+    WRITE_CONFIRM,
+
+    /** Reversible write with no money moved: executes immediately, but the handler
+     *  must render the resulting state back as a host card (design §2 "light"). */
+    WRITE_LIGHT,
+
+    /** Prepare-only: renders a summary card whose button deep-links the target app,
+     *  which performs the irreversible step itself. Nothing irreversible executes here. */
+    HANDOFF_PREP,
+}
 
 /** Immutable value describing tool spec. */
 data class ToolSpec(

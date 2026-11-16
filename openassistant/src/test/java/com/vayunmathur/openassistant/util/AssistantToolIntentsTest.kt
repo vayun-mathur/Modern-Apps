@@ -130,6 +130,37 @@ class AssistantToolIntentsTest {
         assertEquals(listOf("lives in Lisbon"), dao.getAll().map { it.content })
     }
 
+    @Test fun messagingToolsThrowMissingAppAndSummariesTruncate() = runTest {
+        assertFailsWith<MissingAppException> { tools.findConversations("ann", 5) }
+        assertFailsWith<MissingAppException> { tools.getConversationMessages("Sim:1", 10) }
+        assertFailsWith<MissingAppException> {
+            tools.sendMessageV2(
+                com.vayunmathur.library.intents.communicate.SendMessageRequest("+1", "Sim", "hi"))
+        }
+        assertTrue(
+            AssistantToolIntents.getMissingAppMessage("com.vayunmathur.communicate")
+                .contains("The Communicate app"))
+        val convs = summarizeConversations(
+            listOf(
+                com.vayunmathur.library.intents.communicate.ConversationData(
+                    "Sim:1", "+1555", "Ann", "see you", "Sim", false)))
+        assertTrue(convs.contains("thread_key=Sim:1") && convs.contains("Ann"), convs)
+        assertEquals("No conversations found", summarizeConversations(emptyList()))
+        val msgs = summarizeConversationMessages(
+            listOf(
+                com.vayunmathur.library.intents.communicate.ConversationMessageData(
+                    "hello", "+1555", 1L, false, "Sim")))
+        assertTrue(msgs.contains("hello"), msgs)
+        assertEquals(
+            "Success: Message sent",
+            summarizeSendResult(com.vayunmathur.library.intents.communicate.SendMessageResult(true)))
+        assertTrue(
+            summarizeSendResult(
+                com.vayunmathur.library.intents.communicate.SendMessageResult(
+                    false, "GOOGLE_VOICE_REQUIRES_ACTIVITY"))
+                .contains("Google Voice"))
+    }
+
     @Test fun requestPayloadShapes() {
         assertEquals(3.5, WeatherLatLonRequest(3.5, -1.25).latitude)
         assertEquals("Lisbon", WeatherNameRequest("Lisbon").name)

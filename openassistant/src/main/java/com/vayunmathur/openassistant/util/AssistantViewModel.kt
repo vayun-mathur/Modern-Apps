@@ -19,6 +19,8 @@ import com.vayunmathur.openassistant.data.Memory
 import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
 import com.vayunmathur.openassistant.platform.A2uiController
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -127,6 +129,31 @@ class AssistantViewModel(
         context: Map<String, Any?>,
     ): Boolean {
         when (eventName) {
+            "msg.send" -> {
+                val address = context["address"]?.toString().orEmpty()
+                val body = context["body"]?.toString().orEmpty()
+                if (address.isBlank() || body.isBlank()) return false
+                val line = context["line"]?.toString().orEmpty()
+                val threadRemoteId = context["thread_remote_id"]?.toString().orEmpty()
+                val payload = buildJsonObject {
+                    put("address", address)
+                    put("line", line)
+                    put("body", body)
+                    if (threadRemoteId.isNotBlank()) put("thread_remote_id", threadRemoteId)
+                }.toString()
+                val text = "[HostSendMsg $payload]"
+                viewModelScope.launch {
+                    upsertMessage(Message(conversationId, text, "user"))
+                    requestInference(conversationId, text, emptyList(), null)
+                }
+                return true
+            }
+            "open.conversation" -> {
+                val address = context["address"]?.toString().orEmpty()
+                if (address.isBlank()) return false
+                openConversation(address)
+                return true
+            }
             "web.open" -> {
                 val url = context["url"]?.toString().orEmpty()
                 if (url.isBlank()) return false
@@ -165,6 +192,19 @@ class AssistantViewModel(
     private fun contextIndex(context: Map<String, Any?>): Int? {
         val raw = context["index"] ?: return null
         return (raw as? Number)?.toInt() ?: raw.toString().toDoubleOrNull()?.toInt()
+    }
+
+    /** Opens a 1:1 conversation for [address] via the sms: deep link (Communicate parses it). */
+    private fun openConversation(address: String) {
+        try {
+            val app = getApplication<Application>()
+            app.startActivity(
+                Intent(Intent.ACTION_VIEW, "sms:$address".toUri())
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (expected: Exception) {
+            Log.status(TAG, "Failed to open conversation for $address", expected)
+        }
     }
 
     private fun openUrl(url: String) {

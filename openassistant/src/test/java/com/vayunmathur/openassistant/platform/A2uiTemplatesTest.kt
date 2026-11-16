@@ -151,6 +151,19 @@ class A2uiTemplatesTest {
         }
     }
 
+    @Test fun messageComposerIsEnvelopeValid() {
+        val json = A2uiTemplates.messageComposer("Ann", "+15551234", "Sim", "Running late", "t1")
+        assertEnvelopeValid(json)
+        val comps = componentsOf(json)
+        assertEquals("TextField", comps.getValue("body")["component"])
+        assertTrue(json.contains("msg.send"), json)
+        assertTrue(json.contains("msg.cancel"), json)
+        assertTrue(json.contains("Running late"), json)
+        assertTrue(json.contains("/body"), json)
+        // No thread id: no thread key in the send context.
+        assertTrue(!A2uiTemplates.messageComposer("Ann", "+1", "Sim", "Hi").contains("thread_remote_id"))
+    }
+
     @Test fun redactedSummaryShowsLengthsOnly() {
         assertEquals(
             "content(len=12), title(len=1)",

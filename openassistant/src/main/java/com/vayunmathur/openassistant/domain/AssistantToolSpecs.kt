@@ -2,7 +2,9 @@ package com.vayunmathur.openassistant.domain
 
 import com.vayunmathur.openassistant.domain.ToolParamType.NUMBER
 import com.vayunmathur.openassistant.domain.ToolParamType.STRING
+import com.vayunmathur.openassistant.domain.ToolRisk.HANDOFF_PREP
 import com.vayunmathur.openassistant.domain.ToolRisk.WRITE_CONFIRM
+import com.vayunmathur.openassistant.domain.ToolRisk.WRITE_LIGHT
 
 private fun p(name: String, type: ToolParamType = STRING, description: String = "", required: Boolean = true) =
     ToolParamSpec(name, description, type, required)
@@ -183,6 +185,47 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
             p("index", NUMBER, "1-based index into the last web_search results"),
             p("offset", NUMBER, "optional character offset for long pages", required = false),
         ),
+    ),
+    ToolSpec(
+        "find_conversations",
+        "Find messaging conversations in the Communicate app by name, number or text snippet. " +
+            "Returns thread_key values usable with get_conversation_messages.",
+        listOf(
+            p("query", description = "name, number or text to search (blank lists recent)", required = false),
+            p("limit", NUMBER, "optional max conversations 1-50 (default 5)", required = false),
+        ),
+    ),
+    ToolSpec(
+        "get_conversation_messages",
+        "Get recent messages from a messaging conversation by its thread_key from find_conversations.",
+        listOf(
+            p("thread_key", description = "thread key like Sim:42 or WhatsApp:123@s.whatsapp.net"),
+            p("limit", NUMBER, "optional max messages 1-100 (default 10)", required = false),
+        ),
+    ),
+    ToolSpec(
+        "draft_message",
+        "Show a message composer card with recipient, line and a draft body. Sends nothing; " +
+            "the user can edit the body and tap Send, which then asks for confirmation before sending.",
+        listOf(
+            p("recipient_name", description = "recipient display name", required = false),
+            p("address", description = "recipient phone number or address"),
+            p("line", description = "Sim, Rcs, WhatsApp, Signal, or GoogleVoice"),
+            p("body", description = "draft message text"),
+            p("thread_remote_id", description = "optional existing thread id to reply into", required = false),
+        ),
+    ),
+    ToolSpec(
+        "send_message_v2",
+        "Send a message via the Communicate app (requires confirmation). Should only be used " +
+            "with EXPLICIT request by user. GoogleVoice cannot send from here; use draft_message " +
+            "so the user can open the conversation instead.",
+        listOf(
+            p("address", description = "recipient phone number or address"),
+            p("line", description = "Sim, Rcs, WhatsApp, Signal, or GoogleVoice"),
+            p("body", description = "message text"),
+            p("thread_remote_id", description = "optional existing thread id to reply into", required = false),
+        ), risk = WRITE_CONFIRM,
     ),
     ToolSpec("get_memories", "Get a list of all memories"),
     ToolSpec("remove_memory", "Remove a memory by its id (requires confirmation)", listOf(p("id", NUMBER)), risk = WRITE_CONFIRM),

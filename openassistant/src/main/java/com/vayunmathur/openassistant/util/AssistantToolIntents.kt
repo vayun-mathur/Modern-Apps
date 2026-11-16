@@ -19,6 +19,12 @@ import com.vayunmathur.library.intents.todo.CompleteTodoData
 import com.vayunmathur.library.intents.todo.GetTodosQuery
 import com.vayunmathur.library.intents.todo.InsertTodoData
 import com.vayunmathur.library.intents.todo.TodoData
+import com.vayunmathur.library.intents.communicate.ConversationData
+import com.vayunmathur.library.intents.communicate.ConversationMessageData
+import com.vayunmathur.library.intents.communicate.FindConversationsQuery
+import com.vayunmathur.library.intents.communicate.GetMessagesQuery
+import com.vayunmathur.library.intents.communicate.SendMessageRequest
+import com.vayunmathur.library.intents.communicate.SendMessageResult
 import com.vayunmathur.library.intents.fooddelivery.OrderLookupRequest
 import com.vayunmathur.library.intents.fooddelivery.OrderLookupResult
 import com.vayunmathur.library.intents.maps.DirectionsRequest
@@ -59,6 +65,8 @@ internal class AssistantToolIntents(private val context: Context) {
             "com.vayunmathur.maps" to "Maps",
             "com.vayunmathur.taxi" to "Taxi",
             "com.vayunmathur.fooddelivery" to "FoodDelivery",
+            "com.vayunmathur.communicate" to "Communicate",
+            "com.vayunmathur.shop" to "Shop",
         )
 
         fun getMissingAppMessage(packageName: String): String {
@@ -275,6 +283,27 @@ internal class AssistantToolIntents(private val context: Context) {
         return summarizeOrderLookup(result)
     }
 
+    suspend fun findConversations(query: String, limit: Int): List<ConversationData> = launchIntent(
+        context,
+        "com.vayunmathur.communicate",
+        "com.vayunmathur.communicate.intents.FindConversationsIntent",
+        FindConversationsQuery(query, limit),
+    )
+
+    suspend fun getConversationMessages(threadKey: String, limit: Int): List<ConversationMessageData> = launchIntent(
+        context,
+        "com.vayunmathur.communicate",
+        "com.vayunmathur.communicate.intents.GetMessagesIntent",
+        GetMessagesQuery(threadKey, limit),
+    )
+
+    suspend fun sendMessageV2(request: SendMessageRequest): SendMessageResult = launchIntent(
+        context,
+        "com.vayunmathur.communicate",
+        "com.vayunmathur.communicate.intents.SendMessageIntent",
+        request,
+    )
+
     suspend fun getContactsList(): List<ContactData> = launchIntent<Unit, List<ContactData>>(
         context,
         "com.vayunmathur.contacts",
@@ -376,6 +405,37 @@ fun summarizeOrderLookup(result: OrderLookupResult): String =
     } else {
         "Orderable: merchantId=${result.merchantId}, link=${result.deepLink}"
     }
+
+/** Host-truncated conversation list for the model (names/keys/lines only). */
+fun summarizeConversations(list: List<ConversationData>): String =
+    if (list.isEmpty()) {
+        "No conversations found"
+    } else {
+        list.joinToString("\n") { c ->
+            val who = c.displayName?.takeIf { it.isNotBlank() } ?: c.address
+            "thread_key=${c.threadKey} $who [${c.line}] ${c.snippet.take(80)}"
+        }
+    }
+
+/** Host-truncated message window for the model; bodies capped per message. */
+fun summarizeConversationMessages(list: List<ConversationMessageData>): String =
+    if (list.isEmpty()) {
+        "No messages found"
+    } else {
+        list.joinToString("\n") { m ->
+            val dir = if (m.outgoing) "me" else m.address
+            "[$dir ${m.line}] ${m.body.take(200)}"
+        }
+    }
+
+/** Maps a provider send outcome to the model-facing string; GV is typed. */
+fun summarizeSendResult(result: SendMessageResult): String = when {
+    result.success -> "Success: Message sent"
+    result.error == "GOOGLE_VOICE_REQUIRES_ACTIVITY" ->
+        "Error: Google Voice messages cannot be sent from here; the conversation must be opened in Communicate instead"
+    result.error != null -> "Error: message not sent (${result.error})"
+    else -> "Error: message not sent"
+}
 
 @OptIn(ExperimentalSerializationApi::class)
 suspend inline fun <reified Input : Any> launchIntentU(

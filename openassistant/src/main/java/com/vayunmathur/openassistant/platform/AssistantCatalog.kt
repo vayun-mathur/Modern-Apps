@@ -164,8 +164,11 @@ class AssistantCatalog(urlOpener: A2uiUrlOpener, messageFormatter: A2uiMessageFo
             )
             appendLine("""When the user taps a control you receive a turn like [UI action "name": {...}]. Respond to it.""")
             appendLine(
-                "Action names are namespaced: pick.* (a Picker/list choice, context has \"id\"), " +
+                "Action names are namespaced: pick.* (a Picker/list choice, context has \"id\"; " +
+                    "pick.conversation carries a thread_key), " +
                     "confirm.tool / cancel.tool (host confirmation, do not invent these), " +
+                    "msg.send (composer Send; host-gated, do not invent) and msg.cancel, " +
+                    "open.conversation (opens a message thread in Communicate), " +
                     "web.read ({\"index\": n}) and web.open ({\"url\": ...}). Use those names exactly.",
             )
             appendLine("Keep blocks small (under 15 components). Never use a block for a plain answer. Example:")

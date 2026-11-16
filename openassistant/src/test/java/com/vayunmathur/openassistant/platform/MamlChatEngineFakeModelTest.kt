@@ -113,6 +113,40 @@ class MamlChatEngineFakeModelTest {
         e.close()
     }
 
+    @Test fun sendMessageScriptGatesAndCancelNeverExecutes() = runBlocking {
+        var calls = 0
+        val quoted = { s: String -> "<|\"|>" + s + "<|\"|>" }
+        val fake = FakeTextModel(script = { _, onToken ->
+            calls++
+            when (calls) {
+                1 -> "<|tool_call>call:draft_message{address:${quoted("+15551234")},line:${quoted("Sim")},body:${quoted("Running late")}}<tool_call|>"
+                2 -> "<|tool_call>call:send_message_v2{address:${quoted("+15551234")},line:${quoted("Sim")},body:${quoted("Running late")}}<tool_call|>"
+                else -> { onToken("ok"); "ok" }
+            }
+        })
+        val e = engine(fake)
+        val toolSet = tools()
+        val result = e.chat(ChatRequest("sys", emptyList(), "text Ann I'm late"), toolSet) { true }
+        // The write gated: the loop stopped at the confirmation, nothing sent.
+        assertTrue(result is ChatResult.Pending, "$result")
+        val pendingId = (result as ChatResult.Pending).pendingId
+        assertEquals(2, calls)
+        // Cancel path (host removes the pending call): a later confirm attempt
+        // finds nothing and the handler never runs.
+        toolSet.removePending(pendingId)
+        assertEquals("Error: pending tool call not found", toolSet.invokeConfirmed(pendingId))
+        assertEquals(
+            "Error: confirmation required for send_message_v2",
+            toolSet.invoke(
+                com.vayunmathur.openassistant.domain.ParsedToolCall(
+                    "send_message_v2",
+                    mapOf("address" to "+15551234", "line" to "Sim", "body" to "Running late"),
+                ),
+            ),
+        )
+        e.close()
+    }
+
     @Test fun haltedStreamAndTooLongAndUnavailable() = runBlocking {
         val fake = FakeTextModel()
         val e = engine(fake)

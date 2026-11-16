@@ -44,7 +44,7 @@ class AssistantToolsInvokeTest {
         assertEquals("Error: create_note needs title", call("create_note", "content" to "x"))
         assertTrue(
             call("set_timer", "seconds" to "abc").contains("must be a number"))
-        assertEquals(36, tools.declarations.size)
+        assertEquals(40, tools.declarations.size)
     }
 
     @Test fun crossAppToolsReportMissingApps() {
@@ -217,10 +217,24 @@ class AssistantToolsInvokeTest {
         assertTrue(direct.contains("Raw fish, explained."), direct)
     }
 
+    @Test fun messagingToolsGateAndDraftLocally() {
+        assertTrue(call("find_conversations", "query" to "ann").startsWith("The Communicate app is required"))
+        assertTrue(call("get_conversation_messages", "thread_key" to "Sim:1").startsWith("The Communicate app is required"))
+        assertEquals(
+            "Error: confirmation required for send_message_v2",
+            call("send_message_v2", "address" to "+1", "line" to "Sim", "body" to "hi"))
+        // draft_message is local: it renders the composer and sends nothing.
+        val drafted = call(
+            "draft_message", "address" to "+15551234", "line" to "Sim", "body" to "Running late")
+        assertTrue(drafted.contains("Composer shown"), drafted)
+        val card = tools.consumePendingRenderUi()
+        assertTrue(card != null && card.contains("msg.send") && card.contains("Running late"), "$card")
+    }
+
     @Test fun riskClassificationMatchesDesign() {
         val gated = setOf("create_note", "create_todo", "complete_todo", "create_contact",
             "create_calendar_event", "create_location_share_link", "play_music",
-            "set_alarm", "set_timer", "remove_memory")
+            "set_alarm", "set_timer", "remove_memory", "send_message_v2")
         for (spec in com.vayunmathur.openassistant.domain.ASSISTANT_TOOL_SPECS) {
             val expected = if (spec.name in gated) {
                 com.vayunmathur.openassistant.domain.ToolRisk.WRITE_CONFIRM

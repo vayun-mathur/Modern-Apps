@@ -159,6 +159,79 @@ object A2uiTemplates {
     }
 
     /**
+     * Message composer card (design §3.2): recipient/line header, an editable
+     * multiline body and Cancel/Send. Send is host-intercepted (`msg.send`)
+     * and gated by the send confirmation card; Cancel is a plain model turn.
+     * Nothing sends from this card alone.
+     */
+    fun messageComposer(
+        recipientName: String,
+        address: String,
+        line: String,
+        body: String,
+        threadRemoteId: String? = null,
+    ): String {
+        val toLine = if (recipientName.isBlank()) address else "$recipientName ($address)"
+        val components = buildJsonArray {
+            add(obj("id" to s("root"), "component" to s("Card"), "child" to s("col")))
+            add(
+                obj(
+                    "id" to s("col"), "component" to s("Column"),
+                    "children" to JsonArray(listOf(s("to"), s("line"), s("body"), s("actions"))),
+                ),
+            )
+            add(text("to", "To: $toLine", "title"))
+            add(text("line", "Line: $line", "caption"))
+            add(
+                obj(
+                    "id" to s("body"), "component" to s("TextField"),
+                    "label" to s("Message"), "value" to path("/body"),
+                    "multiline" to JsonPrimitive(true),
+                ),
+            )
+            add(
+                obj(
+                    "id" to s("actions"), "component" to s("Row"),
+                    "children" to JsonArray(listOf(s("btnCancel"), s("btnSend"))),
+                ),
+            )
+            add(actionButton("btnCancel", "Cancel", "msg.cancel", emptyMap(), primary = false))
+            add(
+                actionButton(
+                    "btnSend", "Send", "msg.send",
+                    buildMap {
+                        put("address", s(address))
+                        put("line", s(line))
+                        put("body", pathValue("/body"))
+                        threadRemoteId?.takeIf { it.isNotBlank() }
+                            ?.let { put("thread_remote_id", s(it)) }
+                    },
+                    primary = true,
+                ),
+            )
+        }
+        val data = buildJsonObject {
+            put("address", address)
+            put("line", line)
+            put("body", body)
+            threadRemoteId?.takeIf { it.isNotBlank() }?.let { put("threadRemoteId", it) }
+        }
+        return envelope(components, data)
+    }
+
+    private fun actionButton(
+        id: String,
+        label: String,
+        event: String,
+        context: Map<String, JsonElement>,
+        primary: Boolean,
+    ): JsonObject = obj(
+        "id" to s(id), "component" to s("Button"), "label" to s(label),
+        "primary" to JsonPrimitive(primary),
+        "action" to action(event, context),
+    )
+
+    /**
      * Web search results card (oa-web-design §A2UI): a List template repeating a
      * Row[Column["[n] title", snippet, domain], Read (web.read {index}), Open (web.open {url})].
      */

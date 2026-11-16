@@ -180,6 +180,64 @@ class AssistantTools(
             }
         },
         "search_contacts" to { a -> intents.runTool { intents.searchContacts(a.string("query")) } },
+        "find_conversations" to { a ->
+            intents.runTool {
+                val limit = a.number("limit").toInt().takeIf { it > 0 } ?: 5
+                val list = intents.findConversations(a.string("query"), limit)
+                if (list.isNotEmpty()) {
+                    pendingRenderUi = A2uiTemplates.listPicker(
+                        "Conversations",
+                        list.map {
+                            PickerItem(
+                                it.threadKey,
+                                it.displayName?.takeIf { n -> n.isNotBlank() } ?: it.address,
+                                "${it.line} · ${it.snippet.take(60)}",
+                            )
+                        },
+                        actionName = "pick.conversation",
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeConversations(list)
+            }
+        },
+        "get_conversation_messages" to { a ->
+            intents.runTool {
+                val limit = a.number("limit").toInt().takeIf { it > 0 } ?: 10
+                com.vayunmathur.openassistant.util.summarizeConversationMessages(
+                    intents.getConversationMessages(a.string("thread_key"), limit),
+                )
+            }
+        },
+        "draft_message" to { a ->
+            pendingRenderUi = A2uiTemplates.messageComposer(
+                a.string("recipient_name"), a.string("address"), a.string("line"),
+                a.string("body"), a.string("thread_remote_id").takeIf { it.isNotBlank() },
+            )
+            "Composer shown. Nothing has been sent; the user reviews, edits and taps Send."
+        },
+        "send_message_v2" to { a ->
+            intents.runTool {
+                val result = intents.sendMessageV2(
+                    com.vayunmathur.library.intents.communicate.SendMessageRequest(
+                        a.string("address"), a.string("line"), a.string("body"),
+                        a.string("thread_remote_id").takeIf { it.isNotBlank() },
+                    ),
+                )
+                if (!result.success && result.error == "GOOGLE_VOICE_REQUIRES_ACTIVITY") {
+                    pendingRenderUi = A2uiTemplates.resultCard(
+                        "Open in Communicate",
+                        listOf("Google Voice messages are sent from the Communicate app."),
+                        actionLabel = "Open conversation",
+                        actionName = "open.conversation",
+                        actionContext = mapOf(
+                            "address" to a.string("address"),
+                            "line" to a.string("line"),
+                        ),
+                    )
+                }
+                com.vayunmathur.openassistant.util.summarizeSendResult(result)
+            }
+        },
         "web_search" to { a ->
             val count = a.number("count").toInt().takeIf { it > 0 } ?: 5
             val result = runBlocking { webTools.webSearch(a.string("query"), count, a.string("kind", "text")) }
