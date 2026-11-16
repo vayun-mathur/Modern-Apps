@@ -54,6 +54,23 @@ class BrowserChromeAndSiteIconTest {
         rule.onNodeWithText("Search or enter address").assertIsDisplayed()
     }
 
+    @Test fun omniboxHeightMatchesTabCountDiameter() {
+        rule.setContent {
+            BrowserChrome(
+                omniboxText = "https://example.com/page",
+                tabCount = 12,
+                progress = 0f,
+            ) { padding -> androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(padding)) {} }
+        }
+        rule.waitForIdle()
+        val tabBounds = rule.onNodeWithText("12").fetchSemanticsNode().boundsInRoot
+        val fieldBounds = rule.onNodeWithText("https://example.com/page").fetchSemanticsNode().boundsInRoot
+        // Same height on both controls, and the tab indicator is a square
+        // (circle) even with a two-digit count.
+        kotlin.test.assertEquals(tabBounds.height, fieldBounds.height)
+        kotlin.test.assertEquals(tabBounds.width, tabBounds.height)
+    }
+
     @Test fun siteIconShowsInitialForLabel() {
         rule.setContent { SiteIcon(icon = null, label = "example") }
         rule.waitForIdle()

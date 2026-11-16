@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -11,11 +12,12 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
@@ -33,6 +35,17 @@ import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.TopAppBarDefaults
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.web.R
+
+/**
+ * Diameter of the circular tab-count indicator, and therefore the
+ * height of the omnibox beside it: the two chrome controls share one
+ * size so the bar reads as one row of equal-height controls. This is
+ * the height the indicator already had (labelLarge line height plus
+ * its old 8.dp vertical padding), so only the width stops varying
+ * with the digit count. No shared repo dimension exists for this —
+ * `library.ui.Spacing` is spacing, not control sizes.
+ */
+internal val ChromeControlHeight = 36.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,18 +96,25 @@ internal fun BrowserChrome(
                     )
                 },
                 actions = {
+                    // A true circle of ChromeControlHeight diameter, not a
+                    // pill whose width grows with the digit count. The
+                    // clickable area is exactly the circle it was before
+                    // (same height) inside the TopAppBar row.
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
+                        shape = CircleShape,
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
+                            .size(ChromeControlHeight)
+                            .clip(CircleShape)
                             .clickable(onClick = onTabSwitcherClick)
                     ) {
-                        Text(
-                            text = tabCount.toString(),
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = tabCount.toString(),
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                            )
+                        }
                     }
                     Spacer(Modifier.width(4.dp))
                     IconButton(onClick = onMenuClick) { IconMoreVert() }
@@ -126,8 +146,10 @@ private fun DisplayOnlyAddressPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Now matches CommonSearchBar visually: OutlinedTextField 28dp rounded, same padding.
-    // bodySmall keeps the bar slim so more of the URL fits horizontally.
+    // Exactly as tall as the circular tab-count indicator beside it
+    // (ChromeControlHeight): the field's container shrinks and its
+    // internal vertical padding with it, while the text stays bodySmall
+    // at the same size — only padding was spent on the extra height.
     Box(modifier = modifier) {
         OutlinedTextField(
             value = fullUrl,
@@ -137,7 +159,7 @@ private fun DisplayOnlyAddressPill(
             placeholder = { Text(stringResource(R.string.search_or_enter_address), style = MaterialTheme.typography.bodySmall) },
             singleLine = true,
             shape = RoundedCornerShape(28.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(ChromeControlHeight)
         )
         // Overlay to handle tap without focusing the field
         Box(
