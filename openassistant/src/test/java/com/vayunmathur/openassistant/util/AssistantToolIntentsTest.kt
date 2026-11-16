@@ -99,6 +99,17 @@ class AssistantToolIntentsTest {
         assertFailsWith<MissingAppException> { tools.setTimer(SetTimerData(seconds = 300)) }
         assertFailsWith<MissingAppException> { tools.getWeather(1.0, 2.0) }
         assertFailsWith<MissingAppException> { tools.getWeatherByName("Lisbon") }
+        assertFailsWith<MissingAppException> { tools.getDirections(1.0, 2.0, 3.0, 4.0, "drive") }
+        assertFailsWith<MissingAppException> { tools.getRideEstimate(1.0, 2.0, 3.0, 4.0, "", "") }
+        assertFailsWith<MissingAppException> { tools.foodOrderLookup("Sushi", 1.0, 2.0, "") }
+        assertFailsWith<MissingAppException> { tools.searchContacts("ann") }
+        assertTrue(
+            AssistantToolIntents.getMissingAppMessage("com.vayunmathur.maps").contains("The Maps app"))
+        assertTrue(
+            AssistantToolIntents.getMissingAppMessage("com.vayunmathur.taxi").contains("The Taxi app"))
+        assertTrue(
+            AssistantToolIntents.getMissingAppMessage("com.vayunmathur.fooddelivery")
+                .contains("The FoodDelivery app"))
         // And via runTool they become the friendly message instead of a throw.
         assertTrue(tools.runTool { tools.getNotes() }.startsWith("The Notes app is required"))
     }

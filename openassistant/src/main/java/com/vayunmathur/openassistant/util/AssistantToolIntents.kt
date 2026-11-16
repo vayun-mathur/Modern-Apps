@@ -19,6 +19,12 @@ import com.vayunmathur.library.intents.todo.CompleteTodoData
 import com.vayunmathur.library.intents.todo.GetTodosQuery
 import com.vayunmathur.library.intents.todo.InsertTodoData
 import com.vayunmathur.library.intents.todo.TodoData
+import com.vayunmathur.library.intents.fooddelivery.OrderLookupRequest
+import com.vayunmathur.library.intents.fooddelivery.OrderLookupResult
+import com.vayunmathur.library.intents.maps.DirectionsRequest
+import com.vayunmathur.library.intents.maps.DirectionsResult
+import com.vayunmathur.library.intents.taxi.RideEstimateRequest
+import com.vayunmathur.library.intents.taxi.RideEstimateResult
 import com.vayunmathur.library.intents.weather.WeatherData
 import com.vayunmathur.openassistant.data.Memory
 import com.vayunmathur.openassistant.data.MemoryDao
@@ -50,6 +56,9 @@ internal class AssistantToolIntents(private val context: Context) {
             "com.vayunmathur.weather" to "Weather",
             "com.vayunmathur.clock" to "Clock",
             "com.vayunmathur.todo" to "Todo",
+            "com.vayunmathur.maps" to "Maps",
+            "com.vayunmathur.taxi" to "Taxi",
+            "com.vayunmathur.fooddelivery" to "FoodDelivery",
         )
 
         fun getMissingAppMessage(packageName: String): String {
@@ -219,6 +228,63 @@ internal class AssistantToolIntents(private val context: Context) {
         return result.error ?: result.toString()
     }
 
+    suspend fun getDirections(
+        fromLat: Double,
+        fromLng: Double,
+        toLat: Double,
+        toLng: Double,
+        mode: String,
+    ): String {
+        val result: DirectionsResult = launchIntent(
+            context,
+            "com.vayunmathur.maps",
+            "com.vayunmathur.maps.intents.DirectionsIntent",
+            DirectionsRequest(fromLat, fromLng, toLat, toLng, mode.ifBlank { "drive" }),
+        )
+        return summarizeDirections(result)
+    }
+
+    suspend fun getRideEstimate(
+        pickupLat: Double,
+        pickupLng: Double,
+        destLat: Double,
+        destLng: Double,
+        pickupLabel: String,
+        destLabel: String,
+    ): String {
+        val result: RideEstimateResult = launchIntent(
+            context,
+            "com.vayunmathur.taxi",
+            "com.vayunmathur.taxi.intents.RideEstimateIntent",
+            RideEstimateRequest(
+                pickupLat, pickupLng, destLat, destLng,
+                pickupLabel.takeIf { it.isNotBlank() },
+                destLabel.takeIf { it.isNotBlank() },
+            ),
+        )
+        return summarizeRideEstimate(result)
+    }
+
+    suspend fun foodOrderLookup(name: String, lat: Double, lng: Double, address: String): String {
+        val result: OrderLookupResult = launchIntent(
+            context,
+            "com.vayunmathur.fooddelivery",
+            "com.vayunmathur.fooddelivery.intents.OrderLookupIntent",
+            OrderLookupRequest(name, lat, lng, address.takeIf { it.isNotBlank() }),
+        )
+        return summarizeOrderLookup(result)
+    }
+
+    suspend fun getContactsList(): List<ContactData> = launchIntent<Unit, List<ContactData>>(
+        context,
+        "com.vayunmathur.contacts",
+        "com.vayunmathur.contacts.intents.GetIntent",
+        Unit,
+    )
+
+    suspend fun searchContacts(query: String): String =
+        filterContacts(query, getContactsList()).toString()
+
     suspend fun getMemories(memoryDao: MemoryDao?): String =
         memoryDao?.getAll()?.joinToString("\n") { "[${it.id}] ${it.content}" }
             ?: "Error: MemoryDao is null"
@@ -268,6 +334,48 @@ suspend inline fun <reified Input : Any, reified Output : Any> launchIntent(
     if (stringOutput == "package $packageName doesn't exist") throw MissingAppException(packageName)
     return Json.decodeFromString(serializer<Output>(), stringOutput)
 }
+
+/** Pure contact filter for `search_contacts`: case-insensitive substring on name/phone, capped. */
+fun filterContacts(query: String, contacts: List<ContactData>, cap: Int = 10): List<ContactData> {
+    val needle = query.trim().lowercase()
+    if (needle.isEmpty()) return contacts.take(cap)
+    return contacts.filter {
+        it.name.lowercase().contains(needle) || it.phoneNumber.lowercase().contains(needle)
+    }.take(cap)
+}
+
+/**
+ * Host-truncated directions summary: totals + segment count only. The full polyline/segments
+ * never reach the model (token cap) — this string is all `get_directions` returns.
+ */
+fun summarizeDirections(result: DirectionsResult): String {
+    if (result.polyline.isEmpty() && result.distanceMeters <= 0.0) return "No route found"
+    val km = result.distanceMeters / 1000.0
+    val dist = if (km >= 10) "%.1f km".format(km) else "%.2f km".format(km)
+    val mins = kotlin.math.round(result.durationSeconds / 60.0).toInt()
+    val dur = when {
+        mins >= 60 -> "${mins / 60}h ${mins % 60}m"
+        mins > 0 -> "$mins min"
+        else -> "${result.durationSeconds.toInt()}s"
+    }
+    return "Route: $dist, $dur, ${result.segments.size} segment(s), ${result.polyline.size} point(s)"
+}
+
+/** Short ride-estimate summary for the model. */
+fun summarizeRideEstimate(result: RideEstimateResult): String =
+    if (!result.available) {
+        "No ride available for this trip"
+    } else {
+        "Ride estimate: ${result.fareEstimate}, pickup ETA ${result.etaMinutes} min"
+    }
+
+/** Short order-lookup summary for the model. */
+fun summarizeOrderLookup(result: OrderLookupResult): String =
+    if (!result.available) {
+        "Not orderable nearby"
+    } else {
+        "Orderable: merchantId=${result.merchantId}, link=${result.deepLink}"
+    }
 
 @OptIn(ExperimentalSerializationApi::class)
 suspend inline fun <reified Input : Any> launchIntentU(

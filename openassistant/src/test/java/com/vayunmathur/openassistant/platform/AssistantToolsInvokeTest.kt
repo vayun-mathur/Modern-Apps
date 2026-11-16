@@ -44,7 +44,7 @@ class AssistantToolsInvokeTest {
         assertEquals("Error: create_note needs title", call("create_note", "content" to "x"))
         assertTrue(
             call("set_timer", "seconds" to "abc").contains("must be a number"))
-        assertEquals(29, tools.declarations.size)
+        assertEquals(33, tools.declarations.size)
     }
 
     @Test fun crossAppToolsReportMissingApps() {
@@ -73,6 +73,21 @@ class AssistantToolsInvokeTest {
             call("get_weather", "latitude" to "1.5", "longitude" to "2.5")
                 .startsWith("The Weather app is required"))
         assertTrue(call("get_weather_by_name", "location" to "Lisbon").startsWith("The Weather app"))
+        assertTrue(
+            call(
+                "get_directions",
+                "from_lat" to "1.0", "from_lng" to "2.0", "to_lat" to "3.0", "to_lng" to "4.0",
+            ).startsWith("The Maps app is required"))
+        assertTrue(
+            call(
+                "get_ride_estimate",
+                "pickup_lat" to "1.0", "pickup_lng" to "2.0", "dest_lat" to "3.0", "dest_lng" to "4.0",
+            ).startsWith("The Taxi app is required"))
+        assertTrue(
+            call("food_order_lookup", "name" to "Sushi", "lat" to "1.0", "lng" to "2.0")
+                .startsWith("The FoodDelivery app is required"))
+        assertTrue(
+            call("search_contacts", "query" to "ann").startsWith("The Contacts app is required"))
     }
 
     @Test fun deviceToolsRunLocally() {

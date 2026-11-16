@@ -148,6 +148,32 @@ class AssistantTools(
             intents.runTool { intents.getWeather(a.number("latitude"), a.number("longitude")) }
         },
         "get_weather_by_name" to { a -> intents.runTool { intents.getWeatherByName(a.string("location")) } },
+        "get_directions" to { a ->
+            intents.runTool {
+                intents.getDirections(
+                    a.number("from_lat"), a.number("from_lng"),
+                    a.number("to_lat"), a.number("to_lng"),
+                    a.string("mode", "drive"),
+                )
+            }
+        },
+        "get_ride_estimate" to { a ->
+            intents.runTool {
+                intents.getRideEstimate(
+                    a.number("pickup_lat"), a.number("pickup_lng"),
+                    a.number("dest_lat"), a.number("dest_lng"),
+                    a.string("pickup_label"), a.string("dest_label"),
+                )
+            }
+        },
+        "food_order_lookup" to { a ->
+            intents.runTool {
+                intents.foodOrderLookup(
+                    a.string("name"), a.number("lat"), a.number("lng"), a.string("address"),
+                )
+            }
+        },
+        "search_contacts" to { a -> intents.runTool { intents.searchContacts(a.string("query")) } },
         "render_ui" to { a -> renderUi(a.string("components_json"), a.string("data_json")) },
         "get_memories" to { _ -> intents.runTool { device.getMemories(memoryDao) } },
         "remove_memory" to { a -> intents.runTool { device.removeMemory(memoryDao, a.number("id")) } },

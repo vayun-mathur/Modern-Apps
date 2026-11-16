@@ -17,6 +17,9 @@
     <uses-permission android:name="com.vayunmathur.email.permissions.ACCESS_EMAIL" />
     <uses-permission android:name="com.vayunmathur.clock.permissions.ACCESS_CLOCK" />
     <uses-permission android:name="com.vayunmathur.todo.permissions.ACCESS_TODO" />
+    <uses-permission android:name="com.vayunmathur.maps.permissions.ACCESS_MAPS" />
+    <uses-permission android:name="com.vayunmathur.taxi.permissions.ACCESS_RIDES" />
+    <uses-permission android:name="com.vayunmathur.fooddelivery.permissions.ACCESS_ORDERS" />
 
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
@@ -50,6 +53,9 @@
         <package android:name="com.vayunmathur.email" />
         <package android:name="com.vayunmathur.clock" />
         <package android:name="com.vayunmathur.todo" />
+        <package android:name="com.vayunmathur.maps" />
+        <package android:name="com.vayunmathur.taxi" />
+        <package android:name="com.vayunmathur.fooddelivery" />
     </queries>
 
     <application
