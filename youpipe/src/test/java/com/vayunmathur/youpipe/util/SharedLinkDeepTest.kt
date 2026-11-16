@@ -41,13 +41,13 @@ class SharedLinkDeepTest {
         assertEquals("https://www.youtube.com/@h", channelIDtoURL("@h"))
     }
     @Test fun defaultBackStack_allKeys() {
-        assertEquals(listOf(Route.Main(1)), defaultBackStack("subscriptions"))
-        assertEquals(listOf(Route.Main(1), Route.SubscriptionVideosPage(null)), defaultBackStack("all_subscriptions"))
-        assertEquals(listOf(Route.Main(2)), defaultBackStack("history"))
-        assertEquals(listOf(Route.Main(3)), defaultBackStack("downloads"))
-        assertEquals(listOf(Route.Main(3)), defaultBackStack("saved"))
-        assertEquals(listOf(Route.Main(4)), defaultBackStack("settings"))
-        assertEquals(listOf(Route.Main(0)), defaultBackStack(null))
-        assertEquals(listOf(Route.Main(0)), defaultBackStack("garbage"))
+        assertEquals(listOf(Route.Subscriptions), defaultBackStack("subscriptions"))
+        assertEquals(listOf(Route.Subscriptions, Route.SubscriptionVideosPage(null)), defaultBackStack("all_subscriptions"))
+        assertEquals(listOf(Route.History), defaultBackStack("history"))
+        assertEquals(listOf(Route.Saved), defaultBackStack("downloads"))
+        assertEquals(listOf(Route.Saved), defaultBackStack("saved"))
+        assertEquals(listOf(Route.Settings), defaultBackStack("settings"))
+        assertEquals(listOf(Route.Home), defaultBackStack(null))
+        assertEquals(listOf(Route.Home), defaultBackStack("garbage"))
     }
 }

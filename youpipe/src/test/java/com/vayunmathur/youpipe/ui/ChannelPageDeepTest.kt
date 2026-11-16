@@ -50,7 +50,7 @@ class ChannelPageDeepTest {
     }
 
     @Test fun channelPage_loaded_subscribePersistsAndVideoListed() {
-        rule.setContent { val bs = rememberNavBackStack<Route>(Route.Main(0)); stack = bs; ChannelPage(bs, vm, "UCres") }
+        rule.setContent { val bs = rememberNavBackStack<Route>(Route.Home); stack = bs; ChannelPage(bs, vm, "UCres") }
         rule.waitForIdle()
         setChannel(ChannelInfo("Result Channel", "UCres", 12_000, 40, ""), listOf(VideoInfo("Channel Video", 91, 90, 10, Instant.fromEpochSeconds(1_650_000_000), "", "Result Channel")))
         rule.waitUntilExactlyOneExists(hasText("Result Channel"), 15_000)

@@ -67,7 +67,7 @@ class C9Slice2PagesTest {
         vm = YouPipeViewModel(app, SubscriptionRepository.get(context))
     }
 
-    private fun stack() = NavBackStack<Route>(arrayOf(Route.Main(0)))
+    private fun stack() = NavBackStack<Route>(arrayOf(Route.Home))
 
     @Test fun generalSettings_rendersAndToggles() {
         rule.setContent { GeneralSettingsPage(stack(), vm) }

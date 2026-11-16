@@ -18,24 +18,24 @@ class RootSlice3RouteTest {
 
     @Test
     fun defaultBackStackHomeVariants() {
-        assertEquals(listOf(Route.Main(0)), defaultBackStack(null))
-        assertEquals(listOf(Route.Main(0)), defaultBackStack("home"))
-        assertEquals(listOf(Route.Main(0)), defaultBackStack("unknown-key"))
-        assertEquals(listOf(Route.Main(0)), defaultBackStack(""))
+        assertEquals(listOf(Route.Home), defaultBackStack(null))
+        assertEquals(listOf(Route.Home), defaultBackStack("home"))
+        assertEquals(listOf(Route.Home), defaultBackStack("unknown-key"))
+        assertEquals(listOf(Route.Home), defaultBackStack(""))
     }
 
     @Test
     fun defaultBackStackEachDestination() {
-        assertEquals(listOf(Route.Main(1)), defaultBackStack("subscriptions"))
+        assertEquals(listOf(Route.Subscriptions), defaultBackStack("subscriptions"))
         assertEquals(
-            listOf(Route.Main(1), Route.SubscriptionVideosPage(null)),
+            listOf(Route.Subscriptions, Route.SubscriptionVideosPage(null)),
             defaultBackStack("all_subscriptions"),
         )
-        assertEquals(listOf(Route.Main(2)), defaultBackStack("history"))
+        assertEquals(listOf(Route.History), defaultBackStack("history"))
         // Legacy downloads key and saved key both open the Saved hub.
-        assertEquals(listOf(Route.Main(3)), defaultBackStack("downloads"))
-        assertEquals(listOf(Route.Main(3)), defaultBackStack("saved"))
-        assertEquals(listOf(Route.Main(4)), defaultBackStack("settings"))
+        assertEquals(listOf(Route.Saved), defaultBackStack("downloads"))
+        assertEquals(listOf(Route.Saved), defaultBackStack("saved"))
+        assertEquals(listOf(Route.Settings), defaultBackStack("settings"))
     }
 
     @Test
@@ -63,8 +63,14 @@ class RootSlice3RouteTest {
         assertEquals(9L, Route.AddToPlaylist(9L).videoID)
         assertEquals(true, Route.AddToPlaylist(9L).includeWatchLater)
         assertEquals(11L, Route.AddToWatchLater(11L).videoID)
-        assertEquals(0, Route.Main().initialTab)
-        assertEquals(3, Route.Main(3).initialTab)
+        // initialTab only chooses the start (sibling) route.
+        assertEquals(Route.Home, tabRoute(0))
+        assertEquals(Route.Subscriptions, tabRoute(1))
+        assertEquals(Route.History, tabRoute(2))
+        assertEquals(Route.Saved, tabRoute(3))
+        assertEquals(Route.Settings, tabRoute(4))
+        assertEquals(Route.Home, tabRoute(99))
+        assertEquals(Route.Home, tabRoute(-1))
     }
 
     @Test
@@ -84,7 +90,11 @@ class RootSlice3RouteTest {
         // The back stack is persisted; every Route subtype must stay
         // @Serializable or restores silently drop entries.
         val variants: List<Route> = listOf(
-            Route.Main(1),
+            Route.Home,
+            Route.Subscriptions,
+            Route.History,
+            Route.Saved,
+            Route.Settings,
             Route.VideoPage(9L),
             Route.ChannelPage("UC1"),
             Route.SubscriptionVideosPage("music"),
@@ -103,7 +113,7 @@ class RootSlice3RouteTest {
             Route.SettingsData,
             Route.ManageInterests,
         )
-        assertEquals(18, variants.size)
+        assertEquals(22, variants.size)
         for (route in variants) {
             val annotation = route.javaClass.getAnnotation(Serializable::class.java)
             assertTrue(annotation != null, "${route.javaClass.simpleName} lost @Serializable")
@@ -112,8 +122,8 @@ class RootSlice3RouteTest {
 
     @Test
     fun routeEqualityCoversEveryField() {
-        assertEquals(Route.Main(1), Route.Main(1))
-        assertNotEquals(Route.Main(1), Route.Main(2))
+        assertEquals(Route.Subscriptions, Route.Subscriptions)
+        assertNotEquals<Route>(Route.Subscriptions, Route.History)
         assertEquals(Route.VideoPage(9L), Route.VideoPage(9L))
         assertNotEquals(Route.VideoPage(9L), Route.VideoPage(10L))
         assertEquals(Route.ChannelPage("A"), Route.ChannelPage("A"))

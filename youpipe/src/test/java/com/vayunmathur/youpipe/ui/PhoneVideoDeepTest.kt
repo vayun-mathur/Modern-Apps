@@ -48,18 +48,18 @@ class PhoneVideoDeepTest {
     private fun awaitText(t: String) = rule.waitUntilExactlyOneExists(hasText(t), 20_000)
 
     @Test fun videoPage_downloaded_rendersDetailAndTabs() {
-        rule.setContent { val bs = rememberNavBackStack<Route>(Route.Main(0)); stack = bs; VideoPage(bs, vm, 77) }
+        rule.setContent { val bs = rememberNavBackStack<Route>(Route.Home); stack = bs; VideoPage(bs, vm, 77) }
         awaitText("Offline Video")
         // Tabs exist and are tappable; each pager page must compose without crashing.
         rule.onNode(hasText("Related Videos")).performClick(); rule.waitForIdle()
         rule.onNode(hasText("Description")).performClick(); rule.waitForIdle()
         rule.onNode(hasText("Comments")).performClick(); rule.waitForIdle()
-        assertTrue(stack?.backStack?.lastOrNull() == Route.Main(0))
+        assertTrue(stack?.backStack?.lastOrNull() == Route.Home)
     }
     @Test fun videoPage_unknown_setsErrorDialogAndGoBackPops() {
-        rule.setContent { val bs = rememberNavBackStack<Route>(Route.Main(0), Route.VideoPage(999_777)); stack = bs; VideoPage(bs, vm, 999_777) }
+        rule.setContent { val bs = rememberNavBackStack<Route>(Route.Home, Route.VideoPage(999_777)); stack = bs; VideoPage(bs, vm, 999_777) }
         awaitText("Go Back")
         rule.onNode(hasText("Go Back")).performClick()
-        rule.waitUntil(5_000) { stack?.backStack?.lastOrNull() == Route.Main(0) }
+        rule.waitUntil(5_000) { stack?.backStack?.lastOrNull() == Route.Home }
     }
 }

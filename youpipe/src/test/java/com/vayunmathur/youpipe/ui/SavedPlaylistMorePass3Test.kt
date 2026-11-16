@@ -57,7 +57,7 @@ class SavedPlaylistMorePass3Test {
             .allowMainThreadQueries().build()
         vm = YouPipeViewModel(app, SubscriptionRepository(app, db))
         vmStore.put("vm", vm)
-        backStack = NavBackStack(arrayOf<Route>(Route.Main(3)))
+        backStack = NavBackStack(arrayOf<Route>(Route.Saved))
         runBlocking { playlistId = db.playlistDao().upsert(Playlist(name = "Road Trip")) }
     }
 
@@ -97,7 +97,7 @@ class SavedPlaylistMorePass3Test {
 
     @Test
     fun playlistDetail_deletePlaylistRemovesItAndPops() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(3), Route.PlaylistDetail(playlistId)))
+        val stack = NavBackStack(arrayOf<Route>(Route.Saved, Route.PlaylistDetail(playlistId)))
         rule.setContent { PlaylistDetailPage(stack, vm, playlistId) }
         rule.waitUntilExactlyOneExists(hasText("Road Trip"), timeoutMillis = 10_000)
         rule.onNodeWithContentDescription("Delete").performClick()
@@ -110,9 +110,9 @@ class SavedPlaylistMorePass3Test {
         // Robolectric's paused main looper) instead of asserting at once.
         rule.waitUntil(15_000) {
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            stack.backStack.lastOrNull() == Route.Main(3)
+            stack.backStack.lastOrNull() == Route.Saved
         }
-        assertEquals(Route.Main(3), stack.backStack.last())
+        assertEquals(Route.Saved, stack.backStack.last())
     }
 
     @Test

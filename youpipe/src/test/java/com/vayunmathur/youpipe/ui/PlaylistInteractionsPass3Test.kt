@@ -53,7 +53,7 @@ class PlaylistInteractionsPass3Test {
         db = Room.inMemoryDatabaseBuilder(app, SubscriptionDatabase::class.java)
             .allowMainThreadQueries().build()
         vm = YouPipeViewModel(app, SubscriptionRepository(app, db))
-        backStack = NavBackStack(arrayOf<Route>(Route.Main(3)))
+        backStack = NavBackStack(arrayOf<Route>(Route.Saved))
         runBlocking {
             playlistId = db.playlistDao().upsert(Playlist(name = "Road Trip"))
             db.playlistItemDao().upsertAll(

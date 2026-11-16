@@ -51,7 +51,7 @@ class HistoryInteractionsPass3Test {
         db = Room.inMemoryDatabaseBuilder(app, SubscriptionDatabase::class.java)
             .allowMainThreadQueries().build()
         vm = YouPipeViewModel(app, SubscriptionRepository(app, db))
-        backStack = NavBackStack(arrayOf<Route>(Route.Main(2)))
+        backStack = NavBackStack(arrayOf<Route>(Route.History))
         runBlocking {
             db.historyVideoDao().upsert(
                 HistoryVideo(

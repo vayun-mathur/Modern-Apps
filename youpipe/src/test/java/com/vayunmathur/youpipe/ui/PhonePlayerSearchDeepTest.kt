@@ -85,7 +85,7 @@ class PhonePlayerSearchDeepTest {
     }
 
     @Test fun searchPage_seededRecommendations_renderAndOpen() {
-        rule.setContent { val bs = rememberNavBackStack<Route>(Route.Main(0)); stack = bs; SearchPage(bs, vm) }
+        rule.setContent { val bs = rememberNavBackStack<Route>(Route.Home); stack = bs; SearchPage(bs, vm) }
         rule.waitUntil(15_000) { rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
         rule.onNode(androidx.compose.ui.test.hasSetTextAction()).performClick()
         rule.waitForIdle()

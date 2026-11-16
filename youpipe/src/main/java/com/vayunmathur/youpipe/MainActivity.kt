@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.activity.viewModels
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -24,14 +23,13 @@ import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.IconSubscriptions
 import com.vayunmathur.library.ui.IconSettings
-import com.vayunmathur.library.ui.PagerTab
-import com.vayunmathur.library.ui.TabStyle
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
-import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.youpipe.data.SubscriptionRepository
@@ -120,21 +118,21 @@ class MainActivity : MaActivity() {
      */
     private fun resolveInitialBackStack(intent: Intent): List<Route> {
         if (intent.action == Intent.ACTION_APPLICATION_PREFERENCES) {
-            return listOf(Route.Main(TAB_SETTINGS))
+            return listOf(Route.Settings)
         }
         if (intent.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val videoID = intent.getStringExtra(Intent.EXTRA_TEXT)?.let { parseSharedVideoId(it) }
             if (videoID != null) {
                 return when (intent.component?.className) {
                     "$packageName.ShareWatchLater" ->
-                        listOf(Route.Main(TAB_HOME), Route.VideoPage(videoID), Route.AddToWatchLater(videoID))
+                        listOf(Route.Home, Route.VideoPage(videoID), Route.AddToWatchLater(videoID))
                     "$packageName.SharePlaylist" ->
                         listOf(
-                            Route.Main(TAB_HOME),
+                            Route.Home,
                             Route.VideoPage(videoID),
                             Route.AddToPlaylist(videoID, includeWatchLater = false),
                         )
-                    else -> listOf(Route.Main(TAB_HOME), Route.VideoPage(videoID))
+                    else -> listOf(Route.Home, Route.VideoPage(videoID))
                 }
             }
         }
@@ -144,7 +142,7 @@ class MainActivity : MaActivity() {
         // params that used to crash videoURLtoID in onCreate) falls through to default.
         if (uri != null) {
             parseSharedVideoId(uri.toString())?.let { videoID ->
-                return listOf(Route.Main(TAB_HOME), Route.VideoPage(videoID))
+                return listOf(Route.Home, Route.VideoPage(videoID))
             }
         }
         return defaultBackStack(DataStoreUtils.getInstance(this).getString(DEFAULT_PAGE_KEY))
@@ -171,12 +169,18 @@ class MainActivity : MaActivity() {
 
 // --- Default startup page ("Open to" setting) ---
 
-/** Tab indices in [YouPipeTabs], shared by deep-link and default-page routing. */
-private const val TAB_HOME = 0
-private const val TAB_SUBSCRIPTIONS = 1
-private const val TAB_HISTORY = 2
-private const val TAB_SAVED = 3
-private const val TAB_SETTINGS = 4
+/**
+ * The sibling tab route for a legacy tab index (deep-link / default-page
+ * `initialTab`): the index now only chooses the start route, never live
+ * pager state. Out-of-range indices fall back to Home.
+ */
+fun tabRoute(initialTab: Int): Route = when (initialTab) {
+    1 -> Route.Subscriptions
+    2 -> Route.History
+    3 -> Route.Saved
+    4 -> Route.Settings
+    else -> Route.Home
+}
 
 /** DataStore key holding the persisted default-page choice. */
 const val DEFAULT_PAGE_KEY = "default_page"
@@ -205,24 +209,40 @@ val DEFAULT_PAGE_OPTIONS: List<Pair<String, Int>> = listOf(
 
 /** Map a persisted default-page key to the initial backstack to launch with. */
 fun defaultBackStack(key: String?): List<Route> = when (key) {
-    DEFAULT_PAGE_SUBSCRIPTIONS -> listOf(Route.Main(TAB_SUBSCRIPTIONS))
+    DEFAULT_PAGE_SUBSCRIPTIONS -> listOf(tabRoute(1))
     // Seed the Subscriptions root beneath the all-subscriptions feed so Back
     // returns to the Subscriptions list instead of exiting the app.
     DEFAULT_PAGE_ALL_SUBSCRIPTIONS ->
-        listOf(Route.Main(TAB_SUBSCRIPTIONS), Route.SubscriptionVideosPage(null))
-    DEFAULT_PAGE_HISTORY -> listOf(Route.Main(TAB_HISTORY))
+        listOf(tabRoute(1), Route.SubscriptionVideosPage(null))
+    DEFAULT_PAGE_HISTORY -> listOf(tabRoute(2))
     // Both the legacy "downloads" key and the new "saved" key open the Saved hub.
-    DEFAULT_PAGE_DOWNLOADS, DEFAULT_PAGE_SAVED -> listOf(Route.Main(TAB_SAVED))
-    DEFAULT_PAGE_SETTINGS -> listOf(Route.Main(TAB_SETTINGS))
-    else -> listOf(Route.Main(TAB_HOME)) // home / unset / unknown
+    DEFAULT_PAGE_DOWNLOADS, DEFAULT_PAGE_SAVED -> listOf(tabRoute(3))
+    DEFAULT_PAGE_SETTINGS -> listOf(tabRoute(4))
+    else -> listOf(tabRoute(0)) // home / unset / unknown
 }
 
 /** Contract for route. */
 @Serializable
 sealed interface Route: NavKey {
-    /** Immutable value describing main; carries initialTab. */
+    /** Home tab (search / recommendations feed). */
     @Serializable
-    data class Main(val initialTab: Int = 0) : Route
+    data object Home : Route
+
+    /** Subscriptions tab. */
+    @Serializable
+    data object Subscriptions : Route
+
+    /** Watch-history tab. */
+    @Serializable
+    data object History : Route
+
+    /** Saved (playlists / downloads hub) tab. */
+    @Serializable
+    data object Saved : Route
+
+    /** Settings tab. */
+    @Serializable
+    data object Settings : Route
 
     /** Immutable value describing video page; carries videoID. */
     @Serializable
@@ -284,8 +304,24 @@ sealed interface Route: NavKey {
 @Composable
 fun Navigation(initialBackStack: List<Route>, ypvm: YouPipeViewModel) {
     val backStack = rememberNavBackStack(initialBackStack)
-    MainNavigation(backStack) {
-        entry<Route.Main> { YouPipeTabs(backStack, ypvm, it.initialTab) }
+    val tabs = listOf<RouteTab<Route>>(
+        RouteTab(Route.Home, "Home", { IconHome() }),
+        RouteTab(Route.Subscriptions, "Subscriptions", { IconSubscriptions() }),
+        RouteTab(Route.History, "History", { IconHistory() }),
+        RouteTab(Route.Saved, "Saved", { IconSave() }),
+        RouteTab(Route.Settings, "Settings", { IconSettings() }),
+    )
+    // Route-backed tabs: selecting a tab resets the stack to that sibling
+    // (see TabbedPagerScaffold), and MainNavigation renders the top route —
+    // a tab with SiblingPage() crossfade, or a detail/settings sub-route
+    // pushed over it with no tab selected.
+    TabbedPagerScaffold(backStack = backStack, tabs = tabs) {
+        MainNavigation(backStack) {
+        entry<Route.Home>(metadata = SiblingPage()) { SearchPage(backStack, ypvm) }
+        entry<Route.Subscriptions>(metadata = SiblingPage()) { SubscriptionsPage(backStack, ypvm) }
+        entry<Route.History>(metadata = SiblingPage()) { HistoryPage(backStack, ypvm) }
+        entry<Route.Saved>(metadata = SiblingPage()) { SavedPage(backStack, ypvm) }
+        entry<Route.Settings>(metadata = SiblingPage()) { SettingsPage(backStack, ypvm) }
         // Morph, not Fullscreen: the feed row's title travels into the title under the player, and
         // a morph only works against a crossfade - the immersive scale would move the target while
         // the title is still on its way to it.
@@ -333,18 +369,6 @@ fun Navigation(initialBackStack: List<Route>, ypvm: YouPipeViewModel) {
         entry<Route.ManageInterests> {
             ManageInterestsPage(backStack, ypvm)
         }
+        }
     }
-}
-
-@Composable
-private fun YouPipeTabs(backStack: NavBackStack<Route>, ypvm: YouPipeViewModel, initialTab: Int) {
-    val pagerState = rememberPagerState(initialPage = initialTab, pageCount = { 5 })
-    val tabs = listOf(
-        PagerTab("Home", { IconHome() }) { SearchPage(backStack, ypvm) },
-        PagerTab("Subscriptions", { IconSubscriptions() }) { SubscriptionsPage(backStack, ypvm) },
-        PagerTab("History", { IconHistory() }) { HistoryPage(backStack, ypvm) },
-        PagerTab("Saved", { IconSave() }) { SavedPage(backStack, ypvm) },
-        PagerTab("Settings", { IconSettings() }) { SettingsPage(backStack, ypvm) },
-    )
-    TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)
 }

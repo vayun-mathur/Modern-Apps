@@ -48,7 +48,7 @@ class SubscriptionsSettingsNavPass3Test {
         db = Room.inMemoryDatabaseBuilder(app, SubscriptionDatabase::class.java)
             .allowMainThreadQueries().build()
         vm = YouPipeViewModel(app, SubscriptionRepository(app, db))
-        backStack = NavBackStack(arrayOf<Route>(Route.Main(1)))
+        backStack = NavBackStack(arrayOf<Route>(Route.Subscriptions))
         runBlocking {
             val subId = db.subscriptionDao().upsert(Subscription(name = "Seeded Chan", channelID = "UCseed", avatarURL = ""))
             db.subscriptionCategoryDao().upsertAll(listOf(SubscriptionCategory(subId, "News")))
@@ -82,7 +82,7 @@ class SubscriptionsSettingsNavPass3Test {
 
     @Test
     fun settingsRoot_everyRowNavigates() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(4)))
+        val stack = NavBackStack(arrayOf<Route>(Route.Settings))
         rule.setContent { SettingsPage(stack, vm) }
         rule.onNodeWithText(app.getString(R.string.settings_general_content), substring = true).performClick()
         assertEquals(Route.SettingsGeneral, stack.backStack.last())

@@ -112,7 +112,7 @@ class PagesPass3Test {
     @Test
     fun historyPage_showsWatchedRows() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(0))
+            val backStack = rememberNavBackStack<Route>(Route.Home)
             HistoryPage(backStack, vm)
         }
         awaitText("Watched One"); rule.onNodeWithText("Watched One").assertIsDisplayed()
@@ -121,7 +121,7 @@ class PagesPass3Test {
     @Test
     fun subscriptionsPage_showsSubscriptionsAndCategories() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(1))
+            val backStack = rememberNavBackStack<Route>(Route.Subscriptions)
             SubscriptionsPage(backStack, vm)
         }
         awaitText("Seeded Chan"); rule.onNodeWithText("Seeded Chan").assertIsDisplayed()
@@ -130,7 +130,7 @@ class PagesPass3Test {
     @Test
     fun subscriptionVideosPage_showsFeed() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(1))
+            val backStack = rememberNavBackStack<Route>(Route.Subscriptions)
             SubscriptionVideosPage(backStack, vm, null)
         }
         awaitText("Seeded Video"); rule.onNodeWithText("Seeded Video").assertIsDisplayed()
@@ -139,7 +139,7 @@ class PagesPass3Test {
     @Test
     fun savedPage_showsPlaylists() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(3))
+            val backStack = rememberNavBackStack<Route>(Route.Saved)
             SavedPage(backStack, vm)
         }
         awaitText("Music Mix"); rule.onNodeWithText("Music Mix").assertIsDisplayed()
@@ -148,7 +148,7 @@ class PagesPass3Test {
     @Test
     fun downloadedPage_showsDownloads() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(3))
+            val backStack = rememberNavBackStack<Route>(Route.Saved)
             DownloadedVideosPage(backStack, vm)
         }
         awaitText("Offline Video"); rule.onNodeWithText("Offline Video").assertIsDisplayed()
@@ -157,7 +157,7 @@ class PagesPass3Test {
     @Test
     fun playlistDetail_showsItems() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(3))
+            val backStack = rememberNavBackStack<Route>(Route.Saved)
             PlaylistDetailPage(backStack, vm, musicPlaylistId)
         }
         awaitText("Playlist Song"); rule.onNodeWithText("Playlist Song").assertIsDisplayed()
@@ -166,7 +166,7 @@ class PagesPass3Test {
     @Test
     fun generalSettings_renders() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(4))
+            val backStack = rememberNavBackStack<Route>(Route.Settings)
             GeneralSettingsPage(backStack, vm)
         }
         rule.onNodeWithText(app.getString(R.string.label_default_page)).assertIsDisplayed()
@@ -175,7 +175,7 @@ class PagesPass3Test {
     @Test
     fun sponsorBlockSettings_renders() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(4))
+            val backStack = rememberNavBackStack<Route>(Route.Settings)
             SponsorBlockSettingsPage(backStack, vm)
         }
         rule.onNodeWithText(app.getString(R.string.settings_sponsorblock)).assertIsDisplayed()
@@ -184,7 +184,7 @@ class PagesPass3Test {
     @Test
     fun settingsRoot_renders() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(4))
+            val backStack = rememberNavBackStack<Route>(Route.Settings)
             SettingsPage(backStack, vm)
         }
         rule.onNodeWithText(app.getString(R.string.settings_general_content), substring = true)
@@ -194,7 +194,7 @@ class PagesPass3Test {
     @Test
     fun dataSettings_renders() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(4))
+            val backStack = rememberNavBackStack<Route>(Route.Settings)
             DataSettingsPage(backStack, vm)
         }
         rule.onNodeWithText(app.getString(R.string.settings_data), substring = true).assertIsDisplayed()
@@ -203,7 +203,7 @@ class PagesPass3Test {
     @Test
     fun manageInterests_renders() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(4))
+            val backStack = rememberNavBackStack<Route>(Route.Settings)
             ManageInterestsPage(backStack, vm)
         }
         rule.onNodeWithText(app.getString(R.string.title_manage_interests)).assertIsDisplayed()
@@ -212,7 +212,7 @@ class PagesPass3Test {
     @Test
     fun recommendationsSettings_renders() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(4))
+            val backStack = rememberNavBackStack<Route>(Route.Settings)
             RecommendationsSettingsPage(backStack, vm)
         }
         rule.onNodeWithText(app.getString(R.string.label_recommendations)).assertIsDisplayed()
@@ -221,7 +221,7 @@ class PagesPass3Test {
     @Test
     fun createCategoryDialog_listsSubscriptions() {
         rule.setContent {
-            val backStack = rememberNavBackStack<Route>(Route.Main(1))
+            val backStack = rememberNavBackStack<Route>(Route.Subscriptions)
             com.vayunmathur.youpipe.ui.dialogs.CreateSubscriptionCategory(backStack, vm, null)
         }
         awaitText("Seeded Chan"); rule.onNodeWithText("Seeded Chan").assertIsDisplayed()

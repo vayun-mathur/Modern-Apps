@@ -55,7 +55,7 @@ class SettingsDownloadsPass3Test {
         db = Room.inMemoryDatabaseBuilder(app, SubscriptionDatabase::class.java)
             .allowMainThreadQueries().build()
         vm = YouPipeViewModel(app, SubscriptionRepository(app, db))
-        backStack = NavBackStack(arrayOf<Route>(Route.Main(3)))
+        backStack = NavBackStack(arrayOf<Route>(Route.Saved))
         runBlocking {
             db.downloadedVideoDao().upsert(
                 DownloadedVideo(
@@ -127,7 +127,7 @@ class SettingsDownloadsPass3Test {
     @Test
     fun generalSettings_togglesAndSelectorsWriteThrough() {
         rule.setContent {
-            val stack = NavBackStack(arrayOf<Route>(Route.Main(4)))
+            val stack = NavBackStack(arrayOf<Route>(Route.Settings))
             GeneralSettingsPage(stack, vm)
         }
         rule.onNodeWithText(app.getString(R.string.label_dearrow)).performClick()
@@ -147,7 +147,7 @@ class SettingsDownloadsPass3Test {
     @Test
     fun dataSettings_clearHistoryConfirmsAndClears() {
         rule.setContent {
-            val stack = NavBackStack(arrayOf<Route>(Route.Main(4)))
+            val stack = NavBackStack(arrayOf<Route>(Route.Settings))
             DataSettingsPage(stack, vm)
         }
         rule.onNodeWithText(app.getString(R.string.clear_history)).performClick()

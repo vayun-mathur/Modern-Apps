@@ -94,7 +94,7 @@ class SettingsDialogsMorePass3Test {
 
     @Test
     fun languageSelector_writesSelectedLanguage() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(4)))
+        val stack = NavBackStack(arrayOf<Route>(Route.Settings))
         rule.setContent { GeneralSettingsPage(stack, vm) }
         val label = app.getString(R.string.label_youtube_language)
         rule.waitUntilExactlyOneExists(hasText(label), timeoutMillis = 10_000)
@@ -107,7 +107,7 @@ class SettingsDialogsMorePass3Test {
 
     @Test
     fun addToPlaylist_checkAndConfirmAddsVideo() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.AddToPlaylist(99)))
+        val stack = NavBackStack(arrayOf<Route>(Route.Home, Route.AddToPlaylist(99)))
         rule.setContent { AddToPlaylist(stack, vm, videoID = 99) }
         rule.waitUntilExactlyOneExists(hasText("Music Mix"), timeoutMillis = 10_000)
         rule.onNodeWithText("Music Mix").performClick()
@@ -116,12 +116,12 @@ class SettingsDialogsMorePass3Test {
             withTimeout(5_000) { vm.playlistItemsFor(playlistId).first { it.isNotEmpty() } }
         }
         assertEquals(listOf(99L), items.map { it.videoItem.videoID })
-        assertEquals(Route.Main(0), stack.backStack.last())
+        assertEquals(Route.Home, stack.backStack.last())
     }
 
     @Test
     fun addToPlaylist_createFieldMakesPlaylistWithVideo() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.AddToPlaylist(99)))
+        val stack = NavBackStack(arrayOf<Route>(Route.Home, Route.AddToPlaylist(99)))
         rule.setContent { AddToPlaylist(stack, vm, videoID = 99) }
         rule.waitUntilExactlyOneExists(hasText("Music Mix"), timeoutMillis = 10_000)
         rule.onAllNodes(hasSetTextAction())[0].performTextInput("Fresh Mix")

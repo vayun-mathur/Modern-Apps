@@ -44,7 +44,7 @@ class DataSettingsRowsPass3Test {
 
     @Test
     fun backupRestoreRows_launchPickersAndPageSurvives() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(4)))
+        val stack = NavBackStack(arrayOf<Route>(Route.Settings))
         rule.setContent { DataSettingsPage(stack, vm) }
         // Each row launches a document picker; under Robolectric the launch is
         // shadowed and no result comes back, so the page must stay put.

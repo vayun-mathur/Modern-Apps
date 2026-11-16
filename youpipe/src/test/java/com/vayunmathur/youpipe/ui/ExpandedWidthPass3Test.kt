@@ -64,7 +64,7 @@ class ExpandedWidthPass3Test {
         db = Room.inMemoryDatabaseBuilder(app, SubscriptionDatabase::class.java)
             .allowMainThreadQueries().build()
         vm = YouPipeViewModel(app, SubscriptionRepository(app, db))
-        backStack = NavBackStack(arrayOf<Route>(Route.Main(2)))
+        backStack = NavBackStack(arrayOf<Route>(Route.History))
         runBlocking {
             db.historyVideoDao().upsert(
                 HistoryVideo(progress = 1_000, videoItem = VideoInfo("Grid Watched", 55, 100, 9, Instant.fromEpochSeconds(1_600_000_000), "", "Chan"), timestamp = Instant.fromEpochSeconds(1_700_100_000)),

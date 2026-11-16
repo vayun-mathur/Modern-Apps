@@ -119,7 +119,7 @@ class RootSlice3PlaylistDialogsTest {
 
     @Test
     fun createPlaylistStartsDisabledThenValidates() {
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.CreatePlaylist))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.CreatePlaylist))
         composeRule.setContent { CreatePlaylist(backStack, vm) }
         val createLabel = context.getString(com.vayunmathur.library.ui.R.string.create)
         composeRule.onNodeWithText(
@@ -130,7 +130,7 @@ class RootSlice3PlaylistDialogsTest {
 
     @Test
     fun createPlaylistTypingEnablesAndCreates() {
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.CreatePlaylist))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.CreatePlaylist))
         composeRule.setContent { CreatePlaylist(backStack, vm) }
         val createLabel = context.getString(com.vayunmathur.library.ui.R.string.create)
         composeRule.onNodeWithText(
@@ -149,7 +149,7 @@ class RootSlice3PlaylistDialogsTest {
         kotlinx.coroutines.runBlocking {
             db.playlistDao().upsert(Playlist(name = "Existing", position = 1.0))
         }
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.CreatePlaylist))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.CreatePlaylist))
         composeRule.setContent { CreatePlaylist(backStack, vm) }
         val createLabel = context.getString(com.vayunmathur.library.ui.R.string.create)
         // Wait for the seeded playlist to reach the dialog through the VM flows.
@@ -165,7 +165,7 @@ class RootSlice3PlaylistDialogsTest {
 
     @Test
     fun createPlaylistPersistsThroughOps() {
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.CreatePlaylist))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.CreatePlaylist))
         composeRule.setContent { CreatePlaylist(backStack, vm) }
         composeRule.onNodeWithText(
             context.getString(com.vayunmathur.youpipe.R.string.label_playlist_name),
@@ -192,7 +192,7 @@ class RootSlice3PlaylistDialogsTest {
 
     @Test
     fun addToPlaylistShowsTitleWhenVideoMissing() {
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.AddToPlaylist(7L)))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.AddToPlaylist(7L)))
         composeRule.setContent { AddToPlaylist(backStack, vm, videoID = 7L) }
         composeRule.onNodeWithText(
             context.getString(com.vayunmathur.youpipe.R.string.add_to_playlist),
@@ -205,7 +205,7 @@ class RootSlice3PlaylistDialogsTest {
         kotlinx.coroutines.runBlocking {
             db.playlistDao().upsert(Playlist(name = "Rock", position = 1.0))
         }
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.AddToPlaylist(11L)))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.AddToPlaylist(11L)))
         composeRule.setContent { AddToPlaylist(backStack, vm, videoID = 11L) }
         // The staged dialog lists the playlist with an unchecked box; checking it
         // and confirming persists the membership row and pops the dialog.
@@ -233,7 +233,7 @@ class RootSlice3PlaylistDialogsTest {
                 .firstOrNull { it.mandatory }?.id ?: -1L
         }
         assertTrue(watchLaterId >= 0, "Watch-later seed row never landed")
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.AddToWatchLater(21L)))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.AddToWatchLater(21L)))
         composeRule.setContent { AddToWatchLater(backStack, vm, videoID = 21L) }
         composeRule.onNodeWithText(
             context.getString(com.vayunmathur.youpipe.R.string.adding_to_watch_later),
@@ -253,7 +253,7 @@ class RootSlice3PlaylistDialogsTest {
     @Test
     fun addToWatchLaterPopsOnVideoError() {
         vm.videoStateMutable.value = YouPipeViewModel.VideoState(error = true)
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.AddToWatchLater(22L)))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.AddToWatchLater(22L)))
         composeRule.setContent { AddToWatchLater(backStack, vm, videoID = 22L) }
         composeRule.waitUntil(timeoutMillis = 10_000) { backStack.backStack.size == 1 }
         assertEquals(1, backStack.backStack.size)
@@ -263,7 +263,7 @@ class RootSlice3PlaylistDialogsTest {
 
     @Test
     fun createCategoryShowsTitleAndDisablesCreate() {
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.CreateSubscriptionCategory(null)))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.CreateSubscriptionCategory(null)))
         composeRule.setContent { CreateSubscriptionCategory(backStack, vm, null) }
         composeRule.onNodeWithText(
             context.getString(com.vayunmathur.youpipe.R.string.title_create_subscription_category),
@@ -282,7 +282,7 @@ class RootSlice3PlaylistDialogsTest {
                 Subscription(name = "Chan", channelID = "UC1", avatarURL = "https://x/y.jpg"),
             )
         }
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.CreateSubscriptionCategory(null)))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.CreateSubscriptionCategory(null)))
         composeRule.setContent { CreateSubscriptionCategory(backStack, vm, null) }
         composeRule.waitUntil(timeoutMillis = 10_000) {
             composeRule.onAllNodesWithText("Chan").fetchSemanticsNodes().isNotEmpty()
@@ -310,7 +310,7 @@ class RootSlice3PlaylistDialogsTest {
         kotlinx.coroutines.runBlocking {
             db.subscriptionCategoryDao().replaceCategory(null, "Music", listOf(subId))
         }
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.CreateSubscriptionCategory("Music")))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.CreateSubscriptionCategory("Music")))
         composeRule.setContent { CreateSubscriptionCategory(backStack, vm, "Music") }
         // Update title (not the create title) shows with the id prefilled.
         composeRule.onNodeWithText(
@@ -341,7 +341,7 @@ class RootSlice3PlaylistDialogsTest {
         }
         // New-category mode: typing an already-used name keeps Create disabled
         // even with a subscription selected.
-        val backStack = NavBackStack(arrayOf<Route>(Route.Main(0), Route.CreateSubscriptionCategory(null)))
+        val backStack = NavBackStack(arrayOf<Route>(Route.Home, Route.CreateSubscriptionCategory(null)))
         composeRule.setContent { CreateSubscriptionCategory(backStack, vm, null) }
         composeRule.waitUntil(timeoutMillis = 10_000) {
             composeRule.onAllNodesWithText("Chan").fetchSemanticsNodes().isNotEmpty()

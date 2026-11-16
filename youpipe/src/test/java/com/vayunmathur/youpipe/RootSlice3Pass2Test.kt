@@ -61,7 +61,8 @@ class RootSlice3Pass2Test {
     fun routeSerializationRoundTripsEveryVariant() {
         val json = Json { ignoreUnknownKeys = true }
         val routes: List<Route> = listOf(
-            Route.Main(2), Route.VideoPage(9L), Route.ChannelPage("UC1"),
+            Route.Home, Route.Subscriptions, Route.History, Route.Saved, Route.Settings,
+            Route.VideoPage(9L), Route.ChannelPage("UC1"),
             Route.SubscriptionVideosPage("music"), Route.SubscriptionVideosPage(null),
             Route.CreateSubscriptionCategory("c1"), Route.Downloads, Route.PlaylistDetail(3L),
             Route.CreatePlaylist, Route.AddToPlaylist(9L, false), Route.AddToWatchLater(11L),

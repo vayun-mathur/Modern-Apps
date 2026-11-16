@@ -88,7 +88,7 @@ class ManageInterestsActionsPass3Test {
 
     @Test
     fun unblockAndUnmuteClearPreferences() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(4)))
+        val stack = NavBackStack(arrayOf<Route>(Route.Settings))
         rule.setContent { ManageInterestsPage(stack, vm) }
         rule.waitUntilExactlyOneExists(hasText("blockedchan"), timeoutMillis = 10_000)
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(app.getString(R.string.action_unblock)))
@@ -103,7 +103,7 @@ class ManageInterestsActionsPass3Test {
 
     @Test
     fun pinTopChannelWritesPinnedPreference() {
-        val stack = NavBackStack(arrayOf<Route>(Route.Main(4)))
+        val stack = NavBackStack(arrayOf<Route>(Route.Settings))
         rule.setContent { ManageInterestsPage(stack, vm) }
         // The top channel comes from watch history (author "Seedy").
         rule.waitUntilExactlyOneExists(hasText("seedy", ignoreCase = true), timeoutMillis = 10_000)

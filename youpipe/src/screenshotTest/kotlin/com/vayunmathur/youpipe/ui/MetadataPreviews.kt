@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,9 +16,11 @@ import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.IconSubscriptions
-import com.vayunmathur.library.ui.PagerTab
-import com.vayunmathur.library.ui.TabStyle
+import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
+import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.youpipe.Route
+import com.vayunmathur.youpipe.tabRoute
 import com.vayunmathur.youpipe.util.SearchActions
 import com.vayunmathur.youpipe.util.SearchUiState
 import com.vayunmathur.youpipe.util.SubscriptionFeedActions
@@ -256,29 +257,30 @@ class MetadataPreviews {
 
     /**
      * The app's real tab chrome around the home content: the same five
-     * [PagerTab]s `YouPipeTabs` in MainActivity declares, in the same
-     * [TabbedPagerScaffold] with [TabStyle.BottomNav]. History/Saved/Settings
-     * take their ViewModels directly, so those entries show an empty page
+     * route tabs `Navigation` in MainActivity declares, in the same
+     * route-backed [TabbedPagerScaffold]. History/Saved/Settings take
+     * their ViewModels directly, so those entries show an empty page
      * (never visible — the shot stays on the selected tab).
      */
     @Composable
     private fun ChromePreview(selectedTab: Int) {
         DynamicTheme(darkTheme = true) {
-            val tabs = listOf(
-                PagerTab("Home", { IconHome() }) { HomeContent() },
-                PagerTab("Subscriptions", { IconSubscriptions() }) { SubscriptionFeedContent() },
-                // ViewModel-coupled: empty placeholder, never visible.
-                PagerTab("History", { IconHistory() }) { Box(Modifier.fillMaxSize()) },
-                // ViewModel-coupled: empty placeholder, never visible.
-                PagerTab("Saved", { IconSave() }) { Box(Modifier.fillMaxSize()) },
-                // ViewModel-coupled: empty placeholder, never visible.
-                PagerTab("Settings", { IconSettings() }) { Box(Modifier.fillMaxSize()) },
+            val tabs = listOf<RouteTab<Route>>(
+                RouteTab(Route.Home, "Home", { IconHome() }),
+                RouteTab(Route.Subscriptions, "Subscriptions", { IconSubscriptions() }),
+                RouteTab(Route.History, "History", { IconHistory() }),
+                RouteTab(Route.Saved, "Saved", { IconSave() }),
+                RouteTab(Route.Settings, "Settings", { IconSettings() }),
             )
-            TabbedPagerScaffold(
-                tabs = tabs,
-                pagerState = rememberPagerState(initialPage = selectedTab, pageCount = { tabs.size }),
-                tabStyle = TabStyle.BottomNav,
-            )
+            val backStack = NavBackStack<Route>(arrayOf(tabRoute(selectedTab)))
+            TabbedPagerScaffold(backStack = backStack, tabs = tabs) { route ->
+                when (route) {
+                    Route.Home -> HomeContent()
+                    Route.Subscriptions -> SubscriptionFeedContent()
+                    // ViewModel-coupled: empty placeholder, never visible.
+                    else -> Box(Modifier.fillMaxSize())
+                }
+            }
         }
     }
 }
