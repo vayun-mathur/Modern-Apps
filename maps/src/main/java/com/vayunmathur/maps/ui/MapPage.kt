@@ -108,6 +108,8 @@ fun MapPage(
     settingsViewModel: MapSettingsViewModel,
     parkingViewModel: com.vayunmathur.maps.util.ParkingViewModel,
     transitViewModel: com.vayunmathur.maps.util.TransitStopsViewModel,
+    onStartNavigating: (String, RouteService.TravelMode) -> Unit = { _, _ -> },
+    exitNavigating: () -> Unit = {},
 ) {
     // Obtained in-body (not a parameter) so the MainActivity call site stays stable: the offline
     // POI overlay pins are viewport-driven state owned by this screen alone.
@@ -357,6 +359,11 @@ fun MapPage(
         wide = wide,
         sheetStack = sheetStack,
         pushDepartures = ::pushDepartures,
+        onStartNavigating = onStartNavigating,
+        onExitNavigating = {
+            stopNavigation(context)
+            exitNavigating()
+        },
     )
     if (!googleConsentDone) {
         GoogleConsentDialog(settingsViewModel) { googleConsentDone = true }

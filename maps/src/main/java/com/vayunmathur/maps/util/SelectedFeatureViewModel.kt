@@ -9,6 +9,7 @@ import com.vayunmathur.maps.data.osmPlace
 import com.vayunmathur.maps.data.google.GooglePoiDataSource
 import com.vayunmathur.maps.data.google.GooglePoiInfo
 import com.vayunmathur.maps.data.parse
+import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.SheetRoute
 import com.vayunmathur.maps.effectiveFeature
 import kotlinx.coroutines.Dispatchers
@@ -51,6 +52,18 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
 
     fun consumePendingPlace() {
         _pendingPlace.value = null
+    }
+
+    /** A [Route.Navigating] a non-composition caller asked to push. */
+    private val _pendingNavigating = MutableStateFlow<Route.Navigating?>(null)
+    val pendingNavigating = _pendingNavigating.asStateFlow()
+
+    fun requestNavigating(destLabel: String, mode: RouteService.TravelMode) {
+        _pendingNavigating.value = Route.Navigating(destLabel, mode)
+    }
+
+    fun consumeNavigating() {
+        _pendingNavigating.value = null
     }
 
     private companion object {

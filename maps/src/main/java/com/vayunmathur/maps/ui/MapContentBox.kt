@@ -250,11 +250,11 @@ internal fun MapPageScope.MapContentBox(
                         autoFollow = chrome.autoFollow,
                         onRecenter = { chrome.autoFollow = true },
                         onEndTrip = {
-                            stopNavigation(context)
+                            onExitNavigating()
                             chrome.autoFollow = true
                             chrome.northUp = false
                         },
-                        onDismissArrival = { stopNavigation(context) },
+                        onDismissArrival = { onExitNavigating() },
                         postedLimit = chrome.postedLimit,
                         northUp = chrome.northUp,
                         // Heading-up follow: cleared to north-up the follow drives bearing =

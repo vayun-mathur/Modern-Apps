@@ -92,6 +92,7 @@ internal fun MapPageScope.MapSheets(
                         selectedRouteType = selectedRouteType,
                         setSelectedRouteType = onRouteMode,
                         navState = navState,
+                        onStartNavigation = onStartNavigating,
                     )
                 }
             }

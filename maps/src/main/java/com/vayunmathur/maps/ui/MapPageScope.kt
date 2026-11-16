@@ -144,6 +144,8 @@ internal class MapPageScope(
     val wide: Boolean,
     val sheetStack: SheetBackStack<SheetRoute> = SheetBackStack(arrayOf(SheetRoute.Browse)),
     val pushDepartures: (Double, Double, String?) -> Unit = { _, _, _ -> },
+    val onStartNavigating: (String, RouteService.TravelMode) -> Unit = { _, _ -> },
+    val onExitNavigating: () -> Unit = {},
 ) {
     /** Top of the sheet stack: which sheet/panel/dialog is showing. */
     val sheetTop: SheetRoute get() = sheetStack.backStack.last()

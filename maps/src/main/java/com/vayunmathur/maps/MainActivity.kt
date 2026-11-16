@@ -264,6 +264,7 @@ class MainActivity : MaActivity() {
                 destination = destPos,
                 destinationLabel = destName,
             )
+            selectedVm.requestNavigating(destName, mode)
             Log.status(TAG, "navigateTo: started $mode navigation to $destName")
         }
     }
@@ -335,6 +336,9 @@ sealed interface Route: NavKey {
     /** Full-screen Street View viewer for the nearest pano to a point. */
     @Serializable
     data class StreetView(val lat: Double, val lon: Double): Route
+    /** Turn-by-turn UI over the map, driven by the guidance engine. */
+    @Serializable
+    data class Navigating(val destLabel: String, val mode: RouteService.TravelMode): Route
 }
 
 @Composable
@@ -347,6 +351,15 @@ fun Navigation(
     transitViewModel: com.vayunmathur.maps.util.TransitStopsViewModel = viewModel(),
 ) {
     val backStack = rememberNavBackStack<Route>(Route.MapPage)
+    // A deep-link navigation starts the engine from the Activity, before
+    // any composition can push: the request is bridged through the VM and
+    // pushed here, once, when it lands.
+    val pendingNavigating by viewModel.pendingNavigating.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(pendingNavigating) {
+        val request = pendingNavigating ?: return@LaunchedEffect
+        if (backStack.last() !is Route.Navigating) backStack.add(request)
+        viewModel.consumeNavigating()
+    }
     MainNavigation(backStack) {
         // The map is the list pane and settings/saved-places are detail panes,
         // so medium widths show them side by side automatically. The map itself
@@ -362,6 +375,23 @@ fun Navigation(
                 settingsViewModel,
                 parkingViewModel,
                 transitViewModel,
+                onStartNavigating = { label, mode ->
+                    if (backStack.last() !is Route.Navigating) {
+                        backStack.add(Route.Navigating(label, mode))
+                    }
+                },
+            )
+        }
+        entry<Route.Navigating>(metadata = FullscreenPage()) {
+            MapPage(
+                backStack,
+                viewModel,
+                savedPlacesViewModel,
+                searchViewModel,
+                settingsViewModel,
+                parkingViewModel,
+                transitViewModel,
+                exitNavigating = { backStack.pop() },
             )
         }
         entry<Route.SettingsPage>(metadata = ListDetailPage()) {

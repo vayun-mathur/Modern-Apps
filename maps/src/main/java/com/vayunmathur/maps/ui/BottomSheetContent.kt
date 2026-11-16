@@ -50,6 +50,7 @@ fun BottomSheetContent(
     transitViewModel: TransitStopsViewModel,
     navState: NavigationSessionManager.NavState = NavigationSessionManager.NavState.Idle,
     openDepartures: ((Double, Double) -> Unit)? = null,
+    onStartNavigation: ((String, RouteService.TravelMode) -> Unit)? = null,
 ) {
     var section by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(PoiSection.DETAILS) }
     val panelState = rememberPlacePanelState(viewModel, savedPlacesViewModel, section)
@@ -80,6 +81,7 @@ fun BottomSheetContent(
         selectedRouteType = selectedRouteType,
         setSelectedRouteType = setSelectedRouteType,
         navState = navState,
+        onStartNavigation = onStartNavigation,
     )
 }
 
@@ -98,6 +100,7 @@ fun BottomSheetContent(
     selectedRouteType: RouteService.TravelMode,
     setSelectedRouteType: (RouteService.TravelMode) -> Unit,
     navState: NavigationSessionManager.NavState = NavigationSessionManager.NavState.Idle,
+    onStartNavigation: ((String, RouteService.TravelMode) -> Unit)? = null,
 ) {
     when (selectedFeature) {
         is SpecificFeature.Admin0Label ->
@@ -134,7 +137,7 @@ fun BottomSheetContent(
         is SpecificFeature.Route -> {
             val currentRoute = route
             if (currentRoute != null) {
-                RouteSheet(selectedFeature, currentRoute, selectedRouteType, setSelectedRouteType, navState, panelState.userPosition)
+                RouteSheet(selectedFeature, currentRoute, selectedRouteType, setSelectedRouteType, navState, panelState.userPosition, onStartNavigation = onStartNavigation)
             } else {
                 // Routes arrive asynchronously and start out null, so this is the state right
                 // after asking for directions. It used to render nothing at all, inside a sheet

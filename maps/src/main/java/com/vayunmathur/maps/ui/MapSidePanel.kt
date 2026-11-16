@@ -51,6 +51,7 @@ fun MapSidePanel(
     inactiveNavigation: SpecificFeature.Route?,
     navState: NavigationSessionManager.NavState,
     onClosePanel: () -> Unit,
+    onStartNavigation: ((String, RouteService.TravelMode) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier) {
@@ -91,6 +92,7 @@ fun MapSidePanel(
                             selectedRouteType,
                             onSelectedRouteType,
                             navState,
+                            onStartNavigation = onStartNavigation,
                         )
                     }
                 }

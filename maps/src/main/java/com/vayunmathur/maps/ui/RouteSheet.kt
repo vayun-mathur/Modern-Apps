@@ -72,6 +72,7 @@ fun RouteSheet(
     navState: NavigationSessionManager.NavState = NavigationSessionManager.NavState.Idle,
     userPosition: GeoPoint? = null,
     modifier: Modifier = Modifier,
+    onStartNavigation: ((String, RouteService.TravelMode) -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
@@ -210,6 +211,7 @@ fun RouteSheet(
                                 destination = lastWaypoint.position,
                                 destinationLabel = lastWaypoint.name,
                             )
+                            onStartNavigation?.invoke(lastWaypoint.name, selectedRouteType)
                         },
                         modifier = Modifier
                             .fillMaxWidth()

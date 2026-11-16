@@ -90,6 +90,7 @@ internal fun MapPageScope.MapWideHost(
                 inactiveNavigation = inactiveNavigation,
                 navState = navState,
                 onClosePanel = { sheetStack.popSheet() },
+                onStartNavigation = onStartNavigating,
                 modifier = modifier,
             )
         }
@@ -108,6 +109,7 @@ internal fun MapPageScope.MapWideHost(
                 inactiveNavigation = inactiveNavigation,
                 navState = navState,
                 onClosePanel = { sheetStack.reset(SheetRoute.Browse) },
+                onStartNavigation = onStartNavigating,
                 modifier = modifier,
             )
         }
