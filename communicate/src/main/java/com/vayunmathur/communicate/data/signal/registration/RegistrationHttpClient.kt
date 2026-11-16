@@ -41,7 +41,8 @@ import org.json.JSONObject
 class RegistrationHttpClient(private val context: Context) {
 
     // Real service base — chat.signal.org (REST); WS uses grpc.chat.signal.org per env.rs DOMAIN_CONFIG_CHAT.
-    var baseUrl: String = "https://chat.signal.org"
+    var baseUrl: String = baseOverrideForTest ?: "https://chat.signal.org"
+
     var cdnUrl: String = "https://cdn.signal.org"
 
     /** The result of requesting an SMS/voice verification code from the Signal service. */
@@ -572,6 +573,9 @@ class RegistrationHttpClient(private val context: Context) {
 
     /** HTTP status constants and logging tag for the Signal registration client. */
     companion object {
+        /** Test seam: localhost base applied to new instances (e.g. Compose screens). */
+        internal var baseOverrideForTest: String? = null
+
         private const val TAG = "SignalRegHttp"
         private const val HTTP_OK = 200
         private const val HTTP_LOCKED = 423

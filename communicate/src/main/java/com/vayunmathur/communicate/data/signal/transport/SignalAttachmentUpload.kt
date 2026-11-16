@@ -20,6 +20,8 @@ import javax.net.ssl.SSLSocketFactory
  * output; this class never sees plaintext.
  */
 object SignalAttachmentUpload {
+    /** Test seam: localhost base replacing the fixed chat host. */
+    internal var chatBaseForTest: String? = null
     private const val TAG = "SignalAttachmentUpload"
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -41,7 +43,7 @@ object SignalAttachmentUpload {
     ): UploadForm? {
         val resp = try {
             NetworkClient.execute(
-                "https://chat.signal.org/v4/attachments/form/upload?uploadLength=$uploadLength",
+                "${chatBaseForTest ?: "https://chat.signal.org"}/v4/attachments/form/upload?uploadLength=$uploadLength",
                 method = "GET",
                 headers = mapOf("Authorization" to "Basic $authHeader"),
                 sslSocketFactory = sslSocketFactory,

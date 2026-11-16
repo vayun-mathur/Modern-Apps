@@ -46,6 +46,10 @@ object SignalGroupsApi {
     private const val STORAGE_URL = "https://storage.signal.org"
     private const val CHAT_URL = "https://chat.signal.org"
 
+    /** Test seams: localhost bases replacing the fixed Signal hosts. */
+    internal var storageBaseForTest: String? = null
+    internal var chatBaseForTest: String? = null
+
     private const val CREDENTIAL_PATH = "/v1/certificate/auth/group"
     private const val GROUP_PATH = "/v2/groups/"
 
@@ -72,7 +76,8 @@ object SignalGroupsApi {
         // Signal issues credentials on day boundaries, so the window must be day-aligned.
         val today = nowSeconds - (nowSeconds % 86_400)
         val end = today + 7.days.inWholeSeconds
-        val url = "$CHAT_URL$CREDENTIAL_PATH?redemptionStartSeconds=$today&redemptionEndSeconds=$end"
+        val url = "${chatBaseForTest ?: CHAT_URL}$CREDENTIAL_PATH" +
+            "?redemptionStartSeconds=$today&redemptionEndSeconds=$end"
         val resp = try {
             NetworkClient.execute(
                 url,
@@ -142,7 +147,7 @@ object SignalGroupsApi {
     ): Group? {
         val resp = try {
             NetworkClient.execute(
-                "$STORAGE_URL$GROUP_PATH",
+                "${storageBaseForTest ?: STORAGE_URL}$GROUP_PATH",
                 method = "GET",
                 headers = mapOf("Authorization" to "Basic $authorization"),
                 sslSocketFactory = sslSocketFactory,
@@ -230,7 +235,7 @@ object SignalGroupsApi {
     ): Boolean {
         val resp = try {
             NetworkClient.execute(
-                "$STORAGE_URL$GROUP_PATH",
+                "${storageBaseForTest ?: STORAGE_URL}$GROUP_PATH",
                 method = "PATCH",
                 headers = mapOf(
                     "Authorization" to "Basic $authorization",
@@ -314,7 +319,7 @@ object SignalGroupsApi {
     ): ByteArray? {
         val resp = try {
             NetworkClient.execute(
-                "$STORAGE_URL$GROUP_TOKEN_PATH",
+                "${storageBaseForTest ?: STORAGE_URL}$GROUP_TOKEN_PATH",
                 method = "GET",
                 headers = mapOf("Authorization" to "Basic $authorization"),
                 sslSocketFactory = sslSocketFactory,
@@ -353,8 +358,12 @@ object SignalGroupsApi {
         }
     }
 
+    /** Test seam: zkgroup server public params for a locally minted test server. */
+    internal var serverPublicParamsForTest: ByteArray? = null
+
     /** Signal's zkgroup server public params, needed to verify credentials it issues. */
-    private fun serverPublicParams(): ByteArray = Base64.Default.decode(SERVER_PUBLIC_PARAMS_B64)
+    private fun serverPublicParams(): ByteArray =
+        serverPublicParamsForTest ?: Base64.Default.decode(SERVER_PUBLIC_PARAMS_B64)
 
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 

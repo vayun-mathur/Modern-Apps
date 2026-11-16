@@ -30,6 +30,8 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 @OptIn(ExperimentalEncodingApi::class)
 object SignalKeysApi {
+    /** Test seam: localhost base replacing the fixed chat host. */
+    internal var chatBaseForTest: String? = null
     private const val TAG = "SignalKeysApi"
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -62,7 +64,7 @@ object SignalKeysApi {
     ): List<DeviceBundle> {
         val specifier = if (allDevices && deviceId == 1) "*" else deviceId.toString()
         val resp = NetworkClient.execute(
-            "https://chat.signal.org/v2/keys/$aci/$specifier",
+            "${chatBaseForTest ?: "https://chat.signal.org"}/v2/keys/$aci/$specifier",
             method = "GET",
             headers = mapOf("Authorization" to "Basic $authHeader"),
             sslSocketFactory = sslSocketFactory,
@@ -217,7 +219,7 @@ object SignalKeysApi {
 
         val resp = try {
             NetworkClient.execute(
-                "https://chat.signal.org/v2/keys?identity=aci",
+                "${chatBaseForTest ?: "https://chat.signal.org"}/v2/keys?identity=aci",
                 method = "PUT",
                 headers = mapOf(
                     "Authorization" to "Basic $authHeader",

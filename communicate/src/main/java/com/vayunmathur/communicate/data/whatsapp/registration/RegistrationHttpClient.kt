@@ -34,6 +34,9 @@ class RegistrationHttpClient(
 ) {
     private val fingerprint = WhatsAppDeviceFingerprint.getOrCreate(context)
 
+    /** Test seam: localhost base (without trailing slash) replacing the fixed endpoint. */
+    internal var baseUrlForTest: String? = baseOverrideForTest
+
     // ------------------------------------------------------------------ results
 
     /** The result of requesting a WhatsApp verification code (status, method, retry-after). */
@@ -534,7 +537,7 @@ class RegistrationHttpClient(
         )
         return try {
             val resp = NetworkClient.performRequest(
-                url = WhatsAppRegistrationConstants.endpoint(path),
+                url = baseUrlForTest?.let { "$it/$path" } ?: WhatsAppRegistrationConstants.endpoint(path),
                 method = "POST",
                 headers = headers,
                 body = body,
@@ -576,6 +579,9 @@ class RegistrationHttpClient(
     /** Endpoint and logging constants for the WhatsApp registration client. */
     companion object {
         private const val TAG = "WARegHttp"
+
+        /** Test seam applied to new instances (e.g. those a Compose screen remembers). */
+        internal var baseOverrideForTest: String? = null
 
         /**
          * Master switch for the Phase-B device-integrity signals

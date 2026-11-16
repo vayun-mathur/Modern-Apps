@@ -129,8 +129,16 @@ abstract class WhatsAppDatabase : RoomDatabase() {
 
         override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
+        /**
+         * Test seam: when set, [getDatabase] returns this instance instead
+         * of the SQLCipher-backed singleton (whose native library cannot
+         * load on a JVM test host). Production code never sets it.
+         */
+        @Volatile
+        internal var overrideForTest: WhatsAppDatabase? = null
+
         fun getDatabase(context: Context): WhatsAppDatabase =
-            WhatsAppRepository.get(context).database()
+            overrideForTest ?: WhatsAppRepository.get(context).database()
     }
 }
 

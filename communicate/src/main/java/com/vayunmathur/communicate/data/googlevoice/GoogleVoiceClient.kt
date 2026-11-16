@@ -20,6 +20,9 @@ class GoogleVoiceAuthException(message: String) : IOException(message)
  */
 class GoogleVoiceClient(private val session: GoogleVoiceSession) {
 
+    /** Test seam: localhost base (with trailing slash) replacing the fixed Voice base. */
+    internal var baseForTest: String? = null
+
     suspend fun getAccount(): GvAccount {
         val body = post("account/get", GoogleVoiceParser.buildAccountBody())
         val account = GoogleVoiceParser.parseAccount(body)
@@ -104,7 +107,7 @@ class GoogleVoiceClient(private val session: GoogleVoiceSession) {
             throw GoogleVoiceAuthException("Missing Google Voice session")
         }
 
-        val url = "$BASE$path?alt=protojson&key=$apiKey"
+        val url = "${baseForTest ?: BASE}$path?alt=protojson&key=$apiKey"
         val headers = GoogleVoiceAuth.headers(cookie, sapisid, authUser)
         val response = NetworkClient.performRequest(
             url = url,
@@ -142,7 +145,10 @@ class GoogleVoiceClient(private val session: GoogleVoiceSession) {
         private const val TOKEN_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
         private const val BASE = "https://clients6.google.com/voice/v1/voiceclient/"
 
+        /** Test seam: applied to instances created via [get]. */
+        internal var baseOverrideForTest: String? = null
+
         fun get(context: Context): GoogleVoiceClient =
-            GoogleVoiceClient(GoogleVoiceSession.get(context))
+            GoogleVoiceClient(GoogleVoiceSession.get(context)).also { it.baseForTest = baseOverrideForTest }
     }
 }

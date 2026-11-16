@@ -25,6 +25,8 @@ import javax.net.ssl.SSLSocketFactory
  * the response.
  */
 object SignalCdsi {
+    /** Test seam: localhost base replacing the fixed chat host. */
+    internal var chatBaseForTest: String? = null
     private const val TAG = "SignalCdsi"
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -52,7 +54,7 @@ object SignalCdsi {
     suspend fun fetchCredentials(authHeader: String, sslSocketFactory: SSLSocketFactory?): Credentials? {
         val resp = try {
             NetworkClient.execute(
-                "https://chat.signal.org/v2/directory/auth",
+                "${chatBaseForTest ?: "https://chat.signal.org"}/v2/directory/auth",
                 method = "GET",
                 headers = mapOf("Authorization" to "Basic $authHeader"),
                 sslSocketFactory = sslSocketFactory,

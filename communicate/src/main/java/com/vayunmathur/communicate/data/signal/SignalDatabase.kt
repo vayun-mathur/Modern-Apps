@@ -144,8 +144,16 @@ abstract class SignalDatabase : RoomDatabase() {
             MIGRATION_3_4,
             MIGRATION_4_5)
 
+        /**
+         * Test seam: when set, [getDatabase] returns this instance instead
+         * of the SQLCipher-backed singleton (whose native library cannot
+         * load on a JVM test host). Production code never sets it.
+         */
+        @Volatile
+        internal var overrideForTest: SignalDatabase? = null
+
         fun getDatabase(context: Context): SignalDatabase =
-            SignalRepository.get(context).database()
+            overrideForTest ?: SignalRepository.get(context).database()
     }
 }
 

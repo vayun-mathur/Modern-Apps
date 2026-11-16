@@ -17,6 +17,8 @@ import javax.net.ssl.SSLSocketFactory
  * are fetched per call rather than cached.
  */
 object SignalCallingApi {
+    /** Test seam: localhost base replacing the fixed chat host. */
+    internal var chatBaseForTest: String? = null
     private const val TAG = "SignalCallingApi"
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -27,7 +29,7 @@ object SignalCallingApi {
     ): List<PeerConnection.IceServer> {
         val resp = try {
             NetworkClient.execute(
-                "https://chat.signal.org/v2/calling/relays",
+                "${chatBaseForTest ?: "https://chat.signal.org"}/v2/calling/relays",
                 method = "GET",
                 headers = mapOf("Authorization" to "Basic $authHeader"),
                 sslSocketFactory = sslSocketFactory,
