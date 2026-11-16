@@ -49,7 +49,7 @@ private const val HFR_MIN_FPS = 60
 private val SLOMO_QUALITY_ORDER = listOf(Quality.FHD, Quality.HD, Quality.UHD, Quality.SD)
 
 /** High-speed session scaffolding: provider, lens, use cases, HFR ranges. */
-private data class HighSpeedPrep(
+internal data class HighSpeedPrep(
     val provider: ProcessCameraProvider,
     val requestedSloMoLens: com.vayunmathur.camera.domain.PhysicalLens?,
     val sloMoFamily: List<com.vayunmathur.camera.domain.PhysicalLens>,
@@ -60,7 +60,7 @@ private data class HighSpeedPrep(
 )
 
 /** Enforces back camera, builds HFR use cases and resolves the HFR range list. */
-private suspend fun CameraViewModel.prepareHighSpeedSession(): HighSpeedPrep? {
+internal suspend fun CameraViewModel.prepareHighSpeedSession(): HighSpeedPrep? {
     val provider = ProcessCameraProvider.awaitInstance(app)
     cameraProvider = provider
     provider.unbindAll()
@@ -104,7 +104,7 @@ private suspend fun CameraViewModel.prepareHighSpeedSession(): HighSpeedPrep? {
  * Bug fix for Pixel 8 black screen: default VideoCapture quality (often UHD) is
  * not supported for HFR on many devices; filtering to supported HFR qualities fixes bind.
  */
-private fun CameraViewModel.resolveHfrQualities(
+internal fun CameraViewModel.resolveHfrQualities(
     capabilities: androidx.camera.video.VideoCapabilities
 ): List<Quality>? {
     val supportedQualities = capabilities.getSupportedQualities(
@@ -126,7 +126,7 @@ private fun CameraViewModel.resolveHfrQualities(
 }
 
 /** Builds the HFR preview + VideoCapture; returns preview and capture. */
-private fun CameraViewModel.buildHfrCapture(
+internal fun CameraViewModel.buildHfrCapture(
     orderedQualities: List<Quality>
 ): Pair<Preview, VideoCapture<Recorder>> {
     val qualitySelector = QualitySelector.fromOrderedList(
@@ -151,7 +151,7 @@ private fun CameraViewModel.buildHfrCapture(
  * Queries HFR ranges via a temp config and keeps true-HFR (>=60fps) ones,
  * highest fps first. Null when none are available.
  */
-private fun CameraViewModel.resolveHfrRanges(
+internal fun CameraViewModel.resolveHfrRanges(
     cameraInfo: androidx.camera.core.CameraInfo,
     videoCapture: Pair<Preview, VideoCapture<Recorder>>
 ): List<android.util.Range<Int>>? {
@@ -181,7 +181,7 @@ private fun CameraViewModel.resolveHfrRanges(
 }
 
 /** Queries HFR frame-rate ranges; empty when unreadable. */
-private fun CameraViewModel.queryHfrRanges(
+internal fun CameraViewModel.queryHfrRanges(
     cameraInfo: androidx.camera.core.CameraInfo,
     tempConfig: HighSpeedVideoSessionConfig
 ): List<android.util.Range<Int>> {
@@ -200,7 +200,7 @@ private fun CameraViewModel.queryHfrRanges(
  * Tries HFR ranges from highest fps downwards, each across the back lens ladder.
  * False when nothing binds (caller marks Slo-Mo unsupported).
  */
-private fun CameraViewModel.bindHfrLadder(session: HighSpeedPrep): Boolean {
+internal fun CameraViewModel.bindHfrLadder(session: HighSpeedPrep): Boolean {
     var boundSloMoLensId: String? = null
     var lastError: Exception? = null
     var bound = false
@@ -233,10 +233,10 @@ private fun CameraViewModel.bindHfrLadder(session: HighSpeedPrep): Boolean {
 }
 
 /** Last HFR bind error, published by [tryHfrBind] for the ladder report. */
-private var hfrLastError: Exception? = null
+internal var hfrLastError: Exception? = null
 
 /** Tries one HFR range on one lens; true when it binds and arms the session. */
-private fun CameraViewModel.tryHfrBind(
+internal fun CameraViewModel.tryHfrBind(
     session: HighSpeedPrep,
     range: android.util.Range<Int>,
     candidate: com.vayunmathur.camera.domain.PhysicalLens?
@@ -286,7 +286,7 @@ private fun CameraViewModel.tryHfrBind(
 
 /** Sets anti-banding to reduce flicker under artificial light. */
 @Suppress("DEPRECATION")
-private fun CameraViewModel.applyAntiBanding() {
+internal fun CameraViewModel.applyAntiBanding() {
     try {
         val cam2Control = androidx.camera.camera2.interop.Camera2CameraControl.from(
             boundCamera!!.cameraControl
@@ -305,7 +305,7 @@ private fun CameraViewModel.applyAntiBanding() {
 }
 
 /** Refreshes capabilities and marks the high-speed session active. */
-private suspend fun CameraViewModel.finishHighSpeedSession() {
+internal suspend fun CameraViewModel.finishHighSpeedSession() {
     val zoomAfter = boundCamera?.cameraInfo?.zoomState?.value
     Log.dev(
         "NightPreview",

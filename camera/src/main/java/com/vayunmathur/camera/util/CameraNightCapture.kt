@@ -121,7 +121,7 @@ internal fun CameraViewModel.captureNightPhotoCustom() {
 }
 
 /** Handles the finished night burst: merges + saves, or falls back to single capture. */
-private fun CameraViewModel.onNightBurstDone(frames: List<Bitmap>) {
+internal fun CameraViewModel.onNightBurstDone(frames: List<Bitmap>) {
     if (frames.isEmpty()) {
         Log.status("CameraViewModel", "Night burst produced no frames; falling back to single capture")
         stopLongExposureCountdown()
@@ -143,7 +143,7 @@ private fun CameraViewModel.onNightBurstDone(frames: List<Bitmap>) {
 }
 
 /** Completes a successful night merge: stamps EXIF, clears state, publishes the URI. */
-private suspend fun CameraViewModel.finishNightMerge(uri: Uri) {
+internal suspend fun CameraViewModel.finishNightMerge(uri: Uri) {
     // Merged pixels are already upright/mirrored, so the orientation tag is normal.
     withContext(Dispatchers.IO) { writeCaptureExif(uri, null, 0) }
     isCapturingMutable.value = false
@@ -152,7 +152,7 @@ private suspend fun CameraViewModel.finishNightMerge(uri: Uri) {
 }
 
 /** Merges the burst via the native engine and saves the bitmap; null on failure. */
-private suspend fun CameraViewModel.mergeNightFrames(frames: List<Bitmap>): Uri? {
+internal suspend fun CameraViewModel.mergeNightFrames(frames: List<Bitmap>): Uri? {
     val merged = NightCaptureEngine.merge(frames)
     frames.forEach { it.recycle() }
     return merged?.let { bmp ->
@@ -190,7 +190,7 @@ internal fun CameraViewModel.captureNightBurst(exposure: NightExposure, onDone: 
 
 /** Camera2 control handle; null (logged) when unavailable. */
 @Suppress("DEPRECATION")
-private fun CameraViewModel.camera2ControlQuietly():
+internal fun CameraViewModel.camera2ControlQuietly():
     androidx.camera.camera2.interop.Camera2CameraControl? {
     return try {
         boundCamera?.cameraControl?.let {
@@ -308,7 +308,7 @@ private class NightBurstDriver(
 
 /** Locks AE off + night exposure/ISO + AWB, then runs [onLocked]. Falls through on failure. */
 @Suppress("DEPRECATION")
-private fun CameraViewModel.lockNightExposure(
+internal fun CameraViewModel.lockNightExposure(
     cam2Control: androidx.camera.camera2.interop.Camera2CameraControl,
     exposure: NightExposure,
     onLocked: () -> Unit

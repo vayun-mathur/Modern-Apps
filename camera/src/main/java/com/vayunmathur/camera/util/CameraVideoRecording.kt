@@ -199,7 +199,7 @@ private fun CameraViewModel.onRecordingFinalized(
 }
 
 /** Speeds the timelapse cache file up; falls back to the raw file on remux failure. */
-private fun remuxTimelapse(cacheFile: java.io.File, timestamp: String): java.io.File {
+internal fun remuxTimelapse(cacheFile: java.io.File, timestamp: String): java.io.File {
     val processed = java.io.File(cacheFile.parent, "TL_$timestamp.mp4")
     return try {
         VideoProcessor.adjustSpeed(cacheFile, processed, TIMELAPSE_SPEED_FACTOR)

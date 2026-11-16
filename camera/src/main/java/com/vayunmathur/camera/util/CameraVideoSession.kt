@@ -35,7 +35,7 @@ suspend fun CameraViewModel.setupVideoSession(): Boolean {
 }
 
 /** Codec/quality choices resolved off the camera info. */
-private data class VideoChoices(
+internal data class VideoChoices(
     val useAv1: Boolean,
     val useHevc: Boolean,
     val useOpus: Boolean,
@@ -46,7 +46,7 @@ private data class VideoChoices(
 )
 
 /** Video session scaffolding: provider, lens, owner, choices. */
-private data class VideoSessionPrep(
+internal data class VideoSessionPrep(
     val provider: ProcessCameraProvider,
     val videoLens: com.vayunmathur.camera.domain.PhysicalLens?,
     val videoFamily: List<com.vayunmathur.camera.domain.PhysicalLens>,
@@ -55,7 +55,7 @@ private data class VideoSessionPrep(
 )
 
 /** Binds provider/owner and resolves codec + tuning choices. */
-private suspend fun CameraViewModel.prepareVideoSession(): VideoSessionPrep {
+internal suspend fun CameraViewModel.prepareVideoSession(): VideoSessionPrep {
     val provider = ProcessCameraProvider.awaitInstance(app)
     cameraProvider = provider
     provider.unbindAll()
@@ -73,7 +73,7 @@ private suspend fun CameraViewModel.prepareVideoSession(): VideoSessionPrep {
 }
 
 /** Resolves codec selection (AV1 > HEVC > AVC) + fps/stabilization/quality tuning. */
-private fun CameraViewModel.resolveVideoChoices(cameraInfo: androidx.camera.core.CameraInfo): VideoChoices {
+internal fun CameraViewModel.resolveVideoChoices(cameraInfo: androidx.camera.core.CameraInfo): VideoChoices {
     val selectedCodec = videoCodecMutable.value
     // Respect user setting with fallback: AV1 > HEVC > AVC priority for availability check.
     // If selected codec isn't available, fall back to next best available.
@@ -108,7 +108,7 @@ private fun CameraViewModel.resolveVideoChoices(cameraInfo: androidx.camera.core
  * Bind ladder: prefer HDR + snapshot, then drop the snapshot use case, then drop HDR.
  * Each rung is tried across the lens ladder (requested → wide → any same-facing).
  */
-private fun CameraViewModel.bindVideoLadder(session: VideoSessionPrep) {
+internal fun CameraViewModel.bindVideoLadder(session: VideoSessionPrep) {
     var bound: Camera? = null
     var videoBoundLensId: String? = null
     var lastError: Exception? = null
@@ -126,7 +126,7 @@ private fun CameraViewModel.bindVideoLadder(session: VideoSessionPrep) {
 }
 
 /** HDR/snapshot rungs: prefer HDR + snapshot, then drop snapshot, then drop HDR. */
-private fun videoAttempts(hlgSupported: Boolean): List<Pair<Boolean, Boolean>> {
+internal fun videoAttempts(hlgSupported: Boolean): List<Pair<Boolean, Boolean>> {
     return buildList {
         add(hlgSupported to true)
         add(hlgSupported to false)
@@ -138,14 +138,14 @@ private fun videoAttempts(hlgSupported: Boolean): List<Pair<Boolean, Boolean>> {
 }
 
 /** Outcome of one video rung across the lens ladder. */
-private data class VideoRungResult(
+internal data class VideoRungResult(
     val bound: Camera?,
     val lensId: String?,
     val lastError: Exception?
 )
 
 /** Tries one HDR/snapshot rung across the lens ladder (requested → wide → any). */
-private fun CameraViewModel.tryVideoRungSet(
+internal fun CameraViewModel.tryVideoRungSet(
     session: VideoSessionPrep,
     hlg: Boolean,
     snapshot: Boolean
@@ -168,10 +168,10 @@ private fun CameraViewModel.tryVideoRungSet(
 }
 
 /** Last video bind error, published by [tryVideoRung] for the ladder report. */
-private var videoLastError: Exception? = null
+internal var videoLastError: Exception? = null
 
 /** Tries one video rung on one lens; true when it binds. */
-private fun CameraViewModel.tryVideoRung(
+internal fun CameraViewModel.tryVideoRung(
     session: VideoSessionPrep,
     candidate: com.vayunmathur.camera.domain.PhysicalLens?,
     hlg: Boolean,
@@ -208,7 +208,7 @@ private fun CameraViewModel.tryVideoRung(
 }
 
 /** Binds Preview + VideoCapture (+ optional snapshot ImageCapture) for one rung. */
-private fun CameraViewModel.bindVideoUseCases(
+internal fun CameraViewModel.bindVideoUseCases(
     session: VideoSessionPrep,
     lensSelector: CameraSelector,
     hlg: Boolean,
@@ -236,7 +236,7 @@ private fun CameraViewModel.bindVideoUseCases(
 }
 
 /** Builds the video preview with the shared dynamic range + capture options. */
-private fun CameraViewModel.buildVideoPreview(
+internal fun CameraViewModel.buildVideoPreview(
     session: VideoSessionPrep,
     dynamicRange: androidx.camera.core.DynamicRange
 ): Preview {
@@ -253,7 +253,7 @@ private fun CameraViewModel.buildVideoPreview(
 }
 
 /** Builds the video capture with codec/mirror/dynamic-range + capture options. */
-private fun CameraViewModel.buildVideoCapture(
+internal fun CameraViewModel.buildVideoCapture(
     session: VideoSessionPrep,
     dynamicRange: androidx.camera.core.DynamicRange
 ): VideoCapture<Recorder> {
@@ -283,7 +283,7 @@ private fun CameraViewModel.buildVideoCapture(
 }
 
 /** Records snapshot support and marks the video session active. */
-private suspend fun CameraViewModel.finishVideoSession() {
+internal suspend fun CameraViewModel.finishVideoSession() {
     videoSnapshotSupportedMutable.value = imageCapture != null
     boundCamera?.let { refreshCapabilities(it, boundLensIdField) }
     videoSessionActiveMutable.value = true
