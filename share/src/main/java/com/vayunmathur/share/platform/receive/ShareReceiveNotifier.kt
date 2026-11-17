@@ -334,7 +334,9 @@ class ShareReceiveNotifier(
     ): android.app.Notification {
         val builder = base(CHANNEL_TRANSFERS)
             .setContentTitle(conn.displayName)
-            .setContentText(appContext.resources.getQuantityString(R.plurals.share_received_count, received.size, received.size))
+            .setContentText(
+                appContext.resources.getQuantityString(R.plurals.share_received_count, received.size, received.size),
+            )
             .setAutoCancel(true)
         previewBitmap(received)?.let { preview ->
             // `bigLargeIcon(null)` so expanding drops the thumbnail instead of showing the same
