@@ -1,10 +1,10 @@
 package com.vayunmathur.euicc.telephony
 
 import android.content.Context
+import android.os.Build
 import android.telephony.IccOpenLogicalChannelResponse
 import android.telephony.TelephonyManager
 import android.telephony.UiccCardInfo
-import android.telephony.UiccPortInfo
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.euicc.EuiccNative
 import java.lang.reflect.Method
@@ -59,12 +59,22 @@ class EuiccChannelManager(context: Context) {
         val euicc = cards.firstOrNull { it.isEuicc }
             ?: throw EuiccException("no eUICC found (${cards.size} UICC card(s) reported)")
 
+        // Ports and physical slot indices are API 33+; on API 31-32 a card has exactly one
+        // implicit port (port 0) and reports its slot through the pre-33 slotIndex getter.
         // Port 0 on a card that reports none: a non-MEP eUICC has exactly one implicit port.
-        val port: UiccPortInfo? = euicc.ports.firstOrNull()
-        val slotIndex = @Suppress("DEPRECATION") euicc.physicalSlotIndex
+        val slotIndex: Int
+        val portIndex: Int
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            slotIndex = euicc.physicalSlotIndex
+            portIndex = euicc.ports.firstOrNull()?.portIndex ?: 0
+        } else {
+            @Suppress("DEPRECATION")
+            slotIndex = euicc.slotIndex
+            portIndex = 0
+        }
         if (slotIndex < 0) throw EuiccException("eUICC reports no physical slot index")
 
-        val resolved = EuiccTarget(slotIndex, port?.portIndex ?: 0)
+        val resolved = EuiccTarget(slotIndex, portIndex)
         Log.status(TAG, "eUICC at slot ${resolved.slotIndex} port ${resolved.portIndex}")
         return resolved
     }

@@ -11,11 +11,9 @@
     <string name="esim_enabled">eSIM enabled</string>
     <string name="available_carriers">Available carriers</string>
     <string name="add_profile_title">Add SIM</string>
-    <string name="add_new_carrier">Add new carrier</string>
     <string name="show_details">Show details</string>
     <string name="no_profiles_title">Set up an eSIM</string>
     <string name="no_profiles_body">Add a SIM from your carrier to connect this device to a mobile network. You will need a QR code or an activation code.</string>
-    <string name="no_euicc">No eUICC available on this device.</string>
 
     <!-- Profile status -->
     <string name="profile_status_enabled">Enabled</string>
@@ -42,7 +40,6 @@
 
     <!-- Device info -->
     <string name="device_info_title">Device info</string>
-    <string name="eid_title">EID</string>
     <string name="eid_number">EID number</string>
     <string name="eid_qr_code_dialog_title">Your device EID</string>
     <string name="eid_copied">EID copied to clipboard</string>

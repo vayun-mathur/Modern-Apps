@@ -3,7 +3,6 @@
     <string name="esim_enabled">eSIM on kasutusel</string>
     <string name="available_carriers">Saadaval teenusepakkujad</string>
     <string name="add_profile_title">Lisa SIM-kaart</string>
-    <string name="add_new_carrier">Lisa uus teenusepakkuja</string>
     <string name="show_details">Näita üksikasju</string>
     <string name="no_profiles_title">Seadista eSIM</string>
     <string name="sgp22_version">SGP.22 versioon</string>
@@ -28,7 +27,6 @@
     <string name="no_profiles_body">Nutiseadme ühendamiseks mobiilivõrguga lisa oma teenusepakkuja SIM-kaart. Lisaks vajad QR-koodi või aktiveerimiskoodi.</string>
     <string name="eid_qr_code_dialog_title">Sinu seadme EID-kood</string>
     <string name="camera_permission_required">QR-koodi skaneerimiseks vajab see rakendus kaamera kasutamise õigust.</string>
-    <string name="no_euicc">eUICC pole selles nutiseadmes saadaval.</string>
     <string name="profile_status_enabled">Kasutusel</string>
     <string name="profile_status_disabled">Pole kasutusel</string>
     <string name="profile_iccid">ICCID-kood</string>
@@ -49,7 +47,6 @@
     <string name="carrier_confirm_subtitle">Sa juba peaksid olema selle võrguga seotud</string>
     <string name="confirmation_code_text_no_carrier">Selle eSIM-i seadistamiseks eeldab sinu teenusepakkuja kinnituskoodi kasutamist.</string>
     <string name="device_info_title">Seadme teave</string>
-    <string name="eid_title">EID-kood</string>
     <string name="eid_number">EIDnumber</string>
     <string name="eid_copied">EID-kood on kopeeritud lõikelauale</string>
     <string name="eid_not_found">Seadme EID-koodi ei leidu</string>
