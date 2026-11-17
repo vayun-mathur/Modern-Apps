@@ -251,8 +251,8 @@ fn parse_location(body: &[u8]) -> Option<(i64, i64, i32, i16)> {
     let mut lon = None;
     let mut acc: i64 = -1;
     let mut alt: i64 = ALT_NOT_REPORTED;
-    let mut r = proto::Reader::new(body);
-    while let Some((field, v)) = r.next() {
+    let r = proto::Reader::new(body);
+    for (field, v) in r {
         if let Field::Varint(raw) = v {
             match field {
                 1 => lat = Some(raw as i64),
@@ -275,16 +275,16 @@ fn parse_location(body: &[u8]) -> Option<(i64, i64, i32, i16)> {
 
 fn parse_wifi(body: &[u8]) -> Vec<WifiFix> {
     let mut out = Vec::new();
-    let mut r = proto::Reader::new(body);
-    while let Some((field, v)) = r.next() {
+    let r = proto::Reader::new(body);
+    for (field, v) in r {
         let Field::Bytes(dev) = v else { continue };
         if field != F_WIFI_DEVICES {
             continue;
         }
         let mut bssid = None;
         let mut loc = None;
-        let mut dr = proto::Reader::new(dev);
-        while let Some((df, dv)) = dr.next() {
+        let dr = proto::Reader::new(dev);
+        for (df, dv) in dr {
             match (df, dv) {
                 (1, Field::Bytes(s)) => bssid = std::str::from_utf8(s).ok(),
                 (2, Field::Bytes(b)) => loc = parse_location(b),
@@ -300,16 +300,16 @@ fn parse_wifi(body: &[u8]) -> Vec<WifiFix> {
 
 fn parse_cells(body: &[u8]) -> Vec<CellFix> {
     let mut out = Vec::new();
-    let mut r = proto::Reader::new(body);
-    while let Some((field, v)) = r.next() {
+    let r = proto::Reader::new(body);
+    for (field, v) in r {
         let Field::Bytes(tower) = v else { continue };
         if field != F_CELL_RESPONSE {
             continue;
         }
         let (mut mcc, mut mnc, mut cell_id, mut area) = (None, None, None, None);
         let mut loc = None;
-        let mut tr = proto::Reader::new(tower);
-        while let Some((tf, tv)) = tr.next() {
+        let tr = proto::Reader::new(tower);
+        for (tf, tv) in tr {
             match (tf, tv) {
                 (1, Field::Varint(x)) => mcc = Some(x as i64 as i32),
                 (2, Field::Varint(x)) => mnc = Some(x as i64 as i32),
@@ -331,6 +331,9 @@ fn parse_cells(body: &[u8]) -> Vec<CellFix> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One wifi entry in a fake response: BSSID plus optional `(lat, lon, acc, alt)`.
+    type WifiEntry<'a> = (&'a str, Option<(i64, i64, i64, i64)>);
 
     #[test]
     fn envelope_matches_wtfps_byte_for_byte() {
@@ -371,7 +374,7 @@ mod tests {
     }
 
     /// Build the response body the parser expects: `AppleWLoc { wifi_devices }`.
-    fn wifi_response(entries: &[(&str, Option<(i64, i64, i64, i64)>)]) -> Vec<u8> {
+    fn wifi_response(entries: &[WifiEntry<'_>]) -> Vec<u8> {
         let mut body = Vec::new();
         for (bssid, loc) in entries {
             let mut dev = Vec::new();
@@ -393,7 +396,7 @@ mod tests {
     fn wifi_responses_decode_and_normalize_case() {
         let body = wifi_response(&[
             ("AA:BB:CC:DD:EE:01", Some((37_77493000, -122_41942000, 35, 12))),
-            ("aa:bb:cc:dd:ee:02", Some((51_50735000, -0_12776000, 120, 44))),
+            ("aa:bb:cc:dd:ee:02", Some((51_50735000, -12_776_000, 120, 44))),
         ]);
         let fixes = parse_wifi(&body);
         assert_eq!(fixes.len(), 2);
@@ -401,7 +404,7 @@ mod tests {
         assert_eq!(fixes[0].lat_e8, 37_77493000);
         assert_eq!(fixes[0].accuracy_m, 35);
         assert_eq!(fixes[0].altitude_m, 12);
-        assert_eq!(fixes[1].lon_e8, -0_12776000);
+        assert_eq!(fixes[1].lon_e8, -12_776_000);
         assert_eq!(fixes[1].altitude_m, 44);
     }
 

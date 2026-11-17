@@ -31,6 +31,11 @@ Usage: wps_cellcrawl --out SHARD --seed MCC,MNC,TAC,CID [--seed ...] [options]
 /// service that is refusing it.
 const MAX_CONSECUTIVE_ERRORS: u32 = 5;
 
+/// One cell identity on the frontier: `(mcc, mnc, tac, cid)`.
+type CellTuple = (u32, u32, u32, u32);
+/// Cells waiting to be queried, nearest-first by distance from the centre.
+type Frontier = BinaryHeap<(Reverse<u64>, CellTuple)>;
+
 struct Args {
     out: PathBuf,
     seeds: Vec<(u32, u32, u32, u32)>,
@@ -121,8 +126,8 @@ fn run(args: &Args) -> std::io::Result<()> {
     // ordered by distance from the first seed that resolved.
     let mut seeds: Vec<(u32, u32, u32, u32)> = args.seeds.clone();
     seeds.reverse();
-    let mut frontier: BinaryHeap<(Reverse<u64>, (u32, u32, u32, u32))> = BinaryHeap::new();
-    let mut queried: HashSet<(u32, u32, u32, u32)> = HashSet::new();
+    let mut frontier: Frontier = BinaryHeap::new();
+    let mut queried: HashSet<CellTuple> = HashSet::new();
     let mut written: HashSet<u128> = HashSet::new();
     let mut center: Option<(i64, i64)> = None;
     let (mut queries, mut errors) = (0u32, 0u32);

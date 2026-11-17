@@ -135,7 +135,7 @@ fn sort_and_reduce(
     let mut sorter = ExternalSort::new(scratch, run_records)?;
     for path in shards {
         let mut rd = RecordReader::new(BufReader::with_capacity(1 << 20, File::open(path)?));
-        while let Some(r) = rd.next()? {
+        while let Some(r) = rd.next().transpose()? {
             sorter.push(r)?;
         }
         println!("  read {} ({} observations so far)", path.display(), sorter.len());
@@ -160,7 +160,7 @@ fn sort_and_reduce(
         Ok(())
     };
 
-    while let Some(r) = merge.next()? {
+    while let Some(r) = merge.next().transpose()? {
         if group.first().is_some_and(|g| g.key != r.key) {
             flush(&mut group, &mut writer, &mut rejects)?;
         }
@@ -233,8 +233,8 @@ fn run(args: &Args) -> std::io::Result<()> {
 
 /// Stream a shard as the `io::Result<Record>` sequence the store writer and verifier take.
 fn stream_shard(path: &Path) -> std::io::Result<impl Iterator<Item = std::io::Result<Record>>> {
-    let mut rd = RecordReader::new(BufReader::with_capacity(1 << 20, File::open(path)?));
-    Ok(std::iter::from_fn(move || rd.next().transpose()))
+    let rd = RecordReader::new(BufReader::with_capacity(1 << 20, File::open(path)?));
+    Ok(rd)
 }
 
 fn main() -> ExitCode {

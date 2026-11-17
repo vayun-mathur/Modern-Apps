@@ -88,10 +88,15 @@ impl<'a> Reader<'a> {
         }
     }
 
+}
+
+impl<'a> Iterator for Reader<'a> {
+    type Item = (u32, Field<'a>);
+
     /// Next `(field number, value)`, or `None` at the end of the message or on malformed
     /// input. The two are not distinguished: a truncated response and a complete one are
     /// handled the same way, by using whatever was decoded before the cut.
-    pub fn next(&mut self) -> Option<(u32, Field<'a>)> {
+    fn next(&mut self) -> Option<Self::Item> {
         if self.pos >= self.buf.len() {
             return None;
         }

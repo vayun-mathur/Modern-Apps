@@ -81,8 +81,8 @@ mod tests {
         let mut recs: Vec<Record> = (0..800)
             .map(|_| Record {
                 key: (((lcg(&mut state) & 0xFFFFF) as u128) << 64) | lcg(&mut state) as u128,
-                lat_e8: 37_77_493_000,
-                lon_e8: -122_41_942_000,
+                lat_e8: 3_777_493_000,
+                lon_e8: -12_241_942_000,
                 accuracy_m: 900,
                 altitude_m: ALT_UNKNOWN,
                 source: Source::OpenCellId,

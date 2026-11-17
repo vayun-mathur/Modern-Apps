@@ -131,7 +131,7 @@ impl Merge {
         let mut heap = BinaryHeap::with_capacity(paths.len());
         for (which, p) in paths.iter().enumerate() {
             let mut rd = RecordReader::new(BufReader::new(File::open(p)?));
-            if let Some(record) = rd.next()? {
+            if let Some(record) = rd.next().transpose()? {
                 heap.push(Head { record, which });
             }
             readers.push(rd);
@@ -149,20 +149,28 @@ impl Merge {
         self.remaining == 0
     }
 
-    /// Next record in sorted order.
-    pub fn next(&mut self) -> io::Result<Option<Record>> {
+    /// Next record in sorted order, or `Ok(None)` when the merge is drained.
+    fn next_record(&mut self) -> io::Result<Option<Record>> {
         let Some(Head { record, which }) = self.heap.pop() else {
             return Ok(None);
         };
         let reader = self
             .readers
             .get_mut(which)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "merge run index out of range"))?;
-        if let Some(next) = reader.next()? {
+            .ok_or_else(|| io::Error::other("merge run index out of range"))?;
+        if let Some(next) = reader.next().transpose()? {
             self.heap.push(Head { record: next, which });
         }
         self.remaining = self.remaining.saturating_sub(1);
         Ok(Some(record))
+    }
+}
+
+impl Iterator for Merge {
+    type Item = io::Result<Record>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_record().transpose()
     }
 }
 
@@ -205,10 +213,10 @@ mod tests {
         }
     }
 
-    fn drain(mut m: Merge) -> Vec<Record> {
+    fn drain(m: Merge) -> Vec<Record> {
         let mut out = Vec::new();
-        while let Some(r) = m.next().unwrap() {
-            out.push(r);
+        for r in m {
+            out.push(r.unwrap());
         }
         out
     }

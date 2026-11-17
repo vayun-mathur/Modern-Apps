@@ -15,13 +15,13 @@ use std::io::{self, Read, Write};
 pub const RECORD_BYTES: usize = 40;
 
 /// `lat * 1e8`, the range the store's 35-bit latitude field covers.
-pub const LAT_E8_MIN: i64 = -90_00_000_000;
+pub const LAT_E8_MIN: i64 = -9_000_000_000;
 /// `lat * 1e8`, upper bound.
-pub const LAT_E8_MAX: i64 = 90_00_000_000;
+pub const LAT_E8_MAX: i64 = 9_000_000_000;
 /// `lon * 1e8`, the range the store's 36-bit longitude field covers.
-pub const LON_E8_MIN: i64 = -180_00_000_000;
+pub const LON_E8_MIN: i64 = -18_000_000_000;
 /// `lon * 1e8`, upper bound.
-pub const LON_E8_MAX: i64 = 180_00_000_000;
+pub const LON_E8_MAX: i64 = 18_000_000_000;
 
 /// Stored accuracy meaning "the source did not report one".
 pub const ACC_UNKNOWN: u16 = 0xFFFF;
@@ -179,7 +179,7 @@ impl<R: Read> RecordReader<R> {
     ///
     /// A partial trailing record is an error rather than an end: shards are produced by long
     /// runs that can be killed, and silently ignoring a torn tail would quietly drop data.
-    pub fn next(&mut self) -> io::Result<Option<Record>> {
+    fn next_record(&mut self) -> io::Result<Option<Record>> {
         let mut filled = 0usize;
         while filled < RECORD_BYTES {
             match self.inner.read(&mut self.scratch[filled..])? {
@@ -202,6 +202,14 @@ impl<R: Read> RecordReader<R> {
     }
 }
 
+impl<R: Read> Iterator for RecordReader<R> {
+    type Item = io::Result<Record>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_record().transpose()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -209,8 +217,8 @@ mod tests {
     fn sample() -> Record {
         Record {
             key: (0x4D904u128 << 64) | 0x3003039ABCDEF123,
-            lat_e8: 37_77_493_000,
-            lon_e8: -122_41_942_000,
+            lat_e8: 3_777_493_000,
+            lon_e8: -12_241_942_000,
             accuracy_m: 35,
             altitude_m: 12,
             source: Source::Gsloc,
@@ -278,10 +286,10 @@ mod tests {
         }
         assert_eq!(w.finish().unwrap(), 500);
 
-        let mut rd = RecordReader::new(bytes.as_slice());
+        let rd = RecordReader::new(bytes.as_slice());
         let mut got = Vec::new();
-        while let Some(r) = rd.next().unwrap() {
-            got.push(r);
+        for r in rd {
+            got.push(r.unwrap());
         }
         assert_eq!(got, records);
     }
@@ -297,7 +305,10 @@ mod tests {
         bytes.truncate(RECORD_BYTES + 9);
 
         let mut rd = RecordReader::new(bytes.as_slice());
-        assert_eq!(rd.next().unwrap(), Some(sample()));
-        assert!(rd.next().is_err(), "a partial tail must not read as end of shard");
+        assert_eq!(rd.next().unwrap().unwrap(), sample());
+        assert!(
+            matches!(rd.next(), Some(Err(_))),
+            "a partial tail must not read as end of shard"
+        );
     }
 }

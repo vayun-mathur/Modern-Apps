@@ -44,7 +44,7 @@ impl RadioType {
     /// Parse the spellings the open datasets use in their `radio` column.
     pub fn parse(s: &str) -> Option<RadioType> {
         match s.trim().to_ascii_uppercase().as_str() {
-            "GSM" | "2G" | "CDMA" => (s.trim().to_ascii_uppercase() != "CDMA").then_some(RadioType::Gsm),
+            "GSM" | "2G" | "CDMA" => (!s.trim().eq_ignore_ascii_case("CDMA")).then_some(RadioType::Gsm),
             "UMTS" | "WCDMA" | "3G" | "HSPA" => Some(RadioType::Umts),
             "LTE" | "4G" => Some(RadioType::Lte),
             "NR" | "5G" | "NRNSA" => Some(RadioType::Nr),

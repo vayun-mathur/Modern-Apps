@@ -141,7 +141,7 @@ mod tests {
                 l += 1;
             }
         }
-        let mut push_bits = |buf: &mut Vec<u8>, bitlen: &mut u64, v: u64, nbits: u32| {
+        let push_bits = |buf: &mut Vec<u8>, bitlen: &mut u64, v: u64, nbits: u32| {
             for k in 0..nbits as u64 {
                 if (*bitlen & 7) == 0 {
                     buf.push(0);
