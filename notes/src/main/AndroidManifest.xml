@@ -9,6 +9,7 @@
     <!-- This app uses no motion/environment sensors; MAOS withholds the -->
     <!-- Sensors permission at install instead of auto-granting it. -->
     <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />

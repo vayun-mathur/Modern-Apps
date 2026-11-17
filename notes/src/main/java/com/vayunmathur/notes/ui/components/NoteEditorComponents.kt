@@ -58,54 +58,7 @@ fun ImageBlock(
     }
 }
 
-@Composable
-fun InkBlock(
-    block: NoteBlock.Ink,
-    onEdit: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    val strokes = remember(block) { block.strokes.map { it.deserialize() } }
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(block.heightDp.dp)
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-                .clip(RoundedCornerShape(8.dp))
-                .clickable { onEdit() },
-        ) {
-            InkCanvasView(
-                currentBrush = previewBrush,
-                finishedStrokes = strokes,
-                onStrokeFinished = {},
-                enabled = false,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        BlockControls(onMoveUp = onMoveUp, onMoveDown = onMoveDown, onDelete = onDelete)
-    }
-}
 
-@Composable
-fun BlockControls(
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    onDelete: () -> Unit,
-    extra: @Composable () -> Unit = {},
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        extra()
-        IconButton(onClick = onMoveUp) {
-            IconKeyboardArrowUp()
-        }
-        IconButton(onClick = onMoveDown) {
-            IconKeyboardArrowDown()
-        }
-        IconButton(onClick = onDelete) { IconDelete() }
-    }
-}
 
 // A read-only ink preview needs some brush, but strokes carry their own; this is unused for drawing.
 val previewBrush by lazy {

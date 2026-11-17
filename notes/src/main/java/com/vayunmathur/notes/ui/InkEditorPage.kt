@@ -59,7 +59,7 @@ import com.vayunmathur.notes.data.randomBlockId
 import com.vayunmathur.notes.data.withBody
 import com.vayunmathur.notes.platform.NotesViewModel
 
-private enum class InkTool { Pen, Highlighter, Eraser }
+internal enum class InkTool { Pen, Highlighter, Eraser }
 
 /**
  * Preset ink colors offered by the drawing toolbar.
@@ -68,7 +68,7 @@ private enum class InkTool { Pen, Highlighter, Eraser }
  * fixed ARGB, so either one disappears against the themed canvas in one of the
  * two themes. The greys at each end stay legible in both.
  */
-private val inkColors = listOf(
+internal val inkColors = listOf(
     Color(0xFF37474F), Color(0xFFB0BEC5), Color(0xFFE53935), Color(0xFFFB8C00),
     Color(0xFFFDD835), Color(0xFF43A047), Color(0xFF1E88E5), Color(0xFF8E24AA),
 )
@@ -123,78 +123,9 @@ fun InkEditorPage(
     )
 }
 
-/**
- * Full-screen handwriting editor for a single ink block. Supports pen /
- * highlighter / eraser, color and stroke-width selection, and undo / redo.
- * Returns the finished strokes through [onDone], or discards edits via [onCancel].
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun InkEditor(
-    initialStrokes: List<SerializedStroke>,
-    onDone: (List<SerializedStroke>) -> Unit,
-    onCancel: () -> Unit,
-) {
-    val strokes = remember { mutableStateListOf<Stroke>().apply { addAll(initialStrokes.map { it.deserialize() }) } }
-    val redoStack = remember { mutableStateListOf<Stroke>() }
-
-    var tool by remember { mutableStateOf(InkTool.Pen) }
-    var color by remember { mutableStateOf(inkColors.first()) }
-    var width by remember { mutableStateOf(6f) }
-
-    val brush = remember(tool, color, width) {
-        val family = if (tool == InkTool.Highlighter) StockBrushes.highlighter() else StockBrushes.pressurePen()
-        Brush.createWithColorIntArgb(
-            family = family,
-            colorIntArgb = color.toArgb(),
-            size = width,
-            epsilon = 0.1f,
-        )
-    }
-
-    AppScaffold(
-        title = stringResource(R.string.drawing),
-        onClose = onCancel,
-        actions = {
-            IconButton(onClick = { onDone(strokes.map { it.serialize() }) }) { IconCheck() }
-        },
-        bottomBar = {
-            InkToolbar(
-                tool = tool,
-                onToolChange = { tool = it },
-                color = color,
-                onColorChange = { color = it },
-                width = width,
-                onWidthChange = { width = it },
-                canUndo = strokes.isNotEmpty(),
-                canRedo = redoStack.isNotEmpty(),
-                onUndo = { if (strokes.isNotEmpty()) redoStack.add(strokes.removeAt(strokes.size - 1)) },
-                onRedo = { if (redoStack.isNotEmpty()) strokes.add(redoStack.removeAt(redoStack.size - 1)) },
-            )
-        },
-        scrollBehavior = appBarScrollBehavior(),
-    ) { padding ->
-        Box(
-            Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface),
-        ) {
-            InkCanvasView(
-                currentBrush = brush,
-                finishedStrokes = strokes.toList(),
-                onStrokeFinished = { strokes.add(it); redoStack.clear() },
-                onStrokeErased = { strokes.remove(it) },
-                eraserMode = tool == InkTool.Eraser,
-                enabled = true,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-    }
-}
 
 @Composable
-private fun InkToolbar(
+internal fun InkToolbar(
     tool: InkTool,
     onToolChange: (InkTool) -> Unit,
     color: Color,
@@ -241,7 +172,7 @@ private fun InkToolbar(
 }
 
 @Composable
-private fun ToolButton(active: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
+internal fun ToolButton(active: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
     val tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
     IconButton(onClick = onClick) {
         androidx.compose.runtime.CompositionLocalProvider(

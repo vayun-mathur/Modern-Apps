@@ -1,5 +1,6 @@
 package com.vayunmathur.notes.sync
 
+import androidx.core.net.toUri
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.content.UriMatcher
@@ -88,10 +89,10 @@ class RelayNoteProvider : ContentProvider() {
         private val json = Json { ignoreUnknownKeys = true }
 
         fun notesUri(vaultId: String): Uri =
-            Uri.parse("content://$AUTHORITY/vault/$vaultId/notes")
+            "content://$AUTHORITY/vault/$vaultId/notes".toUri()
 
         fun snapshotsUri(vaultId: String): Uri =
-            Uri.parse("content://$AUTHORITY/vault/$vaultId/snapshots")
+            "content://$AUTHORITY/vault/$vaultId/snapshots".toUri()
     }
 
     private fun repo(): NotesRepository {
