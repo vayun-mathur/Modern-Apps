@@ -54,10 +54,15 @@ class MirrorAndDraftLoadTest {
     }
 
     private suspend fun settleUntil(cond: () -> Boolean) {
-        repeat(200) {
+        // Poll in real time, idling the paused main looper so the
+        // ViewModel's Main-thread work can land: a fixed iteration count
+        // with a (virtual-time) delay burned through its budget in
+        // milliseconds under CI load, before the Room IO it waited on ran.
+        val deadline = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < deadline) {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
             if (cond()) return
-            kotlinx.coroutines.delay(5)
+            Thread.sleep(10)
         }
     }
 
