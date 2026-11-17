@@ -3,9 +3,5 @@
     <string name="level">Rompicapo</string>
     <string name="level_selector">Selezione rompicapo</string>
     <string name="pack_selector">Selezione pacchetto</string>
-    <string name="restart">Riavvia</string>
-    <string name="previous_level">Rompicapo precedente</string>
     <string name="next_level">Rompicapo successivo</string>
-    <string name="completed">Completato</string>
-    <string name="moves">Mosse</string>
 </resources>

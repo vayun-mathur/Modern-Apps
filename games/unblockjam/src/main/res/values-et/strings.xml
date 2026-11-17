@@ -3,11 +3,5 @@
     <string name="level">Pusletükk</string>
     <string name="level_selector">Pusletüki valik</string>
     <string name="pack_selector">Mitme tüki valik</string>
-    <string name="restart">Alusta uuesti</string>
-    <string name="previous_level">Eelmine pusletükk</string>
     <string name="next_level">Järgmine pusletükk</string>
-    <string name="completed">Tehtud</string>
-    <string name="moves">Käigud</string>
-    <string name="daily_challenge">Igapäevane ülesanne</string>
-    <string name="daily_streak"><xliff:g id="days" example="5">%1$d</xliff:g> päeva järjest</string>
 </resources>

@@ -3,11 +3,5 @@
     <string name="level">Pussel</string>
     <string name="level_selector">Välj pussel</string>
     <string name="pack_selector">Välj paket</string>
-    <string name="restart">Starta om</string>
-    <string name="previous_level">Föregående pussel</string>
     <string name="next_level">Nästa pussel</string>
-    <string name="completed">Klar</string>
-    <string name="moves">Drag</string>
-    <string name="daily_challenge">Dagens utmaning</string>
-    <string name="daily_streak">%1$d dagars svit</string>
 </resources>

@@ -3,9 +3,5 @@
     <string name="level">Puzzle</string>
     <string name="level_selector">Wybór puzzli</string>
     <string name="pack_selector">Wybór pakietu</string>
-    <string name="restart">Zrestartuj</string>
-    <string name="previous_level">Poprzedni puzzle</string>
     <string name="next_level">Następny puzzle</string>
-    <string name="completed">Zakończono</string>
-    <string name="moves">Ruchy</string>
 </resources>

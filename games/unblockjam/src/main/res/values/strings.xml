@@ -7,16 +7,8 @@
     <string name="level_selector">Puzzle Select</string>
     <!-- PackScreen: TopAppBar title for initial pack chooser. Noun phrase -->
     <string name="pack_selector">Pack Select</string>
-    <!-- GameScreen PuzzleInfoBox: Accessibility content description for back arrow to previous puzzle. Noun phrase -->
-    <string name="previous_level">Previous Puzzle</string>
     <!-- GameScreen PuzzleInfoBox: Accessibility content description for forward arrow to next puzzle. Noun phrase -->
     <string name="next_level">Next Puzzle</string>
-    <!-- Puzzle info: Label shown when puzzle is already solved. Adjective -->
-    <string name="completed">Completed</string>
-    <!-- Moves info: Title for move counter. Noun -->
-    <string name="moves">Moves</string>
-    <!-- PackScreen daily card: Consecutive days the player has cleared the daily pack. %1$d = streak length e.g. 5. Noun phrase with number -->
-    <string name="daily_streak"><xliff:g id="days" example="5">%1$d</xliff:g> day streak</string>
     <!-- GameBoard: Accessibility label for the opening in the board frame the red target block must leave through. Noun -->
     <string name="exit">Exit</string>
     <!-- GameBoard: Spoken name of the red block that must reach the exit. Noun phrase -->

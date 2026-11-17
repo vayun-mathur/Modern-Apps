@@ -2,12 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="level">Úloha</string>
     <string name="level_selector">Výběr úlohy</string>
-    <string name="previous_level">Předchozí úloha</string>
     <string name="next_level">Další úloha</string>
     <string name="pack_selector">Výběr balíčku</string>
-    <string name="restart">Restartovat</string>
-    <string name="completed">Dokončené</string>
-    <string name="moves">Pohyby</string>
-    <string name="daily_challenge">Denní výzva</string>
-    <string name="daily_streak"><xliff:g id="days" example="5">%1$d</xliff:g> denní řada</string>
 </resources>

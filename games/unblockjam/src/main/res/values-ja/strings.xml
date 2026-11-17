@@ -3,11 +3,5 @@
     <string name="level">パズル</string>
     <string name="level_selector">パズルの選択</string>
     <string name="pack_selector">パックの選択</string>
-    <string name="restart">リスタート</string>
-    <string name="previous_level">過去のパズル</string>
     <string name="next_level">次のパズル</string>
-    <string name="completed">コンプリート済</string>
-    <string name="moves">手数</string>
-    <string name="daily_challenge">デイリーチャレンジ</string>
-    <string name="daily_streak"><xliff:g id="days" example="5">%1$d</xliff:g> 日連続記録</string>
 </resources>
