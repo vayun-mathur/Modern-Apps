@@ -15,6 +15,7 @@ mod frame;
 mod mod_extra;
 mod placement;
 mod placement_markers;
+mod placement_pick;
 mod placement_refresh;
 mod placement_reuse;
 mod pivot;
