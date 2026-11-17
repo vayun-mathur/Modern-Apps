@@ -52,7 +52,7 @@ fun HomeScreen(
     onOpenPush: () -> Unit,
 ) {
     AppScaffold(
-        title = "MA Developer",
+        title = "Developer",
         scrollBehavior = appBarScrollBehavior(),
         actions = {
             IconButton(onClick = onRefresh) { IconRefresh() }
