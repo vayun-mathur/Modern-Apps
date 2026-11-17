@@ -571,7 +571,12 @@ class MainActivitySlice3Test {
             Robolectric.flushForegroundThreadScheduler()
             shadow.idle()
             if (openedOf(vm) != null) return
-            Thread.yield()
+            // Sleep, not yield: the offline search and the suspending
+            // toFeature/osmPlace conversion run on Dispatchers.IO, and a
+            // yield-spin on a loaded box burns its whole iteration budget
+            // before the IO thread is ever scheduled (the selection then
+            // reads null / a stale sheet route at the assertion).
+            Thread.sleep(10)
         }
     }
 
