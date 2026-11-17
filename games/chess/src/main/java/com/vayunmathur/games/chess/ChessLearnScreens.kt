@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -311,7 +312,7 @@ fun StageCompleteDialog(
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 StarRow(rank)
                 Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.learn_stage_complete_n, stage.id))
+                Text(pluralStringResource(R.plurals.learn_stage_complete_n, stage.id, stage.id))
             }
         },
         text = {

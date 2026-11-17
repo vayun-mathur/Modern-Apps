@@ -173,12 +173,12 @@ private fun rememberSquareSpeech(): SquareSpeech {
 private fun squareBaseColor(row: Int, col: Int): Color =
     if ((row + col) % 2 == 0) LightSquareColor else DarkSquareColor
 
-private fun highlightModifier(marks: BoardMarks, pos: Position): Modifier {
+private fun Modifier.highlightModifier(marks: BoardMarks, pos: Position): Modifier {
     return when {
-        marks.selected == pos -> Modifier.border(2.dp, Color.Yellow)
-        marks.checkSquare == pos -> Modifier.border(2.dp, Color.Red)
-        marks.hover == pos && marks.dragSource != pos -> Modifier.border(3.dp, dropTargetColor)
-        else -> Modifier
+        marks.selected == pos -> this.border(2.dp, Color.Yellow)
+        marks.checkSquare == pos -> this.border(2.dp, Color.Red)
+        marks.hover == pos && marks.dragSource != pos -> this.border(3.dp, dropTargetColor)
+        else -> this
     }
 }
 
@@ -339,7 +339,7 @@ private fun ColumnScope.BoardRow(
                     ) {
                         onSquareClick(pos)
                     }
-                    .then(highlightModifier(marks, pos))
+                    .then(Modifier.highlightModifier(marks, pos))
             ) {
                 piece?.let {
                     SquarePiece(

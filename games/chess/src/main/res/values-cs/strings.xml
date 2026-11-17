@@ -5,12 +5,8 @@
     <string name="play_as">"Hrát jako    "</string>
     <string name="color_white">bílý</string>
     <string name="color_black">černý</string>
-    <string name="difficulty_easy">Jednoduchá</string>
-    <string name="difficulty_medium">Střední</string>
-    <string name="difficulty_hard">Těžká</string>
     <string name="difficulty_master">Mistr</string>
     <string name="start_game">Začít hrát</string>
-    <string name="new_game">Nová partie</string>
     <string name="two_player_local">Lokální hra ve dvou</string>
     <string name="human_vs_ai">Člověk vs AI</string>
     <string name="promote_pawn">Povýšit pěšáka</string>
@@ -31,16 +27,17 @@
     <string name="piece_black_bishop">Černý střelec</string>
     <string name="piece_black_knight">Černý kůň</string>
     <string name="piece_black_pawn">Černý pěšák</string>
-    <string name="tab_play">Hrát</string>
     <string name="tab_puzzles">Úlohy</string>
     <string name="tab_learn">Výuka</string>
     <string name="learn_stage_number">Úroveň <xliff:g id="stage_id" example="1">%1$d</xliff:g>: <xliff:g id="stage_title" example="Základy">%2$s</xliff:g></string>
     <string name="learn_lets_go">Jdeme na to!</string>
-    <string name="learn_next">Další</string>
-    <string name="learn_retry">Zkusit znovu</string>
     <string name="learn_completed">Skvěle!</string>
-    <string name="learn_failed">Ne docela, zkuste to znovu.</string>
-    <string name="learn_stage_complete_n">Úroveň <xliff:g id="stage_id" example="2">%1$d</xliff:g> dokončena</string>
+    <plurals name="learn_stage_complete_n">
+        <item quantity="one">Úroveň <xliff:g id="stage_id" example="2">%1$d</xliff:g> dokončena</item>
+        <item quantity="few">Úroveň <xliff:g id="stage_id" example="2">%1$d</xliff:g> dokončena</item>
+        <item quantity="many">Úroveň <xliff:g id="stage_id" example="2">%1$d</xliff:g> dokončena</item>
+        <item quantity="other">Úroveň <xliff:g id="stage_id" example="2">%1$d</xliff:g> dokončena</item>
+    </plurals>
     <string name="learn_your_score">Vaše skóre: <xliff:g id="score" example="350">%1$d</xliff:g></string>
     <string name="learn_next_stage">Další: <xliff:g id="next_stage" example="Taktiky">%1$s</xliff:g></string>
     <string name="learn_back_to_menu">Zpět do menu</string>
@@ -52,10 +49,6 @@
     <string name="puzzle_solved">Vyřešeno!</string>
     <string name="puzzle_failed">Ne docela, zkuste to znovu.</string>
     <string name="puzzle_next">Další úloha</string>
-    <string name="puzzle_retry">Zkusit znovu</string>
     <string name="puzzle_show_solution">Ukázat řešení</string>
-    <string name="puzzle_difficulty_easy">Jednoduchá</string>
-    <string name="puzzle_difficulty_medium">Střední</string>
-    <string name="puzzle_difficulty_hard">Těžká</string>
     <string name="puzzle_loading">Načítaní úlohy…</string>
 </resources>

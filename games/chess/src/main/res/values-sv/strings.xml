@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="difficulty_easy">Lätt</string>
-    <string name="difficulty_medium">Medel</string>
-    <string name="difficulty_hard">Svårt</string>
     <string name="app_name">Schack</string>
     <string name="start_new_game">Starta nytt spel</string>
     <string name="play_as">"Spela som    "</string>
@@ -10,7 +7,6 @@
     <string name="color_black">Svart</string>
     <string name="difficulty_master">Mästare</string>
     <string name="start_game">Starta spel</string>
-    <string name="new_game">Nytt spel</string>
     <string name="two_player_local">Lokalt för två spelare</string>
     <string name="human_vs_ai">Människa mot AI</string>
     <string name="promote_pawn">Befordra bonde</string>
@@ -31,16 +27,15 @@
     <string name="piece_black_bishop">Svart löpare</string>
     <string name="piece_black_knight">Svart springare</string>
     <string name="piece_black_pawn">Svart bonde</string>
-    <string name="tab_play">Spela</string>
     <string name="tab_puzzles">Problem</string>
     <string name="tab_learn">Lär dig</string>
     <string name="learn_stage_number">Nivå <xliff:g id="stage_id" example="1">%1$d</xliff:g>: <xliff:g id="stage_title" example="Basics">%2$s</xliff:g></string>
     <string name="learn_lets_go">Kör!</string>
-    <string name="learn_next">Nästa</string>
-    <string name="learn_retry">Försök igen</string>
     <string name="learn_completed">Bra jobbat!</string>
-    <string name="learn_failed">Inte riktigt — försök igen.</string>
-    <string name="learn_stage_complete_n">Nivå <xliff:g id="stage_id" example="2">%1$d</xliff:g> klar</string>
+    <plurals name="learn_stage_complete_n">
+        <item quantity="one">Nivå <xliff:g id="stage_id" example="2">%1$d</xliff:g> klar</item>
+        <item quantity="other">Nivå <xliff:g id="stage_id" example="2">%1$d</xliff:g> klar</item>
+    </plurals>
     <string name="learn_your_score">Din poäng: <xliff:g id="score" example="350">%1$d</xliff:g></string>
     <string name="learn_next_stage">Nästa: <xliff:g id="next_stage" example="Tactics">%1$s</xliff:g></string>
     <string name="learn_back_to_menu">Tillbaka till menyn</string>
@@ -52,11 +47,7 @@
     <string name="puzzle_solved">Löst!</string>
     <string name="puzzle_failed">Inte riktigt. Försök igen.</string>
     <string name="puzzle_next">Nästa problem</string>
-    <string name="puzzle_retry">Försök igen</string>
     <string name="puzzle_show_solution">Visa lösning</string>
-    <string name="puzzle_difficulty_easy">Lätt</string>
-    <string name="puzzle_difficulty_medium">Medelsvår</string>
-    <string name="puzzle_difficulty_hard">Svår</string>
     <string name="puzzle_loading">Läser in problem …</string>
     <string name="tab_offline">Spela offline</string>
     <string name="tab_online">Spela online</string>

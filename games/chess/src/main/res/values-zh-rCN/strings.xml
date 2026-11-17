@@ -5,12 +5,8 @@
     <string name="play_as">"执棋方    "</string>
     <string name="color_white">白方</string>
     <string name="color_black">黑方</string>
-    <string name="difficulty_easy">简单</string>
-    <string name="difficulty_medium">中等</string>
-    <string name="difficulty_hard">困难</string>
     <string name="difficulty_master">大师</string>
     <string name="start_game">开始游戏</string>
-    <string name="new_game">新游戏</string>
     <string name="two_player_local">本地双人</string>
     <string name="human_vs_ai">人机对弈</string>
     <string name="promote_pawn">兵升变</string>
@@ -31,16 +27,14 @@
     <string name="piece_black_pawn">黑兵</string>
     <string name="stalemate">逼和！和棋。</string>
     <string name="draw_insufficient_material">和棋 — 子力不足。</string>
-    <string name="tab_play">玩</string>
     <string name="tab_puzzles">谜题</string>
     <string name="tab_learn">学习</string>
     <string name="learn_stage_number">关卡 <xliff:g id="stage_id" example="1">%1$d</xliff:g>：<xliff:g id="stage_title" example="Basics">%2$s</xliff:g></string>
     <string name="learn_lets_go">开始吧！</string>
-    <string name="learn_next">下一个</string>
-    <string name="learn_retry">重试</string>
     <string name="learn_completed">太棒了！</string>
-    <string name="learn_failed">未成功 — 请重试。</string>
-    <string name="learn_stage_complete_n">关卡 <xliff:g id="stage_id" example="2">%1$d</xliff:g> 完成</string>
+    <plurals name="learn_stage_complete_n">
+        <item quantity="other">关卡 <xliff:g id="stage_id" example="2">%1$d</xliff:g> 完成</item>
+    </plurals>
     <string name="learn_your_score">得分：<xliff:g id="score" example="350">%1$d</xliff:g></string>
     <string name="learn_next_stage">下一个：<xliff:g id="next_stage" example="Tactics">%1$s</xliff:g></string>
     <string name="learn_back_to_menu">返回菜单</string>
@@ -52,10 +46,6 @@
     <string name="puzzle_solved">解出！</string>
     <string name="puzzle_failed">未成功 — 请重试。</string>
     <string name="puzzle_next">下一题</string>
-    <string name="puzzle_retry">重试</string>
     <string name="puzzle_show_solution">显示解法</string>
-    <string name="puzzle_difficulty_easy">简单</string>
-    <string name="puzzle_difficulty_medium">中等</string>
-    <string name="puzzle_difficulty_hard">困难</string>
     <string name="puzzle_loading">正在加载谜题…</string>
 </resources>

@@ -5,12 +5,8 @@
     <string name="play_as">"プレイする色    "</string>
     <string name="color_white">白</string>
     <string name="color_black">黒</string>
-    <string name="difficulty_easy">やさしい</string>
-    <string name="difficulty_medium">普通</string>
-    <string name="difficulty_hard">難しい</string>
     <string name="difficulty_master">マスター</string>
     <string name="start_game">ゲームを開始</string>
-    <string name="new_game">新しいゲーム</string>
     <string name="two_player_local">ローカルで対人戦</string>
     <string name="human_vs_ai">人間 vs AI</string>
     <string name="promote_pawn">ポーンをプロモーション</string>
@@ -31,16 +27,14 @@
     <string name="piece_black_bishop">黒ビショップ</string>
     <string name="piece_black_knight">黒ナイト</string>
     <string name="piece_black_pawn">黒ポーン</string>
-    <string name="tab_play">プレイ</string>
     <string name="tab_puzzles">パズル</string>
     <string name="tab_learn">学習</string>
     <string name="learn_stage_number">ステージ <xliff:g id="stage_id" example="1">%1$d</xliff:g>: <xliff:g id="stage_title" example="Basics">%2$s</xliff:g></string>
     <string name="learn_lets_go">始めよう!</string>
-    <string name="learn_next">次へ</string>
-    <string name="learn_retry">リトライ</string>
     <string name="learn_completed">よくやった!</string>
-    <string name="learn_failed">違います — もう一度試してみましょう。</string>
-    <string name="learn_stage_complete_n">ステージ <xliff:g id="stage_id" example="2">%1$d</xliff:g> コンプリート</string>
+    <plurals name="learn_stage_complete_n">
+        <item quantity="other">ステージ <xliff:g id="stage_id" example="2">%1$d</xliff:g> コンプリート</item>
+    </plurals>
     <string name="learn_your_score">スコア: <xliff:g id="score" example="350">%1$d</xliff:g></string>
     <string name="learn_next_stage">次: <xliff:g id="next_stage" example="Tactics">%1$s</xliff:g></string>
     <string name="learn_back_to_menu">メニューに戻る</string>
@@ -52,10 +46,6 @@
     <string name="puzzle_solved">解決!</string>
     <string name="puzzle_failed">違います — もう一度試してみましょう。</string>
     <string name="puzzle_next">次のパズル</string>
-    <string name="puzzle_retry">リトライ</string>
     <string name="puzzle_show_solution">答えを見る</string>
-    <string name="puzzle_difficulty_easy">やさしい</string>
-    <string name="puzzle_difficulty_medium">普通</string>
-    <string name="puzzle_difficulty_hard">難しい</string>
     <string name="puzzle_loading">パズルを読み込み中…</string>
 </resources>

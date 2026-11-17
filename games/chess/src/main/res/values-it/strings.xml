@@ -5,12 +5,8 @@
     <string name="play_as">"Gioca come    "</string>
     <string name="color_white">Bianco</string>
     <string name="color_black">Nero</string>
-    <string name="difficulty_easy">Facile</string>
-    <string name="difficulty_medium">Media</string>
-    <string name="difficulty_hard">Difficile</string>
     <string name="difficulty_master">Maestro</string>
     <string name="start_game">Inizia partita</string>
-    <string name="new_game">Nuova partita</string>
     <string name="two_player_local">2 giocatori locale</string>
     <string name="human_vs_ai">Umano vs AI</string>
     <string name="promote_pawn">Promuovi pedone</string>
@@ -31,16 +27,16 @@
     <string name="piece_black_pawn">Pedone Nero</string>
     <string name="stalemate">Stallo! È una patta.</string>
     <string name="draw_insufficient_material">Patta per materiali insufficiente.</string>
-    <string name="tab_play">Gioca</string>
     <string name="tab_puzzles">Rompicapi</string>
     <string name="tab_learn">Impara</string>
     <string name="learn_stage_number">Fase %1$d: %2$s</string>
     <string name="learn_lets_go">Cominciamo!</string>
-    <string name="learn_next">Prossimo</string>
-    <string name="learn_retry">Riprova</string>
     <string name="learn_completed">Ben fatto!</string>
-    <string name="learn_failed">Non proprio, riprova.</string>
-    <string name="learn_stage_complete_n">Fase %1$d completa</string>
+    <plurals name="learn_stage_complete_n">
+        <item quantity="one">Fase %1$d completa</item>
+        <item quantity="many">Fase %1$d completa</item>
+        <item quantity="other">Fase %1$d completa</item>
+    </plurals>
     <string name="learn_your_score">Il tuo punteggio: %1$d</string>
     <string name="learn_next_stage">Prossimo: %1$s</string>
     <string name="learn_back_to_menu">Torna al menu</string>
@@ -51,11 +47,7 @@
     <string name="puzzle_solved">Risolto!</string>
     <string name="puzzle_failed">Non proprio — riprova.</string>
     <string name="puzzle_next">Prossimo rompicapo</string>
-    <string name="puzzle_retry">Riprova</string>
     <string name="puzzle_show_solution">Mostra soluzione</string>
-    <string name="puzzle_difficulty_easy">Facile</string>
-    <string name="puzzle_difficulty_medium">Media</string>
-    <string name="puzzle_difficulty_hard">Difficile</string>
     <string name="puzzle_loading">Caricamento rompicapo…</string>
     <string name="puzzle_rating">Valutazione %1$d</string>
 </resources>

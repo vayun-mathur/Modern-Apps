@@ -5,12 +5,8 @@
     <string name="play_as">"Graj jako    "</string>
     <string name="color_white">Biały</string>
     <string name="color_black">Czarny</string>
-    <string name="difficulty_easy">Łatwy</string>
-    <string name="difficulty_medium">Średni</string>
-    <string name="difficulty_hard">Cięki</string>
     <string name="difficulty_master">Mistrz</string>
     <string name="start_game">Rozpocznij partię</string>
-    <string name="new_game">Rozpocznij nową partię</string>
     <string name="two_player_local">2-Graczy lokalnie</string>
     <string name="human_vs_ai">Człowiek vs AI</string>
     <string name="promote_pawn">Promuj pionka</string>

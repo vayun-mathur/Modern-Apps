@@ -90,7 +90,10 @@
     <!-- Learn: Feedback text when lesson succeeded. Declarative, celebratory -->
     <string name="learn_completed">Well done!</string>
     <!-- Learn: StageCompleteDialog title. %1$d = stage id e.g. 2. Noun phrase -->
-    <string name="learn_stage_complete_n">Stage <xliff:g id="stage_id" example="2">%1$d</xliff:g> complete</string>
+    <plurals name="learn_stage_complete_n">
+        <item quantity="one">Stage <xliff:g id="stage_id" example="2">%1$d</xliff:g> complete</item>
+        <item quantity="other">Stage <xliff:g id="stage_id" example="2">%1$d</xliff:g> complete</item>
+    </plurals>
     <!-- Learn: Score display in stage complete dialog. %1$d = score integer e.g. 350, includes apples, captures, bonus -->
     <string name="learn_your_score">Your score: <xliff:g id="score" example="350">%1$d</xliff:g></string>
     <!-- Learn: Button to go to next stage after completing. %1$s = next stage title e.g. Tactics. CTA -->

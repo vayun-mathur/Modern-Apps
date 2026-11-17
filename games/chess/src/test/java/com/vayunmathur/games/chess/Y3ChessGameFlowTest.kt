@@ -1,6 +1,8 @@
 package com.vayunmathur.games.chess
 
 import android.app.Application
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.chess.data.Position
@@ -45,7 +47,8 @@ class Y3ChessGameFlowTest {
         vm.onNewGame(GameMode.TwoPlayer)
         var newGame = 0; var center = 0
         rule.setContent {
-            ChessGameScreen(state = vm.uiState.value, actions = vm, onNewGame = { newGame++ }, onOpenGameCenter = { center++ })
+            val state by vm.uiState.collectAsState()
+            ChessGameScreen(state = state, actions = vm, onNewGame = { newGame++ }, onOpenGameCenter = { center++ })
         }
         play(vm, 'f' to 2, 'f' to 3)
         play(vm, 'e' to 7, 'e' to 5)
@@ -64,7 +67,8 @@ class Y3ChessGameFlowTest {
         val vm = ChessViewModel(app)
         vm.onNewGame(GameMode.TwoPlayer)
         rule.setContent {
-            ChessGameScreen(state = vm.uiState.value, actions = vm, onNewGame = {}, onOpenGameCenter = {})
+            val state by vm.uiState.collectAsState()
+            ChessGameScreen(state = state, actions = vm, onNewGame = {}, onOpenGameCenter = {})
         }
         // Clear king-side path then castle: e4 e5 Nf3 Nc6 Bc4 Nf6 O-O
         play(vm, 'e' to 2, 'e' to 4); play(vm, 'e' to 7, 'e' to 5)
