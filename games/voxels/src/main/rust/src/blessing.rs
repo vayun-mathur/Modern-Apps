@@ -191,3 +191,7 @@ mod tests {
         assert!(!a.attune(1065)); // a pickaxe
     }
 }
+
+#[cfg(test)]
+#[path = "blessing_tests.rs"]
+mod blessing_tests;

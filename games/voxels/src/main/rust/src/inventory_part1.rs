@@ -30,7 +30,11 @@ impl Inventory {
         if a.id == 0 { return; }
         if b.id == 0 {
             self.slots[to] = a; self.slots[from] = InvSlot::default();
-        } else if a.id == b.id {
+        } else if a.id == b.id && !crate::item::has_durability(a.id) {
+            // Only stackables merge. A durable item's count is its remaining
+            // durability, so merging two of them would fuse two tools into
+            // one slot with summed (possibly over-maximum) durability and
+            // silently delete the other; those swap below instead.
             let space = STACK - b.count;
             let mv = a.count.min(space);
             self.slots[to].count += mv;

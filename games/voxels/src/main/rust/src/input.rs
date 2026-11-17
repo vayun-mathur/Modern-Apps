@@ -74,3 +74,7 @@ mod tests {
         assert_eq!((b.look_dyaw, b.look_dpitch), (0.0, 0.0));
     }
 }
+
+#[cfg(test)]
+#[path = "input_tests.rs"]
+mod input_tests;

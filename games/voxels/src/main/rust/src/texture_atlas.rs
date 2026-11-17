@@ -127,3 +127,7 @@ pub fn load_entity_atlas_bin() -> Vec<u8> {
     let expect = (ENTITY_ATLAS_W * ENTITY_ATLAS_H * 4) as usize;
     if maybe.len() == expect { maybe.to_vec() } else { vec![255u8; expect] }
 }
+
+#[cfg(test)]
+#[path = "texture_atlas_tests.rs"]
+mod texture_atlas_tests;

@@ -284,3 +284,6 @@ impl Default for Inventory {
 
 include!("inventory_part1.rs");
 include!("inventory_part2.rs");
+#[cfg(test)]
+#[path = "inventory_tests.rs"]
+mod inventory_tests;

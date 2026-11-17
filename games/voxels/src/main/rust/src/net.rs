@@ -441,3 +441,6 @@ pub fn apply_inbound(state: &mut EngineState) {
 }
 
 include!("net_part1.rs");
+#[cfg(test)]
+#[path = "net_tests.rs"]
+mod net_tests;

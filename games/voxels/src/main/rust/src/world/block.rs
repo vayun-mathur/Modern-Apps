@@ -199,3 +199,6 @@ impl Boxes {
 
 include!("block_part1.rs");
 include!("block_part2.rs");
+#[cfg(test)]
+#[path = "block_tests.rs"]
+mod block_tests;

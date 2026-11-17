@@ -318,3 +318,6 @@ const DEEPSLATE_Y: i32 = 16;
 
 include!("generator_part1.rs");
 include!("generator_part2.rs");
+#[cfg(test)]
+#[path = "generator_tests.rs"]
+mod generator_tests;
