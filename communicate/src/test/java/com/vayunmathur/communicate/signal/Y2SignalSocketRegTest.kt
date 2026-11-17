@@ -224,11 +224,17 @@ class Y2SignalSocketRegTest {
     }
 
     private fun await(label: String, timeoutMs: Long = 12_000, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + timeoutMs
-        while (System.currentTimeMillis() < deadline) {
+        // Step-counted from the caller's budget, not wall-clock:
+        // Robolectric's substituted clock can run ahead of real time, so
+        // a currentTimeMillis deadline expired under CI load while the
+        // socket work it waited for (real threads) was still landing.
+        // Each step sleeps real time, so the budget is a real duration.
+        var steps = (timeoutMs / 20).toInt()
+        while (steps-- > 0) {
             if (cond()) return
             Thread.sleep(20)
         }
+        if (cond()) return
         error("timeout $label")
     }
 
