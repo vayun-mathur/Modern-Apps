@@ -109,6 +109,7 @@ class NllbTranslator(private val context: Context) : TranslationEngine {
         return handle
     }
 
+    /** Logging, Auto fallback, and load-retry constants for [NllbTranslator]. */
     companion object {
         private const val TAG = "NllbTranslator"
 

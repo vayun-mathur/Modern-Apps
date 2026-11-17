@@ -51,6 +51,7 @@ class TranslateRepository private constructor(context: Context) :
         if (overflow.isNotEmpty()) dao.deleteByIds(overflow)
     }
 
+    /** Singleton access and the history cap for [TranslateRepository]. */
     companion object {
         const val MAX_HISTORY = 200
 

@@ -176,6 +176,7 @@ class AndroidSpeechRecognizer(private val context: Context) : SpeechRecognizerEn
         else -> "Speech recognition error"
     }
 
+    /** Logging constants for the Android speech recognizer. */
     companion object {
         private const val TAG = "AndroidSpeech"
     }

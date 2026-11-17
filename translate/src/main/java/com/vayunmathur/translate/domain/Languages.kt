@@ -17,6 +17,7 @@ data class Language(
     val flores: String,
 )
 
+/** Catalogue of selectable languages for Translate. */
 object Languages {
     /**
      * Sentinel source option: let the engine detect the language. NLLB always needs

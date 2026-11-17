@@ -31,6 +31,7 @@ data class TranslationRecord(
     val createdAt: Long = System.currentTimeMillis(),
 )
 
+/** Room DAO for saved translation history and favourites. */
 @Dao
 interface TranslationDao {
     @Query("SELECT * FROM TranslationRecord ORDER BY isFavorite DESC, createdAt DESC")
@@ -69,6 +70,7 @@ interface TranslationDao {
     suspend fun deleteByIds(ids: List<Long>)
 }
 
+/** Room database holding saved translations. */
 @Database(entities = [TranslationRecord::class], version = 1, exportSchema = false)
 abstract class TranslateDatabase : RoomDatabase() {
     abstract fun translationDao(): TranslationDao

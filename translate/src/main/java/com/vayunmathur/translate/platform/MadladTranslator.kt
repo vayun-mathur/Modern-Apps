@@ -102,6 +102,7 @@ class MadladTranslator(private val context: Context) : TranslationEngine {
         return handle
     }
 
+    /** Logging and load-retry constants for [MadladTranslator]. */
     companion object {
         private const val TAG = "MadladTranslator"
 

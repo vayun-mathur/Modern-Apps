@@ -67,6 +67,7 @@ interface TextTranslateActions {
     fun openHistory() {}
     fun openLanguagePicker(forSource: Boolean) {}
 
+    /** Factories for [TextTranslateActions]. */
     companion object {
         val Noop: TextTranslateActions = object : TextTranslateActions {}
     }
@@ -90,6 +91,7 @@ interface LanguagePickerActions {
     fun setQuery(query: String) {}
     fun goBack() {}
 
+    /** Factories for [LanguagePickerActions]. */
     companion object {
         val Noop: LanguagePickerActions = object : LanguagePickerActions {}
     }
@@ -111,6 +113,7 @@ interface HistoryActions {
     fun reuse(record: TranslationRecord) {}
     fun goBack() {}
 
+    /** Factories for [HistoryActions]. */
     companion object {
         val Noop: HistoryActions = object : HistoryActions {}
     }

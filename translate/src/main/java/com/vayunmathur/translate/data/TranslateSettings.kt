@@ -54,6 +54,7 @@ class TranslateSettings(private val context: Context) {
         context.dataStore.edit { it[recentTargetKey] = updated.joinToString(",") }
     }
 
+    /** Defaults for [TranslateSettings]. */
     companion object {
         private const val DEFAULT_TARGET = "es"
     }

@@ -15,6 +15,7 @@ import com.vayunmathur.translate.platform.NllbModel
 import com.vayunmathur.translate.platform.SharedImageIntent
 import com.vayunmathur.translate.platform.TranslateViewModel
 
+/** Entry activity for Translate; handles share and process-text intents behind the model-download gate. */
 class MainActivity : MaActivity() {
     private val viewModel: TranslateViewModel by viewModels()
     private var initialText: String = ""

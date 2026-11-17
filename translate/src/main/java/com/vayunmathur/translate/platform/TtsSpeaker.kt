@@ -193,6 +193,7 @@ class TtsSpeaker(context: Context) {
         }
     }
 
+    /** Logging and utterance constants for [TtsSpeaker]. */
     companion object {
         private const val TAG = "TtsSpeaker"
         private const val UTTERANCE_ID = "translate_output"
