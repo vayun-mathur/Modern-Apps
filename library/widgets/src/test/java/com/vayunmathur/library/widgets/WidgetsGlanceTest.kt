@@ -21,10 +21,10 @@ class ComposingWidget : MaWidget<String>() {
     override suspend fun loadData(context: Context, id: GlanceId): String = "loaded-data"
     override fun previewData(context: Context): String = "preview-data"
     @Composable override fun Content(data: String) { Text(data) }
-    @Composable fun contentForTest(data: String) = Content(data)
+    @Composable fun ContentForTest(data: String) = Content(data)
     suspend fun loadForTest(c: Context, id: GlanceId) = loadData(c, id)
-    @Composable fun fallbackForTest() = FallbackContent()
-    @Composable fun previewForTest() = PreviewContent()
+    @Composable fun FallbackForTest() = FallbackContent()
+    @Composable fun PreviewForTest() = PreviewContent()
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -35,17 +35,17 @@ class WidgetsGlanceTest {
     @Test fun contentComposesLoadedDataText() = runGlanceAppWidgetUnitTest {
         setContext(context)
         setAppWidgetSize(DpSize(200.dp, 100.dp))
-        provideComposable { widget.contentForTest("loaded-data") }
+        provideComposable { widget.ContentForTest("loaded-data") }
         onNode(hasText("loaded-data")).assertExists()
     }
     @Test fun fallbackComposesDash() = runGlanceAppWidgetUnitTest {
         setContext(context)
-        provideComposable { widget.fallbackForTest() }
+        provideComposable { widget.FallbackForTest() }
         onNode(hasText("—")).assertExists()
     }
     @Test fun previewComposesPreviewData() = runGlanceAppWidgetUnitTest {
         setContext(context)
-        provideComposable { widget.previewForTest() }
+        provideComposable { widget.PreviewForTest() }
         onNode(hasText("preview-data")).assertExists()
     }
     @Test fun dynamicThemeGlanceComposes() = runGlanceAppWidgetUnitTest {
