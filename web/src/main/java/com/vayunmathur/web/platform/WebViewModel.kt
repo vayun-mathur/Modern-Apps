@@ -72,7 +72,10 @@ class WebViewModel(
     val originStateClearer: OriginStateClearer = WebViewCookieClearer,
 ) : AndroidViewModel(application) {
 
-    /** The application context, via [AndroidViewModel.getApplication]: a ViewModel outlives any Activity, so no Activity context is ever held. */
+    /**
+     * The application context, via [AndroidViewModel.getApplication]: a ViewModel outlives
+     * any Activity, so no Activity context is ever held.
+     */
     internal val context: Context get() = getApplication()
 
     /** Secondary constructor for callers (tests, the factory) that hold a plain [Context]. */
