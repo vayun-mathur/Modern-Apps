@@ -56,6 +56,14 @@ object TestFindFamilyRepository {
 suspend fun awaitFamilyCondition(timeoutMs: Long = 8_000, condition: suspend () -> Boolean): Boolean {
     val deadline = System.currentTimeMillis() + timeoutMs
     while (System.currentTimeMillis() < deadline) {
+        // The ViewModel's flows and compose derived states advance on the
+        // paused Robolectric main looper; without idling it here, a poll
+        // from a background thread can spin its whole budget while the
+        // work it waits for sits queued on that looper (the waypoint
+        // derived state in FindFamilyViewModelStatesRealTest).
+        runCatching {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        }
         if (condition()) return true
         kotlinx.coroutines.delay(25)
     }
