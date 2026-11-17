@@ -5,6 +5,11 @@
 use crate::pixel::*;
 
 pub fn gaussian_kernel(radius: i32) -> Vec<f32> {
+    if radius <= 0 {
+        // Degenerate kernel is the identity impulse; sigma would be 0
+        // (radius 0 -> NaN weights) or the size negative (radius < 0).
+        return vec![1.0];
+    }
     let size = (radius * 2 + 1) as usize;
     let mut kernel = vec![0f32; size];
     let sigma = radius as f32 / 3f32;

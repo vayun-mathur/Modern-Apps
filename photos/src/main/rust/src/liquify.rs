@@ -140,11 +140,15 @@ pub fn liquify(src: &[i32], w: usize, h: usize, tools: &[i32], params: &[f32]) -
                         disp_x[idx] += (px as f32 - cx) * op.strength * t * 0.5f32;
                         disp_y[idx] += (py as f32 - cy) * op.strength * t * 0.5f32;
                     }
-                    _ => {
-                        // Reconstruct (4)
+                    4 => {
+                        // Reconstruct
                         let factor = clamp_f(1f32 - op.strength * t, 0f32, 1f32);
                         disp_x[idx] *= factor;
                         disp_y[idx] *= factor;
+                    }
+                    _ => {
+                        // Unknown tool ordinal: no-op (never fall through
+                        // to Reconstruct, which would corrupt prior ops).
                     }
                 }
                 px += 1;

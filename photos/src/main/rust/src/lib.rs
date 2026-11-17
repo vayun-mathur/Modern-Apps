@@ -12,6 +12,19 @@ pub mod pixel;
 pub mod sharpen;
 pub mod stylize;
 
+#[cfg(test)]
+mod blur_tests;
+#[cfg(test)]
+mod inpaint_tests;
+#[cfg(test)]
+mod liquify_tests;
+#[cfg(test)]
+mod pixel_tests;
+#[cfg(test)]
+mod sharpen_tests;
+#[cfg(test)]
+mod stylize_tests;
+
 #[cfg(not(test))]
 mod jni_bindings {
     use crate::{blur, inpaint, liquify, sharpen, stylize};

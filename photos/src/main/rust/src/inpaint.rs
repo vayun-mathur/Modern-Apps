@@ -15,6 +15,18 @@ pub fn inpaint(
 ) -> Vec<i32> {
     let mut px = px_in.to_vec();
 
+    // Degenerate geometry / undersized mask: no hole information to act
+    // on. (Previously mask_w == 0 made the coordinate clamp panic with
+    // min > max, and a short mask indexed out of bounds.)
+    if w == 0
+        || h == 0
+        || mask_w == 0
+        || mask_h == 0
+        || hole_mask.len() < mask_w.saturating_mul(mask_h)
+    {
+        return px;
+    }
+
     let mut hole = vec![false; w * h];
     let mut hole_count: i64 = 0;
     let mut min_x = w as i32;
@@ -48,7 +60,15 @@ pub fn inpaint(
     }
 
     if hole_count > 20000 {
-        diffuse_fill(&mut px, w, h, &hole, min_x, min_y, max_x, max_y, passes);
+        // Expand the box by one pixel so the diffusion has a ring of
+        // known (non-hole) pixels as Dirichlet boundary values. With the
+        // tight hole bbox, a rectangular hole's box contains only hole
+        // pixels and Jacobi averaging could never import any colour.
+        let dx0 = (min_x - 1).max(0);
+        let dy0 = (min_y - 1).max(0);
+        let dx1 = (max_x + 1).min(w as i32 - 1);
+        let dy1 = (max_y + 1).min(h as i32 - 1);
+        diffuse_fill(&mut px, w, h, &hole, dx0, dy0, dx1, dy1, passes);
     } else {
         exemplar_fill(&mut px, w, h, &mut hole, min_x, min_y, max_x, max_y);
     }
