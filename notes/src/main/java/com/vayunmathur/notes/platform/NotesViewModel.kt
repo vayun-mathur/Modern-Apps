@@ -45,6 +45,7 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 
+/** ViewModel owning notes list, editor, import, and share state. */
 class NotesViewModel(
     application: Application,
     private val repository: NotesRepository,
@@ -193,6 +194,7 @@ class NotesViewModel(
         return Regex(Regex.escape(searchText), RegexOption.IGNORE_CASE).findAll(text).count()
     }
 
+    /** Share request carrying the exported markdown and its output URI. */
     data class NoteShare(val uri: Uri, val markdown: String)
 
     private val _shareRequests = MutableSharedFlow<NoteShare>(extraBufferCapacity = 1)
@@ -272,6 +274,7 @@ class NotesViewModel(
         _externalOpens.value = _externalOpens.value.filterNot { it == uri }
     }
 
+    /** Title and text read from an externally shared note file. */
     data class ExternalNoteContent(val title: String, val content: String)
 
     // Best-effort read of an external note: any failure mode means null per
@@ -319,6 +322,7 @@ class NotesViewModel(
         }
     }
 
+    /** Constants for NotesViewModel. */
     companion object {
         private const val TAG = "NotesViewModel"
         private const val SAVE_DEBOUNCE_MS = 300L

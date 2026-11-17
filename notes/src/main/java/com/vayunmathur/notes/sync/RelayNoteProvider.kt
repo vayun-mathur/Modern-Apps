@@ -52,6 +52,7 @@ import kotlinx.serialization.json.Json
  */
 class RelayNoteProvider : ContentProvider() {
 
+    /** Relay authority, permission, and column names for RelayNoteProvider. */
     companion object {
         const val AUTHORITY = "com.vayunmathur.notes.relay"
         const val PERMISSION = "com.vayunmathur.notes.permission.RELAY"

@@ -22,6 +22,7 @@ import kotlinx.serialization.json.Json
 sealed interface NoteBlock {
     val id: String
 
+    /** Text block holding markdown content. */
     @Serializable
     @SerialName("text")
     data class Text(

@@ -6,6 +6,7 @@ import com.vayunmathur.notes.data.NotesRepository
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 
+/** Assistant intent returning all notes as shared note DTOs. */
 class GetIntent: AssistantIntent<Unit, List<NoteData>>(Unit.serializer(), ListSerializer(NoteData.serializer())) {
 
     override suspend fun performCalculation(input: Unit): List<NoteData> {

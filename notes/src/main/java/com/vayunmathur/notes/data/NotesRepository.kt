@@ -6,6 +6,7 @@ import com.vayunmathur.notes.domain.withTagRenamed
 import com.vayunmathur.notes.domain.withoutTag
 import kotlinx.coroutines.flow.Flow
 
+/** Repository over NoteDatabase for notes and sync snapshots. */
 class NotesRepository private constructor(context: Context) :
     RoomRepository<NoteDatabase>(context, NoteDatabase::class, DB_NAME) {
 
@@ -111,6 +112,7 @@ class NotesRepository private constructor(context: Context) :
         return notes
     }
 
+    /** Process-wide singleton access to NotesRepository. */
     companion object {
         private const val LEGACY_DB_NAME = "passwords-db"
 

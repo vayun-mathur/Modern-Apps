@@ -37,6 +37,7 @@ interface NotesListActions {
     /** Removes [tag] from every note. Never deletes a note. */
     fun deleteTag(tag: String) {}
 
+    /** Holds the no-op NotesListActions implementation used by previews. */
     companion object {
         val Noop: NotesListActions = object : NotesListActions {}
     }
@@ -78,6 +79,7 @@ interface NoteActions {
     fun shareNote() {}
     fun deleteNote() {}
 
+    /** Holds the no-op NoteActions implementation used by previews. */
     companion object {
         val Noop: NoteActions = object : NoteActions {}
     }

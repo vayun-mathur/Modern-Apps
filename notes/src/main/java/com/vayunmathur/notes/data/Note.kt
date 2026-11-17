@@ -5,6 +5,7 @@ import androidx.room3.PrimaryKey
 import com.vayunmathur.library.util.ReorderableDatabaseItem
 import kotlinx.serialization.Serializable
 
+/** Persisted note row: title, plain-text content, and serialized body blocks. */
 @Serializable
 @Entity
 data class Note(

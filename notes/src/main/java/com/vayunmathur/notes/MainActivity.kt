@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 
+/** Entry activity that initialises the notes repository before showing navigation. */
 class MainActivity : MaActivity() {
     private lateinit var notesRepository: NotesRepository
     private val notesViewModel: NotesViewModel by viewModels {

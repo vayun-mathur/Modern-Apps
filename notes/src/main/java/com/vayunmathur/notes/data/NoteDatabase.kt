@@ -20,6 +20,7 @@ const val DB_NAME = "notes-db"
 fun noteDbConfigs(context: Context): List<Pair<String, String>> =
     listOf(DB_NAME to DatabaseHelper(context).getPassphrase())
 
+/** Room DAO for note queries, including sync and tombstone access. */
 @Dao
 abstract class NoteDao {
     @Query("SELECT * FROM Note WHERE deleted = 0")
@@ -66,6 +67,7 @@ abstract class NoteDao {
     abstract suspend fun upsertAllRaw(values: List<Note>)
 }
 
+/** Room DAO for relay sync baseline snapshots. */
 @Dao
 interface NoteSyncSnapshotDao {
     @Query("SELECT * FROM SyncSnapshot")
@@ -81,12 +83,14 @@ interface NoteSyncSnapshotDao {
     suspend fun deleteAll()
 }
 
+/** Room database holding notes and their sync snapshots. */
 @Database(entities = [Note::class, SyncSnapshot::class], version = 4, exportSchema = false)
 @ColumnTypeConverters(NoteConverters::class)
 abstract class NoteDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun syncSnapshotDao(): NoteSyncSnapshotDao
 
+    /** Migrations for NoteDatabase. */
     companion object : DatabaseMigrations {
         // v2 adds the nullable `blocks` column (JSON list of NoteBlock). Existing
         // rows keep blocks = NULL and are read as a single text block.

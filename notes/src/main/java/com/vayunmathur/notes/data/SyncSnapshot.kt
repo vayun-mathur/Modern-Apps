@@ -22,6 +22,7 @@ data class SyncSnapshot(
     val remoteModified: Long,
     val lastSyncedAt: Long,
 ) {
+    /** Kind constants for SyncSnapshot rows. */
     companion object {
         const val KIND_NOTE = "note"
     }
