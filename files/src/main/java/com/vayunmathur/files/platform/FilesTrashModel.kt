@@ -32,7 +32,8 @@ abstract class FilesTrashModel(application: Application) :
             if (trashable.isNotEmpty()) {
                 selectedPathsState.value = emptySet()
                 loadDirectory()
-                pendingTrashMessage = ctx.resources.getQuantityString(R.plurals.moved_to_trash, trashable.size, trashable.size)
+                pendingTrashMessage = ctx.resources
+                    .getQuantityString(R.plurals.moved_to_trash, trashable.size, trashable.size)
                 trashConsentRequestsFlow.emit(
                     trashPendingIntent(ctx, trashable.values.toList(), true)
                 )
