@@ -7,7 +7,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| create_sender_key_inner(&mut *env))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in createSenderKey"),
@@ -29,7 +29,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| process_sender_key_inner(&mut *env, skdm))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in processSenderKey"),
@@ -52,7 +52,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| encrypt_group_inner(&mut *env, state, plaintext))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in encryptGroup"),
@@ -75,7 +75,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| decrypt_group_inner(&mut *env, state, ciphertext))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in decryptGroup"),
@@ -133,7 +133,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_signal_e2e_RustSign
     env.with_env(|env| -> jni::errors::Result<jbyteArray> {
         match catch_unwind(AssertUnwindSafe(|| sealed_sender_encrypt_inner(&mut *env, plaintext, recipient_aci))) {
             Ok(v) => Ok(v),
-            Err(_) => { let _ = env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in sealedSenderEncrypt")); Ok(std::ptr::null_mut()) }
+            Err(_) => { env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in sealedSenderEncrypt")); Ok(std::ptr::null_mut()) }
         }
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
@@ -148,7 +148,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_signal_e2e_RustSign
     env.with_env(|env| -> jni::errors::Result<jbyteArray> {
         match catch_unwind(AssertUnwindSafe(|| sealed_sender_decrypt_inner(&mut *env, ciphertext))) {
             Ok(v) => Ok(v),
-            Err(_) => { let _ = env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in sealedSenderDecrypt")); Ok(std::ptr::null_mut()) }
+            Err(_) => { env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in sealedSenderDecrypt")); Ok(std::ptr::null_mut()) }
         }
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
@@ -166,7 +166,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
     env.with_env(|env| -> jni::errors::Result<jbyteArray> {
         match catch_unwind(AssertUnwindSafe(|| sealed_sender_encrypt_inner(&mut *env, plaintext, recipient_aci))) {
             Ok(v) => Ok(v),
-            Err(_) => { let _ = env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in sealedSenderEncrypt")); Ok(std::ptr::null_mut()) }
+            Err(_) => { env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in sealedSenderEncrypt")); Ok(std::ptr::null_mut()) }
         }
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
@@ -181,7 +181,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
     env.with_env(|env| -> jni::errors::Result<jbyteArray> {
         match catch_unwind(AssertUnwindSafe(|| sealed_sender_decrypt_inner(&mut *env, ciphertext))) {
             Ok(v) => Ok(v),
-            Err(_) => { let _ = env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in sealedSenderDecrypt")); Ok(std::ptr::null_mut()) }
+            Err(_) => { env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in sealedSenderDecrypt")); Ok(std::ptr::null_mut()) }
         }
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
@@ -213,7 +213,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_signal_e2e_RustSign
             process_prekey_bundle_inner(&mut *env, local_private, local_public, local_reg_id, reg_id, pre_key_id, pre_key_public, signed_pre_key_id, signed_pre_key_public, signed_pre_key_sig, identity_key)
         })) {
             Ok(v) => Ok(v),
-            Err(_) => { let _ = env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in RustSignalCrypto.processPreKeyBundle")); Ok(std::ptr::null_mut()) }
+            Err(_) => { env.exception_clear(); let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in RustSignalCrypto.processPreKeyBundle")); Ok(std::ptr::null_mut()) }
         }
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
@@ -230,10 +230,10 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_signal_e2e_RustSign
     env.with_env(|env| -> jni::errors::Result<jboolean> {
         match catch_unwind(AssertUnwindSafe(|| {
             let b = match bytes_in(&mut *env, &base_key) { Some(x) => x, None => { let _ = env.throw_new(jni_str!("java/lang/RuntimeException"),jni_str!("baseKey null")); return false; } };
-            if crate::signal::mark_kyber_pre_key_used(kyber_id, signed_ec_id, &b) { true } else { false }
+            crate::signal::mark_kyber_pre_key_used(kyber_id, signed_ec_id, &b)
         })) {
             Ok(v) => Ok(v),
-            Err(_) => { let _ = env.exception_clear(); Ok(false) }
+            Err(_) => { env.exception_clear(); Ok(false) }
         }
     })
     .resolve::<jni::errors::LogErrorAndDefault>()

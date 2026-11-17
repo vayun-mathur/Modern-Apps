@@ -172,7 +172,7 @@ fn sender_key_state_encrypt_decrypt_and_rejects_wrong_key_id() {
     assert_eq!(restored.key_id, own_state.key_id);
     assert!(SenderKeyState::deserialize(&[]).is_err());
     assert!(SenderKeyState::deserialize(&blob[..blob.len() / 2]).is_err());
-    let mut wrong_id = SenderKeyDistributionMessage {
+    let wrong_id = SenderKeyDistributionMessage {
         key_id: skdm.key_id ^ 1,
         iteration: skdm.iteration,
         chain_key: skdm.chain_key.clone(),

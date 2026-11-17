@@ -45,7 +45,7 @@ fn pair_out(env: &mut Env, a: &[u8], b: &[u8]) -> jobjectArray {
         Ok(x) => x,
         Err(_) => return std::ptr::null_mut(),
     };
-    if arr.set_element(&mut *env, 0, &ja).is_err() || arr.set_element(&mut *env, 1, &jb).is_err() {
+    if arr.set_element(&*env, 0, &ja).is_err() || arr.set_element(&*env, 1, &jb).is_err() {
         return std::ptr::null_mut();
     }
     arr.into_raw()
@@ -68,9 +68,9 @@ fn triple_out(env: &mut Env, a: &[u8], b: &[u8], c: &[u8]) -> jobjectArray {
         Ok(x) => x,
         Err(_) => return std::ptr::null_mut(),
     };
-    if arr.set_element(&mut *env, 0, &ja).is_err()
-        || arr.set_element(&mut *env, 1, &jb).is_err()
-        || arr.set_element(&mut *env, 2, &jc).is_err()
+    if arr.set_element(&*env, 0, &ja).is_err()
+        || arr.set_element(&*env, 1, &jb).is_err()
+        || arr.set_element(&*env, 2, &jc).is_err()
     {
         return std::ptr::null_mut();
     }
@@ -212,11 +212,7 @@ fn verify_inner<'a>(
         Ok(v) => v,
         Err(_) => return false,
     };
-    if crypto::verify(&pub32, &msg_b, &sig64) {
-        true
-    } else {
-        false
-    }
+    crypto::verify(&pub32, &msg_b, &sig64)
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -129,7 +129,7 @@ pub fn aes_cbc_encrypt(key: &[u8; 32], iv: &[u8; 16], plaintext: &[u8]) -> Vec<u
 }
 
 pub fn aes_cbc_decrypt(key: &[u8; 32], iv: &[u8; 16], ciphertext: &[u8]) -> Result<Vec<u8>> {
-    if ciphertext.is_empty() || !ciphertext.len().is_multiple_of(16) {
+    if ciphertext.is_empty() || ciphertext.len() % 16 != 0 {
         return Err(CryptoError("ciphertext is not a whole number of AES blocks"));
     }
     let cipher = Aes256::new(&Array::from(*key));

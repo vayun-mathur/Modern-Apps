@@ -244,7 +244,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| generate_keypair_inner(&mut *env))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in generateKeyPair"),
@@ -266,7 +266,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| public_from_private_inner(&mut *env, private))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in publicFromPrivate"),
@@ -289,7 +289,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| x25519_agreement_inner(&mut *env, private, public))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in x25519Agreement"),
@@ -312,7 +312,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| sign_inner(&mut *env, private, message))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in sign"));
                 Ok(std::ptr::null_mut())
             }
@@ -333,7 +333,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| verify_inner(&mut *env, public, message, signature))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 Ok(false)
             }
         }
@@ -374,7 +374,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         })) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in processPreKeyBundle"),
@@ -397,7 +397,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| encrypt_inner(&mut *env, session, plaintext))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in encrypt"));
                 Ok(std::ptr::null_mut())
             }
@@ -417,7 +417,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         match catch_unwind(AssertUnwindSafe(|| decrypt_message_inner(&mut *env, session, ciphertext))) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in decryptMessage"),
@@ -451,7 +451,7 @@ pub extern "system" fn Java_com_vayunmathur_communicate_data_whatsapp_e2e_RustWh
         })) {
             Ok(v) => Ok(v),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 let _ = env.throw_new(
                     jni_str!("java/lang/RuntimeException"),
                     jni_str!("Native panic in decryptPreKeyMessage"),

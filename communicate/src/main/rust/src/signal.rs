@@ -120,7 +120,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 static KYBER_REPLAY: Mutex<Option<KyberReplayState>> = Mutex::new(None);
 struct KyberReplayState {
-    used_one_time: HashSet<i32>,
     base_keys_seen: HashMap<(i32, i32), HashSet<Vec<u8>>>,
 }
 fn replay() -> std::sync::MutexGuard<'static, Option<KyberReplayState>> { KYBER_REPLAY.lock().unwrap() }
@@ -129,7 +128,7 @@ fn replay() -> std::sync::MutexGuard<'static, Option<KyberReplayState>> { KYBER_
 /// storage/traits.rs:129 mark_kyber_pre_key_used(kyberId, ecId, baseKey).
 pub fn mark_kyber_pre_key_used(kyber_id: i32, signed_ec_id: i32, base_key: &[u8]) -> bool {
     let mut g = replay();
-    if g.is_none() { *g = Some(KyberReplayState { used_one_time: HashSet::new(), base_keys_seen: HashMap::new() }); }
+    if g.is_none() { *g = Some(KyberReplayState { base_keys_seen: HashMap::new() }); }
     let s = g.as_mut().unwrap();
     // Last-resort vs one-time is not tracked in this stub — we treat negative kyber_id as one-time for demo
     // Real logic needs KyberPreKeyStore to know isLastResort; caller passes appropriate id.
