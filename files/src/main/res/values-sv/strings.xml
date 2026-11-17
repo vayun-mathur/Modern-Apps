@@ -94,4 +94,6 @@
     <string name="restored_n">Återställde <xliff:g id="count" example="3">%1$d</xliff:g> objekt</string>
     <string name="deleted_forever_n">Raderade <xliff:g id="count" example="3">%1$d</xliff:g> objekt permanent</string>
     <string name="trash_request_failed">Kunde inte öppna begäran om papperskorgen</string>
+    <string name="editor_load_failed">Kunde inte läsa denna fil så den kan inte redigeras här. Originalfilen har inte ändrats.</string>
+    <string name="editor_save_failed">Kunde inte spara dina ändringar. Filen på disken har inte uppdaterats.</string>
 </resources>
