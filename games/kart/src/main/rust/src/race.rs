@@ -327,6 +327,8 @@ fn grid_lane(i: usize, _grid: usize) -> f32 {
 }
 
 #[cfg(test)]
+mod race_tests;
+#[cfg(test)]
 mod tests {
     use super::*;
 

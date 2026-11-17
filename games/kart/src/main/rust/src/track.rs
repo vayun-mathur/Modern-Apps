@@ -111,7 +111,12 @@ pub fn point_at(s: f32) -> TrackPoint {
     }
 }
 
-/// Signed lateral offset in metres: negative is left of centre, positive right.
+/// Signed lateral offset in metres: positive is left of centre, negative
+/// right — i.e. along the point's normal (`(-tz, tx)`, see [`TrackPoint`]).
+/// Lane offsets everywhere (`KartBody::spawn`, item boxes, the mesh) are
+/// likewise `centre + normal * lane`, so `lateral` of a point placed at
+/// lane `L` is exactly `L`; the only production caller, [`on_track`], uses
+/// the absolute value.
 pub fn lateral(x: f32, z: f32, p: &TrackPoint) -> f32 {
     (x - p.x) * p.nx + (z - p.z) * p.nz
 }
@@ -146,6 +151,8 @@ pub fn wrap_angle(a: f32) -> f32 {
     v
 }
 
+#[cfg(test)]
+mod track_tests;
 #[cfg(test)]
 mod tests {
     use super::*;

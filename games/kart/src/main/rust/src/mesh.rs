@@ -286,6 +286,8 @@ pub fn build_shell_mesh(out: &mut Vec<KartVertex>, x: f32, z: f32, ticks: u64) {
 }
 
 #[cfg(test)]
+mod mesh_tests;
+#[cfg(test)]
 mod tests {
     use super::*;
 

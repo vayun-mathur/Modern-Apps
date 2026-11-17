@@ -85,7 +85,7 @@ pub fn deal_item(position: usize, kart_count: usize) -> HeldItem {
 /// One AI driver: pace wobble plus a steering lookahead.
 #[derive(Debug, Clone)]
 pub struct AiDriver {
-    /// 0.92..1.0 per-driver pace multiplier (mirrors the placeholder wobble).
+    /// 0.90..=0.98 per-driver pace multiplier (mirrors the placeholder wobble).
     pub wobble: f32,
     /// Current steering output -1..1, smoothed so AI karts don't jitter.
     pub steer: f32,
@@ -184,6 +184,8 @@ pub fn tick_shells(shells: &mut Vec<Shell>, karts: &[KartBody], dt: f32) -> Vec<
     hits
 }
 
+#[cfg(test)]
+mod items_tests;
 #[cfg(test)]
 mod tests {
     use super::*;

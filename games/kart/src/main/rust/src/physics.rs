@@ -16,7 +16,9 @@ pub const TOP_SPEED: f32 = 40.0;
 /// Seconds 0 → top speed at full throttle. Also the drag time constant:
 ///
 /// the tick integrates `speed += (accel - braking) * dt - speed * dt /
-/// ACCEL_TIME`, so sustained speed settles exactly at `TOP_SPEED * throttle`.
+/// ACCEL_TIME`, so sustained speed settles exactly at `TOP_SPEED * throttle`
+/// (at `TOP_SPEED * BOOST_MULT * throttle` while boosting: boost scales the
+/// thrust, not just the cap — see [`BOOST_MULT`]).
 /// An AI pace of 0.78 then genuinely runs at 78% (mirroring the placeholder's
 /// `AI_PACE`), and lifting off coasts down over a couple of seconds.
 pub const ACCEL_TIME: f32 = 2.2;
@@ -31,7 +33,11 @@ pub const DRIFT_KEEP: f32 = 0.88;
 pub const GRIP_SCRUB: f32 = 0.18;
 /// Seconds of continuous drift to earn a boost.
 pub const DRIFT_CHARGE_TIME: f32 = 1.2;
-/// Boost top-speed multiplier while the charge burns.
+/// Boost multiplier while the charge burns: scales both the top-speed cap
+/// and the engine thrust, so the accel/drag equilibrium rises to
+/// `TOP_SPEED * BOOST_MULT * throttle`. Scaling only the cap would grant
+/// ~nothing on a straight, where the unboosted equilibrium
+/// (`TOP_SPEED * throttle`) already sits below the boosted cap.
 pub const BOOST_MULT: f32 = 1.35;
 /// Seconds a drift boost burns.
 pub const BOOST_TIME: f32 = 1.6;
@@ -120,7 +126,8 @@ impl KartBody {
                     GRIP_SCRUB
                 };
             let mut top = TOP_SPEED * (1.0 - grip_loss);
-            if self.boost_left > 0.0 {
+            let boosting = self.boost_left > 0.0;
+            if boosting {
                 self.boost_left -= dt;
                 top *= BOOST_MULT;
             }
@@ -132,12 +139,18 @@ impl KartBody {
             if !track::on_track(self.x, self.z, &p) {
                 top *= track::OFF_TRACK_KEEP;
             }
-            let accel = TOP_SPEED / ACCEL_TIME * throttle;
+            // Boost scales thrust as well as the cap (`top` above), so the
+            // equilibrium below rises with it; otherwise a mushroom fired at
+            // full speed on a straight (exactly what the AI does) would add
+            // no speed at all. Unboosted thrust is unchanged.
+            let thrust_mult = if boosting { BOOST_MULT } else { 1.0 };
+            let accel = TOP_SPEED / ACCEL_TIME * throttle * thrust_mult;
             let braking = TOP_SPEED / BRAKE_TIME * brake;
             self.speed += (accel - braking) * dt;
             // Linear drag with time constant ACCEL_TIME: sustained speed
-            // settles at TOP * throttle, so an AI pace of 0.78 genuinely runs
-            // at 78% (mirroring the placeholder's AI_PACE), and coasting to a
+            // settles at TOP * throttle (TOP * BOOST_MULT * throttle while
+            // boosting), so an AI pace of 0.78 genuinely runs at 78%
+            // (mirroring the placeholder's AI_PACE), and coasting to a
             // standstill takes a couple of seconds rather than forever.
             self.speed -= self.speed * dt / ACCEL_TIME;
             self.speed = self.speed.clamp(0.0, top.max(0.0));
@@ -187,6 +200,8 @@ impl KartBody {
     }
 }
 
+#[cfg(test)]
+mod physics_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
