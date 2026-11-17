@@ -220,6 +220,10 @@ class FilesViewModelTest {
         assertFalse(File(base, "escaped.txt").exists(), "the new name must not escape the folder")
         vm.rename(itemOf("two.md"), "sub/nested.md")
         await { File(dirA, "nested.md").isFile && !File(dirA, "two.md").exists() }
+        // The rename lands on disk before the listing flow republishes, so
+        // wait until the listing itself shows the new name before looking
+        // the item up in it (under load the stale listing has no nested.md).
+        await { vm.entries.value.second.any { it.name == "nested.md" } }
         assertFalse(
             File(dirA, "sub/nested.md").exists(),
             "the new name must not move into a subfolder",
