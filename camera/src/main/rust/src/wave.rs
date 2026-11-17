@@ -55,3 +55,7 @@ pub fn wave_correct_horizontal(cams: &mut [CameraParams]) {
         c.r = r_wave * c.r;
     }
 }
+
+#[cfg(test)]
+#[path = "wave_tests.rs"]
+mod wave_tests;

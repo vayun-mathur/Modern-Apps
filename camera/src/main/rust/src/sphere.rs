@@ -359,3 +359,7 @@ mod sphere_host_tests {
         assert!((y - 240.0).abs() < 1e-6, "y {y}");
     }
 }
+
+#[cfg(test)]
+#[path = "sphere_tests.rs"]
+mod sphere_tests;

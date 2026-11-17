@@ -439,3 +439,7 @@ fn resize_gain(src: &[f32], sw: usize, sh: usize, dw: usize, dh: usize) -> Vec<f
     }
     out
 }
+
+#[cfg(test)]
+#[path = "stitch_tests.rs"]
+mod stitch_tests;

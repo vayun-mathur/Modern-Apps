@@ -150,28 +150,22 @@ pub fn multiband_blend(tiles: &[WarpedTile], masks: &[Vec<u8>], gain_maps: &[Vec
                     big_img.data[d_idx3 + 2] = base_img.data[s_idx3 + 2];
                     big_weight.data[d_idx1] = base_weight.data[sy as usize * tw0 + sx as usize];
                 } else {
-                    // Image: BORDER_REFLECT_101
-                    if sx >= 0 && sx < tw0 as isize && sy >= 0 && sy < th0 as isize {
-                        // shouldn't happen – already handled
-                    } else if sx >= -1 && sx < tw0 as isize + 1 && sy >= -1 && sy < th0 as isize + 1 {
-                        // try to reflect from inside where we can get pixel
-                        // For simplicity, if source out of bounds, reflect index into base_img if possible
-                        // Use reflect_101 for both axes if the coordinate is outside base but not too far
-                        // We'll only reflect when the coordinate is outside but weight would be zero anyway for constant border.
-                        // For image we reflect, for weight we keep 0.
+                    // Image: BORDER_REFLECT_101 over the WHOLE gap (as
+                    // OpenCV copyMakeBorder does). Reflecting only a 1px
+                    // ring and leaving the rest black put a 120->0 step
+                    // just outside each tile; pyr_down blur spread it
+                    // into coarse Laplacian bands inside the tile, so a
+                    // uniform overlap reconstructed at 98..135 instead
+                    // of 120. reflect_101 handles far indices. Weight
+                    // stays 0 (BORDER_CONSTANT).
+                    if tw0 > 0 && th0 > 0 {
                         let rx = reflect_101(sx, tw0);
                         let ry = reflect_101(sy, th0);
-                        // Only reflect if original request was within expanded but not inside – the reflected pixel exists
-                        if rx < tw0 && ry < th0 {
-                            let s_idx3 = (ry * tw0 + rx) * 3;
-                            big_img.data[d_idx3] = base_img.data[s_idx3];
-                            big_img.data[d_idx3 + 1] = base_img.data[s_idx3 + 1];
-                            big_img.data[d_idx3 + 2] = base_img.data[s_idx3 + 2];
-                        }
-                    } else {
-                        // Far outside gap, leave image as 0, weight 0 (still okay)
+                        let s_idx3 = (ry * tw0 + rx) * 3;
+                        big_img.data[d_idx3] = base_img.data[s_idx3];
+                        big_img.data[d_idx3 + 1] = base_img.data[s_idx3 + 1];
+                        big_img.data[d_idx3 + 2] = base_img.data[s_idx3 + 2];
                     }
-                    // weight stays 0 (BORDER_CONSTANT)
                 }
             }
         }

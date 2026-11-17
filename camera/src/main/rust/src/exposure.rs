@@ -312,3 +312,7 @@ mod exposure_host_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "exposure_tests.rs"]
+mod exposure_tests;

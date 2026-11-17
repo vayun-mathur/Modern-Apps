@@ -198,3 +198,7 @@ pub fn biggest_component(n: usize, matches: &[MatchInfo], conf_thresh: f64) -> V
     kept.sort_unstable();
     kept
 }
+
+#[cfg(test)]
+#[path = "matching_tests.rs"]
+mod matching_tests;

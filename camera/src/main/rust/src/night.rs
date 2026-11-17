@@ -161,3 +161,7 @@ pub fn align_and_merge(frames: &[Rgba]) -> Option<Rgba> {
     }
     Some(out)
 }
+
+#[cfg(test)]
+#[path = "night_tests.rs"]
+mod night_tests;

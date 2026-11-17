@@ -445,3 +445,7 @@ impl MaxFlow {
         side
     }
 }
+
+#[cfg(test)]
+#[path = "seam_tests.rs"]
+mod seam_tests;

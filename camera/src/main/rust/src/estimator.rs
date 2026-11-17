@@ -78,3 +78,7 @@ pub fn estimate_cameras(n: usize, w: usize, h: usize, matches: &[MatchInfo]) -> 
     }
     cams
 }
+
+#[cfg(test)]
+#[path = "estimator_tests.rs"]
+mod estimator_tests;

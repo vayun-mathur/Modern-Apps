@@ -196,3 +196,7 @@ pub fn bundle_adjust(cams: &mut Vec<CameraParams>, matches: &[MatchInfo]) {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "bundle_tests.rs"]
+mod bundle_tests;

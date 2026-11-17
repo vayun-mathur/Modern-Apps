@@ -12,12 +12,14 @@ use crate::imgbuf::Rgba;
 use crate::sphere::WarpedTile;
 
 /// Separable box blur of a float plane (running-sum, radius r).
+/// Each 1D pass normalises by the actual number of samples in its
+/// (possibly truncated) window, so a constant plane is preserved
+/// everywhere including borders/corners.
 fn box_blur(src: &[f32], w: usize, h: usize, r: usize) -> Vec<f32> {
-    if r == 0 {
+    if r == 0 || w == 0 || h == 0 {
         return src.to_vec();
     }
     let mut tmp = vec![0f32; w * h];
-    let norm = 1.0 / (2 * r + 1) as f32;
     // horizontal
     for y in 0..h {
         let row = y * w;
@@ -26,7 +28,9 @@ fn box_blur(src: &[f32], w: usize, h: usize, r: usize) -> Vec<f32> {
             sum += src[row + x];
         }
         for x in 0..w {
-            tmp[row + x] = sum * norm;
+            let lo = x.saturating_sub(r);
+            let hi = (x + r).min(w - 1);
+            tmp[row + x] = sum / (hi - lo + 1) as f32;
             let add = x + r + 1;
             let sub = x as isize - r as isize;
             if add < w {
@@ -45,7 +49,9 @@ fn box_blur(src: &[f32], w: usize, h: usize, r: usize) -> Vec<f32> {
             sum += tmp[y * w + x];
         }
         for y in 0..h {
-            out[y * w + x] = sum * norm;
+            let lo = y.saturating_sub(r);
+            let hi = (y + r).min(h - 1);
+            out[y * w + x] = sum / (hi - lo + 1) as f32;
             let add = y + r + 1;
             let sub = y as isize - r as isize;
             if add < h {
@@ -208,36 +214,93 @@ fn pyr_down_1ch(src: &WMap) -> WMap {
 }
 
 fn pyr_up_3ch(src: &Img3, dst_w: usize, dst_h: usize) -> Img3 {
-    // Bilinear upsample to dst size – approximates OpenCV pyrUp Gaussian *4.
-    // For exact reconstruction we use bilinear; good enough for visual parity.
+    // Proper Gaussian expansion (OpenCV pyrUp): zero-insert src at even
+    // coordinates, then separable blur with [1 4 6 4 1]/8 per axis (the
+    // /16 pyrDown kernel x2 gain per axis, x4 in 2D). Unlike the previous
+    // bilinear upsample this is the expansion matching pyr_down_3ch, so
+    // Laplacian reconstruction is (near-)energy-preserving: a constant
+    // signal down-then-up (and a weighted blend of identical constants)
+    // reconstructs to that constant.
     if src.w == 0 || src.h == 0 || dst_w == 0 || dst_h == 0 {
         return Img3 { w: dst_w, h: dst_h, data: vec![0f32; dst_w * dst_h * 3] };
     }
+    let (ew, eh) = (src.w * 2, src.h * 2);
+    let mut expanded = vec![0f32; ew * eh * 3];
+    for y in 0..src.h {
+        for x in 0..src.w {
+            let s = (y * src.w + x) * 3;
+            let d = ((2 * y) * ew + 2 * x) * 3;
+            expanded[d] = src.data[s];
+            expanded[d + 1] = src.data[s + 1];
+            expanded[d + 2] = src.data[s + 2];
+        }
+    }
+    let kernel = [1.0f32, 4.0, 6.0, 4.0, 1.0];
+    let mut tmp = vec![0f32; ew * eh * 3];
+    for y in 0..eh {
+        for x in 0..ew {
+            let mut acc = [0f32; 3];
+            for k in -2isize..=2 {
+                let xs = reflect_101(x as isize + k, ew);
+                let coeff = kernel[(k + 2) as usize] / 8.0;
+                let b = (y * ew + xs) * 3;
+                acc[0] += expanded[b] * coeff;
+                acc[1] += expanded[b + 1] * coeff;
+                acc[2] += expanded[b + 2] * coeff;
+            }
+            let d = (y * ew + x) * 3;
+            tmp[d] = acc[0];
+            tmp[d + 1] = acc[1];
+            tmp[d + 2] = acc[2];
+        }
+    }
+    let mut up = vec![0f32; ew * eh * 3];
+    for y in 0..eh {
+        for x in 0..ew {
+            let mut acc = [0f32; 3];
+            for k in -2isize..=2 {
+                let ys = reflect_101(y as isize + k, eh);
+                let coeff = kernel[(k + 2) as usize] / 8.0;
+                let b = (ys * ew + x) * 3;
+                acc[0] += tmp[b] * coeff;
+                acc[1] += tmp[b + 1] * coeff;
+                acc[2] += tmp[b + 2] * coeff;
+            }
+            let d = (y * ew + x) * 3;
+            up[d] = acc[0];
+            up[d + 1] = acc[1];
+            up[d + 2] = acc[2];
+        }
+    }
+    if dst_w <= ew && dst_h <= eh {
+        // Pyramid case: dst is 2*src or 2*src-1 per axis – crop top-left.
+        if dst_w == ew && dst_h == eh {
+            return Img3 { w: ew, h: eh, data: up };
+        }
+        let mut data = vec![0f32; dst_w * dst_h * 3];
+        for y in 0..dst_h {
+            let s = y * ew * 3;
+            let d = y * dst_w * 3;
+            data[d..d + dst_w * 3].copy_from_slice(&up[s..s + dst_w * 3]);
+        }
+        return Img3 { w: dst_w, h: dst_h, data };
+    }
+    // Non-pyramid size (>2x): bilinear-resize the Gaussian expansion.
     let mut data = vec![0f32; dst_w * dst_h * 3];
-    let src_w = src.w as f32;
-    let src_h = src.h as f32;
-    let dw = dst_w as f32;
-    let dh = dst_h as f32;
     for y in 0..dst_h {
-        let fy = if dst_h == 1 { 0.0 } else { (y as f32 + 0.5) * src_h / dh - 0.5 };
-        let fy = fy.clamp(0.0, src_h - 1.0);
+        let fy = ((y as f32 + 0.5) * eh as f32 / dst_h as f32 - 0.5).clamp(0.0, (eh - 1) as f32);
         let y0 = fy.floor() as usize;
-        let y1 = (y0 + 1).min(src.h - 1);
+        let y1 = (y0 + 1).min(eh - 1);
         let ay = fy - y0 as f32;
         for x in 0..dst_w {
-            let fx = if dst_w == 1 { 0.0 } else { (x as f32 + 0.5) * src_w / dw - 0.5 };
-            let fx = fx.clamp(0.0, src_w - 1.0);
+            let fx = ((x as f32 + 0.5) * ew as f32 / dst_w as f32 - 0.5).clamp(0.0, (ew - 1) as f32);
             let x0 = fx.floor() as usize;
-            let x1 = (x0 + 1).min(src.w - 1);
+            let x1 = (x0 + 1).min(ew - 1);
             let ax = fx - x0 as f32;
-            let s00 = (y0 * src.w + x0) * 3;
-            let s01 = (y0 * src.w + x1) * 3;
-            let s10 = (y1 * src.w + x0) * 3;
-            let s11 = (y1 * src.w + x1) * 3;
             let d = (y * dst_w + x) * 3;
             for c in 0..3 {
-                let top = src.data[s00 + c] * (1.0 - ax) + src.data[s01 + c] * ax;
-                let bot = src.data[s10 + c] * (1.0 - ax) + src.data[s11 + c] * ax;
+                let top = up[(y0 * ew + x0) * 3 + c] * (1.0 - ax) + up[(y0 * ew + x1) * 3 + c] * ax;
+                let bot = up[(y1 * ew + x0) * 3 + c] * (1.0 - ax) + up[(y1 * ew + x1) * 3 + c] * ax;
                 data[d + c] = top * (1.0 - ay) + bot * ay;
             }
         }
@@ -332,3 +395,7 @@ fn feather_blend(tiles: &[WarpedTile], masks: &[Vec<u8>], gain_maps: &[Vec<f32>]
 // ---------------------------------------------------------------------------
 
 include!("blend_part1.rs");
+
+#[cfg(test)]
+#[path = "blend_tests.rs"]
+mod blend_tests;
