@@ -41,16 +41,26 @@ class GalCredentialRotationTest {
 
     @Test
     fun `rotated leaf expires roughly a year out, far past the 2026-12-09 shipped expiry`() {
-        val now = System.currentTimeMillis()
-        val days = GalCredential.daysRemaining(fixture("client-cert.pem"), now)
+        // Measure from the leaf's own notBefore, not the wall clock: the
+        // fixture's validity window is fixed (minted 2026-09-11 for ~1 year),
+        // so a now-relative bound decays by a day every day and fails a year
+        // after minting even though nothing about the rotation changed.
+        val rotatedPem = fixture("client-cert.pem")
+        val rotatedLeaf = CertificateFactory.getInstance("X.509").generateCertificate(
+            rotatedPem.byteInputStream(),
+        ) as X509Certificate
+        val issuedAt = rotatedLeaf.notBefore.time
+        val days = GalCredential.daysRemaining(rotatedPem, issuedAt)
         assertTrue(
             days in 300L..400L,
             "rotated leaf should be good for ~1 year, saw $days days",
         )
-        val shippedDays = GalCredential.daysRemaining(
-            File("src/main/assets/gal", "client-cert.pem").readText(),
-            now,
+        val shippedPem = File("src/main/assets/gal", "client-cert.pem").readText()
+        assertTrue(
+            GalCredential.notAfterMillis(rotatedPem) > GalCredential.notAfterMillis(shippedPem),
+            "rotated leaf must expire after the shipped 2026-12-09 leaf",
         )
+        val shippedDays = GalCredential.daysRemaining(shippedPem, issuedAt)
         assertTrue(
             shippedDays < days,
             "shipped leaf ($shippedDays days) must be nearer expiry than the rotation",
