@@ -15,17 +15,29 @@
     <string name="share_channel_requests_desc">A nearby device wants to send you files</string>
     <string name="share_channel_transfers_name">Transfers</string>
     <string name="share_channel_transfers_desc">Progress and results of nearby file transfers</string>
-    <string name="share_wants_to_send">Wants to send %1$d file(s)</string>
+    <plurals name="share_wants_to_send">
+        <item quantity="one">Wants to send %1$d file</item>
+        <item quantity="other">Wants to send %1$d files</item>
+    </plurals>
     <string name="share_wants_to_send_unknown">Wants to send you something</string>
     <string name="share_accept">Accept</string>
     <string name="share_decline">Decline</string>
     <string name="share_receiving">Receiving…</string>
     <string name="share_progress_kb">%1$d KB / %2$d KB</string>
-    <string name="share_received_count">Received %1$d file(s)</string>
+    <plurals name="share_received_count">
+        <item quantity="one">Received %1$d file</item>
+        <item quantity="other">Received %1$d files</item>
+    </plurals>
     <string name="share_transfer_failed">Transfer failed</string>
     <string name="share_received_chooser">Share received file</string>
-    <string name="share_save_succeeded">Saved %1$d file(s)</string>
-    <string name="share_save_failed">Could not save %1$d file(s)</string>
+    <plurals name="share_save_succeeded">
+        <item quantity="one">Saved %1$d file</item>
+        <item quantity="other">Saved %1$d files</item>
+    </plurals>
+    <plurals name="share_save_failed">
+        <item quantity="one">Could not save %1$d file</item>
+        <item quantity="other">Could not save %1$d files</item>
+    </plurals>
 
     <!-- Quick Settings tile -->
     <string name="share_tile_label">Nearby Share</string>
@@ -38,10 +50,16 @@
     <string name="share_scanning">Scanning for nearby devices…</string>
     <string name="share_no_devices">No devices found. Tap Scan while the other device is visible.</string>
     <string name="share_no_files_selected">No files selected</string>
-    <string name="share_files_selected">%1$d file(s) selected</string>
+    <plurals name="share_files_selected">
+        <item quantity="one">%1$d file selected</item>
+        <item quantity="other">%1$d files selected</item>
+    </plurals>
     <string name="share_pick_files">Pick files</string>
     <string name="share_add_files">Add files</string>
-    <string name="share_select_device">Select a device above to send %1$d file(s).</string>
+    <plurals name="share_select_device">
+        <item quantity="one">Select a device above to send %1$d file.</item>
+        <item quantity="other">Select a device above to send %1$d files.</item>
+    </plurals>
     <string name="share_send_tip">Tip: share from any app via the system share sheet — Share will appear as a target. Or pick files here and then Scan.</string>
     <string name="share_source_wifi">Wi-Fi</string>
     <string name="share_source_bluetooth">Bluetooth</string>

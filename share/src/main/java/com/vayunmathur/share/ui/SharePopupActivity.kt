@@ -1,4 +1,4 @@
-package com.vayunmathur.share
+package com.vayunmathur.share.ui
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,7 +8,6 @@ import androidx.activity.viewModels
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.share.platform.ShareViewModel
 import com.vayunmathur.share.platform.ShareViewModelFactory
-import com.vayunmathur.share.ui.SharePopupSheet
 
 /**
  * The system share sheet's target: a half-height bottom sheet over whatever app shared the files.

@@ -26,7 +26,8 @@ object SharePermissions {
     val BLE_SCAN = Manifest.permission.BLUETOOTH_SCAN
 
     /** Wi-Fi Direct / Hotspot transport (Android 13+ shows a dedicated dialog). */
-    val NEARBY_WIFI = Manifest.permission.NEARBY_WIFI_DEVICES
+    val NEARBY_WIFI =
+        if (Build.VERSION.SDK_INT >= 33) Manifest.permission.NEARBY_WIFI_DEVICES else null
 
     /**
      * Local Network Protections (Android 16+). Gates mDNS *and* every LAN socket, so
@@ -35,7 +36,7 @@ object SharePermissions {
      * over WIFI_LAN — the only medium it can accept a transfer on.
      */
     val LOCAL_NETWORK =
-        if (Build.VERSION.SDK_INT >= 36) Manifest.permission.ACCESS_LOCAL_NETWORK else null
+        if (Build.VERSION.SDK_INT >= 37) Manifest.permission.ACCESS_LOCAL_NETWORK else null
 
     /** Foreground-service and transfer notifications (Android 13+). */
     val POST_NOTIFICATIONS = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.POST_NOTIFICATIONS else null
@@ -43,7 +44,7 @@ object SharePermissions {
     /** Scanning for peers to send to. Advertising is not needed to send. */
     fun sendFlowPermissions(): Array<String> = buildList {
         add(BLE_SCAN)
-        add(NEARBY_WIFI)
+        NEARBY_WIFI?.let { add(it) }
         LOCAL_NETWORK?.let { add(it) }
         POST_NOTIFICATIONS?.let { add(it) }
     }.toTypedArray()
@@ -51,7 +52,7 @@ object SharePermissions {
     /** Advertising so peers can find us, plus the notifications that are the receive UI. */
     fun receiveFlowPermissions(): Array<String> = buildList {
         add(BLE_ADVERTISE)
-        add(NEARBY_WIFI)
+        NEARBY_WIFI?.let { add(it) }
         LOCAL_NETWORK?.let { add(it) }
         POST_NOTIFICATIONS?.let { add(it) }
     }.toTypedArray()
@@ -59,7 +60,7 @@ object SharePermissions {
     fun allSharePermissions(): Array<String> = buildList {
         add(BLE_ADVERTISE)
         add(BLE_SCAN)
-        add(NEARBY_WIFI)
+        NEARBY_WIFI?.let { add(it) }
         LOCAL_NETWORK?.let { add(it) }
         POST_NOTIFICATIONS?.let { add(it) }
     }.toTypedArray()

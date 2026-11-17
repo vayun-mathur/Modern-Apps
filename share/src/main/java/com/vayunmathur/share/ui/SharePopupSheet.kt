@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.Card
@@ -62,76 +63,15 @@ fun SharePopupSheet(viewModel: ShareViewModel, onDismiss: () -> Unit) {
     )
 }
 
-@Composable
-fun SharePopupContent(
-    uiState: SendUiState,
-    actions: ShareActions,
-    permissionsDenied: Boolean,
-    onDismiss: () -> Unit,
-) {
-    // skipPartiallyExpanded: the sheet is already sized to half the screen, so a partial state
-    // would only offer a second, smaller resting place nobody asked for.
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .height(LocalConfiguration.current.screenHeightDp.dp / 2)
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                stringResource(R.string.share_popup_title),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            OutgoingFilesSummary(uiState.outgoingDisplayNames, uiState.outgoingUris.size)
-            val connection = uiState.activeConnection
-            when {
-                // A live transfer replaces the device list: the choice has been made, and the
-                // sheet stays up until dismissed so the result is readable.
-                connection != null -> TransferCardHost(
-                    conn = connection,
-                    onDisconnect = { actions.disconnect(connection) },
-                )
-                permissionsDenied -> Text(
-                    stringResource(R.string.share_popup_permission_needed),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                else -> {
-                    if (uiState.isScanning) ScanningRow()
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(uiState.discoveredDevices, key = { it.endpointId }) { device ->
-                            DeviceRow(device = device, onTap = { actions.connectToDevice(device) })
-                        }
-                        if (uiState.discoveredDevices.isEmpty()) {
-                            item {
-                                Text(
-                                    stringResource(R.string.share_popup_no_devices),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 /** Read-only: what is being sent was decided in the app the user shared from. */
 @Composable
-private fun OutgoingFilesSummary(displayNames: List<String>, count: Int) {
+internal fun OutgoingFilesSummary(displayNames: List<String>, count: Int) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 if (count == 0) stringResource(R.string.share_no_files_selected)
-                else stringResource(R.string.share_files_selected, count),
+                else pluralStringResource(R.plurals.share_files_selected, count, count),
                 style = MaterialTheme.typography.titleSmall,
             )
             displayNames.forEach { name ->
@@ -146,7 +86,7 @@ private fun OutgoingFilesSummary(displayNames: List<String>, count: Int) {
 }
 
 @Composable
-private fun ScanningRow() {
+internal fun ScanningRow() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         CircularProgressIndicator(modifier = Modifier.padding(end = 12.dp))
         Text(

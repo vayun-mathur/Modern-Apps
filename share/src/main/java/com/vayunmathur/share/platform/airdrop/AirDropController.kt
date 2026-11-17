@@ -1,6 +1,8 @@
 package com.vayunmathur.share.platform.airdrop
 
 import android.content.Context
+import android.os.storage.StorageManager
+import java.io.IOException
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.share.domain.airdrop.AirDropMessages
 import com.vayunmathur.share.network.airdrop.AirDropHttpServer
@@ -44,7 +46,17 @@ class AirDropController(
     val receiver = AirDropReceiver(
         store = store,
         localName = localName,
-        freeBytes = { app.filesDir.usableSpace },
+        freeBytes = {
+            // getAllocatableBytes counts clearable caches as free; usableSpace would
+            // under-report and reject transfers the device could serve.
+            try {
+                val sm = app.getSystemService(StorageManager::class.java)
+                if (sm != null) sm.getAllocatableBytes(sm.getUuidForPath(app.filesDir))
+                else app.filesDir.usableSpace
+            } catch (_: IOException) {
+                app.filesDir.usableSpace
+            }
+        },
         onTransfer = { remote, started ->
             val link = selection?.link ?: return@AirDropReceiver
             if (started) link.onTransferStarted(remote) else link.onTransferEnded(remote)

@@ -93,7 +93,7 @@
         </activity>
 
         <activity
-            android:name=".SharePopupActivity"
+            android:name=".ui.SharePopupActivity"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:theme="@style/Theme.SharePopup">

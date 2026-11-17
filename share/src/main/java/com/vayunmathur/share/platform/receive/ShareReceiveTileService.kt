@@ -1,5 +1,6 @@
 package com.vayunmathur.share.platform.receive
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
@@ -66,6 +67,8 @@ class ShareReceiveTileService : TileService() {
         }
     }
 
+    // PendingIntent overload exists only on API 34+; the Intent overload is the 31-33 fallback.
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     private fun openApp() {
         val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

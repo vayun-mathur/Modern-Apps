@@ -8,7 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.share.MainActivity
-import com.vayunmathur.share.SharePopupActivity
+import com.vayunmathur.share.ui.SharePopupActivity
 import com.vayunmathur.share.platform.SendUiState
 import com.vayunmathur.share.platform.ShareActions
 import com.vayunmathur.share.platform.discovery.NearbyDevice

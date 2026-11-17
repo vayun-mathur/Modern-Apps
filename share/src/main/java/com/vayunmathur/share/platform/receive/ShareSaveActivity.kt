@@ -88,8 +88,12 @@ class ShareSaveActivity : ComponentActivity() {
             // trampoline has no UI and may well be the only thing the user has open.
             Toast.makeText(
                 this,
-                if (saved == targets.size) getString(R.string.share_save_succeeded, saved)
-                else getString(R.string.share_save_failed, targets.size - saved),
+                if (saved == targets.size) {
+                    resources.getQuantityString(R.plurals.share_save_succeeded, saved, saved)
+                } else {
+                    val failed = targets.size - saved
+                    resources.getQuantityString(R.plurals.share_save_failed, failed, failed)
+                },
                 Toast.LENGTH_SHORT,
             ).show()
             finish()

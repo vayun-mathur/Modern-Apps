@@ -7,7 +7,7 @@ import android.os.Binder
 import android.os.Parcel
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.share.Route
-import com.vayunmathur.share.SharePopupActivity
+import com.vayunmathur.share.ui.SharePopupActivity
 import com.vayunmathur.share.domain.airdrop.BinaryPlist
 import com.vayunmathur.share.network.transport.TcpTransport
 import com.vayunmathur.share.platform.airdrop.link.AirDropLinkSelector

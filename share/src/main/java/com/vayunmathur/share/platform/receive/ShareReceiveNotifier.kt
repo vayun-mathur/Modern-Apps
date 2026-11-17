@@ -268,7 +268,7 @@ class ShareReceiveNotifier(
         // no file metadata at all, so say something true instead of promising no files.
         val fileCount = conn.pendingFiles.value.size
         val text = if (fileCount > 0) {
-            appContext.getString(R.string.share_wants_to_send, fileCount)
+            appContext.resources.getQuantityString(R.plurals.share_wants_to_send, fileCount, fileCount)
         } else {
             appContext.getString(R.string.share_wants_to_send_unknown)
         }
@@ -334,7 +334,7 @@ class ShareReceiveNotifier(
     ): android.app.Notification {
         val builder = base(CHANNEL_TRANSFERS)
             .setContentTitle(conn.displayName)
-            .setContentText(appContext.getString(R.string.share_received_count, received.size))
+            .setContentText(appContext.resources.getQuantityString(R.plurals.share_received_count, received.size, received.size))
             .setAutoCancel(true)
         previewBitmap(received)?.let { preview ->
             // `bigLargeIcon(null)` so expanding drops the thumbnail instead of showing the same

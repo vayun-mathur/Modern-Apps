@@ -12,26 +12,44 @@
     <string name="share_channel_requests_desc">Lähikonnas asuv seade soovib sulle faile edastada</string>
     <string name="share_channel_transfers_name">Failiedastused</string>
     <string name="share_channel_transfers_desc">Lähikonnast tehtud failiedastuste edenemine ja tulemused</string>
-    <string name="share_wants_to_send">Soovib sulle saata %1$d faili</string>
+    <plurals name="share_wants_to_send">
+        <item quantity="one">Soovib sulle saata %1$d fail</item>
+        <item quantity="other">Soovib sulle saata %1$d faili</item>
+    </plurals>
     <string name="share_wants_to_send_unknown">Soovib sulle midagi saata</string>
     <string name="share_accept">Võta vastu</string>
     <string name="share_decline">Keeldu</string>
     <string name="share_receiving">Võtan vastu…</string>
     <string name="share_progress_kb">%1$d KB / %2$d KB</string>
-    <string name="share_received_count">%1$d fail(i) on võetud vastu</string>
+    <plurals name="share_received_count">
+        <item quantity="one">%1$d fail on võetud vastu</item>
+        <item quantity="other">%1$d faili on võetud vastu</item>
+    </plurals>
     <string name="share_received_chooser">Jaga vastuvõetud faili</string>
-    <string name="share_save_succeeded">%1$d fail(i) on salvestatud</string>
-    <string name="share_save_failed">%1$d fail(i) salvestamine ei õnnestunud</string>
+    <plurals name="share_save_succeeded">
+        <item quantity="one">%1$d fail on salvestatud</item>
+        <item quantity="other">%1$d faili on salvestatud</item>
+    </plurals>
+    <plurals name="share_save_failed">
+        <item quantity="one">%1$d faili salvestamine ei õnnestunud</item>
+        <item quantity="other">%1$d faili salvestamine ei õnnestunud</item>
+    </plurals>
     <string name="share_tile_label">Jagamine lähikonnas</string>
     <string name="share_nearby_devices">Seadmed lähikonnas</string>
     <string name="share_scan">Skaneeri</string>
     <string name="share_scanning">Otsin lähikonnast seadmeid…</string>
     <string name="share_no_devices">Ühtegi seadet ei leidu. Kui teine seade on nähtavas olekus, siis klõpsa valikut „Skaneeri“.</string>
     <string name="share_no_files_selected">Ühtegi faili pole valitud</string>
-    <string name="share_files_selected">%1$d fail(i) on valitud</string>
+    <plurals name="share_files_selected">
+        <item quantity="one">%1$d fail on valitud</item>
+        <item quantity="other">%1$d faili on valitud</item>
+    </plurals>
     <string name="share_pick_files">Vali faile</string>
     <string name="share_add_files">Lisa faile</string>
-    <string name="share_select_device">%1$d fail(i) saatmiseks vali ülalt seade.</string>
+    <plurals name="share_select_device">
+        <item quantity="one">%1$d faili saatmiseks vali ülalt seade.</item>
+        <item quantity="other">%1$d faili saatmiseks vali ülalt seade.</item>
+    </plurals>
     <string name="share_source_wifi">WiFi</string>
     <string name="share_source_both">WiFi • Bluetooth</string>
     <string name="share_source_bluetooth">Bluetooth</string>
