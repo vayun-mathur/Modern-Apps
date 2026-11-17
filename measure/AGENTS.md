@@ -7,14 +7,14 @@ _Install: ./install measure (dev by default)._
 - Gradle: :measure / dir: measure/
 - Package roots present: ui, data, domain, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
-- Deps: (none declared — camera + IMU + Rust VIO, no Play Services)
+- Deps: CameraX + org.opencv:opencv 4.10.0 (Maven Central, catalog-pinned; AR tracking only — no Play Services)
 - Metadata: metadata_data/measure.md (present)
-- Rust: yes / screenshotTest: yes
+- Rust: crate present but unreferenced (legacy measure_vio, kept for reference) / screenshotTest: yes
 
 ## Overview
-**Purpose:** Offline measuring toolkit — compass, level, ruler, protractor + AR distance/area over a from-scratch visual-inertial odometry engine. Real metres, no Play Services.
-**Key features:** Per-tool pages (AR/compass/level/ruler/saved/settings) + diagnostics; `domain/` pure geometry (level math, tilt, polygons, units); `platform/sensor/` IMU recording; camera intrinsics; Rust `measure_vio` behind `domain/MeasureNative`.
-**Entry points:** `Route` → `MainActivity.kt` → `Navigation.kt` → `ui/ArMeasurePage.kt` → `platform/MeasureViewModel.kt` → `domain/MeasureNative.kt`.
+**Purpose:** Offline measuring toolkit — compass, level, ruler, protractor + AR distance/area over an OpenCV visual-inertial tracker (features/LK/essential pose/triangulation/IMU scale). Real metres, no Play Services.
+**Key features:** Per-tool pages (AR/compass/level/ruler/saved/settings) + diagnostics; `domain/` pure geometry (level math, tilt, polygons, units, VIO math); `platform/sensor/` IMU recording; camera intrinsics; OpenCV tracker in `platform/opencv/` behind the `ArHitProvider` seam.
+**Entry points:** `Route` → `MainActivity.kt` → `Navigation.kt` → `ui/ArMeasurePage.kt` → `platform/MeasureViewModel.kt` → `platform/opencv/OpenCvVioEngine.kt` (math in `domain/VioMath.kt`).
 **Gotchas:** VIO needs device calibration + motion — test measuring by moving, not screenshots; intrinsics vary per device.
 
 ## Key files
@@ -24,8 +24,8 @@ _Install: ./install measure (dev by default)._
 - com/vayunmathur/measure/Route.kt
 ### data/ — saved measurements
 - com/vayunmathur/measure/data/model/Models.kt
-### domain/ — pure geometry + Rust VIO bridge
-- com/vayunmathur/measure/domain/MeasureNative.kt — `measure_vio` JNI bridge
+### domain/ — pure geometry + VIO math
+- com/vayunmathur/measure/domain/VioMath.kt — pose chaining, triangulation, plane fit, IMU scale (pure, ground-truth tested)
 - com/vayunmathur/measure/domain/LevelMath.kt
 - com/vayunmathur/measure/domain/Tilt.kt
 - com/vayunmathur/measure/domain/HeldOrientation.kt
