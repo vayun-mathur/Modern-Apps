@@ -57,9 +57,15 @@ class DirectBootAndStoresRealTest {
     @Test fun directBootIdlesWhenMirrorUnseeded() = runBlocking {
         spoolFile().delete()
         service.startDirectBootTracking()
-        delay(300)
         // No seeded mirror on a fresh Robolectric install: the job must
-        // finish (idle) rather than minting an identity.
+        // finish (idle) rather than minting an identity. The job checks the
+        // mirror on Dispatchers.IO, which takes arbitrarily long on a
+        // loaded box, so poll for completion instead of a fixed 300ms.
+        var waitedMs = 0
+        while (waitedMs < 20_000) {
+            if (service.directBootJob == null || service.directBootJob!!.isCompleted) break
+            delay(50); waitedMs += 50
+        }
         assertTrue(service.directBootJob == null || service.directBootJob!!.isCompleted)
     }
 
