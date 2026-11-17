@@ -183,34 +183,14 @@ class TodoViewModel(
             val now = System.currentTimeMillis()
             for (text in texts.map { it.trim() }.filter { it.isNotEmpty() }) {
                 val parsed = QuickAddParser.parse(text, now, zone, lists)
-                repository.upsert(newTodo(parsed, currentView, now, zone).copy(position = repository.nextPosition()))
+                repository.upsert(
+                    newTodoFromTemplate(parsed, currentView, now, zone)
+                        .copy(position = repository.nextPosition()),
+                )
             }
         }
     }
 
-    /** View context fills what the text left out: the open list, today's date, the tag. */
-    private fun newTodo(p: QuickAddParser.Result, view: TodoView, now: Long, zone: TimeZone): Todo {
-        val base = templateFor(view, now, zone)
-        return base.copy(
-            title = p.title.ifBlank { p.tokens.joinToString(" ") { it.text } },
-            dueAt = p.dueAt ?: base.dueAt,
-            dueAllDay = if (p.dueAt != null) p.dueAllDay else base.dueAllDay,
-            recurrence = p.recurrence?.serialize(),
-            tags = (base.tags + p.tags).distinctBy { it.lowercase() },
-            priority = if (p.priority != 0) p.priority else base.priority,
-            listSyncId = p.listSyncId ?: base.listSyncId,
-            createdAt = now,
-        )
-    }
-
-    /** A blank task belonging to [view], so it shows up where it was created. */
-    private fun templateFor(view: TodoView, now: Long, zone: TimeZone): Todo = Todo(
-        dueAt = if (view == TodoView.Today) DueDates.startOfDay(DueDates.localDate(now, zone), zone) else null,
-        listSyncId = (view as? TodoView.InList)?.listSyncId,
-        tags = (view as? TodoView.Tagged)?.let { listOf(it.tag) }.orEmpty(),
-        priority = if (view == TodoView.Priority) 1 else Todo.PRIORITY_NONE,
-        createdAt = now,
-    )
 
     fun toggleDone(todo: Todo) {
         viewModelScope.launch(io) { repository.setDone(todo, !todo.done) }
@@ -243,7 +223,7 @@ class TodoViewModel(
 
     /** [view] is the route's current view, used only as the template for a new task. */
     fun openEditor(id: Long, newSyncId: String?, view: TodoView): TodoEditor {
-        val template = templateFor(view, System.currentTimeMillis(), TimeZone.currentSystemDefault())
+        val template = templateForView(view, System.currentTimeMillis(), TimeZone.currentSystemDefault())
         return TodoEditor(repository, repository.appScope, id, newSyncId, template)
     }
 
@@ -259,3 +239,27 @@ class TodoViewModel(
         }
     }
 }
+
+/** View context fills what the text left out: the open list, today's date, the tag. */
+private fun newTodoFromTemplate(p: QuickAddParser.Result, view: TodoView, now: Long, zone: TimeZone): Todo {
+    val base = templateForView(view, now, zone)
+    return base.copy(
+        title = p.title.ifBlank { p.tokens.joinToString(" ") { it.text } },
+        dueAt = p.dueAt ?: base.dueAt,
+        dueAllDay = if (p.dueAt != null) p.dueAllDay else base.dueAllDay,
+        recurrence = p.recurrence?.serialize(),
+        tags = (base.tags + p.tags).distinctBy { it.lowercase() },
+        priority = if (p.priority != 0) p.priority else base.priority,
+        listSyncId = p.listSyncId ?: base.listSyncId,
+        createdAt = now,
+    )
+}
+
+/** A blank task belonging to [view], so it shows up where it was created. */
+private fun templateForView(view: TodoView, now: Long, zone: TimeZone): Todo = Todo(
+    dueAt = if (view == TodoView.Today) DueDates.startOfDay(DueDates.localDate(now, zone), zone) else null,
+    listSyncId = (view as? TodoView.InList)?.listSyncId,
+    tags = (view as? TodoView.Tagged)?.let { listOf(it.tag) }.orEmpty(),
+    priority = if (view == TodoView.Priority) 1 else Todo.PRIORITY_NONE,
+    createdAt = now,
+)
