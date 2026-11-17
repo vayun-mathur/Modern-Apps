@@ -4,8 +4,10 @@ import com.vayunmathur.games.sudoku.data.GameConfig
 import com.vayunmathur.library.util.NavKey
 import kotlinx.serialization.Serializable
 
+/** Navigation destinations for the Sudoku app. */
 @Serializable
 sealed interface Route : NavKey {
+    /** Destination for the Sudoku home screen. */
     @Serializable
     data object Home : Route
 
@@ -16,6 +18,7 @@ sealed interface Route : NavKey {
     @Serializable
     data class Game(val config: GameConfig) : Route
 
+    /** Destination for the shared game-center screen. */
     @Serializable
     data object GameCenter : Route
 }

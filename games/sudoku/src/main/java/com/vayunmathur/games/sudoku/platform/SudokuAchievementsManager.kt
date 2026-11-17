@@ -6,6 +6,7 @@ import com.vayunmathur.games.sudoku.data.Difficulty
 import com.vayunmathur.games.sudoku.data.SudokuStatsRepository
 import com.vayunmathur.library.util.AchievementsManager
 
+/** Reports Sudoku achievements and progress to the shared games hub. */
 class SudokuAchievementsManager(
     context: Context,
     json: String,
@@ -41,6 +42,7 @@ class SudokuAchievementsManager(
         onProgressUpdated("win_streak_5", statsRepository.getBestWinStreak())
     }
 
+    /** Achievement thresholds for [SudokuAchievementsManager]. */
     companion object {
         /** Matches the "under five minutes" wording of the `speed_nine` description. */
         const val SPEED_SECONDS = 300

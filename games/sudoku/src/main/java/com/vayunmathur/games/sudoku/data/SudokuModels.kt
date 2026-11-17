@@ -198,6 +198,7 @@ data class SudokuGameState(
      */
     val isComplete: Boolean get() = (0 until size.cellCount).all { valueAt(it) == solution[it] }
 
+    /** Factories for creating fresh [SudokuGameState] instances. */
     companion object {
         /** A fresh game from [puzzle], with every non-given cell blank and a full set of lives. */
         fun from(puzzle: Puzzle, answerMode: Boolean = false): SudokuGameState = SudokuGameState(

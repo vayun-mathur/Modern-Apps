@@ -26,6 +26,7 @@ interface SudokuActions {
     fun playAgain() {}
     fun giveUp() {}
 
+    /** Holds the no-op [SudokuActions] used by previews. */
     companion object { val Noop: SudokuActions = object : SudokuActions {} }
 }
 
