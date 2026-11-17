@@ -27,6 +27,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlin.reflect.KClass
 
+/** WorkManager worker that refreshes the Glance widget named in its input data. */
 class GenericWidgetWorker(
     private val context: Context,
     workerParams: WorkerParameters
@@ -53,6 +54,7 @@ class GenericWidgetWorker(
         }
     }
 
+    /** Input-data keys for [GenericWidgetWorker]. */
     companion object {
         const val ARG_WIDGET_CLASS = "widget_class_name"
         private const val TAG = "GenericWidgetWorker"
@@ -138,6 +140,7 @@ class WidgetPreviewWorker(
         }
     }
 
+    /** Input-data keys for [WidgetPreviewWorker]. */
     companion object {
         const val ARG_RECEIVER_CLASS = "receiver_class_name"
         private const val TAG = "WidgetPreviewWorker"
