@@ -3,8 +3,8 @@ package com.vayunmathur.pdf.ui
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asAndroidPath
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.pdf.util.BlendMode
-import com.vayunmathur.pdf.util.PdfPrimitive
+import com.vayunmathur.pdf.platform.BlendMode
+import com.vayunmathur.pdf.platform.PdfPrimitive
 
 /** Image + tiled-image writers for [SafePdfDrawContext]. */
 internal fun SafePdfDrawContext.drawImagePrim(prim: PdfPrimitive.Image) {

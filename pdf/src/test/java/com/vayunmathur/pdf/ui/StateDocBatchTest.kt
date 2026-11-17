@@ -13,10 +13,10 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.pdf.util.SafePdfDocument
-import com.vayunmathur.pdf.util.addImageStamp
-import com.vayunmathur.pdf.util.addText
-import com.vayunmathur.pdf.util.moveAnnotation
+import com.vayunmathur.pdf.platform.SafePdfDocument
+import com.vayunmathur.pdf.platform.addImageStamp
+import com.vayunmathur.pdf.platform.addText
+import com.vayunmathur.pdf.platform.moveAnnotation
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -173,7 +173,7 @@ class StateDocBatchTest {
 
     @Test fun exportCapturedPdfViaViewModel() {
         val app = ctx as android.app.Application
-        val vm = com.vayunmathur.pdf.util.PdfViewModel(app)
+        val vm = com.vayunmathur.pdf.platform.PdfViewModel(app)
         val png = File(ctx.cacheDir, "vm-page.png")
         png.outputStream().use { Bitmap.createBitmap(20, 20, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.WHITE) }.compress(Bitmap.CompressFormat.PNG, 100, it) }
         vm.addCapturedImage(Uri.fromFile(png))

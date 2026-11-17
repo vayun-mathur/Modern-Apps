@@ -11,9 +11,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.vayunmathur.library.ocr.OcrEngine
-import com.vayunmathur.pdf.util.PdfStateStore
-import com.vayunmathur.pdf.util.SafeOutlineItem
-import com.vayunmathur.pdf.util.SafePdfDocument
+import com.vayunmathur.pdf.platform.PdfStateStore
+import com.vayunmathur.pdf.platform.SafeOutlineItem
+import com.vayunmathur.pdf.platform.SafePdfDocument
 import kotlinx.coroutines.delay
 
 /** Document load outputs owned by the screen's load effect. */

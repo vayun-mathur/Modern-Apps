@@ -2,7 +2,6 @@
 <resources>
     <string name="search_label">Suchen</string>
     <string name="open_pdf">PDF öffnen</string>
-    <string name="capture_pdf">PDF erfassen</string>
     <string name="capture_pdf_title">PDF erfassen</string>
     <string name="request_camera_permission">Erlaube Kamera Berechtigung</string>
     <string name="upload_image">Bild hochladen</string>

@@ -1,4 +1,4 @@
-package com.vayunmathur.pdf.model
+package com.vayunmathur.pdf.data
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect

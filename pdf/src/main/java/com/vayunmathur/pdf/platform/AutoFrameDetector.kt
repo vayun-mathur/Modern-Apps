@@ -1,8 +1,8 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
 
 import android.graphics.Bitmap
 import androidx.core.graphics.scale
-import com.vayunmathur.pdf.model.Quadrilateral
+import com.vayunmathur.pdf.data.Quadrilateral
 import kotlin.math.atan2
 import kotlin.math.hypot
 import kotlin.math.max

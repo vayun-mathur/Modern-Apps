@@ -15,9 +15,9 @@ import com.vayunmathur.library.ui.DrawerValue
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.rememberDrawerState
 import com.vayunmathur.pdf.MainActivity
-import com.vayunmathur.pdf.util.SafeFormField
-import com.vayunmathur.pdf.util.SafeOutlineItem
-import com.vayunmathur.pdf.util.SafePdfDocument
+import com.vayunmathur.pdf.platform.SafeFormField
+import com.vayunmathur.pdf.platform.SafeOutlineItem
+import com.vayunmathur.pdf.platform.SafePdfDocument
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertNotNull

@@ -2,7 +2,7 @@ package com.vayunmathur.pdf.ui
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import com.vayunmathur.pdf.util.PdfPrimitive
+import com.vayunmathur.pdf.platform.PdfPrimitive
 
 /** Stroke-path writer for [SafePdfDrawContext]. */
 internal fun SafePdfDrawContext.drawStrokePath(prim: PdfPrimitive.StrokePath) {

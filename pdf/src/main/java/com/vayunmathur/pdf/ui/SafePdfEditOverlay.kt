@@ -17,16 +17,16 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.graphics.toArgb
-import com.vayunmathur.pdf.util.SafeAnnotation
-import com.vayunmathur.pdf.util.SafePdfDocument
-import com.vayunmathur.pdf.util.addHighlight
-import com.vayunmathur.pdf.util.addInk
-import com.vayunmathur.pdf.util.addOval
-import com.vayunmathur.pdf.util.addPoly
-import com.vayunmathur.pdf.util.addRect
-import com.vayunmathur.pdf.util.addRedaction
-import com.vayunmathur.pdf.util.addTextMarkup
-import com.vayunmathur.pdf.util.moveAnnotation
+import com.vayunmathur.pdf.platform.SafeAnnotation
+import com.vayunmathur.pdf.platform.SafePdfDocument
+import com.vayunmathur.pdf.platform.addHighlight
+import com.vayunmathur.pdf.platform.addInk
+import com.vayunmathur.pdf.platform.addOval
+import com.vayunmathur.pdf.platform.addPoly
+import com.vayunmathur.pdf.platform.addRect
+import com.vayunmathur.pdf.platform.addRedaction
+import com.vayunmathur.pdf.platform.addTextMarkup
+import com.vayunmathur.pdf.platform.moveAnnotation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 

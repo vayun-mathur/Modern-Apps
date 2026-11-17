@@ -4,9 +4,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.nativeCanvas
-import com.vayunmathur.pdf.util.PathOp
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.PathOp
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafePdfPage
 
 /**
  * Cap on nested transparency-group layers. Each one is an offscreen buffer, so unlike a

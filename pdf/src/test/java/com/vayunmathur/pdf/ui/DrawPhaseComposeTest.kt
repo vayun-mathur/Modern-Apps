@@ -14,10 +14,10 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.pdf.model.Quadrilateral
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafeAnnotation
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.data.Quadrilateral
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafeAnnotation
+import com.vayunmathur.pdf.platform.SafePdfPage
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import org.junit.Rule

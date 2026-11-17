@@ -11,10 +11,10 @@ import androidx.compose.ui.test.performTextInput
 import com.vayunmathur.library.ui.DrawerValue
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.rememberDrawerState
-import com.vayunmathur.pdf.InitialScreen
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafeOutlineItem
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.ui.InitialScreen
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafeOutlineItem
+import com.vayunmathur.pdf.platform.SafePdfPage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

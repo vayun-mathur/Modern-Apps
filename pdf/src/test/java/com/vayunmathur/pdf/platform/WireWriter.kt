@@ -1,4 +1,4 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
 
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer

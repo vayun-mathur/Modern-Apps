@@ -1,8 +1,8 @@
 package com.vayunmathur.pdf.ui
 
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.pdf.util.BlendMode
-import com.vayunmathur.pdf.util.PdfPrimitive
+import com.vayunmathur.pdf.platform.BlendMode
+import com.vayunmathur.pdf.platform.PdfPrimitive
 
 /** Clip / transparency-group / soft-mask writers for [SafePdfDrawContext]. */
 internal fun SafePdfDrawContext.applyClipPush(prim: PdfPrimitive.ClipPush) {

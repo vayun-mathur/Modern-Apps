@@ -3,25 +3,12 @@ package com.vayunmathur.pdf
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.viewModels
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.MaActivity
-import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import com.vayunmathur.pdf.R
-import androidx.compose.ui.unit.dp
-import com.vayunmathur.pdf.util.PdfViewModel
+import com.vayunmathur.pdf.platform.PdfViewModel
 
 /**
  * The single PDF host.
@@ -71,22 +58,5 @@ class MainActivity : MaActivity() {
         /** The route an entry intent names; home is the default landing. */
         fun routeFor(intent: Intent?): Route =
             intent?.data?.let { Route.Viewer(it.toString()) } ?: Route.Home
-    }
-}
-
-@Composable
-fun InitialScreen(onOpenPdf: () -> Unit, onCapturePdf: () -> Unit, onCutGlue: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Button(onClick = onOpenPdf, Modifier.padding(16.dp)) {
-                Text(stringResource(R.string.open_pdf))
-            }
-            Button(onClick = onCapturePdf, Modifier.padding(16.dp)) {
-                Text(stringResource(R.string.capture_pdf_title))
-            }
-            Button(onClick = onCutGlue, Modifier.padding(16.dp)) {
-                Text(stringResource(R.string.pdf_cut_and_glue))
-            }
-        }
     }
 }

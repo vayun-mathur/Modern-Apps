@@ -2,7 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="search_label">Otsi</string>
     <string name="open_pdf">Ava PDF-fail</string>
-    <string name="capture_pdf">Hõiva sisu PDF-failina</string>
     <string name="capture_pdf_title">Hõiva sisu PDF-failina</string>
     <string name="request_camera_permission">Küsi õigust kasutada kaamerat</string>
     <string name="upload_image">Laadi pilt üles</string>

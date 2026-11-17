@@ -6,11 +6,11 @@ import android.net.Uri
 import androidx.compose.ui.geometry.Rect
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.vayunmathur.pdf.model.CapturedImage
-import com.vayunmathur.pdf.model.Quadrilateral
-import com.vayunmathur.pdf.util.ScanFilter
-import com.vayunmathur.pdf.util.savePdfToUri
-import com.vayunmathur.pdf.util.warpQuadToBitmap
+import com.vayunmathur.pdf.data.CapturedImage
+import com.vayunmathur.pdf.data.Quadrilateral
+import com.vayunmathur.pdf.platform.ScanFilter
+import com.vayunmathur.pdf.platform.savePdfToUri
+import com.vayunmathur.pdf.platform.warpQuadToBitmap
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

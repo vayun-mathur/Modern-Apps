@@ -1,4 +1,4 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.edit

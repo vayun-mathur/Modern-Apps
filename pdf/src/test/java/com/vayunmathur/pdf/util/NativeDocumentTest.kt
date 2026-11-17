@@ -1,5 +1,8 @@
 package com.vayunmathur.pdf.util
 
+import com.vayunmathur.pdf.platform.ComposePdfDocument
+import com.vayunmathur.pdf.platform.SafePdfParser
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

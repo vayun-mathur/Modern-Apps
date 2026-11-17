@@ -1,4 +1,4 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -11,11 +11,12 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import androidx.core.graphics.withMatrix
 import com.vayunmathur.library.log.Log
 import androidx.core.graphics.createBitmap
 import com.vayunmathur.library.ocr.OcrEngine
-import com.vayunmathur.pdf.model.CapturedImage
-import com.vayunmathur.pdf.model.Quadrilateral
+import com.vayunmathur.pdf.data.CapturedImage
+import com.vayunmathur.pdf.data.Quadrilateral
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.FileOutputStream
@@ -238,10 +239,9 @@ private fun drawOcrBox(
     val angle = atan2(c[1].y - c[0].y, c[1].x - c[0].x)
     matrix.setRotate(Math.toDegrees(angle.toDouble()).toFloat())
     matrix.postTranslate(c[0].x, c[0].y)
-    canvas.save()
-    canvas.concat(matrix)
-    canvas.drawText(text, 0f, bh - bh * BASELINE_FRACTION, paint)
-    canvas.restore()
+    canvas.withMatrix(matrix) {
+        drawText(text, 0f, bh - bh * BASELINE_FRACTION, paint)
+    }
 }
 
 /**

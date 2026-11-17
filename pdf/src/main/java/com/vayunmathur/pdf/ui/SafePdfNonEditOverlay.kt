@@ -11,8 +11,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.library.ocr.OcrEngine
-import com.vayunmathur.pdf.util.SafeLink
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.SafeLink
+import com.vayunmathur.pdf.platform.SafePdfPage
 
 /** Read-only overlays: text selection underneath so link Boxes get hit-test priority. */
 @Composable

@@ -50,7 +50,7 @@ internal fun SafePdfPasswordPrompt(
 @Composable
 internal fun SafePdfPendingDialogs(
     state: SafePdfViewerState,
-    document: com.vayunmathur.pdf.util.SafePdfDocument?,
+    document: com.vayunmathur.pdf.platform.SafePdfDocument?,
     launchers: SafePdfLauncherSet,
 ) {
     state.pendingNote?.let { (page, pt) ->

@@ -49,7 +49,7 @@ import com.vayunmathur.library.ui.TextField
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.pdf.R
-import com.vayunmathur.pdf.util.SafePdfDocument
+import com.vayunmathur.pdf.platform.SafePdfDocument
 import kotlinx.coroutines.launch
 
 /** Edit toolbar wired to [SafePdfViewerState]; shared by bottom bar and wide side panel. */

@@ -32,7 +32,7 @@ import com.vayunmathur.library.ui.IconShapeTriangleFill
 import com.vayunmathur.library.ui.IconShapeTriangleOutline
 import com.vayunmathur.library.ui.IconSquiggly
 import com.vayunmathur.library.ui.IconStrikethrough
-import com.vayunmathur.pdf.util.SafePdfDocument
+import com.vayunmathur.pdf.platform.SafePdfDocument
 import java.io.ByteArrayOutputStream
 
 internal sealed interface LoadState {

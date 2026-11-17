@@ -1,4 +1,6 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
+
+import com.vayunmathur.pdf.util.PdfNative
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

@@ -1,6 +1,6 @@
 package com.vayunmathur.pdf.ui
 
-import com.vayunmathur.pdf.util.PdfPrimitive
+import com.vayunmathur.pdf.platform.PdfPrimitive
 
 /** Text writer for [SafePdfDrawContext]: substitute typeface + fill/stroke + text-clip accumulation. */
 internal fun SafePdfDrawContext.drawTextPrim(prim: PdfPrimitive.Text) {

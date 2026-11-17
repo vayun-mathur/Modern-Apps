@@ -13,10 +13,10 @@ import com.vayunmathur.library.ui.DrawerValue
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.rememberDrawerState
-import com.vayunmathur.pdf.InitialScreen
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafeOutlineItem
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.ui.InitialScreen
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafeOutlineItem
+import com.vayunmathur.pdf.platform.SafePdfPage
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"

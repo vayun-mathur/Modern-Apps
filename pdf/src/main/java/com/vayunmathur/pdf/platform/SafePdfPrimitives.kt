@@ -1,8 +1,8 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
 
 import androidx.compose.ui.geometry.Offset
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.pdf.util.SafePdfParser.orIfNonFinite
+import com.vayunmathur.pdf.platform.SafePdfParser.orIfNonFinite
 import java.nio.ByteBuffer
 
 /**

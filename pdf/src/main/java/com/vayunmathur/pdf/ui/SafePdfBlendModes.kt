@@ -1,6 +1,6 @@
 package com.vayunmathur.pdf.ui
 
-import com.vayunmathur.pdf.util.BlendMode
+import com.vayunmathur.pdf.platform.BlendMode
 
 /** Map the renderer's [BlendMode] to a Compose blend mode (SrcOver = normal). */
 internal fun BlendMode.toCompose(): androidx.compose.ui.graphics.BlendMode = when (this) {

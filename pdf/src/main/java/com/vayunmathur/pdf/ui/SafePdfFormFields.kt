@@ -22,11 +22,11 @@ import com.vayunmathur.library.ui.CheckboxDefaults
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.pdf.R
-import com.vayunmathur.pdf.util.SafeFormField
-import com.vayunmathur.pdf.util.SafePdfDocument
-import com.vayunmathur.pdf.util.setCheckbox
-import com.vayunmathur.pdf.util.setChoiceField
-import com.vayunmathur.pdf.util.setTextField
+import com.vayunmathur.pdf.platform.SafeFormField
+import com.vayunmathur.pdf.platform.SafePdfDocument
+import com.vayunmathur.pdf.platform.setCheckbox
+import com.vayunmathur.pdf.platform.setChoiceField
+import com.vayunmathur.pdf.platform.setTextField
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 

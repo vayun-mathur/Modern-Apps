@@ -16,10 +16,10 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.pdf.util.SafeAnnotation
-import com.vayunmathur.pdf.util.SafePdfDocument
-import com.vayunmathur.pdf.util.SafePdfPage
-import com.vayunmathur.pdf.util.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafeAnnotation
+import com.vayunmathur.pdf.platform.SafePdfDocument
+import com.vayunmathur.pdf.platform.SafePdfPage
+import com.vayunmathur.pdf.platform.PdfPrimitive
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertTrue

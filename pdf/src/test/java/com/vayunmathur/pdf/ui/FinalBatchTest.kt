@@ -14,10 +14,10 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.pdf.util.BlendMode
-import com.vayunmathur.pdf.util.ComposePdfDocument
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.BlendMode
+import com.vayunmathur.pdf.platform.ComposePdfDocument
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafePdfPage
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -56,22 +56,22 @@ class FinalBatchTest {
         val ff = ByteBuffer.allocate(200).order(ByteOrder.LITTLE_ENDIAN).putInt(1).putLong(9L).put(1)
             .putFloat(1f).putFloat(2f).putFloat(3f).putFloat(4f)
         str(ff, "field"); str(ff, "value"); ff.put(1)
-        val fields = com.vayunmathur.pdf.util.SafePdfListings.parseFormFields(ff.array().copyOf(ff.position()))
+        val fields = com.vayunmathur.pdf.platform.SafePdfListings.parseFormFields(ff.array().copyOf(ff.position()))
         assertEquals(1, fields.size); assertEquals("field", fields[0].name); assertTrue(fields[0].checked)
 
         val out = ByteBuffer.allocate(100).order(ByteOrder.LITTLE_ENDIAN).putInt(1).putShort(2).putInt(7)
         str(out, "Title")
-        val outline = com.vayunmathur.pdf.util.SafePdfListings.parseOutline(out.array().copyOf(out.position()))
-        assertEquals(listOf(com.vayunmathur.pdf.util.SafeOutlineItem(2, 7, "Title")), outline)
+        val outline = com.vayunmathur.pdf.platform.SafePdfListings.parseOutline(out.array().copyOf(out.position()))
+        assertEquals(listOf(com.vayunmathur.pdf.platform.SafeOutlineItem(2, 7, "Title")), outline)
 
         val sm = ByteBuffer.allocate(24).order(ByteOrder.LITTLE_ENDIAN).putInt(1).putInt(3)
             .putFloat(1f).putFloat(2f).putFloat(3f).putFloat(4f)
-        assertEquals(3, com.vayunmathur.pdf.util.SafePdfListings.parseSearchMatches(sm.array())[0].page)
+        assertEquals(3, com.vayunmathur.pdf.platform.SafePdfListings.parseSearchMatches(sm.array())[0].page)
 
         val empty = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(0).array()
-        assertTrue(com.vayunmathur.pdf.util.SafePdfListings.parseAnnotations(empty).isEmpty())
-        assertTrue(com.vayunmathur.pdf.util.SafePdfListings.parseLinks(empty).isEmpty())
-        assertTrue(com.vayunmathur.pdf.util.SafePdfListings.parseOutline(empty).isEmpty())
+        assertTrue(com.vayunmathur.pdf.platform.SafePdfListings.parseAnnotations(empty).isEmpty())
+        assertTrue(com.vayunmathur.pdf.platform.SafePdfListings.parseLinks(empty).isEmpty())
+        assertTrue(com.vayunmathur.pdf.platform.SafePdfListings.parseOutline(empty).isEmpty())
     }
 
     @Test fun composeAppendImageFromJpeg() { runBlocking {

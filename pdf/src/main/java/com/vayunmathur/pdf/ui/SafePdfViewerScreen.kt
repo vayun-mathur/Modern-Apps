@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * Read-only + overlay-editing PDF viewer that never touches the system PDF
- * stack: pages are parsed in Rust ([com.vayunmathur.pdf.util.SafePdfDocument])
+ * stack: pages are parsed in Rust ([com.vayunmathur.pdf.platform.SafePdfDocument])
  * and drawn from plain primitives on a Compose Canvas. Editing (annotations,
  * form filling) is written back through lopdf and saved via SAF.
  *

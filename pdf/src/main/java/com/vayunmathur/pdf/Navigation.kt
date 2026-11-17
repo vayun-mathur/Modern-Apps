@@ -1,6 +1,8 @@
 package com.vayunmathur.pdf
 
-import android.net.Uri
+import com.vayunmathur.pdf.ui.InitialScreen
+import androidx.core.net.toUri
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -16,7 +18,7 @@ import com.vayunmathur.pdf.ui.CapturePdfScreen
 import com.vayunmathur.pdf.ui.CropScreen
 import com.vayunmathur.pdf.ui.CutGlueScreen
 import com.vayunmathur.pdf.ui.SafePdfViewerScreen
-import com.vayunmathur.pdf.util.PdfViewModel
+import com.vayunmathur.pdf.platform.PdfViewModel
 
 /**
  * Navigation host for the PDF app: home, the viewer, capture (with its
@@ -72,7 +74,7 @@ fun Navigation(
         }
         entry<Route.Viewer>(metadata = DetailPage()) { route ->
             SafePdfViewerScreen(
-                uri = Uri.parse(route.uri),
+                uri = route.uri.toUri(),
                 onBack = {
                     if (startedWithIntent) onFinish() else backStack.pop()
                 },

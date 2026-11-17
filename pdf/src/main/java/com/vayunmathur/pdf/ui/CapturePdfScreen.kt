@@ -54,7 +54,7 @@ import com.vayunmathur.library.ui.IconUpload
 import com.vayunmathur.pdf.R
 import com.vayunmathur.pdf.ui.components.CameraPreview
 import com.vayunmathur.pdf.ui.components.SubcroppedImage
-import com.vayunmathur.pdf.util.PdfViewModel
+import com.vayunmathur.pdf.platform.PdfViewModel
 import com.vayunmathur.library.ui.ReorderableItem
 import com.vayunmathur.library.ui.rememberReorderableLazyListState
 import com.vayunmathur.library.ui.longPressDraggableHandle
@@ -96,7 +96,7 @@ fun CapturePdfScreen(
     }
 
     val pendingTargetUri = remember { mutableStateOf<Uri?>(null) }
-    var scanFilter by remember { mutableStateOf(com.vayunmathur.pdf.util.ScanFilter.NONE) }
+    var scanFilter by remember { mutableStateOf(com.vayunmathur.pdf.platform.ScanFilter.NONE) }
     var addOcr by remember { mutableStateOf(false) }
     var showScanOptions by remember { mutableStateOf(false) }
 
@@ -151,7 +151,7 @@ fun CapturePdfScreen(
                                     expanded = showScanOptions,
                                     onDismissRequest = { showScanOptions = false },
                                 ) {
-                                    for (f in com.vayunmathur.pdf.util.ScanFilter.entries) {
+                                    for (f in com.vayunmathur.pdf.platform.ScanFilter.entries) {
                                         com.vayunmathur.library.ui.DropdownMenuItem(
                                             leadingIcon = {
                                                 if (scanFilter == f) com.vayunmathur.library.ui.IconCheck()

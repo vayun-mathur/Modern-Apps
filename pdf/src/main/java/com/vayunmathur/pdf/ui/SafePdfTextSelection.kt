@@ -26,7 +26,7 @@ import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ocr.OcrEngine
 import com.vayunmathur.pdf.R
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.SafePdfPage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 

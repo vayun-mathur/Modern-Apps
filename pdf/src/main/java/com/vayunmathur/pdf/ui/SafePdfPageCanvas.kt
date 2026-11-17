@@ -23,7 +23,7 @@ import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.pdf.R
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.SafePdfPage
 
 /**
  * One page drawn at fit-to-width scale on its white "paper", with [overlays] stacked on top

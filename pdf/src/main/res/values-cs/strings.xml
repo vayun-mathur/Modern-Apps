@@ -7,7 +7,6 @@
     <string name="share_pdf">Sdílet PDF</string>
     <string name="crop_image">Oříznout obrázek</string>
     <string name="continue_label">Pokračovat</string>
-    <string name="capture_pdf">Zachytit PDF</string>
     <string name="capture_pdf_title">Zachytit PDF</string>
     <string name="request_camera_permission">Vyžádat oprávnění ke kameře\"</string>
     <string name="pdf_save_error">Chyba při ukládání PDF</string>

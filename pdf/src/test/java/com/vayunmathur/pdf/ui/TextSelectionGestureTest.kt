@@ -12,8 +12,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafePdfPage
 import kotlin.test.Test
 import org.junit.Rule
 import org.junit.runner.RunWith

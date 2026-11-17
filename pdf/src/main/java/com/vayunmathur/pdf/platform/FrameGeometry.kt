@@ -1,7 +1,7 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
 
 import androidx.compose.ui.geometry.Offset
-import com.vayunmathur.pdf.model.Quadrilateral
+import com.vayunmathur.pdf.data.Quadrilateral
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max

@@ -4,7 +4,6 @@
     <string name="open_pdf">Öppna PDF</string>
     <string name="safe_pdf_error">Den här PDF-filen kunde inte öppnas av den säkra visaren. Den kan vara skadad eller använda funktioner som inte stöds.</string>
     <string name="safe_pdf_not_a_pdf">Den här filen är inte en PDF</string>
-    <string name="capture_pdf">Skanna PDF</string>
     <string name="capture_pdf_title">Skanna PDF</string>
     <string name="request_camera_permission">Begär kamerabehörighet</string>
     <string name="upload_image">Ladda upp bild</string>

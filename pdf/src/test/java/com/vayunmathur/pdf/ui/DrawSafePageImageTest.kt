@@ -7,9 +7,9 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
-import com.vayunmathur.pdf.util.BlendMode
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.BlendMode
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafePdfPage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

@@ -1,8 +1,8 @@
 package com.vayunmathur.pdf.ui
 
 import androidx.compose.ui.geometry.Offset
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafePdfPage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

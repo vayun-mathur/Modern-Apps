@@ -6,9 +6,9 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
-import com.vayunmathur.pdf.util.BlendMode
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.BlendMode
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafePdfPage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -386,9 +386,9 @@ class DrawSafePageTest {
                 evenOdd = true,
                 points = square(),
                 pathOps = listOf(
-                    com.vayunmathur.pdf.util.PathOp.Move(0f, 0f),
-                    com.vayunmathur.pdf.util.PathOp.Cubic(1f, 1f, 2f, 2f, 3f, 3f),
-                    com.vayunmathur.pdf.util.PathOp.Close,
+                    com.vayunmathur.pdf.platform.PathOp.Move(0f, 0f),
+                    com.vayunmathur.pdf.platform.PathOp.Cubic(1f, 1f, 2f, 2f, 3f, 3f),
+                    com.vayunmathur.pdf.platform.PathOp.Close,
                 ),
             ),
             PdfPrimitive.ClipPop,

@@ -25,10 +25,10 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.ocr.OcrEngine
-import com.vayunmathur.pdf.util.SafeAnnotation
-import com.vayunmathur.pdf.util.SafeFormField
-import com.vayunmathur.pdf.util.SafeLink
-import com.vayunmathur.pdf.util.SafePdfDocument
+import com.vayunmathur.pdf.platform.SafeAnnotation
+import com.vayunmathur.pdf.platform.SafeFormField
+import com.vayunmathur.pdf.platform.SafeLink
+import com.vayunmathur.pdf.platform.SafePdfDocument
 import kotlinx.coroutines.CoroutineScope
 
 /** One page in the lazy list: decode + annotations/forms/links, then the read or edit overlays. */

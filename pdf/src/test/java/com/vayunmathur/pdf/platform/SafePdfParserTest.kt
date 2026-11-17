@@ -1,4 +1,4 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
 
 import androidx.compose.ui.geometry.Offset
 import kotlin.test.Test

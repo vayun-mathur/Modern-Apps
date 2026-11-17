@@ -2,7 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="search_label">Trova</string>
     <string name="open_pdf">Apri PDF</string>
-    <string name="capture_pdf">Acquisisci PDF</string>
     <string name="capture_pdf_title">Acquisizione PDF</string>
     <string name="request_camera_permission">Autorizzazione fotocamera necessaria</string>
     <string name="upload_image">Carica immagine</string>

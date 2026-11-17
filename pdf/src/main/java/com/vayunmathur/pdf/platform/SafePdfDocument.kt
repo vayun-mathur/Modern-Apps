@@ -1,4 +1,6 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
+
+import com.vayunmathur.pdf.util.PdfNative
 
 import android.content.Context
 import android.net.Uri

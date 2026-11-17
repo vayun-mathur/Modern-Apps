@@ -23,9 +23,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.image.compose.AsyncImageState
-import com.vayunmathur.pdf.model.CapturedImage
-import com.vayunmathur.pdf.model.Quadrilateral
-import com.vayunmathur.pdf.util.warpQuadToBitmap
+import com.vayunmathur.pdf.data.CapturedImage
+import com.vayunmathur.pdf.data.Quadrilateral
+import com.vayunmathur.pdf.platform.warpQuadToBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt

@@ -18,7 +18,7 @@ import com.vayunmathur.library.ui.ModalDrawerSheet
 import com.vayunmathur.library.ui.ModalNavigationDrawer
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.pdf.R
-import com.vayunmathur.pdf.util.SafeOutlineItem
+import com.vayunmathur.pdf.platform.SafeOutlineItem
 
 /**
  * The bookmarks drawer wrapped around the reader.

@@ -5,7 +5,6 @@
     <string name="open_pdf">PDFを開く</string>
     <string name="safe_pdf_error">このPDFは安全なビューアーで開くことができませんでした。損傷を受けているかサポートされていない機能を使用している可能性があります。</string>
     <string name="safe_pdf_not_a_pdf">このファイルはPDFではありません</string>
-    <string name="capture_pdf">PDFをキャプチャー</string>
     <string name="capture_pdf_title">PDFをキャプチャー</string>
     <string name="request_camera_permission">カメラの権限を要求</string>
     <string name="upload_image">画像をアップロード</string>

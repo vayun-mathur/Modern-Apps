@@ -11,7 +11,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.pdf.util.SafePdfDocument
+import com.vayunmathur.pdf.platform.SafePdfDocument
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertTrue

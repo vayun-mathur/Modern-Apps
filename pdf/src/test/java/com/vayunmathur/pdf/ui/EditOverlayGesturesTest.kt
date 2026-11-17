@@ -16,9 +16,9 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.pdf.util.SafeAnnotation
-import com.vayunmathur.pdf.util.SafePdfDocument
-import com.vayunmathur.pdf.util.addHighlight
+import com.vayunmathur.pdf.platform.SafeAnnotation
+import com.vayunmathur.pdf.platform.SafePdfDocument
+import com.vayunmathur.pdf.platform.addHighlight
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue

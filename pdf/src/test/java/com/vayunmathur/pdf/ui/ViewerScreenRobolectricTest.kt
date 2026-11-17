@@ -8,11 +8,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.pdf.model.CapturedImage
-import com.vayunmathur.pdf.model.Quadrilateral
-import com.vayunmathur.pdf.util.ScanFilter
-import com.vayunmathur.pdf.util.savePdfToUri
-import com.vayunmathur.pdf.util.warpQuadToBitmap
+import com.vayunmathur.pdf.data.CapturedImage
+import com.vayunmathur.pdf.data.Quadrilateral
+import com.vayunmathur.pdf.platform.ScanFilter
+import com.vayunmathur.pdf.platform.savePdfToUri
+import com.vayunmathur.pdf.platform.warpQuadToBitmap
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals

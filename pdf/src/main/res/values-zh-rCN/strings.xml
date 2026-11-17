@@ -2,7 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="search_label">查找</string>
     <string name="open_pdf">打开 PDF</string>
-    <string name="capture_pdf">捕获 PDF</string>
     <string name="capture_pdf_title">捕获 PDF</string>
     <string name="request_camera_permission">请求相机权限</string>
     <string name="upload_image">上传图片</string>

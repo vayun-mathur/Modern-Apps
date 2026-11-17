@@ -3,8 +3,8 @@ package com.vayunmathur.pdf.ui
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
 import com.vayunmathur.library.ocr.OcrEngine
-import com.vayunmathur.pdf.util.PdfPrimitive
-import com.vayunmathur.pdf.util.SafePdfPage
+import com.vayunmathur.pdf.platform.PdfPrimitive
+import com.vayunmathur.pdf.platform.SafePdfPage
 
 /**
  * A single selectable glyph in reading order - stores String for ligatures fi etc.

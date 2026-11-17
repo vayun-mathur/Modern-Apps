@@ -2,7 +2,7 @@ package com.vayunmathur.pdf.ui
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Fill
-import com.vayunmathur.pdf.util.PdfPrimitive
+import com.vayunmathur.pdf.platform.PdfPrimitive
 
 /** Fill-path writer for [SafePdfDrawContext]: all contours in one path so holes cut out. */
 internal fun SafePdfDrawContext.drawFillPath(prim: PdfPrimitive.FillPath) {

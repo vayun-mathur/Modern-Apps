@@ -1,4 +1,4 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

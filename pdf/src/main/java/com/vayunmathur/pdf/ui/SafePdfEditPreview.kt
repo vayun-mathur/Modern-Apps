@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
-import com.vayunmathur.pdf.util.SafeAnnotation
+import com.vayunmathur.pdf.platform.SafeAnnotation
 
 /** In-progress preview Canvas for [EditOverlay]: selection outline plus drag/polydraft/ink previews. */
 @Composable

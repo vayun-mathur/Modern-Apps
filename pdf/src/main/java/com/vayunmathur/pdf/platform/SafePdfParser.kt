@@ -1,4 +1,6 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
+
+import com.vayunmathur.pdf.util.PdfNative
 
 import androidx.compose.ui.geometry.Offset
 import com.vayunmathur.library.log.Log

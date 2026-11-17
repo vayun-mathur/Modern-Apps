@@ -1,11 +1,11 @@
-package com.vayunmathur.pdf.util
+package com.vayunmathur.pdf.platform
 
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.pdf.model.Quadrilateral
+import com.vayunmathur.pdf.data.Quadrilateral
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -48,7 +48,7 @@ class RobolectricUtilTest {
     }
 
     @Test fun capturedImageDefaultsUnderRobolectric() {
-        val img = com.vayunmathur.pdf.model.CapturedImage(Uri.parse("content://x/1"))
+        val img = com.vayunmathur.pdf.data.CapturedImage(Uri.parse("content://x/1"))
         assertNull(img.cropRect); assertNull(img.quadrilateral)
     }
 

@@ -29,8 +29,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ocr.OcrEngine
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.pdf.util.PdfViewModel
-import com.vayunmathur.pdf.util.SafePdfDocument
+import com.vayunmathur.pdf.platform.PdfViewModel
+import com.vayunmathur.pdf.platform.SafePdfDocument
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
