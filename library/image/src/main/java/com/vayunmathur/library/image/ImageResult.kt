@@ -2,6 +2,7 @@ package com.vayunmathur.library.image
 
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
+import androidx.core.graphics.drawable.toDrawable
 
 /**
  * Result of [ImageLoader.execute]. Mirrors Coil's sealed result hierarchy minimally.
@@ -14,12 +15,10 @@ sealed class ImageResult {
         val dataSource: DataSource = DataSource.MEMORY,
     ) : ImageResult() {
         /** For TileCache compat – coil returned drawable, we re-expose as drawable. */
-        val drawable: BitmapDrawable get() = BitmapDrawable(null as android.content.res.Resources?, bitmap).also {
-            // Keep API similar – callers in old code casted: result as? SuccessResult then drawable as BitmapDrawable
-        }
+        val drawable: BitmapDrawable get() = bitmap.toDrawable(android.content.res.Resources.getSystem())
 
         fun asBitmapDrawable(resources: android.content.res.Resources? = null): BitmapDrawable =
-            BitmapDrawable(resources, bitmap)
+            bitmap.toDrawable(resources ?: android.content.res.Resources.getSystem())
     }
 
     data class Error(
