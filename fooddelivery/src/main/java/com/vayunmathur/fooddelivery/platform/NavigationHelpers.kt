@@ -32,10 +32,25 @@ internal fun List<CartItem>.canAddFromSameMerchant(item: CartItem): Boolean {
  * 3=Orders, 4=Account), coerced into range. Tabs are sibling routes now, so
  * an initial tab is simply the back stack's start route.
  */
-internal fun tabRouteFor(initialTab: Int): Route = when (initialTab.coerceIn(0, 4)) {
-    0 -> Route.Home
-    1 -> Route.Cart
-    2 -> Route.Deals
-    3 -> Route.Orders
+internal fun tabRouteFor(initialTab: Int): Route = when (initialTab.coerceIn(FIRST_TAB, LAST_TAB)) {
+    FIRST_TAB -> Route.Home
+    CART_TAB -> Route.Cart
+    DEALS_TAB -> Route.Deals
+    ORDERS_TAB -> Route.Orders
     else -> Route.Account
 }
+
+/** Index of the first (Home) tab in a legacy `initialTab`. */
+private const val FIRST_TAB = 0
+
+/** Index of the Cart tab in a legacy `initialTab`. */
+private const val CART_TAB = 1
+
+/** Index of the Deals tab in a legacy `initialTab`. */
+private const val DEALS_TAB = 2
+
+/** Index of the Orders tab in a legacy `initialTab`. */
+private const val ORDERS_TAB = 3
+
+/** Index of the last (Account) tab in a legacy `initialTab`. */
+private const val LAST_TAB = 4

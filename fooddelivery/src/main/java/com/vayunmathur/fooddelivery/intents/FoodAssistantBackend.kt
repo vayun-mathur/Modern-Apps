@@ -247,33 +247,8 @@ internal fun buildValidatedCart(
         if (line.qty !in MIN_CART_QTY..MAX_CART_QTY) return null to ERROR_INVALID_QUANTITY
         val item = itemsById[line.itemId] ?: return null to ERROR_ITEM_NOT_FOUND
         if (!item.isAvailable || !item.isInStock) return null to ERROR_ITEM_UNAVAILABLE
-        val selected = mutableListOf<SelectedModifier>()
-        for (group in item.modifierGroups) {
-            val inGroup = group.modifiers.associateBy { it.id }
-            val chosen = line.modifierIds.filter { it in inGroup }
-            val effectiveMin = if (group.required) {
-                maxOf(group.minSelections, 1)
-            } else {
-                group.minSelections
-            }
-            if (chosen.size < effectiveMin) {
-                return null to if (group.required) {
-                    ERROR_MODIFIER_REQUIRED
-                } else {
-                    ERROR_MODIFIER_SELECTIONS
-                }
-            }
-            if (chosen.size > group.maxSelections) return null to ERROR_MODIFIER_SELECTIONS
-            chosen.mapTo(selected) { modifierId ->
-                val modifier = inGroup.getValue(modifierId)
-                SelectedModifier(
-                    modifierGroupId = group.id,
-                    modifierId = modifier.id,
-                    name = modifier.name,
-                    price = modifier.price,
-                )
-            }
-        }
+        val (selected, modifierError) = selectModifiers(item, line)
+        if (modifierError != null) return null to modifierError
         val knownModifierIds = item.modifierGroups
             .flatMap { group -> group.modifiers.map { it.id } }
             .toSet()
@@ -289,6 +264,33 @@ internal fun buildValidatedCart(
         )
     }
     return built to null
+}
+
+/** The modifiers chosen for one cart line, or the validation error rejecting them. */
+private fun selectModifiers(
+    item: com.vayunmathur.fooddelivery.data.MenuItem,
+    line: com.vayunmathur.library.intents.fooddelivery.SetCartItem,
+): Pair<List<SelectedModifier>, String?> {
+    val selected = mutableListOf<SelectedModifier>()
+    for (group in item.modifierGroups) {
+        val inGroup = group.modifiers.associateBy { it.id }
+        val chosen = line.modifierIds.filter { it in inGroup }
+        val effectiveMin = if (group.required) maxOf(group.minSelections, 1) else group.minSelections
+        if (chosen.size < effectiveMin) {
+            return selected to if (group.required) ERROR_MODIFIER_REQUIRED else ERROR_MODIFIER_SELECTIONS
+        }
+        if (chosen.size > group.maxSelections) return selected to ERROR_MODIFIER_SELECTIONS
+        chosen.mapTo(selected) { modifierId ->
+            val modifier = inGroup.getValue(modifierId)
+            SelectedModifier(
+                modifierGroupId = group.id,
+                modifierId = modifier.id,
+                name = modifier.name,
+                price = modifier.price,
+            )
+        }
+    }
+    return selected to null
 }
 
 internal suspend fun setCart(
