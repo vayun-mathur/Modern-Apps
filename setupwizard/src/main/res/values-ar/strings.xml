@@ -15,12 +15,6 @@
     <string name="connect_to_wi_fi">الاتصال بشبكة Wi-Fi</string>
     <string name="select_a_network">اختيار شبكة</string>
     <string name="set_up_without_wi_fi">إعداد بدون Wi-Fi</string>
-    <string name="date_and_time">التاريخ والوقت</string>
-    <string name="date_and_time_desc">اضبط المنطقة الزمنية و عدّل التاريخ والوقت الحاليّين إذا لزم الأمر</string>
-    <string name="date">التاريخ</string>
-    <string name="time">الوقت</string>
-    <string name="time_zone">المنطقة الزمنية</string>
-    <string name="select_time_zone">اختيار المنطقة الزمنية</string>
     <string name="location_services">خدمات الموقع الجغرافي</string>
     <string name="location_access_title">استخدام الموقع الجغرافي</string>
     <string name="location_access_desc">السماح للتطبيقات التي طلبت إذنك باستخدام معلومات موقعك الجغرافي. وقد يشمل ذلك موقعك الجغرافي الحالي والمواقع الجغرافية السابقة.</string>

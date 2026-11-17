@@ -23,6 +23,7 @@
     -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
       The gesture tutorial, the Wi-Fi and lock-screen setup flows and the restore flow all live

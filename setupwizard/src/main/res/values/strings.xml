@@ -35,17 +35,11 @@
     <string name="set_up_without_wi_fi">Set up without Wi-Fi</string>
 
     <!-- Date and time step: heading. -->
-    <string name="date_and_time">Date and time</string>
     <!-- Date and time step: subtitle under the heading. -->
-    <string name="date_and_time_desc">Set your time zone and adjust current date and time if needed</string>
     <!-- Date and time step: label of the row showing the current date, above the date itself. -->
-    <string name="date">Date</string>
     <!-- Date and time step: label of the row showing the current time, above the time itself. -->
-    <string name="time">Time</string>
     <!-- Date and time step: label of the row showing the current time zone, above the zone name. -->
-    <string name="time_zone">Time zone</string>
     <!-- Title of the time zone picker dialog opened from the date and time step. -->
-    <string name="select_time_zone">Select time zone</string>
 
     <!-- Location step: heading. -->
     <string name="location_services">Location services</string>

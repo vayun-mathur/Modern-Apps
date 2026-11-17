@@ -1,5 +1,6 @@
 package com.vayunmathur.setupwizard.platform
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.AlarmManager
@@ -40,6 +41,11 @@ private const val TAG = "SystemSetup"
  * out of, it is a device that never finishes first boot. Every call degrades to the reading
  * that keeps the flow moving instead.
  */
+// PrivateApi is a false positive here: a setup wizard must reach @SystemApi/@hide
+// framework calls (system locale, bootloader lock, status-bar lockdown) that have no
+// public SDK accessor; reflection is feature-gated and failure-degrading, and the
+// platform still enforces the privileged permissions on the framework side.
+@SuppressLint("PrivateApi")
 class SystemSetup(context: Context) {
 
     private val appContext = context.applicationContext
