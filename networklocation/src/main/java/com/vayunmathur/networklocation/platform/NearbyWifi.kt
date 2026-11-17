@@ -2,6 +2,7 @@ package com.vayunmathur.networklocation.platform
 
 import android.content.Context
 import android.net.wifi.WifiManager
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.networklocation.domain.BeaconId
 import com.vayunmathur.networklocation.domain.BeaconKeys
 
@@ -20,6 +21,7 @@ class NearbyWifi(context: Context) {
         val results = try {
             wifiManager?.scanResults
         } catch (e: SecurityException) {
+            Log.status(TAG, "WiFi scan results unavailable without location grant", e)
             null
         } ?: return emptyList()
         return results
@@ -40,6 +42,7 @@ class NearbyWifi(context: Context) {
     }
 
     private companion object {
+        const val TAG = "NearbyWifi"
         // Some drivers report this placeholder for hidden/!associated entries.
         const val NULL_BSSID = "00:00:00:00:00:00"
     }

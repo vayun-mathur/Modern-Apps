@@ -11,6 +11,7 @@ import android.telephony.CellInfoNr
 import android.telephony.CellInfoWcdma
 import android.telephony.TelephonyManager
 import android.content.Context
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.networklocation.domain.BeaconId
 import com.vayunmathur.networklocation.domain.RadioType
 
@@ -28,6 +29,7 @@ class NearbyCells(context: Context) {
         val infos = try {
             telephonyManager?.allCellInfo
         } catch (e: SecurityException) {
+            Log.status(TAG, "Cell info unavailable without location grant", e)
             null
         } ?: return emptyList()
         return infos.mapNotNull { it.toCell() }.distinct()
@@ -75,5 +77,8 @@ class NearbyCells(context: Context) {
             cellId = cellId,
             tacOrLac = areaCode,
         )
+    }
+    private companion object {
+        const val TAG = "NearbyCells"
     }
 }
