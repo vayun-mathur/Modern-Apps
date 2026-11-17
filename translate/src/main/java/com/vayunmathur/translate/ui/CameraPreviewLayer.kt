@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,15 +57,15 @@ internal fun CameraPreviewLayer(
     // the (much slower) translator fills results in behind it.
     val overlays = remember { mutableStateOf<List<OverlayBox>>(emptyList()) }
     val translations = remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    val frameW = remember { mutableStateOf(0) }
-    val frameH = remember { mutableStateOf(0) }
+    val frameW = remember { mutableIntStateOf(0) }
+    val frameH = remember { mutableIntStateOf(0) }
     val frozenFrame = remember { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     // Size of the preview area and the rotation it is being shown at. Both go into the
     // ViewPort that ties the two camera streams to one field of view, so a change to
     // either has to rebind rather than just retarget.
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
-    var boundRotation by remember { mutableStateOf(Surface.ROTATION_0) }
+    var boundRotation by remember { mutableIntStateOf(Surface.ROTATION_0) }
 
     // Read by the analysis-thread callback; kept fresh via rememberUpdatedState.
     val pausedState = rememberUpdatedState(paused)
@@ -146,8 +147,8 @@ internal fun CameraPreviewLayer(
             overlays = overlays.value,
             translations = translations.value,
             translationAvailable = translationAvailable,
-            frameW = frameW.value,
-            frameH = frameH.value,
+            frameW = frameW.intValue,
+            frameH = frameH.intValue,
             viewW = viewSize.width,
             viewH = viewSize.height,
             sourceLang = sourceLang,

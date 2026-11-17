@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -94,7 +95,7 @@ fun ImageTranslateScreen(
     LaunchedEffect(imageUri) {
         try {
             bitmap = withContext(Dispatchers.Default) {
-                decodePickedImage(context, Uri.parse(imageUri))
+                decodePickedImage(context, imageUri.toUri())
             } ?: run {
                 failed = true
                 return@LaunchedEffect
