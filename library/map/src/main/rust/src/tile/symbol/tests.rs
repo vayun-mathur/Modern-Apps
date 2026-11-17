@@ -1,6 +1,5 @@
 use super::*;
 use crate::style::Layer;
-use crate::tile::geometry::ShapedLabel;
 use crate::tile::glyph::fonts_staged;
 use tilecodec::mamaps::body::{Body, Feature};
 

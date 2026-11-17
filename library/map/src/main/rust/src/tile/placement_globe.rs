@@ -1,14 +1,14 @@
-/// Globe-aware screen projection for label placement: lon/lat through the
-/// orthographic sphere instead of the flat tile matrix.
-///
-/// Split from `placement.rs` (file-length limit). The flat `project_to_screen`
-/// feeds a tile-local point through the tile's clip matrix; on the globe the
-/// matrix bends (a 4x4 cannot bend a sphere), so labels placed through it land
-/// in flat positions while the basemap under them draws bent — the scattered
-/// text of the broken globe. These helpers project through the same
-/// `globe_point` basis the vertex shaders and the CPU anchor use, with the
-/// same screen convention (`halfH - y`, north up) and the same far-side cull
-/// far-side cull (z < 0 draws nothing).
+// Globe-aware screen projection for label placement: lon/lat through the
+// orthographic sphere instead of the flat tile matrix.
+//
+// Split from `placement.rs` (file-length limit). The flat `project_to_screen`
+// feeds a tile-local point through the tile's clip matrix; on the globe the
+// matrix bends (a 4x4 cannot bend a sphere), so labels placed through it land
+// in flat positions while the basemap under them draws bent — the scattered
+// text of the broken globe. These helpers project through the same
+// `globe_point` basis the vertex shaders and the CPU anchor use, with the
+// same screen convention (`halfH - y`, north up) and the same far-side cull
+// (z < 0 draws nothing).
 //
 // No imports: this file is `include!`d into `placement.rs`, so `Anchor`,
 // `BoxInputs` and `Obb` (and the whole parent scope) are already in scope.
@@ -44,6 +44,21 @@ pub fn tile_anchor_lonlat(tz: u8, tx: u32, ty: u32, anchor: (f32, f32)) -> (f64,
     (lon, lat)
 }
 
+/// Which tile a globe-projected point lives in.
+///
+/// Bundled because the globe helpers always need the whole tile address to
+/// turn a tile-local point into lon/lat; the coordinates are never passed
+/// independently.
+#[derive(Clone, Copy)]
+pub struct TileRef {
+    /// Zoom level.
+    pub z: u8,
+    /// Tile column.
+    pub x: u32,
+    /// Tile row.
+    pub y: u32,
+}
+
 /// The screen box a label would occupy on the globe if drawn at `anchor`.
 ///
 /// Same box construction as [`super::anchored_rect`] (text block + icon union,
@@ -51,15 +66,13 @@ pub fn tile_anchor_lonlat(tz: u8, tx: u32, ty: u32, anchor: (f32, f32)) -> (f64,
 /// than the flat matrix projection. Returns `None` far-side.
 pub fn globe_anchored_rect(
     camera: &crate::camera::Camera,
-    tz: u8,
-    tx: u32,
-    ty: u32,
+    tile: TileRef,
     point: (f32, f32),
     extent_wh: (u32, u32),
     inputs: &BoxInputs,
     anchor: Anchor,
 ) -> Option<(f32, f32, f32, f32)> {
-    let (lon, lat) = tile_anchor_lonlat(tz, tx, ty, point);
+    let (lon, lat) = tile_anchor_lonlat(tile.z, tile.x, tile.y, point);
     let (sx, sy) = globe_to_screen(camera, lon, lat, extent_wh)?;
 
     let w = inputs.text_px * inputs.advance / crate::tile::glyph::UP_EM as f32;
@@ -96,9 +109,7 @@ pub fn globe_anchored_rect(
 /// the flat linear part, exactly as the flat path does under tilt.
 pub fn globe_curved_boxes(
     camera: &crate::camera::Camera,
-    tz: u8,
-    tx: u32,
-    ty: u32,
+    tile: TileRef,
     placements: &[crate::tess::text::CurvedGlyph],
     tile_clip: [f32; 16],
     extent_wh: (u32, u32),
@@ -114,7 +125,7 @@ pub fn globe_curved_boxes(
         if advance_px <= 0.0 {
             continue;
         }
-        let (lon, lat) = tile_anchor_lonlat(tz, tx, ty, cg.pen);
+        let (lon, lat) = tile_anchor_lonlat(tile.z, tile.x, tile.y, cg.pen);
         let Some((sx, sy)) = globe_to_screen(camera, lon, lat, extent_wh) else { continue };
         // Screen-space tangent through the flat linear part (glyph-scale: the
         // sphere bend varies negligibly across one glyph).

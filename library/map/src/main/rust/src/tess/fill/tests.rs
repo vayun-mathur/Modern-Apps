@@ -99,8 +99,10 @@ fn expected_area(rings: &[Vec<(i32, i32)>], extent: u32) -> f64 {
     total * scale * scale
 }
 
-/// Every polygon of every layer of the published tile, as the renderer sees them.
-fn real_polygons() -> Vec<(String, u32, Vec<Vec<(i32, i32)>>)> {
+/// Every polygon of every layer of the published tile, as the renderer sees them:
+/// `(layer name, feature id, polygons as rings of tile-local points)`.
+type RealPolygons = Vec<(String, u32, Vec<Vec<(i32, i32)>>)>;
+fn real_polygons() -> RealPolygons {
     const REAL_TILE: &[u8] = include_bytes!("../../../tests/fixtures/v5ca_z11_tile.mvt");
     let tile = tilecodec::mvt::Tile::decode(REAL_TILE).expect("the published tile decodes");
     let mut out = Vec::new();
@@ -284,7 +286,7 @@ fn two_overlapping_holes_do_not_leave_a_surplus() {
 
     let mut v = Vec::new();
     let mut idx = Vec::new();
-    tessellate(&vec![outer, a, b], 1000, false, &mut v, &mut idx);
+    tessellate(&[outer, a, b], 1000, false, &mut v, &mut idx);
 
     // One 400x400 hole of a 1000x1000 tile cut out, and only one.
     assert!(
@@ -347,7 +349,7 @@ fn a_hole_crossing_its_exterior_by_one_vertex_is_still_dropped() {
 
     let mut v = Vec::new();
     let mut idx = Vec::new();
-    tessellate(&vec![outer, crossing], 1000, false, &mut v, &mut idx);
+    tessellate(&[outer, crossing], 1000, false, &mut v, &mut idx);
 
     // Dropped, so the fill is exactly the exterior. Keeping it covers 0.8965 instead.
     assert!(

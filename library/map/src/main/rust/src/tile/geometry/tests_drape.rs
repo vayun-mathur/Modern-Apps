@@ -223,7 +223,7 @@ fn a_degenerate_heightmap_keeps_the_flat_earth_fill() {
         dim: 1,
         samples: vec![32768],
     });
-    let mesh = build(&body, &layers, 11, 339, 770, false);
+    let mesh = build(&body, layers, 11, 339, 770, false);
     assert!(
         mesh.terrain.indices.is_empty(),
         "a degenerate grid tessellates to nothing"

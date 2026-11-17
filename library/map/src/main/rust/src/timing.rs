@@ -286,6 +286,10 @@ impl ReportThrottle {
 }
 
 /// Nanos between two `Instant` reads, saturating rather than wrapping on absurd values.
+///
+/// Only the Android frame paths call this; host builds compile `timing`
+/// solely for its unit tests, which use the injected-sample API.
+#[cfg(target_os = "android")]
 pub(crate) fn nanos_since(start: std::time::Instant) -> u64 {
     u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX)
 }

@@ -50,7 +50,7 @@ pub(crate) fn polygons(rings: &[&[(i32, i32)]]) -> Vec<Vec<usize>> {
             // The most deeply nested enclosing ring is the one this is a hole of.
             let mut closest: Option<(usize, usize)> = None;
             for &(ring, votes) in &enclosing[j] {
-                if closest.map_or(true, |(held, _)| depth[ring] > depth[held]) {
+                if closest.is_none_or(|(held, _)| depth[ring] > depth[held]) {
                     closest = Some((ring, votes));
                 }
             }

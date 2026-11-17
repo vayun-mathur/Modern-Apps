@@ -278,8 +278,8 @@ impl Camera {
     /// `a = [a_u, a_v, a_0]` and `b = [b_u, b_v, b_0]` give the bearing-rotated screen offset of
     /// a tile-local point `(u, v)` from the camera centre, in world px (Dp): `sx = a_u*u + a_v*v
     /// + a_0`, `sy = b_u*u + b_v*v + b_0`. The matrix maps `(u, v, height, 1)`; the third input
-    /// is a world-px height above the ground plane (0 for every flat 2D layer, a real height for
-    /// buildings/terrain).
+    ///   is a world-px height above the ground plane (0 for every flat 2D layer, a real height for
+    ///   buildings/terrain).
     ///
     /// # Camera model (the seam WS-G extends to a heightfield)
     ///

@@ -405,6 +405,20 @@ pub fn layout_along_line(
     out
 }
 
+/// The scale a curved label is emitted at, plus the ground it drapes onto.
+///
+/// Bundled because the three values are always derived together by the
+/// caller (frame text size, tile span, DEM sampler) and never varied
+/// independently across the glyphs of one run.
+pub struct CurvedScale<'a> {
+    /// Text size in device px.
+    pub text_px: f32,
+    /// The tile's span in device px.
+    pub tile_span_px: f32,
+    /// Ground height under a tile-local `(x, y)`.
+    pub ground: &'a dyn Fn(f32, f32) -> f32,
+}
+
 /// Emit two triangles per glyph of a single shaped line laid along a tile-local `centreline`.
 ///
 /// The baseline follows the polyline and every glyph is rotated to its local tangent, so a
@@ -425,16 +439,14 @@ pub fn emit_curved(
     weight: Weight,
     line: &ShapedLine,
     centreline: &[(f32, f32)],
-    text_px: f32,
-    tile_span_px: f32,
-    ground: &dyn Fn(f32, f32) -> f32,
+    scale: &CurvedScale<'_>,
     vertices: &mut Vec<f32>,
     indices: &mut Vec<u32>,
 ) {
-    if tile_span_px <= 0.0 {
+    if scale.tile_span_px <= 0.0 {
         return;
     }
-    let px_per_font_unit = text_px / UP_EM as f32 / tile_span_px;
+    let px_per_font_unit = scale.text_px / UP_EM as f32 / scale.tile_span_px;
     let placed = layout_along_line(line, centreline, px_per_font_unit);
     // The baseline is half a cap-height below the centreline, so the cap box centres on the line.
     let cap_half = 0.5 * CAP_HEIGHT_EM * UP_EM as f32 * px_per_font_unit;
@@ -463,7 +475,7 @@ pub fn emit_curved(
         // with the ground under tilt instead of standing up. The anchor height is sampled at the
         // pen per glyph — the four corners sit within pixels of it — so street names ride the
         // same relief their road drapes onto rather than sinking into hillsides.
-        let pen_h = ground(cg.pen.0, cg.pen.1);
+        let pen_h = (scale.ground)(cg.pen.0, cg.pen.1);
         vertices.extend_from_slice(&[x0, y0, uv.u0, uv.v0, x0, y0, pen_h]);
         vertices.extend_from_slice(&[x1, y1, uv.u1, uv.v0, x1, y1, pen_h]);
         vertices.extend_from_slice(&[x2, y2, uv.u1, uv.v1, x2, y2, pen_h]);

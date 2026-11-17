@@ -43,7 +43,13 @@ impl Renderer {
         // globe); an unprojectable anchor has no box and no hit.
         let rect = if globe {
             placement::globe_anchored_rect(
-                camera, tile.z, tile.x, tile.y, label.anchor,
+                camera,
+                placement::TileRef {
+                    z: tile.z,
+                    x: tile.x,
+                    y: tile.y,
+                },
+                label.anchor,
                 extent_wh, &box_inputs(layer, label, camera), anchor,
             )
         } else {

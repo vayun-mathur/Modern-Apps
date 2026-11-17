@@ -12,10 +12,8 @@ use tilecodec::stream::RangeReader;
 #[test]
 fn the_first_failure_backs_off_rather_than_retrying_at_once() {
     assert_eq!(retry_delay_ms(1), RETRY_BASE_MS);
-    assert!(
-        RETRY_BASE_MS > 16,
-        "a delay under one frame would not be a backoff at all"
-    );
+    // A delay under one frame would not be a backoff at all.
+    const { assert!(RETRY_BASE_MS > 16) };
 }
 
 /// Consecutive failures double, so an unreachable archive settles to a poll.

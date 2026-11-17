@@ -16,7 +16,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use tilecodec::mamaps::read::{LeafCache, MamapsArchive, OverlayArchive, TileSource};
+use tilecodec::mamaps::read::{LeafCache, MamapsArchive, OverlayArchive};
 
 use super::file::FileRangeReader;
 
@@ -40,7 +40,7 @@ pub struct Discovered {
 pub fn discover(base_path: &Path, base_leaves: Arc<LeafCache>) -> Option<Discovered> {
     let dir = base_path.parent()?;
     let overlays = dir.join("overlays");
-    let text = std::fs::read_to_string(overlays.join("manifest.json")).ok()?;
+    let text = std::fs::read_to_string(manifest_path(base_path)).ok()?;
     let manifest: serde_json::Value = serde_json::from_str(&text).ok()?;
     let seq = manifest.get("overlay_seq")?.as_u64()?;
     let base_pin = manifest.get("base")?;
@@ -112,7 +112,7 @@ pub fn discover(base_path: &Path, base_leaves: Arc<LeafCache>) -> Option<Discove
 
 /// Read the base file's own header `build_id` (bytes 16..24 LE) without mapping it.
 fn read_build_id(path: &Path) -> Option<u64> {
-    use std::io::{Read as _, Seek as _};
+    use std::io::Read as _;
     let mut file = std::fs::File::open(path).ok()?;
     let mut head = [0u8; 128];
     file.read_exact(&mut head).ok()?;

@@ -157,7 +157,7 @@ pub fn tessellate_masked(
     }
     // A cell (its four corners) or a skirt segment (its two ends) is drawn only when every sample
     // it touches is land. `None` admits everything, so the un-masked path is bit-identical.
-    let is_land = |i: usize| land.map_or(true, |m| m.get(i).copied().unwrap_or(false));
+    let is_land = |i: usize| land.is_none_or(|m| m.get(i).copied().unwrap_or(false));
     // Tile-normalised height per metre; a degenerate (polar) tile with zero width flattens rather
     // than dividing by zero, matching how buildings handle the same edge.
     let factor = if ground_width_m > 0.0 {

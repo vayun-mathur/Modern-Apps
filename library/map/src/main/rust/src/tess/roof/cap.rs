@@ -37,7 +37,14 @@ pub(crate) fn emit_roof(
         ROOF_GABLED | ROOF_HIPPED | ROOF_PYRAMIDAL | ROOF_SKILLION | ROOF_DOME
     );
     if !pitched || rise <= 0.0 {
-        flat_cap(rings, extent, validated, apex, rgba, ground, out_v, out_i);
+        flat_cap(
+            rings,
+            extent,
+            validated,
+            &FlatCap { apex, rgba, ground },
+            out_v,
+            out_i,
+        );
         return;
     }
 
@@ -162,6 +169,17 @@ pub(crate) fn emit_roof(
     }
 }
 
+/// How a flat lid is lifted and coloured: its height over the walls, its
+/// fill colour, and the ground sampler each corner is draped by.
+pub(crate) struct FlatCap<'a> {
+    /// The lid's height, in tile-local units.
+    pub apex: f32,
+    /// The lid's fill colour.
+    pub rgba: u32,
+    /// Ground height under a tile-local `(x, y)`.
+    pub ground: &'a dyn Fn(f32, f32) -> f32,
+}
+
 /// A flat roof lid: the footprint tessellated at the apex, every face pointing straight up.
 ///
 /// Each corner is lifted by the ground offset beneath it, so the lid follows the slope like the
@@ -172,9 +190,7 @@ pub(crate) fn flat_cap(
     rings: &[Vec<(i32, i32)>],
     extent: u32,
     validated: bool,
-    apex: f32,
-    rgba: u32,
-    ground: &dyn Fn(f32, f32) -> f32,
+    cap: &FlatCap<'_>,
     out_v: &mut Vec<f32>,
     out_i: &mut Vec<u32>,
 ) {
@@ -186,9 +202,9 @@ pub(crate) fn flat_cap(
         for (corner, &vi) in tri.iter().enumerate() {
             let at = vi as usize * fill::FLOATS_PER_VERTEX;
             let (x, y) = (cap_xy[at], cap_xy[at + 1]);
-            pts[corner] = [x, y, apex + ground(x, y)];
+            pts[corner] = [x, y, cap.apex + (cap.ground)(x, y)];
         }
-        push_tri(out_v, out_i, pts[0], pts[1], pts[2], [0.0, 0.0, 1.0], rgba);
+        push_tri(out_v, out_i, pts[0], pts[1], pts[2], [0.0, 0.0, 1.0], cap.rgba);
     }
 }
 

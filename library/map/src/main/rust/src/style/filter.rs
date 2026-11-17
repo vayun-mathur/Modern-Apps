@@ -169,10 +169,11 @@ impl ToggleStamp {
                 return true;
             }
         }
-        if built.poi && self.kinds != *kinds {
-            if self.gated.admitted(&self.kinds) != self.gated.admitted(kinds) {
-                return true;
-            }
+        if built.poi
+            && self.kinds != *kinds
+            && self.gated.admitted(&self.kinds) != self.gated.admitted(kinds)
+        {
+            return true;
         }
         false
     }

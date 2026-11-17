@@ -61,7 +61,10 @@ pub fn place_segmented(candidates: &[SegmentedCandidate]) -> Vec<Placed> {
         }
     }
     let mut cell: f32 = max_e * 2.0;
-    if !(cell >= 1.0) {
+    if !matches!(
+        cell.partial_cmp(&1.0),
+        Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
+    ) {
         cell = 1.0;
     }
     let mut grid: HashMap<(i32, i32), Vec<usize>> = HashMap::new();

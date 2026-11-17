@@ -214,7 +214,19 @@
         let ppfu = 24.0 / UP_EM as f32 / 512.0;
         let placed = layout_along_line(&line, &centreline, ppfu);
         let (mut v, mut idx) = (Vec::new(), Vec::new());
-        emit_curved(&atlas, Weight::Regular, &line, &centreline, 24.0, 512.0, &|_, _| 0.0, &mut v, &mut idx);
+        emit_curved(
+            &atlas,
+            Weight::Regular,
+            &line,
+            &centreline,
+            &CurvedScale {
+                text_px: 24.0,
+                tile_span_px: 512.0,
+                ground: &|_, _| 0.0,
+            },
+            &mut v,
+            &mut idx,
+        );
         // A glyph with no ink (a space) draws no quad, so bound by placed glyphs that have UVs.
         let drawable = placed.iter().filter(|c| atlas.uv(Weight::Regular, c.glyph.ch).is_some()).count();
         assert_eq!(idx.len(), drawable * 6, "six indices per drawable glyph");

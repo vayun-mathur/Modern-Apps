@@ -1,8 +1,7 @@
 use super::build::{build, build_toggled};
-use super::mesh::{LayerMesh, TileMesh};
+use super::mesh::LayerMesh;
 use crate::style;
-use crate::style::paint::Ramp;
-use crate::style::{KindFilter, Layer, LayerKind, LayerToggles};
+use crate::style::{KindFilter, Layer, LayerToggles};
 use crate::tess::ribbon;
 use tilecodec::mamaps::body::{
     Body, Feature, Layer as BodyLayer, Part, GEOM_LINE, GEOM_POLYGON, NAME_NONE, WINDING_OUTER,
@@ -82,10 +81,6 @@ fn real() -> Body {
     roads.coords = vec![(100, 100), (1500, 900), (2600, 1800), (3900, 2700)];
     body.layers.push(roads);
     body
-}
-
-fn mesh_for<'a>(mesh: &'a TileMesh, layers: &[Layer], id: &str) -> Option<&'a LayerMesh> {
-    mesh.meshes.iter().find(|m| layers[m.layer_index].id == id)
 }
 
 /// A body of straight roads, one per `(lane_count, oneway)` entry, on the `roads` layer.
@@ -410,7 +405,7 @@ fn transit_lines_of_one_colour_split_again_on_their_corridor_ordinal() {
 #[test]
 fn a_layer_whose_features_carry_no_colour_still_emits_one_mesh() {
     let layers = style::layers();
-    let mesh = build(&real(), &layers, 11, 339, 770, false);
+    let mesh = build(&real(), layers, 11, 339, 770, false);
     for m in &mesh.meshes {
         assert_eq!(
             m.color_override, None,

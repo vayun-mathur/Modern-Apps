@@ -63,4 +63,8 @@ pub use mesh::{
     labels_by_layer, BuildingMesh, CarriagewayMesh, LayerMesh, RegionMesh, ShapedLabel, TerrainMesh,
     TileMesh, TrafficMesh, ROAD_LANE_MIN_ZOOM, TRAFFIC_MIN_ZOOM,
 };
+// Only the Android Vulkan renderer samples ground height through this
+// re-export; host code reaches `terrain` directly, so gate it to avoid a
+// dead re-export on host builds.
+#[cfg(target_os = "android")]
 pub(crate) use terrain::{sample_ground_metres, tile_ground_width_m};

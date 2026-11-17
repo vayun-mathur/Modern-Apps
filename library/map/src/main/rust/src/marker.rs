@@ -260,8 +260,8 @@ mod tests {
     /// and the 4 Dp gap puts the label start 18 Dp from the anchor.
     #[test]
     fn marker_label_starts_clear_of_the_icon_edge() {
-        assert!(MARKER_SIZE_DP > 0.0 && MARKER_LABEL_GAP_DP > 0.0);
-        assert!(MARKER_LABEL_DP > 0.0, "the label has a real size");
+        const { assert!(MARKER_SIZE_DP > 0.0 && MARKER_LABEL_GAP_DP > 0.0) };
+        const { assert!(MARKER_LABEL_DP > 0.0) };
         let label_start = MARKER_SIZE_DP * 0.5 + MARKER_LABEL_GAP_DP;
         assert!((label_start - 18.0).abs() < 1e-6, "{label_start}");
     }

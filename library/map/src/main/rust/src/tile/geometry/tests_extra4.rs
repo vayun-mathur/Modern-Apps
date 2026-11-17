@@ -137,7 +137,7 @@ fn an_unnamed_road_line_shapes_no_label() {
     use tilecodec::mamaps::body::NAME_NONE;
     let mut body = named_road_body("ignored", &[(200, 2048), (3800, 2048)]);
     body.layers[0].features[0].name_idx = NAME_NONE;
-    let mesh = build(&body, &vec![roads_label_layer()], 14, 0, 8192, false);
+    let mesh = build(&body, &[roads_label_layer()], 14, 0, 8192, false);
     assert!(
         mesh.labels.is_empty(),
         "an unnamed road line shapes nothing"
@@ -239,7 +239,7 @@ fn a_building_over_a_hill_gets_its_base_lifted() {
     );
     // The footprint's far corner (1000/4096 ≈ 0.244) lands at grid 1.95, inside the plateau;
     // widen the plateau check by asserting the lift rather than the corner math.
-    let mesh = build(&body, &crate::style::layers(), z, 0, y, false);
+    let mesh = build(&body, crate::style::layers(), z, 0, y, false);
     assert!(
         !mesh.buildings.indices.is_empty(),
         "the building must still extrude"
@@ -251,7 +251,7 @@ fn a_building_over_a_hill_gets_its_base_lifted() {
         "the skirted wall base rides the hill at (metres - skirt)/ground_width: {got} vs {want}",
     );
     body.heightmap = None;
-    let flat = build(&body, &crate::style::layers(), z, 0, y, false);
+    let flat = build(&body, crate::style::layers(), z, 0, y, false);
     assert!(
         min_building_z(&flat).abs() < 1e-6,
         "without the hill the same building starts at z 0",
@@ -276,7 +276,7 @@ fn no_heightmap_leaves_structural_heights_bit_exact() {
         }),
         None,
     );
-    let mesh = build(&body, &crate::style::layers(), z, 0, y, false);
+    let mesh = build(&body, crate::style::layers(), z, 0, y, false);
     assert!(!mesh.buildings.indices.is_empty());
     // 30 m total, 10 m of roof: base 0, eaves 20 m, ridge 30 m, tile-normalised.
     let structural = [0.0f32, (20.0 * factor) as f32, (30.0 * factor) as f32].map(f32::to_bits);
@@ -288,7 +288,7 @@ fn no_heightmap_leaves_structural_heights_bit_exact() {
         );
     }
     // And rebuilding is deterministic, so the mesh is a pure function of tile + style.
-    let again = build(&body, &crate::style::layers(), z, 0, y, false);
+    let again = build(&body, crate::style::layers(), z, 0, y, false);
     assert_eq!(mesh.buildings.vertices, again.buildings.vertices);
     assert_eq!(mesh.buildings.indices, again.buildings.indices);
 }
@@ -311,7 +311,7 @@ fn a_building_in_a_depression_sits_below_zero() {
             |c, r| if c < 3 && r < 3 { -100 } else { 0 },
         )),
     );
-    let mesh = build(&body, &crate::style::layers(), z, 0, y, false);
+    let mesh = build(&body, crate::style::layers(), z, 0, y, false);
     assert!(!mesh.buildings.indices.is_empty());
     let got = min_building_z(&mesh);
     assert!(got < 0.0, "a below-sea base dips below z 0, got {got}");
@@ -428,7 +428,7 @@ fn a_building_on_saddle_terrain_seats_on_the_fold_and_skirts_below() {
         }),
         saddle,
     );
-    let mesh = build(&body, &crate::style::layers(), z, 0, y, false);
+    let mesh = build(&body, crate::style::layers(), z, 0, y, false);
     assert!(
         !mesh.buildings.indices.is_empty(),
         "the building must still extrude"

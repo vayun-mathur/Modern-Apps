@@ -49,8 +49,7 @@
 //! route's bounding box, so a continent-crossing route resolves to about a hundredth of a
 //! Dp on screen — invisible — while a city-scale one is exact to well under a pixel.
 
-use crate::camera::{project, WorldPx};
-use crate::tess::stroke;
+use crate::camera::WorldPx;
 
 /// Local coordinate resolution of the route's bounding square.
 ///

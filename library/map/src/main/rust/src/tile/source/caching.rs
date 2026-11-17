@@ -97,10 +97,7 @@ impl<F: RangeFetcher> CachingRangeReader<F> {
             }
         }
 
-        let response = match self.fetcher.fetch(&self.url, &range) {
-            Ok(r) => r,
-            Err(e) => return Err(e),
-        };
+        let response = self.fetcher.fetch(&self.url, &range)?;
 
         if !(200..300).contains(&response.status) {
             return err(format!(

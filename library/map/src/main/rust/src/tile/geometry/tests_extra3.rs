@@ -4,7 +4,7 @@ use crate::style;
 use crate::style::{KindFilter, Layer, LayerToggles};
 use crate::tess::roof;
 use tilecodec::mamaps::body::{
-    Body, Feature, Layer as BodyLayer, Part, GEOM_LINE, GEOM_POLYGON, NAME_NONE, WINDING_OUTER,
+    Body, GEOM_LINE, GEOM_POLYGON,
 };
 use tilecodec::mamaps::dict::LAYER_TRAFFIC;
 
@@ -314,7 +314,7 @@ fn a_building_extrudes_into_a_3d_mesh_not_a_flat_fill() {
         ..Default::default()
     }));
     let layers = style::layers();
-    let mesh = build(&body, &layers, 14, 0, 8192, false);
+    let mesh = build(&body, layers, 14, 0, 8192, false);
 
     assert!(
         !mesh.buildings.indices.is_empty(),
@@ -332,7 +332,7 @@ fn a_building_extrudes_into_a_3d_mesh_not_a_flat_fill() {
     );
     // Buildings draw in their own depth pass, so they must NOT also appear as a flat fill mesh.
     assert!(
-        mesh_for(&mesh, &layers, "buildings").is_none(),
+        mesh_for(&mesh, layers, "buildings").is_none(),
         "a building must not double up as a flat fill",
     );
 
@@ -358,7 +358,7 @@ fn a_taller_building_reaches_higher() {
             height: 200,
             ..Default::default()
         })),
-        &layers,
+        layers,
         14,
         0,
         8192,
@@ -369,7 +369,7 @@ fn a_taller_building_reaches_higher() {
             height: 600,
             ..Default::default()
         })),
-        &layers,
+        layers,
         14,
         0,
         8192,
@@ -389,7 +389,7 @@ fn a_taller_building_reaches_higher() {
 fn a_building_with_no_side_table_still_extrudes_a_default_box() {
     // A layer with no building table reads back default attrs, which extrude at the default
     // height rather than nothing — an unattributed building is still a building.
-    let mesh = build(&building_body(None), &style::layers(), 14, 0, 8192, false);
+    let mesh = build(&building_body(None), style::layers(), 14, 0, 8192, false);
     assert!(
         !mesh.buildings.indices.is_empty(),
         "a default building still extrudes"
@@ -410,7 +410,7 @@ fn buildings_are_not_extruded_far_below_their_zoom() {
             height: 300,
             ..Default::default()
         })),
-        &style::layers(),
+        style::layers(),
         5,
         0,
         8192,

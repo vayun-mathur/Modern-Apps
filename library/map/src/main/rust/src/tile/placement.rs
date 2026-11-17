@@ -255,7 +255,7 @@ pub struct BoxInputs {
 /// Returns `None` when the point is on or behind the eye (`w <= 0`): there is no screen position
 /// to collide at, so the label cannot be a candidate. Callers skip the label (point path) or the
 /// glyph (curved path) — a box for an unprojectable label is unrepresentable rather than garbage.
-/// The `!(w > 0.0)` form also catches NaN, which would otherwise build a box that collides with
+/// The `partial_cmp` form also catches NaN, which would otherwise build a box that collides with
 /// nothing and always draws.
 pub fn project_to_screen(
     tile_clip: [f32; 16],
@@ -265,7 +265,10 @@ pub fn project_to_screen(
     let cx = tile_clip[0] * point.0 + tile_clip[4] * point.1 + tile_clip[12];
     let cy = tile_clip[1] * point.0 + tile_clip[5] * point.1 + tile_clip[13];
     let w = tile_clip[3] * point.0 + tile_clip[7] * point.1 + tile_clip[15];
-    if !(w > 0.0) {
+    if !matches!(
+        w.partial_cmp(&0.0),
+        Some(std::cmp::Ordering::Greater)
+    ) {
         return None;
     }
     Some((

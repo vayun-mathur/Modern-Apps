@@ -1,5 +1,6 @@
     use super::*;
-    use crate::camera::Camera;
+    use crate::camera::{project, Camera};
+    use crate::tess::stroke;
 
     /// The car's route paint: `#1A73E8` over a white casing, at the phone's authored route
     /// width (`maps/.../ui/map/RouteOverlayBuilder.kt`). The old renderer's `12f`/`18f` were

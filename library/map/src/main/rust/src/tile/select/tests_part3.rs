@@ -170,7 +170,7 @@ fn eviction_spends_the_byte_budget_on_descendants_last() {
         (2, 30, 8 * MIB),
         (1, 20, 4 * MIB),
         (0, 10, 40 * MIB),
-        (2, 31, 1 * MIB),
+        (2, 31, MIB),
     ];
     let doomed = evict(&mut ranked, 64, 48 * MIB);
     assert_eq!(doomed, vec![30]);

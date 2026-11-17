@@ -50,6 +50,9 @@ pub mod range_alloc;
 pub mod style;
 pub mod tess;
 pub mod tile;
+// Frame timing is consumed only by the Android bridge/Vulkan renderer;
+// on host it exists solely for its own unit tests.
+#[cfg(any(target_os = "android", test))]
 pub mod timing;
 
 #[cfg(target_os = "android")]

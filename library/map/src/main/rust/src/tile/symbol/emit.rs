@@ -56,9 +56,11 @@ pub fn emit_label(
             label.weight,
             line,
             centreline,
-            text_px,
-            tile_span_px,
-            ground,
+            &text::CurvedScale {
+                text_px,
+                tile_span_px,
+                ground,
+            },
             vertices,
             indices,
         );

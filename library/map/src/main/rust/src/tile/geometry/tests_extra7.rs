@@ -92,7 +92,7 @@ fn a_heightmap_tile_builds_terrain_and_keeps_the_flat_earth_fill() {
     let layers = style::layers();
     let mut body = real();
     body.heightmap = Some(heightmap(9, |c, r| (c as i32 + r as i32) * 20));
-    let mesh = build(&body, &layers, 11, 339, 770, false);
+    let mesh = build(&body, layers, 11, 339, 770, false);
 
     assert!(
         !mesh.terrain.indices.is_empty(),
@@ -109,11 +109,11 @@ fn a_heightmap_tile_builds_terrain_and_keeps_the_flat_earth_fill() {
         "terrain vertices are whole",
     );
     assert!(
-        mesh_for(&mesh, &layers, "earth").is_some(),
+        mesh_for(&mesh, layers, "earth").is_some(),
         "the flat earth fill stays as backstop under the terrain grid",
     );
     assert!(
-        mesh_for(&mesh, &layers, "water").is_some(),
+        mesh_for(&mesh, layers, "water").is_some(),
         "water still draws flat over terrain"
     );
 }
@@ -123,13 +123,13 @@ fn a_tile_without_a_heightmap_stays_flat() {
     // The no-DEM case (ocean, off-coverage): no terrain grid, and the flat earth fill remains
     // exactly as it always was.
     let layers = style::layers();
-    let mesh = build(&real(), &layers, 11, 339, 770, false);
+    let mesh = build(&real(), layers, 11, 339, 770, false);
     assert!(
         mesh.terrain.indices.is_empty(),
         "a tile with no heightmap builds no terrain"
     );
     assert!(
-        mesh_for(&mesh, &layers, "earth").is_some(),
+        mesh_for(&mesh, layers, "earth").is_some(),
         "and keeps its flat earth fill"
     );
 }
@@ -168,13 +168,13 @@ fn open_sea_with_a_heightmap_builds_no_terrain() {
     body.layers.push(water);
     // A flat sea-level DEM, exactly what coastal tiles carry over their water half.
     body.heightmap = Some(heightmap(9, |_, _| 0));
-    let mesh = build(&body, &layers, 4, 2, 5, false);
+    let mesh = build(&body, layers, 4, 2, 5, false);
     assert!(
         mesh.terrain.indices.is_empty(),
         "open sea builds no relief grid, or shaded earth covers the ocean"
     );
     assert!(
-        mesh_for(&mesh, &layers, "water").is_some(),
+        mesh_for(&mesh, layers, "water").is_some(),
         "the water fill still draws flat over the clear"
     );
 }
@@ -192,7 +192,7 @@ fn terrain_height_is_normalised_from_the_dem() {
         5,
         |c, r| if c == 2 && r == 2 { peak_m } else { 0 },
     ));
-    let mesh = build(&body, &layers, z, 339, y, false);
+    let mesh = build(&body, layers, z, 339, y, false);
 
     let ground = tile_ground_width_m(z, y);
     let max_z = mesh
@@ -252,7 +252,7 @@ fn a_coastal_tile_withholds_terrain_from_its_water_half() {
     body.layers.push(landtype);
     // Hilly DEM: relief must appear west, never east.
     body.heightmap = Some(heightmap(9, |c, r| (c as i32 + r as i32) * 20));
-    let mesh = build(&body, &layers, 11, 339, 770, false);
+    let mesh = build(&body, layers, 11, 339, 770, false);
     assert!(
         !mesh.terrain.indices.is_empty(),
         "the land half still builds relief"
@@ -268,7 +268,7 @@ fn a_coastal_tile_withholds_terrain_from_its_water_half() {
         }
     }
     assert!(
-        mesh_for(&mesh, &layers, "water").is_some(),
+        mesh_for(&mesh, layers, "water").is_some(),
         "the water fill still draws flat over the withheld grid"
     );
 }
@@ -305,10 +305,10 @@ fn a_marine_sanctuary_over_open_water_draws_no_land_fill() {
     });
     landtype.coords = vec![(0, 0), (4096, 0), (4096, 4096), (0, 4096)];
     body.layers.push(landtype);
-    let mesh = build(&body, &layers, 12, 659, 1595, false);
+    let mesh = build(&body, layers, 12, 659, 1595, false);
     for id in ["earth", "landcover"] {
         assert!(
-            mesh_for(&mesh, &layers, id).is_none(),
+            mesh_for(&mesh, layers, id).is_none(),
             "{id} must not tessellate the sanctuary — it is open water",
         );
     }

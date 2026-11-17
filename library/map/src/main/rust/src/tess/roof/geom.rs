@@ -1,7 +1,5 @@
 use super::FLOATS_PER_VERTEX;
 
-/// The unit normal
-
 /// The unit normal of the triangle `a, b, c`, or straight up for a degenerate (zero-area)
 /// triangle so a sliver never emits a NaN normal.
 pub(crate) fn face_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> [f32; 3] {

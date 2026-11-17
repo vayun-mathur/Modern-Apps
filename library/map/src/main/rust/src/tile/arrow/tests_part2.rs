@@ -1,7 +1,6 @@
-use super::glyph::{HEAD_HALF_WIDTH, SHAFT_HALF_WIDTH, TAIL_X};
 use super::*;
 use tilecodec::mamaps::body::{
-    LaneTurns, LANE_LEFT, LANE_REVERSE, LANE_RIGHT, LANE_SLIGHT_LEFT, LANE_THROUGH,
+    LaneTurns, LANE_LEFT, LANE_RIGHT, LANE_THROUGH,
 };
 
 /// The two directions' arrows do not land on top of each other, which is what drew as a single

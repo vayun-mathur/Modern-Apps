@@ -1,7 +1,6 @@
 use super::build::{build, build_toggled};
 use super::mesh::{LayerMesh, TileMesh};
 use crate::style;
-use crate::style::paint::Ramp;
 use crate::style::{KindFilter, Layer, LayerKind, LayerToggles};
 use crate::tess::{fill, stroke};
 use tilecodec::mamaps::body::{
@@ -108,37 +107,37 @@ fn the_real_tile_produces_geometry_for_the_layers_it_has_data_in() {
     // The fixture body carries one kind-less `landtype` mainland, one `roads`
     // LineString of kind = major_road, and two `lake` polygons on `landtype`.
     let layers = style::layers();
-    let mesh = build(&real(), &layers, 14, 339, 770, false);
+    let mesh = build(&real(), layers, 14, 339, 770, false);
 
     assert!(
-        mesh_for(&mesh, &layers, "earth").is_some(),
+        mesh_for(&mesh, layers, "earth").is_some(),
         "the earth polygon tessellates"
     );
     assert!(
-        mesh_for(&mesh, &layers, "water").is_some(),
+        mesh_for(&mesh, layers, "water").is_some(),
         "both water polygons tessellate"
     );
     assert!(
-        mesh_for(&mesh, &layers, "roads-major").is_some(),
+        mesh_for(&mesh, layers, "roads-major").is_some(),
         "the major_road strokes"
     );
     assert!(
-        mesh_for(&mesh, &layers, "roads-major-casing").is_some(),
+        mesh_for(&mesh, layers, "roads-major-casing").is_some(),
         "and so does its casing"
     );
 
     // Layers the tile has no data for produce no mesh at all, rather than an empty
     // one that would still cost a draw.
     assert!(
-        mesh_for(&mesh, &layers, "buildings").is_none(),
+        mesh_for(&mesh, layers, "buildings").is_none(),
         "no buildings layer here"
     );
     assert!(
-        mesh_for(&mesh, &layers, "roads-highway").is_none(),
+        mesh_for(&mesh, layers, "roads-highway").is_none(),
         "the road is a major_road"
     );
     assert!(
-        mesh_for(&mesh, &layers, "landuse_park:national_park").is_none(),
+        mesh_for(&mesh, layers, "landuse_park:national_park").is_none(),
         "no landuse layer",
     );
 }
@@ -219,7 +218,7 @@ fn major_road_at_min_zoom(min_zoom: u8) -> Layer {
 #[test]
 fn every_mesh_is_well_formed() {
     let layers = style::layers();
-    let mesh = build(&real(), &layers, 11, 339, 770, false);
+    let mesh = build(&real(), layers, 11, 339, 770, false);
     assert!(!mesh.meshes.is_empty());
     for m in &mesh.meshes {
         let id = &layers[m.layer_index].id;
@@ -250,7 +249,7 @@ fn tessellated_output_is_within_the_bounds_the_shaders_assume() {
     // pixels for the dash pattern. A violation of any of those renders a recognisable
     // map that is badly wrong, which is exactly the failure this pins down.
     let layers = style::layers();
-    let mesh = build(&real(), &layers, 11, 339, 770, false);
+    let mesh = build(&real(), layers, 11, 339, 770, false);
     assert!(!mesh.meshes.is_empty());
 
     let mut worst_pos = 0.0f32;
@@ -318,7 +317,7 @@ fn positions_are_tile_normalised() {
     // The clip transform assumes 0..1 within the tile. Clipped geometry overspills
     // the edges a little, which is why the bound is generous rather than exact.
     let layers = style::layers();
-    let mesh = build(&real(), &layers, 11, 339, 770, false);
+    let mesh = build(&real(), layers, 11, 339, 770, false);
     for m in &mesh.meshes {
         let stride = match m.kind {
             LayerKind::Fill => fill::FLOATS_PER_VERTEX,
@@ -343,12 +342,12 @@ fn positions_are_tile_normalised() {
 #[test]
 fn a_layer_outside_its_zoom_range_is_skipped() {
     let layers = style::layers();
-    let low = build(&real(), &layers, 11, 339, 770, false);
+    let low = build(&real(), layers, 11, 339, 770, false);
     // buildings is min_zoom 14, and roads-minor is 13; the tile's road is a
     // major_road anyway.
-    assert!(mesh_for(&low, &layers, "roads-minor").is_none());
+    assert!(mesh_for(&low, layers, "roads-minor").is_none());
     assert!(
-        mesh_for(&low, &layers, "earth").is_some(),
+        mesh_for(&low, layers, "earth").is_some(),
         "earth draws at every zoom"
     );
 }
@@ -356,9 +355,9 @@ fn a_layer_outside_its_zoom_range_is_skipped() {
 #[test]
 fn a_casing_produces_twice_the_vertices_of_a_plain_stroke() {
     let layers = style::layers();
-    let mesh = build(&real(), &layers, 11, 339, 770, false);
-    let plain = mesh_for(&mesh, &layers, "roads-major").expect("plain");
-    let casing = mesh_for(&mesh, &layers, "roads-major-casing").expect("casing");
+    let mesh = build(&real(), layers, 11, 339, 770, false);
+    let plain = mesh_for(&mesh, layers, "roads-major").expect("plain");
+    let casing = mesh_for(&mesh, layers, "roads-major-casing").expect("casing");
     assert_eq!(
         plain.vertices.len() * 2,
         casing.vertices.len(),
@@ -370,7 +369,7 @@ fn a_casing_produces_twice_the_vertices_of_a_plain_stroke() {
 #[test]
 fn an_empty_tile_produces_no_meshes() {
     let layers = style::layers();
-    let mesh = build(&Body::new(4096), &layers, 11, 0, 0, false);
+    let mesh = build(&Body::new(4096), layers, 11, 0, 0, false);
     assert!(mesh.meshes.is_empty());
 }
 

@@ -150,11 +150,11 @@ fn turn_arrows_come_from_the_turn_table_at_high_zoom() {
     )];
 
     // Below the gate: no arrows built.
-    assert!(build(&body, &style::layers(), 11, 0, 0, false)
+    assert!(build(&body, style::layers(), 11, 0, 0, false)
         .arrows
         .is_empty());
 
-    let mesh = build(&body, &style::layers(), 16, 0, 0, false);
+    let mesh = build(&body, style::layers(), 16, 0, 0, false);
     assert_eq!(mesh.arrows.len(), 2, "one arrow per marked forward lane");
     assert!(
         mesh.arrows.iter().all(|a| a.angle.abs() < 1e-4),

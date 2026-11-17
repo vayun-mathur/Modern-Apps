@@ -174,7 +174,12 @@ impl Renderer {
                         let placed = crate::tess::text::layout_along_line(line, centreline, ppfu);
                         let boxes = if globe {
                             placement::globe_curved_boxes(
-                                camera, tile.z, tile.x, tile.y,
+                                camera,
+                                placement::TileRef {
+                                    z: tile.z,
+                                    x: tile.x,
+                                    y: tile.y,
+                                },
                                 &placed, tile_clip, wh, inputs.text_px, inputs.pad_px,
                             )
                         } else {
@@ -188,12 +193,17 @@ impl Renderer {
                         (boxes, None)
                     } else {
                         let (primary_rect, alt) = if globe {
+                            let tile_ref = placement::TileRef {
+                                z: tile.z,
+                                x: tile.x,
+                                y: tile.y,
+                            };
                             let Some(primary_rect) = placement::globe_anchored_rect(
-                                camera, tile.z, tile.x, tile.y, label.anchor, wh, &inputs, primary,
+                                camera, tile_ref, label.anchor, wh, &inputs, primary,
                             ) else { continue };
                             let alt = alternate.and_then(|second| {
                                 placement::globe_anchored_rect(
-                                    camera, tile.z, tile.x, tile.y, label.anchor, wh, &inputs, second,
+                                    camera, tile_ref, label.anchor, wh, &inputs, second,
                                 )
                                 .map(|r| vec![placement::Obb::from_rect(r)])
                             });
