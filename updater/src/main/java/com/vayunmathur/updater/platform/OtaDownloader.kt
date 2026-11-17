@@ -294,6 +294,14 @@ object OtaDownloader {
         onProgress(soFar, total)
 
         FileOutputStream(updateFile(), append).use { output ->
+            // MODE_PRIVATE equivalent for a direct file: owner read/write only from
+            // creation, never world-readable while the unverified package is staged.
+            updateFile().apply {
+                setReadable(false, false)
+                setWritable(false, false)
+                setReadable(true, true)
+                setWritable(true, true)
+            }
             connection.inputStream.use { input ->
                 val buffer = ByteArray(BUFFER_SIZE)
                 while (true) {

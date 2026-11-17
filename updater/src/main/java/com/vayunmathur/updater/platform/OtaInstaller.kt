@@ -209,14 +209,23 @@ object OtaInstaller {
         null
     }
 
+    /** Owner read/write only — the direct-file equivalent of `Context.MODE_PRIVATE`. */
+    private fun restrictToOwner(file: File) {
+        file.setReadable(false, false)
+        file.setWritable(false, false)
+        file.setReadable(true, true)
+        file.setWritable(true, true)
+    }
+
     /**
      * Best-effort copy of the care map out of the package.
      *
      * Failure is logged and ignored: the care map only tells update_engine which blocks it can
      * skip verifying, so its absence makes the apply slower rather than wrong.
      *
-     * World-readable afterwards for the same reason the package itself is — update_engine opens
-     * it as its own uid, not ours.
+     * Owner-only afterwards (the MODE_PRIVATE equivalent for a direct file): update_engine is a
+     * privileged system service that reads /data/ota_package under its own SELinux domain, so
+     * world-readable is unnecessary exposure for a staged system image.
      */
     private fun copyCareMap(packageFile: File) {
         runCatching {
@@ -229,7 +238,7 @@ object OtaInstaller {
                 zip.getInputStream(entry).use { input ->
                     (careMapPathOverride ?: CARE_MAP_PATH).outputStream().use { output -> input.copyTo(output) }
                 }
-                (careMapPathOverride ?: CARE_MAP_PATH).setReadable(true, false)
+                restrictToOwner(careMapPathOverride ?: CARE_MAP_PATH)
             }
         }.onFailure { Log.status(TAG, "could not stage the care map; continuing without it", it) }
     }
@@ -336,9 +345,10 @@ object OtaInstaller {
         // RuntimeExceptions, and no completion callback follows a rejection.
         @Suppress("TooGenericExceptionCaught")
         try {
-            // update_engine opens this path as its own uid, not ours, so it has to be readable
-            // by others. Without it applyPayload fails on open.
-            packageFile.setReadable(true, false)
+            // Owner-only, never world-readable: update_engine is a privileged system
+            // service that opens /data/ota_package under its own SELinux domain, so it
+            // does not need other-read on the staged package (see copyCareMap).
+            restrictToOwner(packageFile)
             engine.applyPayload(
                 "file://${packageFile.absolutePath}",
                 payloadOffset,
