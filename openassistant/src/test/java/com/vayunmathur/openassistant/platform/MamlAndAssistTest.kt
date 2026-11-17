@@ -1,15 +1,15 @@
 package com.vayunmathur.openassistant.platform
 
-import com.vayunmathur.openassistant.assist.OpenAssistantSession
+import com.vayunmathur.openassistant.service.OpenAssistantSession
 
 import android.app.assist.AssistContent
 import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
-import com.vayunmathur.openassistant.assist.OpenAssistantSessionService
-import com.vayunmathur.openassistant.assist.OpenAssistantVoiceInteractionService
-import com.vayunmathur.openassistant.assist.StubRecognitionService
+import com.vayunmathur.openassistant.service.OpenAssistantSessionService
+import com.vayunmathur.openassistant.service.OpenAssistantVoiceInteractionService
+import com.vayunmathur.openassistant.service.StubRecognitionService
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric

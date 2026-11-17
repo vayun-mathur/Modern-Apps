@@ -20,6 +20,22 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.openassistant.platform.summarizeRestaurants
+import com.vayunmathur.openassistant.platform.summarizeMenu
+import com.vayunmathur.openassistant.platform.summarizeFoodCart
+import com.vayunmathur.openassistant.platform.summarizeOrderSummary
+import com.vayunmathur.openassistant.platform.summarizeFoodOrders
+import com.vayunmathur.openassistant.platform.summarizeProducts
+import com.vayunmathur.openassistant.platform.summarizeProductDetail
+import com.vayunmathur.openassistant.platform.summarizeShopCart
+import com.vayunmathur.openassistant.platform.summarizeShopOrders
+import com.vayunmathur.openassistant.platform.summarizeConversations
+import com.vayunmathur.openassistant.platform.summarizeConversationMessages
+import com.vayunmathur.openassistant.platform.summarizeSendResult
+import com.vayunmathur.openassistant.platform.summarizeDirections
+import com.vayunmathur.openassistant.platform.summarizeRideEstimate
+import com.vayunmathur.openassistant.platform.summarizeOrderLookup
+import com.vayunmathur.openassistant.platform.parseSetCartItems
 
 /**
  * Model-facing summaries for the food/shop tools: the exact strings the

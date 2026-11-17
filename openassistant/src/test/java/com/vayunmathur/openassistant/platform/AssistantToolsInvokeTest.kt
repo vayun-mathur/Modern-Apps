@@ -193,7 +193,7 @@ class AssistantToolsInvokeTest {
 
     @Test fun webToolsRunThroughHandlersWithFakeTransport() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val fake = com.vayunmathur.openassistant.util.AssistantWebTools(
+        val fake = com.vayunmathur.openassistant.network.AssistantWebTools(
             transport = { url ->
                 if (url.contains("/api/search")) {
                     """{"type":"text","query":"sushi","text":[{"title":"Sushi Guide","url":"https://example.com/sushi","snippet":"All about sushi"}]}"""

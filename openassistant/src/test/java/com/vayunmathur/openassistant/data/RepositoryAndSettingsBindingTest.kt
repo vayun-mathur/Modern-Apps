@@ -18,7 +18,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.openassistant.Route
 import com.vayunmathur.openassistant.platform.FakeAndroidKeyStore
 import com.vayunmathur.openassistant.ui.SettingsPage
-import com.vayunmathur.openassistant.util.AssistantViewModel
+import com.vayunmathur.openassistant.platform.AssistantViewModel
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule

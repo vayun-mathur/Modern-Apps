@@ -14,6 +14,8 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.robolectric.Shadows
+import com.vayunmathur.openassistant.platform.AssistantViewModel
+import com.vayunmathur.openassistant.platform.AssistantViewModelFactory
 
 /**
  * AssistantViewModel service dispatch + recording-state lifecycle under

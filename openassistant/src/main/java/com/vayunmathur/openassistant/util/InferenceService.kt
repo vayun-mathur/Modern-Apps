@@ -1,5 +1,8 @@
+@file:SuppressLint("PackageStructure")
+
 package com.vayunmathur.openassistant.util
 
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -70,8 +73,14 @@ import com.vayunmathur.openassistant.domain.splitA2ui
 import com.vayunmathur.openassistant.domain.withA2uiBlock
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.selects.select
+import com.vayunmathur.openassistant.domain.JsonSchemaValidator
+import com.vayunmathur.openassistant.domain.JsonExtractor
+import com.vayunmathur.openassistant.platform.copyUriToFile
 
 /** Inference Service: a service implementation for inference service. */
+// This class's fully-qualified name (com.vayunmathur.openassistant.util.InferenceService) is a
+// cross-app IPC contract: sdk/openassistant and email start this service by that exact component
+// name, including in already-released builds, so it cannot move to service/ without breaking them.
 class InferenceService : Service() {
 
     /** Shared constants and helpers for InferenceService. */

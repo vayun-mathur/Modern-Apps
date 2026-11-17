@@ -1,6 +1,6 @@
 @file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 
-package com.vayunmathur.openassistant.util
+package com.vayunmathur.openassistant.platform
 import kotlin.uuid.Uuid
 import android.annotation.SuppressLint
 import android.content.Context

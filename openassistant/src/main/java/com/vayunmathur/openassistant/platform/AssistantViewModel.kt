@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.util
+package com.vayunmathur.openassistant.platform
 
 import android.app.Application
 import android.content.Intent
@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.time.Clock
+import com.vayunmathur.openassistant.network.AssistantWebTools
+import com.vayunmathur.openassistant.util.InferenceService
 
 /**
  * ViewModel for the OpenAssistant app.
@@ -72,7 +74,7 @@ class AssistantViewModel(
 
     /**
      * Screen contents captured by the Assist API (see
-     * [com.vayunmathur.openassistant.assist.OpenAssistantSession]) when the app was
+     * [com.vayunmathur.openassistant.service.OpenAssistantSession]) when the app was
      * invoked as the default digital assistant. Prepended to the next inference
      * request as context so the model can answer about what is on screen, then
      * cleared so it only seeds a single turn.

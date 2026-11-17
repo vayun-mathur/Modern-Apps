@@ -18,6 +18,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.openassistant.platform.WavRecorder
+import com.vayunmathur.openassistant.platform.copyUriToFile
 
 @RunWith(RobolectricTestRunner::class)
 class WavRecorderAndImageCopyTest {

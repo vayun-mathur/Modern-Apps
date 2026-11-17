@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.util
+package com.vayunmathur.openassistant.platform
 
 import android.content.Context
 import android.content.Intent

@@ -10,6 +10,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.openassistant.platform.copyUriToFile
+import com.vayunmathur.openassistant.platform.AppBackupAgent
 
 /** copyUriToFile against the Robolectric content resolver, routes, backup agent config. */
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)

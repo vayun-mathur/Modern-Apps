@@ -10,6 +10,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.vayunmathur.openassistant.network.AssistantWebTools
+import com.vayunmathur.openassistant.platform.filterContacts
+import com.vayunmathur.openassistant.platform.summarizeDirections
 
 /** Phase W web tools over a fake transport (no live network), plus P2 pure helpers. */
 class AssistantWebToolsTest {

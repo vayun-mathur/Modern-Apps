@@ -11,7 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.openassistant.assist.OpenAssistantSessionService
+import com.vayunmathur.openassistant.service.OpenAssistantSessionService
 import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.platform.A2uiController
 import kotlinx.coroutines.CoroutineScope
@@ -77,7 +77,7 @@ class SurfaceAndSessionExtraTest {
 
     @Test fun sessionHandlesAssistWithContent() {
         val service = Robolectric.buildService(OpenAssistantSessionService::class.java).create().get()
-        val session = service.onNewSession(Bundle()) as com.vayunmathur.openassistant.assist.OpenAssistantSession
+        val session = service.onNewSession(Bundle()) as com.vayunmathur.openassistant.service.OpenAssistantSession
         session.onCreate()
         val content = AssistContent().apply { structuredData = """{"screen":"home"}""" }
         // AssistState has no public constructor on this API level, so
@@ -138,13 +138,13 @@ class SurfaceAndSessionExtraTest {
             ],"data":{}}
         """.trimIndent()
         val surface = surfaceFor(controller, json, 55L)
-        val state = com.vayunmathur.openassistant.util.ChatUiState(
+        val state = com.vayunmathur.openassistant.ui.ChatUiState(
             messages = listOf(Message(1L, "with card", "assistant", id = 55L)),
             surfaces = mapOf("m55" to surface),
         )
         rule.setContent {
             DynamicTheme {
-                ChatScreen(state = state, actions = com.vayunmathur.openassistant.util.ChatActions.Noop)
+                ChatScreen(state = state, actions = com.vayunmathur.openassistant.ui.ChatActions.Noop)
             }
         }
         rule.onNodeWithText("Surface heading").assertExists()
@@ -209,11 +209,11 @@ class SurfaceAndSessionExtraTest {
     }
 
     @Test fun chatScreenRecordingStateShowsChip() {
-        val state = com.vayunmathur.openassistant.util.ChatUiState(
+        val state = com.vayunmathur.openassistant.ui.ChatUiState(
             messages = listOf(Message(1L, "hi", "user", id = 62L)), isRecording = true)
         rule.setContent {
             DynamicTheme {
-                ChatScreen(state = state, actions = com.vayunmathur.openassistant.util.ChatActions.Noop)
+                ChatScreen(state = state, actions = com.vayunmathur.openassistant.ui.ChatActions.Noop)
             }
         }
         rule.onNodeWithText("Recording\u2026").assertExists()

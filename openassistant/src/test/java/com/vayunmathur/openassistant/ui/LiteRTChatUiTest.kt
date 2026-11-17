@@ -19,7 +19,7 @@ import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
 import com.vayunmathur.openassistant.platform.FakeAndroidKeyStore
-import com.vayunmathur.openassistant.util.AssistantViewModel
+import com.vayunmathur.openassistant.platform.AssistantViewModel
 import com.vayunmathur.openassistant.util.InferenceService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf

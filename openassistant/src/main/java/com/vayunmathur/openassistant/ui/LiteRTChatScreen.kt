@@ -31,8 +31,8 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.openassistant.R
 import com.vayunmathur.openassistant.domain.a2uiSurfaceId
-import com.vayunmathur.openassistant.util.ChatActions
-import com.vayunmathur.openassistant.util.ChatUiState
+import com.vayunmathur.openassistant.ui.ChatActions
+import com.vayunmathur.openassistant.ui.ChatUiState
 
 /**
  * The chat itself, with no dependency on the ViewModel so it can be rendered from a

@@ -3,7 +3,7 @@ package com.vayunmathur.openassistant
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
-import com.vayunmathur.openassistant.util.AssistantDeviceTools
+import com.vayunmathur.openassistant.platform.AssistantDeviceTools
 import kotlinx.serialization.json.Json
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric

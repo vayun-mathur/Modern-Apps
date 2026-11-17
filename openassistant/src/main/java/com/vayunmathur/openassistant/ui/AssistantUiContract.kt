@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.util
+package com.vayunmathur.openassistant.ui
 
 import android.net.Uri
 import androidx.a2ui.engine.model.A2uiCoreSurfaceModel

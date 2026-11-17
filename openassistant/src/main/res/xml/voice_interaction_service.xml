@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <voice-interaction-service
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:sessionService="com.vayunmathur.openassistant.assist.OpenAssistantSessionService"
-    android:recognitionService="com.vayunmathur.openassistant.assist.StubRecognitionService"
+    android:sessionService="com.vayunmathur.openassistant.service.OpenAssistantSessionService"
+    android:recognitionService="com.vayunmathur.openassistant.service.StubRecognitionService"
     android:supportsAssist="true"
     android:supportsLaunchVoiceAssistFromKeyguard="false" />

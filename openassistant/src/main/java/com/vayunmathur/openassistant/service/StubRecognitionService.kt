@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.assist
+package com.vayunmathur.openassistant.service
 
 import android.speech.RecognitionService
 import android.speech.SpeechRecognizer

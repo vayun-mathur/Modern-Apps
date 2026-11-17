@@ -24,6 +24,19 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.robolectric.Robolectric
+import com.vayunmathur.openassistant.platform.AssistantToolIntents
+import com.vayunmathur.openassistant.platform.MissingAppException
+import com.vayunmathur.openassistant.platform.summarizeConversations
+import com.vayunmathur.openassistant.platform.summarizeConversationMessages
+import com.vayunmathur.openassistant.platform.summarizeSendResult
+import com.vayunmathur.openassistant.platform.parseSetCartItems
+import com.vayunmathur.openassistant.platform.summarizeFoodCart
+import com.vayunmathur.openassistant.platform.summarizeMenu
+import com.vayunmathur.openassistant.platform.summarizeProducts
+import com.vayunmathur.openassistant.platform.summarizeShopCart
+import com.vayunmathur.openassistant.platform.WeatherLatLonRequest
+import com.vayunmathur.openassistant.platform.WeatherNameRequest
+import com.vayunmathur.openassistant.platform.CreateLinkRequest
 
 /**
  * AssistantToolIntents against Robolectric: cross-app packages are not

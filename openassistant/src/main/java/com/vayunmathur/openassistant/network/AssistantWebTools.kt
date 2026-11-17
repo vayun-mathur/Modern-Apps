@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.util
+package com.vayunmathur.openassistant.network
 
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.Urls

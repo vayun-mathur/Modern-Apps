@@ -20,6 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.openassistant.platform.AssistantViewModel
 
 @RunWith(RobolectricTestRunner::class)
 class AssistantViewModelFakeDataTest {

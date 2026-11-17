@@ -8,6 +8,8 @@ import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import com.vayunmathur.openassistant.domain.JsonSchemaValidator
+import com.vayunmathur.openassistant.domain.JsonExtractor
 
 /** JsonSchemaValidator (subset used for tool args) + JsonExtractor streaming recovery. */
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)

@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.util
+package com.vayunmathur.openassistant.platform
 
 import com.vayunmathur.library.room.SqlCipherDbCodec
 import com.vayunmathur.library.util.BaseBackupAgent

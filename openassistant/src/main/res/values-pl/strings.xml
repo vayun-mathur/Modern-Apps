@@ -8,7 +8,7 @@
     <string name="perm_desc_inference">Zezwala innym aplikacjom na dostęp do usługi wnioskowania SI na urządzeniu w celu wyodrębniania ustrukturyzowanych danych.</string>
     <string name="error_prefix">Error: %1$s</string>
     <string name="inference_service">Usługa wnioskowania</string>
-    <string name="processing_ai_inference">Przetwarzanie wniosków SI...</string>
+    <string name="processing_ai_inference">Przetwarzanie wniosków SI…</string>
     <string name="error_request_expired">Żądanie wygasło w kolejce</string>
     <string name="error_inference_timeout">Przekroczono limit czasu wnioskowania</string>
     <string name="error_ai_engine_failed">Silnik SI uległ awarii</string>

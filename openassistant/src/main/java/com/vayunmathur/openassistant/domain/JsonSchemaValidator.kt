@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.util
+package com.vayunmathur.openassistant.domain
 
 import com.vayunmathur.library.log.Log
 import kotlinx.serialization.json.Json

@@ -24,9 +24,9 @@ import com.vayunmathur.openassistant.domain.ToolSpec
 import com.vayunmathur.openassistant.domain.buildA2uiEnvelope
 import com.vayunmathur.openassistant.domain.coerceToolArgs
 import com.vayunmathur.openassistant.domain.pendingToolSummary
-import com.vayunmathur.openassistant.util.AssistantDeviceTools
-import com.vayunmathur.openassistant.util.AssistantToolIntents
-import com.vayunmathur.openassistant.util.AssistantWebTools
+import com.vayunmathur.openassistant.platform.AssistantDeviceTools
+import com.vayunmathur.openassistant.platform.AssistantToolIntents
+import com.vayunmathur.openassistant.network.AssistantWebTools
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -197,13 +197,13 @@ class AssistantTools(
                         actionName = "pick.conversation",
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeConversations(list)
+                com.vayunmathur.openassistant.platform.summarizeConversations(list)
             }
         },
         "get_conversation_messages" to { a ->
             intents.runTool {
                 val limit = a.number("limit").toInt().takeIf { it > 0 } ?: 10
-                com.vayunmathur.openassistant.util.summarizeConversationMessages(
+                com.vayunmathur.openassistant.platform.summarizeConversationMessages(
                     intents.getConversationMessages(a.string("thread_key"), limit),
                 )
             }
@@ -235,7 +235,7 @@ class AssistantTools(
                         ),
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeSendResult(result)
+                com.vayunmathur.openassistant.platform.summarizeSendResult(result)
             }
         },
         "find_restaurants" to { a ->
@@ -256,7 +256,7 @@ class AssistantTools(
                         actionName = "pick.restaurant",
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeRestaurants(list)
+                com.vayunmathur.openassistant.platform.summarizeRestaurants(list)
             }
         },
         "get_restaurant_menu" to { a ->
@@ -270,7 +270,7 @@ class AssistantTools(
                         },
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeMenu(menu)
+                com.vayunmathur.openassistant.platform.summarizeMenu(menu)
             }
         },
         "food_get_cart" to { _ ->
@@ -283,11 +283,11 @@ class AssistantTools(
                         cart.totalCents,
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeFoodCart(cart)
+                com.vayunmathur.openassistant.platform.summarizeFoodCart(cart)
             }
         },
         "food_set_cart" to { a ->
-            val items = com.vayunmathur.openassistant.util.parseSetCartItems(a.string("items_json"))
+            val items = com.vayunmathur.openassistant.platform.parseSetCartItems(a.string("items_json"))
                 ?: return@to "Error: items_json must be a JSON array of {itemId, qty, modifierIds}"
             intents.runTool {
                 val cart = intents.setFoodCart(a.number("merchant_id").toInt(), items)
@@ -299,12 +299,12 @@ class AssistantTools(
                         cart.totalCents,
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeFoodCart(cart)
+                com.vayunmathur.openassistant.platform.summarizeFoodCart(cart)
             }
         },
         "food_prepare_order" to { a ->
             intents.runTool {
-                com.vayunmathur.openassistant.util.summarizeOrderSummary(
+                com.vayunmathur.openassistant.platform.summarizeOrderSummary(
                     intents.prepareFoodOrder(
                         com.vayunmathur.library.intents.fooddelivery.PrepareOrder(
                             merchantId = a.number("merchant_id").toInt(),
@@ -332,13 +332,13 @@ class AssistantTools(
                         summary.checkoutDeepLink, summary.merchantId,
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeOrderSummary(summary) +
+                com.vayunmathur.openassistant.platform.summarizeOrderSummary(summary) +
                     " Show the user this summary; they place the order in FoodDelivery."
             }
         },
         "get_food_orders" to { _ ->
             intents.runTool {
-                com.vayunmathur.openassistant.util.summarizeFoodOrders(intents.getFoodOrders())
+                com.vayunmathur.openassistant.platform.summarizeFoodOrders(intents.getFoodOrders())
             }
         },
         "search_products" to { a ->
@@ -359,7 +359,7 @@ class AssistantTools(
                             )
                         }
                 }
-                com.vayunmathur.openassistant.util.summarizeProducts(list)
+                com.vayunmathur.openassistant.platform.summarizeProducts(list)
             }
         },
         "get_product_detail" to { a ->
@@ -376,7 +376,7 @@ class AssistantTools(
                         },
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeProductDetail(detail)
+                com.vayunmathur.openassistant.platform.summarizeProductDetail(detail)
             }
         },
         "shop_get_cart" to { _ ->
@@ -392,7 +392,7 @@ class AssistantTools(
                         cart.totalItems,
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeShopCart(cart)
+                com.vayunmathur.openassistant.platform.summarizeShopCart(cart)
             }
         },
         "shop_add_to_cart" to { a ->
@@ -414,7 +414,7 @@ class AssistantTools(
                         cart.totalItems,
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeShopCart(cart)
+                com.vayunmathur.openassistant.platform.summarizeShopCart(cart)
             }
         },
         "shop_remove_from_cart" to { a ->
@@ -430,7 +430,7 @@ class AssistantTools(
                         cart.totalItems,
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeShopCart(cart)
+                com.vayunmathur.openassistant.platform.summarizeShopCart(cart)
             }
         },
         "start_shop_checkout" to { a ->
@@ -445,13 +445,13 @@ class AssistantTools(
                         },
                     )
                 }
-                com.vayunmathur.openassistant.util.summarizeShopCart(cart) +
+                com.vayunmathur.openassistant.platform.summarizeShopCart(cart) +
                     " Show the user this summary; they check out in Shop. This is not a paid order."
             }
         },
         "get_shop_orders" to { _ ->
             intents.runTool {
-                com.vayunmathur.openassistant.util.summarizeShopOrders(intents.getShopOrders())
+                com.vayunmathur.openassistant.platform.summarizeShopOrders(intents.getShopOrders())
             }
         },
         "web_search" to { a ->

@@ -26,7 +26,7 @@ import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
 import com.vayunmathur.openassistant.platform.A2uiController
 import com.vayunmathur.openassistant.platform.FakeAndroidKeyStore
-import com.vayunmathur.openassistant.util.AssistantViewModel
+import com.vayunmathur.openassistant.platform.AssistantViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

@@ -6,10 +6,10 @@ import com.android.tools.screenshot.PreviewTest
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.openassistant.data.Memory
 import com.vayunmathur.openassistant.data.Message
-import com.vayunmathur.openassistant.util.ChatActions
-import com.vayunmathur.openassistant.util.ChatUiState
-import com.vayunmathur.openassistant.util.SettingsActions
-import com.vayunmathur.openassistant.util.SettingsUiState
+import com.vayunmathur.openassistant.ui.ChatActions
+import com.vayunmathur.openassistant.ui.ChatUiState
+import com.vayunmathur.openassistant.ui.SettingsActions
+import com.vayunmathur.openassistant.ui.SettingsUiState
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"

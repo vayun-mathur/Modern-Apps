@@ -5,23 +5,15 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.downloadservice.InitialModelDownloadChecker
 import com.vayunmathur.library.downloadservice.ModelUrls
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.IntentLauncher
-import com.vayunmathur.library.util.ListDetailPage
-import com.vayunmathur.library.util.ListPage
-import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
-import kotlinx.serialization.Serializable
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
-import com.vayunmathur.openassistant.ui.LiteRTChatUi
-import com.vayunmathur.openassistant.ui.SettingsPage
-import com.vayunmathur.openassistant.util.AssistantViewModel
+import com.vayunmathur.openassistant.platform.AssistantViewModel
 
 /** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
@@ -64,39 +56,13 @@ class MainActivity : MaActivity() {
 
     /**
      * Picks up the flattened screen text captured by the Assist API session
-     * ([com.vayunmathur.openassistant.assist.OpenAssistantSession]) and hands it to
+     * ([com.vayunmathur.openassistant.service.OpenAssistantSession]) and hands it to
      * the ViewModel so it seeds the next inference turn as context.
      */
     private fun readAssistScreenContext(intent: Intent?) {
         val screenText = intent?.getStringExtra("assist_screen_text")
         if (!screenText.isNullOrBlank()) {
             assistantViewModel.setScreenContext(screenText)
-        }
-    }
-}
-
-/** Contract for route. */
-@Serializable
-sealed interface Route: NavKey {
-    /** Immutable value describing conversation page; carries id. */
-    @Serializable
-    data class ConversationPage(val id: Long): Route
-    /** Singleton holding settings page state and operations. */
-    @Serializable
-    data object SettingsPage: Route
-}
-
-@Composable
-fun Navigation(assistantViewModel: AssistantViewModel) {
-    val backStack = rememberNavBackStack<Route>(Route.ConversationPage(0))
-    MainNavigation(backStack) {
-        // The chat column is the list pane: its NavigationSuite drawer is permanent on
-        // Expanded, and settings renders beside it as the detail pane.
-        entry<Route.ConversationPage>(metadata = ListPage()) {
-            LiteRTChatUi(backStack, it.id, assistantViewModel)
-        }
-        entry<Route.SettingsPage>(metadata = ListDetailPage()) {
-            SettingsPage(backStack, assistantViewModel)
         }
     }
 }

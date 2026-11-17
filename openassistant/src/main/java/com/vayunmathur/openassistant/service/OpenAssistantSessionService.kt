@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.assist
+package com.vayunmathur.openassistant.service
 
 import android.service.voice.VoiceInteractionSession
 import android.service.voice.VoiceInteractionSessionService

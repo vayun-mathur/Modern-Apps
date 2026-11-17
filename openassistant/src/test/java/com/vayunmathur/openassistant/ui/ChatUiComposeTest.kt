@@ -11,11 +11,11 @@ import androidx.compose.ui.test.performTextInput
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.openassistant.data.Memory
 import com.vayunmathur.openassistant.data.Message
-import com.vayunmathur.openassistant.util.ChatActions
-import com.vayunmathur.openassistant.util.ChatUiState
+import com.vayunmathur.openassistant.ui.ChatActions
+import com.vayunmathur.openassistant.ui.ChatUiState
 import com.vayunmathur.openassistant.util.InferenceService
-import com.vayunmathur.openassistant.util.SettingsActions
-import com.vayunmathur.openassistant.util.SettingsUiState
+import com.vayunmathur.openassistant.ui.SettingsActions
+import com.vayunmathur.openassistant.ui.SettingsUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

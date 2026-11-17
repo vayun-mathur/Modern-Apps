@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.util
+package com.vayunmathur.openassistant.platform
 
 import android.content.Context
 import android.content.Intent
@@ -9,6 +9,7 @@ import com.vayunmathur.openassistant.data.MemoryDao
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import com.vayunmathur.openassistant.util.InferenceService
 
 /**
  * Device-local tools (app list, messaging, memories, clock helpers) backing
@@ -19,7 +20,14 @@ internal class AssistantDeviceTools(private val context: Context) {
 
     fun getAppList(): String {
         val pm = context.packageManager
-        return pm.getInstalledApplications(PackageManager.GET_META_DATA)
+        // Launcher activities only: since Android 11 the full installed-package list is
+        // filtered unless QUERY_ALL_PACKAGES is held, while the manifest's <queries>
+        // MAIN/LAUNCHER declaration already makes every launchable app visible. A package
+        // with no launcher entry is not an app the model can open anyway.
+        val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        return pm.queryIntentActivities(launcher, PackageManager.MATCH_ALL)
+            .mapNotNull { it.activityInfo?.applicationInfo }
+            .distinctBy { it.packageName }
             .map { it.loadLabel(pm).toString() }
             .toString()
     }
