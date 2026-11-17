@@ -54,6 +54,7 @@ class MainActivity : MaActivity() {
         }
     }
 
+    /** Helpers mapping launch intents to PDF routes. */
     companion object {
         /** The route an entry intent names; home is the default landing. */
         fun routeFor(intent: Intent?): Route =
