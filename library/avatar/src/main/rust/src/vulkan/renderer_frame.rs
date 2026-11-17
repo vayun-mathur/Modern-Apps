@@ -5,6 +5,10 @@
 
 impl YuuRenderer {
     /// Upload the static avatar mesh (once per surface; capped at the budget).
+    ///
+    /// # Safety
+    /// Must be called on the render thread while this renderer's device
+    /// is live and its buffers are not in use by the GPU.
     pub unsafe fn upload_avatar(&self, mesh: &[crate::mesh::YuuVertex]) {
         let converted: Vec<YuuVkVertex> = mesh.iter().take(AVATAR_VERT_CAP).map(YuuVkVertex::from).collect();
         let bytes = unsafe {
@@ -17,6 +21,9 @@ impl YuuRenderer {
     }
 
     /// Resize the swapchain (recreates against the adopted window).
+    ///
+    /// # Safety
+    /// Must be called on the render thread that owns this renderer.
     pub unsafe fn resize(&mut self, width: u32, height: u32) {
         self.width = width.max(1);
         self.height = height.max(1);
@@ -26,6 +33,10 @@ impl YuuRenderer {
 
     /// Draw one frame: upload the bone UBO, record, submit, present.
     /// `mesh_count` is the vertex count from the last [`Self::upload_avatar`].
+    ///
+    /// # Safety
+    /// Must be called on the render thread while this renderer's device
+    /// and swapchain are live.
     #[allow(clippy::too_many_arguments)]
     pub unsafe fn draw(
         &mut self,
@@ -155,6 +166,10 @@ impl YuuRenderer {
     }
 
     /// Free everything except the context (the engine releases the window).
+    ///
+    /// # Safety
+    /// Must be called on the render thread that owns this renderer, at
+    /// most once.
     pub unsafe fn destroy(&mut self) {
         let device = &self.ctx.device;
         device.device_wait_idle().ok();

@@ -248,8 +248,7 @@ mod pack_tests {
         assert_eq!(base.len(), 3);
         assert!(max_y(&base) < 1.5);
         // hairStyle 3 → hair_03 joins the assembly.
-        let mut t = YuuTraits::default();
-        t.hair_style = 3;
+        let mut t = YuuTraits { hair_style: 3, ..Default::default() };
         let hairy = assemble_pack(&pack, &t).expect("assemble");
         assert_eq!(hairy.len(), 6);
         assert!(max_y(&hairy) > 1.5);

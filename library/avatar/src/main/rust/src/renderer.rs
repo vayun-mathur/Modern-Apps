@@ -13,9 +13,11 @@ use crate::vulkan::renderer::YuuRenderer;
 /// falls back to GLES, and fails only when both fail.
 pub enum Renderer {
     /// Vulkan path (`ash` loaded): instance + swapchain + pipeline.
-    Vulkan(YuuRenderer),
+    /// Boxed so the enum stays pointer-sized (both renderers are large).
+    Vulkan(Box<YuuRenderer>),
     /// GLES 3.0 path (`glow` + `khronos-egl`): EGL surface + GL program.
-    Gles(GlesRenderer),
+    /// Boxed for the same reason as the Vulkan variant.
+    Gles(Box<GlesRenderer>),
 }
 
 impl Renderer {
@@ -117,7 +119,7 @@ impl Renderer {
         state_height: u32,
     ) -> Result<Self, String> {
         match crate::vulkan::renderer::YuuRenderer::new(window, width, height, state_width, state_height) {
-            Ok(r) => Ok(Self::Vulkan(r)),
+            Ok(r) => Ok(Self::Vulkan(Box::new(r))),
             Err(e) => Err(e),
         }
     }
@@ -142,7 +144,7 @@ impl Renderer {
             match unsafe { GlesRenderer::new(window, state_width, state_height) } {
                 Ok(r) => {
                     crate::engine::log_backend("GLES");
-                    Ok(Self::Gles(r))
+                    Ok(Self::Gles(Box::new(r)))
                 }
                 Err(gles_err) => {
                     match unsafe { Self::try_vulkan_only(window, width, height, state_width, state_height) } {
@@ -172,7 +174,7 @@ impl Renderer {
                             crate::engine::log_backend(&format!(
                                 "GLES (Vulkan init failed: {vulkan_err})"
                             ));
-                            Ok(Self::Gles(r))
+                            Ok(Self::Gles(Box::new(r)))
                         }
                         Err(gles_err) => Err(format!(
                             "no renderer (Vulkan: {vulkan_err}; GLES: {gles_err})"

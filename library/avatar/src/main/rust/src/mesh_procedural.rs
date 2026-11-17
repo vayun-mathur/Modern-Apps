@@ -3,6 +3,9 @@
 // Split out of `mesh.rs` so each file stays under the 500-line Rust limit.
 // Same module scope via `mesh.rs` (`include!`), so item order is irrelevant.
 
+/// One rounded-box face grid: rows of (rounded position, normal, UV).
+type RoundedGrid = Vec<Vec<([f32; 3], [f32; 3], [f32; 2])>>;
+
 /// Push a rounded axis-aligned box as skinned triangles into `out`.
 ///
 /// Same `Part` contract as the old sharp box (centers/sizes, joint/blend,
@@ -41,7 +44,7 @@ fn box_skinned(out: &mut Vec<YuuVertex>, part: &Part) {
     let s = ROUND_SUBDIV;
     for (corners, face_uv) in faces {
         // Bilinear grid over the quad, storing (rounded pos, smooth normal, uv).
-        let mut grid: Vec<Vec<([f32; 3], [f32; 3], [f32; 2])>> = Vec::with_capacity(s + 1);
+        let mut grid: RoundedGrid = Vec::with_capacity(s + 1);
         for iy in 0..=s {
             let v = iy as f32 / s as f32;
             let mut row = Vec::with_capacity(s + 1);
@@ -116,9 +119,9 @@ fn rounded_normal_from_offset(local: [f32; 3], clamped: [f32; 3]) -> [f32; 3] {
     if len < 1e-6 {
         let mut ax = 0;
         let mut best = local[0].abs();
-        for a in 1..3 {
-            if local[a].abs() > best {
-                best = local[a].abs();
+        for (a, value) in local.iter().enumerate().skip(1) {
+            if value.abs() > best {
+                best = value.abs();
                 ax = a;
             }
         }

@@ -73,7 +73,7 @@ impl Swapchain {
             .get_physical_device_surface_present_modes(ctx.physical_device, ctx.surface)
             .map_err(|e| format!("present_modes {e:?}"))?;
         // Fix black screen: Pixel gralloc rejects SRGB 0x3b, prefer B8G8R8A8_UNORM.
-        let mut chosen_format = formats.get(0).copied().ok_or("no surface formats")?;
+        let mut chosen_format = formats.first().copied().ok_or("no surface formats")?;
         for fmt in &formats {
             if fmt.format == vk::Format::B8G8R8A8_UNORM {
                 chosen_format = *fmt;

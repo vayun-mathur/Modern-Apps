@@ -181,10 +181,12 @@ mod tests {
         fn is_decal(v: &&YuuVertex) -> bool {
             v.normal == [0.0, 0.0, 1.0] && (v.pos[2] - FACE_Z).abs() < 1e-6
         }
-        let mut traits = YuuTraits::default();
-        traits.mole_style = 1;
-        traits.wrinkle_style = 2;
-        traits.blush_style = 3;
+        let traits = YuuTraits {
+            mole_style: 1,
+            wrinkle_style: 2,
+            blush_style: 3,
+            ..Default::default()
+        };
         let mesh = build_avatar_mesh(&traits);
         // 24 band verts + mole 6 + wrinkle 6 + blush 12.
         let face_count = mesh.iter().filter(is_decal).count();

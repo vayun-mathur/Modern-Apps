@@ -113,7 +113,7 @@ fn bytes_of(mesh: &[YuuVertex]) -> &[u8] {
     unsafe {
         std::slice::from_raw_parts(
             mesh.as_ptr() as *const u8,
-            mesh.len() * mem::size_of::<YuuVertex>(),
+            std::mem::size_of_val(mesh),
         )
     }
 }

@@ -135,7 +135,9 @@ fn fill_ellipse(
 /// - Brows (row 1): horizontal bar; thickness/angle vary by column.
 /// - Nose (row 2): vertical shaded bar; width/height vary by column.
 /// - Mouth (row 3): horizontal smile bar; width/curve vary by column.
-/// Mole/wrinkle/blush overlaid on the brow-row spare cells when nonzero.
+///
+/// Mole/wrinkle/blush are overlaid on the brow-row spare cells when
+/// nonzero.
 pub fn generate_atlas(traits: &YuuTraits) -> Vec<u8> {
     let skin = {
         let rgb = traits.skin_rgb();
@@ -304,9 +306,7 @@ mod tests {
     #[test]
     fn styles_change_pixels() {
         let a = generate_atlas(&YuuTraits::default());
-        let mut varied = YuuTraits::default();
-        varied.eye_style = 7;
-        varied.mouth_style = 9;
+        let varied = YuuTraits { eye_style: 7, mouth_style: 9, ..Default::default() };
         let b = generate_atlas(&varied);
         assert_ne!(a, b, "style indices must change atlas pixels");
     }

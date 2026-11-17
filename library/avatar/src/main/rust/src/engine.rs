@@ -85,7 +85,7 @@ impl SurfaceState {
 /// User orbit preference: survives surface removal (rotation) so the editor
 /// keeps its drag position and auto-rotate opt-out.
 #[derive(Clone, Copy, Debug)]
-struct OrbitPrefs {
+pub struct OrbitPrefs {
     yaw: f32,
     pitch: f32,
     auto_rotate: bool,

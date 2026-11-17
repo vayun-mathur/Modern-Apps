@@ -29,6 +29,10 @@ impl Pipelines {
     /// Build against the swapchain's render pass, binding `ubo_buffer`.
     /// `sampler`, `image_view` may be null when no albedo is uploaded yet —
     /// the set is updated by [`Self::bind_albedo`] once the texture exists.
+    ///
+    /// # Safety
+    /// `device`, `render_pass`, and `ubo_buffer` must be valid handles
+    /// from a live Vulkan context that outlives the returned pipelines.
     pub unsafe fn new(
         device: &ash::Device,
         render_pass: vk::RenderPass,
@@ -165,6 +169,10 @@ impl Pipelines {
     }
 
     /// Bind the albedo texture to the sampler slot (after upload).
+    ///
+    /// # Safety
+    /// `device`, `sampler`, and `image_view` must be valid handles from
+    /// the same live Vulkan context as this pipeline; render thread only.
     pub unsafe fn bind_albedo(
         &self,
         device: &ash::Device,
@@ -198,6 +206,10 @@ impl Pipelines {
     }
 
     /// Free pipeline, layout, pool, set layout.
+    ///
+    /// # Safety
+    /// `device` must be the device that created these objects; they must
+    /// not be in use by the GPU and must not be destroyed twice.
     pub unsafe fn destroy(&mut self, device: &ash::Device) {
         device.destroy_pipeline(self.pipeline, None);
         device.destroy_pipeline_layout(self.layout, None);

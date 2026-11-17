@@ -26,6 +26,9 @@ pub const U_ALBEDO: &str = "uAlbedo";
 
 /// Compile `VERT_SRC` + `FRAG_SRC`, link, return the program. On any failure
 /// the returned string carries the shader/program info log from the driver.
+///
+/// # Safety
+/// The EGL context must be current on this thread.
 pub unsafe fn compile_program(gl: &glow::Context) -> Result<glow::Program, String> {
     // Prove the linker itself survives on this driver before feeding it the
     // real shaders: some Mali revisions SIGSEGV inside glLinkProgram on

@@ -45,7 +45,7 @@ pub fn generation(surface_id: i32) -> u64 {
 /// Destroy everything.
 pub fn destroy_engine() {
     if let Ok(mut eng) = engine().lock() {
-        for (_, state) in eng.surfaces.iter_mut() {
+        for state in eng.surfaces.values_mut() {
             if let Some(mut renderer) = state.renderer.take() {
                 unsafe { renderer.destroy() };
             }
