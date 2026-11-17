@@ -12,6 +12,7 @@ data class PendingToolCall(
 ) {
     fun isExpired(nowMillis: Long): Boolean = nowMillis >= expiresAtMillis
 
+    /** Timing constants for [PendingToolCall] expiry. */
     companion object {
         const val TTL_MILLIS: Long = 10 * 60_000L
     }

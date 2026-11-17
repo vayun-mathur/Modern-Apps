@@ -25,6 +25,7 @@ data class WebSearchResponse(
     @SerialName("fallback_url") val fallbackUrl: String? = null,
 )
 
+/** One text result in a web-search response. */
 @Serializable
 data class WebSearchTextItem(
     val title: String = "",
@@ -32,6 +33,7 @@ data class WebSearchTextItem(
     val snippet: String = "",
 )
 
+/** One image result in a web-search response. */
 @Serializable
 data class WebSearchImageItem(
     val title: String = "",
@@ -40,6 +42,7 @@ data class WebSearchImageItem(
     @SerialName("source_url") val sourceUrl: String = "",
 )
 
+/** One news result in a web-search response. */
 @Serializable
 data class WebSearchNewsItem(
     val title: String = "",
@@ -202,6 +205,7 @@ class AssistantWebTools(
         return null
     }
 
+    /** Endpoints, limits, and shared search state for [AssistantWebTools]. */
     companion object {
         const val SEARCH_URL = "https://api.maproj.org/api/search"
         const val READ_URL = "https://api.maproj.org/assistant/v1/read"
