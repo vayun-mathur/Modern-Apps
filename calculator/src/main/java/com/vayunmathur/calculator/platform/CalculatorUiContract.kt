@@ -1,6 +1,9 @@
 package com.vayunmathur.calculator.platform
 
-import com.vayunmathur.calculator.domain.*
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.domain.GraphPoint
+import com.vayunmathur.calculator.domain.UnitCategory
+import com.vayunmathur.calculator.domain.UnitDef
 
 /**
  * The UI contract between [CalculatorViewModel] and the screens.

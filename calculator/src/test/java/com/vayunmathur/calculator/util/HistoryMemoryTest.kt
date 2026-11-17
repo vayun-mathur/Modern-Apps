@@ -1,8 +1,7 @@
 package com.vayunmathur.calculator.util
 
-import com.vayunmathur.calculator.domain.*
-import com.vayunmathur.calculator.network.*
-import com.vayunmathur.calculator.platform.*
+import com.vayunmathur.calculator.platform.CalculatorTab
+import com.vayunmathur.calculator.platform.HistoryEntry
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

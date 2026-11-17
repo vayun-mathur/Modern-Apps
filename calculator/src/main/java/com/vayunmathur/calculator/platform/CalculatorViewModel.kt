@@ -1,6 +1,8 @@
 package com.vayunmathur.calculator.platform
 
-import com.vayunmathur.calculator.domain.*
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.domain.FeatureKind
+import com.vayunmathur.calculator.domain.GraphPoint
 
 import android.app.Application
 import androidx.compose.runtime.getValue

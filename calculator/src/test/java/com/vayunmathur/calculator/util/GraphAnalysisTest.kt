@@ -1,8 +1,12 @@
 package com.vayunmathur.calculator.util
 
-import com.vayunmathur.calculator.domain.*
-import com.vayunmathur.calculator.network.*
-import com.vayunmathur.calculator.platform.*
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.domain.Expression
+import com.vayunmathur.calculator.domain.FeatureKind
+import com.vayunmathur.calculator.domain.GraphAnalysis
+import com.vayunmathur.calculator.domain.GraphPoint
+import com.vayunmathur.calculator.domain.SampledCurve
+import com.vayunmathur.calculator.platform.GraphViewport
 
 import kotlin.math.abs
 import kotlin.math.hypot

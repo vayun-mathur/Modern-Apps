@@ -1,8 +1,14 @@
 package com.vayunmathur.calculator.util
 
-import com.vayunmathur.calculator.domain.*
-import com.vayunmathur.calculator.network.*
-import com.vayunmathur.calculator.platform.*
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.domain.Dimension
+import com.vayunmathur.calculator.domain.Expression
+import com.vayunmathur.calculator.domain.ExpressionError
+import com.vayunmathur.calculator.domain.Quantity
+import com.vayunmathur.calculator.domain.UnitDef
+import com.vayunmathur.calculator.domain.UnitRegistry
+import com.vayunmathur.calculator.domain.displayValueIn
+import com.vayunmathur.calculator.domain.formatQuantity
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

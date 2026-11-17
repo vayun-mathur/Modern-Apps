@@ -1,8 +1,9 @@
 package com.vayunmathur.calculator.util
 
-import com.vayunmathur.calculator.domain.*
-import com.vayunmathur.calculator.network.*
-import com.vayunmathur.calculator.platform.*
+import com.vayunmathur.calculator.domain.Dimension
+import com.vayunmathur.calculator.domain.Expression
+import com.vayunmathur.calculator.domain.ExpressionError
+import com.vayunmathur.calculator.domain.Quantity
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

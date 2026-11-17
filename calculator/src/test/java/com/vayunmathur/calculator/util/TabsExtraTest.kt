@@ -1,8 +1,14 @@
 package com.vayunmathur.calculator.util
 
-import com.vayunmathur.calculator.domain.*
-import com.vayunmathur.calculator.network.*
-import com.vayunmathur.calculator.platform.*
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.domain.GraphPoint
+import com.vayunmathur.calculator.domain.UnitRegistry
+import com.vayunmathur.calculator.platform.CalculatorTab
+import com.vayunmathur.calculator.platform.GraphTab
+import com.vayunmathur.calculator.platform.GraphViewport
+import com.vayunmathur.calculator.platform.HistoryEntry
+import com.vayunmathur.calculator.platform.calculatorActionAdapter
+import com.vayunmathur.calculator.platform.graphActionAdapter
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

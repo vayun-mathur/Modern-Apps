@@ -1,8 +1,13 @@
 package com.vayunmathur.calculator.util
 
-import com.vayunmathur.calculator.domain.*
-import com.vayunmathur.calculator.network.*
-import com.vayunmathur.calculator.platform.*
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.domain.UnitRegistry
+import com.vayunmathur.calculator.platform.CalculatorViewModel
+import com.vayunmathur.calculator.platform.KEY_UNITS_CATEGORY
+import com.vayunmathur.calculator.platform.UnitConverterTab
+import com.vayunmathur.calculator.platform.converterActionAdapter
+import com.vayunmathur.calculator.platform.unitsFromKey
+import com.vayunmathur.calculator.platform.unitsToKey
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
