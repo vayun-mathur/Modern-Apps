@@ -6,6 +6,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.plus
 
+/** Coarse due-date grouping relative to today, used to section the task list. */
 enum class DueBucket { OVERDUE, TODAY, TOMORROW, THIS_WEEK, LATER, NO_DATE }
 
 /** Where a due value falls relative to now, in the user's zone. */

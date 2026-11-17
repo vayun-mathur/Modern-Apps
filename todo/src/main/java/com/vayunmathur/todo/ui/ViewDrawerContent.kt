@@ -42,6 +42,7 @@ data class DrawerUiState(
     val syncStatus: String? = null,
 )
 
+/** Callbacks for the view drawer; no-op defaults let previews render without behaviour. */
 interface DrawerActions {
     fun select(view: TodoView) {}
     fun newList() {}

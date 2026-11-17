@@ -17,6 +17,7 @@ import kotlinx.datetime.plus
 sealed interface Recurrence {
     val interval: Int
 
+    /** Repeats every interval days. */
     data class Daily(override val interval: Int = 1) : Recurrence
 
     /** [days] empty means "the due date's weekday". */
@@ -25,6 +26,7 @@ sealed interface Recurrence {
     /** [dayOfMonth] null means "the due date's day", [LAST_DAY] the last day of the month. */
     data class Monthly(override val interval: Int = 1, val dayOfMonth: Int? = null) : Recurrence
 
+    /** Repeats every interval years on the due date. */
     data class Yearly(override val interval: Int = 1) : Recurrence
 
     /** Due [interval] days after the task is completed, whenever that is. */
@@ -81,6 +83,7 @@ sealed interface Recurrence {
     /** The plain RRULE for calendars, or null when the schedule depends on completion. */
     fun toRRule(): String? = if (this is AfterCompletion) null else serialize()
 
+    /** Parsing, serialisation constants and limits for the RRULE-style recurrence format. */
     companion object {
         const val LAST_DAY = -1
         private const val X_FROM = "X-FROM"

@@ -18,6 +18,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.todo.R
 
+/** Which empty state to show: no tasks yet, no search matches, or everything completed. */
 enum class EmptyKind { NOTHING, SEARCH, ALL_DONE }
 
 @Composable

@@ -13,6 +13,7 @@ object Reminders {
     private const val DAY_MS = 86_400_000L
     private const val MAX_OCCURRENCES = 400
 
+    /** How long before the due moment a reminder fires. */
     enum class Offset(val minutes: Long) {
         AT_DUE(0), MINUTES_10(10), HOUR_1(60), DAY_1(24 * 60)
     }

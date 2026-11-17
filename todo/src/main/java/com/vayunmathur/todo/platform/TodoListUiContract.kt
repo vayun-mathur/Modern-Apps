@@ -50,6 +50,7 @@ interface TodoListActions {
     fun reschedule(todos: List<Todo>, dueAt: Long?) {}
     fun setPriority(todos: List<Todo>, priority: Int) {}
 
+    /** Shared no-op TodoListActions instance for previews. */
     companion object {
         val Noop: TodoListActions = object : TodoListActions {}
     }

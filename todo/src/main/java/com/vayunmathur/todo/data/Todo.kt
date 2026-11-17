@@ -6,6 +6,10 @@ import androidx.room3.PrimaryKey
 import com.vayunmathur.library.util.ReorderableDatabaseItem
 import kotlinx.serialization.Serializable
 
+/**
+ * A task row: title and notes, due/reminder/repeat state, list, section, tags and priority, plus sync identity
+ * and tombstone flag.
+ */
 @Serializable
 @Entity(indices = [Index("syncId"), Index("listSyncId"), Index("parentSyncId")])
 data class Todo(
@@ -49,6 +53,7 @@ data class Todo(
 
     val isSubtask: Boolean get() = parentSyncId != null
 
+    /** Priority constants: PRIORITY_NONE is unprioritised and PRIORITY_MAX is the lowest priority level. */
     companion object {
         const val PRIORITY_NONE = 0
         const val PRIORITY_MAX = 4

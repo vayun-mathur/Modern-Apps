@@ -13,8 +13,11 @@ object IntentRouter {
     const val EXTRA_VIEW = "com.vayunmathur.todo.extra.VIEW"
     const val ACTION_QUICK_ADD = "com.vayunmathur.todo.action.QUICK_ADD"
 
+    /** What an incoming intent asks the UI to do. */
     sealed interface Request {
+        /** Open the task identified by its sync id. */
         data class OpenTask(val syncId: String) : Request
+        /** Open the view identified by its stable view key. */
         data class OpenView(val viewKey: String) : Request
 
         /** A new task; [text] pre-fills quick add, several lines become several tasks. */

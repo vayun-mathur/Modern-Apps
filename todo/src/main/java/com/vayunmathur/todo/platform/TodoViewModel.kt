@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 
+/** View model owning list state, counts, settings and task mutations for the todo screens. */
 class TodoViewModel(
     application: Application,
     private val repository: TodoRepository,
@@ -246,6 +247,7 @@ class TodoViewModel(
         return TodoEditor(repository, repository.appScope, id, newSyncId, template)
     }
 
+    /** Saved-state keys, timing constants and the view-model factory. */
     companion object {
         private const val KEY_QUERY = "search_query"
         private const val KEY_SORT = "sort"

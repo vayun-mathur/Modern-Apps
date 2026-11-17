@@ -17,10 +17,13 @@ import kotlinx.datetime.plus
  */
 object QuickAddParser {
 
+    /** Category of a recognised quick-add token. */
     enum class Kind { DATE, TIME, RECURRENCE, TAG, PRIORITY, LIST }
 
+    /** A recognised fragment of quick-add input, with its source range for highlighting. */
     data class Token(val kind: Kind, val range: IntRange, val text: String)
 
+    /** Parsed quick-add result: the cleaned title plus extracted due, recurrence, tags, priority and list. */
     data class Result(
         val title: String,
         val dueAt: Long? = null,

@@ -31,6 +31,7 @@ data class ExportSource(val todos: List<Todo>, val lists: List<TodoList>) {
     fun listName(todo: Todo): String? = todo.listSyncId?.let { listNames[it] }
 }
 
+/** File format for an export, with its file extension and MIME type. */
 enum class ExportFormat(val extension: String, val mimeType: String) {
     TODO_TXT("txt", "text/plain"),
     CSV("csv", "text/csv"),

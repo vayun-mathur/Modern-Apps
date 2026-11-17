@@ -2,6 +2,7 @@ package com.vayunmathur.todo.domain
 
 import com.vayunmathur.todo.data.Todo
 
+/** Case-insensitive substring search over task title, notes and tags, with match ranges for highlighting. */
 object TodoSearch {
     fun matches(todo: Todo, query: String): Boolean {
         val q = query.trim().removePrefix("#")

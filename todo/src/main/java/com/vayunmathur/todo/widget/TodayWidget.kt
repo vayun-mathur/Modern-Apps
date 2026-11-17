@@ -47,8 +47,10 @@ import kotlinx.datetime.TimeZone
 /** Open tasks due today or overdue, as the Today view shows them. */
 data class TodayWidgetData(val rows: List<TodayWidgetRow>)
 
+/** One row in the Today widget: the task sync id, title and whether it is overdue. */
 data class TodayWidgetRow(val syncId: String, val title: String, val overdue: Boolean)
 
+/** Home-screen widget listing open tasks due today or overdue, with in-widget completion. */
 class TodayWidget : MaWidget<TodayWidgetData>() {
     override suspend fun loadData(context: Context, id: GlanceId): TodayWidgetData {
         val repo = TodoRepository.get(context)
@@ -158,6 +160,7 @@ class CompleteTaskAction : ActionCallback {
         if (!todo.done) repo.setDone(todo, true)
     }
 
+    /** Action parameter key carrying the sync id of the task to complete from the widget. */
     companion object {
         val SYNC_ID = ActionParameters.Key<String>("sync_id")
     }

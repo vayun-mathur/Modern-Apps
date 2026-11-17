@@ -14,15 +14,20 @@ data class TodoRow(
     val overdue: Boolean = false,
 )
 
+/** Key identifying a list section: ungrouped, a due bucket, or a named list section. */
 sealed interface GroupKey {
+    /** Ungrouped: all rows are shown in a single section. */
     data object None : GroupKey
+    /** Section containing the tasks in one due bucket. */
     data class Bucket(val bucket: DueBucket) : GroupKey
     /** [name] null is "no section". */
     data class Section(val name: String?) : GroupKey
 }
 
+/** One rendered section of the task list. */
 data class TodoGroup(val key: GroupKey, val rows: List<TodoRow>)
 
+/** The built list for a view: grouped open rows, completed rows, and whether manual reordering is allowed. */
 data class TodoListModel(
     val groups: List<TodoGroup> = emptyList(),
     val completed: List<TodoRow> = emptyList(),
@@ -35,6 +40,7 @@ data class TodoListModel(
 /** Builds what the list shows for a view, search, and sort. */
 object TodoQuery {
 
+    /** Inputs for building a list model: tasks, lists, view, search text, sort order and current time and zone. */
     data class Input(
         val todos: List<Todo>,
         val lists: List<TodoList>,

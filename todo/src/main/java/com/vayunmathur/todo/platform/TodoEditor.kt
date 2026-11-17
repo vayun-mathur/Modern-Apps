@@ -154,6 +154,7 @@ class TodoEditor internal constructor(
         }
     }
 
+    /** Editor timing constants, including the save debounce. */
     companion object {
         const val SAVE_DEBOUNCE_MS = 300L
     }

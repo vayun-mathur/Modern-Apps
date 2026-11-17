@@ -54,6 +54,7 @@ import kotlinx.coroutines.runBlocking
  */
 class RelayTodoProvider : ContentProvider() {
 
+    /** Relay provider authority, permission, column names and URI routing for the everysync app. */
     companion object {
         const val AUTHORITY = "com.vayunmathur.todo.relay"
         const val PERMISSION = "com.vayunmathur.todo.permission.RELAY"

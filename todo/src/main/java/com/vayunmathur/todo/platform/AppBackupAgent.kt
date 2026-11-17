@@ -5,6 +5,7 @@ import com.vayunmathur.library.util.BaseBackupAgent
 import com.vayunmathur.todo.data.todoDbConfigs
 import java.io.File
 
+/** Android backup agent that backs up the encrypted todo database with the shared database configs. */
 class AppBackupAgent : BaseBackupAgent() {
     override val dbCodec = SqlCipherDbCodec
 

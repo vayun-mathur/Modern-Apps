@@ -22,6 +22,7 @@ data class SettingsUiState(
     val lists: List<TodoList> = emptyList(),
 )
 
+/** Callbacks for the settings screen; no-op defaults let previews render without behaviour. */
 interface SettingsActions {
     fun back() {}
     fun setDefaultView(view: TodoView) {}

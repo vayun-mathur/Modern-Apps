@@ -136,6 +136,7 @@ class TodoRepository private constructor(
         }
     }
 
+    /** Holds the process-wide TodoRepository singleton. */
     companion object {
         @Volatile private var instance: TodoRepository? = null
         fun get(context: Context): TodoRepository =

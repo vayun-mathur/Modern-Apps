@@ -9,6 +9,10 @@ import com.vayunmathur.todo.data.TodoSettings
 import com.vayunmathur.todo.platform.IntentRouter
 import com.vayunmathur.todo.platform.TodoViewModel
 
+/**
+ * Entry activity: builds the repository and view model, forwards intents to IntentRouter, and hosts the
+ * navigation graph.
+ */
 class MainActivity : MaActivity() {
     private lateinit var todoRepository: TodoRepository
     private val todoViewModel: TodoViewModel by viewModels {

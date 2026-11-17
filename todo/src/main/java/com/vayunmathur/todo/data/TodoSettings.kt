@@ -41,6 +41,7 @@ class TodoSettings(context: Context) {
     suspend fun digestMinutesNow(): Long = digestMinutes.first()
     suspend fun calendarMirrorNow(): Boolean = calendarMirror.first()
 
+    /** DataStore keys and defaults for todo preferences. */
     companion object {
         private const val KEY_DEFAULT_VIEW = "todo_default_view"
         private const val KEY_DEFAULT_SORT = "todo_default_sort"

@@ -43,6 +43,7 @@ class ReminderActionReceiver : BroadcastReceiver() {
         else -> now + HOUR_MS
     }
 
+    /** Notification action names, extras and snooze options for reminder actions. */
     companion object {
         const val ACTION_COMPLETE = "com.vayunmathur.todo.action.COMPLETE"
         const val ACTION_SNOOZE = "com.vayunmathur.todo.action.SNOOZE"

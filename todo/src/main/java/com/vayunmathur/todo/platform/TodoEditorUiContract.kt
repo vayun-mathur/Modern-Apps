@@ -32,6 +32,7 @@ interface TodoActions {
     fun duplicate() {}
     fun deleteTodo() {}
 
+    /** Shared no-op TodoActions instance for previews. */
     companion object {
         val Noop: TodoActions = object : TodoActions {}
     }

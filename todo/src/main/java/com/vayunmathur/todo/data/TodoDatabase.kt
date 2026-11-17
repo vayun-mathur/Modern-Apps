@@ -18,6 +18,7 @@ const val DB_NAME = "todo-db"
 fun todoDbConfigs(context: Context): List<Pair<String, String>> =
     listOf(DB_NAME to DatabaseHelper(context).getPassphrase())
 
+/** Room DAO for task rows, including subtask, changed-since and tombstone-cleanup queries. */
 @Dao
 abstract class TodoDao {
     @Query("SELECT * FROM Todo WHERE deleted = 0 ORDER BY position")
@@ -86,6 +87,7 @@ abstract class TodoDao {
     abstract suspend fun deleteAll()
 }
 
+/** Room DAO for task-list rows. */
 @Dao
 abstract class TodoListDao {
     @Query("SELECT * FROM TodoList WHERE deleted = 0 ORDER BY position")
@@ -121,6 +123,7 @@ abstract class TodoListDao {
     abstract suspend fun deleteAll()
 }
 
+/** Room DAO for last-synced snapshot baselines used to tell deletions from new rows. */
 @Dao
 interface TodoSyncSnapshotDao {
     @Query("SELECT * FROM SyncSnapshot WHERE kind = :kind")
@@ -143,6 +146,7 @@ interface TodoSyncSnapshotDao {
     suspend fun deleteAllExcept(excludedKind: String)
 }
 
+/** Room database holding tasks, lists and sync snapshots. */
 @Database(entities = [Todo::class, TodoList::class, SyncSnapshot::class], version = 3, exportSchema = true)
 @ColumnTypeConverters(TodoConverters::class)
 abstract class TodoDatabase : RoomDatabase() {
@@ -150,6 +154,7 @@ abstract class TodoDatabase : RoomDatabase() {
     abstract fun todoListDao(): TodoListDao
     abstract fun syncSnapshotDao(): TodoSyncSnapshotDao
 
+    /** Supplies the database migrations. */
     companion object : DatabaseMigrations {
         override val migrations: List<Migration> = TodoMigrations.all
     }
