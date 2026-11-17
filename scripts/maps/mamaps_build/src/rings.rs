@@ -32,6 +32,9 @@
 
 use tilecodec::mamaps::body::{BuildingAttrs, LaneTurns, Layer, Part, WINDING_HOLE, WINDING_OUTER};
 
+/// A kept ring with its bounding box `(min_x, min_y, max_x, max_y)`.
+type RingWithBox = (Vec<(i16, i16)>, (i16, i16, i16, i16));
+
 /// What normalising a build cost, for the report.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Stats {
@@ -63,6 +66,7 @@ impl Stats {
 ///
 /// Rebuilds the parts table and the coordinate arena, because dropping a ring changes both and the
 /// encoder requires the parts to tile the arena exactly.
+#[cfg(test)]
 pub fn normalise(layer: &mut Layer) -> Stats {
     normalise_with_ids(layer, None, None, None)
 }
@@ -131,7 +135,7 @@ pub fn normalise_with_ids(
         // field states a fact about the coordinates and the two must agree.
         // `(ring, box)`, because every containment test below needs the box and computing it per
         // comparison would put back the quadratic cost the boxes exist to remove.
-        let mut kept: Vec<(Vec<(i16, i16)>, (i16, i16, i16, i16))> =
+        let mut kept: Vec<RingWithBox> =
             Vec::with_capacity(group.len());
         let mut exterior_ring = exterior.to_vec();
         if exterior_area < 0.0 {

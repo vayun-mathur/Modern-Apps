@@ -131,11 +131,11 @@ fn concatenate(into: &mut ChunkEntry, from: &mut ChunkEntry) {
     // the same order the features were, which is what keeps the two parallel.
     into.ids.extend_from_slice(&from.ids);
     // The turn masks ride the same way: values parallel to features, concatenated in feature order.
-    into.turn_lanes.extend(from.turn_lanes.drain(..));
+    into.turn_lanes.append(&mut from.turn_lanes);
     // The building attrs ride the same way, dense-parallel to the buildings layer's features.
-    into.buildings.extend(from.buildings.drain(..));
+    into.buildings.append(&mut from.buildings);
     // And the carriageways, dense-parallel to the roads layer's.
-    into.carriageways.extend(from.carriageways.drain(..));
+    into.carriageways.append(&mut from.carriageways);
 }
 
 /// Translate `from`'s feature name indices into `into_names`, growing it in first-use order.
@@ -201,7 +201,7 @@ fn remap_names(into_names: &mut Vec<String>, from: &ChunkEntry) -> Vec<u16> {
 /// returns the raw length alongside the compressed frame, because the per-zoom `bytes` column has
 /// always reported *uncompressed* body size and moving compression must not silently change what a
 /// build report means.
-
+///
 /// The most features any one tile has carried in each layer.
 ///
 /// `body::serialize` caps a tile-layer at [`u16::MAX`] features, and that cap **has already fired**:
@@ -423,6 +423,7 @@ fn histogram(chunks: &[ChunkRef], spill: &ChunkSpill) -> Result<Histogram> {
 
 /// Cost-balanced range boundaries over one zoom's tile space, with seek positions, for exactly
 /// `workers` ranges. See [`plan_ranges_from`].
+#[cfg(test)]
 fn plan_ranges(
     chunks: &[ChunkRef],
     spill: &ChunkSpill,

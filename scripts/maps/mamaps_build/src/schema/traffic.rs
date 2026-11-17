@@ -35,10 +35,14 @@
 use std::path::Path;
 
 use osm_ingest::proto::{err, Result};
+#[cfg(test)]
 use tile_build::geom::Geometry;
+#[cfg(test)]
 use tilecodec::mamaps::dict::{self, LAYER_TRAFFIC};
 
+#[cfg(test)]
 use super::Class;
+#[cfg(test)]
 use crate::store::Sink;
 
 /// The zoom the traffic overlay first surfaces at.
@@ -49,16 +53,20 @@ use crate::store::Sink;
 /// cost 0.38GB on the california build). Raise it to trim the archive further, lower it to show
 /// motorway congestion sooner. The store packs `min_zoom` in five bits, so anything up to 31 is
 /// representable.
+#[cfg(test)]
 pub const MIN_ZOOM: u8 = 13;
 
 /// Bits reserved for the component-segment index inside a packed component id. Shared on-disk/wire
 /// contract with the server and the device — keep in sync with `graph.rs::COMPONENT_SEG_BITS` and
 /// `analysis/traffic_id_contract.md` §1.
+#[cfg(test)]
 pub const COMPONENT_SEG_BITS: u32 = 16;
+#[cfg(test)]
 pub const COMPONENT_SEG_MASK: u64 = (1 << COMPONENT_SEG_BITS) - 1;
 
 /// `component_id = (big_edge_id << 16) | seg_index`.
 #[inline]
+#[cfg(test)]
 pub fn pack_component_id(big_edge_id: u64, seg_index: u32) -> u64 {
     debug_assert!(u64::from(seg_index) <= COMPONENT_SEG_MASK);
     (big_edge_id << COMPONENT_SEG_BITS) | u64::from(seg_index)
@@ -66,6 +74,7 @@ pub fn pack_component_id(big_edge_id: u64, seg_index: u32) -> u64 {
 
 /// The inverse of [`pack_component_id`].
 #[inline]
+#[cfg(test)]
 pub fn unpack_component_id(component_id: u64) -> (u64, u32) {
     (component_id >> COMPONENT_SEG_BITS, (component_id & COMPONENT_SEG_MASK) as u32)
 }
@@ -76,6 +85,7 @@ pub fn unpack_component_id(component_id: u64) -> (u64, u32) {
 /// and recoloured by the renderer from a pushed id→speed table, keyed on the `component_id` in the
 /// body's id side table rather than on any interned attribute. Keeping it out of [`dict::KINDS`]
 /// avoids disturbing the frozen kind table for a value nothing matches by name.
+#[cfg(test)]
 pub fn traffic_class() -> Class {
     Class {
         layer: LAYER_TRAFFIC,
@@ -108,6 +118,7 @@ pub(crate) const INTERMEDIATE_BLOCK: u64 = 32;
 /// One rank word per 512 edges = 64 present bytes (`graph.rs` RANK_BLOCK_BYTES).
 const RANK_BLOCK_BYTES: usize = 64;
 /// `type_` bit 6: this edge stores no geometry of its own; its twin runs `target -> source`.
+#[cfg(test)]
 const REVERSE_GEOMETRY_FLAG: u8 = 0x40;
 /// The low six bits of `type_` are the road class.
 pub(crate) const ROAD_TYPE_MASK: u8 = 0x3F;
@@ -513,7 +524,7 @@ impl Graph {
                 let q = |v: i32| (v as i64).div_euclid(10) + i64::from((v as i64).rem_euclid(10) >= 5);
                 let (mut qlat, mut qlon) = (q(slat), q(slon));
                 let mut at = 0usize;
-                let mut uvar = |at: &mut usize| -> Option<u64> {
+                let uvar = |at: &mut usize| -> Option<u64> {
                     let (mut r, mut sh) = (0u64, 0u32);
                     while *at < b.len() {
                         let x = b[*at];
@@ -580,6 +591,7 @@ impl Graph {
 /// after the OSM passes and streamed straight into the feature sink. Unlike those two it is not
 /// clipped to a bbox here — the graph is already the built region, and the tiler clips each segment
 /// per tile like any other line.
+#[cfg(test)]
 pub fn stream_graph(dir: &Path, sink: &mut Sink) -> Result<u64> {
     let graph = Graph::load(dir)?;
     let class = traffic_class();

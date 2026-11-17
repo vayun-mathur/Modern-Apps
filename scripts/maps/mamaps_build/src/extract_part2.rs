@@ -26,8 +26,8 @@ fn load_member_ways(
     if !wanted.is_empty() {
         let (chunks, _) = pbf::run_pass(
             input,
-            &blobs,
-            Some(&blob_kinds),
+            blobs,
+            Some(blob_kinds),
             KIND_WAYS,
             "Pass 2: member ways",
             Vec::<(i64, Vec<i64>)>::new,
@@ -93,10 +93,12 @@ impl MemberWays {
     }
 
     /// How many member ways are held.
+    #[cfg(test)]
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
@@ -229,7 +231,7 @@ fn build_resolved_table(
         }
         Ok(())
     };
-    let table = resolve_nodes_with(input, &blobs, &blob_kinds, "Pass 3: nodes", table, classify, drain)?;
+    let table = resolve_nodes_with(input, blobs, blob_kinds, "Pass 3: nodes", table, classify, drain)?;
 
     Ok(table)
 }

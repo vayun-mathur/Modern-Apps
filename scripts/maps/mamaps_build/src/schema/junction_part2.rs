@@ -197,17 +197,17 @@ fn junctions_for_node(
             let rank = siblings.iter().position(|&l| l == in_lane).unwrap_or(0);
             let out_lane =
                 exit_lane(*turn, in_lane, approach_lanes, out_lanes, rank, siblings.len());
-            let Some(points) = connector(
+            let Some(points) = connector(ConnectorArgs {
                 node,
                 approach,
                 in_lane,
                 approach_lanes,
                 exit,
                 out_lane,
-                out_lanes,
-                *turn,
+                exit_lanes: out_lanes,
+                turn: *turn,
                 left_hand,
-            ) else {
+            }) else {
                 continue;
             };
             out.push(points);

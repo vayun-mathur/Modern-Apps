@@ -51,7 +51,9 @@
 //! with the coordinate table after materialise, before the externals.
 
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::io::{BufWriter, Write};
+#[cfg(test)]
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use osm_ingest::proto::{err, zigzag, Error, Result};

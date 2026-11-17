@@ -1,5 +1,5 @@
 impl WayReader {
-#[cfg_attr(not(test), allow(dead_code))]
+    #[cfg(test)]
     pub fn open(path: &Path) -> Result<WayReader> {
         let file = File::open(path)
             .map_err(|e| Error(format!("cannot open {}: {e}", path.display())))?;
@@ -13,6 +13,7 @@ impl WayReader {
     /// Anonymous twin of [`open`](Self::open): reads the sealed store from
     /// [`WaySink::finish_anon`], shared by refcount. `path` names nothing —
     /// it only rides along for error messages.
+    #[cfg(test)]
     pub fn open_anon(
         path: &Path,
         store: std::sync::Arc<tile_build::anon::AnonStore>,
@@ -28,6 +29,7 @@ impl WayReader {
     /// Open whichever backend the sink sealed: the shared anon store when present, else the file
     /// at `path`. One helper so the four stage-A readers (two ref collectors, lanefill scan,
     /// materialise) agree.
+    #[cfg(test)]
     pub fn open_either(
         path: &Path,
         store: &Option<std::sync::Arc<tile_build::anon::AnonStore>>,
@@ -168,9 +170,11 @@ impl WayReader {
     /// Peek at the buffered bytes without consuming, filling from the backend first.
     fn fill_buf(&mut self) -> Result<&[u8]> {
         match &mut self.inner {
+            #[cfg(test)]
             WayIn::File(f) => f
                 .fill_buf()
                 .map_err(|e| Error(format!("cannot read the ways spill: {e}"))),
+            #[cfg(test)]
             WayIn::Anon { store, at, buf, used } => {
                 if *used >= buf.len() {
                     // Refill: read the next window from the store. 1MB like the
@@ -200,7 +204,9 @@ impl WayReader {
 
     fn consume(&mut self, n: usize) {
         match &mut self.inner {
+            #[cfg(test)]
             WayIn::File(f) => f.consume(n),
+            #[cfg(test)]
             WayIn::Anon { used, .. } => *used += n,
             WayIn::Slice { used, .. } => *used += n,
         }

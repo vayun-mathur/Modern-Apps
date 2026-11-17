@@ -369,6 +369,7 @@ fn select_link(point: (f64, f64), band: Band, candidates: &[&Boundary]) -> Optio
 /// Reads the finished store twice (boundaries, then places), inserts only keys still missing so
 /// member links always win, and returns the counts the build log reports. The tiler reads the
 /// extended map unchanged.
+#[cfg(test)]
 pub fn extend_region_links(
     store: &crate::store::Store,
     region_links: &mut HashMap<u64, u64>,
@@ -408,7 +409,7 @@ pub fn extend_region_links_with(
         Boundary(Boundary),
         Place(PlacePoint),
     }
-    // The scan decodes the whole store across the pool (`Store::par_scan`, file order kept), and
+    // The scan decodes the whole store across the pool (`Store::par_scan_where`, file order kept), and
     // the per-feature filter -- including `Boundary::new`'s area and bbox walk -- runs there too.
     // The split into the two vectors below is in file order, so both are exactly what the
     // one-cursor loop built.

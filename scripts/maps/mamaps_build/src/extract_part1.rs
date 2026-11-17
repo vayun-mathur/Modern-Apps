@@ -7,16 +7,23 @@
 /// `region` filters the **built** layers (`roads`, `poi`, `buildings`) to the
 /// region's bbox. Every other layer is always included regardless. `None`
 /// (world) disables the filter entirely.
-pub fn extract(
-    input: &Path,
-    layers: Layers,
-    coastline: &Path,
-    transit_routes: &Path,
-    graph: &crate::GraphGate,
-    spill_path: &Path,
-    region: Option<osm_ingest::bbox::BBox>,
-    timer: &mut crate::timing::PhaseTimer,
-) -> Result<(Store, Stats, HashMap<u64, u64>, HashMap<u64, u64>)> {
+/// Inputs for [`extract`], grouped so call sites name them.
+pub struct ExtractArgs<'a> {
+    pub input: &'a Path,
+    pub layers: Layers,
+    pub coastline: &'a Path,
+    pub transit_routes: &'a Path,
+    pub graph: &'a crate::GraphGate,
+    pub spill_path: &'a Path,
+    pub region: Option<osm_ingest::bbox::BBox>,
+    pub timer: &'a mut crate::timing::PhaseTimer,
+}
+
+/// What [`extract`] hands back: the sealed store, its stats, and the two id maps.
+type ExtractOut = (Store, Stats, HashMap<u64, u64>, HashMap<u64, u64>);
+
+pub fn extract(args: ExtractArgs<'_>) -> Result<ExtractOut> {
+    let ExtractArgs { input, layers, coastline, transit_routes, graph, spill_path, region, timer } = args;
     // Stage A's boundaries are subphase switches on the run's `PhaseTimer`, so an external RSS
     // sampler can say which of them the peak belongs to. Three candidates sit within seconds of
     // each other -- the ref vector, the id index built beside it, and the node pass's per-chunk
@@ -93,8 +100,8 @@ pub fn extract(
         promoted,
         blob_kinds,
         ways: _,
-        way_refs,
-        way_max_ref,
+        way_refs: _,
+        way_max_ref: _,
         ways_anon,
         way_blocks,
         region_label_nodes,
@@ -191,16 +198,16 @@ pub fn extract(
     drop(members);
     drop(table);
     timer.switch("land-polygons");
-    let store = append_external_and_finish(
+    let store = append_external_and_finish(ExternalFinish {
         coastline,
         transit_routes,
         graph,
         sink,
-        &mut stats,
+        stats: &mut stats,
         conventions,
         spill_path,
         timer,
-    )?;
+    })?;
     // The place-label -> boundary link, tagged into the id space the archive uses (a place carries
     // its node id tagged as a node; the mask keys on the boundary's relation id tagged as a
     // relation). The tiler stamps each `places` label with its linked id from this.
@@ -248,8 +255,7 @@ fn plan_ways_spill(
         return Ok(osm_ingest::mem::SpillPlan::Anon);
     }
     let estimate = (input_bytes / 32).max(1 << 30);
-    let mut budget = osm_ingest::mem::StageBudget::default();
-    budget.ways_spill_bytes = estimate;
+    let budget = osm_ingest::mem::StageBudget { ways_spill_bytes: estimate, ..Default::default() };
     // Phase 0 knows nothing else yet; the rest is zero, so `anon_commit_bytes` is just this.
     let context = format!(
         "stage A ways spill (pre-pass estimate {} from {} input over {} blobs)",
@@ -286,24 +292,26 @@ fn plan_feature_spill(
     // Distinct nodes <= total refs; the collector dedups, so size the table on the upper bound.
     // `max_node_id` bounds the rank bitset; `distinct` (upper-bounded here) sizes the resolved
     // bit and the locs file.
-    let mut budget = osm_ingest::mem::StageBudget::default();
-    budget.distinct_nodes = refs_total;
-    budget.max_node_id = pass1.way_max_ref.max(0) as u64;
-    budget.ways_spill_bytes = pass1
-        .ways_anon
-        .as_ref()
-        .map(|a| a.len())
-        .unwrap_or_else(|| std::fs::metadata(spill_path.with_extension("ways.tmp")).map(|m| m.len()).unwrap_or(0));
     // Features to come: every classified way and relation materialises at most one feature, plus
     // the externals below (the junction connectors dominate: ~746 M on planet, arriving after
     // this gate, hence the ways/2 headroom on the safe side).
-    budget.features_expected = pass1
-        .ways
-        .saturating_add(pass1.relations.len() as u64)
-        .saturating_add(pass1.ways / 2)
-        .saturating_add(2_000_000);
-    budget.bytes_per_feature = SPILL_BYTES_PER_FEATURE;
-    budget.relations = pass1.relations.len() as u64;
+    let mut budget = osm_ingest::mem::StageBudget {
+        distinct_nodes: refs_total,
+        max_node_id: pass1.way_max_ref.max(0) as u64,
+        ways_spill_bytes: pass1
+            .ways_anon
+            .as_ref()
+            .map(|a| a.len())
+            .unwrap_or_else(|| std::fs::metadata(spill_path.with_extension("ways.tmp")).map(|m| m.len()).unwrap_or(0)),
+        features_expected: pass1
+            .ways
+            .saturating_add(pass1.relations.len() as u64)
+            .saturating_add(pass1.ways / 2)
+            .saturating_add(2_000_000),
+        bytes_per_feature: SPILL_BYTES_PER_FEATURE,
+        relations: pass1.relations.len() as u64,
+        ..Default::default()
+    };
     if !graph.ready_now() {
         // The graph's size is unknown until `road_graph` finishes, and it shares the junction
         // phase's peak: take the file backend, the safe side. Same records either way.
@@ -415,7 +423,7 @@ fn run_pass1(
     //
     // `blob_kinds` comes back from this pass and lets the later ones skip whole blobs, which on a
     // planet extract is most of the file.
-    let mut ways = WaySink::create_planned(&ways_path, spill_plan)?;
+    let mut ways = WaySink::create_planned(ways_path, spill_plan)?;
     let mut relations: Vec<Relation> = Vec::new();
     // The needed-node bitset, fused into this pass: every classified way sets
     // its refs here in the drain below, so pass 3 never re-reads the ways
@@ -430,10 +438,12 @@ fn run_pass1(
     let mut corridors: Vec<crate::corridor::Segment> = Vec::new();
     let blob_kinds = pbf::run_pass_sink(
         input,
-        &blobs,
-        blob_kinds_in,
-        KIND_WAYS | KIND_RELATIONS,
-        "Pass 1: ways and relations",
+        blobs,
+        pbf::PassSpec {
+            blob_kinds: blob_kinds_in,
+            want: KIND_WAYS | KIND_RELATIONS,
+            label: "Pass 1: ways and relations",
+        },
         || {
             (
                 Vec::<WayBlock>::new(),
@@ -510,7 +520,7 @@ fn run_pass1(
                             if state.0.last().is_none_or(|b| b.len() >= WAY_BLOCK_WAYS) {
                                 state.0.push(WayBlock::new());
                             }
-                            let refs: &[i64] = &way.refs[..];
+                            let refs: &[i64] = way.refs;
                             state.0.last_mut().expect("pushed above").push(
                                 way.id,
                                 &class,

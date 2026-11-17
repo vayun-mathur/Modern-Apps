@@ -361,7 +361,6 @@ mod tests {
     /// shape (and its tile-edge crossings) while the test stays instant.
     #[test]
     fn lake_superior_survives_coarse_and_fine() {
-        use crate::schema::Class;
         use tilecodec::mamaps::body::Body;
         use tilecodec::mamaps::dict;
 
@@ -447,7 +446,6 @@ mod tests {
     /// must never hide a country.
     #[test]
     fn country_labels_start_at_their_scored_zoom() {
-        use crate::schema::Class;
         use tilecodec::mamaps::body::Body;
         use tilecodec::mamaps::dict;
 

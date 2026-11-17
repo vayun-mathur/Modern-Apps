@@ -201,16 +201,23 @@ fn read_chunks(
 ///
 /// The spill write is deliberately **outside** the `catch_unwind`, which wraps [`tile_chunk`] alone.
 /// A failed write records the flag and keeps draining for exactly the same reason a panic does.
-fn tile_chunks(
-    receive: &Mutex<std::sync::mpsc::Receiver<(usize, Vec<Vec<Feature>>)>>,
-    done: &Mutex<Vec<(usize, ChunkRef, Tally)>>,
-    failed: &std::sync::atomic::AtomicBool,
-    spill: &ChunkSpill,
+/// The chunk queue one tiling worker drains.
+type ChunkReceiver = Mutex<std::sync::mpsc::Receiver<(usize, Vec<Vec<Feature>>)>>;
+
+/// Shared inputs for [`tile_chunks`], grouped so call sites name them.
+struct TileChunksCtx<'a> {
+    receive: &'a ChunkReceiver,
+    done: &'a Mutex<Vec<(usize, ChunkRef, Tally)>>,
+    failed: &'a std::sync::atomic::AtomicBool,
+    spill: &'a ChunkSpill,
     z: u8,
     tolerance: f64,
     buffer: f64,
-    country_zooms: &std::collections::HashMap<u64, u8>,
-) {
+    country_zooms: &'a std::collections::HashMap<u64, u8>,
+}
+
+fn tile_chunks(ctx: TileChunksCtx<'_>) {
+    let TileChunksCtx { receive, done, failed, spill, z, tolerance, buffer, country_zooms } = ctx;
     loop {
         // Held to take a chunk and never while tiling one: the lock covers a pointer move, and the
         // work either side of it is milliseconds.

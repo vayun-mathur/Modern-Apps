@@ -335,6 +335,7 @@ impl Conventions {
 
     /// Does the grid know anything at all? Empty for a build with the `boundaries` layer switched
     /// off, or one whose extract holds no country relation.
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.at.is_empty()
     }
@@ -342,6 +343,7 @@ impl Conventions {
     /// The grid as the store index carries it: a `u32` count, then a `u32` cell key and a
     /// [`MarkingConvention`] byte each, ascending by key so a reused store reproduces the run that
     /// built it byte for byte.
+    #[cfg(test)]
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut keys: Vec<&u32> = self.at.keys().collect();
         keys.sort_unstable();
@@ -355,6 +357,7 @@ impl Conventions {
     }
 
     /// The inverse of [`Conventions::to_bytes`], returning the grid and the bytes it consumed.
+    #[cfg(test)]
     pub fn from_bytes(raw: &[u8]) -> osm_ingest::proto::Result<(Conventions, usize)> {
         if raw.len() < 4 {
             return osm_ingest::proto::err(

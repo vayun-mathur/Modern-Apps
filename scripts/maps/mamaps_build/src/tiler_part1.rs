@@ -1,9 +1,12 @@
+type EncodedBatch = (Vec<Encoded>, usize, u64, u64);
+
 /// Tile every feature and write the archive.
 /// Tile every feature in `store` into a `.mamaps` archive.
 ///
 /// The store is read **once per zoom**, in order, rather than held in memory for all of them. Fifteen
 /// sequential passes over a file cost seconds on any modern disk; holding the features cost 4.9 GB of
 /// a measured 10.03 GB California peak.
+#[cfg(test)]
 pub fn build(store: &Store, settings: &Settings) -> Result<(Vec<u8>, Vec<ZoomStats>)> {
     adopt_thread_budget();
     let mut writer = writer_for(store, settings)?;
@@ -381,7 +384,7 @@ fn consume_merged(
                         }
                         Ok(appending.elapsed().as_millis() as u64)
                     },
-                    || -> Result<Option<(Vec<Encoded>, usize, u64, u64)>> {
+                    || -> Result<Option<EncodedBatch>> {
                         let Some((batch, cuts, merge_ms)) = pulled? else { return Ok(None) };
                         let tiles = batch.len();
                         let encoding = std::time::Instant::now();
@@ -578,11 +581,10 @@ fn plan_chunk_spill(store: &Store, scratch: &std::path::Path) -> osm_ingest::mem
     if store.len() < SMALL_STORE_FEATURES {
         return osm_ingest::mem::SpillPlan::Anon;
     }
-    let mut budget = osm_ingest::mem::StageBudget::default();
     // Reuse the anon-commit field for the chunk estimate: it is the number `decide` compares
     // against the commit allowance, and the chunk spill is the only anon charge this phase adds
     // (the feature spill is already staged and counted separately).
-    budget.ways_spill_bytes = store.len().saturating_mul(CHUNK_BYTES_PER_FEATURE);
+    let budget = osm_ingest::mem::StageBudget { ways_spill_bytes: store.len().saturating_mul(CHUNK_BYTES_PER_FEATURE), ..Default::default() };
     match osm_ingest::mem::SpillPlan::decide(&budget, scratch, "tiler chunk spill") {
         Ok(plan) => {
             if plan != osm_ingest::mem::SpillPlan::Anon {
@@ -662,7 +664,7 @@ fn map_zoom(
                 .name(format!("mamaps-tile-{i}"))
                 .stack_size(WORKER_STACK)
                 .spawn_scoped(scope, || {
-                    tile_chunks(&receive, &done, &failed, spill, z, tolerance, buffer, &settings.country_zooms)
+                    tile_chunks(TileChunksCtx { receive: &receive, done: &done, failed: &failed, spill, z, tolerance, buffer, country_zooms: &settings.country_zooms })
                 });
             match worker {
                 Ok(handle) => spawned.push(handle),
@@ -672,7 +674,7 @@ fn map_zoom(
                 }
             }
         }
-        tile_chunks(&receive, &done, &failed, spill, z, tolerance, buffer, &settings.country_zooms);
+        tile_chunks(TileChunksCtx { receive: &receive, done: &done, failed: &failed, spill, z, tolerance, buffer, country_zooms: &settings.country_zooms });
         for handle in spawned {
             handle.join().map_err(|_| {
                 tile_build::proto::Error("a tiling thread panicked".to_string())
@@ -729,7 +731,6 @@ fn map_zoom(
 /// A feature below the zoom's own floor never arrives: [`crate::store::ZoomReader`] drops it in one
 /// of its prefetch lanes. That filter used to be right here, and here it was one thread discarding
 /// most of a billion features — see the reader's own docs for what that cost.
-
 #[cfg(test)]
 mod tests_part1 {
     use super::*;

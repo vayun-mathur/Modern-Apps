@@ -29,9 +29,7 @@ fn run(
     // Without them `--graph` must already exist and is validated below.
     let graph_dir: std::path::PathBuf = if let Some(dir) = run.build_graph_to.as_ref() {
         println!("building the routing graph in-process -> {}", dir.display());
-        let mut opts = osm_ingest::graph_build::Options::default();
-        opts.within_way_chains = true;
-        opts.bbox = run.region.bbox();
+        let opts = osm_ingest::graph_build::Options { within_way_chains: true, bbox: run.region.bbox(), ..Default::default() };
         osm_ingest::graph_build::build_with(input, dir, opts)
             .map_err(|e| format!("graph build: {e}"))?;
         let ov = osm_ingest::overlay::build(dir, &dir.join("overlay.bin"))
@@ -46,14 +44,16 @@ fn run(
         println!("building the POI sidecars in-process -> {}", dir.display());
         let poi_index = dir.join("poi_index.bin");
         osm_ingest::poi_build::build_with(
-            input,
-            &dir.join("poi.geojsonseq"),
-            &dir.join("poi_names.bin"),
-            &poi_index,
-            &dir.join("poi_attrs.bin"),
-            &dir.join("poi_spatial.bin"),
-            &dir.join("poi_name_index.bin"),
-            &dir.join("poi_region.bin"),
+            osm_ingest::poi_build::Paths {
+                input,
+                geojson: &dir.join("poi.geojsonseq"),
+                names: &dir.join("poi_names.bin"),
+                index: &poi_index,
+                attrs: &dir.join("poi_attrs.bin"),
+                spatial: &dir.join("poi_spatial.bin"),
+                name_index: &dir.join("poi_name_index.bin"),
+                region: &dir.join("poi_region.bin"),
+            },
             run.region.bbox(),
         )
         .map_err(|e| format!("poi build: {e}"))?;
@@ -79,16 +79,16 @@ fn run(
     // validation) books as overhead; every major stage below switches it, and `finish` emits the
     // single `TIMING` line before the summary prints.
     let mut timer = crate::timing::PhaseTimer::start("tiles");
-    let (store, stats, mut region_links, country_populations) = extract::extract(
+    let (store, stats, mut region_links, country_populations) = extract::extract(extract::ExtractArgs {
         input,
         layers,
-        &run.coastline,
-        &run.transit_routes,
-        &gate,
-        &spill,
-        run.region.bbox(),
-        &mut timer,
-    )
+        coastline: &run.coastline,
+        transit_routes: &run.transit_routes,
+        graph: &gate,
+        spill_path: &spill,
+        region: run.region.bbox(),
+        timer: &mut timer,
+    })
     .map_err(|e| format!("{}: {e}", input.display()))?;
     // The containment fallback: member-less place labels gain links from the whole-polygon
     // shapes above, never overwriting a member link. Runs here — after the store is sealed

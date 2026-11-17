@@ -104,7 +104,7 @@ impl PhaseTimer {
 
     fn close_current(&mut self) {
         let secs = self.current_start.elapsed().as_secs_f64();
-        let name = std::mem::replace(&mut self.current, String::new());
+        let name = std::mem::take(&mut self.current);
         self.segments.push((name, secs));
     }
 }

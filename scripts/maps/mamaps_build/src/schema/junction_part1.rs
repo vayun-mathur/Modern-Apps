@@ -443,17 +443,21 @@ fn effective_lanes(arm: &Arm) -> usize {
 /// two headings so the curve leaves the approach and meets the exit tangentially. Sampled here, in
 /// `f64` and once per build, rather than on device once per frame — which is the whole point of
 /// carrying a polyline instead of control points.
-fn connector(
+/// Inputs for [`connector`], grouped so the one call site names them.
+struct ConnectorArgs<'a> {
     node: (i32, i32),
-    approach: &Arm,
+    approach: &'a Arm,
     in_lane: usize,
     approach_lanes: usize,
-    exit: &Arm,
+    exit: &'a Arm,
     out_lane: usize,
     exit_lanes: usize,
     turn: Turn,
     left_hand: bool,
-) -> Option<Vec<(f64, f64)>> {
+}
+
+fn connector(args: ConnectorArgs<'_>) -> Option<Vec<(f64, f64)>> {
+    let ConnectorArgs { node, approach, in_lane, approach_lanes, exit, out_lane, exit_lanes, turn, left_hand } = args;
     let back = (SETBACK_M).min(approach.length_m * SETBACK_EDGE_FRACTION);
     let ahead = (SETBACK_M).min(exit.length_m * SETBACK_EDGE_FRACTION);
     if back < MIN_SETBACK_M || ahead < MIN_SETBACK_M {

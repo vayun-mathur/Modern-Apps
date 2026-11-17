@@ -203,16 +203,20 @@ fn materialise_relations(
 }
 
 /// Coastline, transit, graph, then finish the store. Moved whole from `extract`.
-fn append_external_and_finish(
-    coastline: &Path,
-    transit_routes: &Path,
-    graph: &crate::GraphGate,
-    mut sink: Sink,
-    stats: &mut Stats,
+/// Inputs for [`append_external_and_finish`], grouped so the one call site names them.
+struct ExternalFinish<'a> {
+    coastline: &'a Path,
+    transit_routes: &'a Path,
+    graph: &'a crate::GraphGate,
+    sink: Sink,
+    stats: &'a mut Stats,
     conventions: schema::boundaries::Conventions,
-    spill_path: &Path,
-    timer: &mut crate::timing::PhaseTimer,
-) -> Result<Store> {
+    spill_path: &'a Path,
+    timer: &'a mut crate::timing::PhaseTimer,
+}
+
+fn append_external_and_finish(args: ExternalFinish<'_>) -> Result<Store> {
+    let ExternalFinish { coastline, transit_routes, graph, mut sink, stats, conventions, spill_path, timer } = args;
     // The mainland, last, because clipping it needs the extract's own bounding box and that is
     // only known once every OSM feature has been through the sink. Order in the file does not
     // matter: the tiler groups by layer id, so `earth` is the first layer of every body whenever it
@@ -324,6 +328,7 @@ struct NeededBits {
 }
 
 impl NeededBits {
+    #[cfg(test)]
     fn new(max_id: i64) -> Result<NeededBits> {
         if max_id > MAX_NODE_ID {
             return err(format!(
@@ -372,6 +377,7 @@ impl NeededBits {
         Ok(())
     }
 
+    #[cfg(test)]
     fn set(&mut self, id: i64) -> Result<()> {
         // A negative ref is not a node this planet has. Refused rather than skipped: it means the
         // spill or the PBF is not what it claims, and skipping would show as a way with a gap in it.

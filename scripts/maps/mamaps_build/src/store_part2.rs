@@ -36,18 +36,6 @@ impl Store {
             .collect()
     }
 
-    pub fn from_parts(path: PathBuf, chunks: Vec<u64>, chunk_mins: Vec<u8>) -> Self {
-        Self {
-            path,
-            anon: None,
-            chunks,
-            chunk_mins,
-            count: 0,
-            bbox: (0, 0, 0, 0),
-            conventions: crate::schema::boundaries::Conventions::default(),
-        }
-    }
-
     /// Open the staged bytes for chunked reading, anonymous or file according to the plan the
     /// sink was created with. One helper so the three reader constructors agree.
     fn open_chunks(&self) -> Result<NormalizedChunks> {
@@ -74,17 +62,6 @@ impl Store {
             None => NormalizedReader::open(self.path.clone())
                 .map_err(|e| osm_ingest::proto::Error(e.to_string())),
         }
-    }
-
-    /// Attach the anonymous store after construction. Used by tests that build
-    /// a `Store` from parts and then read it back without a file.
-    #[cfg(test)]
-    pub fn with_anon(
-        mut self,
-        store: std::sync::Arc<tile_build::anon::AnonStore>,
-    ) -> Self {
-        self.anon = Some(store);
-        self
     }
 
     /// Take the marking-convention grid stage A resolved from the country relations.
@@ -159,11 +136,13 @@ impl Store {
                 sink.push_road(
                     &feature.class,
                     &encoded,
-                    feature.name.as_deref(),
-                    feature.lane_count,
-                    &feature.turn_fwd,
-                    &feature.turn_bwd,
-                    feature.carriageway,
+                    RoadAttrs {
+                        name: feature.name.as_deref(),
+                        lane_count: feature.lane_count,
+                        turn_fwd: &feature.turn_fwd,
+                        turn_bwd: &feature.turn_bwd,
+                        carriageway: feature.carriageway,
+                    },
                 )?;
             } else {
                 sink.push_named(&feature.class, &encoded, feature.name.as_deref(), feature.id)?;

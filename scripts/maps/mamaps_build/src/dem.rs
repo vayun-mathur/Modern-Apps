@@ -199,7 +199,7 @@ impl DemStats {
 
     pub fn report(&self) {
         use std::sync::atomic::Ordering::Relaxed;
-        println!("DEM grids (error vs the full {}-sample dataset grid, metres):", "dim^2");
+        println!("DEM grids (error vs the full dim^2-sample dataset grid, metres):");
         let (mut gmx, mut gss, mut gn) = (0.0f64, 0.0f64, 0u64);
         for z in 0..15 {
             let g = self.grids[z].load(Relaxed);

@@ -119,6 +119,7 @@ pub(crate) type Span = (u32, u32);
 ///
 /// Polygon features are left exactly as they were, in place; only the parts table and the arena are
 /// rebuilt around them, which [`crate::rings::normalise`] does immediately afterwards anyway.
+#[cfg(test)]
 pub fn coalesce_lines(layer: &mut Layer) -> Stats {
     coalesce_lines_with_ids(layer, None, None, None, None)
 }

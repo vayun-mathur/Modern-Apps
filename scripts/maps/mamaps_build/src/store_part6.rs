@@ -530,7 +530,8 @@ mod way_block_tests {
         let dir = std::env::temp_dir().join(format!("mamaps_wayblock_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        let mut ways: Vec<(i64, Vec<i64>, Option<String>, u8, Vec<u16>)> = Vec::new();
+        type WayRow = (i64, Vec<i64>, Option<String>, u8, Vec<u16>);
+        let mut ways: Vec<WayRow> = Vec::new();
         let mut id = 7i64;
         for i in 0..10_000i64 {
             id += 1 + (i % 5) * 1000;
@@ -675,32 +676,16 @@ pub fn geometry_vertices(geometry: &Geometry) -> usize {
 }
 
 impl Store {
-    /// Every feature in the store, in file order, passed through `keep` on the pool; the kept
-    /// values come back in file order.
-    ///
-    /// The same features [`reader`](Self::reader)'s one sequential cursor yields -- spill chunk by
-    /// spill chunk, each read with the same `read_into` and decoded with the same `feature_of` --
-    /// but decoded across the pool. For whole-store scans that keep a sliver (the region
-    /// fallback's boundary shapes and place labels): on the planet the one-cursor version decoded
-    /// 1.35 B features on one thread for 8+ minutes.
-    pub fn par_scan<T, F>(&self, keep: F) -> Result<Vec<T>>
-    where
-        T: Send,
-        F: Fn(Feature) -> Option<T> + Sync,
-    {
-        self.par_scan_where(|_, _| true, keep)
-    }
-
-    /// [`par_scan`](Self::par_scan) with a cheap pre-filter on each record's packed class and
+    /// Parallel scan with a cheap pre-filter on each record's packed class and
     /// whether it carries a feature id: records it rejects are never turned into features (their
     /// geometry is never decoded), so it must accept every record `keep` could keep.
     pub fn par_scan_where<T, P, F>(&self, pre: P, keep: F) -> Result<Vec<T>>
     where
         T: Send,
-        P: Fn(&Class, bool) -> bool + Sync,
+        P: Fn(&Class, bool) -> bool + Sync + 'static,
         F: Fn(Feature) -> Option<T> + Sync,
     {
-        let pre = |props: &[(String, Value)]| -> bool {
+        let pre = move |props: &[(String, Value)]| -> bool {
             let class = props.iter().find_map(|(k, v)| match (k.as_str(), v) {
                 (CLASS_KEY, Value::Uint(bits)) => Some(unpack(*bits)),
                 _ => None,

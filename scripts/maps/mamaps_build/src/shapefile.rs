@@ -25,6 +25,9 @@ use std::path::Path;
 
 use osm_ingest::proto::{err, Error, Result};
 
+/// One record's rings as `(ring, is_exterior)` pairs.
+pub type PolygonRings = Vec<(Vec<(f64, f64)>, bool)>;
+
 /// `.shp` files start with this, big-endian.
 const FILE_CODE: u32 = 9994;
 const HEADER_BYTES: usize = 100;
@@ -109,7 +112,7 @@ impl ShapeReader {
     ///
     /// Rings come back as `(ring, is_exterior)` in file order, so the caller can group them without
     /// re-deriving orientation.
-    pub fn next(&mut self) -> Result<Option<Vec<(Vec<(f64, f64)>, bool)>>> {
+    pub fn next(&mut self) -> Result<Option<PolygonRings>> {
         // A record header is 8 bytes; anything less than that left is the end.
         if self.remaining < 8 {
             return Ok(None);
@@ -153,7 +156,7 @@ impl ShapeReader {
 }
 
 /// One record's rings.
-fn parse_polygon(body: &[u8]) -> Result<Option<Vec<(Vec<(f64, f64)>, bool)>>> {
+fn parse_polygon(body: &[u8]) -> Result<Option<PolygonRings>> {
     if body.len() < 4 {
         return err("a record is too short to name its shape type".to_string());
     }

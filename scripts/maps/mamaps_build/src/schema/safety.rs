@@ -12,6 +12,7 @@ use super::{kind, Class, TagSource};
 /// Carried at the archive max only: dense at every intersection and drawn from z16 by overzoom.
 pub const MIN_ZOOM: u8 = 14;
 
+#[cfg(test)]
 pub const KINDS: &[&str] = &["speed_camera", "alpr", "surveillance", "stop_sign", "traffic_signals"];
 
 pub const FILTERS: &[&str] = &["highway", "man_made", "enforcement"];

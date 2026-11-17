@@ -5,7 +5,7 @@ impl ChunkReader<'_> {
     /// header, fixed arenas, name lengths, turn counts, building and
     /// carriageway sections — minus every allocation, UTF-8 check and struct
     /// build. The range planner uses it to walk chunks cheaply (cost histogram
-    /// + boundary offsets); the merge workers then decode for real. A corrupt
+    /// plus boundary offsets); the merge workers then decode for real. A corrupt
     /// entry errors here exactly as `next` would surface it, so planning fails
     /// fast rather than handing workers a desynced stream.
     ///

@@ -241,15 +241,13 @@ fn main() -> ExitCode {
 
     // `--region` defaults to world (no filtering). Parsed here so a bad value
     // fails in seconds, not after stage A.
-    let region = match region.as_deref().unwrap_or("world") {
-        s => match osm_ingest::region::Region::parse(s) {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("mamaps_build: {}", e.0);
-                usage();
-                return ExitCode::from(2);
-            }
-        },
+    let region = match osm_ingest::region::Region::parse(region.as_deref().unwrap_or("world")) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("mamaps_build: {}", e.0);
+            usage();
+            return ExitCode::from(2);
+        }
     };
 
     if tiler::SIZE_OPTS.set(size).is_err() {

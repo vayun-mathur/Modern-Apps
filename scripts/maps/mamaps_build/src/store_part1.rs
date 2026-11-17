@@ -1,7 +1,18 @@
+/// A road's extra spill data, grouped for [`Sink::push_road`].
+#[cfg(test)]
+pub struct RoadAttrs<'a> {
+    pub name: Option<&'a str>,
+    pub lane_count: u8,
+    pub turn_fwd: &'a [u16],
+    pub turn_bwd: &'a [u16],
+    pub carriageway: Carriageway,
+}
+
 impl Sink {
     /// The feature spill stages in anonymous pagefile-backed memory (no `.tmp`
     /// file, nothing stranded on kill). `path` names nothing — it only rides
     /// along for error messages.
+    #[cfg(test)]
     pub fn create(path: impl AsRef<Path>) -> Result<Sink> {
         Self::create_planned(path, osm_ingest::mem::SpillPlan::Anon)
     }
@@ -102,17 +113,14 @@ impl Sink {
     /// masks (body turn-lane table) and the [`Carriageway`] (body carriageway table). Refused with
     /// no name and all lane data empty — a plain, nameless road goes through [`Sink::push`] and
     /// carries no extra property at all, so the spill pays nothing for it.
+    #[cfg(test)]
     pub fn push_road(
         &mut self,
         class: &Class,
         geometry: &EncodedGeom,
-        name: Option<&str>,
-        lane_count: u8,
-        turn_fwd: &[u16],
-        turn_bwd: &[u16],
-        carriageway: Carriageway,
+        road: RoadAttrs<'_>,
     ) -> Result<()> {
-        fill_road(&mut self.props, class, name, lane_count, turn_fwd, turn_bwd, carriageway)?;
+        fill_road(&mut self.props, class, road.name, road.lane_count, road.turn_fwd, road.turn_bwd, road.carriageway)?;
         self.write_record(class, geometry)
     }
 
@@ -121,6 +129,7 @@ impl Sink {
     /// an all-default building — so the tiler can build a side table dense-parallel to the
     /// `buildings` layer. A name is written only when present (a building is rarely named; its
     /// label is usually a `poi`).
+    #[cfg(test)]
     pub fn push_building(
         &mut self,
         class: &Class,
@@ -164,29 +173,6 @@ impl Sink {
                 s.1 = s.1.min(y0);
                 s.2 = s.2.max(x1);
                 s.3 = s.3.max(y1);
-            }
-        }
-    }
-
-    /// Extend the bounding box by a geometry, in degrees times 1e7.
-    fn grow(&mut self, geometry: &Geometry) {
-        let mut visit = |&(lon, lat): &(f64, f64)| {
-            let (x, y) = ((lon * 1e7) as i32, (lat * 1e7) as i32);
-            match &mut self.bbox {
-                None => self.bbox = Some((x, y, x, y)),
-                Some(b) => {
-                    b.0 = b.0.min(x);
-                    b.1 = b.1.min(y);
-                    b.2 = b.2.max(x);
-                    b.3 = b.3.max(y);
-                }
-            }
-        };
-        match geometry {
-            Geometry::Points(points) => points.iter().for_each(&mut visit),
-            Geometry::Lines(lines) => lines.iter().flatten().for_each(&mut visit),
-            Geometry::Polygons(polygons) => {
-                polygons.iter().flatten().flatten().for_each(&mut visit)
             }
         }
     }

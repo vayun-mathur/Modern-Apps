@@ -11,7 +11,9 @@ mod reconstruct_from_planet5 {
     //! mamaps_build --release reconstruct_from_planet5 -- --ignored --nocapture`
     use super::*;
 
-    fn connectors(dir: &Path, stride: u64) -> Vec<(u64, Vec<Vec<(f64, f64)>>)> {
+    type NodeConnectors = Vec<(u64, Vec<Vec<(f64, f64)>>)>;
+
+    fn connectors(dir: &Path, stride: u64) -> NodeConnectors {
         let graph = Graph::load(dir).expect("graph");
         let lanes = LaneTable::load(dir).expect("lanes");
         let incoming = InEdges::build(&graph).expect("incoming");

@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    type WayCase = (i64, Class, Vec<i64>, u8, Vec<u16>, Vec<u16>, Carriageway);
     /// **The guard on chunk skipping.** A zoom-filtered read must yield exactly what a full read
     /// yields after the same filter, in the same order. Otherwise skipping drops real geometry, and
     /// the symptom would be a few tiles quietly missing features at one zoom -- no error, no crash.
@@ -15,8 +16,8 @@ mod tests {
             let class = Class::line(dict::LAYER_ROADS, kind, min_zoom);
             let line = vec![(-120.0 + i as f64 * 0.001, 35.0), (-119.9, 35.1)];
             sink.push(&class, &EncodedGeom::live(&Geometry::Lines(vec![line])).expect("encode")).expect("push");
-            for z in min_zoom as usize..15 {
-                expected_by_zoom[z].push(kind);
+            for expected in expected_by_zoom.iter_mut().skip(min_zoom as usize) {
+                expected.push(kind);
             }
         }
         let store = sink.finish(&path).expect("finish");
@@ -222,7 +223,7 @@ mod tests {
         let road = Class::line(dict::LAYER_ROADS, schema::kind("highway"), 3);
         // Refs chosen to exercise the delta coding: a large first id, a run of neighbours, a jump
         // backwards, and a way with none at all.
-        let cases: Vec<(i64, Class, Vec<i64>, u8, Vec<u16>, Vec<u16>, Carriageway)> = vec![
+        let cases: Vec<WayCase> = vec![
             (1, lake, vec![10_000_000_001, 10_000_000_002, 10_000_000_003, 9_000_000_000], 0, vec![], vec![], Carriageway::default()),
             // A four-lane road with forward and backward turn masks and a 3/1 split, all surviving
             // the spill.
@@ -271,7 +272,7 @@ mod tests {
     fn spilled_ways_come_back_identical_from_anonymous_memory() {
         let lake = Class::area(dict::LAYER_LANDTYPE, schema::kind("lake"), 6);
         let road = Class::line(dict::LAYER_ROADS, schema::kind("highway"), 3);
-        let cases: Vec<(i64, Class, Vec<i64>, u8, Vec<u16>, Vec<u16>, Carriageway)> = vec![
+        let cases: Vec<WayCase> = vec![
             (1, lake, vec![10_000_000_001, 10_000_000_002, 9_000_000_000], 0, vec![], vec![], Carriageway::default()),
             (
                 2,

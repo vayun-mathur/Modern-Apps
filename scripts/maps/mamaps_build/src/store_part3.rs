@@ -298,6 +298,7 @@ enum WayOut {
 }
 
 impl WaySink {
+    #[cfg(test)]
     pub fn create(path: &Path) -> Result<WaySink> {
         let file = File::create(path)
             .map_err(|e| Error(format!("cannot create {}: {e}", path.display())))?;
@@ -317,6 +318,7 @@ impl WaySink {
     /// Anonymous twin of [`create`](Self::create): same records in pagefile-backed
     /// memory, no file. `path` names nothing — it only rides
     /// along for error messages. Pair with [`WaySink::finish_anon`].
+    #[cfg(test)]
     pub fn create_anon(path: &Path) -> Result<WaySink> {
         Self::create_planned(path, osm_ingest::mem::SpillPlan::Anon)
     }
@@ -359,6 +361,7 @@ impl WaySink {
     /// no lane tags; a handful of trailing varints per record, which the scratch file (removed
     /// after materialise) affords.
     #[allow(clippy::too_many_arguments)]
+    #[cfg(test)]
     pub fn push(
         &mut self,
         id: i64,
@@ -474,6 +477,7 @@ impl WaySink {
     /// capacity, and the realloc that gets it there holds the old and new allocations at once), and
     /// above it sizes a bitset from `max_ref`. Both numbers are free here, where every ref is already
     /// being walked to encode it, and neither is recoverable later without a second pass.
+    #[cfg(test)]
     pub fn finish(mut self) -> Result<WayCounts> {
         match &mut self.out {
             WayOut::File(f) => f.flush().map_err(|e| Error(format!("cannot flush the ways spill: {e}")))?,
@@ -490,6 +494,7 @@ impl WaySink {
     /// Anonymous twin of [`finish`](Self::finish): seals the pagefile-backed
     /// spill and hands back the counts plus the staged store. Errors on a
     /// file-backed sink.
+    #[cfg(test)]
     pub fn finish_anon(mut self) -> Result<(WayCounts, tile_build::anon::AnonStore)> {
         match &mut self.out {
             WayOut::File(_) => {
@@ -556,8 +561,9 @@ pub struct WayReader {
 
 /// Where a [`WayReader`] reads from.
 enum WayIn {
-#[cfg_attr(not(test), allow(dead_code))]
+    #[cfg(test)]
     File(BufReader<File>),
+    #[cfg(test)]
     Anon {
         store: std::sync::Arc<tile_build::anon::AnonStore>,
         at: u64,

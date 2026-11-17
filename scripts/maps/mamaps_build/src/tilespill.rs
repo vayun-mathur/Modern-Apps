@@ -74,9 +74,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
 use tilecodec::mamaps::body::{
-    BuildingAttrs, Carriageway, Feature as BodyFeature, Layer as BodyLayer, Part,
+    BuildingAttrs, Carriageway, Feature as BodyFeature, Part,
     consts::CARRIAGEWAY_RECORD_LEN,
 };
+#[cfg(test)]
+use tilecodec::mamaps::body::Layer as BodyLayer;
 use tilecodec::proto::{err, Error, Result};
 
 use crate::tiler::ChunkEntry;
@@ -156,6 +158,9 @@ pub fn set_read_window(bytes: usize) {
     WINDOW_OVERRIDE.store(bytes, Ordering::Relaxed);
 }
 
+/// Tile runs recorded per chunk, keyed by `(chunk_start, chunk_len)`.
+type TileRunIndex = Vec<((u64, u64), Vec<TileRun>)>;
+
 /// Where one chunk's bytes live in a [`ChunkSpill`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ChunkRef {
@@ -170,7 +175,7 @@ pub struct ChunkRef {
 /// same discipline as `tile_build::spill::NormalizedChunks`, and for the same reason: one handle,
 /// many threads, positional I/O and no shared cursor.
 ///
-/// Anonymous twin: [`create_anon`](Self::create_anon) stages the same chunks in
+/// Anonymous staging (via [`create_planned`](Self::create_planned)) stages the same chunks in
 /// pagefile-backed memory. Same offsets, same bytes, no
 /// file. The merge reads through the same [`ChunkReader`] either way.
 pub struct ChunkSpill {
@@ -197,7 +202,7 @@ pub struct ChunkSpill {
     /// with the next one): its tile runs, recorded by `write_chunk` from
     /// the map it encoded. What the merge planner reads instead of skip-walking every chunk back
     /// off disk (twice per zoom: 78 s of the Nov 10 planet build, z14 alone 47 s).
-    runs: Mutex<Vec<((u64, u64), Vec<TileRun>)>>,
+    runs: Mutex<TileRunIndex>,
 }
 
 /// One tile's entries within one chunk, as `write_chunk` laid them down. Narrow on purpose: a
@@ -252,15 +257,6 @@ impl ChunkSpill {
         })
     }
 
-    /// Anonymous twin
-
-    /// Anonymous twin of [`create`](Self::create): same chunks and offsets in
-    /// pagefile-backed memory, no file. `path` names nothing — it only rides
-    /// along for error messages and the `check_books` accounting.
-    pub fn create_anon(path: impl Into<PathBuf>) -> Result<ChunkSpill> {
-        Self::create_planned(path, osm_ingest::mem::SpillPlan::Anon)
-    }
-
     /// Create with an explicit staging plan. See [`osm_ingest::mem::SpillPlan::decide`]: the
     /// budget gate picks `File` when anon commit does not fit, and `File` stages through the
     /// scratch path (truncated like [`create`](Self::create), removed on drop). Same chunks,
@@ -282,15 +278,6 @@ impl ChunkSpill {
             }),
             osm_ingest::mem::SpillPlan::File => Self::create(path),
         }
-    }
-
-    /// Whether this spill stages in anonymous memory rather than a file.
-    pub fn is_anon(&self) -> bool {
-        self.anon.is_some()
-    }
-
-    fn file(&self) -> &File {
-        self.file.as_ref().expect("the tile chunk spill outlives its readers and writers")
     }
 
     /// Write one finished chunk and say where it went.
