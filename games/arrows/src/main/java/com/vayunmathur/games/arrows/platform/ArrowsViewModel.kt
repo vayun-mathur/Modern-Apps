@@ -457,6 +457,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
+    /** Constants for [ArrowsViewModel], including daily-challenge keys and seed offsets. */
     companion object {
         /** Namespace shared by the daily-challenge store and its reminder. */
         const val DAILY_KEY_PREFIX = "arrows_daily"

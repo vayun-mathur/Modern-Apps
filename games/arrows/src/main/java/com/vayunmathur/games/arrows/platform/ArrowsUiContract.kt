@@ -31,6 +31,7 @@ interface ArrowsGameActions {
     /** Hides the one-time redirector explanation for good. */
     fun dismissRedirectorHint() {}
 
+    /** Holds the no-op [ArrowsGameActions] used by previews. */
     companion object { val Noop: ArrowsGameActions = object : ArrowsGameActions {} }
 }
 
@@ -84,14 +85,17 @@ data class ArrowsUiState(
     val moves: List<ArrowMove> = emptyList(),
 )
 
+/** Actions the Arrows settings screen can request, including route display and reminders. */
 interface SettingsActions {
     fun setShowRoutes(enabled: Boolean) {}
     fun setReminderEnabled(enabled: Boolean) {}
     fun setReminderTime(hour: Int, minute: Int) {}
 
+    /** Holds the no-op [SettingsActions] used by previews. */
     companion object { val Noop: SettingsActions = object : SettingsActions {} }
 }
 
+/** State the Arrows settings screen renders, including route display and reminder preferences. */
 data class SettingsUiState(
     val showRoutes: Boolean = true,
     val reminderEnabled: Boolean = false,
