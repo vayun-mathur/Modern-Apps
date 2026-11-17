@@ -44,6 +44,11 @@ use sample::{sample_tile, DemCache};
 mod tilemath;
 use tilemath::{lat_to_tile_y, lon_to_tile_x};
 
+/// One kept tile: pmtiles tile id plus its `dim * dim` height samples.
+type TileGrid = (u64, Vec<u16>);
+/// Per-chunk sample result: kept tiles plus the count with no DEM coverage.
+type ChunkResult = (Vec<TileGrid>, u64);
+
 /// Default DEM input, relative to the repo's `scripts/maps/` working dir.
 const DEFAULT_INPUT: &str = "inputs/cop90/COP90_hh.vrt";
 
@@ -108,11 +113,11 @@ fn run() -> Result<(), String> {
     let done = std::sync::atomic::AtomicU64::new(0);
     let start = std::time::Instant::now();
 
-    let chunks: Vec<(Vec<(u64, Vec<u16>)>, u64)> = ids
+    let chunks: Vec<ChunkResult> = ids
         .par_chunks(chunk_size)
-        .map(|chunk| -> Result<(Vec<(u64, Vec<u16>)>, u64), String> {
+        .map(|chunk| -> Result<ChunkResult, String> {
             let mut cache = DemCache::new();
-            let mut kept: Vec<(u64, Vec<u16>)> = Vec::new();
+            let mut kept: Vec<TileGrid> = Vec::new();
             let mut missing = 0u64;
             for &id in chunk {
                 let (_, x, y) = tile_zxy(id);
@@ -133,7 +138,7 @@ fn run() -> Result<(), String> {
 
     // Merge in chunk (ascending id) order; the sort keeps the body byte-identical
     // to the serial walk regardless of how chunks were scheduled.
-    let mut tiles: Vec<(u64, Vec<u16>)> = Vec::new();
+    let mut tiles: Vec<TileGrid> = Vec::new();
     let mut missing = 0u64;
     for (kept, chunk_missing) in chunks {
         tiles.extend(kept);
