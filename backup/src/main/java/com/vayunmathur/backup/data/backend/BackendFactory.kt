@@ -1,7 +1,7 @@
 package com.vayunmathur.backup.data.backend
 
+import androidx.core.net.toUri
 import android.content.Context
-import android.net.Uri
 import com.vayunmathur.backup.data.BackendType
 import com.vayunmathur.backup.data.BackupSettings
 
@@ -12,7 +12,7 @@ object BackendFactory {
             BackendType.NONE -> null
             BackendType.SAF -> settings.safTreeUri
                 ?.takeIf { it.isNotBlank() }
-                ?.let { SafBackend(context.applicationContext, Uri.parse(it)) }
+                ?.let { SafBackend(context.applicationContext, it.toUri()) }
             BackendType.WEBDAV -> settings.webdavUrl
                 .takeIf { it.isNotBlank() }
                 ?.let {

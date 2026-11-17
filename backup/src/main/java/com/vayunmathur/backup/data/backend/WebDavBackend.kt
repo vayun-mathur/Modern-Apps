@@ -1,5 +1,6 @@
 package com.vayunmathur.backup.data.backend
 
+import androidx.core.net.toUri
 import android.net.Uri
 import android.util.Base64
 import com.vayunmathur.library.network.NetworkClient
@@ -30,7 +31,7 @@ class WebDavBackend(
     private val authHeader =
         "Basic " + Base64.encodeToString("$username:$password".toByteArray(), Base64.NO_WRAP)
 
-    override val displayName: String = displayName ?: (Uri.parse(base).host ?: "WebDAV")
+    override val displayName: String = displayName ?: (base.toUri().host ?: "WebDAV")
 
     private fun url(path: String): String {
         val encoded = path.split('/').filter { it.isNotEmpty() }.joinToString("/") { Uri.encode(it) }
@@ -88,7 +89,7 @@ class WebDavBackend(
         if (!resp.isSuccess && resp.status != HTTP_MULTI_STATUS) {
             throw IOException("WebDAV PROPFIND $dir failed: ${resp.status}")
         }
-        val selfPath = Uri.parse(url(dir)).path?.trimEnd('/') ?: ""
+        val selfPath = url(dir).toUri().path?.trimEnd('/') ?: ""
         return HREF_REGEX.findAll(resp.text)
             .map { Uri.decode(it.groupValues[1]).trimEnd('/') }
             .filter { it.isNotEmpty() && it != selfPath }
