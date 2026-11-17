@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -88,13 +89,13 @@ private fun LobbyBody(
         }
     } else {
         Text(
-            stringResource(R.string.cup_tracks, cup.trackCount),
+            pluralStringResource(R.plurals.cup_tracks, cup.trackCount, cup.trackCount),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.primary,
         )
         if (state.progress.racesWon > 0) {
             Text(
-                stringResource(R.string.races_won, state.progress.racesWon),
+                pluralStringResource(R.plurals.races_won, state.progress.racesWon, state.progress.racesWon),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -102,7 +103,7 @@ private fun LobbyBody(
         val seats = phase.lobby.slots.size
         if (seats > 0) {
             Text(
-                stringResource(R.string.lobby_seats, seats),
+                pluralStringResource(R.plurals.lobby_seats, seats, seats),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

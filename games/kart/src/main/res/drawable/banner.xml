@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- TV launcher banner (320x180, xhdpi baseline): dark backdrop with the same
-    directions_car glyph the adaptive launcher icon uses, so the TV row matches
-    the phone icon. cast/tv banner.xml is the shape precedent. -->
+<!-- TV launcher banner: dark backdrop with the same directions_car glyph the
+    adaptive launcher icon uses, so the TV row matches the phone icon.
+    cast/tv banner.xml is the shape precedent. Intrinsic size is capped at
+    200x112.5dp (VectorRaster limit, 16:9 preserved); the 320x180 viewport is
+    unchanged, so the glyph geometry and TV-row rendering scale identically. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="320dp"
-    android:height="180dp"
+    android:width="200dp"
+    android:height="112.5dp"
     android:viewportWidth="320"
     android:viewportHeight="180">
     <path

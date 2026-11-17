@@ -25,6 +25,7 @@ class KartGameScreenTest {
     @get:Rule val rule = createComposeRule()
     private val ctx get() = ApplicationProvider.getApplicationContext<android.content.Context>()
     private fun str(id: Int, vararg args: Any) = ctx.getString(id, *args)
+    private fun plural(id: Int, count: Int) = ctx.resources.getQuantityString(id, count, count)
 
     private class RecordingActions : KartGameActions {
         var starts = 0
@@ -57,9 +58,9 @@ class KartGameScreenTest {
             )
         }
         rule.onNodeWithText(str(R.string.cup_title, "Flower Cup")).assertIsDisplayed()
-        rule.onNodeWithText(str(R.string.cup_tracks, 4)).assertIsDisplayed()
-        rule.onNodeWithText(str(R.string.races_won, 3)).assertIsDisplayed()
-        rule.onNodeWithText(str(R.string.lobby_seats, 2)).assertIsDisplayed()
+        rule.onNodeWithText(plural(R.plurals.cup_tracks, 4)).assertIsDisplayed()
+        rule.onNodeWithText(plural(R.plurals.races_won, 3)).assertIsDisplayed()
+        rule.onNodeWithText(plural(R.plurals.lobby_seats, 2)).assertIsDisplayed()
         rule.onNodeWithText(str(R.string.how_to_play)).assertIsDisplayed()
         rule.onNodeWithText(str(R.string.start_race)).performClick()
         assertEquals(1, actions.starts)
@@ -75,7 +76,7 @@ class KartGameScreenTest {
             )
         }
         rule.onNodeWithText(str(R.string.start_race)).assertIsDisplayed()
-        rule.onNodeWithText(str(R.string.races_won, 0)).assertDoesNotExist()
+        rule.onNodeWithText(plural(R.plurals.races_won, 0)).assertDoesNotExist()
     }
 
     @Test fun countdownShowsNumberAndHint() {

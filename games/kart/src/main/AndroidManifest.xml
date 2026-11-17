@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- TV launcher presence: leanback declares this a TV app, touchscreen is
         optional (D-pad + phones-as-controllers are the inputs). Mirrors cast/tv. -->
@@ -19,6 +20,11 @@
         android:required="true" />
     <uses-feature
         android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <!-- Wifi is only inspected (ACCESS_WIFI_STATE), not required: Ethernet-only
+        TVs must stay installable. Mirrors cast/tv. -->
+    <uses-feature
+        android:name="android.hardware.wifi"
         android:required="false" />
 
     <application

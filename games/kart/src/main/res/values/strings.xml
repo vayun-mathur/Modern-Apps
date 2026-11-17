@@ -6,9 +6,15 @@
     <!-- KartGameScreen TopAppBar: Current cup in the progression. %1$s = cup name, e.g. Mushroom Cup -->
     <string name="cup_title"><xliff:g id="cup" example="Mushroom Cup">%1$s</xliff:g></string>
     <!-- KartGameScreen: How many tracks this cup holds. %1$d = track count, e.g. 4 -->
-    <string name="cup_tracks"><xliff:g id="count" example="4">%1$d</xliff:g> tracks</string>
+    <plurals name="cup_tracks">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> track</item>
+        <item quantity="other"><xliff:g id="count" example="4">%1$d</xliff:g> tracks</item>
+    </plurals>
     <!-- KartGameScreen: Lifetime race wins. %1$d = win count, e.g. 6 -->
-    <string name="races_won"><xliff:g id="count" example="6">%1$d</xliff:g> race wins</string>
+    <plurals name="races_won">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> race win</item>
+        <item quantity="other"><xliff:g id="count" example="6">%1$d</xliff:g> race wins</item>
+    </plurals>
     <!-- KartGameScreen: Starts the race flow. Verb phrase -->
     <string name="start_race">Start Race</string>
     <!-- KartGameScreen: Shown while the cup has not loaded yet. Sentence -->
@@ -16,7 +22,10 @@
     <!-- KartGameScreen: Hint under the race button explaining what is coming. Sentence -->
     <string name="how_to_play">Connect a phone as a controller, or plug in a gamepad</string>
     <!-- KartGameScreen: Seats taken in the lobby. %1$d = seat count, e.g. 2 -->
-    <string name="lobby_seats"><xliff:g id="count" example="2">%1$d</xliff:g> driver(s) in the lobby</string>
+    <plurals name="lobby_seats">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> driver in the lobby</item>
+        <item quantity="other"><xliff:g id="count" example="2">%1$d</xliff:g> drivers in the lobby</item>
+    </plurals>
     <!-- KartGameScreen: Shown during the countdown. Sentence -->
     <string name="countdown_hint">Get ready… controls go live at GO</string>
     <!-- KartGameScreen: Current lap in the race. %1$d = current lap, e.g. 2. %2$d = total laps, e.g. 3 -->
