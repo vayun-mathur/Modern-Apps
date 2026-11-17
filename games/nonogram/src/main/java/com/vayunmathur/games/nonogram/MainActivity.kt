@@ -5,6 +5,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.games.nonogram.platform.NonogramViewModel
 import com.vayunmathur.library.ui.MaActivity
 
+/** Entry activity for the Nonogram app; hosts its navigation with the shared view model. */
 class MainActivity : MaActivity() {
     @Composable
     override fun Content() {

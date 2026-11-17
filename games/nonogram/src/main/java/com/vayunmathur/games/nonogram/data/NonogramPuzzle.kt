@@ -14,6 +14,7 @@ data class NonogramPuzzle(
 ) {
     val filledCount: Int get() = solution.count { it }
 
+    /** Factories and clue derivation for [NonogramPuzzle]. */
     companion object {
         /** Run lengths of filled cells along [line], the clue a player reads. */
         fun cluesFor(line: List<Boolean>): List<Int> {

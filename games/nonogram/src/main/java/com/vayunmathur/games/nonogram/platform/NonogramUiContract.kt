@@ -49,6 +49,7 @@ interface NonogramGameActions {
     fun retryGeneration() {}
     fun setGameMode(mode: GameMode) {}
 
+    /** Holds the no-op [NonogramGameActions] used by previews. */
     companion object { val Noop: NonogramGameActions = object : NonogramGameActions {} }
 }
 
@@ -68,13 +69,16 @@ data class NonogramUiState(
     val canUndo: Boolean = false,
 )
 
+/** Actions the Nonogram settings screen can request. */
 interface SettingsActions {
     fun setReminderEnabled(enabled: Boolean) {}
     fun setReminderTime(hour: Int, minute: Int) {}
 
+    /** Holds the no-op [SettingsActions] used by previews. */
     companion object { val Noop: SettingsActions = object : SettingsActions {} }
 }
 
+/** State the Nonogram settings screen renders, including daily-reminder preferences. */
 data class SettingsUiState(
     val reminderEnabled: Boolean = false,
     val reminderHour: Int = 20,

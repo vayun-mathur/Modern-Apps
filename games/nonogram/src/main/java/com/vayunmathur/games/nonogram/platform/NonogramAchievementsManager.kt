@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+/** Reports Nonogram achievements and progress to the shared games hub. */
 class NonogramAchievementsManager(
     context: Context,
     json: String,

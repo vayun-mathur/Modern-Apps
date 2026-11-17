@@ -469,6 +469,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     /** Which win has already been banked, so a re-emitted flow cannot double-count it. */
     private var recordedWin: Long? = null
 
+    /** Constants for [NonogramViewModel], including daily-challenge keys and seed offsets. */
     companion object {
         /** Namespace shared by the daily-challenge store and its reminder. */
         const val DAILY_KEY_PREFIX = "nonogram_daily"
