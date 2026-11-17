@@ -109,8 +109,14 @@ class LoadedPagesEditingPass3Test {
     fun `loaded video page switches tools through the tab bar`() {
         val vm = VideoEditViewModel(app, PhotosRepository.get(app))
         rule.setContent { VideoEditPage(vm, 0L, "content://fixture/loaded.mp4") }
-        // The DB flow falls back to a stand-in photo for the uri.
-        rule.waitUntil(timeoutMillis = 10_000L) { vm.photo.value != null }
+        // The DB flow falls back to a stand-in photo for the uri. Idle the
+        // paused Robolectric main looper per poll: loadVideo runs on
+        // viewModelScope (Main), and the compose rule's waitUntil does not
+        // pump that looper, so under load the load sat queued past the wait.
+        rule.waitUntil(timeoutMillis = 10_000L) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            vm.photo.value != null
+        }
         rule.waitForIdle()
         rule.onNodeWithText(ctx.getString(com.vayunmathur.photos.R.string.title_edit_video))
             .assertIsDisplayed()
