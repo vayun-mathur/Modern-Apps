@@ -399,14 +399,16 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     }
 
     override fun setReminderEnabled(enabled: Boolean) {
-        viewModelScope.launch {
+        // On IO like every other store write in this file: the write must
+        // not depend on the main looper being pumped to land.
+        viewModelScope.launch(Dispatchers.IO) {
             reminderSettings.setEnabled(enabled)
             rescheduleReminder(enabled, reminderMinutesOfDay.value)
         }
     }
 
     override fun setReminderTime(hour: Int, minute: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val minutes = (hour * 60 + minute).toLong()
             reminderSettings.setMinutesOfDay(minutes)
             rescheduleReminder(reminderEnabled.value, minutes)
@@ -441,7 +443,11 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         if (recordedWin == key) return
         recordedWin = key
 
-        viewModelScope.launch {
+        // On IO like persist()/nextLevel(): banking the win is a store
+        // write, and a launch queued on the main looper that never gets
+        // pumped (or is cancelled with the screen) would lose it — the
+        // win would show on screen but never be counted.
+        viewModelScope.launch(Dispatchers.IO) {
             val total = dataStore.recordCompletedOnce(key)
             val manager = achievementsManager
             manager.onAchievementUnlocked("first_puzzle")
