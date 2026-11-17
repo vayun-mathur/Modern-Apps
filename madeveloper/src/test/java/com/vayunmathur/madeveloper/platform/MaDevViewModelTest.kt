@@ -228,19 +228,23 @@ class MaDevViewModelTest {
         assertFalse(viewModel.canInstall(), "host JVM never holds the install permission")
     }
 
-    @Test fun pairingStoreCodeIsStableAndPairingPersists() {
+    @Test fun pairingStoreHoldsOnlyServerIssuedCredentials() {
         val store = PairingStore(app)
-        val code = store.pairingCode()
-        assertEquals(6, code.length)
-        assertEquals(code, store.pairingCode(), "the code is generated once and kept")
+        assertNull(store.pairingCode(), "no code exists before server registration")
         assertNull(store.token())
+        assertNull(store.deviceId())
+        // Holding credentials alone does not mark the device paired; only a
+        // live socket does.
         assertFalse(MaDevViewModel(app).state.paired)
-        store.savePaired("token-1", "device-9")
+        store.saveRegistration("device-9", "token-1", "123456")
+        assertEquals("123456", store.pairingCode())
         assertEquals("token-1", store.token())
         assertEquals("device-9", store.deviceId())
-        assertTrue(MaDevViewModel(app).state.paired)
+        assertEquals("123456", MaDevViewModel(app).state.pairingCode)
+        assertFalse(MaDevViewModel(app).state.paired)
         store.clear()
         assertNull(store.token())
+        assertNull(store.pairingCode())
     }
 }
 

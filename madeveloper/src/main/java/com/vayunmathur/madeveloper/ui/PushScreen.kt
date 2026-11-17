@@ -27,9 +27,21 @@ fun PushScreen(state: MaDevUiState, onInstall: (String) -> Unit, onBack: () -> U
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(if (state.paired) "Paired" else "Pairing code: " + state.pairingCode)
-                        Text(if (state.connected) "Socket connected to api.maproj.org" else "Socket offline; reconnecting with backoff")
-                        Text("Give the pairing code to the server admin to register this device.")
+                        Text(
+                            when {
+                                state.paired -> "Paired"
+                                state.pairingCode.isNotBlank() -> "Pairing code: " + state.pairingCode
+                                else -> "Registering this device…"
+                            },
+                        )
+                        Text(
+                            when {
+                                state.connected -> "Socket connected to api.maproj.org"
+                                state.awaitingApproval -> "Waiting for approval in the server's /dev panel"
+                                else -> "Socket offline; reconnecting with backoff"
+                            },
+                        )
+                        Text("Approve the pairing code in the server's /dev panel to activate this device.")
                     }
                 }
             }

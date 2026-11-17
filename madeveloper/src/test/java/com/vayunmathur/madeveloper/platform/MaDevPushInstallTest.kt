@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.madeveloper.data.GitHostRepository
 import com.vayunmathur.madeveloper.domain.DevMessage
+import com.vayunmathur.madeveloper.domain.DevRegistration
 import com.vayunmathur.madeveloper.domain.InstallPhase
 import java.io.File
 import java.security.MessageDigest
@@ -55,22 +56,50 @@ class MaDevPushInstallTest {
         val transport = FakeTransport()
         var apkBytes: ByteArray = "fake-apk-bytes".toByteArray()
         var apkStatus: Int = 200
+        var registrations = 0
+        var registeredName: String? = null
+        var socketUrl: String? = null
+        var socketToken: String? = null
+        var transportError: Exception? = null
         val scope = CoroutineScope(Dispatchers.Main + Job())
 
         fun viewModel(app: Application): MaDevViewModel {
             val viewModel = MaDevViewModel(app)
             viewModel.repo = GitHostRepository(FakeGitHost().fetcher)
-            viewModel.transportFactory = { _, _ -> transport }
+            viewModel.deviceRegistrar = { name ->
+                registrations++
+                registeredName = name
+                DevRegistration("dev-7", "tok-42", "123456")
+            }
+            viewModel.transportFactory = { url, token ->
+                socketUrl = url
+                socketToken = token
+                transportError?.let { throw it }
+                transport
+            }
             viewModel.apkFetcher = { apkStatus to apkBytes }
             return viewModel
         }
     }
 
-    @Test fun socketLifecyclePingListAppsAndPairing() {
+    @Test fun socketLifecycleRegistersThenPingAndListApps() {
         val harness = Harness()
         val viewModel = harness.viewModel(app)
+        assertFalse(viewModel.state.paired, "unpaired until the socket connects")
         viewModel.connectPush()
         await("connected") { viewModel.state.connected }
+
+        // Registration happened first, once, and its token opens the socket.
+        assertEquals(1, harness.registrations)
+        assertTrue(!harness.registeredName.isNullOrBlank())
+        assertEquals(GitHostRepository.DEV_WS_URL, harness.socketUrl)
+        assertFalse(harness.socketUrl.orEmpty().contains("?code="), "the socket URL carries no pairing code")
+        assertEquals("tok-42", harness.socketToken)
+        assertEquals("tok-42", PairingStore(app).token())
+        assertEquals("dev-7", PairingStore(app).deviceId())
+        assertEquals("123456", PairingStore(app).pairingCode())
+        assertEquals("123456", viewModel.state.pairingCode)
+        assertTrue(viewModel.state.paired, "a live socket proves approval")
 
         harness.transport.incoming.tryEmit(DevMessage.Ping)
         await("pong sent") { synchronized(harness.transport.sent) { harness.transport.sent.contains("{\"type\":\"pong\"}") } }
@@ -78,18 +107,47 @@ class MaDevPushInstallTest {
         harness.transport.incoming.tryEmit(DevMessage.ListApps)
         await("app list sent") {
             synchronized(harness.transport.sent) {
-                harness.transport.sent.any { it.contains("\"type\":\"apps\"") }
+                harness.transport.sent.any { it.contains("\"type\":\"installed\"") && it.contains("\"packages\"") }
             }
         }
-
-        harness.transport.incoming.tryEmit(DevMessage.Paired("tok-42", "dev-7"))
-        await("paired state") { viewModel.state.paired }
-        assertEquals("tok-42", PairingStore(app).token())
-        assertEquals("dev-7", PairingStore(app).deviceId())
 
         harness.transport.incoming.tryEmit(DevMessage.Unknown("{\"type\":\"future\"}"))
         Thread.sleep(300)
         assertTrue(viewModel.state.connected, "unknown server messages must not drop the socket")
+        harness.scope.cancel()
+    }
+
+    @Test fun storedTokenSkipsRegistrationAndLegacyCodeRegistersFresh() {
+        // Legacy migration: an old locally generated code with no token.
+        app.getSharedPreferences("dev_push", android.content.Context.MODE_PRIVATE)
+            .edit().putString("pairing_code", "ABC234").commit()
+        val harness = Harness()
+        val viewModel = harness.viewModel(app)
+        viewModel.connectPush()
+        await("connected after fresh registration") { viewModel.state.connected }
+        assertEquals(1, harness.registrations, "a tokenless legacy code must register fresh")
+        assertEquals("123456", PairingStore(app).pairingCode(), "the server code replaces the local one")
+
+        // With a stored token, no second registration happens.
+        val harness2 = Harness()
+        val viewModel2 = harness2.viewModel(app)
+        viewModel2.connectPush()
+        await("connected with stored token") { viewModel2.state.connected }
+        assertEquals(0, harness2.registrations)
+        assertEquals("tok-42", harness2.socketToken)
+        harness.scope.cancel()
+        harness2.scope.cancel()
+    }
+
+    @Test fun forbiddenSocketMeansWaitingForApproval() {
+        val harness = Harness()
+        harness.transportError = com.vayunmathur.library.network.WebSocketHandshakeException(403, "HTTP 403")
+        val viewModel = harness.viewModel(app)
+        viewModel.connectPush()
+        await("awaiting approval") { viewModel.state.awaitingApproval }
+        assertFalse(viewModel.state.connected)
+        assertFalse(viewModel.state.paired)
+        assertEquals("123456", viewModel.state.pairingCode)
         harness.scope.cancel()
     }
 

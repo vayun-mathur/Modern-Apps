@@ -14,8 +14,6 @@ sealed interface DevMessage {
     data object Ping : DevMessage
     /** The server asks which first-party packages are installed. */
     data object ListApps : DevMessage
-    /** The server has paired this device and issued a durable token. */
-    data class Paired(val token: String, val deviceId: String) : DevMessage
     /** A build the server wants installed on this device. */
     data class Install(
         val pkg: String, val versionCode: Long, val apkUrl: String,
@@ -27,6 +25,9 @@ sealed interface DevMessage {
 
 /** One installed first-party package reported back to the server. */
 data class InstalledAppInfo(val pkg: String, val versionCode: Long)
+
+/** Credentials returned by `POST /dev/register`; the device stays pending until approved. */
+data class DevRegistration(val deviceId: String, val pushToken: String, val pairingCode: String)
 
 /** Lifecycle of one pushed install, from push to the system installer. */
 enum class InstallPhase { PUSHED, DOWNLOADING, VERIFYING, READY, INSTALLING, DONE, FAILED }
@@ -40,14 +41,27 @@ data class PendingInstall(
 /** Pure protocol and install-state logic for the dev push channel. */
 object DevProtocol {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    private const val CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    private const val CODE_LENGTH = 6
     private const val MAX_BACKOFF_MS = 60_000L
     private const val BASE_BACKOFF_MS = 1_000L
 
-    /** A short human-typable pairing code shown on first launch. */
-    fun newPairingCode(random: java.util.Random = java.security.SecureRandom()): String =
-        buildString { repeat(CODE_LENGTH) { append(CODE_ALPHABET[random.nextInt(CODE_ALPHABET.length)]) } }
+    /** The `POST /dev/register` request body for [deviceName]. */
+    fun registerRequestBody(deviceName: String): String =
+        kotlinx.serialization.json.buildJsonObject {
+            put("deviceName", kotlinx.serialization.json.JsonPrimitive(deviceName))
+        }.toString()
+
+    /** Parses a `/dev/register` reply; null when any credential field is missing or blank. */
+    fun parseRegistration(text: String): DevRegistration? {
+        val root = try {
+            json.parseToJsonElement(text).jsonObject
+        } catch (_: Exception) {
+            return null
+        }
+        val registration = DevRegistration(root.s("deviceId"), root.s("pushToken"), root.s("pairingCode"))
+        return registration.takeIf {
+            it.deviceId.isNotBlank() && it.pushToken.isNotBlank() && it.pairingCode.isNotBlank()
+        }
+    }
 
     /** Parses one text frame from the server; malformed frames become [DevMessage.Unknown]. */
     fun parse(text: String): DevMessage {
@@ -59,7 +73,6 @@ object DevProtocol {
         return when (root.s("type")) {
             "ping" -> DevMessage.Ping
             "listApps" -> DevMessage.ListApps
-            "paired" -> DevMessage.Paired(root.s("token"), root.s("deviceId"))
             "install" -> DevMessage.Install(
                 pkg = root.s("package"), versionCode = root["versionCode"]?.jsonPrimitive?.longOrNull ?: 0L,
                 apkUrl = root.s("apkUrl"), sha256 = root.s("sha256"),
@@ -69,9 +82,9 @@ object DevProtocol {
         }
     }
 
-    /** The reply to a [DevMessage.ListApps] request. */
+    /** The reply to a [DevMessage.ListApps] request (server frame: `installed` + `packages`). */
     fun listAppsReply(apps: List<InstalledAppInfo>): String = buildString {
-        append("{\"type\":\"apps\",\"apps\":[")
+        append("{\"type\":\"installed\",\"packages\":[")
         apps.forEachIndexed { index, app ->
             if (index > 0) append(',')
             append("{\"package\":\"").append(app.pkg).append("\",\"versionCode\":").append(app.versionCode).append('}')

@@ -2,6 +2,7 @@ package com.vayunmathur.madeveloper.platform
 
 import android.app.Application
 import android.app.PendingIntent
+import android.os.Build
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
@@ -10,12 +11,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.network.NetworkClient
+import com.vayunmathur.library.network.WebSocketHandshakeException
+import com.vayunmathur.madeveloper.data.DevRegistrar
 import com.vayunmathur.madeveloper.data.GitHostRepository
 import com.vayunmathur.madeveloper.data.DevSocketTransport
 import com.vayunmathur.madeveloper.data.WebSocketDevTransport
 import com.vayunmathur.madeveloper.domain.CatalogApp
 import com.vayunmathur.madeveloper.domain.DevMessage
+import com.vayunmathur.madeveloper.domain.DevRegistration
 import com.vayunmathur.madeveloper.domain.DevProtocol
 import com.vayunmathur.madeveloper.domain.GitFile
 import com.vayunmathur.madeveloper.domain.GitIssue
@@ -51,6 +56,8 @@ data class MaDevUiState(
     val connected: Boolean = false,
     val pairingCode: String = "",
     val paired: Boolean = false,
+    /** Registered but the server has not approved this device yet (socket refused 403). */
+    val awaitingApproval: Boolean = false,
     val pending: List<PendingInstall> = emptyList(),
 )
 
@@ -63,13 +70,17 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
     internal var repo: GitHostRepository = GitHostRepository()
     internal var transportFactory: suspend (String, String?) -> DevSocketTransport =
         { url, token -> WebSocketDevTransport.connect(url, token) }
+    internal var deviceRegistrar: suspend (String) -> DevRegistration =
+        { deviceName -> DevRegistrar().register(deviceName) }
     internal var apkFetcher: suspend (String) -> Pair<Int, ByteArray> =
         { url -> NetworkClient.performRequestBytes(url) }
     private val pairing = PairingStore(app)
     private var transport: DevSocketTransport? = null
     private var reconnectAttempt = 0
 
-    var state by mutableStateOf(MaDevUiState(pairingCode = pairing.pairingCode(), paired = pairing.token() != null))
+    // Paired stays false until the socket actually connects: holding a token
+    // only proves registration, not that the owner approved this device.
+    var state by mutableStateOf(MaDevUiState(pairingCode = pairing.pairingCode() ?: ""))
         private set
 
     /** Loads home data and starts the push socket. */
@@ -179,19 +190,22 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- Push socket ----
 
-    /** Connects the dev push socket, reconnecting with backoff on failure. */
+    /** Registers on first need, then connects the push socket, reconnecting with backoff. */
     fun connectPush() {
         viewModelScope.launch {
             while (true) {
                 try {
-                    val url = GitHostRepository.DEV_WS_URL + "?code=" + pairing.pairingCode()
-                    val socket = transportFactory(url, pairing.token())
+                    ensureRegistered()
+                    val socket = transportFactory(GitHostRepository.DEV_WS_URL, pairing.token())
                     transport = socket
                     reconnectAttempt = 0
-                    state = state.copy(connected = true)
+                    state = state.copy(connected = true, paired = true, awaitingApproval = false)
                     socket.messages.collect { message -> onServerMessage(message, socket) }
-                } catch (_: Exception) {
-                    // Fall through to the backoff below.
+                } catch (e: java.io.IOException) {
+                    Log.status(TAG, "dev push connect failed (attempt $reconnectAttempt): ${e.message}", e)
+                    state = state.copy(
+                        awaitingApproval = (e as? WebSocketHandshakeException)?.statusCode == HTTP_FORBIDDEN,
+                    )
                 }
                 transport = null
                 state = state.copy(connected = false)
@@ -200,14 +214,35 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Registers this device once and persists the server-issued credentials.
+     * A legacy locally generated code is stored without a token, so "no token"
+     * covers both first launch and that migration: register fresh either way.
+     */
+    private suspend fun ensureRegistered() {
+        if (!pairing.token().isNullOrBlank()) {
+            if (state.pairingCode.isBlank()) {
+                state = state.copy(pairingCode = pairing.pairingCode() ?: "")
+            }
+            return
+        }
+        val registration = deviceRegistrar(deviceName())
+        pairing.saveRegistration(registration.deviceId, registration.pushToken, registration.pairingCode)
+        state = state.copy(pairingCode = registration.pairingCode, paired = false)
+    }
+
+    /** The user-visible device name sent to `/dev/register`. */
+    private fun deviceName(): String {
+        val model = listOf(Build.MANUFACTURER, Build.MODEL)
+            .filter { it.isNotBlank() && !it.equals("unknown", ignoreCase = true) }
+            .joinToString(" ").trim()
+        return model.ifBlank { "Android device" }.take(MAX_DEVICE_NAME)
+    }
+
     private suspend fun onServerMessage(message: DevMessage, socket: DevSocketTransport) {
         when (message) {
             DevMessage.Ping -> socket.send("{\"type\":\"pong\"}")
             DevMessage.ListApps -> socket.send(DevProtocol.listAppsReply(installedApps()))
-            is DevMessage.Paired -> {
-                pairing.savePaired(message.token, message.deviceId)
-                state = state.copy(paired = true)
-            }
             is DevMessage.Install -> onPushInstall(
                 PendingInstall(message.pkg, message.versionCode, message.apkUrl, message.sha256, message.sizeBytes),
             )
@@ -309,4 +344,10 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Whether the system will show an install prompt for this app. */
     fun canInstall(): Boolean = getApplication<Application>().packageManager.canRequestPackageInstalls()
+
+    private companion object {
+        const val TAG = "MaDevViewModel"
+        const val HTTP_FORBIDDEN = 403
+        const val MAX_DEVICE_NAME = 120
+    }
 }

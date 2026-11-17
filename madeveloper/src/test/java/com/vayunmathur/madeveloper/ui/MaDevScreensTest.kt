@@ -179,6 +179,17 @@ class MaDevScreensTest {
         assertEquals("com.example.ready", installed)
     }
 
+    @Test fun pushScreenWaitingForApproval() {
+        rule.setContent {
+            PushScreen(
+                MaDevUiState(pairingCode = "123456", awaitingApproval = true),
+                onInstall = {},
+            ) {}
+        }
+        rule.onNodeWithText("Pairing code: 123456").assertIsDisplayed()
+        rule.onNodeWithText("Waiting for approval in the server's /dev panel").assertIsDisplayed()
+    }
+
     @Test fun pushScreenPairedAndEmpty() {
         rule.setContent { PushScreen(MaDevUiState(connected = true, paired = true), onInstall = {}) {} }
         rule.onNodeWithText("Paired").assertIsDisplayed()

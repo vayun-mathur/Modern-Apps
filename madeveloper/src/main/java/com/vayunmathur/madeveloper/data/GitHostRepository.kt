@@ -86,6 +86,7 @@ class GitHostRepository(
         const val GIT_HOST = "https://git.maproj.org"
         const val FDROID_BASE = "https://static.maproj.org/fdroid/repo"
         const val DEV_WS_URL = "wss://api.maproj.org/dev/ws"
+        const val DEV_REGISTER_URL = "https://api.maproj.org/dev/register"
 
         /** Default commits page size for the commits screen. */
         const val COMMITS_PAGE_SIZE = 30

@@ -21,11 +21,25 @@ class DevProtocolTest {
         assertTrue(DevProtocol.parse("not json") is DevMessage.Unknown)
     }
 
-    @Test fun pairingCodeAndBackoff() {
-        assertEquals(6, DevProtocol.newPairingCode(java.util.Random(1)).length)
+    @Test fun backoff() {
         assertEquals(1000L, DevProtocol.backoffMs(0))
         assertEquals(2000L, DevProtocol.backoffMs(1))
         assertEquals(60000L, DevProtocol.backoffMs(20))
+    }
+
+    @Test fun registerContractRoundTrip() {
+        assertEquals("""{"deviceName":"Pixel 9"}""", DevProtocol.registerRequestBody("Pixel 9"))
+        assertEquals("""{"deviceName":"a\"b"}""", DevProtocol.registerRequestBody("a\"b"))
+        val registration = DevProtocol.parseRegistration(
+            """{"deviceId":"dev-1","pushToken":"tok-1","pairingCode":"123456"}""",
+        )
+        assertEquals("dev-1", registration?.deviceId)
+        assertEquals("tok-1", registration?.pushToken)
+        assertEquals("123456", registration?.pairingCode)
+        assertEquals(null, DevProtocol.parseRegistration("""{"deviceId":"dev-1"}"""))
+        assertEquals(null, DevProtocol.parseRegistration("not json"))
+        // A stale server "paired" frame is tolerated as unknown, never acted on.
+        assertTrue(DevProtocol.parse("""{"type":"paired","token":"t","deviceId":"d"}""") is DevMessage.Unknown)
     }
 
     @Test fun shaVerification() {
@@ -44,6 +58,6 @@ class DevProtocolTest {
 
     @Test fun listAppsReplyShape() {
         val reply = DevProtocol.listAppsReply(listOf(InstalledAppInfo("com.vayunmathur.notes", 5)))
-        assertTrue(reply.contains("\"versionCode\":5"))
+        assertEquals("""{"type":"installed","packages":[{"package":"com.vayunmathur.notes","versionCode":5}]}""", reply)
     }
 }
