@@ -53,21 +53,31 @@
             </intent-filter>
         </activity>
 
+        <!-- ExportedService: MediaLibrary/MediaSession service must be exported without a
+             permission so Android Auto and other media controllers (different UIDs) can bind;
+             Media3 validates controllers itself. tools:ignore is the genuine-false-positive
+             suppression for this framework-required export. -->
         <service
             android:name=".service.PlaybackService"
             android:foregroundServiceType="mediaPlayback"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="androidx.media3.session.MediaSessionService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
             </intent-filter>
         </service>
 
+        <!-- ExportedService: CarAppService must be exported without a permission so the car
+             host (Android Auto / AAOS, a different UID) can bind; the Car App Library
+             validates hosts via createHostValidator(). Genuine false positive. -->
         <service
             android:name=".service.car.MusicCarAppService"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.MEDIA" />

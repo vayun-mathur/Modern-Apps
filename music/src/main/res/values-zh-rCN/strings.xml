@@ -1,32 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">音乐</string>
-    <string name="nav_home">首页</string>
-    <string name="nav_albums">专辑</string>
     <string name="nav_artists">音乐人</string>
     <string name="nav_playlists">播放列表</string>
-    <string name="page_title_music">音乐</string>
-    <string name="page_title_playlists">播放列表</string>
     <string name="unknown_title">未知标题</string>
     <string name="unknown_artist">未知音乐人</string>
     <string name="no_lyrics_available">无歌词可用</string>
     <string name="label_album">专辑</string>
-    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10">%3$d</xliff:g> 首歌曲 • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
+    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10">%3$s</xliff:g> • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
     <string name="label_artist">音乐人</string>
-    <string name="artist_info_format"><xliff:g id="song_count" example="25">%1$d</xliff:g> 首歌曲 • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
+    <string name="artist_info_format"><xliff:g id="song_count" example="25">%1$s</xliff:g> • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
     <string name="label_playlist">播放列表</string>
     <plurals name="num_songs_format">
         <item quantity="other"><xliff:g id="count" example="10">%1$d</xliff:g> 首歌曲</item>
     </plurals>
-    <string name="label_play">播放</string>
     <string name="label_shuffle">随机播放</string>
     <string name="label_songs">歌曲</string>
     <string name="label_albums">专辑</string>
     <string name="dialog_add_to_playlist">添加到播放列表</string>
-    <string name="dialog_ok">确定</string>
-    <string name="dialog_cancel">取消</string>
     <string name="dialog_rename_playlist">重命名播放列表</string>
-    <string name="dialog_rename">重命名</string>
     <string name="new_playlist">新播放列表</string>
     <string name="grant_audio_permissions">授予音频媒体权限</string>
     <string name="grant_storage_permissions">授予存储权限</string>
@@ -35,8 +27,6 @@
     <string name="go_to_source">转到 <xliff:g id="source" example="All Songs">%1$s</xliff:g></string>
     <string name="dialog_delete_playlist">删除播放列表</string>
     <string name="dialog_delete_playlist_confirm">删除“<xliff:g id="playlist_name" example="My Mix">%1$s</xliff:g>”？此操作无法撤销。</string>
-    <string name="dialog_delete">删除</string>
     <string name="dialog_create_playlist">创建播放列表</string>
-    <string name="dialog_create">创建</string>
     <string name="playlist_name_hint">播放列表名称</string>
 </resources>

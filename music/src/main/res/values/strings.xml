@@ -18,12 +18,12 @@
 
     <!-- Detail screen: Overline label for album type. Noun. -->
     <string name="label_album">Album</string>
-    <!-- Detail screen: Album info line. %1$s=artist e.g. "Beatles", %2$s=year e.g. "1970", %3$d=song count e.g. 10, %4$s=duration e.g. "42:30" -->
-    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10">%3$d</xliff:g> songs • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
+    <!-- Detail screen: Album info line. %1$s=artist e.g. "Beatles", %2$s=year e.g. "1970", %3$s=song count (preformatted plural, e.g. "10 songs"), %4$s=duration e.g. "42:30" -->
+    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10 songs">%3$s</xliff:g> • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
     <!-- Detail screen: Overline label for artist type. Noun. -->
     <string name="label_artist">Artist</string>
-    <!-- Detail screen: Artist info summary. %1$d=song count e.g. 25, %2$s=duration e.g. "1h 42m" -->
-    <string name="artist_info_format"><xliff:g id="song_count" example="25">%1$d</xliff:g> songs • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
+    <!-- Detail screen: Artist info summary. %1$s=song count (preformatted plural, e.g. "25 songs"), %2$s=duration e.g. "1h 42m" -->
+    <string name="artist_info_format"><xliff:g id="song_count" example="25 songs">%1$s</xliff:g> • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
     <!-- Detail screen: Overline label for playlist type. Noun. -->
     <string name="label_playlist">Playlist</string>
     <!-- Detail screen: Song count label. %1$d=number of songs -->

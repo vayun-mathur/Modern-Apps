@@ -185,21 +185,6 @@ private fun PlayerBody(
 }
 
 /**
- * The Expanded queue slot. SongScreen fills it from the ViewModel's queue when
- * there is one; previews leave it empty.
- *
- * Dead code kept for the previews' call sites: SongScreen now wires
- * [NowPlayingQueue] directly, but the screenshot previews still pass this
- * slot. Do not add new callers.
- */
-@Composable
-fun NowPlayingQueueSlot(
-    queue: @Composable (Modifier) -> Unit = {},
-) {
-    queue(Modifier.fillMaxSize())
-}
-
-/**
  * Puts this track on a television, or stops doing so.
  *
  * Talks to [CastPlayback] directly rather than through [MusicActions], the way YouPipe's player

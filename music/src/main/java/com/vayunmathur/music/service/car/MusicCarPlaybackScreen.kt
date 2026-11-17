@@ -1,6 +1,8 @@
 package com.vayunmathur.music.service.car
 
+import androidx.annotation.OptIn
 import androidx.car.app.CarContext
+import androidx.car.app.annotations.ExperimentalCarApi
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.Header
@@ -40,6 +42,7 @@ class MusicCarPlaybackScreen(
         state.observe { invalidate() }
     }
 
+    @OptIn(ExperimentalCarApi::class)
     @Suppress("DEPRECATION")
     override fun onGetTemplate(): Template {
         // API 8+: the dedicated media playback template. The host renders

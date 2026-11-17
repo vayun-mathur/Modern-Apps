@@ -1,6 +1,8 @@
 package com.vayunmathur.music.service.car
 
+import androidx.annotation.OptIn
 import androidx.car.app.CarContext
+import androidx.car.app.annotations.ExperimentalCarApi
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.CarIcon
@@ -150,6 +152,7 @@ class MusicCarBrowseScreen(
     }
 
     /** Quick-action chips: shuffle-all and play-all. */
+    @OptIn(ExperimentalCarApi::class)
     @Suppress("DEPRECATION")
     private fun quickActionChips(): androidx.car.app.model.ChipSection {
         val items = state.tree.children(nodeId)
@@ -231,7 +234,7 @@ class MusicCarBrowseScreen(
             runCatching { IconCompat.createWithContentUri(uri) }.getOrNull()
         }
         return CarIcon.Builder(
-            fromArt ?: IconCompat.createWithResource(carContext, R.mipmap.ic_launcher),
+            fromArt ?: IconCompat.createWithResource(carContext, R.drawable.car_sample_album_art),
         ).build()
     }
 

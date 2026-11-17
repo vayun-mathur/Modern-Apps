@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="nav_home">الصفحة الرئيسية</string>
     <string name="label_albums">الألبومات</string>
     <string name="app_name">الموسيقى</string>
     <string name="nav_artists">الفنانون</string>
@@ -10,9 +9,9 @@
     <string name="unknown_artist">فنان غير معروف</string>
     <string name="no_lyrics_available">لا كلمات متاحة</string>
     <string name="label_album">الألبوم</string>
-    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10">%3$d</xliff:g> أغاني • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
+    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10">%3$s</xliff:g> • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
     <string name="label_artist">الفنان</string>
-    <string name="artist_info_format"><xliff:g id="song_count" example="25">%1$d</xliff:g> أغاني • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
+    <string name="artist_info_format"><xliff:g id="song_count" example="25">%1$s</xliff:g> • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
     <string name="label_playlist">قائمة التشغيل</string>
     <plurals name="num_songs_format">
         <item quantity="zero">لا أغاني (<xliff:g id="count" example="10">%1$d</xliff:g>)</item>

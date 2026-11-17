@@ -3,9 +3,11 @@ package com.vayunmathur.music.service
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaConstants
 import com.vayunmathur.library.util.ManyManyMatching
 import com.vayunmathur.music.data.Album
@@ -273,6 +275,7 @@ class MusicLibraryTree(context: Context) {
     private fun playlistNode(p: Playlist): MediaItem =
         browsable("$PREFIX_PLAYLIST${p.id}", p.name, MediaMetadata.MEDIA_TYPE_PLAYLIST)
 
+    @OptIn(UnstableApi::class)
     private fun albumNode(a: Album): MediaItem =
         browsable(
             "$PREFIX_ALBUM${a.id}", a.name, MediaMetadata.MEDIA_TYPE_ALBUM,
@@ -290,6 +293,7 @@ class MusicLibraryTree(context: Context) {
     }
 
     /** A top-level tab node, styled as a category so AA renders the browse chrome. */
+    @OptIn(UnstableApi::class)
     private fun tabNode(mediaId: String, title: String, mediaType: Int): MediaItem =
         browsable(
             mediaId, title, mediaType,
@@ -320,6 +324,7 @@ class MusicLibraryTree(context: Context) {
      * item out: grid vs list tiles, category chrome, and section group titles.
      * Mirrors Auxio's MediaItemTranslation. Empty bundle = host default.
      */
+    @OptIn(UnstableApi::class)
     private fun contentStyleExtras(
         browsable: Int? = null,
         playable: Int? = null,
@@ -331,6 +336,7 @@ class MusicLibraryTree(context: Context) {
     }
 
     /** Returns a copy of this browse item tagged with a section group title. */
+    @OptIn(UnstableApi::class)
     private fun MediaItem.withGroupTitle(title: String): MediaItem {
         val extras = Bundle(mediaMetadata.extras ?: Bundle())
         extras.putString(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE, title)
@@ -340,6 +346,7 @@ class MusicLibraryTree(context: Context) {
     }
 
     /** Browse leaf for a song: playable flag set, uri intentionally omitted (added on playback). */
+    @OptIn(UnstableApi::class)
     private fun songItem(song: Music): MediaItem {
         val meta = MediaMetadata.Builder()
             .setTitle(song.title)

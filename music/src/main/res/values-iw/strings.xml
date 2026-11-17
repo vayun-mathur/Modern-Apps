@@ -1,23 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">מוזיקה</string>
-    <string name="nav_home">בית</string>
-    <string name="nav_albums">אלבומים</string>
     <string name="nav_artists">אומנים</string>
     <string name="nav_playlists">פלייליסטים</string>
-    <string name="page_title_music">מוזיקה</string>
-    <string name="page_title_playlists">פלייליסטים</string>
     <string name="label_album">אלבום</string>
     <string name="label_artist">אומן</string>
     <string name="label_playlist">פלייליסט</string>
-    <string name="label_play">השמעה</string>
     <string name="label_shuffle">ערבוב</string>
     <string name="label_songs">שירים</string>
     <string name="label_albums">אלבומים</string>
-    <string name="dialog_ok">אישור</string>
-    <string name="dialog_cancel">ביטול</string>
-    <string name="dialog_rename">שינוי שם</string>
-    <string name="dialog_delete">מחיקה</string>
-    <string name="dialog_create">יצירה</string>
     <string name="content_desc_album_art">עטיפת אלבום</string>
 </resources>

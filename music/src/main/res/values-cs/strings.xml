@@ -1,41 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Hudba</string>
-    <string name="nav_albums">Alba</string>
-    <string name="page_title_music">Hudba</string>
     <string name="go_to_source">Jdi na <xliff:g id="source" example="All Songs">%1$s</xliff:g></string>
     <string name="label_album">Alba</string>
     <plurals name="num_songs_format">
+        <item quantity="one"><xliff:g id="count" example="10">%1$d</xliff:g> skladba</item>
+        <item quantity="few"><xliff:g id="count" example="10">%1$d</xliff:g> skladby</item>
         <item quantity="many"><xliff:g id="count" example="10">%1$d</xliff:g> skladeb</item>
         <item quantity="other"><xliff:g id="count" example="10">%1$d</xliff:g> skladeb</item>
     </plurals>
-    <string name="label_play">Přehrát</string>
     <string name="label_shuffle">Náhodně</string>
     <string name="label_songs">Skladby</string>
     <string name="label_albums">Alba</string>
-    <string name="dialog_ok">OK</string>
-    <string name="dialog_cancel">Zrušit</string>
-    <string name="dialog_rename">Přejmenovat</string>
     <string name="content_desc_album_art">Obal alba</string>
-    <string name="nav_home">Domov</string>
     <string name="nav_artists">Umělci</string>
     <string name="nav_playlists">Playlisty</string>
-    <string name="page_title_playlists">Playlisty</string>
     <string name="unknown_title">Neznámý název</string>
     <string name="unknown_artist">Neznámý umělec</string>
     <string name="no_lyrics_available">Text není k dispozici</string>
-    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10">%3$d</xliff:g> songs • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
+    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10">%3$s</xliff:g> • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
     <string name="label_artist">Umělec</string>
-    <string name="artist_info_format"><xliff:g id="song_count" example="25">%1$d</xliff:g> skladeb • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
+    <string name="artist_info_format"><xliff:g id="song_count" example="25">%1$s</xliff:g> • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
     <string name="label_playlist">Playlist</string>
     <string name="dialog_add_to_playlist">Přidat to playlistu</string>
     <string name="dialog_rename_playlist">Přejmenovat playlist</string>
     <string name="dialog_delete_playlist">Smazat playlist</string>
     <string name="dialog_delete_playlist_confirm">Smazat \"<xliff:g id="playlist_name" example="My Mix">%1$s</xliff:g>\"? Akci nelze vrátit.</string>
-    <string name="dialog_delete">Smazat</string>
     <string name="new_playlist">Nový playlist</string>
     <string name="dialog_create_playlist">Vytvořit playlist</string>
-    <string name="dialog_create">Vytvořit</string>
     <string name="playlist_name_hint">Název playlistu</string>
     <string name="grant_audio_permissions">Povolit přístup k audiu a médiím</string>
     <string name="grant_storage_permissions">Povolit přístup k uložišti</string>

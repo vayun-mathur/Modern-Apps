@@ -1,33 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="nav_playlists">Playlisten</string>
-    <string name="nav_home">Start</string>
-    <string name="nav_albums">Alben</string>
     <string name="nav_artists">Künstler*innen</string>
     <string name="app_name">Musik</string>
-    <string name="page_title_music">Musik</string>
-    <string name="page_title_playlists">Wiedergabelisten</string>
     <string name="go_to_source">Gehe zu %1$s</string>
     <string name="unknown_title">Unbekannter Titel</string>
     <string name="unknown_artist">Unbekannter Künstler</string>
     <string name="no_lyrics_available">Kein Songtext verfügbar</string>
     <string name="label_album">Album</string>
-    <string name="album_info_format">%1$s\n%2$s • %3$d Songs • %4$s</string>
+    <string name="album_info_format">%1$s\n%2$s • %3$s • %4$s</string>
     <string name="label_artist">Künstler</string>
-    <string name="artist_info_format">%1$d Songs • %2$s</string>
+    <string name="artist_info_format">%1$s • %2$s</string>
     <string name="label_playlist">Wiedergabeliste</string>
     <plurals name="num_songs_format">
+        <item quantity="one">%1$d Song</item>
         <item quantity="other">%1$d Songs</item>
     </plurals>
-    <string name="label_play">Abspielen</string>
     <string name="label_shuffle">Mischen</string>
     <string name="label_songs">Songs</string>
     <string name="label_albums">Alben</string>
     <string name="dialog_add_to_playlist">Zu Wiedergabeliste hinzufügen</string>
-    <string name="dialog_ok">Ok</string>
-    <string name="dialog_cancel">Abbrechen</string>
     <string name="dialog_rename_playlist">Wiedergabeliste umbenennen</string>
-    <string name="dialog_rename">Umbenennen</string>
     <string name="new_playlist">Neue Wiedergabeliste</string>
     <string name="grant_audio_permissions">Erlaube Audio Medien Berechtigung</string>
     <string name="grant_storage_permissions">Erlaube Speicher Berechtigung</string>

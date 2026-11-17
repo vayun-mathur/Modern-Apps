@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -99,7 +100,7 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, musicViewModel: MusicView
                             modifier = Modifier.sharedText("music-artist-name-$artistId"),
                         )
                     }, Modifier, {Text(stringResource(R.string.label_artist))}, {
-                        Text(stringResource(R.string.artist_info_format, artistsMusic.size, formatDuration(artistTotalDurationMs)))
+                        Text(stringResource(R.string.artist_info_format, pluralStringResource(R.plurals.num_songs_format, artistsMusic.size, artistsMusic.size), formatDuration(artistTotalDurationMs)))
                     })
                 }
             }

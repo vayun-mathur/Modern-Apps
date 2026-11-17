@@ -6,6 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import com.vayunmathur.library.util.NavBackStack
@@ -51,7 +52,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, musicViewModel: MusicViewM
                 R.string.album_info_format,
                 "",
                 albumYear,
-                musicInAlbum.size,
+                pluralStringResource(R.plurals.num_songs_format, musicInAlbum.size, musicInAlbum.size),
                 formatDuration(totalDurationMs),
             ).trimStart(),
             tracks = musicInAlbum,

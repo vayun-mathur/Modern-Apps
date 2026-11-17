@@ -1,39 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">音楽</string>
-    <string name="nav_home">ホーム</string>
-    <string name="nav_albums">アルバム</string>
     <string name="nav_artists">アーティスト</string>
     <string name="nav_playlists">プレイリスト</string>
-    <string name="page_title_music">音楽</string>
-    <string name="page_title_playlists">プレイリスト</string>
     <string name="go_to_source"><xliff:g id="source" example="All Songs">%1$s</xliff:g> へ移動</string>
     <string name="unknown_title">不明なタイトル</string>
     <string name="unknown_artist">不明なアーティスト</string>
     <string name="no_lyrics_available">利用可能な歌詞がありません</string>
     <string name="label_album">アルバム</string>
-    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10">%3$d</xliff:g> 曲 • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
+    <string name="album_info_format"><xliff:g id="artist" example="The Beatles">%1$s</xliff:g>\n<xliff:g id="year" example="1970">%2$s</xliff:g> • <xliff:g id="song_count" example="10">%3$s</xliff:g> • <xliff:g id="duration" example="42:30">%4$s</xliff:g></string>
     <string name="label_artist">アーティスト</string>
-    <string name="artist_info_format"><xliff:g id="song_count" example="25">%1$d</xliff:g> 曲 • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
+    <string name="artist_info_format"><xliff:g id="song_count" example="25">%1$s</xliff:g> • <xliff:g id="duration" example="1h 42m">%2$s</xliff:g></string>
     <string name="label_playlist">プレイリスト</string>
     <plurals name="num_songs_format">
         <item quantity="other"><xliff:g id="count" example="10">%1$d</xliff:g> 曲</item>
     </plurals>
-    <string name="label_play">再生</string>
     <string name="label_shuffle">シャッフル</string>
     <string name="label_songs">曲</string>
     <string name="label_albums">アルバム</string>
     <string name="dialog_add_to_playlist">プレイリストに追加</string>
-    <string name="dialog_ok">OK</string>
-    <string name="dialog_cancel">キャンセル</string>
     <string name="dialog_rename_playlist">プレイリストの名前を変更</string>
-    <string name="dialog_rename">名前を変更</string>
     <string name="dialog_delete_playlist">プレイリストを削除</string>
     <string name="dialog_delete_playlist_confirm">\"<xliff:g id="playlist_name" example="My Mix">%1$s</xliff:g>\"を削除しますか? 元に戻すことはできません。</string>
-    <string name="dialog_delete">削除</string>
     <string name="new_playlist">新しいプレイリスト</string>
     <string name="dialog_create_playlist">プレイリストを作成</string>
-    <string name="dialog_create">作成</string>
     <string name="playlist_name_hint">プレイリストの名前</string>
     <string name="grant_audio_permissions">音楽とオーディオの権限を許可</string>
     <string name="grant_storage_permissions">ストレージの権限を許可</string>
