@@ -14,8 +14,8 @@ import org.robolectric.RobolectricTestRunner
 /**
  * PlayHttpClient against a loopback HTTP server: status/body/header
  * plumbing, query construction, and POST bodies. No external network.
- * (429/503 retry pacing is deliberately not exercised: it sleeps for
- * seconds by design.)
+ * (429 retries are exercised with the client's sleeper stubbed:
+ * the backoff sleeps for seconds by design in production.)
  */
 @RunWith(RobolectricTestRunner::class)
 class PlayHttpClientLocalhostTest {
@@ -59,7 +59,12 @@ class PlayHttpClientLocalhostTest {
     }
 
     @AfterTest
-    fun tearDown() = server.stop(0)
+    fun tearDown() {
+        // Pacing is process-global: never leak a future nextRequestAtMs
+        // (or a stuck throttled flag) into the next test class.
+        PlayHttpClient.resetPacingForTest()
+        server.stop(0)
+    }
 
     @Test
     fun `get returns the body and records the response code`() {
@@ -116,7 +121,11 @@ class PlayHttpClientLocalhostTest {
     fun `a 429 is retried three times then surfaced`() {
         // Backoff is seconds-long by design (2s + 4s + 8s); the hit count
         // is the deterministic part: one attempt plus three retries.
+        // Sleep is stubbed out: the retry count, not the wall-clock
+        // backoff, is what this test pins (the real sleeps also used to
+        // leave global pacing stalled for later tests in the JVM).
         val client = PlayHttpClient()
+        client.sleeper = {}
         val response = client.get("$base/rate", emptyMap())
         assertEquals(429, response.code)
         assertEquals(4, rateHits.get())

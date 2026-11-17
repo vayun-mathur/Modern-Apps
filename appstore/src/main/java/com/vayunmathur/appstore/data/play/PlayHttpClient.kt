@@ -61,6 +61,32 @@ class PlayHttpClient : IHttpClient {
 
         /** True while any caller is sitting out a refusal, for a status line rather than an error. */
         val throttled: StateFlow<Boolean> = _throttled.asStateFlow()
+
+        /**
+         * Test seam: pacing/backoff state is process-global (the limit is
+         * per account), so a test that drives a refusal would otherwise
+         * leave nextRequestAtMs seconds in the future and stall every
+         * later client in the same JVM. Tests reset it in tearDown.
+         */
+        internal fun resetPacingForTest() {
+            synchronized(pacingLock) { nextRequestAtMs = 0L }
+            waiting.set(0)
+            _throttled.value = false
+        }
+    }
+
+    /**
+     * How waits are slept. Production sleeps for real; tests substitute a
+     * no-op so exercising the retry loop does not cost the full
+     * seconds-long backoff (2s + 4s + 8s) in wall-clock test time.
+     */
+    internal var sleeper: (Long) -> Unit = { millis ->
+        try {
+            Thread.sleep(millis)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw e
+        }
     }
 
     private val _responseCode = MutableStateFlow(0)
@@ -173,14 +199,7 @@ class PlayHttpClient : IHttpClient {
         }
     }
 
-    private fun sleep(millis: Long) {
-        try {
-            Thread.sleep(millis)
-        } catch (e: InterruptedException) {
-            Thread.currentThread().interrupt()
-            throw e
-        }
-    }
+    private fun sleep(millis: Long) = sleeper(millis)
 
     /** `Retry-After` in milliseconds, or 0 when the server did not name a delay in seconds. */
     private fun retryAfterMs(conn: HttpURLConnection): Long =
