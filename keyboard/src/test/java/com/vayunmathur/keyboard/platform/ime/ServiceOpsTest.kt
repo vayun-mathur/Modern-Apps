@@ -89,6 +89,25 @@ class ServiceOpsTest {
         controller = Robolectric.buildService(KeyboardService::class.java)
         service = controller.create().get()
         ShadowLooper.idleMainLooper()
+        // The service keeps kbState.settings in sync with the persisted
+        // settings via flow collectors on its scope. Those first emissions
+        // land asynchronously (the store hydrates off an IO thread), so a
+        // test that assigns kbState.settings directly could be overwritten
+        // mid-assertion by a late first emission carrying a previous
+        // test's persisted values (the useComposing / updateSuggestions
+        // flakes). Wait until the in-memory settings have converged with
+        // a fresh persisted load before any test touches them.
+        kotlinx.coroutines.runBlocking {
+            service.ds.getStringAwait(com.vayunmathur.keyboard.data.KeyboardSettings.Keys.ACTIVE_LAYOUT)
+        }
+        val deadline = System.currentTimeMillis() + 10_000
+        while (service.kbState.settings != com.vayunmathur.keyboard.data.KeyboardSettings.load(service.ds) &&
+            System.currentTimeMillis() < deadline
+        ) {
+            ShadowLooper.idleMainLooper()
+            Thread.sleep(10)
+        }
+        ShadowLooper.idleMainLooper()
     }
 
     @AfterTest
