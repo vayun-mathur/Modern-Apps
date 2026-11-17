@@ -142,7 +142,9 @@ class EditPageBranchesW5Test {
                 }
             }
         }
-        rule.waitForIdle()
+        // Wait until the editor itself is observed, not just idle: under
+        // load composition of the editor can lag the first waitForIdle.
+        rule.waitUntil(20_000) { exists("Add contact") || exists("Save") }
         val addPhoto = rule.onAllNodesWithText("Add picture", substring = true)
         if (addPhoto.fetchSemanticsNodes().isNotEmpty()) {
             addPhoto[0].performClick()
