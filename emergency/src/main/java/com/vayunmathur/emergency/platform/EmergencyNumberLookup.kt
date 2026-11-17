@@ -49,10 +49,10 @@ class EmergencyNumberLookup(private val context: Context) {
             telecom.getEmergencyNumberList(EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE)
         } catch (e: SecurityException) {
             Log.status(TAG, "no privileged grant for the emergency-number list", e)
-            return null
-        } catch (e: Exception) {
+            null
+        } catch (e: IllegalStateException) {
             Log.status(TAG, "could not read the emergency-number list", e)
-            return null
+            null
         }
         if (lists.isNullOrEmpty()) return null
         val subId = SubscriptionManager.getDefaultSubscriptionId()
