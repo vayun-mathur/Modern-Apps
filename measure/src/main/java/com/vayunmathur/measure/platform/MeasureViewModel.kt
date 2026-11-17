@@ -82,9 +82,6 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
         observeSensorsImpl()
     }
 
-    /** Set the observer location so magnetic declination can be resolved. */
-    fun updateLocation(lat: Double, lon: Double) = updateLocationImpl(lat, lon)
-
     // ---- CompassActions ----
 
     override fun setUseTrueNorth(v: Boolean) {
@@ -135,30 +132,6 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
 
     /** Ruler scale, taken from the display's reported physical pixel density. */
     // ---- ArMeasureActions ----
-
-    fun onTrackingUpdate(quality: TrackingQuality, hasPlane: Boolean) = onTrackingUpdateImpl(quality, hasPlane)
-
-    fun setCameraPermission(granted: Boolean) = setCameraPermissionImpl(granted)
-
-    /** Called by the AR page with a world point resolved by the native engine. */
-    fun addResolvedAnchor(x: Double, y: Double, z: Double, onPlane: Boolean) = addResolvedAnchorImpl(x, y, z, onPlane)
-
-    fun onReticleHit(hit: com.vayunmathur.measure.domain.HitCandidate?) = onReticleHitImpl(hit)
-
-    fun onEngineChanged(engine: VioEngine?) = onEngineChangedImpl(engine)
-
-    fun setUnavailableReason(reason: com.vayunmathur.measure.domain.ArUnavailableReason?) {
-        unavailableReason = reason
-        refreshFlowImpl()
-    }
-
-    /** Re-derive the flow state (drives scanning/lost timeouts). */
-    fun tickFlow() = refreshFlowImpl()
-
-    /** Poll the hit provider for the centre reticle and publish the result. */
-    fun refreshReticle() {
-        onReticleHit(hitProvider.centreHit(0L))
-    }
 
     override fun placeAtReticle() {
         val hit = arState.value.reticleHit ?: return

@@ -126,7 +126,7 @@ internal fun MeasureViewModel.stopSensorsImpl() {
 }
 
 /** Set the observer location so magnetic declination can be resolved. */
-internal fun MeasureViewModel.updateLocationImpl(lat: Double, lon: Double) {
+internal fun MeasureViewModel.updateLocation(lat: Double, lon: Double) {
     orientationManager.updateLocation(lat, lon)
 }
 
@@ -135,7 +135,7 @@ internal fun MeasureViewModel.setPixelsPerMmImpl(v: Float) {
     if (v > 0f) rulerState.value = rulerState.value.copy(pixelsPerMm = v)
 }
 
-internal fun MeasureViewModel.onTrackingUpdateImpl(quality: TrackingQuality, hasPlane: Boolean) {
+internal fun MeasureViewModel.onTrackingUpdate(quality: TrackingQuality, hasPlane: Boolean) {
     val now = System.currentTimeMillis()
     when (quality) {
         TrackingQuality.Initialising, TrackingQuality.Limited ->
@@ -169,7 +169,7 @@ internal fun MeasureViewModel.onTrackingUpdateImpl(quality: TrackingQuality, has
     refreshFlowImpl()
 }
 
-internal fun MeasureViewModel.setCameraPermissionImpl(granted: Boolean) {
+internal fun MeasureViewModel.setCameraPermission(granted: Boolean) {
     if (!granted) {
         unavailableReason = com.vayunmathur.measure.domain.ArUnavailableReason.CameraPermissionDenied
     } else if (unavailableReason ==
@@ -205,14 +205,14 @@ internal fun MeasureViewModel.refreshFlowImpl(nowMs: Long = System.currentTimeMi
     if (flow != s.flowState) arState.value = s.copy(flowState = flow)
 }
 
-internal fun MeasureViewModel.onReticleHitImpl(
+internal fun MeasureViewModel.onReticleHit(
     hit: com.vayunmathur.measure.domain.HitCandidate?,
 ) {
     arState.value = arState.value.copy(reticleHit = hit)
     refreshFlowImpl()
 }
 
-internal fun MeasureViewModel.onEngineChangedImpl(engine: VioEngine?) {
+internal fun MeasureViewModel.onEngineChanged(engine: VioEngine?) {
     vioEngine = engine
     if (engine == null) {
         arState.value = arState.value.copy(reticleHit = null)
@@ -221,10 +221,25 @@ internal fun MeasureViewModel.onEngineChangedImpl(engine: VioEngine?) {
 }
 
 /** Called by the AR page with a world point resolved by the native engine. */
-internal fun MeasureViewModel.addResolvedAnchorImpl(x: Double, y: Double, z: Double, onPlane: Boolean) {
+internal fun MeasureViewModel.addResolvedAnchor(x: Double, y: Double, z: Double, onPlane: Boolean) {
     val anchor = Anchor(nextAnchorId++, x, y, z, onPlane)
     val anchors = arState.value.anchors + anchor
     arState.value = arState.value.copy(anchors = anchors).recomputedImpl()
+}
+
+internal fun MeasureViewModel.setUnavailableReason(
+    reason: com.vayunmathur.measure.domain.ArUnavailableReason?,
+) {
+    unavailableReason = reason
+    refreshFlowImpl()
+}
+
+/** Re-derive the flow state (drives scanning/lost timeouts). */
+internal fun MeasureViewModel.tickFlow() = refreshFlowImpl()
+
+/** Poll the hit provider for the centre reticle and publish the result. */
+internal fun MeasureViewModel.refreshReticle() {
+    onReticleHit(hitProvider.centreHit(0L))
 }
 
 internal fun MeasureViewModel.updateDiagnosticsImpl(update: DiagnosticsUiState.() -> DiagnosticsUiState) {

@@ -74,8 +74,8 @@ object MeasureCvNative {
         val pairs = ArrayList<CvPair>(pairCount)
         for (i in 0 until pairCount) {
             val base = HEADER_SIZE + i * 4
-            if (base + 3 >= raw.size) break
-            pairs += CvPair(raw[base], raw[base + 1], raw[base + 2], raw[base + 3])
+            if (base + LAST_PAIR_OFFSET >= raw.size) break
+            pairs += CvPair(raw[base], raw[base + 1], raw[base + 2], raw[base + LAST_PAIR_OFFSET])
         }
         return CvFrameFlow(
             firstFrame = raw[2] != 0.0,
@@ -86,6 +86,8 @@ object MeasureCvNative {
     }
 
     private const val HEADER_SIZE = 16
+    /** Offset of the last (current-y) value within one tracked pair. */
+    private const val LAST_PAIR_OFFSET = 3
 
     private external fun nativeCreateSession(
         fx: Double,

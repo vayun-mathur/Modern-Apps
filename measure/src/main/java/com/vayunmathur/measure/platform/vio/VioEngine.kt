@@ -73,6 +73,12 @@ class VioEngine(private val intrinsics: Intrinsics) {
         private const val MAX_LANDMARKS = 400
         private const val LOST_AFTER_FAILURES = 3
         private const val PLANE_EXTENT_MARGIN_M = 0.5
+        /** Landmarks closer than this (visual units) are the same point. */
+        private const val MIN_LANDMARK_SEPARATION = 0.01
+        /** Scale-estimate windows kept for the visual/IMU alignment. */
+        private const val MAX_SCALE_WINDOWS = 12
+        /** Landmarks needed before a dominant plane is worth fitting. */
+        private const val MIN_LANDMARKS_FOR_PLANE = 12
     }
 
     private val cameraMatrix = doubleArrayOf(
@@ -183,7 +189,11 @@ class VioEngine(private val intrinsics: Intrinsics) {
         )
     }
 
-    private fun updateKeyframes(prevPts: List<Pair<Double, Double>>, currPts: List<Pair<Double, Double>>, timestampNs: Long) {
+    private fun updateKeyframes(
+        prevPts: List<Pair<Double, Double>>,
+        currPts: List<Pair<Double, Double>>,
+        timestampNs: Long,
+    ) {
         val kf = keyframePose
         if (kf == null) {
             setKeyframe(currPts, timestampNs)
@@ -252,15 +262,19 @@ class VioEngine(private val intrinsics: Intrinsics) {
      */
     fun projectPoints(world: DoubleArray, width: Double, height: Double): DoubleArray {
         if (world.isEmpty()) return DoubleArray(0)
-        val s = scale ?: return DoubleArray(world.size / 3 * 3)
+        val s = scale ?: return DoubleArray(world.size / VALUES_PER_POINT * VALUES_PER_POINT)
         val p = currentProjection()
-        val out = DoubleArray((world.size / 3) * 3)
-        for (i in 0 until world.size / 3) {
-            val visual = Vec3(world[i * 3] / s, world[i * 3 + 1] / s, world[i * 3 + 2] / s)
+        val out = DoubleArray((world.size / VALUES_PER_POINT) * VALUES_PER_POINT)
+        for (i in 0 until world.size / VALUES_PER_POINT) {
+            val visual = Vec3(
+                world[i * VALUES_PER_POINT] / s,
+                world[i * VALUES_PER_POINT + 1] / s,
+                world[i * VALUES_PER_POINT + 2] / s,
+            )
             val uv = project(p, visual)
-            out[i * 3] = (uv?.first ?: 0.0) / width
-            out[i * 3 + 1] = (uv?.second ?: 0.0) / height
-            out[i * 3 + 2] = if (uv != null) 1.0 else 0.0
+            out[i * VALUES_PER_POINT] = (uv?.first ?: 0.0) / width
+            out[i * VALUES_PER_POINT + 1] = (uv?.second ?: 0.0) / height
+            out[i * VALUES_PER_POINT + 2] = if (uv != null) 1.0 else 0.0
         }
         return out
     }
@@ -301,13 +315,18 @@ class VioEngine(private val intrinsics: Intrinsics) {
             for (i in 0 until pairs) {
                 val a = kfPoints[i]
                 val b = currPts[i]
-                val world = triangulate(pa, a, pb, b) ?: continue
-                val errA = reprojectionErrorPx(pa, world, a)
-                val errB = reprojectionErrorPx(pb, world, b)
-                if (errA > MAX_REPROJECTION_PX || errB > MAX_REPROJECTION_PX) continue
-                if (landmarks.any { it.position.distanceTo(world) < 0.01 }) continue
-                landmarks += Landmark(world, observations = 2)
-                added++
+                val world = triangulate(pa, a, pb, b)
+                if (world != null) {
+                    val errA = reprojectionErrorPx(pa, world, a)
+                    val errB = reprojectionErrorPx(pb, world, b)
+                    val isNewLandmark = landmarks.none {
+                        it.position.distanceTo(world) < MIN_LANDMARK_SEPARATION
+                    }
+                    if (errA <= MAX_REPROJECTION_PX && errB <= MAX_REPROJECTION_PX && isNewLandmark) {
+                        landmarks += Landmark(world, observations = 2)
+                        added++
+                    }
+                }
             }
             if (landmarks.size > MAX_LANDMARKS) {
                 landmarks.subList(0, landmarks.size - MAX_LANDMARKS).clear()
@@ -334,7 +353,7 @@ class VioEngine(private val intrinsics: Intrinsics) {
         if (imuDisp != null) {
             visualWindows += visual
             imuWindows += imuDisp
-            if (visualWindows.size > 12) {
+            if (visualWindows.size > MAX_SCALE_WINDOWS) {
                 visualWindows.removeAt(0)
                 imuWindows.removeAt(0)
             }
@@ -349,7 +368,7 @@ class VioEngine(private val intrinsics: Intrinsics) {
     }
 
     private fun refitPlane() {
-        if (landmarks.size < 12) return
+        if (landmarks.size < MIN_LANDMARKS_FOR_PLANE) return
         val fitted = ransacPlane(landmarks.map { it.position }) ?: return
         val (pl, inliers) = fitted
         if (gravityClass(pl.normal, worldUp) == PlaneClass.Slanted) return

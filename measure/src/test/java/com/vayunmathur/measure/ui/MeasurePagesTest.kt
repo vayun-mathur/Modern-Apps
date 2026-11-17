@@ -13,6 +13,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.measure.R
 import com.vayunmathur.measure.Route
 import com.vayunmathur.measure.platform.MeasureViewModel
+import com.vayunmathur.measure.platform.addResolvedAnchor
 import com.vayunmathur.measure.platform.updateDiagnosticsImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals

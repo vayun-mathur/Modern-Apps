@@ -10,6 +10,8 @@ import com.vayunmathur.measure.R
 import com.vayunmathur.measure.Route
 import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.platform.MeasureViewModel
+import com.vayunmathur.measure.platform.addResolvedAnchor
+import com.vayunmathur.measure.platform.onTrackingUpdate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule
