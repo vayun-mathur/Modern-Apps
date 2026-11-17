@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/** Serializable form of an ink stroke: brush settings plus sampled points. */
 @Serializable
 data class SerializedStroke(
     val brushFamily: String,
@@ -20,6 +21,7 @@ data class SerializedStroke(
     val points: List<SerializedPoint>,
 )
 
+/** Serializable sampled point of a stroke, with timing and stylus orientation. */
 @Serializable
 data class SerializedPoint(
     val x: Float,

@@ -22,6 +22,7 @@ import androidx.ink.brush.Brush
 import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
 import androidx.ink.strokes.Stroke
 
+/** Text element drawn on the ink canvas at a position with rotation and styling. */
 data class CanvasTextElement(
     val text: String,
     val x: Float,
