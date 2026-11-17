@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -542,7 +543,9 @@ private fun ArtworkTile(
 @Composable
 private fun rememberIconPainter(icon: IconCompat?): Painter? {
     val context = LocalContext.current
-    return remember(icon) {
+    // LocalResources is configuration-aware; LocalContext.current.resources can go stale.
+    val resources = LocalResources.current
+    return remember(icon, resources) {
         if (icon == null) return@remember null
         runCatching {
             // loadDrawable resolves content-URI/bitmap art on-device; under Layoutlib
@@ -550,7 +553,7 @@ private fun rememberIconPainter(icon: IconCompat?): Painter? {
             val d = icon.loadDrawable(context)
                 ?: if (icon.type == IconCompat.TYPE_RESOURCE) {
                     androidx.core.content.res.ResourcesCompat.getDrawable(
-                        context.resources, icon.resId, context.theme,
+                        resources, icon.resId, context.theme,
                     )
                 } else {
                     null
