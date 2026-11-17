@@ -105,6 +105,19 @@ class TravelInteractionsTest {
         v.stayRatesMutable.value = StayRatesState(rates = StayRatesDto(name = "Grand Hotel", rooms = listOf(StayRoomDto(name = "Deluxe King", rates = listOf(StayRateDto(id = "r1", boardType = "breakfast", totalAmount = "180.00", cancellation = "Free cancellation"))))))
         rule.setContent { StayDetailPage(stack(), v, Route.StayDetail("sr_1", "Grand Hotel")) }
         rule.runOnIdle { v.stayRatesMutable.value = StayRatesState(rates = StayRatesDto(name = "Grand Hotel", rooms = listOf(StayRoomDto(name = "Deluxe King", rates = listOf(StayRateDto(id = "r1", boardType = "breakfast", totalAmount = "180.00", cancellation = "Free cancellation")))))) }
+        // StayDetailPage's LaunchedEffect reloads rates on entry and
+        // overwrites the seeded state (loading, then an error with no
+        // network); on a loaded box that reload can land after the
+        // runOnIdle re-seed above and wipe it again. Wait until the room
+        // is actually observed, re-seeding if the reload landed last.
+        rule.waitUntil(20_000) {
+            if (rule.onAllNodesWithText("Deluxe King").fetchSemanticsNodes().isEmpty()) {
+                rule.runOnIdle {
+                    v.stayRatesMutable.value = StayRatesState(rates = StayRatesDto(name = "Grand Hotel", rooms = listOf(StayRoomDto(name = "Deluxe King", rates = listOf(StayRateDto(id = "r1", boardType = "breakfast", totalAmount = "180.00", cancellation = "Free cancellation"))))))
+                }
+            }
+            rule.onAllNodesWithText("Deluxe King").fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onAllNodesWithText("Grand Hotel")[0].assertIsDisplayed()
         rule.onNodeWithText("Deluxe King").assertExists()
     }
