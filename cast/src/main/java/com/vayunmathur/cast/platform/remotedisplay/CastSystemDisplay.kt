@@ -5,6 +5,8 @@ import android.content.Context
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.hardware.display.VirtualDisplayConfig
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.vayunmathur.library.log.Log
 import android.view.Display
 import android.view.Surface
@@ -145,26 +147,29 @@ class CastSystemDisplay(context: Context) {
         receiverId: String?,
         supportedModes: List<CaptureGeometry> = emptyList(),
     ): Boolean {
-        if (displays == null) {
+        val manager = displays
+        if (manager == null) {
             Log.status(TAG, "no DisplayManager")
             return false
         }
         return try {
-            val builder = VirtualDisplayConfig.Builder(
-                DISPLAY_NAME,
-                geometry.width,
-                geometry.height,
-                geometry.densityDpi,
-            )
-                .setFlags(CAST_DISPLAY_FLAGS)
-                .setSurface(surface)
-                // The rate frames are actually sent at, so the system composes at that rate rather
-                // than at 60 and having half of every second's work thrown away by the encoder.
-                // It is also the fallback rate for any mode that was not declared.
-                .setRequestedRefreshRate(geometry.frameRate.toFloat())
-            builder.applySupportedModes(supportedModes)
-            receiverId?.let { builder.applyUniqueId("$UNIQUE_ID_PREFIX$it") }
-            display = displays.createVirtualDisplay(builder.build())
+            display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                createDisplayApi34(manager, surface, geometry, receiverId, supportedModes)
+            } else {
+                // Pre-API-34 fallback: the legacy overload takes the same name, geometry
+                // and flags. It cannot declare supported modes, a requested refresh rate
+                // or a stable unique id, so those desktop-mode refinements are API-34-only;
+                // the display itself (and its flags) behaves the same.
+                @Suppress("DEPRECATION")
+                manager.createVirtualDisplay(
+                    DISPLAY_NAME,
+                    geometry.width,
+                    geometry.height,
+                    geometry.densityDpi,
+                    surface,
+                    CAST_DISPLAY_FLAGS,
+                )
+            }
             if (display == null) Log.status(TAG, "the platform returned no display")
             display != null
         } catch (e: SecurityException) {
@@ -182,6 +187,32 @@ class CastSystemDisplay(context: Context) {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    @SuppressLint("WrongConstant")
+    private fun createDisplayApi34(
+        manager: DisplayManager,
+        surface: Surface,
+        geometry: CaptureGeometry,
+        receiverId: String?,
+        supportedModes: List<CaptureGeometry>,
+    ): VirtualDisplay? {
+        val builder = VirtualDisplayConfig.Builder(
+            DISPLAY_NAME,
+            geometry.width,
+            geometry.height,
+            geometry.densityDpi,
+        )
+            .setFlags(CAST_DISPLAY_FLAGS)
+            .setSurface(surface)
+            // The rate frames are actually sent at, so the system composes at that rate rather
+            // than at 60 and having half of every second's work thrown away by the encoder.
+            // It is also the fallback rate for any mode that was not declared.
+            .setRequestedRefreshRate(geometry.frameRate.toFloat())
+        builder.applySupportedModes(supportedModes)
+        receiverId?.let { builder.applyUniqueId("$UNIQUE_ID_PREFIX$it") }
+        return manager.createVirtualDisplay(builder.build())
+    }
+
     /**
      * `VirtualDisplayConfig.Builder.setUniqueId`, which is `@SystemApi` and so not on the public
      * SDK this module compiles against - hence reflection rather than a direct call.
@@ -191,6 +222,7 @@ class CastSystemDisplay(context: Context) {
      * one. It is also `@FlaggedApi(FLAG_VIRTUAL_DISPLAYS_SUPPORT_DESKTOP_MODE)`, so a build with
      * that flag off will not honour it even where the method exists.
      */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun VirtualDisplayConfig.Builder.applyUniqueId(uniqueId: String) {
         try {
             VirtualDisplayConfig.Builder::class.java
@@ -216,6 +248,7 @@ class CastSystemDisplay(context: Context) {
      * method is absent and the picker simply shows the single mode the display was created at,
      * which is the pre-desktop behaviour.
      */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun VirtualDisplayConfig.Builder.applySupportedModes(modes: List<CaptureGeometry>) {
         if (modes.isEmpty()) return
         try {

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
     <!-- This app uses no motion/environment sensors; MAOS withholds the -->
@@ -26,7 +27,9 @@
          either one is not an error the user sees - the watcher logs and skips the service, and the
          Cast page is simply empty. Signature|privileged, so it needs the priv-app allowlist entry
          in vendor/modern-apps/privapp-permissions-modern-apps.xml. -->
-    <uses-permission android:name="android.permission.REMOTE_DISPLAY_PROVIDER" />
+    <uses-permission
+        android:name="android.permission.REMOTE_DISPLAY_PROVIDER"
+        tools:ignore="ProtectedPermissions" />
     <!-- Desktop-mode audio. That path holds no MediaProjection - which is what lets it run with
          no consent dialog - so AudioPlaybackCapture is unavailable and audio comes from
          MediaRecorder.AudioSource.REMOTE_SUBMIX instead, the platform's own remote-display audio
@@ -34,13 +37,17 @@
          priv-app allowlist entry in vendor/modern-apps/privapp-permissions-modern-apps.xml.
          Screen mirroring does NOT use this: it keeps the projection-scoped capture, which is
          narrower and honours each app's own allowCapture policy. -->
-    <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
+    <uses-permission
+        android:name="android.permission.CAPTURE_AUDIO_OUTPUT"
+        tools:ignore="ProtectedPermissions" />
     <!-- Selecting a route in Settings has to end at CastPairActivity, which takes six digits off
          the TV. By then Settings is in front and this app is a bound service in the background, so
          without this the launch is silently dropped and the route sits at CONNECTING for ever.
          protectionLevel is signature|privileged|vendorPrivileged|oem|verifier|role, so the priv-app
          allowlist entry is what grants it. -->
-    <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND" />
+    <uses-permission
+        android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND"
+        tools:ignore="ProtectedPermissions" />
     <!-- Lets MaRemoteDisplayProvider create the cast display with VIRTUAL_DISPLAY_FLAG_TRUSTED.
          MediaRouterService never creates a display for a remote display route - it only reads back
          the id the provider publishes via RemoteDisplay.setPresentationDisplayId - so the display
@@ -59,7 +66,9 @@
          Deliberately not CAPTURE_VIDEO_OUTPUT: that gate only guards
          VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, and ALLOWS_CONTENT_MODE_SWITCH suppresses AUTO_MIRROR
          being added to a PUBLIC display, so the check is never reached. -->
-    <uses-permission android:name="android.permission.ADD_TRUSTED_DISPLAY" />
+    <uses-permission
+        android:name="android.permission.ADD_TRUSTED_DISPLAY"
+        tools:ignore="ProtectedPermissions" />
 
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
 

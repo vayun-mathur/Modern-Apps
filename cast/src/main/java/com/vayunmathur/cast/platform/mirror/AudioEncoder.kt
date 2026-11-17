@@ -36,7 +36,10 @@ class AudioEncoder(private val projection: MediaProjection?) : AudioStream {
     private var record: AudioRecord? = null
     private val opus = OpusEncoder()
 
-    @SuppressLint("MissingPermission")
+    // WrongConstant: REMOTE_SUBMIX (used on the desktop path below) is a @SystemApi
+    // audio source, so it is absent from lint's public-SDK constant list even though
+    // it is the correct AudioRecord source here; it is gated on CAPTURE_AUDIO_OUTPUT.
+    @SuppressLint("MissingPermission", "WrongConstant")
     override fun start(): Boolean {
         if (!opus.start()) return false
         return try {

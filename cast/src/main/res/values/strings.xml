@@ -75,7 +75,6 @@
     <string name="cast_notification_text_connecting">Connecting</string>
     <string name="cast_notification_text_pairing">Waiting for the code on your TV</string>
     <string name="cast_notification_text_starting">Starting</string>
-    <string name="cast_notification_text_mirroring">Mirroring your screen</string>
     <string name="cast_notification_text_failed">Could not start mirroring</string>
 
     <!-- The picker another app launches, and the permission it needs to. The permission's label and
