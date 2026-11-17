@@ -21,7 +21,7 @@ import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.data.KeywordPreference
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionRepository
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

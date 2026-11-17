@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util.sabr
+package com.vayunmathur.youpipe.network.sabr
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -7,8 +7,8 @@ import androidx.work.Configuration
 import androidx.work.ListenableWorker
 import androidx.work.WorkManager
 import androidx.work.testing.TestListenableWorkerBuilder
-import com.vayunmathur.youpipe.util.SubscriptionFetchTask
-import com.vayunmathur.youpipe.util.setupHourlyTask
+import com.vayunmathur.youpipe.platform.SubscriptionFetchTask
+import com.vayunmathur.youpipe.platform.setupHourlyTask
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals

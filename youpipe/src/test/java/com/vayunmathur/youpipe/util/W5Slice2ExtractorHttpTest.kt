@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -6,6 +6,11 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import com.vayunmathur.youpipe.network.DEARROW_THUMB_MIRROR
+import com.vayunmathur.youpipe.network.SPONSORBLOCK_MIRROR
+import com.vayunmathur.youpipe.network.SPONSORBLOCK_STATIC
+import com.vayunmathur.youpipe.network.getDeArrowBranding
+import com.vayunmathur.youpipe.network.getSponsorSegments
 
 /**
  * Slice 2/3 (w5): the SponsorBlock/DeArrow fetchers in util/Extractor.kt are

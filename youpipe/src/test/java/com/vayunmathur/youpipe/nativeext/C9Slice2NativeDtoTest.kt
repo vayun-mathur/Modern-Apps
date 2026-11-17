@@ -6,6 +6,14 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
+import com.vayunmathur.youpipe.network.CommentsPage
+import com.vayunmathur.youpipe.network.ItemsPage
+import com.vayunmathur.youpipe.network.SearchItem
+import com.vayunmathur.youpipe.network.SearchResult
+import com.vayunmathur.youpipe.network.StreamInfo
+import com.vayunmathur.youpipe.network.AudioStream
+import com.vayunmathur.youpipe.network.ChannelInfo
+import com.vayunmathur.youpipe.network.VideoStream
 
 /** Extractor DTO JSON contracts: snake_case fields, defaults, sealed search items. */
 class C9Slice2NativeDtoTest {

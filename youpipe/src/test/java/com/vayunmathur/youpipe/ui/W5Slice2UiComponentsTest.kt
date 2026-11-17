@@ -75,9 +75,9 @@ class W5Slice2UiComponentsTest {
     @Test
     fun feedGrid_compactPathRendersAllRows() {
         val rows = listOf(
-            com.vayunmathur.youpipe.util.VideoRowState(videoID = 1, title = "First video"),
-            com.vayunmathur.youpipe.util.VideoRowState(videoID = 2, title = "Second video"),
-            com.vayunmathur.youpipe.util.VideoRowState(videoID = 3, title = "Third video"),
+            com.vayunmathur.youpipe.platform.VideoRowState(videoID = 1, title = "First video"),
+            com.vayunmathur.youpipe.platform.VideoRowState(videoID = 2, title = "Second video"),
+            com.vayunmathur.youpipe.platform.VideoRowState(videoID = 3, title = "Third video"),
         )
         var opened = -1L
         composeRule.setContent {

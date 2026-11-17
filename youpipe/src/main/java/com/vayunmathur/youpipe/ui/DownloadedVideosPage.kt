@@ -41,8 +41,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.DownloadManager
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.DownloadManager
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.image.ImageRequest
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -241,30 +241,6 @@ private fun DownloadedGrid(
                     vertical = true,
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun SelectionIndicator(isSelected: Boolean) {
-    Box(
-        modifier = Modifier
-            .padding(start = 16.dp)
-            .size(24.dp)
-            .clip(CircleShape)
-            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
-            .border(
-                width = 2.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                shape = CircleShape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (isSelected) {
-            IconCheck(
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
         }
     }
 }

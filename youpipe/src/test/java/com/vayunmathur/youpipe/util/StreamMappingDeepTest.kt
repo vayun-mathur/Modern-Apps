@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

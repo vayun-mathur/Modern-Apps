@@ -1,6 +1,7 @@
 package com.vayunmathur.youpipe.ui
 
 import android.app.PictureInPictureParams
+import android.graphics.Rect
 import android.content.ComponentName
 import android.os.Bundle
 import androidx.compose.runtime.Composable
@@ -29,11 +30,11 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.data.HistoryVideo
-import com.vayunmathur.youpipe.findActivity
+import com.vayunmathur.youpipe.ui.findActivity
 import com.vayunmathur.youpipe.platform.CastPlayback
-import com.vayunmathur.youpipe.util.PlaybackService
-import com.vayunmathur.youpipe.util.SponsorSegment
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.PlaybackService
+import com.vayunmathur.youpipe.network.SponsorSegment
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlinx.coroutines.delay
 
 /**
@@ -138,8 +139,12 @@ internal fun VideoPlayerTransportObserver(
             }
             override fun onIsPlayingChanged(isPlayingNow: Boolean) {
                 CastPlayback.update { it.copy(playing = isPlayingNow) }
-                context.findActivity().setPictureInPictureParams(PictureInPictureParams.Builder().apply {
+                val activity = context.findActivity()
+                val sourceRect = Rect()
+                activity.window.decorView.getGlobalVisibleRect(sourceRect)
+                activity.setPictureInPictureParams(PictureInPictureParams.Builder().apply {
                     setAutoEnterEnabled(isPlayingNow)
+                    if (!sourceRect.isEmpty) setSourceRectHint(sourceRect)
                 }.build())
             }
             override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -155,8 +160,12 @@ internal fun VideoPlayerTransportObserver(
         onDispose {
             player.removeListener(listener)
             CastPlayback.detachPlayer(player)
-            context.findActivity().setPictureInPictureParams(PictureInPictureParams.Builder().apply {
+            val activity = context.findActivity()
+            val sourceRect = Rect()
+            activity.window.decorView.getGlobalVisibleRect(sourceRect)
+            activity.setPictureInPictureParams(PictureInPictureParams.Builder().apply {
                 setAutoEnterEnabled(false)
+                if (!sourceRect.isEmpty) setSourceRectHint(sourceRect)
             }.build())
         }
     }

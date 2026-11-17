@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.tv
+package com.vayunmathur.youpipe.ui.tv
 
 import android.app.Application
 import androidx.compose.ui.test.hasClickAction
@@ -26,7 +26,7 @@ import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionRepository
 import com.vayunmathur.youpipe.data.SubscriptionVideo
 import com.vayunmathur.youpipe.ui.VideoInfo
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -83,7 +83,7 @@ class TvFeedDeepTest {
     }
     @Test fun videoOptionsDialog_actionsAffectRecommendationsAndOpen() {
         var opened = 0; var dismissed = 0
-        val item = TvVideoRow(com.vayunmathur.youpipe.util.VideoRowState(42, "Seeded Video", "", "Seeded Chan", "3 views", channelKey = "seeded chan", reason = "history"), VideoInfo("Seeded Video", 42, 60, 3, Instant.fromEpochSeconds(1_700_000_000), "", "Seeded Chan"))
+        val item = TvVideoRow(com.vayunmathur.youpipe.platform.VideoRowState(42, "Seeded Video", "", "Seeded Chan", "3 views", channelKey = "seeded chan", reason = "history"), VideoInfo("Seeded Video", 42, 60, 3, Instant.fromEpochSeconds(1_700_000_000), "", "Seeded Chan"))
         rule.setContent { MaTvTheme(TvAccent.Red) { TvVideoOptionsDialog(item, { dismissed++ }, { opened++ }, vm) } }
         awaitText("Seeded Video")
         // Play button dismisses then opens.
@@ -94,7 +94,7 @@ class TvFeedDeepTest {
     }
     @Test fun videoOptionsDialog_notInterested_mutesChannelSignal() {
         var dismissed = 0
-        val item = TvVideoRow(com.vayunmathur.youpipe.util.VideoRowState(42, "Seeded Video", "", "Seeded Chan", "3 views", channelKey = "seeded chan"), VideoInfo("Seeded Video", 42, 60, 3, Instant.fromEpochSeconds(1_700_000_000), "", "Seeded Chan"))
+        val item = TvVideoRow(com.vayunmathur.youpipe.platform.VideoRowState(42, "Seeded Video", "", "Seeded Chan", "3 views", channelKey = "seeded chan"), VideoInfo("Seeded Video", 42, 60, 3, Instant.fromEpochSeconds(1_700_000_000), "", "Seeded Chan"))
         rule.setContent { MaTvTheme(TvAccent.Red) { TvVideoOptionsDialog(item, { dismissed++ }, {}, vm) } }
         awaitText("Not interested")
         val node = rule.onNode(hasText("Not interested"))

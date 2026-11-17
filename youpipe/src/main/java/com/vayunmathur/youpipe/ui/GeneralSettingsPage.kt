@@ -27,11 +27,11 @@ import com.vayunmathur.library.ui.SettingsSwitchRow
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.youpipe.DEFAULT_PAGE_OPTIONS
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_OPTIONS
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.YouPipeViewModel
-import com.vayunmathur.youpipe.util.YouPipeViewModel.Companion.YOUTUBE_LANGUAGES
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel.Companion.YOUTUBE_LANGUAGES
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

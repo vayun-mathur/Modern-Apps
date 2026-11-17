@@ -17,7 +17,7 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.youpipe.util.SponsorSegment
+import com.vayunmathur.youpipe.network.SponsorSegment
 
 /**
  * Slim notification-style replacement for the player seek slider: a thin bar showing buffered and

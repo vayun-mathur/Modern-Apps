@@ -11,13 +11,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.media3.common.text.Cue
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import com.vayunmathur.youpipe.platform.CastPlayback
-import com.vayunmathur.youpipe.rememberIsInPipMode
-import com.vayunmathur.youpipe.util.SponsorSegment
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.ui.rememberIsInPipMode
+import com.vayunmathur.youpipe.network.SponsorSegment
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlin.math.min
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
@@ -131,8 +132,9 @@ internal fun rememberVideoPlayerPlaybackState(
     // so a 1080p phone does not stream 4K by default. Keyed on the stream list
     // only: reseeds per video, never clobbers a manual pick mid-playback.
     val context = LocalContext.current
-    val deviceHeightPx = remember(context) {
-        context.resources.displayMetrics.let { min(it.widthPixels, it.heightPixels) }
+    val windowInfo = LocalWindowInfo.current
+    val deviceHeightPx = remember(windowInfo) {
+        min(windowInfo.containerSize.width, windowInfo.containerSize.height)
     }
     val currentVideoStreamState = remember(videoStreams) {
         mutableStateOf(selectDefaultVideoStream(videoStreams, deviceHeightPx) ?: videoStreams.first())

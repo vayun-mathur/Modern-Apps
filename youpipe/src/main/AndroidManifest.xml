@@ -82,11 +82,10 @@
           entries that confuse launcher resolution (the tvlauncher HOME lesson).
         -->
         <activity
-            android:name=".tv.TvMainActivity"
+            android:name=".ui.tv.TvMainActivity"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:launchMode="singleTask"
-            android:screenOrientation="landscape"
             android:theme="@style/Theme.General">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -121,7 +120,7 @@
         </activity-alias>
 
         <service
-            android:name=".util.PlaybackService"
+            android:name=".platform.PlaybackService"
             android:foregroundServiceType="mediaPlayback"
             android:stopWithTask="true"
             android:exported="false">

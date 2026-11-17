@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
 import com.vayunmathur.youpipe.ui.VideoInfo
 import org.schabi.newpipe.extractor.Image
@@ -12,6 +12,8 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.vayunmathur.youpipe.network.decodeVideoID
+import com.vayunmathur.youpipe.network.toVideoInfo
 
 /**
  * Slice 2/3 (w5): the StreamInfoItem -> VideoInfo mapping in util/

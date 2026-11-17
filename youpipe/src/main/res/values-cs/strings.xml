@@ -18,11 +18,36 @@
     <string name="label_channels">Kanály:</string>
     <string name="video_info_format"><xliff:g id="channel" example="Linus Tech Tips">%1$s</xliff:g> | <xliff:g id="views" example="1.2M">%2$s</xliff:g> zhlédnutí | <xliff:g id="time" example="2 dny zpět">%3$s</xliff:g></string>
     <string name="time_ago_just_now">Právě teď</string>
-    <string name="time_ago_minutes"><xliff:g id="minutes" example="5">%1$d</xliff:g> před minutami</string>
-    <string name="time_ago_hours">Před <xliff:g id="hours" example="3">%1$d</xliff:g> hodinami</string>
-    <string name="time_ago_days">Před <xliff:g id="days" example="2">%1$d</xliff:g> dny</string>
-    <string name="time_ago_months">Před <xliff:g id="months" example="6">%1$d</xliff:g> měsíci</string>
-    <string name="time_ago_years">Před <xliff:g id="years" example="1">%1$d</xliff:g> lety</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="one"><xliff:g id="minutes" example="5">%1$d</xliff:g> před minutami</item>
+        <item quantity="few"><xliff:g id="minutes" example="5">%1$d</xliff:g> před minutami</item>
+        <item quantity="many"><xliff:g id="minutes" example="5">%1$d</xliff:g> před minutami</item>
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> před minutami</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="one">Před <xliff:g id="hours" example="3">%1$d</xliff:g> hodinami</item>
+        <item quantity="few">Před <xliff:g id="hours" example="3">%1$d</xliff:g> hodinami</item>
+        <item quantity="many">Před <xliff:g id="hours" example="3">%1$d</xliff:g> hodinami</item>
+        <item quantity="other">Před <xliff:g id="hours" example="3">%1$d</xliff:g> hodinami</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="one">Před <xliff:g id="days" example="2">%1$d</xliff:g> dny</item>
+        <item quantity="few">Před <xliff:g id="days" example="2">%1$d</xliff:g> dny</item>
+        <item quantity="many">Před <xliff:g id="days" example="2">%1$d</xliff:g> dny</item>
+        <item quantity="other">Před <xliff:g id="days" example="2">%1$d</xliff:g> dny</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="one">Před <xliff:g id="months" example="6">%1$d</xliff:g> měsíci</item>
+        <item quantity="few">Před <xliff:g id="months" example="6">%1$d</xliff:g> měsíci</item>
+        <item quantity="many">Před <xliff:g id="months" example="6">%1$d</xliff:g> měsíci</item>
+        <item quantity="other">Před <xliff:g id="months" example="6">%1$d</xliff:g> měsíci</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="one">Před <xliff:g id="years" example="1">%1$d</xliff:g> lety</item>
+        <item quantity="few">Před <xliff:g id="years" example="1">%1$d</xliff:g> lety</item>
+        <item quantity="many">Před <xliff:g id="years" example="1">%1$d</xliff:g> lety</item>
+        <item quantity="other">Před <xliff:g id="years" example="1">%1$d</xliff:g> lety</item>
+    </plurals>
     <string name="count_k_format"><xliff:g id="number" example="12.3">%1$s</xliff:g>K</string>
     <string name="count_m_format"><xliff:g id="number" example="1.2">%1$s</xliff:g>M</string>
     <string name="count_b_format"><xliff:g id="number" example="3.4">%1$s</xliff:g>mld</string>
@@ -102,10 +127,20 @@
     <string name="action_delete_playlist">Smazat seznam</string>
     <string name="playlist_empty">Zatím žádná videa v seznamu</string>
     <string name="adding_to_watch_later">Přidávání do přehrát později…</string>
-    <string name="playlist_video_count"><xliff:g id="count" example="12">%1$d</xliff:g> videí</string>
+    <plurals name="playlist_video_count">
+        <item quantity="one"><xliff:g id="count" example="12">%1$d</xliff:g> videí</item>
+        <item quantity="few"><xliff:g id="count" example="12">%1$d</xliff:g> videí</item>
+        <item quantity="many"><xliff:g id="count" example="12">%1$d</xliff:g> videí</item>
+        <item quantity="other"><xliff:g id="count" example="12">%1$d</xliff:g> videí</item>
+    </plurals>
     <string name="settings_general_content">Obecné a Obsah</string>
     <string name="settings_sponsorblock">SponsorBlock</string>
     <string name="settings_data">Data a Záloha</string>
-    <string name="settings_sponsorblock_summary">%1$d z %2$d zablokováno</string>
+    <plurals name="settings_sponsorblock_summary">
+        <item quantity="one">%1$d z %2$d zablokováno</item>
+        <item quantity="few">%1$d z %2$d zablokováno</item>
+        <item quantity="many">%1$d z %2$d zablokováno</item>
+        <item quantity="other">%1$d z %2$d zablokováno</item>
+    </plurals>
     <string name="preset_custom">Vlastní</string>
 </resources>

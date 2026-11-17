@@ -47,17 +47,17 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.SearchActions
-import com.vayunmathur.youpipe.util.SearchResultRow
-import com.vayunmathur.youpipe.util.SearchUiState
-import com.vayunmathur.youpipe.util.VideoRowState
-import com.vayunmathur.youpipe.util.YouPipeViewModel
-import com.vayunmathur.youpipe.util.resolveWatchUrl
-import com.vayunmathur.youpipe.util.blockChannel
-import com.vayunmathur.youpipe.util.boostChannel
-import com.vayunmathur.youpipe.util.loadRecommendations
-import com.vayunmathur.youpipe.util.pinChannel
-import com.vayunmathur.youpipe.util.removeInterest
+import com.vayunmathur.youpipe.platform.SearchActions
+import com.vayunmathur.youpipe.platform.SearchResultRow
+import com.vayunmathur.youpipe.platform.SearchUiState
+import com.vayunmathur.youpipe.platform.VideoRowState
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.resolveWatchUrl
+import com.vayunmathur.youpipe.platform.blockChannel
+import com.vayunmathur.youpipe.platform.boostChannel
+import com.vayunmathur.youpipe.platform.loadRecommendations
+import com.vayunmathur.youpipe.platform.pinChannel
+import com.vayunmathur.youpipe.platform.removeInterest
 import kotlinx.coroutines.launch
 
 /**
@@ -157,186 +157,4 @@ fun SearchPage(
             override fun blockChannel(channelKey: String) = youPipeViewModel.blockChannel(channelKey)
         },
     )
-}
-
-/**
- * Stateless home screen.
- *
- * Everything the user taps inside the screen goes through [actions]. A preview can hand it a
- * freshly-remembered stack.
- */
-@Composable
-fun SearchScreen(
-    state: SearchUiState,
-    actions: SearchActions,
-) {
-    val searchBarState = rememberSearchBarState()
-    val textFieldState = rememberTextFieldState(initialText = state.query)
-    val scope = rememberCoroutineScope()
-
-    fun collapseSearch() {
-        scope.launch { searchBarState.animateToCollapsed() }
-    }
-
-    // Text field -> ViewModel: forward edits. Keyed on the query too so the
-    // comparison never goes stale; the guard drops the initial emission.
-    LaunchedEffect(textFieldState, state.query) {
-        snapshotFlow { textFieldState.text.toString() }.collect { text ->
-            if (text != state.query) actions.setSearchQuery(text)
-        }
-    }
-    // ViewModel -> text field: reflect external query changes.
-    LaunchedEffect(state.query) {
-        if (textFieldState.text.toString() != state.query) {
-            textFieldState.setTextAndPlaceCursorAtEnd(state.query)
-        }
-    }
-
-    val inputField: @Composable () -> Unit = {
-        SearchBarDefaults.InputField(
-            textFieldState = textFieldState,
-            searchBarState = searchBarState,
-            onSearch = { query ->
-                // The field already holds `query`; make sure the ViewModel sees the
-                // exact submitted text before submit reads it.
-                actions.setSearchQuery(query)
-                // Only collapse when the submit actually navigated somewhere — a
-                // plain search has to leave the overlay up to show its results.
-                if (actions.submitSearch()) collapseSearch()
-            },
-            placeholder = { Text(stringResource(UiR.string.search)) },
-        )
-    }
-
-    // RAW SCAFFOLD EXCEPTION: the top chrome is a Material3 SearchBar (not a
-    // TopAppBar) whose expanded state overlays the whole screen with search
-    // results/suggestions, and the body is a 3-way branch (loading spinner /
-    // empty state / recommendation feed). No shared scaffold models a SearchBar
-    // app bar plus this branching content.
-    Scaffold(
-        topBar = {
-            SearchBar(
-                state = searchBarState,
-                inputField = inputField,
-                modifier = Modifier.statusBarsPadding().fillMaxWidth(),
-            )
-            ExpandedFullScreenSearchBar(
-                state = searchBarState,
-                inputField = inputField,
-            ) {
-                LazyColumn {
-                    if (state.results.isNotEmpty()) {
-                        items(state.results, key = {
-                            when (it) {
-                                is SearchResultRow.Video -> "v-${it.video.videoID}"
-                                is SearchResultRow.Channel -> "c-${it.channelID}"
-                            }
-                        }) { item ->
-                            when (item) {
-                                is SearchResultRow.Video -> VideoRow(
-                                    row = item.video,
-                                    modifier = Modifier.clickable {
-                                        collapseSearch()
-                                        actions.openVideo(item.video.videoID)
-                                    },
-                                )
-                                is SearchResultRow.Channel -> ChannelRow(item) {
-                                    actions.openChannel(item.channelID)
-                                }
-                            }
-                        }
-                    } else {
-                        items(state.suggestions, key = { it }) { suggestion ->
-                            Text(
-                                text = suggestion,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        textFieldState.setTextAndPlaceCursorAtEnd(suggestion)
-                                        actions.setSearchQuery(suggestion)
-                                        if (actions.submitSearch()) collapseSearch()
-                                    }
-                                    .padding(12.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        },
-    ) { paddingValues ->
-        if (state.recommendationsLoading) {
-            Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (state.recommendations.isEmpty()) {
-            EmptyState(
-                title = stringResource(R.string.empty_recommendations),
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
-            )
-        } else if (isExpandedWidth()) {
-            FeedGrid(
-                rows = state.recommendations,
-                key = { it.videoID },
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
-            ) { row ->
-                FeedVideoRow(
-                    row = row,
-                    openVideo = actions::openVideo,
-                    titleSharedKey = "youpipe-video-title-${row.videoID}",
-                    overflowActions = listOf(
-                        stringResource(R.string.action_not_interested) to { actions.notInterested(row.channelKey) },
-                        stringResource(R.string.action_more_like_this) to { actions.moreLikeThis(row.channelKey) },
-                        stringResource(R.string.action_pin_channel) to { actions.pinChannel(row.channelKey) },
-                        stringResource(R.string.action_block_channel) to { actions.blockChannel(row.channelKey) },
-                    ),
-                )
-            }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                items(state.recommendations, key = { it.videoID }) { row ->
-                    VideoRow(
-                        row = row,
-                        modifier = Modifier.invisibleClickable { actions.openVideo(row.videoID) },
-                        // Only the feed is keyed, not the search overlay above it: both are composed
-                        // at once, and a video in each would give one key two origins.
-                        titleSharedKey = "youpipe-video-title-${row.videoID}",
-                        overflowActions = listOf(
-                            stringResource(R.string.action_not_interested) to { actions.notInterested(row.channelKey) },
-                            stringResource(R.string.action_more_like_this) to { actions.moreLikeThis(row.channelKey) },
-                            stringResource(R.string.action_pin_channel) to { actions.pinChannel(row.channelKey) },
-                            stringResource(R.string.action_block_channel) to { actions.blockChannel(row.channelKey) },
-                        ),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ChannelRow(channel: SearchResultRow.Channel, onClick: () -> Unit) {
-    ListItem(modifier = Modifier.clickable(onClick = onClick), overlineContent = {
-
-    }, supportingContent = {
-        Text(channel.subscribers)
-    }, leadingContent = {
-        Box(
-            Modifier.size(50.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            if (channel.avatarURL.isNotEmpty()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(channel.avatarURL)
-                        .memoryCacheKey("channel-avatar-${channel.channelID}")
-                        .build(),
-                    contentDescription = null,
-                    Modifier.fillMaxSize()
-                )
-            }
-        }
-    }, colors = ListItemDefaults.colors(containerColor = Color.Transparent)) {
-        Text(channel.name, style = MaterialTheme.typography.titleMedium)
-    }
 }

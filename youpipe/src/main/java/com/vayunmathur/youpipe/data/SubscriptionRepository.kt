@@ -8,9 +8,9 @@ import kotlinx.coroutines.flow.Flow
  * Single source of truth for all YouPipe persisted data.
  *
  * Owns the one [SubscriptionDatabase] instance (via [RoomRepository]) and is the
- * only place the 12 DAOs are touched. The [com.vayunmathur.youpipe.util.YouPipeViewModel],
- * [com.vayunmathur.youpipe.util.DownloadWorker], and
- * [com.vayunmathur.youpipe.util.SubscriptionFetchTask] all read/write through here
+ * only place the 12 DAOs are touched. The [com.vayunmathur.youpipe.platform.YouPipeViewModel],
+ * [com.vayunmathur.youpipe.platform.DownloadWorker], and
+ * [com.vayunmathur.youpipe.platform.SubscriptionFetchTask] all read/write through here
  * so they share one live, invalidation-backed view of the data.
  *
  * Read access is exposed as cold [Flow]s (consumers apply `stateIn`/`map` as before).

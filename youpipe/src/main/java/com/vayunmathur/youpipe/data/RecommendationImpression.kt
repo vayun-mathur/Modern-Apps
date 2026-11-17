@@ -11,7 +11,7 @@ import kotlin.time.Instant
  * A record that a video was shown in the recommendation feed. Used to drive the
  * feedback loop: rarely-shown channels earn an exploration bonus, while channels
  * shown many times but never watched are demoted, and recently-shown videos are
- * suppressed on refresh. [source] is stored as the [com.vayunmathur.youpipe.util.RecSource]
+ * suppressed on refresh. [source] is stored as the [com.vayunmathur.youpipe.domain.RecSource]
  * name.
  */
 @Entity

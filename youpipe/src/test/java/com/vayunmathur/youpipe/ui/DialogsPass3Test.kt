@@ -9,8 +9,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.youpipe.R
-import com.vayunmathur.youpipe.util.VideoDetailActions
-import com.vayunmathur.youpipe.util.VideoDetailUiState
+import com.vayunmathur.youpipe.platform.VideoDetailActions
+import com.vayunmathur.youpipe.platform.VideoDetailUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -62,7 +62,7 @@ class DialogsPass3Test {
         description = "the description",
         comments = listOf(Comment("Nice one", "Fan", 3, 0)),
         relatedVideos = listOf(
-            com.vayunmathur.youpipe.util.VideoRowState(9, "Related Vid", "", "Chan", "1 view", null, "chan"),
+            com.vayunmathur.youpipe.platform.VideoRowState(9, "Related Vid", "", "Chan", "1 view", null, "chan"),
         ),
         videoStreams = videoStreams, audioStreams = audioStreams,
         downloaded = downloaded, downloadProgress = progress,

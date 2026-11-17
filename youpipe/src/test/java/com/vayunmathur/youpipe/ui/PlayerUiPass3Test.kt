@@ -6,18 +6,21 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.youpipe.nativeext.AudioStream as NativeAudioStream
-import com.vayunmathur.youpipe.nativeext.Comment as NativeComment
-import com.vayunmathur.youpipe.nativeext.VideoStream as NativeVideoStream
-import com.vayunmathur.youpipe.util.SponsorSegment
-import com.vayunmathur.youpipe.util.VideoDetailActions
-import com.vayunmathur.youpipe.util.VideoDetailUiState
-import com.vayunmathur.youpipe.util.VideoRowState
+import com.vayunmathur.youpipe.network.AudioStream as NativeAudioStream
+import com.vayunmathur.youpipe.network.Comment as NativeComment
+import com.vayunmathur.youpipe.network.VideoStream as NativeVideoStream
+import com.vayunmathur.youpipe.network.SponsorSegment
+import com.vayunmathur.youpipe.platform.VideoDetailActions
+import com.vayunmathur.youpipe.platform.VideoDetailUiState
+import com.vayunmathur.youpipe.platform.VideoRowState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
+import com.vayunmathur.youpipe.network.AudioStream
+import com.vayunmathur.youpipe.network.Comment
+import com.vayunmathur.youpipe.network.VideoStream
 
 /** Slice 2/3 pass 3: the player-adjacent composables and row/sections, state-driven. */
 @RunWith(AndroidJUnit4::class)

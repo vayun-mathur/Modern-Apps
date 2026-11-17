@@ -23,8 +23,8 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.VerticalDivider
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.youpipe.R
-import com.vayunmathur.youpipe.util.VideoDetailActions
-import com.vayunmathur.youpipe.util.VideoDetailUiState
+import com.vayunmathur.youpipe.platform.VideoDetailActions
+import com.vayunmathur.youpipe.platform.VideoDetailUiState
 import kotlinx.coroutines.launch
 
 /**

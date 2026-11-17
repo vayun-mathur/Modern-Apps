@@ -29,7 +29,7 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -46,7 +46,7 @@ fun HistoryPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPipeViewMod
     // No top bar at all: clearing all history lives in Settings, and deleting a
     // selection is a FAB, so the list keeps the full height of the screen.
     // On expanded widths the list is a LazyVerticalGrid — which LazyListScaffold cannot
-    // host — so that path uses a RAW SCAFFOLD EXCEPTION below.
+    // host — so that path uses a raw-scaffold exception below.
     if (isExpandedWidth()) {
         // RAW SCAFFOLD EXCEPTION: an adaptive video grid (LazyVerticalGrid of
         // adaptiveGridCells) with a selection FAB and no top bar. No shared scaffold

@@ -1,8 +1,8 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
-import com.vayunmathur.youpipe.util.sabr.YoutubePoTokenBinding
-import com.vayunmathur.youpipe.util.sabr.parseSabrAttChallengeData
-import com.vayunmathur.youpipe.util.sabr.parseYoutubePageAttestationBootstrap
+import com.vayunmathur.youpipe.network.sabr.YoutubePoTokenBinding
+import com.vayunmathur.youpipe.network.sabr.parseSabrAttChallengeData
+import com.vayunmathur.youpipe.network.sabr.parseYoutubePageAttestationBootstrap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

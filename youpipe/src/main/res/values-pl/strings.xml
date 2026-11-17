@@ -18,11 +18,36 @@
     <string name="label_channels">Kanały:</string>
     <string name="video_info_format">%1$s | %2$s wyświetleń | %3$s</string>
     <string name="time_ago_just_now">Przed chwilą</string>
-    <string name="time_ago_minutes">%1$d minut temu</string>
-    <string name="time_ago_hours">%1$d godzin temu</string>
-    <string name="time_ago_days">%1$d dni temu</string>
-    <string name="time_ago_months">%1$d miesięcy temu</string>
-    <string name="time_ago_years">%1$d lat temu</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="one">%1$d minut temu</item>
+        <item quantity="few">%1$d minut temu</item>
+        <item quantity="many">%1$d minut temu</item>
+        <item quantity="other">%1$d minut temu</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="one">%1$d godzin temu</item>
+        <item quantity="few">%1$d godzin temu</item>
+        <item quantity="many">%1$d godzin temu</item>
+        <item quantity="other">%1$d godzin temu</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="one">%1$d dni temu</item>
+        <item quantity="few">%1$d dni temu</item>
+        <item quantity="many">%1$d dni temu</item>
+        <item quantity="other">%1$d dni temu</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="one">%1$d miesięcy temu</item>
+        <item quantity="few">%1$d miesięcy temu</item>
+        <item quantity="many">%1$d miesięcy temu</item>
+        <item quantity="other">%1$d miesięcy temu</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="one">%1$d lat temu</item>
+        <item quantity="few">%1$d lat temu</item>
+        <item quantity="many">%1$d lat temu</item>
+        <item quantity="other">%1$d lat temu</item>
+    </plurals>
     <string name="count_k_format">%1$sK</string>
     <string name="count_m_format">%1$sM</string>
     <string name="count_b_format">%1$sB</string>

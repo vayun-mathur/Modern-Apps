@@ -34,17 +34,17 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.findActivity
+import com.vayunmathur.youpipe.ui.findActivity
 import com.vayunmathur.youpipe.platform.CastPlayback
-import com.vayunmathur.youpipe.rememberIsInPipMode
-import com.vayunmathur.youpipe.util.VideoDetailActions
-import com.vayunmathur.youpipe.util.VideoDetailUiState
-import com.vayunmathur.youpipe.util.YouPipeViewModel
-import com.vayunmathur.youpipe.util.applyDownloadedStreams
-import com.vayunmathur.youpipe.util.clearVideoError
-import com.vayunmathur.youpipe.util.loadVideo
-import com.vayunmathur.youpipe.util.videoIDtoURL
-import com.vayunmathur.youpipe.util.DownloadManager
+import com.vayunmathur.youpipe.ui.rememberIsInPipMode
+import com.vayunmathur.youpipe.platform.VideoDetailActions
+import com.vayunmathur.youpipe.platform.VideoDetailUiState
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.applyDownloadedStreams
+import com.vayunmathur.youpipe.platform.clearVideoError
+import com.vayunmathur.youpipe.platform.loadVideo
+import com.vayunmathur.youpipe.network.videoIDtoURL
+import com.vayunmathur.youpipe.platform.DownloadManager
 import kotlin.time.Instant
 
 /** Immutable value describing video chapter; carries time, title, previewURL. */
@@ -73,21 +73,6 @@ data class SubtitleTrack(
 data class VideoData(val title: String, val views: Long, val duration: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String, val authorURL: String, val authorThumbnail: String, val description: String)
 /** Immutable value describing comment; carries text, author, likes, dislikes. */
 data class Comment(val text: String, val author: String, val likes: Int, val dislikes: Int)
-
-@Composable
-fun LockScreenOrientation(orientation: Int) {
-    val context = LocalContext.current
-    DisposableEffect(orientation) {
-        val activity = context.findActivity()
-        val originalOrientation = activity.requestedOrientation
-        activity.requestedOrientation = orientation
-
-        onDispose {
-            // Restore original orientation when leaving the screen
-            activity.requestedOrientation = originalOrientation
-        }
-    }
-}
 
 /**
  * Binder for the video screen: loads the video, owns the fullscreen/PiP window plumbing and

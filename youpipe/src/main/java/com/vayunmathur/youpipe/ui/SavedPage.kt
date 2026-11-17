@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -40,7 +41,7 @@ import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 
 /**
  * The Saved library: a list of playlists. The first two rows are always pinned —
@@ -119,7 +120,7 @@ fun SavedPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPipeViewModel
                     leadingContent = { IconDownload() },
                     content = { Text(stringResource(R.string.title_downloads)) },
                     supportingContent = {
-                        Text(stringResource(R.string.playlist_video_count, downloadedVideos.size))
+                        Text(pluralStringResource(R.plurals.playlist_video_count, downloadedVideos.size, downloadedVideos.size))
                     },
                     modifier = Modifier.clickable { backStack.add(Route.Downloads) },
                 )
@@ -137,7 +138,7 @@ fun SavedPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPipeViewModel
                             )
                         },
                         supportingContent = {
-                            Text(stringResource(R.string.playlist_video_count, counts[watchLater.id] ?: 0))
+                            Text(pluralStringResource(R.plurals.playlist_video_count, counts[watchLater.id] ?: 0, counts[watchLater.id] ?: 0))
                         },
                         modifier = Modifier.clickable {
                             backStack.add(Route.PlaylistDetail(watchLater.id))
@@ -168,7 +169,7 @@ fun SavedPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPipeViewModel
                                 )
                             },
                             supportingContent = {
-                                Text(stringResource(R.string.playlist_video_count, counts[playlist.id] ?: 0))
+                                Text(pluralStringResource(R.plurals.playlist_video_count, counts[playlist.id] ?: 0, counts[playlist.id] ?: 0))
                             },
                             trailingContent = {
                                 if (localData.size > 1) {

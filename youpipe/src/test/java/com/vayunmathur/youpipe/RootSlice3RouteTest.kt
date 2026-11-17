@@ -5,6 +5,17 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 import kotlinx.serialization.Serializable
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_OPTIONS
+import com.vayunmathur.youpipe.platform.defaultBackStack
+import com.vayunmathur.youpipe.platform.tabRoute
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_KEY
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_HOME
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_SUBSCRIPTIONS
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_ALL_SUBSCRIPTIONS
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_HISTORY
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_DOWNLOADS
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_SAVED
+import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_SETTINGS
 
 /**
  * Slice-3 tests for the youpipe root navigation model ([Route] variants and

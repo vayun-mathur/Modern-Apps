@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.tv
+package com.vayunmathur.youpipe.ui.tv
 
 import android.app.Application
 import androidx.compose.ui.test.hasText
@@ -36,7 +36,7 @@ import com.vayunmathur.youpipe.ui.VideoChapter
 import com.vayunmathur.youpipe.ui.VideoData
 import com.vayunmathur.youpipe.ui.VideoInfo
 import com.vayunmathur.youpipe.ui.VideoStream
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -185,7 +185,7 @@ class TvBrowseDeepTest {
     }
     @Test fun tvSharedHelpers_subtitleAndDuration() {
         assertEquals(null, tvDurationBadge(-1)); assertEquals("10:00", tvDurationBadge(600))
-        val row = TvVideoRow(com.vayunmathur.youpipe.util.VideoRowState(1, "T", "", "Chan", "1K views", "chan"), VideoInfo("T", 1, 60, 1000, Instant.fromEpochSeconds(1_600_000_000), "", "Chan"))
+        val row = TvVideoRow(com.vayunmathur.youpipe.platform.VideoRowState(1, "T", "", "Chan", "1K views", "chan"), VideoInfo("T", 1, 60, 1000, Instant.fromEpochSeconds(1_600_000_000), "", "Chan"))
         assertTrue(tvVideoSubtitle(row)?.contains("Chan") == true)
     }
 }

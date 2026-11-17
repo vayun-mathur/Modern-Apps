@@ -19,10 +19,10 @@ import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Playlist
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionRepository
-import com.vayunmathur.youpipe.util.SubscriptionFeedActions
-import com.vayunmathur.youpipe.util.SubscriptionFeedUiState
-import com.vayunmathur.youpipe.util.VideoRowState
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.SubscriptionFeedActions
+import com.vayunmathur.youpipe.platform.SubscriptionFeedUiState
+import com.vayunmathur.youpipe.platform.VideoRowState
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

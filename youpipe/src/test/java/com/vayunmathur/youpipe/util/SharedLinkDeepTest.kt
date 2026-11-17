@@ -1,12 +1,19 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.defaultBackStack
+import com.vayunmathur.youpipe.platform.defaultBackStack
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import org.junit.runner.RunWith
+import com.vayunmathur.youpipe.network.channelIDtoURL
+import com.vayunmathur.youpipe.network.channelURLtoID
+import com.vayunmathur.youpipe.network.decodeVideoID
+import com.vayunmathur.youpipe.network.encodeVideoID
+import com.vayunmathur.youpipe.network.parseSharedVideoId
+import com.vayunmathur.youpipe.network.videoIDtoURL
+import com.vayunmathur.youpipe.network.videoURLtoID
 
 /** Shared/deep-link parsing + phone default backstack (MainActivity helpers). */
 @RunWith(AndroidJUnit4::class)

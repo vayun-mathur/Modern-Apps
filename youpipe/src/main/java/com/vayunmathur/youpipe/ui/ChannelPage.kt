@@ -57,9 +57,9 @@ import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
-import com.vayunmathur.youpipe.util.VideoRowState
-import com.vayunmathur.youpipe.util.YouPipeViewModel
-import com.vayunmathur.youpipe.util.decodeHtml
+import com.vayunmathur.youpipe.platform.VideoRowState
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
+import com.vayunmathur.youpipe.network.decodeHtml
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
@@ -135,35 +135,5 @@ fun ChannelPage(
                 }
             }
         }
-    }
-}
-
-/**
- * The channel's identity block, and the far end of the morph that starts at a subscription row.
- *
- * Keyed on the container rather than on the avatar alone: an avatar gliding out of a row while the
- * name beside it cuts reads worse than no morph at all. The avatar is nested inside so its pixels
- * keep their identity across the size change - 24dp in the row, 52dp here.
- */
-@Composable
-fun ChannelHeader(channelInfo: ChannelInfo) {
-    val context = LocalContext.current
-    ListItem(modifier = Modifier.sharedContainer("youpipe-channel-${channelInfo.channelID}"), overlineContent = {
-
-    }, supportingContent = {
-        Text(stringResource(R.string.subscribers_count, countString(context, channelInfo.subscribers)))
-    }, leadingContent = {
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(channelInfo.avatar)
-                .memoryCacheKey("channel-avatar-${channelInfo.channelID}")
-                .build(),
-            contentDescription = null,
-            Modifier.sharedContent("youpipe-channel-avatar-${channelInfo.channelID}")
-                .size(52.dp)
-                .clip(CircleShape)
-        )
-    }) {
-        Text(channelInfo.name.decodeHtml(), style = MaterialTheme.typography.titleLarge)
     }
 }

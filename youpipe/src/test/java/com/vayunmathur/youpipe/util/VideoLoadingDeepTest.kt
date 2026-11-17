@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
 import android.app.Application
 import androidx.room3.Room
@@ -21,6 +21,8 @@ import kotlin.time.Instant
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.Shadows
+import com.vayunmathur.youpipe.domain.RecSource
+import com.vayunmathur.youpipe.domain.RecommendationPreset
 
 /** Video-loading stream helpers, downloaded fallback, import/export parsing, rec settings. */
 @RunWith(AndroidJUnit4::class)

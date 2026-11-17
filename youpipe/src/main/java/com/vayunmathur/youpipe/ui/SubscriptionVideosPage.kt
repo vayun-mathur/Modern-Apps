@@ -32,9 +32,9 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.SubscriptionFeedActions
-import com.vayunmathur.youpipe.util.SubscriptionFeedUiState
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.SubscriptionFeedActions
+import com.vayunmathur.youpipe.platform.SubscriptionFeedUiState
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 
 /**
  * Binder for the subscription feed: newest uploads across every channel the user follows,
@@ -91,97 +91,4 @@ fun SubscriptionVideosPage(
 /**
  * Stateless subscription feed. Taps on the list itself go through [actions].
  */
-// RAW SCAFFOLD EXCEPTION: the feed switches between a LazyColumn (compact) and a
-// LazyVerticalGrid of adaptiveGridCells (expanded) around the same skeleton/loading
-// content. No shared scaffold models a column/grid switch.
-@Composable
-fun SubscriptionVideosScreen(
-    state: SubscriptionFeedUiState,
-    actions: SubscriptionFeedActions,
-) {
-    Scaffold { paddingValues ->
-        if (isExpandedWidth() && !state.isLoading && state.fetchProgress !in 0f..1f) {
-            // Desktop: the feed fills the window with an adaptive grid instead of
-            // stretching one column across it. Loading states stay a list below.
-            LazyVerticalGrid(
-                columns = adaptiveGridCells(320.dp),
-                modifier = Modifier.padding(paddingValues),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(state.videos, key = { it.videoID }) { row ->
-                    FeedVideoRow(
-                        row = row,
-                        openVideo = actions::openVideo,
-                        titleSharedKey = "youpipe-video-title-${row.videoID}",
-                    )
-                }
-            }
-            return@Scaffold
-        }
-        LazyColumn(Modifier.padding(paddingValues)) {
-            if (state.fetchProgress in 0f..1f) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator({ state.fetchProgress })
-                    }
-                }
-            }
-            if (state.isLoading) {
-                // Skeleton placeholders shown before the first DB emission arrives,
-                // so the screen never looks frozen while the feed is loading.
-                items(SKELETON_ROW_COUNT) {
-                    VideoRowSkeleton()
-                }
-            } else {
-                items(state.videos, key = { it.videoID }) { row ->
-                    VideoRow(
-                        row = row,
-                        modifier = Modifier.invisibleClickable { actions.openVideo(row.videoID) },
-                        titleSharedKey = "youpipe-video-title-${row.videoID}",
-                    )
-                }
-            }
-        }
-    }
-}
 
-private const val SKELETON_ROW_COUNT = 8
-
-/**
- * A single placeholder row matching [VideoRow]'s layout: a 16:9 block on the left
- * and a few stacked gray bars on the right. Uses the same static `surfaceVariant`
- * gray-box idiom the real rows use for image placeholders — no shimmer library.
- */
-@Composable
-fun VideoRowSkeleton(modifier: Modifier = Modifier) {
-    Row(modifier) {
-        Box(Modifier.weight(1f)) {
-            Box(
-                Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
-        }
-        Box(Modifier.weight(1.5f)) {
-            Column(Modifier.padding(16.dp)) {
-                SkeletonBar(Modifier.fillMaxWidth().height(16.dp))
-                Spacer(Modifier.height(8.dp))
-                SkeletonBar(Modifier.fillMaxWidth(0.6f).height(12.dp))
-                Spacer(Modifier.height(6.dp))
-                SkeletonBar(Modifier.fillMaxWidth(0.4f).height(12.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SkeletonBar(modifier: Modifier) {
-    Box(
-        modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-    )
-}

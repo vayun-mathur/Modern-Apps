@@ -17,11 +17,26 @@
     <string name="label_channels">Kanäle:</string>
     <string name="video_info_format">%1$s | %2$s Aufrufe | %3$s</string>
     <string name="time_ago_just_now">Jetzt</string>
-    <string name="time_ago_minutes">Vor %1$d Minuten</string>
-    <string name="time_ago_hours">Vor %1$d Stunden</string>
-    <string name="time_ago_days">Vor %1$d Tagen</string>
-    <string name="time_ago_months">Vor %1$d Monaten</string>
-    <string name="time_ago_years">Vor %1$d Jahren</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="one">Vor %1$d Minuten</item>
+        <item quantity="other">Vor %1$d Minuten</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="one">Vor %1$d Stunden</item>
+        <item quantity="other">Vor %1$d Stunden</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="one">Vor %1$d Tagen</item>
+        <item quantity="other">Vor %1$d Tagen</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="one">Vor %1$d Monaten</item>
+        <item quantity="other">Vor %1$d Monaten</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="one">Vor %1$d Jahren</item>
+        <item quantity="other">Vor %1$d Jahren</item>
+    </plurals>
     <string name="count_k_format">%1$sK</string>
     <string name="count_m_format">%1$sMio</string>
     <string name="count_b_format">%1$sMrd</string>

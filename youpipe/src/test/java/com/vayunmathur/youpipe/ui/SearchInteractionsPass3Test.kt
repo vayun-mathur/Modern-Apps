@@ -8,10 +8,10 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.youpipe.util.SearchActions
-import com.vayunmathur.youpipe.util.SearchResultRow
-import com.vayunmathur.youpipe.util.SearchUiState
-import com.vayunmathur.youpipe.util.VideoRowState
+import com.vayunmathur.youpipe.platform.SearchActions
+import com.vayunmathur.youpipe.platform.SearchResultRow
+import com.vayunmathur.youpipe.platform.SearchUiState
+import com.vayunmathur.youpipe.platform.VideoRowState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

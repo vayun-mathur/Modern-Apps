@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util.sabr
+package com.vayunmathur.youpipe.network.sabr
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

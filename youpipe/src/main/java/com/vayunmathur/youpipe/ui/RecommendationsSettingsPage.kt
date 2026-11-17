@@ -32,20 +32,20 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.RecSource
-import com.vayunmathur.youpipe.util.RecommendationPreset
-import com.vayunmathur.youpipe.util.YouPipeViewModel
-import com.vayunmathur.youpipe.util.resetAlgorithm
-import com.vayunmathur.youpipe.util.setDiscoveryFamiliar
-import com.vayunmathur.youpipe.util.setFocusedDiverse
-import com.vayunmathur.youpipe.util.setFreshEvergreen
-import com.vayunmathur.youpipe.util.setHideLive
-import com.vayunmathur.youpipe.util.setHidePaid
-import com.vayunmathur.youpipe.util.setHideShorts
-import com.vayunmathur.youpipe.util.setMaxDuration
-import com.vayunmathur.youpipe.util.setMinDuration
-import com.vayunmathur.youpipe.util.setPreset
-import com.vayunmathur.youpipe.util.toggleSource
+import com.vayunmathur.youpipe.domain.RecSource
+import com.vayunmathur.youpipe.domain.RecommendationPreset
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.resetAlgorithm
+import com.vayunmathur.youpipe.platform.setDiscoveryFamiliar
+import com.vayunmathur.youpipe.platform.setFocusedDiverse
+import com.vayunmathur.youpipe.platform.setFreshEvergreen
+import com.vayunmathur.youpipe.platform.setHideLive
+import com.vayunmathur.youpipe.platform.setHidePaid
+import com.vayunmathur.youpipe.platform.setHideShorts
+import com.vayunmathur.youpipe.platform.setMaxDuration
+import com.vayunmathur.youpipe.platform.setMinDuration
+import com.vayunmathur.youpipe.platform.setPreset
+import com.vayunmathur.youpipe.platform.toggleSource
 
 private val SOURCE_TOGGLES = listOf(
     RecSource.RELATED to R.string.label_source_related,

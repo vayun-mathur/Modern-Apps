@@ -6,11 +6,21 @@
     <string name="recommendation_reason">おすすめされた理由: <xliff:g id="reason" example="watched similar">%1$s</xliff:g></string>
     <string name="label_recommendations">おすすめ</string>
     <string name="time_ago_just_now">今</string>
-    <string name="time_ago_minutes"><xliff:g id="minutes" example="5">%1$d</xliff:g> 分前</string>
-    <string name="time_ago_hours"><xliff:g id="hours" example="3">%1$d</xliff:g> 時間前</string>
-    <string name="time_ago_days"><xliff:g id="days" example="2">%1$d</xliff:g> 日前</string>
-    <string name="time_ago_months"><xliff:g id="months" example="6">%1$d</xliff:g> ヶ月前</string>
-    <string name="time_ago_years"><xliff:g id="years" example="1">%1$d</xliff:g> 年前</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> 分前</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="other"><xliff:g id="hours" example="3">%1$d</xliff:g> 時間前</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="other"><xliff:g id="days" example="2">%1$d</xliff:g> 日前</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="other"><xliff:g id="months" example="6">%1$d</xliff:g> ヶ月前</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="other"><xliff:g id="years" example="1">%1$d</xliff:g> 年前</item>
+    </plurals>
     <string name="label_description">説明</string>
     <string name="count_k_format"><xliff:g id="number" example="12.3">%1$s</xliff:g>K</string>
     <string name="count_m_format"><xliff:g id="number" example="1.2">%1$s</xliff:g>M</string>

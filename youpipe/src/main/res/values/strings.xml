@@ -17,15 +17,30 @@
     <!-- Time ago: just now (<1 minute). Phrase -->
     <string name="time_ago_just_now">Just now</string>
     <!-- Time ago: minutes. %1$d = number of minutes -->
-    <string name="time_ago_minutes"><xliff:g id="minutes" example="5">%1$d</xliff:g> minutes ago</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="one"><xliff:g id="minutes" example="5">%1$d</xliff:g> minute ago</item>
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> minutes ago</item>
+    </plurals>
     <!-- Time ago: hours. %1$d = number of hours -->
-    <string name="time_ago_hours"><xliff:g id="hours" example="3">%1$d</xliff:g> hours ago</string>
+    <plurals name="time_ago_hours">
+        <item quantity="one"><xliff:g id="hours" example="3">%1$d</xliff:g> hour ago</item>
+        <item quantity="other"><xliff:g id="hours" example="3">%1$d</xliff:g> hours ago</item>
+    </plurals>
     <!-- Time ago: days. %1$d = number of days -->
-    <string name="time_ago_days"><xliff:g id="days" example="2">%1$d</xliff:g> days ago</string>
+    <plurals name="time_ago_days">
+        <item quantity="one"><xliff:g id="days" example="2">%1$d</xliff:g> day ago</item>
+        <item quantity="other"><xliff:g id="days" example="2">%1$d</xliff:g> days ago</item>
+    </plurals>
     <!-- Time ago: months. %1$d = number of months -->
-    <string name="time_ago_months"><xliff:g id="months" example="6">%1$d</xliff:g> months ago</string>
+    <plurals name="time_ago_months">
+        <item quantity="one"><xliff:g id="months" example="6">%1$d</xliff:g> month ago</item>
+        <item quantity="other"><xliff:g id="months" example="6">%1$d</xliff:g> months ago</item>
+    </plurals>
     <!-- Time ago: years. %1$d = number of years -->
-    <string name="time_ago_years"><xliff:g id="years" example="1">%1$d</xliff:g> years ago</string>
+    <plurals name="time_ago_years">
+        <item quantity="one"><xliff:g id="years" example="1">%1$d</xliff:g> year ago</item>
+        <item quantity="other"><xliff:g id="years" example="1">%1$d</xliff:g> years ago</item>
+    </plurals>
 
     <!-- Short count: thousands. %1$s = number like 12.3, suffix K for thousand. Keep K uppercase -->
     <string name="count_k_format"><xliff:g id="number" example="12.3">%1$s</xliff:g>K</string>
@@ -123,7 +138,10 @@
     <!-- Progress text shown while a shared video is being added to Watch later. Present participle -->
     <string name="adding_to_watch_later">Adding to Watch later…</string>
     <!-- Supporting line under a playlist row: video count. %1$d = number of videos -->
-    <string name="playlist_video_count"><xliff:g id="count" example="12">%1$d</xliff:g> videos</string>
+    <plurals name="playlist_video_count">
+        <item quantity="one"><xliff:g id="count" example="12">%1$d</xliff:g> video</item>
+        <item quantity="other"><xliff:g id="count" example="12">%1$d</xliff:g> videos</item>
+    </plurals>
 
     <!-- Section header: watch history management in settings. Noun -->
     <string name="title_history">History</string>
@@ -248,7 +266,10 @@
     <!-- Settings hub row: data and backup category. Noun phrase with ampersand -->
     <string name="settings_data">Data &amp; Backup</string>
     <!-- Settings hub summary: how many SponsorBlock categories are blocked out of the total. %1$d = blocked count, %2$d = total -->
-    <string name="settings_sponsorblock_summary">%1$d of %2$d blocked</string>
+    <plurals name="settings_sponsorblock_summary">
+        <item quantity="one">%1$d of %2$d blocked</item>
+        <item quantity="other">%1$d of %2$d blocked</item>
+    </plurals>
     <!-- Recommendation preset name when the user has manually adjusted the dials. Adjective -->
     <string name="preset_custom">Custom</string>
 
@@ -264,9 +285,7 @@
     <string name="playback_unhook_pitch">Unhook pitch (may distort)</string>
     <!-- Player controls: button that resets tempo and pitch to default. Verb -->
     <!-- Player controls: content description for the lock-controls button shown in fullscreen. Verb phrase -->
-    <string name="lock_controls">Lock controls</string>
     <!-- Player controls: content description for the unlock button shown while controls are locked. Verb phrase -->
-    <string name="unlock_controls">Unlock controls</string>
 
     <!-- Player section header in general settings. Noun -->
     <string name="label_player">Player</string>
@@ -281,7 +300,6 @@
 
     <!-- Casting the video to a TV through the MA Cast app. -->
     <!-- Content description for the cast button in the player controls -->
-    <string name="cast_to_tv">Cast to a television</string>
     <!-- Shown where the video was, once it is playing on the TV instead. %1$s is the TV's name -->
     <string name="cast_playing_on">Playing on %1$s</string>
     <!-- Button under the "playing on TV" panel -->

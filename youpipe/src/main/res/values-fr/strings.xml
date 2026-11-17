@@ -12,7 +12,11 @@
     <string name="recommendation_reason">Raison : <xliff:g id="reason" example="watched similar">%1$s</xliff:g></string>
     <string name="label_system_default">Paramètres par défaut du système</string>
     <string name="action_block_channel">Bloquer la chaîne</string>
-    <string name="time_ago_minutes">Il y a <xliff:g id="minutes" example="5">%1$d</xliff:g> minutes</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="one">Il y a <xliff:g id="minutes" example="5">%1$d</xliff:g> minutes</item>
+        <item quantity="many">Il y a <xliff:g id="minutes" example="5">%1$d</xliff:g> minutes</item>
+        <item quantity="other">Il y a <xliff:g id="minutes" example="5">%1$d</xliff:g> minutes</item>
+    </plurals>
     <string name="count_m_format"><xliff:g id="number" example="1,2">%1$s</xliff:g> M</string>
     <string name="label_import_youtube">Importation depuis YouTube (Takeout)</string>
     <string name="label_dearrow">Activer DeArrow</string>
@@ -23,7 +27,11 @@
     <string name="label_select_subscriptions">Sélectionnez les abonnements :</string>
     <string name="label_sponsorblock">Catégories de SponsorBlock</string>
     <string name="count_b_format"><xliff:g id="number" example="3,4">%1$s</xliff:g> Md</string>
-    <string name="time_ago_days">Il y a <xliff:g id="days" example="2">%1$d</xliff:g> jours</string>
+    <plurals name="time_ago_days">
+        <item quantity="one">Il y a <xliff:g id="days" example="2">%1$d</xliff:g> jours</item>
+        <item quantity="many">Il y a <xliff:g id="days" example="2">%1$d</xliff:g> jours</item>
+        <item quantity="other">Il y a <xliff:g id="days" example="2">%1$d</xliff:g> jours</item>
+    </plurals>
     <string name="label_pinned">Épinglé</string>
     <string name="label_blocked_channels">Chaînes bloquées</string>
     <string name="action_pin">Épingler</string>
@@ -39,7 +47,11 @@
     <string name="label_min_duration">Durée minimale (secondes)</string>
     <string name="time_ago_just_now">À l\'instant</string>
     <string name="label_source_related">En lien avec votre historique</string>
-    <string name="time_ago_years">Il y a <xliff:g id="years" example="1">%1$d</xliff:g> ans</string>
+    <plurals name="time_ago_years">
+        <item quantity="one">Il y a <xliff:g id="years" example="1">%1$d</xliff:g> ans</item>
+        <item quantity="many">Il y a <xliff:g id="years" example="1">%1$d</xliff:g> ans</item>
+        <item quantity="other">Il y a <xliff:g id="years" example="1">%1$d</xliff:g> ans</item>
+    </plurals>
     <string name="label_rec_content_filters">Filtres de contenu</string>
     <string name="label_category_name">Nom de la catégorie</string>
     <string name="preset_balanced">Équilibré</string>
@@ -49,7 +61,11 @@
     <string name="label_channels">Chaînes :</string>
     <string name="title_subscriptions">Abonnements</string>
     <string name="action_subscribe">S\'abonner</string>
-    <string name="time_ago_months">Il y a <xliff:g id="months" example="6">%1$d</xliff:g> mois</string>
+    <plurals name="time_ago_months">
+        <item quantity="one">Il y a <xliff:g id="months" example="6">%1$d</xliff:g> mois</item>
+        <item quantity="many">Il y a <xliff:g id="months" example="6">%1$d</xliff:g> mois</item>
+        <item quantity="other">Il y a <xliff:g id="months" example="6">%1$d</xliff:g> mois</item>
+    </plurals>
     <string name="action_pin_channel">Épingler la chaîne</string>
     <string name="label_rec_sources">Sources</string>
     <string name="label_source_trending">Tendances</string>
@@ -72,7 +88,11 @@
     <string name="video_info_format"><xliff:g id="channel" example="Linus Tech Tips">%1$s</xliff:g> | <xliff:g id="views" example="1,2 M">%2$s</xliff:g> vues | <xliff:g id="time" example="Il y a 2 jours">%3$s</xliff:g></string>
     <string name="label_youtube_content">Contenu YouTube</string>
     <string name="label_no_muted_keywords">Aucun mot-clé masqué</string>
-    <string name="time_ago_hours">Il y a <xliff:g id="hours" example="3">%1$d</xliff:g> heures</string>
+    <plurals name="time_ago_hours">
+        <item quantity="one">Il y a <xliff:g id="hours" example="3">%1$d</xliff:g> heures</item>
+        <item quantity="many">Il y a <xliff:g id="hours" example="3">%1$d</xliff:g> heures</item>
+        <item quantity="other">Il y a <xliff:g id="hours" example="3">%1$d</xliff:g> heures</item>
+    </plurals>
     <string name="action_update">Mettre à jour</string>
     <string name="label_hide_shorts">Masquer les Shorts</string>
     <string name="action_more_like_this">Autres articles similaires</string>
@@ -102,17 +122,23 @@
     <string name="action_delete_playlist">Supprimer la playlist</string>
     <string name="playlist_empty">Aucune vidéo dans cette playlist pour le moment</string>
     <string name="adding_to_watch_later">Ajout à « À regarder plus tard »…</string>
-    <string name="playlist_video_count"><xliff:g id="count" example="12">%1$d</xliff:g> vidéos</string>
+    <plurals name="playlist_video_count">
+        <item quantity="one"><xliff:g id="count" example="12">%1$d</xliff:g> vidéos</item>
+        <item quantity="many"><xliff:g id="count" example="12">%1$d</xliff:g> vidéos</item>
+        <item quantity="other"><xliff:g id="count" example="12">%1$d</xliff:g> vidéos</item>
+    </plurals>
     <string name="settings_general_content">Général et contenu</string>
     <string name="settings_sponsorblock">SponsorBlock</string>
     <string name="settings_data">Données et sauvegarde</string>
-    <string name="settings_sponsorblock_summary">%1$d sur %2$d bloqués</string>
+    <plurals name="settings_sponsorblock_summary">
+        <item quantity="one">%1$d sur %2$d bloqués</item>
+        <item quantity="many">%1$d sur %2$d bloqués</item>
+        <item quantity="other">%1$d sur %2$d bloqués</item>
+    </plurals>
     <string name="preset_custom">Personnalisé</string>
     <string name="playback_tempo">Vitesse</string>
     <string name="playback_pitch">Hauteur</string>
     <string name="playback_tempo_value"><xliff:g id="value" example="1.5">%1$s</xliff:g>×</string>
     <string name="playback_pitch_value"><xliff:g id="value" example="100">%1$d</xliff:g> %%</string>
     <string name="playback_unhook_pitch">Dissocier la hauteur (peut entraîner des distorsions)</string>
-    <string name="lock_controls">Verrouiller les commandes</string>
-    <string name="unlock_controls">Déverrouiller les commandes</string>
 </resources>

@@ -9,11 +9,46 @@
     <string name="recommendation_reason">السبب: <xliff:g id="reason" example="watched similar">%1$s</xliff:g></string>
     <string name="label_recommendations">التوصيات</string>
     <string name="time_ago_just_now">فقط الآن</string>
-    <string name="time_ago_minutes">قبل <xliff:g id="minutes" example="5">%1$d</xliff:g> دقائق</string>
-    <string name="time_ago_hours">قبل <xliff:g id="hours" example="3">%1$d</xliff:g> ساعات</string>
-    <string name="time_ago_days">قبل <xliff:g id="days" example="2">%1$d</xliff:g> أيام</string>
-    <string name="time_ago_months">قبل <xliff:g id="months" example="6">%1$d</xliff:g> أشهر</string>
-    <string name="time_ago_years">قبل <xliff:g id="years" example="1">%1$d</xliff:g> سنوات</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="zero">قبل <xliff:g id="minutes" example="5">%1$d</xliff:g> دقائق</item>
+        <item quantity="one">قبل <xliff:g id="minutes" example="5">%1$d</xliff:g> دقائق</item>
+        <item quantity="two">قبل <xliff:g id="minutes" example="5">%1$d</xliff:g> دقائق</item>
+        <item quantity="few">قبل <xliff:g id="minutes" example="5">%1$d</xliff:g> دقائق</item>
+        <item quantity="many">قبل <xliff:g id="minutes" example="5">%1$d</xliff:g> دقائق</item>
+        <item quantity="other">قبل <xliff:g id="minutes" example="5">%1$d</xliff:g> دقائق</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="zero">قبل <xliff:g id="hours" example="3">%1$d</xliff:g> ساعات</item>
+        <item quantity="one">قبل <xliff:g id="hours" example="3">%1$d</xliff:g> ساعات</item>
+        <item quantity="two">قبل <xliff:g id="hours" example="3">%1$d</xliff:g> ساعات</item>
+        <item quantity="few">قبل <xliff:g id="hours" example="3">%1$d</xliff:g> ساعات</item>
+        <item quantity="many">قبل <xliff:g id="hours" example="3">%1$d</xliff:g> ساعات</item>
+        <item quantity="other">قبل <xliff:g id="hours" example="3">%1$d</xliff:g> ساعات</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="zero">قبل <xliff:g id="days" example="2">%1$d</xliff:g> أيام</item>
+        <item quantity="one">قبل <xliff:g id="days" example="2">%1$d</xliff:g> أيام</item>
+        <item quantity="two">قبل <xliff:g id="days" example="2">%1$d</xliff:g> أيام</item>
+        <item quantity="few">قبل <xliff:g id="days" example="2">%1$d</xliff:g> أيام</item>
+        <item quantity="many">قبل <xliff:g id="days" example="2">%1$d</xliff:g> أيام</item>
+        <item quantity="other">قبل <xliff:g id="days" example="2">%1$d</xliff:g> أيام</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="zero">قبل <xliff:g id="months" example="6">%1$d</xliff:g> أشهر</item>
+        <item quantity="one">قبل <xliff:g id="months" example="6">%1$d</xliff:g> أشهر</item>
+        <item quantity="two">قبل <xliff:g id="months" example="6">%1$d</xliff:g> أشهر</item>
+        <item quantity="few">قبل <xliff:g id="months" example="6">%1$d</xliff:g> أشهر</item>
+        <item quantity="many">قبل <xliff:g id="months" example="6">%1$d</xliff:g> أشهر</item>
+        <item quantity="other">قبل <xliff:g id="months" example="6">%1$d</xliff:g> أشهر</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="zero">قبل <xliff:g id="years" example="1">%1$d</xliff:g> سنوات</item>
+        <item quantity="one">قبل <xliff:g id="years" example="1">%1$d</xliff:g> سنوات</item>
+        <item quantity="two">قبل <xliff:g id="years" example="1">%1$d</xliff:g> سنوات</item>
+        <item quantity="few">قبل <xliff:g id="years" example="1">%1$d</xliff:g> سنوات</item>
+        <item quantity="many">قبل <xliff:g id="years" example="1">%1$d</xliff:g> سنوات</item>
+        <item quantity="other">قبل <xliff:g id="years" example="1">%1$d</xliff:g> سنوات</item>
+    </plurals>
     <string name="count_k_format"><xliff:g id="number" example="12.3">%1$s</xliff:g>ألف</string>
     <string name="count_m_format"><xliff:g id="number" example="1.2">%1$s</xliff:g>مليون</string>
     <string name="count_b_format"><xliff:g id="number" example="3.4">%1$s</xliff:g>مليار</string>
@@ -53,7 +88,14 @@
     <string name="action_delete_playlist">حذف قائمة التشغيل</string>
     <string name="playlist_empty">لا مقاطع فيديو في قائمة التشغيل هذه بعد</string>
     <string name="adding_to_watch_later">جارٍ الإضافة إلى المشاهدة لاحقًا…</string>
-    <string name="playlist_video_count"><xliff:g id="count" example="12">%1$d</xliff:g> فيديو</string>
+    <plurals name="playlist_video_count">
+        <item quantity="zero"><xliff:g id="count" example="12">%1$d</xliff:g> فيديو</item>
+        <item quantity="one"><xliff:g id="count" example="12">%1$d</xliff:g> فيديو</item>
+        <item quantity="two"><xliff:g id="count" example="12">%1$d</xliff:g> فيديو</item>
+        <item quantity="few"><xliff:g id="count" example="12">%1$d</xliff:g> فيديو</item>
+        <item quantity="many"><xliff:g id="count" example="12">%1$d</xliff:g> فيديو</item>
+        <item quantity="other"><xliff:g id="count" example="12">%1$d</xliff:g> فيديو</item>
+    </plurals>
     <string name="title_history">السجل</string>
     <string name="selected_count">تم تحديد <xliff:g id="count" example="3">%1$s</xliff:g></string>
     <string name="are_you_sure_you_want_to_clear_all_watch">هل أنت متأكد أنك تريد مسح سجل المشاهدة بالكامل؟</string>

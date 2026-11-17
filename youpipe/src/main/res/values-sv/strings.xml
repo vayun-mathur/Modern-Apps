@@ -9,11 +9,26 @@
     <string name="recommendation_reason">Varför: <xliff:g id="reason" example="watched similar">%1$s</xliff:g></string>
     <string name="label_recommendations">Rekommendationer</string>
     <string name="time_ago_just_now">Just nu</string>
-    <string name="time_ago_minutes">för <xliff:g id="minutes" example="5">%1$d</xliff:g> minuter sedan</string>
-    <string name="time_ago_hours">för <xliff:g id="hours" example="3">%1$d</xliff:g> timmar sedan</string>
-    <string name="time_ago_days">för <xliff:g id="days" example="2">%1$d</xliff:g> dagar sedan</string>
-    <string name="time_ago_months">för <xliff:g id="months" example="6">%1$d</xliff:g> månader sedan</string>
-    <string name="time_ago_years">för <xliff:g id="years" example="1">%1$d</xliff:g> år sedan</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="one">för <xliff:g id="minutes" example="5">%1$d</xliff:g> minuter sedan</item>
+        <item quantity="other">för <xliff:g id="minutes" example="5">%1$d</xliff:g> minuter sedan</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="one">för <xliff:g id="hours" example="3">%1$d</xliff:g> timmar sedan</item>
+        <item quantity="other">för <xliff:g id="hours" example="3">%1$d</xliff:g> timmar sedan</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="one">för <xliff:g id="days" example="2">%1$d</xliff:g> dagar sedan</item>
+        <item quantity="other">för <xliff:g id="days" example="2">%1$d</xliff:g> dagar sedan</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="one">för <xliff:g id="months" example="6">%1$d</xliff:g> månader sedan</item>
+        <item quantity="other">för <xliff:g id="months" example="6">%1$d</xliff:g> månader sedan</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="one">för <xliff:g id="years" example="1">%1$d</xliff:g> år sedan</item>
+        <item quantity="other">för <xliff:g id="years" example="1">%1$d</xliff:g> år sedan</item>
+    </plurals>
     <string name="count_k_format"><xliff:g id="number" example="12.3">%1$s</xliff:g>t</string>
     <string name="count_m_format"><xliff:g id="number" example="1.2">%1$s</xliff:g>mn</string>
     <string name="count_b_format"><xliff:g id="number" example="3.4">%1$s</xliff:g>mdr</string>
@@ -54,7 +69,10 @@
     <string name="action_delete_playlist">Ta bort spellista</string>
     <string name="playlist_empty">Det finns inga videor i den här spellistan än</string>
     <string name="adding_to_watch_later">Lägger till i Titta senare …</string>
-    <string name="playlist_video_count"><xliff:g id="count" example="12">%1$d</xliff:g> videor</string>
+    <plurals name="playlist_video_count">
+        <item quantity="one"><xliff:g id="count" example="12">%1$d</xliff:g> videor</item>
+        <item quantity="other"><xliff:g id="count" example="12">%1$d</xliff:g> videor</item>
+    </plurals>
     <string name="title_history">Historik</string>
     <string name="selected_count"><xliff:g id="count" example="3">%1$s</xliff:g> valda</string>
     <string name="clear_history">Rensa historik</string>
@@ -111,21 +129,21 @@
     <string name="settings_general_content">Allmänt och innehåll</string>
     <string name="settings_sponsorblock">SponsorBlock</string>
     <string name="settings_data">Data och säkerhetskopiering</string>
-    <string name="settings_sponsorblock_summary">%1$d av %2$d blockerade</string>
+    <plurals name="settings_sponsorblock_summary">
+        <item quantity="one">%1$d av %2$d blockerade</item>
+        <item quantity="other">%1$d av %2$d blockerade</item>
+    </plurals>
     <string name="preset_custom">Anpassat</string>
     <string name="playback_tempo">Tempo</string>
     <string name="playback_pitch">Tonhöjd</string>
     <string name="playback_tempo_value"><xliff:g id="value" example="1.5">%1$s</xliff:g>x</string>
     <string name="playback_pitch_value"><xliff:g id="value" example="100">%1$d</xliff:g> %%</string>
     <string name="playback_unhook_pitch">Frikoppla tonhöjden (kan förvränga ljudet)</string>
-    <string name="lock_controls">Lås reglagen</string>
-    <string name="unlock_controls">Lås upp reglagen</string>
     <string name="label_player">Spelare</string>
     <string name="label_keep_controls_visible">Visa spelarreglagen hela tiden</string>
     <string name="label_keep_controls_visible_description">Reglagen visas på skärmen i stället för att döljas efter två sekunder. Praktiskt för tillgängligheten.</string>
     <string name="label_notification_style_progress">Förloppsindikator i aviseringsstil</string>
     <string name="label_notification_style_progress_description">Ersätt sökreglaget med en smal indikator som reglagen i aviseringen. Den ser olika ut vid uppspelning och paus.</string>
-    <string name="cast_to_tv">Casta till en tv</string>
     <string name="cast_playing_on">Spelas upp på %1$s</string>
     <string name="cast_stop">Stoppa castning</string>
     <string name="cast_install_prompt">MA Cast är inte installerat. Appens butikssida öppnas så att du kan installera den.</string>

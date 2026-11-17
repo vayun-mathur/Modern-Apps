@@ -17,11 +17,21 @@
     <string name="label_channels">频道：</string>
     <string name="video_info_format"><xliff:g id="channel" example="Linus Tech Tips">%1$s</xliff:g> | <xliff:g id="views" example="1.2M">%2$s</xliff:g> 次观看 | <xliff:g id="time" example="2 days ago">%3$s</xliff:g></string>
     <string name="time_ago_just_now">刚刚</string>
-    <string name="time_ago_minutes"><xliff:g id="minutes" example="5">%1$d</xliff:g> 分钟前</string>
-    <string name="time_ago_hours"><xliff:g id="hours" example="3">%1$d</xliff:g> 小时前</string>
-    <string name="time_ago_days"><xliff:g id="days" example="2">%1$d</xliff:g> 天前</string>
-    <string name="time_ago_months"><xliff:g id="months" example="6">%1$d</xliff:g> 个月前</string>
-    <string name="time_ago_years"><xliff:g id="years" example="1">%1$d</xliff:g> 年前</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> 分钟前</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="other"><xliff:g id="hours" example="3">%1$d</xliff:g> 小时前</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="other"><xliff:g id="days" example="2">%1$d</xliff:g> 天前</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="other"><xliff:g id="months" example="6">%1$d</xliff:g> 个月前</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="other"><xliff:g id="years" example="1">%1$d</xliff:g> 年前</item>
+    </plurals>
     <string name="count_k_format"><xliff:g id="number" example="12.3">%1$s</xliff:g>K</string>
     <string name="count_m_format"><xliff:g id="number" example="1.2">%1$s</xliff:g>M</string>
     <string name="count_b_format"><xliff:g id="number" example="3.4">%1$s</xliff:g>B</string>
@@ -102,19 +112,21 @@
     <string name="action_delete_playlist">删除播放列表</string>
     <string name="playlist_empty">此播放列表中尚无视频</string>
     <string name="adding_to_watch_later">正在添加到稍后观看…</string>
-    <string name="playlist_video_count"><xliff:g id="count" example="12">%1$d</xliff:g> 个视频</string>
+    <plurals name="playlist_video_count">
+        <item quantity="other"><xliff:g id="count" example="12">%1$d</xliff:g> 个视频</item>
+    </plurals>
     <string name="settings_general_content">常规和内容</string>
     <string name="settings_sponsorblock">SponsorBlock</string>
     <string name="settings_data">数据和备份</string>
-    <string name="settings_sponsorblock_summary">已屏蔽 %1$d / %2$d</string>
+    <plurals name="settings_sponsorblock_summary">
+        <item quantity="other">已屏蔽 %1$d / %2$d</item>
+    </plurals>
     <string name="preset_custom">自定义</string>
     <string name="playback_tempo_value"><xliff:g id="value" example="1.5">%1$s</xliff:g>x</string>
     <string name="playback_pitch_value"><xliff:g id="value" example="100">%1$d</xliff:g>%%</string>
     <string name="playback_tempo">速度</string>
     <string name="playback_pitch">音高</string>
     <string name="playback_unhook_pitch">解除音高锁定（可能导致失真）</string>
-    <string name="lock_controls">锁定控制</string>
-    <string name="unlock_controls">解锁控制</string>
     <string name="video_stat_paid_format">付费 | <xliff:g id="time" example="3 days ago">%1$s</xliff:g></string>
     <string name="video_info_paid_format"><xliff:g id="channel" example="Linus Tech Tips">%1$s</xliff:g> | 付费 | <xliff:g id="time" example="2 days ago">%2$s</xliff:g></string>
     <string name="label_hide_paid">隐藏付费视频</string>
@@ -123,7 +135,6 @@
     <string name="label_keep_controls_visible_description">控制按钮将始终显示在屏幕上，而不是在 2 秒后隐藏。这对无障碍功能很有用。</string>
     <string name="playback_error">播放意外停止。请重试。</string>
     <string name="restore_unsupported_format">不支持此备份文件格式。</string>
-    <string name="cast_to_tv">投屏到电视</string>
     <string name="cast_playing_on">正在 %1$s 上播放</string>
     <string name="cast_stop">停止投屏</string>
     <string name="cast_install_prompt">未安装 MA Cast。请打开其列表以便您安装。</string>

@@ -4,8 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.youpipe.util.SearchResultRow
-import com.vayunmathur.youpipe.util.SponsorSegment
+import com.vayunmathur.youpipe.platform.SearchResultRow
+import com.vayunmathur.youpipe.network.SponsorSegment
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import org.junit.Rule

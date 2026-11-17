@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util.sabr
+package com.vayunmathur.youpipe.network.sabr
 
 import android.app.Application
 import android.content.Context

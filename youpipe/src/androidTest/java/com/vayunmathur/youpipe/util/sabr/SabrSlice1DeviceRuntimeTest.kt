@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util.sabr
+package com.vayunmathur.youpipe.network.sabr
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry

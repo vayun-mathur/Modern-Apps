@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
 import com.vayunmathur.youpipe.ui.ChannelInfo
 import com.vayunmathur.youpipe.ui.VideoInfo
@@ -6,6 +6,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import com.vayunmathur.youpipe.network.DeArrowBranding
+import com.vayunmathur.youpipe.network.DeArrowThumbnail
+import com.vayunmathur.youpipe.network.DeArrowTitle
+import com.vayunmathur.youpipe.network.SponsorSegment
+import com.vayunmathur.youpipe.network.trustedThumbnailUrl
+import com.vayunmathur.youpipe.network.trustedTitle
 
 /**
  * Slice 2/3 (w5): JVM-pure coverage of the A-L slice's state holders —

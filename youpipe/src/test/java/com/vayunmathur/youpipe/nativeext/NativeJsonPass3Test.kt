@@ -7,6 +7,19 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
+import com.vayunmathur.youpipe.network.CommentsPage
+import com.vayunmathur.youpipe.network.ItemsPage
+import com.vayunmathur.youpipe.network.NativeExtractor
+import com.vayunmathur.youpipe.network.NativeExtractorException
+import com.vayunmathur.youpipe.network.PlaylistInfo
+import com.vayunmathur.youpipe.network.SearchItem
+import com.vayunmathur.youpipe.network.SearchResult
+import com.vayunmathur.youpipe.network.StreamInfo
+import com.vayunmathur.youpipe.network.StreamKind
+import com.vayunmathur.youpipe.network.AudioStream
+import com.vayunmathur.youpipe.network.ChannelInfo
+import com.vayunmathur.youpipe.network.VideoStream
+import com.vayunmathur.youpipe.network.UNKNOWN_COUNT
 
 /** Slice 2/3 pass 3: extractor JSON models — snake_case payloads round-trip with every field intact. */
 class NativeJsonPass3Test {

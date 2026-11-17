@@ -20,14 +20,14 @@ import com.vayunmathur.library.ui.RouteTab
 import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.tabRoute
-import com.vayunmathur.youpipe.util.SearchActions
-import com.vayunmathur.youpipe.util.SearchUiState
-import com.vayunmathur.youpipe.util.SubscriptionFeedActions
-import com.vayunmathur.youpipe.util.SubscriptionFeedUiState
-import com.vayunmathur.youpipe.util.VideoDetailActions
-import com.vayunmathur.youpipe.util.VideoDetailUiState
-import com.vayunmathur.youpipe.util.VideoRowState
+import com.vayunmathur.youpipe.platform.tabRoute
+import com.vayunmathur.youpipe.platform.SearchActions
+import com.vayunmathur.youpipe.platform.SearchUiState
+import com.vayunmathur.youpipe.platform.SubscriptionFeedActions
+import com.vayunmathur.youpipe.platform.SubscriptionFeedUiState
+import com.vayunmathur.youpipe.platform.VideoDetailActions
+import com.vayunmathur.youpipe.platform.VideoDetailUiState
+import com.vayunmathur.youpipe.platform.VideoRowState
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"

@@ -1,3 +1,4 @@
+// PACKAGE STRUCTURE EXCEPTION (JNI)
 package com.vayunmathur.youpipe.nativeext
 
 /**

@@ -28,8 +28,8 @@ import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.library.util.sharedContent
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.YouPipeViewModel
-import com.vayunmathur.youpipe.util.decodeHtml
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
+import com.vayunmathur.youpipe.network.decodeHtml
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

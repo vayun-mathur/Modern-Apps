@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -17,6 +17,16 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import com.vayunmathur.youpipe.network.MyDownloader
+import com.vayunmathur.youpipe.network.SponsorSegment
+import com.vayunmathur.youpipe.network.channelIDtoURL
+import com.vayunmathur.youpipe.network.channelURLtoID
+import com.vayunmathur.youpipe.network.decodeHtml
+import com.vayunmathur.youpipe.network.decodeVideoID
+import com.vayunmathur.youpipe.network.encodeVideoID
+import com.vayunmathur.youpipe.network.parseSharedVideoId
+import com.vayunmathur.youpipe.network.videoIDtoURL
+import com.vayunmathur.youpipe.network.videoURLtoID
 
 @RunWith(RobolectricTestRunner::class)
 class ExtractorPureUtilPass3Test {

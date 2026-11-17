@@ -24,7 +24,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 
 /** Dialog to create a new playlist. Disabled while blank or a duplicate name. */
 @Composable

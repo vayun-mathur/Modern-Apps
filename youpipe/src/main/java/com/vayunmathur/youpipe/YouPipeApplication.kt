@@ -7,9 +7,9 @@ import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.youpipe.data.RemoteImageFetchers
-import com.vayunmathur.youpipe.util.MyDownloader
-import com.vayunmathur.youpipe.util.sabr.LocalDomPoTokenProvider
-import com.vayunmathur.youpipe.util.youtubeLocalization
+import com.vayunmathur.youpipe.network.MyDownloader
+import com.vayunmathur.youpipe.network.sabr.LocalDomPoTokenProvider
+import com.vayunmathur.youpipe.platform.youtubeLocalization
 import org.schabi.newpipe.extractor.NewPipe
 
 /** You Pipe Application: a application implementation for you pipe application. */

@@ -7,7 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.youpipe.util.VideoRowState
+import com.vayunmathur.youpipe.platform.VideoRowState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule

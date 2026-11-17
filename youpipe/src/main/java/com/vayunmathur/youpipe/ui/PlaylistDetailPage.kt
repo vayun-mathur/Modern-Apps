@@ -49,8 +49,8 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.YouPipePlaylistOps
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipePlaylistOps
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 
 /**
  * The videos inside one playlist. Items can be reordered by drag handle (persisted via

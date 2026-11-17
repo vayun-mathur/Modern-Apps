@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.tv
+package com.vayunmathur.youpipe.ui.tv
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
@@ -28,7 +28,7 @@ import com.vayunmathur.youpipe.ui.SubtitleTrack
 import com.vayunmathur.youpipe.ui.VideoChapter
 import com.vayunmathur.youpipe.ui.VideoInfo
 import com.vayunmathur.youpipe.ui.VideoStream
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

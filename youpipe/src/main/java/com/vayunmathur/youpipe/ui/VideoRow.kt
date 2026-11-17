@@ -40,9 +40,9 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.VideoRowState
-import com.vayunmathur.youpipe.util.YouPipeViewModel
-import com.vayunmathur.youpipe.util.decodeHtml
+import com.vayunmathur.youpipe.platform.VideoRowState
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
+import com.vayunmathur.youpipe.network.decodeHtml
 
 /**
  * Resolve [videoInfo] into the display state [VideoRow] draws.
@@ -81,65 +81,6 @@ fun videoRowState(
     percentWatched = percentWatched,
     deArrowThumbnail = deArrowThumbnailURL != null,
 )
-
-/**
- * ViewModel-backed binder in front of [VideoRow], for the screens that still hand a whole
- * ViewModel down to their list rows.
- */
-@Composable
-fun VideoItem(
-    backStack: NavBackStack<Route>,
-    youPipeViewModel: YouPipeViewModel,
-    videoInfo: VideoInfo,
-    showAuthor: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    backupOnClick: Boolean = true,
-    trailingContent: @Composable (() -> Unit)? = null,
-    reason: String? = null,
-    overflowActions: List<Pair<String, () -> Unit>> = emptyList(),
-    /** Forwarded to [VideoRow]; see the parameter there for why it is per call site. */
-    titleSharedKey: Any? = null,
-    /** Stack text under the thumbnail for grid cells on expanded widths. */
-    vertical: Boolean = false,
-) {
-    val context = LocalContext.current
-    val historyFlow = remember(videoInfo.videoID) { youPipeViewModel.historyById(videoInfo.videoID) }
-    val historyItem by historyFlow.collectAsState(initial = null)
-    val timeWatched = historyItem?.progress ?: 0
-    val percentWatched = if (videoInfo.duration > 0) timeWatched.toDouble() / videoInfo.duration.toDouble() else 0.0
-
-    val deArrowEnabled by youPipeViewModel.deArrowEnabled.collectAsState()
-    val deArrowCache by youPipeViewModel.deArrowCache.collectAsState()
-    val deArrowData = if (deArrowEnabled) deArrowCache[videoInfo.videoID] else null
-
-    val itemModifier = if (onClick != null) {
-        modifier.clickable(onClick = onClick)
-    } else if(backupOnClick) {
-        modifier.invisibleClickable {
-            backStack.add(Route.VideoPage(videoInfo.videoID))
-        }
-    } else {
-        modifier
-    }
-
-    VideoRow(
-        row = videoRowState(
-            context = context,
-            videoInfo = videoInfo,
-            showAuthor = showAuthor,
-            reason = reason,
-            percentWatched = percentWatched.toFloat(),
-            deArrowTitle = deArrowData?.title,
-            deArrowThumbnailURL = deArrowData?.thumbnailUrl,
-        ),
-        modifier = itemModifier,
-        trailingContent = trailingContent,
-        overflowActions = overflowActions,
-        titleSharedKey = titleSharedKey,
-        vertical = vertical,
-    )
-}
 
 /**
  * One video row: thumbnail with a resume bar on the left, title and stats on the right.

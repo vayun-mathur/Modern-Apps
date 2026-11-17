@@ -34,7 +34,7 @@ import com.vayunmathur.library.image.ImageRequest
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -40,7 +40,7 @@ import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.sdk.cast.CastClient
 import com.vayunmathur.sdk.cast.CastContract
 import com.vayunmathur.youpipe.platform.CastPlayback
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

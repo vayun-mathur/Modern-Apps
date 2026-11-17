@@ -49,8 +49,8 @@ import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.youpipe.R
-import com.vayunmathur.youpipe.util.VideoDetailActions
-import com.vayunmathur.youpipe.util.VideoDetailUiState
+import com.vayunmathur.youpipe.platform.VideoDetailActions
+import com.vayunmathur.youpipe.platform.VideoDetailUiState
 
 @Composable
 fun VideoDetails(

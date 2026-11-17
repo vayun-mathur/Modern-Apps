@@ -23,7 +23,7 @@ import com.vayunmathur.youpipe.data.Playlist
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionRepository
 import com.vayunmathur.youpipe.ui.dialogs.AddToPlaylist
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

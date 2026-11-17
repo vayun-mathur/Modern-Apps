@@ -1,8 +1,12 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.youpipe.network.brandingFromShard
+import com.vayunmathur.youpipe.network.sbShardPrefix
+import com.vayunmathur.youpipe.network.segmentsFromShard
+import com.vayunmathur.youpipe.network.trustedTitle
 
 /** Static SponsorBlock/DeArrow shard parsing (same shapes as the server's sb_shards.rs). */
 class SbShardTest {

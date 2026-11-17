@@ -11,11 +11,11 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
-import com.vayunmathur.youpipe.util.decodeVideoID
-import com.vayunmathur.youpipe.util.encodeVideoID
-import com.vayunmathur.youpipe.util.parseSharedVideoId
-import com.vayunmathur.youpipe.util.videoIDtoURL
-import com.vayunmathur.youpipe.util.videoURLtoID
+import com.vayunmathur.youpipe.network.decodeVideoID
+import com.vayunmathur.youpipe.network.encodeVideoID
+import com.vayunmathur.youpipe.network.parseSharedVideoId
+import com.vayunmathur.youpipe.network.videoIDtoURL
+import com.vayunmathur.youpipe.network.videoURLtoID
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -28,6 +28,8 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import com.vayunmathur.youpipe.ui.findActivity
+import com.vayunmathur.youpipe.ui.rememberIsInPipMode
 
 /**
  * Slice 3/3 second pass: [Route] serialization (the persisted back stack),

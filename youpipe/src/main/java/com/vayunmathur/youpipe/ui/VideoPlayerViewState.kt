@@ -9,6 +9,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -25,9 +26,9 @@ import com.vayunmathur.sdk.cast.CastPickerContract
 import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.platform.CastPlayback
-import com.vayunmathur.youpipe.findActivity
-import com.vayunmathur.youpipe.rememberIsInPipMode
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.ui.findActivity
+import com.vayunmathur.youpipe.ui.rememberIsInPipMode
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -47,7 +48,7 @@ internal class VideoPlayerViewState(
     isSpeedMenuExpandedState: androidx.compose.runtime.MutableState<Boolean>,
     isLockedState: androidx.compose.runtime.MutableState<Boolean>,
     isControlsVisibleState: androidx.compose.runtime.MutableState<Boolean>,
-    controlsInteractionTickState: androidx.compose.runtime.MutableState<Int>,
+    controlsInteractionTickState: androidx.compose.runtime.MutableIntState,
     hoverSource: MutableInteractionSource,
     val isHovered: Boolean,
     val isPipMode: Boolean,
@@ -95,7 +96,7 @@ internal fun rememberVideoPlayerViewState(
     var isSpeedMenuExpanded by isSpeedMenuExpandedState
     val isControlsVisibleState = remember { mutableStateOf(true) }
     var isControlsVisible by isControlsVisibleState
-    val controlsInteractionTickState = remember { mutableStateOf(0) }
+    val controlsInteractionTickState = remember { mutableIntStateOf(0) }
     var controlsInteractionTick by controlsInteractionTickState
     val keepControlsVisible by ypvm.keepPlayerControlsVisible.collectAsState()
 

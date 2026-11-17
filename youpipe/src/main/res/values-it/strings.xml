@@ -17,11 +17,31 @@
     <string name="label_channels">Canali:</string>
     <string name="video_info_format"><xliff:g id="channel" example="Linus Tech Tips">%1$s</xliff:g> | <xliff:g id="views" example="1.2M">%2$s</xliff:g> visualizzazioni | <xliff:g id="time" example="2 days ago">%3$s</xliff:g></string>
     <string name="time_ago_just_now">In questo momento</string>
-    <string name="time_ago_minutes"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</string>
-    <string name="time_ago_hours"><xliff:g id="hours" example="3">%1$d</xliff:g> ore fa</string>
-    <string name="time_ago_days"><xliff:g id="days" example="2">%1$d</xliff:g> giorni fa</string>
-    <string name="time_ago_months"><xliff:g id="months" example="6">%1$d</xliff:g> mesi fa</string>
-    <string name="time_ago_years"><xliff:g id="years" example="1">%1$d</xliff:g> anni fa</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="one"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</item>
+        <item quantity="many"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</item>
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="one"><xliff:g id="hours" example="3">%1$d</xliff:g> ore fa</item>
+        <item quantity="many"><xliff:g id="hours" example="3">%1$d</xliff:g> ore fa</item>
+        <item quantity="other"><xliff:g id="hours" example="3">%1$d</xliff:g> ore fa</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="one"><xliff:g id="days" example="2">%1$d</xliff:g> giorni fa</item>
+        <item quantity="many"><xliff:g id="days" example="2">%1$d</xliff:g> giorni fa</item>
+        <item quantity="other"><xliff:g id="days" example="2">%1$d</xliff:g> giorni fa</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="one"><xliff:g id="months" example="6">%1$d</xliff:g> mesi fa</item>
+        <item quantity="many"><xliff:g id="months" example="6">%1$d</xliff:g> mesi fa</item>
+        <item quantity="other"><xliff:g id="months" example="6">%1$d</xliff:g> mesi fa</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="one"><xliff:g id="years" example="1">%1$d</xliff:g> anni fa</item>
+        <item quantity="many"><xliff:g id="years" example="1">%1$d</xliff:g> anni fa</item>
+        <item quantity="other"><xliff:g id="years" example="1">%1$d</xliff:g> anni fa</item>
+    </plurals>
     <string name="count_k_format"><xliff:g id="number" example="12.3">%1$s</xliff:g>K</string>
     <string name="count_m_format"><xliff:g id="number" example="1.2">%1$s</xliff:g>Mln</string>
     <string name="count_b_format"><xliff:g id="number" example="3.4">%1$s</xliff:g>Mld</string>
@@ -99,14 +119,22 @@
     <string name="action_delete_playlist">Elimina playlist</string>
     <string name="playlist_empty">Nessun video presente in questa playlist</string>
     <string name="adding_to_watch_later">Aggiunta a Guarda più tardi…</string>
-    <string name="playlist_video_count"><xliff:g id="count" example="12">%1$d</xliff:g> video</string>
+    <plurals name="playlist_video_count">
+        <item quantity="one"><xliff:g id="count" example="12">%1$d</xliff:g> video</item>
+        <item quantity="many"><xliff:g id="count" example="12">%1$d</xliff:g> video</item>
+        <item quantity="other"><xliff:g id="count" example="12">%1$d</xliff:g> video</item>
+    </plurals>
     <string name="selected_count"><xliff:g id="count" example="3">%1$s</xliff:g> selezionati</string>
     <string name="clear_history">Cancella cronologia</string>
     <string name="are_you_sure_you_want_to_clear_all_watch">Sei sicuro di voler cancellare tutta la cronologia di visualizzazione?</string>
     <string name="settings_general_content">Generali e contenuti</string>
     <string name="settings_sponsorblock">SponsorBlock</string>
     <string name="settings_data">Dati e backup</string>
-    <string name="settings_sponsorblock_summary">%1$d di %2$d bloccati</string>
+    <plurals name="settings_sponsorblock_summary">
+        <item quantity="one">%1$d di %2$d bloccati</item>
+        <item quantity="many">%1$d di %2$d bloccati</item>
+        <item quantity="other">%1$d di %2$d bloccati</item>
+    </plurals>
     <string name="preset_custom">Personalizzato</string>
     <string name="video_stat_paid_format">Pagato | <xliff:g id="time" example="3 days ago">%1$s</xliff:g></string>
     <string name="video_info_paid_format"><xliff:g id="channel" example="Linus Tech Tips">%1$s</xliff:g> | Pagato | <xliff:g id="time" example="2 days ago">%2$s</xliff:g></string>
@@ -116,12 +144,9 @@
     <string name="playback_tempo_value"><xliff:g id="value" example="1.5">%1$s</xliff:g>x</string>
     <string name="playback_pitch_value"><xliff:g id="value" example="100">%1$d</xliff:g>%%</string>
     <string name="playback_unhook_pitch">Sgancia pitch (potrebbe distorcere)</string>
-    <string name="lock_controls">Blocca controlli</string>
-    <string name="unlock_controls">Sblocca controlli</string>
     <string name="label_player">Player</string>
     <string name="label_keep_controls_visible">Mantieni i controlli del player visibili</string>
     <string name="label_keep_controls_visible_description">I controlli rimangono visibili invece di nascondersi dopo 2 secondi. Utile per l\'accessibilità.</string>
-    <string name="cast_to_tv">Trasmetti ad una televisione</string>
     <string name="cast_playing_on">In riproduzione su %1$s</string>
     <string name="cast_stop">Interrompi trasmissione</string>
     <string name="cast_install_prompt">MA Cast non è installato. Apertura della pagina dello store per consentirne l\'installazione.</string>

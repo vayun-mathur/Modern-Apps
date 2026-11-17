@@ -17,11 +17,26 @@
     <string name="label_channels">Kanalid:</string>
     <string name="video_info_format"><xliff:g id="channel" example="Linus Tech Tips">%1$s</xliff:g> | <xliff:g id="views" example="1.2M">%2$s</xliff:g> vaatamist | <xliff:g id="time" example="2 päeva tagasi">%3$s</xliff:g></string>
     <string name="time_ago_just_now">Äsja</string>
-    <string name="time_ago_minutes"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti eest</string>
-    <string name="time_ago_hours"><xliff:g id="hours" example="3">%1$d</xliff:g> tunni eest</string>
-    <string name="time_ago_days"><xliff:g id="days" example="2">%1$d</xliff:g> päeva eest</string>
-    <string name="time_ago_months"><xliff:g id="months" example="6">%1$d</xliff:g> kuu eest</string>
-    <string name="time_ago_years"><xliff:g id="years" example="1">%1$d</xliff:g> aasta eest</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="one"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti eest</item>
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti eest</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="one"><xliff:g id="hours" example="3">%1$d</xliff:g> tunni eest</item>
+        <item quantity="other"><xliff:g id="hours" example="3">%1$d</xliff:g> tunni eest</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="one"><xliff:g id="days" example="2">%1$d</xliff:g> päeva eest</item>
+        <item quantity="other"><xliff:g id="days" example="2">%1$d</xliff:g> päeva eest</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="one"><xliff:g id="months" example="6">%1$d</xliff:g> kuu eest</item>
+        <item quantity="other"><xliff:g id="months" example="6">%1$d</xliff:g> kuu eest</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="one"><xliff:g id="years" example="1">%1$d</xliff:g> aasta eest</item>
+        <item quantity="other"><xliff:g id="years" example="1">%1$d</xliff:g> aasta eest</item>
+    </plurals>
     <string name="count_k_format"><xliff:g id="number" example="12.3">%1$s</xliff:g>K</string>
     <string name="count_m_format"><xliff:g id="number" example="1.2">%1$s</xliff:g>mln</string>
     <string name="count_b_format"><xliff:g id="number" example="3.4">%1$s</xliff:g>bln</string>
@@ -97,7 +112,10 @@
     <string name="action_delete_playlist">Kustuta esitusloend</string>
     <string name="playlist_empty">Selles esitusloendis pole veel ühtegi videot</string>
     <string name="adding_to_watch_later">Lisan hilisemaks vaatamiseks…</string>
-    <string name="playlist_video_count"><xliff:g id="count" example="12">%1$d</xliff:g> videot</string>
+    <plurals name="playlist_video_count">
+        <item quantity="one"><xliff:g id="count" example="12">%1$d</xliff:g> videot</item>
+        <item quantity="other"><xliff:g id="count" example="12">%1$d</xliff:g> videot</item>
+    </plurals>
     <string name="title_downloads">Allalaadimised</string>
     <string name="playlist_watch_later">Vaata hiljem</string>
     <string name="title_create_playlist">Koosta esitusloend</string>
@@ -106,22 +124,22 @@
     <string name="settings_general_content">Üldseadistused ja sisu</string>
     <string name="settings_sponsorblock">Sponsorite blokeerija</string>
     <string name="settings_data">Andmed ja varundus</string>
-    <string name="settings_sponsorblock_summary">%1$d / %2$d on blokeeritud</string>
+    <plurals name="settings_sponsorblock_summary">
+        <item quantity="one">%1$d / %2$d on blokeeritud</item>
+        <item quantity="other">%1$d / %2$d on blokeeritud</item>
+    </plurals>
     <string name="preset_custom">Sinu valitud</string>
     <string name="playback_tempo">Tempo</string>
     <string name="playback_pitch">Helikõrgus</string>
     <string name="playback_tempo_value"><xliff:g id="value" example="1.5">%1$s</xliff:g>x</string>
     <string name="playback_pitch_value"><xliff:g id="value" example="100">%1$d</xliff:g>%%</string>
     <string name="playback_unhook_pitch">Eralda helivaljus tempost (võib tekitada moonutusi)</string>
-    <string name="lock_controls">Lukusta juhtnupud</string>
-    <string name="unlock_controls">Eemalda juhtnuppude lukustus</string>
     <string name="video_stat_paid_format">Tasuline | <xliff:g id="time" example="3 päeva tagasi">%1$s</xliff:g></string>
     <string name="video_info_paid_format"><xliff:g id="channel" example="Linus Tech Tips">%1$s</xliff:g> | Tasuline | <xliff:g id="time" example="2 päeva tagasi">%2$s</xliff:g></string>
     <string name="label_hide_paid">Peida tasulised videod</string>
     <string name="label_player">Pleier</string>
     <string name="label_keep_controls_visible">Hoia pleieri juhtnupud nähtaval</string>
     <string name="label_keep_controls_visible_description">Selle asemel, et 2 sekundi möödumisel peita, jäävad juhtnupud nähtavaks. Sobib kasutuseks näiteks hõlbustuse mõttes.</string>
-    <string name="cast_to_tv">Edasta telerisse</string>
     <string name="cast_playing_on">Esitamisel teleris %1$s</string>
     <string name="cast_stop">Lõpeta edastus</string>
     <string name="cast_install_prompt">Ma Meediumilevi (MA Cast) rakendus pole paigaldatud. Ava tema vaade rakenduste poes ja paigalda ta.</string>

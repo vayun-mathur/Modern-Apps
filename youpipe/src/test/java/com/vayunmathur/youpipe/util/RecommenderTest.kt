@@ -1,4 +1,4 @@
-package com.vayunmathur.youpipe.util
+package com.vayunmathur.youpipe.platform
 
 import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.data.RecommendationPreferences
@@ -10,6 +10,20 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
+import com.vayunmathur.youpipe.domain.Candidate
+import com.vayunmathur.youpipe.domain.ChannelImpressionStat
+import com.vayunmathur.youpipe.domain.ChannelPref
+import com.vayunmathur.youpipe.domain.ContentFilters
+import com.vayunmathur.youpipe.domain.InterestProfile
+import com.vayunmathur.youpipe.domain.RecSource
+import com.vayunmathur.youpipe.domain.RecommendationWeights
+import com.vayunmathur.youpipe.domain.buildInterestProfile
+import com.vayunmathur.youpipe.domain.channelNameMatches
+import com.vayunmathur.youpipe.domain.computeIdf
+import com.vayunmathur.youpipe.domain.explorationBonus
+import com.vayunmathur.youpipe.domain.rankRecommendations
+import com.vayunmathur.youpipe.domain.scoreCandidate
+import com.vayunmathur.youpipe.domain.tokenize
 
 class RecommenderTest {
 

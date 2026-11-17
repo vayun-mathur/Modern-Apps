@@ -33,8 +33,8 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.library.ui.R as UiR
-private fun chipModifier(): Modifier =
-    Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp)).size(32.dp)
+private fun Modifier.chipModifier(): Modifier =
+    background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp)).size(32.dp)
 
 /**
  * The row of picker chips drawn top-right over the video: quality, audio language,
@@ -156,7 +156,7 @@ internal fun VideoPlayerTopControls(
         // it would work is an icon nobody discovers.
         IconButton(
             onClick = onCastClick,
-            modifier = chipModifier()
+            modifier = Modifier.chipModifier()
         ) {
             if (isCasting) {
                 IconCastConnected(tint = Color.White, modifier = Modifier.size(20.dp))
@@ -168,7 +168,7 @@ internal fun VideoPlayerTopControls(
         if (segments.isNotEmpty()) {
             IconButton(
                 onClick = { onChapterMenuVisibleChange(true) },
-                modifier = chipModifier()
+                modifier = Modifier.chipModifier()
             ) {
                 IconList(tint = Color.White, modifier = Modifier.size(20.dp))
             }

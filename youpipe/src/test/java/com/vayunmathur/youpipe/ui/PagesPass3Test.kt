@@ -21,11 +21,11 @@ import com.vayunmathur.youpipe.data.SubscriptionCategory
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionRepository
 import com.vayunmathur.youpipe.data.SubscriptionVideo
-import com.vayunmathur.youpipe.util.SearchActions
-import com.vayunmathur.youpipe.util.SearchResultRow
-import com.vayunmathur.youpipe.util.SearchUiState
-import com.vayunmathur.youpipe.util.VideoRowState
-import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.platform.SearchActions
+import com.vayunmathur.youpipe.platform.SearchResultRow
+import com.vayunmathur.youpipe.platform.SearchUiState
+import com.vayunmathur.youpipe.platform.VideoRowState
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

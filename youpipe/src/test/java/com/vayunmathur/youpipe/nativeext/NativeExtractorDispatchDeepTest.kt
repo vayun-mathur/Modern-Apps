@@ -7,6 +7,8 @@ import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import com.vayunmathur.youpipe.network.NativeExtractor
+import com.vayunmathur.youpipe.network.NativeExtractorException
 
 /** Native API dispatch: without the Rust .so every call must fail, not hang or succeed. */
 @RunWith(RobolectricTestRunner::class)
