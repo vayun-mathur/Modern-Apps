@@ -52,7 +52,7 @@ fn read_leaf(
     } else {
         index::decompress_leaf(&stored, raw_len)?
     };
-    Ok(index::parse_leaf(&raw)?)
+    index::parse_leaf(&raw)
 }
 
 #[derive(Default)]

@@ -219,7 +219,7 @@ impl BucketSet {
         if want_buckets == 0 {
             return err("bucket set needs at least one bucket");
         }
-        if !want_buckets.is_power_of_two() || !want_buckets.trailing_zeros().is_multiple_of(2) {
+        if !want_buckets.is_power_of_two() || want_buckets.trailing_zeros() % 2 != 0 {
             return err(format!(
                 "bucket count must be a power of four so a bucket is one quadtree cell, got \
                  {want_buckets}"

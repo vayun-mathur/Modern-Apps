@@ -20,18 +20,18 @@ fn assemble(rings: Vec<Vec<Pt>>) -> Vec<Polygon> {
     let mut index_of: Vec<Option<usize>> = vec![None; rings.len()];
     // Even depth is an exterior, odd is a hole in the nearest enclosing exterior.
     for i in 0..rings.len() {
-        if depth[i].is_multiple_of(2) {
+        if depth[i] % 2 == 0 {
             index_of[i] = Some(out.len());
             out.push(vec![orient(rings[i].clone(), true)]);
         }
     }
     for i in 0..rings.len() {
-        if !depth[i].is_multiple_of(2) {
+        if depth[i] % 2 != 0 {
             // The enclosing exterior is the deepest even-depth ring that contains it.
             let mut best: Option<(usize, usize)> = None;
             let probe = rings[i][0];
             for j in 0..rings.len() {
-                if i == j || !depth[j].is_multiple_of(2) {
+                if i == j || depth[j] % 2 != 0 {
                     continue;
                 }
                 if point_in_ring(probe, &rings[j]) && best.is_none_or(|(d, _)| depth[j] >= d) {

@@ -268,7 +268,7 @@ mod tests {
         // invariant stage C's strictly_inside demands before the boundary rule.
         for &(x, y) in &out[1] {
             assert!(
-                x >= 0.0 && x <= 10.0 && y >= 2.0 && y <= 8.0,
+                (0.0..=10.0).contains(&x) && (2.0..=8.0).contains(&y),
                 "hole vertex ({x}, {y}) escaped the clipped exterior"
             );
         }

@@ -329,7 +329,6 @@ fn breakdown(path: &str, samples_per_zoom: usize) -> ExitCode {
         let mut raw_body = 0u64;
         let mut raw_dem = 0u64;
         let mut stored_dem = 0u64;
-        let mut stored_nodem = 0u64;
         let mut idx = 0usize;
         while idx < zoom.entries.len() {
             let (at, len) = zoom.entries[idx];
@@ -360,8 +359,6 @@ fn breakdown(path: &str, samples_per_zoom: usize) -> ExitCode {
                 with_dem += 1;
                 raw_dem += (2 + hm.samples.len() * 2) as u64;
                 stored_dem += len as u64;
-            } else {
-                stored_nodem += len as u64;
             }
             idx += step;
         }
@@ -372,10 +369,7 @@ fn breakdown(path: &str, samples_per_zoom: usize) -> ExitCode {
         // the zoom's body count. DEFLATE-compressibility differs between the two
         // populations, so this is measured, not modelled.
         let dem_bodies = zoom.bodies as f64 * with_dem as f64 / sampled as f64;
-        let nodem_bodies = zoom.bodies as f64 - dem_bodies;
-        let avg_stored_dem = if with_dem > 0 { stored_dem / with_dem } else { 0 };
-        let avg_stored_nodem =
-            if sampled > with_dem { stored_nodem / (sampled - with_dem) } else { 0 };
+        let avg_stored_dem = stored_dem.checked_div(with_dem).unwrap_or(0);
         let stored_dem_total = dem_bodies * avg_stored_dem as f64;
         println!(
             "z{z:<3} {:>7} {:>8} {:>8.1}% {:>11} {:>10} {:>8.1}% {:>10} {:>6.1}%",
@@ -383,11 +377,9 @@ fn breakdown(path: &str, samples_per_zoom: usize) -> ExitCode {
             with_dem,
             100.0 * with_dem as f64 / sampled as f64,
             fmt_bytes(raw_body / sampled),
-            if with_dem > 0 {
-                fmt_bytes(raw_dem / with_dem).to_string()
-            } else {
-                "-".to_string()
-            },
+            raw_dem
+                .checked_div(with_dem)
+                .map_or_else(|| "-".to_string(), |v| fmt_bytes(v).to_string()),
             100.0 * raw_dem as f64 / raw_body.max(1) as f64,
             fmt_bytes(stored_dem_total as u64),
             100.0 * stored_dem_total / zoom.stored.max(1) as f64,

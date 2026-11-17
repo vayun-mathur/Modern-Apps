@@ -25,7 +25,6 @@ use std::process::ExitCode;
 const HEADER_LEN: usize = 80;
 const DEVICE_SECTIONS: usize = 27;
 const SEC_ROUTES: usize = 2;
-const SEC_ROUTE_STOPS: usize = 3;
 const SEC_ROUTE_TRIPS: usize = 4;
 const SEC_SHAPE_COORDS: usize = 20;
 const SEC_ROUTE_SHAPE_IDX: usize = 21;
@@ -40,7 +39,7 @@ const ROUTE_REC: usize = 32;
 ///   cold only           2.94 GB  1.01x (60 queries)  <- default
 ///   cold + exceptions   2.45 GB  1.30x (12 queries), 5.5x (60: long searches thrash the cache)
 ///   + stop routes 2.3x | + transfers 2.6x | + profiles 5.2x (12 queries)
-///   everything          1.19 GB  ~35x
+///     everything          1.19 GB  ~35x
 const COLD_SECTIONS: [usize; 8] = [0, 16, 17, 20, 21, 22, 23, 24];
 const NONE: u32 = u32::MAX;
 

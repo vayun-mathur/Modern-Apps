@@ -352,8 +352,8 @@ mod tests {
         use tile_build::geom::Rect;
         // A land edge and a water edge sharing the segment x=0..20 at y=0.
         let rect = Rect { min_x: 0.0, min_y: -10.0, max_x: 20.0, max_y: 10.0 };
-        let land = vec![(0.0, -10.0), (20.0, -10.0), (20.0, 0.0), (0.0, 0.0), (0.0, -10.0)];
-        let water = vec![(0.0, 10.0), (20.0, 10.0), (20.0, 0.0), (0.0, 0.0), (0.0, 10.0)];
+        let land = [(0.0, -10.0), (20.0, -10.0), (20.0, 0.0), (0.0, 0.0), (0.0, -10.0)];
+        let water = [(0.0, 10.0), (20.0, 10.0), (20.0, 0.0), (0.0, 0.0), (0.0, 10.0)];
         let land_ring: Vec<SigPt> =
             clip_ring(&land.iter().map(|&(x, y)| SigPt::new(x, y)).collect::<Vec<_>>(), &rect);
         let water_ring: Vec<SigPt> =

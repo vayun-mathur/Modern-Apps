@@ -1,5 +1,18 @@
 // Included into size_lab.rs: recompress / cmp / render / dem-pyramid modes.
 
+/// A 2D point in tile-local coordinates.
+type Pt2 = (f64, f64);
+/// A line segment between two [`Pt2`]s.
+type Seg = (Pt2, Pt2);
+/// Per-`(zoom, layer)` deviation accumulators.
+type DevMap = BTreeMap<(u8, u8), DevAcc>;
+/// DEM deviation stats: `(mean, max, count, raw, stored)`.
+type DemStats = (f64, f64, u64, u64, u64);
+/// Per-zoom [`DemStats`].
+type DemMap = BTreeMap<u8, DemStats>;
+/// One dem-pyramid row: `(tile id, heightmap, ancestor, saved bytes)`.
+type DemRow = (u64, Option<Heightmap>, Option<(u8, u64, u64)>, i64);
+
 /// Every leaf entry with its first tile id, sorted by tile id (not deduplicated).
 struct TileIndex {
     ents: Vec<(u64, u32, u64, u32)>, // (tile_id, run_length, abs offset, len)
@@ -150,8 +163,7 @@ fn cmd_recompress(path: &str, out_dir: &str) {
     );
     out += "zoom   bodies   now_MB   raw_MB  zstdRS19  zstdRS19+dict  zstdC19  zstdC22   decode_us(now)  decode_us(zstd)\n";
     let mut t = S::default();
-    for z in 0..15 {
-        let s = g[z];
+    for (z, &s) in g.iter().enumerate() {
         if s.n == 0 {
             continue;
         }
@@ -260,7 +272,7 @@ fn seg_dist_sq_f(p: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
     (p.0 - qx).powi(2) + (p.1 - qy).powi(2)
 }
 
-fn layer_segs_pts(l: &Layer) -> (Vec<((f64, f64), (f64, f64))>, Vec<(f64, f64)>) {
+fn layer_segs_pts(l: &Layer) -> (Vec<Seg>, Vec<Pt2>) {
     let mut segs = Vec::new();
     let mut pts = Vec::new();
     for f in &l.features {
@@ -357,13 +369,13 @@ fn cmd_cmp(base: &str, cand: &str, per_zoom: usize, out_dir: &str) {
         by_z.entry(z).or_default().push((id, off, len));
     }
     let mut sample = Vec::new();
-    for (_, v) in &by_z {
+    for v in by_z.values() {
         let step = (v.len() / per_zoom.max(1)).max(1);
         sample.extend(v.iter().step_by(step).copied());
     }
     let nl = a.dict.layers.len();
     // key (zoom, layer) -> deviations; DEM per zoom
-    let acc: Mutex<(BTreeMap<(u8, u8), DevAcc>, BTreeMap<u8, (f64, f64, u64, u64, u64)>)> = Mutex::new((BTreeMap::new(), BTreeMap::new()));
+    let acc: Mutex<(DevMap, DemMap)> = Mutex::new((BTreeMap::new(), BTreeMap::new()));
     let cap = 32.0;
     sample.par_chunks(32).for_each(|chunk| {
         let mut dev: BTreeMap<(u8, u8), DevAcc> = BTreeMap::new();
@@ -790,7 +802,7 @@ fn cmd_dem_pyramid(path: &str, tol: f64, out_dir: &str) {
     let mut out = format!("dem-pyramid {path} tol={tol} m\n zoom  with_dem  dropped  saved_MB(zstd19)\n");
     let (mut tot_saved, mut tot_drop, mut tot_dem) = (0i64, 0u64, 0u64);
     for (z, v) in &by_z {
-        let res: Vec<(u64, Option<Heightmap>, Option<(u8, u64, u64)>, i64)> = v
+        let res: Vec<DemRow> = v
             .par_iter()
             .map(|&(id, off, len)| {
                 let (_, x, y) = tile_zxy(id);

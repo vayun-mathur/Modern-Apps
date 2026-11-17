@@ -747,7 +747,7 @@ fn cmd_bodies(path: &str, per_zoom: usize, out_dir: &str) {
             if let Some(d) = rs_dicts[bi].as_ref() {
                 let fr = zstd_rs_dict(payload, 19, d);
                 acc.add("codec:zstdRS_19_dict", H + fr.len());
-                if let Some(rd) = ruzstd::decoding::Dictionary::decode_dict(&dicts[bi]).ok() {
+                if let Ok(rd) = ruzstd::decoding::Dictionary::decode_dict(&dicts[bi]) {
                     let td = Instant::now();
                     let mut dec = ruzstd::decoding::FrameDecoder::new();
                     dec.add_dict(rd).expect("add dict");

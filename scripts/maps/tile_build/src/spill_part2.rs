@@ -1146,7 +1146,7 @@ impl NormalizedChunks {
         i: usize,
         scratch: &mut Vec<u8>,
         out: &mut Vec<NormalizedFeature>,
-        keep: &dyn Fn(&[(String, Value)]) -> bool,
+        keep: &KeepProps,
     ) -> Result<()> {
         out.clear();
         let mut all = Vec::new();

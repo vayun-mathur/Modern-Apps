@@ -16,6 +16,17 @@ use tile_build::mamaps::dict::{
     LAYER_SAFETY, LAYER_TRANSIT,
 };
 
+/// A body-mutating table-drop step (see the `tables` array in `cmd_p50_layers`).
+type BodyMut = fn(&mut Body);
+/// A polygon edge between two tile-local points.
+type EdgeKey = ((i16, i16), (i16, i16));
+/// Edge-use counts keyed by [`EdgeKey`].
+type EdgeMap = HashMap<EdgeKey, u32>;
+/// Four byte/count totals accumulated per component.
+type Count4 = (u64, u64, u64, u64);
+/// Per-`(band, component)` [`Count4`] totals.
+type ArcCounts = BTreeMap<(u8, String), Count4>;
+
 fn layer_name(id: u8) -> &'static str {
     match id {
         x if x == LAYER_LANDTYPE => "landtype",
@@ -46,7 +57,7 @@ fn ser11(body: &Body) -> Vec<u8> {
 }
 
 thread_local! {
-    static CDICT: RefCell<Vec<Option<zstd::bulk::Compressor<'static>>>> = RefCell::new(Vec::new());
+    static CDICT: RefCell<Vec<Option<zstd::bulk::Compressor<'static>>>> = const { RefCell::new(Vec::new()) };
 }
 
 /// zstd-19 size of `raw` against the archive's dictionary for `z`'s band (C reference encoder).
@@ -107,7 +118,7 @@ fn cmd_p50_layers(path: &str, stride: usize) {
             b.names = body.names.clone();
             drop(format!("layer:{}", layer_name(lid)), b);
         }
-        let tables: [(&str, fn(&mut Body)); 7] = [
+        let tables: [(&str, BodyMut); 7] = [
             ("table:names", |b| {
                 b.names.clear();
                 for l in &mut b.layers {
@@ -162,7 +173,7 @@ fn cmd_p50_layers(path: &str, stride: usize) {
 // ------------------------------------------------------------------ pyramid (parent overzoom)
 
 /// Geometry of every layer of `body` mapped into child (quadrant qx,qy) coordinates.
-fn quad_layer(l: &Layer, qx: u64, qy: u64, ext: f64) -> (Vec<((f64, f64), (f64, f64))>, Vec<(f64, f64)>) {
+fn quad_layer(l: &Layer, qx: u64, qy: u64, ext: f64) -> (Vec<Seg>, Vec<Pt2>) {
     let (segs, pts) = layer_segs_pts(l);
     let ox = qx as f64 * ext / 2.0;
     let oy = qy as f64 * ext / 2.0;
@@ -399,7 +410,7 @@ fn cmd_p50_buildings(path: &str, stride: usize) {
             }
             o.push(byte | 0x80);
         };
-        let mut edges: HashMap<((i16, i16), (i16, i16)), u32> = HashMap::new();
+        let mut edges: EdgeMap = HashMap::new();
         let (mut pcx, mut pcy) = (0i64, 0i64);
         for f in &l.features {
             let from = f.parts_offset as usize;
@@ -621,12 +632,12 @@ fn cmd_p50_arcs(path: &str, stride: usize) {
     let a = open(path);
     let ents = entries(&a);
     let s = sample(&ents, stride, |e| e.z >= 10);
-    let acc: Mutex<BTreeMap<(u8, String), (u64, u64, u64, u64)>> = Mutex::new(BTreeMap::new());
+    let acc: Mutex<ArcCounts> = Mutex::new(BTreeMap::new());
     s.par_iter().for_each(|e| {
         let body = Body::parse(&raw_of(&a, e)).expect("parse");
-        let mut local: Vec<((u8, String), (u64, u64, u64, u64))> = Vec::new();
+        let mut local: Vec<((u8, String), Count4)> = Vec::new();
         // all polygon edges of the tile, any layer: an edge used twice is a shared arc
-        let mut edges: HashMap<((i16, i16), (i16, i16)), u32> = HashMap::new();
+        let mut edges: EdgeMap = HashMap::new();
         let mut rings: Vec<(u8, Vec<(i16, i16)>)> = Vec::new();
         for l in &body.layers {
             for f in &l.features {

@@ -384,7 +384,7 @@ where
             }
             Geometry::Lines(out)
         }
-        Geometry::Polygons(polys) => {
+        Geometry::Polygons(_) => {
             // Rings need the clip's own normalisation (explicit-close
             // handling and consecutive-duplicate dedup interact with
             // filtering in ways a hand replica would get subtly wrong), and

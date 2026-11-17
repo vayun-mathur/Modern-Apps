@@ -55,6 +55,17 @@ fn band(z: u8) -> usize {
     }
 }
 
+/// A compressed body plus its content hash, shared between encoders and writers.
+type ArcBody = Arc<(Vec<u8>, u64)>;
+/// `(offset, band)` key of a single (non-superblock) body.
+type BodyKey = (u64, usize);
+/// Superblock candidate group: `(zoom, block x, block y)` key plus member indexes.
+type SbGroup = ((u8, u64, u64), Vec<usize>);
+/// One superblock's encode result: `(group, body, raw length)`.
+type EncodedSb = Result<(u32, ArcBody, u64), String>;
+/// One single body's encode result: `(key, body, raw length)`.
+type EncodedBody = Result<(BodyKey, ArcBody, u64), String>;
+
 /// One leaf entry: first tile id, run length, absolute body offset and stored length.
 #[derive(Clone, Copy)]
 struct Ent {
@@ -176,9 +187,9 @@ fn superblock_groups(ents: &[Ent]) -> Vec<Option<u32>> {
         *refs.entry(e.off).or_default() += e.run as u64;
     }
     let mut group = vec![None; ents.len()];
-    let mut cur: Option<((u8, u64, u64), Vec<usize>)> = None;
+    let mut cur: Option<SbGroup> = None;
     let mut next = 0u32;
-    let mut close = |cur: &mut Option<((u8, u64, u64), Vec<usize>)>, group: &mut Vec<Option<u32>>| {
+    let mut close = |cur: &mut Option<SbGroup>, group: &mut Vec<Option<u32>>| {
         if let Some((_, members)) = cur.take() {
             if members.len() >= 2 {
                 for i in members {
@@ -310,7 +321,7 @@ fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bo
                 }
             }
         }
-        let sb_encoded: Vec<Result<(u32, Arc<(Vec<u8>, u64)>, u64), String>> = blocks
+        let sb_encoded: Vec<EncodedSb> = blocks
             .par_iter()
             .map_init(
                 || zstd_rs::Compressor::new(cfg).expect("zstd level"),
@@ -348,7 +359,7 @@ fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bo
                 },
             )
             .collect();
-        let mut by_group: HashMap<u32, Arc<(Vec<u8>, u64)>> = HashMap::with_capacity(sb_encoded.len());
+        let mut by_group: HashMap<u32, ArcBody> = HashMap::with_capacity(sb_encoded.len());
         for r in sb_encoded {
             let (g, v, raw) = r?;
             raw_in += raw;
@@ -366,7 +377,7 @@ fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bo
             .collect();
         keys.sort_unstable();
         keys.dedup();
-        let encoded: Vec<Result<((u64, usize), Arc<(Vec<u8>, u64)>, u64), String>> = keys
+        let encoded: Vec<EncodedBody> = keys
             .par_iter()
             .map_init(
                 || zstd_rs::Compressor::new(cfg).expect("zstd level"),
@@ -392,7 +403,7 @@ fn run(input: &str, output: &str, dict_bytes: usize, per_band: usize, verify: bo
                 },
             )
             .collect();
-        let mut by_key: HashMap<(u64, usize), Arc<(Vec<u8>, u64)>> = HashMap::with_capacity(encoded.len());
+        let mut by_key: HashMap<BodyKey, ArcBody> = HashMap::with_capacity(encoded.len());
         for r in encoded {
             let (k, v, raw) = r?;
             raw_in += raw;

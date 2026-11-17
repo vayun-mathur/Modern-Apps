@@ -93,11 +93,9 @@ impl Progress {
 
     fn draw(&self, unit: &str) {
         let elapsed = self.start.elapsed().as_secs_f64();
-        let pct = if self.total == 0 {
-            100
-        } else {
-            (self.done * 100 / self.total).min(100)
-        };
+        let pct = (self.done * 100)
+            .checked_div(self.total)
+            .map_or(100, |p| p.min(100));
         // ETA extrapolates the average rate so far; meaningless until something is
         // done, so hold it at zero for the opening frame.
         let eta = if self.done == 0 {

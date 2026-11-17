@@ -74,6 +74,10 @@ pub const REC_HEADER_BYTES: usize = 48;
 /// Bytes of fixed header before a normalized record's two variable payloads.
 pub const NORM_HEADER_BYTES: usize = 16;
 
+/// Property predicate for [`NormalizedChunks::read_into_where`]: keep a feature
+/// whose `(key, value)` properties satisfy it.
+type KeepProps = dyn Fn(&[(String, Value)]) -> bool;
+
 /// Features per entry in the normalized file's chunk index.
 ///
 /// The index is what lets the bucket pass read the normalized file across the pool

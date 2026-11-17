@@ -49,7 +49,7 @@ fn main() {
             rows_c.fetch_add(z19(&rows), Relaxed);
             plan_c.fetch_add(z19(&planes(&rows, w)), Relaxed);
             let n = rows.len() / w;
-            let mut cols = Vec::with_capacity(rows.len());
+            let cols;
             if w == 12 {
                 // lat, lon: delta from the previous node (curve-sorted); edge_ptr: delta (= degree)
                 let rd = |i: usize, o: usize| i32::from_le_bytes(rows[i * 12 + o..i * 12 + o + 4].try_into().unwrap());

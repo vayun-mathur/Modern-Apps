@@ -1260,7 +1260,6 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use tile_build::mamaps::archive::ArchiveView;
 
     fn v7_tiles() -> Vec<u8> {

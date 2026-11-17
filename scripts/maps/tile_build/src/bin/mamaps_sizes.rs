@@ -22,9 +22,7 @@ use std::collections::BTreeMap;
 use std::process::ExitCode;
 
 use tile_build::mamaps::body::{
-    BODY_FLAG_BUILDING_TABLE, BODY_FLAG_EXTENDED_COUNTS, BODY_FLAG_HEIGHTMAP,
-    BODY_FLAG_ID_TABLE, BODY_FLAG_LANE_TABLE, BODY_FLAG_NAME_TABLE, BODY_FLAG_ROAD_LANES,
-    BODY_HEADER_LEN, FEATURE_RECORD_LEN, LAYER_INDEX_LEN,
+    BODY_FLAG_EXTENDED_COUNTS, BODY_HEADER_LEN, LAYER_INDEX_LEN,
 };
 use tile_build::mamaps::dict::Dictionary;
 use tile_build::mamaps::header::Header;
@@ -412,21 +410,8 @@ fn run(path: &str, sample_every_arg: u64) -> Result<(), String> {
     f.read_exact(&mut root_buf).map_err(|e| format!("cannot read root: {e}"))?;
     let root = parse_root(&root_buf).map_err(|e| format!("bad root: {e:?}"))?;
 
-    let mut layer_stored: BTreeMap<u8, u64> = BTreeMap::new();
-    let mut layer_raw: BTreeMap<u8, u64> = BTreeMap::new();
-    let mut layer_bodies: BTreeMap<u8, u64> = BTreeMap::new();
-    let mut layer_features: BTreeMap<u8, u64> = BTreeMap::new();
-    let mut flags_hist: BTreeMap<u8, u64> = BTreeMap::new();
-    let mut extended_count = 0u64;
-    let mut total_stored = 0u64;
-    let mut total_raw = 0u64;
-    let mut empty_bodies = 0u64;
-    let mut empty_stored = 0u64;
-    let mut bodies_seen = 0u64;
-
-    // `layer_names` was built from the file's dict above; the dead first-pass
-    // accumulators used to live here but were shadowed by the aggregation block
-    // below, so they are gone and only the dict-derived names survive.
+    // `layer_names` was built from the file's dict above; the aggregation
+    // accumulators live in the block below that folds the per-leaf partials.
 
     let t0 = std::time::Instant::now();
     // Parallel scan: one task per root entry (313 leaves for this archive), each

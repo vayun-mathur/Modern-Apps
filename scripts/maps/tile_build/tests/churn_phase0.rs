@@ -125,7 +125,6 @@ mod tests {
     fn added_and_deleted_tiles_report_by_tile_not_entry() {
         let grown = ids(3, 12);
         let base = grown[..8].to_vec();
-        let grown = grown;
         let (before, _) = archive(&base, 0);
         let (after, _) = archive(&grown, 0);
         let report = join(&snap(&before), &snap(&after));
