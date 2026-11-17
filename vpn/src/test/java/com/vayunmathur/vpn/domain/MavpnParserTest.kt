@@ -55,43 +55,11 @@ class MavpnParserTest {
         assertEquals("vpn.example.com:51820", server.config.peerEndpoint)
     }
 
-    @Test fun parsesFreshnessFieldsAndLegacyBundles() {
-        val text = "{\"format\":\"mavpn/1\",\"provider\":\"Example\",\"providerId\":\"example\"," +
-            "\"revision\":7,\"issuedAt\":\"2026-01-01T00:00:00Z\",\"expiresAt\":\"2027-01-01T00:00:00Z\"," +
-            "\"updateUrl\":\"https://example.invalid/u.json\",\"servers\":" +
-            "[{\"id\":\"de-1\",\"country\":\"DE\",\"city\":\"Frankfurt\",\"file\":\"servers/de-1.conf\"}]}"
-        val parsed = parse(bundle(manifestText = text)).getOrThrow()
-        assertEquals("example", parsed.manifest.freshness.providerId)
-        assertEquals(7L, parsed.manifest.freshness.revision)
-        assertEquals("https://example.invalid/u.json", parsed.manifest.freshness.updateUrl)
-        assertTrue(parsed.manifest.freshness.issuedAtEpochMs!! < parsed.manifest.freshness.expiresAtEpochMs!!)
-        // Legacy bundle: no freshness fields still parses, with empty freshness.
-        assertTrue(parse(bundle()).getOrThrow().manifest.freshness.isEmpty)
-    }
-
-    @Test fun rejectsNonsensicalFreshness() {
-        fun withFresh(extra: String): String =
-            "{\"format\":\"mavpn/1\",\"provider\":\"Example\",$extra,\"servers\":" +
-                "[{\"id\":\"de-1\",\"country\":\"DE\",\"city\":\"Frankfurt\",\"file\":\"servers/de-1.conf\"}]}"
-        for (bad in listOf(
-            "\"revision\":-1",
-            "\"revision\":1.5",
-            "\"providerId\":\"bad id!\"",
-            "\"issuedAt\":\"not-a-date\"",
-            "\"issuedAt\":\"2027-01-01T00:00:00Z\",\"expiresAt\":\"2026-01-01T00:00:00Z\"",
-            "\"updateUrl\":\"http://example.invalid/u.json\"",
-        )) {
-            assertTrue(parse(bundle(manifestText = withFresh(bad))).isFailure, bad)
-        }
-    }
-
     @Test fun loadsCommittedDemoFixture() {
         val bytes = javaClass.getResourceAsStream("/mavpn/demo.mavpn")?.readBytes()
             ?: fail("missing test fixture /mavpn/demo.mavpn (regenerate with vpn/tools/generate_sample_mavpn.py)")
         val parsed = parse(bytes).getOrThrow()
         assertEquals("EXAMPLE Demo VPN (fictional)", parsed.manifest.provider)
-        assertEquals("example-demo-vpn", parsed.manifest.freshness.providerId)
-        assertEquals(1L, parsed.manifest.freshness.revision)
         assertEquals(listOf("de-fra-1", "de-ber-1", "us-nyc-1"), parsed.servers.map { it.entry.id })
         assertTrue(parsed.servers.all { it.config.peerEndpoint.endsWith(".example.invalid:51820") })
     }

@@ -134,33 +134,6 @@ class MavpnImportTest {
         }
     }
 
-    @Test fun freshnessRetainedAndProviderIdIdentityStableAcrossRevisions() {
-        val manifest = "{\"format\":\"mavpn/1\",\"provider\":\"Example VPN\",\"providerId\":\"ex\"," +
-            "\"revision\":2,\"issuedAt\":\"2026-01-01T00:00:00Z\",\"expiresAt\":\"2027-01-01T00:00:00Z\"," +
-            "\"updateUrl\":\"https://example.invalid/u.json\",\"servers\":" +
-            "[{\"id\":\"de-1\",\"country\":\"DE\",\"city\":\"Frankfurt\",\"file\":\"servers/de-1.conf\"}]}"
-        val out = ByteArrayOutputStream()
-        ZipOutputStream(out).use { zip ->
-            for ((n, txt) in listOf("manifest.json" to manifest, "servers/de-1.conf" to conf)) {
-                zip.putNextEntry(ZipEntry(n)); zip.write(txt.encodeToByteArray()); zip.closeEntry()
-            }
-        }
-        val bundle = MavpnParser.parse(out.toByteArray(), WgConfigParser::parse).getOrThrow()
-        val cfg = bundle.toVpnConfigs(bundleIdForManifest(bundle.manifest, listOf("de-1"))).single()
-        assertEquals("ex", cfg.providerId); assertEquals(2L, cfg.bundleRevision)
-        assertEquals("https://example.invalid/u.json", cfg.bundleUpdateUrl)
-        assertTrue(cfg.bundleExpiresAt > cfg.bundleIssuedAt && cfg.bundleIssuedAt > 0)
-        // Same providerId, changed server catalogue: identity is preserved for in-place update.
-        assertEquals(
-            bundleIdForManifest(bundle.manifest, listOf("de-1")),
-            bundleIdForManifest(bundle.manifest, listOf("de-1", "us-9")),
-        )
-        // Legacy bundles keep the historic server-ids digest.
-        val legacy = bundle.manifest.copy(freshness = com.vayunmathur.vpn.domain.BundleFreshness.EMPTY)
-        assertEquals(bundleIdFor("Example VPN", listOf("de-1")), bundleIdForManifest(legacy, listOf("de-1")))
-        assertEquals(cfg, cfg.toEntity().toModel())
-    }
-
     @Test fun entityRoundTripKeepsBundleMetadata() {
         val config = VpnConfig(
             id = 7, name = "n", provider = "P", countryCode = "DE", city = "Berlin",

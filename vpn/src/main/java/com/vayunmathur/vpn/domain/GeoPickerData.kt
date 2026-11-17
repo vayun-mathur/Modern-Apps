@@ -10,45 +10,7 @@ data class GeoServer(
     val city: String,
     val name: String,
     val endpoint: String,
-    /** Bundle freshness shared by every server of the provider; empty for legacy bundles. */
-    val freshness: BundleFreshness = BundleFreshness.EMPTY,
-    val bundleId: String = "",
 )
-
-/** One imported provider bundle, summarised for the picker header / update UI. */
-data class GeoProvider(
-    val provider: String,
-    val providerId: String?,
-    val bundleId: String,
-    val freshness: BundleFreshness,
-    val state: BundleFreshnessState,
-    val serverCount: Int,
-)
-
-/** Distinct provider bundles in [servers], in provider-name order, classified at [nowEpochMs]. */
-fun buildGeoProviders(
-    servers: List<GeoServer>,
-    nowEpochMs: Long = System.currentTimeMillis(),
-    remoteRevisions: Map<String, Long?> = emptyMap(),
-    failedBundleIds: Set<String> = emptySet(),
-): List<GeoProvider> =
-    servers.groupBy { it.bundleId.ifBlank { it.provider } }
-        .map { (bundleKey, inBundle) ->
-            val first = inBundle.first()
-            GeoProvider(
-                provider = first.provider,
-                providerId = first.freshness.providerId,
-                bundleId = bundleKey,
-                freshness = first.freshness,
-                state = classifyFreshness(
-                    first.freshness, nowEpochMs,
-                    remoteRevision = remoteRevisions[bundleKey],
-                    checkFailed = bundleKey in failedBundleIds,
-                ),
-                serverCount = inBundle.size,
-            )
-        }
-        .sortedBy { it.provider.lowercase(Locale.ROOT) }
 
 /** A city and its servers, sorted by server name. */
 data class GeoCity(

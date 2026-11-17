@@ -28,9 +28,6 @@ import com.vayunmathur.vpn.Route
 import com.vayunmathur.vpn.domain.filterGeoCountries
 import com.vayunmathur.vpn.domain.flattenServers
 import com.vayunmathur.vpn.platform.VpnViewModel
-import com.vayunmathur.library.ui.Button
-import com.vayunmathur.vpn.platform.UpdateCheckOutcome
-import com.vayunmathur.vpn.ui.components.BundleFreshnessBadge
 import com.vayunmathur.vpn.ui.components.GeoServerRow
 import com.vayunmathur.vpn.ui.components.rememberServerActivation
 
@@ -43,8 +40,6 @@ import com.vayunmathur.vpn.ui.components.rememberServerActivation
 @Composable
 fun GeoPickerPage(backStack: NavBackStack<Route>, vm: VpnViewModel) {
     val countries by vm.geoCountries.collectAsState()
-    val providers by vm.geoProviders.collectAsState()
-    val updateChecks by vm.updateChecks.collectAsState()
     val configs by vm.configs.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
     val filtered = filterGeoCountries(countries, query)
@@ -56,47 +51,6 @@ fun GeoPickerPage(backStack: NavBackStack<Route>, vm: VpnViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         scrollBehavior = appBarScrollBehavior(),
     ) {
-        items(providers, key = { it.bundleId }) { provider ->
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-                Text(
-                    provider.provider,
-                    fontWeight = FontWeight.Bold, fontSize = 16.sp,
-                    modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 2.dp),
-                )
-                androidx.compose.foundation.layout.Column(Modifier.padding(16.dp, 0.dp, 16.dp, 12.dp)) {
-                    BundleFreshnessBadge(
-                        provider.state,
-                        updateRevision = (updateChecks[provider.bundleId] as? UpdateCheckOutcome.Available)
-                            ?.metadata?.revision,
-                    )
-                    provider.freshness.revision?.let {
-                        Text(stringResource(R.string.bundle_revision, it), fontSize = 12.sp)
-                    }
-                    provider.freshness.expiresAtEpochMs?.let {
-                        Text(
-                            stringResource(
-                                R.string.bundle_expires,
-                                java.time.Instant.ofEpochMilli(it).toString(),
-                            ),
-                            fontSize = 12.sp,
-                        )
-                    }
-                    if (provider.freshness.updateUrl != null) {
-                        Button(onClick = { vm.checkForUpdate(provider.bundleId) }) {
-                            Text(stringResource(R.string.check_for_updates))
-                        }
-                    }
-                    val outcome = updateChecks[provider.bundleId]
-                    if (outcome is UpdateCheckOutcome.Available &&
-                        outcome.metadata.downloadUrl != null && outcome.metadata.sha256 != null
-                    ) {
-                        Button(onClick = { vm.applyBundleUpdate(provider.bundleId) }) {
-                            Text(stringResource(R.string.update_now))
-                        }
-                    }
-                }
-            }
-        }
         item {
             CommonSearchBar(
                 value = query,

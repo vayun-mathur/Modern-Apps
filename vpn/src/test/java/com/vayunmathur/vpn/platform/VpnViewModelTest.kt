@@ -11,7 +11,6 @@ import com.vayunmathur.vpn.data.DomainBytesSummary
 import com.vayunmathur.vpn.data.DomainCountSummary
 import com.vayunmathur.vpn.data.VpnConfig
 import com.vayunmathur.vpn.data.VpnConfigDao
-import com.vayunmathur.vpn.data.MavpnUpdateClient
 import com.vayunmathur.vpn.data.VpnConfigEntity
 import java.io.File
 import kotlin.test.Test
@@ -249,42 +248,5 @@ class VpnViewModelTest {
         BypassList.setBypassed(ctx, "com.example.a", false)
         withTimeout(5000) { while (BypassList.load(ctx).contains("com.example.a")) delay(25) }
         assertEquals("bypass_packages", BypassList.KEY)
-    } }
-
-    @Test fun updateCheckAndBadHashLeavesBundleUntouched() { runBlocking {
-        val dao = FakeConfigDao()
-        dao.rows.value = listOf(
-            VpnConfigEntity(
-                id = 1, name = "Example — Frankfurt", provider = "Example", bundleId = "b1",
-                bundleServerId = "de-1", providerId = "ex", bundleRevision = 1,
-                bundleUpdateUrl = "https://example.invalid/u.json",
-            ),
-        )
-        val bundleBytes = "not-a-bundle".encodeToByteArray()
-        val sha = com.vayunmathur.vpn.domain.sha256Hex(bundleBytes)
-        val metadata = """{"format":"mavpn-update/1","providerId":"ex","revision":2,""" +
-            """"downloadUrl":"https://example.invalid/b.mavpn","sha256":"$sha"}"""
-        val client = MavpnUpdateClient { url ->
-            if (url.endsWith("u.json")) metadata.encodeToByteArray() else bundleBytes
-        }
-        val vm2 = VpnViewModel(app, dao, FakeLogDao(), client)
-        vm2.checkForUpdate("b1")
-        val outcome = withTimeout(5000) {
-            vm2.updateChecks.first { it["b1"] is UpdateCheckOutcome.Available }
-        }
-        assertTrue((outcome["b1"] as UpdateCheckOutcome.Available).metadata.revision == 2L)
-        // The "bundle" is not a valid .mavpn, so applying must fail before any row changes.
-        val before = dao.rows.value
-        vm2.applyBundleUpdate("b1")
-        withTimeout(5000) { vm2.status.first { it?.startsWith("Update failed") == true || it?.startsWith("Import failed") == true } }
-        assertEquals(before, dao.rows.value)
-
-        // Provider mismatch is a failed check, never an update.
-        val mismatchClient = MavpnUpdateClient {
-            """{"format":"mavpn-update/1","providerId":"other","revision":9}""".encodeToByteArray()
-        }
-        val vm3 = VpnViewModel(app, dao, FakeLogDao(), mismatchClient)
-        vm3.checkForUpdate("b1")
-        withTimeout(5000) { vm3.updateChecks.first { it["b1"] is UpdateCheckOutcome.Failed } }
     } }
 }

@@ -47,16 +47,4 @@
     <string name="geo_no_matches">No servers match your search</string>
     <string name="geo_server_count">%1$d servers</string>
     <string name="geo_connect">Connect</string>
-    <string name="bundle_freshness_current">Bundle current</string>
-    <string name="bundle_freshness_outdated">Bundle expired — servers still work; import a newer bundle</string>
-    <string name="bundle_freshness_update_available">Update available (revision %1$d)</string>
-    <string name="bundle_freshness_unknown">Freshness unknown (no bundle metadata)</string>
-    <string name="bundle_freshness_check_failed">Update check failed</string>
-    <string name="bundle_revision">Revision %1$d</string>
-    <string name="bundle_issued">Issued %1$s</string>
-    <string name="bundle_expires">Expires %1$s</string>
-    <string name="bundle_provider_id">Provider ID: %1$s</string>
-    <string name="check_for_updates">Check for updates</string>
-    <string name="update_now">Update now</string>
-    <string name="checking_for_updates">Checking…</string>
 </resources>

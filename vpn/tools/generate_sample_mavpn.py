@@ -58,11 +58,6 @@ def main() -> None:
     manifest = {
         "format": "mavpn/1",
         "provider": "EXAMPLE Demo VPN (fictional)",
-        "providerId": "example-demo-vpn",
-        "revision": 1,
-        "issuedAt": "2026-01-01T00:00:00Z",
-        "expiresAt": "2027-01-01T00:00:00Z",
-        "updateUrl": "https://example.invalid/mavpn-update.json",
         "servers": [
             {
                 "id": server_id,
