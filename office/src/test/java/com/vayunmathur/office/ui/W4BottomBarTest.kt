@@ -17,7 +17,7 @@ import com.vayunmathur.library.ui.odf.OdfSheet
 import com.vayunmathur.library.ui.odf.OdfSlide
 import com.vayunmathur.library.ui.odf.OdfSlideElement
 import com.vayunmathur.library.ui.odf.OdfSpan
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

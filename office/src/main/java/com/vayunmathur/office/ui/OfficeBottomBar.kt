@@ -27,10 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.odf.OdfDocument
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.office.R
 
+import com.vayunmathur.office.platform.insertChart
+import com.vayunmathur.office.platform.insertImage
+import com.vayunmathur.office.platform.insertTable
 /** What the shared bottom bar is currently formatting. (Phase 2) */
 sealed interface FormatTarget {
     /** Singleton holding none state and operations. */

@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="enable">הפעלה</string>
-    <string name="copy">העתקה</string>
     <string name="bookmarks">סימניות</string>
-    <string name="reset">איפוס</string>
-    <string name="apply">החלה</string>
     <string name="rotate_90">סיבוב ב־90‏°</string>
 </resources>

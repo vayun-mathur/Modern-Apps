@@ -21,7 +21,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.odf.ChartType
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import com.vayunmathur.library.ui.odf.OdfChart
 import com.vayunmathur.library.ui.odf.OdfChartSeries
 import com.vayunmathur.library.ui.odf.OdfContentBlock

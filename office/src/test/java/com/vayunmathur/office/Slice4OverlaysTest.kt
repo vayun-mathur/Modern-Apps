@@ -18,15 +18,21 @@ import com.vayunmathur.library.ui.odf.OdfParagraph
 import com.vayunmathur.library.ui.odf.OdfSpan
 import com.vayunmathur.library.ui.odf.ParagraphStyle
 import com.vayunmathur.office.ui.HeadingItem
-import com.vayunmathur.office.util.OfficeMember
-import com.vayunmathur.office.util.OfficeRoles
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeMember
+import com.vayunmathur.office.platform.OfficeRoles
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.ChangesOverlays
+import com.vayunmathur.office.ui.CommentsOverlays
+import com.vayunmathur.office.ui.DocumentOverlayState
+import com.vayunmathur.office.ui.DocumentScreenState
+import com.vayunmathur.office.ui.OfficeOutlinePane
+import com.vayunmathur.office.ui.ShareMembersList
 /**
  * Slice 4/4 overlay composition tests (Robolectric + createComposeRule):
  * outline pane, share-members list, tracked-changes and comments overlays.

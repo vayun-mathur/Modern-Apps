@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="hide">Dölj</string>
-    <string name="copy">Kopiera</string>
     <string name="enable">Aktivera</string>
     <string name="bookmarks">Bokmärken</string>
     <string name="outline">Dispositionsvy</string>
     <string name="general">Allmänt</string>
-    <string name="all">Alla</string>
     <string name="share_link">Dela länk</string>
     <string name="normal">Normal</string>
     <string name="heading_1">Rubrik 1</string>
@@ -18,13 +16,10 @@
     <string name="justify">Justera</string>
     <string name="clear_formatting">Rensa formatering</string>
     <string name="computing">Beräknar…</string>
-    <string name="unknown">Okänd</string>
-    <string name="name">Namn</string>
     <string name="line">Rad</string>
     <string name="go">Gå</string>
     <string name="discard">Förkasta</string>
     <string name="auto_save">Spara automatiskt</string>
-    <string name="apply">Tillämpa</string>
     <string name="shared_with_you">Delad med dig</string>
     <string name="requests_header">Förfrågningar</string>
     <string name="approve">Godkänn</string>
@@ -32,7 +27,6 @@
     <string name="request_wants_to_join">%1$s vill gå med i ”%2$s”</string>
     <string name="app_name">Office</string>
     <string name="open_document">Öppna dokument</string>
-    <string name="error_loading">Fel när dokumentet lästes in</string>
     <string name="document_info">Information</string>
     <string name="meta_title">Titel</string>
     <string name="meta_author">Författare</string>
@@ -238,7 +232,6 @@
     <string name="restart_numbering">Starta om numrering</string>
     <string name="slide_background">Bildbakgrund…</string>
     <string name="duplicate_paragraph">Dubblera stycke</string>
-    <string name="insert_table_1">Infoga tabell</string>
     <string name="bring_to_front">Placera längst fram</string>
     <string name="promote_list_item">Höj listobjekt</string>
     <string name="italic_cell">Kursiv cell</string>
@@ -255,7 +248,6 @@
     <string name="insert_chart">Infoga diagram</string>
     <string name="edit_chart">Redigera diagram</string>
     <string name="hide_notes">Dölj anteckningar</string>
-    <string name="speaker_notes_2">Talaranteckningar</string>
     <string name="show_security_code">Visa säkerhetskod</string>
     <string name="adding">Lägger till…</string>
     <string name="shared_by_you">Delat av dig</string>

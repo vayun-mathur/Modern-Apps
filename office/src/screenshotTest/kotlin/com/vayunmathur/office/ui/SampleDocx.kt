@@ -9,7 +9,7 @@ import androidx.compose.ui.text.style.TextAlign
 
 /**
  * The first 14 of 99 content blocks of `metadata_data/assets/sample1.docx`, as
- * produced by this app's own [com.vayunmathur.office.odf.OoxmlImporter].
+ * produced by this app's own [com.vayunmathur.office.data.odf.OoxmlImporter].
  *
  * GENERATED — do not edit by hand.
  *
@@ -25,7 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
  * document embeds the Ubuntu family, which Layoutlib cannot load, so recording it would only
  * describe a substitution that happens anyway.
  *
- * To regenerate after changing the .docx: run [com.vayunmathur.office.odf.OoxmlImporter] over
+ * To regenerate after changing the .docx: run [com.vayunmathur.office.data.odf.OoxmlImporter] over
  * it on the JVM (a real `org.xmlpull` implementation such as kxml2 must be on the classpath in
  * place of android.jar's stubs) and re-emit, dropping defaults as above.
  */

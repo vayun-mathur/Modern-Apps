@@ -18,11 +18,11 @@ import com.vayunmathur.library.ui.odf.OdfParagraph
 import com.vayunmathur.library.ui.odf.OdfRow
 import com.vayunmathur.library.ui.odf.OdfSheet
 import com.vayunmathur.library.ui.odf.OdfSpan
-import com.vayunmathur.office.DocumentScreenState
-import com.vayunmathur.office.OfficeDocumentPane
-import com.vayunmathur.office.util.DocumentTreeCrdt
+import com.vayunmathur.office.ui.DocumentScreenState
+import com.vayunmathur.office.ui.OfficeDocumentPane
+import com.vayunmathur.office.domain.DocumentTreeCrdt
 import com.vayunmathur.office.util.OfficeNative
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -355,8 +355,8 @@ class Slice4SheetsTest {
             listOf(OdfSheet("S", listOf(OdfRow(listOf(OdfCell("grid1")))))),
         )
         rule.setContent {
-            com.vayunmathur.office.OfficeLightTheme {
-                com.vayunmathur.office.DocumentScreen(
+            com.vayunmathur.office.ui.OfficeLightTheme {
+                com.vayunmathur.office.ui.DocumentScreen(
                     document = doc,
                     viewModel = vm(doc),
                     activity = rule.activity,

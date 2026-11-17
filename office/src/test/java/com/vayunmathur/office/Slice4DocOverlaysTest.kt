@@ -17,13 +17,17 @@ import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.library.ui.odf.OdfParagraph
 import com.vayunmathur.library.ui.odf.OdfSpan
 import com.vayunmathur.library.ui.odf.ParagraphStyle
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.DocumentOverlayState
+import com.vayunmathur.office.ui.DocumentOverlays
+import com.vayunmathur.office.ui.DocumentScreenState
+import com.vayunmathur.office.ui.rememberDocumentLaunchers
 /**
  * Slice 4/4 [DocumentOverlays] wiring tests (Robolectric + createComposeRule):
  * each dialog flag renders its dialog, and dialog callbacks drive real

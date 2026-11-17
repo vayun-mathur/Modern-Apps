@@ -21,11 +21,13 @@ import com.vayunmathur.library.ui.odf.OdfTableCell
 import com.vayunmathur.library.ui.odf.OdfTableColumn
 import com.vayunmathur.library.ui.odf.OdfTableRow
 import com.vayunmathur.library.ui.odf.ParagraphStyle
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+import com.vayunmathur.office.ui.DocumentScreen
+import com.vayunmathur.office.ui.OfficeLightTheme
 /**
  * W4: [DocumentScreen] with rich documents — tables inside text docs,
  * spreadsheet grids and presentation decks render their content, and the

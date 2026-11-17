@@ -15,13 +15,15 @@ import com.vayunmathur.library.ui.odf.OdfContentBlock
 import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.library.ui.odf.OdfParagraph
 import com.vayunmathur.library.ui.odf.OdfSpan
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.DocumentFindBars
+import com.vayunmathur.office.ui.DocumentScreenState
 /**
  * Slice 4/4 find-bar tests (Robolectric + createComposeRule):
  * [DocumentFindBars] search/replace/font-scale/word-count/timer bars driven

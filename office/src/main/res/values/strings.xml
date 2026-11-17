@@ -4,7 +4,6 @@
     <!-- MainActivity: Button to open document via system picker. Verb phrase. -->
     <string name="open_document">Open Document</string>
     <!-- MainActivity: Error shown when document fails to load -->
-    <string name="error_loading">Error loading document</string>
     <!-- Section header: Document info/properties panel. Noun. -->
     <string name="document_info">Info</string>
     <!-- Metadata field: Title. Noun. -->
@@ -459,7 +458,6 @@
     <!-- OfficeBottomBar: Action duplicate paragraph. Verb phrase. -->
     <string name="duplicate_paragraph">Duplicate paragraph</string>
     <!-- OfficeBottomBar: Menu insert table without ellipsis alternative -->
-    <string name="insert_table_1">Insert table</string>
     <!-- OfficeBottomBar: Arrange bring to front. Verb phrase. -->
     <string name="bring_to_front">Bring to front</string>
     <!-- OfficeBottomBar: Action promote list item (decrease indent). Verb phrase. -->
@@ -497,7 +495,6 @@
     <!-- DocumentViews: Button hide speaker notes. Verb phrase. -->
     <string name="hide_notes">Hide Notes</string>
     <!-- DocumentViews: Section header speaker notes without ellipsis -->
-    <string name="speaker_notes_2">Speaker Notes</string>
     <!-- MainActivity: Status computing, ellipsis -->
     <string name="computing">Computing…</string>
     <!-- MainActivity: Button show security code for verification. Verb phrase. -->

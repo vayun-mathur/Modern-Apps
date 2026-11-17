@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="reset">リセット</string>
-    <string name="apply">適用</string>
-    <string name="copy">コピー</string>
     <string name="bookmarks">ブックマーク</string>
     <string name="general">一般</string>
-    <string name="all">全て</string>
     <string name="share_link">リンクを共有</string>
 </resources>

@@ -29,7 +29,7 @@ import com.vayunmathur.library.ui.TextField
 import com.vayunmathur.library.ui.TextFieldDefaults
 import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.office.R
-import com.vayunmathur.office.odf.ExcelFormula
+import com.vayunmathur.office.data.odf.ExcelFormula
 
 /** Cell edit bar above the grid: address label, formula field, done. State lives in [SpreadsheetView]. */
 @Composable

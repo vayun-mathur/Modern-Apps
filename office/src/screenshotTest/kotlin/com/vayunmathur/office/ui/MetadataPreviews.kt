@@ -32,10 +32,10 @@ import com.vayunmathur.library.ui.odf.OdfSlide
 import com.vayunmathur.library.ui.odf.OdfSlideElement
 import com.vayunmathur.library.ui.odf.OdfSpan
 import com.vayunmathur.library.ui.odf.ParagraphStyle
-import com.vayunmathur.office.DocumentChrome
-import com.vayunmathur.office.DrawerOutline
-import com.vayunmathur.office.HomeScreen
-import com.vayunmathur.office.OfficeLightTheme
+import com.vayunmathur.office.ui.DocumentChrome
+import com.vayunmathur.office.ui.DrawerOutline
+import com.vayunmathur.office.ui.HomeScreen
+import com.vayunmathur.office.ui.OfficeLightTheme
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"

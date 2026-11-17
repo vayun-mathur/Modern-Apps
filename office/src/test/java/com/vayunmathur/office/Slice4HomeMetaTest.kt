@@ -16,6 +16,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.HomeScreen
+import com.vayunmathur.office.ui.MetadataDialog
+import com.vayunmathur.office.ui.formatFileSize
 /**
  * Slice 4/4 home + metadata tests (Robolectric + createComposeRule):
  * [HomeScreen]/[InitialScreen] (VM-free lambdas except InitialScreen's

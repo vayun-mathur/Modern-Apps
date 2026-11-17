@@ -48,7 +48,7 @@ import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.odf.OdfBorders
 import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.office.R
-import com.vayunmathur.office.odf.ExcelFormula
+import com.vayunmathur.office.data.odf.ExcelFormula
 import com.vayunmathur.office.util.OfficeNative
 
 @Composable

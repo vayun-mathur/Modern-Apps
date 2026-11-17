@@ -27,6 +27,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.documentToHtml
+import com.vayunmathur.office.ui.formatFileSize
 /**
  * Slice 4/4 document-helper tests: pure JVM helpers for rendering/export metadata
  * (OfficeDocumentUtils.documentToHtml/formatFileSize, ui/DocumentViews counters,

@@ -18,13 +18,22 @@ import com.vayunmathur.library.ui.odf.OdfParagraph
 import com.vayunmathur.library.ui.odf.OdfRow
 import com.vayunmathur.library.ui.odf.OdfSheet
 import com.vayunmathur.library.ui.odf.OdfSpan
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.CellOverlays
+import com.vayunmathur.office.ui.DocumentLaunchers
+import com.vayunmathur.office.ui.DocumentOverlayState
+import com.vayunmathur.office.ui.DocumentScreenState
+import com.vayunmathur.office.ui.ExportMenu
+import com.vayunmathur.office.ui.InsertMenu
+import com.vayunmathur.office.ui.PageSetupOverlays
+import com.vayunmathur.office.ui.SlideElementOverlays
+import com.vayunmathur.office.ui.rememberDocumentLaunchers
 /**
  * Slice 4/4 menu + cell/slide overlay tests (Robolectric + createComposeRule):
  * insert/export menus, page-setup dialog, cell color/comment/resize overlays
@@ -221,6 +230,6 @@ class Slice4MenusOverlaysTest {
         s.pendingReplace = { _, _ -> }
         assertTrue(s.pendingReplace != null)
         s.timerSeconds = 90
-        assertEquals(90, s.timerSecondsState.value)
+        assertEquals(90, s.timerSecondsState.intValue)
     }
 }

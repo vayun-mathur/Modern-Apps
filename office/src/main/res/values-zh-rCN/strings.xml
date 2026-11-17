@@ -9,11 +9,8 @@
     <string name="right">右对齐</string>
     <string name="justify">两端对齐</string>
     <string name="clear_formatting">清除格式</string>
-    <string name="copy">复制</string>
-    <string name="all">全部</string>
     <string name="hide">隐藏</string>
     <string name="open_document">打开文档</string>
-    <string name="error_loading">加载文档时出错</string>
     <string name="document_info">信息</string>
     <string name="meta_title">标题</string>
     <string name="meta_author">作者</string>
@@ -27,7 +24,6 @@
     <string name="close_search">关闭</string>
     <string name="search_hint">在文档中搜索…</string>
     <string name="outline">大纲</string>
-    <string name="reset">重置</string>
     <string name="unsaved_changes">未保存的更改</string>
     <string name="unsaved_changes_message">您有未保存的更改。要在离开前保存吗？</string>
     <string name="discard">丢弃</string>
@@ -82,7 +78,6 @@
     <string name="empty_table">（空表格）</string>
     <string name="crop">裁剪</string>
     <string name="header_footer_1">页眉和页脚</string>
-    <string name="name">名称</string>
     <string name="interval_seconds">间隔（秒）</string>
     <string name="your_device_id">您的设备 ID：</string>
     <string name="sharing_online_generates_your_encryption">在线共享会生成您的加密密钥和设备 ID，并注册您的设备，以便他人可以与您协作。您只需执行一次此操作。</string>
@@ -162,7 +157,6 @@
     <string name="special_character_1">特殊字符…</string>
     <string name="speaker_notes_1">演讲者备注…</string>
     <string name="turn_on_online_sharing_to_collaborate_on">开启在线共享功能，即可实时协作处理文档。这会生成您的加密密钥和设备 ID，并注册您的设备，以便他人可以与您共享文档。在您启用此功能之前，不会创建或发送任何内容。</string>
-    <string name="saved">已保存</string>
     <string name="insert_chart">插入图表</string>
     <string name="move_paragraph_up">段落上移</string>
     <string name="anonymous">匿名</string>
@@ -172,8 +166,6 @@
     <string name="normal_1">● 普通</string>
     <string name="line">行</string>
     <string name="integer">整数</string>
-    <string name="date">日期</string>
-    <string name="unknown">未知</string>
     <string name="landscape_1">横向</string>
     <string name="shared_by_you">由您共享</string>
     <string name="wide">● 宽</string>
@@ -183,7 +175,6 @@
     <string name="save_failed">保存失败：<xliff:g id="error" example="Permission denied">%1$s</xliff:g></string>
     <string name="reject_all">全部拒绝</string>
     <string name="on">已开启</string>
-    <string name="apply">应用</string>
     <string name="italic_cell">斜体单元格</string>
     <string name="paper_size">纸张尺寸</string>
     <string name="border_color">边框颜色…</string>
@@ -201,7 +192,6 @@
     <string name="chart_1">图表…</string>
     <string name="narrow">● 窄</string>
     <string name="row_column_size_1">行/列大小</string>
-    <string name="stop">停止</string>
     <string name="night_reading_mode_1">夜间阅读模式</string>
     <string name="flat_odf">扁平化 ODF…</string>
     <string name="accept_all">全部接受</string>
@@ -266,7 +256,6 @@
     <string name="people_with_access">具有访问权限的人员：</string>
     <string name="delete_paragraph">删除段落</string>
     <string name="unmerge">拆分</string>
-    <string name="time">时间</string>
     <string name="fill">填充</string>
     <string name="editor">编辑者</string>
     <string name="comments">批注…</string>
@@ -288,6 +277,4 @@
     <string name="document_theme_summary">控制文档的显示方式。不会更改文件内容。</string>
     <string name="document_theme_unchanged">不更改</string>
     <string name="document_theme_follow_system">遵循系统主题</string>
-    <string name="insert_table_1">插入表格</string>
-    <string name="speaker_notes_2">演讲者备注</string>
 </resources>

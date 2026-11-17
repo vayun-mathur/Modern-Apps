@@ -5,7 +5,6 @@
     <!-- MainActivity: Button to open document via system picker. Verb phrase. -->
     <string name="open_document">Otwórz dokument</string>
     <!-- MainActivity: Error shown when document fails to load -->
-    <string name="error_loading">Błąd podczas wczytywania dokumentu</string>
     <!-- Section header: Document info/properties panel. Noun. -->
     <string name="document_info">Szczegóły</string>
     <!-- Metadata field: Title. Noun. -->
@@ -33,7 +32,6 @@
     <!-- Tab title: Document outline/bookmarks. Noun. -->
     <string name="outline">Spis treści</string>
     <!-- Button: Reset zoom/font size. Verb. -->
-    <string name="reset">Resetuj</string>
     <!-- Dialog title: Unsaved changes warning -->
     <string name="unsaved_changes">Niezapisane zmiany</string>
     <!-- Dialog message: Ask to save before leaving -->
@@ -143,7 +141,6 @@
     <!-- DocumentViews: Menu header & footer dialog -->
     <string name="header_footer_1">Nagłówek i stopka</string>
     <!-- DocumentViews: Field label Name. Noun. -->
-    <string name="name">Nazwa</string>
     <!-- DocumentViews: Field label interval seconds for slide transition -->
     <string name="interval_seconds">Interwał (w sekundach)</string>
     <!-- MainActivity: Label for your device ID. Noun phrase with colon. -->
@@ -207,7 +204,6 @@
     <!-- MainActivity: Toggle zoom text only. Verb phrase. -->
     <string name="zoom_text">Powiększ tekst</string>
     <!-- MainActivity: Button copy. Verb. -->
-    <string name="copy">Kopiuj</string>
     <!-- MainActivity: Button make user viewer role. Verb phrase. -->
     <string name="make_viewer">Zmień rolę na: wyświetlający</string>
     <!-- MainActivity: Menu share online with ellipsis alternative -->
@@ -287,11 +283,9 @@
     <!-- MainActivity: Label cell comment in spreadsheet -->
     <string name="cell_comment">Komentarz do komórki</string>
     <!-- MainActivity: Button Stop presentation. Verb. -->
-    <string name="stop">Zatrzymaj</string>
     <!-- MainActivity: App description subtitle: ODF Viewer & Editor -->
     <string name="open_document_format_viewer_editor">Przeglądarka i edytor formatu Open Document Format</string>
     <!-- MainActivity: Filter All. Adjective. -->
-    <string name="all">Wszystko</string>
     <!-- MainActivity: Button make user owner. Verb phrase. -->
     <string name="make_owner">Ustaw jako właściciela</string>
     <!-- MainActivity: Export format Rich Text RTF with ellipsis -->
@@ -335,7 +329,6 @@
     <!-- MainActivity: Field label orientation. Noun. -->
     <string name="orientation">Orientacja</string>
     <!-- MainActivity: Button Apply changes. Verb. -->
-    <string name="apply">Zastosuj</string>
     <!-- MainActivity: Role label editor lowercase -->
     <string name="editor">edytujący</string>
     <!-- MainActivity: Security instruction to compare code out-of-band -->
@@ -447,11 +440,9 @@
     <!-- OfficeBottomBar: Action delete column. Verb phrase. -->
     <string name="delete_column">Usuń kolumnę</string>
     <!-- OfficeBottomBar: Number format date -->
-    <string name="date">Data</string>
     <!-- OfficeBottomBar: Number format fraction -->
     <string name="fraction">Ułamkowe</string>
     <!-- OfficeBottomBar: Number format time / menu time. Noun. -->
-    <string name="time">Godzina</string>
     <!-- OfficeBottomBar: Menu border. Noun. -->
     <string name="border">Krawędź</string>
     <!-- OfficeBottomBar: Action demote list item (increase indent). Verb phrase. -->
@@ -491,13 +482,11 @@
     <!-- OfficeViewModel: Toast error when save fails. %1$s=error reason/message -->
     <string name="save_failed">Błąd zapisu: <xliff:g id="error" example="Permission denied">%1$s</xliff:g></string>
     <!-- OfficeViewModel: Toast saved successfully -->
-    <string name="saved">Zapisano</string>
     <!-- MainActivity: Explanation prompting user to enable online sharing for real-time collaboration. Full sentence. -->
     <string name="turn_on_online_sharing_to_collaborate_on">Włącz udostępnianie online, aby współpracować nad dokumentami w czasie rzeczywistym. Spowoduje to wygenerowanie kluczy szyfrowania oraz identyfikatora urządzenia, a także zarejestruje urządzenie, umożliwiając innym udostępnianie plików. Nic nie zostanie utworzone ani wysłane, dopóki nie włączysz tej opcji.</string>
     <!-- MainActivity: Fallback author name Anonymous. Noun. -->
     <string name="anonymous">Anonimowy</string>
     <!-- MainActivity: Fallback author Unknown. Noun. -->
-    <string name="unknown">Nieznany</string>
     <!-- MainActivity: Concatenated author and date for annotation. %1$s=author name, %2$s=date suffix " · YYYY-MM-DD" or empty -->
     <string name="annotation_author_date"><xliff:g id="author" example="Anonymous">%1$s</xliff:g><xliff:g id="date_suffix" example=" · 2024-01-01">%2$s</xliff:g></string>
     <!-- MainActivity: Tracked change line. %1$s=change type e.g. "Insertion", %2$s=author e.g. "Unknown", %3$s=date suffix " · 2024-01-01" or empty -->
@@ -570,6 +559,4 @@
     <string name="document_theme_summary">Kontroluje sposób wyświetlania dokumentów. Nie zmienia pliku.</string>
     <string name="document_theme_unchanged">Bez zmian</string>
     <string name="document_theme_follow_system">Zgodnie z motywem systemu</string>
-    <string name="insert_table_1">Wstaw tabelę</string>
-    <string name="speaker_notes_2">Notatki prelegenta</string>
 </resources>

@@ -11,17 +11,19 @@ import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.library.ui.odf.OdfParagraph
 import com.vayunmathur.library.ui.odf.OdfSpan
 import com.vayunmathur.library.ui.odf.ParagraphStyle
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.DocumentScreen
+import com.vayunmathur.office.ui.OfficeLightTheme
 /**
  * Slice 4/4 screen tests (Robolectric): [DocumentScreen] end-to-end render
  * for text/sheet/presentation documents, [OfficeLightTheme] wrapping, and
- * the [OfficeRoute] navigation keys.
+ * the [Route] navigation keys.
  */
 @RunWith(AndroidJUnit4::class)
 class Slice4ScreenTest {
@@ -83,11 +85,11 @@ class Slice4ScreenTest {
     }
 
     @Test fun routeKeys() {
-        val off = OfficeRoute.OfflineEditor("content://x")
+        val off = Route.OfflineEditor("content://x")
         assertEquals("content://x", off.uri)
-        val on = OfficeRoute.OnlineEditor("doc1")
+        val on = Route.OnlineEditor("doc1")
         assertEquals("doc1", on.docId)
-        assertTrue(OfficeRoute.OfflineHome is OfficeRoute)
+        assertTrue(Route.OfflineHome is Route)
     }
 
     @Test fun lightThemeWrapsContent() {

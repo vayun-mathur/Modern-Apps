@@ -23,13 +23,17 @@ import com.vayunmathur.office.ui.DocCaps
 import com.vayunmathur.office.ui.FormatTarget
 import com.vayunmathur.office.ui.OfficeBottomBar
 import com.vayunmathur.office.ui.ShapeKind
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.DocumentBottomBarHost
+import com.vayunmathur.office.ui.DocumentScreenState
+import com.vayunmathur.office.ui.OfficeDocumentPane
+import com.vayunmathur.office.ui.rememberDocumentLaunchers
 /**
  * Slice 4/4 bottom-bar + pane tests (Robolectric + createComposeRule):
  * [OfficeBottomBar] format branches + insert menu, and [OfficeDocumentPane]

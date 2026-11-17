@@ -56,6 +56,7 @@ import com.vayunmathur.library.ui.odf.OdfSlide
 import com.vayunmathur.library.ui.odf.OdfSlideElement
 import com.vayunmathur.office.R
 
+import com.vayunmathur.office.Navigation
 @Composable
 fun PresentationView(
     doc: OdfDocument.Presentation,

@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.office.R
 
+import com.vayunmathur.office.platform.save
 @Composable
 fun HeaderFooterDialog(
     initialHeader: String,

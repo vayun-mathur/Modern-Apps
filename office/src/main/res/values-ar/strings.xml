@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="all">الكل</string>
     <string name="hide">إخفاء</string>
     <string name="normal">عادي</string>
     <string name="left">يسار</string>
@@ -11,14 +10,11 @@
     <string name="general">عام</string>
     <string name="share_link">مشاركة الرابط</string>
     <string name="save_failed">فشل الحفظ: <xliff:g id="error" example="Permission denied">%1$s</xliff:g></string>
-    <string name="name">الاسم</string>
     <string name="line">السطر</string>
     <string name="go">انتقل</string>
     <string name="discard">تجاهل</string>
     <string name="auto_save">الحفظ التلقائي</string>
-    <string name="apply">تطبيق</string>
     <string name="open_document">افتح مستند</string>
-    <string name="error_loading">خطأ في تحميل المستند</string>
     <string name="document_info">معلومات</string>
     <string name="meta_title">العنوان</string>
     <string name="meta_author">المؤلف</string>
@@ -31,13 +27,12 @@
     <string name="meta_words">الكلمات</string>
     <string name="close_search">إغلاق</string>
     <string name="search_hint">البحث في المستند…</string>
-    <string name="reset">إعادة الضبط</string>
     <string name="unsaved_changes">تغييرات غير محفوظة</string>
     <string name="unsaved_changes_message">لديك تغييرات غير محفوظة. هل تريد الحفظ قبل المغادرة؟</string>
     <string name="replace_hint">استبدال بـ…</string>
     <string name="print_doc">طباعة</string>
     <string name="header">رأس</string>
-    <string name="series_name_v1_v2">السلسلة (الاسم: v1، v2، ...)</string>
+    <string name="series_name_v1_v2">السلسلة (الاسم: v1، v2، …)</string>
     <string name="freeze">تجميد</string>
     <string name="insert_comment">إدراج تعليق</string>
     <string name="empty_presentation">عرض تقديمي فارغ</string>
@@ -95,7 +90,6 @@
     <string name="csv">CSV…</string>
     <string name="export">تصدير ◂</string>
     <string name="zoom_text">تكبير النص</string>
-    <string name="copy">نسخ</string>
     <string name="make_viewer">تعيين كمشاهد</string>
     <string name="share_online_1">مشاركة عبر الإنترنت…</string>
     <string name="share_link_chooser">مشاركة دعوة Office</string>
@@ -131,7 +125,6 @@
     <string name="page_setup">إعداد الصفحة…</string>
     <string name="comments">التعليقات…</string>
     <string name="page_setup_1">إعداد الصفحة</string>
-    <string name="stop">توقف</string>
     <string name="open_document_format_viewer_editor">عارض ومحرّر تنسيق المستندات المفتوح</string>
     <string name="make_owner">تعيين كمالك</string>
     <string name="rich_text_rtf">Rich Text (.rtf)…</string>
@@ -189,9 +182,7 @@
     <string name="border_color">لون الحدود…</string>
     <string name="heading_1">عنوان ١</string>
     <string name="delete_column">حذف العمود</string>
-    <string name="date">التاريخ</string>
     <string name="fraction">كسر</string>
-    <string name="time">الوقت</string>
     <string name="border">حدود</string>
     <string name="duplicate">تكرار</string>
     <string name="delete_paragraph">حذف الفقرة</string>
@@ -203,10 +194,8 @@
     <string name="row_column_size">حجم الصف/العمود…</string>
     <string name="number_format">تنسيق الأرقام</string>
     <string name="number_2_dp">أرقام (2 dp)</string>
-    <string name="saved">تم الحفظ</string>
     <string name="turn_on_online_sharing_to_collaborate_on">فعِّل المشاركة عبر الإنترنت للتعاون في المستندات في الوقت الفعلي. يؤدي هذا لإنشاء مفاتيح تشفير خاصتّك ومعرّف جهاز وتسجيل جهازك حتى يتمكن الآخرون من المشاركة معك. لا يتم إنشاء أي شيء أو إرساله حتى تقوم بتفعيله.</string>
     <string name="anonymous">مجهول</string>
-    <string name="unknown">غير معروف</string>
     <string name="on">مفعّل</string>
     <string name="off">متوقف</string>
     <string name="hide_notes">إخفاء الملاحظات</string>
@@ -219,7 +208,7 @@
     <string name="word_count_bar">✓ شريط عدد الكلمات</string>
     <string name="word_count_bar_1">شريط عدد الكلمات</string>
     <string name="replace_1">استبدال</string>
-    <string name="typing">(يكتب...)</string>
+    <string name="typing">(يكتب…)</string>
     <string name="portrait">● عمودي</string>
     <string name="portrait_1">عمودي</string>
     <string name="landscape">● أفقي</string>
@@ -246,7 +235,6 @@
     <string name="table_of_contents">جدول المحتويات</string>
     <string name="table">جدول</string>
     <string name="table_1">جدول…</string>
-    <string name="insert_table_1">إدراج جدول</string>
     <string name="wide">● واسعة</string>
     <string name="wide_1">واسعة</string>
     <string name="case_on">☑ حساسية حالة الأحرف</string>
@@ -272,7 +260,6 @@
     <string name="footer">تذييل</string>
     <string name="comments_1">التعليقات (<xliff:g id="count" example="2">%1$s</xliff:g>)</string>
     <string name="speaker_notes_1">ملاحظات المتحدث…</string>
-    <string name="speaker_notes_2">ملاحظات المتحدث</string>
     <string name="speaker_notes">ملاحظات المتحدث</string>
     <string name="justify">المحاذاة</string>
     <string name="annotation_author_date"><xliff:g id="author" example="Anonymous">%1$s</xliff:g><xliff:g id="date_suffix" example=" · 2024-01-01">%2$s</xliff:g></string>

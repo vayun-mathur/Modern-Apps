@@ -18,11 +18,11 @@ import com.vayunmathur.library.ui.odf.OdfShape
 import com.vayunmathur.library.ui.odf.OdfSlide
 import com.vayunmathur.library.ui.odf.OdfSlideElement
 import com.vayunmathur.library.ui.odf.OdfSpan
-import com.vayunmathur.office.DocumentOverlayState
-import com.vayunmathur.office.SlideOverlays
-import com.vayunmathur.office.rememberDocumentLaunchers
-import com.vayunmathur.office.DocumentScreenState
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.ui.DocumentOverlayState
+import com.vayunmathur.office.ui.SlideOverlays
+import com.vayunmathur.office.ui.rememberDocumentLaunchers
+import com.vayunmathur.office.ui.DocumentScreenState
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

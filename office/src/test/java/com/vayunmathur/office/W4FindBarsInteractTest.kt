@@ -14,13 +14,15 @@ import com.vayunmathur.library.ui.odf.OdfContentBlock
 import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.library.ui.odf.OdfParagraph
 import com.vayunmathur.library.ui.odf.OdfSpan
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+import com.vayunmathur.office.ui.DocumentFindBars
+import com.vayunmathur.office.ui.DocumentScreenState
 /**
  * W4: [DocumentFindBars] interactions — match navigation jumps, replace
  * one/all against the real ViewModel, match-option toggles, and the

@@ -12,7 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.odf.ChartType
 import com.vayunmathur.library.ui.odf.OdfChart
 import com.vayunmathur.library.ui.odf.OdfChartSeries
-import com.vayunmathur.office.EnableOnlineDialog
+import com.vayunmathur.office.ui.EnableOnlineDialog
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

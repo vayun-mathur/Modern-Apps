@@ -15,14 +15,18 @@ import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.library.ui.odf.OdfParagraph
 import com.vayunmathur.library.ui.odf.OdfSpan
 import com.vayunmathur.library.ui.odf.ParagraphStyle
-import com.vayunmathur.office.util.OfficeDocMeta
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeDocMeta
+import com.vayunmathur.office.platform.OfficeViewModel
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.DocumentMenuBar
+import com.vayunmathur.office.ui.DocumentScreenState
+import com.vayunmathur.office.ui.OnlineTab
+import com.vayunmathur.office.ui.rememberDocumentLaunchers
 /**
  * Slice 4/4 menu-bar + online-tab tests (Robolectric):
  * [DocumentMenuBar] file/view menus and the [OnlineTab] disabled screen.

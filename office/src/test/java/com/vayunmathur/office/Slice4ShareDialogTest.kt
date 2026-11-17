@@ -8,8 +8,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.office.util.OfficeMember
-import com.vayunmathur.office.util.OfficeRoles
+import com.vayunmathur.office.platform.OfficeMember
+import com.vayunmathur.office.platform.OfficeRoles
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,6 +17,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.ShareOnlineDialog
 /**
  * Slice 4/4 share-dialog tests (Robolectric + createComposeRule):
  * [ShareOnlineDialog] viewer vs owner bodies. All collaborators arrive as

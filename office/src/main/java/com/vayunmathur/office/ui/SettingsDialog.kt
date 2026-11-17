@@ -22,18 +22,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.office.R
 
+import com.vayunmathur.office.platform.OfficeViewModel
+import com.vayunmathur.office.platform.save
 @Composable
 fun SettingsDialog(
     autoSave: Boolean,
     autoSaveInterval: Int,
     defaultFontSize: Float,
-    documentThemeMode: com.vayunmathur.office.util.OfficeViewModel.DocumentThemeMode =
-        com.vayunmathur.office.util.OfficeViewModel.DocumentThemeMode.UNCHANGED,
+    documentThemeMode: com.vayunmathur.office.platform.OfficeViewModel.DocumentThemeMode =
+        com.vayunmathur.office.platform.OfficeViewModel.DocumentThemeMode.UNCHANGED,
     onSave: (
         autoSave: Boolean,
         interval: Int,
         fontSize: Float,
-        documentThemeMode: com.vayunmathur.office.util.OfficeViewModel.DocumentThemeMode) -> Unit = { _, _, _, _ -> },
+        documentThemeMode: com.vayunmathur.office.platform.OfficeViewModel.DocumentThemeMode) -> Unit = { _, _, _, _ -> },
     onDismiss: () -> Unit
 ) {
     var autoSaveEnabled by remember { mutableStateOf(autoSave) }
@@ -75,14 +77,14 @@ fun SettingsDialog(
                         stringResource(R.string.document_theme_unchanged),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodyMedium)
-                    androidx.compose.material3.RadioButton(selected = themeMode == com.vayunmathur.office.util.OfficeViewModel.DocumentThemeMode.UNCHANGED, onClick = { themeMode = com.vayunmathur.office.util.OfficeViewModel.DocumentThemeMode.UNCHANGED })
+                    androidx.compose.material3.RadioButton(selected = themeMode == com.vayunmathur.office.platform.OfficeViewModel.DocumentThemeMode.UNCHANGED, onClick = { themeMode = com.vayunmathur.office.platform.OfficeViewModel.DocumentThemeMode.UNCHANGED })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         stringResource(R.string.document_theme_follow_system),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodyMedium)
-                    androidx.compose.material3.RadioButton(selected = themeMode == com.vayunmathur.office.util.OfficeViewModel.DocumentThemeMode.FOLLOW_SYSTEM, onClick = { themeMode = com.vayunmathur.office.util.OfficeViewModel.DocumentThemeMode.FOLLOW_SYSTEM })
+                    androidx.compose.material3.RadioButton(selected = themeMode == com.vayunmathur.office.platform.OfficeViewModel.DocumentThemeMode.FOLLOW_SYSTEM, onClick = { themeMode = com.vayunmathur.office.platform.OfficeViewModel.DocumentThemeMode.FOLLOW_SYSTEM })
                 }
             }
         },
@@ -109,7 +111,7 @@ fun SettingsDialog(
         autoSave = autoSave,
         autoSaveInterval = autoSaveInterval,
         defaultFontSize = defaultFontSize,
-        documentThemeMode = com.vayunmathur.office.util.OfficeViewModel.DocumentThemeMode.UNCHANGED,
+        documentThemeMode = com.vayunmathur.office.platform.OfficeViewModel.DocumentThemeMode.UNCHANGED,
         onSave = { a, i, f, _ -> onSave(a, i, f) },
         onDismiss = onDismiss
     )

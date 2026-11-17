@@ -1,5 +1,12 @@
 package com.vayunmathur.office.util
 
+import com.vayunmathur.office.domain.DocumentTreeCrdt
+import com.vayunmathur.office.platform.OfficeViewModel
+// PACKAGE STRUCTURE EXCEPTION (JNI)
+// OfficeNative's fully-qualified name is frozen: the Rust office_engine crate binds to it
+// via Java_com_vayunmathur_office_util_OfficeNative_* JNI symbols, so it cannot move to a
+// canonical package without breaking native linkage.
+
 import com.vayunmathur.library.ui.odf.OdfNamedRange
 import com.vayunmathur.library.ui.odf.OdfNumberFormat
 import com.vayunmathur.library.ui.odf.OdfSheet

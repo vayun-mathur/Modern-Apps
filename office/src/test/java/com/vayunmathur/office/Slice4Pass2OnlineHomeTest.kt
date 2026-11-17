@@ -18,9 +18,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.office.ui.OfficeEditorWideLayout
-import com.vayunmathur.office.util.OfficeDocMeta
-import com.vayunmathur.office.util.OfficeSync
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeDocMeta
+import com.vayunmathur.office.sync.OfficeSync
+import com.vayunmathur.office.platform.OfficeViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Rule
@@ -29,6 +29,11 @@ import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.InitialScreen
+import com.vayunmathur.office.ui.OfficeLightTheme
+import com.vayunmathur.office.ui.OfficeTabs
+import com.vayunmathur.office.ui.OnlineTab
+import com.vayunmathur.office.ui.documentDarkModeInvert
 /** Slice 4 pass 2: OnlineTab enabled lists, OfficeTabs, wide layout, themes, routes. */
 @RunWith(AndroidJUnit4::class)
 class Slice4Pass2OnlineHomeTest {
@@ -134,7 +139,7 @@ class Slice4Pass2OnlineHomeTest {
         var editorNavs = 0
         rule.setContent {
             OfficeTabs(
-                backStack = com.vayunmathur.library.util.NavBackStack(arrayOf(OfficeRoute.OfflineHome)),
+                backStack = com.vayunmathur.library.util.NavBackStack(arrayOf(Route.OfflineHome)),
                 viewModel = viewModel,
                 onOpenDocument = {},
                 onNavigateEditor = { editorNavs++ },
@@ -190,17 +195,17 @@ class Slice4Pass2OnlineHomeTest {
 
     @Test fun officeRoutesSerializeRoundTrip() {
         assertEquals(
-            OfficeRoute.OfflineEditor("content://x"),
-            Json.decodeFromString(OfficeRoute.serializer(), Json.encodeToString(OfficeRoute.serializer(), OfficeRoute.OfflineEditor("content://x"))),
+            Route.OfflineEditor("content://x"),
+            Json.decodeFromString(Route.serializer(), Json.encodeToString(Route.serializer(), Route.OfflineEditor("content://x"))),
         )
         assertEquals(
-            OfficeRoute.OnlineEditor("doc9"),
-            Json.decodeFromString(OfficeRoute.serializer(), Json.encodeToString(OfficeRoute.serializer(), OfficeRoute.OnlineEditor("doc9"))),
+            Route.OnlineEditor("doc9"),
+            Json.decodeFromString(Route.serializer(), Json.encodeToString(Route.serializer(), Route.OnlineEditor("doc9"))),
         )
         assertEquals(
-            OfficeRoute.OfflineHome,
-            Json.decodeFromString(OfficeRoute.serializer(), Json.encodeToString(OfficeRoute.serializer(), OfficeRoute.OfflineHome)),
+            Route.OfflineHome,
+            Json.decodeFromString(Route.serializer(), Json.encodeToString(Route.serializer(), Route.OfflineHome)),
         )
-        assertEquals(null, OfficeRoute.OfflineEditor().uri)
+        assertEquals(null, Route.OfflineEditor().uri)
     }
 }

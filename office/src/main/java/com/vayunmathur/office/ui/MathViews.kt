@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.office.odf.MathNode
-import com.vayunmathur.office.odf.OdfMath
+import com.vayunmathur.office.data.odf.MathNode
+import com.vayunmathur.office.data.odf.OdfMath
 
 @Composable
 fun MathView(mathml: String) {

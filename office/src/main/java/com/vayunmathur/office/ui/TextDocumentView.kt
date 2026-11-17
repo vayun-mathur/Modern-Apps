@@ -57,6 +57,7 @@ import com.vayunmathur.library.ui.odf.OdfImage
 import com.vayunmathur.library.ui.odf.OdfTableCell
 import com.vayunmathur.office.R
 
+import com.vayunmathur.office.platform.firstSpan
 // --- Text Document (continuous editor) ---
 
 internal sealed class DocSegment {

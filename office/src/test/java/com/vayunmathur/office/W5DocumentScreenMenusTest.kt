@@ -18,12 +18,14 @@ import com.vayunmathur.library.ui.odf.OdfSlideElement
 import com.vayunmathur.library.ui.odf.OdfFrame
 import com.vayunmathur.library.ui.odf.OdfSpan
 import com.vayunmathur.library.ui.odf.ParagraphStyle
-import com.vayunmathur.office.util.OfficeViewModel
+import com.vayunmathur.office.platform.OfficeViewModel
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+import com.vayunmathur.office.ui.DocumentScreen
+import com.vayunmathur.office.ui.OfficeLightTheme
 /**
  * W5: DocumentScreen menu/overlay traversal — every top menu is opened and
  * its toggle items are driven for each document type, so the menu-bar,

@@ -25,8 +25,8 @@ import com.vayunmathur.library.ui.odf.OdfSpan
 import com.vayunmathur.library.ui.odf.OdfTable
 import com.vayunmathur.library.ui.odf.OdfTableCell
 import com.vayunmathur.library.ui.odf.OdfTableRow
-import com.vayunmathur.office.util.OfficeViewModel
-import com.vayunmathur.office.util.cellCommentText
+import com.vayunmathur.office.platform.OfficeViewModel
+import com.vayunmathur.office.platform.cellCommentText
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,6 +34,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+import com.vayunmathur.office.ui.CellOverlays
+import com.vayunmathur.office.ui.DocumentOverlayState
+import com.vayunmathur.office.ui.DocumentScreenState
+import com.vayunmathur.office.ui.InsertMenu
+import com.vayunmathur.office.ui.rememberDocumentLaunchers
 /** Slice 4 pass 2: InsertMenu items, cell/slide color+comment+resize overlays. */
 @RunWith(AndroidJUnit4::class)
 class Slice4Pass2MenusOverlaysTest {

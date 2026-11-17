@@ -9,10 +9,6 @@
     <string name="right">Droite</string>
     <string name="justify">Justifié</string>
     <string name="clear_formatting">Effacer la mise en forme</string>
-    <string name="all">Tout</string>
-    <string name="copy">Copier</string>
-    <string name="reset">Réinitialiser</string>
-    <string name="apply">Appliquer</string>
     <string name="title_field">Titre (champ)</string>
     <string name="comment">Commentaire</string>
     <string name="viewer">lecteur</string>
@@ -49,7 +45,6 @@
     <string name="meta_modified">Modifié le</string>
     <string name="speaker_notes_1">Notes du présentateur…</string>
     <string name="turn_on_online_sharing_to_collaborate_on">Activez le partage en ligne pour collaborer sur des documents en temps réel. Cela génère vos clés de chiffrement et un identifiant d’appareil, puis enregistre votre appareil afin que d’autres personnes puissent partager des documents avec vous. Rien n’est créé ni envoyé tant que vous ne l’activez pas.</string>
-    <string name="saved">Enregistré</string>
     <string name="next">Suivant ▶</string>
     <string name="empty_spreadsheet">Feuille de calcul vide</string>
     <string name="insert_chart">Insérer un graphique</string>
@@ -64,10 +59,8 @@
     <string name="normal_1">● Normal</string>
     <string name="line">Ligne</string>
     <string name="integer">Nombre entier</string>
-    <string name="date">Date</string>
     <string name="print_doc">Imprimer</string>
     <string name="insert_comment">Insérer un commentaire</string>
-    <string name="unknown">Inconnu</string>
     <string name="page_count">Nombre de pages</string>
     <string name="powerpoint_pptx">PowerPoint (.pptx)…</string>
     <string name="meta_description">Description</string>
@@ -95,7 +88,6 @@
     <string name="type">Type :</string>
     <string name="search_hint">Rechercher dans le document…</string>
     <string name="online_sharing_is_off">Le partage en ligne est désactivé</string>
-    <string name="name">Nom</string>
     <string name="wide_1">Large</string>
     <string name="delete_column">Supprimer la colonne</string>
     <string name="ellipse">Ellipse</string>
@@ -126,7 +118,6 @@
     <string name="order">Ordre :</string>
     <string name="font_size_1">Taille de police</string>
     <string name="time_field">Heure (champ)</string>
-    <string name="stop">Arrêter</string>
     <string name="night_reading_mode_1">Mode de lecture nocturne</string>
     <string name="discard">Abandonner</string>
     <string name="flat_odf">ODF plat…</string>
@@ -242,7 +233,6 @@
     <string name="make_viewer">Définir comme lecteur</string>
     <string name="margins">Marges</string>
     <string name="accept">Accepter</string>
-    <string name="error_loading">Erreur lors du chargement du document</string>
     <string name="default_font_size_pt">Taille de police par défaut : <xliff:g id="size" example="12">%1$s</xliff:g> pt</string>
     <string name="your_device_id_share_this_so_others_can">Identifiant de votre appareil (partagez-le pour que d’autres personnes puissent vous envoyer des documents) :</string>
     <string name="close_search">Fermer</string>
@@ -260,7 +250,6 @@
     <string name="footer">Pied de page</string>
     <string name="go_to">Atteindre</string>
     <string name="unmerge">Annuler la fusion</string>
-    <string name="time">Heure</string>
     <string name="fill">Remplissage</string>
     <string name="crop">Recadrer</string>
     <string name="meta_words">Mots</string>
@@ -282,6 +271,4 @@
     <string name="join_request_sending">Demande d’accès en cours…</string>
     <string name="join_request_sent">Demande envoyée — vous aurez accès dès que le propriétaire l’aura approuvée.</string>
     <string name="join_request_failed">Impossible d’envoyer la demande — vérifiez votre connexion et réessayez.</string>
-    <string name="insert_table_1">Insérer un tableau</string>
-    <string name="speaker_notes_2">Notes du présentateur</string>
 </resources>

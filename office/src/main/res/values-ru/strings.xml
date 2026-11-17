@@ -2,7 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Office</string>
     <string name="open_document">Открыть Документ</string>
-    <string name="error_loading">Ошибка открытия документа</string>
     <string name="document_info">Информация</string>
     <string name="meta_title">Заголовок</string>
     <string name="meta_author">Автор</string>
@@ -16,7 +15,6 @@
     <string name="close_search">Закрыть</string>
     <string name="search_hint">Поиск в документе…</string>
     <string name="outline">Контур</string>
-    <string name="reset">Обнулить</string>
     <string name="unsaved_changes">Несохраненные изменения</string>
     <string name="unsaved_changes_message">У вас есть несохраненные изменения. Хотите сохранить изменения перед выходом?</string>
     <string name="discard">Отказаться</string>
@@ -77,7 +75,6 @@
     <string name="csv">CSV…</string>
     <string name="export">Экспорт ▸</string>
     <string name="zoom_text">Zoom текста</string>
-    <string name="copy">Копировать</string>
     <string name="share_online_1">Поделиться онлайн…</string>
     <string name="share_link">Поделиться ссылкой</string>
     <string name="share_link_chooser">Пригласить</string>
@@ -116,9 +113,7 @@
     <string name="comments">Комментарии…</string>
     <string name="page_setup_1">Настройка страницы</string>
     <string name="cell_comment">Комментарий к ячейке</string>
-    <string name="stop">Стоп</string>
     <string name="open_document_format_viewer_editor">Open Document Format Viewer &amp; Editor</string>
-    <string name="all">Все</string>
     <string name="make_owner">Сделать владельцем</string>
     <string name="rich_text_rtf">Rich Text (.rtf)…</string>
     <string name="margins">Поля</string>
@@ -140,7 +135,6 @@
     <string name="people_with_access">Люди с доступом:</string>
     <string name="no_tracked_changes_in_this_document">Никаких изменений в этом документе.</string>
     <string name="orientation">Ориентация</string>
-    <string name="apply">Применить</string>
     <string name="editor">редактор</string>
     <string name="compare_with_the_recipient_out_of_band_i">Сравните с получателем — он должен соответствовать на обоих устройствах:</string>
     <string name="footnote">Сноска…</string>
@@ -177,7 +171,6 @@
     <string name="accept">Принять</string>
     <string name="empty_table">(пустая таблица)</string>
     <string name="crop">Обрезать</string>
-    <string name="name">Название</string>
     <string name="insert">Включить</string>
     <string name="manage">Управлять</string>
     <string name="enable">Включить</string>
@@ -206,9 +199,7 @@
     <string name="move_paragraph_up">Переместить пункт вверх</string>
     <string name="heading_1">Раздел 1</string>
     <string name="delete_column">Удалить столбец</string>
-    <string name="date">Дата</string>
     <string name="fraction">Дробь</string>
-    <string name="time">Время</string>
     <string name="border">Граница</string>
     <string name="demote_list_item">Детали списка</string>
     <string name="duplicate">Дублировать</string>
@@ -227,14 +218,11 @@
     <string name="number_2_dp">Номер (2 dp)</string>
     <string name="center">Центр</string>
     <string name="save_failed">Сохранить не удалось: <xliff:g id="error" example="Permission denied">%1$s</xliff:g></string>
-    <string name="saved">Сохранено</string>
     <string name="turn_on_online_sharing_to_collaborate_on">Включите онлайн-обмен, для колаборации в реальном времени. Это генерирует ключи шифрования и регистрирует id вашего устройствао, чтобы другие могли поделиться с вами. Ничто не создается или не отправляется, пока вы не включите шифрование.</string>
     <string name="anonymous">Анонимный</string>
-    <string name="unknown">Неизвестный</string>
     <string name="insert_chart">Вставить чарт</string>
     <string name="edit_chart">Редактировать чарт</string>
     <string name="hide_notes">Скрыть заметки</string>
-    <string name="speaker_notes_2">Докладчик</string>
     <string name="computing">Вычисление…</string>
     <string name="show_security_code">Показать код безопасности</string>
     <string name="adding">Добавление…</string>
@@ -250,7 +238,7 @@
     <string name="case_1">☐ Дело</string>
     <string name="word">☑ Слово</string>
     <string name="word_1">☐ Слово</string>
-    <string name="typing">(печатает...)</string>
+    <string name="typing">(печатает…)</string>
     <string name="portrait">● Портрет</string>
     <string name="portrait_1">Портрет</string>
     <string name="narrow">● Узкий</string>
@@ -269,5 +257,4 @@
     <string name="header_footer_1">Заголовок и подвал</string>
     <string name="landscape_1">Альбомная</string>
     <string name="landscape">● Альбомная</string>
-    <string name="insert_table_1">Вставить таблицу</string>
 </resources>

@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="hide">Peida</string>
-    <string name="all">Kõik</string>
     <string name="bookmarks">Järjehoidjad</string>
     <string name="general">Üldist</string>
-    <string name="copy">Kopeeri</string>
     <string name="app_name">Kontor</string>
     <string name="open_document">Ava dokument</string>
-    <string name="error_loading">Viga dokumendi laadimisel</string>
     <string name="document_info">Teave</string>
     <string name="meta_title">Pealkiri</string>
     <string name="meta_author">Autor</string>
@@ -21,13 +18,11 @@
     <string name="close_search">Sulge</string>
     <string name="search_hint">Otsi dokumendist…</string>
     <string name="outline">Faili üldine kokkuvõte</string>
-    <string name="reset">Lähtesta suum</string>
     <string name="unsaved_changes">Salvestamata muudatused</string>
     <string name="unsaved_changes_message">Sul on salvestamata muudatusi. Kas soovid seda enne lahkumist teha?</string>
     <string name="discard">Loobu</string>
     <string name="replace_hint">Asenda järgnevaga…</string>
     <string name="print_doc">Prindi</string>
-    <string name="apply">Rakenda</string>
     <string name="off">VÄLJAS</string>
     <string name="computing">Arvutan…</string>
     <string name="header">Päis</string>
@@ -37,8 +32,6 @@
     <string name="sort_rows">Järjesta ridu</string>
     <string name="edit_image">Muuda pilti</string>
     <string name="sort">Järjesta</string>
-    <string name="unknown">Pole teada</string>
-    <string name="name">Nimi</string>
     <string name="normal">Tavaline</string>
     <string name="heading_1">Pealkiri 1</string>
     <string name="heading_2">Pealkiri 2</string>
@@ -129,7 +122,6 @@
     <string name="comments">Kommentaarid…</string>
     <string name="page_setup_1">Lehe seadistused</string>
     <string name="cell_comment">Lahtri kommentaar</string>
-    <string name="stop">Lõpeta</string>
     <string name="unfreeze">Lõpeta külmutamine</string>
     <string name="dup">Tee koopia</string>
     <string name="words_characters_min_read"><xliff:g id="words" example="120">%1$s</xliff:g> sõna · <xliff:g id="characters" example="650">%2$s</xliff:g> tähemärki · ~<xliff:g id="minutes" example="1">%3$s</xliff:g> min lugemiseks</string>
@@ -230,9 +222,7 @@
     <string name="move_paragraph_up">Liiguta lõik ülespoole</string>
     <string name="border_color">Äärise värv…</string>
     <string name="delete_column">Kustuta veerg</string>
-    <string name="date">Kuupäev</string>
     <string name="fraction">Murdarv</string>
-    <string name="time">Kellaaeg</string>
     <string name="border">Ääris</string>
     <string name="demote_list_item">Liigenda loendirida paremale</string>
     <string name="duplicate">Tee koopia</string>
@@ -249,7 +239,6 @@
     <string name="number_format">Numbrivorming</string>
     <string name="number_2_dp">Number (2 dp)</string>
     <string name="save_failed">Salvestamine ei õnnestunud: <xliff:g id="error" example="Õigused on puudu">%1$s</xliff:g></string>
-    <string name="saved">Salvestatud</string>
     <string name="anonymous">Anonüümne</string>
     <string name="annotation_author_date"><xliff:g id="author" example="Anonüümne">%1$s</xliff:g><xliff:g id="date_suffix" example=" · 2024-01-01">%2$s</xliff:g></string>
     <string name="tracked_change_author_date"><xliff:g id="change_type" example="Lisamine">%1$s</xliff:g> · <xliff:g id="author" example="Tundmatu">%2$s</xliff:g><xliff:g id="date_suffix" example=" · 2024-01-01">%3$s</xliff:g></string>
@@ -288,6 +277,4 @@
     <string name="document_theme_summary">Saad hallata, kuidas dokumenti kuvatakse. Ei muuda faili sisu.</string>
     <string name="document_theme_unchanged">Muutmata kujul</string>
     <string name="document_theme_follow_system">Järgi süsteemi kujundust</string>
-    <string name="insert_table_1">Lisa tabel</string>
-    <string name="speaker_notes_2">Esineja märkmed</string>
 </resources>

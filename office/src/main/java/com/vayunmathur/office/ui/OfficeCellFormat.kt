@@ -26,21 +26,21 @@ import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.odf.OdfNumberFormat
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.office.R
-import com.vayunmathur.office.util.OfficeViewModel
-import com.vayunmathur.office.util.duplicateSlideElement
-import com.vayunmathur.office.util.fillDownToEnd
-import com.vayunmathur.office.util.reorderSlideElement
-import com.vayunmathur.office.util.setCellAlignment
-import com.vayunmathur.office.util.setCellBold
-import com.vayunmathur.office.util.setCellItalic
-import com.vayunmathur.office.util.setCellNumberFormat
-import com.vayunmathur.office.util.setSlideElementAlignment
-import com.vayunmathur.office.util.setSlideElementRotation
-import com.vayunmathur.office.util.toggleSlideElementBold
-import com.vayunmathur.office.util.toggleSlideElementItalic
-import com.vayunmathur.office.util.toggleSlideElementUnderline
-import com.vayunmathur.office.util.unmergeCells
+import com.vayunmathur.office.platform.OfficeViewModel
+import com.vayunmathur.office.platform.duplicateSlideElement
+import com.vayunmathur.office.platform.fillDownToEnd
+import com.vayunmathur.office.platform.setCellAlignment
+import com.vayunmathur.office.platform.setCellBold
+import com.vayunmathur.office.platform.setCellItalic
+import com.vayunmathur.office.platform.setCellNumberFormat
+import com.vayunmathur.office.platform.setSlideElementAlignment
+import com.vayunmathur.office.platform.setSlideElementRotation
+import com.vayunmathur.office.platform.toggleSlideElementUnderline
+import com.vayunmathur.office.platform.unmergeCells
 
+import com.vayunmathur.office.platform.reorderSlideElement
+import com.vayunmathur.office.platform.toggleSlideElementBold
+import com.vayunmathur.office.platform.toggleSlideElementItalic
 // --- Spreadsheet cell branch ---
 
 @Composable

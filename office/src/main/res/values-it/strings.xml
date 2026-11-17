@@ -10,11 +10,8 @@
     <string name="heading_3">Intestazione 3</string>
     <string name="hide">Nascondi</string>
     <string name="clear_formatting">Cancella formattazione</string>
-    <string name="copy">Copia</string>
     <string name="bookmarks">Segnalibri</string>
     <string name="general">Generali</string>
-    <string name="all">Tutti</string>
-    <string name="name">Nome</string>
     <string name="line">Riga</string>
     <string name="go">Vai</string>
     <string name="discard">Scarta</string>
