@@ -203,8 +203,14 @@ class PhotosPagesRealRepoTest {
                 com.vayunmathur.photos.ui.GalleryPage(stack(Route.Gallery), gallery, secureVm)
             }
         }
-        rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("1", substring = true).fetchSemanticsNodes().size >= 2)
+        // Wait for the selection header itself, not an idle instant: the
+        // header appears once the photos flow lands, which waitForIdle does
+        // not guarantee on a loaded box. (The old count of ">=2 nodes
+        // containing 1" also depended on unrelated "1" texts in the grid.)
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText("1 selected", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        assertTrue(rule.onAllNodesWithText("1 selected", substring = true).fetchSemanticsNodes().isNotEmpty())
         Unit
     }
 }

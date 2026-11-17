@@ -318,16 +318,28 @@ class PhotosSlice3GalleryTest {
             Person(centroid = ByteArray(8), faceCount = 0, name = null),
         )
         vm.setPersonName(personId, "Grace")
-        // setPersonName launches without an IO dispatcher so Room executes the
-        // write itself: the DAO row shows the name; with no faces the cluster
-        // still projects to nothing.
+        // setPersonName launches in viewModelScope, so the write lands
+        // asynchronously: poll the DAO until it is observed instead of
+        // reading the flow once (a single first() races the launch and,
+        // for the clear below, reads back the stale "Grace").
+        // With no faces the cluster still projects to nothing.
         val people = vm.people.first { true }
         assertTrue(people.none { it.id == personId })
-        val name = db.faceDao().personsFlow().first().first { it.id == personId }.name
+        var name: String? = null
+        var tries = 0
+        while (name != "Grace" && tries < 250) {
+            name = db.faceDao().personsFlow().first().first { it.id == personId }.name
+            if (name != "Grace") { kotlinx.coroutines.delay(20); tries++ }
+        }
         assertEquals("Grace", name)
         // Clearing the name persists too.
         vm.setPersonName(personId, null)
-        val cleared = db.faceDao().personsFlow().first().first { it.id == personId }.name
+        var cleared: String? = "unset"
+        tries = 0
+        while (cleared != null && tries < 250) {
+            cleared = db.faceDao().personsFlow().first().first { it.id == personId }.name
+            if (cleared != null) { kotlinx.coroutines.delay(20); tries++ }
+        }
         assertEquals(null, cleared)
     }
 
