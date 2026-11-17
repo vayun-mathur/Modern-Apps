@@ -12,6 +12,7 @@ import com.vayunmathur.library.ui.SingleChoiceSegmentedButtonRow
 import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,7 +41,7 @@ fun GameConfigDialog(mode: GameMode, onStart: (GameConfig) -> Unit, onDismiss: (
     var drawMode by remember { mutableStateOf(DrawMode.DRAW_ONE) }
     var klondikeDifficulty by remember { mutableStateOf(KlondikeDifficulty.REGULAR) }
     var relaxed by remember { mutableStateOf(false) }
-    var spiderSuits by remember { mutableStateOf(4) }
+    var spiderSuits by remember { mutableIntStateOf(4) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(mode.displayName()) },
