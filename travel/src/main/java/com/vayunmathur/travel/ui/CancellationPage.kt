@@ -27,10 +27,10 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.confirmCancellation
-import com.vayunmathur.travel.util.quoteCancellation
-import com.vayunmathur.travel.util.resetCancellation
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.confirmCancellation
+import com.vayunmathur.travel.platform.quoteCancellation
+import com.vayunmathur.travel.platform.resetCancellation
 import androidx.compose.ui.res.stringResource
 
 /**

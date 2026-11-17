@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,12 +38,12 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.network.ChangeOfferDto
 import com.vayunmathur.travel.network.SliceDto
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.confirmChange
-import com.vayunmathur.travel.util.loadBookingDetail
-import com.vayunmathur.travel.util.priceChange
-import com.vayunmathur.travel.util.requestChange
-import com.vayunmathur.travel.util.resetChange
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.confirmChange
+import com.vayunmathur.travel.platform.loadBookingDetail
+import com.vayunmathur.travel.platform.priceChange
+import com.vayunmathur.travel.platform.requestChange
+import com.vayunmathur.travel.platform.resetChange
 import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,7 +61,7 @@ fun ChangePage(
         viewModel.loadBookingDetail(route.orderId)
     }
 
-    var selectedSliceIndex by remember { mutableStateOf(0) }
+    var selectedSliceIndex by remember { mutableIntStateOf(0) }
     var newDate by remember { mutableStateOf("") }
 
     AppScaffold(

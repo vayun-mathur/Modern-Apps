@@ -11,8 +11,8 @@ import com.vayunmathur.travel.domain.sortOffers
 import com.vayunmathur.travel.network.OfferDto
 import com.vayunmathur.travel.network.SegmentDto
 import com.vayunmathur.travel.network.SliceDto
-import com.vayunmathur.travel.util.FlightFilters
-import com.vayunmathur.travel.util.OfferSort
+import com.vayunmathur.travel.platform.FlightFilters
+import com.vayunmathur.travel.platform.OfferSort
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

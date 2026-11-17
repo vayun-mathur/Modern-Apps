@@ -35,11 +35,11 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.platform.CardPaymentResult
 import com.vayunmathur.travel.platform.rememberCardPayment
-import com.vayunmathur.travel.util.CheckoutState
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.acceptNewPrice
-import com.vayunmathur.travel.util.confirmPaidTrip
-import com.vayunmathur.travel.util.startCheckout
+import com.vayunmathur.travel.platform.CheckoutState
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.acceptNewPrice
+import com.vayunmathur.travel.platform.confirmPaidTrip
+import com.vayunmathur.travel.platform.startCheckout
 import androidx.compose.ui.res.stringResource
 
 /**

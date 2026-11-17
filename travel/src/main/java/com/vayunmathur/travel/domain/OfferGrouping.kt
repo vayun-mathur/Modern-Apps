@@ -2,8 +2,8 @@ package com.vayunmathur.travel.domain
 
 import com.vayunmathur.travel.network.OfferDto
 import com.vayunmathur.travel.network.SliceDto
-import com.vayunmathur.travel.util.FlightFilters
-import com.vayunmathur.travel.util.OfferSort
+import com.vayunmathur.travel.platform.FlightFilters
+import com.vayunmathur.travel.platform.OfferSort
 
 /**
  * On-device offer sort + filter (the server returns every offer cheapest

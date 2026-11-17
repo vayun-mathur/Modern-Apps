@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,10 +33,10 @@ fun PassengerDialog(
     onDone: (PassengerMix) -> Unit,
     onCancel: () -> Unit,
 ) {
-    var adults by remember(mix) { mutableStateOf(mix.adults) }
-    var children by remember(mix) { mutableStateOf(mix.childAges.size) }
-    var infantsInSeat by remember(mix) { mutableStateOf(mix.infantsInSeat) }
-    var infantsOnLap by remember(mix) { mutableStateOf(mix.infantsOnLap) }
+    var adults by remember(mix) { mutableIntStateOf(mix.adults) }
+    var children by remember(mix) { mutableIntStateOf(mix.childAges.size) }
+    var infantsInSeat by remember(mix) { mutableIntStateOf(mix.infantsInSeat) }
+    var infantsOnLap by remember(mix) { mutableIntStateOf(mix.infantsOnLap) }
 
     Dialog(onDismissRequest = onCancel) {
         Surface(shape = MaterialTheme.shapes.medium) {

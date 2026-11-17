@@ -25,8 +25,8 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.travel.network.PlaceDto
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.autocomplete
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.autocomplete
 
 private const val MAX_SUGGESTIONS = 6
 

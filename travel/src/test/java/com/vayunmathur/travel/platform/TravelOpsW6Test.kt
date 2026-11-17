@@ -1,4 +1,4 @@
-package com.vayunmathur.travel.util
+package com.vayunmathur.travel.platform
 
 import android.app.Application
 import android.database.MatrixCursor
@@ -59,7 +59,7 @@ class TravelOpsW6Test {
     fun flightsAndStaysHome_areDistinctSiblingRoutes() {
         // Selection lives in the route: the two homes are distinct keys and
         // serialize to different payloads, so the back stack (not local
-        // state) decides which search form MainGraph renders.
+        // state) decides which search form Navigation renders.
         val flights = Json.encodeToString(Route.serializer(), Route.FlightsHome)
         val stays = Json.encodeToString(Route.serializer(), Route.StaysHome)
         assertTrue(flights != stays)

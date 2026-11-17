@@ -34,8 +34,8 @@ import com.vayunmathur.travel.data.BookedTrip
 import com.vayunmathur.travel.data.TRIP_STATUS_CANCELLED
 import com.vayunmathur.travel.domain.isTripPollingStatus
 import com.vayunmathur.travel.domain.tripStatusLabel
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.refreshStoredTrip
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.refreshStoredTrip
 import androidx.compose.ui.res.stringResource
 
 /**

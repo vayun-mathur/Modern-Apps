@@ -21,14 +21,14 @@ import com.vayunmathur.travel.network.SeatSectionDto
 import com.vayunmathur.travel.network.SegmentDto
 import com.vayunmathur.travel.network.SliceDto
 import com.vayunmathur.travel.network.StaySearchResultDto
-import com.vayunmathur.travel.util.FlightResultsActions
-import com.vayunmathur.travel.util.FlightResultsState
-import com.vayunmathur.travel.util.OrderDetailActions
-import com.vayunmathur.travel.util.OrderDetailUiState
-import com.vayunmathur.travel.util.SeatMapActions
-import com.vayunmathur.travel.util.SeatMapState
-import com.vayunmathur.travel.util.StayResultsActions
-import com.vayunmathur.travel.util.StaySearchState
+import com.vayunmathur.travel.platform.FlightResultsActions
+import com.vayunmathur.travel.platform.FlightResultsState
+import com.vayunmathur.travel.platform.OrderDetailActions
+import com.vayunmathur.travel.platform.OrderDetailUiState
+import com.vayunmathur.travel.platform.SeatMapActions
+import com.vayunmathur.travel.platform.SeatMapState
+import com.vayunmathur.travel.platform.StayResultsActions
+import com.vayunmathur.travel.platform.StaySearchState
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"

@@ -32,13 +32,13 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.network.ServiceDto
-import com.vayunmathur.travel.util.AncillariesState
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.initPassengers
-import com.vayunmathur.travel.util.retrySeatMaps
-import com.vayunmathur.travel.util.saveAncillaries
-import com.vayunmathur.travel.util.setBaggageQuantity
-import com.vayunmathur.travel.util.setExtraQuantity
+import com.vayunmathur.travel.platform.AncillariesState
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.initPassengers
+import com.vayunmathur.travel.platform.retrySeatMaps
+import com.vayunmathur.travel.platform.saveAncillaries
+import com.vayunmathur.travel.platform.setBaggageQuantity
+import com.vayunmathur.travel.platform.setExtraQuantity
 import androidx.compose.ui.res.stringResource
 
 /**

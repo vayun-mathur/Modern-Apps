@@ -15,7 +15,7 @@ import com.vayunmathur.travel.data.RecentSearch
 import com.vayunmathur.travel.data.TravelRepository
 import com.vayunmathur.travel.network.TravelRaw
 import com.vayunmathur.travel.network.travelTransport
-import com.vayunmathur.travel.util.TravelViewModel
+import com.vayunmathur.travel.platform.TravelViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

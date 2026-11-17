@@ -40,8 +40,8 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.data.BookedTrip
 import com.vayunmathur.travel.data.RecentSearch
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.clearRecents
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.clearRecents
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.travel.R
 

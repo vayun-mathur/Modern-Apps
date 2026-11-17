@@ -11,8 +11,8 @@ import com.vayunmathur.travel.network.SeatCabinDto
 import com.vayunmathur.travel.network.SeatElementDto
 import com.vayunmathur.travel.network.SeatRowDto
 import com.vayunmathur.travel.network.SeatSectionDto
-import com.vayunmathur.travel.util.SeatMapActions
-import com.vayunmathur.travel.util.SeatMapState
+import com.vayunmathur.travel.platform.SeatMapActions
+import com.vayunmathur.travel.platform.SeatMapState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

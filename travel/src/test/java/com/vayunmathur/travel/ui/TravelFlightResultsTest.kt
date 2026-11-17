@@ -13,11 +13,11 @@ import com.vayunmathur.travel.network.OfferDto
 import com.vayunmathur.travel.network.PenaltyRuleDto
 import com.vayunmathur.travel.network.SegmentDto
 import com.vayunmathur.travel.network.SliceDto
-import com.vayunmathur.travel.util.FlightFilters
-import com.vayunmathur.travel.util.FlightQuery
-import com.vayunmathur.travel.util.FlightResultsActions
-import com.vayunmathur.travel.util.FlightResultsState
-import com.vayunmathur.travel.util.OfferSort
+import com.vayunmathur.travel.platform.FlightFilters
+import com.vayunmathur.travel.platform.FlightQuery
+import com.vayunmathur.travel.platform.FlightResultsActions
+import com.vayunmathur.travel.platform.FlightResultsState
+import com.vayunmathur.travel.platform.OfferSort
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

@@ -1,4 +1,4 @@
-package com.vayunmathur.travel.util
+package com.vayunmathur.travel.platform
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel

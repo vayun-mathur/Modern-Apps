@@ -1,4 +1,4 @@
-package com.vayunmathur.travel.util
+package com.vayunmathur.travel.platform
 
 import com.vayunmathur.travel.network.OfferDto
 import com.vayunmathur.travel.network.OrderDetailDto

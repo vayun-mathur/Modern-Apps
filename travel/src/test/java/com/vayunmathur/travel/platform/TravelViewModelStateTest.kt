@@ -1,4 +1,4 @@
-package com.vayunmathur.travel.util
+package com.vayunmathur.travel.platform
 
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.travel.data.BookedTrip

@@ -35,7 +35,6 @@
     <!-- Product tab: hotel stays search. Noun plural -->
     <string name="stays">Stays</string>
     <!-- Product tab: car rentals search. Noun plural -->
-    <string name="cars">Cars</string>
     <!-- Label for departure segment / calendar sheet. Verb/noun departure -->
     <string name="depart">Depart</string>
     <!-- Label for return segment, avoids keyword 'return'. Noun -->
@@ -55,7 +54,6 @@
     <!-- Passenger picker: infants on lap. Noun phrase -->
     <string name="infants_on_lap">Infants (on lap)</string>
     <!-- Dropdown label: maximum stops. Noun phrase -->
-    <string name="max_stops">Max stops</string>
     <!-- Max-stops option: nonstop (0). Noun/adj -->
     <string name="stops_nonstop">Nonstop</string>
     <!-- Max-stops option: up to one stop. Noun phrase -->
@@ -356,7 +354,6 @@
     <!-- Empty state when no profiles saved -->
     <string name="no_profiles_yet">No profiles yet.</string>
     <!-- Button: delete a profile. Verb -->
-    <string name="delete">Delete</string>
     <!-- Button/form: add a booking profile. Verb phrase -->
     <string name="add_a_profile">Add a profile</string>
     <!-- Form field label: save profile submit. Verb phrase -->
@@ -401,45 +398,24 @@
     <string name="destination_or_hotel">Destination or hotel</string>
 
     <!-- Field label: car pickup location (airport code or place). Noun -->
-    <string name="pickup">Pickup</string>
     <!-- Field label: car drop-off location. Noun -->
-    <string name="dropoff">Drop-off</string>
     <!-- Field label: car pickup date and time. Noun phrase -->
-    <string name="pickup_datetime">Pickup date</string>
     <!-- Field label: car drop-off date and time. Noun phrase -->
-    <string name="dropoff_datetime">Drop-off date</string>
     <!-- Field label: driver age in years. Noun phrase -->
-    <string name="driver_age">Driver age</string>
     <!-- CTA: search rental cars submit button. Verb phrase -->
-    <string name="search_cars">Search cars</string>
     <!-- Results title: rental cars at place. %1$s = place name -->
-    <string name="cars_at">Cars at <xliff:g id="place" example="Lyon">%1$s</xliff:g></string>
     <!-- Fallback label: car when name missing. Noun -->
-    <string name="car">Car</string>
     <!-- Empty state: no cars found. Sentence -->
-    <string name="no_cars_found">No cars found for those dates.</string>
     <!-- TopAppBar title for reviewing a car offer. Verb phrase -->
-    <string name="review_car">Review car</string>
     <!-- CTA: continue from car review to booking. Verb phrase -->
-    <string name="book_car">Book car</string>
     <!-- Section header: vehicle details. Noun phrase -->
-    <string name="vehicle_details">Vehicle details</string>
     <!-- Section header: rental package / inclusions. Noun -->
-    <string name="package_label">Package</string>
     <!-- Row label: transmission type. Noun -->
-    <string name="transmission">Transmission</string>
     <!-- Row label: fuel policy. Noun phrase -->
-    <string name="fuel_policy">Fuel policy</string>
     <!-- Row label: mileage terms. Noun -->
-    <string name="mileage">Mileage</string>
     <!-- Value: unlimited mileage. Adjective phrase -->
-    <string name="unlimited">Unlimited</string>
     <!-- Row label: supplier / vendor name. Noun -->
-    <string name="supplier">Supplier</string>
     <!-- Row label: amount due at the desk. Noun phrase -->
-    <string name="due_at_desk">Due at desk</string>
     <!-- Row label: refundable deposit. Noun -->
-    <string name="deposit">Deposit</string>
     <!-- Notice: car booking, price may change at desk. Sentence -->
-    <string name="car_price_note">Pay now to lock this price; local fees may apply at the desk.</string>
 </resources>

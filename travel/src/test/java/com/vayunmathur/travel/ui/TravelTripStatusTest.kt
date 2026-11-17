@@ -78,6 +78,6 @@ class TravelTripStatusTest {
     @Test
     fun prettyDate_usedByTripCard() {
         // TripsPage renders departDate via prettyDate; pin the mapping here.
-        assertEquals("Sep 1", com.vayunmathur.travel.util.TravelViewModel.prettyDate("2026-09-01"))
+        assertEquals("Sep 1", com.vayunmathur.travel.platform.TravelViewModel.prettyDate("2026-09-01"))
     }
 }

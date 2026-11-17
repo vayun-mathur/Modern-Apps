@@ -1,4 +1,4 @@
-package com.vayunmathur.travel.util
+package com.vayunmathur.travel.platform
 
 import com.vayunmathur.travel.network.CancellationDto
 import com.vayunmathur.travel.network.ChangeOfferDto

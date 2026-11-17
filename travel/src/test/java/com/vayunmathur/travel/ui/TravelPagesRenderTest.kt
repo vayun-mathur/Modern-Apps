@@ -13,7 +13,7 @@ import com.vayunmathur.travel.data.Customer
 import com.vayunmathur.travel.data.FrequentFlyer
 import com.vayunmathur.travel.data.RecentSearch
 import com.vayunmathur.travel.data.TravelRepository
-import com.vayunmathur.travel.util.TravelViewModel
+import com.vayunmathur.travel.platform.TravelViewModel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -60,7 +60,7 @@ class TravelPagesRenderTest {
         rule.setContent { HomePage(s, vm(), Route.FlightsHome) }
         rule.onNodeWithText("Flights").assertIsDisplayed()
         // Bottom nav is route selection now: tapping Stays resets the stack
-        // to the sibling stays home (MainGraph then renders the stays form).
+        // to the sibling stays home (Navigation then renders the stays form).
         rule.onNodeWithText("Stays").performClick()
         rule.onNodeWithText("Stays").assertIsDisplayed()
         rule.runOnIdle { assertTrue(s.last() is Route.StaysHome, "last=${s.last()}") }

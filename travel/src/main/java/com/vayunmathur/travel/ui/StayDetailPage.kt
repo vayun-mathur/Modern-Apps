@@ -31,9 +31,9 @@ import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.network.StayRateDto
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.loadStayRates
-import com.vayunmathur.travel.util.selectStayRate
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.loadStayRates
+import com.vayunmathur.travel.platform.selectStayRate
 import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)

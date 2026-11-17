@@ -27,8 +27,8 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.travel.network.StaySearchResultDto
-import com.vayunmathur.travel.util.StayResultsActions
-import com.vayunmathur.travel.util.StaySearchState
+import com.vayunmathur.travel.platform.StayResultsActions
+import com.vayunmathur.travel.platform.StaySearchState
 import androidx.compose.ui.res.stringResource
 
 /**

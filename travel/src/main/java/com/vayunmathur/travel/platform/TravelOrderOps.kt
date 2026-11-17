@@ -1,4 +1,4 @@
-package com.vayunmathur.travel.util
+package com.vayunmathur.travel.platform
 
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.travel.data.BookedTrip

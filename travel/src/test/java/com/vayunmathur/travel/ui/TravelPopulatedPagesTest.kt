@@ -18,10 +18,10 @@ import com.vayunmathur.travel.network.SegmentDto
 import com.vayunmathur.travel.network.ServiceDto
 import com.vayunmathur.travel.network.SliceDto
 import com.vayunmathur.travel.network.TripAncillariesDto
-import com.vayunmathur.travel.util.AncillariesState
-import com.vayunmathur.travel.util.OfferReviewState
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.initPassengers
+import com.vayunmathur.travel.platform.AncillariesState
+import com.vayunmathur.travel.platform.OfferReviewState
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.initPassengers
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlinx.coroutines.flow.Flow

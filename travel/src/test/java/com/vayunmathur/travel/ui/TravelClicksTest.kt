@@ -18,9 +18,9 @@ import com.vayunmathur.travel.network.OfferDto
 import com.vayunmathur.travel.network.OfferPassengerDto
 import com.vayunmathur.travel.network.SegmentDto
 import com.vayunmathur.travel.network.SliceDto
-import com.vayunmathur.travel.util.CheckoutState
-import com.vayunmathur.travel.util.OfferReviewState
-import com.vayunmathur.travel.util.TravelViewModel
+import com.vayunmathur.travel.platform.CheckoutState
+import com.vayunmathur.travel.platform.OfferReviewState
+import com.vayunmathur.travel.platform.TravelViewModel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue

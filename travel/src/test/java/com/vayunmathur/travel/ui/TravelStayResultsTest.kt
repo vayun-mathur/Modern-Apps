@@ -8,8 +8,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.travel.network.StaySearchResultDto
-import com.vayunmathur.travel.util.StayResultsActions
-import com.vayunmathur.travel.util.StaySearchState
+import com.vayunmathur.travel.platform.StayResultsActions
+import com.vayunmathur.travel.platform.StaySearchState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule

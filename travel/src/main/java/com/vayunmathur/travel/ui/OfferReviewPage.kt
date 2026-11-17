@@ -34,12 +34,12 @@ import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.network.OfferDto
 import com.vayunmathur.travel.network.SliceDto
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.airlineName
-import com.vayunmathur.travel.util.initPassengers
-import com.vayunmathur.travel.util.loadAircraft
-import com.vayunmathur.travel.util.loadCities
-import com.vayunmathur.travel.util.refreshOffer
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.airlineName
+import com.vayunmathur.travel.platform.initPassengers
+import com.vayunmathur.travel.platform.loadAircraft
+import com.vayunmathur.travel.platform.loadCities
+import com.vayunmathur.travel.platform.refreshOffer
 import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)

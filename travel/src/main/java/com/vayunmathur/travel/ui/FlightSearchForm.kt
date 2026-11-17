@@ -19,8 +19,8 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconSwapLanguages
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.travel.util.FlightQuery
-import com.vayunmathur.travel.util.TravelViewModel
+import com.vayunmathur.travel.platform.FlightQuery
+import com.vayunmathur.travel.platform.TravelViewModel
 import androidx.compose.ui.res.stringResource
 import androidx.annotation.StringRes
 import com.vayunmathur.travel.R

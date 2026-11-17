@@ -34,12 +34,12 @@ import com.vayunmathur.travel.domain.groupInboundSlices
 import com.vayunmathur.travel.domain.groupOutboundSlices
 import com.vayunmathur.travel.domain.sliceSignature
 import com.vayunmathur.travel.network.OfferDto
-import com.vayunmathur.travel.util.FlightQuery
-import com.vayunmathur.travel.util.PartialFlowState
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.loadPartialFares
-import com.vayunmathur.travel.util.selectOffer
-import com.vayunmathur.travel.util.startPartialSearch
+import com.vayunmathur.travel.platform.FlightQuery
+import com.vayunmathur.travel.platform.PartialFlowState
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.loadPartialFares
+import com.vayunmathur.travel.platform.selectOffer
+import com.vayunmathur.travel.platform.startPartialSearch
 import androidx.compose.ui.res.stringResource
 
 /**
@@ -104,34 +104,7 @@ fun OutboundSelectPage(
 /** Round-trip step 2: pick the fare for the chosen outbound + return, then review. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FareSelectPage(
-    backStack: NavBackStack<Route>,
-    viewModel: TravelViewModel,
-    route: Route.FareSelect,
-) {
-    LaunchedEffect(route.outboundSignature, route.inboundSignature) {
-        viewModel.loadPartialFares(route.outboundSignature, route.inboundSignature)
-    }
-    val state by viewModel.partialFlow.collectAsStateWithLifecycle()
-    PartialScaffold(
-        title = stringResource(R.string.choose_fare),
-        subtitle = stringResource(R.string.step_2_of_2),
-        backStack = backStack,
-        state = state,
-        isEmpty = state.offers.isEmpty(),
-    ) {
-        items(state.offers) { offer ->
-            FareCard(offer) {
-                viewModel.selectOffer(offer)
-                backStack.add(Route.OfferReview(offer.offerId))
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PartialScaffold(
+internal fun PartialScaffold(
     title: String,
     subtitle: String,
     backStack: NavBackStack<Route>,
@@ -176,7 +149,7 @@ private fun PartialScaffold(
 
 /** One fare for a chosen outbound + return: both legs, fare brand, exact total. */
 @Composable
-private fun FareCard(offer: OfferDto, onClick: () -> Unit) {
+internal fun FareCard(offer: OfferDto, onClick: () -> Unit) {
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()

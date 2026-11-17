@@ -23,12 +23,12 @@ import com.vayunmathur.travel.network.OrderDetailDto
 import com.vayunmathur.travel.network.SegmentDto
 import com.vayunmathur.travel.network.SliceDto
 import com.vayunmathur.travel.network.StayBookingHotelDto
-import com.vayunmathur.travel.util.CancellationState
-import com.vayunmathur.travel.util.ChangeState
-import com.vayunmathur.travel.util.CheckoutState
-import com.vayunmathur.travel.util.OrderDetailState
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.TripPollState
+import com.vayunmathur.travel.platform.CancellationState
+import com.vayunmathur.travel.platform.ChangeState
+import com.vayunmathur.travel.platform.CheckoutState
+import com.vayunmathur.travel.platform.OrderDetailState
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.TripPollState
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -126,8 +126,8 @@ class TravelPagesC5Test {
         )
         rule.setContent {
             OrderDetailScreen(
-                state = com.vayunmathur.travel.util.OrderDetailUiState(order = hotelOrder),
-                actions = com.vayunmathur.travel.util.OrderDetailActions.Noop,
+                state = com.vayunmathur.travel.platform.OrderDetailUiState(order = hotelOrder),
+                actions = com.vayunmathur.travel.platform.OrderDetailActions.Noop,
             )
         }
         rule.onNodeWithText("Grand Hotel").assertIsDisplayed()
@@ -144,8 +144,8 @@ class TravelPagesC5Test {
         val hotelOrder = order().copy(hotel = StayBookingHotelDto(name = "Airport Inn"))
         rule.setContent {
             OrderDetailScreen(
-                state = com.vayunmathur.travel.util.OrderDetailUiState(order = hotelOrder),
-                actions = com.vayunmathur.travel.util.OrderDetailActions.Noop,
+                state = com.vayunmathur.travel.platform.OrderDetailUiState(order = hotelOrder),
+                actions = com.vayunmathur.travel.platform.OrderDetailActions.Noop,
             )
         }
         rule.onNodeWithText("Airport Inn").assertIsDisplayed()
@@ -157,7 +157,7 @@ class TravelPagesC5Test {
         var paid = 0
         rule.setContent {
             OrderDetailScreen(
-                state = com.vayunmathur.travel.util.OrderDetailUiState(
+                state = com.vayunmathur.travel.platform.OrderDetailUiState(
                     order = order(),
                     checkout = CheckoutState.Ready(
                         CheckoutDto(
@@ -167,7 +167,7 @@ class TravelPagesC5Test {
                         )
                     ),
                 ),
-                actions = object : com.vayunmathur.travel.util.OrderDetailActions {
+                actions = object : com.vayunmathur.travel.platform.OrderDetailActions {
                     override fun acceptNewPrice() { accepted++ }
                     override fun completePayment() { paid++ }
                 },
@@ -189,11 +189,11 @@ class TravelPagesC5Test {
     fun orderDetail_checkoutError_showsMessage() {
         rule.setContent {
             OrderDetailScreen(
-                state = com.vayunmathur.travel.util.OrderDetailUiState(
+                state = com.vayunmathur.travel.platform.OrderDetailUiState(
                     order = order(),
                     checkout = CheckoutState.Error("Card setup failed"),
                 ),
-                actions = com.vayunmathur.travel.util.OrderDetailActions.Noop,
+                actions = com.vayunmathur.travel.platform.OrderDetailActions.Noop,
                 pendingCheckout = true,
             )
         }

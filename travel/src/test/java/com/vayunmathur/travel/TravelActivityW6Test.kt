@@ -3,8 +3,8 @@ package com.vayunmathur.travel
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.travel.data.TravelRepository
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.staySuggestions
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.staySuggestions
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue

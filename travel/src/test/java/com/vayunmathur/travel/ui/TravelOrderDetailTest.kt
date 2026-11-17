@@ -9,9 +9,9 @@ import androidx.compose.ui.test.performScrollTo
 import com.vayunmathur.travel.network.OrderDetailDto
 import com.vayunmathur.travel.network.SegmentDto
 import com.vayunmathur.travel.network.SliceDto
-import com.vayunmathur.travel.util.CheckoutState
-import com.vayunmathur.travel.util.OrderDetailActions
-import com.vayunmathur.travel.util.OrderDetailUiState
+import com.vayunmathur.travel.platform.CheckoutState
+import com.vayunmathur.travel.platform.OrderDetailActions
+import com.vayunmathur.travel.platform.OrderDetailUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

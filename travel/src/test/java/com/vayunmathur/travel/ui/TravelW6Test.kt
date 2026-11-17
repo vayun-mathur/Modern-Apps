@@ -21,11 +21,11 @@ import com.vayunmathur.travel.network.OfferDto
 import com.vayunmathur.travel.network.OfferPassengerDto
 import com.vayunmathur.travel.network.SegmentDto
 import com.vayunmathur.travel.network.SliceDto
-import com.vayunmathur.travel.util.FlightResultsActions
-import com.vayunmathur.travel.util.FlightResultsState
-import com.vayunmathur.travel.util.OfferReviewState
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.initPassengers
+import com.vayunmathur.travel.platform.FlightResultsActions
+import com.vayunmathur.travel.platform.FlightResultsState
+import com.vayunmathur.travel.platform.OfferReviewState
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.initPassengers
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -174,7 +174,7 @@ class TravelW6Test {
                 ),
             ),
         )
-        v.ancillariesMutable.value = com.vayunmathur.travel.util.AncillariesState(
+        v.ancillariesMutable.value = com.vayunmathur.travel.platform.AncillariesState(
             ancillaries = com.vayunmathur.travel.network.TripAncillariesDto(seatMaps = listOf(cabin)),
         )
         rule.setContent { SeatMapPage(stack(), v, Route.SeatMap("off_1", "seg_1")) }

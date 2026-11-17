@@ -23,10 +23,10 @@ import com.vayunmathur.travel.network.SliceDto
 import com.vayunmathur.travel.network.StayRateDto
 import com.vayunmathur.travel.network.StayRatesDto
 import com.vayunmathur.travel.network.StayRoomDto
-import com.vayunmathur.travel.util.OfferReviewState
-import com.vayunmathur.travel.util.StayRatesState
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.selectedStayRate
+import com.vayunmathur.travel.platform.OfferReviewState
+import com.vayunmathur.travel.platform.StayRatesState
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.selectedStayRate
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -22,8 +22,8 @@ import com.vayunmathur.travel.network.SegmentDto
 import com.vayunmathur.travel.network.SliceDto
 import com.vayunmathur.travel.network.TravelRaw
 import com.vayunmathur.travel.network.travelTransport
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.initPassengers
+import com.vayunmathur.travel.platform.TravelViewModel
+import com.vayunmathur.travel.platform.initPassengers
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -86,7 +86,7 @@ class TravelDeep2Test {
     )
 
     @Test fun passengers_identityFields_typing() {
-        val v = vm(); v.reviewMutable.value = com.vayunmathur.travel.util.OfferReviewState(offer = offer(identity = true)); v.initPassengers(offer(identity = true))
+        val v = vm(); v.reviewMutable.value = com.vayunmathur.travel.platform.OfferReviewState(offer = offer(identity = true)); v.initPassengers(offer(identity = true))
         rule.setContent { PassengersPage(stack(), v, Route.Passengers("off_1")) }
         rule.onNodeWithText("Given name").performTextInput("Jane")
         rule.onAllNodesWithText("Family name")[0].performScrollTo()
