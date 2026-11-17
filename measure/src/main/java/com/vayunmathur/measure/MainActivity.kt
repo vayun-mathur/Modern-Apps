@@ -7,6 +7,10 @@ import com.vayunmathur.measure.platform.MeasureViewModel
 import com.vayunmathur.measure.platform.startSensorsImpl
 import com.vayunmathur.measure.platform.stopSensorsImpl
 
+/**
+ * Entry activity for Measure: hosts navigation and runs the compass/level sensors only while the app is in the
+ * foreground.
+ */
 class MainActivity : MaActivity() {
     private val viewModel: MeasureViewModel by viewModels()
 

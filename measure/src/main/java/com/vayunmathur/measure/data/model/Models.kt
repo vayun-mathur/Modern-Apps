@@ -1,5 +1,6 @@
 package com.vayunmathur.measure.data.model
 
+/** Preferred unit system for displayed measurements: metric or imperial. */
 enum class UnitSystem { Metric, Imperial }
 
 /** How far the visual-inertial estimator has got, and therefore what the UI may show. */
@@ -36,8 +37,10 @@ fun Anchor.distanceTo(other: Anchor): Double {
     return kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
 }
 
+/** Kind of a saved measurement, which determines the unit of its stored SI value. */
 enum class MeasurementKind { Distance, Area, Perimeter, Angle, Height }
 
+/** A measurement saved by the user, stored in SI units with its label, kind, and recording time. */
 data class SavedMeasurement(
     val id: Long,
     val label: String,

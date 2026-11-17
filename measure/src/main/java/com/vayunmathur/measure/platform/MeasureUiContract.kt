@@ -38,11 +38,13 @@ data class CompassUiState(
     val tiltWarning: Boolean = false,
 )
 
+/** Compass screen callbacks: north-reference toggle and bearing hold/clear. */
 interface CompassActions {
     fun setUseTrueNorth(v: Boolean) {}
     fun holdBearing() {}
     fun clearHeldBearing() {}
 
+    /** Provides the no-op [CompassActions] implementation used by previews. */
     companion object {
         val Noop: CompassActions = object : CompassActions {}
     }
@@ -69,10 +71,12 @@ data class LevelUiState(
     val unitSystem: UnitSystem = UnitSystem.Metric,
 )
 
+/** Level screen callbacks: capture or clear the zero calibration. */
 interface LevelActions {
     fun calibrateZero() {}
     fun clearCalibration() {}
 
+    /** Provides the no-op [LevelActions] implementation used by previews. */
     companion object {
         val Noop: LevelActions = object : LevelActions {}
     }
@@ -120,6 +124,7 @@ data class ArMeasureUiState(
     val reticleHit: com.vayunmathur.measure.domain.HitCandidate? = null,
 )
 
+/** AR measure callbacks: anchor placement/removal, polygon close, save, and tracking reset. */
 interface ArMeasureActions {
     /** Screen-space tap, normalised to 0..1 on both axes so the page need not know the resolution. */
     fun placeAnchor(nx: Float, ny: Float) {}
@@ -132,6 +137,7 @@ interface ArMeasureActions {
     fun saveCurrentMeasurement(label: String) {}
     fun resetTracking() {}
 
+    /** Provides the no-op [ArMeasureActions] implementation used by previews. */
     companion object {
         val Noop: ArMeasureActions = object : ArMeasureActions {}
     }
@@ -143,11 +149,13 @@ data class SavedUiState(
     val unitSystem: UnitSystem = UnitSystem.Metric,
 )
 
+/** Saved measurements callbacks: delete, rename, and export. */
 interface SavedActions {
     fun delete(id: Long) {}
     fun rename(id: Long, label: String) {}
     fun exportAll() {}
 
+    /** Provides the no-op [SavedActions] implementation used by previews. */
     companion object {
         val Noop: SavedActions = object : SavedActions {}
     }
@@ -165,6 +173,7 @@ data class SettingsUiState(
     val keepScreenOn: Boolean = true,
 )
 
+/** Settings callbacks for units, display, haptics, and level-calibration preferences. */
 interface SettingsActions {
     fun setUnitSystem(v: UnitSystem) {}
     fun setUseFractionalInches(v: Boolean) {}
@@ -174,6 +183,7 @@ interface SettingsActions {
     fun setKeepScreenOn(v: Boolean) {}
     fun clearLevelCalibration() {}
 
+    /** Provides the no-op [SettingsActions] implementation used by previews. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }
@@ -199,9 +209,11 @@ data class DiagnosticsUiState(
     val scaleConfidence: Double = 0.0,
 )
 
+/** Diagnostics callbacks, currently resetting the tracking engine. */
 interface DiagnosticsActions {
     fun resetTracking() {}
 
+    /** Provides the no-op [DiagnosticsActions] implementation used by previews. */
     companion object {
         val Noop: DiagnosticsActions = object : DiagnosticsActions {}
     }

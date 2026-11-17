@@ -56,6 +56,7 @@ private data class Landmark(val position: Vec3, var observations: Int)
  */
 class VioEngine(private val intrinsics: Intrinsics) {
 
+    /** Native-engine availability and per-frame tuning constants for [VioEngine]. */
     companion object {
         /** True when the in-tree Rust CV library loaded on this device/host. */
         val available: Boolean

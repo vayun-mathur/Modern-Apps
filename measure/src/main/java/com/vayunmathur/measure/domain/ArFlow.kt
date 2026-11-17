@@ -18,6 +18,7 @@ enum class ArUnavailableReason {
  * hit, so "tap does nothing" states are unrepresentable.
  */
 sealed interface ArFlowState {
+    /** AR flow state when measuring cannot run at all, carrying the user-facing [reason]. */
     data class Unavailable(val reason: ArUnavailableReason) : ArFlowState
 
     /** Engine/session not created yet (or camera not yet running). */
@@ -40,6 +41,7 @@ sealed interface ArFlowState {
     data class TrackingLost(val timedOut: Boolean = false) : ArFlowState
 }
 
+/** Pure derivation of the AR flow state and its scanning/lost timeouts from tracking quality and hit inputs. */
 object ArFlow {
     const val INITIALISING_TIMEOUT_MS = 25_000L
     const val LOST_TIMEOUT_MS = 15_000L

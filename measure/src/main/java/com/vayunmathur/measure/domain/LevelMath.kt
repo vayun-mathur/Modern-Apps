@@ -15,6 +15,7 @@ object LevelMath {
     /** |z| this close to 1 g means the screen faces up or down. */
     const val FLAT_GRAVITY_THRESHOLD = 8.0
 
+    /** Level reading derived from gravity: pitch, roll, edge angle, quadrant, flatness, and held orientation. */
     data class Reading(
         val pitchDeg: Double,
         val rollDeg: Double,

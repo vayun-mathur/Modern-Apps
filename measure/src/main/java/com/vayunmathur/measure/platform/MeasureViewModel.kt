@@ -287,6 +287,7 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
         imuRecorder.stop()
     }
 
+    /** Tuning constants for [MeasureViewModel], including the compass tilt limit and minimum polygon size. */
     companion object {
         internal const val COMPASS_TILT_LIMIT_DEG = 35.0
         /** Anchors needed before a polygon can be closed (area/perimeter need 3+). */

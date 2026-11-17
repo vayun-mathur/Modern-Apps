@@ -1,5 +1,6 @@
 package com.vayunmathur.measure.domain
 
+/** Device tilt for the level UI: bubble pitch/roll, edge deviation, flatness, orientation, and bubble rotation. */
 data class Tilt(
     /** Front-to-back tilt for the flat 2D bubble, in degrees. */
     val pitchDeg: Double,

@@ -17,6 +17,7 @@ data class Vec3(val x: Double, val y: Double, val z: Double) {
     fun isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()
 }
 
+/** Kind of a hit-test candidate: a fitted surface plane or a single tracked feature point. */
 enum class HitKind { Plane, FeaturePoint }
 
 /**
@@ -47,6 +48,7 @@ data class HitCandidate(
  * that merely happens to lie near it.
  */
 object HitSelector {
+    /** Thresholds for hit selection: sane distance range, feature-point angle limit, and plane preference. */
     data class Config(
         val minDistanceM: Double = 0.15,
         val maxDistanceM: Double = 8.0,

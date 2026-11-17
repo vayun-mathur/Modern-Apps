@@ -40,6 +40,7 @@ class Pose3(val r: DoubleArray, val t: Vec3) {
         return Pose3(rt, it)
     }
 
+    /** Factory for [Pose3] values, including the identity transform. */
     companion object {
         fun identity(): Pose3 = Pose3(
             doubleArrayOf(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
@@ -288,6 +289,7 @@ fun gravityClass(normal: Vec3, up: Vec3): PlaneClass {
     }
 }
 
+/** Classification of a fitted plane against gravity: horizontal, vertical, or slanted (rejected for measuring). */
 enum class PlaneClass { Horizontal, Vertical, Slanted }
 
 /**
