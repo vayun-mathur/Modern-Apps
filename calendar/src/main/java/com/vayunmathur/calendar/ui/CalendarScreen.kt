@@ -30,9 +30,9 @@ import androidx.compose.ui.text.font.FontWeight
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.data.Instance
-import com.vayunmathur.calendar.util.CalendarActions
-import com.vayunmathur.calendar.util.CalendarUiState
-import com.vayunmathur.calendar.util.CalendarViewModel
+import com.vayunmathur.calendar.platform.CalendarActions
+import com.vayunmathur.calendar.platform.CalendarUiState
+import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconArrowDropDown
 import com.vayunmathur.library.ui.IconSettings

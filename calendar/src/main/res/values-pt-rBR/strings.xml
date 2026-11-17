@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Calendário</string>
-    <string name="create">Criar</string>
-    <string name="search">Pesquisar</string>
     <string name="no_title">(Sem título)</string>
     <string name="event_not_found">Evento não encontrado</string>
     <string name="date_range_format">%1$s - %2$s</string>
-    <string name="twelve_am">12 AM</string>
-    <string name="hour_am">%1$d AM</string>
-    <string name="twelve_pm">12 PM</string>
-    <string name="hour_pm">%1$d PM</string>
     <string name="label_title">Título</string>
     <string name="label_description">Descrição</string>
     <string name="label_location">Local</string>

@@ -69,7 +69,7 @@ fun MonthCalendarView(
     onDateViewingChanged: (LocalDate) -> Unit,
     /**
      * Pre-resolved instances, used instead of querying through [loadInstances]. Only a
-     * preview passes this — see [com.vayunmathur.calendar.util.CalendarUiState].
+     * preview passes this — see [com.vayunmathur.calendar.platform.CalendarUiState].
      */
     previewInstances: List<Instance>? = null,
 ) {

@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
-import com.vayunmathur.calendar.util.RRule
-import com.vayunmathur.calendar.util.RecurrenceParams
+import com.vayunmathur.calendar.domain.RRule
+import com.vayunmathur.calendar.domain.RecurrenceParams
 import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.IconGlobe
 import com.vayunmathur.library.ui.IconSchedule

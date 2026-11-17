@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.util.CalendarViewModel
+import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 

@@ -1,4 +1,5 @@
 package com.vayunmathur.calendar.util
+import com.vayunmathur.calendar.platform.CalendarViewModel
 
 import android.app.Application
 import android.content.ContentValues

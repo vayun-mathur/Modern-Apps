@@ -2,7 +2,7 @@ package com.vayunmathur.calendar.ui
 
 import com.vayunmathur.calendar.CalendarTestData as D
 import com.vayunmathur.calendar.data.Event
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.domain.RRule
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test

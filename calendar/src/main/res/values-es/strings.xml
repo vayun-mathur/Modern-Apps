@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Calendario</string>
-    <string name="create">Crear</string>
-    <string name="search">Buscar</string>
     <string name="no_title">(Sin título)</string>
     <string name="event_not_found">Evento no encontrado</string>
     <string name="all_day">Todo el día</string>
@@ -39,8 +37,6 @@
     <string name="new_local_calendar">Nuevo calendario local</string>
     <string name="calendar_widget_description">Vista previa de los próximos eventos — toca para abrir el Calendario</string>
     <string name="add_reminder">Añadir recordatorio</string>
-    <string name="twelve_am">12:00</string>
-    <string name="twelve_pm">00:00</string>
     <string name="theme_light">Claro</string>
     <string name="on_label">En</string>
     <string name="month_option_day_of_month">En el día %1$d del mes</string>
@@ -49,7 +45,6 @@
     <string name="theme_dark">Oscuro</string>
     <string name="theme_system_default">Predeterminado del sistema</string>
     <string name="month_option_last_weekday">En el último %1$s</string>
-    <string name="hour_am">%1$d a.m.</string>
     <string name="layout_short_month">M</string>
     <string name="layout_work_week">Semana laboral</string>
     <string name="layout_agenda">Agenda</string>
@@ -63,7 +58,6 @@
     <string name="layout_short_work_week_summary">S5R</string>
     <string name="layout_month">Mes</string>
     <string name="calendar_id_label">ID: %1$d</string>
-    <string name="hour_pm">%1$d p.m.</string>
     <string name="layout_short_full_week">S7</string>
     <string name="month_option_nth_weekday">En el %1$s %2$s</string>
     <string name="no_account">(Sin cuenta)</string>

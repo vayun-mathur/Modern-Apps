@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.util
+package com.vayunmathur.calendar.platform
 
 import android.app.NotificationManager
 import android.app.PendingIntent

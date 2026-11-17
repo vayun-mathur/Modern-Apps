@@ -1,4 +1,5 @@
 package com.vayunmathur.calendar.util
+import com.vayunmathur.calendar.domain.RRule
 
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate

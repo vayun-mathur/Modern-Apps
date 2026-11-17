@@ -9,7 +9,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.util.CalendarViewModel
+import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 

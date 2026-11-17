@@ -80,13 +80,9 @@
 
     <!-- Hour labels in calendar day/week grid -->
     <!-- Grid label for midnight hour -->
-    <string name="twelve_am">12 AM</string>
     <!-- Grid label for AM hours. %1$d = hour number 1-11 -->
-    <string name="hour_am"><xliff:g id="hour" example="9">%1$d</xliff:g> AM</string>
     <!-- Grid label for noon hour -->
-    <string name="twelve_pm">12 PM</string>
     <!-- Grid label for PM hours. %1$d = hour number 1-11 -->
-    <string name="hour_pm"><xliff:g id="hour" example="3">%1$d</xliff:g> PM</string>
 
     <!-- Edit event screen -->
     <!-- Text field label for event title -->

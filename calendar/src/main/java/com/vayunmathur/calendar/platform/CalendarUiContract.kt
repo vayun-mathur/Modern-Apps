@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.util
+package com.vayunmathur.calendar.platform
 
 import com.vayunmathur.calendar.data.Calendar
 import com.vayunmathur.calendar.data.Event
@@ -12,8 +12,8 @@ import kotlin.time.Instant
  *
  * Those screens take a state value plus an actions interface rather than the ViewModel
  * itself, so they can be rendered by a `@Preview` — which is what the listing images are
- * generated from. It lives in `util` rather than `ui` so the dependency runs one way:
- * `ui` depends on `util`, and the ViewModel implements these interfaces.
+ * generated from. It lives in `platform/` rather than `ui/` so the dependency runs one way:
+ * `ui` depends on `platform`, and the ViewModel implements these interfaces.
  *
  * The "close" callbacks below are deliberately named per screen. The ViewModel implements
  * every interface here, and two same-named defaults inherited from different interfaces

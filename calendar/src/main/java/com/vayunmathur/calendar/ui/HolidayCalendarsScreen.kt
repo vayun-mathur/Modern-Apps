@@ -36,9 +36,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.calendar.Route
-import com.vayunmathur.calendar.util.CalendarViewModel
-import com.vayunmathur.calendar.util.HolidayCalendarManager
-import com.vayunmathur.calendar.util.HolidayData
+import com.vayunmathur.calendar.platform.CalendarViewModel
+import com.vayunmathur.calendar.platform.HolidayCalendarManager
+import com.vayunmathur.calendar.data.HolidayData
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack

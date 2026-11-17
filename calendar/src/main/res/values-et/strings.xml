@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Kalender</string>
-    <string name="create">Loo</string>
-    <string name="search">Otsi</string>
     <string name="no_title">(Pealkirja pole)</string>
     <string name="event_not_found">Sündmust ei leidu</string>
     <string name="month_year_format"><xliff:g id="month_name" example="Jaanuar">%1$s</xliff:g> <xliff:g id="year" example="2025">%2$d</xliff:g></string>
     <string name="date_range_format"><xliff:g id="start_date" example="Jan 1">%1$s</xliff:g> - <xliff:g id="end_date" example="Jan 2">%2$s</xliff:g></string>
     <string name="date_time_range_format"><xliff:g id="date" example="1. jan">%1$s</xliff:g> • <xliff:g id="start_time" example="09:00">%2$s</xliff:g> - <xliff:g id="end_time" example="10:00">%3$s</xliff:g></string>
     <string name="full_date_time_range_format"><xliff:g id="start_date" example="1. ja">%1$s</xliff:g>, <xliff:g id="start_time" example="09:00">%2$s</xliff:g> - <xliff:g id="end_date" example="2. jan">%3$s</xliff:g>, <xliff:g id="end_time" example="10:00">%4$s</xliff:g></string>
-    <string name="twelve_am">12 el (AM)</string>
-    <string name="hour_am"><xliff:g id="hour" example="9">%1$d</xliff:g> el (AM)</string>
-    <string name="twelve_pm">12 pl (PM)</string>
-    <string name="hour_pm"><xliff:g id="hour" example="3">%1$d</xliff:g> pl (PM)</string>
     <string name="label_title">Pealkiri</string>
     <string name="label_description">Kirjeldus</string>
     <string name="label_location">Asukoht</string>
@@ -139,14 +133,13 @@
     <string name="widget_preview_event_1_title">Tiimi igapäevane koosolek</string>
     <string name="widget_preview_event_1_time">09:00–09:30</string>
     <string name="widget_preview_event_2_title">Lõuna Matiga</string>
-    <string name="widget_preview_event_2_time">12:30-13:30</string>
+    <string name="widget_preview_event_2_time">12:30–13:30</string>
     <string name="widget_preview_event_3_title">Projekti läbivaatamine</string>
-    <string name="widget_preview_event_3_time">15:00-16:00</string>
+    <string name="widget_preview_event_3_time">15:00–16:00</string>
     <string name="reminder_channel_name">Sündmuste meeldetuletused</string>
     <string name="reminder_channel_description">Järgmiste kalendrisündmuste meeldetuletused</string>
     <string name="reminder_notification_default_title">Sündmuse meeldetuletus</string>
     <string name="reminder_notification_text">Algab kell <xliff:g id="start_time" example="15:00">%1$s</xliff:g></string>
-    <string name="today">Täna</string>
     <string name="tomorrow">Homme</string>
     <string name="repeat_mode_pattern">Kordamise muster</string>
     <string name="repeat_mode_dates">Kindlatel päevadel</string>

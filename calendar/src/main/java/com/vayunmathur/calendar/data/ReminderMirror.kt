@@ -10,7 +10,7 @@ import com.vayunmathur.library.util.DataStoreUtils
  * The system CalendarProvider is credential-encrypted and simply unreadable before the
  * first unlock after a reboot, so the locked boot pass has no way to discover reminders
  * on its own. It reads this instead. Written by
- * [com.vayunmathur.calendar.util.ReminderScheduler.reconcileAll] while unlocked.
+ * [com.vayunmathur.calendar.platform.ReminderScheduler.reconcileAll] while unlocked.
  *
  * PRIVACY - device-protected storage is NOT encrypted with the user's credential, so
  * everything below is readable with the device merely powered on. Event titles are

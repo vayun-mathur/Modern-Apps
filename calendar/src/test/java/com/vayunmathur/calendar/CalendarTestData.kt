@@ -4,7 +4,7 @@ import android.provider.CalendarContract
 import com.vayunmathur.calendar.data.Calendar
 import com.vayunmathur.calendar.data.Event
 import com.vayunmathur.calendar.data.Instance
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.domain.RRule
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime

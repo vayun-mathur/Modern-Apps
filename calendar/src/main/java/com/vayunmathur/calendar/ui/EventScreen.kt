@@ -33,11 +33,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.calendar.R
+import com.vayunmathur.calendar.platform.describe
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.data.Instance
-import com.vayunmathur.calendar.util.CalendarViewModel
-import com.vayunmathur.calendar.util.EventActions
-import com.vayunmathur.calendar.util.EventUiState
+import com.vayunmathur.calendar.platform.CalendarViewModel
+import com.vayunmathur.calendar.platform.EventActions
+import com.vayunmathur.calendar.platform.EventUiState
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconDescription
 import com.vayunmathur.library.ui.IconEdit

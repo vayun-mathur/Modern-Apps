@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Kalendář</string>
-    <string name="search">Hledat</string>
     <string name="event_not_found">Událost nenalezena</string>
-    <string name="twelve_am">12 dop.</string>
     <string name="label_title">Název</string>
     <string name="label_description">Popis</string>
     <string name="label_location">Místo</string>
@@ -26,15 +24,11 @@
     <string name="rename_calendar">Přejmenovat kalendář</string>
     <string name="new_name">Nový název</string>
     <string name="create_a_calendar">Vytvořit kalendář</string>
-    <string name="create">Vytvořit</string>
     <string name="no_title">(Bez názvu)</string>
     <string name="month_year_format"><xliff:g id="month_name" example="Leden">%1$s</xliff:g> <xliff:g id="year" example="2025">%2$d</xliff:g></string>
     <string name="date_range_format"><xliff:g id="start_date" example="Led 1">%1$s</xliff:g> - <xliff:g id="end_date" example="Led 2">%2$s</xliff:g></string>
     <string name="date_time_range_format"><xliff:g id="date" example="Led 1">%1$s</xliff:g> • <xliff:g id="start_time" example="9:00 dop.">%2$s</xliff:g> - <xliff:g id="end_time" example="10:00 dop.">%3$s</xliff:g></string>
     <string name="full_date_time_range_format"><xliff:g id="start_date" example="Led 1">%1$s</xliff:g>, <xliff:g id="start_time" example="9:00 dop.">%2$s</xliff:g> - <xliff:g id="end_date" example="Led 2">%3$s</xliff:g>, <xliff:g id="end_time" example="10:00 dop.">%4$s</xliff:g></string>
-    <string name="hour_am"><xliff:g id="hour" example="9">%1$d</xliff:g> dop.</string>
-    <string name="twelve_pm">12 odp.</string>
-    <string name="hour_pm"><xliff:g id="hour" example="3">%1$d</xliff:g> odp.</string>
     <string name="all_day">Celodenní</string>
     <string name="does_not_repeat">Neopakuje se</string>
     <string name="repeats">Opakuje se</string>
@@ -83,6 +77,8 @@
     <string name="create_new_calendar_option">Vytvořit nový kalendář</string>
     <string name="no_events_found">Nenalezeny žádné události</string>
     <plurals name="import_summary">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> událost připravena k importování</item>
+        <item quantity="few"><xliff:g id="count" example="2">%1$d</xliff:g> události připraveny k importování</item>
         <item quantity="many"><xliff:g id="count" example="5">%1$d</xliff:g> událostí připraveno k importování</item>
         <item quantity="other"><xliff:g id="count" example="5">%1$d</xliff:g> událostí připraveno k importování</item>
     </plurals>

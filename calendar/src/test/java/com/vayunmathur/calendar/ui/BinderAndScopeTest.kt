@@ -20,9 +20,9 @@ import com.vayunmathur.calendar.CalendarTestData as D
 import com.vayunmathur.calendar.FakeCalendarData
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.ui.dialogs.RecurrenceDialog
-import com.vayunmathur.calendar.util.CalendarViewModel
-import com.vayunmathur.calendar.util.RecurrenceParams
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.platform.CalendarViewModel
+import com.vayunmathur.calendar.domain.RecurrenceParams
+import com.vayunmathur.calendar.domain.RRule
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavResultRegistry

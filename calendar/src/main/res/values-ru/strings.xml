@@ -2,13 +2,9 @@
 <resources>
     <string name="app_name">Календарь</string>
     <string name="calendar_widget_description">Предстоящие события — нажмите, чтобы открыть календарь</string>
-    <string name="create">Создать</string>
     <string name="add_reminder">Добавить напоминание</string>
-    <string name="search">Поиск</string>
     <string name="no_title">(Без названия)</string>
     <string name="event_not_found">Событие не найдено</string>
-    <string name="twelve_am">12:00</string>
-    <string name="twelve_pm">00:00</string>
     <string name="label_title">Название</string>
     <string name="label_description">Описание</string>
     <string name="label_location">Местоположение</string>

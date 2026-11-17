@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">לוח שנה</string>
-    <string name="create">יצירה</string>
     <string name="add_reminder">הוספת תזכורת</string>
-    <string name="search">חיפוש</string>
     <string name="no_title">(ללא כותרת)</string>
     <string name="event_not_found">האירוע לא נמצא</string>
     <string name="label_title">כותרת</string>

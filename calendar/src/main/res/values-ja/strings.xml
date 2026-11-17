@@ -20,19 +20,13 @@
     <string name="theme_light">ライト</string>
     <string name="theme_dark">ダーク</string>
     <string name="calendar_widget_description">一目でわかる今後の予定 - タップしてカレンダーを開く</string>
-    <string name="create">作成</string>
     <string name="add_reminder">リマインダーを追加</string>
-    <string name="search">検索</string>
     <string name="no_title">(タイトルなし)</string>
     <string name="event_not_found">イベントが見つかりません</string>
     <string name="month_year_format"><xliff:g id="year" example="2025">%2$d</xliff:g>年<xliff:g id="month_name" example="January">%1$s</xliff:g></string>
     <string name="date_range_format"><xliff:g id="start_date" example="Jan 1">%1$s</xliff:g> - <xliff:g id="end_date" example="Jan 2">%2$s</xliff:g></string>
     <string name="date_time_range_format"><xliff:g id="date" example="Jan 1">%1$s</xliff:g> • <xliff:g id="start_time" example="9:00 AM">%2$s</xliff:g> - <xliff:g id="end_time" example="10:00 AM">%3$s</xliff:g></string>
     <string name="full_date_time_range_format"><xliff:g id="start_date" example="Jan 1">%1$s</xliff:g>, <xliff:g id="start_time" example="9:00 AM">%2$s</xliff:g> - <xliff:g id="end_date" example="Jan 2">%3$s</xliff:g>, <xliff:g id="end_time" example="10:00 AM">%4$s</xliff:g></string>
-    <string name="twelve_am">午前12時</string>
-    <string name="hour_am">午前<xliff:g id="hour" example="9">%1$d</xliff:g>時</string>
-    <string name="twelve_pm">午後12時</string>
-    <string name="hour_pm">午後<xliff:g id="hour" example="3">%1$d</xliff:g>時</string>
     <string name="label_title">タイトル</string>
     <string name="label_description">説明</string>
     <string name="label_location">場所</string>
@@ -124,9 +118,9 @@
     </plurals>
     <string name="rrule_until_suffix">, <xliff:g id="date" example="Dec 31, 2025">%1$s</xliff:g> まで</string>
     <string name="widget_preview_event_1_title">チームの始動</string>
-    <string name="widget_preview_event_1_time">午前 9:00 - 9:30</string>
+    <string name="widget_preview_event_1_time">午前 9:00 – 9:30</string>
     <string name="widget_preview_event_2_title">サムとランチ</string>
-    <string name="widget_preview_event_2_time">12:30 - 午後 1:30</string>
+    <string name="widget_preview_event_2_time">12:30 – 午後 1:30</string>
     <string name="widget_preview_event_3_title">デザインのレビュー</string>
-    <string name="widget_preview_event_3_time">午後 3:00 - 4:00</string>
+    <string name="widget_preview_event_3_time">午後 3:00 – 4:00</string>
 </resources>

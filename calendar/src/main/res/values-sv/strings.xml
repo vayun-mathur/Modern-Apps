@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="theme">Tema</string>
-    <string name="create">Skapa</string>
-    <string name="search">Sök</string>
-    <string name="today">I dag</string>
     <string name="theme_light">Ljust</string>
     <string name="theme_dark">Mörkt</string>
     <string name="app_name">Kalender</string>
@@ -35,10 +32,6 @@
     <string name="date_range_format"><xliff:g id="start_date" example="Jan 1">%1$s</xliff:g> – <xliff:g id="end_date" example="Jan 2">%2$s</xliff:g></string>
     <string name="date_time_range_format"><xliff:g id="date" example="Jan 1">%1$s</xliff:g> • <xliff:g id="start_time" example="9:00 AM">%2$s</xliff:g> – <xliff:g id="end_time" example="10:00 AM">%3$s</xliff:g></string>
     <string name="full_date_time_range_format"><xliff:g id="start_date" example="Jan 1">%1$s</xliff:g>, <xliff:g id="start_time" example="9:00 AM">%2$s</xliff:g> – <xliff:g id="end_date" example="Jan 2">%3$s</xliff:g>, <xliff:g id="end_time" example="10:00 AM">%4$s</xliff:g></string>
-    <string name="twelve_am">00:00</string>
-    <string name="hour_am"><xliff:g id="hour" example="9">%1$d</xliff:g>:00</string>
-    <string name="twelve_pm">12:00</string>
-    <string name="hour_pm"><xliff:g id="hour" example="3">%1$d</xliff:g>:00</string>
     <string name="label_title">Titel</string>
     <string name="label_description">Beskrivning</string>
     <string name="label_location">Plats</string>

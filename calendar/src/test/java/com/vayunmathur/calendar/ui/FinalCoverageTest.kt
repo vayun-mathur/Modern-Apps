@@ -14,14 +14,14 @@ import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.calendar.CalendarTestData as D
 import com.vayunmathur.calendar.data.Instance
-import com.vayunmathur.calendar.util.CalendarActions
-import com.vayunmathur.calendar.util.CalendarUiState
-import com.vayunmathur.calendar.util.CalendarViewModel
-import com.vayunmathur.calendar.util.EventActions
-import com.vayunmathur.calendar.util.EventUiState
-import com.vayunmathur.calendar.util.RRule
-import com.vayunmathur.calendar.util.SettingsActions
-import com.vayunmathur.calendar.util.SettingsUiState
+import com.vayunmathur.calendar.platform.CalendarActions
+import com.vayunmathur.calendar.platform.CalendarUiState
+import com.vayunmathur.calendar.platform.CalendarViewModel
+import com.vayunmathur.calendar.platform.EventActions
+import com.vayunmathur.calendar.platform.EventUiState
+import com.vayunmathur.calendar.domain.RRule
+import com.vayunmathur.calendar.platform.SettingsActions
+import com.vayunmathur.calendar.platform.SettingsUiState
 import kotlinx.datetime.LocalDate
 import org.junit.Rule
 import org.junit.runner.RunWith

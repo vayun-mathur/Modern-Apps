@@ -54,7 +54,7 @@ import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.data.Calendar
 import com.vayunmathur.calendar.ui.dialogs.COLOR_SWATCHES
-import com.vayunmathur.calendar.util.CalendarViewModel
+import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.launch
 import com.vayunmathur.library.ui.EmptyState

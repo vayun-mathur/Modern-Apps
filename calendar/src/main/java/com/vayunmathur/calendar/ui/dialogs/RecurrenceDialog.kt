@@ -39,11 +39,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.util.MAX_RRULE_COUNT
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.domain.MAX_RRULE_COUNT
+import com.vayunmathur.calendar.domain.RRule
 import com.vayunmathur.calendar.R
-import com.vayunmathur.calendar.util.RecurrenceDates
-import com.vayunmathur.calendar.util.RecurrenceParams
+import com.vayunmathur.calendar.domain.RecurrenceDates
+import com.vayunmathur.calendar.domain.RecurrenceParams
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.util.LocalNavResultRegistry

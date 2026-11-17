@@ -28,19 +28,13 @@
         <item quantity="one">+<xliff:g id="count" example="1">%1$d</xliff:g> daha çox</item>
         <item quantity="other">+<xliff:g id="count" example="1">%1$d</xliff:g> daha çox</item>
     </plurals>
-    <string name="create">Yarat</string>
     <string name="add_reminder">Xatırlatma əlavə edin</string>
-    <string name="search">Axtarış</string>
     <string name="no_title">(Başlıq yoxdur)</string>
     <string name="event_not_found">Tədbir tapılmadı</string>
     <string name="month_year_format"><xliff:g id="ay_adı" nümunəsi="Yanvar">%1$s</xliff:g> <xliff:g id="il" nümunəsi="2025">%2$d</xliff:g></string>
     <string name="date_range_format"><xliff:g id="başlanğıc_tarixi" nümunəsi="Yan 1">%1$s</xliff:g> - <xliff:g id="son_tarixi" nümunəsi="Yan 2">%2$s</xliff:g></string>
     <string name="date_time_range_format"><xliff:g id="date" example="1 Yanvar">%1$s</xliff:g> • <xliff:g id="başlanğıc_vaxtı" example="9:00 AM">%2$s</xliff:g> - <xliff:g id="bitmə_vaxtı" example="10:00 AM">%3$s</xliff:g></string>
     <string name="full_date_time_range_format"><xliff:g id="başlanğıc_tarixi" nümunəsi="1 Yanvar">%1$s</xliff:g>, <xliff:g id="başlanğıc_tarixi" nümunəsi="9:00 AM">%2$s</xliff:g> - <xliff:g id="son_tarixi" nümunəsi="2 Yanvar">%3$s</xliff:g>, <xliff:g id="son_tarixi" nümunəsi="10:00 AM">%4$s</xliff:g></string>
-    <string name="twelve_am">12:00</string>
-    <string name="hour_am"><xliff:g id="hour" example="9">%1$d</xliff:g> AM</string>
-    <string name="twelve_pm">Saat 12:00</string>
-    <string name="hour_pm"><xliff:g id="hour" example="3">%1$d</xliff:g> PM</string>
     <string name="label_title">Başlıq</string>
     <string name="label_description">Təsvir</string>
     <string name="label_location">Yer</string>
@@ -167,7 +161,6 @@
     <string name="reminder_channel_description">Qarşıdakı təqvim tədbirləri üçün xatırlatmalar</string>
     <string name="reminder_notification_default_title">Tədbir xatırlatması</string>
     <string name="reminder_notification_text">Saat <xliff:g id="start_time" example="3:00 PM">%1$s</xliff:g>-da başlayır</string>
-    <string name="today">Bu gün</string>
     <string name="tomorrow">Sabah</string>
     <string name="save_this_event">Bu tədbiri yadda saxlayın</string>
     <string name="save_this_and_following_events">Bu və növbəti tədbirləri yadda saxlayın</string>

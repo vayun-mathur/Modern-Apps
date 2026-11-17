@@ -10,8 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.data.Event
-import com.vayunmathur.calendar.util.CalendarViewModel
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.platform.CalendarViewModel
+import com.vayunmathur.calendar.domain.RRule
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.IconButton

@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Kalender</string>
-    <string name="create">Erstellen</string>
-    <string name="search">Suchen</string>
     <string name="no_title">(Kein Titel)</string>
     <string name="event_not_found">Termin nicht gefunden</string>
     <string name="month_year_format">%1$s %2$d</string>
@@ -44,9 +42,7 @@
     <string name="delete_this_event">Diesen Termin löschen</string>
     <string name="delete_all_events">Alle Termine löschen</string>
     <string name="create_new_calendar">+ Neuen Kalender erstellen</string>
-    <string name="default_layout">Standart Ansicht</string>
-    <string name="twelve_am">00:00</string>
-    <string name="twelve_pm">12:00</string>
+    <string name="default_layout">Standard Ansicht</string>
     <string name="add_reminder">Erinnerung hinzufügen</string>
     <string name="calendar_widget_description">Zukünftige Termine im Überblick - tippe um Kalender zu öffnen</string>
 </resources>

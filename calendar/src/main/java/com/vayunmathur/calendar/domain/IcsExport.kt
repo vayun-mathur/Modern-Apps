@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.util
+package com.vayunmathur.calendar.domain
 
 import com.vayunmathur.calendar.data.Event
 import kotlinx.datetime.LocalDate

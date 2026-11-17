@@ -5,8 +5,8 @@ import android.provider.CalendarContract
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.calendar.CalendarTestData as D
 import com.vayunmathur.calendar.FakeCalendarData
-import com.vayunmathur.calendar.util.HolidayCalendarManager
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.platform.HolidayCalendarManager
+import com.vayunmathur.calendar.domain.RRule
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus

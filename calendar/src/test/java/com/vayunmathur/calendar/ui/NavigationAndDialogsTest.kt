@@ -30,9 +30,9 @@ import com.vayunmathur.calendar.ui.dialogs.SettingsDefaultRemindersDialog
 import com.vayunmathur.calendar.ui.dialogs.SettingsDeleteCalendarDialog
 import com.vayunmathur.calendar.ui.dialogs.SettingsRenameCalendarDialog
 import com.vayunmathur.calendar.ui.dialogs.TimezonePickerDialog
-import com.vayunmathur.calendar.util.CalendarViewModel
-import com.vayunmathur.calendar.util.RecurrenceParams
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.platform.CalendarViewModel
+import com.vayunmathur.calendar.domain.RecurrenceParams
+import com.vayunmathur.calendar.domain.RRule
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavResultRegistry

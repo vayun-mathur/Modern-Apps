@@ -47,9 +47,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.util.CalendarViewModel
-import com.vayunmathur.calendar.util.SettingsActions
-import com.vayunmathur.calendar.util.SettingsUiState
+import com.vayunmathur.calendar.platform.CalendarViewModel
+import com.vayunmathur.calendar.platform.SettingsActions
+import com.vayunmathur.calendar.platform.SettingsUiState
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.R
 import com.vayunmathur.library.ui.IconAdd
@@ -209,7 +209,8 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
                 }
             }
         } else {
-            val context = LocalContext.current
+            val layoutLabels = CalendarViewModel.CalendarLayout.entries.associateWith { stringResource(it.prettyNameRes) }
+            val themeLabels = CalendarViewModel.ThemeMode.entries.associateWith { stringResource(it.prettyNameRes) }
             LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = paddingValues + PaddingValues(8.dp)) {
                 item {
                     SettingsSection {
@@ -217,7 +218,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
                             title = stringResource(R.string.default_layout),
                             selected = state.layout,
                             options = CalendarViewModel.CalendarLayout.entries,
-                            label = { context.getString(it.prettyNameRes) },
+                            label = { layoutLabels.getValue(it) },
                             onSelect = { actions.setLayout(it) },
                         )
                         SettingsDivider()
@@ -225,7 +226,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
                             title = stringResource(R.string.theme),
                             selected = state.themeMode,
                             options = CalendarViewModel.ThemeMode.entries,
-                            label = { context.getString(it.prettyNameRes) },
+                            label = { themeLabels.getValue(it) },
                             onSelect = { actions.setThemeMode(it) },
                         )
                         SettingsDivider()

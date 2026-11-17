@@ -30,15 +30,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.data.Event
-import com.vayunmathur.calendar.util.CalendarViewModel
+import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.calendar.R
-import com.vayunmathur.calendar.util.RRule
-import com.vayunmathur.calendar.util.RecurrenceDates
-import com.vayunmathur.calendar.util.RecurrenceParams
+import com.vayunmathur.calendar.platform.describe
+import com.vayunmathur.calendar.domain.RRule
+import com.vayunmathur.calendar.domain.RecurrenceDates
+import com.vayunmathur.calendar.domain.RecurrenceParams
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.util.ResultEffect
 import kotlin.time.Instant
@@ -149,14 +151,12 @@ fun EditEventScreen(viewModel: CalendarViewModel, editRoute: Route.EditEvent, ba
     }
     var rruleObj by remember(event?.id) { mutableStateOf(event?.rrule) }
     var rdateObj by remember(event?.id) { mutableStateOf(event?.rdate ?: emptyList()) }
+    // The event's own date counts as an occurrence alongside the picked ones.
+    val rdateSummary = pluralStringResource(R.plurals.repeat_dates_summary, rdateObj.size + 1, rdateObj.size + 1)
     val repeatSummary by remember {
         derivedStateOf {
             when {
-                rdateObj.isNotEmpty() ->
-                    // The event's own date counts as an occurrence alongside the picked ones.
-                    context.resources.getQuantityString(
-                        R.plurals.repeat_dates_summary, rdateObj.size + 1, rdateObj.size + 1,
-                    )
+                rdateObj.isNotEmpty() -> rdateSummary
                 else -> rruleObj?.describe(context) ?: ""
             }
         }

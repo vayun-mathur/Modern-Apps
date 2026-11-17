@@ -11,11 +11,11 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import com.vayunmathur.calendar.util.RRule
-import com.vayunmathur.calendar.util.parseIcalBasicDate
-import com.vayunmathur.calendar.util.parseIcalOccurrenceDate
-import com.vayunmathur.calendar.util.toIcalBasic
-import com.vayunmathur.calendar.util.toIcalUtcDateTime
+import com.vayunmathur.calendar.domain.RRule
+import com.vayunmathur.calendar.domain.parseIcalBasicDate
+import com.vayunmathur.calendar.domain.parseIcalOccurrenceDate
+import com.vayunmathur.calendar.domain.toIcalBasic
+import com.vayunmathur.calendar.domain.toIcalUtcDateTime
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds

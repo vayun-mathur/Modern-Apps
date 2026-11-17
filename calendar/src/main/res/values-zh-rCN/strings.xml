@@ -5,15 +5,9 @@
     <string name="date_range_format"><xliff:g id="start_date" example="Jan 1">%1$s</xliff:g> - <xliff:g id="end_date" example="Jan 2">%2$s</xliff:g></string>
     <string name="date_time_range_format"><xliff:g id="date" example="Jan 1">%1$s</xliff:g> • <xliff:g id="start_time" example="9:00 AM">%2$s</xliff:g> - <xliff:g id="end_time" example="10:00 AM">%3$s</xliff:g></string>
     <string name="full_date_time_range_format"><xliff:g id="start_date" example="Jan 1">%1$s</xliff:g>, <xliff:g id="start_time" example="9:00 AM">%2$s</xliff:g> - <xliff:g id="end_date" example="Jan 2">%3$s</xliff:g>, <xliff:g id="end_time" example="10:00 AM">%4$s</xliff:g></string>
-    <string name="create">创建</string>
-    <string name="search">搜索</string>
     <string name="no_title">（无标题）</string>
     <string name="event_not_found">未找到活动</string>
     <string name="label_title">标题</string>
-    <string name="twelve_am">凌晨 12 点</string>
-    <string name="hour_am">上午 <xliff:g id="hour" example="9">%1$d</xliff:g></string>
-    <string name="twelve_pm">中午 12 点</string>
-    <string name="hour_pm">下午 <xliff:g id="hour" example="3">%1$d</xliff:g></string>
     <string name="label_description">描述</string>
     <string name="label_location">位置</string>
     <string name="select_calendar">选择日历</string>
@@ -145,7 +139,6 @@
     <plurals name="repeat_dates_summary">
         <item quantity="other">在 %1$d 个日期</item>
     </plurals>
-    <string name="today">今天</string>
     <string name="tomorrow">明天</string>
     <string name="export_ics_file">导出 .ics 文件</string>
     <string name="export_events_to_ics_file">将活动导出到 .ics 文件</string>

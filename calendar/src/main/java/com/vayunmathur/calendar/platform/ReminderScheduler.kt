@@ -1,10 +1,10 @@
-package com.vayunmathur.calendar.util
+package com.vayunmathur.calendar.platform
 
 import android.app.AlarmManager
+import androidx.core.content.edit
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import com.vayunmathur.calendar.data.Event
 import com.vayunmathur.calendar.data.Instance
 import com.vayunmathur.calendar.data.ReminderMirror
@@ -246,7 +246,7 @@ object ReminderScheduler {
         // the runtime backstop and must not duplicate that flow. canScheduleExactAlarms() is
         // checked on S+ so a denial surfaces via messenger instead of silently degrading to
         // inexact; the SecurityException catch remains for the revoked-mid-scheduling race.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+        if (!alarmManager.canScheduleExactAlarms()) {
             alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
             AppMessages.show(context.getString(UiR.string.permission_exact_alarms_rationale))
             return
@@ -292,8 +292,8 @@ object ReminderScheduler {
             ?: emptySet()
 
     private fun saveTracked(context: Context, codes: Set<Int>) {
-        prefs(context).edit()
-            .putStringSet(KEY_SCHEDULED, codes.map { it.toString() }.toSet())
-            .apply()
+        prefs(context).edit {
+            putStringSet(KEY_SCHEDULED, codes.map { it.toString() }.toSet())
+        }
     }
 }

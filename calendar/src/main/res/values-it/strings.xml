@@ -1,16 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Calendario</string>
-    <string name="create">Crea</string>
-    <string name="search">Cerca</string>
     <string name="event_not_found">Evento non trovato</string>
     <string name="date_range_format"><xliff:g id="start_date" example="Gen 1">%1$s</xliff:g> - <xliff:g id="end_date" example="Gen 2">%2$s</xliff:g></string>
     <string name="date_time_range_format"><xliff:g id="date" example="Gen 1">%1$s</xliff:g> • <xliff:g id="start_time" example="9:00">%2$s</xliff:g> - <xliff:g id="end_time" example="10:00">%3$s</xliff:g></string>
     <string name="full_date_time_range_format"><xliff:g id="start_date" example="Gen 1">%1$s</xliff:g>, <xliff:g id="start_time" example="9:00">%2$s</xliff:g> - <xliff:g id="end_date" example="Gen 2">%3$s</xliff:g>, <xliff:g id="end_time" example="10:00">%4$s</xliff:g></string>
-    <string name="twelve_am">12 AM</string>
-    <string name="hour_am"><xliff:g id="hour" example="9">%1$d</xliff:g> AM</string>
-    <string name="twelve_pm">12 PM</string>
-    <string name="hour_pm"><xliff:g id="hour" example="3">%1$d</xliff:g> PM</string>
     <string name="label_title">Titolo</string>
     <string name="label_description">Descrizione</string>
     <string name="label_location">Posizione</string>

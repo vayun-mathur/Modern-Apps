@@ -1,4 +1,5 @@
 package com.vayunmathur.calendar
+import com.vayunmathur.calendar.platform.ReminderFallback
 
 import android.content.Context
 import android.content.Intent
@@ -6,7 +7,7 @@ import android.net.Uri
 import android.provider.CalendarContract
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.calendar.data.Instance
-import com.vayunmathur.calendar.util.ReminderScheduler
+import com.vayunmathur.calendar.platform.ReminderScheduler
 import kotlinx.serialization.json.Json
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric

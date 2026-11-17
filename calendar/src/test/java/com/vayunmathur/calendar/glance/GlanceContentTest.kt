@@ -1,4 +1,7 @@
 package com.vayunmathur.calendar.glance
+import com.vayunmathur.calendar.widget.glance.Content
+import com.vayunmathur.calendar.widget.glance.MonthContent
+import com.vayunmathur.calendar.widget.glance.computeMonthGrid
 
 import android.content.Context
 import androidx.compose.ui.unit.DpSize

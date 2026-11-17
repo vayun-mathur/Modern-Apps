@@ -1,6 +1,6 @@
 package com.vayunmathur.calendar.ui
 
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.domain.RRule
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals

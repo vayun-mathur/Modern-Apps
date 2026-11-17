@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.util
+package com.vayunmathur.calendar.platform
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -6,8 +6,8 @@ import android.content.Intent
 import android.os.UserManager
 import com.vayunmathur.library.log.Log
 import androidx.glance.appwidget.updateAll
-import com.vayunmathur.calendar.glance.CalendarGlanceWidget
-import com.vayunmathur.calendar.glance.CalendarMonthGlanceWidget
+import com.vayunmathur.calendar.widget.glance.CalendarGlanceWidget
+import com.vayunmathur.calendar.widget.glance.CalendarMonthGlanceWidget
 import com.vayunmathur.library.widgets.scheduleHourlyUpdate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

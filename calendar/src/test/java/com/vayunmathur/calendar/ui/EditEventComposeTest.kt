@@ -17,7 +17,7 @@ import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.data.Event
 import com.vayunmathur.calendar.ui.dialogs.ChosenDates
 import com.vayunmathur.calendar.ui.dialogs.OnDropdown
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.domain.RRule
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberOdfMarkdownEditorController
 import com.vayunmathur.library.util.NavBackStack
@@ -422,9 +422,9 @@ class EditEventComposeTest {
         assertTrue(ww.dayOfWeek != DayOfWeek.SATURDAY && ww.dayOfWeek != DayOfWeek.SUNDAY)
         val wwSat = workWeekStart(saturday, Locale.UK)
         assertTrue(wwSat.dayOfWeek != DayOfWeek.SATURDAY && wwSat.dayOfWeek != DayOfWeek.SUNDAY)
-        assertEquals(monday, weekStartForLayout(monday, com.vayunmathur.calendar.util.CalendarViewModel.CalendarLayout.Day, Locale.US))
-        assertTrue(weekStartForLayout(sunday, com.vayunmathur.calendar.util.CalendarViewModel.CalendarLayout.WorkWeek, Locale.US).dayOfWeek == DayOfWeek.MONDAY)
-        assertNotNull(weekStartForLayout(sunday, com.vayunmathur.calendar.util.CalendarViewModel.CalendarLayout.FullWeek, Locale.US))
+        assertEquals(monday, weekStartForLayout(monday, com.vayunmathur.calendar.platform.CalendarViewModel.CalendarLayout.Day, Locale.US))
+        assertTrue(weekStartForLayout(sunday, com.vayunmathur.calendar.platform.CalendarViewModel.CalendarLayout.WorkWeek, Locale.US).dayOfWeek == DayOfWeek.MONDAY)
+        assertNotNull(weekStartForLayout(sunday, com.vayunmathur.calendar.platform.CalendarViewModel.CalendarLayout.FullWeek, Locale.US))
         // atEndOfDayIn is next midnight.
         val end = monday.atEndOfDayIn(TimeZone.of("UTC"))
         assertEquals(D.at(monday.plus(kotlinx.datetime.DatePeriod(days = 1)), 0), end.toEpochMilliseconds())

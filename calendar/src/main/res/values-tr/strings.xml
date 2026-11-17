@@ -2,13 +2,9 @@
 <resources>
     <string name="app_name">Takvim</string>
     <string name="calendar_widget_description">Yaklaşan etkinlikleri kontrol edin - Takvim\'i açmak için dokunun</string>
-    <string name="create">Oluştur</string>
     <string name="add_reminder">Hatırlatıcı ekle</string>
-    <string name="search">Ara</string>
     <string name="no_title">(Başlık yok)</string>
     <string name="event_not_found">Etkinlik bulunamadı</string>
-    <string name="twelve_am">Ö.Ö 12</string>
-    <string name="twelve_pm">Ö.S 12</string>
     <string name="label_title">Başlık</string>
     <string name="label_description">Açıklama</string>
     <string name="label_location">Konum</string>

@@ -4,8 +4,8 @@ import android.content.Context
 import android.provider.CalendarContract
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.calendar.CalendarTestData as D
-import com.vayunmathur.calendar.util.RRule
-import com.vayunmathur.calendar.util.writeReminders
+import com.vayunmathur.calendar.domain.RRule
+import com.vayunmathur.calendar.platform.writeReminders
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate

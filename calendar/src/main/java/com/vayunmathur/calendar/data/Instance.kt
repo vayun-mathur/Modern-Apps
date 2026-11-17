@@ -10,7 +10,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
-import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.domain.RRule
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 

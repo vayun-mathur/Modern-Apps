@@ -24,7 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.util.CalendarViewModel
+import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import kotlinx.coroutines.launch

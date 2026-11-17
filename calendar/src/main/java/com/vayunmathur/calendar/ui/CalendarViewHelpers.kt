@@ -1,7 +1,7 @@
 package com.vayunmathur.calendar.ui
 
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.calendar.util.CalendarViewModel
+import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.calendar.data.Instance
 import com.vayunmathur.library.util.localeFirstDayOfWeek
 import java.util.Locale

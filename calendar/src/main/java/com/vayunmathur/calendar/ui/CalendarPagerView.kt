@@ -38,7 +38,7 @@ import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.data.Calendar
 import com.vayunmathur.calendar.data.Event
 import com.vayunmathur.calendar.data.Instance
-import com.vayunmathur.calendar.util.CalendarViewModel
+import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.library.ui.contentColorOn
 import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.MaterialTheme

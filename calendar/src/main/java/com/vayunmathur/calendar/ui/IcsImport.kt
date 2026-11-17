@@ -9,11 +9,13 @@ import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ListItemDefaults
 import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.calendar.R
+import com.vayunmathur.calendar.platform.describe
 import com.vayunmathur.calendar.data.Event
 import java.io.InputStream
 
@@ -36,7 +38,7 @@ fun EventCard(event: Event) {
                 event.rrule?.let { Text(it.describe(context)) }
                 if (event.rdate.isNotEmpty()) {
                     Text(
-                        context.resources.getQuantityString(
+                        pluralStringResource(
                             R.plurals.repeat_dates_summary,
                             event.rdate.size + 1,
                             event.rdate.size + 1,

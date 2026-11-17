@@ -101,7 +101,7 @@
             </intent-filter>
         </activity>
         <receiver
-            android:name=".glance.CalendarGlanceWidgetReceiver"
+            android:name=".widget.glance.CalendarGlanceWidgetReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -120,7 +120,7 @@
                 android:resource="@xml/calendar_glance_widget_info" />
         </receiver>
         <receiver
-            android:name=".glance.CalendarMonthGlanceWidgetReceiver"
+            android:name=".widget.glance.CalendarMonthGlanceWidgetReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -140,12 +140,12 @@
         </receiver>
 
         <receiver
-            android:name=".util.ReminderReceiver"
+            android:name=".platform.ReminderReceiver"
             android:enabled="true"
             android:directBootAware="true"
             android:exported="false" />
         <receiver
-            android:name=".util.BootReceiver"
+            android:name=".platform.BootReceiver"
             android:enabled="true"
             android:directBootAware="true"
             android:exported="true">

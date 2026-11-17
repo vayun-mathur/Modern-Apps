@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.util
+package com.vayunmathur.calendar.platform
 import android.app.Application
 import android.content.ContentValues
 import android.net.Uri
@@ -9,8 +9,8 @@ import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.calendar.R
-import com.vayunmathur.calendar.glance.CalendarGlanceWidget
-import com.vayunmathur.calendar.glance.CalendarMonthGlanceWidget
+import com.vayunmathur.calendar.widget.glance.CalendarGlanceWidget
+import com.vayunmathur.calendar.widget.glance.CalendarMonthGlanceWidget
 import com.vayunmathur.calendar.ui.parseICSFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,8 +26,9 @@ import kotlin.time.Instant
 import com.vayunmathur.calendar.data.Event
 import com.vayunmathur.calendar.data.Calendar
 import com.vayunmathur.calendar.data.Instance
-import com.vayunmathur.calendar.util.toIcalBasic
-import com.vayunmathur.calendar.util.toIcalUtcDateTime
+import com.vayunmathur.calendar.domain.toIcalBasic
+import com.vayunmathur.calendar.domain.writeIcs
+import com.vayunmathur.calendar.domain.toIcalUtcDateTime
 
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.AppMessages

@@ -1,8 +1,8 @@
 package com.vayunmathur.calendar.ui
 
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.calendar.util.AllDayFormat
-import com.vayunmathur.calendar.util.BasicIsoInstantFormat
+import com.vayunmathur.calendar.domain.AllDayFormat
+import com.vayunmathur.calendar.domain.BasicIsoInstantFormat
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone

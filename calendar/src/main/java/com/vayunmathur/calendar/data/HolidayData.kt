@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.util
+package com.vayunmathur.calendar.data
 
 import android.content.Context
 import com.vayunmathur.library.log.Log
