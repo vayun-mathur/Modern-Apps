@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.vayunmathur.cast.tv.platform.ReceiverUiState
+import com.vayunmathur.cast.tv.platform.receiverRouteFor
 import com.vayunmathur.cast.tv.ui.ReceiverContent
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -25,7 +26,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
  * underneath it.
  */
 @Composable
-fun ReceiverNavigation(state: ReceiverUiState, modifier: Modifier = Modifier) {
+fun Navigation(state: ReceiverUiState, modifier: Modifier = Modifier) {
     val target = receiverRouteFor(state.phase)
     val backStack = rememberNavBackStack<Route>(target)
     // The phase drives the destination. A mismatch also covers recreation,

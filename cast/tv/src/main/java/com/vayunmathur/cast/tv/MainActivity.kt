@@ -52,6 +52,6 @@ class MainActivity : MaActivity() {
     @Composable
     override fun Content() {
         val state by ReceiverController.state.collectAsState()
-        ReceiverNavigation(state)
+        Navigation(state)
     }
 }

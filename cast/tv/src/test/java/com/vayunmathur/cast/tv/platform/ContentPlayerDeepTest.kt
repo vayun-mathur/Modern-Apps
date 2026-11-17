@@ -54,8 +54,8 @@ class ContentPlayerDeepTest {
     @Test fun applyEveryActionOnIdlePlayer() { runBlocking {
         val errors = mutableListOf<String>()
         onMainPumped {
-            val player = ContentPlayer(ctx, session())
-            assertTrue(player.start { detail -> errors += detail })
+            val player = ContentPlayer(session())
+            assertTrue(player.start(ctx) { detail -> errors += detail })
             assertTrue(player.apply(PlaybackCommand(PlaybackAction.Play)))
             assertTrue(player.apply(PlaybackCommand(PlaybackAction.Pause)))
             assertTrue(player.apply(PlaybackCommand(PlaybackAction.Toggle)))
@@ -84,8 +84,8 @@ class ContentPlayerDeepTest {
 
     @Test fun startRefusesUnusableFingerprint() { runBlocking {
         onMainPumped {
-            val player = ContentPlayer(ctx, session(fingerprint = ByteArray(8)))
-            assertFalse(player.start { })
+            val player = ContentPlayer(session(fingerprint = ByteArray(8)))
+            assertFalse(player.start(ctx) { })
             player.release()
         }
         Unit

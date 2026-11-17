@@ -24,7 +24,7 @@ class ContentPlayerTest {
     private fun session(fp: String) = ContentSession(host = "127.0.0.1", port = 9, certificateFingerprint = fp, token = "tok", video = false, appLabel = "App")
 
     @Test fun unstartedPlayerIsInert() {
-        val p = ContentPlayer(ctx, session("!!!"))
+        val p = ContentPlayer(session("!!!"))
         assertEquals(0L, p.position); assertEquals(0L, p.duration); assertEquals(false, p.isPlaying); assertEquals(false, p.isBuffering); assertEquals(false, p.isEnded)
         assertEquals(1f, p.speed); assertEquals(1f, p.volume)
         val snap = p.snapshot(); assertEquals(0L, snap.positionMs); assertEquals(false, snap.playing)
@@ -37,15 +37,15 @@ class ContentPlayerTest {
         p.play(PlayMedia(resourceId = "r1", mimeType = "audio/mp4")); p.setSurface(null); p.play(); p.pause(); p.seekTo(100); p.setSpeed(2f); p.setVolume(2f); p.release(); p.release()
     }
     @Test fun startRejectsBadFingerprint() {
-        val p = ContentPlayer(ctx, session("not-base64!!"))
-        assertEquals(false, p.start { })
-        val p2 = ContentPlayer(ctx, session(Base64.encode(byteArrayOf(1, 2, 3))))
-        assertEquals(false, p2.start { }) // wrong size
+        val p = ContentPlayer(session("not-base64!!"))
+        assertEquals(false, p.start(ctx) { })
+        val p2 = ContentPlayer(session(Base64.encode(byteArrayOf(1, 2, 3))))
+        assertEquals(false, p2.start(ctx) { }) // wrong size
     }
     @Test fun startBuildsPlayerWithValidFingerprint() {
         shadowOf(Looper.getMainLooper()).idle()
-        val p = ContentPlayer(ctx, session(Base64.encode(ByteArray(32) { it.toByte() })))
-        val started = runCatching { p.start { } }.getOrDefault(false)
+        val p = ContentPlayer(session(Base64.encode(ByteArray(32) { it.toByte() })))
+        val started = runCatching { p.start(ctx) { } }.getOrDefault(false)
         if (started) {
             p.play(PlayMedia(resourceId = "r1", mimeType = "audio/mp4", durationMs = 123_000, startPositionMs = 1000))
             shadowOf(Looper.getMainLooper()).idle()

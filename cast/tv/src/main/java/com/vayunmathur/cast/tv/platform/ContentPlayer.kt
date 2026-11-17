@@ -45,7 +45,6 @@ private const val TAG = "ContentPlayer"
  */
 @OptIn(UnstableApi::class)
 class ContentPlayer(
-    private val context: Context,
     private val session: ContentSession,
 ) {
 
@@ -135,7 +134,7 @@ class ContentPlayer(
      * and an expired resource that produces no error and no picture is the hardest kind of fault to
      * attribute.
      */
-    fun start(onError: (String) -> Unit): Boolean {
+    fun start(context: Context, onError: (String) -> Unit): Boolean {
         val fingerprint = ProtocolBase64.decode(session.certificateFingerprint)
         if (fingerprint == null || fingerprint.size != FINGERPRINT_BYTES) {
             Log.status(TAG, "the phone sent an unusable certificate fingerprint")
@@ -155,7 +154,7 @@ class ContentPlayer(
             // get one. A redirect is never legitimate here.
             .setAllowCrossProtocolRedirects(false)
 
-        val built = ExoPlayer.Builder(context)
+        val built = ExoPlayer.Builder(context.applicationContext)
             .setMediaSourceFactory(DefaultMediaSourceFactory(http))
             .build()
         built.addListener(object : Player.Listener {

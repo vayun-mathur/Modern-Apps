@@ -8,6 +8,7 @@ import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,13 +57,13 @@ private const val TAG = "MirrorActivity"
  * `scaling: "sender"` and will not pad for you. Owning the receiver means the phone can send its own
  * aspect ratio at full resolution and the TV pads it - so none of the encoded frame is wasted.
  *
- * **This is also the app's whole input surface.** [dispatchKeyEvent] handles the remote directly rather
+ * **This is also the app's whole input surface.** [onKeyDown]/[onKeyUp] handle the remote directly rather
  * than moving a focus ring between buttons, because a media overlay's D-pad presses are gestures -
  * left seeks, up is volume - and there is nothing to focus. Keys are only claimed while a phone is
  * actually reporting playback, so screen mirroring keeps the ordinary behaviour of every key.
  *
  * **A press while the controls are hidden wakes them rather than toggling playback.** See
- * [dispatchKeyEvent]; an audio-only session never has hidden controls at all, because there is no
+ * [onKeyDown]; an audio-only session never has hidden controls at all, because there is no
  * picture for them to get out of the way of.
  */
 class MirrorActivity : ComponentActivity(), SurfaceHolder.Callback {
@@ -130,8 +131,23 @@ class MirrorActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     private var hideJob: Job? = null
 
+    /**
+     * Back dismisses the controls before it leaves the session (see
+     * [onKeyDown]). Registered as a callback rather than intercepted
+     * as a raw KEYCODE_BACK in the key dispatch, so predictive-back handling
+     * stays with the framework; enabled only while dismissible controls are
+     * on screen, otherwise back finishes the Activity as usual.
+     */
+    private val backPressedCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            hideOverlay()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(this, backPressedCallback)
+        updateBackCallback()
         surfaceView = SurfaceView(this).apply { holder.addCallback(this@MirrorActivity) }
         // An audio-only session has nothing to draw. The surface is not merely hidden but never
         // added: an unattached SurfaceView creates no surface, so `surfaceCreated` never fires and
@@ -180,6 +196,7 @@ class MirrorActivity : ComponentActivity(), SurfaceHolder.Callback {
                     // Activity is built, and this is the first moment the session is known for certain.
                     overlayPinned = !state.phase.hasVideo
                     if (overlayPinned) overlayVisible = true
+                    updateBackCallback()
                     // Before the letterbox, because switching the panel changes the size the
                     // letterbox is computed against - and the layout listener installed above will
                     // recompute it once the switch lands.
@@ -293,26 +310,27 @@ class MirrorActivity : ComponentActivity(), SurfaceHolder.Callback {
      * The remote, in full.
      *
      * Only claims a key while the phone is reporting playback - otherwise every one of these falls
-     * through to the system, which is what a mirrored phone screen needs. `BACK` is the exception worth
-     * pointing at: it dismisses the controls before it will leave the session, because a user who has
-     * just brought up a seek bar and presses back means "put that away", not "stop watching".
+     * through to the system, which is what a mirrored phone screen needs. `BACK` is not handled
+     * in the key handlers at all: [backPressedCallback] dismisses the controls before back will leave the
+     * session, because a user who has just brought up a seek bar and presses back means
+     * "put that away", not "stop watching".
      *
      * Left and right accumulate into [scrubPreviewMs] and commit on release; everything else is one
      * message per press. `ACTION_MULTIPLE` is not handled: a held D-pad repeats as `ACTION_DOWN`.
      */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        val playback = ReceiverController.state.value.playback
-            ?: return super.dispatchKeyEvent(event)
-
-        if (event.keyCode == KeyEvent.KEYCODE_BACK) return handleBack(event)
-
-        // Committing the scrub is the *release*, so it is handled before the reveal below - a release
-        // must not be mistaken for a fresh press.
-        if (event.action == KeyEvent.ACTION_UP && isScrubKey(event.keyCode)) {
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        ReceiverController.state.value.playback ?: return super.onKeyUp(keyCode, event)
+        // Committing the scrub is the *release*: the key-up half of a scrub press.
+        if (isScrubKey(keyCode)) {
             commitScrub()
             return true
         }
-        if (event.action != KeyEvent.ACTION_DOWN) return super.dispatchKeyEvent(event)
+        return super.onKeyUp(keyCode, event)
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        val playback = ReceiverController.state.value.playback
+            ?: return super.onKeyDown(keyCode, event)
 
         // Any press at all brings the controls up, and re-arms the timer that takes them away.
         val waking = !overlayVisible
@@ -326,21 +344,6 @@ class MirrorActivity : ComponentActivity(), SurfaceHolder.Callback {
         if (waking && isToggleKey(event.keyCode)) return true
 
         return handleKeyDown(event, playback)
-    }
-
-    /**
-     * `BACK` dismisses the controls before it will leave the session, because a user who has just
-     * brought up a seek bar and presses back means "put that away", not "stop watching".
-     *
-     * Pinned controls cannot be dismissed, so back means what it always means rather than needing
-     * two presses to leave a screen that never changes.
-     */
-    private fun handleBack(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_UP && overlayVisible && !overlayPinned) {
-            hideOverlay()
-            return true
-        }
-        return super.dispatchKeyEvent(event)
     }
 
     /** One press while the controls are up: toggles, seeks, skips, tracks or volume. */
@@ -377,7 +380,7 @@ class MirrorActivity : ComponentActivity(), SurfaceHolder.Callback {
             KeyEvent.KEYCODE_VOLUME_DOWN,
             -> return pressVolume(event, up = false)
 
-            else -> return super.dispatchKeyEvent(event)
+            else -> return super.onKeyDown(event.keyCode, event)
         }
         return true
     }
@@ -388,7 +391,7 @@ class MirrorActivity : ComponentActivity(), SurfaceHolder.Callback {
      */
     private fun pressVolume(event: KeyEvent, up: Boolean): Boolean {
         if (ReceiverController.nudgeVolume(up = up)) return true
-        return super.dispatchKeyEvent(event)
+        return super.onKeyDown(event.keyCode, event)
     }
 
     private fun isScrubKey(keyCode: Int): Boolean =
@@ -429,13 +432,17 @@ class MirrorActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     private fun revealOverlay() {
         overlayVisible = true
+        updateBackCallback()
         hideJob?.cancel()
         hideJob = null
         if (overlayPinned) return
         hideJob = lifecycleScope.launch {
             delay(OVERLAY_AUTO_HIDE_MS)
             // A scrub in progress is an interaction, however long the user has been holding the key.
-            if (scrubPreviewMs == NO_SCRUB) overlayVisible = false
+            if (scrubPreviewMs == NO_SCRUB) {
+                overlayVisible = false
+                updateBackCallback()
+            }
         }
     }
 
@@ -445,6 +452,12 @@ class MirrorActivity : ComponentActivity(), SurfaceHolder.Callback {
         scrubPreviewMs = NO_SCRUB
         scrubCommittedAtMs = 0L
         overlayVisible = false
+        updateBackCallback()
+    }
+
+    /** Back only dismisses controls that are showing and can be dismissed. */
+    private fun updateBackCallback() {
+        backPressedCallback.isEnabled = overlayVisible && !overlayPinned
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {

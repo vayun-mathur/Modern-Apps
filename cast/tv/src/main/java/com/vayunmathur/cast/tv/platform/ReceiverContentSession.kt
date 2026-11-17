@@ -130,9 +130,9 @@ private suspend fun ReceiverController.prepareContentPlayer(
     channel: ControlChannel,
     session: ContentSession,
 ): ContentPlayer? {
-    val player = withContext(Dispatchers.Main) { ContentPlayer(context, session) }
+    val player = withContext(Dispatchers.Main) { ContentPlayer(session) }
     val started = withContext(Dispatchers.Main) {
-        player.start { detail -> Log.status(TAG, "the served stream failed: $detail") }
+        player.start(context) { detail -> Log.status(TAG, "the served stream failed: $detail") }
     }
     if (started) return player
     channel.send(ContentReady(accepted = false, detail = "the player could not be built"))
