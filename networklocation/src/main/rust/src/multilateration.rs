@@ -28,7 +28,9 @@ pub fn multilateration(
         * six_sigma_squared_estimation_iterations_per_point;
     let mut previous_estimated_position = estimated_position;
 
-    let iterations_per_phase = iterations / 3;
+    // At least one iteration per phase: with `iterations < 3` this would be 0
+    // and `(iterations_per_phase * 3) - 1` underflows below.
+    let iterations_per_phase = (iterations / 3).max(1);
     // Make sure we don't have any extra iterations.
     let iterations = (iterations_per_phase * 3) + six_sigma_squared_estimation_iterations;
 
@@ -407,5 +409,52 @@ mod tests {
 
         assert_eq!(expected.x.value, result.x.value);
         assert_eq!(expected.x.six_sigma_squared, result.x.six_sigma_squared)
+    }
+}
+
+#[cfg(test)]
+mod extra_tests {
+    use crate::{
+        coordinate::Coordinate, measurement::Measurement, multilateration::multilateration,
+        position::Position,
+    };
+
+    fn at(x: f64, distance: f64) -> Measurement {
+        Measurement {
+            position: Position {
+                x: Coordinate::new_real(x, 1.0),
+                ..Default::default()
+            },
+            distance,
+            weight: 0.0,
+        }
+    }
+
+    #[test]
+    fn empty_measurements_return_fake_position_without_panicking() {
+        let result = multilateration(&mut [], None, 50);
+        assert_eq!(result.number_of_real(), 0);
+        assert!(result.x.value.is_finite());
+    }
+
+    #[test]
+    fn zero_iterations_still_returns_finite_position() {
+        let mut m = vec![at(0.0, 1.0), at(10.0, 1.0)];
+        let result = multilateration(&mut m, None, 0);
+        assert!(result.x.value.is_finite());
+        assert!(result.x.six_sigma_squared.is_finite());
+    }
+
+    #[test]
+    fn explicit_initial_guess_is_respected_when_consistent() {
+        // Beacon at x=10 reporting distance 3: positions 7 and 13 both fit;
+        // starting from 7 must not be dragged across the beacon.
+        let mut m = vec![at(10.0, 3.0)];
+        let guess = Position {
+            x: Coordinate::new_real(7.0, 1.0),
+            ..Default::default()
+        };
+        let result = multilateration(&mut m, Some(guess), 50);
+        assert!((result.x.value - 7.0).abs() < 2.0, "x {}", result.x.value);
     }
 }

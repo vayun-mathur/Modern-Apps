@@ -372,3 +372,58 @@ mod tests {
         assert!(average_delta.z.six_sigma_squared < 100.0);
     }
 }
+
+#[cfg(test)]
+mod solver_tests {
+    use super::*;
+    use crate::coordinate::Coordinate;
+
+    fn beacon(x: f64, y: f64, z: f64, distance: f64, var: f64) -> Measurement {
+        Measurement {
+            position: Position {
+                x: Coordinate::new_real(x, var),
+                y: Coordinate::new_real(y, var),
+                z: Coordinate::new_real(z, var),
+            },
+            distance,
+            weight: 0.0,
+        }
+    }
+
+    #[test]
+    fn empty_measurements_give_no_estimate() {
+        assert!(estimate_position(&[]).is_none());
+    }
+
+    #[test]
+    fn symmetric_beacons_estimate_the_center() {
+        // Four beacons on a circle around the origin, each exactly 100 m
+        // from it: the origin is the unique consistent position.
+        let measurements = [
+            beacon(100.0, 0.0, 0.0, 100.0, 100.0),
+            beacon(-100.0, 0.0, 0.0, 100.0, 100.0),
+            beacon(0.0, 100.0, 0.0, 100.0, 100.0),
+            beacon(0.0, -100.0, 0.0, 100.0, 100.0),
+        ];
+        let est = estimate_position(&measurements).expect("estimate");
+        assert_eq!(est.inliers_size, 4);
+        assert!(est.position.x.value.abs() < 10.0, "x {}", est.position.x.value);
+        assert!(est.position.y.value.abs() < 10.0, "y {}", est.position.y.value);
+    }
+
+    #[test]
+    fn three_consistent_beacons_estimate_the_center() {
+        // min_inliers scales with the input (min(len, 4)), so a consistent
+        // triple is enough; the 4-inlier floor only binds on larger inputs
+        // (covered by `tests::not_enough_inliers`).
+        let measurements = [
+            beacon(100.0, 0.0, 0.0, 100.0, 100.0),
+            beacon(-100.0, 0.0, 0.0, 100.0, 100.0),
+            beacon(0.0, 100.0, 0.0, 100.0, 100.0),
+        ];
+        let est = estimate_position(&measurements).expect("estimate");
+        assert_eq!(est.inliers_size, 3);
+        assert!(est.position.x.value.abs() < 10.0, "x {}", est.position.x.value);
+        assert!(est.position.y.value.abs() < 10.0, "y {}", est.position.y.value);
+    }
+}

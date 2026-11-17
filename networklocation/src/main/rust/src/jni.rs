@@ -86,6 +86,70 @@ fn estimate_lat_lon(beacons: &[f64]) -> Option<[f64; 3]> {
     Some([lat, lon, accuracy])
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_empty_and_ragged_and_nonfinite_only() {
+        assert_eq!(estimate_lat_lon(&[]), None);
+        assert_eq!(estimate_lat_lon(&[37.0, -122.0]), None);
+        assert_eq!(estimate_lat_lon(&[37.0, -122.0, 10.0, 1.0]), None);
+        assert_eq!(estimate_lat_lon(&[f64::NAN, f64::NAN, f64::NAN]), None);
+        assert_eq!(estimate_lat_lon(&[f64::INFINITY, 0.0, 10.0]), None);
+    }
+
+    #[test]
+    fn single_beacon_estimates_its_own_position() {
+        // Four copies of one beacon: the solver needs >= 4 inliers, and the
+        // only position consistent with all of them is the beacon itself.
+        let beacons = [37.7749, -122.4194, 20.0].repeat(4);
+        let [lat, lon, acc] = estimate_lat_lon(&beacons).expect("estimate");
+        assert!((lat - 37.7749).abs() < 0.001, "lat {lat}");
+        assert!((lon - -122.4194).abs() < 0.001, "lon {lon}");
+        assert!(acc.is_finite() && acc >= 0.0, "acc {acc}");
+    }
+
+    #[test]
+    fn cluster_center_is_recovered_and_outlier_ignored() {
+        // Four beacons tightly around a centre plus one far outlier; the
+        // robust solver should land near the cluster, not the mean.
+        let mut beacons = Vec::new();
+        for (lat, lon) in [
+            (37.7750, -122.4195),
+            (37.7748, -122.4193),
+            (37.7750, -122.4193),
+            (37.7748, -122.4195),
+        ] {
+            beacons.extend_from_slice(&[lat, lon, 15.0]);
+        }
+        beacons.extend_from_slice(&[38.5000, -121.5000, 15.0]);
+        let [lat, lon, _] = estimate_lat_lon(&beacons).expect("estimate");
+        assert!((lat - 37.7749).abs() < 0.002, "lat {lat}");
+        assert!((lon - -122.4194).abs() < 0.002, "lon {lon}");
+    }
+
+    #[test]
+    fn leading_nan_beacon_does_not_poison_reference() {
+        let mut beacons = vec![f64::NAN, f64::NAN, f64::NAN];
+        beacons.extend_from_slice(&[51.5074, -0.1278, 25.0].repeat(4));
+        let [lat, lon, _] = estimate_lat_lon(&beacons).expect("estimate");
+        assert!((lat - 51.5074).abs() < 0.001, "lat {lat}");
+        assert!((lon - -0.1278).abs() < 0.001, "lon {lon}");
+    }
+
+    #[test]
+    fn tiny_accuracy_is_clamped_not_zero_weight() {
+        // acc = 0 would give six_sigma_squared = 0 and an infinitely
+        // confident beacon; the clamp keeps the estimate finite and sane.
+        let beacons = [40.7128, -74.0060, 0.0].repeat(4);
+        let [lat, lon, acc] = estimate_lat_lon(&beacons).expect("estimate");
+        assert!((lat - 40.7128).abs() < 0.001);
+        assert!((lon - -74.0060).abs() < 0.001);
+        assert!(acc.is_finite());
+    }
+}
+
 /// `estimatePosition(beacons)`. `beacons` is interleaved
 /// `[lat0,lon0,acc0,lat1,lon1,acc1,...]` (degrees, degrees, metres); returns a
 /// 3-element `[lat, lon, accuracyMeters]` array, or null when there are no

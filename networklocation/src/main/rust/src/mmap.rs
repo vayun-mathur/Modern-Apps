@@ -99,3 +99,40 @@ impl Drop for Map {
         unsafe { libc::munmap(self.addr, self.len) };
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    fn temp_file(bytes: &[u8]) -> (std::path::PathBuf, File) {
+        let path = std::env::temp_dir().join(format!("mmap-test-{}-{:?}", std::process::id(), bytes.len()));
+        let mut f = File::create(&path).unwrap();
+        f.write_all(bytes).unwrap();
+        f.sync_all().unwrap();
+        let reopened = File::open(&path).unwrap();
+        (path, reopened)
+    }
+
+    #[test]
+    fn maps_whole_file_and_offset_region() {
+        let data: Vec<u8> = (0u8..=255).collect();
+        let (path, file) = temp_file(&data);
+        let whole = Map::new(&file, 0, data.len()).expect("whole map");
+        assert_eq!(whole.as_slice(), &data[..]);
+        let tail = Map::new(&file, 100, 56).expect("offset map");
+        assert_eq!(tail.as_slice(), &data[100..156]);
+        // Unaligned offset exercises the page-slack path on unix.
+        let odd = Map::new(&file, 7, 13).expect("unaligned map");
+        assert_eq!(odd.as_slice(), &data[7..20]);
+        drop((whole, tail, odd));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn zero_length_and_beyond_eof_are_rejected() {
+        let (path, file) = temp_file(&[1, 2, 3, 4]);
+        assert!(Map::new(&file, 0, 0).is_none());
+        let _ = std::fs::remove_file(path);
+    }
+}

@@ -88,10 +88,10 @@ const GRID_ENTRY: usize = 12;
 
 // --------------------------------------------------------------------------- byte helpers
 fn be32(d: &[u8], p: usize) -> Option<u32> {
-    Some(u32::from_be_bytes(d.get(p..p + 4)?.try_into().ok()?))
+    Some(u32::from_be_bytes(d.get(p..p.checked_add(4)?)?.try_into().ok()?))
 }
 fn be64(d: &[u8], p: usize) -> Option<i64> {
-    Some(i64::from_be_bytes(d.get(p..p + 8)?.try_into().ok()?))
+    Some(i64::from_be_bytes(d.get(p..p.checked_add(8)?)?.try_into().ok()?))
 }
 fn unzigzag(v: u32) -> i32 {
     ((v >> 1) as i32) ^ -((v & 1) as i32)
@@ -100,6 +100,11 @@ fn read_varint(a: &[u8], p: &mut usize) -> Option<u32> {
     let mut v: u32 = 0;
     let mut shift = 0;
     loop {
+        // A u32 varint is at most 5 bytes; a longer run is malformed, and
+        // shifting by 32+ would panic.
+        if shift >= 32 {
+            return None;
+        }
         let b = *a.get(*p)?;
         *p += 1;
         v |= ((b & 0x7F) as u32) << shift;
@@ -359,3 +364,7 @@ pub struct Reader {
 
 include!("geocoder_part1.rs");
 include!("geocoder_part2.rs");
+
+#[cfg(test)]
+#[path = "geocoder_tests.rs"]
+mod geocoder_tests;

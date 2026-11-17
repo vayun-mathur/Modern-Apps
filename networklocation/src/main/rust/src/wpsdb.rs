@@ -434,3 +434,7 @@ pub extern "system" fn Java_com_vayunmathur_networklocation_WpsStoreNative_open<
 
 include!("wpsdb_part1.rs");
 include!("wpsdb_part2.rs");
+
+#[cfg(test)]
+#[path = "wpsdb_tests.rs"]
+mod wpsdb_tests;
