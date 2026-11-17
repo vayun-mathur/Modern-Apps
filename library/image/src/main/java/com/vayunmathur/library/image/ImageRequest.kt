@@ -25,6 +25,7 @@ data class ImageRequest(
     val videoFrameMillis: Long? = null,
     val allowHardware: Boolean = true,
 ) {
+    /** Builder mirroring the Coil-style request API for an ImageRequest. */
     class Builder(contextOrAny: Any? = null) {
         private var context: Context? = contextOrAny as? Context
         private var data: Any? = null

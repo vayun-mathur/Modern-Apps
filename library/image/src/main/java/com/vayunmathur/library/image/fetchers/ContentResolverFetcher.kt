@@ -5,6 +5,7 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import androidx.core.net.toUri
 
+/** Fetcher resolving content URIs for decoding. */
 class ContentResolverFetcher : Fetcher {
     override suspend fun fetch(data: Any?, context: Context): FetchResult? {
         val uri: Uri = when (data) {

@@ -199,6 +199,7 @@ class DiskCache internal constructor(
         const val TOUCH_INTERVAL_MS = 60_000L
     }
 
+    /** Builder for a DiskCache in a configured directory. */
     class Builder {
         private var directory: File? = null
 

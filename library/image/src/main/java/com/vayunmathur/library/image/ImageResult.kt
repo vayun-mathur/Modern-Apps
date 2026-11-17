@@ -8,6 +8,7 @@ import androidx.core.graphics.drawable.toDrawable
  * Result of [ImageLoader.execute]. Mirrors Coil's sealed result hierarchy minimally.
  */
 sealed class ImageResult {
+    /** Successful load carrying the decoded bitmap and its source. */
     data class Success(
         val bitmap: Bitmap,
         /** true if served from [MemoryCache] */
@@ -21,10 +22,12 @@ sealed class ImageResult {
             bitmap.toDrawable(resources ?: android.content.res.Resources.getSystem())
     }
 
+    /** Failed load carrying the cause. */
     data class Error(
         val throwable: Throwable,
     ) : ImageResult()
 
+    /** Where a successful image result was served from. */
     enum class DataSource { MEMORY, DISK, NETWORK, UNKNOWN }
 }
 

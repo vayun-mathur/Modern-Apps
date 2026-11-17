@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import java.io.File
 
+/** Fetcher reading image files from local storage. */
 class FileFetcher : Fetcher {
     override suspend fun fetch(data: Any?, context: Context): FetchResult? {
         val file = resolveFile(data) ?: return null

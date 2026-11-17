@@ -7,6 +7,7 @@ import android.graphics.ImageDecoder
 import com.vayunmathur.library.image.ImageRequest
 import java.nio.ByteBuffer
 
+/** Decodes encoded image bytes into sampled bitmaps. */
 object BitmapDecoder {
 
     /**

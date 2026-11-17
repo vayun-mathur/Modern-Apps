@@ -12,6 +12,7 @@ import java.io.File
 
 private const val MICROSECONDS_PER_MILLISECOND = 1000L
 
+/** Extracts video frames as bitmaps for thumbnail requests. */
 object VideoFrameDecoder {
 
     suspend fun decode(

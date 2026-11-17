@@ -20,10 +20,12 @@ class MemoryCache internal constructor(
 
     fun clear() = lru.evictAll()
 
+    /** Size limit for the bitmap memory cache. */
     companion object {
         const val MAX_BYTES = 10 * 1024 * 1024
     }
 
+    /** Builder creating the default bitmap MemoryCache. */
     class Builder {
         fun build(): MemoryCache {
             val cache = object : LruCache<String, Bitmap>(MAX_BYTES) {

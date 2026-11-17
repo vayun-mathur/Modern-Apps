@@ -7,6 +7,7 @@ package com.vayunmathur.library.image
 data class Size(val width: Int, val height: Int) {
     constructor(size: Int) : this(size, size)
 
+    /** Sentinel sizes for Size. */
     companion object {
         /** Sentinel meaning "original" / no size constraint. */
         val Original = Size(-1, -1)

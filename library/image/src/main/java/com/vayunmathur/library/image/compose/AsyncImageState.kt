@@ -7,11 +7,15 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
  * `state as Success -> painter.intrinsicSize`.
  */
 sealed class AsyncImageState {
+    /** Image is being fetched or decoded. */
     data object Loading : AsyncImageState()
+    /** No image data was supplied. */
     data object Empty : AsyncImageState()
+    /** Loaded image ready to draw as a painter. */
     data class Success(
         val painter: BitmapPainter,
     ) : AsyncImageState()
+    /** Load failed; the throwable holds the cause when known. */
     data class Error(
         val throwable: Throwable? = null,
     ) : AsyncImageState()

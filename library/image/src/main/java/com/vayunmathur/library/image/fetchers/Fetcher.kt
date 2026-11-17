@@ -4,8 +4,11 @@ import android.content.Context
 import android.graphics.ImageDecoder
 import java.io.InputStream
 
+/** Raw fetched payload handed to the decoders. */
 sealed class FetchResult {
+    /** Encoded image or video bytes fetched from a source. */
     data class Bytes(val bytes: ByteArray, val isVideo: Boolean = false) : FetchResult()
+    /** Already-decoded bitmap fetched from a source. */
     data class BitmapResult(val bitmap: android.graphics.Bitmap) : FetchResult()
 
     /**
@@ -25,6 +28,7 @@ sealed class FetchResult {
     ) : FetchResult()
 }
 
+/** Source adapter turning request data into a FetchResult, or null if unsupported. */
 interface Fetcher {
     suspend fun fetch(data: Any?, context: Context): FetchResult?
 }

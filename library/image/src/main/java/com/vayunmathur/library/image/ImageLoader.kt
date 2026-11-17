@@ -51,6 +51,7 @@ class ImageLoader private constructor(
      */
     private val inFlight = mutableMapOf<String, Deferred<ImageResult>>()
 
+    /** Process-wide default ImageLoader access. */
     companion object {
         @Volatile
         private var singleton: ImageLoader? = null
@@ -370,6 +371,7 @@ class ImageLoader private constructor(
         private val extraFetchers: MutableList<Fetcher> = mutableListOf()
         private var remoteFetch: (suspend (data: Any?, context: Context) -> FetchResult?)? = null
 
+        /** Collects extra fetchers registered on the image loader builder. */
         inner class ComponentsBuilder {
             fun add(factory: Any): ComponentsBuilder {
                 if (factory is Fetcher) extraFetchers += factory
