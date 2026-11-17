@@ -18,7 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.education.content.Band
+import com.vayunmathur.education.domain.Band
 import com.vayunmathur.library.ui.IconFire
 import com.vayunmathur.library.ui.IconStar
 import androidx.compose.ui.res.stringResource
@@ -37,69 +37,9 @@ fun StarRow(stars: Int, modifier: Modifier = Modifier, max: Int = 3) {
     }
 }
 
-/** Streak indicator ("🔥 N"). */
-@Composable
-fun StreakChip(count: Int) {
-    AssistChip(
-        onClick = {},
-        enabled = false,
-        label = { Text(pluralStringResource(R.plurals.day_count, count, count)) },
-        leadingIcon = { IconFire(tint = MaterialTheme.colorScheme.tertiary) },
-        colors = AssistChipDefaults.assistChipColors(
-            disabledLabelColor = MaterialTheme.colorScheme.onSurface,
-        ),
-    )
-}
 
-/** Total stars indicator ("⭐ N"). */
-@Composable
-fun StarsChip(count: Int) {
-    AssistChip(
-        onClick = {},
-        enabled = false,
-        label = { Text(count.toString()) },
-        leadingIcon = { IconStar(tint = MaterialTheme.colorScheme.tertiary) },
-        colors = AssistChipDefaults.assistChipColors(
-            disabledLabelColor = MaterialTheme.colorScheme.onSurface,
-        ),
-    )
-}
 
-/**
- * A parent-set deadline surfaced as a gentle, non-punitive chip. Overdue is
- * shown in the error color but phrased softly by callers.
- */
-@Composable
-fun DeadlineChip(dueEpochDay: Long, modifier: Modifier = Modifier) {
-    // kotlinx-datetime's LocalDate has no now()/toEpochDay() — today comes from the clock,
-    // and the epoch-day accessor is toEpochDays() (Long).
-    val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toEpochDays()
-    val diff = dueEpochDay - today
-    val (label, color) = when {
-        diff < 0 -> "Past due" to MaterialTheme.colorScheme.error
-        diff == 0L -> "Due today" to MaterialTheme.colorScheme.tertiary
-        diff == 1L -> "Due tomorrow" to MaterialTheme.colorScheme.primary
-        else -> "Due in $diff days" to MaterialTheme.colorScheme.primary
-    }
-    AssistChip(
-        onClick = {},
-        enabled = false,
-        modifier = modifier,
-        label = { Text(label) },
-        colors = AssistChipDefaults.assistChipColors(disabledLabelColor = color),
-    )
-}
 
-@Composable
-fun SectionHeader(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.SemiBold,
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
-}
 
 fun bandLabel(band: Band): String = when (band) {
     Band.K2 -> "K-2 · Guided Playground"

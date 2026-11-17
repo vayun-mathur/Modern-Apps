@@ -23,14 +23,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.education.Route
-import com.vayunmathur.education.content.ModuleType
-import com.vayunmathur.education.pushChain
-import com.vayunmathur.education.util.EducationViewModel
-import com.vayunmathur.education.util.HomeActions
-import com.vayunmathur.education.util.HomeCourse
-import com.vayunmathur.education.util.HomeDeadline
-import com.vayunmathur.education.util.HomeSection
-import com.vayunmathur.education.util.HomeUiState
+import com.vayunmathur.education.domain.ModuleType
+import com.vayunmathur.education.platform.pushChain
+import com.vayunmathur.education.platform.EducationViewModel
+import com.vayunmathur.education.platform.HomeActions
+import com.vayunmathur.education.platform.HomeCourse
+import com.vayunmathur.education.platform.HomeDeadline
+import com.vayunmathur.education.platform.HomeSection
+import com.vayunmathur.education.platform.HomeUiState
 import com.vayunmathur.library.ui.IconChevronRight
 import com.vayunmathur.library.ui.IconEmojiEvents
 import com.vayunmathur.library.ui.IconSettings
@@ -99,102 +99,6 @@ fun ScholarHomePage(backStack: NavBackStack<Route>, viewModel: EducationViewMode
     )
 }
 
-/**
- * The catalog, with no dependency on the ViewModel or the back stack so it can be rendered
- * from a `@Preview` — see `src/screenshotTest`, which is where the store listing images
- * come from.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ScholarHomeScreen(state: HomeUiState, actions: HomeActions) {
-    DetailLazyColumn(
-        title = if (state.learnerName.isBlank()) stringResource(R.string.learn)
-        else stringResource(R.string.hi_1, state.learnerName),
-        actions = {
-            IconButton(onClick = { actions.openBadges() }) {
-                IconEmojiEvents()
-            }
-            IconButton(onClick = { actions.openParentArea() }) {
-                IconSettings()
-            }
-        },
-        scrollBehavior = appBarScrollBehavior(),
-    ) {
-        item {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StreakChip(state.streakCount)
-                StarsChip(state.totalStars)
-            }
-        }
-
-        if (state.deadlines.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.due_soon)) }
-            items(state.deadlines, key = { it.id }) { d ->
-                OutlinedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { actions.openDeadline(d) },
-                ) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(d.title, style = MaterialTheme.typography.titleMedium)
-                        DeadlineChip(d.dueEpochDay)
-                    }
-                }
-            }
-        }
-
-        state.sections.forEach { section ->
-            item { SectionHeader(stringResource(section.subject.displayNameRes)) }
-            items(section.courses, key = { it.id }) { course ->
-                ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { actions.openCourse(course.id) },
-                ) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                course.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.sharedText("education-course-title-${course.id}"),
-                            )
-                            Text(
-                                pluralStringResource(R.plurals.units, course.unitCount, course.unitCount),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        IconChevronRight()
-                    }
-                }
-            }
-        }
-
-        if (state.sections.isEmpty()) {
-            item {
-                Text(
-                    stringResource(R.string.no_content_packs_are_installed_yet),
-                    modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
 
 /** Navigates to the screen for a module referenced by a deadline. */
 fun navigateToModule(backStack: NavBackStack<Route>, type: ModuleType?, moduleId: String) {

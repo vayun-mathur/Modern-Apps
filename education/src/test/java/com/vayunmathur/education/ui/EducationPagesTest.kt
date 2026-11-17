@@ -15,14 +15,13 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.education.EducationFixtures as Fx
-import com.vayunmathur.education.MainGraph
+import com.vayunmathur.education.Navigation
 import com.vayunmathur.education.R
-import com.vayunmathur.education.RootNavigation
 import com.vayunmathur.education.Route
 import com.vayunmathur.education.data.Learner
 import com.vayunmathur.education.data.SkillProgress
-import com.vayunmathur.education.util.EducationViewModel
-import com.vayunmathur.education.util.EducationViewModelFactory
+import com.vayunmathur.education.platform.EducationViewModel
+import com.vayunmathur.education.platform.EducationViewModelFactory
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -291,10 +290,10 @@ class EducationPagesTest {
         show { HomePage(bs4, vm) }
         awaitText("Math Fun")
 
-        // Root navigation waits for the learner, then shows the graph.
-        show { RootNavigation(vm) }
+        // Navigation waits for the learner, then shows the graph.
+        show { Navigation(vm) }
         awaitText("Math Fun")
-        show { MainGraph(vm) }
+        show { Navigation(vm) }
         awaitText("Math Fun")
     }
 
@@ -350,7 +349,7 @@ class EducationPagesTest {
         // No deadline yet for u1: setting one through the VM must flip the
         // row to Change (the page reads the collected deadlines flow).
         assertTrue(onAllNodesWithText(str(R.string.change)).fetchSemanticsNodes().isEmpty())
-        vm.setDeadline(com.vayunmathur.education.content.ModuleType.UNIT, "u1", 20_000)
+        vm.setDeadline(com.vayunmathur.education.domain.ModuleType.UNIT, "u1", 20_000)
         rule.waitUntil(10_000) { onAllNodesWithText(str(R.string.change)).fetchSemanticsNodes().isNotEmpty() }
     }
 

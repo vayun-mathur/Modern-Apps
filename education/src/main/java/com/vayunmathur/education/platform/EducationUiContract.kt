@@ -1,10 +1,10 @@
-package com.vayunmathur.education.util
+package com.vayunmathur.education.platform
 
-import com.vayunmathur.education.content.Answer
-import com.vayunmathur.education.content.Exercise
-import com.vayunmathur.education.content.ModuleType
-import com.vayunmathur.education.content.Question
-import com.vayunmathur.education.content.Subject
+import com.vayunmathur.education.domain.Answer
+import com.vayunmathur.education.domain.Exercise
+import com.vayunmathur.education.domain.ModuleType
+import com.vayunmathur.education.domain.Question
+import com.vayunmathur.education.domain.Subject
 
 /**
  * The UI contract between [EducationViewModel] plus the back stack and the handful of

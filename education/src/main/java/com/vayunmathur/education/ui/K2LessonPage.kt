@@ -24,8 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.education.Route
-import com.vayunmathur.education.util.EducationViewModel
-import com.vayunmathur.education.util.LocalNarrator
+import com.vayunmathur.education.platform.EducationViewModel
+import com.vayunmathur.education.platform.LocalNarrator
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
@@ -85,27 +85,3 @@ fun K2LessonPage(backStack: NavBackStack<Route>, viewModel: EducationViewModel, 
     }
 }
 
-@Composable
-fun K2BigTile(emoji: String, label: String, color: Color, contentColor: Color, onClick: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = color, contentColor = contentColor),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-    ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(emoji, fontSize = 72.sp)
-            Text(
-                label,
-                style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}

@@ -1,5 +1,9 @@
 package com.vayunmathur.education.content
 
+import com.vayunmathur.education.data.*
+import com.vayunmathur.education.domain.*
+import com.vayunmathur.education.platform.*
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

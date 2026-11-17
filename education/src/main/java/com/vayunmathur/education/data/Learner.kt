@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
  *
  * @param gradeLevel nominal grade (0 == Kindergarten). Drives the band unless
  *   [bandOverride] is set.
- * @param bandOverride optional [com.vayunmathur.education.content.Band] name to
+ * @param bandOverride optional [com.vayunmathur.education.domain.Band] name to
  *   force a shell regardless of grade (precocious / catching-up learners). Set
  *   from parent mode.
  * @param pinHash SHA-256 (hex) of the parent PIN, or null before it is set.

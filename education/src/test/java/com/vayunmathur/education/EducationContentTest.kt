@@ -1,22 +1,22 @@
 package com.vayunmathur.education
 
-import com.vayunmathur.education.content.ChoiceAnswer
-import com.vayunmathur.education.content.ContentPack
-import com.vayunmathur.education.content.ContentValidator
-import com.vayunmathur.education.content.MatchingAnswer
-import com.vayunmathur.education.content.MatchingQuestion
-import com.vayunmathur.education.content.MultiChoiceAnswer
-import com.vayunmathur.education.content.MultipleChoiceQuestion
-import com.vayunmathur.education.content.MultipleSelectQuestion
-import com.vayunmathur.education.content.NumericAnswer
-import com.vayunmathur.education.content.NumericQuestion
-import com.vayunmathur.education.content.OrderingAnswer
-import com.vayunmathur.education.content.OrderingQuestion
-import com.vayunmathur.education.content.Prompt
-import com.vayunmathur.education.content.ShortTextQuestion
-import com.vayunmathur.education.content.TraceAnswer
-import com.vayunmathur.education.content.TracingQuestion
-import com.vayunmathur.education.content.isCorrect
+import com.vayunmathur.education.domain.ChoiceAnswer
+import com.vayunmathur.education.domain.ContentPack
+import com.vayunmathur.education.domain.ContentValidator
+import com.vayunmathur.education.domain.MatchingAnswer
+import com.vayunmathur.education.domain.MatchingQuestion
+import com.vayunmathur.education.domain.MultiChoiceAnswer
+import com.vayunmathur.education.domain.MultipleChoiceQuestion
+import com.vayunmathur.education.domain.MultipleSelectQuestion
+import com.vayunmathur.education.domain.NumericAnswer
+import com.vayunmathur.education.domain.NumericQuestion
+import com.vayunmathur.education.domain.OrderingAnswer
+import com.vayunmathur.education.domain.OrderingQuestion
+import com.vayunmathur.education.domain.Prompt
+import com.vayunmathur.education.domain.ShortTextQuestion
+import com.vayunmathur.education.domain.TraceAnswer
+import com.vayunmathur.education.domain.TracingQuestion
+import com.vayunmathur.education.domain.isCorrect
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -81,8 +81,8 @@ class EducationContentTest {
                     skillId = "does-not-exist",
                     prompt = Prompt("2 + 2?"),
                     choices = listOf(
-                        com.vayunmathur.education.content.Choice("4"),
-                        com.vayunmathur.education.content.Choice("5"),
+                        com.vayunmathur.education.domain.Choice("4"),
+                        com.vayunmathur.education.domain.Choice("5"),
                     ),
                     correctIndex = 0,
                 ),
@@ -97,8 +97,8 @@ class EducationContentTest {
         val q = MultipleChoiceQuestion(
             id = "q", skillId = "s", prompt = Prompt("?"),
             choices = listOf(
-                com.vayunmathur.education.content.Choice("a"),
-                com.vayunmathur.education.content.Choice("b"),
+                com.vayunmathur.education.domain.Choice("a"),
+                com.vayunmathur.education.domain.Choice("b"),
             ),
             correctIndex = 1,
         )
@@ -112,9 +112,9 @@ class EducationContentTest {
         val q = MultipleSelectQuestion(
             id = "q", skillId = "s", prompt = Prompt("?"),
             choices = listOf(
-                com.vayunmathur.education.content.Choice("a"),
-                com.vayunmathur.education.content.Choice("b"),
-                com.vayunmathur.education.content.Choice("c"),
+                com.vayunmathur.education.domain.Choice("a"),
+                com.vayunmathur.education.domain.Choice("b"),
+                com.vayunmathur.education.domain.Choice("c"),
             ),
             correctIndices = listOf(0, 2),
         )
@@ -157,17 +157,17 @@ class EducationContentTest {
 
     @Test
     fun starsFor_ratios() {
-        assertEquals(3, com.vayunmathur.education.util.EducationViewModel.starsFor(4, 4))
-        assertEquals(2, com.vayunmathur.education.util.EducationViewModel.starsFor(3, 4))
-        assertEquals(1, com.vayunmathur.education.util.EducationViewModel.starsFor(2, 4))
-        assertEquals(0, com.vayunmathur.education.util.EducationViewModel.starsFor(0, 4))
+        assertEquals(3, com.vayunmathur.education.platform.EducationViewModel.starsFor(4, 4))
+        assertEquals(2, com.vayunmathur.education.platform.EducationViewModel.starsFor(3, 4))
+        assertEquals(1, com.vayunmathur.education.platform.EducationViewModel.starsFor(2, 4))
+        assertEquals(0, com.vayunmathur.education.platform.EducationViewModel.starsFor(0, 4))
     }
 
     @Test
     fun nextStreak_transitions() {
-        assertEquals(1, com.vayunmathur.education.util.EducationViewModel.nextStreak(0, 0, 100))
-        assertEquals(6, com.vayunmathur.education.util.EducationViewModel.nextStreak(5, 99, 100))
-        assertEquals(5, com.vayunmathur.education.util.EducationViewModel.nextStreak(5, 100, 100))
-        assertEquals(1, com.vayunmathur.education.util.EducationViewModel.nextStreak(5, 90, 100))
+        assertEquals(1, com.vayunmathur.education.platform.EducationViewModel.nextStreak(0, 0, 100))
+        assertEquals(6, com.vayunmathur.education.platform.EducationViewModel.nextStreak(5, 99, 100))
+        assertEquals(5, com.vayunmathur.education.platform.EducationViewModel.nextStreak(5, 100, 100))
+        assertEquals(1, com.vayunmathur.education.platform.EducationViewModel.nextStreak(5, 90, 100))
     }
 }

@@ -22,8 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.education.Route
-import com.vayunmathur.education.content.VideoRef
-import com.vayunmathur.education.util.EducationViewModel
+import com.vayunmathur.education.domain.VideoRef
+import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.ui.appBarScrollBehavior

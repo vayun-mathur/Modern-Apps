@@ -1,4 +1,4 @@
-package com.vayunmathur.education.content
+package com.vayunmathur.education.domain
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

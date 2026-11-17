@@ -1,4 +1,4 @@
-package com.vayunmathur.education.util
+package com.vayunmathur.education.platform
 
 import android.content.Context
 import android.media.MediaPlayer

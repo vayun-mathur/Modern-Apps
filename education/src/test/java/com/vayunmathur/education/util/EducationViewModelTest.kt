@@ -1,19 +1,23 @@
 package com.vayunmathur.education.util
 
+import com.vayunmathur.education.data.*
+import com.vayunmathur.education.domain.*
+import com.vayunmathur.education.platform.*
+
 import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.education.EducationFixtures as Fx
-import com.vayunmathur.education.content.Band
-import com.vayunmathur.education.content.ChoiceAnswer
-import com.vayunmathur.education.content.ContentRepository
-import com.vayunmathur.education.content.MatchingAnswer
-import com.vayunmathur.education.content.ModuleType
-import com.vayunmathur.education.content.MultiChoiceAnswer
-import com.vayunmathur.education.content.NumericAnswer
-import com.vayunmathur.education.content.OrderingAnswer
-import com.vayunmathur.education.content.TextAnswer
-import com.vayunmathur.education.content.TraceAnswer
+import com.vayunmathur.education.domain.Band
+import com.vayunmathur.education.domain.ChoiceAnswer
+import com.vayunmathur.education.data.ContentRepository
+import com.vayunmathur.education.domain.MatchingAnswer
+import com.vayunmathur.education.domain.ModuleType
+import com.vayunmathur.education.domain.MultiChoiceAnswer
+import com.vayunmathur.education.domain.NumericAnswer
+import com.vayunmathur.education.domain.OrderingAnswer
+import com.vayunmathur.education.domain.TextAnswer
+import com.vayunmathur.education.domain.TraceAnswer
 import com.vayunmathur.education.data.Deadline
 import com.vayunmathur.education.data.Learner
 import com.vayunmathur.education.data.SkillProgress
@@ -117,9 +121,9 @@ class EducationViewModelTest {
         assertEquals(listOf(Fx.mathCourse), content.coursesForBand(Band.K2))
         assertEquals(listOf(Fx.readingCourse), content.coursesForBand(Band.ELEMENTARY))
         assertEquals(listOf(Fx.scholarCourse), content.coursesForBand(Band.SCHOLAR))
-        assertEquals(listOf(Fx.mathCourse), content.coursesForSubject(com.vayunmathur.education.content.Subject.MATH))
-        assertEquals(emptyList(), content.coursesForSubject(com.vayunmathur.education.content.Subject.MATH, Band.SCHOLAR))
-        assertEquals(listOf(com.vayunmathur.education.content.Subject.MATH, com.vayunmathur.education.content.Subject.SCIENCE, com.vayunmathur.education.content.Subject.READING), content.subjects)
+        assertEquals(listOf(Fx.mathCourse), content.coursesForSubject(com.vayunmathur.education.domain.Subject.MATH))
+        assertEquals(emptyList(), content.coursesForSubject(com.vayunmathur.education.domain.Subject.MATH, Band.SCHOLAR))
+        assertEquals(listOf(com.vayunmathur.education.domain.Subject.MATH, com.vayunmathur.education.domain.Subject.SCIENCE, com.vayunmathur.education.domain.Subject.READING), content.subjects)
         val empty = ContentRepository(emptyList())
         assertTrue(empty.courses.isEmpty() && empty.questions.isEmpty() && empty.subjects.isEmpty())
     }

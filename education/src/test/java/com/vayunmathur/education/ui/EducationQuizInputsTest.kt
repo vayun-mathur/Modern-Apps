@@ -17,15 +17,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.education.EducationFixtures as Fx
 import com.vayunmathur.education.R
-import com.vayunmathur.education.content.Answer
-import com.vayunmathur.education.content.ChoiceAnswer
-import com.vayunmathur.education.content.MatchingAnswer
-import com.vayunmathur.education.content.MultiChoiceAnswer
-import com.vayunmathur.education.content.NumericAnswer
-import com.vayunmathur.education.content.OrderingAnswer
-import com.vayunmathur.education.content.TextAnswer
-import com.vayunmathur.education.util.QuizActions
-import com.vayunmathur.education.util.QuizUiState
+import com.vayunmathur.education.domain.Answer
+import com.vayunmathur.education.domain.ChoiceAnswer
+import com.vayunmathur.education.domain.MatchingAnswer
+import com.vayunmathur.education.domain.MultiChoiceAnswer
+import com.vayunmathur.education.domain.NumericAnswer
+import com.vayunmathur.education.domain.OrderingAnswer
+import com.vayunmathur.education.domain.TextAnswer
+import com.vayunmathur.education.platform.QuizActions
+import com.vayunmathur.education.platform.QuizUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -156,7 +156,7 @@ class EducationQuizInputsTest {
         var up = false
         val actions = object : QuizActions {
             override fun navigateUp() { up = true }
-            override fun finish(questions: List<com.vayunmathur.education.content.Question>, answers: Map<String, Answer?>) {
+            override fun finish(questions: List<com.vayunmathur.education.domain.Question>, answers: Map<String, Answer?>) {
                 finishedQuestions = questions.size; finishedAnswers = answers
             }
         }
@@ -200,7 +200,7 @@ class EducationQuizInputsTest {
     @Test fun k2QuizCorrectAdvancesAndFinishes() {
         var finished: Int = -1
         val actions = object : QuizActions {
-            override fun finish(questions: List<com.vayunmathur.education.content.Question>, answers: Map<String, Answer?>) { finished = questions.size }
+            override fun finish(questions: List<com.vayunmathur.education.domain.Question>, answers: Map<String, Answer?>) { finished = questions.size }
         }
         show { K2QuizScreen(QuizUiState(questions = listOf(Fx.mcq, Fx.tracing)), actions) }
         rule.onNodeWithText("How many apples?").assertIsDisplayed()
@@ -228,7 +228,7 @@ class EducationQuizInputsTest {
     @Test fun k2QuizSecondTracingQuestionCanComplete() {
         var finished: Int = -1
         val actions = object : QuizActions {
-            override fun finish(questions: List<com.vayunmathur.education.content.Question>, answers: Map<String, Answer?>) { finished = questions.size }
+            override fun finish(questions: List<com.vayunmathur.education.domain.Question>, answers: Map<String, Answer?>) { finished = questions.size }
         }
         // Regression: two tracing questions back to back (bundled ex.k-trace has
         // three). The second must start unfired, or it can never complete.
@@ -269,30 +269,30 @@ class EducationQuizInputsTest {
         }
         rule.onNodeWithText("Header text").assertIsDisplayed()
         rule.onNodeWithText("7").assertIsDisplayed()
-        assertEquals("K-2 · Guided Playground", bandLabel(com.vayunmathur.education.content.Band.K2))
-        assertEquals("3-5 · Explorer", bandLabel(com.vayunmathur.education.content.Band.ELEMENTARY))
-        assertEquals("6-12 · Scholar", bandLabel(com.vayunmathur.education.content.Band.SCHOLAR))
+        assertEquals("K-2 · Guided Playground", bandLabel(com.vayunmathur.education.domain.Band.K2))
+        assertEquals("3-5 · Explorer", bandLabel(com.vayunmathur.education.domain.Band.ELEMENTARY))
+        assertEquals("6-12 · Scholar", bandLabel(com.vayunmathur.education.domain.Band.SCHOLAR))
         assertEquals(0, averageStars(emptyList(), emptyMap()))
         assertEquals(2, averageStars(listOf("a", "b"), mapOf("a" to com.vayunmathur.education.data.SkillProgress("a", stars = 3), "b" to com.vayunmathur.education.data.SkillProgress("b", stars = 1))))
         assertTrue(formatEpochDay(ctx, 20_000).isNotEmpty())
         // Subject colors are defined for every subject.
         show {
             androidx.compose.foundation.layout.Column {
-                com.vayunmathur.education.content.Subject.entries.forEach { s -> Text2Colors(s) }
+                com.vayunmathur.education.domain.Subject.entries.forEach { s -> Text2Colors(s) }
             }
         }
         rule.waitForIdle()
     }
 
     @androidx.compose.runtime.Composable
-    private fun Text2Colors(s: com.vayunmathur.education.content.Subject) {
+    private fun Text2Colors(s: com.vayunmathur.education.domain.Subject) {
         val c = subjectColors(s)
         com.vayunmathur.library.ui.Text(s.name + ":" + c.container.value.toString())
     }
 
     @Test fun rememberNarratorComposesAndDisposes() {
         show {
-            val narrator = com.vayunmathur.education.util.rememberNarrator()
+            val narrator = com.vayunmathur.education.platform.rememberNarrator()
             androidx.compose.runtime.LaunchedEffect(Unit) { narrator.narrate("Ready to learn") }
             com.vayunmathur.library.ui.Text("narrator up")
         }

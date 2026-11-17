@@ -1,4 +1,4 @@
-package com.vayunmathur.education.content
+package com.vayunmathur.education.domain
 
 /**
  * Validates that a [ContentPack] is well-formed so contributed packs fail loudly

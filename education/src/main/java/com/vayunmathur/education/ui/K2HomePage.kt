@@ -26,10 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.education.Route
-import com.vayunmathur.education.content.Band
-import com.vayunmathur.education.content.Lesson
-import com.vayunmathur.education.util.EducationViewModel
-import com.vayunmathur.education.util.LocalNarrator
+import com.vayunmathur.education.domain.Band
+import com.vayunmathur.education.domain.Lesson
+import com.vayunmathur.education.platform.EducationViewModel
+import com.vayunmathur.education.platform.LocalNarrator
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack

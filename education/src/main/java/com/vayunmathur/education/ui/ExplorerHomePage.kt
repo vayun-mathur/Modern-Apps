@@ -35,10 +35,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.education.Route
-import com.vayunmathur.education.pushChain
-import com.vayunmathur.education.content.Course
-import com.vayunmathur.education.content.Subject
-import com.vayunmathur.education.util.EducationViewModel
+import com.vayunmathur.education.platform.pushChain
+import com.vayunmathur.education.domain.Course
+import com.vayunmathur.education.domain.Subject
+import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
@@ -196,15 +196,3 @@ private fun ExplorerCourseCard(course: Course, onClick: () -> Unit) {
 /** Accent pair per subject for the Explorer shell, drawn from the active theme. */
 data class SubjectColors(val container: Color, val onContainer: Color)
 
-@Composable
-fun subjectColors(subject: Subject): SubjectColors {
-    val scheme = MaterialTheme.colorScheme
-    return when (subject) {
-        Subject.MATH, Subject.SOCIAL_STUDIES ->
-            SubjectColors(scheme.primaryContainer, scheme.onPrimaryContainer)
-        Subject.SCIENCE, Subject.COMPUTING ->
-            SubjectColors(scheme.tertiaryContainer, scheme.onTertiaryContainer)
-        Subject.READING ->
-            SubjectColors(scheme.secondaryContainer, scheme.onSecondaryContainer)
-    }
-}

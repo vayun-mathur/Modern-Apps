@@ -1,4 +1,4 @@
-package com.vayunmathur.education.content
+package com.vayunmathur.education.domain
 
 import androidx.annotation.StringRes
 import com.vayunmathur.education.R

@@ -1,4 +1,6 @@
-package com.vayunmathur.education.util
+package com.vayunmathur.education.platform
+
+import com.vayunmathur.education.domain.*
 
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
@@ -8,14 +10,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.vayunmathur.education.content.Answer
-import com.vayunmathur.education.content.Band
-import com.vayunmathur.education.content.ContentRepository
-import com.vayunmathur.education.content.Exercise
-import com.vayunmathur.education.content.Grades
-import com.vayunmathur.education.content.ModuleType
-import com.vayunmathur.education.content.Question
-import com.vayunmathur.education.content.isCorrect
+import com.vayunmathur.education.domain.Answer
+import com.vayunmathur.education.domain.Band
+import com.vayunmathur.education.data.ContentRepository
+import com.vayunmathur.education.domain.Exercise
+import com.vayunmathur.education.domain.Grades
+import com.vayunmathur.education.domain.ModuleType
+import com.vayunmathur.education.domain.Question
+import com.vayunmathur.education.domain.isCorrect
 import com.vayunmathur.education.data.Deadline
 import com.vayunmathur.education.data.EducationRepository
 import com.vayunmathur.education.data.Learner

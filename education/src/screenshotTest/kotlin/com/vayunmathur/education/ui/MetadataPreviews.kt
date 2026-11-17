@@ -7,21 +7,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
-import com.vayunmathur.education.content.Choice
-import com.vayunmathur.education.content.ChoiceAnswer
-import com.vayunmathur.education.content.Exercise
-import com.vayunmathur.education.content.MultipleChoiceQuestion
-import com.vayunmathur.education.content.Prompt
-import com.vayunmathur.education.content.Subject
-import com.vayunmathur.education.util.CourseActions
-import com.vayunmathur.education.util.CourseUiState
-import com.vayunmathur.education.util.CourseUnitRow
-import com.vayunmathur.education.util.HomeActions
-import com.vayunmathur.education.util.HomeCourse
-import com.vayunmathur.education.util.HomeSection
-import com.vayunmathur.education.util.HomeUiState
-import com.vayunmathur.education.util.QuizActions
-import com.vayunmathur.education.util.QuizUiState
+import com.vayunmathur.education.domain.Choice
+import com.vayunmathur.education.domain.ChoiceAnswer
+import com.vayunmathur.education.domain.Exercise
+import com.vayunmathur.education.domain.MultipleChoiceQuestion
+import com.vayunmathur.education.domain.Prompt
+import com.vayunmathur.education.domain.Subject
+import com.vayunmathur.education.platform.CourseActions
+import com.vayunmathur.education.platform.CourseUiState
+import com.vayunmathur.education.platform.CourseUnitRow
+import com.vayunmathur.education.platform.HomeActions
+import com.vayunmathur.education.platform.HomeCourse
+import com.vayunmathur.education.platform.HomeSection
+import com.vayunmathur.education.platform.HomeUiState
+import com.vayunmathur.education.platform.QuizActions
+import com.vayunmathur.education.platform.QuizUiState
 import com.vayunmathur.library.ui.DynamicTheme
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */

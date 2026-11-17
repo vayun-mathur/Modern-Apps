@@ -47,10 +47,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.education.Route
-import com.vayunmathur.education.content.Band
-import com.vayunmathur.education.content.Grades
-import com.vayunmathur.education.content.ModuleType
-import com.vayunmathur.education.util.EducationViewModel
+import com.vayunmathur.education.domain.Band
+import com.vayunmathur.education.domain.Grades
+import com.vayunmathur.education.domain.ModuleType
+import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.appBarScrollBehavior

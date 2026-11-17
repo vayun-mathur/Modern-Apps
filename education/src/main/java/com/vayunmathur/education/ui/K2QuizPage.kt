@@ -35,18 +35,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.education.Route
-import com.vayunmathur.education.content.Answer
-import com.vayunmathur.education.content.ChoiceAnswer
-import com.vayunmathur.education.content.MatchingAnswer
-import com.vayunmathur.education.content.MatchingQuestion
-import com.vayunmathur.education.content.MultipleChoiceQuestion
-import com.vayunmathur.education.content.Question
-import com.vayunmathur.education.content.TraceAnswer
-import com.vayunmathur.education.content.TracingQuestion
-import com.vayunmathur.education.util.EducationViewModel
-import com.vayunmathur.education.util.LocalNarrator
-import com.vayunmathur.education.util.QuizActions
-import com.vayunmathur.education.util.QuizUiState
+import com.vayunmathur.education.domain.Answer
+import com.vayunmathur.education.domain.ChoiceAnswer
+import com.vayunmathur.education.domain.MatchingAnswer
+import com.vayunmathur.education.domain.MatchingQuestion
+import com.vayunmathur.education.domain.MultipleChoiceQuestion
+import com.vayunmathur.education.domain.Question
+import com.vayunmathur.education.domain.TraceAnswer
+import com.vayunmathur.education.domain.TracingQuestion
+import com.vayunmathur.education.platform.EducationViewModel
+import com.vayunmathur.education.platform.LocalNarrator
+import com.vayunmathur.education.platform.QuizActions
+import com.vayunmathur.education.platform.QuizUiState
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.delay
 import androidx.compose.ui.res.stringResource
@@ -78,141 +78,9 @@ fun K2QuizPage(backStack: NavBackStack<Route>, viewModel: EducationViewModel, ex
     )
 }
 
-/**
- * K-2 quiz: audio-first, no-typing. Supports tap-the-tile multiple choice,
- * finger-tracing, and drag-and-drop matching. Correct actions celebrate and
- * advance; mistakes get a gentle "try again" with no penalty and no score.
- *
- * No dependency on the ViewModel or the back stack so it can be rendered from a `@Preview`
- * — see `src/screenshotTest`, which is where the store listing images come from. The
- * narrator is a composition local and is simply absent there, which makes every narrate
- * call a no-op.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun K2QuizScreen(state: QuizUiState, actions: QuizActions) {
-    val narrator = LocalNarrator.current
-    val questions = state.questions
-
-    val answers = remember(questions) { mutableStateMapOf<String, Answer?>() }
-    var index by remember(questions) { mutableIntStateOf(0) }
-    var celebrating by remember(questions) { mutableStateOf(false) }
-    var wrongIndex by remember(questions) { mutableIntStateOf(-1) }
-
-    AppScaffold(
-        title = "",
-        onNavigateBack = { actions.navigateUp() },
-        scrollBehavior = appBarScrollBehavior(),
-    ) { padding ->
-        if (questions.isEmpty()) {
-            MissingContent(padding, stringResource(R.string.let_s_go_back))
-            return@AppScaffold
-        }
-
-        val question = questions[index]
-
-        LaunchedEffect(question.id) {
-            wrongIndex = -1
-            narrator?.narrate(question.prompt.text, question.prompt.audioRef)
-        }
-
-        LaunchedEffect(celebrating) {
-            if (celebrating) {
-                delay(1400)
-                celebrating = false
-                if (index < questions.lastIndex) {
-                    index++
-                } else {
-                    actions.finish(questions, answers)
-                }
-            }
-        }
-
-        fun complete(answer: Answer) {
-            answers[question.id] = answer
-            narrator?.speak(praise())
-            celebrating = true
-        }
-
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        question.prompt.text,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = { narrator?.narrate(question.prompt.text, question.prompt.audioRef) }) {
-                        Text("🔊", fontSize = 28.sp)
-                    }
-                }
-
-                // Per-question identity (as in the Scholar QuizScreen): the
-                // input composables keep interaction state that must not leak
-                // into the next question, or it can neither render fresh nor
-                // ever complete.
-                key(question.id) {
-                when (question) {
-                    is MultipleChoiceQuestion -> K2Choices(
-                        question = question,
-                        wrongIndex = wrongIndex,
-                        enabled = !celebrating,
-                        onChoose = { i ->
-                            narrator?.speak(question.choices[i].text)
-                            if (i == question.correctIndex) complete(ChoiceAnswer(i)) else wrongIndex = i
-                        },
-                    )
-                    is TracingQuestion -> TracingCanvas(
-                        glyph = question.glyph,
-                        enabled = !celebrating,
-                        onTraced = { complete(TraceAnswer) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(320.dp),
-                    )
-                    is MatchingQuestion -> K2DragMatch(
-                        question = question,
-                        enabled = !celebrating,
-                        onSolved = { complete(MatchingAnswer(question.correctRightForLeft)) },
-                    )
-                    else -> {}
-                }
-                }
-            }
-
-            FadeVisibility(visible = celebrating) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.92f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("🎉", fontSize = 96.sp)
-                        Text(
-                            stringResource(R.string.great_job),
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
-private fun K2Choices(
+internal fun K2Choices(
     question: MultipleChoiceQuestion,
     wrongIndex: Int,
     enabled: Boolean,
@@ -258,4 +126,4 @@ private fun ChoiceTile(text: String, isWrong: Boolean, modifier: Modifier = Modi
     }
 }
 
-private fun praise(): String = listOf("Great job!", "Awesome!", "You got it!", "Well done!").random()
+internal fun praise(): String = listOf("Great job!", "Awesome!", "You got it!", "Well done!").random()

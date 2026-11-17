@@ -29,9 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.education.Route
-import com.vayunmathur.education.content.Band
-import com.vayunmathur.education.util.EducationAchievements
-import com.vayunmathur.education.util.EducationViewModel
+import com.vayunmathur.education.domain.Band
+import com.vayunmathur.education.platform.EducationAchievements
+import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.AchievementStatus

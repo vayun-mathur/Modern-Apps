@@ -34,10 +34,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.education.Route
-import com.vayunmathur.education.pushChain
-import com.vayunmathur.education.content.CourseUnit
-import com.vayunmathur.education.content.ModuleType
-import com.vayunmathur.education.util.EducationViewModel
+import com.vayunmathur.education.platform.pushChain
+import com.vayunmathur.education.domain.CourseUnit
+import com.vayunmathur.education.domain.ModuleType
+import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack

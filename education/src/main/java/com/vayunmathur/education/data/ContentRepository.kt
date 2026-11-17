@@ -1,4 +1,6 @@
-package com.vayunmathur.education.content
+package com.vayunmathur.education.data
+
+import com.vayunmathur.education.domain.*
 
 import android.content.Context
 import com.vayunmathur.library.log.Log
