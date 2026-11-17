@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
+/** Persisted play and win statistics for one variant. */
 @Serializable
 data class GameStats(
     val gamesPlayed: Int = 0,

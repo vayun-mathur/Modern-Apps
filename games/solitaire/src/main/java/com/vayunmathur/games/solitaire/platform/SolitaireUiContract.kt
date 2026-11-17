@@ -78,6 +78,7 @@ interface SolitaireActions {
     fun restart() {}
     fun giveUp() {}
 
+    /** Holds the no-op SolitaireActions implementation used by previews. */
     companion object {
         val Noop: SolitaireActions = object : SolitaireActions {}
     }

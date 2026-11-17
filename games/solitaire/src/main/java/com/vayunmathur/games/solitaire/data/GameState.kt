@@ -1,12 +1,15 @@
 package com.vayunmathur.games.solitaire.data
 
+/** One tableau pile: face-down cards beneath the face-up run. */
 data class TableauPile(
     val faceDown: List<Card> = emptyList(),
     val faceUp: List<Card> = emptyList()
 )
 
+/** Solitaire variant to play. */
 enum class GameMode { KLONDIKE, SPIDER, FREECELL, PYRAMID }
 
+/** Klondike stock draw size: one or three cards at a time. */
 enum class DrawMode { DRAW_ONE, DRAW_THREE }
 
 /**
@@ -50,6 +53,7 @@ data class GameConfig(
     val spiderSuits: Int = 4,
 )
 
+/** Complete Klondike board state: stock, waste, tableau, and foundations. */
 data class KlondikeState(
     val stock: List<Card> = emptyList(),
     val waste: List<Card> = emptyList(),
@@ -70,6 +74,7 @@ data class KlondikeState(
         if (isWon) this else copy(elapsedSeconds = elapsedSeconds + 1)
 }
 
+/** Complete Spider board state: tableau, stock groups, and completed suits. */
 data class SpiderState(
     val tableauPiles: List<TableauPile> = List(size = SPIDER_TABLEAU_COUNT) { TableauPile() },
     val stockGroups: List<List<Card>> = emptyList(),
@@ -87,6 +92,7 @@ data class SpiderState(
         if (isWon) this else copy(elapsedSeconds = elapsedSeconds + 1)
 }
 
+/** Complete FreeCell board state: tableau, free cells, and foundations. */
 data class FreeCellState(
     val tableauPiles: List<List<Card>> = List(size = FREECELL_TABLEAU_COUNT) { emptyList() },
     val freeCells: List<Card?> = List(size = FREECELL_COUNT) { null },
@@ -131,6 +137,7 @@ data class PyramidState(
         if (isWon) this else copy(elapsedSeconds = elapsedSeconds + 1)
 }
 
+/** UI state holding the active variant's board state and undo history. */
 data class SolitaireUiState(
     val gameMode: GameMode? = null,
     val klondike: KlondikeState? = null,

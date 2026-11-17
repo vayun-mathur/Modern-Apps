@@ -215,6 +215,7 @@ class KlondikeSolver private constructor(private val drawCount: Int) : SearchPro
         return true
     }
 
+    /** Entry points and default search budget for the Klondike solver. */
     companion object {
         /**
          * Solves [state] (any position, normally a fresh deal) within [budget].

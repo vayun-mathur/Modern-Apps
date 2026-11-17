@@ -5,6 +5,7 @@ import com.vayunmathur.games.solitaire.data.GameMode
 import com.vayunmathur.games.solitaire.data.SolitaireStatsRepository
 import com.vayunmathur.library.util.AchievementsManager
 
+/** Unlocks solitaire achievements from persisted game statistics. */
 class SolitaireAchievementsManager(
     context: Context,
     json: String,

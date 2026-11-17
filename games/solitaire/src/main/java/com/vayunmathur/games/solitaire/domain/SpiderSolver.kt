@@ -135,6 +135,7 @@ class SpiderSolver private constructor(private val stock: Array<IntArray>) : Sea
         return child
     }
 
+    /** Entry points and default search budget for the Spider solver. */
     companion object {
         /** The budget the shipped tables were generated with. */
         val DEFAULT_BUDGET = SolverBudget(dfsNodes = 100_000, beamWidth = 300, beamNodes = 500_000)

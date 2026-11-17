@@ -1,5 +1,6 @@
 package com.vayunmathur.games.solitaire.data
 
+/** Card suit with its display symbol and colour. */
 enum class Suit(val symbol: String, val isRed: Boolean) {
     HEARTS("♥", true),
     DIAMONDS("♦", true),
@@ -7,6 +8,7 @@ enum class Suit(val symbol: String, val isRed: Boolean) {
     CLUBS("♣", false)
 }
 
+/** Card rank with its display label and numeric value. */
 enum class Rank(val display: String, val value: Int) {
     ACE(display = "A", value = 1),
     TWO(display = "2", value = 2),
@@ -23,6 +25,7 @@ enum class Rank(val display: String, val value: Int) {
     KING(display = "K", value = 13)
 }
 
+/** A single playing card identified by its suit and rank. */
 data class Card(val suit: Suit, val rank: Rank)
 
 fun createDeck(): List<Card> =

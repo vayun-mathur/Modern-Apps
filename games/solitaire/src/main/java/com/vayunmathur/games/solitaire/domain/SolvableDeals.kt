@@ -67,6 +67,7 @@ class SolvableDealTables(private val tables: Map<String, IntArray>) {
             table[Math.floorMod(mix64(epochDay xor DAILY_SALT), table.size.toLong()).toInt()].toLong()
         }
 
+    /** Decoding for the bundled solver-proven deal tables. */
     companion object {
         /**
          * Format: `SOL1`, table count (u8), then per table its key (u8 length +

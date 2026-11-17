@@ -184,6 +184,7 @@ class FreeCellSolver private constructor() : SearchProblem {
         return state[firstOpposite] >= rank - 1 && state[firstOpposite + 1] >= rank - 1
     }
 
+    /** Entry points and default search budget for the FreeCell solver. */
     companion object {
         fun solve(state: FreeCellState, budget: SolverBudget = DEFAULT_BUDGET): SolveResult =
             portfolioSearch(FreeCellSolver(), encode(state), budget)

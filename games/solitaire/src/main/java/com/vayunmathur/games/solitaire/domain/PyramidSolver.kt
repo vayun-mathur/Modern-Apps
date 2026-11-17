@@ -164,6 +164,7 @@ class PyramidSolver private constructor(
 
     private fun posIndex() = PYRAMID_CARDS + talon.size
 
+    /** Entry points and default search budget for the Pyramid solver. */
     companion object {
         /** The budget the shipped tables were generated with. */
         val DEFAULT_BUDGET = SolverBudget(dfsNodes = 1_000_000)

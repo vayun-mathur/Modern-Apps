@@ -42,6 +42,7 @@ data class DragInfo(
     val range: PileRange get() = PileRange(pileId, startIndex, cards)
 }
 
+/** ViewModel owning solitaire game, drag, and flight state and variant rules. */
 class SolitaireViewModel(application: Application) : AndroidViewModel(application), SolitaireActions {
     internal val uiStateInternal = MutableStateFlow(SolitaireUiState())
     val uiState: StateFlow<SolitaireUiState> = uiStateInternal.asStateFlow()
@@ -292,6 +293,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         achievementsManager.onProgressUpdated("win_streak_5", statsRepository.getBestWinStreak())
     }
 
+    /** Constants for SolitaireViewModel. */
     companion object {
         /** Klondike win under three minutes earns the speed achievement. */
         private const val SPEED_DEMON_SECONDS = 180
