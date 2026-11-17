@@ -247,6 +247,7 @@ class CompetitiveLevelGenerator(private val words: List<String>) {
         }
     }
 
+    /** Generation limits and asset loading for [CompetitiveLevelGenerator]. */
     companion object {
         private const val COMMON_LIMIT = 20000
         private const val WHEEL_ATTEMPTS = 60

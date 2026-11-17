@@ -33,6 +33,7 @@ import kotlin.random.Random
 /** Outcome of a finished competitive level, shown on the between-levels lobby. */
 data class CompetitiveResult(val won: Boolean, val delta: Int)
 
+/** ViewModel for Word Maker crossword, competitive, and daily play. */
 class WordMakerViewModel(application: Application) : AndroidViewModel(application),
     WordGameActions, CompetitiveLobbyActions {
 
@@ -476,6 +477,7 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** Constants for daily play and level generation in [WordMakerViewModel]. */
     companion object {
         /** Namespace shared by the daily-challenge store and its reminder. */
         const val DAILY_KEY_PREFIX = "wordmaker_daily"

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
+/** A letter in flight from the chooser to its grid cell. */
 data class AnimatedLetter(
     val char: Char,
     val startOffset: Offset,
@@ -31,6 +32,7 @@ data class AnimatedLetter(
     val progress: Animatable<Float, AnimationVector1D>
 )
 
+/** A completed word queued for letter-flight animation. */
 data class WordToAnimate(val word: String, val letterIds: List<Int>)
 
 /**

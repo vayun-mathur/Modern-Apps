@@ -66,6 +66,7 @@ interface WordGameActions {
     /** Records a bonus word and returns the player's new bonus total. */
     suspend fun addBonusWord(word: String): Int = 0
 
+    /** Factories for [WordGameActions]. */
     companion object {
         val Noop: WordGameActions = object : WordGameActions {}
     }
@@ -77,6 +78,7 @@ interface CompetitiveLobbyActions {
     fun setDifficulty(difficulty: Difficulty) {}
     fun loadNextCompetitiveLevel() {}
 
+    /** Factories for [CompetitiveLobbyActions]. */
     companion object {
         val Noop: CompetitiveLobbyActions = object : CompetitiveLobbyActions {}
     }
@@ -98,6 +100,7 @@ interface SettingsActions {
     fun setReminderEnabled(enabled: Boolean) {}
     fun setReminderTime(hour: Int, minute: Int) {}
 
+    /** Factories for [SettingsActions]. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }

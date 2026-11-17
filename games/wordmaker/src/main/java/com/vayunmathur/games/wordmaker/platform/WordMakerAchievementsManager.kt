@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+/** Unlocks Word Maker achievements from level progress, bonus words, and daily streaks. */
 class WordMakerAchievementsManager(
     context: Context,
     json: String,

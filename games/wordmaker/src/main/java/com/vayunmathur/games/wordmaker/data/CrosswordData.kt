@@ -1,6 +1,7 @@
 package com.vayunmathur.games.wordmaker.data
 import android.content.Context
 
+/** A crossword board: solution words, chooser letters, grid, and word placements. */
 data class CrosswordData(
     val solutionWords: Set<String>,
     val lettersInChooser: List<Char>,
@@ -39,6 +40,7 @@ data class CrosswordData(
         }
     }
 
+    /** Parsers that build [CrosswordData] from asset grid text. */
     companion object {
         fun fromAsset(context: Context, fileName: String): CrosswordData? = try {
             fromString(context.assets.open(fileName).bufferedReader().use { it.readText() })

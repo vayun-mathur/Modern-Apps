@@ -15,9 +15,11 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+/** DataStore persistence for Word Maker progress, settings, competitive score, and daily state. */
 class LevelDataStore(context: Context) {
 
     private val appContext = context.applicationContext
+    /** Preference keys and saved-state helpers for [LevelDataStore]. */
     companion object {
         private val LEVEL_KEY = intPreferencesKey("current_level")
         private val FOUND_WORDS_KEY = stringSetPreferencesKey("found_words")
