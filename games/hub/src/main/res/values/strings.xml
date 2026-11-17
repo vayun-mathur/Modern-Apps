@@ -36,8 +36,6 @@
     <!-- ProfileScreen: Label for avatar picker field. Noun -->
     <string name="avatar">Avatar</string>
 
-    <!-- AchievementsScreen: Title showing filtered count. %1$s = filtered achievements count as string, e.g. 12. Noun with count -->
-    <string name="achievements_1">Achievements (<xliff:g id="count" example="12">%1$s</xliff:g>)</string>
     <!-- AchievementsScreen: Filter chip for all games aggregated view. Noun phrase -->
     <string name="all_games">All games</string>
     <!-- AchievementsScreen: Empty state when filter yields no results. Sentence -->
@@ -72,8 +70,6 @@
     <string name="edit_profile">Edit profile</string>
     <!-- ProfileScreen: Text field label for display name input. Noun phrase -->
     <string name="display_name">Display name</string>
-    <!-- SettingsScreen: Section header for backup and restore options. Noun phrase -->
-    <string name="backup_restore">Backup &amp; Restore</string>
     <!-- SettingsScreen: Section header for data management. Noun -->
     <string name="data">Data</string>
     <!-- SettingsScreen: Explanation for clear hub cache button. Sentence, warns cached data removed and games will re-sync -->
@@ -213,10 +209,6 @@
     <string name="remove_profile_avatar">Remove profile avatar</string>
     <!-- YuuScreen: Label marking the Yuu linked as profile avatar. Noun phrase -->
     <string name="profile_avatar">Profile avatar</string>
-    <!-- YuuEditorScreen: Title for creating a Yuu. Noun phrase -->
-    <string name="yuu_new">New Yuu</string>
-    <!-- YuuEditorScreen: Title for editing a Yuu. Noun phrase -->
-    <string name="yuu_edit_title">Edit Yuu</string>
     <!-- YuuEditorScreen: Error when the name field is blank. Sentence -->
     <string name="yuu_name_required">Give your Yuu a name</string>
     <!-- YuuEditorScreen: Category labels. Nouns -->

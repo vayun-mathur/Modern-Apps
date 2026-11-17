@@ -170,7 +170,7 @@ class PlayOnTvSession(context: Context) {
     }
 
     private fun playRumble(rumble: RumbleFeedback) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        // minSdk is 31 (S), so VibratorManager is always available.
         val manager = runCatching {
             appContext.getSystemService(VibratorManager::class.java)
         }.getOrNull() ?: return

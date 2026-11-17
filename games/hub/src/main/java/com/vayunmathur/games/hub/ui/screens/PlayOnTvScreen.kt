@@ -1,5 +1,6 @@
 package com.vayunmathur.games.hub.ui.screens
 
+import android.os.Build
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -41,11 +42,26 @@ fun PlayOnTvScreen(
     val session = remember { PlayOnTvSession(context) }
     DisposableEffect(session) { onDispose { session.close() } }
     val state by session.state.collectAsStateWithLifecycle()
+    // ACCESS_LOCAL_NETWORK is a String constant inlined at compile time, so
+    // referencing it below API 37 is safe; it is only requested on API 37+,
+    // where mDNS browsing actually requires the runtime grant. Below that
+    // the empty placeholder is never launched (mirrors the flashcards
+    // POST_NOTIFICATIONS pattern).
+    val localNetworkPermission =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+            android.Manifest.permission.ACCESS_LOCAL_NETWORK
+        } else {
+            ""
+        }
     val requestLocalNetwork = rememberPermissionRequest(
-        android.Manifest.permission.ACCESS_LOCAL_NETWORK,
+        localNetworkPermission,
         onResult = { granted -> if (granted) session.rescan() },
     )
-    LaunchedEffect(Unit) { requestLocalNetwork() }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+            requestLocalNetwork()
+        }
+    }
 
     AppScaffold(
         title = stringResource(R.string.play_on_tv),
