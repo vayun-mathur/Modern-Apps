@@ -180,4 +180,6 @@
     <string name="reminder_custom_title">Anpassad påminnelse</string>
     <string name="reminder_unit_minutes">Minuter</string>
     <string name="reminder_unit_hours">Timmar</string>
+    <string name="layout_month_agenda">Månad + Agenda</string>
+    <string name="layout_short_month_agenda">MA</string>
 </resources>
