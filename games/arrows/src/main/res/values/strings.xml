@@ -30,7 +30,10 @@
     <!-- ArrowsGameScreen: Dismisses the one-time redirector explanation. Short verb phrase -->
     <string name="got_it">Got it</string>
     <!-- ArrowsGameScreen: Shown once, the first time a blocked arrow costs a heart. %1$d = hearts per board, e.g. 3. Sentence -->
-    <string name="heart_hint">That arrow was blocked, so it cost a heart. Lose all <xliff:g id="hearts" example="3">%1$d</xliff:g> and the board starts over.</string>
+    <plurals name="heart_hint">
+        <item quantity="one">That arrow was blocked, so it cost a heart. Lose all <xliff:g id="hearts" example="3">%1$d</xliff:g> heart and the board starts over.</item>
+        <item quantity="other">That arrow was blocked, so it cost a heart. Lose all <xliff:g id="hearts" example="3">%1$d</xliff:g> hearts and the board starts over.</item>
+    </plurals>
 
     <!-- ArrowsGameScreen: Shown when no clearable board could be generated for this level. Sentence -->
     <string name="generation_failed">Could not build a board for this level.</string>

@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -267,7 +268,7 @@ private fun GameStatus(state: ArrowsUiState, actions: ArrowsGameActions, onResta
         else -> {
             if (state.showHeartHint) {
                 Text(
-                    stringResource(R.string.heart_hint, STARTING_HEARTS),
+                    pluralStringResource(R.plurals.heart_hint, STARTING_HEARTS, STARTING_HEARTS),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center,

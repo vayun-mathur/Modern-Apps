@@ -298,6 +298,6 @@ class ArrowsScreensTest {
         rule.setContent {
             ArrowsGameScreen(ArrowsUiState(game = game(hearts = 2, blockedId = 0), showHeartHint = true), RecordingActions(), {}, {})
         }
-        rule.onNodeWithText(ctx.getString(R.string.heart_hint, STARTING_HEARTS)).assertIsDisplayed()
+        rule.onNodeWithText(ctx.resources.getQuantityString(R.plurals.heart_hint, STARTING_HEARTS, STARTING_HEARTS)).assertIsDisplayed()
     }
 }
