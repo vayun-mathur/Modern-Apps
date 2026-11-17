@@ -4,7 +4,6 @@
     <string name="tool_compass">Kompas</string>
     <string name="tool_level">Poziomica</string>
     <string name="tool_ruler">Linijka</string>
-    <string name="tool_measure">Miarka</string>
     <string name="compass_true_north">Północ geograficzna</string>
     <string name="compass_magnetic_north">Północ magnetyczna</string>
     <string name="compass_tilt_warning">Trzymaj telefon poziomo, aby uzyskać dokładny namiar</string>
@@ -25,7 +24,6 @@
     <string name="level_zeroed">Wyzerowano względem powierzchni odniesienia</string>
     <string name="ruler_hint">Przesuń linię i odczytaj wynik na wybranej krawędzi</string>
     <string name="ar_close_shape">Zamknij figurę</string>
-    <string name="ar_clear_points">Wyczyść</string>
     <string name="ar_tracking_initialising">Przesuń telefon w bok i obróć go lekko, aby rozpocząć skanowanie</string>
     <string name="ar_tracking_limited">Słaba jakość skanowania — poruszaj się powoli i skieruj aparat na teksturowaną powierzchnię</string>
     <string name="ar_tracking_lost">Utracono skanowanie — skieruj aparat na teksturowaną powierzchnię, aby wznowić</string>

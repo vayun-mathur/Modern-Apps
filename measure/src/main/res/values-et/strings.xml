@@ -4,7 +4,6 @@
     <string name="tool_compass">Kompass</string>
     <string name="tool_level">Rõhtlood</string>
     <string name="tool_ruler">Joonlaud</string>
-    <string name="tool_measure">Mõõdistaja</string>
     <string name="compass_true_north">Geograafiline põhjasuund</string>
     <string name="compass_magnetic_north">Magnetiline põhjasuund</string>
     <string name="compass_tilt_warning">Hoia telefoni rõhtselt, et saada täpne suund</string>
