@@ -76,10 +76,11 @@ class PhoneStatusMonitor(private val context: Context) {
                 }
             }
             batteryReceiver = receiver
-            context.registerReceiver(
+            androidx.core.content.ContextCompat.registerReceiver(
+                context,
                 receiver,
                 IntentFilter(Intent.ACTION_BATTERY_CHANGED),
-                Context.RECEIVER_NOT_EXPORTED,
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
             )
         }.onFailure { Log.status(TAG, "battery receiver unavailable", it) }
         refreshDndAndBadge()

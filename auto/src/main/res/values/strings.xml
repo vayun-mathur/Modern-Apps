@@ -237,17 +237,13 @@
     <string name="projection_running">Connected to a car</string>
 
     <!-- Second line of the car status bar, under the product name. -->
-    <string name="car_connected">Connected</string>
     <!-- The car display now-playing card reuses the session now-playing strings
          above (session_now_playing*); no car-specific copies are kept. -->
     <!-- Shown on the car display when no launchable apps were found on the phone. -->
     <string name="car_no_apps">No apps available — install Maps or Music to get started</string>
     <!-- Label of the hotseat drawer cell and the drawer heading listing every car app. -->
-    <string name="car_drawer_apps">Apps</string>
     <!-- Decorative glyph shown on the hotseat drawer cell, which has no app icon. -->
-    <string name="car_drawer_glyph">▦</string>
     <!-- Decorative glyph on the facet dashboard button (goes home, closes drawer). -->
-    <string name="car_home_glyph">⌂</string>
 
     <!-- Heading of the session-card row showing the system sink (ch4, transient TTS/pings). -->
     <string name="session_audio_sys">System audio</string>
@@ -297,7 +293,7 @@
     <!-- Heading of the session-card row counting ch6 mic turns and acks. -->
     <string name="session_audio_mic">Car mic</string>
     <!-- %1$d is mic turns that yielded PCM, %2$d is chunks acked upstream. -->
-    <string name="session_audio_mic_value"><xliff:g example="2" id="turns">%1$d</xliff:g> turns / <xliff:g example="140" id="acks">%2$d</xliff:g> acked</string>
+    <plurals name="session_audio_mic_value"><item quantity="one"><xliff:g example="2" id="turns">%1$d</xliff:g> turn / <xliff:g example="140" id="acks">%2$d</xliff:g> acked</item><item quantity="other"><xliff:g example="2" id="turns">%1$d</xliff:g> turns / <xliff:g example="140" id="acks">%2$d</xliff:g> acked</item></plurals>
     <!-- Heading of the row counting TTS utterances that reached the car. -->
     <string name="session_audio_tts">Car TTS</string>
 
@@ -317,87 +313,52 @@
 
     <!-- Content description of the rail assistant slot. Shown only when the phone
          has an assistant to open; otherwise the slot stays gone. -->
-    <string name="car_assistant_label">Assistant</string>
     <!-- Decorative glyph on the rail assistant icon, which has no app icon of its own. -->
-    <string name="car_assistant_glyph">◉</string>
     <!-- Decorative glyph on the native-rail back button. -->
-    <string name="car_back_glyph">←</string>
     <!-- Content description of the native-rail back button. -->
-    <string name="car_back_label">Back</string>
     <!-- Decorative glyph on the native-rail exit button. -->
-    <string name="car_exit_glyph">✕</string>
     <!-- Decorative glyph standing in for the rail etc affordance icon. -->
-    <string name="car_etc_glyph">⋯</string>
     <!-- Content description of the media card previous-track button. -->
-    <string name="car_media_previous">Previous</string>
     <!-- Content description of the media card next-track button. -->
-    <string name="car_media_next">Next</string>
     <!-- Content description of the media card play button, shown while paused. -->
-    <string name="car_media_play">Play</string>
     <!-- Content description of the media card pause button, shown while playing. -->
-    <string name="car_media_pause">Pause</string>
     <!-- Decorative glyph on the media card previous-track button. -->
-    <string name="car_media_prev_glyph">⏮</string>
     <!-- Decorative glyph on the media card next-track button. -->
-    <string name="car_media_next_glyph">⏭</string>
     <!-- Decorative glyph on the media card play button, shown while paused. -->
-    <string name="car_media_play_glyph">▶</string>
     <!-- Decorative glyph on the media card pause button, shown while playing. -->
-    <string name="car_media_pause_glyph">⏸</string>
     <!-- Distance to the next maneuver on the nav card. %1$d is whole metres;
          translators own the unit so it can be spaced or abbreviated per locale. -->
-    <string name="car_nav_distance_meters"><xliff:g example="500" id="meters">%1$d</xliff:g> m</string>
     <!-- Empty-tile label on the nav card, shown only when no map backend
          exists at all (maps missing or the car-app host bind failed). -->
-    <string name="car_nav_open_maps">Open Maps</string>
     <!-- Drawer empty state. Exact gearhead `appdecor_menu_empty` value. -->
-    <string name="car_drawer_empty">No Items</string>
     <!-- Drawer lockout text shown while driving-restricted. Exact gearhead
          `speedbump_lockout_message` value. -->
-    <string name="car_drawer_lockout">Safety pause. Back soon.</string>
     <!-- Parked-browsing exit header text. Exact gearhead
          `content_browse_park_to_continue` value. -->
-    <string name="car_browsing_locked">Browsing locked for safety.</string>
     <!-- Parked-browsing exit header button. Exact gearhead
          `content_browse_unlimited_browsing_exit` value. -->
-    <string name="car_browsing_exit">Exit</string>
     <!-- AppDecor search box hint. Exact gearhead `appdecor_search_box_hint` value. -->
-    <string name="car_search_hint">Search</string>
     <!-- Decorative glyph on the AppDecor search button. -->
-    <string name="car_search_glyph">⌕</string>
     <!-- Decorative glyph on the alpha-jump fast-scroll button. -->
-    <string name="car_alpha_jump_glyph">A-Z</string>
     <!-- Glyph for the rail DND slot (gearhead `gs_do_not_disturb_on_vd_theme_24`; gone unless filtered). -->
-    <string name="car_dnd_glyph">⊘</string>
     <!-- Shown on the car call card when the number is withheld. -->
-    <string name="car_call_unknown">Unknown caller</string>
     <!-- Shown on the car call card while ringing. -->
-    <string name="car_call_incoming">Incoming call</string>
     <!-- Shown on the car call card while connected. -->
-    <string name="car_call_active">On call</string>
     <!-- Call duration on the car call card. %1$d is minutes, %2$02d is zero-padded seconds. -->
-    <string name="car_call_duration"><xliff:g example="2" id="minutes">%1$d</xliff:g>:<xliff:g example="05" id="seconds">%2$02d</xliff:g></string>
     <!-- Shown on the car call card answer button while ringing. -->
-    <string name="car_call_answer">Answer</string>
     <!-- Shown on the car call card decline button while ringing. -->
-    <string name="car_call_decline">Decline</string>
     <!-- Shown on the car call card end button while connected. -->
-    <string name="car_call_end">End</string>
     <!-- Shown on the car call card mute button while unmuted. -->
-    <string name="car_call_mute">Mute</string>
     <!-- Shown on the car call card mute button while muted. -->
-    <string name="car_call_unmute">Unmute</string>
     <!-- Shown on the car call card hold button while active. -->
-    <string name="car_call_hold">Hold</string>
     <!-- Shown on the car call card hold button while held. -->
-    <string name="car_call_resume">Resume</string>
 
     <!-- Title of the car dock pin picker; also used for the button opening it. -->
     <string name="pinned_apps_title">Car dock</string>
     <!-- Explains the picker: check apps to pin, reorder with the arrows. %1$d is the max pins. -->
-    <string name="pinned_apps_body">Choose up to %1$d car apps for the bottom bar, in order.</string>
+    <plurals name="pinned_apps_body"><item quantity="one">Choose up to %1$d car app for the bottom bar, in order.</item><item quantity="other">Choose up to %1$d car apps for the bottom bar, in order.</item></plurals>
     <!-- %1$d is the pinned position, 1-based. -->
     <string name="pinned_apps_rank">Pinned %1$d</string>
     <!-- Snackbar when pinning while the dock is full. %1$d is the max pins. -->
-    <string name="pinned_apps_full">The dock holds %1$d apps — unpin one first</string>
+    <plurals name="pinned_apps_full"><item quantity="one">The dock holds %1$d app — unpin one first</item><item quantity="other">The dock holds %1$d apps — unpin one first</item></plurals>
 </resources>

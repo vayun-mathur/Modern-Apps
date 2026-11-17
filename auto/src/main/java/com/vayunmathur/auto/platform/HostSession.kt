@@ -1,4 +1,5 @@
 package com.vayunmathur.auto.platform
+import android.annotation.SuppressLint
 
 import android.content.ComponentName
 import android.content.Context
@@ -53,6 +54,11 @@ import kotlin.concurrent.thread
  * block); `clearSurface` stays synchronous so the service can release the
  * surface on return. Template callbacks post to main.
  */
+// This class IS the car host: it implements and calls the androidx.car.app
+// AIDL surface (ICarApp/ISurfaceCallback/IOnDoneCallback) that the library
+// restricts to itself, because hosting car apps is this module's purpose and
+// there is no public host-side API. RestrictedApi is a false positive here.
+@SuppressLint("RestrictedApi")
 class HostSession(
     context: Context,
     private val component: ComponentName,

@@ -24,6 +24,7 @@ import kotlin.test.assertTrue
  * Robolectric PackageManager with installed packages registered.
  */
 @RunWith(RobolectricTestRunner::class)
+@androidx.car.app.annotations.ExperimentalCarApi
 class DiscoveryDeepTest {
     private val ctx get() = ApplicationProvider.getApplicationContext<Context>()
     private val pm get() = ctx.packageManager

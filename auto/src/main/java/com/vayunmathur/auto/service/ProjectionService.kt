@@ -61,10 +61,12 @@ import kotlin.concurrent.thread
 class ProjectionService : Service() {
 
     private var worker: Thread? = null
+    private var connectivityReceiver: com.vayunmathur.auto.platform.ConnectivityEventReceiver? = null
     @Volatile private var running = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    @androidx.car.app.annotations.ExperimentalCarApi
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (running) return START_STICKY
         running = true
@@ -76,6 +78,15 @@ class ProjectionService : Service() {
             AutoSessionState.onMediaEvent(MediaEvent.NowPlayingChanged(info))
             video?.wiring?.setNowPlaying(info)
         }.also { it.start() }
+        // Connectivity changes are implicit broadcasts: a manifest entry
+        // never fires on API 24+, so the receiver lives with the session.
+        connectivityReceiver = com.vayunmathur.auto.platform.ConnectivityEventReceiver()
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            connectivityReceiver,
+            android.content.IntentFilter(android.net.ConnectivityManager.CONNECTIVITY_ACTION),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         worker = thread(name = "ma-auto-projection") { serve() }
         return START_STICKY
     }
@@ -86,6 +97,8 @@ class ProjectionService : Service() {
         // ServerSocket raises there, which runSession reports as a failure the
         // loop then drops because running is false. Interrupt alone cannot do
         // this -- accept() ignores thread interruption.
+        connectivityReceiver?.let { runCatching { unregisterReceiver(it) } }
+        connectivityReceiver = null
         server?.close()
         worker?.interrupt()
         mediaMonitor?.stop()
@@ -100,6 +113,7 @@ class ProjectionService : Service() {
     /** Backoff between sessions; owns no threads, just the delay policy. */
     private val reconnectBackoff = ReconnectBackoff()
 
+    @androidx.car.app.annotations.ExperimentalCarApi
     private fun serve() {
         HeadUnitServer().use { server ->
             this.server = server
@@ -136,6 +150,7 @@ class ProjectionService : Service() {
      * runs the same session body, and TLS/GAL downstream never learn which
      * intake won.
      */
+    @androidx.car.app.annotations.ExperimentalCarApi
     private fun runSession(server: HeadUnitServer): Boolean {
         TransportIntake.take()?.let { pending ->
             var failed = false
@@ -189,6 +204,7 @@ class ProjectionService : Service() {
         }
     }.getOrDefault(false)
 
+    @androidx.car.app.annotations.ExperimentalCarApi
     private fun session(server: HeadUnitServer) {
         server.accept().use { socket ->
             // The TCP loopback path wraps its socket as an intake pending so
@@ -209,6 +225,7 @@ class ProjectionService : Service() {
      * The caller owns the raw resource (socket or parked transport); this
      * owns everything GAL.
      */
+    @androidx.car.app.annotations.ExperimentalCarApi
     private fun sessionOnTransport(transport: GalTransport, carName: String) {
         // A head unit is on the wire; the phone status screen leaves Disconnected.
         AutoSessionState.onSocketAccepted()
@@ -312,6 +329,7 @@ class ProjectionService : Service() {
      * opens, so TTS resolves its sink lazily and early utterances drop with
      * a count.
      */
+    @androidx.car.app.annotations.ExperimentalCarApi
     private fun startSessionScoped() {
         // Call snapshots push into the car card like focus mirrors into the
         // phone flows: added/changed replace wholesale, removed clears.
@@ -432,12 +450,7 @@ class ProjectionService : Service() {
         val pending = ChannelSetups()
         var reportedActive = false
         while (running && connection.pump()) {
-            // Open every advertised service in HU-discovery wire order, one at a
-            // time: the next 0x7 goes out only once the previous channel is
-            // granted (openChannels) or refused (refusedChannels, or a bare
-            // 0xff with no 0x8 -- DHU 2.0 answers that way). gearhead opens in
-            // this same order (`jbp.i[]` follows the `xob.c` wire order).
-            // Video setup additionally waits for its own channel grant.
+            // Open every advertised service in HU-discovery wire order, one at a time: the next request goes out only once the previous channel is granted or refused, and video setup additionally waits for its own channel grant.
             if (connection.session.state == SessionState.ACTIVE) {
                 reportedActive = reportActiveOnce(connection, carName, reportedActive)
                 openNext(connection)

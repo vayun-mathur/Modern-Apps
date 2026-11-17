@@ -1,6 +1,7 @@
 package com.vayunmathur.auto.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.auto.R
 import com.vayunmathur.auto.platform.AudioSinkState
@@ -44,7 +45,7 @@ fun AudioRow(
     ListItem(
         headlineContent = { Text(stringResource(R.string.session_audio_mic)) },
         supportingContent = {
-            Text(stringResource(R.string.session_audio_mic_value, micTurns, micAcks))
+            Text(pluralStringResource(R.plurals.session_audio_mic_value, micTurns.toInt(), micTurns, micAcks))
         },
     )
     ListItem(

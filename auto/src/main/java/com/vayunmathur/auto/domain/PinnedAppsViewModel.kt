@@ -25,8 +25,9 @@ data class PinnedAppRow(
  * Toggle pins/unpins (guarding the max-5 cap, reporting rejection so the UI
  * can snackbar); move reorders. All writes go through [PinnedAppsPrefs].
  */
+@androidx.car.app.annotations.ExperimentalCarApi
 class PinnedAppsViewModel(application: Application) : AndroidViewModel(application) {
-    private val context = application.applicationContext
+    private val context: android.content.Context get() = getApplication<android.app.Application>().applicationContext
 
     private val _allApps = MutableStateFlow<List<DiscoveredApp>>(emptyList())
 
@@ -56,6 +57,7 @@ class PinnedAppsViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /** Re-runs discovery (package changes while the picker is open). */
+    @androidx.car.app.annotations.ExperimentalCarApi
     fun refresh() {
         viewModelScope.launch {
             _allApps.value = runCatching { CarAppDiscovery.queryAll(context) }.getOrDefault(emptyList())

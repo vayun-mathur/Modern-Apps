@@ -389,7 +389,12 @@ object WifiDirectConnector {
         }
         // Discovery slows (and often breaks) an outgoing ACL connect; stop it
         // first like every BT connect path must.
-        runCatching { adapter.cancelDiscovery() }
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                appContext!!, android.Manifest.permission.BLUETOOTH_CONNECT,
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            runCatching { adapter.cancelDiscovery() }
+        }
         val device: BluetoothDevice = runCatching { adapter.getRemoteDevice(address) }.getOrNull()
             ?: run {
                 Log.status(TAG, "RFCOMM fallback: unparsable BT peer $address")

@@ -173,6 +173,13 @@ class MusicCapture(
             Log.status(TAG, "music capture has no viable buffer ($minBytes)")
             return null
         }
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                appContext, android.Manifest.permission.RECORD_AUDIO,
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.status(TAG, "music capture needs the microphone permission")
+            return null
+        }
         return runCatching {
             AudioRecord.Builder()
                 .setAudioPlaybackCaptureConfig(config)

@@ -1,4 +1,5 @@
 package com.vayunmathur.auto.platform
+import androidx.core.content.edit
 
 import android.content.Context
 
@@ -15,7 +16,7 @@ object MessagingPrefs {
         prefs(context).getBoolean(KEY_CONSENT, false)
 
     fun setMirroringConsented(context: Context, consented: Boolean) {
-        prefs(context).edit().putBoolean(KEY_CONSENT, consented).apply()
+        prefs(context).edit { putBoolean(KEY_CONSENT, consented) }
     }
 
     private fun prefs(context: Context) =

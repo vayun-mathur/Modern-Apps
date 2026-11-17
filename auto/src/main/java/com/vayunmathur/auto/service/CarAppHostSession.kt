@@ -32,6 +32,7 @@ class CarAppHostSession(
      * Binds every car-app service; template states push into the car card
      * through the legacy path until Phase C replaces the nav renderer.
      */
+    @androidx.car.app.annotations.ExperimentalCarApi
     fun start() {
         if (manager != null) return
         val host = HostManager(context)
@@ -102,6 +103,7 @@ class CarAppHostSession(
         HostTemplateBus.toLegacy(template)?.let { video()?.wiring?.setHostNavState(it) }
     }
 
+    @androidx.car.app.annotations.ExperimentalCarApi
     private fun discover(): List<DiscoveredApp> {
         val merged = runCatching { CarAppDiscovery.queryAll(context) }.getOrDefault(emptyList())
         if (merged.isNotEmpty()) return merged

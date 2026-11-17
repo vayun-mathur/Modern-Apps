@@ -11,6 +11,7 @@ import com.vayunmathur.auto.platform.TransportState
 import com.vayunmathur.auto.service.ProjectionService
 import com.vayunmathur.library.ui.MaActivity
 
+@androidx.car.app.annotations.ExperimentalCarApi
 class MainActivity : MaActivity() {
     private val viewModel: AutoViewModel by viewModels()
     private val pairingViewModel: PairingViewModel by viewModels()

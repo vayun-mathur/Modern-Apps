@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,6 +41,7 @@ import com.vayunmathur.library.ui.rememberMessenger
  * shared snackbar host — never a Toast.
  */
 @Composable
+@androidx.car.app.annotations.ExperimentalCarApi
 fun PinnedAppsScreen(
     onNavigateBack: () -> Unit,
     viewModel: PinnedAppsViewModel = viewModel(),
@@ -48,9 +50,10 @@ fun PinnedAppsScreen(
     val messenger = rememberMessenger()
     val rows by viewModel.rows.collectAsStateWithLifecycle()
     val rejected by viewModel.rejected.collectAsStateWithLifecycle()
+    val pluralFullMessage = pluralStringResource(R.plurals.pinned_apps_full, PinnedAppsPrefs.MAX_PINNED, PinnedAppsPrefs.MAX_PINNED)
     LaunchedEffect(rejected) {
         if (rejected != null) {
-            messenger.show(context.getString(R.string.pinned_apps_full, PinnedAppsPrefs.MAX_PINNED))
+            messenger.show(pluralFullMessage)
             viewModel.consumeRejected()
         }
     }
@@ -70,6 +73,7 @@ fun PinnedAppsScreen(
  * this directly with literals.
  */
 @Composable
+@androidx.car.app.annotations.ExperimentalCarApi
 fun PinnedAppsScreen(
     onNavigateBack: () -> Unit,
     rows: List<PinnedAppRow>,
@@ -89,7 +93,7 @@ fun PinnedAppsScreen(
         ) {
             item {
                 Text(
-                    text = stringResource(R.string.pinned_apps_body, PinnedAppsPrefs.MAX_PINNED),
+                    text = pluralStringResource(R.plurals.pinned_apps_body, PinnedAppsPrefs.MAX_PINNED, PinnedAppsPrefs.MAX_PINNED),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(vertical = 8.dp),
                 )

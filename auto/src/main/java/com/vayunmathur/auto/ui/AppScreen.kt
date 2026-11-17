@@ -42,7 +42,7 @@ fun AppScreen(appId: String, modifier: Modifier = Modifier) {
 private fun MapSurfaceIsland(modifier: Modifier = Modifier) {
     AndroidView(
         factory = { context ->
-            TextureView(context).apply {
+            CarTextureView(context).apply {
                 surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
                         CarLauncherState.mapSurfaceListener?.invoke(Surface(surface), width, height)
@@ -57,11 +57,20 @@ private fun MapSurfaceIsland(modifier: Modifier = Modifier) {
 
                     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) = Unit
                 }
-                setOnTouchListener { _, event ->
+                setOnTouchListener { view, event ->
+                    if (event.action == android.view.MotionEvent.ACTION_UP) view.performClick()
                     CarLauncherState.mapTouchForwarder?.invoke(event.action, event.x, event.y) == true
                 }
             }
         },
         modifier = modifier,
     )
+}
+
+/** Map surface view: forwards touches to the car, so clicks are reported through performClick. */
+private class CarTextureView(context: android.content.Context) : TextureView(context) {
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
 }

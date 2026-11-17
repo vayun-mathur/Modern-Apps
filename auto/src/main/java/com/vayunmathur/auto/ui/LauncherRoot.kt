@@ -1,4 +1,6 @@
 package com.vayunmathur.auto.ui
+import com.vayunmathur.auto.platform.carRouteFor
+import com.vayunmathur.auto.platform.syncCarRoute
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,9 +11,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.auto.Route
-import com.vayunmathur.auto.carRouteFor
+import com.vayunmathur.auto.platform.carRouteFor
 import com.vayunmathur.auto.platform.CarLauncherState
-import com.vayunmathur.auto.syncCarRoute
+import com.vayunmathur.auto.platform.syncCarRoute
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.util.rememberNavBackStack

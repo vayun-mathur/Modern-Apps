@@ -31,6 +31,7 @@ object CarApps {
      * in dock order; entries that no longer resolve are filtered as stale.
      * Unpinned apps follow in label order, then the legacy phone slots.
      */
+    @androidx.car.app.annotations.ExperimentalCarApi
     fun query(context: Context, pinnedOrder: List<String> = emptyList()): List<CarApp> {
         val discovered = runCatching { CarAppDiscovery.query(context) }.getOrElse {
             Log.status(TAG, "car discovery failed; legacy slots only", it)

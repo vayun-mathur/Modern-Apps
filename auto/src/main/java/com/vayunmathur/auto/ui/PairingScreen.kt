@@ -67,10 +67,14 @@ fun PairingScreen(viewModel: PairingViewModel, onNavigateBack: () -> Unit) {
     }
 
     val requestNearby = rememberMultiplePermissionRequest(
-        permissions = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.NEARBY_WIFI_DEVICES,
-        ),
+        permissions = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.NEARBY_WIFI_DEVICES,
+            )
+        } else {
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        },
         onResult = { granted ->
             if (granted) WifiDirectConnector.start(context)
         },

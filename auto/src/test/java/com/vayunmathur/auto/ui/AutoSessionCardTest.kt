@@ -207,7 +207,7 @@ class AutoSessionCardTest {
         val streaming = appContext.getString(AutoR.string.session_audio_sink_streaming, "Full")
         assertSingleText(streaming)
         assertSingleText(appContext.getString(AutoR.string.session_audio_sink_idle))
-        val mic = appContext.getString(AutoR.string.session_audio_mic_value, 3L, 2L)
+        val mic = appContext.resources.getQuantityString(AutoR.plurals.session_audio_mic_value, 3, 3L, 2L)
         assertSingleText(mic)
     }
 

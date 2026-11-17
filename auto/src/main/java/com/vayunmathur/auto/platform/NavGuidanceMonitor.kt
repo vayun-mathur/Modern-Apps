@@ -108,6 +108,13 @@ class NavGuidanceMonitor(
                 override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
             }
             listener = active
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.ACCESS_FINE_LOCATION,
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.status(TAG, "no location permission; guidance holds last-known")
+                return@post
+            }
             runCatching {
                 if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                     manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, FIX_MIN_MS, 0f, active)

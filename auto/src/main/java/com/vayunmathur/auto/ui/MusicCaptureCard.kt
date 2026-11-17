@@ -38,6 +38,7 @@ import com.vayunmathur.library.ui.rememberMessenger
 fun MusicCaptureCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val messenger = rememberMessenger()
+    val deniedMessage = stringResource(R.string.music_capture_denied)
     var consented by remember { mutableStateOf(MusicCapturePrefs.isMusicCaptureConsented(context)) }
     var granted by remember { mutableStateOf(MusicCaptureGrant.hasGrant()) }
     val projectionLauncher = rememberLauncherForActivityResult(
@@ -48,7 +49,7 @@ fun MusicCaptureCard(modifier: Modifier = Modifier) {
             granted = true
             com.vayunmathur.auto.service.MusicCaptureService.startIfGranted(context)
         } else {
-            messenger.show(context.getString(R.string.music_capture_denied))
+            messenger.show(deniedMessage)
             granted = false
         }
     }
@@ -89,7 +90,7 @@ fun MusicCaptureCard(modifier: Modifier = Modifier) {
                                 runCatching {
                                     projectionLauncher.launch(manager.createScreenCaptureIntent())
                                 }.onFailure {
-                                    messenger.show(context.getString(R.string.music_capture_denied))
+                                    messenger.show(deniedMessage)
                                 }
                             }) {
                                 Text(stringResource(R.string.mic_allow))

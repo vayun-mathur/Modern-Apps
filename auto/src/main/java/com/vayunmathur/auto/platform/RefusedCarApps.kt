@@ -1,4 +1,5 @@
 package com.vayunmathur.auto.platform
+import androidx.core.content.edit
 
 import android.content.ComponentName
 import android.content.Context
@@ -18,7 +19,7 @@ object RefusedCarApps {
 
     fun markRefused(context: Context, component: ComponentName) {
         val version = versionCode(context, component.packageName) ?: return
-        prefs(context).edit().putLong(component.flattenToString(), version).apply()
+        prefs(context).edit { putLong(component.flattenToString(), version) }
     }
 
     private fun versionCode(context: Context, packageName: String): Long? = runCatching {

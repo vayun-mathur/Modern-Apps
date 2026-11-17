@@ -47,7 +47,7 @@ class AudioRowTest {
             .assertCountEquals(2)
         val zero = appContext.getString(AutoR.string.session_stat_value, 0L)
         rule.onAllNodes(hasText(zero)).assertCountEquals(3)
-        val mic = appContext.getString(AutoR.string.session_audio_mic_value, 0L, 0L)
+        val mic = appContext.resources.getQuantityString(AutoR.plurals.session_audio_mic_value, 0, 0L, 0L)
         rule.onAllNodes(hasText(mic)).assertCountEquals(1)
     }
 
@@ -78,7 +78,7 @@ class AudioRowTest {
             .assertCountEquals(1)
         rule.onAllNodes(hasText(appContext.getString(AutoR.string.session_stat_value, 2048L)))
             .assertCountEquals(1)
-        val mic = appContext.getString(AutoR.string.session_audio_mic_value, 3L, 2L)
+        val mic = appContext.resources.getQuantityString(AutoR.plurals.session_audio_mic_value, 3, 3L, 2L)
         rule.onAllNodes(hasText(mic)).assertCountEquals(1)
     }
 

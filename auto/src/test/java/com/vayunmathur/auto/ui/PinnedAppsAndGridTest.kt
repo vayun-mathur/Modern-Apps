@@ -60,7 +60,7 @@ class PinnedAppsAndGridTest {
             )
         }
         rule.onNodeWithText(
-            appContext.getString(AutoR.string.pinned_apps_body, 5),
+            appContext.resources.getQuantityString(AutoR.plurals.pinned_apps_body, 5, 5),
         ).assertExists()
         rule.onNodeWithText("Maps").assertExists()
         rule.onNodeWithText("Music").assertExists()

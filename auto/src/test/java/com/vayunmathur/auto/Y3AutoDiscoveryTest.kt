@@ -21,6 +21,7 @@ import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
+@androidx.car.app.annotations.ExperimentalCarApi
 class Y3AutoDiscoveryTest {
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
     private val ctx: Context get() = app

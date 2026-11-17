@@ -34,6 +34,7 @@ import com.vayunmathur.library.ui.rememberMessenger
 fun MessagingConsentCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val messenger = rememberMessenger()
+    val listenerMissingMessage = stringResource(R.string.messaging_listener_missing)
     var listenerGranted by remember { mutableStateOf(SpecialAccess.hasNotificationListener(context)) }
     var consented by remember { mutableStateOf(MessagingPrefs.isMirroringConsented(context)) }
     Card(modifier.fillMaxWidth()) {
@@ -74,9 +75,7 @@ fun MessagingConsentCard(modifier: Modifier = Modifier) {
                             runCatching {
                                 SpecialAccess.requestNotificationListener(context)
                             }.onFailure {
-                                messenger.show(
-                                    context.getString(R.string.messaging_listener_missing),
-                                )
+                                messenger.show(listenerMissingMessage)
                             }
                         }) {
                             Text(stringResource(R.string.messaging_open_settings))

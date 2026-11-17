@@ -10,6 +10,7 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 
 @Composable
+@androidx.car.app.annotations.ExperimentalCarApi
 fun Navigation(viewModel: AutoViewModel, pairingViewModel: PairingViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Home)
     MainNavigation(backStack) {

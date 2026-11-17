@@ -34,7 +34,9 @@ data class DiscoveredApp(
  * constant — so [queryAll] merges explicit components ahead of category
  * results, with real app icons resolved through `PackageManager`.
  */
+@OptIn(androidx.car.app.annotations.ExperimentalCarApi::class)
 object CarAppDiscovery {
+    @androidx.car.app.annotations.ExperimentalCarApi
     fun query(context: Context): List<DiscoveredApp> {
         val pm = context.packageManager
         val merged = linkedMapOf<ComponentName, MutableSet<String>>()
@@ -73,6 +75,7 @@ object CarAppDiscovery {
     }
 
     /** Categories the launcher hosts templates for. */
+    @androidx.car.app.annotations.ExperimentalCarApi
     val HOSTED_CATEGORIES: List<String> = listOf(
         CarAppService.CATEGORY_NAVIGATION_APP,
         CarAppService.CATEGORY_POI_APP,
@@ -88,6 +91,7 @@ object CarAppDiscovery {
      * dock, the pin picker, and the host session all list. First-party
      * entries win on id collisions so their explicit category survives.
      */
+    @androidx.car.app.annotations.ExperimentalCarApi
     fun queryAll(context: Context): List<DiscoveredApp> {
         val byId = query(context).associateBy { it.id }.toMutableMap()
         for (party in firstParty(context)) {
@@ -101,6 +105,7 @@ object CarAppDiscovery {
      * resolved from the installed packages (missing packages resolve to
      * null and are skipped, so uninstalls never show dead tiles).
      */
+    @androidx.car.app.annotations.ExperimentalCarApi
     fun firstParty(context: Context): List<DiscoveredApp> {
         val pm = context.packageManager
         return FIRST_PARTY_COMPONENTS.mapNotNull { (packageName, className, label, categories) ->
@@ -126,6 +131,7 @@ object CarAppDiscovery {
         val categories: Set<String>,
     )
 
+    @androidx.car.app.annotations.ExperimentalCarApi
     private val FIRST_PARTY_COMPONENTS: List<FirstPartyComponent> = listOf(
         FirstPartyComponent(
             packageName = "com.vayunmathur.music",

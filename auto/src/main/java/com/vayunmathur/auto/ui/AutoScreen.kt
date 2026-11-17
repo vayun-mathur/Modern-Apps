@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -106,7 +107,7 @@ fun AutoScreen(
             Card(Modifier.fillMaxWidth().padding(top = 16.dp)) {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.pinned_apps_title)) },
-                    supportingContent = { Text(stringResource(R.string.pinned_apps_body, PinnedAppsPrefs.MAX_PINNED)) },
+                    supportingContent = { Text(pluralStringResource(R.plurals.pinned_apps_body, PinnedAppsPrefs.MAX_PINNED, PinnedAppsPrefs.MAX_PINNED)) },
                     trailingContent = {
                         TextButton(onClick = onPinnedApps) {
                             Text(stringResource(R.string.pinned_apps_title))

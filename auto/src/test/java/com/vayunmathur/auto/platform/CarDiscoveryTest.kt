@@ -17,6 +17,7 @@ import kotlin.test.assertTrue
  * ever shown. The refusal ledger round-trips per component.
  */
 @RunWith(RobolectricTestRunner::class)
+@androidx.car.app.annotations.ExperimentalCarApi
 class CarDiscoveryTest {
 
     private val context: android.content.Context
