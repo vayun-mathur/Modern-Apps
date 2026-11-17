@@ -52,18 +52,29 @@ class MainActivity : MaActivity() {
 /** Contract for main route. */
 @Serializable
 sealed interface MainRoute : NavKey {
+    /** Hub dashboard route. */
     @Serializable data object Dashboard : MainRoute
+    /** Games list route. */
     @Serializable data object Games : MainRoute
+    /** All-games achievements route. */
     @Serializable data object Achievements : MainRoute
+    /** Player profile route. */
     @Serializable data object Profile : MainRoute
+    /** Yuu companion route. */
     @Serializable data object Yuu : MainRoute
+    /** Detail route for the game identified by [gameId]. */
     @Serializable data class GameDetail(val gameId: String) : MainRoute
+    /** Achievements route for the game identified by [gameId]. */
     @Serializable data class AchievementsForGame(val gameId: String) : MainRoute
+    /** Activity feed route. */
     @Serializable data object Activity : MainRoute
+    /** Hub settings route. */
     @Serializable data object Settings : MainRoute
     /** The phone-as-controller screen (hub hosts the SDK ControllerPad). */
     @Serializable data object PlayOnTv : MainRoute
+    /** Route to create a new Yuu. */
     @Serializable data object YuuEditorNew : MainRoute
+    /** Route to edit the Yuu identified by [yuuId]. */
     @Serializable data class YuuEditorEdit(val yuuId: Long) : MainRoute
 }
 
