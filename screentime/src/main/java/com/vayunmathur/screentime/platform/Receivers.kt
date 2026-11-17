@@ -39,6 +39,7 @@ class TimerReachedReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Intent factory for [TimerReachedReceiver]. */
     companion object {
         fun intent(context: Context, packageName: String): Intent =
             Intent(context, TimerReachedReceiver::class.java)
@@ -75,6 +76,7 @@ class ScheduleReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Intent factory for [ScheduleReceiver]. */
     companion object {
         fun intent(context: Context): Intent = Intent(context, ScheduleReceiver::class.java)
     }

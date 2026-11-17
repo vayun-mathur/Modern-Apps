@@ -75,6 +75,7 @@ class FrictionActivity : ComponentActivity() {
             packageManager.getApplicationLabel(info).toString()
         }.getOrNull()
 
+    /** Intent extras for launching the friction screen. */
     companion object {
         const val EXTRA_FRICTION_PACKAGE = "com.vayunmathur.screentime.extra.FRICTION_PACKAGE"
         const val EXTRA_FRICTION_NUDGE = "com.vayunmathur.screentime.extra.FRICTION_NUDGE"

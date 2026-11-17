@@ -52,6 +52,7 @@ class MainActivity : MaActivity() {
         viewModel.refresh()
     }
 
+    /** Intent actions and extras for launching [MainActivity] screens. */
     companion object {
         const val EXTRA_DETAILS_PACKAGE = "com.vayunmathur.screentime.extra.DETAILS_PACKAGE"
 

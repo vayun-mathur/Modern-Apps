@@ -29,6 +29,7 @@ data class PausedApps(
     /** Packages currently paused by the user. */
     val pausedPackages: List<String> = emptyList(),
 ) {
+    /** Singleton row identifier for [PausedApps]. */
     companion object {
         /** There is one row. The table exists so Room can store it, not to hold many. */
         const val SINGLETON_ID = 0
@@ -57,6 +58,7 @@ data class WindDownSchedule(
     /** Whether to enter Do Not Disturb during wind-down. */
     val doNotDisturb: Boolean = true,
 ) {
+    /** Singleton identifier and day/default constants for [WindDownSchedule]. */
     companion object {
         /** There is one schedule. The table exists so Room can store it, not to hold many. */
         const val SINGLETON_ID = 0

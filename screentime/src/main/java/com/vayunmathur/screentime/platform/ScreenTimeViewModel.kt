@@ -75,6 +75,7 @@ data class AppDetailsUiState(
     val hasUsageAccess: Boolean = false,
 )
 
+/** ViewModel backing the screen-time dashboard and app-details state. */
 class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val rules = ScreenTimeRules.get(app)

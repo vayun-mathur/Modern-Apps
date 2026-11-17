@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 
 // No periodic refresh: content changes only when usage accrues, and the coordinator
 // pushes an update on every reconcile that matters (see WidgetRefresh).
+/** Glance widget receiver hosting the screen-time widget. */
 class ScreenTimeGlanceWidgetReceiver : MaWidgetReceiver<ScreenTimeGlanceWidget>(
     widgetClass = ScreenTimeGlanceWidget::class,
     receiverClass = ScreenTimeGlanceWidgetReceiver::class,

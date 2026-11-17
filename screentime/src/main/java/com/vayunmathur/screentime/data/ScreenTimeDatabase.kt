@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.map
 
 const val DB_NAME = "screentime-db"
 
+/** Room DAO for per-app daily timers. */
 @Dao
 interface AppTimerDao {
     @Query("SELECT * FROM AppTimer ORDER BY packageName")
@@ -33,6 +34,7 @@ interface AppTimerDao {
     suspend fun delete(timer: AppTimer)
 }
 
+/** Room DAO for the singleton paused-apps row. */
 @Dao
 interface PausedAppsDao {
     @Query("SELECT * FROM PausedApps WHERE id = :id")
@@ -45,6 +47,7 @@ interface PausedAppsDao {
     suspend fun upsert(paused: PausedApps)
 }
 
+/** Room DAO for the singleton wind-down schedule. */
 @Dao
 interface WindDownDao {
     @Query("SELECT * FROM WindDownSchedule WHERE id = :id")
@@ -63,6 +66,7 @@ interface WindDownDao {
     version = 2,
     exportSchema = false,
 )
+/** Room database holding app timers, paused apps and the wind-down schedule. */
 abstract class ScreenTimeDatabase : RoomDatabase() {
     abstract fun appTimerDao(): AppTimerDao
     abstract fun pausedAppsDao(): PausedAppsDao
@@ -116,6 +120,7 @@ class ScreenTimeRules private constructor(context: Context) :
 
     suspend fun setWindDown(schedule: WindDownSchedule) = windDown.upsert(schedule)
 
+    /** Process-wide singleton accessor for [ScreenTimeRules]. */
     companion object {
         @Volatile private var instance: ScreenTimeRules? = null
 
