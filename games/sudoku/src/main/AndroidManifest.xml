@@ -6,6 +6,8 @@
     <!-- Sensors permission at install instead of auto-granting it. -->
     <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <uses-permission android:name="com.vayunmathur.games.hub.permission.READ_GAME_DATA" />
     <uses-permission android:name="com.vayunmathur.games.hub.permission.WRITE_GAME_DATA" />
 
