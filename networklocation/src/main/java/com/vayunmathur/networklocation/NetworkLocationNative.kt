@@ -1,5 +1,7 @@
 package com.vayunmathur.networklocation
 
+// PACKAGE STRUCTURE EXCEPTION (JNI)
+
 /**
  * JNI bridge to the native `networklocation` Rust library: device-position
  * estimation from the beacon fixes (cell towers + WiFi APs) resolved against the

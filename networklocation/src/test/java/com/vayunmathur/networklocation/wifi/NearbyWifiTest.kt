@@ -4,13 +4,14 @@ import android.content.Context
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.networklocation.BeaconId
+import com.vayunmathur.networklocation.domain.BeaconId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import com.vayunmathur.networklocation.platform.NearbyWifi
 
 @RunWith(RobolectricTestRunner::class)
 class NearbyWifiTest {

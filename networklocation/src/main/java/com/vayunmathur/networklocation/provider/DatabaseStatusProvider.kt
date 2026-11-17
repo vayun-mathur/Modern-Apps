@@ -7,7 +7,7 @@ import android.database.MatrixCursor
 import android.net.Uri
 import android.os.Binder
 import android.os.Process
-import com.vayunmathur.networklocation.OfflineDatabases
+import com.vayunmathur.networklocation.platform.OfflineDatabases
 
 /**
  * Reports whether the offline databases have been downloaded, so Settings can label its

@@ -6,6 +6,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.networklocation.domain.BeaconKeys
+import com.vayunmathur.networklocation.domain.BeaconId
+import com.vayunmathur.networklocation.domain.RadioType
 
 /**
  * Pins the key packing against the store builder.

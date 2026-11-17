@@ -5,12 +5,12 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.SystemClock
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.networklocation.BeaconFix
-import com.vayunmathur.networklocation.BeaconId
-import com.vayunmathur.networklocation.DevicePosition
+import com.vayunmathur.networklocation.domain.BeaconFix
+import com.vayunmathur.networklocation.domain.BeaconId
+import com.vayunmathur.networklocation.domain.DevicePosition
 import com.vayunmathur.networklocation.NetworkLocationNative
-import com.vayunmathur.networklocation.cell.NearbyCells
-import com.vayunmathur.networklocation.wifi.NearbyWifi
+import com.vayunmathur.networklocation.telephony.NearbyCells
+import com.vayunmathur.networklocation.platform.NearbyWifi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

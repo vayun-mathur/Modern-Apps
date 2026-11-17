@@ -5,6 +5,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.networklocation.domain.BeaconId
+import com.vayunmathur.networklocation.domain.RadioType
+import com.vayunmathur.networklocation.domain.BeaconFix
+import com.vayunmathur.networklocation.domain.DevicePosition
 
 class PositioningDataTest {
 

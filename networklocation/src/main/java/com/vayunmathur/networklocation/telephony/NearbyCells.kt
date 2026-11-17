@@ -1,4 +1,4 @@
-package com.vayunmathur.networklocation.cell
+package com.vayunmathur.networklocation.telephony
 
 import android.telephony.CellIdentityGsm
 import android.telephony.CellIdentityLte
@@ -11,8 +11,8 @@ import android.telephony.CellInfoNr
 import android.telephony.CellInfoWcdma
 import android.telephony.TelephonyManager
 import android.content.Context
-import com.vayunmathur.networklocation.BeaconId
-import com.vayunmathur.networklocation.RadioType
+import com.vayunmathur.networklocation.domain.BeaconId
+import com.vayunmathur.networklocation.domain.RadioType
 
 /**
  * Reads nearby cell towers from [TelephonyManager]. Only towers with a full,
@@ -23,7 +23,13 @@ class NearbyCells(context: Context) {
         context.applicationContext.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
 
     fun scan(): List<BeaconId.Cell> {
-        val infos = runCatching { telephonyManager?.allCellInfo }.getOrNull() ?: return emptyList()
+        // allCellInfo needs ACCESS_FINE_LOCATION; without it the platform throws
+        // SecurityException, which here simply means "no cell beacons this scan".
+        val infos = try {
+            telephonyManager?.allCellInfo
+        } catch (e: SecurityException) {
+            null
+        } ?: return emptyList()
         return infos.mapNotNull { it.toCell() }.distinct()
     }
 

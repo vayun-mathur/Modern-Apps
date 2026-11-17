@@ -13,7 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.networklocation.OfflineDatabases
+import com.vayunmathur.networklocation.platform.OfflineDatabases
 import com.vayunmathur.networklocation.writeGeocoderDb
 import kotlin.test.Test
 import kotlin.test.assertTrue

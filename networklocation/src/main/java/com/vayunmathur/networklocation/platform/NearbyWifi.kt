@@ -1,9 +1,9 @@
-package com.vayunmathur.networklocation.wifi
+package com.vayunmathur.networklocation.platform
 
 import android.content.Context
 import android.net.wifi.WifiManager
-import com.vayunmathur.networklocation.BeaconId
-import com.vayunmathur.networklocation.BeaconKeys
+import com.vayunmathur.networklocation.domain.BeaconId
+import com.vayunmathur.networklocation.domain.BeaconKeys
 
 /**
  * Reads nearby WiFi access points from the platform's last scan. As a privileged
@@ -15,7 +15,13 @@ class NearbyWifi(context: Context) {
         context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
 
     fun scan(): List<BeaconId.Wifi> {
-        val results = runCatching { wifiManager?.scanResults }.getOrNull() ?: return emptyList()
+        // scanResults needs ACCESS_FINE_LOCATION; without it the platform throws
+        // SecurityException, which here simply means "no WiFi beacons this scan".
+        val results = try {
+            wifiManager?.scanResults
+        } catch (e: SecurityException) {
+            null
+        } ?: return emptyList()
         return results
             .mapNotNull { it.BSSID }
             .filter { it.isNotBlank() && it != NULL_BSSID && isFixedAp(it) }

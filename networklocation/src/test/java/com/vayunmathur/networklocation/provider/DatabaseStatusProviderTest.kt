@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Process
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.networklocation.OfflineDatabases
+import com.vayunmathur.networklocation.platform.OfflineDatabases
 import com.vayunmathur.networklocation.writeGeocoderDb
 import kotlin.test.Test
 import kotlin.test.assertEquals

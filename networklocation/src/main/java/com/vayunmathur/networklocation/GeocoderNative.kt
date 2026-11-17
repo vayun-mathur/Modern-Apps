@@ -1,5 +1,7 @@
 package com.vayunmathur.networklocation
 
+// PACKAGE STRUCTURE EXCEPTION (JNI)
+
 /**
  * JNI bridge to the native offline geocoder search in the `networklocation` Rust library
  * (see networklocation/src/main/rust/src/geocoder.rs). The database itself is generated

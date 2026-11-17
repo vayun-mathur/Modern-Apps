@@ -2,10 +2,10 @@ package com.vayunmathur.networklocation.provider
 
 import android.content.Context
 import android.os.ParcelFileDescriptor
-import com.vayunmathur.networklocation.BeaconFix
-import com.vayunmathur.networklocation.BeaconId
-import com.vayunmathur.networklocation.BeaconKeys
-import com.vayunmathur.networklocation.OfflineDatabases
+import com.vayunmathur.networklocation.domain.BeaconFix
+import com.vayunmathur.networklocation.domain.BeaconId
+import com.vayunmathur.networklocation.domain.BeaconKeys
+import com.vayunmathur.networklocation.platform.OfflineDatabases
 import com.vayunmathur.networklocation.WpsStoreNative
 
 /**

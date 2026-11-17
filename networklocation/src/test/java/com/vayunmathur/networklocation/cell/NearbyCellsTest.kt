@@ -3,8 +3,8 @@ package com.vayunmathur.networklocation.cell
 import android.content.Context
 import android.telephony.TelephonyManager
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.networklocation.BeaconId
-import com.vayunmathur.networklocation.RadioType
+import com.vayunmathur.networklocation.domain.BeaconId
+import com.vayunmathur.networklocation.domain.RadioType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -19,6 +19,7 @@ import org.robolectric.shadows.CellInfoGsmBuilder
 import org.robolectric.shadows.CellInfoLteBuilder
 import org.robolectric.shadows.CellInfoNrBuilder
 import org.robolectric.shadows.CellInfoWcdmaBuilder
+import com.vayunmathur.networklocation.telephony.NearbyCells
 
 @RunWith(RobolectricTestRunner::class)
 class NearbyCellsTest {

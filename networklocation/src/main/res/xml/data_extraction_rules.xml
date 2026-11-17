@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Location is a preinstalled system provider with allowBackup=false: its only
+  on-disk state is the multi-gigabyte offline beacon/geocoder databases, which are
+  downloaded caches of published artifacts (see OfflineDatabases) plus DataStore
+  preferences. Nothing here is user data, so cloud backup and device transfer are
+  denied outright, matching the historic allowBackup=false behaviour on Android 12+.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </device-transfer>
+</data-extraction-rules>

@@ -11,6 +11,8 @@ import kotlin.test.assertNull
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
+import com.vayunmathur.networklocation.platform.OfflineDatabases
+import com.vayunmathur.networklocation.service.NetworkLocationService
 
 @RunWith(AndroidJUnit4::class)
 class ServicesAndNavigationTest {

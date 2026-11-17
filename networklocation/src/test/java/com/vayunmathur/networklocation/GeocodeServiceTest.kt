@@ -13,6 +13,8 @@ import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.networklocation.platform.OfflineDatabases
+import com.vayunmathur.networklocation.service.GeocodeService
 
 @RunWith(RobolectricTestRunner::class)
 class GeocodeServiceTest {

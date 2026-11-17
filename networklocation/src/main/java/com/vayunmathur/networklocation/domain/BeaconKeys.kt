@@ -1,4 +1,4 @@
-package com.vayunmathur.networklocation
+package com.vayunmathur.networklocation.domain
 
 /**
  * Packing of beacon identities into the 128-bit keys the offline WPSDB stores are indexed by.

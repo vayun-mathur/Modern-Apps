@@ -11,6 +11,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.networklocation.platform.OfflineDatabases
 
 @RunWith(RobolectricTestRunner::class)
 class OfflineDatabasesTest {

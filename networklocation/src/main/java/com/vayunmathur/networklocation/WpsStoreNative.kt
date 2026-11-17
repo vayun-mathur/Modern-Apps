@@ -1,5 +1,7 @@
 package com.vayunmathur.networklocation
 
+// PACKAGE STRUCTURE EXCEPTION (JNI)
+
 /**
  * JNI bridge to the native offline WPSDB reader in the `networklocation` Rust library
  * (see networklocation/src/main/rust/src/wpsdb.rs). It answers exact key → coordinate

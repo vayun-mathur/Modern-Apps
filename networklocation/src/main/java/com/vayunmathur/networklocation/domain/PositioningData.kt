@@ -1,4 +1,4 @@
-package com.vayunmathur.networklocation
+package com.vayunmathur.networklocation.domain
 
 /**
  * Plain domain types shared across the network-location pipeline (scan → offline

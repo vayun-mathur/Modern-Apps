@@ -1,4 +1,4 @@
-package com.vayunmathur.networklocation
+package com.vayunmathur.networklocation.platform
 
 import android.content.Context
 import android.os.ParcelFileDescriptor

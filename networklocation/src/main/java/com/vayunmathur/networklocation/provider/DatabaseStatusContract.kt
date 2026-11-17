@@ -1,6 +1,7 @@
 package com.vayunmathur.networklocation.provider
 
 import android.net.Uri
+import androidx.core.net.toUri
 
 /**
  * Wire format of [DatabaseStatusProvider], so the provider and its callers agree on one
@@ -15,7 +16,7 @@ object DatabaseStatusContract {
     const val AUTHORITY = "com.vayunmathur.networklocation.status"
 
     /** Single-row table describing whether the offline databases are on disk. */
-    val DATABASES: Uri = Uri.parse("content://$AUTHORITY/databases")
+    val DATABASES: Uri = "content://$AUTHORITY/databases".toUri()
 
     /** 1 when every offline database is present, 0 otherwise. */
     const val COLUMN_ALL_PRESENT = "all_present"

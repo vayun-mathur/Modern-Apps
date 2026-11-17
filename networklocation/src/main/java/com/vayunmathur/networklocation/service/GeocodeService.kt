@@ -1,4 +1,4 @@
-package com.vayunmathur.networklocation
+package com.vayunmathur.networklocation.service
 
 import android.app.Service
 import android.content.Intent
@@ -8,6 +8,8 @@ import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import com.android.location.provider.GeocodeProvider
 import java.util.Locale
+import com.vayunmathur.networklocation.GeocoderNative
+import com.vayunmathur.networklocation.platform.OfflineDatabases
 
 /**
  * System geocoder backed entirely by the offline planet DB — no network. Bound by the

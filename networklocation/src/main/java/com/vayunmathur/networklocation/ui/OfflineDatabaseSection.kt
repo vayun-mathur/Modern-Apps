@@ -1,4 +1,4 @@
-package com.vayunmathur.networklocation
+package com.vayunmathur.networklocation.ui
 
 import android.content.Context
 import androidx.compose.foundation.layout.Column
@@ -21,6 +21,7 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.networklocation.platform.OfflineDatabases
 
 /**
  * Offline-database section of the provider's status screen: what is on disk, and a control to

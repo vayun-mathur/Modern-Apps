@@ -1,4 +1,4 @@
-package com.vayunmathur.networklocation
+package com.vayunmathur.networklocation.service
 
 import android.app.Service
 import android.content.Intent

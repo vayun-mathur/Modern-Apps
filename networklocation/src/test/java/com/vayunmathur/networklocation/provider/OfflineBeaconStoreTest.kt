@@ -2,10 +2,10 @@ package com.vayunmathur.networklocation.provider
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.networklocation.BeaconId
-import com.vayunmathur.networklocation.BeaconKeys
-import com.vayunmathur.networklocation.OfflineDatabases
-import com.vayunmathur.networklocation.RadioType
+import com.vayunmathur.networklocation.domain.BeaconId
+import com.vayunmathur.networklocation.domain.BeaconKeys
+import com.vayunmathur.networklocation.platform.OfflineDatabases
+import com.vayunmathur.networklocation.domain.RadioType
 import com.vayunmathur.networklocation.WpsRec
 import com.vayunmathur.networklocation.writeWpsStore
 import kotlin.test.Test
