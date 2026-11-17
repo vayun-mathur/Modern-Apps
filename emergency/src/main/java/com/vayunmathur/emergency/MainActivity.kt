@@ -57,6 +57,7 @@ class MainActivity : MaActivity() {
         viewModel.refresh()
     }
 
+    /** System intent actions that open emergency or medical info editing. */
     companion object {
         const val ACTION_EDIT_EMERGENCY_INFO = "android.settings.EDIT_EMERGENCY_INFO"
         const val ACTION_EDIT_MEDICAL_INFO = "android.emergency.EDIT_MEDICAL_INFO"
