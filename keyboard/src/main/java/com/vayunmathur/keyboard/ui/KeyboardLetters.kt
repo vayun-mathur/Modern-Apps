@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
-import com.vayunmathur.keyboard.ime.ImeActions
-import com.vayunmathur.keyboard.ime.KeyboardState
-import com.vayunmathur.keyboard.util.KeyboardLayout
-import com.vayunmathur.keyboard.util.Layouts
-import com.vayunmathur.keyboard.util.ShiftState
+import com.vayunmathur.keyboard.platform.ime.ImeActions
+import com.vayunmathur.keyboard.platform.ime.KeyboardState
+import com.vayunmathur.keyboard.domain.KeyboardLayout
+import com.vayunmathur.keyboard.domain.Layouts
+import com.vayunmathur.keyboard.domain.ShiftState
 import com.vayunmathur.library.ui.IconBackspace
 
 /**
@@ -43,13 +43,13 @@ internal fun LettersPage(state: KeyboardState, actions: ImeActions, keyHeight: D
     LetterRows(state, layout, actions, keyHeight, topRowDigits)
     // Email/URL fields surface @ or / where the comma usually sits.
     val commaChar = when (state.textVariation) {
-        com.vayunmathur.keyboard.ime.TextVariation.EMAIL -> "@"
-        com.vayunmathur.keyboard.ime.TextVariation.URL -> "/"
+        com.vayunmathur.keyboard.platform.ime.TextVariation.EMAIL -> "@"
+        com.vayunmathur.keyboard.platform.ime.TextVariation.URL -> "/"
         else -> layout.comma
     }
     BottomRow(
         state, actions, keyHeight,
-        leftLabel = "?123", leftTarget = com.vayunmathur.keyboard.util.KeyboardPage.SYMBOLS,
+        leftLabel = "?123", leftTarget = com.vayunmathur.keyboard.domain.KeyboardPage.SYMBOLS,
         commaChar = commaChar, periodChar = layout.period,
     )
 }

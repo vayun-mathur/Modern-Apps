@@ -8,12 +8,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
-import com.vayunmathur.keyboard.ime.EnterAction
-import com.vayunmathur.keyboard.ime.ImeActions
-import com.vayunmathur.keyboard.ime.KeyboardState
-import com.vayunmathur.keyboard.util.KeyboardPage
-import com.vayunmathur.keyboard.util.KeyboardSettings
-import com.vayunmathur.keyboard.util.ShiftState
+import com.vayunmathur.keyboard.platform.ime.EnterAction
+import com.vayunmathur.keyboard.platform.ime.ImeActions
+import com.vayunmathur.keyboard.platform.ime.KeyboardState
+import com.vayunmathur.keyboard.domain.KeyboardPage
+import com.vayunmathur.keyboard.data.KeyboardSettings
+import com.vayunmathur.keyboard.domain.ShiftState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.DynamicTheme
 

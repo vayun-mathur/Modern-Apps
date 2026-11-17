@@ -9,7 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.keyboard.util.ShiftState
+import com.vayunmathur.keyboard.domain.ShiftState
 import com.vayunmathur.library.ui.Text
 import org.junit.Rule
 import org.junit.runner.RunWith

@@ -78,30 +78,3 @@ fun EmojiSearchBar(height: Dp, query: String, onClose: () -> Unit) {
         }
     }
 }
-
-/** The matches for the current query, scrolling sideways. Tapping one commits it. */
-@Composable
-fun EmojiSearchResults(height: Dp, results: List<String>, onPick: (String) -> Unit) {
-    val tick = rememberKeyHapticTick()
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        items(results) { emoji ->
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .clickable {
-                        tick()
-                        onPick(emoji)
-                    }
-                    .padding(horizontal = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(text = emoji, fontSize = 26.sp)
-            }
-        }
-    }
-}

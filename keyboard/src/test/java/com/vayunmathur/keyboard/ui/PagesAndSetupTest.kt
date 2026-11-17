@@ -21,10 +21,10 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.keyboard.util.ClipItem
-import com.vayunmathur.keyboard.util.EmojiCategory
-import com.vayunmathur.keyboard.util.EmojiData
-import com.vayunmathur.keyboard.util.EmojiEntry
+import com.vayunmathur.keyboard.data.ClipItem
+import com.vayunmathur.keyboard.data.EmojiCategory
+import com.vayunmathur.keyboard.data.EmojiData
+import com.vayunmathur.keyboard.data.EmojiEntry
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -200,8 +200,8 @@ class PagesAndSetupTest {
     @Test
     fun `enter action icon renders for every action`() {
         val idx = androidx.compose.runtime.mutableIntStateOf(0)
-        rule.setContent { EnterActionIcon(com.vayunmathur.keyboard.ime.EnterAction.entries[idx.intValue]) }
-        for (i in com.vayunmathur.keyboard.ime.EnterAction.entries.indices) {
+        rule.setContent { EnterActionIcon(com.vayunmathur.keyboard.platform.ime.EnterAction.entries[idx.intValue]) }
+        for (i in com.vayunmathur.keyboard.platform.ime.EnterAction.entries.indices) {
             rule.runOnIdle { idx.intValue = i }
             rule.waitForIdle()
         }

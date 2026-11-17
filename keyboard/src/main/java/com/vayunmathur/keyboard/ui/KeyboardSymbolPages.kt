@@ -9,11 +9,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.keyboard.R
-import com.vayunmathur.keyboard.ime.ImeActions
-import com.vayunmathur.keyboard.ime.KeyboardState
-import com.vayunmathur.keyboard.ime.NumericMode
-import com.vayunmathur.keyboard.util.KeyboardPage
-import com.vayunmathur.keyboard.util.Layouts
+import com.vayunmathur.keyboard.platform.ime.ImeActions
+import com.vayunmathur.keyboard.platform.ime.KeyboardState
+import com.vayunmathur.keyboard.platform.ime.NumericMode
+import com.vayunmathur.keyboard.domain.KeyboardPage
+import com.vayunmathur.keyboard.domain.Layouts
 import com.vayunmathur.library.ui.IconBackspace
 import com.vayunmathur.library.ui.IconSpaceBar
 import com.vayunmathur.library.ui.Text

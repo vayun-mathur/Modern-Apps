@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.keyboard.R
-import com.vayunmathur.keyboard.ime.VoiceState
+import com.vayunmathur.keyboard.platform.ime.VoiceState
 import com.vayunmathur.keyboard.platform.VoiceFailure
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconMic

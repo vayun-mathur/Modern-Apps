@@ -23,10 +23,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vayunmathur.keyboard.ime.ImeActions
-import com.vayunmathur.keyboard.ime.KeyboardState
-import com.vayunmathur.keyboard.util.KeyboardPage
-import com.vayunmathur.keyboard.util.Layouts
+import com.vayunmathur.keyboard.platform.ime.ImeActions
+import com.vayunmathur.keyboard.platform.ime.KeyboardState
+import com.vayunmathur.keyboard.domain.KeyboardPage
+import com.vayunmathur.keyboard.domain.Layouts
 import com.vayunmathur.library.ui.IconPaste
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface

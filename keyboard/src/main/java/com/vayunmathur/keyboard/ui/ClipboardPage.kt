@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.keyboard.R
-import com.vayunmathur.keyboard.util.ClipItem
+import com.vayunmathur.keyboard.data.ClipItem
 import com.vayunmathur.library.ui.IconBackspace
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconHistory

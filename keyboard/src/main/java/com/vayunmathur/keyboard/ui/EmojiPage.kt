@@ -23,9 +23,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.keyboard.R
-import com.vayunmathur.keyboard.util.EmojiCategory
-import com.vayunmathur.keyboard.util.EmojiData
-import com.vayunmathur.keyboard.util.RecentEmoji
+import com.vayunmathur.keyboard.data.EmojiCategory
+import com.vayunmathur.keyboard.data.EmojiData
+import com.vayunmathur.keyboard.data.RecentEmoji
 import com.vayunmathur.library.ui.IconBackspace
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.MaterialTheme

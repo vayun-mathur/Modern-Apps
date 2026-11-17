@@ -7,17 +7,17 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
-import com.vayunmathur.keyboard.ime.EnterAction
-import com.vayunmathur.keyboard.ime.ImeActions
-import com.vayunmathur.keyboard.ime.KeyboardState
-import com.vayunmathur.keyboard.ime.NumericMode
-import com.vayunmathur.keyboard.ime.TextVariation
-import com.vayunmathur.keyboard.ime.VoiceState
+import com.vayunmathur.keyboard.platform.ime.EnterAction
+import com.vayunmathur.keyboard.platform.ime.ImeActions
+import com.vayunmathur.keyboard.platform.ime.KeyboardState
+import com.vayunmathur.keyboard.platform.ime.NumericMode
+import com.vayunmathur.keyboard.platform.ime.TextVariation
+import com.vayunmathur.keyboard.platform.ime.VoiceState
 import com.vayunmathur.keyboard.platform.VoiceFailure
-import com.vayunmathur.keyboard.util.ClipItem
-import com.vayunmathur.keyboard.util.EmojiData
-import com.vayunmathur.keyboard.util.KeyboardPage
-import com.vayunmathur.keyboard.util.ShiftState
+import com.vayunmathur.keyboard.data.ClipItem
+import com.vayunmathur.keyboard.data.EmojiData
+import com.vayunmathur.keyboard.domain.KeyboardPage
+import com.vayunmathur.keyboard.domain.ShiftState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -138,7 +138,7 @@ class KeyboardScreenTest {
     @Test
     fun `four row layout replaces digit row`() {
         val actions = RecordingActions()
-        val fourRow = com.vayunmathur.keyboard.util.KeyboardLayouts.ALL.firstOrNull { it.rows.size >= 4 }
+        val fourRow = com.vayunmathur.keyboard.domain.KeyboardLayouts.ALL.firstOrNull { it.rows.size >= 4 }
         if (fourRow != null) {
             rule.setContent {
                 KeyboardScreen(state { settings = settings.copy(activeLayoutId = fourRow.id) }, actions)
@@ -219,7 +219,7 @@ class KeyboardScreenTest {
         rule.onNodeWithText("hello").performClick()
         assertEquals(listOf("hello"), actions.suggestions)
 
-        val pinyin = com.vayunmathur.keyboard.util.KeyboardLayouts.ALL
+        val pinyin = com.vayunmathur.keyboard.domain.KeyboardLayouts.ALL
             .first { it.offersCandidates }
         rule.runOnIdle {
             st.settings = st.settings.copy(activeLayoutId = pinyin.id)

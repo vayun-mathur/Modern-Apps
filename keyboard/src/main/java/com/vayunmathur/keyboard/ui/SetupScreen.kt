@@ -26,9 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.vayunmathur.keyboard.util.KeyboardLayouts
-import com.vayunmathur.keyboard.util.KeyboardSettings
-import com.vayunmathur.keyboard.ime.KeyboardService
+import com.vayunmathur.keyboard.domain.KeyboardLayouts
+import com.vayunmathur.keyboard.data.KeyboardSettings
+import com.vayunmathur.keyboard.platform.ime.KeyboardService
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.SettingsSwitchRow

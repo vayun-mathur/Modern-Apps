@@ -31,8 +31,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.keyboard.R
-import com.vayunmathur.keyboard.util.ClipItem
-import com.vayunmathur.keyboard.util.ClipboardStore
+import com.vayunmathur.keyboard.data.ClipItem
+import com.vayunmathur.keyboard.data.ClipboardStore
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconPaste
 import com.vayunmathur.library.ui.IconVisibilityOff
@@ -43,7 +43,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Longest side, in pixels, that a cached clipboard image is decoded down to for previews. */
-private const val THUMBNAIL_PX = 256
+internal const val THUMBNAIL_PX = 256
 
 /**
  * The chip that appears in the strip right after a copy: tap the icon to open the full
@@ -117,77 +117,4 @@ fun ClipboardStrip(
             )
         }
     }
-}
-
-/**
- * A clip rendered as one line of text or a thumbnail. Sensitive text is blurred until the
- * eye is tapped; the reveal is local to this composable and resets whenever it leaves the
- * screen, so nothing stays unblurred behind the user's back.
- */
-@Composable
-fun ClipPreview(
-    item: ClipItem,
-    modifier: Modifier = Modifier,
-    fontSize: TextUnit = 14.sp,
-) {
-    var revealed by remember(item.id) { mutableStateOf(false) }
-    val thumbnail = rememberClipThumbnail(item)
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        val hidden = item.sensitive && !revealed
-        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            when {
-                thumbnail != null -> Image(
-                    bitmap = thumbnail,
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    alignment = Alignment.CenterStart,
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .then(if (hidden) Modifier.blur(10.dp) else Modifier),
-                )
-                item.isImage -> Text(
-                    text = stringResource(R.string.image),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = fontSize,
-                )
-                else -> Text(
-                    text = item.preview,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = fontSize,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    // RenderEffect-backed blur, which needs API 31 — the module's minSdk.
-                    modifier = if (hidden) Modifier.blur(8.dp) else Modifier,
-                )
-            }
-        }
-        if (item.sensitive) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { revealed = !revealed }
-                    .padding(horizontal = 6.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                val tint = MaterialTheme.colorScheme.onSurfaceVariant
-                if (revealed) {
-                    IconVisibilityOff(modifier = Modifier.size(18.dp), tint = tint)
-                } else {
-                    IconVisible(modifier = Modifier.size(18.dp), tint = tint)
-                }
-            }
-        }
-    }
-}
-
-/** Decode an image clip's thumbnail off the main thread, once per clip. */
-@Composable
-private fun rememberClipThumbnail(item: ClipItem): ImageBitmap? {
-    val file = item.imageFile ?: return null
-    return produceState<ImageBitmap?>(initialValue = null, key1 = item.id) {
-        value = withContext(Dispatchers.IO) {
-            ClipboardStore.decodeThumbnail(file, THUMBNAIL_PX)?.asImageBitmap()
-        }
-    }.value
 }
