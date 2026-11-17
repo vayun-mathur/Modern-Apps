@@ -101,16 +101,22 @@ class GapPush4Test {
         fake.pendingFiles.value = listOf(PendingFile(pngFile.name, pngFile.length(), "image/png"))
         fake.expectedTotalBytes.value = pngFile.length()
         val incoming = MutableStateFlow<List<com.vayunmathur.share.platform.IncomingTransfer>>(listOf(fake))
-        val retired = mutableListOf<Long>()
+        val retired = java.util.Collections.synchronizedList(mutableListOf<Long>())
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val notifier = ShareReceiveNotifier(app, incoming, retire = { retired += it })
         try {
             notifier.start(scope)
-            delay(300)
             fake.receivedFiles.value = listOf(ReceivedFile(pngFile.name, pngFile.length(), "image/png", Uri.fromFile(pngFile)))
             fake.state.value = ShareState.Completed
-            delay(800)
-            assertTrue(retired.contains(31337L))
+            // Poll for the retire instead of a fixed delay: the notifier
+            // collects on Dispatchers.Default, and 800ms is a bet on CI load.
+            val deadline = System.currentTimeMillis() + 15_000
+            var retiredDone = retired.contains(31337L)
+            while (!retiredDone && System.currentTimeMillis() < deadline) {
+                delay(25)
+                retiredDone = retired.contains(31337L)
+            }
+            assertTrue(retiredDone)
         } finally { notifier.stop(); scope.cancel() }
     }
 

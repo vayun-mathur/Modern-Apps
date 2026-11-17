@@ -40,27 +40,39 @@ class ShareReceiveNotifierTest {
         override val error = MutableStateFlow<String?>(null)
     }
 
+    /** Polls [cond] in real time: the notifier collects on Dispatchers.Default, so a fixed delay is a bet on CI load, not a wait for the outcome. */
+    private suspend fun awaitShareCondition(cond: () -> Boolean): Boolean {
+        val deadline = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < deadline) {
+            if (cond()) return true
+            delay(25)
+        }
+        return cond()
+    }
+
     @Test
     fun `notifier posts request then done and retires`() = runBlocking {
         val fake = FakeTransfer(12345L)
         fake.pendingFiles.value = listOf(PendingFile("a.txt", 100, "text/plain"))
         fake.expectedTotalBytes.value = 100
         val incoming = MutableStateFlow<List<IncomingTransfer>>(listOf(fake))
-        val retired = mutableListOf<Long>()
+        val retired = java.util.Collections.synchronizedList(mutableListOf<Long>())
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val notifier = ShareReceiveNotifier(ctx, incoming, retire = { retired += it })
         try {
             notifier.start(scope)
-            delay(200)
             fake.state.value = ShareState.AwaitingAccept
-            delay(400)
             val nm = ctx.getSystemService<NotificationManager>()!!
-            val active = Shadows.shadowOf(nm).allNotifications
-            assertTrue("expected a posted notification, got ${active.size}", active.isNotEmpty())
+            assertTrue(
+                "expected a posted notification",
+                awaitShareCondition { Shadows.shadowOf(nm).allNotifications.isNotEmpty() },
+            )
             fake.state.value = ShareState.Completed
             fake.receivedFiles.value = listOf(ReceivedFile("a.txt", 100, "text/plain", Uri.parse("content://x/a")))
-            delay(500)
-            assertTrue("retire should be called for terminal state, retired=$retired", retired.contains(12345L))
+            assertTrue(
+                "retire should be called for terminal state, retired=$retired",
+                awaitShareCondition { retired.contains(12345L) },
+            )
         } finally {
             notifier.stop(); scope.cancel()
         }
@@ -78,15 +90,13 @@ class ShareReceiveNotifierTest {
         val fake = FakeTransfer(777L)
         fake.error.value = "handshake broke"
         val incoming = MutableStateFlow<List<IncomingTransfer>>(listOf(fake))
-        val retired = mutableListOf<Long>()
+        val retired = java.util.Collections.synchronizedList(mutableListOf<Long>())
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val notifier = ShareReceiveNotifier(ctx, incoming, retire = { retired += it })
         try {
             notifier.start(scope)
-            delay(200)
             fake.state.value = ShareState.Failed
-            delay(500)
-            assertTrue(retired.contains(777L))
+            assertTrue(awaitShareCondition { retired.contains(777L) })
         } finally { notifier.stop(); scope.cancel() }
     }
 }
