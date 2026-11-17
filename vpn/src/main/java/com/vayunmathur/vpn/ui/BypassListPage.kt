@@ -14,6 +14,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
@@ -79,7 +80,7 @@ fun BypassListPage(backStack: NavBackStack<Route>) {
             }
             item {
                 Text(
-                    stringResource(R.string.bypass_selected_count, bypassed.size),
+                    pluralStringResource(R.plurals.bypass_selected_count, bypassed.size, bypassed.size),
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

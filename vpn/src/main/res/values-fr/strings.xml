@@ -25,7 +25,11 @@
     <string name="bypass_list_title">Applications qui contournent le VPN</string>
     <string name="publickey">Clé publique : %1$s</string>
     <string name="need_activity_to_grant_vpn_permission">Une activité est nécessaire pour accorder l’autorisation VPN</string>
-    <string name="bypass_selected_count">Applications contournant le VPN : <xliff:g id="count" example="3">%1$d</xliff:g></string>
+    <plurals name="bypass_selected_count">
+        <item quantity="other">Applications contournant le VPN : <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="many">Applications contournant le VPN : <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="one">Applications contournant le VPN : <xliff:g id="count" example="3">%1$d</xliff:g></item>
+    </plurals>
     <string name="vpn_wireguard_gotatun">VPN — WireGuard (gotatun)</string>
     <string name="no_tunnels_yet">Aucun tunnel pour le moment</string>
     <string name="always_on_vpn">VPN permanent</string>

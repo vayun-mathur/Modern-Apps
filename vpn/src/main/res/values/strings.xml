@@ -19,7 +19,10 @@
     <!-- BypassListPage: Shown while the installed-app list is being loaded. Sentence fragment -->
     <string name="bypass_loading_apps">Loading apps…</string>
     <!-- BypassListPage: Count of currently bypassed apps. %1$d = number of apps, e.g. 3 -->
-    <string name="bypass_selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> bypassing the VPN</string>
+    <plurals name="bypass_selected_count">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> bypassing the VPN</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> bypassing the VPN</item>
+    </plurals>
     <string name="delete_all_logs">Delete all logs?</string>
     <string name="this_will_permanently_remove_all_connect">This will permanently remove all connection logs and cannot be undone.</string>
     <string name="address">Address: %1$s</string>

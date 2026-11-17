@@ -13,7 +13,9 @@
     <string name="bypass_list_title">绕过 VPN 的应用</string>
     <string name="bypass_lockdown_warning">如果在 Android 的 VPN 设置中启用了“屏蔽未使用 VPN 的所有连接”，这些应用将完全无法访问互联网，而非使用您的常规连接。请将其关闭以使绕过功能生效。</string>
     <string name="bypass_loading_apps">正在加载应用…</string>
-    <string name="bypass_selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> 个应用绕过 VPN</string>
+    <plurals name="bypass_selected_count">
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> 个应用绕过 VPN</item>
+    </plurals>
     <string name="delete_all_logs">删除所有日志？</string>
     <string name="this_will_permanently_remove_all_connect">这将永久移除所有连接日志，且无法撤销。</string>
     <string name="address">地址：%1$s</string>

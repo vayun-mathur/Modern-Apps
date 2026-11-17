@@ -26,7 +26,10 @@
     <string name="delete_all_logs">Kas kustutad kõik logid?</string>
     <string name="this_will_permanently_remove_all_connect">Järgnevaga kustuvad kõik ühenduste logid ja seda tegevust ei saa tagasi pöörata.</string>
     <string name="tunnel">Tunnel - %1$s</string>
-    <string name="bypass_selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> rakendust võivad VPN-ist mööda minna</string>
+    <plurals name="bypass_selected_count">
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> rakendust võivad VPN-ist mööda minna</item>
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> rakendust võivad VPN-ist mööda minna</item>
+    </plurals>
     <string name="bypass_lockdown_warning">Kui Androidi VPN-seadistustes on sisse lülitatud valik „Blokeeri ühendused ilma VPN-ita“, ei saa need rakendused üldse internetiühendust kasutada. Kui tahad, et ümbersuunamine toimiks, lülita see välja.</string>
     <string name="need_activity_to_grant_vpn_permission">VPN-i õiguste lubamiseks vajad tegevust</string>
     <string name="imported_from_wireguard_conf_using_gotat">Imporditud WireGuardi .conf-failist gotatuni abil (mullvad/gotatun), kasutusel on Noise IK / X25519 + ChaCha20Poly1305. Uuendamiseks impordi uus .conf-fail.</string>

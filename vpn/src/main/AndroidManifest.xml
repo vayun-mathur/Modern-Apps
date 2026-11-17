@@ -12,7 +12,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- The bypass list enumerates every installed app (BypassHelpers.getInstalledApplications):
+         the set of packages is "all of them", so a <queries> declaration cannot express it. -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <application
         android:allowBackup="true"
@@ -39,11 +43,16 @@
             </intent-filter>
         </activity>
 
+        <!-- systemExempted is the FGS type for preinstalled system apps; this VPN ships in
+             /system/priv-app and holds FOREGROUND_SERVICE_SYSTEM_EXEMPTED above. The exact-alarm
+             permissions lint pairs with this type gate user-facing exact-alarm features, which
+             a tunnel service does not have. -->
         <service
             android:name=".service.VpnTunnelService"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:exported="true"
-            android:foregroundServiceType="systemExempted">
+            android:foregroundServiceType="systemExempted"
+            tools:ignore="ForegroundServicePermission">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>

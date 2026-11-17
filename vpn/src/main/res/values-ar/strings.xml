@@ -12,7 +12,14 @@
     <string name="bypass_list_title">التطبيقات التي تتجاوز الـ VPN</string>
     <string name="bypass_lockdown_warning">إذا ”حظر الاتصالات بدون VPN“ مفعلاً على إعدادات VPN في Android، فلن تحصل هذه التطبيقات على اتصال بالإنترنت على الإطلاق بدلاً من استخدام اتصالك العادي. قم بإيقاف تشغيله لكي يعمل التجاوز.</string>
     <string name="bypass_loading_apps">جارٍ تحميل التطبيقات…</string>
-    <string name="bypass_selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> يتجاوز الـ VPN</string>
+    <plurals name="bypass_selected_count">
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> يتجاوز الـ VPN</item>
+        <item quantity="zero"><xliff:g id="count" example="3">%1$d</xliff:g> يتجاوز الـ VPN</item>
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> يتجاوز الـ VPN</item>
+        <item quantity="two"><xliff:g id="count" example="3">%1$d</xliff:g> يتجاوز الـ VPN</item>
+        <item quantity="few"><xliff:g id="count" example="3">%1$d</xliff:g> يتجاوز الـ VPN</item>
+        <item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> يتجاوز الـ VPN</item>
+    </plurals>
     <string name="delete_all_logs">حذف كل السجلات؟</string>
     <string name="this_will_permanently_remove_all_connect">سيؤدي هذا إلى إزالة جميع سجلات الاتصال نهائيًا ولا يمكن التراجع عن ذلك.</string>
     <string name="address">العنوان: %1$s</string>

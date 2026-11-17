@@ -13,7 +13,10 @@
     <string name="bypass_list_title">Appar som kringgår VPN</string>
     <string name="bypass_lockdown_warning">Om ”Blockera anslutningar utan VPN” är aktiverat i Androids VPN-inställningar får dessa appar ingen internetåtkomst alls i stället för att använda din vanliga anslutning. Stäng av det för att undantag ska fungera.</string>
     <string name="bypass_loading_apps">Läser in appar …</string>
-    <string name="bypass_selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> kringgår VPN</string>
+    <plurals name="bypass_selected_count">
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> kringgår VPN</item>
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> kringgår VPN</item>
+    </plurals>
     <string name="delete_all_logs">Ta bort alla loggar?</string>
     <string name="this_will_permanently_remove_all_connect">Detta tar permanent bort alla anslutningsloggar och kan inte ångras.</string>
     <string name="address">Adress: %1$s</string>
