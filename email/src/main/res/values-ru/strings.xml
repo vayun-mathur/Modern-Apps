@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</string>
+    <plurals name="selected_count"><item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</item><item quantity="few"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</item><item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</item><item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</item></plurals>
     <string name="all">Все</string>
     <string name="right">Справа</string>
     <string name="justify">Обосновать</string>

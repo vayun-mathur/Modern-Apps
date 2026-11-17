@@ -7,7 +7,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.vayunmathur.email.Route
-import com.vayunmathur.email.addAccountEntries
+import com.vayunmathur.email.platform.addAccountEntries
 import com.vayunmathur.email.data.PROVIDER_GMAIL
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack

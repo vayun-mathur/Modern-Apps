@@ -4,7 +4,7 @@
     <string name="all_accounts">Kõik kasutajakontod</string>
     <string name="add_account">Lisa kasutajakonto</string>
     <string name="logout_current_account">Logi praegusest kasutajakontost välja</string>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> on valitud</string>
+    <plurals name="selected_count"><item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> on valitud</item><item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> on valitud</item></plurals>
     <string name="reply">Vasta</string>
     <string name="forward">Edasta</string>
     <string name="compose">Koosta kiri</string>
@@ -105,7 +105,6 @@
         <item quantity="one"><xliff:g id="count" example="1">%1$s</xliff:g> katse</item>
         <item quantity="other"><xliff:g id="count" example="2">%1$s</xliff:g> katset</item>
     </plurals>
-    <string name="unified_inbox">Ühine sisendpostkast</string>
     <string name="saved_to_outbox">Salvestatud saadetavate kirjade postkasti: <xliff:g id="reason" example="Võrguühendus puudub">%1$s</xliff:g></string>
     <string name="added"><xliff:g id="email" example="kadri@toredomeen.ee">%1$s</xliff:g> konto on lisatud</string>
     <string name="total_attachment_size_exceeds_25_mb_many">Manuste kogumaht on üle 25 MB ja paljud teenusepakkujad selliseid kirju ei edasta.</string>

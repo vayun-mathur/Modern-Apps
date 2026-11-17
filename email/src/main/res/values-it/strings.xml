@@ -4,7 +4,7 @@
     <string name="all_accounts">Tutti gli account</string>
     <string name="add_account">Aggiungi account</string>
     <string name="logout_current_account">Disconnetti account attuale</string>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> selezionati</string>
+    <plurals name="selected_count"><item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> selezionati</item><item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> selezionati</item><item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> selezionati</item></plurals>
     <string name="reply">Rispondi</string>
     <string name="forward">Inoltra</string>
     <string name="compose">Scrivi</string>
@@ -70,7 +70,6 @@
     <string name="bcc">Bcc</string>
     <string name="attachments_1">Allegati (<xliff:g id="size" example="2.3 MB">%1$s</xliff:g>)</string>
     <string name="attachments_2">Allegati:</string>
-    <string name="unified_inbox">Posta unificata</string>
     <string name="saved_to_downloads">Salvato nei Download</string>
     <string name="saved_to_outbox">Salvato in In uscita: <xliff:g id="reason" example="No network">%1$s</xliff:g></string>
     <string name="generating_summary">Generazione riepilogo…</string>
@@ -97,6 +96,8 @@
     <string name="from">Da <xliff:g id="account" example="me@example.com">%1$s</xliff:g></string>
     <string name="to_1">A <xliff:g id="recipient" example="bob@example.com">%1$s</xliff:g></string>
     <plurals name="retrying_pending_messages">
+        <item quantity="one">Nuovo tentativo per <xliff:g id="count" example="3">%1$s</xliff:g> messaggio in attesa…</item>
+        <item quantity="many">Nuovo tentativo per <xliff:g id="count" example="3">%1$s</xliff:g> messaggi in attesa…</item>
         <item quantity="other">Nuovo tentativo per <xliff:g id="count" example="3">%1$s</xliff:g> messaggi in attesa…</item>
     </plurals>
     <string name="unblock">Sblocca</string>
@@ -112,6 +113,8 @@
     <string name="unsubscribing">Disiscrizione…</string>
     <string name="failed">Fallito: <xliff:g id="error" example="Auth error">%1$s</xliff:g></string>
     <plurals name="attempts">
+        <item quantity="one"><xliff:g id="count" example="2">%1$s</xliff:g> tentativo</item>
+        <item quantity="many"><xliff:g id="count" example="2">%1$s</xliff:g> tentativi</item>
         <item quantity="other"><xliff:g id="count" example="2">%1$s</xliff:g> tentativi</item>
     </plurals>
     <string name="cd_insert_image">Inserisci immagine</string>

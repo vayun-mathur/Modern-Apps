@@ -5,7 +5,7 @@
     <string name="all_accounts">All Accounts</string>
     <string name="add_account">Add Account</string>
     <string name="logout_current_account">Logout Current Account</string>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> selected</string>
+    <plurals name="selected_count"><item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> selected</item><item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> selected</item></plurals>
     <string name="reply">Reply</string>
     <string name="forward">Forward</string>
     <string name="compose">Compose</string>

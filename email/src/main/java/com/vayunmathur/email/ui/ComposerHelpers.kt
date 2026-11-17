@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,7 +62,7 @@ internal fun EmailComposerFormatToolbar(
 ) {
     var headingMenu by remember { mutableStateOf(false) }
     var alignMenu by remember { mutableStateOf(false) }
-    var colorDialog by remember { mutableStateOf(0) } // 0 none, 1 fg, 2 bg
+    var colorDialog by remember { mutableIntStateOf(0) } // 0 none, 1 fg, 2 bg
     var sizeMenu by remember { mutableStateOf(false) }
     var fontMenu by remember { mutableStateOf(false) }
 

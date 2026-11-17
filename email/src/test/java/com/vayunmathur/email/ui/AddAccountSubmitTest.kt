@@ -17,7 +17,7 @@ import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.vayunmathur.email.FakeAndroidKeyStore
 import com.vayunmathur.email.Route
-import com.vayunmathur.email.addAccountEntries
+import com.vayunmathur.email.platform.addAccountEntries
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.email.data.CredentialCrypto

@@ -32,14 +32,3 @@ fun buildFolderTree(folders: List<EmailFolder>): List<FolderNode> {
     }
     return folders.filter { it.parentFullName == null }.map { buildNode(it) }
 }
-
-@Composable
-fun RenderFolderTree(node: FolderNode, depth: Int, selectedFolder: String, onSelect: (String) -> Unit) {
-    NavigationDrawerItem(
-        label = { Text(text = node.folder.name, color = if (node.folder.holdsMessages) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.5f)) },
-        selected = node.folder.fullName == selectedFolder,
-        onClick = { if (node.folder.holdsMessages) onSelect(node.folder.fullName) },
-        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(start = (depth * 16).dp)
-    )
-    node.children.forEach { child -> RenderFolderTree(child, depth + 1, selectedFolder, onSelect) }
-}

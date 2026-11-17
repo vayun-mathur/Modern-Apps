@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,42 +69,6 @@ import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.sharedText
-
-@Composable
-fun MessageListPage(
-    viewModel: EmailViewModel,
-    onMessageClick: (EmailPreview) -> Unit,
-    onComposeClick: () -> Unit,
-    onOpenDrawer: () -> Unit
-) {
-    val messages by viewModel.messages.collectAsStateWithLifecycle(emptyList())
-    val selectedAccountEmail by viewModel.selectedAccountEmail.collectAsStateWithLifecycle()
-    val selectedFolderName by viewModel.selectedFolderName.collectAsStateWithLifecycle()
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val selectedUids by viewModel.selectedMessageUids.collectAsStateWithLifecycle()
-    val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
-    val syncProgress by viewModel.syncProgress.collectAsStateWithLifecycle()
-    val aiSummary by viewModel.aiSummary.collectAsStateWithLifecycle()
-    val aiSummaryLoading by viewModel.aiSummaryLoading.collectAsStateWithLifecycle()
-
-    MessageListScreen(
-        state = MessageListUiState(
-            messages = messages,
-            selectedAccountEmail = selectedAccountEmail,
-            selectedFolderName = selectedFolderName,
-            searchQuery = searchQuery,
-            selectedUids = selectedUids,
-            isSyncing = isSyncing,
-            syncProgress = syncProgress,
-            aiSummary = aiSummary,
-            aiSummaryLoading = aiSummaryLoading,
-        ),
-        actions = viewModel,
-        onMessageClick = onMessageClick,
-        onComposeClick = onComposeClick,
-        onOpenDrawer = onOpenDrawer,
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,7 +111,7 @@ fun MessageListScreen(
     AppScaffold(
         title = {
             when {
-                selectionActive -> Text(stringResource(R.string.selected_count, state.selectedUids.size))
+                selectionActive -> Text(pluralStringResource(R.plurals.selected_count, state.selectedUids.size, state.selectedUids.size))
                 isSearching -> CommonSearchBar(value = state.searchQuery, onValueChange = { actions.setSearchQuery(it) }, padding = PaddingValues(0.dp))
                 else -> Text(if (state.selectedAccountEmail == null) stringResource(R.string.unified_inbox_label) else state.selectedFolderName)
             }
@@ -187,7 +153,7 @@ fun MessageListScreen(
                     LinearProgressIndicator(progress = { state.syncProgress }, modifier = Modifier.fillMaxWidth().height(2.dp))
                 }
             }
-            var msgFilter by remember { mutableStateOf(0) }
+            var msgFilter by remember { mutableIntStateOf(0) }
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 com.vayunmathur.library.ui.FilterChip(selected = msgFilter == 0, onClick = { msgFilter = 0 }, label = { Text(stringResource(R.string.all)) })
                 com.vayunmathur.library.ui.FilterChip(selected = msgFilter == 1, onClick = { msgFilter = 1 }, label = { Text(stringResource(R.string.unread)) })

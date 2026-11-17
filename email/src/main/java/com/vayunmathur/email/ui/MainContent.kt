@@ -5,7 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.email.Navigation
 import com.vayunmathur.email.Route
-import com.vayunmathur.email.addAccountEntries
+import com.vayunmathur.email.platform.addAccountEntries
 import com.vayunmathur.email.platform.EmailViewModel
 import com.vayunmathur.email.platform.IntentState
 import com.vayunmathur.library.util.MainNavigation

@@ -65,7 +65,6 @@
     <string name="ai_summary">ملخص الذكاء الاصطناعي</string>
     <string name="deleted_from_outbox">تم حذفها من صندوق الصادر</string>
     <string name="attachments_2">المرفقات:</string>
-    <string name="unified_inbox">صندوق الوارد الموحَّد</string>
     <string name="saved_to_downloads">تم الحفظ في التنزيلات</string>
     <string name="generating_summary">جارٍ إنشاء الملخص…</string>
     <string name="block_sender">حظر المرسل</string>
@@ -118,7 +117,7 @@
     <string name="from">من <xliff:g id="account" example="me@example.com">%1$s</xliff:g></string>
     <string name="compose">إنشاء</string>
     <string name="outbox_with_count">صندوق الصادر (<xliff:g id="count" example="2">%1$d</xliff:g>)</string>
-    <string name="selected_count">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></string>
+    <plurals name="selected_count"><item quantity="zero">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item><item quantity="one">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item><item quantity="two">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item><item quantity="few">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item><item quantity="many">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item><item quantity="other">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item></plurals>
     <string name="open">فتح</string>
     <string name="load_remote_images">تحميل الصور البعيدة</string>
     <string name="remote_images_blocked">تم حظر الصور البعيدة</string>

@@ -1,5 +1,6 @@
 package com.vayunmathur.email.network.imap
 
+import android.annotation.SuppressLint
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
@@ -40,6 +41,14 @@ object TrustAll {
         "imap.outlook.com",
     )
 
+    // Justified suppression: this trust manager is the documented, opt-in
+    // fallback for self-hosted mail servers with self-signed certificates
+    // (custom hosts only; known providers use the strict system store via
+    // isKnownHost). Its scope has not been widened - see AGENTS.md:
+    // "network/imap/TrustAll.kt exists for debug only; never widen its use"
+    // and the class KDoc above. Removing it would break self-hosted
+    // accounts that have no CA-issued certificate.
+    @SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager")
     private val TRUST_ALL_MANAGERS: Array<TrustManager> = arrayOf(
         object : X509TrustManager {
             override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}

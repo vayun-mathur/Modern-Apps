@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="selected_count">%1$d ausgewählt</string>
+    <plurals name="selected_count"><item quantity="one">%1$d ausgewählt</item><item quantity="other">%1$d ausgewählt</item></plurals>
     <string name="app_name">Email</string>
     <string name="all_accounts">Alle Konten</string>
     <string name="add_account">Konto hinzufügen</string>

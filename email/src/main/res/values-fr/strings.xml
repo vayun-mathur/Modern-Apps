@@ -16,7 +16,7 @@
     <string name="forward">Transférer</string>
     <string name="send_now">Envoyer maintenant</string>
     <string name="host_label">Serveur</string>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> sélectionné(s)</string>
+    <plurals name="selected_count"><item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> sélectionné(s)</item><item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> sélectionné(s)</item><item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> sélectionné(s)</item></plurals>
     <string name="outbox_with_count">Boîte d’envoi (<xliff:g id="count" example="2">%1$d</xliff:g>)</string>
     <string name="outbox">Boîte d\'envoi</string>
     <string name="compose">Rédiger</string>
@@ -82,7 +82,6 @@
     <string name="couldn_t_open_this_eml_file">Impossible d’ouvrir ce fichier .eml</string>
     <string name="in_1_hour">Dans une heure</string>
     <string name="bcc">Cci</string>
-    <string name="unified_inbox">Boîte de réception unifiée</string>
     <string name="unknown_error">Erreur inconnue</string>
     <string name="e_mail_file">Fichier e-mail</string>
     <string name="smtp_outgoing">SMTP (sortant)</string>

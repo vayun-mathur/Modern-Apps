@@ -4,7 +4,7 @@
     <string name="all_accounts">所有账号</string>
     <string name="add_account">添加账号</string>
     <string name="logout_current_account">退出登录当前账号</string>
-    <string name="selected_count">已选择 <xliff:g id="count" example="3">%1$d</xliff:g> 项</string>
+    <plurals name="selected_count"><item quantity="other">已选择 <xliff:g id="count" example="3">%1$d</xliff:g> 项</item></plurals>
     <string name="reply">回复</string>
     <string name="forward">转发</string>
     <string name="compose">撰写</string>
@@ -78,7 +78,6 @@
     <string name="couldn_t_open_this_eml_file">无法打开此 .eml 文件</string>
     <string name="in_1_hour">1 小时后</string>
     <string name="bcc">密送</string>
-    <string name="unified_inbox">统一收件箱</string>
     <string name="unknown_error">未知错误</string>
     <string name="e_mail_file">电子邮件文件</string>
     <string name="smtp_outgoing">SMTP（发件）</string>

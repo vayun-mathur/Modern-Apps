@@ -89,8 +89,8 @@ fun MessageItem(
     onReply: (String, String, String?) -> Unit,
     onForward: (String, String?) -> Unit,
     onCompose: (String, String) -> Unit,
-    onExportEml: (EmailMessage) -> Unit = {},
     modifier: Modifier = Modifier,
+    onExportEml: (EmailMessage) -> Unit = {},
 ) {
     var attachments by remember { mutableStateOf<List<Attachment>>(emptyList()) }
     var showDetails by remember { mutableStateOf(false) }

@@ -2,7 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="hide">Dölj</string>
     <string name="show">Visa</string>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> valda</string>
+    <plurals name="selected_count"><item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> valda</item><item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> valda</item></plurals>
     <string name="open">Öppna</string>
     <string name="password">Lösenord</string>
     <string name="all">Alla</string>
@@ -95,7 +95,6 @@
     <string name="bcc">Dold kopia</string>
     <string name="attachments_1">Bilagor (<xliff:g id="size" example="2.3 MB">%1$s</xliff:g>)</string>
     <string name="attachments_2">Bilagor:</string>
-    <string name="unified_inbox">Samlad inkorg</string>
     <string name="saved_to_downloads">Sparad i Hämtningar</string>
     <string name="saved_to_outbox">Sparad i utkorgen: <xliff:g id="reason" example="No network">%1$s</xliff:g></string>
     <string name="generating_summary">Skapar sammanfattning…</string>

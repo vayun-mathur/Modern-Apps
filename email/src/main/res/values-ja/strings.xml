@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="all">全て</string>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> 個選択中</string>
+    <plurals name="selected_count"><item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> 個選択中</item></plurals>
 </resources>
