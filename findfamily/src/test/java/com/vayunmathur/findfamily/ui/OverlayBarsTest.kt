@@ -41,7 +41,7 @@ class OverlayBarsTest {
     @Test fun fabOverlayNothingSelected() {
         rule.setContent {
             Box(Modifier.fillMaxSize()) {
-                MainFabOverlay(MainPageUiState(), MainPageActions.Noop, 80.dp, { 0 },
+                MainFabOverlay(MainPageActions.Noop, 80.dp, { 0 },
                     MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primary,
                     MaterialTheme.colorScheme.onPrimaryContainer, lightColorScheme(), inPreview = false)
             }
@@ -51,7 +51,7 @@ class OverlayBarsTest {
     @Test fun fabOverlayInPreview() {
         rule.setContent {
             Box(Modifier.fillMaxSize()) {
-                MainFabOverlay(MainPageUiState(), MainPageActions.Noop, 80.dp, { 0 },
+                MainFabOverlay(MainPageActions.Noop, 80.dp, { 0 },
                     MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primary,
                     MaterialTheme.colorScheme.onPrimaryContainer, lightColorScheme(), inPreview = true)
             }

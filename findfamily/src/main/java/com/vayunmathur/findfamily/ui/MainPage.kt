@@ -277,7 +277,6 @@ fun MainPage(
     )
 
     MainPageEffects(
-        ffViewModel = ffViewModel,
         camera = camera,
         selectedUserId = selectedUserId,
         selfUserId = Networking.userid,

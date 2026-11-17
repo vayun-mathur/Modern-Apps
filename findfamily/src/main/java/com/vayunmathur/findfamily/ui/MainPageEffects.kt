@@ -153,7 +153,6 @@ import kotlin.time.Instant
 
 @Composable
 internal fun MainPageEffects(
-    ffViewModel: FindFamilyViewModel,
     camera: CameraState,
     selectedUserId: Long?,
     selfUserId: Long,

@@ -153,7 +153,6 @@ import kotlin.time.Instant
 
 @Composable
 internal fun BoxScope.MainFabOverlay(
-    state: MainPageUiState,
     actions: MainPageActions,
     peekHeight: Dp,
     sheetLiftPx: () -> Int,

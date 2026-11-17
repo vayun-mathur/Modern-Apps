@@ -144,7 +144,7 @@ class MainPageChromeRealRepoTest {
             DynamicTheme {
                 val camera = rememberCameraState()
                 MainPageEffects(
-                    ffViewModel = vm, camera = camera, selectedUserId = alice,
+                    camera = camera, selectedUserId = alice,
                     selfUserId = Networking.userid, isShowingPresent = true,
                     historicalPosition = null, userPositions = emptyMap(),
                     selectedWaypointId = null, waypoints = emptyList(),

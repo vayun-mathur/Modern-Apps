@@ -139,7 +139,6 @@ fun MainPageContent(
             }
 
             MainFabOverlay(
-                state = state,
                 actions = actions,
                 peekHeight = peekHeight,
                 sheetLiftPx = sheetLiftPx,
