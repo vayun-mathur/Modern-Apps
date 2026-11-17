@@ -266,15 +266,15 @@ mod jni_bindings {
             if w == 0 || h == 0 || stride < w {
                 return Ok(make_double_array(env, &[]));
             }
-            let len = match env.get_array_length(&y_plane) {
-                Ok(l) => l as usize,
+            let len = match y_plane.len(env) {
+                Ok(l) => l,
                 Err(_) => return Ok(make_double_array(env, &[])),
             };
             if len < stride * (h - 1) + w {
                 return Ok(make_double_array(env, &[]));
             }
             let mut buf = vec![0i8; len];
-            if env.get_byte_array_region(&y_plane, 0, &mut buf).is_err() {
+            if y_plane.get_region(env, 0, &mut buf).is_err() {
                 return Ok(make_double_array(env, &[]));
             }
             let mut gray = Gray::new(w, h);
@@ -327,7 +327,7 @@ mod jni_bindings {
             Ok(a) => a,
             Err(_) => return std::ptr::null_mut(),
         };
-        if !vals.is_empty() && env.set_double_array_region(&arr, 0, vals).is_err() {
+        if !vals.is_empty() && arr.set_region(env, 0, vals).is_err() {
             return std::ptr::null_mut();
         }
         arr.into_raw()

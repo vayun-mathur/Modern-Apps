@@ -168,7 +168,7 @@ mod tests {
         assert!(pts.len() >= 20, "expected many corners, got {}", pts.len());
         assert!(pts.len() <= MAX_CORNERS);
         for &(x, y) in &pts {
-            assert!(x >= 0.0 && x < 320.0 && y >= 0.0 && y < 240.0);
+            assert!((0.0..320.0).contains(&x) && (0.0..240.0).contains(&y));
         }
         // Sub-pixel refinement should move some points off the integer grid
         // (its accuracy is asserted directly by the square-corner test).
