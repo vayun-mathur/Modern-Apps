@@ -14,14 +14,14 @@ import com.vayunmathur.library.ui.GameCenterScreen
 import com.vayunmathur.library.util.GameHubComposeHook
 import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 
 @Composable
 fun Navigation(viewModel: NonogramViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Game)
     // Launching from App Info's settings cog deep-links straight to Settings.
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     val newAchievement by viewModel.achievementsManager.newAchievement.collectAsState()
     GameHubComposeHook("nonogram", viewModel.achievementsManager)
     Box(Modifier.fillMaxSize()) {

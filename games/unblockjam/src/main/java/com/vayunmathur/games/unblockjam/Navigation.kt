@@ -70,14 +70,14 @@ import com.vayunmathur.library.util.LevelStats
 import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.library.ui.R as UiR
 
 @Composable
 fun Navigation(viewModel: UnblockJamViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.PackSelector)
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     val newAchievement by viewModel.achievementsManager.newAchievement.collectAsState()
 
     GameHubComposeHook("unblockjam", viewModel.achievementsManager)

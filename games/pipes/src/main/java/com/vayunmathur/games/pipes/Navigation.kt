@@ -17,13 +17,13 @@ import com.vayunmathur.library.ui.GameCenterScreen
 import com.vayunmathur.library.util.GameHubComposeHook
 import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 
 @Composable
 fun Navigation(viewModel: PipesViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.PackSelector)
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     val newAchievement by viewModel.achievementsManager.newAchievement.collectAsState()
     GameHubComposeHook("pipes", viewModel.achievementsManager)
     Box(Modifier.fillMaxSize()) {

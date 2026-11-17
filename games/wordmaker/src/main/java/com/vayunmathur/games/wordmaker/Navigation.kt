@@ -19,7 +19,7 @@ import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.GameHubSessionHook
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,7 +27,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun Navigation(viewModel: WordMakerViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Game)
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     WordMakerRouteEffect(backStack, viewModel)
     GameHubSessionHook("wordmaker", "Wordmaker")
     MainNavigation(backStack) {
