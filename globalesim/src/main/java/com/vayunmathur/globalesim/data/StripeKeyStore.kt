@@ -1,6 +1,7 @@
 package com.vayunmathur.globalesim.data
 
 import android.content.Context
+import androidx.core.content.edit
 
 /**
  * Cached Stripe publishable key (`pk_...`, public by design). Served by
@@ -17,7 +18,7 @@ class StripeKeyStore(private val context: Context) {
     fun getCached(): String? = prefs().getString(KEY, null)?.takeIf { it.isNotBlank() }
 
     fun save(key: String) {
-        prefs().edit().putString(KEY, key).apply()
+        prefs().edit { putString(KEY, key) }
     }
 
     /** Shared constants and helpers for StripeKeyStore. */
