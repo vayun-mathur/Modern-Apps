@@ -26,6 +26,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.platform.CameraIntrinsicsResolver
 import com.vayunmathur.measure.platform.vio.VioEngine
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.measure.platform.sensor.ImuRecorder
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,8 +66,12 @@ fun MeasureCamera(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             val executor = Executors.newSingleThreadExecutor()
             var provider: ProcessCameraProvider? = null
-            val engine = createEngine(context)
-            onEngineReady(engine)
+            // The engine is created lazily on the first frame, with
+            // intrinsics resolved for the size CameraX actually delivers
+            // (see VioFrameAnalyzer): resolving for the requested size up
+            // front silently miscalibrates every bearing when the delivered
+            // size differs (different aspect = cropped principal point).
+            var engine: VioEngine? = null
             try {
                 provider = ProcessCameraProvider.awaitInstance(context)
                 provider.unbindAll()
@@ -93,7 +98,19 @@ fun MeasureCamera(
                     .also {
                         it.setAnalyzer(
                             executor,
-                            VioFrameAnalyzer(engine, imuRecorder, onTrackingUpdate, onDiagnostics),
+                            VioFrameAnalyzer(
+                                null,
+                                imuRecorder,
+                                onTrackingUpdate,
+                                onDiagnostics,
+                                engineFactory = { size, rotation ->
+                                    createEngine(context, size, rotation)
+                                },
+                                onEngineCreated = { created ->
+                                    engine = created
+                                    onEngineReady(created)
+                                },
+                            ),
                         )
                     }
 
@@ -126,25 +143,59 @@ fun MeasureCamera(
     }
 }
 
-private fun createEngine(context: Context): VioEngine? {
-    if (!VioEngine.available) return null
-    val intr = CameraIntrinsicsResolver.resolve(context, ANALYSIS_SIZE) ?: return null
-    return VioEngine(intr)
+private fun createEngine(context: Context, actualSize: Size, rotationDegrees: Int): VioEngine? {
+    if (!VioEngine.available) {
+        Log.dev("MeasureCv", "engine NOT created: native unavailable")
+        return null
+    }
+    val intr = CameraIntrinsicsResolver.resolve(context, actualSize)
+    Log.dev(
+        "MeasureCv",
+        "engine create: actual=${actualSize.width}x${actualSize.height} " +
+            "(requested ${ANALYSIS_SIZE.width}x${ANALYSIS_SIZE.height}) intrinsics=$intr " +
+            "tsAlign=${CameraIntrinsicsResolver.timestampsAlignWithSensors(context)}",
+    )
+    if (intr == null) return null
+    return VioEngine(intr, actualSize.width, actualSize.height, rotationDegrees)
 }
 
 internal class VioFrameAnalyzer(
-    private val engine: VioEngine?,
+    engine: VioEngine?,
     private val imuRecorder: ImuRecorder,
     private val onTrackingUpdate: (TrackingQuality, Boolean) -> Unit,
     private val onDiagnostics: Diagnostics,
+    private val engineFactory: ((Size, Int) -> VioEngine?)? = null,
+    private val onEngineCreated: (VioEngine?) -> Unit = {},
 ) : ImageAnalysis.Analyzer {
+
+    private var engine: VioEngine? = engine
+    private var engineCreationTried = false
 
     private var buffer: ByteArray? = null
     private var lastFrameNs = 0L
     private var frameIntervalNs = 0L
+    private var frameCount = 0L
 
     override fun analyze(image: ImageProxy) {
         try {
+            frameCount++
+            if (frameCount % 60L == 1L) {
+                Log.dev(
+                    "MeasureCv",
+                    "analyzer frame=$frameCount ${image.width}x${image.height} format=${image.format} " +
+                        "rotation=${image.imageInfo.rotationDegrees} ts=${image.imageInfo.timestamp} " +
+                        "rowStride=${image.planes[0].rowStride} pixelStride=${image.planes[0].pixelStride} " +
+                        "engine=${engine != null} imuActive=${imuRecorder.isActive} imuHz=${imuRecorder.rateHz()}",
+                )
+            }
+            if (engine == null && !engineCreationTried && engineFactory != null) {
+                engineCreationTried = true
+                engine = engineFactory(
+                    Size(image.width, image.height),
+                    image.imageInfo.rotationDegrees,
+                )
+                onEngineCreated(engine)
+            }
             val eng = engine ?: return
 
             // Drain IMU first so every sample older than this frame is already queued,

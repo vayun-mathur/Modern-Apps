@@ -27,7 +27,11 @@ class VioArHitProvider(
 ) : ArHitProvider {
     override fun centreHit(sessionHandle: Long): HitCandidate? {
         val eng = engine() ?: return null
-        return HitSelector.select(eng.centreCandidates(analysisWidth, analysisHeight))
+        // Prefer the size the engine was actually calibrated for (the
+        // delivered analysis size), falling back to the requested size.
+        val w = eng.frameWidth.takeIf { it > 0 } ?: analysisWidth
+        val h = eng.frameHeight.takeIf { it > 0 } ?: analysisHeight
+        return HitSelector.select(eng.centreCandidates(w, h))
     }
 }
 

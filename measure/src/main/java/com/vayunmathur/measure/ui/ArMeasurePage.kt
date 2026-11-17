@@ -91,8 +91,8 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
             // analysis size, not the canvas size.
             val projected = eng.projectPoints(
                 flat,
-                ANALYSIS_SIZE.width.toDouble(),
-                ANALYSIS_SIZE.height.toDouble(),
+                eng.frameWidth.takeIf { it > 0 }?.toDouble() ?: ANALYSIS_SIZE.width.toDouble(),
+                eng.frameHeight.takeIf { it > 0 }?.toDouble() ?: ANALYSIS_SIZE.height.toDouble(),
             )
             // Third component is the visibility flag: points behind the
             // camera must not be drawn in the top-left corner.

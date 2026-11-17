@@ -3,8 +3,9 @@ package com.vayunmathur.measure.platform.vio
 import com.vayunmathur.measure.domain.Pose3
 import com.vayunmathur.measure.domain.Vec3
 
-/** One tracked correspondence, in pixels: previous -> current. */
+/** One tracked correspondence, in pixels: previous -> current. [id] is stable for the feature's life. */
 data class CvPair(
+    val id: Long,
     val prevX: Double,
     val prevY: Double,
     val currX: Double,
@@ -19,6 +20,11 @@ data class CvFrameFlow(
     val pose: Pose3?,
     /** Feature points seeded for the next frame, after top-up. */
     val pointCount: Int,
+    val seeded: Int = 0,
+    val forwardOk: Int = 0,
+    val fbSurvivors: Int = 0,
+    /** RANSAC inliers; -1 = did not run, -2 = ran but no pose. */
+    val ransacInliers: Int = -1,
 )
 
 /**
@@ -73,21 +79,30 @@ object MeasureCvNative {
         }
         val pairs = ArrayList<CvPair>(pairCount)
         for (i in 0 until pairCount) {
-            val base = HEADER_SIZE + i * 4
+            val base = HEADER_SIZE + i * VALUES_PER_PAIR
             if (base + LAST_PAIR_OFFSET >= raw.size) break
-            pairs += CvPair(raw[base], raw[base + 1], raw[base + 2], raw[base + LAST_PAIR_OFFSET])
+            pairs += CvPair(
+                raw[base].toLong(),
+                raw[base + 1], raw[base + 2], raw[base + 3], raw[base + LAST_PAIR_OFFSET],
+            )
         }
         return CvFrameFlow(
             firstFrame = raw[2] != 0.0,
             pairs = pairs,
             pose = pose,
             pointCount = raw[3].toInt(),
+            seeded = if (raw.size > 16) raw[16].toInt() else 0,
+            forwardOk = if (raw.size > 17) raw[17].toInt() else 0,
+            fbSurvivors = if (raw.size > 18) raw[18].toInt() else 0,
+            ransacInliers = if (raw.size > 19) raw[19].toInt() else -1,
         )
     }
 
-    private const val HEADER_SIZE = 16
+    private const val HEADER_SIZE = 20
+    /** Values per tracked pair in the native array: id, prevX, prevY, currX, currY. */
+    private const val VALUES_PER_PAIR = 5
     /** Offset of the last (current-y) value within one tracked pair. */
-    private const val LAST_PAIR_OFFSET = 3
+    private const val LAST_PAIR_OFFSET = 4
 
     private external fun nativeCreateSession(
         fx: Double,

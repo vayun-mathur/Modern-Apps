@@ -205,6 +205,94 @@ private fun jacobiRotate(a: DoubleArray, v: DoubleArray, n: Int, p: Int, q: Int)
     }
 }
 
+/**
+ * Camera centre from bearing observations of known landmarks: each
+ * observation says the centre lies on the ray `X - mu * d` (world ray
+ * direction [d] through landmark [X]), i.e. `(I - d d^T)(C - X) = 0`.
+ * Least squares over all observations (3x3 normal equations).
+ *
+ * This is what makes the visual trajectory metrically *consistent* (one
+ * global scale): pairwise essential poses only give unit translations,
+ * so a chained trajectory encodes frame count, not distance, and no
+ * IMU/visual window ratio can ever converge on it. Solving the centre
+ * against the triangulated map puts every frame in map units instead.
+ */
+fun solveCameraCentre(
+    observations: List<Pair<Vec3, Vec3>>,
+): Vec3? {
+    if (observations.size < 4) return null
+    val first = solveCentreLeastSquares(observations) ?: return null
+    // Two-pass outlier rejection: landmarks triangulated from early,
+    // pre-map poses can be badly placed; one inconsistent subset must
+    // not drag the centre. Residual = point-to-ray distance at the solve.
+    val residuals = observations.map { (x, d) ->
+        val rel = centreResidual(first, x, d)
+        rel
+    }
+    val median = residuals.sorted()[residuals.size / 2]
+    val keep = observations.filterIndexed { i, _ -> residuals[i] <= maxOf(3 * median, 0.02) }
+    if (keep.size >= 4 && keep.size < observations.size) {
+        return solveCentreLeastSquares(keep) ?: first
+    }
+    return first
+}
+
+/** Perpendicular distance from landmark [x] to the ray centre->landmark direction [dRaw]. */
+private fun centreResidual(centre: Vec3, x: Vec3, dRaw: Vec3): Double {
+    val len = sqrt(dRaw.x * dRaw.x + dRaw.y * dRaw.y + dRaw.z * dRaw.z)
+    if (len < 1e-12) return Double.MAX_VALUE
+    val rel = x - centre
+    val along = (rel.x * dRaw.x + rel.y * dRaw.y + rel.z * dRaw.z) / len
+    val perp = Vec3(rel.x - dRaw.x / len * along, rel.y - dRaw.y / len * along, rel.z - dRaw.z / len * along)
+    return sqrt(perp.x * perp.x + perp.y * perp.y + perp.z * perp.z)
+}
+
+private fun solveCentreLeastSquares(
+    observations: List<Pair<Vec3, Vec3>>,
+): Vec3? {
+    if (observations.size < 4) return null
+    val ata = DoubleArray(9)
+    val atb = DoubleArray(3)
+    for ((x, dRaw) in observations) {
+        val len = sqrt(dRaw.x * dRaw.x + dRaw.y * dRaw.y + dRaw.z * dRaw.z)
+        if (len < 1e-12) continue
+        val d = doubleArrayOf(dRaw.x / len, dRaw.y / len, dRaw.z / len)
+        // A = I - d d^T; accumulate A^T A (=A, symmetric idempotent-ish) and A^T (A X) = A X.
+        val a = DoubleArray(9) { i ->
+            val rc = i / 3
+            val cc = i % 3
+            (if (rc == cc) 1.0 else 0.0) - d[rc] * d[cc]
+        }
+        val ax = Vec3(
+            a[0] * x.x + a[1] * x.y + a[2] * x.z,
+            a[3] * x.x + a[4] * x.y + a[5] * x.z,
+            a[6] * x.x + a[7] * x.y + a[8] * x.z,
+        )
+        for (i in 0..8) ata[i] += a[i]
+        atb[0] += ax.x; atb[1] += ax.y; atb[2] += ax.z
+    }
+    // Solve ata * C = atb by Gaussian elimination with partial pivoting.
+    val m = Array(3) { r -> doubleArrayOf(ata[r * 3], ata[r * 3 + 1], ata[r * 3 + 2], atb[r]) }
+    for (col in 0..2) {
+        var pivot = col
+        for (r in col + 1..2) if (abs(m[r][col]) > abs(m[pivot][col])) pivot = r
+        if (abs(m[pivot][col]) < 1e-12) return null
+        val tmp = m[col]; m[col] = m[pivot]; m[pivot] = tmp
+        for (r in col + 1..2) {
+            val f = m[r][col] / m[col][col]
+            for (c in col..3) m[r][c] -= f * m[col][c]
+        }
+    }
+    val out = DoubleArray(3)
+    for (r in 2 downTo 0) {
+        var s = m[r][3]
+        for (c in r + 1..2) s -= m[r][c] * out[c]
+        out[r] = s / m[r][r]
+    }
+    val centre = Vec3(out[0], out[1], out[2])
+    return centre.takeIf { it.isFinite() }
+}
+
 /** A fitted plane: a point on it plus a unit normal. */
 data class FittedPlane(val point: Vec3, val normal: Vec3) {
     fun distanceTo(p: Vec3): Double {
@@ -310,7 +398,16 @@ fun estimateScale(visual: List<Vec3>, imu: List<Vec3>): ScaleEstimate? {
         val m = imu[i]
         val im = sqrt(m.x * m.x + m.y * m.y + m.z * m.z)
         if (im < 0.005) continue
-        ratios += im / vm
+        // Projected ratio: scale along the visual displacement direction.
+        // A magnitude ratio |imu|/|visual| counts perpendicular drift
+        // (visual centre wander, IMU residue) as if it were motion along
+        // the window, which scattered ratios ~2x in the synthetic harness
+        // even with centimetre-accurate IMU windows. Windows whose IMU
+        // displacement points against the visual one are not scale
+        // evidence at all and are dropped.
+        val dot = m.x * v.x + m.y * v.y + m.z * v.z
+        if (dot <= 0.0) continue
+        ratios += dot / (vm * vm)
     }
     if (ratios.size < 3) return null
     val sorted = ratios.sorted()

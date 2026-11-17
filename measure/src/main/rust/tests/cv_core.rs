@@ -82,6 +82,33 @@ fn flat_frames_never_track() {
 }
 
 #[test]
+fn pair_ids_are_stable_across_frames() {
+    // Keyframe triangulation matches keyframe<->current points by id, so
+    // an id must name the same feature for its whole tracked life and
+    // must not repeat within one frame.
+    let mut s = CvSession::new(300.0, 300.0, 160.0, 120.0);
+    s.process_frame(&frame(320, 240, 0, 0));
+    let f2 = s.process_frame(&frame(320, 240, 3, 1));
+    let f3 = s.process_frame(&frame(320, 240, 6, 2));
+    assert!(f2.pairs.len() >= 15 && f3.pairs.len() >= 15);
+    for flow in [&f2, &f3] {
+        let mut ids: Vec<u64> = flow.pairs.iter().map(|p| p.id).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), flow.pairs.len(), "duplicate id in one frame");
+    }
+    let persisted = f3
+        .pairs
+        .iter()
+        .filter(|p| f2.pairs.iter().any(|q| q.id == p.id))
+        .count();
+    assert!(
+        persisted >= 10,
+        "expected most features to persist with stable ids, got {persisted}"
+    );
+}
+
+#[test]
 fn reset_returns_to_first_frame() {
     let mut s = CvSession::new(300.0, 300.0, 160.0, 120.0);
     s.process_frame(&frame(320, 240, 0, 0));

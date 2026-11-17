@@ -202,7 +202,13 @@ internal fun MeasureViewModel.refreshFlowImpl(nowMs: Long = System.currentTimeMi
         lostSinceMs = lostSinceMs,
         nowMs = nowMs,
     )
-    if (flow != s.flowState) arState.value = s.copy(flowState = flow)
+    if (flow != s.flowState) {
+        com.vayunmathur.library.log.Log.dev(
+            "MeasureCv",
+            "flow ${s.flowState} -> $flow quality=${s.quality} hasSession=${vioEngine != null}",
+        )
+        arState.value = s.copy(flowState = flow)
+    }
 }
 
 internal fun MeasureViewModel.onReticleHit(
