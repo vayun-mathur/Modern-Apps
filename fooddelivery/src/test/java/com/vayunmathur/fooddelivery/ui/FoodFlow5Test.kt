@@ -55,9 +55,13 @@ class FoodFlow5Test {
     }
 
     private fun awaitNode(text: String, substring: Boolean = true) {
-        val deadline = System.currentTimeMillis() + 15_000
+        // Step-counted, not wall-clock: Robolectric's substituted clock
+        // advances hundreds of ms per idleFor below, so a 15s deadline
+        // burned in a few real seconds under load, before the IO fetch
+        // it waits for had run. Each step sleeps real time instead.
         var found = false
-        while (System.currentTimeMillis() < deadline) {
+        var step = 0
+        while (step++ < 600) {
             rule.mainClock.autoAdvance = false
             rule.mainClock.advanceTimeBy(600L)
             rule.mainClock.autoAdvance = true
