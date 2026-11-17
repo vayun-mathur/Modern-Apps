@@ -13,6 +13,7 @@ package com.vayunmathur.updater.domain
  */
 object AutoInstallPolicy {
 
+    /** Inputs to the background auto-install decision: user settings and network state. */
     data class Conditions(
         /** The user's setting. Default on. */
         val autoInstall: Boolean,
@@ -24,7 +25,9 @@ object AutoInstallPolicy {
         val connected: Boolean,
     )
 
+    /** Outcome of the background auto-install policy check. */
     sealed interface Decision {
+        /** Background download and install may proceed. */
         data object Proceed : Decision
 
         /** Not now. [reason] is for the log, not the UI — nothing was asked, so nothing is told. */

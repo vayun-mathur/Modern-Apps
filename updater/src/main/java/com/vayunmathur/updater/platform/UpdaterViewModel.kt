@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** ViewModel for the updater screen: current build, check state and settings. */
 class UpdaterViewModel(application: Application) : AndroidViewModel(application) {
 
     private val store = DataStoreUtils.getInstance(application)
@@ -73,6 +74,7 @@ class UpdaterViewModel(application: Application) : AndroidViewModel(application)
     }
 }
 
+/** UI state for the updater screen, including the available update, if any. */
 data class UpdaterUiState(
     /** `ro.build.version.incremental`, or empty when it could not be read. */
     val currentBuild: String = "",

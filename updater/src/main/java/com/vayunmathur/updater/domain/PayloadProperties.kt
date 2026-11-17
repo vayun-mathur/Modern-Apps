@@ -17,10 +17,12 @@ object PayloadProperties {
      */
     private val REQUIRED = setOf("FILE_HASH", "FILE_SIZE", "METADATA_HASH", "METADATA_SIZE")
 
+    /** Parse outcome for `payload_properties.txt` headers. */
     sealed interface Result {
         /** [headers] goes straight to `UpdateEngine.applyPayload`. */
         data class Parsed(val headers: List<String>) : Result
 
+        /** Properties file is unusable; [reason] explains the rejection. */
         data class Rejected(val reason: String) : Result
     }
 

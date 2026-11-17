@@ -29,10 +29,12 @@ object OtaPackageValidation {
         val currentFingerprint: String,
     )
 
+    /** Validation outcome for a signature-verified OTA package. */
     sealed interface Result {
         /** Safe to apply. [payloadOffset] and [incremental] are needed to do it. */
         data class Valid(val payloadOffset: Long, val incremental: Boolean) : Result
 
+        /** Package must not be applied; [reason] explains which check failed. */
         data class Rejected(val reason: String) : Result
     }
 

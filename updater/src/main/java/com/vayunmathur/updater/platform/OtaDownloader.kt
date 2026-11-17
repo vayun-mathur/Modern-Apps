@@ -59,12 +59,15 @@ object OtaDownloader {
 
     internal fun updateFile(): File = updateFileOverride ?: UPDATE_PATH
 
+    /** Download outcome: staged package, no published artifact, or failure. */
     sealed interface Result {
+        /** Package downloaded; [incremental] says whether it patches the current build. */
         data class Downloaded(val incremental: Boolean) : Result
 
         /** Neither artifact is published for this build. Ordinary, not an error. */
         data object NotFound : Result
 
+        /** Download failed; [reason] describes the transfer failure. */
         data class Failed(val reason: String) : Result
     }
 

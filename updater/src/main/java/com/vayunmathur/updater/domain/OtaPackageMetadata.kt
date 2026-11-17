@@ -28,6 +28,7 @@ data class OtaPackageMetadata(
     /** `ota-streaming-property-files`, already split. Carries the `payload.bin` offset. */
     val streamingPropertyFiles: List<String>,
 ) {
+    /** Parser for `META-INF/com/android/metadata` lines into [OtaPackageMetadata]. */
     companion object {
 
         fun parse(lines: Sequence<String>): OtaPackageMetadata {

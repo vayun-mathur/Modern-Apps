@@ -42,6 +42,7 @@ object UpdateEngineOutcome {
     private const val NOT_ENOUGH_SPACE = 60
     private const val DEVICE_CORRUPTED = 61
 
+    /** Classified result of an update_engine payload application. */
     sealed interface Outcome {
         /** The inactive slot holds the new build. Rebooting will boot into it. */
         data object Applied : Outcome

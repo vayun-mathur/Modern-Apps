@@ -7,6 +7,7 @@ import com.vayunmathur.updater.notifications.UpdateNotifications
 import com.vayunmathur.updater.platform.UpdateCheckWorker
 import com.vayunmathur.updater.platform.UpdaterViewModel
 
+/** Updater host activity; schedules periodic checks and shows the updater UI. */
 class MainActivity : MaActivity() {
     private val viewModel: UpdaterViewModel by viewModels()
 

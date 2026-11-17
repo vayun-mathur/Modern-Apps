@@ -81,10 +81,12 @@ object OtaInstaller {
         override fun unbind(): Boolean = engine.unbind()
     }
 
+    /** Install outcome: payload written to the inactive slot, or failure details. */
     sealed interface Result {
         /** Written to the inactive slot. A reboot will boot into it. */
         data object Applied : Result
 
+        /** Install failed; [reason] and the retry flags guide the caller. */
         data class Failed(
             val reason: String,
             val retryable: Boolean = false,

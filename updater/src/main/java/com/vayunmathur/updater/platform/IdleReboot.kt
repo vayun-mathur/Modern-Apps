@@ -40,6 +40,7 @@ class IdleReboot : JobService() {
 
     override fun onStopJob(params: JobParameters?): Boolean = false
 
+    /** Scheduling, cancellation and execution of the idle-device reboot. */
     companion object {
 
         fun schedule(context: Context) {

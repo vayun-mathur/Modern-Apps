@@ -249,6 +249,7 @@ class UpdateInstallService : Service() {
         wakeLock = null
     }
 
+    /** Start intent factory and constants for the update install service. */
     companion object {
         private const val EXTRA_BUILD = "build"
         private const val EXTRA_BUILD_DATE = "build_date"

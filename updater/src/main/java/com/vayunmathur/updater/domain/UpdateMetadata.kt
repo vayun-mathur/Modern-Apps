@@ -20,6 +20,7 @@ data class UpdateMetadata(
     /** Target build date, in seconds since the epoch, matching `ro.build.date.utc`. */
     val buildDateUtcSeconds: Long,
 ) {
+    /** Parser for the single-line server update metadata format. */
     companion object {
 
         /**

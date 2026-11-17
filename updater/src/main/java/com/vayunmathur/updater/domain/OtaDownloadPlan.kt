@@ -10,6 +10,7 @@ package com.vayunmathur.updater.domain
  */
 object OtaDownloadPlan {
 
+    /** OTA artifact filenames: optional incremental plus the always-available full package. */
     data class Artifacts(
         /** Null when no incremental can be named, i.e. the running build is unknown. */
         val incremental: String?,

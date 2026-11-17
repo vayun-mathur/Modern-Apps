@@ -104,6 +104,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) :
         return WorkResult.success()
     }
 
+    /** Periodic-work scheduling and network-state helpers for update checks. */
     companion object {
 
         fun schedule(context: Context) {
