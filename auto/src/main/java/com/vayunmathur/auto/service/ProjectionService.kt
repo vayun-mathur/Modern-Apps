@@ -450,7 +450,9 @@ class ProjectionService : Service() {
         val pending = ChannelSetups()
         var reportedActive = false
         while (running && connection.pump()) {
-            // Open every advertised service in HU-discovery wire order, one at a time: the next request goes out only once the previous channel is granted or refused, and video setup additionally waits for its own channel grant.
+            // Open every advertised service in HU-discovery wire order, one at a time: the next
+            // request goes out only once the previous channel is granted or refused, and video
+            // setup additionally waits for its own channel grant.
             if (connection.session.state == SessionState.ACTIVE) {
                 reportedActive = reportActiveOnce(connection, carName, reportedActive)
                 openNext(connection)
