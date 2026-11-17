@@ -355,3 +355,7 @@ mod tests {
         assert!(es10b::extract_transaction_id(&[0x30, 0x00]).is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "download_tests.rs"]
+mod download_tests;

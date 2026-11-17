@@ -357,3 +357,7 @@ pub fn parse_remove_result(response: &[u8]) -> Result<i64, String> {
 
 
 include!("es10_part1.rs");
+
+#[cfg(test)]
+#[path = "es10_tests.rs"]
+mod es10_tests;

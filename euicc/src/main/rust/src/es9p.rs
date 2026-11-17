@@ -438,3 +438,7 @@ mod tests {
         assert!(get_b64(&json!({"k": "!!!"}), "k").is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "es9p_tests.rs"]
+mod es9p_tests;

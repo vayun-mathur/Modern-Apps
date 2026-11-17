@@ -477,3 +477,7 @@ pub fn build_cancel_session(transaction_id: &[u8], reason: CancelReason) -> Vec<
 }
 
 include!("es10b_part1.rs");
+
+#[cfg(test)]
+#[path = "es10b_tests.rs"]
+mod es10b_tests;

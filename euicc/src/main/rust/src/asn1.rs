@@ -217,6 +217,21 @@ mod tests {
     }
 
     #[test]
+    fn asn1_more_malformed_edges() {
+        // Runaway multi-byte tag (continuation bit never clears) is refused.
+        assert!(parse(&[0x9F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]).is_none());
+        // Three-byte tag within the guard parses.
+        let (tlv, _) = parse(&[0x9F, 0x81, 0x70, 0x01, 0x00]).unwrap();
+        assert_eq!(tlv.tag, 0x9F8170);
+        // Trailing garbage after a valid TLV makes find/children fail clean.
+        assert!(find(&[0x5A, 0x01, 0x00, 0xFF], 0x04).is_none());
+        assert!(children(&[0x5A, 0x01, 0x00, 0xFF]).is_none());
+        // Long-form length with leading zero byte still decodes (BER).
+        let (tlv, _) = parse(&[0x04, 0x82, 0x00, 0x01, 0xAA]).unwrap();
+        assert_eq!(tlv.value, &[0xAA]);
+    }
+
+    #[test]
     fn rejects_malformed_tlv_vectors() {
         assert!(parse(&[]).is_none());
         assert!(parse(&[0x5A]).is_none());

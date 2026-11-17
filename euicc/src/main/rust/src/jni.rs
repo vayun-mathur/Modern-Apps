@@ -63,11 +63,12 @@ pub(crate) fn store_data(env: &mut Env, command: &[u8]) -> Result<Vec<u8>, Strin
 /// STORE DATA payload bytes per APDU. OpenEUICC default; see [`store_data`].
 pub(crate) const STORE_DATA_CHUNK: usize = 63;
 
-pub(crate) fn store_data_chunked(
-    env: &mut Env,
-    command: &[u8],
-    chunk: usize,
-) -> Result<Vec<u8>, String> {
+/// Builds the STORE DATA APDUs for `command`, split into `chunk`-sized
+/// blocks (clamped to 1..=255). P1 is 0x11 for an intermediate block and
+/// 0x91 for the last (b8 = last block); P1's low bits carry the block
+/// sequence number. A zero-length command still sends one (empty) block.
+/// Pure, so the chunking is host-testable without a JVM.
+pub(crate) fn build_store_data_apdus(command: &[u8], chunk: usize) -> Vec<Vec<u8>> {
     let chunk = chunk.clamp(1, 255);
     // A zero-length command still sends one (empty) block.
     let blocks: Vec<&[u8]> = if command.is_empty() {
@@ -76,19 +77,34 @@ pub(crate) fn store_data_chunked(
         command.chunks(chunk).collect()
     };
     let last = blocks.len() - 1;
+    blocks
+        .iter()
+        .enumerate()
+        .map(|(i, block)| {
+            let p1 = if i == last { 0x91 } else { 0x11 };
+            let mut apdu = vec![0x80u8, 0xE2, p1, i as u8, block.len() as u8];
+            apdu.extend_from_slice(block);
+            apdu
+        })
+        .collect()
+}
+
+pub(crate) fn store_data_chunked(
+    env: &mut Env,
+    command: &[u8],
+    chunk: usize,
+) -> Result<Vec<u8>, String> {
+    let apdus = build_store_data_apdus(command, chunk);
+    let last = apdus.len() - 1;
 
     let mut response = Vec::new();
-    for (i, block) in blocks.iter().enumerate() {
-        // P1: 0x11 for an intermediate block, 0x91 for the last (b8 = last block).
-        let p1 = if i == last { 0x91 } else { 0x11 };
-        let mut apdu = vec![0x80u8, 0xE2, p1, i as u8, block.len() as u8];
-        apdu.extend_from_slice(block);
+    for (i, apdu) in apdus.iter().enumerate() {
         // Accumulate every block's response data like lpac's
         // `iter_es10x_command` (the Kotlin transport already resolves 61xx
         // per APDU, so intermediate bodies are normally empty — but when a
         // card streams chained reply bytes, only concatenation reassembles
         // them). Fail fast on a non-success status.
-        let mut block_resp = transmit_apdu(env, &apdu)?;
+        let mut block_resp = transmit_apdu(env, apdu)?;
         if block_resp.len() < 2 {
             return Err("APDU response too short".into());
         }
@@ -344,3 +360,7 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeGetEuiccInfo
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
+
+#[cfg(test)]
+#[path = "jni_tests.rs"]
+mod jni_tests;

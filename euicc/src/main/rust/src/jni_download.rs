@@ -356,6 +356,40 @@ mod tests {
     }
 
     #[test]
+    fn parse_tac_and_cancel_reason_and_empty_to_null() {
+        assert_eq!(parse_tac("35290611"), Some([0x35, 0x29, 0x06, 0x11]));
+        assert_eq!(parse_tac(" 35290611 "), Some(es10b::DEFAULT_TAC));
+        // Malformed TAC (odd, non-hex, wrong length) falls back to None.
+        assert_eq!(parse_tac("3529061"), None);
+        assert_eq!(parse_tac("zz290611"), None);
+        assert_eq!(parse_tac("3529061100"), None);
+        assert_eq!(parse_tac(""), None);
+        assert_eq!(cancel_reason(0), es10b::CancelReason::EndUserRejection);
+        assert_eq!(cancel_reason(1), es10b::CancelReason::Postponed);
+        assert_eq!(cancel_reason(2), es10b::CancelReason::Timeout);
+        assert_eq!(cancel_reason(3), es10b::CancelReason::PprNotAllowed);
+        assert_eq!(cancel_reason(4), es10b::CancelReason::MetadataMismatch);
+        assert_eq!(cancel_reason(5), es10b::CancelReason::LoadBppExecutionError);
+        assert_eq!(cancel_reason(6), es10b::CancelReason::EndUserRejection);
+        assert_eq!(cancel_reason(-1), es10b::CancelReason::EndUserRejection);
+        assert_eq!(empty_to_null(""), serde_json::Value::Null);
+        assert_eq!(empty_to_null("Carrier"), serde_json::Value::String("Carrier".to_string()));
+    }
+
+    #[test]
+    fn session_put_replaces_same_handle_and_take_missing() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        sessions().clear();
+        assert!(session_take("nope").is_none());
+        session_put("tx-dup".to_string(), session("tx-dup"));
+        session_put("tx-dup".to_string(), session("tx-dup"));
+        // Re-put must not duplicate the handle (eviction counts once).
+        assert_eq!(sessions().len(), 1);
+        assert!(session_take("tx-dup").is_some());
+        assert!(session_take("tx-dup").is_none());
+    }
+
+    #[test]
     fn session_eviction_is_oldest_first() {
         let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         sessions().clear();
