@@ -319,7 +319,8 @@ class InstallCoordinator(
         }
         once()
         if (expectedSize > 0 && target.length() != expectedSize) {
-            // Truncated (or over-long): delete first and retry once, since HttpURLConnection will not overwrite cleanly on all devices.
+            // Truncated (or over-long): delete first and retry once, since HttpURLConnection
+            // will not overwrite cleanly on all devices.
             target.delete()
             once()
             if (target.length() != expectedSize) {
@@ -441,7 +442,10 @@ class InstallCoordinator(
                     expectedSha256 = emptyMap(),
                     minVersionCode = trust.minVersionCode,
                     signerOrigin = "Accrescent's signed app list",
-                    // Server is the authority for Accrescent: it already picks splits per-device, so a client-side leanback refusal would second-guess it (mirrors the tvRefusal() exemption); every other source keeps the TV-compatibility requirement from isTv.
+                    // Server is the authority for Accrescent: it already picks splits per-device,
+                    // so a client-side leanback refusal would second-guess it (mirrors the
+                    // tvRefusal() exemption); every other source keeps the TV-compatibility
+                    // requirement from isTv.
                     requireTvCompatible = false,
                 )
 

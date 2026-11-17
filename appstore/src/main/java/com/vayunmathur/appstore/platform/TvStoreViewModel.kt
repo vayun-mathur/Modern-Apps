@@ -397,24 +397,7 @@ class TvStoreViewModel(
             isLoading = true,
         )
         browseJob = viewModelScope.launch {
-            val apps = when {
-                sectionId == "category" ->
-                    section?.let { catalog.allByCategory(it.title).ifEmpty { it.apps } }
-                        ?: emptyList()
-                section?.source != null && section.source != AppSource.PLAYSTORE &&
-                    section.source != AppSource.ACCRESCENT ->
-                    catalog.allBySource(section.source)
-                sectionId == "modern" || sectionId == "modern-recent" ->
-                    catalog.allBySource(AppSource.MODERN_APPS)
-                sectionId == "proprietary-recent" ->
-                    catalog.allBySource(AppSource.PROPRIETARY)
-                sectionId == "fdroid-recent" ->
-                    catalog.allBySource(AppSource.FDROID)
-                sectionId == "izzy-recent" ->
-                    catalog.allBySource(AppSource.IZZY)
-                sectionId == "accrescent" -> accrescent.allListings()
-                else -> playFullClustersFlow.value[sectionId] ?: section?.apps ?: emptyList()
-            }
+            val apps = browseApps(section, sectionId)
             browseContentFlow.value = TvBrowseUiState(
                 sectionId = sectionId,
                 title = title,
@@ -423,6 +406,29 @@ class TvStoreViewModel(
             )
         }
     }
+
+    /** The full catalogue behind one Browse section; see [loadBrowse]. */
+    private suspend fun browseApps(section: TvSection?, sectionId: String): List<UnifiedApp> {
+        if (sectionId == "category") {
+            return section?.let { catalog.allByCategory(it.title).ifEmpty { it.apps } } ?: emptyList()
+        }
+        val source = section?.source
+        if (source != null && source != AppSource.PLAYSTORE && source != AppSource.ACCRESCENT) {
+            return catalog.allBySource(source)
+        }
+        return browseAppsBySectionId(section, sectionId)
+    }
+
+    /** The catalogue behind a section named by id, when not by category/source. */
+    private suspend fun browseAppsBySectionId(section: TvSection?, sectionId: String): List<UnifiedApp> =
+        when (sectionId) {
+            "modern", "modern-recent" -> catalog.allBySource(AppSource.MODERN_APPS)
+            "proprietary-recent" -> catalog.allBySource(AppSource.PROPRIETARY)
+            "fdroid-recent" -> catalog.allBySource(AppSource.FDROID)
+            "izzy-recent" -> catalog.allBySource(AppSource.IZZY)
+            "accrescent" -> accrescent.allListings()
+            else -> playFullClustersFlow.value[sectionId] ?: section?.apps ?: emptyList()
+        }
 
     /** Title for a known section id when home has not (re)built its row yet. */
     private fun browseFallbackTitle(sectionId: String): String = when (sectionId) {

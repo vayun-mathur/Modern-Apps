@@ -67,7 +67,10 @@ private fun TvStoreViewModel.tvSyncReportMessage(report: SyncReport, enabled: Se
     val counts = listOf(report.fdroidCount, report.modernCount, report.proprietaryCount, report.izzyCount)
     return when {
         report.allSkipped -> context.getString(R.string.sync_all_sources_off)
-        !report.anyFailed -> context.resources.getQuantityString(R.plurals.sync_done, counts.sumOf { it ?: 0 }, counts.sumOf { it ?: 0 })
+        !report.anyFailed -> {
+            val synced = counts.sumOf { it ?: 0 }
+            context.resources.getQuantityString(R.plurals.sync_done, synced, synced)
+        }
         counts.all { it == null } -> context.getString(R.string.sync_failed_all)
         report.fdroidCount == null -> context.getString(R.string.sync_failed_fdroid)
         report.izzyCount == null && AppSource.IZZY in enabled ->

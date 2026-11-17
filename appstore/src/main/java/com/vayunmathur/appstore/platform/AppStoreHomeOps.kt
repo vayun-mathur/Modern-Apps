@@ -35,7 +35,11 @@ internal suspend fun AppStoreViewModel.loadHome(enabled: Set<AppSource> = enable
 
 private suspend fun AppStoreViewModel.loadOfflineRecents(enabled: Set<AppSource>) {
     suspend fun recentOrEmpty(source: AppSource): List<UnifiedApp> =
-        if (source in enabled) catalog.recentlyUpdatedBySource(source, AppStoreViewModel.RECENT_PER_SOURCE_LIMIT) else emptyList()
+        if (source in enabled) {
+            catalog.recentlyUpdatedBySource(source, AppStoreViewModel.RECENT_PER_SOURCE_LIMIT)
+        } else {
+            emptyList()
+        }
     modernRecentFlow.value = recentOrEmpty(AppSource.MODERN_APPS)
     fdroidRecentFlow.value = recentOrEmpty(AppSource.FDROID)
     izzyRecentFlow.value = recentOrEmpty(AppSource.IZZY)
@@ -272,7 +276,10 @@ private fun AppStoreViewModel.syncReportMessage(report: SyncReport, enabled: Set
     val counts = listOf(report.fdroidCount, report.modernCount, report.proprietaryCount, report.izzyCount)
     return when {
         report.allSkipped -> context.getString(R.string.sync_all_sources_off)
-        !report.anyFailed -> context.resources.getQuantityString(R.plurals.sync_done, counts.sumOf { it ?: 0 }, counts.sumOf { it ?: 0 })
+        !report.anyFailed -> {
+            val synced = counts.sumOf { it ?: 0 }
+            context.resources.getQuantityString(R.plurals.sync_done, synced, synced)
+        }
         counts.all { it == null } -> context.getString(R.string.sync_failed_all)
         report.fdroidCount == null -> context.getString(R.string.sync_failed_fdroid)
         report.izzyCount == null && AppSource.IZZY in enabled ->
