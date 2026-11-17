@@ -1,5 +1,7 @@
 package com.vayunmathur.library.ui
 
+import android.annotation.SuppressLint
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateDpAsState
@@ -105,6 +107,12 @@ fun pressedShape(pressed: Boolean, restingPercent: Int = 50, pressedPercent: Int
  * Only meaningful on items with a stable `key`; without one the list has no way to tell that an item
  * moved rather than that its content changed.
  */
+// ModifierFactoryExtensionFunction is a false positive here by construction:
+// Modifier.animateItem only exists as an extension on Modifier *inside*
+// LazyItemScope/LazyGridItemScope, so the factory needs the lazy-item receiver
+// as well as returning a Modifier; Kotlin has no stable dual-receiver form for
+// `Modifier.itemMotion()` that still reaches animateItem.
+@SuppressLint("ModifierFactoryExtensionFunction")
 @Composable
 fun LazyItemScope.itemMotion(placementSpec: FiniteAnimationSpec<IntOffset>? = null): Modifier {
     val scheme = MaterialTheme.motionScheme
@@ -117,6 +125,7 @@ fun LazyItemScope.itemMotion(placementSpec: FiniteAnimationSpec<IntOffset>? = nu
 }
 
 /** [itemMotion] for a grid: a tile removed from a grid reflows every tile after it. */
+@SuppressLint("ModifierFactoryExtensionFunction")
 @Composable
 fun LazyGridItemScope.itemMotion(placementSpec: FiniteAnimationSpec<IntOffset>? = null): Modifier {
     val scheme = MaterialTheme.motionScheme
@@ -150,7 +159,8 @@ fun Modifier.staggeredEntrance(index: Int, arriving: Boolean): Modifier {
             shown = true
         }
     }
+    val lift = animatedDp(if (shown) 0.dp else StaggerLift)
     return this
-        .offset(y = animatedDp(if (shown) 0.dp else StaggerLift))
+        .offset { IntOffset(0, lift.roundToPx()) }
         .alpha(animatedFloat(if (shown) 1f else 0f))
 }

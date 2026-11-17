@@ -42,15 +42,13 @@ class ZoomGesturesTest {
                     .size(300.dp)
                     .onSizeChanged { size = it }
                     .testTag("zoom")
-                    .then(
-                        zoomGestures(
+                    .zoomGestures(
                             zoom = zoom,
                             containerSize = { size },
                             onZoomChange = { zoom.value = it },
                             onTap = { taps++ },
                             acceptsTap = acceptsTap,
                         )
-                    )
             )
         }
     }

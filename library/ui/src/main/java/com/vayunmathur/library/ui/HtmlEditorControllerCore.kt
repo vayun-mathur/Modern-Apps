@@ -9,6 +9,7 @@ import android.text.style.StrikethroughSpan
 import android.text.style.StyleSpan
 import android.widget.EditText
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
@@ -68,15 +69,15 @@ open class HtmlEditorControllerCore(
         }
     }
 
-    var selectionStart by mutableStateOf(0)
+    var selectionStart by mutableIntStateOf(0)
         internal set
-    var selectionEnd by mutableStateOf(0)
+    var selectionEnd by mutableIntStateOf(0)
         internal set
 
     var focused by mutableStateOf(false)
         internal set
 
-    var setVersion by mutableStateOf(0)
+    var setVersion by mutableIntStateOf(0)
         internal set
 
     // Public accessors for cross-module email package

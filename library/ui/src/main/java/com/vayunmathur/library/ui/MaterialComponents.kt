@@ -343,8 +343,8 @@ fun Scaffold(
 // --- Top app bars ---
 @Composable
 fun TopAppBar(
-    title: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
+    title: @Composable () -> Unit = {},
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     expandedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
@@ -357,8 +357,8 @@ fun TopAppBar(
 
 @Composable
 fun CenterAlignedTopAppBar(
-    title: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
+    title: @Composable () -> Unit = {},
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
@@ -381,8 +381,8 @@ fun CenterAlignedTopAppBar(
  */
 @Composable
 fun MediumFlexibleTopAppBar(
-    title: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
+    title: @Composable () -> Unit = {},
     subtitle: (@Composable () -> Unit)? = null,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
@@ -398,8 +398,8 @@ fun MediumFlexibleTopAppBar(
 /** [MediumFlexibleTopAppBar] with a taller expanded row, for a screen whose title is the headline. */
 @Composable
 fun LargeFlexibleTopAppBar(
-    title: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
+    title: @Composable () -> Unit = {},
     subtitle: (@Composable () -> Unit)? = null,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},

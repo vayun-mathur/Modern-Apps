@@ -1,5 +1,6 @@
 package com.vayunmathur.library.ui
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.view.ViewGroup
 import android.webkit.WebResourceRequest
@@ -44,6 +45,9 @@ import java.io.File
  *   readable 1:1 scale, and drops any viewport tag the sender embedded. See
  *   [HtmlTextDocument.FIT_TO_WIDTH_CSS].
  */
+// javaScriptEnabled is an explicit caller opt-in (default documented as unsafe
+// for untrusted mail, which passes false); WebView JS is never enabled silently.
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun HtmlText(
     html: String,

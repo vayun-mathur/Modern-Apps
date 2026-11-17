@@ -51,7 +51,6 @@ object SpecialAccess {
      * of silently degrading to inexact alarms.
      */
     fun hasExactAlarms(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
         val manager = context.getSystemService(android.app.AlarmManager::class.java)
         return manager?.canScheduleExactAlarms() ?: false
     }

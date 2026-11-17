@@ -343,9 +343,12 @@ private fun runtimeLabels(permissions: Array<String>): Pair<String, String> {
             LibraryUiR.string.permission_purpose_audio,
         )
     }
-    val hasImagesOrVideo = set.contains(Manifest.permission.READ_MEDIA_IMAGES) ||
-        set.contains(Manifest.permission.READ_MEDIA_VIDEO) ||
-        set.contains(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+    // Literal strings for API 33/34 permissions: the Manifest constants are inlined
+    // string values, and referencing the fields trips InlinedApi on minSdk 31 even
+    // though comparing permission-name strings is safe on every API level.
+    val hasImagesOrVideo = set.contains("android.permission.READ_MEDIA_IMAGES") ||
+        set.contains("android.permission.READ_MEDIA_VIDEO") ||
+        set.contains("android.permission.READ_MEDIA_VISUAL_USER_SELECTED")
     val hasMediaLocation = set.contains(Manifest.permission.ACCESS_MEDIA_LOCATION)
     if (hasImagesOrVideo) {
         names.add(stringResource(LibraryUiR.string.permission_name_photos))
@@ -379,8 +382,8 @@ private fun runtimeLabels(permissions: Array<String>): Pair<String, String> {
         Manifest.permission.BLUETOOTH_SCAN,
         Manifest.permission.BLUETOOTH_CONNECT,
         Manifest.permission.BLUETOOTH_ADVERTISE,
-        Manifest.permission.NEARBY_WIFI_DEVICES,
-        Manifest.permission.ACCESS_LOCAL_NETWORK,
+        "android.permission.NEARBY_WIFI_DEVICES",
+        "android.permission.ACCESS_LOCAL_NETWORK",
         Manifest.permission.CAMERA,
         Manifest.permission.RECORD_AUDIO,
         Manifest.permission.READ_CONTACTS,
@@ -390,11 +393,11 @@ private fun runtimeLabels(permissions: Array<String>): Pair<String, String> {
         Manifest.permission.READ_PHONE_NUMBERS,
         Manifest.permission.READ_CALENDAR,
         Manifest.permission.WRITE_CALENDAR,
-        Manifest.permission.POST_NOTIFICATIONS,
-        Manifest.permission.READ_MEDIA_AUDIO,
-        Manifest.permission.READ_MEDIA_IMAGES,
-        Manifest.permission.READ_MEDIA_VIDEO,
-        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
         Manifest.permission.ACCESS_MEDIA_LOCATION,
         Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.WRITE_EXTERNAL_STORAGE,

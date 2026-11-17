@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.IntSize
  *   over the content (a metadata card, say) do not also zoom or toggle the viewer.
  */
 @Composable
-fun zoomGestures(
+fun Modifier.zoomGestures(
     zoom: State<ZoomState>,
     containerSize: () -> IntSize,
     onZoomChange: (ZoomState) -> Unit,
@@ -53,7 +53,7 @@ fun zoomGestures(
     val latestOnZoomChange by rememberUpdatedState(onZoomChange)
     val latestOnTap by rememberUpdatedState(onTap)
     val latestAcceptsTap by rememberUpdatedState(acceptsTap)
-    return Modifier
+    return this
         .pointerInput(Unit) {
             detectTapGestures(
                 onTap = { offset -> if (latestAcceptsTap(offset)) latestOnTap(offset) },

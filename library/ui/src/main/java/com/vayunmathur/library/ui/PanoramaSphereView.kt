@@ -13,6 +13,23 @@ internal class PanoramaSphereGLView(
     loadTexture: (Int) -> android.graphics.Bitmap?,
 ) : GLSurfaceView(context) {
 
+    // Tools-only constructors (lint ViewConstructor): the view is only ever
+    // created programmatically with a crop/texture loader, so these exist for
+    // layout tooling and refuse to render without them.
+    constructor(context: Context) : this(
+        context, PanoramaCrop.full(1, 1), null, null, { null },
+    )
+
+    constructor(context: Context, attrs: android.util.AttributeSet?) : this(
+        context, PanoramaCrop.full(1, 1), null, null, { null },
+    )
+
+    constructor(
+        context: Context,
+        attrs: android.util.AttributeSet?,
+        defStyleAttr: Int,
+    ) : this(context, PanoramaCrop.full(1, 1), null, null, { null })
+
     private val renderer = SphereRenderer(crop, initialYaw, loadTexture)
     private val scaleDetector: ScaleGestureDetector
 
@@ -62,8 +79,19 @@ internal class PanoramaSphereGLView(
                     requestRender()
                 }
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> dragging = false
+            MotionEvent.ACTION_UP -> {
+                if (dragging) performClick()
+                dragging = false
+            }
+            MotionEvent.ACTION_CANCEL -> dragging = false
         }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        // Touch is consumed for drag/pinch camera control; a click has no
+        // separate action, but accessibility services invoke it on tap.
+        super.performClick()
         return true
     }
 
