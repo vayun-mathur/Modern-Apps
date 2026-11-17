@@ -219,9 +219,13 @@ pub fn normalise(text: &str) -> String {
     }
 
     // Expansions, then the spacing fixes that a stray space before punctuation would leave.
+    // Repeated until none remains: a run of spaces before a mark would otherwise
+    // lose only its last space and keep the rest.
     out = out.replace('@', " at ").replace("e.g.,", "for example, ").replace("i.e.,", "that is, ");
     for mark in [',', '.', '!', '?', ';', ':', '\''] {
-        out = out.replace(&format!(" {mark}"), &mark.to_string());
+        while out.contains(&format!(" {mark}")) {
+            out = out.replace(&format!(" {mark}"), &mark.to_string());
+        }
     }
 
     // Runs of one quote character collapse to a single one; `` ` `` is already an apostrophe.
@@ -448,3 +452,6 @@ pub struct Voice {
 
 include!("supertonic_part1.rs");
 include!("supertonic_part2.rs");
+#[cfg(test)]
+#[path = "supertonic_tests.rs"]
+mod supertonic_tests;

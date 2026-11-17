@@ -127,3 +127,7 @@ pub fn relative_bias(
     }
     Ok(out)
 }
+
+#[cfg(test)]
+#[path = "madlad_part1_tests.rs"]
+mod madlad_part1_tests;

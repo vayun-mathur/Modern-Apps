@@ -444,3 +444,7 @@ impl Mode {
 
 include!("gemma4_vision_part1.rs");
 include!("gemma4_vision_part2.rs");
+
+#[cfg(test)]
+#[path = "gemma4_vision_tests.rs"]
+mod gemma4_vision_tests;

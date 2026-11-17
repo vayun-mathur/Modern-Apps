@@ -23,6 +23,13 @@ impl<'a> Table<'a> {
     ///
     /// [`EOS`]: super::sentencepiece::EOS
     pub fn encode_unigram(&self, text: &str) -> Vec<u32> {
+        // Empty text encodes to no tokens: the dummy prefix `prepare_unigram`
+        // adds is a word-start marker for real text, not a token of its own,
+        // so it must not survive on its own (the `prepared.is_empty()` check
+        // below can never fire, since the prefix alone is non-empty).
+        if text.is_empty() {
+            return Vec::new();
+        }
         let prepared = self.prepare_unigram(text);
         if prepared.is_empty() {
             return Vec::new();

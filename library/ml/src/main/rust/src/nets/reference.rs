@@ -187,3 +187,7 @@ include!("reference_part8.rs");
 include!("reference_part9.rs");
 include!("reference_part10.rs");
 }
+
+#[cfg(test)]
+#[path = "reference_tests.rs"]
+mod reference_tests;

@@ -371,3 +371,7 @@ impl<'a> Table<'a> {
         String::from_utf8_lossy(&out).replace(METASPACE, " ").trim().to_string()
     }
 }
+
+#[cfg(test)]
+#[path = "sentencepiece_tests.rs"]
+mod sentencepiece_tests;

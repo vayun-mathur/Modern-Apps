@@ -481,6 +481,10 @@ pub struct Offsets {
     tensors: Vec<Tensor>,
 }
 
+#[cfg(test)]
+#[path = "weights_tests.rs"]
+mod weights_tests;
+
 include!("weights_part1.rs");
 include!("weights_part2.rs");
 include!("weights_part3.rs");
