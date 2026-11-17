@@ -47,6 +47,7 @@ import java.util.UUID
 @SuppressLint("MissingPermission")
 class ScaleBleManager {
 
+    /** Qingniu/Renpho scale GATT UUIDs, name prefixes and handshake timings. */
     companion object {
         internal const val TAG = "ScaleBle"
 
@@ -80,6 +81,7 @@ class ScaleBleManager {
         internal const val SCAN_TIMEOUT_MS = 20_000L
     }
 
+    /** Scanned BLE scale identified by display name and Bluetooth address. */
     data class ScaleBleDevice(val name: String, val address: String)
 
     private val bluetoothManager = DeviceController.appContext.getSystemService(BluetoothManager::class.java)

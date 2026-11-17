@@ -44,6 +44,7 @@ data class BottleStatus(
  */
 @SuppressLint("MissingPermission")
 class BleManager {
+    /** WaterH bottle GATT UUIDs, commands and scan/command timing constants. */
     companion object {
         internal const val TAG = "WaterHBle"
         val NOTIFY_SERVICE_UUID: UUID = UUID.fromString("0000FFE0-0000-1000-8000-00805F9B34FB")
@@ -78,6 +79,7 @@ class BleManager {
         private const val SCAN_TIMEOUT_MS = 20_000L
     }
 
+    /** Scanned WaterH bottle identified by display name and Bluetooth address. */
     data class BleDevice(val name: String, val address: String)
 
     private val bluetoothManager = DeviceController.appContext.getSystemService(BluetoothManager::class.java)

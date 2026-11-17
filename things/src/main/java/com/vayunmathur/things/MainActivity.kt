@@ -13,6 +13,7 @@ import com.vayunmathur.things.platform.DeviceController
 import com.vayunmathur.things.platform.DeviceService
 import com.vayunmathur.things.platform.HealthConnectHelper
 
+/** Things host activity; initialises device control and gates the UI on permissions. */
 class MainActivity : MaActivity() {
 
     override fun onCreateBeforeContent() {

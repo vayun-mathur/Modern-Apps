@@ -28,11 +28,13 @@ enum class Sex(val code: Int) {
     Female(0),
     Male(1);
 
+    /** Decodes the scale's numeric sex code into [Sex]. */
     companion object {
         fun fromCode(code: Int) = if (code == 1) Male else Female
     }
 }
 
+/** User profile inputs (sex, age, height, athlete mode) for composition estimates. */
 data class ScaleProfile(
     val sex: Sex = Sex.Male,
     val age: Int = 30,
@@ -40,6 +42,7 @@ data class ScaleProfile(
     val athlete: Boolean = false,
 )
 
+/** Raw scale reading: weight with 50/500 kHz and optional segmental impedance. */
 data class ScaleMeasurement(
     val weightKg: Double,
     val resistance50: Int = 0,
@@ -48,6 +51,7 @@ data class ScaleMeasurement(
     val segmental: SegmentalImpedance? = null,
 )
 
+/** Eight-electrode segmental impedance at 20/100 kHz for limbs and trunk. */
 data class SegmentalImpedance(
     val rh20: Double = 0.0,
     val lh20: Double = 0.0,
@@ -61,6 +65,7 @@ data class SegmentalImpedance(
     val lf100: Double = 0.0,
 )
 
+/** Computed body composition: BMI, fat, water, muscle, bone and metabolic estimates. */
 data class BodyMetrics(
     val bmi: Double,
     val bodyFatPercent: Double,
@@ -80,6 +85,7 @@ data class BodyMetrics(
     val segmental: SegmentalResult? = null,
 )
 
+/** Per-segment fat and muscle estimates for arms, legs and trunk. */
 data class SegmentalResult(
     val fatRh: Double,
     val fatLh: Double,
@@ -93,6 +99,7 @@ data class SegmentalResult(
     val muscleLf: Double,
 )
 
+/** Pure on-device BIA calculations turning scale impedance into [BodyMetrics]. */
 object BodyComposition {
 
     // Clamp bounds from algorithmWithSecAthlete @0x139a0 (ghidra_helpers.txt:28-62).

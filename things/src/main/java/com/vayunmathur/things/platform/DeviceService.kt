@@ -85,6 +85,7 @@ class DeviceService : Service() {
             .build()
     }
 
+    /** Foreground-service channel/notification ids and start/stop helpers. */
     companion object {
         private const val CHANNEL_ID = "things_device_channel"
         private const val NOTIFICATION_ID = 201

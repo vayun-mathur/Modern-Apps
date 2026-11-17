@@ -18,6 +18,7 @@ import androidx.health.connect.client.units.Percentage
 import androidx.health.connect.client.units.Power
 import androidx.health.connect.client.units.Volume
 
+/** Health Connect bridge: permission set and hydration/scale record writes. */
 object HealthConnectHelper {
 
     private val ALL_PERMISSIONS: Set<String> = buildSet {
