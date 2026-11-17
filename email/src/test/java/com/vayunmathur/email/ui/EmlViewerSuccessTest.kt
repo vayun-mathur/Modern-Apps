@@ -45,8 +45,12 @@ class EmlViewerSuccessTest {
      * result sat queued past the wait (see ComposerSendTest).
      */
     private fun awaitText(text: String, substring: Boolean = false, unmerged: Boolean = false) {
-        val deadline = System.currentTimeMillis() + 15_000
-        while (System.currentTimeMillis() < deadline) {
+        // Step-counted, not wall-clock: Robolectric's substituted clock
+        // can run far ahead of real time while the looper is idled, so a
+        // 15s deadline expired before the IO parse it waits for had run
+        // on a loaded CI box. Each step sleeps real time instead.
+        var step = 0
+        while (step++ < 3_000) {
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             if (composeRule.onAllNodesWithText(text, substring = substring, useUnmergedTree = unmerged)
                     .fetchSemanticsNodes().isNotEmpty()
