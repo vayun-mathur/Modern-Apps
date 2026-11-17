@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
     <!-- This app uses no motion/environment sensors; MAOS withholds the -->
@@ -7,6 +8,7 @@
     <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -56,9 +58,13 @@
             android:exported="true"
             android:theme="@android:style/Theme.NoDisplay" />
 
+        <!-- Car hosts (Android Auto / MA Auto) bind to this service by its
+             CarAppService intent-filter; the host is validated in code via
+             createHostValidator(), so no manifest permission can be required. -->
         <service
             android:name=".service.car.WeatherCarAppService"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.WEATHER" />

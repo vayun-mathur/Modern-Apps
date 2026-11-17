@@ -50,27 +50,3 @@ fun BlockHeader(
     }
 }
 
-/**
- * One line of the translucent bottom panel on the Sun and Moon blocks: a small
- * leading icon and a time (or duration, or phase name). [style] exists for the
- * moon's phase names, which are far longer than a clock time and overflow the
- * narrowest grid cell at the default size.
- */
-@Composable
-fun RiseSetTimeRow(
-    text: String,
-    icon: @Composable (Modifier, Color) -> Unit,
-    style: TextStyle = MaterialTheme.typography.labelLarge,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        icon(Modifier.size(18.dp), MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.width(5.dp))
-        Text(
-            text = text,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = style,
-            maxLines = 1,
-            softWrap = true,
-        )
-    }
-}

@@ -31,13 +31,3 @@ fun StatBlock(
         Box(modifier = Modifier.fillMaxSize().aspectRatio(1f), content = content)
     }
 }
-
-/** Square (rounded `extraLarge`) variant — humidity, precipitation, air quality, sun, pollen. */
-@Composable
-fun SquareBlock(content: @Composable BoxScope.() -> Unit) =
-    StatBlock(shape = MaterialTheme.shapes.extraLarge, content = content)
-
-/** Circular variant — wind, pressure, cloud cover, visibility. */
-@Composable
-fun CircularStatBlock(content: @Composable BoxScope.() -> Unit) =
-    StatBlock(shape = CircleShape, content = content)

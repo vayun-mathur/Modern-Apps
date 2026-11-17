@@ -2,7 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Погода</string>
     <string name="weather_widget_description">Текущее время, дата и погода — нажмите, чтобы посмотреть прогноз</string>
-    <string name="weather_title">Погода</string>
     <string name="no_locations_yet">Пока нет локаций</string>
     <string name="add_a_city_or_use_your_current_location">Добавьте город или укажите ваше текущее местоположение, чтобы посмотреть прогноз погоды.</string>
     <string name="add_location">Добавить местоположение</string>
@@ -61,13 +60,9 @@
     <string name="level_very_high">Очень высоко</string>
     <string name="level_extreme">Экстремально</string>
     <string name="level_severe">Сильно</string>
-    <string name="cloud_clear">Ясно</string>
-    <string name="cloud_mostly_clear">Малооблачно</string>
-    <string name="cloud_partly_cloudy">Переменная облачность</string>
     <string name="cloud_mostly_cloudy">Облачно с прояснениями</string>
     <string name="cloud_overcast">Пасмурно</string>
     <string name="aqi_good">Чисто</string>
-    <string name="aqi_moderate">Приемлемо</string>
     <string name="aqi_unhealthy_sensitive">Вредно (чувств.)</string>
     <string name="aqi_unhealthy">Вредно</string>
     <string name="aqi_very_unhealthy">Очень вредно</string>
@@ -87,7 +82,6 @@
     <string name="weather_blob_widget_description">Виджет в форме капли с температурой и иконкой погоды</string>
     <string name="max_min">Max <xliff:g id="max" example="28°C">%1$s</xliff:g> Min <xliff:g id="min" example="14°C">%2$s</xliff:g></string>
     <string name="feels_like">Ощущается <xliff:g id="temp" example="26°C">%1$s</xliff:g></string>
-    <string name="from_gusts">Напр <xliff:g id="direction" example="NW">%1$s</xliff:g> · Порывы <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
     <string name="precip_rain_in_min">Дождь через ~<xliff:g id="minutes" example="15">%1$d</xliff:g> минут</string>
     <string name="last_updated">Обновлено <xliff:g id="time_ago" example="2h ago">%1$s</xliff:g></string>
     <string name="minutes_ago"><xliff:g id="minutes" example="5">%1$d</xliff:g>минут назад</string>

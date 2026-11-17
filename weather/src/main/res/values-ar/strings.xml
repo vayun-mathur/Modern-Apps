@@ -20,7 +20,6 @@
     <string name="max_min">الأقصى <xliff:g id="max" example="28°C">%1$s</xliff:g> الأدنى <xliff:g id="min" example="14°C">%2$s</xliff:g></string>
     <string name="feels_like">يشعر كأن <xliff:g id="temp" example="26°C">%1$s</xliff:g></string>
     <string name="dew_point">نقطة الندى</string>
-    <string name="from_gusts">من <xliff:g id="direction" example="NW">%1$s</xliff:g> · الرياح العاصفة <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
     <string name="not_enough_data_to_plot">لا بيانات كافية للرسم.</string>
     <string name="condition_mostly_clear">صافٍ غالبًا</string>
     <string name="condition_partly_cloudy">غائم جزئيًا</string>

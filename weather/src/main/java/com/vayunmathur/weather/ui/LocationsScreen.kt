@@ -64,57 +64,6 @@ import com.vayunmathur.library.ui.animatedDp
  * The per-row "Last updated 4m ago" line is built here because it needs both a [Resources]
  * for the string and a clock; the screen only ever sees the finished text.
  */
-@Composable
-fun LocationsPage(
-    backStack: NavBackStack<Route>,
-    viewModel: WeatherViewModel,
-    activeLocation: SavedLocation?,
-    onLocationSelect: (SavedLocation) -> Unit,
-    onClose: () -> Unit,
-) {
-    val locations = viewModel.savedLocations.collectAsState().value.orEmpty()
-    val forecasts by viewModel.forecasts.collectAsState()
-    val resources = LocalResources.current
-
-    // Ticks every 30s so the "Last updated Xm ago" labels advance over time
-    // rather than being frozen at whatever they read when the drawer opened.
-    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            kotlinx.coroutines.delay(30_000)
-            nowMs = System.currentTimeMillis()
-        }
-    }
-
-    val (onAddCurrentLocation, deviceLocationLoading) = rememberRequestDeviceLocation(viewModel)
-
-    val rows = locations.map { loc ->
-        val state = forecasts[loc.id]
-        LocationRow(
-            location = loc,
-            description = state?.fetchedAtEpochMs
-                ?.takeIf { it > 0L }
-                ?.let { resources.getString(R.string.last_updated, formatAgo(resources, it, nowMs)) }
-                ?: resources.getString(R.string.no_data_yet),
-            weatherCode = state?.forecast?.current?.weatherCode,
-            isDay = (state?.forecast?.current?.isDay ?: 1) == 1,
-        )
-    }
-
-    LocationsScreen(
-        state = LocationsUiState(
-            rows = rows,
-            activeLocationId = activeLocation?.id,
-            deviceLocationLoading = deviceLocationLoading,
-        ),
-        actions = viewModel,
-        onLocationSelect = onLocationSelect,
-        onClose = onClose,
-        onSearchLocation = { backStack.add(Route.SearchLocation) },
-        onUseDeviceLocation = onAddCurrentLocation,
-    )
-}
-
 /**
  * Locations drawer content, with no dependency on the ViewModel or the back stack so it can
  * be rendered from a `@Preview` — see `src/screenshotTest`, which is where the store listing

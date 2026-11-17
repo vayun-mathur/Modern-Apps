@@ -4,7 +4,6 @@
     <string name="search_location">Otsi asukohta</string>
     <string name="confirm_delete">Kinnita kustutamine</string>
     <string name="city_name_hint">Linna või koha nimi</string>
-    <string name="weather_title">Ilmaennustus</string>
     <string name="add_location">Lisa asukoht</string>
     <string name="weather_widget_description">Ilmateave ja kellaaeg ühe vaatena - klõpsa ja vaata ennustust</string>
     <string name="no_matches">Vasteid pole</string>
@@ -20,7 +19,6 @@
     <string name="detect_your_device_s_current_location_au">Tuvasta automaatselt oma seadme praegune asukoht ja lisa oma loendisse</string>
     <string name="current_location">Praegune asukoht</string>
     <string name="locations">Asukohad</string>
-    <string name="from_gusts">Tuule suund <xliff:g id="direction" example="NW">%1$s</xliff:g> · Puhangud <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
     <string name="not_enough_data_to_plot">Graafiku joonistamiseks pole piisavalt andmeid.</string>
     <string name="condition_partly_cloudy">Vahelduv pilvisus</string>
     <string name="condition_cloudy">Pilves</string>
@@ -54,13 +52,9 @@
     <string name="level_very_high">Väga kõrge</string>
     <string name="level_extreme">Äärmuslik</string>
     <string name="level_severe">Tõsine</string>
-    <string name="cloud_clear">Pilvitu</string>
-    <string name="cloud_mostly_clear">Enamuses pilvitu</string>
-    <string name="cloud_partly_cloudy">Vahelduv pilvisus</string>
     <string name="cloud_mostly_cloudy">Enamasti pilves</string>
     <string name="cloud_overcast">Lauspilves</string>
     <string name="aqi_good">Hea</string>
-    <string name="aqi_moderate">Mõõdukas</string>
     <string name="aqi_unhealthy_sensitive">Ebatervislik (ohustatutele)</string>
     <string name="aqi_unhealthy">Ebatervislik</string>
     <string name="aqi_very_unhealthy">Väga ebatervislik</string>

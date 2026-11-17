@@ -2,7 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Väder</string>
     <string name="weather_widget_description">Aktuell tid, datum och väder i en överblick – tryck för prognosen</string>
-    <string name="weather_title">Väder</string>
     <string name="no_locations_yet">Inga platser ännu</string>
     <string name="add_a_city_or_use_your_current_location">Lägg till en stad eller använd din aktuella plats för att se prognosen.</string>
     <string name="add_location">Lägg till plats</string>
@@ -21,7 +20,6 @@
     <string name="max_min">Max <xliff:g id="max" example="28°C">%1$s</xliff:g> Min <xliff:g id="min" example="14°C">%2$s</xliff:g></string>
     <string name="feels_like">Känns som <xliff:g id="temp" example="26°C">%1$s</xliff:g></string>
     <string name="dew_point">Daggpunkt</string>
-    <string name="from_gusts">Från <xliff:g id="direction" example="NW">%1$s</xliff:g> · Byar <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
     <string name="not_enough_data_to_plot">Inte tillräckligt med data för att rita diagrammet.</string>
     <string name="condition_mostly_clear">Mestadels klart</string>
     <string name="condition_partly_cloudy">Delvis molnigt</string>
@@ -65,13 +63,9 @@
     <string name="level_very_high">Mycket hög</string>
     <string name="level_extreme">Extrem</string>
     <string name="level_severe">Allvarlig</string>
-    <string name="cloud_clear">Klart</string>
-    <string name="cloud_mostly_clear">Mestadels klart</string>
-    <string name="cloud_partly_cloudy">Delvis molnigt</string>
     <string name="cloud_mostly_cloudy">Mestadels molnigt</string>
     <string name="cloud_overcast">Mulet</string>
     <string name="aqi_good">Bra</string>
-    <string name="aqi_moderate">Måttlig</string>
     <string name="aqi_unhealthy_sensitive">Ohälsosam (känsliga grupper)</string>
     <string name="aqi_unhealthy">Ohälsosam</string>
     <string name="aqi_very_unhealthy">Mycket ohälsosam</string>

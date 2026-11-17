@@ -4,7 +4,6 @@
     <string name="search_location">搜索位置</string>
     <string name="confirm_delete">确认删除</string>
     <string name="city_name_hint">城市名称</string>
-    <string name="weather_title">天气</string>
     <string name="add_location">添加位置</string>
     <string name="weather_widget_description">一览当前时间、日期和天气 - 点按即可查看天气预报</string>
     <string name="add_a_city_or_use_your_current_location">添加城市或使用当前位置查看天气预报。</string>
@@ -25,7 +24,6 @@
     <string name="summary_slight_chance_rain">有小雨的可能。</string>
     <string name="metric_visibility">能见度</string>
     <string name="metric_temperature">温度</string>
-    <string name="from_gusts">来自 <xliff:g id="direction" example="NW">%1$s</xliff:g> · 阵风 <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
     <string name="metric_feels_like">体感</string>
     <string name="feels_like">体感 <xliff:g id="temp" example="26°C">%1$s</xliff:g></string>
     <string name="use_current_location">使用当前位置</string>
@@ -70,13 +68,9 @@
     <string name="level_very_high">很高</string>
     <string name="level_extreme">极端</string>
     <string name="level_severe">严重</string>
-    <string name="cloud_clear">晴</string>
-    <string name="cloud_mostly_clear">大部分晴</string>
-    <string name="cloud_partly_cloudy">多云</string>
     <string name="cloud_mostly_cloudy">大部分多云</string>
     <string name="cloud_overcast">阴天</string>
     <string name="aqi_good">良好</string>
-    <string name="aqi_moderate">中等</string>
     <string name="aqi_unhealthy_sensitive">不健康（敏感人群）</string>
     <string name="aqi_unhealthy">不健康</string>
     <string name="aqi_very_unhealthy">非常不健康</string>

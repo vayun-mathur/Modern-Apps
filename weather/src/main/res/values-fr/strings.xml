@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="confirm_delete">Confirmer la suppression</string>
-    <string name="weather_title">Météo</string>
     <string name="add_location">Ajouter un lieu</string>
     <string name="city_name_hint">Nom de la ville</string>
     <string name="search_location">Rechercher un lieu</string>
@@ -25,7 +24,6 @@
     <string name="summary_slight_chance_rain">Faible risque de pluie.</string>
     <string name="metric_visibility">Visibilité</string>
     <string name="metric_temperature">Température</string>
-    <string name="from_gusts">Vent de <xliff:g id="direction" example="NW">%1$s</xliff:g> · Rafales à <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
     <string name="metric_feels_like">Ressenti</string>
     <string name="feels_like">Ressenti : %1$s</string>
     <string name="use_current_location">Utiliser la position actuelle</string>
@@ -63,13 +61,9 @@
     <string name="level_very_high">Très élevé</string>
     <string name="level_extreme">Extrême</string>
     <string name="level_severe">Sévère</string>
-    <string name="cloud_clear">Dégagé</string>
-    <string name="cloud_mostly_clear">Peu nuageux</string>
-    <string name="cloud_partly_cloudy">Partiellement nuageux</string>
     <string name="cloud_mostly_cloudy">Très nuageux</string>
     <string name="cloud_overcast">Couvert</string>
     <string name="aqi_good">Bon</string>
-    <string name="aqi_moderate">Modéré</string>
     <string name="aqi_unhealthy">Mauvais</string>
     <string name="aqi_very_unhealthy">Très mauvais</string>
     <string name="aqi_hazardous">Dangereux</string>

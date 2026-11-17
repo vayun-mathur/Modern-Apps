@@ -4,6 +4,5 @@
     <string name="search_location">Suche Standort</string>
     <string name="confirm_delete">Löschen bestätigen</string>
     <string name="city_name_hint">Stadt</string>
-    <string name="weather_title">Wetter</string>
     <string name="add_location">Ort hinzufügen</string>
 </resources>

@@ -4,7 +4,6 @@
     <string name="search_location">Wyszukaj lokalizację</string>
     <string name="confirm_delete">Potwierdź usunięcie</string>
     <string name="city_name_hint">Nazwa miasta</string>
-    <string name="weather_title">Pogoda</string>
     <string name="add_location">Dodaj lokalizację</string>
     <string name="weather_widget_description">Aktualny czas, data i pogoda na pierwszy rzut oka - dotknij, aby zobaczyć prognozę</string>
     <string name="no_locations_yet">Nie dodano jeszcze lokalizacji</string>
@@ -20,7 +19,6 @@
     <string name="max_min">Maks. <xliff:g id="max" example="28°C">%1$s</xliff:g> Min. <xliff:g id="min" example="14°C">%2$s</xliff:g></string>
     <string name="feels_like">Odczuwalna <xliff:g id="temp" example="26°C">%1$s</xliff:g></string>
     <string name="dew_point">Punkt rosy</string>
-    <string name="from_gusts">Z kierunku: <xliff:g id="direction" example="NW">%1$s</xliff:g> · W porywach <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
     <string name="not_enough_data_to_plot">Za mało danych do sporządzenia wykresu.</string>
     <string name="condition_partly_cloudy">Częściowe zachmurzenie</string>
     <string name="condition_cloudy">Pochmurno</string>
@@ -54,13 +52,9 @@
     <string name="level_very_high">Bardzo wysoki</string>
     <string name="level_extreme">Ekstremalny</string>
     <string name="level_severe">Ciężki</string>
-    <string name="cloud_clear">Bezchmurnie</string>
-    <string name="cloud_mostly_clear">Przeważnie bezchmurnie</string>
-    <string name="cloud_partly_cloudy">Częściowe zachmurzenie</string>
     <string name="cloud_mostly_cloudy">Zachmurzenie duże</string>
     <string name="cloud_overcast">Całkowite zachmurzenie</string>
     <string name="aqi_good">Dobry</string>
-    <string name="aqi_moderate">Umiarkowany</string>
     <string name="aqi_unhealthy_sensitive">Niezdrowy (wrażliwy)</string>
     <string name="aqi_unhealthy">Niezdrowy</string>
     <string name="aqi_very_unhealthy">Bardzo niezdrowe</string>

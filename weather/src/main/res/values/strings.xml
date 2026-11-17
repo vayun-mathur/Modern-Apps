@@ -44,7 +44,6 @@
     <!-- HumidityBlock: row label for dew point inside humidity details. Noun phrase -->
     <string name="dew_point">Dew point</string>
     <!-- WindBlock: wind details line. %1$s = compass direction e.g. NW, %2$s = gusts speed e.g. 18 km/h -->
-    <string name="from_gusts">From <xliff:g id="direction" example="NW">%1$s</xliff:g> · Gusts <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
 
     <!-- Placeholder when not enough data points (<2) to draw graph line -->
     <string name="not_enough_data_to_plot">Not enough data to plot.</string>

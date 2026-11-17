@@ -4,7 +4,6 @@
     <string name="search_location">Cerca località</string>
     <string name="confirm_delete">Conferma eliminazione</string>
     <string name="city_name_hint">Nome della città</string>
-    <string name="weather_title">Meteo</string>
     <string name="add_location">Aggiungi una località</string>
     <string name="weather_widget_description">Ora, data e meteo a colpo d\'occhio — tocca per le previsioni</string>
     <string name="no_locations_yet">Nessuna località</string>
@@ -20,7 +19,6 @@
     <string name="max_min">Max <xliff:g id="max" example="28°C">%1$s</xliff:g> Min <xliff:g id="min" example="14°C">%2$s</xliff:g></string>
     <string name="feels_like">Percepiti <xliff:g id="temp" example="26°C">%1$s</xliff:g></string>
     <string name="dew_point">Punto di rugiada</string>
-    <string name="from_gusts">Da <xliff:g id="direction" example="NW">%1$s</xliff:g> · Raffiche <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
     <string name="not_enough_data_to_plot">Dati insufficienti per il grafico.</string>
     <string name="condition_mostly_clear">Prevalentemente sereno</string>
     <string name="condition_partly_cloudy">Parzialmente nuvoloso</string>

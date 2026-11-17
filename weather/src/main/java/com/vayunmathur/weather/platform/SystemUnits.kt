@@ -37,30 +37,6 @@ fun systemTempUnit(): TemperatureUnit = when (LocalePreferences.getTemperatureUn
     else -> TemperatureUnit.Celsius
 }
 
-@Composable
-fun rememberWindUnit(): WindUnit {
-    LocalConfiguration.current
-    return remember(LocalConfiguration.current) {
-        if (isImperialMeasurementSystem(Locale.getDefault())) WindUnit.Mph else WindUnit.KmH
-    }
-}
-
-@Composable
-fun rememberPressureUnit(): PressureUnit {
-    LocalConfiguration.current
-    return remember(LocalConfiguration.current) {
-        if (isImperialMeasurementSystem(Locale.getDefault())) PressureUnit.InHg else PressureUnit.Hpa
-    }
-}
-
-@Composable
-fun rememberUse24Hour(): Boolean {
-    LocalConfiguration.current
-    val context = LocalContext.current
-    return remember(LocalConfiguration.current) {
-        android.text.format.DateFormat.is24HourFormat(context)
-    }
-}
 
 /**
  * True when the locale opts into a non-metric measurement system, either
@@ -68,7 +44,7 @@ fun rememberUse24Hour(): Boolean {
  * preference sets, or by virtue of being one of the three remaining
  * predominantly-imperial country codes.
  */
-private fun isImperialMeasurementSystem(locale: Locale): Boolean {
+internal fun isImperialMeasurementSystem(locale: Locale): Boolean {
     val extension = locale.getUnicodeLocaleType("ms")
     if (extension != null) {
         return extension == "ussystem" || extension == "uksystem"

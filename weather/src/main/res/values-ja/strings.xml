@@ -2,7 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">天気</string>
     <string name="weather_widget_description">現在の時間、日付と天気を一目で - タップして天気予報を開く</string>
-    <string name="weather_title">天気</string>
     <string name="no_locations_yet">場所がありません</string>
     <string name="add_a_city_or_use_your_current_location">天気予報を見るには、都市を追加するか現在の位置を使用します。</string>
     <string name="add_location">場所を追加</string>
@@ -20,7 +19,6 @@
     <string name="max_min">最高気温 <xliff:g id="max" example="28°C">%1$s</xliff:g> 最低気温 <xliff:g id="min" example="14°C">%2$s</xliff:g></string>
     <string name="feels_like">体感温度 <xliff:g id="temp" example="26°C">%1$s</xliff:g></string>
     <string name="dew_point">露点</string>
-    <string name="from_gusts"><xliff:g id="direction" example="NW">%1$s</xliff:g> の風 · 最大瞬間風速 <xliff:g id="gusts" example="18 km/h">%2$s</xliff:g></string>
     <string name="not_enough_data_to_plot">グラフを描く十分なデータがありません。</string>
     <string name="condition_mostly_clear">晴れ</string>
     <string name="condition_partly_cloudy">晴れ</string>
@@ -64,13 +62,9 @@
     <string name="level_very_high">非常に強い</string>
     <string name="level_extreme">極端に強い</string>
     <string name="level_severe">極端に強い</string>
-    <string name="cloud_clear">快晴</string>
-    <string name="cloud_mostly_clear">晴れ</string>
-    <string name="cloud_partly_cloudy">晴れ</string>
     <string name="cloud_mostly_cloudy">曇り</string>
     <string name="cloud_overcast">曇り</string>
     <string name="aqi_good">良い</string>
-    <string name="aqi_moderate">中程度</string>
     <string name="aqi_unhealthy_sensitive">健康に良くない (敏感な人)</string>
     <string name="aqi_unhealthy">健康に良くない</string>
     <string name="aqi_very_unhealthy">非常に健康に良くない</string>

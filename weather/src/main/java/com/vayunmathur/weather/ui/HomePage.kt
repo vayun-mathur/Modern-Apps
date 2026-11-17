@@ -185,78 +185,6 @@ fun HomePage(
     )
 }
 
-/**
- * The forecast page, with no dependency on the ViewModel, the back stack or the clock so it
- * can be rendered from a `@Preview` — see `src/screenshotTest`, which is where the store
- * listing images come from.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeScreen(
-    state: LocationUiState,
-    units: DisplayUnits,
-    actions: WeatherActions,
-    drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed),
-    /** Short-range rain outlook; reads a clock, so the binder resolves it. */
-    precipitationNowcast: String? = null,
-    /**
-     * "Now" for the hourly strip and the sun arc. A parameter rather than a clock read so a
-     * preview's fixed sample data can't age out from under it.
-     */
-    nowEpochSec: Long = System.currentTimeMillis() / 1000,
-    onOpenMap: (WeatherMetric, String?) -> Unit = { _, _ -> },
-    /** The locations drawer. Empty in a preview, which has no saved-location list. */
-    drawerContent: @Composable () -> Unit = {},
-) {
-    val scope = rememberCoroutineScope()
-    BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
-
-    // Expanded windows (large tablets, desktop) pin the locations list as a
-    // permanent side panel next to the forecast instead of hiding it in a modal
-    // drawer — there is room for both, and picking another location without
-    // losing the current forecast is the point of the wide layout. The panel
-    // fills a fraction of the window rather than a fixed dp so it scales from
-    // an 840dp tablet to a full desktop window.
-    if (isExpandedWidth()) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.fillMaxWidth(0.35f).fillMaxHeight()) {
-                drawerContent()
-            }
-            ForecastScaffold(
-                state = state,
-                units = units,
-                actions = actions,
-                drawerState = drawerState,
-                precipitationNowcast = precipitationNowcast,
-                nowEpochSec = nowEpochSec,
-                onOpenMap = onOpenMap,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-            )
-        }
-        return
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ) {
-                drawerContent()
-            }
-        },
-    ) {
-        ForecastScaffold(
-            state = state,
-            units = units,
-            actions = actions,
-            drawerState = drawerState,
-            precipitationNowcast = precipitationNowcast,
-            nowEpochSec = nowEpochSec,
-            onOpenMap = onOpenMap,
-        )
-    }
-}
 
 /**
  * The forecast body under its floating in-content search bar. Shared by the
@@ -265,7 +193,7 @@ fun HomeScreen(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ForecastScaffold(
+internal fun ForecastScaffold(
     state: LocationUiState,
     units: DisplayUnits,
     actions: WeatherActions,

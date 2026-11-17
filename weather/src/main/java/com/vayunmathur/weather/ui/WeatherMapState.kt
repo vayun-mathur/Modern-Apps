@@ -17,6 +17,7 @@ import com.vayunmathur.weather.network.WeatherApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,7 +70,7 @@ internal class WeatherMapState(
     )
 
     var metadata by mutableStateOf<OmMapMetadata?>(null)
-    var timeIndex by mutableStateOf(0)
+    var timeIndex by mutableIntStateOf(0)
     var userScrubbed by mutableStateOf(false)
     var visibleBbox by mutableStateOf<GeoBounds?>(null)
     var overlay by mutableStateOf<ImageBitmap?>(null)
