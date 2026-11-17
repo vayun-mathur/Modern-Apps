@@ -28,9 +28,7 @@ pub fn extract(
         pbf::run_pass_sink(
             input,
             &blobs,
-            None,
-            KIND_RELATIONS,
-            "relations",
+            pbf::PassSpec { blob_kinds: None, want: KIND_RELATIONS, label: "relations" },
             Vec::<(u8, Attrs, Vec<i64>)>::new,
             |acc, block| {
                 let mut kinds = 0u8;
@@ -91,9 +89,7 @@ pub fn extract(
         let _ = pbf::run_pass_sink(
             input,
             &blobs,
-            Some(&kinds),
-            KIND_WAYS,
-            "ways",
+            pbf::PassSpec { blob_kinds: Some(&kinds), want: KIND_WAYS, label: "ways" },
             || (Vec::<(u8, Attrs, Vec<i64>)>::new(), Vec::<(i64, Vec<i64>)>::new()),
             |acc, block| {
                 let mut kinds = 0u8;
@@ -214,9 +210,7 @@ pub fn extract(
         let _ = pbf::run_pass_sink(
             input,
             &blobs,
-            Some(&kinds),
-            KIND_NODES,
-            "node features",
+            pbf::PassSpec { blob_kinds: Some(&kinds), want: KIND_NODES, label: "node features" },
             Vec::<(u8, Attrs, i32, i32)>::new,
             |acc: &mut Vec<(u8, Attrs, i32, i32)>, block| {
                 let mut kinds = 0u8;

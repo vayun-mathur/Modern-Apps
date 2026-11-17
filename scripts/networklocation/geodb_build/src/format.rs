@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn morton_offsets_cannot_overflow_the_interleave() {
-        assert!(CELL <= (1 << 20), "cell wider than the interleave can represent");
+        const { assert!(CELL <= (1 << 20), "cell wider than the interleave can represent") };
         // Extremes of a cell.
         let base_lat = MIN_LAT;
         let base_lon = MIN_LON;
