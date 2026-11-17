@@ -58,6 +58,7 @@ interface HomeActions {
     fun openCourse(courseId: String) {}
     fun openDeadline(deadline: HomeDeadline) {}
 
+    /** Provides the no-op [HomeActions] implementation used by previews. */
     companion object {
         val Noop: HomeActions = object : HomeActions {}
     }
@@ -93,6 +94,7 @@ interface CourseActions {
     fun openUnit(unitId: String) {}
     fun openExercise(exerciseId: String) {}
 
+    /** Provides the no-op [CourseActions] implementation used by previews. */
     companion object {
         val Noop: CourseActions = object : CourseActions {}
     }
@@ -116,6 +118,7 @@ interface QuizActions {
     fun navigateUp() {}
     fun finish(questions: List<Question>, answers: Map<String, Answer?>) {}
 
+    /** Provides the no-op [QuizActions] implementation used by previews. */
     companion object {
         val Noop: QuizActions = object : QuizActions {}
     }

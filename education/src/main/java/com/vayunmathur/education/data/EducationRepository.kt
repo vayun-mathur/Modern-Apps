@@ -4,6 +4,7 @@ import android.content.Context
 import com.vayunmathur.library.room.RoomRepository
 import kotlinx.coroutines.flow.Flow
 
+/** Repository facade over [EducationDatabase] for learner, skill-progress, and deadline data. */
 class EducationRepository private constructor(context: Context) :
     RoomRepository<EducationDatabase>(context, EducationDatabase::class, DB_NAME) {
 
@@ -29,6 +30,7 @@ class EducationRepository private constructor(context: Context) :
     suspend fun upsertDeadline(value: Deadline) = deadlineDao.upsert(value)
     suspend fun deleteDeadline(value: Deadline) = deadlineDao.delete(value)
 
+    /** Singleton accessor for the shared [EducationRepository] instance. */
     companion object {
         @Volatile private var instance: EducationRepository? = null
         fun get(context: Context): EducationRepository =

@@ -43,6 +43,7 @@ sealed interface Question {
     val difficulty: Int
 }
 
+/** Single-answer multiple-choice question: the learner picks one of [choices], correct at [correctIndex]. */
 @Serializable
 @SerialName("multiple_choice")
 data class MultipleChoiceQuestion(
@@ -57,6 +58,7 @@ data class MultipleChoiceQuestion(
     override val difficulty: Int = 1,
 ) : Question
 
+/** Multiple-select question: the learner must pick exactly the [correctIndices] set from [choices]. */
 @Serializable
 @SerialName("multiple_select")
 data class MultipleSelectQuestion(
@@ -71,6 +73,7 @@ data class MultipleSelectQuestion(
     override val difficulty: Int = 2,
 ) : Question
 
+/** Numeric-answer question accepted within [tolerance] of [answer], optionally with a [unit]. */
 @Serializable
 @SerialName("numeric")
 data class NumericQuestion(
@@ -87,6 +90,7 @@ data class NumericQuestion(
     override val difficulty: Int = 2,
 ) : Question
 
+/** Short free-text question accepted when the response matches one of [acceptedAnswers]. */
 @Serializable
 @SerialName("short_text")
 data class ShortTextQuestion(
@@ -156,9 +160,13 @@ data class TracingQuestion(
 /** A learner's answer to a [Question], produced by the quiz UI. */
 sealed interface Answer
 
+/** Answer selecting the single choice at [index]. */
 data class ChoiceAnswer(val index: Int) : Answer
+/** Answer selecting the set of choices at [indices]. */
 data class MultiChoiceAnswer(val indices: Set<Int>) : Answer
+/** Answer supplying the numeric [value]. */
 data class NumericAnswer(val value: Double) : Answer
+/** Answer supplying the free-text [text]. */
 data class TextAnswer(val text: String) : Answer
 
 /** [order] holds the original item indices in the sequence the learner placed them. */

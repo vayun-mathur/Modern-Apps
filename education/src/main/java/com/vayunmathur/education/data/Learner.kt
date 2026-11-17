@@ -32,6 +32,7 @@ data class Learner(
     val totalStars: Int = 0,
     val onboarded: Boolean = false,
 ) {
+    /** Constants for the single-learner table, including its pinned row id. */
     companion object {
         const val SINGLE_ID = 1L
     }

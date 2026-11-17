@@ -16,6 +16,7 @@ class EducationAchievements(context: Context) : AchievementsManager(context, BAD
         // backfill here.
     }
 
+    /** Stable badge identifiers awarded by the ViewModel and shown in the gallery. */
     object Ids {
         const val FIRST_STAR = "first_star"
         const val PERFECT = "perfect_quiz"
@@ -27,6 +28,7 @@ class EducationAchievements(context: Context) : AchievementsManager(context, BAD
         const val COURSE_MASTER = "course_master"
     }
 
+    /** Badge sticker artwork and the bundled badge definitions for [EducationAchievements]. */
     companion object {
         /** Emoji sticker per badge id, for the kid-facing gallery. */
         val STICKERS: Map<String, String> = mapOf(

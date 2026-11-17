@@ -209,6 +209,7 @@ class EducationViewModel(
         if (masteredACourse) achievements.onAchievementUnlocked(EducationAchievements.Ids.COURSE_MASTER)
     }
 
+    /** Star-rating thresholds and pure helpers for streaks, star scoring, and PIN hashing. */
     companion object {
         /** Max stars per exercise (perfect score). */
         const val MAX_STARS = 3
@@ -256,6 +257,7 @@ data class QuizResult(
     val perSkillStars: Map<String, Int>,
 )
 
+/** Factory that creates [EducationViewModel] with its content and repository dependencies. */
 class EducationViewModelFactory(
     private val application: Application,
     private val content: ContentRepository,

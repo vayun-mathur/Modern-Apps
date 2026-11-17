@@ -94,6 +94,10 @@ class ContentRepository(val packs: List<ContentPack>) {
         ModuleType.LESSON -> lesson(id)?.title
     }
 
+    /**
+     * Factory for [ContentRepository]: loads and parses bundled content packs from assets, skipping malformed
+     * packs.
+     */
     companion object {
         private const val TAG = "ContentRepository"
         private const val ASSET_DIR = "content"

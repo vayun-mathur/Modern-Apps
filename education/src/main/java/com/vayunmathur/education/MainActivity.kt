@@ -19,6 +19,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * Entry activity for Education: loads content and repositories off the main thread, seeds the single learner,
+ * then hosts navigation with the narrator provided.
+ */
 class MainActivity : MaActivity() {
     private lateinit var content: ContentRepository
     private lateinit var repository: EducationRepository
