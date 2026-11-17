@@ -16,14 +16,14 @@ import androidx.compose.runtime.LaunchedEffect
  *
  * Call once from the composable that owns the back stack:
  *
- *     backStack.openSettingsIfRequested(Route.Settings)
+ *     backStack.OpenSettingsIfRequested(Route.Settings)
  *
  * Deliberately a push rather than a stack reset, so back returns to the app's
  * home screen rather than closing it - the user arrived from outside and has
  * nowhere else to go back to.
  */
 @Composable
-fun <T : NavKey> NavBackStack<T>.openSettingsIfRequested(settings: T) {
+fun <T : NavKey> NavBackStack<T>.OpenSettingsIfRequested(settings: T) {
     val activity = LocalActivity.current
     LaunchedEffect(activity) {
         val launchedFromAppInfo =

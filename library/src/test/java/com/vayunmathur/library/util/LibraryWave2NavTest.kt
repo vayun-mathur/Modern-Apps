@@ -185,13 +185,13 @@ class LibraryWave2NavTest {
         rule.waitForIdle()
     }
 
-    @Test fun openSettingsIfRequestedNoOpForNormalLaunch() {
-        // openSettingsIfRequested with a non-app-info intent is a no-op.
+    @Test fun OpenSettingsIfRequestedNoOpForNormalLaunch() {
+        // OpenSettingsIfRequested with a non-app-info intent is a no-op.
         val stack = NavBackStack(arrayOf(Screen("home2")))
         rule.setContent {
             MaterialTheme {
                 Column {
-                    with(stack) { openSettingsIfRequested(Screen("settings")) }
+                    with(stack) { OpenSettingsIfRequested(Screen("settings")) }
                     Text("SettingsHost")
                 }
             }

@@ -2,7 +2,6 @@ package com.vayunmathur.library.util
 
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -63,12 +62,8 @@ private fun packageVersionName(context: Context): String? {
 
 private fun packageVersionCode(context: Context): Long? {
     return try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
-        } else {
-            @Suppress("DEPRECATION")
-            context.packageManager.getPackageInfo(context.packageName, 0).versionCode.toLong()
-        }
+        // minSdk is 31, so longVersionCode (API 28+) is always available.
+        context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
     } catch (_: PackageManager.NameNotFoundException) {
         null
     }

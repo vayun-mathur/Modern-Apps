@@ -20,7 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** NavResultRegistry/ResultEffect delivery and openSettingsIfRequested. */
+/** NavResultRegistry/ResultEffect delivery and OpenSettingsIfRequested. */
 @RunWith(RobolectricTestRunner::class)
 class LibraryNavResultsTest {
 
@@ -62,13 +62,13 @@ class LibraryNavResultsTest {
             Intent(action),
         ).create().get()
 
-    @Test fun openSettingsIfRequestedPushesSettingsAndConsumesIntent() {
+    @Test fun OpenSettingsIfRequestedPushesSettingsAndConsumesIntent() {
         val stack = NavBackStack(arrayOf(Page("home")))
         val activity = activityWithAction(Intent.ACTION_APPLICATION_PREFERENCES)
         rule.setContent {
             MaterialTheme {
                 CompositionLocalProvider(LocalActivity provides activity) {
-                    with(stack) { openSettingsIfRequested(Page("settings")) }
+                    with(stack) { OpenSettingsIfRequested(Page("settings")) }
                     Text("Current ${stack.last().route}")
                 }
             }
@@ -79,13 +79,13 @@ class LibraryNavResultsTest {
         rule.onNodeWithText("Current settings").assertIsDisplayed()
     }
 
-    @Test fun openSettingsIfRequestedIgnoresNormalLaunch() {
+    @Test fun OpenSettingsIfRequestedIgnoresNormalLaunch() {
         val stack = NavBackStack(arrayOf(Page("home")))
         val activity = activityWithAction(Intent.ACTION_MAIN)
         rule.setContent {
             MaterialTheme {
                 CompositionLocalProvider(LocalActivity provides activity) {
-                    with(stack) { openSettingsIfRequested(Page("settings")) }
+                    with(stack) { OpenSettingsIfRequested(Page("settings")) }
                     Text("Current ${stack.last().route}")
                 }
             }
@@ -95,13 +95,13 @@ class LibraryNavResultsTest {
         assertTrue(stack.backStack.size == 1)
     }
 
-    @Test fun openSettingsIfRequestedAlreadyOnSettingsDoesNotDuplicate() {
+    @Test fun OpenSettingsIfRequestedAlreadyOnSettingsDoesNotDuplicate() {
         val stack = NavBackStack(arrayOf(Page("settings")))
         val activity = activityWithAction(Intent.ACTION_APPLICATION_PREFERENCES)
         rule.setContent {
             MaterialTheme {
                 CompositionLocalProvider(LocalActivity provides activity) {
-                    with(stack) { openSettingsIfRequested(Page("settings")) }
+                    with(stack) { OpenSettingsIfRequested(Page("settings")) }
                     Text("Current ${stack.last().route}")
                 }
             }
