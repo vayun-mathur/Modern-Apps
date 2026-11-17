@@ -286,7 +286,7 @@ class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
             val pm = getApplication<Application>().packageManager
             val self = getApplication<Application>().packageName
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-            if (Build.VERSION.SDK_INT >= 33) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
             } else {
                 @Suppress("DEPRECATION") pm.queryIntentActivities(intent, 0)
