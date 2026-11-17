@@ -215,8 +215,13 @@ class ViewModelDeepTest {
         assertTrue(total >= 1)
         pollUntil { "ZQXDAILYDEEP" in vm.bonusWords.value }
         // The same word found today does not appear once back in casual mode.
+        // foundWords/bonusWords are combines over gameMode, so they switch
+        // asynchronously after gameMode itself: await the observed sets,
+        // not just the mode (an immediate assert reads the daily sets).
         vm.setGameMode(GameMode.CASUAL)
         pollUntil { vm.gameMode.value == GameMode.CASUAL }
+        pollUntil { "ZQXDAILYDEEP" !in vm.foundWords.value }
+        pollUntil { "ZQXDAILYDEEP" !in vm.bonusWords.value }
         assertFalse("ZQXDAILYDEEP" in vm.foundWords.value)
         assertFalse("ZQXDAILYDEEP" in vm.bonusWords.value)
         // Daily win is idempotent within the day for the streak.

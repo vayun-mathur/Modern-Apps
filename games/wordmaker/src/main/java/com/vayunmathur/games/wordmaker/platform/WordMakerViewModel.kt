@@ -333,14 +333,18 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     override fun setGameMode(mode: GameMode) {
+        // Reset to the neutral state synchronously, before the persisted
+        // mode write suspends: doing it after the write let this stale
+        // reset land after a loadNextCompetitiveLevel() started in the
+        // new mode, clearing its active flag (and leaving its board
+        // permanently "inactive", which the retry/tap flows poll for).
+        _competitiveActive.value = false
+        _competitiveResult.value = null
+        _competitiveDeadline.value = 0L
+        // The error belongs to the mode that produced it, not to the one being entered.
+        _error.value = null
         viewModelScope.launch {
             levelDataStore.setGameMode(mode)
-            // Both modes return to a neutral state: competitive opens its lobby, casual resumes play.
-            _competitiveActive.value = false
-            _competitiveResult.value = null
-            _competitiveDeadline.value = 0L
-            // The error belongs to the mode that produced it, not to the one being entered.
-            _error.value = null
         }
     }
 
