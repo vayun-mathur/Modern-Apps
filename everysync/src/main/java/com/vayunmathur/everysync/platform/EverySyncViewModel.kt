@@ -197,7 +197,8 @@ class EverySyncViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.Main) {
                     announce(
                         if (count != null) {
-                            getApplication<Application>().resources.getQuantityString(R.plurals.snapshot_restored, count, count)
+                            getApplication<Application>().resources
+                                .getQuantityString(R.plurals.snapshot_restored, count, count)
                         } else {
                             getApplication<Application>().getString(R.string.snapshot_restore_failed)
                         },
