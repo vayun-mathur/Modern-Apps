@@ -79,5 +79,5 @@ fn rgba_sample_resize_and_gray_behave() {
     assert_eq!((small.w, small.h), (2, 2));
     let gray = to_gray(&img);
     assert_eq!((gray.w, gray.h), (4, 4));
-    assert_eq!(gray.px[1 * 4 + 1], ((255u32 * 77) >> 8) as u8);
+    assert_eq!(gray.px[4 + 1], ((255u32 * 77) >> 8) as u8);
 }
