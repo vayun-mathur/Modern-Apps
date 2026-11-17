@@ -26,6 +26,7 @@ private const val WIRE_UMTS = 2
 private const val WIRE_LTE = 3
 private const val WIRE_NR = 4
 
+/** Cellular radio access technology, part of a cell beacon's identity and wire key. */
 enum class RadioType(val wire: Int) {
     GSM(WIRE_GSM),
     UMTS(WIRE_UMTS),
@@ -36,6 +37,7 @@ enum class RadioType(val wire: Int) {
 
 /** A radio beacon we can resolve to a location: a WiFi access point or a cell tower. */
 sealed interface BeaconId {
+    /** Wi-Fi beacon identified by its BSSID. */
     data class Wifi(val bssid: String) : BeaconId
 
     /**

@@ -3,6 +3,7 @@ package com.vayunmathur.networklocation
 import com.vayunmathur.library.util.NavKey
 import kotlinx.serialization.Serializable
 
+/** Navigation routes for offline-database setup and location status. */
 @Serializable
 sealed interface Route : NavKey {
     /** Offline-database download. Shown until every database is on disk. */
