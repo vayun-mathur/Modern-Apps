@@ -23,6 +23,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 mod http_range;
 mod om;
 
+#[cfg(test)]
+mod grid_tests;
+
 use crate::om::{OmBackend, OmReader};
 
 // ---------------------------------------------------------------------------
@@ -174,16 +177,16 @@ fn bilinear(
 ) -> f32 {
     let ly = gy - win.y0 as f64;
     let lx = gx - win.x0 as f64;
-    if ly < 0.0 || lx < 0.0 {
+    if ly < 0.0 || lx < 0.0 || sub_nx < 2 || sub_ny < 2 {
         return f32::NAN;
     }
-    let y0 = ly.floor() as usize;
-    let x0 = lx.floor() as usize;
-    if y0 + 1 >= sub_ny || x0 + 1 >= sub_nx {
-        return f32::NAN;
-    }
-    let fy = (ly - y0 as f64) as f32;
-    let fx = (lx - x0 as f64) as f32;
+    // Clamp the cell origin so points on the east/north edge (or a hair past
+    // them) sample the edge cell with a fraction of 1 instead of falling off
+    // the grid: an exact corner returns that corner's value.
+    let y0 = (ly.floor() as usize).min(sub_ny - 2);
+    let x0 = (lx.floor() as usize).min(sub_nx - 2);
+    let fy = ((ly - y0 as f64) as f32).clamp(0.0, 1.0);
+    let fx = ((lx - x0 as f64) as f32).clamp(0.0, 1.0);
 
     let p00 = data[y0 * sub_nx + x0];
     let p01 = data[y0 * sub_nx + x0 + 1];
