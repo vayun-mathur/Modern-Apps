@@ -39,13 +39,23 @@ import com.vayunmathur.web.R
 /**
  * Diameter of the circular tab-count indicator, and therefore the
  * height of the omnibox beside it: the two chrome controls share one
- * size so the bar reads as one row of equal-height controls. This is
- * the height the indicator already had (labelLarge line height plus
- * its old 8.dp vertical padding), so only the width stops varying
- * with the digit count. No shared repo dimension exists for this —
- * `library.ui.Spacing` is spacing, not control sizes.
+ * size so the bar reads as one row of equal-height controls.
+ *
+ * Sized like Vanadium's (Chromium's) omnibox: a full-width rounded
+ * bar with comfortable height for the text inside it, not a compact
+ * chip. The address text is `bodyMedium` (14 sp / 20 sp line height);
+ * a Material outlined field spends 12 dp of vertical content padding
+ * above and below that text, so the field needs at least
+ * 20 + 12 + 12 = 44 dp before the glyphs stop being clipped. 48 dp
+ * gives that budget a little breathing room while still fitting the
+ * 64 dp top-app-bar row beside the overflow button. The previous
+ * 36 dp height could not hold even `bodySmall` (16 sp line height
+ * plus the same 24 dp of padding is already 40 dp), so the text was
+ * cramped and clipped no matter how it was padded. No shared repo
+ * dimension exists for this — `library.ui.Spacing` is spacing, not
+ * control sizes.
  */
-internal val ChromeControlHeight = 36.dp
+internal val ChromeControlHeight = 48.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,16 +157,17 @@ private fun DisplayOnlyAddressPill(
     modifier: Modifier = Modifier,
 ) {
     // Exactly as tall as the circular tab-count indicator beside it
-    // (ChromeControlHeight): the field's container shrinks and its
-    // internal vertical padding with it, while the text stays bodySmall
-    // at the same size — only padding was spent on the extra height.
+    // (ChromeControlHeight, see its doc for the fit arithmetic): at
+    // 48 dp the bodyMedium text plus the field's internal vertical
+    // padding genuinely fits inside the pill, Vanadium-style, instead
+    // of being clipped by a container shorter than its own content.
     Box(modifier = modifier) {
         OutlinedTextField(
             value = fullUrl,
             onValueChange = {},
             readOnly = true,
-            textStyle = MaterialTheme.typography.bodySmall,
-            placeholder = { Text(stringResource(R.string.search_or_enter_address), style = MaterialTheme.typography.bodySmall) },
+            textStyle = MaterialTheme.typography.bodyMedium,
+            placeholder = { Text(stringResource(R.string.search_or_enter_address), style = MaterialTheme.typography.bodyMedium) },
             singleLine = true,
             shape = RoundedCornerShape(28.dp),
             modifier = Modifier.fillMaxWidth().height(ChromeControlHeight)

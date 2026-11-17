@@ -97,8 +97,13 @@ internal fun OmniboxEditor(
                             fieldValue = fieldValue.copy(selection = TextRange(0, fieldValue.text.length))
                         }
                     },
-                textStyle = MaterialTheme.typography.bodySmall,
-                placeholder = { Text(stringResource(R.string.search_or_enter_address), style = MaterialTheme.typography.bodySmall) },
+                // Same text size as the read-only address pill in
+                // BrowserChrome, so tapping the bar to edit does not
+                // shrink the text under the user's finger. The editing
+                // field keeps the Material field's natural height,
+                // which holds bodyMedium comfortably.
+                textStyle = MaterialTheme.typography.bodyMedium,
+                placeholder = { Text(stringResource(R.string.search_or_enter_address), style = MaterialTheme.typography.bodyMedium) },
                 leadingIcon = { IconSearch() },
                 trailingIcon = if (fieldValue.text.isNotEmpty()) {
                     {

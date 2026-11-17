@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.vayunmathur.web.ui.components.SiteIcon
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -69,6 +70,11 @@ class BrowserChromeAndSiteIconTest {
         // (circle) even with a two-digit count.
         kotlin.test.assertEquals(tabBounds.height, fieldBounds.height)
         kotlin.test.assertEquals(tabBounds.width, tabBounds.height)
+        // Vanadium-proportioned bar: tall enough for bodyMedium text
+        // (20 sp line height) plus the outlined field's 12+12 dp of
+        // vertical content padding, i.e. comfortably above the old
+        // 36 dp height that clipped its own text.
+        kotlin.test.assertEquals(48.dp, ChromeControlHeight)
     }
 
     @Test fun siteIconShowsInitialForLabel() {
