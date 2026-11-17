@@ -24,7 +24,7 @@ mod mask_tests3 {
         // One 8-bpc sample of 255. With the default decode that is index 255, clamped to
         // hival 3 -> blue.
         let plain = dictionary! { "ColorSpace" => "Cs", "BitsPerComponent" => 8 };
-        let out = image_samples_to_rgba(&doc, &plain, &res, &[255u8], 1, 1, 1, 8);
+        let out = image_samples_to_rgba(&doc, &plain, &res, &[255u8], (1, 1), 1, 8);
         assert_eq!(&out[0..3], &[0, 0, 255], "default decode clamps to hival -> blue");
 
         // /Decode [0 1] maps sample 0..255 onto index 0..1, so 255 -> index 1 -> RED.
@@ -33,10 +33,10 @@ mod mask_tests3 {
             "BitsPerComponent" => 8,
             "Decode" => vec![0.into(), 1.into()],
         };
-        let out = image_samples_to_rgba(&doc, &decoded, &res, &[255u8], 1, 1, 1, 8);
+        let out = image_samples_to_rgba(&doc, &decoded, &res, &[255u8], (1, 1), 1, 8);
         assert_eq!(&out[0..3], &[255, 0, 0], "/Decode [0 1] remaps 255 to index 1 -> red");
         // And the low end still maps to index 0.
-        let out = image_samples_to_rgba(&doc, &decoded, &res, &[0u8], 1, 1, 1, 8);
+        let out = image_samples_to_rgba(&doc, &decoded, &res, &[0u8], (1, 1), 1, 8);
         assert_eq!(&out[0..3], &[0, 0, 0], "sample 0 stays index 0 -> black");
     }
 

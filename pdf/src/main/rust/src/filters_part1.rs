@@ -78,8 +78,7 @@ pub fn decode_ccitt(data: &[u8], w: u32, h: u32, params: &CcittParams) -> Option
         for (y, trans) in lines.into_iter().enumerate() {
             if y >= rows_us { break; }
             let row_off = y * row_bytes;
-            let mut cur_x = 0usize;
-            for pel in fax::decoder::pels(&trans, columns) {
+            for (cur_x, pel) in fax::decoder::pels(&trans, columns).enumerate() {
                 if cur_x >= cols_us { break; }
                 let is_black = matches!(pel, fax::Color::Black);
                 // Whether this pel's SAMPLE is a 1 bit, which /BlackIs1 selects.
@@ -90,7 +89,6 @@ pub fn decode_ccitt(data: &[u8], w: u32, h: u32, params: &CcittParams) -> Option
                 // one. Pels the decoder never reaches keep the white background.
                 let b = &mut packed[row_off + cur_x / 8];
                 if bit_is_one { *b |= mask; } else { *b &= !mask; }
-                cur_x += 1;
             }
         }
     };
@@ -148,14 +146,16 @@ pub fn decode_stream_chain(mut data: Vec<u8>, specs: &[(FilterKind, Option<Dicti
             FilterKind::RunLength => { data = decode_runlength(&data); }
             FilterKind::Flate => {
                 // Handle PNG/TIFF predictors via parms if present
-                if let Some(d) = decode_flate(&data) { data = d; } else { return None; }
+                {
+                    let d = decode_flate(&data)?; data = d; }
                 data = apply_predictor(data, parms.as_ref(), doc);
             }
             FilterKind::Lzw => {
                 let early = parms.as_ref().and_then(|d| {
                     d.get(b"EarlyChange").ok().and_then(num).or_else(|| d.get(b"EarlyChange").ok().and_then(|o| deref(doc,o).and_then(num)))
                 }).map(|v| v!=0.0).unwrap_or(true);
-                if let Some(d)=decode_lzw(&data, early) { data=d; } else { return None; }
+                {
+                    let d = decode_lzw(&data, early)?; data=d; }
                 // LZW supports the same PNG/TIFF predictors as Flate.
                 data = apply_predictor(data, parms.as_ref(), doc);
             }

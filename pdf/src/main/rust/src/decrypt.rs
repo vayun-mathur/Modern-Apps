@@ -48,13 +48,16 @@ pub(crate) fn crypt_object(obj: &mut Object, apply: &dyn Fn(&[u8]) -> Vec<u8>) {
 
 /// Apply `strings` to every string and `streams` to every stream body inside `obj`.
 ///
+/// A byte transform applied to strings or stream bodies during (de)cryption.
+type ByteTransform<'a> = &'a dyn Fn(&[u8]) -> Vec<u8>;
+
 /// §7.6.5 gives streams and strings SEPARATE crypt filters (`/StmF`, `/StrF`), and
 /// either may be `/Identity`, so the two cannot share one transform. `None` leaves
 /// that class of data untouched.
 fn crypt_object_split(
     obj: &mut Object,
-    strings: Option<&dyn Fn(&[u8]) -> Vec<u8>>,
-    streams: Option<&dyn Fn(&[u8]) -> Vec<u8>>,
+    strings: Option<ByteTransform<'_>>,
+    streams: Option<ByteTransform<'_>>,
 ) {
     match obj {
         Object::String(s, fmt) => {
@@ -376,7 +379,7 @@ fn decrypt_in_place_fallback(doc: &mut Document, password: &[u8]) -> DecryptStat
             // which already checks U against key derived from pw (user). Owner-only docs use empty user pw that still validates,
             // but some require owner.
             // Attempt direct authenticate with given password (user path)
-            if let Some(k) = crypto::authenticate(password, &o, &u, p, &id0, n, r as u8, encrypt_metadata) {
+            if let Some(k) = crypto::authenticate(&crypto::AuthParams { pw: password, o: &o, u: &u, p, id0: &id0, n, rev: r as u8, encrypt_metadata }) {
                 k
             } else {
                 // Owner path: if owner pw supplied, O entry contains user pw encrypted; try to brute cheap?
@@ -387,7 +390,7 @@ fn decrypt_in_place_fallback(doc: &mut Document, password: &[u8]) -> DecryptStat
                 // Try derive candidate owner key and then decrypt O to get user pw, then authenticate that user pw
                 // Algorithm 3 reverse: owner pw -> okey -> user_pad = rc4 decypt O etc.
                 // We'll delegate to helper.
-                if let Some(k) = crypto::authenticate_owner_fallback(password, &o, &u, p, &id0, n, r as u8, encrypt_metadata) {
+                if let Some(k) = crypto::authenticate_owner_fallback(&crypto::AuthParams { pw: password, o: &o, u: &u, p, id0: &id0, n, rev: r as u8, encrypt_metadata }) {
                     found = Some(k);
                 }
                 if let Some(k) = found {

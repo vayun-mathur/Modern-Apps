@@ -132,17 +132,25 @@ pub fn object_key(key: &[u8], num: u32, gen: u16, n: usize) -> Vec<u8> {
     hash[..len].to_vec()
 }
 
+/// The `/Encrypt` dictionary values needed to authenticate a password:
+/// the candidate password, the `/O` and `/U` entries, `/P`, the first
+/// trailer `/ID` element, the key length in bytes, the handler revision
+/// and the `/EncryptMetadata` flag.
+pub struct AuthParams<'a> {
+    pub pw: &'a [u8],
+    pub o: &'a [u8],
+    pub u: &'a [u8],
+    pub p: i32,
+    pub id0: &'a [u8],
+    pub n: usize,
+    pub rev: u8,
+    pub encrypt_metadata: bool,
+}
+
 /// Verify a password: returns the file key if it matches the `/U` entry.
-pub fn authenticate(
-    pw: &[u8],
-    o: &[u8],
-    u: &[u8],
-    p: i32,
-    id0: &[u8],
-    n: usize,
-    rev: u8,
-    encrypt_metadata: bool,
-) -> Option<Vec<u8>> {
+pub fn authenticate(params: &AuthParams<'_>) -> Option<Vec<u8>> {
+    let (pw, o, u, p, id0, n, rev, encrypt_metadata) =
+        (params.pw, params.o, params.u, params.p, params.id0, params.n, params.rev, params.encrypt_metadata);
     let key = compute_key(pw, o, p, id0, n, rev, encrypt_metadata);
     let computed = compute_u(&key, id0, rev);
     let cmp_len = if rev == 2 { 32 } else { 16 };
@@ -156,16 +164,9 @@ pub fn authenticate(
 /// Owner-password fallback for R2-R4: per PDF spec algorithm 5 reverse,
 /// try to decrypt O with owner password to recover user password, then
 /// authenticate. Returns file key if owner password valid.
-pub fn authenticate_owner_fallback(
-    pw: &[u8],
-    o: &[u8],
-    u: &[u8],
-    p: i32,
-    id0: &[u8],
-    n: usize,
-    rev: u8,
-    encrypt_metadata: bool,
-) -> Option<Vec<u8>> {
+pub fn authenticate_owner_fallback(params: &AuthParams<'_>) -> Option<Vec<u8>> {
+    let (pw, o, u, p, id0, n, rev, encrypt_metadata) =
+        (params.pw, params.o, params.u, params.p, params.id0, params.n, params.rev, params.encrypt_metadata);
     // Derive owner key from owner pw
     let mut hash = md5(&pad_pw(pw));
     if rev >= 3 {
@@ -200,7 +201,7 @@ pub fn authenticate_owner_fallback(
         return Some(key_candidate);
     }
     // Also try using owner pw directly as user pw (owner may equal user)
-    authenticate(pw, o, u, p, id0, n, rev, encrypt_metadata)
+    authenticate(params)
 }
 
 /// AES-256-CBC encrypt without padding, IV = zeros (used to build /UE and /OE).

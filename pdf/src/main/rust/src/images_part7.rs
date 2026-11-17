@@ -157,11 +157,11 @@ pub(crate) fn rasterize_prims_to_rgba(
                         continue;
                     }
                     let weight = 1.0 / SS as f32;
-                    for px in xa.floor() as usize..(xb.ceil() as usize).min(w) {
+                    for (px, cov_px) in cov.iter_mut().enumerate().take((xb.ceil() as usize).min(w)).skip(xa.floor() as usize) {
                         let l = xa.max(px as f64);
                         let r = xb.min(px as f64 + 1.0);
                         if r > l {
-                            cov[px] += (r - l) as f32 * weight;
+                            *cov_px += (r - l) as f32 * weight;
                         }
                     }
                 }
@@ -171,8 +171,8 @@ pub(crate) fn rasterize_prims_to_rgba(
                 ((argb >> 8) & 0xFF) as f64,
                 (argb & 0xFF) as f64,
             );
-            for px in 0..w {
-                let a = alpha * (cov[px].clamp(0.0, 1.0) as f64);
+            for (px, cov_px) in cov.iter().enumerate().take(w) {
+                let a = alpha * (cov_px.clamp(0.0, 1.0) as f64);
                 if a <= 0.0 {
                     continue;
                 }
@@ -191,8 +191,8 @@ pub(crate) fn rasterize_prims_to_rgba(
         if a == 0 || a == 255 {
             continue;
         }
-        for ch in 0..3 {
-            px[ch] = ((px[ch] as u32 * 255) / a as u32).min(255) as u8;
+        for ch in px.iter_mut().take(3) {
+            *ch = ((*ch as u32 * 255) / a as u32).min(255) as u8;
         }
     }
     Some(acc)

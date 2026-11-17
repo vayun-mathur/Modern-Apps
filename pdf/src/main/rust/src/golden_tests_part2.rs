@@ -193,10 +193,10 @@ fn stencil_image_mask_paints_where_the_sample_bit_is_zero() {
     let img = extract_image(&doc, &stream, 0xFF00_FF00, &no_cs()).expect("stencil must decode");
     assert_eq!((img.w, img.h), (8, 1));
     let a = alphas(&img);
-    for x in 0..8 {
+    for (x, alpha) in a.iter().enumerate().take(8) {
         let bit = (0b1010_1010u8 >> (7 - x)) & 1;
         let want = if bit == 0 { 255 } else { 0 };
-        assert_eq!(a[x], want, "x={x}: sample bit {bit} must give alpha {want}");
+        assert_eq!(*alpha, want, "x={x}: sample bit {bit} must give alpha {want}");
     }
     // The painted pixels carry the fill colour, not black.
     let px = &img.data[4..8];
@@ -227,7 +227,7 @@ fn stencil_image_mask_decode_one_zero_inverts_exactly_once() {
             "x={x}: /Decode [1 0] must flip coverage, got {} both ways", plain[x]
         );
     }
-    assert!(plain.iter().any(|&v| v == 255) && inv.iter().any(|&v| v == 255), "both must paint something");
+    assert!(plain.contains(&255) && inv.contains(&255), "both must paint something");
 }
 
 /// §8.9.5.4: an `/SMask` sample IS the alpha, so sample 0 is transparent.

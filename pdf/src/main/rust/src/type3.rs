@@ -30,7 +30,6 @@ fn read_matrix_from_array(arr: &[Object], doc: &Document) -> Option<Mat> {
 #[derive(Clone)]
 pub struct Type3Info {
     pub font_matrix: Mat,
-    pub bbox: Option<[f64;4]>,
     pub char_procs: HashMap<Vec<u8>, ObjectId>,
     pub encoding: HashMap<u8, Vec<u8>>,
     pub resources: Option<Dictionary>,
@@ -42,14 +41,6 @@ pub fn parse_type3_font(doc: &Document, dict: &Dictionary) -> Option<Type3Info> 
         .and_then(|o| o.as_array().ok())
         .and_then(|arr| read_matrix_from_array(arr, doc))
         .unwrap_or([0.001,0.0,0.0,0.001,0.0,0.0]);
-
-    let bbox = dict.get(b"FontBBox").ok()
-        .and_then(|o| deref(doc,o))
-        .and_then(|o| o.as_array().ok())
-        .and_then(|arr| {
-            let nums: Vec<f64> = arr.iter().filter_map(|o| deref(doc,o).and_then(num).or_else(|| num(o))).collect();
-            if nums.len()==4 { Some([nums[0],nums[1],nums[2],nums[3]]) } else { None }
-        });
 
     let char_procs = match dict.get(b"CharProcs").ok().and_then(|o| deref(doc,o)).and_then(|o| o.as_dict().ok()) {
         Some(cp) => {
@@ -84,5 +75,5 @@ pub fn parse_type3_font(doc: &Document, dict: &Dictionary) -> Option<Type3Info> 
 
     let resources = dict.get(b"Resources").ok().and_then(|o| deref(doc,o)).and_then(|o| o.as_dict().ok()).cloned();
 
-    Some(Type3Info{font_matrix, bbox, char_procs, encoding, resources })
+    Some(Type3Info{font_matrix, char_procs, encoding, resources })
 }

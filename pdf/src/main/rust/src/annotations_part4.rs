@@ -139,14 +139,15 @@ pub(crate) fn add_note(handle: i64, page_index: i32, x: f64, y: f64, argb: u32, 
 pub(crate) fn add_callout(
     handle: i64,
     page_index: i32,
-    ax: f64,
-    ay: f64,
-    bx: f64,
-    by: f64,
+    // Leader anchor and text-box corner, in editor coordinates.
+    anchor: (f64, f64),
+    box_pt: (f64, f64),
     argb: u32,
     size: f64,
     text: &str,
 ) -> Option<i64> {
+    let (ax, ay) = anchor;
+    let (bx, by) = box_pt;
     let mut reg = registry().lock().unwrap_or_else(|e| e.into_inner());
     let doc = reg.get_mut(&handle)?;
     let bw = 160.0;

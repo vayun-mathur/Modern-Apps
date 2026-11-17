@@ -152,7 +152,7 @@ fn sweep(corpus: Vec<(String, Vec<u8>)>, budget: Duration) {
         }
     }
 
-    slowest.sort_by(|a, b| b.0.cmp(&a.0));
+    slowest.sort_by_key(|b| std::cmp::Reverse(b.0));
     let worst: Vec<String> = slowest
         .iter()
         .take(5)
@@ -225,16 +225,16 @@ fn seed_documents_render_successfully_before_mutation() {
 #[test]
 fn arbitrary_byte_strings_never_panic() {
     let mut rng = Lcg::new(FUZZ_SEED);
-    let mut corpus = Vec::new();
-
-    corpus.push(("empty".to_string(), Vec::new()));
-    corpus.push(("header-only".to_string(), b"%PDF-1.7\n".to_vec()));
-    corpus.push(("nul".to_string(), vec![0u8; 64]));
-    corpus.push(("eof-only".to_string(), b"%%EOF".to_vec()));
-    corpus.push((
-        "keywords-only".to_string(),
-        b"%PDF-1.7 obj endobj stream endstream trailer xref startxref R".to_vec(),
-    ));
+    let mut corpus = vec![
+        ("empty".to_string(), Vec::new()),
+        ("header-only".to_string(), b"%PDF-1.7\n".to_vec()),
+        ("nul".to_string(), vec![0u8; 64]),
+        ("eof-only".to_string(), b"%%EOF".to_vec()),
+        (
+            "keywords-only".to_string(),
+            b"%PDF-1.7 obj endobj stream endstream trailer xref startxref R".to_vec(),
+        ),
+    ];
     for i in 0..120 {
         let len = rng.below(400) + 1;
         let bytes: Vec<u8> = (0..len).map(|_| (rng.next_u64() & 0xFF) as u8).collect();

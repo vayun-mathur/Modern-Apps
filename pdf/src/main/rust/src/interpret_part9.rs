@@ -1,15 +1,5 @@
-fn paint_tiling_pattern(
-    doc: &Document,
-    obj: &Object,
-    dict: &lopdf::Dictionary,
-    pmat: &Mat,
-    base_argb: u32,
-    polys: &[Vec<(f64, f64)>],
-    prims: &mut Vec<Prim>,
-    depth: u32,
-    alpha: f32,
-    blend: BlendMode,
-) {
+fn paint_tiling_pattern(tiling: TilingPattern<'_>) {
+    let TilingPattern { doc, obj, dict, pmat, base_argb, polys, prims, depth, alpha, blend } = tiling;
     let stream = match obj {
         Object::Stream(s) => s,
         _ => return,
@@ -285,7 +275,7 @@ pub(crate) fn read_rect(doc: &Document, obj: &Object) -> Option<[f64; 4]> {
 mod refdiff_followup_tests {
     use crate::*;
     use lopdf::content::Operation;
-    use lopdf::{dictionary, Stream};
+    use lopdf::dictionary;
 
     fn op(name: &str, operands: Vec<Object>) -> Operation {
         Operation::new(name, operands)
@@ -378,8 +368,7 @@ mod refdiff_followup_tests {
             op("re", vec![0.into(), 0.into(), 100.into(), 100.into()]),
             op("f", vec![]),
         ];
-        let mut gs = GraphicsState::default();
-        gs.fill = red;
+        let gs = GraphicsState { fill: red, ..Default::default() };
         let mut prims = Vec::new();
         interpret_content(&doc, &glyph, None, gs.clone(), &mut prims, 0, false);
         let fills: Vec<u32> = prims

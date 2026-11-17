@@ -103,6 +103,7 @@
 //!    magnifies a small image will disagree on interior gradients unless the
 //!    image is a flat-block design — the corpus images are flat blocks for
 //!    exactly this reason.
+//!
 //! 3a. **Clip-path beziers are flattened SCALE-AWARELY** by [`clip_contours`],
 //!    at roughly one segment per 3 device px. That deliberately mirrors the
 //!    consumer rather than the renderer: a clip curve crosses the wire as a real
@@ -390,7 +391,7 @@ fn poly_coverage(w: usize, h: usize, contours: &[Vec<(f64, f64)>], even_odd: boo
 fn add_span(row: &mut [f32], w: usize, xa: f64, xb: f64, wgt: f32) {
     let xa = xa.max(0.0);
     let xb = xb.min(w as f64);
-    if !(xb > xa) {
+    if xb.partial_cmp(&xa) != Some(std::cmp::Ordering::Greater) {
         return;
     }
     let ia = xa.floor() as usize;
@@ -398,11 +399,11 @@ fn add_span(row: &mut [f32], w: usize, xa: f64, xb: f64, wgt: f32) {
     if ia >= w {
         return;
     }
-    for i in ia..ib {
+    for (i, row_i) in row.iter_mut().enumerate().take(ib).skip(ia) {
         let l = (i as f64).max(xa);
         let r = ((i + 1) as f64).min(xb);
         if r > l {
-            row[i] += wgt * (r - l) as f32;
+            *row_i += wgt * (r - l) as f32;
         }
     }
 }

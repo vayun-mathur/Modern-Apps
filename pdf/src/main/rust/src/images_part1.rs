@@ -143,11 +143,12 @@ fn image_samples_to_rgba(
     dict: &lopdf::Dictionary,
     cs_resources: &HashMap<Vec<u8>, ObjectId>,
     decoded_comps: &[u8],
-    w: usize,
-    h: usize,
+    // (width, height) in samples
+    wh: (usize, usize),
     ncomp: usize,
     bpc: u32,
 ) -> Vec<u8> {
+    let (w, h) = wh;
     let mut rgba = vec![0u8; w * h * 4];
     let cs_kind = dict
         .get(b"ColorSpace")

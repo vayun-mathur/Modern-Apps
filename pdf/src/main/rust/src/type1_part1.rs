@@ -104,7 +104,7 @@ impl<'a> Interp<'a> {
                     // rrcurveto: dx1 dy1 dx2 dy2 dx3 dy3
                     if self.stack.len() >= 6 {
                         let s = &self.stack[self.stack.len() - 6..];
-                        self.curve(out, s[0], s[1], s[2], s[3], s[4], s[5]);
+                        self.curve(out, [(s[0], s[1]), (s[2], s[3]), (s[4], s[5])]);
                     }
                     self.stack.clear();
                 }
@@ -112,7 +112,7 @@ impl<'a> Interp<'a> {
                     // vhcurveto: dy1 dx2 dy2 dx3
                     if self.stack.len() >= 4 {
                         let s = &self.stack[self.stack.len() - 4..];
-                        self.curve(out, 0.0, s[0], s[1], s[2], s[3], 0.0);
+                        self.curve(out, [(0.0, s[0]), (s[1], s[2]), (s[3], 0.0)]);
                     }
                     self.stack.clear();
                 }
@@ -120,7 +120,7 @@ impl<'a> Interp<'a> {
                     // hvcurveto: dx1 dx2 dy2 dy3
                     if self.stack.len() >= 4 {
                         let s = &self.stack[self.stack.len() - 4..];
-                        self.curve(out, s[0], 0.0, s[1], s[2], 0.0, s[3]);
+                        self.curve(out, [(s[0], 0.0), (s[1], s[2]), (0.0, s[3])]);
                     }
                     self.stack.clear();
                 }
@@ -230,7 +230,10 @@ impl<'a> Interp<'a> {
         }
     }
 
-    fn curve(&mut self, out: &mut ContourBuilder, dx1: f64, dy1: f64, dx2: f64, dy2: f64, dx3: f64, dy3: f64) {
+    fn curve(&mut self, out: &mut ContourBuilder, deltas: [(f64, f64); 3]) {
+        let (dx1, dy1) = deltas[0];
+        let (dx2, dy2) = deltas[1];
+        let (dx3, dy3) = deltas[2];
         let x1 = self.x + dx1;
         let y1 = self.y + dy1;
         let x2 = x1 + dx2;

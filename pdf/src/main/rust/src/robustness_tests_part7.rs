@@ -236,13 +236,9 @@ fn bisect_nesting_depth() {
     eprintln!("[bisect] target={target} depth={depth}");
 
     let mut nested = Vec::new();
-    for _ in 0..depth {
-        nested.push(b'[');
-    }
+    nested.extend(std::iter::repeat_n(b'[', depth));
     nested.extend_from_slice(b"(x)");
-    for _ in 0..depth {
-        nested.push(b']');
-    }
+    nested.extend(std::iter::repeat_n(b']', depth));
 
     let work: Box<dyn FnOnce() + Send> = match target.as_str() {
         // lopdf's strict content parser, called DIRECTLY.

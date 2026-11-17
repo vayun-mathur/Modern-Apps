@@ -4,13 +4,13 @@
 fn parse_type6_7(
     data: &[u8],
     shading_type: i64,
-    bps_flag: u32,
-    bps_coord: u32,
-    bps_comp: u32,
+    // (bits per flag, bits per coordinate, bits per component)
+    bps: (u32, u32, u32),
     ncomp: usize,
     decode: &[f64],
     emit: Emit,
 ) {
+    let (bps_flag, bps_coord, bps_comp) = bps;
     let n_pts = if shading_type == 6 { 12 } else { 16 };
     let mut br = BitReader::new(data);
     // Previous patch boundary (12 boundary points) + corner colors, for

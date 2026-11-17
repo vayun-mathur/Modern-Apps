@@ -7,7 +7,7 @@ fn seed_text_and_paths() -> Vec<u8> {
             Operation::new("rg", vec![1.0.into(), 0.0.into(), 0.0.into()]),
             Operation::new("re", vec![100.into(), 100.into(), 50.into(), 40.into()]),
             Operation::new("f", vec![]),
-            Operation::new("0.5 w".into(), vec![]),
+            Operation::new("0.5 w", vec![]),
             Operation::new("m", vec![10.into(), 10.into()]),
             Operation::new("c", vec![20.into(), 40.into(), 60.into(), 80.into(), 90.into(), 20.into()]),
             Operation::new("S", vec![]),
@@ -126,7 +126,7 @@ fn seed_rich() -> Vec<u8> {
         },
         Content {
             operations: vec![
-                Operation::new("0 0 1 rg".into(), vec![]),
+                Operation::new("0 0 1 rg", vec![]),
                 Operation::new("re", vec![0.into(), 0.into(), 80.into(), 80.into()]),
                 Operation::new("f", vec![]),
             ],
@@ -197,7 +197,7 @@ fn seed_rich() -> Vec<u8> {
         },
         Content {
             operations: vec![
-                Operation::new("1 1 0 rg".into(), vec![]),
+                Operation::new("1 1 0 rg", vec![]),
                 Operation::new("re", vec![0.into(), 0.into(), 50.into(), 20.into()]),
                 Operation::new("f", vec![]),
             ],

@@ -298,6 +298,7 @@ mod blind_reaudit_r4_tests {
     ///   - `sh` honouring it floods the whole clip with the background colour,
     ///     painting a solid block over content (the damaging direction);
     ///   - a pattern ignoring it drops a legitimate, if rare, entry.
+///
     /// Handoff from `a-images`/`a-shading`, who landed the images.rs side.
     #[test]
     fn background_applies_to_shading_patterns_but_not_to_the_sh_operator() {

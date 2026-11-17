@@ -51,7 +51,7 @@ fn encrypt_blocks<C>(cipher: &C, iv: [u8; BLOCK], data: &[u8]) -> Result<Vec<u8>
 where
     C: BlockCipherEncrypt + BlockSizeUser<BlockSize = U16>,
 {
-    if !data.len().is_multiple_of(BLOCK) {
+    if data.len() % BLOCK != 0 {
         return Err(CbcError::NotBlockAligned(data.len()));
     }
     let mut out = Vec::with_capacity(data.len());
@@ -73,7 +73,7 @@ fn decrypt_blocks<C>(cipher: &C, iv: [u8; BLOCK], ct: &[u8]) -> Result<Vec<u8>, 
 where
     C: BlockCipherDecrypt + BlockSizeUser<BlockSize = U16>,
 {
-    if !ct.len().is_multiple_of(BLOCK) {
+    if ct.len() % BLOCK != 0 {
         return Err(CbcError::NotBlockAligned(ct.len()));
     }
     let mut out = Vec::with_capacity(ct.len());

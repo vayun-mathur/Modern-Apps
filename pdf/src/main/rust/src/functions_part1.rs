@@ -62,7 +62,7 @@ impl PdfFunction {
                 if size.len() > MAX_SAMPLED_INPUTS || range.len() > MAX_FN_OUTPUTS {
                     return None;
                 }
-                if size.iter().any(|s| *s == 0) {
+                if size.contains(&0) {
                     return None;
                 }
                 let n_in = size.len();

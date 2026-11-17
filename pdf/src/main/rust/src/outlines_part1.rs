@@ -136,8 +136,10 @@ mod tests {
         vec![vec![(0.0, 0.0), (50.0, 0.0), (25.0, 80.0)]]
     }
 
+    type GlyphContours<'a> = &'a [(&'a str, Vec<Vec<(f64, f64)>> )];
+
     fn type1_font_info(
-        glyphs: &[(&str, Vec<Vec<(f64, f64)>>)],
+        glyphs: GlyphContours<'_>,
         builtin: &[(u32, &str)],
         names: &[(u32, &str)],
     ) -> FontInfo {

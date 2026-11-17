@@ -203,7 +203,7 @@ fn extract_inline_image_inner(doc: &Document, stream: &lopdf::Stream, fill_argb:
         // over everything below the last real scanline. The XObject stencil branch
         // defaults absent bytes to the no-paint value for exactly this reason; the
         // inline one reached the unpacker first and lost the distinction.
-        let rows_present = if src_row_bytes > 0 { samples.len() / src_row_bytes } else { 0 };
+        let rows_present = samples.len().checked_div(src_row_bytes).unwrap_or(0);
         for (i, px) in rgba.chunks_exact_mut(4).enumerate() {
             if i / (w as usize) >= rows_present {
                 continue;
@@ -218,7 +218,7 @@ fn extract_inline_image_inner(doc: &Document, stream: &lopdf::Stream, fill_argb:
         }
         return Some(ImageData { w, h, format: 0, data: rgba });
     }
-    let mut rgba = image_samples_to_rgba(doc, dict, cs_resources, &unpacked, w as usize, h as usize, ncomp as usize, bpc);
+    let mut rgba = image_samples_to_rgba(doc, dict, cs_resources, &unpacked, (w as usize, h as usize), ncomp as usize, bpc);
     let smask = read_smask(doc, dict, w, h);
     apply_smask(&mut rgba, &smask);
     if let Some(ranges_raw) = read_color_key_ranges_raw(doc, dict) {

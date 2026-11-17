@@ -30,11 +30,11 @@ impl Drop for InvalidateSearchIndex {
 
 /// Throw a Java IllegalArgumentException (if possible). Requires &mut JNIEnv.
 fn throw_iae<'local>(env: &mut Env<'local>, msg: &str) {
-    let _ = env.throw_new(jni_str!("java/lang/IllegalArgumentException"), &jni::strings::JNIString::new(msg));
+    let _ = env.throw_new(jni_str!("java/lang/IllegalArgumentException"), jni::strings::JNIString::new(msg));
 }
 
 fn throw_oom<'local>(env: &mut Env<'local>, msg: &str) {
-    let _ = env.throw_new(jni_str!("java/lang/OutOfMemoryError"), &jni::strings::JNIString::new(msg));
+    let _ = env.throw_new(jni_str!("java/lang/OutOfMemoryError"), jni::strings::JNIString::new(msg));
 }
 
 /// Convert JString to Rust String with proper error propagation (no unwrap_or_default hiding errors).
@@ -47,7 +47,7 @@ fn jstr_safe<'local>(env: &Env, s: &JString<'local>) -> Result<String, String> {
     match s.try_to_string(env) {
         Ok(js) => Ok(js),
         Err(e) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Err(format!("Invalid JString (Modified UTF-8): {:?}", e))
         }
     }
@@ -59,7 +59,7 @@ fn jstr_safe<'local>(env: &Env, s: &JString<'local>) -> Result<String, String> {
 fn bytes_or_null_mut<'local>(env: &mut Env<'local>, data: Option<Vec<u8>>) -> jbyteArray {
     let null = std::ptr::null_mut();
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return null;
     }
     match data {
@@ -84,15 +84,15 @@ fn open_document_inner<'local>(env: &mut Env<'local>, data: JByteArray<'local>) 
         throw_iae(env, "data is null");
         return 0;
     }
-    let len = env.get_array_length(&data).unwrap_or(0);
-    if len as usize > MAX_JAVA_BYTE_ARRAY_BYTES {
+    let len = data.len(env).unwrap_or(0);
+    if len > MAX_JAVA_BYTE_ARRAY_BYTES {
         throw_oom(env, "PDF too large (>200MB)");
         return 0;
     }
     let bytes = match env.convert_byte_array(&data) {
         Ok(b) => b,
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             return 0;
         }
     };
@@ -108,15 +108,15 @@ fn open_document_pw_inner<'local>(
         throw_iae(env, "data is null");
         return 0;
     }
-    let len = env.get_array_length(&data).unwrap_or(0);
-    if len as usize > MAX_JAVA_BYTE_ARRAY_BYTES {
+    let len = data.len(env).unwrap_or(0);
+    if len > MAX_JAVA_BYTE_ARRAY_BYTES {
         throw_oom(env, "PDF too large (>200MB)");
         return 0;
     }
     let bytes = match env.convert_byte_array(&data) {
         Ok(b) => b,
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             return 0;
         }
     };
@@ -139,15 +139,15 @@ fn pdf_password_state_inner<'local>(env: &mut Env<'local>, data: JByteArray<'loc
         throw_iae(env, "data is null");
         return 0;
     }
-    let len = env.get_array_length(&data).unwrap_or(0);
-    if len as usize > MAX_JAVA_BYTE_ARRAY_BYTES {
+    let len = data.len(env).unwrap_or(0);
+    if len > MAX_JAVA_BYTE_ARRAY_BYTES {
         throw_oom(env, "PDF too large (>200MB)");
         return 0;
     }
     let bytes = match env.convert_byte_array(&data) {
         Ok(b) => b,
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             return 0;
         }
     };
@@ -176,7 +176,7 @@ fn save_encrypted_inner<'local>(
     };
     // Ensure capacity before allocating byte array (audit #4)
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return std::ptr::null_mut();
     }
     bytes_or_null_mut(env, save_encrypted(handle, u.as_bytes(), o.as_bytes()))
@@ -184,7 +184,7 @@ fn save_encrypted_inner<'local>(
 
 fn render_page_inner<'local>(env: &mut Env<'local>, handle: jlong, index: jint) -> jbyteArray {
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return std::ptr::null_mut();
     }
     bytes_or_null_mut(env, render_page(handle, index))
@@ -199,15 +199,15 @@ fn append_pdf_inner<'local>(
         throw_iae(env, "data is null");
         return 0;
     }
-    let len = env.get_array_length(&data).unwrap_or(0);
-    if len as usize > MAX_JAVA_BYTE_ARRAY_BYTES {
+    let len = data.len(env).unwrap_or(0);
+    if len > MAX_JAVA_BYTE_ARRAY_BYTES {
         throw_oom(env, "PDF to append too large (>200MB)");
         return 0;
     }
     let bytes = match env.convert_byte_array(&data) {
         Ok(b) => b,
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             return 0;
         }
     };
@@ -225,15 +225,15 @@ fn append_image_page_inner<'local>(
         throw_iae(env, "jpeg is null");
         return 0;
     }
-    let len = env.get_array_length(&jpeg).unwrap_or(0);
-    if len as usize > MAX_JAVA_BYTE_ARRAY_BYTES {
+    let len = jpeg.len(env).unwrap_or(0);
+    if len > MAX_JAVA_BYTE_ARRAY_BYTES {
         throw_oom(env, "Image too large (>200MB)");
         return 0;
     }
     let bytes = match env.convert_byte_array(&jpeg) {
         Ok(b) => b,
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             return 0;
         }
     };
@@ -242,7 +242,7 @@ fn append_image_page_inner<'local>(
 
 fn extract_page_inner<'local>(env: &mut Env<'local>, handle: jlong, index: jint) -> jbyteArray {
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return std::ptr::null_mut();
     }
     bytes_or_null_mut(env, extract_page(handle, index))
@@ -253,7 +253,7 @@ where
     F: FnOnce() -> Option<Vec<u8>>,
 {
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return std::ptr::null_mut();
     }
     bytes_or_null_mut(env, f())
@@ -263,10 +263,8 @@ fn add_free_text_inner<'local>(
     env: &mut Env<'local>,
     handle: jlong,
     page: jint,
-    x0: jfloat,
-    y0: jfloat,
-    x1: jfloat,
-    y1: jfloat,
+    // (x0, y0, x1, y1) text-box rect
+    rect: [jfloat; 4],
     argb: jint,
     size: jfloat,
     text: JString<'local>,
@@ -281,7 +279,7 @@ fn add_free_text_inner<'local>(
     add_free_text(
         handle,
         page,
-        [x0 as f64, y0 as f64, x1 as f64, y1 as f64],
+        rect.map(|v| v as f64),
         argb as u32,
         size as f64,
         &t,
@@ -312,10 +310,8 @@ fn add_callout_inner<'local>(
     env: &mut Env<'local>,
     handle: jlong,
     page: jint,
-    ax: jfloat,
-    ay: jfloat,
-    bx: jfloat,
-    by: jfloat,
+    // (anchor x, anchor y, box x, box y): leader anchor and text-box corner
+    pts: [jfloat; 4],
     argb: jint,
     size: jfloat,
     text: JString<'local>,
@@ -330,10 +326,8 @@ fn add_callout_inner<'local>(
     add_callout(
         handle,
         page,
-        ax as f64,
-        ay as f64,
-        bx as f64,
-        by as f64,
+        (pts[0] as f64, pts[1] as f64),
+        (pts[2] as f64, pts[3] as f64),
         argb as u32,
         size as f64,
         &t,
@@ -347,18 +341,19 @@ fn add_poly_inner<'local>(
     page: jint,
     argb: jint,
     line_width: jfloat,
-    fill: jboolean,
-    closed: jboolean,
+    // (fill, closed)
+    fill_closed: (jboolean, jboolean),
     pts: JFloatArray<'local>,
 ) -> jlong {
+    let (fill, closed) = fill_closed;
     if pts.is_null() {
         throw_iae(env, "pts is null");
         return 0;
     }
-    let len = match env.get_array_length(&pts) {
-        Ok(l) => l as usize,
+    let len = match pts.len(env) {
+        Ok(l) => l,
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             return 0;
         }
     };
@@ -367,8 +362,8 @@ fn add_poly_inner<'local>(
         return 0;
     }
     let mut buf = vec![0f32; len];
-    if env.get_float_array_region(&pts, 0, &mut buf).is_err() {
-        let _ = env.exception_clear();
+    if pts.get_region(env, 0, &mut buf).is_err() {
+        env.exception_clear();
         return 0;
     }
     add_poly(
@@ -395,10 +390,10 @@ fn add_ink_inner<'local>(
         throw_iae(env, "pts is null");
         return 0;
     }
-    let len = match env.get_array_length(&pts) {
-        Ok(l) => l as usize,
+    let len = match pts.len(env) {
+        Ok(l) => l,
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             return 0;
         }
     };
@@ -407,8 +402,8 @@ fn add_ink_inner<'local>(
         return 0;
     }
     let mut buf = vec![0f32; len];
-    if env.get_float_array_region(&pts, 0, &mut buf).is_err() {
-        let _ = env.exception_clear();
+    if pts.get_region(env, 0, &mut buf).is_err() {
+        env.exception_clear();
         return 0;
     }
     add_ink(handle, page, argb as u32, line_width as f64, &buf).unwrap_or(0)

@@ -1,5 +1,6 @@
 impl SeededInterp {
-    fn handle_color_ops(&mut self, op: &lopdf::content::Operation, o: &[Object], doc: &Document, resources: Option<&lopdf::Dictionary>, prims: &mut Vec<Prim>, depth: u32, text_only: bool) {
+    fn handle_color_ops(&mut self, op: &lopdf::content::Operation, o: &[Object], ctx: HandlerCtx<'_>) {
+        let HandlerCtx { doc, resources, prims, depth, text_only } = ctx;
         match op.operator.as_str() {
                 "rg" => {
                     let n: Vec<f64> = o.iter().filter_map(num).collect();
@@ -141,7 +142,7 @@ impl SeededInterp {
                                     if prims.len() < MAX_PRIMITIVES && !self.oc_stack.last().copied().unwrap_or(false) {
                                         let sm_start = prims.len();
                                         prims.push(Prim::Image { ctm, w, h, format: 0, data, alpha: self.gs.alpha_fill as f32, blend: self.gs.blend_mode });
-                                        if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(prims, sm_start, doc, resources, &m, depth, &mut self.mask_bracket, self.current_clip_bbox); }
+                                        if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(SoftMaskWrap { prims: &mut *prims, start: sm_start, doc, resources, mask: &m, depth, bracket: &mut self.mask_bracket, masked_extent: self.current_clip_bbox }); }
                                     }
                                 }
                             }

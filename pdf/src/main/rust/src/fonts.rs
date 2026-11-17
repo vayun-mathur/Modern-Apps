@@ -186,7 +186,7 @@ thread_local! {
     /// Populated only inside a [`FontCacheScope`]. `None` means "no cache", which
     /// is the safe default: an entry cannot go stale if none is stored.
     static FONT_CACHE: std::cell::RefCell<Option<HashMap<ObjectId, (u64, FontInfo)>>> =
-        std::cell::RefCell::new(None);
+        const { std::cell::RefCell::new(None) };
 }
 
 /// Enables the [`FontInfo`] cache for the lifetime of the guard.
@@ -223,6 +223,7 @@ thread_local! {
 ///   * the id paired with the font dictionary itself — shallow equality misses two
 ///     documents whose font dicts are byte-identical but whose indirect TARGETS differ,
 ///     the same `/Widths 7 0 R` naming different arrays.
+///
 /// Resolving through the references closes both.
 ///
 /// It is still a *complete* key only while the document is not mutated. That is precisely

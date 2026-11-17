@@ -9,10 +9,6 @@ mod refdiff_followup_tests_2 {
         Operation::new(name, operands)
     }
 
-    fn clip_applies(prims: &[Prim]) -> usize {
-        prims.iter().filter(|p| matches!(p, Prim::TextClipApply)).count()
-    }
-
     /// §8.7.4.2 makes a `/Shading` resource "a dictionary or a stream", and
     /// §7.3.8.1 requires only the STREAM form to be indirect — ShadingTypes 1-3
     /// are dictionaries and are legally written directly in the resource
@@ -227,8 +223,7 @@ mod refdiff_followup_tests_2 {
 
         let doc = Document::with_version("1.7");
         let red = rgb_to_argb(1.0, 0.0, 0.0);
-        let mut gs = GraphicsState::default();
-        gs.fill = red;
+        let gs = GraphicsState { fill: red, ..Default::default() };
         let mut prims = Vec::new();
         interpret_content(&doc, &ops, None, gs.clone(), &mut prims, 0, false);
         let fills: Vec<u32> = prims

@@ -13,7 +13,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_detachAnnotation<
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -36,7 +36,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_reattachAnnotatio
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -61,7 +61,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_duplicateAnnotati
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -84,7 +84,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_setTextField<'loc
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -107,7 +107,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_setCheckbox<'loca
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -130,7 +130,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_setChoiceField<'l
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -149,7 +149,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_saveDocument<'loc
     match catch_unwind(AssertUnwindSafe(|| save_document_inner(&mut *env, handle))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in saveDocument"));
             Ok(std::ptr::null_mut())
         }
@@ -169,7 +169,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_saveCompressed<'l
     match catch_unwind(AssertUnwindSafe(|| save_compressed_inner(&mut *env, handle))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(std::ptr::null_mut())
         }
     }
@@ -189,7 +189,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_flattenDocument<'
     match catch_unwind(AssertUnwindSafe(|| flatten_document(handle))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -209,7 +209,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_applyRedactions<'
     match catch_unwind(AssertUnwindSafe(|| apply_redactions(handle))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -228,7 +228,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_hasRedactions<'lo
     match catch_unwind(AssertUnwindSafe(|| has_redactions(handle))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -260,7 +260,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addRedaction<'loc
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -279,7 +279,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_extractText<'loca
     match catch_unwind(AssertUnwindSafe(|| extract_text_inner(&mut *env, handle))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(std::ptr::null_mut())
         }
     }
@@ -300,7 +300,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_listOutline<'loca
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(std::ptr::null_mut())
         }
     }
@@ -322,7 +322,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_searchDocument<'l
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(std::ptr::null_mut())
         }
     }
@@ -344,7 +344,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_searchDocumentCas
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(std::ptr::null_mut())
         }
     }
@@ -365,7 +365,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_buildSearchIndex<
         let _ = ensure_index(handle);
     }));
     if res.is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
     }
     Ok(())
     })

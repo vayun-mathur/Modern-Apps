@@ -40,9 +40,9 @@ pub(crate) fn inherited<'a>(doc: &'a Document, page_id: ObjectId, key: &[u8]) ->
         if let Ok(obj) = dict.get(key) {
             return Some(obj);
         }
-        match dict.get(b"Parent").ok().and_then(|o| o.as_reference().ok()) {
-            Some(parent) => current = parent,
-            None => return None,
+        {
+            let parent = dict.get(b"Parent").ok().and_then(|o| o.as_reference().ok())?;
+            current = parent
         }
     }
     None

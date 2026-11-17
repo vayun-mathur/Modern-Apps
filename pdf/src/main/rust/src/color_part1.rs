@@ -31,7 +31,7 @@ fn adapt_to_d65(x: f64, y: f64, z: f64, src_white: [f64; 3]) -> (f64, f64, f64) 
     (out[0], out[1], out[2])
 }
 
-pub(crate) fn eval_cs_to_rgb(doc: &Document, kind: &CsKind, comps: &[f64], cs_resources: &HashMap<Vec<u8>, ObjectId>) -> Option<u32> {
+pub(crate) fn eval_cs_to_rgb(_doc: &Document, kind: &CsKind, comps: &[f64], _cs_resources: &HashMap<Vec<u8>, ObjectId>) -> Option<u32> {
     match kind {
         CsKind::DeviceGray => {
             let v = comps.first().copied().unwrap_or(0.0);
@@ -167,7 +167,7 @@ pub(crate) fn eval_cs_to_rgb(doc: &Document, kind: &CsKind, comps: &[f64], cs_re
         CsKind::ICCBased { n, alt } => {
             // Use alt if present — already handles Separation/DeviceN alt may be device (fast path)
             if let Some(alt_kind) = alt {
-                if let Some(rgb) = eval_cs_to_rgb(doc, alt_kind, comps, cs_resources) {
+                if let Some(rgb) = eval_cs_to_rgb(_doc, alt_kind, comps, _cs_resources) {
                     return Some(rgb);
                 }
             }
@@ -200,7 +200,7 @@ pub(crate) fn eval_cs_to_rgb(doc: &Document, kind: &CsKind, comps: &[f64], cs_re
                     let (lo, hi) = ranges.get(i).copied().unwrap_or((0.0, 1.0));
                     lo + (*b as f64 / 255.0) * (hi - lo)
                 }).collect();
-                eval_cs_to_rgb(doc, base, &comps_f, cs_resources)
+                eval_cs_to_rgb(_doc, base, &comps_f, _cs_resources)
             } else {
                 None
             }
@@ -219,7 +219,7 @@ pub(crate) fn eval_cs_to_rgb(doc: &Document, kind: &CsKind, comps: &[f64], cs_re
                 // back instead. (audit-e owns making well-formed Type 2/3 functions
                 // return the full /Range arity; this is the backstop, not the fix.)
                 if alt_comps.len() >= cs_kind_ncomp(alt).max(1) as usize {
-                    if let Some(rgb) = eval_cs_to_rgb(doc, alt, &alt_comps, cs_resources) {
+                    if let Some(rgb) = eval_cs_to_rgb(_doc, alt, &alt_comps, _cs_resources) {
                         return Some(rgb);
                     }
                 }
@@ -249,7 +249,7 @@ pub(crate) fn eval_cs_to_rgb(doc: &Document, kind: &CsKind, comps: &[f64], cs_re
                 // and plain black for a Gray alternate. Falling through to the
                 // subtractive ramp below at least keeps the ink polarity right.
                 if alt_comps.len() >= cs_kind_ncomp(alt).max(1) as usize {
-                    if let Some(rgb) = eval_cs_to_rgb(doc, alt, &alt_comps, cs_resources) {
+                    if let Some(rgb) = eval_cs_to_rgb(_doc, alt, &alt_comps, _cs_resources) {
                         return Some(rgb);
                     }
                 }

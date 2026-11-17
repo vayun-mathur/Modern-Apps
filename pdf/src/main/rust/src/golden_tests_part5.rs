@@ -285,10 +285,7 @@ fn tiling_pattern_cell_raster_is_not_vertically_flipped() {
     ));
     let region = fill_region(0.0, 0.0, 100.0, 100.0);
     let mut prims = Vec::new();
-    paint_pattern_fill(
-        &doc, pid, &region, false, &IDENTITY, 0xFF00_0000, 1.0, BlendMode::Normal,
-        &HashMap::new(), &mut prims, 0, 0,
-    );
+    paint_pattern_fill(PatternFill { doc: &doc, pattern_id: pid, polys: &region, even_odd: false, pattern_base_ctm: &IDENTITY, base_argb: 0xFF00_0000, alpha_fill: 1.0, blend: BlendMode::Normal, cs_resources: &HashMap::new(), prims: &mut prims, depth: 0, clip_depth: 0 });
 
     // The periodic path emits one ImageTiled cell raster; the per-tile path emits
     // Fills. Both are valid representations, so assert whichever appeared.

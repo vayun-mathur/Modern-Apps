@@ -101,8 +101,8 @@ fn extract_image_inner(doc: &Document, stream: &lopdf::Stream, fill_argb: u32, c
         // channel is used at all; its default is 0, i.e. "ignore it". Clamp anything
         // out of range to the default rather than guessing.
         let smask_in_data = match dict.get(b"SMaskInData").ok().and_then(|o| deref(doc, o)).and_then(num) {
-            Some(v) if v == 1.0 => 1u8,
-            Some(v) if v == 2.0 => 2u8,
+            Some(1.0) => 1u8,
+            Some(2.0) => 2u8,
             _ => 0u8,
         };
         // §7.4.9: "the value of ColorSpace shall override any colour space specified in
@@ -468,7 +468,7 @@ fn extract_image_inner(doc: &Document, stream: &lopdf::Stream, fill_argb: u32, c
         image_warn!("image {}x{} over pixel budget: decimated by {} to {}x{}", w, h, step, out_w, out_h);
     }
 
-    let mut rgba = image_samples_to_rgba(doc, dict, cs_resources, &decoded_comps, dw, dh, ncomp as usize, bpc);
+    let mut rgba = image_samples_to_rgba(doc, dict, cs_resources, &decoded_comps, (dw, dh), ncomp as usize, bpc);
 
     // Masks are resampled to the (possibly decimated) raster, not to /Width x /Height.
     let smask = read_smask(doc, dict, out_w, out_h);

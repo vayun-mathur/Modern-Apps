@@ -357,7 +357,7 @@ mod tests {
     /// An INDEX whose `count` entries are all empty, with 1-byte offsets.
     fn empty_index(count: usize) -> Vec<u8> {
         let mut d = vec![(count >> 8) as u8, count as u8, 1u8];
-        d.extend(std::iter::repeat(1u8).take(count + 1));
+        d.extend(std::iter::repeat_n(1u8, count + 1));
         d
     }
 

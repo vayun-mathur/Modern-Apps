@@ -161,10 +161,10 @@ pub(crate) fn interpret_content_seeded(
         match op.operator.as_str() {
             "q" | "Q" | "cm" | "w" | "J" | "j" | "M" | "i" | "d" | "gs" => st.handle_state_ops(op, o, doc, resources, prims, text_only),
             "W" | "W*" | "m" | "l" | "c" | "v" | "y" | "re" | "h" => st.handle_path_ops(op, o, doc, prims, text_only),
-            "S" | "s" | "f" | "F" | "f*" | "B" | "B*" | "b" | "b*" | "n" | "BI" => st.handle_paint_ops(op, o, doc, resources, prims, depth, text_only),
-            "Do" => st.handle_do_op(op, o, doc, resources, prims, depth, text_only),
-            "rg" | "RG" | "g" | "G" | "k" | "K" | "CS" | "cs" | "SC" | "sc" | "SCN" | "scn" | "sh" | "BMC" | "BDC" | "MP" | "DP" | "EMC" | "d0" | "d1" => st.handle_color_ops(op, o, doc, resources, prims, depth, text_only),
-            "BT" | "ET" | "Tf" | "TL" | "Tc" | "Tw" | "Tz" | "Ts" | "Tr" | "Td" | "TD" | "Tm" | "T*" | "Tj" | "'" | "\"" | "TJ" | "ri" | "BX" | "EX" | "EI" => st.handle_text_ops(op, o, doc, resources, prims, depth, text_only),
+            "S" | "s" | "f" | "F" | "f*" | "B" | "B*" | "b" | "b*" | "n" | "BI" => st.handle_paint_ops(op, o, HandlerCtx { doc, resources, prims, depth, text_only }),
+            "Do" => st.handle_do_op(op, o, HandlerCtx { doc, resources, prims, depth, text_only }),
+            "rg" | "RG" | "g" | "G" | "k" | "K" | "CS" | "cs" | "SC" | "sc" | "SCN" | "scn" | "sh" | "BMC" | "BDC" | "MP" | "DP" | "EMC" | "d0" | "d1" => st.handle_color_ops(op, o, HandlerCtx { doc, resources, prims, depth, text_only }),
+            "BT" | "ET" | "Tf" | "TL" | "Tc" | "Tw" | "Tz" | "Ts" | "Tr" | "Td" | "TD" | "Tm" | "T*" | "Tj" | "'" | "\"" | "TJ" | "ri" | "BX" | "EX" | "EI" => st.handle_text_ops(op, o, HandlerCtx { doc, resources, prims, depth, text_only }),
             _ => {}
         }
     }

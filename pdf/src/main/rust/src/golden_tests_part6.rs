@@ -145,13 +145,14 @@ fn content_beyond_the_caps_truncates_to_a_valid_page() {
     // For the simplest content, one `re f` pair is 2 operators and 1 prim, so the
     // operator cap must leave room for MAX_PRIMITIVES prims or it binds first and
     // MAX_PRIMITIVES becomes unreachable.
-    assert!(
-        MAX_CONTENT_OPS >= 2 * MAX_PRIMITIVES,
-        "cap ordering is inverted: MAX_CONTENT_OPS ({MAX_CONTENT_OPS}) must leave \
-         room for MAX_PRIMITIVES ({MAX_PRIMITIVES}) prims at 2 operators each, or \
-         the operator cap binds first and MAX_PRIMITIVES is dead code — which also \
-         makes any larger consumer-side bound unreachable"
-    );
+    const {
+        assert!(
+            MAX_CONTENT_OPS >= 2 * MAX_PRIMITIVES,
+            "cap ordering is inverted: MAX_CONTENT_OPS must leave room for \
+             MAX_PRIMITIVES prims at 2 operators each, or the operator cap \
+             binds first and MAX_PRIMITIVES is dead code"
+        )
+    };
 
     let mut doc = Document::with_version("1.5");
     let ceiling = (MAX_CONTENT_OPS / 2).min(MAX_PRIMITIVES);

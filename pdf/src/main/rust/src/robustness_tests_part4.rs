@@ -49,8 +49,8 @@ fn ascii85_tuple_overflowing_u32_is_rejected() {
 fn predictor_columns_and_colors_cannot_overflow_a_row_size() {
     let payload = flate(&[0u8; 512]);
     let cases: [(&str, i64, i64, i64, i64); 8] = [
-        ("png-huge-columns", 15, 0xFFFF_FFF, 3, 8),
-        ("png-huge-colors", 15, 64, 0xFFFF_FFF, 8),
+        ("png-huge-columns", 15, 0x0FFF_FFFF, 3, 8),
+        ("png-huge-colors", 15, 64, 0x0FFF_FFFF, 8),
         ("png-huge-both", 15, 0x7FFF_FFFF, 0x7FFF_FFFF, 16),
         // The minimal reproduction: exactly the clamp ceilings in filters.rs.
         // filters.rs clamped the FACTORS (cols to 1<<24, colors to 32) but never
@@ -200,6 +200,7 @@ fn cyclic_page_tree_parent_and_kids_chains_terminate() {
 ///   * the object graph - `registry::load_document_lenient` pre-scans the raw bytes
 ///     and refuses the document above `MAX_RAW_NESTING`, with the parse itself run
 ///     on a 32 MiB worker stack as defence in depth.
+///
 /// The depths exercised here span 8..100_000, crossing both bounds. They were
 /// pinned to 8..128 while the crash was live, because a guard-page fault aborts
 /// the whole test binary; now that both routes are bounded, the full range is
@@ -219,13 +220,9 @@ fn deeply_nested_arrays_and_dictionaries_hit_a_depth_bound() {
         // Nesting in a content stream operand.
         let mut content = Vec::new();
         content.extend_from_slice(b"BT /F1 12 Tf ");
-        for _ in 0..depth {
-            content.push(b'[');
-        }
+        content.extend(std::iter::repeat_n(b'[', depth));
         content.extend_from_slice(b"(x)");
-        for _ in 0..depth {
-            content.push(b']');
-        }
+        content.extend(std::iter::repeat_n(b']', depth));
         content.extend_from_slice(b" TJ ET");
         let pdf = raw_one_page("", &content, vec![]);
         assert_construct_survives(&format!("content stream with {depth} nested arrays"), pdf);
@@ -274,13 +271,9 @@ fn deeply_nested_arrays_and_dictionaries_hit_a_depth_bound() {
 fn deep_content_stream_nesting_degrades_instead_of_overflowing_the_stack() {
     let depth = 500;
     let mut content = Vec::from(&b"BT /F1 12 Tf "[..]);
-    for _ in 0..depth {
-        content.push(b'[');
-    }
+    content.extend(std::iter::repeat_n(b'[', depth));
     content.extend_from_slice(b"(x)");
-    for _ in 0..depth {
-        content.push(b']');
-    }
+    content.extend(std::iter::repeat_n(b']', depth));
     content.extend_from_slice(b" TJ ET");
     let pdf = raw_one_page("", &content, vec![]);
     assert_construct_survives(&format!("content stream with {depth} nested arrays"), pdf);

@@ -198,7 +198,7 @@ fn polygon_area(pts: &[(f32, f32)]) -> f64 {
 }
 
 /// A soft mask carrying a `/TR` must still produce a well-formed bracket. Pinned
-
+///
 /// Build a page whose content is wrapped in `BDC /OC`, with the OCG switched OFF
 /// via `/OCProperties /D /OFF`. `inner` is spliced inside the hidden region and
 /// `after` follows the closing `EMC`.

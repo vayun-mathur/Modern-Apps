@@ -1,20 +1,5 @@
-pub(crate) fn paint_pattern_fill(
-    doc: &Document,
-    pattern_id: ObjectId,
-    polys: &[Vec<(f64, f64)>],
-    even_odd: bool,
-    pattern_base_ctm: &Mat,
-    base_argb: u32,
-    alpha_fill: f32,
-    blend: BlendMode,
-    // See [`paint_pattern_stroke`]: the invoking stream's `/Resources
-    // /ColorSpace` map, without which a shading whose `/ColorSpace` is a NAME
-    // falls back to DeviceRGB.
-    cs_resources: &HashMap<Vec<u8>, ObjectId>,
-    prims: &mut Vec<Prim>,
-    depth: u32,
-    clip_depth: usize,
-) {
+pub(crate) fn paint_pattern_fill(fill: PatternFill<'_>) {
+    let PatternFill { doc, pattern_id, polys, even_odd, pattern_base_ctm, base_argb, alpha_fill, blend, cs_resources, prims, depth, clip_depth } = fill;
     if clip_depth >= MAX_CLIP_DEPTH {
         return;
     }
@@ -73,7 +58,7 @@ pub(crate) fn paint_pattern_fill(
             }
         }
     } else if ptype == 1 {
-        paint_tiling_pattern(doc, obj, dict, &pmat, base_argb, polys, prims, depth, alpha_fill, blend);
+        paint_tiling_pattern(TilingPattern { doc, obj, dict, pmat: &pmat, base_argb, polys, prims, depth, alpha: alpha_fill, blend });
     }
 
     prims.push(Prim::ClipPop);

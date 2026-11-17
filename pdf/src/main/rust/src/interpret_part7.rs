@@ -219,6 +219,70 @@ pub(crate) fn render_soft_mask_group(
     true
 }
 
+/// Everything needed to wrap already-emitted primitives in a soft mask.
+pub(crate) struct SoftMaskWrap<'a> {
+    pub prims: &'a mut Vec<Prim>,
+    pub start: usize,
+    pub doc: &'a Document,
+    pub resources: Option<&'a lopdf::Dictionary>,
+    pub mask: &'a SoftMask,
+    pub depth: u32,
+    pub bracket: &'a mut Option<MaskBracket>,
+    pub masked_extent: Option<[f64; 4]>,
+}
+
+/// Everything needed to fill a region with a pattern.
+pub(crate) struct PatternFill<'a> {
+    pub doc: &'a Document,
+    pub pattern_id: ObjectId,
+    pub polys: &'a [Vec<(f64, f64)>],
+    pub even_odd: bool,
+    pub pattern_base_ctm: &'a Mat,
+    pub base_argb: u32,
+    pub alpha_fill: f32,
+    pub blend: BlendMode,
+    // The invoking stream's `/Resources /ColorSpace` map: a shading whose
+    // `/ColorSpace` is a NAME resolves against it (see PatternStroke).
+    pub cs_resources: &'a HashMap<Vec<u8>, ObjectId>,
+    pub prims: &'a mut Vec<Prim>,
+    pub depth: u32,
+    pub clip_depth: usize,
+}
+
+/// Everything needed to stroke subpaths with a pattern.
+pub(crate) struct PatternStroke<'a> {
+    pub doc: &'a Document,
+    pub pattern_id: ObjectId,
+    pub subpaths: &'a [Vec<(f64, f64)>],
+    pub gs: &'a GraphicsState,
+    pub pattern_base_ctm: &'a Mat,
+    // The invoking stream's `/Resources /ColorSpace` map. §8.6.1 lets any
+    // non-device colour space be written as a NAME, and Table 78 puts no
+    // restriction on the form a shading's `/ColorSpace` takes — a PatternType 2
+    // dictionary has no `/Resources` of its own (only tiling patterns do), so a
+    // name in its shading resolves against the stream that invoked the pattern.
+    // Passing an empty map made every such lookup miss and silently substitute
+    // DeviceRGB. Found by `r5-color`.
+    pub cs_resources: &'a HashMap<Vec<u8>, ObjectId>,
+    pub prims: &'a mut Vec<Prim>,
+    pub depth: u32,
+    pub clip_depth: usize,
+}
+
+/// Everything needed to paint one tiling-pattern cell lattice.
+pub(crate) struct TilingPattern<'a> {
+    pub doc: &'a Document,
+    pub obj: &'a Object,
+    pub dict: &'a lopdf::Dictionary,
+    pub pmat: &'a Mat,
+    pub base_argb: u32,
+    pub polys: &'a [Vec<(f64, f64)>],
+    pub prims: &'a mut Vec<Prim>,
+    pub depth: u32,
+    pub alpha: f32,
+    pub blend: BlendMode,
+}
+
 /// Bracket the primitives appended since `start` with the given soft mask so
 /// they are drawn only where the mask is opaque/luminous. No-op if nothing was
 /// emitted. Reuses the SoftMaskPush/Content/Pop wire prims.
@@ -238,16 +302,8 @@ pub(crate) fn render_soft_mask_group(
 /// fully transparent mask and for non-overlapping content — which is what a run
 /// of shapes under one mask is in practice — and differ only in the alpha
 /// arithmetic where partially-masked content overlaps itself.
-pub(crate) fn wrap_with_soft_mask(
-    prims: &mut Vec<Prim>,
-    start: usize,
-    doc: &Document,
-    resources: Option<&lopdf::Dictionary>,
-    mask: &SoftMask,
-    depth: u32,
-    bracket: &mut Option<MaskBracket>,
-    masked_extent: Option<[f64; 4]>,
-) {
+pub(crate) fn wrap_with_soft_mask(wrap: SoftMaskWrap<'_>) {
+    let SoftMaskWrap { prims, start, doc, resources, mask, depth, bracket, masked_extent } = wrap;
     if start >= prims.len() || prims.len() >= MAX_PRIMITIVES {
         return;
     }
@@ -341,24 +397,8 @@ fn polys_device_bbox(polys: &[Vec<(f64, f64)>]) -> Option<[f64;4]> {
 }
 
 /// the segments (matching how a real stroke covers the path).
-pub(crate) fn paint_pattern_stroke(
-    doc: &Document,
-    pattern_id: ObjectId,
-    subpaths: &[Vec<(f64, f64)>],
-    gs: &GraphicsState,
-    pattern_base_ctm: &Mat,
-    // The invoking stream's `/Resources /ColorSpace` map. §8.6.1 lets any
-    // non-device colour space be written as a NAME, and Table 78 puts no
-    // restriction on the form a shading's `/ColorSpace` takes — a PatternType 2
-    // dictionary has no `/Resources` of its own (only tiling patterns do), so a
-    // name in its shading resolves against the stream that invoked the pattern.
-    // Passing an empty map made every such lookup miss and silently substitute
-    // DeviceRGB. Found by `r5-color`.
-    cs_resources: &HashMap<Vec<u8>, ObjectId>,
-    prims: &mut Vec<Prim>,
-    depth: u32,
-    clip_depth: usize,
-) {
+pub(crate) fn paint_pattern_stroke(stroke: PatternStroke<'_>) {
+    let PatternStroke { doc, pattern_id, subpaths, gs, pattern_base_ctm, cs_resources, prims, depth, clip_depth } = stroke;
     // These clips are pushed and popped inside this function, so they never
     // unbalance the stream — but they DO consume renderer clip levels, so they
     // have to respect the same ceiling as `emit_one_clip`.
@@ -437,7 +477,7 @@ pub(crate) fn paint_pattern_stroke(
             }
         }
     } else if ptype == 1 {
-        paint_tiling_pattern(doc, obj, dict, &pmat, gs.stroke, &quads, prims, depth, gs.alpha_stroke as f32, gs.blend_mode);
+        paint_tiling_pattern(TilingPattern { doc, obj, dict, pmat: &pmat, base_argb: gs.stroke, polys: &quads, prims, depth, alpha: gs.alpha_stroke as f32, blend: gs.blend_mode });
     }
     prims.push(Prim::ClipPop);
 }

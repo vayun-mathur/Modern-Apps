@@ -46,16 +46,6 @@ impl Default for CcittParams {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct LzwParams {
-    pub early_change: bool,
-}
-impl Default for LzwParams {
-    fn default() -> Self {
-        Self { early_change: true }
-    }
-}
-
 fn num(obj: &Object) -> Option<f64> {
     match obj {
         Object::Integer(i) => Some(*i as f64),
@@ -303,13 +293,10 @@ fn lzw_decode_std(data: &[u8], early_change: bool, limit: usize) -> Option<Vec<u
         Some(code)
     };
 
-    loop {
-        let Some(code) = read_code(&mut bit_buf, &mut bits_in_buf, data, &mut data_pos, code_bits)
-        else {
-            // Stream ended without an EOD (257). Many producers omit it; returning None
-            // here discarded a fully-decoded stream and blanked the page.
-            break;
-        };
+    // Stream ended without an EOD (257) ends the loop: many producers omit
+    // it; returning None there discarded a fully-decoded stream and blanked
+    // the page.
+    while let Some(code) = read_code(&mut bit_buf, &mut bits_in_buf, data, &mut data_pos, code_bits) {
         if code == CLEAR {
             dict.truncate(258);
             code_bits = 9;

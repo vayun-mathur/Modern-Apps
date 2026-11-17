@@ -3,27 +3,10 @@
 mod blind_reaudit_r5_tests_2 {
     use crate::*;
     use lopdf::content::Operation;
-    use lopdf::{dictionary, Stream};
+    use lopdf::dictionary;
 
     fn op(name: &str, operands: Vec<Object>) -> Operation {
         Operation::new(name, operands)
-    }
-
-    fn run(ops: &[Operation]) -> Vec<Prim> {
-        let doc = Document::with_version("1.7");
-        let mut prims = Vec::new();
-        interpret_content(&doc, ops, None, GraphicsState::default(), &mut prims, 0, false);
-        prims
-    }
-
-    fn contours(prims: &[Prim]) -> Vec<Vec<(f32, f32)>> {
-        prims
-            .iter()
-            .find_map(|p| match p {
-                Prim::Fill { contours, .. } => Some(contours.clone()),
-                _ => None,
-            })
-            .expect("a fill must be emitted")
     }
 
     /// §8.11.3.3 bars DRAWING inside an OFF optional-content group, not state
@@ -344,11 +327,9 @@ mod blind_reaudit_r5_tests_2 {
                 .expect("a stroke must be emitted")
         };
 
-        let line = vec![
-            op("m", vec![0.into(), 0.into()]),
+        let line = [op("m", vec![0.into(), 0.into()]),
             op("l", vec![50.into(), 50.into()]),
-            op("S", vec![]),
-        ];
+            op("S", vec![])];
         let mut baseline_ops = Vec::new();
         baseline_ops.extend(line.iter().cloned());
         let mut prims = Vec::new();

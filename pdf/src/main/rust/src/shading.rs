@@ -105,9 +105,7 @@ pub fn rasterize_shading_mesh(
     // consumed 3x the bits, desynchronising the packed stream from the second vertex
     // onward — every later vertex decodes from the middle of its predecessor and the
     // mesh becomes spectacular noise, on top of every colour resolving to index ~0.
-    let ncomp = if func.is_some() {
-        1
-    } else if matches!(cs_kind, CsKind::Indexed { .. }) {
+    let ncomp = if func.is_some() || matches!(cs_kind, CsKind::Indexed { .. }) {
         1
     } else {
         cs_kind_ncomp(&cs_kind) as usize
@@ -261,7 +259,7 @@ pub fn rasterize_shading_mesh(
             4 => parse_type4(data, bps_flag, bps_coord, bps_comp, ncomp, &decode, &mut emit),
             5 => parse_type5(data, vpr, bps_coord, bps_comp, ncomp, &decode, &mut emit),
             6 | 7 => parse_type6_7(
-                data, shading_type, bps_flag, bps_coord, bps_comp, ncomp, &decode, &mut emit,
+                data, shading_type, (bps_flag, bps_coord, bps_comp), ncomp, &decode, &mut emit,
             ),
             _ => {}
         }

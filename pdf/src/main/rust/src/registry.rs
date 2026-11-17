@@ -207,6 +207,7 @@ fn load_mem_on_big_stack(bytes: &[u8]) -> lopdf::Result<Document> {
 ///   * 7.3.8 stream bodies - compressed and image data is dense in `[` and `<<`
 ///     bytes, is not parsed as objects at this level, and would otherwise drift the
 ///     count upward on every large legitimate file. Skipped wholesale.
+///
 /// The count also resets at each `endobj`, so one unbalanced object cannot leak its
 /// residual depth into the rest of the file. The one direction that can over-count
 /// is a stream body containing the literal bytes `endstream`, which would resume the

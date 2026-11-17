@@ -203,9 +203,9 @@ impl Rast {
             return;
         }
         let cov = poly_coverage(self.w, self.h, contours, even_odd);
-        for i in 0..self.w * self.h {
-            let c = cov[i] * self.clip[i];
-            if c > 0.0 {
+        let coverage: Vec<f32> = cov.iter().zip(self.clip.iter()).map(|(cov_i, clip_i)| cov_i * clip_i).take(self.w * self.h).collect();
+        for (i, c) in coverage.iter().enumerate() {
+            if *c > 0.0 {
                 self.cur().blend_px(i, rgb, a * c);
             }
         }
@@ -355,8 +355,8 @@ fn rasterize(page: &PageData, scale: f32) -> (Canvas, Skipped) {
                 let contours = clip_contours(&r, pts, path_ops);
                 let cov = poly_coverage(r.w, r.h, &contours, *even_odd);
                 r.clip_stack.push(r.clip.clone());
-                for i in 0..r.clip.len() {
-                    r.clip[i] *= cov[i];
+                for (clip_i, cov_i) in r.clip.iter_mut().zip(cov.iter()) {
+                    *clip_i *= cov_i;
                 }
             }
             Prim::ClipPop => {
@@ -406,7 +406,7 @@ fn rasterize(page: &PageData, scale: f32) -> (Canvas, Skipped) {
                 let maskc = r.layers.pop().unwrap_or_else(|| Canvas::transparent(w, h));
                 if let Some(s) = r.soft.pop() {
                     let mut mask = vec![0f32; w * h];
-                    for i in 0..w * h {
+                    for (i, mask_i) in mask.iter_mut().enumerate().take(w * h) {
                         let p = maskc.px[i];
                         let v = if s.mask_type == 1 {
                             // Luminosity, §11.6.5.2: Y of the (premultiplied)
@@ -422,7 +422,7 @@ fn rasterize(page: &PageData, scale: f32) -> (Canvas, Skipped) {
                             }
                             None => v.clamp(0.0, 1.0),
                         };
-                        mask[i] = v;
+                        *mask_i = v;
                     }
                     if let Some(content) = s.content {
                         r.cur().composite_layer(&content, 1.0, Some(&mask));

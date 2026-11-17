@@ -307,7 +307,7 @@ mod blind_reaudit_r5_tests {
                 blend: BlendMode::Normal,
             }];
             let mut bracket = None;
-            wrap_with_soft_mask(&mut prims, 0, &doc, None, &mask, depth, &mut bracket, None);
+            wrap_with_soft_mask(SoftMaskWrap { prims: &mut prims, start: 0, doc: &doc, resources: None, mask: &mask, depth, bracket: &mut bracket, masked_extent: None });
             prims
         };
         let good = SoftMask {

@@ -84,8 +84,10 @@ fn truncate_str_safe(s: &str, max_bytes: usize) -> &str {
     if s.len() <= max_bytes {
         s
     } else {
-        // floor_char_boundary is stable since 1.77 and available in 1.97 toolchain.
-        let idx = s.floor_char_boundary(max_bytes);
+        let mut idx = max_bytes;
+        while !s.is_char_boundary(idx) {
+            idx -= 1;
+        }
         &s[..idx]
     }
 }

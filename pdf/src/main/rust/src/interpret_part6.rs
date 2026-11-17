@@ -1,5 +1,6 @@
 impl SeededInterp {
-    fn handle_text_ops(&mut self, op: &lopdf::content::Operation, o: &[Object], doc: &Document, resources: Option<&lopdf::Dictionary>, prims: &mut Vec<Prim>, depth: u32, text_only: bool) {
+    fn handle_text_ops(&mut self, op: &lopdf::content::Operation, o: &[Object], ctx: HandlerCtx<'_>) {
+        let HandlerCtx { doc, resources, prims, depth, text_only } = ctx;
         // Operand accessor (same as in `handle_state_ops`): `None` means "treat
         // the operand as absent"; filters non-finite values.
         let numop = |o: &[Object], i: usize| -> Option<f64> {
@@ -136,7 +137,7 @@ impl SeededInterp {
                         // budget that `show_string`'s Text records are also drawn from —
                         // so a mask-heavy document silently indexed less of its own text.
                         if !text_only && !oc_hidden && matches!(self.gs.render_mode, 0|1|2|4|5|6) {
-                            if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(prims, sm_start, doc, resources, &m, depth, &mut self.mask_bracket, self.current_clip_bbox); }
+                            if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(SoftMaskWrap { prims: &mut *prims, start: sm_start, doc, resources, mask: &m, depth, bracket: &mut self.mask_bracket, masked_extent: self.current_clip_bbox }); }
                         }
                     }
                 }
@@ -158,7 +159,7 @@ impl SeededInterp {
                             self.text_matrix = mat_mul(&translate(adv, 0.0), &self.text_matrix);
                         }
                         if !text_only && !oc_hidden && matches!(self.gs.render_mode, 0|1|2|4|5|6) {
-                            if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(prims, sm_start, doc, resources, &m, depth, &mut self.mask_bracket, self.current_clip_bbox); }
+                            if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(SoftMaskWrap { prims: &mut *prims, start: sm_start, doc, resources, mask: &m, depth, bracket: &mut self.mask_bracket, masked_extent: self.current_clip_bbox }); }
                         }
                     }
                 }
@@ -182,7 +183,7 @@ impl SeededInterp {
                             self.text_matrix = mat_mul(&translate(adv, 0.0), &self.text_matrix);
                         }
                         if !text_only && !oc_hidden && matches!(self.gs.render_mode, 0|1|2|4|5|6) {
-                            if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(prims, sm_start, doc, resources, &m, depth, &mut self.mask_bracket, self.current_clip_bbox); }
+                            if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(SoftMaskWrap { prims: &mut *prims, start: sm_start, doc, resources, mask: &m, depth, bracket: &mut self.mask_bracket, masked_extent: self.current_clip_bbox }); }
                         }
                     }
                 }
@@ -228,7 +229,7 @@ impl SeededInterp {
                     }
                     if oc_hidden { self.gs.render_mode = shown_mode; }
                     if !text_only && !oc_hidden && matches!(self.gs.render_mode, 0|1|2|4|5|6) {
-                        if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(prims, sm_start, doc, resources, &m, depth, &mut self.mask_bracket, self.current_clip_bbox); }
+                        if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(SoftMaskWrap { prims: &mut *prims, start: sm_start, doc, resources, mask: &m, depth, bracket: &mut self.mask_bracket, masked_extent: self.current_clip_bbox }); }
                     }
                 }
                 // Explicit no-ops (documented): rendering intent, and compatibility

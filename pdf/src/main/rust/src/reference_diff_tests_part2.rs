@@ -93,7 +93,7 @@ fn hayro_rgb8(bytes: &[u8], scale: f32) -> (usize, usize, Vec<[u8; 3]>) {
         &cache,
         &settings,
         &RenderSettings::default(),
-        &PixmapSettings { x_scale: scale, y_scale: scale, bg_color: WHITE, ..Default::default() },
+        &PixmapSettings { x_scale: scale, y_scale: scale, bg_color: WHITE },
     );
     let (w, h) = (pixmap.width() as usize, pixmap.height() as usize);
     let rgb = pixmap
@@ -104,11 +104,10 @@ fn hayro_rgb8(bytes: &[u8], scale: f32) -> (usize, usize, Vec<[u8; 3]>) {
             // every pixel has a == 255, so the channels are already straight.
             let a = p.a as u32;
             let un = |c: u8| {
-                if a == 0 {
-                    255u8
-                } else {
-                    ((c as u32 * 255 + a / 2) / a).min(255) as u8
-                }
+                (c as u32 * 255 + a / 2)
+                    .checked_div(a)
+                    .map(|v| v.min(255) as u8)
+                    .unwrap_or(255)
             };
             [un(p.r), un(p.g), un(p.b)]
         })
@@ -135,7 +134,9 @@ struct DiffReport {
 /// flag; wrong colour, missing ink and >1px displacement do.
 fn fuzzy_diff(a: &[[u8; 3]], b: &[[u8; 3]], w: usize, h: usize) -> DiffReport {
     let mut flagged = 0usize;
-    let mut worst: Option<(usize, usize, [u8; 3], [u8; 3], i32)> = None;
+    // (x, y, pixel in `a`, pixel in `b`, difference)
+    type WorstPixel = (usize, usize, [u8; 3], [u8; 3], i32);
+    let mut worst: Option<WorstPixel> = None;
     let at = |v: &[[u8; 3]], x: usize, y: usize| v[y * w + x];
     for y in 0..h {
         for x in 0..w {
@@ -162,7 +163,7 @@ fn fuzzy_diff(a: &[[u8; 3]], b: &[[u8; 3]], w: usize, h: usize) -> DiffReport {
             }
             if best > CHANNEL_TOLERANCE {
                 flagged += 1;
-                if worst.map_or(true, |wv| best > wv.4) {
+                if worst.is_none_or(|wv| best > wv.4) {
                     worst = Some((x, y, pa, best_px, best));
                 }
             }
@@ -220,7 +221,7 @@ fn ascii_ink(rgb: &[[u8; 3]], w: usize, h: usize, cols: usize) -> String {
                     n += 1;
                 }
             }
-            let v = if n == 0 { 255 } else { acc / n };
+            let v = acc.checked_div(n).unwrap_or(255);
             s.push(match v {
                 0..=63 => '#',
                 64..=159 => '+',

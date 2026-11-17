@@ -27,7 +27,7 @@ mod encoding_priority_tests {
             let (c1, c2) = (52845u16, 22719u16);
             let mut r = seed;
             let mut out = Vec::new();
-            for &p in std::iter::repeat(&0u8).take(lead).chain(plain) {
+            for &p in std::iter::repeat_n(&0u8, lead).chain(plain) {
                 let c = p ^ (r >> 8) as u8;
                 r = (c as u16).wrapping_add(r).wrapping_mul(c1).wrapping_add(c2);
                 out.push(c);

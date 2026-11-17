@@ -279,12 +279,8 @@ fn synth_ttf(n_glyphs: u16, pts: u16) -> Vec<u8> {
         for _ in 0..np {
             glyf.push(0x01 | 0x02 | 0x04 | 0x10 | 0x20);
         }
-        for _ in 0..np {
-            glyf.push(3); // dx
-        }
-        for _ in 0..np {
-            glyf.push(5); // dy
-        }
+        glyf.extend(std::iter::repeat_n(3, np as usize)); // dx
+        glyf.extend(std::iter::repeat_n(5, np as usize)); // dy
         while glyf.len() % 4 != 0 {
             glyf.push(0);
         }

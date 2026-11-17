@@ -18,6 +18,7 @@
 //!   * it prints a banner naming every fixture that went unverified;
 //!   * `ISSUE321_REQUIRE_FIXTURES=1` turns the skip into a hard failure, for
 //!     anyone who needs the run to actually mean something.
+//!
 //! It does not fail by default, because the fixtures legitimately cannot be
 //! committed and an unconditional failure would just get muted.
 //!
@@ -316,7 +317,7 @@ mod issue321 {
             }
         }
         let mut v: Vec<(u32, usize)> = counts.into_iter().collect();
-        v.sort_by(|a, b| b.1.cmp(&a.1));
+        v.sort_by_key(|b| std::cmp::Reverse(b.1));
         println!("=== {} p{} top fill/text colors (ARGB) ===", name, page_idx);
         for (argb, n) in v.iter().take(25) {
             println!(

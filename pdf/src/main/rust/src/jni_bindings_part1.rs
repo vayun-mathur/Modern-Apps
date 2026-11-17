@@ -2,36 +2,33 @@ fn add_stamp_inner<'local>(
     env: &mut Env<'local>,
     handle: jlong,
     page: jint,
-    x0: jfloat,
-    y0: jfloat,
-    x1: jfloat,
-    y1: jfloat,
-    img_w: jint,
-    img_h: jint,
+    // (x0, y0, x1, y1) stamp rect and (width, height) of the image
+    rect: [jfloat; 4],
+    img_size: (jint, jint),
     jpeg: JByteArray<'local>,
 ) -> jlong {
     if jpeg.is_null() {
         throw_iae(env, "jpeg is null");
         return 0;
     }
-    let len = env.get_array_length(&jpeg).unwrap_or(0);
-    if len as usize > MAX_JAVA_BYTE_ARRAY_BYTES {
+    let len = jpeg.len(env).unwrap_or(0);
+    if len > MAX_JAVA_BYTE_ARRAY_BYTES {
         throw_oom(env, "Image stamp too large (>200MB)");
         return 0;
     }
     let bytes = match env.convert_byte_array(&jpeg) {
         Ok(b) => b,
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             return 0;
         }
     };
     add_stamp(
         handle,
         page,
-        [x0 as f64, y0 as f64, x1 as f64, y1 as f64],
-        img_w as u32,
-        img_h as u32,
+        rect.map(|v| v as f64),
+        img_size.0 as u32,
+        img_size.1 as u32,
         &bytes,
     )
     .unwrap_or(0)
@@ -87,7 +84,7 @@ fn set_choice_field_inner<'local>(
 
 fn save_document_inner<'local>(env: &mut Env<'local>, handle: jlong) -> jbyteArray {
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return std::ptr::null_mut();
     }
     bytes_or_null_mut(env, save_document(handle))
@@ -95,7 +92,7 @@ fn save_document_inner<'local>(env: &mut Env<'local>, handle: jlong) -> jbyteArr
 
 fn save_compressed_inner<'local>(env: &mut Env<'local>, handle: jlong) -> jbyteArray {
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return std::ptr::null_mut();
     }
     bytes_or_null_mut(env, save_compressed(handle))
@@ -103,7 +100,7 @@ fn save_compressed_inner<'local>(env: &mut Env<'local>, handle: jlong) -> jbyteA
 
 fn extract_text_inner<'local>(env: &mut Env<'local>, handle: jlong) -> jstring {
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return std::ptr::null_mut();
     }
     let text_opt = document_text(handle);
@@ -111,7 +108,7 @@ fn extract_text_inner<'local>(env: &mut Env<'local>, handle: jlong) -> jstring {
         Some(t) => match env.new_string(t) {
             Ok(js) => Some(js),
             Err(_) => {
-                let _ = env.exception_clear();
+                env.exception_clear();
                 None
             }
         },
@@ -139,7 +136,7 @@ fn search_document_inner_fn<'local>(
         }
     };
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return std::ptr::null_mut();
     }
     bytes_or_null_mut(env, search_document(handle, &q))
@@ -158,7 +155,7 @@ fn search_document_cs_inner<'local>(
         }
     };
     if env.ensure_local_capacity(4).is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
         return std::ptr::null_mut();
     }
     bytes_or_null_mut(env, search_document_case_sensitive(handle, &q))
@@ -180,7 +177,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_openDocument<'loc
     match catch_unwind(AssertUnwindSafe(|| open_document_inner(&mut *env, data))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in openDocument"));
             Ok(0)
         }
@@ -203,7 +200,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_openDocumentWithP
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in openDocumentWithPassword"));
             Ok(0)
         }
@@ -223,7 +220,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_pdfPasswordState<
     match catch_unwind(AssertUnwindSafe(|| pdf_password_state_inner(&mut *env, data))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in pdfPasswordState"));
             Ok(0)
         }
@@ -247,7 +244,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_saveEncrypted<'lo
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in saveEncrypted"));
             Ok(std::ptr::null_mut())
         }
@@ -267,7 +264,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_getPageCount<'loc
     match catch_unwind(AssertUnwindSafe(|| page_count(handle))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in getPageCount"));
             Ok(0)
         }
@@ -289,7 +286,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_renderPage<'local
     match catch_unwind(AssertUnwindSafe(|| render_page_inner(&mut *env, handle, index))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in renderPage"));
             Ok(std::ptr::null_mut())
         }
@@ -310,7 +307,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_closeDocument<'lo
         close_document(handle);
     }));
     if res.is_err() {
-        let _ = env.exception_clear();
+        env.exception_clear();
     }
     Ok(())
     })
@@ -327,7 +324,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_createEmptyDocume
     match catch_unwind(AssertUnwindSafe(create_empty_document)) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in createEmptyDocument"));
             Ok(0)
         }
@@ -349,7 +346,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_appendPdf<'local>
     match catch_unwind(AssertUnwindSafe(|| append_pdf_inner(&mut *env, handle, data))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in appendPdf"));
             Ok(0)
         }
@@ -375,7 +372,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_appendImagePage<'
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in appendImagePage"));
             Ok(0)
         }
@@ -405,7 +402,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_movePage<'local>(
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -432,7 +429,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_removePage<'local
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -454,7 +451,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_rotatePage<'local
     match catch_unwind(AssertUnwindSafe(|| rotate_page(handle, index, delta))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }

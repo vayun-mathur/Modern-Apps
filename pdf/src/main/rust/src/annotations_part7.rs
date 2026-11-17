@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod synthesis_tests {
-    use super::stamp_label;
+    
     use crate::*;
 
     // A page index arrives from the JNI boundary as a `jint` and is not validated there,

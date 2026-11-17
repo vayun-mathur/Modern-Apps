@@ -10,7 +10,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_extractPage<'loca
     match catch_unwind(AssertUnwindSafe(|| extract_page_inner(&mut *env, handle, index))) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in extractPage"));
             Ok(std::ptr::null_mut())
         }
@@ -33,7 +33,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_listAnnotations<'
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(std::ptr::null_mut())
         }
     }
@@ -55,7 +55,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_listFormFields<'l
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(std::ptr::null_mut())
         }
     }
@@ -76,7 +76,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_listLinks<'local>
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(std::ptr::null_mut())
         }
     }
@@ -102,11 +102,11 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addTextAnnotation
     env.with_env(|env| -> jni::errors::Result<jlong> {
     let _invalidate = InvalidateSearchIndex(handle);
     match catch_unwind(AssertUnwindSafe(|| {
-        add_free_text_inner(&mut *env, handle, page, x0, y0, x1, y1, argb, size, text)
+        add_free_text_inner(&mut *env, handle, page, [x0, y0, x1, y1], argb, size, text)
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             let _ = env.throw_new(jni_str!("java/lang/RuntimeException"), jni_str!("Native panic in addTextAnnotation"));
             Ok(0)
         }
@@ -141,7 +141,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addHighlight<'loc
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -177,7 +177,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addTextMarkup<'lo
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -203,7 +203,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addNote<'local>(
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -229,11 +229,11 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addCallout<'local
     env.with_env(|env| -> jni::errors::Result<jlong> {
     let _invalidate = InvalidateSearchIndex(handle);
     match catch_unwind(AssertUnwindSafe(|| {
-        add_callout_inner(&mut *env, handle, page, ax, ay, bx, by, argb, size, text)
+        add_callout_inner(&mut *env, handle, page, [ax, ay, bx, by], argb, size, text)
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -271,7 +271,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addRectAnnotation
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -309,7 +309,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addCircleAnnotati
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -334,11 +334,11 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addPolyAnnotation
     env.with_env(|env| -> jni::errors::Result<jlong> {
     let _invalidate = InvalidateSearchIndex(handle);
     match catch_unwind(AssertUnwindSafe(|| {
-        add_poly_inner(&mut *env, handle, page, argb, line_width, fill, closed, pts)
+        add_poly_inner(&mut *env, handle, page, argb, line_width, (fill, closed), pts)
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -364,7 +364,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addInkAnnotation<
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -391,11 +391,11 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_addImageStamp<'lo
     env.with_env(|env| -> jni::errors::Result<jlong> {
     let _invalidate = InvalidateSearchIndex(handle);
     match catch_unwind(AssertUnwindSafe(|| {
-        add_stamp_inner(&mut *env, handle, page, x0, y0, x1, y1, img_w, img_h, jpeg)
+        add_stamp_inner(&mut *env, handle, page, [x0, y0, x1, y1], (img_w, img_h), jpeg)
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(0)
         }
     }
@@ -428,7 +428,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_updateAnnotationR
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -451,7 +451,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_updateTextAnnotat
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }
@@ -474,7 +474,7 @@ pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_deleteAnnotation<
     })) {
         Ok(v) => Ok(v),
         Err(_) => {
-            let _ = env.exception_clear();
+            env.exception_clear();
             Ok(false)
         }
     }

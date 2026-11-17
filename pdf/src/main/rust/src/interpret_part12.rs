@@ -9,13 +9,6 @@ mod blind_reaudit_r4_tests_2 {
         Operation::new(name, operands)
     }
 
-    fn run(ops: &[Operation], res: Option<&lopdf::Dictionary>) -> Vec<Prim> {
-        let doc = Document::with_version("1.7");
-        let mut prims = Vec::new();
-        interpret_content(&doc, ops, res, GraphicsState::default(), &mut prims, 0, false);
-        prims
-    }
-
     /// §7.3.3 bounds a real to the implementation limit, and lopdf's `Object::Real`
     /// is an `f32`, so a content stream carrying `1e40` parses to INFINITY. Nothing
     /// between the interpreter and `Canvas.drawPath` filters a non-finite coordinate
@@ -125,6 +118,7 @@ mod blind_reaudit_r4_tests_2 {
     ///   - a pattern `/Matrix`, which reaches the shading placement matrix;
     ///   - `Tm`, which assigns straight to the text matrix and so places every
     ///     subsequent glyph at a non-finite origin.
+///
     /// `cm` was already safe, but only because it guards the product it computes.
     /// Found by `a-images`, who hit the same class in shading matrices.
     #[test]

@@ -191,7 +191,7 @@ mod dct_decode_tests {
             "ColorSpace" => "DeviceGray",
         };
         // Four pixels' worth of raster, one pixel's worth of samples.
-        let rgba = image_samples_to_rgba(&doc, &dict, &HashMap::new(), &[0x40u8], 2, 2, 1, 8);
+        let rgba = image_samples_to_rgba(&doc, &dict, &HashMap::new(), &[0x40u8], (2, 2), 1, 8);
         assert_eq!(rgba.len(), 16);
         assert_eq!(rgba[3], 255, "the covered pixel is opaque");
         assert_eq!(&rgba[0..3], &[0x40, 0x40, 0x40]);
@@ -303,11 +303,7 @@ mod pixel_budget_tests {
     fn a_ccitt_raster_over_the_pixel_budget_renders_decimated_instead_of_vanishing() {
         const COLS: usize = 20000;
         const ROWS: usize = 839;
-        assert!(
-            COLS * ROWS > MAX_IMAGE_PIXELS,
-            "fixture must cross the budget: {} vs {}",
-            COLS * ROWS, MAX_IMAGE_PIXELS
-        );
+        const { assert!(COLS * ROWS > MAX_IMAGE_PIXELS, "fixture must cross the budget") };
         // Packed at one bit per pixel this is only ~2.1 MB, which is the whole point.
         assert!(COLS.div_ceil(8) * ROWS < MAX_UNPACKED_SAMPLE_BYTES);
 

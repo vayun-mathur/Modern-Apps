@@ -21,9 +21,9 @@ mod tests {
         let key = compute_key(b"", &o, p, id0, n, rev, true);
         let u = compute_u(&key, id0, rev);
         let got =
-            authenticate(b"", &o, &u, p, id0, n, rev, true).expect("empty user pw authenticates");
+            authenticate(&AuthParams { pw: b"", o: &o, u: &u, p, id0, n, rev, encrypt_metadata: true }).expect("empty user pw authenticates");
         assert_eq!(got, key);
-        assert!(authenticate(b"wrong", &o, &u, p, id0, n, rev, true).is_none());
+        assert!(authenticate(&AuthParams { pw: b"wrong", o: &o, u: &u, p, id0, n, rev, encrypt_metadata: true }).is_none());
     }
 
     #[test]

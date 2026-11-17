@@ -9,15 +9,15 @@
 /// a document with zero pages.
 fn expand_object_streams(doc: &mut Document) {
     let mut recovered: Vec<(ObjectId, Object)> = Vec::new();
-    for (_, object) in doc.objects.iter() {
+    for object in doc.objects.values() {
         let Ok(stream) = object.as_stream() else {
             continue;
         };
         if !stream.dict.has_type(b"ObjStm") {
             continue;
         }
-        let mut stream = stream.clone();
-        if let Ok(obj_stream) = lopdf::ObjectStream::new(&mut stream) {
+        let stream = stream.clone();
+        if let Ok(obj_stream) = lopdf::ObjectStream::new(&stream) {
             recovered.extend(obj_stream.objects);
         }
     }
@@ -28,6 +28,11 @@ fn expand_object_streams(doc: &mut Document) {
 }
 
 /// Which standard-security-handler algorithm to write on save.
+///
+/// Only `Aes128` is selected by the production save path; `Rc4_128` and
+/// `Aes256` are constructed by the encrypt/decrypt round-trip tests, which
+/// the library (non-test) build cannot see.
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum EncryptAlgo {
     /// RC4-128, revision 3 (V2/R3).

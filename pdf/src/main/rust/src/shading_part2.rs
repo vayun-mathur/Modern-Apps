@@ -118,8 +118,8 @@ mod tests {
         // Flat/interpolated interior vs interior pulled hard to the corners.
         let flat = tensor_patch_bytes([(33, 33), (33, 66), (66, 66), (66, 33)]);
         let bulged = tensor_patch_bytes([(0, 0), (0, 100), (100, 100), (100, 0)]);
-        let a = collect(|e| parse_type6_7(&flat, 7, 8, 8, 8, 1, &decode, e));
-        let b = collect(|e| parse_type6_7(&bulged, 7, 8, 8, 8, 1, &decode, e));
+        let a = collect(|e| parse_type6_7(&flat, 7, (8, 8, 8), 1, &decode, e));
+        let b = collect(|e| parse_type6_7(&bulged, 7, (8, 8, 8), 1, &decode, e));
         assert!(!a.is_empty() && !b.is_empty(), "both patches should tessellate");
         let verts = |tris: &[(Vertex, Vertex, Vertex)]| -> Vec<(i64, i64)> {
             tris.iter().flat_map(|(p, q, r)| {
@@ -185,7 +185,7 @@ mod tests {
         data.extend_from_slice(&[50, 60]);
 
         let decode = [0.0, 255.0, 0.0, 255.0, 0.0, 255.0];
-        let tris = collect(|e| parse_type6_7(&data, 6, 8, 8, 8, 1, &decode, e));
+        let tris = collect(|e| parse_type6_7(&data, 6, (8, 8, 8), 1, &decode, e));
         assert!(!tris.is_empty());
 
         // The second patch's tessellation starts after the first's (2*8*8 triangles).
@@ -257,7 +257,7 @@ mod tests {
 
         // 1-bit components, so /Decode maps raw 0 -> 0.0 and raw 1 -> 1.0.
         let decode = [0.0, 255.0, 0.0, 255.0, 0.0, 1.0];
-        let tris = collect(|e| parse_type6_7(&data, 6, 8, 8, 1, 1, &decode, e));
+        let tris = collect(|e| parse_type6_7(&data, 6, (8, 8, 1), 1, &decode, e));
         let per_patch = 2 * 8 * 8;
         assert_eq!(tris.len(), 2 * per_patch, "both patches decode");
 

@@ -49,16 +49,10 @@ fn downscale_rgba(data: &[u8], w: u32, h: u32, max_dim: u32, smooth: bool) -> Op
             if cnt > 0 {
                 // Un-premultiply: the output buffer stays straight-alpha, which is what
                 // the Kotlin side's Bitmap.createBitmap(int[], ...) expects.
-                if a > 0 {
-                    out[o] = (r / a) as u8;
-                    out[o + 1] = (g / a) as u8;
-                    out[o + 2] = (b / a) as u8;
-                } else {
-                    out[o] = 0;
-                    out[o + 1] = 0;
-                    out[o + 2] = 0;
-                }
-                out[o + 3] = (a / cnt) as u8;
+                out[o] = r.checked_div(a).unwrap_or(0) as u8;
+                out[o + 1] = g.checked_div(a).unwrap_or(0) as u8;
+                out[o + 2] = b.checked_div(a).unwrap_or(0) as u8;
+                out[o + 3] = a.checked_div(cnt).unwrap_or(0) as u8;
             }
         }
     }
@@ -184,7 +178,7 @@ fn jbig2_globals(
     if let Some(g) = specs
         .iter()
         .filter(|(k, _)| *k == filters::FilterKind::Jbig2)
-        .find_map(|(_, pd)| pd.as_ref().and_then(|d| from_parms(d)))
+        .find_map(|(_, pd)| pd.as_ref().and_then(&from_parms))
     {
         return Some(g);
     }
@@ -198,7 +192,7 @@ fn jbig2_globals(
         Some(Object::Array(a)) => a
             .iter()
             .filter_map(|el| deref(doc, el).and_then(|o| o.as_dict().ok()))
-            .find_map(|d| from_parms(d)),
+            .find_map(from_parms),
         _ => None,
     }
 }

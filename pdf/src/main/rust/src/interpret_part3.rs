@@ -176,7 +176,8 @@ impl SeededInterp {
 }
 
 impl SeededInterp {
-    fn handle_paint_ops(&mut self, op: &lopdf::content::Operation, o: &[Object], doc: &Document, resources: Option<&lopdf::Dictionary>, prims: &mut Vec<Prim>, depth: u32, text_only: bool) {
+    fn handle_paint_ops(&mut self, op: &lopdf::content::Operation, o: &[Object], ctx: HandlerCtx<'_>) {
+        let HandlerCtx { doc, resources, prims, depth, text_only } = ctx;
         match op.operator.as_str() {
                 "S" | "s" => {
                     // `s` closes first (§8.5.3.1). A subpath `re` or `h` already closed
@@ -189,12 +190,12 @@ impl SeededInterp {
                     if !text_only && !self.oc_stack.last().copied().unwrap_or(false) {
                         let sm_start = prims.len();
                         if let Some(pid) = self.gs.stroke_pattern {
-                            paint_pattern_stroke(doc, pid, &self.subpaths, &self.gs, &self.pattern_base_ctm, &self.colorspaces, prims, depth, self.clip_depth);
+                            paint_pattern_stroke(PatternStroke { doc, pattern_id: pid, subpaths: &self.subpaths, gs: &self.gs, pattern_base_ctm: &self.pattern_base_ctm, cs_resources: &self.colorspaces, prims: &mut *prims, depth, clip_depth: self.clip_depth });
                         } else if prims.len() < MAX_PRIMITIVES {
                             emit_stroke(prims, &self.subpaths, &self.gs);
                         }
                         if let Some(m) = self.gs.soft_mask.clone() {
-                            wrap_with_soft_mask(prims, sm_start, doc, resources, &m, depth, &mut self.mask_bracket, self.current_clip_bbox);
+                            wrap_with_soft_mask(SoftMaskWrap { prims: &mut *prims, start: sm_start, doc, resources, mask: &m, depth, bracket: &mut self.mask_bracket, masked_extent: self.current_clip_bbox });
                         }
                     }
                     // §8.5.4: a pending `W` takes effect only AFTER the painting
@@ -211,12 +212,12 @@ impl SeededInterp {
                     if !text_only && !self.oc_stack.last().copied().unwrap_or(false) {
                         let sm_start = prims.len();
                         if let Some(pid) = self.gs.fill_pattern {
-                            paint_pattern_fill(doc, pid, &self.subpaths, op.operator == "f*", &self.pattern_base_ctm, self.gs.fill, self.gs.alpha_fill as f32, self.gs.blend_mode, &self.colorspaces, prims, depth, self.clip_depth);
+                            paint_pattern_fill(PatternFill { doc, pattern_id: pid, polys: &self.subpaths, even_odd: op.operator == "f*", pattern_base_ctm: &self.pattern_base_ctm, base_argb: self.gs.fill, alpha_fill: self.gs.alpha_fill as f32, blend: self.gs.blend_mode, cs_resources: &self.colorspaces, prims: &mut *prims, depth, clip_depth: self.clip_depth });
                         } else if prims.len() < MAX_PRIMITIVES {
                             emit_fill(prims, &self.subpaths, self.gs.fill, op.operator == "f*", self.gs.alpha_fill, self.gs.blend_mode);
                         }
                         if let Some(m) = self.gs.soft_mask.clone() {
-                            wrap_with_soft_mask(prims, sm_start, doc, resources, &m, depth, &mut self.mask_bracket, self.current_clip_bbox);
+                            wrap_with_soft_mask(SoftMaskWrap { prims: &mut *prims, start: sm_start, doc, resources, mask: &m, depth, bracket: &mut self.mask_bracket, masked_extent: self.current_clip_bbox });
                         }
                     }
                     // §8.5.4: see the `S` arm — the clip lands after the paint.
@@ -234,17 +235,17 @@ impl SeededInterp {
                     if !text_only && !self.oc_stack.last().copied().unwrap_or(false) {
                         let sm_start = prims.len();
                         if let Some(pid) = self.gs.fill_pattern {
-                            paint_pattern_fill(doc, pid, &self.subpaths, op.operator.ends_with('*'), &self.pattern_base_ctm, self.gs.fill, self.gs.alpha_fill as f32, self.gs.blend_mode, &self.colorspaces, prims, depth, self.clip_depth);
+                            paint_pattern_fill(PatternFill { doc, pattern_id: pid, polys: &self.subpaths, even_odd: op.operator.ends_with('*'), pattern_base_ctm: &self.pattern_base_ctm, base_argb: self.gs.fill, alpha_fill: self.gs.alpha_fill as f32, blend: self.gs.blend_mode, cs_resources: &self.colorspaces, prims: &mut *prims, depth, clip_depth: self.clip_depth });
                         } else if prims.len() < MAX_PRIMITIVES {
                             emit_fill(prims, &self.subpaths, self.gs.fill, op.operator.ends_with('*'), self.gs.alpha_fill, self.gs.blend_mode);
                         }
                         if let Some(pid) = self.gs.stroke_pattern {
-                            paint_pattern_stroke(doc, pid, &self.subpaths, &self.gs, &self.pattern_base_ctm, &self.colorspaces, prims, depth, self.clip_depth);
+                            paint_pattern_stroke(PatternStroke { doc, pattern_id: pid, subpaths: &self.subpaths, gs: &self.gs, pattern_base_ctm: &self.pattern_base_ctm, cs_resources: &self.colorspaces, prims: &mut *prims, depth, clip_depth: self.clip_depth });
                         } else if prims.len() < MAX_PRIMITIVES {
                             emit_stroke(prims, &self.subpaths, &self.gs);
                         }
                         if let Some(m) = self.gs.soft_mask.clone() {
-                            wrap_with_soft_mask(prims, sm_start, doc, resources, &m, depth, &mut self.mask_bracket, self.current_clip_bbox);
+                            wrap_with_soft_mask(SoftMaskWrap { prims: &mut *prims, start: sm_start, doc, resources, mask: &m, depth, bracket: &mut self.mask_bracket, masked_extent: self.current_clip_bbox });
                         }
                     }
                     // §8.5.4: see the `S` arm — the clip lands after the paint.
@@ -268,7 +269,7 @@ impl SeededInterp {
                             if let Some(img) = extract_inline_image(doc, stream, self.gs.fill, &self.colorspaces) {
                                 let sm_start = prims.len();
                                 if prims.len() < MAX_PRIMITIVES { prims.push(Prim::Image { ctm: self.gs.ctm, w: img.w, h: img.h, format: img.format, data: img.data, alpha: self.gs.alpha_fill as f32, blend: self.gs.blend_mode }); }
-                                if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(prims, sm_start, doc, resources, &m, depth, &mut self.mask_bracket, self.current_clip_bbox); }
+                                if let Some(m) = self.gs.soft_mask.clone() { wrap_with_soft_mask(SoftMaskWrap { prims: &mut *prims, start: sm_start, doc, resources, mask: &m, depth, bracket: &mut self.mask_bracket, masked_extent: self.current_clip_bbox }); }
                             }
                         }
                     }

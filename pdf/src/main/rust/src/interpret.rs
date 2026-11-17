@@ -283,6 +283,18 @@ pub(crate) fn parse_dash_extgstate(doc: &Document, obj: &Object) -> (Vec<f64>, f
     }
 }
 
+/// The shared context threaded through the per-operator handlers: the
+/// document and resources being interpreted, the primitive sink, the
+/// form/pattern recursion depth and whether only text is wanted (search
+/// indexing rather than rendering).
+pub(crate) struct HandlerCtx<'a> {
+    pub doc: &'a Document,
+    pub resources: Option<&'a lopdf::Dictionary>,
+    pub prims: &'a mut Vec<Prim>,
+    pub depth: u32,
+    pub text_only: bool,
+}
+
 include!("interpret_part1.rs");
 include!("interpret_part2.rs");
 include!("interpret_part3.rs");

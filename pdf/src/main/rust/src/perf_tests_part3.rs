@@ -378,7 +378,7 @@ fn perf_bytes_per_content_op() {
     for (label, content) in &cases {
         let mut d0 = Document::with_version("1.5");
         let res = standard_font_res(&mut d0);
-        let (doc, pages) = build_doc(&[content.clone()], res);
+        let (doc, pages) = build_doc(std::slice::from_ref(content), res);
         mem_reset();
         let (ops, _rec) = crate::content::page_operations(&doc, pages[0]);
         let n_ops = ops.len();

@@ -233,10 +233,7 @@ fn tiling_pattern_with_a_small_step_covers_the_whole_region() {
     let pid = tiling_pattern(&mut doc, 10.0, 10.0);
     let region = fill_region(0.0, 0.0, 200.0, 200.0);
     let mut prims = Vec::new();
-    paint_pattern_fill(
-        &doc, pid, &region, false, &IDENTITY, 0xFF00_0000, 1.0, BlendMode::Normal,
-        &HashMap::new(), &mut prims, 0, 0,
-    );
+    paint_pattern_fill(PatternFill { doc: &doc, pattern_id: pid, polys: &region, even_odd: false, pattern_base_ctm: &IDENTITY, base_argb: 0xFF00_0000, alpha_fill: 1.0, blend: BlendMode::Normal, cs_resources: &HashMap::new(), prims: &mut prims, depth: 0, clip_depth: 0 });
     assert!(
         prims.iter().any(is_ink),
         "the pattern must paint something at all"
@@ -260,10 +257,7 @@ fn tiling_pattern_with_a_negative_step_still_paints() {
     let pid = tiling_pattern(&mut doc, -10.0, -10.0);
     let region = fill_region(0.0, 0.0, 100.0, 100.0);
     let mut prims = Vec::new();
-    paint_pattern_fill(
-        &doc, pid, &region, false, &IDENTITY, 0xFF00_0000, 1.0, BlendMode::Normal,
-        &HashMap::new(), &mut prims, 0, 0,
-    );
+    paint_pattern_fill(PatternFill { doc: &doc, pattern_id: pid, polys: &region, even_odd: false, pattern_base_ctm: &IDENTITY, base_argb: 0xFF00_0000, alpha_fill: 1.0, blend: BlendMode::Normal, cs_resources: &HashMap::new(), prims: &mut prims, depth: 0, clip_depth: 0 });
     assert!(
         prims.iter().any(is_ink),
         "a negative /XStep must tile by its magnitude, not paint nothing"
