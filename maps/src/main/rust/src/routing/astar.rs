@@ -2,7 +2,7 @@
 use crate::geometry::*;
 use crate::graph::*;
 use crate::state::{RadixHeap, RoutingScratchpad};
-use super::search::{seed, RoutingContext};
+use super::search::{seed, stub_reverse_allowed, RoutingContext};
 
 /// Within this distance of either end the search expands every road; beyond it
 /// a full-graph node only hops onto the overlay.
@@ -75,6 +75,10 @@ fn search(
     // apart rather than a few metres, so the wrong choice costs the length of
     // the street. Score both completions and keep the better one.
     let mut best_total = u32::MAX;
+    // Completing via `end.node_b` means travelling the end stub backwards
+    // along the end edge; on a one-way street (driving, no reverse edge)
+    // that anchor cannot complete a route. See `stub_reverse_allowed`.
+    let end_reverse_ok = stub_reverse_allowed(g, &ctx.end, mode);
     let n_full = g.node_count;
     let overlay = if ctx.hierarchy { g.overlay() } else { None };
     let (end_lat, end_lon) = (ctx.end.proj_lat, ctx.end.proj_lon);
@@ -111,7 +115,7 @@ fn search(
             break;
         }
 
-        if u == ctx.end.node_a || u == ctx.end.node_b {
+        if u == ctx.end.node_a || (u == ctx.end.node_b && end_reverse_ok) {
             let stub = if u == ctx.end.node_a {
                 ctx.end.dist_a_mm
             } else {

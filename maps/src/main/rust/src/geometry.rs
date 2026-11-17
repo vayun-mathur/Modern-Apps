@@ -303,3 +303,7 @@ mod tests {
         assert!(!is_mode_allowed(REVERSE_GEOMETRY_FLAG, WALK));
     }
 }
+
+#[cfg(test)]
+#[path = "geometry_tests.rs"]
+mod cov_tests;

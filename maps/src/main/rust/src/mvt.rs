@@ -197,3 +197,7 @@ pub fn generate_traffic_tile(
     }
     Some(compressed)
 }
+
+#[cfg(test)]
+#[path = "mvt_tests.rs"]
+mod tests;

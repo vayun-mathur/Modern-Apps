@@ -193,3 +193,7 @@ mod tests {
         assert!(!lane_serves(mask, 9), "but not a straight-on");
     }
 }
+
+#[cfg(test)]
+#[path = "lanes_tests.rs"]
+mod cov_tests;

@@ -249,6 +249,34 @@ pub fn prepare_routing(
     })
 }
 
+/// Whether any directed edge runs `from -> to` (the road is traversable that
+/// way at all). Used for the start/end stubs: travelling a stub *backwards*
+/// along a snapped edge is only possible when the reverse directed edge
+/// exists. Unlike [`twin_edge`] this does not require uniqueness — any
+/// reverse edge makes the direction legal; `twin_edge`'s uniqueness is about
+/// which polyline to draw, not whether travel is allowed.
+pub(super) fn has_reverse_edge(g: &Graph, from: u32, to: u32) -> bool {
+    if from >= g.node_count || to >= g.node_count {
+        return false;
+    }
+    let (s, e) = g.edge_range(from);
+    (s..e).any(|k| g.edge_targets(k, from, to))
+}
+
+/// Whether the stub along a snapped edge may be travelled backwards (from
+/// `node_b` toward `node_a`) for `mode`. Driving must obey one-way streets:
+/// without a reverse edge, a car snapped mid-block on a one-way street can
+/// only leave via `node_b` and can only be reached from `node_a`. Walking
+/// (and transit walk legs) may travel either way on any road. Before this
+/// check the search seeded and completed through both anchors regardless,
+/// so a one-way trip could start or end by driving the wrong way down the
+/// street (found by `search_cov_tests::a_one_way_road_forbids_the_backward_direct_path`).
+pub(super) fn stub_reverse_allowed(g: &Graph, edge: &SnappedEdge, mode: i32) -> bool {
+    mode != DRIVING
+        || edge.edge_idx == INVALID_EDGE
+        || has_reverse_edge(g, edge.node_b, edge.node_a)
+}
+
 /// Push the start edge's two endpoints onto the open set.
 pub(super) fn seed(
     g: &Graph,
@@ -268,7 +296,9 @@ pub(super) fn seed(
         let h = heuristic_time_10ms(g, n_data.lat_e7, n_data.lon_e7, end.proj_lat, end.proj_lon, mode);
         heap.push(t_actual.wrapping_add(h), node);
     };
-    push(start.node_a, start.dist_a_mm);
+    if stub_reverse_allowed(g, start, mode) {
+        push(start.node_a, start.dist_a_mm);
+    }
     push(start.node_b, start.dist_b_mm);
 }
 

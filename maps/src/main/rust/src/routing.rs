@@ -17,3 +17,6 @@ pub mod steps;
 pub use astar::perform_search_loop;
 pub use search::{Direct, RoutingContext, SnappedEdge, find_nearest_edge, prepare_routing};
 pub use steps::{StepData, ascent_descent, reconstruct_path, route_ascent_descent};
+
+#[cfg(test)]
+mod search_cov_tests;

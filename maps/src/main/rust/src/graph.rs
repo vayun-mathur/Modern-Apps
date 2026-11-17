@@ -455,3 +455,5 @@ include!("graph_part4.rs");
 include!("graph_part4b.rs");
 include!("graph_part5.rs");
 include!("graph_overlay.rs");
+#[cfg(test)]
+pub(crate) mod graph_cov_tests;
