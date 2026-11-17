@@ -14,7 +14,8 @@ private const val TAG = "SystemBuild"
  * anyway: a failure here should degrade to "cannot check for updates", never crash a background
  * job.
  */
-@SuppressLint("PrivateApi") // Hidden SystemProperties has no public/stubbable accessor; every read fails soft to ""/0 (see class doc).
+@SuppressLint("PrivateApi") // Hidden SystemProperties has no public/stubbable accessor;
+// every read fails soft to ""/0 (see class doc).
 object SystemBuild {
 
     /**
