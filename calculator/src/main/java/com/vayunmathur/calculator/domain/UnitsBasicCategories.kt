@@ -1,4 +1,4 @@
-package com.vayunmathur.calculator.util
+package com.vayunmathur.calculator.domain
 
 /**
  * Length, mass and time categories for [UnitRegistry], split out so the registry

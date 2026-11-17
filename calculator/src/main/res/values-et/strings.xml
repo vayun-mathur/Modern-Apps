@@ -15,7 +15,6 @@
     <string name="converter_from">Lähteväärtus</string>
     <string name="converter_to">Sihtväärtus</string>
     <string name="converter_result">Tulemus</string>
-    <string name="converter_swap">Vaheta ühikud</string>
     <string name="key_date">Kuupäev</string>
     <string name="key_time">Kellaaeg</string>
     <string name="key_datetime">Kuupäev ja kellaaeg</string>

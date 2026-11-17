@@ -8,19 +8,19 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
-import com.vayunmathur.calculator.util.AngleMode
-import com.vayunmathur.calculator.util.CalculatorActions
-import com.vayunmathur.calculator.util.CalculatorUiState
-import com.vayunmathur.calculator.util.GraphActions
-import com.vayunmathur.calculator.util.GraphFunction
-import com.vayunmathur.calculator.util.GraphMarker
-import com.vayunmathur.calculator.util.FeatureKind
-import com.vayunmathur.calculator.util.GraphPoint
-import com.vayunmathur.calculator.util.GraphUiState
-import com.vayunmathur.calculator.util.HistoryEntry
-import com.vayunmathur.calculator.util.UnitConverterActions
-import com.vayunmathur.calculator.util.UnitConverterUiState
-import com.vayunmathur.calculator.util.UnitRegistry
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.platform.CalculatorActions
+import com.vayunmathur.calculator.platform.CalculatorUiState
+import com.vayunmathur.calculator.platform.GraphActions
+import com.vayunmathur.calculator.platform.GraphFunction
+import com.vayunmathur.calculator.platform.GraphMarker
+import com.vayunmathur.calculator.domain.FeatureKind
+import com.vayunmathur.calculator.domain.GraphPoint
+import com.vayunmathur.calculator.platform.GraphUiState
+import com.vayunmathur.calculator.platform.HistoryEntry
+import com.vayunmathur.calculator.platform.UnitConverterActions
+import com.vayunmathur.calculator.platform.UnitConverterUiState
+import com.vayunmathur.calculator.domain.UnitRegistry
 import androidx.compose.ui.graphics.Color
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -293,7 +293,7 @@ class CalculatorScreensComposeTest {
     }
 
     @Test fun converterCurrencyLoadingAndErrorStates() {
-        val currency = com.vayunmathur.calculator.util.UnitCategory("Currency", emptyList(), inEquations = false)
+        val currency = com.vayunmathur.calculator.domain.UnitCategory("Currency", emptyList(), inEquations = false)
         rule.setContent {
             UnitConverterScreen(
                 state = UnitConverterUiState(

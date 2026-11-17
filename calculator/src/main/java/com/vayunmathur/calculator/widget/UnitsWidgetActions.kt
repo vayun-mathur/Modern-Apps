@@ -5,7 +5,7 @@ import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
-import com.vayunmathur.calculator.util.KEY_UNITS_CATEGORY
+import com.vayunmathur.calculator.platform.KEY_UNITS_CATEGORY
 import com.vayunmathur.library.util.DataStoreUtils
 
 /**

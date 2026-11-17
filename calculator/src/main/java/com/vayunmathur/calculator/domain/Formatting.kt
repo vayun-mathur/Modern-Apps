@@ -1,4 +1,4 @@
-package com.vayunmathur.calculator.util
+package com.vayunmathur.calculator.domain
 
 import java.math.BigDecimal
 import java.math.MathContext

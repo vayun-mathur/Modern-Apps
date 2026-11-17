@@ -5,11 +5,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.vayunmathur.calculator.util.AngleMode
-import com.vayunmathur.calculator.util.CalculatorActions
-import com.vayunmathur.calculator.util.CalculatorUiState
-import com.vayunmathur.calculator.util.HistoryEntry
-import com.vayunmathur.calculator.util.UnitRegistry
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.platform.CalculatorActions
+import com.vayunmathur.calculator.platform.CalculatorUiState
+import com.vayunmathur.calculator.platform.HistoryEntry
+import com.vayunmathur.calculator.domain.UnitRegistry
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -24,7 +24,7 @@ class KeypadDirectComposeTest {
     @Test fun displayColumnShowsHistoryUnitsAndHandlesTaps() {
         var used: HistoryEntry? = null
         var selectedUnit: String? = null
-        val lengthUnits = UnitRegistry.unitsFor(com.vayunmathur.calculator.util.Dimension.LENGTH)
+        val lengthUnits = UnitRegistry.unitsFor(com.vayunmathur.calculator.domain.Dimension.LENGTH)
         val actions = object : CalculatorActions {
             override fun useHistory(entry: HistoryEntry) { used = entry }
             override fun selectOutputUnit(token: String) { selectedUnit = token }
@@ -73,7 +73,7 @@ class KeypadDirectComposeTest {
     }
 
     @Test fun pageBindingsRenderWithViewModel() {
-        val vm = com.vayunmathur.calculator.util.CalculatorViewModel(
+        val vm = com.vayunmathur.calculator.platform.CalculatorViewModel(
             androidx.test.core.app.ApplicationProvider.getApplicationContext(),
         )
         rule.setContent { CalculatorPage(vm) }

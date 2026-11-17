@@ -1,5 +1,9 @@
 package com.vayunmathur.calculator.util
 
+import com.vayunmathur.calculator.domain.*
+import com.vayunmathur.calculator.network.*
+import com.vayunmathur.calculator.platform.*
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

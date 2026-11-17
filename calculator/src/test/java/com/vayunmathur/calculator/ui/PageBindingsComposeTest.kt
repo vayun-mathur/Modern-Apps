@@ -6,10 +6,10 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.calculator.util.CalculatorViewModel
-import com.vayunmathur.calculator.util.UnitConverterActions
-import com.vayunmathur.calculator.util.UnitConverterUiState
-import com.vayunmathur.calculator.util.UnitCategory
+import com.vayunmathur.calculator.platform.CalculatorViewModel
+import com.vayunmathur.calculator.platform.UnitConverterActions
+import com.vayunmathur.calculator.platform.UnitConverterUiState
+import com.vayunmathur.calculator.domain.UnitCategory
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

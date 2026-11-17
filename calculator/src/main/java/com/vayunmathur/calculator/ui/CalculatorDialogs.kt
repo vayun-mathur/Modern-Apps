@@ -20,6 +20,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -28,9 +29,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.calculator.R
-import com.vayunmathur.calculator.util.CalculatorActions
-import com.vayunmathur.calculator.util.CalculatorUiState
-import com.vayunmathur.calculator.util.UnitCategory
+import com.vayunmathur.calculator.platform.CalculatorActions
+import com.vayunmathur.calculator.platform.CalculatorUiState
+import com.vayunmathur.calculator.domain.UnitCategory
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AssistChip
@@ -119,7 +120,7 @@ internal fun UnitPickerSheet(
         )
         list
     }
-    var categoryIndex by remember { mutableStateOf(0) }
+    var categoryIndex by remember { mutableIntStateOf(0) }
     // Which absolute-time picker (if any) is open. DtDate/DtTime are the two steps of the
     // combined date-and-time flow.
     var absPicker by remember { mutableStateOf(AbsoluteTimePicker.None) }

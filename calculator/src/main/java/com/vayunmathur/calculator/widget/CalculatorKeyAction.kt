@@ -12,10 +12,10 @@ import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
-import com.vayunmathur.calculator.util.Expression
-import com.vayunmathur.calculator.util.ExpressionError
-import com.vayunmathur.calculator.util.UnitRegistry
-import com.vayunmathur.calculator.util.formatQuantity
+import com.vayunmathur.calculator.domain.Expression
+import com.vayunmathur.calculator.domain.ExpressionError
+import com.vayunmathur.calculator.domain.UnitRegistry
+import com.vayunmathur.calculator.domain.formatQuantity
 
 /** The in-progress expression, in the same re-parsable form the app's input line uses. */
 internal val CalculatorInputKey = stringPreferencesKey("calculator_widget_input")
@@ -60,7 +60,7 @@ internal fun appendWidgetInput(input: String, text: String): String =
 internal class WidgetResult(val display: String, val token: String, val value: Double)
 
 /**
- * Evaluates [input] with [com.vayunmathur.calculator.util.Expression], the same parser the
+ * Evaluates [input] with [com.vayunmathur.calculator.domain.Expression], the same parser the
  * app uses. Returns null for a blank, unparsable or undefined expression, which the widget
  * renders as an empty result line.
  */
@@ -134,8 +134,6 @@ class CalculatorKeyAction : ActionCallback {
 
     /** Haptics helper for widget key taps. */
     companion object {
-        /** Fallback tick duration on pre-Q devices without predefined effects. */
-        private const val LEGACY_TICK_DURATION_MS = 10L
         /**
          * Best-effort key tick. Never throws: every branch is guarded because this runs
          * before the widget state write, and a haptics failure must not swallow the tap.
@@ -144,19 +142,10 @@ class CalculatorKeyAction : ActionCallback {
         private fun emitKeyTick(context: Context) {
             try {
                 val vibrator = runCatching {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        context.getSystemService(VibratorManager::class.java)?.defaultVibrator
-                    } else {
-                        @Suppress("DEPRECATION")
-                        context.getSystemService(Vibrator::class.java)
-                    }
+                    context.getSystemService(VibratorManager::class.java)?.defaultVibrator
                 }.getOrNull() ?: return
                 if (!vibrator.hasVibrator()) return
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
-                } else {
-                    vibrator.vibrate(LEGACY_TICK_DURATION_MS)
-                }
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
             } catch (_: Throwable) {
                 // Haptics are cosmetic; the tap has already been queued for handling.
             }

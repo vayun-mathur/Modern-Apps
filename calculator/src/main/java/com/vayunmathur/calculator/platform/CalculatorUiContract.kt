@@ -1,4 +1,6 @@
-package com.vayunmathur.calculator.util
+package com.vayunmathur.calculator.platform
+
+import com.vayunmathur.calculator.domain.*
 
 /**
  * The UI contract between [CalculatorViewModel] and the screens.

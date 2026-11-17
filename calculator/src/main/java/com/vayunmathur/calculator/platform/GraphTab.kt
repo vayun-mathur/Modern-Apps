@@ -1,7 +1,11 @@
-package com.vayunmathur.calculator.util
+package com.vayunmathur.calculator.platform
+
+import com.vayunmathur.calculator.domain.*
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
@@ -54,11 +58,11 @@ class GraphTab {
     }
 
     // ---- Viewport (hoisted here so it survives tab switches and analysis can read it) ----
-    var centerX by mutableStateOf(0.0)
-    var centerY by mutableStateOf(0.0)
-    var scale by mutableStateOf(60.0) // pixels per unit
-    var viewWidthPx by mutableStateOf(0f)
-    var viewHeightPx by mutableStateOf(0f)
+    var centerX by mutableDoubleStateOf(0.0)
+    var centerY by mutableDoubleStateOf(0.0)
+    var scale by mutableDoubleStateOf(60.0) // pixels per unit
+    var viewWidthPx by mutableFloatStateOf(0f)
+    var viewHeightPx by mutableFloatStateOf(0f)
 
     /** Notable points the user has revealed by touching near them. */
     val markers = mutableStateListOf<GraphMarker>()

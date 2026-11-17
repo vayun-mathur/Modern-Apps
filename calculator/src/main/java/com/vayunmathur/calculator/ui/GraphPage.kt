@@ -42,16 +42,16 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vayunmathur.calculator.util.AngleMode
-import com.vayunmathur.calculator.util.CalculatorViewModel
-import com.vayunmathur.calculator.util.Expression
-import com.vayunmathur.calculator.util.FeatureKind
-import com.vayunmathur.calculator.util.GraphAnalysis
-import com.vayunmathur.calculator.util.GraphActions
-import com.vayunmathur.calculator.util.GraphFunction
-import com.vayunmathur.calculator.util.GraphUiState
-import com.vayunmathur.calculator.util.GraphPoint
-import com.vayunmathur.calculator.util.formatResult
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.platform.CalculatorViewModel
+import com.vayunmathur.calculator.domain.Expression
+import com.vayunmathur.calculator.domain.FeatureKind
+import com.vayunmathur.calculator.domain.GraphAnalysis
+import com.vayunmathur.calculator.platform.GraphActions
+import com.vayunmathur.calculator.platform.GraphFunction
+import com.vayunmathur.calculator.platform.GraphUiState
+import com.vayunmathur.calculator.domain.GraphPoint
+import com.vayunmathur.calculator.domain.formatResult
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.AssistChip
 import com.vayunmathur.library.ui.HorizontalDivider
@@ -80,45 +80,12 @@ fun GraphPage(viewModel: CalculatorViewModel) {
     GraphScreen(state = viewModel.graphUiState, actions = viewModel)
 }
 
-/**
- * The graph screen, with no dependency on the ViewModel so it can be rendered from a
- * `@Preview` — see `src/screenshotTest`, which is where the store listing images come from.
- */
-@Composable
-fun GraphScreen(state: GraphUiState, actions: GraphActions) {
-    AppScaffold(
-        title = {},
-        actions = {
-            AssistChip(
-                onClick = { actions.toggleAngleMode() },
-                label = { Text(if (state.angleMode == AngleMode.DEGREES) "DEG" else "RAD") },
-                modifier = Modifier.padding(end = 12.dp),
-            )
-        },
-        scrollBehavior = appBarScrollBehavior(),
-    ) { padding ->
-        // Sibling tools, never list-detail: side-by-side on wide or short windows.
-        if (isExpandedWidth() || isCompactHeight()) {
-            Row(Modifier.fillMaxSize().padding(padding)) {
-                GraphCanvas(state, actions, Modifier.weight(1.4f).fillMaxSize())
-                VerticalDivider()
-                Box(Modifier.weight(1f).fillMaxSize()) { FunctionEditors(state, actions) }
-            }
-        } else {
-            Column(Modifier.fillMaxSize().padding(padding)) {
-                GraphCanvas(state, actions, Modifier.fillMaxWidth().weight(1f))
-                HorizontalDivider()
-                FunctionEditors(state, actions)
-            }
-        }
-    }
-}
 
 /** How close a touch has to land, in dp, for a notable point to be revealed. */
 private val TouchSlop = 28.dp
 
 @Composable
-private fun GraphCanvas(state: GraphUiState, actions: GraphActions, modifier: Modifier) {
+internal fun GraphCanvas(state: GraphUiState, actions: GraphActions, modifier: Modifier) {
     val axisColor = MaterialTheme.colorScheme.onSurface
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -259,7 +226,7 @@ private fun GraphCanvas(state: GraphUiState, actions: GraphActions, modifier: Mo
 private val EditorListMaxHeight = 240.dp
 
 @Composable
-private fun FunctionEditors(state: GraphUiState, actions: GraphActions) {
+internal fun FunctionEditors(state: GraphUiState, actions: GraphActions) {
     var expanded by rememberSaveable { mutableStateOf(true) }
     Column(Modifier.fillMaxWidth()) {
         // Slim control strip: add a curve, or fold the list away and hand the whole screen

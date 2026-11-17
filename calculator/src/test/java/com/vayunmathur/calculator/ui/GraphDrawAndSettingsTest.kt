@@ -8,12 +8,12 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.click
-import com.vayunmathur.calculator.util.FeatureKind
-import com.vayunmathur.calculator.util.GraphActions
-import com.vayunmathur.calculator.util.GraphFunction
-import com.vayunmathur.calculator.util.GraphMarker
-import com.vayunmathur.calculator.util.GraphPoint
-import com.vayunmathur.calculator.util.GraphUiState
+import com.vayunmathur.calculator.domain.FeatureKind
+import com.vayunmathur.calculator.platform.GraphActions
+import com.vayunmathur.calculator.platform.GraphFunction
+import com.vayunmathur.calculator.platform.GraphMarker
+import com.vayunmathur.calculator.domain.GraphPoint
+import com.vayunmathur.calculator.platform.GraphUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -60,7 +60,7 @@ class GraphDrawTest {
             GraphScreen(
                 state = GraphUiState(
                     functions = listOf(GraphFunction(id = 0, text = "cos(x)", color = Color.Green)),
-                    angleMode = com.vayunmathur.calculator.util.AngleMode.DEGREES,
+                    angleMode = com.vayunmathur.calculator.domain.AngleMode.DEGREES,
                 ),
                 actions = GraphActions.Noop,
             )

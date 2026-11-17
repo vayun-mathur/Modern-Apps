@@ -1,7 +1,10 @@
-package com.vayunmathur.calculator.util
+package com.vayunmathur.calculator.platform
+
+import com.vayunmathur.calculator.domain.*
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
@@ -23,11 +26,11 @@ class CalculatorTab {
         private set
 
     /** The last successfully computed value, exposed to expressions as `ans`. */
-    var lastAnswer by mutableStateOf(0.0)
+    var lastAnswer by mutableDoubleStateOf(0.0)
         private set
 
     /** The single memory register (M+ / M- / MR / MC). */
-    var memory by mutableStateOf(0.0)
+    var memory by mutableDoubleStateOf(0.0)
         private set
 
     /** Units the current result can be shown in; empty when the result is dimensionless. */

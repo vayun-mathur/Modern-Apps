@@ -15,7 +15,6 @@
     <string name="converter_from">من</string>
     <string name="converter_to">إلى</string>
     <string name="converter_result">الناتج</string>
-    <string name="converter_swap">تبديل الوحدات</string>
     <string name="key_date">التاريخ</string>
     <string name="key_time">الوقت</string>
     <string name="key_datetime">التاريخ و الوقت</string>

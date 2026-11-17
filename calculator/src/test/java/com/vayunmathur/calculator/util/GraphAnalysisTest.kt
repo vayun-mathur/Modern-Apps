@@ -1,5 +1,9 @@
 package com.vayunmathur.calculator.util
 
+import com.vayunmathur.calculator.domain.*
+import com.vayunmathur.calculator.network.*
+import com.vayunmathur.calculator.platform.*
+
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.test.Test

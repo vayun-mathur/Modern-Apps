@@ -27,10 +27,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.calculator.R
-import com.vayunmathur.calculator.util.AngleMode
-import com.vayunmathur.calculator.util.CalculatorActions
-import com.vayunmathur.calculator.util.CalculatorUiState
-import com.vayunmathur.calculator.util.HistoryEntry
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.platform.CalculatorActions
+import com.vayunmathur.calculator.platform.CalculatorUiState
+import com.vayunmathur.calculator.platform.HistoryEntry
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.ButtonDefaults
 import com.vayunmathur.library.ui.FilterChip
@@ -182,7 +182,7 @@ internal fun DisplayColumn(state: CalculatorUiState, actions: CalculatorActions,
             }
         }
         Text(
-            com.vayunmathur.calculator.util.renderInputForDisplay(state.input).ifEmpty { "0" }
+            com.vayunmathur.calculator.domain.renderInputForDisplay(state.input).ifEmpty { "0" }
                 .replace("*", "×").replace("/", "÷").replace("-", "−"),
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             textAlign = TextAlign.End,

@@ -1,7 +1,14 @@
-package com.vayunmathur.calculator.util
+package com.vayunmathur.calculator.platform
+
+import com.vayunmathur.calculator.network.CurrencyRatesDto
+
+import com.vayunmathur.calculator.network.CurrencyApi
+
+import com.vayunmathur.calculator.domain.*
 
 import android.app.Application
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.vayunmathur.calculator.widget.UnitsGlanceWidget
@@ -36,7 +43,7 @@ class UnitConverterTab(
     private val dataStore = DataStoreUtils.getInstance(application)
     private var scope: CoroutineScope? = null
 
-    var converterCategoryIndex by mutableStateOf(0)
+    var converterCategoryIndex by mutableIntStateOf(0)
         private set
     var converterFromToken by mutableStateOf(UnitRegistry.categories[0].units[0].token)
         private set

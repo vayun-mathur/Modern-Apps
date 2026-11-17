@@ -40,12 +40,12 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.vayunmathur.calculator.MainActivity
 import com.vayunmathur.calculator.R
-import com.vayunmathur.calculator.util.KEY_UNITS_CATEGORY
-import com.vayunmathur.calculator.util.UnitDef
-import com.vayunmathur.calculator.util.UnitRegistry
-import com.vayunmathur.calculator.util.formatResult
-import com.vayunmathur.calculator.util.unitsFromKey
-import com.vayunmathur.calculator.util.unitsToKey
+import com.vayunmathur.calculator.platform.KEY_UNITS_CATEGORY
+import com.vayunmathur.calculator.domain.UnitDef
+import com.vayunmathur.calculator.domain.UnitRegistry
+import com.vayunmathur.calculator.domain.formatResult
+import com.vayunmathur.calculator.platform.unitsFromKey
+import com.vayunmathur.calculator.platform.unitsToKey
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.widgets.MaWidget
 

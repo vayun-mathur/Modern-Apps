@@ -1,4 +1,4 @@
-package com.vayunmathur.calculator.util
+package com.vayunmathur.calculator.domain
 
 import kotlin.math.PI
 import kotlin.math.abs

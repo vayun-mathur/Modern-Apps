@@ -29,7 +29,6 @@
     <!-- Converter: label above the converted result. -->
     <string name="converter_result">Result</string>
     <!-- Converter: content description for the button that swaps the from and to units. -->
-    <string name="converter_swap">Swap units</string>
     <!-- Insert-unit sheet: tab holding the date/time pickers that insert absolute instants. -->
     <string name="absolute_time">Absolute time</string>
     <!-- Keypad button that opens a calendar date picker. -->

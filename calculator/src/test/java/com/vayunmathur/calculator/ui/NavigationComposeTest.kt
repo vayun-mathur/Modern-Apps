@@ -7,7 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.calculator.Navigation
-import com.vayunmathur.calculator.util.CalculatorViewModel
+import com.vayunmathur.calculator.platform.CalculatorViewModel
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

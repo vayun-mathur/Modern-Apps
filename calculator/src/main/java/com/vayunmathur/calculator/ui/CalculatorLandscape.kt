@@ -15,9 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vayunmathur.calculator.util.CalculatorActions
-import com.vayunmathur.calculator.util.CalculatorUiState
-import com.vayunmathur.calculator.util.renderInputForDisplay
+import com.vayunmathur.calculator.platform.CalculatorActions
+import com.vayunmathur.calculator.platform.CalculatorUiState
+import com.vayunmathur.calculator.domain.renderInputForDisplay
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.ButtonDefaults
 import com.vayunmathur.library.ui.MaterialTheme

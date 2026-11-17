@@ -15,7 +15,6 @@
     <string name="converter_from">Från</string>
     <string name="converter_to">Till</string>
     <string name="converter_result">Resultat</string>
-    <string name="converter_swap">Byt enheter</string>
     <string name="key_date">Datum</string>
     <string name="key_time">Tid</string>
     <string name="key_datetime">Datum och tid</string>

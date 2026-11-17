@@ -4,9 +4,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.vayunmathur.calculator.util.AngleMode
-import com.vayunmathur.calculator.util.CalculatorActions
-import com.vayunmathur.calculator.util.CalculatorUiState
+import com.vayunmathur.calculator.domain.AngleMode
+import com.vayunmathur.calculator.platform.CalculatorActions
+import com.vayunmathur.calculator.platform.CalculatorUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -76,7 +76,7 @@ class LandscapeAndDialogsTest {
         rule.setContent {
             UnitPickerSheet(
                 state = CalculatorUiState(
-                    unitCategories = com.vayunmathur.calculator.util.UnitRegistry.categories,
+                    unitCategories = com.vayunmathur.calculator.domain.UnitRegistry.categories,
                 ),
                 actions = CalculatorActions.Noop,
                 onDismiss = {},

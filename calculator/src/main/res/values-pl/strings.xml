@@ -15,7 +15,6 @@
     <string name="converter_from">Z</string>
     <string name="converter_to">Do</string>
     <string name="converter_result">Wynik</string>
-    <string name="converter_swap">Zamień jednostki</string>
     <string name="key_date">Data</string>
     <string name="key_time">Czas</string>
     <string name="key_datetime">Data i godzina</string>

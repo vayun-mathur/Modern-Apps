@@ -7,8 +7,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
-import com.vayunmathur.calculator.util.CalculatorUiState
-import com.vayunmathur.calculator.util.UnitRegistry
+import com.vayunmathur.calculator.platform.CalculatorUiState
+import com.vayunmathur.calculator.domain.UnitRegistry
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -26,21 +26,21 @@ class FinalCoverageComposeTest {
     @Test fun graphScreenCaptureForcesCanvasDraw() {
         rule.setContent {
             GraphScreen(
-                state = com.vayunmathur.calculator.util.GraphUiState(
+                state = com.vayunmathur.calculator.platform.GraphUiState(
                     functions = listOf(
-                        com.vayunmathur.calculator.util.GraphFunction(
+                        com.vayunmathur.calculator.platform.GraphFunction(
                             id = 0, text = "x^2", color = androidx.compose.ui.graphics.Color.Blue,
                         ),
                     ),
                     markers = listOf(
-                        com.vayunmathur.calculator.util.GraphMarker(
-                            com.vayunmathur.calculator.util.GraphPoint(0.0, 0.0),
-                            com.vayunmathur.calculator.util.FeatureKind.ROOT,
+                        com.vayunmathur.calculator.platform.GraphMarker(
+                            com.vayunmathur.calculator.domain.GraphPoint(0.0, 0.0),
+                            com.vayunmathur.calculator.domain.FeatureKind.ROOT,
                             listOf(0),
                         ),
                     ),
                 ),
-                actions = com.vayunmathur.calculator.util.GraphActions.Noop,
+                actions = com.vayunmathur.calculator.platform.GraphActions.Noop,
             )
         }
         val bitmap = rule.onRoot().captureToImage()
@@ -51,7 +51,7 @@ class FinalCoverageComposeTest {
         rule.setContent {
             UnitPickerSheet(
                 state = CalculatorUiState(unitCategories = UnitRegistry.categories),
-                actions = com.vayunmathur.calculator.util.CalculatorActions.Noop,
+                actions = com.vayunmathur.calculator.platform.CalculatorActions.Noop,
                 onDismiss = {},
             )
         }
@@ -73,7 +73,7 @@ class ExpandedCalculatorScreenTest {
         rule.setContent {
             CalculatorScreen(
                 state = CalculatorUiState(input = "6*7", preview = "42"),
-                actions = com.vayunmathur.calculator.util.CalculatorActions.Noop,
+                actions = com.vayunmathur.calculator.platform.CalculatorActions.Noop,
             )
         }
         rule.onNodeWithText("6×7").assertIsDisplayed()

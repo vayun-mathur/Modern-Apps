@@ -32,7 +32,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.vayunmathur.calculator.MainActivity
-import com.vayunmathur.calculator.util.renderInputForDisplay
+import com.vayunmathur.calculator.domain.renderInputForDisplay
 import com.vayunmathur.library.widgets.MaWidget
 
 /** How a key is coloured: digits recede, operators sit forward, `=` is the primary action. */

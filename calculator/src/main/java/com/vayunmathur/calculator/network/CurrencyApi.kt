@@ -1,4 +1,4 @@
-package com.vayunmathur.calculator.util
+package com.vayunmathur.calculator.network
 
 import com.vayunmathur.library.network.StaticMirror
 import kotlinx.serialization.Serializable
