@@ -43,7 +43,7 @@ fn arrays_out(env: &mut Env, parts: &[&[u8]]) -> jobjectArray {
             Ok(x) => x,
             Err(_) => return std::ptr::null_mut(),
         };
-        if arr.set_element(&mut *env, i, &jb).is_err() {
+        if arr.set_element(&*env, i, &jb).is_err() {
             return std::ptr::null_mut();
         }
     }

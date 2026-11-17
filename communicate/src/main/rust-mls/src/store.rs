@@ -1,6 +1,6 @@
-//! Snapshot-able OpenMLS provider.
+//! Snapshot-able `OpenMLS` provider.
 //!
-//! OpenMLS keeps group state in its storage provider, but this crate must be
+//! `OpenMLS` keeps group state in its storage provider, but this crate must be
 //! stateless across JNI calls (Kotlin owns persistence in Room). This module
 //! wraps `RustCrypto` + `MemoryStorage` and snapshots the storage map —
 //! `MemoryStorage.values` is a pub `RwLock<HashMap<Vec<u8>, Vec<u8>>>` — into
@@ -91,8 +91,8 @@ fn encode_snapshot(map: &HashMap<Vec<u8>, Vec<u8>>) -> Vec<u8> {
     let count = map.len().min(MAX_ENTRIES) as u32;
     out.extend_from_slice(&count.to_be_bytes());
     for (k, v) in map.iter().take(MAX_ENTRIES) {
-        let k = &k[..k.len().min(MAX_ENTRY_BYTES)];
-        let v = &v[..v.len().min(MAX_ENTRY_BYTES)];
+        let k = k.split_at_checked(k.len().min(MAX_ENTRY_BYTES)).map_or(k.as_slice(), |(head, _)| head);
+        let v = v.split_at_checked(v.len().min(MAX_ENTRY_BYTES)).map_or(v.as_slice(), |(head, _)| head);
         out.extend_from_slice(&(k.len() as u32).to_be_bytes());
         out.extend_from_slice(k);
         out.extend_from_slice(&(v.len() as u32).to_be_bytes());
@@ -134,28 +134,20 @@ fn decode_snapshot(bytes: &[u8]) -> Result<HashMap<Vec<u8>, Vec<u8>>, StoreError
 }
 
 fn take_byte(cur: &mut &[u8]) -> Option<u8> {
-    if cur.is_empty() {
-        return None;
-    }
-    let b = cur[0];
-    *cur = &cur[1..];
-    Some(b)
+    let (first, rest) = cur.split_first()?;
+    *cur = rest;
+    Some(*first)
 }
 
 fn take_u32(cur: &mut &[u8]) -> Option<u32> {
-    if cur.len() < 4 {
-        return None;
-    }
-    let v = u32::from_be_bytes([cur[0], cur[1], cur[2], cur[3]]);
-    *cur = &cur[4..];
-    Some(v)
+    let (head, rest) = cur.split_at_checked(4)?;
+    *cur = rest;
+    let bytes: [u8; 4] = head.try_into().ok()?;
+    Some(u32::from_be_bytes(bytes))
 }
 
 fn take_bytes(cur: &mut &[u8], len: usize) -> Option<Vec<u8>> {
-    if cur.len() < len {
-        return None;
-    }
-    let out = cur[..len].to_vec();
-    *cur = &cur[len..];
-    Some(out)
+    let (head, rest) = cur.split_at_checked(len)?;
+    *cur = rest;
+    Some(head.to_vec())
 }

@@ -2,7 +2,7 @@
 //!
 //! Identity = the E.164 number, bound in a `BasicCredential`. Signing keys are
 //! Ed25519 (`ed25519-dalek`, workspace pin) under ciphersuite
-//! `MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519`; OpenMLS consumes them via
+//! `MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519`; `OpenMLS` consumes them via
 //! `SignatureKeyPair::from_raw`. Kotlin persists the serialized
 //! [`IdentityState`]; the crate holds no state across calls.
 
@@ -33,7 +33,7 @@ pub struct IdentityState {
 pub enum KeysError {
     /// Input failed validation (empty identity, bad lengths, bad version).
     InvalidInput(&'static str),
-    /// The OpenMLS provider refused the operation.
+    /// The `OpenMLS` provider refused the operation.
     Provider(String),
 }
 
@@ -144,8 +144,8 @@ pub fn provider() -> OpenMlsRustCrypto {
     OpenMlsRustCrypto::default()
 }
 
-/// OS randomness via `rand::rngs::SysRng` (rand 0.10; infallible `TryRng`).
-/// `SigningKey::generate` needs `CryptoRng`, which `SysRng` satisfies.
+// OS randomness via `rand::rngs::SysRng` (rand 0.10; infallible `TryRng`).
+// `SigningKey::generate` needs `CryptoRng`, which `SysRng` satisfies.
 
 fn push_u16(out: &mut Vec<u8>, v: usize) {
     let v = v.min(0xFFFF) as u16;
@@ -153,28 +153,20 @@ fn push_u16(out: &mut Vec<u8>, v: usize) {
 }
 
 fn take_byte(cur: &mut &[u8]) -> Option<u8> {
-    if cur.is_empty() {
-        return None;
-    }
-    let b = cur[0];
-    *cur = &cur[1..];
-    Some(b)
+    let (first, rest) = cur.split_first()?;
+    *cur = rest;
+    Some(*first)
 }
 
 fn take_u16(cur: &mut &[u8]) -> Option<usize> {
-    if cur.len() < 2 {
-        return None;
-    }
-    let v = u16::from_be_bytes([cur[0], cur[1]]) as usize;
-    *cur = &cur[2..];
-    Some(v)
+    let (head, rest) = cur.split_at_checked(2)?;
+    *cur = rest;
+    let bytes: [u8; 2] = head.try_into().ok()?;
+    Some(u16::from_be_bytes(bytes) as usize)
 }
 
 fn take_bytes(cur: &mut &[u8], len: usize) -> Option<Vec<u8>> {
-    if cur.len() < len {
-        return None;
-    }
-    let out = cur[..len].to_vec();
-    *cur = &cur[len..];
-    Some(out)
+    let (head, rest) = cur.split_at_checked(len)?;
+    *cur = rest;
+    Some(head.to_vec())
 }

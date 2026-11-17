@@ -35,7 +35,7 @@ pub enum GroupError {
     BadIdentity,
     /// Storage snapshot failed to parse.
     BadSnapshot,
-    /// An OpenMLS operation failed.
+    /// An `OpenMLS` operation failed.
     Mls(String),
 }
 
@@ -143,7 +143,7 @@ pub fn create_group(
     })
 }
 
-/// Add [key_packages_tls] (each a TLS `KeyPackage`) to [group_id].
+/// Add [`key_packages_tls`] (each a TLS `KeyPackage`) to [`group_id`].
 /// Merges our own pending commit so subsequent encrypts work; returns the
 /// commit for the group plus the framed Welcome for the joiners.
 pub fn add_members(
@@ -225,7 +225,7 @@ pub fn join_group(
     Ok((provider.snapshot(), group_id))
 }
 
-/// Remove members at [removed_indices] (leaf indices) from [group_id].
+/// Remove members at [`removed_indices`] (leaf indices) from [`group_id`].
 /// Returns `(storage, commit_tls)`; the commit goes to the group.
 pub fn remove_members(
     storage_bytes: &[u8],
@@ -257,7 +257,7 @@ pub fn remove_members(
     Ok((provider.snapshot(), commit))
 }
 
-/// Encrypt [plaintext] for [group_id]. Returns [`Encrypted`] (framed payload).
+/// Encrypt [plaintext] for [`group_id`]. Returns [`Encrypted`] (framed payload).
 pub fn encrypt(
     storage_bytes: &[u8],
     identity_bytes: &[u8],
@@ -284,7 +284,7 @@ pub fn encrypt(
     })
 }
 
-/// Decrypt a [`MESSAGE_MAGIC`]-framed payload for [group_id].
+/// Decrypt a [`MESSAGE_MAGIC`]-framed payload for [`group_id`].
 ///
 /// Commits and proposals are merged into group state automatically
 /// (closed-loop peers are trusted); application messages yield plaintext.
@@ -339,10 +339,12 @@ fn load_group(
 }
 
 fn split_welcome(framed: &[u8]) -> Result<(Vec<u8>, Vec<u8>), GroupError> {
-    if framed.len() < 8 || &framed[..8] != WELCOME_MAGIC {
+    if framed.get(..8) != Some(WELCOME_MAGIC.as_slice()) {
         return Err(GroupError::InvalidInput("bad welcome magic"));
     }
-    let mut cur = &framed[8..];
+    let Some(mut cur) = framed.get(8..) else {
+        return Err(GroupError::InvalidInput("bad welcome magic"));
+    };
     let w_len = take_u32(&mut cur).ok_or(GroupError::InvalidInput("short welcome"))? as usize;
     let welcome = take_bytes(&mut cur, w_len).ok_or(GroupError::InvalidInput("short welcome"))?;
     let t_len = take_u32(&mut cur).ok_or(GroupError::InvalidInput("short tree"))? as usize;
@@ -354,10 +356,13 @@ fn split_welcome(framed: &[u8]) -> Result<(Vec<u8>, Vec<u8>), GroupError> {
 }
 
 fn strip_message(framed: &[u8]) -> Result<Vec<u8>, GroupError> {
-    if framed.len() < 8 || &framed[..8] != MESSAGE_MAGIC {
+    if framed.get(..8) != Some(MESSAGE_MAGIC.as_slice()) {
         return Err(GroupError::InvalidInput("bad message magic"));
     }
-    Ok(framed[8..].to_vec())
+    framed
+        .get(8..)
+        .map(<[u8]>::to_vec)
+        .ok_or(GroupError::InvalidInput("bad message magic"))
 }
 
 fn push_u32(out: &mut Vec<u8>, v: usize) {
@@ -365,21 +370,16 @@ fn push_u32(out: &mut Vec<u8>, v: usize) {
 }
 
 fn take_u32(cur: &mut &[u8]) -> Option<u32> {
-    if cur.len() < 4 {
-        return None;
-    }
-    let v = u32::from_be_bytes([cur[0], cur[1], cur[2], cur[3]]);
-    *cur = &cur[4..];
-    Some(v)
+    let (head, rest) = cur.split_at_checked(4)?;
+    *cur = rest;
+    let bytes: [u8; 4] = head.try_into().ok()?;
+    Some(u32::from_be_bytes(bytes))
 }
 
 fn take_bytes(cur: &mut &[u8], len: usize) -> Option<Vec<u8>> {
-    if cur.len() < len {
-        return None;
-    }
-    let out = cur[..len].to_vec();
-    *cur = &cur[len..];
-    Some(out)
+    let (head, rest) = cur.split_at_checked(len)?;
+    *cur = rest;
+    Some(head.to_vec())
 }
 
 /// Re-exported for the JNI layer.

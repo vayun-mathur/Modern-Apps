@@ -21,9 +21,9 @@ pub enum PayloadKind {
 
 /// Probe the framing magic of [bytes].
 pub fn payload_kind(bytes: &[u8]) -> PayloadKind {
-    if bytes.len() >= 8 && &bytes[..8] == WELCOME_MAGIC {
+    if bytes.get(..8) == Some(WELCOME_MAGIC.as_slice()) {
         PayloadKind::Welcome
-    } else if bytes.len() >= 8 && &bytes[..8] == MESSAGE_MAGIC {
+    } else if bytes.get(..8) == Some(MESSAGE_MAGIC.as_slice()) {
         PayloadKind::Message
     } else {
         PayloadKind::Unknown
