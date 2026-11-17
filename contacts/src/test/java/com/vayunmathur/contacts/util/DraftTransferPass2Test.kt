@@ -1,8 +1,11 @@
 package com.vayunmathur.contacts.util
-import com.vayunmathur.contacts.platform.*
-import com.vayunmathur.contacts.data.*
-import com.vayunmathur.contacts.domain.*
-import com.vayunmathur.contacts.sync.*
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.addPhoneNumberToContact
+import com.vayunmathur.contacts.platform.initEditDraft
+import com.vayunmathur.contacts.platform.saveEditDraft
+import com.vayunmathur.contacts.platform.transferContacts
+import com.vayunmathur.contacts.platform.updateEditDraft
+import com.vayunmathur.contacts.data.GroupMembership
 
 import android.app.Application
 import android.provider.ContactsContract

@@ -1,8 +1,9 @@
 package com.vayunmathur.contacts.util
-import com.vayunmathur.contacts.platform.*
-import com.vayunmathur.contacts.data.*
-import com.vayunmathur.contacts.domain.*
-import com.vayunmathur.contacts.sync.*
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.initEditDraft
+import com.vayunmathur.contacts.platform.saveEditDraft
+import com.vayunmathur.contacts.platform.updateEditDraft
 
 import android.app.Application
 import android.content.ContentProvider

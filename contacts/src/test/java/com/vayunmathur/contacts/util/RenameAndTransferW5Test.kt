@@ -1,8 +1,15 @@
 package com.vayunmathur.contacts.util
-import com.vayunmathur.contacts.platform.*
-import com.vayunmathur.contacts.data.*
-import com.vayunmathur.contacts.domain.*
-import com.vayunmathur.contacts.sync.*
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.SimDroppedField
+import com.vayunmathur.contacts.platform.computeSimLoss
+import com.vayunmathur.contacts.platform.encodeExtraAccountEntry
+import com.vayunmathur.contacts.platform.encodeHiddenAccountKey
+import com.vayunmathur.contacts.platform.loadAccountsInternal
+import com.vayunmathur.contacts.platform.loadSavedAccounts
+import com.vayunmathur.contacts.platform.renameLocalAccount
+import com.vayunmathur.contacts.platform.setLastSelectedAccount
+import com.vayunmathur.contacts.platform.transferContacts
 
 import android.app.Application
 import android.provider.ContactsContract

@@ -33,21 +33,7 @@ fun Navigation(
     val groupsExpandId = (initialRoute as? Route.GroupsList)?.expandGroupId
     val activity = LocalActivity.current
     val launchedFromAppInfo = activity?.intent?.action == Intent.ACTION_APPLICATION_PREFERENCES
-    val startOnSettings = launchedFromAppInfo || initialRoute is Route.Settings
-    val startTab: Route = when {
-        startOnSettings -> Route.Settings
-        initialRoute is Route.GroupsList -> Route.GroupsList()
-        initialRoute is Route.Settings -> Route.Settings
-        initialRoute is Route.ContactsList -> Route.ContactsList
-        groupsExpandId != null -> Route.GroupsList()
-        else -> Route.ContactsList
-    }
-    // Non-tab deep links (detail/edit/import) keep their previous shape: the
-    // route itself is the root, with the bottom bar showing no tab selected.
-    val startRoute: Route = when (initialRoute) {
-        is Route.ContactsList, is Route.GroupsList, is Route.Settings, null -> startTab
-        else -> initialRoute
-    }
+    val startRoute = resolveStartRoute(initialRoute, launchedFromAppInfo)
     val backStack = rememberNavBackStack<Route>(startRoute)
 
     LaunchedEffect(initialRoute) {
@@ -103,3 +89,27 @@ fun Navigation(
         goBack = ::goBack,
     )
 }
+
+/**
+ * The tab a deep link starts on: App Info and Settings links start on
+ * Settings, a groups link on Groups, anything else on the Contacts home tab.
+ */
+private fun startTabFor(initialRoute: Route?, launchedFromAppInfo: Boolean): Route = when {
+    launchedFromAppInfo || initialRoute is Route.Settings -> Route.Settings
+    initialRoute is Route.GroupsList -> Route.GroupsList()
+    initialRoute is Route.ContactsList -> Route.ContactsList
+    (initialRoute as? Route.GroupsList)?.expandGroupId != null -> Route.GroupsList()
+    else -> Route.ContactsList
+}
+
+/**
+ * The root route for [initialRoute]: tab routes start on their sibling tab,
+ * while non-tab deep links (detail/edit/import) keep their previous shape —
+ * the route itself is the root, with the bottom bar showing no tab selected.
+ */
+private fun resolveStartRoute(initialRoute: Route?, launchedFromAppInfo: Boolean): Route =
+    when (initialRoute) {
+        is Route.ContactsList, is Route.GroupsList, is Route.Settings, null ->
+            startTabFor(initialRoute, launchedFromAppInfo)
+        else -> initialRoute
+    }

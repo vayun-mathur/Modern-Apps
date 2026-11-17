@@ -1,8 +1,7 @@
 package com.vayunmathur.contacts.util
-import com.vayunmathur.contacts.platform.*
-import com.vayunmathur.contacts.data.*
-import com.vayunmathur.contacts.domain.*
-import com.vayunmathur.contacts.sync.*
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.importVcfContacts
+import com.vayunmathur.contacts.platform.parseVcfUris
 
 import android.app.Application
 import android.net.Uri

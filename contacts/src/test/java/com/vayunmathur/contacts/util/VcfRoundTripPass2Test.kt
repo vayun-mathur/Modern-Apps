@@ -1,8 +1,5 @@
 package com.vayunmathur.contacts.util
-import com.vayunmathur.contacts.platform.*
-import com.vayunmathur.contacts.data.*
-import com.vayunmathur.contacts.domain.*
-import com.vayunmathur.contacts.sync.*
+import com.vayunmathur.contacts.data.VcfUtils
 
 import com.vayunmathur.contacts.data.Address
 import com.vayunmathur.contacts.data.CDKEmail

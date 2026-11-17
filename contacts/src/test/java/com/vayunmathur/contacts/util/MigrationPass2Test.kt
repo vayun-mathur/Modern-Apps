@@ -1,8 +1,15 @@
 package com.vayunmathur.contacts.util
-import com.vayunmathur.contacts.platform.*
-import com.vayunmathur.contacts.data.*
-import com.vayunmathur.contacts.domain.*
-import com.vayunmathur.contacts.sync.*
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.clearEditDraft
+import com.vayunmathur.contacts.platform.encodeExtraAccountEntry
+import com.vayunmathur.contacts.platform.initEditDraft
+import com.vayunmathur.contacts.platform.loadSavedAccounts
+import com.vayunmathur.contacts.platform.migrateBirthdayCalendarToUtc
+import com.vayunmathur.contacts.platform.migrateHiddenAccountKeys
+import com.vayunmathur.contacts.platform.migrateLegacyAccounts
+import com.vayunmathur.contacts.platform.migrateNoYearEventDates
+import com.vayunmathur.contacts.data.ContactPrefill
+import com.vayunmathur.contacts.data.PrefillValue
 
 import android.app.Application
 import android.provider.ContactsContract

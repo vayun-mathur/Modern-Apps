@@ -1,8 +1,10 @@
 package com.vayunmathur.contacts.util
-import com.vayunmathur.contacts.platform.*
-import com.vayunmathur.contacts.data.*
-import com.vayunmathur.contacts.domain.*
-import com.vayunmathur.contacts.sync.*
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.addContactsToGroup
+import com.vayunmathur.contacts.platform.contactsInGroup
+import com.vayunmathur.contacts.platform.findContact
+import com.vayunmathur.contacts.platform.importVcfContacts
+import com.vayunmathur.contacts.platform.removeContactsFromGroup
 
 import android.app.Application
 import android.provider.ContactsContract
