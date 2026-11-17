@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.os.Build
 
 /** One launchable app the parent can put a rule on. */
 data class SupervisableApp(
@@ -196,7 +197,12 @@ class SupervisionViewModel(app: Application) : AndroidViewModel(app) {
             val self = getApplication<Application>().packageName
             val intent = android.content.Intent(android.content.Intent.ACTION_MAIN)
                 .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
-            pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
+            // ResolveInfoFlags.of is API 33+; on 31-32 the int-flags overload is the same query.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION") pm.queryIntentActivities(intent, 0)
+            }
                 .mapNotNull { it.activityInfo?.applicationInfo }
                 .distinctBy { it.packageName }
                 .filter { it.packageName != self }

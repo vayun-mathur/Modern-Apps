@@ -2,6 +2,7 @@ package com.vayunmathur.parentalcontrols.platform
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Process
 import com.vayunmathur.library.log.Log
 
@@ -28,7 +29,12 @@ class SupervisionCaller(context: Context) {
 
     /** The Settings uid, resolved once; uids do not change while the system is running. */
     private val settingsUid: Int? = runCatching {
-        packageManager.getPackageUid(SETTINGS_PACKAGE, PackageManager.PackageInfoFlags.of(0))
+        // PackageInfoFlags.of is API 33+; on 31-32 the int-flags overload is the same query.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageUid(SETTINGS_PACKAGE, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION") packageManager.getPackageUid(SETTINGS_PACKAGE, 0)
+        }
     }.onFailure { Log.status(TAG, "could not resolve $SETTINGS_PACKAGE", it) }.getOrNull()
 
     fun isSettings(uid: Int): Boolean {

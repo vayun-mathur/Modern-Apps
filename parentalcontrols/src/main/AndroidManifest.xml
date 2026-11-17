@@ -82,7 +82,8 @@
         -->
         <service
             android:name=".service.SupervisionMessengerService"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="android.app.supervision.action.SUPERVISION_MESSENGER_SERVICE" />
             </intent-filter>
@@ -283,16 +284,16 @@
         <!-- Fired by UsageStatsService when an app spends its daily budget. Not exported: the
              PendingIntent we hand the platform is what delivers it. -->
         <receiver
-            android:name=".receiver.LimitReachedReceiver"
+            android:name=".platform.LimitReachedReceiver"
             android:exported="false" />
 
         <!-- The next bedtime boundary. Re-armed each time it fires. -->
         <receiver
-            android:name=".receiver.BedtimeReceiver"
+            android:name=".platform.BedtimeReceiver"
             android:exported="false" />
 
         <receiver
-            android:name=".receiver.BootReceiver"
+            android:name=".platform.BootReceiver"
             android:exported="true"
             android:permission="android.permission.BIND_SUPERVISION_APP_SERVICE">
             <intent-filter>

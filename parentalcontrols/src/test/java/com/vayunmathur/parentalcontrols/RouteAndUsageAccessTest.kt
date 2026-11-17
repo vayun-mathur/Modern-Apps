@@ -36,6 +36,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.parentalcontrols.domain.PinGateTarget
 
 /**
  * Host-testable parts of the parental-control gate the report named:

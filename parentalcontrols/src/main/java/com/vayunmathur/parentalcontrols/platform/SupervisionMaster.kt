@@ -1,6 +1,7 @@
 package com.vayunmathur.parentalcontrols.platform
 
 import android.content.Context
+import androidx.core.content.edit
 
 /**
  * The device-wide "Controls for this phone" master switch.
@@ -19,7 +20,7 @@ object SupervisionMaster {
         prefs(context).getBoolean(KEY_ENABLED, true)
 
     fun setEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
+        prefs(context).edit { putBoolean(KEY_ENABLED, enabled) }
     }
 
     private fun prefs(context: Context) =

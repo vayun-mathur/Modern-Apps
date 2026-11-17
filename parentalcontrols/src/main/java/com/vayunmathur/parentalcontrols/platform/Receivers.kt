@@ -1,11 +1,9 @@
-package com.vayunmathur.parentalcontrols.receiver
+package com.vayunmathur.parentalcontrols.platform
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.parentalcontrols.platform.EXTRA_PACKAGE_NAME
-import com.vayunmathur.parentalcontrols.platform.Enforcer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

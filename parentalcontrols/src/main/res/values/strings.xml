@@ -85,8 +85,6 @@
     <string name="pin_confirm_label">Repeat PIN</string>
     <!-- PIN setup: shown under the repeat field when the two entries differ. -->
     <string name="pin_mismatch">PINs do not match.</string>
-    <!-- PIN setup: confirmation shown after the PIN is stored. -->
-    <string name="pin_saved">Parent PIN saved.</string>
 
     <!-- Lock screens: title shown for each block reason. Noun phrases. -->
     <string name="lock_bedtime_title">Bedtime</string>

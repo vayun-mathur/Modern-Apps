@@ -1,6 +1,7 @@
 package com.vayunmathur.parentalcontrols.platform
 
 import android.content.Context
+import androidx.core.content.edit
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.parentalcontrols.data.AppRule
 import com.vayunmathur.parentalcontrols.data.BedtimeSchedule
@@ -270,7 +271,10 @@ class LimitState(context: Context) {
     fun markReached(packageName: String) {
         pruneToToday()
         val next = reached() + packageName
-        prefs.edit().putStringSet(KEY_REACHED, next).putString(KEY_DAY, today()).apply()
+        prefs.edit {
+            putStringSet(KEY_REACHED, next)
+            putString(KEY_DAY, today())
+        }
     }
 
     fun hasReached(packageName: String): Boolean = packageName in reached()
@@ -278,7 +282,10 @@ class LimitState(context: Context) {
     /** Drop yesterday's trips. This is the daily reset; there is no other. */
     fun pruneToToday() {
         if (prefs.getString(KEY_DAY, null) == today()) return
-        prefs.edit().remove(KEY_REACHED).putString(KEY_DAY, today()).apply()
+        prefs.edit {
+            remove(KEY_REACHED)
+            putString(KEY_DAY, today())
+        }
     }
 
     private fun reached(): Set<String> = prefs.getStringSet(KEY_REACHED, emptySet()) ?: emptySet()

@@ -24,7 +24,7 @@ import java.security.SecureRandom
  * subsequent failure up to 16 minutes. The counter lives beside the verifier so clearing app
  * data (which wipes both) also wipes the rules database - there is nothing left to protect.
  */
-class ParentPin(context: Context) : DatabaseHelper(context) {
+class ParentPin(context: Context) : DatabaseHelper(context.applicationContext) {
 
     override val keyStoreAlias = "parentalcontrols_parent_pin"
     override val sharedPrefsName = PREFS
@@ -84,13 +84,14 @@ class ParentPin(context: Context) : DatabaseHelper(context) {
 
     private fun recordFailure() {
         val attempts = prefs().getInt(KEY_ATTEMPTS, 0) + 1
-        val editor = prefs().edit().putInt(KEY_ATTEMPTS, attempts)
-        if (attempts >= FREE_ATTEMPTS) {
-            val shift = (attempts - FREE_ATTEMPTS).coerceAtMost(MAX_DOUBLINGS)
-            val lockout = BASE_LOCKOUT_MILLIS shl shift
-            editor.putLong(KEY_LOCKOUT_UNTIL, System.currentTimeMillis() + lockout)
+        prefs().edit {
+            putInt(KEY_ATTEMPTS, attempts)
+            if (attempts >= FREE_ATTEMPTS) {
+                val shift = (attempts - FREE_ATTEMPTS).coerceAtMost(MAX_DOUBLINGS)
+                val lockout = BASE_LOCKOUT_MILLIS shl shift
+                putLong(KEY_LOCKOUT_UNTIL, System.currentTimeMillis() + lockout)
+            }
         }
-        editor.apply()
     }
 
     private fun verifierFor(salt: ByteArray, pin: String): String {
@@ -116,11 +117,13 @@ class ParentPin(context: Context) : DatabaseHelper(context) {
         private const val BASE_LOCKOUT_MILLIS = 60_000L
         private const val MAX_DOUBLINGS = 4
 
-        @Volatile private var instance: ParentPin? = null
-
-        fun get(context: Context): ParentPin =
-            instance ?: synchronized(this) {
-                instance ?: ParentPin(context).also { instance = it }
-            }
+        /**
+         * A fresh instance per call: [ParentPin] carries a [Context] (via [DatabaseHelper]),
+         * so caching one in a static field would retain whichever component asked first for
+         * the life of the process. Instances are cheap and stateless — all state lives in
+         * the keystore-wrapped verifier and its SharedPreferences — so callers simply ask
+         * again. Only the application context is ever retained by an instance.
+         */
+        fun get(context: Context): ParentPin = ParentPin(context.applicationContext)
     }
 }

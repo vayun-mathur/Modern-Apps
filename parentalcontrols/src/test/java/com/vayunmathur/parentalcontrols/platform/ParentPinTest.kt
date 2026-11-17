@@ -14,7 +14,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
@@ -63,9 +62,12 @@ class ParentPinTest {
     }
 
     @Test
-    fun parentPinSingletonAndShortPinGuard() {
+    fun parentPinInstancesShareStorageAndShortPinGuard() {
         val pin = ParentPin.get(app)
-        assertSame(pin, ParentPin.get(app))
+        // No static instance is retained (ParentPin holds a Context); a second instance
+        // reads the same keystore-wrapped verifier and preferences.
+        pin.set("1234")
+        assertTrue(ParentPin.get(app).verify("1234"))
         assertEquals(4, ParentPin.MIN_LENGTH)
         assertEquals("parentalcontrols_pin", ParentPin.PREFS)
         // Too-short PINs are rejected before any keystore work happens.

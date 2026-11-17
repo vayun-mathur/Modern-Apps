@@ -10,9 +10,9 @@ import android.os.Messenger
 import android.os.Process
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.parentalcontrols.notifications.LockNotifier
-import com.vayunmathur.parentalcontrols.receiver.BedtimeReceiver
-import com.vayunmathur.parentalcontrols.receiver.BootReceiver
-import com.vayunmathur.parentalcontrols.receiver.LimitReachedReceiver
+import com.vayunmathur.parentalcontrols.platform.BedtimeReceiver
+import com.vayunmathur.parentalcontrols.platform.BootReceiver
+import com.vayunmathur.parentalcontrols.platform.LimitReachedReceiver
 import com.vayunmathur.parentalcontrols.service.SupervisionMessengerService
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit

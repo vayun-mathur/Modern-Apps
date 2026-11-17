@@ -1,6 +1,7 @@
 package com.vayunmathur.parentalcontrols
 
 import com.vayunmathur.library.util.NavKey
+import com.vayunmathur.parentalcontrols.domain.PinGateTarget
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -46,44 +47,4 @@ sealed interface Route : NavKey {
      * gate is the only entry), so back can never expose gated content.
      */
     data class PinGate(val target: PinGateTarget) : Route
-}
-
-/** What a passed [Route.PinGate] unlocks. */
-@Serializable
-enum class PinGateTarget {
-    /** Applying the dashboard master switch. */
-    Controls,
-
-    /** Replacing the PIN: the gate is followed by [Route.PinSetup]. */
-    ManagePin,
-    DailyLimit,
-    AppLimits,
-    Bedtime,
-    Downtime,
-    SchoolTime,
-    WebFilters;
-
-    /** The editor route this target unlocks; null when it unlocks an action, not a screen. */
-    fun editorRoute(): Route? = when (this) {
-        Controls, ManagePin -> null
-        DailyLimit -> Route.DailyLimit
-        AppLimits -> Route.AppLimits
-        Bedtime -> Route.Bedtime
-        Downtime -> Route.Downtime
-        SchoolTime -> Route.SchoolTime
-        WebFilters -> Route.WebFilters
-    }
-
-    companion object {
-        /** The gate target guarding [route], or null for ungated destinations. */
-        fun forRoute(route: Route): PinGateTarget? = when (route) {
-            Route.DailyLimit -> DailyLimit
-            Route.AppLimits -> AppLimits
-            Route.Bedtime -> Bedtime
-            Route.Downtime -> Downtime
-            Route.SchoolTime -> SchoolTime
-            Route.WebFilters -> WebFilters
-            else -> null
-        }
-    }
 }

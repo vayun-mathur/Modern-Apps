@@ -8,7 +8,7 @@ import androidx.core.content.getSystemService
 import com.vayunmathur.parentalcontrols.data.BedtimeSchedule
 import com.vayunmathur.parentalcontrols.data.DowntimeSchedule
 import com.vayunmathur.parentalcontrols.data.SchoolTimeSchedule
-import com.vayunmathur.parentalcontrols.receiver.BedtimeReceiver
+import com.vayunmathur.parentalcontrols.platform.BedtimeReceiver
 import java.time.LocalDateTime
 import java.time.ZoneId
 

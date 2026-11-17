@@ -1,6 +1,7 @@
 package com.vayunmathur.parentalcontrols.platform
 
 import android.content.Context
+import androidx.core.content.edit
 
 /**
  * The "Filter explicit sites" preference behind the Web content filters row.
@@ -18,7 +19,7 @@ object WebContentFilters {
         prefs(context).getBoolean(KEY_ENABLED, false)
 
     fun setEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
+        prefs(context).edit { putBoolean(KEY_ENABLED, enabled) }
     }
 
     private fun prefs(context: Context) =

@@ -7,7 +7,7 @@ import com.vayunmathur.library.log.Log
 import androidx.core.content.getSystemService
 import com.vayunmathur.parentalcontrols.data.AppRule
 import com.vayunmathur.parentalcontrols.data.BonusGrant
-import com.vayunmathur.parentalcontrols.receiver.LimitReachedReceiver
+import com.vayunmathur.parentalcontrols.platform.LimitReachedReceiver
 import java.lang.reflect.Method
 import java.time.Duration
 import java.time.LocalDate
