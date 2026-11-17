@@ -100,8 +100,8 @@ class AlarmSoundService : Service() {
             val vibrate = alarm?.vibrate ?: true
             val gradualSeconds = alarm?.gradualVolumeSeconds ?: 0
 
-            // setDataSource()/prepare() are blocking; run them on the IO
-            // dispatcher (this coroutine) instead of the main thread.
+            // Loading and preparing the player are blocking work, so they run
+            // on the IO dispatcher (this coroutine) instead of the main thread.
             //
             // Vibration comes first: a stored ringtone can be a content:// URI owned by
             // another app, and one that no longer resolves used to throw out of playAlarm

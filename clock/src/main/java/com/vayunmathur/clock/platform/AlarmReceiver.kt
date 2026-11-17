@@ -135,11 +135,9 @@ class AlarmReceiver : BroadcastReceiver() {
         return notificationManager.canUseFullScreenIntent()
     }
 
-    private fun canStartForegroundService(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
-        return (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+    private fun canStartForegroundService(context: Context): Boolean =
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .areNotificationsEnabled()
-    }
 
     // Broad catch is deliberate: onReceive must not throw, and Room plus the
     // scheduler throw undocumented RuntimeExceptions (not just SQLiteException).

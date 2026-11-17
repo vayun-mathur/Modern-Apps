@@ -2,9 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Klocka</string>
     <string name="label_alarm">Alarm</string>
-    <string name="label_clock">Klocka</string>
     <string name="label_timer">Timer</string>
-    <string name="label_stopwatch">Stoppur</string>
     <string name="set_an_alarm">Ställ in ett alarm</string>
     <string name="button_stop">STOPPA</string>
     <string name="button_snooze">SLUMRA (%1$d MIN)</string>
@@ -31,14 +29,9 @@
     <string name="timer_finished_text"><xliff:g id="timer_name" example="Tea">%1$s</xliff:g> är klar!</string>
     <string name="action_pause">Pausa</string>
     <string name="action_resume">Återuppta</string>
-    <string name="action_cancel">Avbryt</string>
-    <string name="action_reset">Återställ</string>
     <string name="action_lap">Varv</string>
-    <string name="action_stop">Stoppa</string>
     <string name="label_new_timer">Ny timer</string>
     <string name="field_label">Etikett</string>
-    <string name="button_cancel">Avbryt</string>
-    <string name="button_save">Spara</string>
     <string name="select_cities_title">Välj städer</string>
     <string name="search_city_hint">Sök stad eller region…</string>
     <string name="time_am">fm</string>
@@ -48,7 +41,6 @@
     <string name="analog_clock_widget_description">Analog Material You-klocka – tryck för att öppna klockan</string>
     <string name="alarm_settings">Alarminställningar</string>
     <string name="defaults_for_new_alarms">Standardvärden för nya alarm</string>
-    <string name="gradual_off">Av</string>
     <string name="timer_name_optional">Timernamn (valfritt)</string>
     <string name="alarm_label_hint">Alarmnamn (valfritt)</string>
     <string name="sound">Ljud</string>

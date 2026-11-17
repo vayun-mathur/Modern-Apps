@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="label_stopwatch">Stopky</string>
     <string name="app_name">Hodiny</string>
     <string name="label_alarm">Budík</string>
-    <string name="label_clock">Hodiny</string>
     <string name="label_timer">Časovač</string>
     <string name="set_an_alarm">Nastavit budík</string>
     <string name="button_stop">STOP</string>
@@ -17,8 +15,6 @@
     <string name="button_add_minute">+ 1:00</string>
     <string name="label_new_timer">Nový časovač</string>
     <string name="field_label">Název</string>
-    <string name="button_cancel">Zrušit</string>
-    <string name="button_save">Uložit</string>
     <string name="select_cities_title">Vyberte města</string>
     <string name="search_city_hint">Hledat město nebo oblast…</string>
     <string name="time_am">dop.</string>
@@ -40,11 +36,7 @@
     <string name="channel_stopwatch_description">Ovládání stopek</string>
     <string name="action_pause">Pozastavit</string>
     <string name="action_resume">Pokračovat</string>
-    <string name="action_cancel">Zrušit</string>
-    <string name="action_reset">Obnovit</string>
     <string name="action_lap">Kolo</string>
-    <string name="action_stop">Zastavit</string>
     <string name="alarm_settings">Nastavení budíku</string>
     <string name="defaults_for_new_alarms">Výchotí pro nové budíky</string>
-    <string name="gradual_off">Vypnuto</string>
 </resources>

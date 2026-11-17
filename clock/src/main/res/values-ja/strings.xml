@@ -2,9 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">時計</string>
     <string name="label_alarm">アラーム</string>
-    <string name="label_clock">時計</string>
     <string name="label_timer">タイマー</string>
-    <string name="label_stopwatch">ストップウォッチ</string>
     <string name="set_an_alarm">アラームをセット</string>
     <string name="button_stop">停止</string>
     <string name="button_snooze">スヌーズ (%1$d分)</string>
@@ -29,14 +27,9 @@
     <string name="timer_finished_text"><xliff:g id="timer_name" example="Tea">%1$s</xliff:g> が終了しました！</string>
     <string name="action_pause">一時停止</string>
     <string name="action_resume">再開</string>
-    <string name="action_cancel">キャンセル</string>
-    <string name="action_reset">リセット</string>
     <string name="action_lap">ラップ</string>
-    <string name="action_stop">停止</string>
     <string name="label_new_timer">新しいタイマー</string>
     <string name="field_label">ラベル</string>
-    <string name="button_cancel">キャンセル</string>
-    <string name="button_save">保存</string>
     <string name="select_cities_title">都市を選択</string>
     <string name="search_city_hint">都市または地域を検索…</string>
     <string name="time_am">午前</string>
@@ -46,10 +39,6 @@
     <string name="analog_clock_widget_description">Material Youアナログ時計 - タップして時計を開く</string>
     <string name="alarm_settings">アラームの設定</string>
     <string name="defaults_for_new_alarms">新しいアラームのデフォルト</string>
-    <string name="gradual_off">オフ</string>
-    <string name="ringtone_default">デフォルト</string>
-    <string name="ringtone_silent">無音</string>
-    <string name="ringtone_custom">カスタム</string>
     <string name="timer_name_optional">タイマーの名前 (オプション)</string>
     <string name="sound">音</string>
     <string name="vibrate">バイブレーション</string>

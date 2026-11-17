@@ -2,9 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Kell</string>
     <string name="label_alarm">Äratus</string>
-    <string name="label_clock">Kell</string>
     <string name="label_timer">Taimer</string>
-    <string name="label_stopwatch">Stopper</string>
     <string name="button_stop">LÕPETA</string>
     <string name="button_snooze">LÜKKA EDASI (%1$d MIN)</string>
     <string name="alarm_ringing_notification_title">On äratuse aeg</string>
@@ -26,8 +24,6 @@
     <string name="timer_finished_text"><xliff:g id="timer_name" example="Tee">%1$s</xliff:g> - taimer on lõpetanud!</string>
     <string name="label_new_timer">Uus taimer</string>
     <string name="field_label">Silt</string>
-    <string name="button_cancel">Katkesta</string>
-    <string name="button_save">Salvesta</string>
     <string name="select_cities_title">Vali linnad</string>
     <string name="search_city_hint">Otsi linna või piirkonda…</string>
     <string name="time_am">el (AM)</string>
@@ -40,12 +36,8 @@
     <string name="channel_stopwatch_description">Stopperi juhtnupud</string>
     <string name="action_pause">Peata</string>
     <string name="action_resume">Jätka</string>
-    <string name="action_cancel">Katkesta</string>
-    <string name="action_reset">Lähtesta</string>
     <string name="action_lap">Ringi aeg</string>
-    <string name="action_stop">Lõpeta</string>
     <string name="defaults_for_new_alarms">Vaikimisi väärtused uute äratuste jaoks</string>
-    <string name="gradual_off">Väljas</string>
     <string name="alarm_settings">Äratuse seadistused</string>
     <string name="timer_name_optional">Taimeri nimi (kui soovid lisada)</string>
     <string name="sound">Heli</string>

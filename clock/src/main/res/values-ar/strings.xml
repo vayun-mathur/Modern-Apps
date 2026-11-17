@@ -2,9 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">الساعة</string>
     <string name="label_alarm">المنبه</string>
-    <string name="label_clock">الساعة</string>
     <string name="label_timer">المؤقت</string>
-    <string name="label_stopwatch">ساعة التوقيف</string>
     <string name="set_an_alarm">اضبط منبه</string>
     <string name="button_stop">إيقاف</string>
     <string name="button_snooze">تأجيل (%1$d دقائق)</string>
@@ -26,14 +24,9 @@
     <string name="timer_finished_text">انتهى <xliff:g id="timer_name" example="Tea">%1$s</xliff:g>!</string>
     <string name="action_pause">إيقاف مؤقت</string>
     <string name="action_resume">استئناف</string>
-    <string name="action_cancel">إلغاء</string>
-    <string name="action_reset">إعادة الضبط</string>
     <string name="action_lap">لفة</string>
-    <string name="action_stop">إيقاف</string>
     <string name="label_new_timer">مؤقت جديد</string>
     <string name="field_label">التسمية</string>
-    <string name="button_cancel">إلغاء</string>
-    <string name="button_save">حفظ</string>
     <string name="select_cities_title">اختر المدن</string>
     <string name="search_city_hint">البحث عن مدينة أو منطقة…</string>
     <string name="time_am">ص</string>
@@ -43,7 +36,6 @@
     <string name="analog_clock_widget_description">ساعة تناظرية بتصميم Material You - اضغط لفتح الساعة</string>
     <string name="alarm_settings">إعدادات المنبه</string>
     <string name="defaults_for_new_alarms">الإعدادات الافتراضية للمنبهات الجديدة</string>
-    <string name="gradual_off">معطّل</string>
     <string name="timer_name_optional">اسم المؤقت (اختياري)</string>
     <string name="alarm_label_hint">اسم المنبه (اختياري)</string>
     <string name="sound">الصوت</string>

@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="label_timer">Timer</string>
-    <string name="label_clock">Uhr</string>
     <string name="label_alarm">Wecker</string>
     <string name="app_name">Uhr</string>
-    <string name="label_stopwatch">Stoppuhr</string>
     <string name="set_an_alarm">Wecker stellen</string>
     <string name="button_stop">STOPP</string>
     <string name="button_snooze">SCHLUMMERN (%1$d MIN)</string>
@@ -26,8 +24,6 @@
     <string name="timer_finished_text">%1$s ist geendet!</string>
     <string name="label_new_timer">Neuer Timer</string>
     <string name="field_label">Label</string>
-    <string name="button_cancel">Abbrechen</string>
-    <string name="button_save">Speichern</string>
     <string name="select_cities_title">Städte auswählen</string>
     <string name="search_city_hint">Suche nach Stadt oder Region…</string>
     <string name="grant_notifications_permission">Erlaube Benachrichtigungen</string>

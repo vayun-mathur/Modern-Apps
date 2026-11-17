@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="label_alarm">Alarme</string>
-    <string name="label_clock">Relógio</string>
     <string name="label_timer">Temporizador</string>
-    <string name="label_stopwatch">Cronómetro</string>
     <string name="header_total">Total</string>
-    <string name="button_cancel">Cancelar</string>
-    <string name="button_save">Gravar</string>
     <string name="time_am">AM</string>
     <string name="time_pm">PM</string>
     <string name="app_name">Relógio</string>

@@ -2,9 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">时钟</string>
     <string name="label_alarm">闹钟</string>
-    <string name="label_clock">时钟</string>
     <string name="label_timer">定时器</string>
-    <string name="label_stopwatch">秒表</string>
     <string name="set_an_alarm">设置闹钟</string>
     <string name="button_stop">停止</string>
     <string name="button_snooze">暂停（%1$d 分钟）</string>
@@ -27,8 +25,6 @@
     <string name="timer_finished_text"><xliff:g id="timer_name" example="Tea">%1$s</xliff:g> 已结束！</string>
     <string name="label_new_timer">新定时器</string>
     <string name="field_label">标签</string>
-    <string name="button_cancel">取消</string>
-    <string name="button_save">保存</string>
     <string name="select_cities_title">选择城市</string>
     <string name="search_city_hint">搜索城市或地区…</string>
     <string name="time_am">上午</string>
@@ -39,13 +35,9 @@
     <string name="channel_stopwatch_name">秒表</string>
     <string name="channel_stopwatch_description">秒表控制</string>
     <string name="action_pause">暂停</string>
-    <string name="action_cancel">取消</string>
     <string name="action_resume">继续</string>
-    <string name="action_reset">重置</string>
     <string name="action_lap">一圈</string>
-    <string name="action_stop">停止</string>
     <string name="defaults_for_new_alarms">新闹钟的默认设置</string>
-    <string name="gradual_off">已关闭</string>
     <string name="alarm_settings">闹钟设置</string>
     <string name="timer_name_optional">定时器名称（可选）</string>
     <string name="sound">声音</string>

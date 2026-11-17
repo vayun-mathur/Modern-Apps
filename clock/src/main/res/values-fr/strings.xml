@@ -2,9 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Horloge</string>
     <string name="label_alarm">Alarme</string>
-    <string name="label_clock">Horloge</string>
     <string name="label_timer">Minuteur</string>
-    <string name="label_stopwatch">Chronomètre</string>
     <string name="set_an_alarm">Configurer une alarme</string>
     <string name="button_stop">ARRÊTER</string>
     <string name="button_snooze">REPORTER (%1$d MIN)</string>
@@ -25,8 +23,6 @@
     <string name="timer_finished_text">Le minuteur « <xliff:g id="timer_name" example="Thé">%1$s</xliff:g> » est écoulé !</string>
     <string name="label_new_timer">Nouveau minuteur</string>
     <string name="field_label">Libellé</string>
-    <string name="button_cancel">Annuler</string>
-    <string name="button_save">Enregistrer</string>
     <string name="select_cities_title">Sélectionner des villes</string>
     <string name="search_city_hint">Rechercher une ville ou région…</string>
     <string name="time_am">AM</string>
@@ -40,12 +36,8 @@
     <string name="channel_stopwatch_description">Commandes du chronomètre</string>
     <string name="action_pause">Pause</string>
     <string name="action_resume">Reprendre</string>
-    <string name="action_cancel">Annuler</string>
-    <string name="action_reset">Réinitialiser</string>
     <string name="action_lap">Tour</string>
-    <string name="action_stop">Arrêter</string>
     <string name="defaults_for_new_alarms">Paramètres par défaut des nouvelles alarmes</string>
-    <string name="gradual_off">Désactivé</string>
     <string name="alarm_settings">Paramètres des alarmes</string>
     <string name="timer_name_optional">Nom du minuteur (facultatif)</string>
     <string name="sound">Son</string>

@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
 import com.vayunmathur.clock.data.Alarm
@@ -28,6 +29,7 @@ import kotlinx.datetime.LocalTime
 fun AlarmPage(backStack: NavBackStack<Route>, clockViewModel: ClockViewModel) {
     val alarms by clockViewModel.alarms.collectAsState()
     val context = LocalContext.current
+    val soundTitle = stringResource(R.string.sound)
     val alarmScheduler = AlarmScheduler
 
     var pickingAlarmId by remember { mutableStateOf<Long?>(null) }
@@ -85,7 +87,7 @@ fun AlarmPage(backStack: NavBackStack<Route>, clockViewModel: ClockViewModel) {
                     ringtonePickerIntent(
                         alarm.ringtoneUri,
                         RingtoneManager.TYPE_ALARM,
-                        context.getString(R.string.sound),
+                        soundTitle,
                     )
                 )
             }

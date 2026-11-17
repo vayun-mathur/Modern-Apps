@@ -2,9 +2,7 @@
 <resources>
     <string name="app_name">Orologio</string>
     <string name="label_alarm">Sveglia</string>
-    <string name="label_clock">Orologio</string>
     <string name="label_timer">Timer</string>
-    <string name="label_stopwatch">Cronometro</string>
     <string name="grant_notifications_permission">Concedi autorizzazione notifiche</string>
     <string name="set_an_alarm">Imposta una sveglia</string>
     <string name="button_stop">INTERROMPI</string>
@@ -28,8 +26,6 @@
     <string name="timer_finished_text">%1$s terminato!</string>
     <string name="label_new_timer">Nuovo timer</string>
     <string name="field_label">Etichetta</string>
-    <string name="button_cancel">Annulla</string>
-    <string name="button_save">Salva</string>
     <string name="select_cities_title">Seleziona città</string>
     <string name="search_city_hint">Cerca città o regione…</string>
     <string name="time_am">AM</string>
@@ -40,13 +36,9 @@
     <string name="channel_stopwatch_description">Controlli cronometro</string>
     <string name="action_pause">Pausa</string>
     <string name="action_resume">Riprendi</string>
-    <string name="action_cancel">Annulla</string>
-    <string name="action_reset">Reimposta</string>
     <string name="action_lap">Giro</string>
-    <string name="action_stop">Interrompi</string>
     <string name="alarm_settings">Impostazioni sveglia</string>
     <string name="defaults_for_new_alarms">Impostazioni predefinite per le nuove sveglie</string>
-    <string name="gradual_off">Disattivo</string>
     <string name="timer_name_optional">Nome timer (opzionale)</string>
     <string name="sound">Suono</string>
     <string name="vibrate">Vibrazione</string>

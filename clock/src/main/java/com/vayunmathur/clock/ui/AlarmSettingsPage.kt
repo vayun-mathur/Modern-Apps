@@ -4,11 +4,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
@@ -28,13 +28,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmSettingsPage(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var ringtone by remember { mutableStateOf(ds.getString(ClockViewModel.KEY_DEFAULT_RINGTONE)) }
     var vibrate by remember { mutableStateOf(ds.getBoolean(ClockViewModel.KEY_DEFAULT_VIBRATE, true)) }
-    var snooze by remember { mutableStateOf((ds.getLong(ClockViewModel.KEY_DEFAULT_SNOOZE) ?: 5L).toInt()) }
-    var gradual by remember { mutableStateOf((ds.getLong(ClockViewModel.KEY_DEFAULT_GRADUAL) ?: 0L).toInt()) }
+    var snooze by remember { mutableIntStateOf((ds.getLong(ClockViewModel.KEY_DEFAULT_SNOOZE) ?: 5L).toInt()) }
+    var gradual by remember { mutableIntStateOf((ds.getLong(ClockViewModel.KEY_DEFAULT_GRADUAL) ?: 0L).toInt()) }
+    val soundTitle = stringResource(R.string.sound)
 
     val ringtoneLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -66,7 +66,7 @@ fun AlarmSettingsPage(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                     ringtonePickerIntent(
                         ringtone,
                         RingtoneManager.TYPE_ALARM,
-                        context.getString(R.string.sound),
+                        soundTitle,
                     )
                 )
             },
