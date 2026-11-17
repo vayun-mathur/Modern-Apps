@@ -359,3 +359,5 @@ impl DivAssign<f64> for Matrix3<f64> {
         }
     }
 }
+
+#[cfg(test)] #[path = "matrix3_tests.rs"] mod matrix3_tests;

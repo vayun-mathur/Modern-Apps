@@ -144,3 +144,5 @@ pub struct RowVector3<T = f64> {
     pub(crate) d: [f64; 3],
     _p: PhantomData<T>,
 }
+
+#[cfg(test)] #[path = "vector_tests.rs"] mod vector_tests;

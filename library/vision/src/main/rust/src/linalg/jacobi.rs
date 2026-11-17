@@ -70,3 +70,5 @@ pub(crate) fn jacobi_sym(a_in: &[f64], n: usize) -> (Vec<f64>, Vec<f64>) {
     let evals: Vec<f64> = (0..n).map(|i| a[idx(i, i)]).collect();
     (evals, v)
 }
+
+#[cfg(test)] #[path = "jacobi_tests.rs"] mod jacobi_tests;

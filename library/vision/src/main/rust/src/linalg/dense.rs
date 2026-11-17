@@ -229,3 +229,5 @@ impl Lu {
         Some(DVector { d: x, _p: PhantomData })
     }
 }
+
+#[cfg(test)] #[path = "dense_tests.rs"] mod dense_tests;

@@ -331,3 +331,5 @@ pub fn match_features(a: &Features, b: &Features, ratio: f32) -> Vec<(usize, usi
     }
     out
 }
+
+#[cfg(test)] #[path = "features_tests.rs"] mod features_tests;

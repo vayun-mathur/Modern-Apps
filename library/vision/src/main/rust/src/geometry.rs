@@ -161,3 +161,5 @@ pub fn find_homography_ransac(a: &[Pt], b: &[Pt], iters: usize, thresh: f32) -> 
     let refined = dlt(&ia, &ib).or(best_h)?;
     Some((refined, inliers.len()))
 }
+
+#[cfg(test)] #[path = "geometry_tests.rs"] mod geometry_tests;

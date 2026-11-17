@@ -282,3 +282,5 @@ pub fn to_gray(img: &Rgba) -> Gray {
     }
     g
 }
+
+#[cfg(test)] #[path = "imgbuf_tests.rs"] mod imgbuf_tests;

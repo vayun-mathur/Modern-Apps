@@ -72,3 +72,5 @@ pub fn mat_to_rodrigues(m: &Matrix3<f64>) -> Vector3<f64> {
     let mult = theta / (2.0 * s);
     Vector3::new(rx, ry, rz) * mult
 }
+
+#[cfg(test)] #[path = "camera_tests.rs"] mod camera_tests;
