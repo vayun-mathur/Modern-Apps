@@ -209,3 +209,37 @@ pub extern "system" fn Java_com_vayunmathur_vpn_util_VpnNative_getStats<'l>(
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::decode_key;
+
+    #[test]
+    fn decode_key_base64_and_hex() {
+        let key = [0xABu8; 32];
+        let b64 = crate::b64e(&key);
+        assert_eq!(decode_key(&b64), Some(key));
+        assert_eq!(decode_key(&hex::encode(key)), Some(key));
+        // whitespace trimmed
+        assert_eq!(decode_key(&format!("  {b64}  ")), Some(key));
+    }
+
+    #[test]
+    fn decode_key_rejects_bad() {
+        assert_eq!(decode_key(""), None);
+        assert_eq!(decode_key("not-a-key!!!"), None);
+        // valid base64 but wrong length (16 bytes)
+        assert_eq!(decode_key(&crate::b64e(&[0u8; 16])), None);
+        // 32-byte hex of wrong length
+        assert_eq!(decode_key(&hex::encode([0u8; 31])), None);
+    }
+
+    #[test]
+    fn decode_key_unpadded_base64() {
+        let key = [1u8; 32];
+        let b64 = crate::b64e(&key);
+        let unpadded = b64.trim_end_matches('=');
+        assert_eq!(unpadded.len(), 43);
+        assert_eq!(decode_key(unpadded), Some(key));
+    }
+}

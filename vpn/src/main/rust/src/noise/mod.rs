@@ -23,6 +23,8 @@ pub mod rate_limiter;
 
 mod session;
 mod timers;
+#[cfg(test)] mod tunn_tests;
+#[cfg(test)] mod misc_tests;
 
 use rand::{SeedableRng, rngs::StdRng};
 

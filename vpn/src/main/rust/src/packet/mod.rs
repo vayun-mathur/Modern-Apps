@@ -9,6 +9,11 @@ use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
 mod decode; mod ip; mod ipv4; mod ipv6; mod pool; mod tcp; mod udp; mod util; mod wg;
 pub use decode::*; pub use ip::*; pub use ipv4::*; pub use ipv6::*; pub use pool::*;
+#[cfg(test)] mod wg_tests;
+#[cfg(test)] mod udp_tests;
+#[cfg(test)] mod util_tests;
+#[cfg(test)] mod ip_tests;
+#[cfg(test)] mod ipvx_extra_tests;
 pub use tcp::*; pub use udp::*; pub use util::*; pub use wg::*;
 
 pub struct Packet<Kind: ?Sized = [u8]> {

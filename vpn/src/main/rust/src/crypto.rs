@@ -87,3 +87,66 @@ pub mod aead {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::aead::*;
+    use super::error::Unspecified;
+
+    fn key(bytes: &[u8]) -> LessSafeKey {
+        LessSafeKey::new(UnboundKey::new(&CHACHA20_POLY1305, bytes).unwrap())
+    }
+
+    #[test]
+    fn unbound_key_rejects_wrong_length() {
+        assert!(UnboundKey::new(&CHACHA20_POLY1305, &[0u8; 31]).is_err());
+        assert!(UnboundKey::new(&CHACHA20_POLY1305, &[0u8; 33]).is_err());
+        assert!(UnboundKey::new(&CHACHA20_POLY1305, &[0u8; 32]).is_ok());
+        assert!(UnboundKey::new(&CHACHA20_POLY1305, &[]).is_err());
+    }
+
+    #[test]
+    fn seal_open_roundtrip() {
+        let k = key(&[7u8; 32]);
+        let nonce = Nonce::assume_unique_for_key([3u8; 12]);
+        let mut buf = b"hello crypto".to_vec();
+        let tag = k.seal_in_place_separate_tag(nonce, Aad::from(&b"aad"[..]), &mut buf).unwrap();
+        let mut ct_and_tag = buf.clone();
+        ct_and_tag.extend_from_slice(tag.as_ref());
+        let pt = k.open_in_place(nonce, Aad::from(&b"aad"[..]), &mut ct_and_tag).unwrap();
+        assert_eq!(pt, b"hello crypto");
+    }
+
+    #[test]
+    fn open_rejects_wrong_aad_key_and_short() {
+        let k = key(&[7u8; 32]);
+        let nonce = Nonce::assume_unique_for_key([3u8; 12]);
+        let mut buf = b"data".to_vec();
+        let tag = k.seal_in_place_separate_tag(nonce, Aad::from(&b"aad"[..]), &mut buf).unwrap();
+        let mut ct = buf.clone();
+        ct.extend_from_slice(tag.as_ref());
+        // wrong AAD
+        let mut c2 = ct.clone();
+        assert!(k.open_in_place(nonce, Aad::from(&b"bad"[..]), &mut c2).is_err());
+        // wrong key
+        let k2 = key(&[8u8; 32]);
+        let mut c3 = ct.clone();
+        assert!(k2.open_in_place(nonce, Aad::from(&b"aad"[..]), &mut c3).is_err());
+        // too short for tag
+        let mut short = [0u8; 15];
+        assert!(k.open_in_place(nonce, Aad::from(&[][..]), &mut short).is_err());
+        let _ = Unspecified;
+    }
+
+    #[test]
+    fn seal_empty_plaintext() {
+        let k = key(&[0u8; 32]);
+        let nonce = Nonce::assume_unique_for_key([0u8; 12]);
+        let mut buf: Vec<u8> = Vec::new();
+        let tag = k.seal_in_place_separate_tag(nonce, Aad::from(&[][..]), &mut buf).unwrap();
+        let mut ct = Vec::new();
+        ct.extend_from_slice(tag.as_ref());
+        let pt = k.open_in_place(nonce, Aad::from(&[][..]), &mut ct).unwrap();
+        assert!(pt.is_empty());
+    }
+}
