@@ -75,6 +75,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     // Custom Command Constants
+    /** Custom media-session command actions for [PlaybackService]. */
     companion object {
         const val ACTION_SHUFFLE = "ACTION_SHUFFLE"
         const val ACTION_REPEAT = "ACTION_REPEAT"
