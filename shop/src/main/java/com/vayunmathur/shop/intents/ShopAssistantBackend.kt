@@ -189,8 +189,11 @@ internal suspend fun addToCart(
     val current = backend.cartLines(context)
     val shop = input.shopDomain.trim()
     val variantId = input.variantId.trim()
-    if (shop.isEmpty() || variantId.isEmpty()) return current.toCartData(ERROR_INVALID_REQUEST)
-    if (input.quantity !in 1..MAX_QUANTITY) return current.toCartData(ERROR_INVALID_QUANTITY)
+    if (shop.isEmpty() || variantId.isEmpty() || input.quantity !in 1..MAX_QUANTITY) {
+        return current.toCartData(
+            if (shop.isEmpty() || variantId.isEmpty()) ERROR_INVALID_REQUEST else ERROR_INVALID_QUANTITY,
+        )
+    }
     // Exact-variant verification before any cart write (shop/AGENTS.md):
     // re-fetch the product and confirm this variant exists in the live
     // response. As in ProductScreen, the variant id doubles as the product
