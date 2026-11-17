@@ -3,6 +3,7 @@ package com.vayunmathur.everysync.data.sink
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.core.database.getLongOrNull
 import androidx.core.database.getStringOrNull
 import com.vayunmathur.everysync.data.RemotePassword
@@ -113,13 +114,13 @@ object PasswordSink {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun passwordsUri(vaultId: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$PATH_PASSWORDS")
+        "content://$AUTHORITY/vault/$vaultId/$PATH_PASSWORDS".toUri()
 
     fun passkeysUri(vaultId: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$PATH_PASSKEYS")
+        "content://$AUTHORITY/vault/$vaultId/$PATH_PASSKEYS".toUri()
 
     fun snapshotsUri(vaultId: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$PATH_SNAPSHOTS")
+        "content://$AUTHORITY/vault/$vaultId/$PATH_SNAPSHOTS".toUri()
 
     fun queryUri(vaultId: String, isPasskey: Boolean): Uri =
         tableUri(vaultId, isPasskey).buildUpon()
@@ -130,7 +131,7 @@ object PasswordSink {
             .appendPath(OP_UPSERT_RAW).build()
 
     fun purgeUri(vaultId: String, table: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$table")
+        "content://$AUTHORITY/vault/$vaultId/$table".toUri()
             .buildUpon().appendPath(OP_DELETE_BY_VAULT).build()
 
     private fun tableUri(vaultId: String, isPasskey: Boolean): Uri =

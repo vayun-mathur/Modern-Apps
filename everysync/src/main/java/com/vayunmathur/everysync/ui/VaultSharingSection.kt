@@ -130,6 +130,9 @@ private fun VaultShareDialog(
 ) {
     val context = LocalContext.current
     val messenger = rememberMessenger()
+    val shareLinkChooser = stringResource(R.string.share_link_chooser)
+    val inviteSent = stringResource(R.string.invite_sent)
+    val inviteFailed = stringResource(R.string.invite_failed)
     ShareVaultDialog(
         vaultTitle = vault.meta.title,
         shareLink = vault.shareLink,
@@ -141,13 +144,11 @@ private fun VaultShareDialog(
         safetyCode = safetyCode,
         computingCode = computingCode,
         onShareLink = {
-            ExternalIntents.shareText(context, vault.shareLink, context.getString(R.string.share_link_chooser))
+            ExternalIntents.shareText(context, vault.shareLink, shareLinkChooser)
         },
         onSendInvite = { recipientId, role ->
             actions.sendInvite(vault.meta.vaultId, recipientId, role) { ok ->
-                messenger.show(
-                    context.getString(if (ok) R.string.invite_sent else R.string.invite_failed),
-                )
+                messenger.show(if (ok) inviteSent else inviteFailed)
             }
         },
         onApproveRequest = { requesterId -> actions.approveRequest(vault.meta.vaultId, requesterId) },

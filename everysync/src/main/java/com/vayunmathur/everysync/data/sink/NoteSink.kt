@@ -3,6 +3,7 @@ package com.vayunmathur.everysync.data.sink
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.core.database.getLongOrNull
 import androidx.core.database.getStringOrNull
 import com.vayunmathur.everysync.data.RemoteNote
@@ -75,10 +76,10 @@ object NoteSink {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun notesUri(vaultId: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$PATH_NOTES")
+        "content://$AUTHORITY/vault/$vaultId/$PATH_NOTES".toUri()
 
     fun snapshotsUri(vaultId: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$PATH_SNAPSHOTS")
+        "content://$AUTHORITY/vault/$vaultId/$PATH_SNAPSHOTS".toUri()
 
     fun queryUri(vaultId: String): Uri =
         notesUri(vaultId).buildUpon().appendPath(OP_QUERY_SINCE).build()
@@ -87,7 +88,7 @@ object NoteSink {
         notesUri(vaultId).buildUpon().appendPath(OP_UPSERT_RAW).build()
 
     fun purgeUri(vaultId: String, table: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$table")
+        "content://$AUTHORITY/vault/$vaultId/$table".toUri()
             .buildUpon().appendPath(OP_DELETE_BY_VAULT).build()
 
     /** Relay envelope for [note] (adapter bytes — what the relay log carries). */

@@ -7,25 +7,13 @@
     <string name="last_synced">آخر مزامنة: <xliff:g id="date" example="Today 10:30 AM">%1$s</xliff:g></string>
     <string name="never_synced">لم تتم المزامنة مطلقًا</string>
     <string name="add_account_title">إضافة حساب</string>
-    <string name="provider_via_health_connect">عبر Health Connect</string>
-    <string name="dav_base_url">عنوان URL خادم</string>
-    <string name="dav_username">اسم المستخدم / البريد الإلكتروني</string>
-    <string name="dav_password">كلمة المرور (خاصة بالتطبيق)</string>
-    <string name="login">تسجيل الدخول</string>
-    <string name="icloud_app_password_steps">يحتاج iCloud إلى كلمة مرور خاصة بتطبيق (ليس كلمة مرور مُعرِّف Apple خاصّتك):\n\n١. سجّل الدخول على account.apple.com\n٢. افتح تسجيل الدخول والأمان ← كلمات السر الخاصة بالتطبيقات\n٣. أنشئ واحدة وسمّها \"EverySync\"\n٤. أدخل البريد الإلكتروني لمعرّف Apple خاصّتك وكلمة المرور هذه أدناه</string>
-    <string name="icloud_create_password">إنشاء كلمة مرور خاصة بتطبيق</string>
-    <string name="apple_id_email">البريد الإلكتروني لمعرّف Apple</string>
-    <string name="app_specific_password">كلمة مرور خاصة بتطبيق</string>
     <string name="sync_contacts">مزامنة جهات الاتصال</string>
     <string name="sync_calendar">مزامنة التقويمات</string>
-    <string name="sync_health">مزامنة الصحة</string>
     <string name="remove_account">إزالة الحساب</string>
     <string name="global_interval">الفاصل الزمني للمزامنة (دقائق)</string>
     <string name="wifi_only">المزامنة عبر Wi-Fi فقط</string>
     <string name="need_permissions">EverySync يحتاج الوصول لجهات الاتصال والتقويم لمزامنة خزائنك.</string>
-    <string name="everysync_privacy_policy">يقوم EverySync بمزامنة جهات الاتصال، التقويمات وبيانات الصحة بين حساباتك السحابية وهذا الجهاز. يتم تخزين البيانات فقط على هذا الجهاز والخوادم التي تقوم بتكوينها.</string>
     <string name="accounts_title">EverySync</string>
-    <string name="dav_login_title">تسجيل الدخول لـ <xliff:g id="provider" example="iCloud">%1$s</xliff:g></string>
     <string name="sync_passwords">مزامنة كلمات المرور</string>
     <string name="sync_notes">مزامنة الملاحظات</string>
     <string name="sync_todos">مزامنة المهام</string>
@@ -51,12 +39,26 @@
     <string name="sync_error_hint">تم إيقاف المزامنة مؤقتًا بأمان: لا بيانات تم حذفها. ستتم استئنافه في المزامنة التالية.</string>
     <string name="snapshots_title">لقطات الاسترداد</string>
     <string name="snapshots_description">لقطة واحدة مشفرة في اليوم، تُحتفظ لـ ٣٠ يومًا. تؤدي الاستعادة لإعادة تشغيل يوم من خلال المزامنة — لا تزال التعديلات الأحدث هي السائدة في حالة التعارض.</string>
-    <string name="snapshot_row">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> تسجيلات</string>
+    <plurals name="snapshot_row">
+        <item quantity="zero">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> تسجيلات</item>
+        <item quantity="one">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> تسجيل</item>
+        <item quantity="two">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> تسجيلان</item>
+        <item quantity="few">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> تسجيلات</item>
+        <item quantity="many">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> تسجيلًا</item>
+        <item quantity="other">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> تسجيل</item>
+    </plurals>
     <string name="snapshot_restore">استعادة</string>
     <string name="snapshot_take_now">النسخ الاحتياطي الآن</string>
     <string name="snapshots_empty">لا لقطات بعد. اللقطات تلتقط يوميًا وقبل إيقاف تشغيل المزامنة.</string>
     <string name="snapshot_restore_title">استعادة اللقطة؟</string>
     <string name="snapshot_restore_confirm">إعادة تشغيل <xliff:g id="date" example="Oct 13, 2026">%1$s</xliff:g> (<xliff:g id="type" example="passwords">%2$s</xliff:g>) من خلال المزامنة؟ لا تزال التعديلات الأحدث هي السائدة في حالة التعارض.</string>
-    <string name="snapshot_restored">تمت استعادة <xliff:g id="count" example="42">%1$d</xliff:g> تسجيلات. جارٍ التسوية مع الخادم…</string>
+    <plurals name="snapshot_restored">
+        <item quantity="zero">تمت استعادة <xliff:g id="count" example="42">%1$d</xliff:g> تسجيلات. جارٍ التسوية مع الخادم…</item>
+        <item quantity="one">تمت استعادة <xliff:g id="count" example="42">%1$d</xliff:g> تسجيل. جارٍ التسوية مع الخادم…</item>
+        <item quantity="two">تمت استعادة <xliff:g id="count" example="42">%1$d</xliff:g> تسجيلان. جارٍ التسوية مع الخادم…</item>
+        <item quantity="few">تمت استعادة <xliff:g id="count" example="42">%1$d</xliff:g> تسجيلات. جارٍ التسوية مع الخادم…</item>
+        <item quantity="many">تمت استعادة <xliff:g id="count" example="42">%1$d</xliff:g> تسجيلًا. جارٍ التسوية مع الخادم…</item>
+        <item quantity="other">تمت استعادة <xliff:g id="count" example="42">%1$d</xliff:g> تسجيل. جارٍ التسوية مع الخادم…</item>
+    </plurals>
     <string name="snapshot_restore_failed">تعذّر استعادة تلك اللقطة.</string>
 </resources>

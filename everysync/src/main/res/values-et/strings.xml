@@ -47,8 +47,14 @@
     <string name="sync_error_hint">Sünkroonimine on ohutul viisil peatatud: mitte mingeid andmeid pole kustutatud. Töö jätkub järgmisel sünkroonimisel.</string>
     <string name="snapshots_title">Hetktõmmised taastamiseks</string>
     <string name="snapshots_description">Üks 30 päeva hoitav krüptitud hetktõmmis iga päeva kohta. Taastamine toimuks ka sünkroonimisel ja kui andmetes on vastuolu, siis kehtima jäävad uuemad andmed.</string>
-    <string name="snapshot_row">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> kirjet</string>
+    <plurals name="snapshot_row">
+        <item quantity="one">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> kirje</item>
+        <item quantity="other">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> kirjet</item>
+    </plurals>
     <string name="snapshot_restore_confirm">Kas kordad/taastad <xliff:g id="date" example="Oct 13, 2026">%1$s</xliff:g> (<xliff:g id="type" example="salasõnad">%2$s</xliff:g>) andmed sünkroonimise ajal? Kui andmetes on vastuolu, siis kehtima jäävad uuemad andmed.</string>
-    <string name="snapshot_restored"><xliff:g id="count" example="42">%1$d</xliff:g> kirjet on taastatud. Ühildan serveriga…</string>
+    <plurals name="snapshot_restored">
+        <item quantity="one"><xliff:g id="count" example="42">%1$d</xliff:g> kirje on taastatud. Ühildan serveriga…</item>
+        <item quantity="other"><xliff:g id="count" example="42">%1$d</xliff:g> kirjet on taastatud. Ühildan serveriga…</item>
+    </plurals>
     <string name="snapshot_restore_failed">Hetktõmmise taastamine ei õnnestunud.</string>
 </resources>

@@ -19,8 +19,7 @@ class MainActivity : MaActivity() {
     private val viewModel: EverySyncViewModel by viewModels()
 
     override fun onCreateBeforeContent() {
-        // everysync://join links request access to someone else's vault — fire a
-        // sealed join request (public ids only) and confirm on the snackbar.
+        // A join link (everysync://join/...) requests vault access, so fire the request and confirm on the snackbar.
         parseJoinLink(intent)?.let { handleJoinLink(it) }
     }
 

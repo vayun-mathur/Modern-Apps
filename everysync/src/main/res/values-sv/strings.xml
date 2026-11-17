@@ -43,12 +43,18 @@
     <string name="sync_error_hint">Synkroniseringen har pausats säkert: inga data raderades. Den återupptas vid nästa synkronisering.</string>
     <string name="snapshots_title">Återställningskopior</string>
     <string name="snapshots_description">En krypterad säkerhetskopia per dag sparas i 30 dagar. Vid återställning spelas en dags ändringar upp via synkroniseringen. Nyare ändringar får företräde vid konflikter.</string>
-    <string name="snapshot_row">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> poster</string>
+    <plurals name="snapshot_row">
+        <item quantity="one">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> post</item>
+        <item quantity="other">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> poster</item>
+    </plurals>
     <string name="snapshot_restore">Återställ</string>
     <string name="snapshot_take_now">Säkerhetskopiera nu</string>
     <string name="snapshots_empty">Inga säkerhetskopior ännu. Säkerhetskopior tas varje dag och innan synkronisering stängs av.</string>
     <string name="snapshot_restore_title">Återställa säkerhetskopia?</string>
     <string name="snapshot_restore_confirm">Spela upp <xliff:g id="date" example="Oct 13, 2026">%1$s</xliff:g> (<xliff:g id="type" example="passwords">%2$s</xliff:g>) via synkronisering? Nyare ändringar får företräde vid konflikter.</string>
-    <string name="snapshot_restored">Återställde <xliff:g id="count" example="42">%1$d</xliff:g> poster. Synkroniserar med servern…</string>
+    <plurals name="snapshot_restored">
+        <item quantity="one">Återställde <xliff:g id="count" example="42">%1$d</xliff:g> post. Synkroniserar med servern…</item>
+        <item quantity="other">Återställde <xliff:g id="count" example="42">%1$d</xliff:g> poster. Synkroniserar med servern…</item>
+    </plurals>
     <string name="snapshot_restore_failed">Kunde inte återställa säkerhetskopian.</string>
 </resources>

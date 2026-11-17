@@ -90,7 +90,10 @@
     <string name="snapshots_title">Recovery snapshots</string>
     <string name="snapshots_description">One encrypted snapshot per day, kept for 30 days. Restoring replays a day through sync — newer edits still win where they conflict.</string>
     <!-- SnapshotSection row: %1$s = vault type, %2$d = record count -->
-    <string name="snapshot_row">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> records</string>
+    <plurals name="snapshot_row">
+        <item quantity="one">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> record</item>
+        <item quantity="other">%1$s · <xliff:g id="count" example="42">%2$d</xliff:g> records</item>
+    </plurals>
     <string name="snapshot_restore">Restore</string>
     <string name="snapshot_take_now">Back up now</string>
     <string name="snapshots_empty">No snapshots yet. Snapshots are taken daily and before sync is turned off.</string>
@@ -98,6 +101,9 @@
     <!-- SnapshotSection restore confirm: %1$s = date, %2$s = vault type -->
     <string name="snapshot_restore_confirm">Replay <xliff:g id="date" example="Oct 13, 2026">%1$s</xliff:g> (<xliff:g id="type" example="passwords">%2$s</xliff:g>) through sync? Newer edits still win where they conflict.</string>
     <!-- ViewModel announce: %1$d = restored record count -->
-    <string name="snapshot_restored">Restored <xliff:g id="count" example="42">%1$d</xliff:g> records. Reconciling with the server…</string>
+    <plurals name="snapshot_restored">
+        <item quantity="one">Restored <xliff:g id="count" example="42">%1$d</xliff:g> record. Reconciling with the server…</item>
+        <item quantity="other">Restored <xliff:g id="count" example="42">%1$d</xliff:g> records. Reconciling with the server…</item>
+    </plurals>
     <string name="snapshot_restore_failed">Could not restore that snapshot.</string>
 </resources>

@@ -3,6 +3,7 @@ package com.vayunmathur.everysync.data.sink
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.core.database.getLongOrNull
 import androidx.core.database.getStringOrNull
 import com.vayunmathur.everysync.data.RemoteTodo
@@ -70,10 +71,10 @@ object TodoIpcSink {
     const val PARAM_SINCE = "since"
 
     fun todosUri(vaultId: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$PATH_TODOS")
+        "content://$AUTHORITY/vault/$vaultId/$PATH_TODOS".toUri()
 
     fun snapshotsUri(vaultId: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$PATH_SNAPSHOTS")
+        "content://$AUTHORITY/vault/$vaultId/$PATH_SNAPSHOTS".toUri()
 
     fun queryUri(vaultId: String): Uri =
         todosUri(vaultId).buildUpon().appendPath(OP_QUERY_SINCE).build()
@@ -82,7 +83,7 @@ object TodoIpcSink {
         todosUri(vaultId).buildUpon().appendPath(OP_UPSERT_RAW).build()
 
     fun purgeUri(vaultId: String, table: String): Uri =
-        Uri.parse("content://$AUTHORITY/vault/$vaultId/$table")
+        "content://$AUTHORITY/vault/$vaultId/$table".toUri()
             .buildUpon().appendPath(OP_DELETE_BY_VAULT).build()
 
     /** Relay envelope for [todo] (adapter bytes — what the relay log carries). */
