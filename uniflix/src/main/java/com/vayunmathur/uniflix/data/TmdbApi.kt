@@ -23,6 +23,7 @@ import kotlinx.serialization.json.Json
 /** Length of the yyyy prefix of an ISO date. */
 private const val YEAR_LENGTH = 4
 
+/** Keyless TMDB catalog client; reads static catalog copies before the proxy. */
 class TmdbApi {
     private val json = Json { ignoreUnknownKeys = true }
 
