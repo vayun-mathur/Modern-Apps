@@ -6,7 +6,6 @@ import android.content.Context
 import com.vayunmathur.library.log.Log
 import androidx.core.content.getSystemService
 import com.vayunmathur.screentime.data.AppTimer
-import com.vayunmathur.screentime.receiver.TimerReachedReceiver
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId

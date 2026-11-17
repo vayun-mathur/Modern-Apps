@@ -5,9 +5,9 @@ import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.screentime.platform.ScreenTimeViewModel
 import com.vayunmathur.screentime.platform.UsagePeriod
-import com.vayunmathur.screentime.receiver.BootReceiver
-import com.vayunmathur.screentime.receiver.ScheduleReceiver
-import com.vayunmathur.screentime.receiver.TimerReachedReceiver
+import com.vayunmathur.screentime.platform.BootReceiver
+import com.vayunmathur.screentime.platform.ScheduleReceiver
+import com.vayunmathur.screentime.platform.TimerReachedReceiver
 import com.vayunmathur.screentime.widget.WidgetRefresh
 import kotlin.test.Test
 import kotlin.test.assertEquals

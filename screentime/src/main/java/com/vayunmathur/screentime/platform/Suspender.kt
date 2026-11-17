@@ -1,6 +1,8 @@
 package com.vayunmathur.screentime.platform
 
+import android.annotation.SuppressLint
 import android.content.Context
+import androidx.core.content.edit
 import com.vayunmathur.library.log.Log
 import java.lang.reflect.Method
 
@@ -25,6 +27,10 @@ private const val TAG = "ScreenTimeSuspender"
  * unconditional: reconcile recomputes the full paused set every time, so a stale suspend
  * cannot survive a rule change, a reboot, or a timer deletion.
  */
+// PrivateApi is a false positive here: setPackagesSuspended is a @SystemApi on a public
+// class with no public SDK accessor; reflection is feature-gated and failure-degrading,
+// and the platform still enforces SUSPEND_APPS (held via the SYSTEM_WELLBEING role).
+@SuppressLint("PrivateApi")
 class Suspender(private val context: Context) {
 
     private val pm = context.packageManager
@@ -59,11 +65,11 @@ class Suspender(private val context: Context) {
         prefs.getStringSet(KEY_PAUSED, emptySet()) ?: emptySet()
 
     private fun rememberPaused(packages: Set<String>) {
-        prefs.edit().putStringSet(KEY_PAUSED, trackedPaused() + packages).apply()
+        prefs.edit { putStringSet(KEY_PAUSED, trackedPaused() + packages) }
     }
 
     private fun forgetPaused(packages: Set<String>) {
-        prefs.edit().putStringSet(KEY_PAUSED, trackedPaused() - packages).apply()
+        prefs.edit { putStringSet(KEY_PAUSED, trackedPaused() - packages) }
     }
 
     private companion object {

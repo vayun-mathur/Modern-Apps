@@ -1,11 +1,9 @@
-package com.vayunmathur.screentime.receiver
+package com.vayunmathur.screentime.platform
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.screentime.platform.Coordinator
-import com.vayunmathur.screentime.platform.EXTRA_PACKAGE_NAME
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

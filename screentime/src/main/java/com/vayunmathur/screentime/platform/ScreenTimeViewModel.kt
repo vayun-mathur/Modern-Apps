@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.screentime.data.AppTimer
@@ -284,7 +285,11 @@ class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
             val pm = getApplication<Application>().packageManager
             val self = getApplication<Application>().packageName
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-            pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
+            if (Build.VERSION.SDK_INT >= 33) {
+                pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION") pm.queryIntentActivities(intent, 0)
+            }
                 .mapNotNull { it.activityInfo?.applicationInfo }
                 .distinctBy { it.packageName }
                 .filter { it.packageName != self }

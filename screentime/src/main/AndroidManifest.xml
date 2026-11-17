@@ -19,11 +19,14 @@
     <!-- Sensors permission at install instead of auto-granting it. -->
     <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
 
-    <uses-permission android:name="android.permission.SUSPEND_APPS" />
+    <uses-permission android:name="android.permission.SUSPEND_APPS"
+        tools:ignore="ProtectedPermissions" />
     <!-- Friction sheets and the expired-timer screen draw over the opening app. Via the role. -->
-    <uses-permission android:name="android.permission.SYSTEM_APPLICATION_OVERLAY" />
+    <uses-permission android:name="android.permission.SYSTEM_APPLICATION_OVERLAY"
+        tools:ignore="ProtectedPermissions" />
     <!-- Time-based callbacks when an app reaches a usage threshold. Via the role. -->
-    <uses-permission android:name="android.permission.OBSERVE_APP_USAGE" />
+    <uses-permission android:name="android.permission.OBSERVE_APP_USAGE"
+        tools:ignore="ProtectedPermissions" />
     <!-- Reads per-app foreground time for the dashboard. An appop, not a role grant: declared
          here but stays denied until granted in Settings or self-granted - see UsageAccess. -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
@@ -70,7 +73,6 @@
             android:name=".MainActivity"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
-            android:label="@string/app_name"
             android:launchMode="singleTask"
             android:theme="@style/Theme.General" />
 
@@ -143,16 +145,16 @@
 
         <!-- Fired by UsageStatsService when an app spends its timer budget. -->
         <receiver
-            android:name=".receiver.TimerReachedReceiver"
+            android:name=".platform.TimerReachedReceiver"
             android:exported="false" />
 
         <!-- Wind-down window edges. Re-armed each time one fires. -->
         <receiver
-            android:name=".receiver.ScheduleReceiver"
+            android:name=".platform.ScheduleReceiver"
             android:exported="false" />
 
         <receiver
-            android:name=".receiver.BootReceiver"
+            android:name=".platform.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

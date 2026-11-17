@@ -102,7 +102,6 @@ class ScreenTimeScreensTest {
             )
         }
         rule.onNodeWithText("Wind Down").assertIsDisplayed()
-        rule.onAllNodesWithText("Wind Down", substring = true)
         rule.onNodeWithText("Use wind-down", substring = true).performClick()
         rule.runOnIdle { assertTrue(enabled == true || enabled == null) }
     }

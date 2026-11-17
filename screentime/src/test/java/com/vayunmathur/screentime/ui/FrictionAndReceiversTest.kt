@@ -9,9 +9,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.screentime.FakeAndroidKeyStore
 import com.vayunmathur.screentime.platform.EXTRA_PACKAGE_NAME
 import com.vayunmathur.screentime.platform.SpentState
-import com.vayunmathur.screentime.receiver.BootReceiver
-import com.vayunmathur.screentime.receiver.ScheduleReceiver
-import com.vayunmathur.screentime.receiver.TimerReachedReceiver
+import com.vayunmathur.screentime.platform.BootReceiver
+import com.vayunmathur.screentime.platform.ScheduleReceiver
+import com.vayunmathur.screentime.platform.TimerReachedReceiver
 import com.vayunmathur.screentime.widget.WidgetRefresh
 import org.junit.Before
 import org.junit.Rule

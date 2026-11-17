@@ -1,6 +1,7 @@
 package com.vayunmathur.screentime.platform
 
 import android.content.Context
+import androidx.core.content.edit
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.screentime.data.ScreenTimeRules
 import com.vayunmathur.screentime.widget.WidgetRefresh
@@ -83,7 +84,7 @@ class SpentState(context: Context) {
 
     fun markSpent(packageName: String) {
         pruneToToday()
-        prefs.edit().putStringSet(KEY_SPENT, spent() + packageName).apply()
+        prefs.edit { putStringSet(KEY_SPENT, spent() + packageName) }
     }
 
     fun hasSpent(packageName: String): Boolean = packageName in spent()
@@ -91,13 +92,13 @@ class SpentState(context: Context) {
     /** Forget one package's spent mark, e.g. when its timer is deleted. */
     fun clear(packageName: String) {
         pruneToToday()
-        prefs.edit().putStringSet(KEY_SPENT, spent() - packageName).apply()
+        prefs.edit { putStringSet(KEY_SPENT, spent() - packageName) }
     }
 
     /** Drop yesterday's trips. This is the daily reset; there is no other. */
     fun pruneToToday() {
         if (prefs.getString(KEY_DAY, null) == today()) return
-        prefs.edit().remove(KEY_SPENT).putString(KEY_DAY, today()).apply()
+        prefs.edit { remove(KEY_SPENT); putString(KEY_DAY, today()) }
     }
 
     private fun spent(): Set<String> = prefs.getStringSet(KEY_SPENT, emptySet()) ?: emptySet()

@@ -6,7 +6,6 @@ import android.content.Context
 import com.vayunmathur.library.log.Log
 import androidx.core.content.getSystemService
 import com.vayunmathur.screentime.data.WindDownSchedule
-import com.vayunmathur.screentime.receiver.ScheduleReceiver
 import java.time.LocalDateTime
 import java.time.ZoneId
 
