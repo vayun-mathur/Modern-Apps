@@ -378,13 +378,16 @@ fn colorspace_info_at(
 
 
 pub(crate) fn comps_to_rgb(comps: &[u8], n: u8) -> (u8, u8, u8) {
+    // A truncated sample slice (malformed image) yields 0 for the missing
+    // components instead of panicking on an out-of-bounds index.
+    let at = |i: usize| comps.get(i).copied().unwrap_or(0);
     match n {
-        3 => (comps[0], comps[1], comps[2]),
+        3 => (at(0), at(1), at(2)),
         4 => {
-            let c = comps[0] as f64 / 255.0;
-            let m = comps[1] as f64 / 255.0;
-            let y = comps[2] as f64 / 255.0;
-            let k = comps[3] as f64 / 255.0;
+            let c = at(0) as f64 / 255.0;
+            let m = at(1) as f64 / 255.0;
+            let y = at(2) as f64 / 255.0;
+            let k = at(3) as f64 / 255.0;
             let r = (1.0 - c) * (1.0 - k);
             let g = (1.0 - m) * (1.0 - k);
             let b = (1.0 - y) * (1.0 - k);

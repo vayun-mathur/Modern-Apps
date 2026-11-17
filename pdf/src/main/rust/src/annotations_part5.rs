@@ -387,17 +387,27 @@ pub(crate) fn subtype_code(subtype: &[u8]) -> u8 {
 }
 
 pub(crate) fn annot_color(doc: &Document, dict: &Dictionary) -> u32 {
-    dict.get(b"C")
+    // §12.5.2 Table 166: /C holds 0 (transparent), 1 (gray), 3 (RGB) or
+    // 4 (CMYK) numbers. Reading only the 3-number form made every gray or
+    // CMYK annotation report opaque black in the editor listing.
+    let arr = dict
+        .get(b"C")
         .ok()
         .and_then(|o| deref(doc, o))
-        .and_then(|o| o.as_array().ok())
-        .filter(|a| a.len() == 3)
-        .map(|a| {
-            rgb_to_argb(
-                a[0].as_float().unwrap_or(0.0) as f64,
-                a[1].as_float().unwrap_or(0.0) as f64,
-                a[2].as_float().unwrap_or(0.0) as f64,
-            )
-        })
-        .unwrap_or(0xFF00_0000)
+        .and_then(|o| o.as_array().ok());
+    let Some(a) = arr else { return 0xFF00_0000 };
+    let comp = |i: usize| -> f64 {
+        a.get(i)
+            .and_then(|o| deref(doc, o))
+            .and_then(num)
+            .filter(|v| v.is_finite())
+            .unwrap_or(0.0)
+    };
+    match a.len() {
+        0 => 0x0000_0000,
+        1 => gray_to_argb(comp(0)),
+        3 => rgb_to_argb(comp(0), comp(1), comp(2)),
+        4 => cmyk_to_argb(comp(0), comp(1), comp(2), comp(3)),
+        _ => 0xFF00_0000,
+    }
 }

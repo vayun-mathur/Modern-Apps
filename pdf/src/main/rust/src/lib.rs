@@ -95,3 +95,13 @@ mod reference_diff_tests;
 mod perf_tests;
 #[cfg(test)]
 mod robustness_tests;
+#[cfg(test)] mod cov_geometry_tests;
+#[cfg(test)] mod cov_outlines_tests;
+#[cfg(test)] mod cov_interpret_tests;
+#[cfg(test)] mod cov_cff_tests;
+#[cfg(test)] mod cov_docedit_tests;
+#[cfg(test)] mod cov_decrypt_tests;
+#[cfg(test)] mod cov_annotations_tests;
+#[cfg(test)] mod cov_forms_tests;
+#[cfg(test)] mod cov_more_tests;
+#[cfg(test)] mod cov_fonts_tests;
