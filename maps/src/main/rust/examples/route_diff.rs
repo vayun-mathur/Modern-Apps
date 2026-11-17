@@ -740,9 +740,9 @@ fn bench(args: &[String]) -> Result<bool, String> {
                         p.checksum = p
                             .checksum
                             .rotate_left(7)
-                            .wrapping_add(u64::from(s.dist_mm))
-                            .wrapping_mul(0x1000_0000_1B3)
-                            ^ u64::from(s.time_10ms);
+                            .wrapping_add(s.dist_mm)
+                            .wrapping_mul(0x0100_0000_01B3)
+                            ^ s.time_10ms;
                     }
                 }
             }

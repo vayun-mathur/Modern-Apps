@@ -51,7 +51,7 @@ pub fn distance_m(a: (i32, i32), b: (i32, i32)) -> f64 {
 /// The first and last points are always kept, so the walk covers the whole
 /// polyline and a short one still yields both ends.
 pub fn resample(points: &[(i32, i32)], step_m: f64) -> Vec<(i32, i32)> {
-    if points.len() < 2 || !(step_m > 0.0) {
+    if points.len() < 2 || step_m.is_nan() || step_m <= 0.0 {
         return points.to_vec();
     }
     let lerp = |a: i32, b: i32, t: f64| (f64::from(a) + (f64::from(b) - f64::from(a)) * t).round() as i32;

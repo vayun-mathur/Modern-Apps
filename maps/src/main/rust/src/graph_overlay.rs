@@ -258,9 +258,9 @@ mod overlay_tests {
         }
         let mut edges_bytes = write_blocked(&edge_recs, 7);
         pad8(&mut edges_bytes);
-        edges_bytes.extend(std::iter::repeat(0u8).take(((e.div_ceil(ESCAPE_BLOCK) + 1) * 4) as usize));
+        edges_bytes.extend(std::iter::repeat_n(0u8, ((e.div_ceil(ESCAPE_BLOCK) + 1) * 4) as usize));
         pad8(&mut edges_bytes);
-        edges_bytes.extend(std::iter::repeat(0u8).take(EdgeBitmap::bytes(e) as usize));
+        edges_bytes.extend(std::iter::repeat_n(0u8, EdgeBitmap::bytes(e) as usize));
         let intermediate = vec![0u8; (EdgeBitmap::bytes(e) + 18) as usize];
         let mut meta = Vec::new();
         meta.extend_from_slice(&GRAPH_MAGIC.to_le_bytes());

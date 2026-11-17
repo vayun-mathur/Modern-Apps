@@ -8,7 +8,7 @@
 //! Single-threaded like the grouping port: the tool spreads candidates
 //! across cores, but a viewport fetch holds dozens of routes.
 
-use super::corridor_geom::{cumulative, point_at, slice_between};
+use super::corridor_geom::{point_at, slice_between};
 use super::corridor_group::{Corridor, Run};
 use std::collections::{BTreeMap, HashMap};
 

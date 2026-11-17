@@ -13,14 +13,17 @@ static NEXT_TRANSIT_UID: std::sync::atomic::AtomicU64 = std::sync::atomic::Atomi
 /// Decoded bytes a thread keeps across all indexes (16 MiB per thread, whatever the block size).
 const TRANSIT_CACHE_BYTES: usize = 16 << 20;
 
+type TransitBlockKey = (u64, u8, u32);
+type CachedTransitBlock = (TransitBlockKey, std::rc::Rc<Vec<u8>>);
+
 struct TransitBlockCache {
-    map: std::collections::HashMap<(u64, u8, u32), std::rc::Rc<Vec<u8>>>,
-    order: std::collections::VecDeque<(u64, u8, u32)>,
+    map: std::collections::HashMap<TransitBlockKey, std::rc::Rc<Vec<u8>>>,
+    order: std::collections::VecDeque<TransitBlockKey>,
     /// Decoded bytes held in `map`.
     bytes: usize,
     /// The last block each section touched: sequential walks (a varint stream, a polyline)
     /// stay in one block for thousands of reads, interleaved across sections.
-    last: Vec<Option<((u64, u8, u32), std::rc::Rc<Vec<u8>>)>>,
+    last: Vec<Option<CachedTransitBlock>>,
 }
 
 thread_local! {

@@ -3,6 +3,7 @@ impl Graph {
 
     /// Whether this graph reads record tables through v7 blocked sections.
     /// Test hook: the loaders set the views, the accessors branch on them.
+    #[cfg(test)]
     pub(crate) fn uses_blocked_sections(&self) -> bool {
         self.nodes_view.is_some() || self.edges_view.is_some()
     }

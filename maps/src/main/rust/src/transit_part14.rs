@@ -88,7 +88,7 @@
         let idx = pack.index();
         let legs = plan(&idx, 40.0, -120.0, 40.0, -114.0, 25_200, sched(wednesday()))
             .expect("Friday is within the horizon");
-        let last = legs.iter().filter(|l| l.kind == LegKind::Ride).last().expect("a ride");
+        let last = legs.iter().rfind(|l| l.kind == LegKind::Ride).expect("a ride");
         assert_eq!(last.dep_secs, 2 * SECS_PER_DAY + 32_400);
     }
 

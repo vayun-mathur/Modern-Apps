@@ -55,7 +55,7 @@ fn osm_mask_to_dir_mask(osm: u16) -> u32 {
 /// taken maneuver is `taken`. Exact match, with a small tolerance so a dedicated
 /// left lane also serves a slight/sharp-left maneuver (and symmetrically right).
 fn lane_serves(dir_mask: u32, taken: i32) -> bool {
-    let has = |o: i32| o >= 0 && o < 31 && (dir_mask & (1u32 << o)) != 0;
+    let has = |o: i32| (0..31).contains(&o) && (dir_mask & (1u32 << o)) != 0;
     match taken {
         9 => has(9),           // STRAIGHT
         4 => has(4) || has(1), // TURN_LEFT

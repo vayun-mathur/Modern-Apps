@@ -20,11 +20,14 @@ pub(crate) struct ZsecRegion {
 unsafe impl Send for ZsecRegion {}
 unsafe impl Sync for ZsecRegion {}
 
+type GraphBlockKey = (u64, u32);
+type CachedGraphBlock = (GraphBlockKey, std::rc::Rc<Vec<u8>>);
+
 struct GraphZsecCache {
-    map: std::collections::HashMap<(u64, u32), std::rc::Rc<Vec<u8>>>,
-    order: std::collections::VecDeque<(u64, u32)>,
+    map: std::collections::HashMap<GraphBlockKey, std::rc::Rc<Vec<u8>>>,
+    order: std::collections::VecDeque<GraphBlockKey>,
     bytes: usize,
-    last: Option<((u64, u32), std::rc::Rc<Vec<u8>>)>,
+    last: Option<CachedGraphBlock>,
 }
 
 thread_local! {

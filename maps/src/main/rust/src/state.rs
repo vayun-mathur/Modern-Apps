@@ -25,6 +25,12 @@ pub struct RadixHeap {
     count: u32,
 }
 
+impl Default for RadixHeap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RadixHeap {
     pub fn new() -> RadixHeap {
         RadixHeap {
@@ -114,6 +120,12 @@ const DIR_SIZE: usize = (1usize << 32) >> PAGE_BITS;
 pub struct RoutingScratchpad {
     directory: Vec<Option<Box<[Entry]>>>,
     active_pages: Vec<u32>,
+}
+
+impl Default for RoutingScratchpad {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RoutingScratchpad {

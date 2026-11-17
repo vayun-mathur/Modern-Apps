@@ -26,7 +26,7 @@
     fn trip_itinerary_lists_every_stop_with_times() {
         let idx = one_route_pack().index();
         // Vehicle id for route 0, trip 0, today: the packing active_vehicles uses.
-        let id = (0i64 << 32) | (0i64 << 1) | 0;
+        let id = 0;
         let itin =
             trip_itinerary(&idx, id, sched(wednesday())).expect("trip 0 runs Wednesday");
         assert_eq!(itin.route_name, "N");
@@ -51,10 +51,10 @@
         let idx = one_route_pack().index();
         // Route 9 does not exist; trip 99 neither.
         assert!(
-            trip_itinerary(&idx, (9i64 << 32) | (0i64 << 1), sched(wednesday())).is_none()
+            trip_itinerary(&idx, 9i64 << 32, sched(wednesday())).is_none()
         );
         assert!(
-            trip_itinerary(&idx, (0i64 << 32) | (99i64 << 1), sched(wednesday())).is_none()
+            trip_itinerary(&idx, 99i64 << 1, sched(wednesday())).is_none()
         );
     }
 

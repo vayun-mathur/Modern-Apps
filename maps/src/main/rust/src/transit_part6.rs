@@ -457,11 +457,6 @@
         fn index(&self) -> TransitIndex {
             TransitIndex::from_bytes(zsec_pack(&self.build_with_version(7), 64)).expect("index loads")
         }
-
-        /// The same pack as raw v7 sections (planet4's layout).
-        fn index_v7(&self) -> TransitIndex {
-            TransitIndex::from_bytes(self.build_with_version(7)).expect("index loads")
-        }
     }
 
     /// Rewrite a raw TRIX pack as v8: each non-empty section a ZSEC section of `block`-byte

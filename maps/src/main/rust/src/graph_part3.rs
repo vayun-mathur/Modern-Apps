@@ -293,7 +293,7 @@ impl Graph {
             let mut qlat = (lat as i64).div_euclid(10) + i64::from((lat as i64).rem_euclid(10) >= 5);
             let mut qlon = (lon as i64).div_euclid(10) + i64::from((lon as i64).rem_euclid(10) >= 5);
             let mut at = 0usize;
-            let mut uvar = |at: &mut usize| -> Option<u64> {
+            let uvar = |at: &mut usize| -> Option<u64> {
                 let (mut r, mut s) = (0u64, 0u32);
                 while *at < blob.len() {
                     let b = blob[*at];

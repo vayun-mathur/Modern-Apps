@@ -83,8 +83,8 @@ pub fn active_vehicles(
                 let mut cancelled = false;
                 let mut delay_secs = 0i32;
                 let mut found_delay = false;
-                for p in 0..n {
-                    let sched_dep = td.start_time as i64 + dep_rel[p] as i64 - day_shift;
+                for (p, dep) in dep_rel.iter().enumerate().take(n) {
+                    let sched_dep = td.start_time as i64 + *dep as i64 - day_shift;
                     if sched_dep < 0 {
                         continue;
                     }

@@ -8,7 +8,7 @@
 mod archive_tests {
     use super::*;
     use tilecodec::mamaps::archive::{
-        ARCHIVE_ALIGN, ArchiveEntry, ArchiveFooter, GRAPH_MAGIC, GRAPH_VERSION,
+        ARCHIVE_ALIGN, ArchiveEntry, ArchiveFooter, GRAPH_MAGIC,
     };
 
     const BUILD_ID: u64 = 0x0123_4567_89AB_CDEF;

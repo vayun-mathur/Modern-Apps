@@ -17,10 +17,6 @@ use std::collections::BTreeMap;
 /// tracks closer than this are one corridor.
 pub const CORRIDOR_M: f64 = 30.0;
 
-/// How close a member's own survey has to come to the reference before it
-/// stops drawing its own track and hands over to the corridor's.
-const SNAP_M: f64 = 8.0;
-
 /// Spacing of the probe samples along a polyline.
 pub const SAMPLE_M: f64 = 10.0;
 
