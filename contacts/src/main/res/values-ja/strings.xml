@@ -7,14 +7,10 @@
     <string name="share_contact">連絡先を共有</string>
     <string name="about_name"><xliff:g id="first_name" example="John">%1$s</xliff:g> について</string>
     <string name="birthday">誕生日</string>
-    <string name="note">ノート</string>
     <string name="ringtone">着信音</string>
     <string name="select_ringtone">着信音を選択</string>
     <!-- Japanese overrides for the shared :library:ui ringtone labels. They cannot live in
          :library:ui because a values-ja there would add Japanese to every app's localeConfig. -->
-    <string name="ringtone_default">デフォルト</string>
-    <string name="ringtone_silent">無音</string>
-    <string name="ringtone_custom">カスタム</string>
     <string name="favorites">お気に入り</string>
     <string name="export_contacts">全ての連絡先をエクスポート</string>
     <string name="on_device">デバイス上</string>
@@ -28,20 +24,15 @@
     <string name="account">アカウント</string>
     <string name="account_display_format"><xliff:g id="account_name" example="Personal">%1$s</xliff:g> (<xliff:g id="account_type" example="com.google">%2$s</xliff:g>)</string>
     <string name="add_phone">電話番号を追加</string>
-    <string name="remove_phone">電話番号を削除</string>
     <string name="add_email">Eメールを追加</string>
-    <string name="remove_email">Eメールを削除</string>
     <string name="add_address">住所を追加</string>
-    <string name="remove_address">住所を削除</string>
     <string name="add_date">日付を追加</string>
     <string name="dates">日付</string>
     <string name="phone">電話番号</string>
-    <string name="email">Eメール</string>
     <string name="addresses">住所</string>
     <string name="contact_photo">連絡先の写真</string>
     <string name="add_picture">写真を追加</string>
     <string name="change_picture">変更</string>
-    <string name="remove_picture">削除</string>
     <string name="visible_accounts">利用可能なアカウント</string>
     <string name="add_contacts_account">連絡先アカウントを追加</string>
     <string name="enter_account_name">新しいローカルアカウントの名前を入力:</string>
@@ -50,14 +41,11 @@
     <string name="delete_contact_confirm">この連絡先を削除しても良いでしょうか? この変更は取り消せません。</string>
     <string name="delete_contact_name_confirm">「<xliff:g id="contact_name" example="John Doe">%1$s</xliff:g>」を削除しても良いでしょうか? この変更は取り消せません。</string>
     <string name="grant_contacts_permission">連絡先の権限を許可してください</string>
-    <string name="select_contact_hint">詳細を表示する連絡先を選択</string>
     <string name="import_contacts">連絡先をインポート</string>
-    <string name="action_call">通話</string>
     <string name="action_message">メッセージ</string>
     <string name="action_video">ビデオ</string>
     <string name="calendar_sync">カレンダーの同期</string>
     <string name="sync_contacts_calendar">カレンダーに誕生日を表示</string>
-    <string name="contacts_calendar_name">連絡先</string>
     <string name="anniversary">記念日</string>
     <string name="backup_and_export">バックアップとエクスポート</string>
     <string name="grant_calendar_permissions">カレンダーの権限を許可</string>
@@ -65,7 +53,9 @@
     <plurals name="delete_selected_contacts_confirm">
         <item quantity="other"><xliff:g id="count" example="5">%1$d</xliff:g> 個の選択された連絡先を削除しても良いでしょうか? この変更は取り消せません。</item>
     </plurals>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> 個選択中</string>
+    <plurals name="selected_count">
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> 個選択中</item>
+    </plurals>
     <string name="display">表示</string>
     <string name="show_account_labels">連絡先のアカウントを表示</string>
     <string name="search_contacts">連絡先を検索</string>
@@ -75,9 +65,7 @@
     <string name="whatsapp">WhatsApp</string>
     <string name="telegram">Telegram</string>
     <string name="google_meet">Google Meet</string>
-    <string name="contacts">連絡先</string>
     <string name="groups">グループ</string>
-    <string name="select_group_hint">連絡先を見るグループを選択</string>
     <string name="add_to_group">グループに追加</string>
     <string name="add_group">グループを追加</string>
     <string name="enter_group_name">グループの名前を入力</string>

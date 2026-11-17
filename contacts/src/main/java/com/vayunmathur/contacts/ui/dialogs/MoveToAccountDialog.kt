@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.NewContactRestriction
 import com.vayunmathur.contacts.data.isSimAccountType
-import com.vayunmathur.contacts.util.ContactAccount
+import com.vayunmathur.contacts.platform.ContactAccount
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.ListItem

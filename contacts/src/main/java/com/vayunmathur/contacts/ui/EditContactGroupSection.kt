@@ -7,7 +7,7 @@ import androidx.compose.ui.res.stringResource
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.ContactGroup
 import com.vayunmathur.contacts.data.GroupMembership
-import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconEvent
 import com.vayunmathur.library.ui.MultiCategoryPicker

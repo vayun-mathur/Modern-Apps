@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -74,9 +75,8 @@ internal fun ContactSectionScroller(
     // the navigation bar (the list draws under both and insets its *content* instead). Bound the
     // pill's travel to the list's actual viewport - between the top/bottom content padding - so it
     // runs only along the side of the visible list.
-    val info = state.layoutInfo
-    val topInsetPx = info.beforeContentPadding
-    val bottomInsetPx = info.afterContentPadding
+    val topInsetPx by remember { derivedStateOf { state.layoutInfo.beforeContentPadding } }
+    val bottomInsetPx by remember { derivedStateOf { state.layoutInfo.afterContentPadding } }
     val listViewportPx = (trackHeightPx - topInsetPx - bottomInsetPx).coerceAtLeast(1)
     val travelPx = (listViewportPx - thumbHeightPx).coerceAtLeast(1).toFloat()
     val latestTravelPx = rememberUpdatedState(travelPx)

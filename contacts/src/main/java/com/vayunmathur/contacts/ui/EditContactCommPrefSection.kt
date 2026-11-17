@@ -21,7 +21,7 @@ import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.CommPlatform
 import com.vayunmathur.contacts.data.CommPref
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.IconArrowDropDown
 import com.vayunmathur.library.ui.IconButton

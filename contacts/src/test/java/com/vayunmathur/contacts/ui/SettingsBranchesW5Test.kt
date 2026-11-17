@@ -14,8 +14,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.contacts.Route
 import com.vayunmathur.contacts.data.FakeProviderPass2Test
 import com.vayunmathur.contacts.data.SimProviderPass2Test
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.loadAccountsInternal
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.loadAccountsInternal
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
 import kotlin.test.BeforeTest

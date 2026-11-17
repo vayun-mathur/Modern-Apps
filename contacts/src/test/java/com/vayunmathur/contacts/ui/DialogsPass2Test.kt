@@ -11,8 +11,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.ui.dialogs.DeleteAccountDialog
 import com.vayunmathur.contacts.ui.dialogs.RenameAccountDialog
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

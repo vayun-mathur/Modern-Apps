@@ -6,7 +6,6 @@
     <string name="share_contact">Condividi contatto</string>
     <string name="about_name">Informazioni su <xliff:g id="first_name" example="John">%1$s</xliff:g></string>
     <string name="birthday">Compleanno</string>
-    <string name="note">Note</string>
     <string name="favorites">Preferiti</string>
     <string name="export_contacts">Esporta tutti i contatti</string>
     <string name="on_device">Nel dispositivo</string>
@@ -20,20 +19,15 @@
     <string name="account">Account</string>
     <string name="account_display_format"><xliff:g id="account_name" example="Personal">%1$s</xliff:g> (<xliff:g id="account_type" example="com.google">%2$s</xliff:g>)</string>
     <string name="add_phone">Aggiungi telefono</string>
-    <string name="remove_phone">Rimuovi telefono</string>
     <string name="add_email">Aggiungi email</string>
-    <string name="remove_email">Rimuovi email</string>
     <string name="add_address">Aggiungi indirizzo</string>
-    <string name="remove_address">Rimuovi indirizzo</string>
     <string name="add_date">Aggiungi data</string>
     <string name="dates">Date</string>
     <string name="phone">Telefono</string>
-    <string name="email">Email</string>
     <string name="addresses">Indirizzi</string>
     <string name="contact_photo">Foto contatto</string>
     <string name="add_picture">Aggiungi immagine</string>
     <string name="change_picture">Cambia</string>
-    <string name="remove_picture">Rimuovi</string>
     <string name="visible_accounts">Account visibili</string>
     <string name="add_contacts_account">Aggiungi account contatti</string>
     <string name="enter_account_name">Inserisci un nome per il nuovo account locale:</string>
@@ -42,22 +36,25 @@
     <string name="delete_contact_confirm">Sei sicuro di voler eliminare questo contatto? Questa operazione è irreversibile.</string>
     <string name="delete_contact_name_confirm">Sei sicuro di voler eliminare \"<xliff:g id="contact_name" example="John Doe">%1$s</xliff:g>\"? Questa operazione non può essere annullata.</string>
     <string name="grant_contacts_permission">Concedi autorizzazione dei contatti</string>
-    <string name="select_contact_hint">Seleziona un contatto per visualizzare i dettagli</string>
     <string name="import_contacts">Importa contatti</string>
-    <string name="action_call">Chiama</string>
     <string name="action_message">Scrivi</string>
     <string name="action_video">Video</string>
     <string name="calendar_sync">Sincronizzazione calendario</string>
     <string name="sync_contacts_calendar">Mostra compleanni nel calendario</string>
-    <string name="contacts_calendar_name">Contatti</string>
     <string name="anniversary">Anniversario</string>
     <string name="backup_and_export">Backup ed esportazione</string>
     <string name="grant_calendar_permissions">Concedi autorizzazioni del calendario</string>
     <string name="delete_selected_contacts_title">Elimina i contatti selezionati</string>
     <plurals name="delete_selected_contacts_confirm">
+        <item quantity="one">Sicuro di volere eliminare il %1$d contatto selezionato? Questa operazione è irreversibile.</item>
+        <item quantity="many">Sicuro di volere eliminare i %1$d contatti selezionati? Questa operazione è irreversibile.</item>
         <item quantity="other">Sicuro di volere eliminare i %1$d contatti selezionati? Questa operazione è irreversibile.</item>
     </plurals>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> selezionati</string>
+    <plurals name="selected_count">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> selezionato</item>
+        <item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> selezionati</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> selezionati</item>
+    </plurals>
     <string name="contact_photo_description">Foto di <xliff:g id="contact_name" example="John Doe">%1$s</xliff:g></string>
     <string name="show_account_labels">Mostra account del contatto</string>
     <string name="search_contacts">Cerca contatti</string>
@@ -68,9 +65,7 @@
     <string name="whatsapp">WhatsApp</string>
     <string name="telegram">Telegram</string>
     <string name="google_meet">Google Meet</string>
-    <string name="contacts">Contatti</string>
     <string name="groups">Gruppi</string>
-    <string name="select_group_hint">Seleziona un gruppo per visualizzare i contatti</string>
     <string name="add_to_group">Aggiungi al gruppo</string>
     <string name="add_group">Aggiungi gruppo</string>
     <string name="enter_group_name">Inserisci nome gruppo</string>
@@ -78,6 +73,8 @@
     <string name="delete_group_confirm">Sei sicuro di voler eliminare questo gruppo? I contatti non verranno eliminati.</string>
     <string name="no_groups_found">Nessun gruppo trovato. Creane uno nella scheda Gruppi.</string>
     <plurals name="contacts_count">
+        <item quantity="one">%1$d contatto</item>
+        <item quantity="many">%1$d contatti</item>
         <item quantity="other">%1$d contatti</item>
     </plurals>
     <string name="ringtone">Suoneria</string>
@@ -86,7 +83,6 @@
     <string name="delete_account">Elimina account</string>
     <string name="name_prefix">Prefisso</string>
     <string name="name_suffix">Suffisso</string>
-    <string name="name_affix_none">Nessuno</string>
     <string name="delete_local_account_confirm">Eliminare questo account e tutti i suoi contatti? Questa operazione non può essere annullata.</string>
     <string name="account_name_exists">Un account con questo nome esiste già</string>
     <string name="import_vcf_file">Importa file .vcf</string>
@@ -108,7 +104,6 @@
     <string name="enter_custom_label">Inserisci etichetta personalizzata</string>
     <string name="sim_limited_fields_hint">I contatti della SIM memorizzano solamente nome, numero di telefono e email.</string>
     <string name="save_failed">Salvataggio non riuscito</string>
-    <string name="importing">Importazione…</string>
     <string name="no_contacts_yet">Nessun contatto presente</string>
     <string name="no_contacts_yet_message">Tocca il pulsante Aggiungi per creare il tuo primo contatto.</string>
     <string name="no_groups_yet">Nessun gruppo presente</string>

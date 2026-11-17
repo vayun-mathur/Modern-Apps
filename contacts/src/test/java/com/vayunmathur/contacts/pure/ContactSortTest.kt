@@ -3,12 +3,12 @@ package com.vayunmathur.contacts.pure
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactDetails
 import com.vayunmathur.contacts.data.Name
-import com.vayunmathur.contacts.util.ContactSorting
-import com.vayunmathur.contacts.util.ContactSorting.sectionKey
-import com.vayunmathur.contacts.util.ContactSorting.sortDisplayName
-import com.vayunmathur.contacts.util.ContactSorting.sortedByMode
-import com.vayunmathur.contacts.util.ContactSorting.sortedByNameLocale
-import com.vayunmathur.contacts.util.ContactSorting.sortedLocale
+import com.vayunmathur.contacts.domain.ContactSorting
+import com.vayunmathur.contacts.domain.ContactSorting.sectionKey
+import com.vayunmathur.contacts.domain.ContactSorting.sortDisplayName
+import com.vayunmathur.contacts.domain.ContactSorting.sortedByMode
+import com.vayunmathur.contacts.domain.ContactSorting.sortedByNameLocale
+import com.vayunmathur.contacts.domain.ContactSorting.sortedLocale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

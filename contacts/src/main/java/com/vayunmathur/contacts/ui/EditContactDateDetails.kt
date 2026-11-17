@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.contacts.R
@@ -55,7 +56,7 @@ fun ColumnScope.EditContactDateDetails(
 ) {
     val detailType = stringResource(R.string.dates)
     val context = LocalContext.current
-    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     details.forEachIndexed { index, detail ->
         if(detail.type == CDKEvent.TYPE_BIRTHDAY) return@forEachIndexed
         val isCustom = detail.type == CDKEvent.TYPE_CUSTOM

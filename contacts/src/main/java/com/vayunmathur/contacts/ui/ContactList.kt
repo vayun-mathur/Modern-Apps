@@ -14,10 +14,10 @@ import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.ui.dialogs.MoveDialogHost
-import com.vayunmathur.contacts.util.ContactListUiState
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.ContactsActions
-import com.vayunmathur.contacts.util.loadAccounts
+import com.vayunmathur.contacts.platform.ContactListUiState
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactsActions
+import com.vayunmathur.contacts.platform.loadAccounts
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.launch
 

@@ -5,16 +5,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.isSimAccountType
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.SimDroppedField
-import com.vayunmathur.contacts.util.computeSimLoss
-import com.vayunmathur.contacts.util.transferContacts
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.SimDroppedField
+import com.vayunmathur.contacts.platform.computeSimLoss
+import com.vayunmathur.contacts.platform.transferContacts
 import com.vayunmathur.library.ui.rememberMessenger
 
 /**
@@ -29,7 +30,6 @@ fun MoveDialogHost(
     onDismiss: () -> Unit,
     onTransferred: () -> Unit = {},
 ) {
-    val context = LocalContext.current
     val messenger = rememberMessenger()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val simLabels by viewModel.simAccountLabels.collectAsStateWithLifecycle()
@@ -40,6 +40,23 @@ fun MoveDialogHost(
         contacts.filter { it.id in contactIds }
     }
     var selectedAccount by remember(contactIds) { mutableStateOf<ContactAccount?>(null) }
+    var moveResult by remember(contactIds) { mutableStateOf<MoveResult?>(null) }
+
+    val result = moveResult
+    if (result != null) {
+        val message = when {
+            result.moved > 0 && result.failed == 0 ->
+                pluralStringResource(R.plurals.move_success, result.moved, result.moved)
+            result.moved > 0 ->
+                pluralStringResource(R.plurals.move_partial_failure, result.moved, result.moved, result.failed)
+            else -> result.rejection ?: stringResource(R.string.move_failed)
+        }
+        LaunchedEffect(result) {
+            messenger.show(message)
+            if (result.moved > 0) onTransferred()
+            onDismiss()
+        }
+    }
 
     val sourceAccounts = remember(toMove) {
         toMove.mapTo(mutableSetOf()) {
@@ -68,23 +85,14 @@ fun MoveDialogHost(
             // Set when the provider refused the destination (#916); explains the failure.
             var rejection: String? = null
             viewModel.transferContacts(ids, dest.name, dest.type, onRejected = { rejection = it }) { moved, failed, _ ->
-                // Resources (not composable stringResource): this callback runs
-                // outside composition on the main thread.
-                val message = when {
-                    moved > 0 && failed == 0 ->
-                        context.resources.getQuantityString(R.plurals.move_success, moved, moved)
-                    moved > 0 ->
-                        context.getString(R.string.move_partial_failure, moved, failed)
-                    else -> rejection ?: context.getString(R.string.move_failed)
-                }
-                messenger.show(message)
-                if (moved > 0) onTransferred()
-                onDismiss()
+                moveResult = MoveResult(moved, failed, rejection)
             }
         },
         onDismiss = onDismiss,
     )
 }
+
+private data class MoveResult(val moved: Int, val failed: Int, val rejection: String?)
 
 @Composable
 private fun SimDroppedField.localized(): String = stringResource(

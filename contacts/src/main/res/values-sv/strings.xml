@@ -7,7 +7,6 @@
     <string name="share_contact">Dela kontakt</string>
     <string name="about_name">Om <xliff:g id="first_name" example="John">%1$s</xliff:g></string>
     <string name="birthday">Födelsedag</string>
-    <string name="note">Anteckning</string>
     <string name="ringtone">Ringsignal</string>
     <string name="select_ringtone">Välj ringsignal</string>
     <string name="favorites">Favoriter</string>
@@ -20,26 +19,20 @@
     <string name="last_name">Efternamn</string>
     <string name="name_prefix">Prefix</string>
     <string name="name_suffix">Suffix</string>
-    <string name="name_affix_none">Inget</string>
     <string name="nickname">Smeknamn</string>
     <string name="company">Företag</string>
     <string name="account">Konto</string>
     <string name="account_display_format"><xliff:g id="account_name" example="Personal">%1$s</xliff:g> (<xliff:g id="account_type" example="com.google">%2$s</xliff:g>)</string>
     <string name="add_phone">Lägg till telefonnummer</string>
-    <string name="remove_phone">Ta bort telefonnummer</string>
     <string name="add_email">Lägg till e-postadress</string>
-    <string name="remove_email">Ta bort e-postadress</string>
     <string name="add_address">Lägg till adress</string>
-    <string name="remove_address">Ta bort adress</string>
     <string name="add_date">Lägg till datum</string>
     <string name="dates">Datum</string>
     <string name="phone">Telefon</string>
-    <string name="email">E-post</string>
     <string name="addresses">Adresser</string>
     <string name="contact_photo">Kontaktfoto</string>
     <string name="add_picture">Lägg till bild</string>
     <string name="change_picture">Ändra</string>
-    <string name="remove_picture">Ta bort</string>
     <string name="visible_accounts">Synliga konton</string>
     <string name="add_contacts_account">Lägg till kontaktkonto</string>
     <string name="enter_account_name">Ange ett namn för det nya lokala kontot:</string>
@@ -52,14 +45,11 @@
     <string name="delete_contact_confirm">Vill du verkligen ta bort kontakten? Detta kan inte ångras.</string>
     <string name="delete_contact_name_confirm">Vill du verkligen ta bort ”<xliff:g id="contact_name" example="John Doe">%1$s</xliff:g>”? Detta kan inte ångras.</string>
     <string name="grant_contacts_permission">Ge behörighet till kontakter</string>
-    <string name="select_contact_hint">Välj en kontakt för att visa information</string>
     <string name="import_contacts">Importera kontakter</string>
-    <string name="action_call">Ring</string>
     <string name="action_message">Meddelande</string>
     <string name="action_video">Video</string>
     <string name="calendar_sync">Kalendersynkronisering</string>
     <string name="sync_contacts_calendar">Visa födelsedagar i kalendern</string>
-    <string name="contacts_calendar_name">Kontakter</string>
     <string name="anniversary">Årsdag</string>
     <string name="backup_and_export">Säkerhetskopiering och export</string>
     <string name="grant_calendar_permissions">Ge kalenderbehörighet</string>
@@ -68,7 +58,10 @@
         <item quantity="one">Vill du verkligen ta bort den <xliff:g id="count" example="5">%1$d</xliff:g> valda kontakten? Detta kan inte ångras.</item>
         <item quantity="other">Vill du verkligen ta bort de <xliff:g id="count" example="5">%1$d</xliff:g> valda kontakterna? Detta kan inte ångras.</item>
     </plurals>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> valda</string>
+    <plurals name="selected_count">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> vald</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> valda</item>
+    </plurals>
     <string name="display">Visning</string>
     <string name="show_account_labels">Visa kontaktkonton</string>
     <string name="search_contacts">Sök kontakter</string>
@@ -78,9 +71,7 @@
     <string name="whatsapp">WhatsApp</string>
     <string name="telegram">Telegram</string>
     <string name="google_meet">Google Meet</string>
-    <string name="contacts">Kontakter</string>
     <string name="groups">Grupper</string>
-    <string name="select_group_hint">Välj en grupp för att visa kontakter</string>
     <string name="add_to_group">Lägg till i grupp</string>
     <string name="add_group">Lägg till grupp</string>
     <string name="enter_group_name">Ange gruppnamn</string>
@@ -111,7 +102,6 @@
     <string name="sim_name_or_phone_required">Ange ett namn eller telefonnummer</string>
     <string name="sim_slot_label">SIM %1$d</string>
     <string name="save_failed">Det gick inte att spara</string>
-    <string name="importing">Importerar…</string>
     <string name="no_contacts_yet">Inga kontakter ännu</string>
     <string name="no_contacts_yet_message">Tryck på lägg till-knappen för att skapa din första kontakt.</string>
     <string name="no_groups_yet">Inga grupper ännu</string>
@@ -140,6 +130,9 @@
         <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> kontakt flyttades</item>
         <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> kontakter flyttades</item>
     </plurals>
-    <string name="move_partial_failure"><xliff:g id="moved" example="2">%1$d</xliff:g> flyttades, <xliff:g id="failed" example="1">%2$d</xliff:g> misslyckades</string>
+    <plurals name="move_partial_failure">
+        <item quantity="one"><xliff:g id="moved" example="2">%1$d</xliff:g> flyttades, <xliff:g id="failed" example="1">%2$d</xliff:g> misslyckades</item>
+        <item quantity="other"><xliff:g id="moved" example="2">%1$d</xliff:g> flyttades, <xliff:g id="failed" example="1">%2$d</xliff:g> misslyckades</item>
+    </plurals>
     <string name="move_failed">Det gick inte att flytta</string>
 </resources>

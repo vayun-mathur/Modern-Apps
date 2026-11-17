@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.NewContactRestriction
-import com.vayunmathur.contacts.util.ContactAccount
+import com.vayunmathur.contacts.platform.ContactAccount
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.IconArrowDropDown

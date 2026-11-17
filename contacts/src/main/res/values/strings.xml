@@ -79,15 +79,12 @@
     <!-- Button below phone section to add another phone number. Verb. -->
     <string name="add_phone">Add phone</string>
     <!-- Button/accessibility to remove phone field entry. Verb. -->
-    <string name="remove_phone">Remove phone</string>
     <!-- Button to add another email address -->
     <string name="add_email">Add email</string>
     <!-- Button to remove email field entry -->
-    <string name="remove_email">Remove email</string>
     <!-- Button to add another postal address -->
     <string name="add_address">Add address</string>
     <!-- Button to remove address field entry -->
-    <string name="remove_address">Remove address</string>
     <!-- Button to add another date (e.g. anniversary) -->
     <string name="add_date">Add date</string>
     <!-- Section header for other important dates -->
@@ -133,7 +130,6 @@
     <!-- Permission screen message when contacts permission not granted -->
     <string name="grant_contacts_permission">Please grant contacts permission</string>
     <!-- Two-pane layout hint on tablets: prompt to select contact from list -->
-    <string name="select_contact_hint">Select a contact to view details</string>
 
     <!-- Import / Export VCF -->
     <!-- Settings and screen title for importing contacts from VCF -->
@@ -160,7 +156,10 @@
         <item quantity="other">Are you sure you want to delete the <xliff:g id="count" example="5">%1$d</xliff:g> selected contacts? This action cannot be undone.</item>
     </plurals>
     <!-- Top bar title in multi-select mode showing selection count. %1$d = count -->
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> selected</string>
+    <plurals name="selected_count">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> selected</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> selected</item>
+    </plurals>
     <!-- Settings section header for display preferences -->
     <string name="display">Display</string>
     <!-- Settings toggle: show account label chips in contact list -->
@@ -188,7 +187,6 @@
     <!-- Bottom nav label: groups tab -->
     <string name="groups">Groups</string>
     <!-- Two-pane hint for groups screen on tablets -->
-    <string name="select_group_hint">Select a group to view contacts</string>
 
     <!-- Groups management -->
     <!-- Dialog title and action to add selected contacts to a group -->
@@ -257,7 +255,6 @@
     <string name="cloud_default_rejected_generic">Android won\'t add contacts to this account while your default contacts account is a cloud account. Choose another account, or change the default in system Contacts settings.</string>
     <!-- Account pickers: supporting text under a disabled On-Device/SIM account (see cloud_default_rejected). %1$s is the default account, e.g. an email address. -->
     <string name="account_unavailable_cloud_default">Unavailable while your default contacts account is <xliff:g id="account" example="name@gmail.com">%1$s</xliff:g>. Change it in system Contacts settings.</string>
-    <string name="importing">Importing…</string>
 
     <!-- Empty states -->
     <!-- Contacts tab, shown on a first run or when every account is hidden -->
@@ -307,7 +304,10 @@
         <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> contacts moved</item>
     </plurals>
     <!-- Snackbar when some contacts failed to move. %1$d = moved, %2$d = failed -->
-    <string name="move_partial_failure"><xliff:g id="moved" example="2">%1$d</xliff:g> moved, <xliff:g id="failed" example="1">%2$d</xliff:g> failed</string>
+    <plurals name="move_partial_failure">
+        <item quantity="one"><xliff:g id="moved" example="2">%1$d</xliff:g> moved, <xliff:g id="failed" example="1">%2$d</xliff:g> failed</item>
+        <item quantity="other"><xliff:g id="moved" example="2">%1$d</xliff:g> moved, <xliff:g id="failed" example="1">%2$d</xliff:g> failed</item>
+    </plurals>
     <!-- Snackbar when nothing moved -->
     <string name="move_failed">Move failed</string>
 </resources>

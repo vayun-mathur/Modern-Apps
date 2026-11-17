@@ -49,12 +49,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
 import com.vayunmathur.contacts.data.Contact
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.clearParsedVcf
-import com.vayunmathur.contacts.util.createAccount
-import com.vayunmathur.contacts.util.importVcfContacts
-import com.vayunmathur.contacts.util.parseVcfUris
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.clearParsedVcf
+import com.vayunmathur.contacts.platform.createAccount
+import com.vayunmathur.contacts.platform.importVcfContacts
+import com.vayunmathur.contacts.platform.parseVcfUris
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.launch
 import com.vayunmathur.library.ui.EmptyState
@@ -280,26 +280,6 @@ fun ImportVcfScreen(
                     }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun ContactCard(contact: Contact) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = contact.name.value.ifEmpty { stringResource(R.string.no_name) }, style = MaterialTheme.typography.titleMedium)
-            contact.details.phoneNumbers.firstOrNull()?.let { phone ->
-                Text(text = phone.number, style = MaterialTheme.typography.bodyMedium)
-            }
-            contact.details.emails.firstOrNull()?.let { email ->
-                Text(text = email.address, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

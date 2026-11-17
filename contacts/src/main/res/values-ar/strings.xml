@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="selected_count">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></string>
+    <plurals name="selected_count">
+        <item quantity="zero">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="one">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="two">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="few">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="many">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="other">تم تحديد <xliff:g id="count" example="3">%1$d</xliff:g></item>
+    </plurals>
     <string name="app_name">جهات الاتصال</string>
     <string name="contact_not_found">لم يتم العثور على جهة اتصال</string>
     <string name="name_nickname_format"><xliff:g id="name" example="John Doe">%1$s</xliff:g> (<xliff:g id="nickname" example="Johnny">%2$s</xliff:g>)</string>
@@ -8,7 +15,6 @@
     <string name="share_contact">مشاركة جهة الاتصال</string>
     <string name="about_name">حول <xliff:g id="first_name" example="John">%1$s</xliff:g></string>
     <string name="birthday">تاريخ الميلاد</string>
-    <string name="note">ملاحظة</string>
     <string name="favorites">المفضلة</string>
     <string name="export_contacts">تصدير جميع جهات الاتصال</string>
     <string name="on_device">على الجهاز</string>
@@ -21,20 +27,15 @@
     <string name="company">الشركة</string>
     <string name="account">الحساب</string>
     <string name="add_phone">إضافة رقم هاتف</string>
-    <string name="remove_phone">إزالة رقم الهاتف</string>
     <string name="add_email">إضافة بريد إلكتروني</string>
-    <string name="remove_email">إزالة بريد الإلكتروني</string>
     <string name="add_address">إضافة العنوان</string>
-    <string name="remove_address">إزالة العنوان</string>
     <string name="add_date">إضافة التاريخ</string>
     <string name="dates">التواريخ</string>
     <string name="phone">أرقام الهاتف</string>
-    <string name="email">البريد الإلكتروني</string>
     <string name="addresses">العناوين</string>
     <string name="contact_photo">صورة جهة الاتصال</string>
     <string name="add_picture">إضافة صورة</string>
     <string name="change_picture">تغيير</string>
-    <string name="remove_picture">إزالة</string>
     <string name="visible_accounts">الحسابات المرئية</string>
     <string name="add_contacts_account">إضافة حساب جهات الاتصال</string>
     <string name="enter_account_name">أدخل اسمًا للحساب المحلي الجديد:</string>
@@ -47,14 +48,11 @@
     <string name="delete_contact_confirm">هل أنت متأكد أنك تريد حذف جهة الاتصال هذه؟ لا يمكن التراجع عن هذا الإجراء.</string>
     <string name="delete_contact_name_confirm">هل أنت متأكد أنك تريد حذف \"<xliff:g id="contact_name" example="John Doe">%1$s</xliff:g>\"؟ لا يمكن التراجع عن هذا الإجراء.</string>
     <string name="grant_contacts_permission">يرجى منح إذن جهات الاتصال</string>
-    <string name="select_contact_hint">حدد جهة اتصال لعرض التفاصيل</string>
     <string name="import_contacts">استيراد جهات الاتصال</string>
-    <string name="action_call">مكالمة</string>
     <string name="action_message">مراسلة</string>
     <string name="action_video">مكالمة فيديو</string>
     <string name="calendar_sync">مزامنة التقويم</string>
     <string name="sync_contacts_calendar">إظهار أعياد الميلاد في التقويم</string>
-    <string name="contacts_calendar_name">جهات الاتصال</string>
     <string name="anniversary">الذكرى السنوية</string>
     <string name="backup_and_export">النسخ الاحتياطي والتصدير</string>
     <string name="grant_calendar_permissions">منح أذونات التقويم</string>
@@ -74,9 +72,7 @@
     <string name="whatsapp">واتساب</string>
     <string name="telegram">تيليجرام</string>
     <string name="google_meet">جوجل Meet</string>
-    <string name="contacts">جهات الاتصال</string>
     <string name="groups">المجموعات</string>
-    <string name="select_group_hint">حدد مجموعة لعرض جهات الاتصال</string>
     <string name="add_to_group">إضافة إلى مجموعة</string>
     <string name="add_group">إضافة مجموعة</string>
     <string name="enter_group_name">أدخل اسم المجموعة</string>
@@ -113,7 +109,6 @@
     <string name="enter_custom_label">أدخل تسمية مخصصة</string>
     <string name="sim_limited_fields_hint">جهات اتصال بطاقة SIM تُخزِّن فقط الاسم، الهاتف، والبريد الإلكتروني.</string>
     <string name="save_failed">فشل الحفظ</string>
-    <string name="importing">جارٍ الاستيراد…</string>
     <string name="account_display_format"><xliff:g id="account_name" example="Personal">%1$s</xliff:g> (<xliff:g id="account_type" example="com.google">%2$s</xliff:g>)</string>
     <string name="include_year">تضمين السنة</string>
     <string name="display">العرض</string>

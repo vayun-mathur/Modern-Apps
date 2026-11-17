@@ -1,4 +1,8 @@
 package com.vayunmathur.contacts.util
+import com.vayunmathur.contacts.platform.*
+import com.vayunmathur.contacts.data.*
+import com.vayunmathur.contacts.domain.*
+import com.vayunmathur.contacts.sync.*
 
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactDetails

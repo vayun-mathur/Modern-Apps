@@ -27,10 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
-import com.vayunmathur.contacts.util.ContactSorting.groupKey
-import com.vayunmathur.contacts.util.ContactSorting.sortedLocale
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.addPhoneNumberToContact
+import com.vayunmathur.contacts.domain.ContactSorting.groupKey
+import com.vayunmathur.contacts.domain.ContactSorting.sortedLocale
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.addPhoneNumberToContact
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator

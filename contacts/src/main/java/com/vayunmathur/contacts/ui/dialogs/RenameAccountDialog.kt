@@ -6,12 +6,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.contacts.R
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.renameLocalAccount
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.renameLocalAccount
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
@@ -25,7 +24,7 @@ fun RenameAccountDialog(
     target: ContactAccount,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
+    val accountNameExistsMessage = stringResource(R.string.account_name_exists)
     var newName by remember(target) { mutableStateOf(target.name) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -45,7 +44,7 @@ fun RenameAccountDialog(
                 if (name.isNotEmpty()) {
                     viewModel.renameLocalAccount(target, name) { ok, err ->
                         if (!ok && err == "collision") {
-                            AppMessages.show(context.getString(R.string.account_name_exists))
+                            AppMessages.show(accountNameExistsMessage)
                         }
                     }
                     onDismiss()

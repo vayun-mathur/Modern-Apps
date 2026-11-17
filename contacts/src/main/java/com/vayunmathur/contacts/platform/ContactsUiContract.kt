@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.platform
 
 import android.graphics.Bitmap
 import com.vayunmathur.contacts.data.Contact

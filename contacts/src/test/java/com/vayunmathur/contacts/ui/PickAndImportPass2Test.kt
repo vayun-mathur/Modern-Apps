@@ -26,7 +26,7 @@ import com.vayunmathur.contacts.data.Nickname
 import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
 import java.io.File

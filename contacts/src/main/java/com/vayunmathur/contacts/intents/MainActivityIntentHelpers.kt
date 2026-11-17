@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts
+package com.vayunmathur.contacts.intents
 
 import android.content.ContentValues
 import android.content.Intent

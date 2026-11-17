@@ -24,7 +24,7 @@ import com.vayunmathur.contacts.data.Email
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.SIM_MAX_EMAILS
 import com.vayunmathur.contacts.data.SIM_MAX_PHONE_NUMBERS
-import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.library.ui.FormDetailGroup
 import com.vayunmathur.library.ui.IconCall
 import com.vayunmathur.library.ui.IconLocationOn

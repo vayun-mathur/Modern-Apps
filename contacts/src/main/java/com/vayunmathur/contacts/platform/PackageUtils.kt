@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.platform
 
 import android.content.Context
 import android.content.pm.PackageManager

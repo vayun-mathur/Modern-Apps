@@ -14,9 +14,9 @@ import com.vayunmathur.contacts.ui.dialogs.AddToGroupDialog
 import com.vayunmathur.contacts.ui.dialogs.EventDatePickerDialog
 import com.vayunmathur.contacts.ui.dialogs.EventDeleteConfirmDialog
 import com.vayunmathur.contacts.ui.dialogs.MoveToAccountDialog
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.loadAccountsInternal
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.loadAccountsInternal
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.NavResultRegistry

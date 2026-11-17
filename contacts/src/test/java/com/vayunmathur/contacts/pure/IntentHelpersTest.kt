@@ -4,9 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.ContactsContract
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.contacts.isVcfIntent
-import com.vayunmathur.contacts.readType
-import com.vayunmathur.contacts.uriPhoneNumber
+import com.vayunmathur.contacts.intents.isVcfIntent
+import com.vayunmathur.contacts.intents.readType
+import com.vayunmathur.contacts.intents.uriPhoneNumber
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

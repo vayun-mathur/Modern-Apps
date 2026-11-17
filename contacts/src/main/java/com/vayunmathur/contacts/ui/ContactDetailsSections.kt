@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -25,8 +26,8 @@ import com.vayunmathur.contacts.data.CDKEvent
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactDetails
 import com.vayunmathur.contacts.data.formatDisplay
-import com.vayunmathur.contacts.util.ContactPlatforms
-import com.vayunmathur.contacts.util.ContactsActions
+import com.vayunmathur.contacts.platform.ContactPlatforms
+import com.vayunmathur.contacts.platform.ContactsActions
 import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.ui.IconCake
 import com.vayunmathur.library.ui.IconCall
@@ -147,7 +148,7 @@ internal fun DatesSection(contact: Contact, details: ContactDetails) {
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     GroupedSection(title = stringResource(R.string.about_name, contact.name.firstName)) {
         val birthday = contact.birthday
         if (birthday != null) {

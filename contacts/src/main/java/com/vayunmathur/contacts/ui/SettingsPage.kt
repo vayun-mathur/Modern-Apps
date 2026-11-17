@@ -51,14 +51,14 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.vayunmathur.contacts.data.isDefaultLocalAccount
 import com.vayunmathur.contacts.data.isLocalAccountType
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.setAccountVisibility
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.setAccountVisibility
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
 import com.vayunmathur.contacts.ui.dialogs.DeleteAccountDialog
 import com.vayunmathur.contacts.ui.dialogs.RenameAccountDialog
-import com.vayunmathur.contacts.util.VcfUtils
+import com.vayunmathur.contacts.data.VcfUtils
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.launch
 

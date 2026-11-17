@@ -3,7 +3,6 @@
     <string name="share_contact">Partilhar Contacto</string>
     <string name="about_name">Sobre %1$s</string>
     <string name="birthday">Data de Nascimento</string>
-    <string name="note">Anotação</string>
     <string name="favorites">Favoritos</string>
     <string name="app_name">Contactos</string>
     <string name="contact_not_found">Contacto não encontrado</string>
@@ -17,12 +16,10 @@
     <string name="company">Companhia</string>
     <string name="account">Conta</string>
     <string name="phone">Telefone</string>
-    <string name="email">Email</string>
     <string name="addresses">Adereços</string>
     <string name="contact_photo">Foto de contacto</string>
     <string name="add_picture">Adicionar foto</string>
     <string name="change_picture">Mudar</string>
-    <string name="remove_picture">Remover</string>
     <string name="visible_accounts">Contas visiveis</string>
     <string name="add_contacts_account">Adicionar Conta de Contactos</string>
     <string name="enter_account_name">Escolhe um nome para a nova conta local:</string>
@@ -34,13 +31,13 @@
     <string name="include_year">Incluir ano</string>
     <string name="system_default">Padrão do sistema</string>
     <string name="google_meet">Google meet</string>
-    <string name="contacts">Contactos</string>
     <string name="groups">Grupos</string>
-    <string name="select_group_hint">Seleciona um grupo para ver contactos</string>
     <string name="add_to_group">Adicionar a um Grupo</string>
     <string name="add_group">Adicionar grupo</string>
     <string name="no_groups_found">Sem grupos encontrados. Cria um na aba de grupos.</string>
     <plurals name="contacts_count">
+        <item quantity="one">%1$d contacto</item>
+        <item quantity="many">%1$d contactos</item>
         <item quantity="other">%1$d contactos</item>
     </plurals>
 </resources>

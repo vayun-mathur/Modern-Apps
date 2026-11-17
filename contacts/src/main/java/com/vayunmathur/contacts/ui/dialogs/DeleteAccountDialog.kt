@@ -2,9 +2,9 @@ package com.vayunmathur.contacts.ui.dialogs
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.contacts.R
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.deleteLocalAccount
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.deleteLocalAccount
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.R as UiR
 

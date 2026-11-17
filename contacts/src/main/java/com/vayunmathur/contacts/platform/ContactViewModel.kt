@@ -1,7 +1,12 @@
 @file:OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class, kotlinx.coroutines.FlowPreview::class)
 
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.platform
+import com.vayunmathur.contacts.sync.CalendarWorker
+import com.vayunmathur.contacts.sync.CalendarSyncHelper
+import com.vayunmathur.contacts.data.CONTACT_SOURCE_TIMEOUT_MILLIS
+import com.vayunmathur.contacts.data.ContactSourceLoader
 import android.app.Application
+import androidx.core.net.toUri
 import android.content.ContentProviderOperation
 import android.content.ContentUris
 import android.graphics.Bitmap
@@ -66,7 +71,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.vayunmathur.contacts.util.ContactSorting.sortedByNameLocale
+import com.vayunmathur.contacts.domain.ContactSorting
+import com.vayunmathur.contacts.domain.ContactSorting.sortedByNameLocale
 import kotlinx.datetime.LocalDate
 import kotlin.io.encoding.Base64
 
@@ -300,7 +306,7 @@ class ContactViewModel internal constructor(
     }
 
     private fun simAdnBaseUri(): android.net.Uri =
-        android.net.Uri.parse(SimContactsDataSource.SIM_ADN_BASE_URI)
+        SimContactsDataSource.SIM_ADN_BASE_URI.toUri()
 
     // Fires on SIM insert/remove/swap. The provider observer above never fires for
     // those (no provider write happens), so without this the SIM list only refreshes
@@ -356,7 +362,6 @@ class ContactViewModel internal constructor(
         } catch (e: Exception) {
             Log.error("ContactViewModel", "Failed to unregister subscription listener", e)
         }
-        super.onCleared()
     }
 
     override fun setSearchQuery(query: String) {

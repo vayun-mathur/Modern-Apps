@@ -1,4 +1,5 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.platform
+import com.vayunmathur.contacts.data.VcfUtils
 
 import android.app.Application
 import androidx.lifecycle.viewModelScope

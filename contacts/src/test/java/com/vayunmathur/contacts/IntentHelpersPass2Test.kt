@@ -2,6 +2,9 @@ package com.vayunmathur.contacts
 
 import android.content.Intent
 import android.net.Uri
+import com.vayunmathur.contacts.intents.isVcfIntent
+import com.vayunmathur.contacts.intents.readType
+import com.vayunmathur.contacts.intents.uriPhoneNumber
 import android.provider.ContactsContract
 import android.provider.ContactsContract.CommonDataKinds.Phone as PhoneKind
 import kotlin.test.Test

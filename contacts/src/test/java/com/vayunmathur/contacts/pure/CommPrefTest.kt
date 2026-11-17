@@ -9,8 +9,8 @@ import com.vayunmathur.contacts.data.ContactDetails
 import com.vayunmathur.contacts.data.Email
 import com.vayunmathur.contacts.data.Name
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactPlatforms
-import com.vayunmathur.contacts.util.VcfUtils
+import com.vayunmathur.contacts.platform.ContactPlatforms
+import com.vayunmathur.contacts.data.VcfUtils
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.runBlocking

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,11 +23,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.Contact
-import com.vayunmathur.contacts.util.ContactListUiState
-import com.vayunmathur.contacts.util.ContactSorting.ContactSortMode
-import com.vayunmathur.contacts.util.ContactSorting.sectionKey
-import com.vayunmathur.contacts.util.ContactSorting.sortedByMode
-import com.vayunmathur.contacts.util.ContactsActions
+import com.vayunmathur.contacts.platform.ContactListUiState
+import com.vayunmathur.contacts.domain.ContactSorting.ContactSortMode
+import com.vayunmathur.contacts.domain.ContactSorting.sectionKey
+import com.vayunmathur.contacts.domain.ContactSorting.sortedByMode
+import com.vayunmathur.contacts.platform.ContactsActions
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.EmptyState
@@ -139,7 +140,7 @@ fun ContactListScreen(
             SwappedTopBar(showingOverlay = isSelectionMode) { selecting ->
                 if (selecting) {
                 TopAppBar(
-                    title = { Text(stringResource(R.string.selected_count, selectedIds.size)) },
+                    title = { Text(pluralStringResource(R.plurals.selected_count, selectedIds.size, selectedIds.size)) },
                     navigationIcon = {
                         IconButton(onClick = { selectedIds.clear() }) {
                             IconClose()
@@ -232,10 +233,11 @@ fun ContactListScreen(
         verticalArrangement = Arrangement.spacedBy(2.dp),
         scrollBehavior = appBarScrollBehavior(),
         overlay = {
+            val itemCount by remember { derivedStateOf { listState.layoutInfo.totalItemsCount } }
             ContactSectionScroller(
                 state = listState,
                 sectionIndex = sectionIndex,
-                itemCount = listState.layoutInfo.totalItemsCount,
+                itemCount = itemCount,
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
         },

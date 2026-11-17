@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.data
 
 import android.provider.ContactsContract
 import com.vayunmathur.contacts.data.Address
@@ -272,10 +272,9 @@ private class VcfParser(
 
     @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
     private fun applyPhoto(builder: ContactBuilder, decodedValue: String) {
-        // Photo.photo is Base64 by contract (Contact.completePhotoOperation
-        // Base64-decodes it while building the provider batch, outside
-        // save()'s error handling). Foreign cards also carry PHOTO as a
-        // URI (PHOTO;VALUE=URI:https://...) or a data: URI; storing those
+        // The photo value is Base64 by contract: the provider batch builder
+        // decodes it outside the caller's error handling. Foreign cards may
+        // instead carry a URI or data URI for the photo; storing those
         // verbatim made the later decode throw IllegalArgumentException
         // and abort the whole import. Keep only decodable Base64.
         val normalized = decodedValue.filterNot { it.isWhitespace() }

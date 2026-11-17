@@ -8,7 +8,7 @@ import com.vayunmathur.contacts.data.CDKEmail
 import com.vayunmathur.contacts.data.CDKPhone
 import com.vayunmathur.contacts.data.Email
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.library.ui.DynamicTheme
 import org.junit.Rule
 import org.junit.runner.RunWith

@@ -16,8 +16,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.vayunmathur.contacts.R
-import com.vayunmathur.contacts.util.ContactPlatforms
-import com.vayunmathur.contacts.util.PackageUtils
+import com.vayunmathur.contacts.platform.ContactPlatforms
+import com.vayunmathur.contacts.platform.PackageUtils
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem

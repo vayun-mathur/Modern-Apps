@@ -5,7 +5,7 @@ import com.vayunmathur.contacts.data.Address
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactDetails
 import com.vayunmathur.contacts.data.Name
-import com.vayunmathur.contacts.util.VcfUtils
+import com.vayunmathur.contacts.data.VcfUtils
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlin.test.Test

@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.core.net.toUri
 import android.telephony.SubscriptionManager
 import com.vayunmathur.library.log.Log
 import androidx.core.content.ContextCompat
@@ -119,9 +120,9 @@ object SimContactsDataSource {
         try {
             val subIds = getActiveSubscriptionIds(context)
             val uris: List<Pair<Uri, Int?>> = if (subIds.isNotEmpty()) {
-                subIds.map { subId -> Uri.parse("$BASE_URI/subId/$subId") to subId }
+                subIds.map { subId -> "$BASE_URI/subId/$subId".toUri() to subId }
             } else {
-                listOf(Uri.parse(BASE_URI) to null)
+                listOf(BASE_URI.toUri() to null)
             }
             for ((uri, subId) in uris) {
                 collectSimContactsFromUri(context, uri, subId, result)
@@ -236,9 +237,9 @@ object SimContactsDataSource {
             }
             val targetSubId = subIds.firstOrNull() ?: subscriptionId
             val uri = if (targetSubId != null) {
-                Uri.parse("$BASE_URI/subId/$targetSubId")
+                "$BASE_URI/subId/$targetSubId".toUri()
             } else {
-                Uri.parse(BASE_URI)
+                BASE_URI.toUri()
             }
             val values = ContentValues().apply {
                 // Most devices accept "tag" for name
@@ -286,9 +287,9 @@ object SimContactsDataSource {
         return try {
             val targetSubId = subscriptionId ?: old.subscriptionId
             val uri = if (targetSubId != null) {
-                Uri.parse("$BASE_URI/subId/$targetSubId")
+                "$BASE_URI/subId/$targetSubId".toUri()
             } else {
-                Uri.parse(BASE_URI)
+                BASE_URI.toUri()
             }
             val values = ContentValues().apply {
                 put("tag", old.name)
@@ -326,20 +327,20 @@ object SimContactsDataSource {
 
     private fun deleteSimContactInternal(context: Context, simContact: SimContact): Boolean {
             val uri = if (simContact.subscriptionId != null) {
-                Uri.parse("$BASE_URI/subId/${simContact.subscriptionId}")
+                "$BASE_URI/subId/${simContact.subscriptionId}".toUri()
             } else {
                 // Try all known URIs if subId unknown
                 val subIds = getActiveSubscriptionIds(context)
                 if (subIds.isNotEmpty()) {
                     var deletedAny = false
                     for (sid in subIds) {
-                        if (deleteSingle(context, Uri.parse("$BASE_URI/subId/$sid"), simContact)) deletedAny = true
+                        if (deleteSingle(context, "$BASE_URI/subId/$sid".toUri(), simContact)) deletedAny = true
                     }
                     // Also try base
-                    if (deleteSingle(context, Uri.parse(BASE_URI), simContact)) deletedAny = true
+                    if (deleteSingle(context, BASE_URI.toUri(), simContact)) deletedAny = true
                     return deletedAny
                 }
-                Uri.parse(BASE_URI)
+                BASE_URI.toUri()
             }
             return deleteSingle(context, uri, simContact)
     }
@@ -353,8 +354,8 @@ object SimContactsDataSource {
         val variants = listOfNotNull(
             "tag=$tag AND number=$number",
             "name=$tag AND number=$number",
-            // Fallback: number only. Skipped for a contact with no number, where it would become
-            // number='' and match every other numberless record on the SIM.
+            // The fallback uses the number alone and is skipped for a contact with no
+            // number, where an empty number would match every other numberless record.
             "number=$number".takeIf { simContact.number.isNotBlank() },
         )
         for (where in variants) {
@@ -389,7 +390,7 @@ object SimContactsDataSource {
     private fun notifySimChanged(context: Context, uri: Uri) {
         try {
             context.contentResolver.notifyChange(uri, null)
-            val base = Uri.parse(BASE_URI)
+            val base = BASE_URI.toUri()
             if (uri != base) context.contentResolver.notifyChange(base, null)
         } catch (_: Exception) { }
     }

@@ -14,8 +14,8 @@ import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.Photo
-import com.vayunmathur.contacts.util.SimDroppedField
-import com.vayunmathur.contacts.util.computeSimLoss
+import com.vayunmathur.contacts.platform.SimDroppedField
+import com.vayunmathur.contacts.platform.computeSimLoss
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

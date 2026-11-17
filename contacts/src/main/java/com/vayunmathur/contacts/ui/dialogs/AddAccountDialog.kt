@@ -13,8 +13,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.createAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.createAccount
 import com.vayunmathur.contacts.R
 
 @Composable

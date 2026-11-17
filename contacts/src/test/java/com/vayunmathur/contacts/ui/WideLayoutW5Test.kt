@@ -15,7 +15,7 @@ import com.vayunmathur.contacts.data.Email
 import com.vayunmathur.contacts.data.Name
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactPlatforms
+import com.vayunmathur.contacts.platform.ContactPlatforms
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlin.test.Test
 import kotlin.test.assertTrue

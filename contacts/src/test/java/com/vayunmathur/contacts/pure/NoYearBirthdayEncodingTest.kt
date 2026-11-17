@@ -2,7 +2,7 @@ package com.vayunmathur.contacts.pure
 
 import com.vayunmathur.contacts.data.rewriteNoYearSentinel
 import com.vayunmathur.contacts.data.toExternalDateString
-import com.vayunmathur.contacts.util.VcfUtils
+import com.vayunmathur.contacts.data.VcfUtils
 import java.io.ByteArrayInputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -7,7 +7,6 @@
     <string name="share_contact">分享联系人</string>
     <string name="about_name">关于 <xliff:g id="first_name" example="John">%1$s</xliff:g></string>
     <string name="birthday">生日</string>
-    <string name="note">备注</string>
     <string name="favorites">收藏</string>
     <string name="export_contacts">导出所有联系人</string>
     <string name="on_device">设备端</string>
@@ -21,20 +20,15 @@
     <string name="account">账号</string>
     <string name="account_display_format"><xliff:g id="account_name" example="Personal">%1$s</xliff:g>（<xliff:g id="account_type" example="com.google">%2$s</xliff:g>）</string>
     <string name="add_phone">添加电话</string>
-    <string name="remove_phone">移除电话</string>
     <string name="add_email">添加邮箱</string>
-    <string name="remove_email">移除邮箱</string>
     <string name="add_address">添加地址</string>
-    <string name="remove_address">移除地址</string>
     <string name="add_date">添加日期</string>
     <string name="dates">日期</string>
     <string name="phone">电话</string>
-    <string name="email">邮箱</string>
     <string name="addresses">地址</string>
     <string name="contact_photo">联系人照片</string>
     <string name="add_picture">添加照片</string>
     <string name="change_picture">更改</string>
-    <string name="remove_picture">移除</string>
     <string name="visible_accounts">可见账号</string>
     <string name="add_contacts_account">添加联系人账号</string>
     <string name="enter_account_name">请输入新本地账号的名称：</string>
@@ -43,14 +37,11 @@
     <string name="delete_contact_confirm">确定要删除此联系人吗？此操作无法撤销。</string>
     <string name="delete_contact_name_confirm">确定要删除“<xliff:g id="contact_name" example="John Doe">%1$s</xliff:g>”吗？此操作无法撤销。</string>
     <string name="grant_contacts_permission">请授予联系人权限</string>
-    <string name="select_contact_hint">选择联系人以查看详情</string>
     <string name="import_contacts">导入联系人</string>
-    <string name="action_call">呼叫</string>
     <string name="action_message">信息</string>
     <string name="action_video">视频</string>
     <string name="calendar_sync">日历同步</string>
     <string name="sync_contacts_calendar">在日历中显示生日</string>
-    <string name="contacts_calendar_name">联系人</string>
     <string name="anniversary">纪念日</string>
     <string name="backup_and_export">备份和导出</string>
     <string name="grant_calendar_permissions">授予日历权限</string>
@@ -58,7 +49,9 @@
     <plurals name="delete_selected_contacts_confirm">
         <item quantity="other">确定要删除所选的 <xliff:g id="count" example="5">%1$d</xliff:g> 个联系人吗？此操作无法撤销。</item>
     </plurals>
-    <string name="selected_count">已选择 <xliff:g id="count" example="3">%1$d</xliff:g> 项</string>
+    <plurals name="selected_count">
+        <item quantity="other">已选择 <xliff:g id="count" example="3">%1$d</xliff:g> 项</item>
+    </plurals>
     <string name="display">显示</string>
     <string name="show_account_labels">显示联系人账号</string>
     <string name="search_contacts">搜索联系人</string>
@@ -68,9 +61,7 @@
     <string name="whatsapp">WhatsApp</string>
     <string name="telegram">Telegram</string>
     <string name="google_meet">Google Meet</string>
-    <string name="contacts">联系人</string>
     <string name="groups">群组</string>
-    <string name="select_group_hint">选择一个群组以查看联系人</string>
     <string name="add_to_group">添加到群组</string>
     <string name="add_group">添加群组</string>
     <string name="enter_group_name">输入群组名称</string>
@@ -101,7 +92,6 @@
     <string name="account_name_exists">已存在同名账号</string>
     <string name="sim_limited_fields_hint">SIM 卡联系人仅存储名称、电话号码和电子邮件地址。</string>
     <string name="save_failed">保存失败</string>
-    <string name="importing">正在导入…</string>
     <string name="ringtone">铃声</string>
     <string name="select_ringtone">选择铃声</string>
     <string name="no_contacts_yet">尚无联系人</string>
@@ -110,7 +100,6 @@
     <string name="no_groups_yet_message">点按添加按钮将联系人分组。</string>
     <string name="name_prefix">前缀</string>
     <string name="name_suffix">后缀</string>
-    <string name="name_affix_none">无</string>
     <string name="sim_name_or_phone_required">输入名称或电话号码</string>
     <string name="sim_slot_label">SIM 卡 %1$d</string>
 </resources>

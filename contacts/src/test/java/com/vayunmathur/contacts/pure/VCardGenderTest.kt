@@ -6,9 +6,9 @@ import com.vayunmathur.contacts.data.Email
 import com.vayunmathur.contacts.data.Gender
 import com.vayunmathur.contacts.data.Name
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.SimDroppedField
-import com.vayunmathur.contacts.util.VcfUtils
-import com.vayunmathur.contacts.util.computeSimLoss
+import com.vayunmathur.contacts.platform.SimDroppedField
+import com.vayunmathur.contacts.data.VcfUtils
+import com.vayunmathur.contacts.platform.computeSimLoss
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.runBlocking

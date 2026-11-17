@@ -4,7 +4,6 @@
     <string name="contact_not_found">Kontakt nenalezen</string>
     <string name="share_contact">Sdílet kontakt</string>
     <string name="birthday">Narozeniny</string>
-    <string name="note">Poznámka</string>
     <string name="favorites">Oblíbené</string>
     <string name="export_contacts">Exportovat všechny kontakty</string>
     <string name="add_contact">Přidat kontakt</string>
@@ -16,30 +15,22 @@
     <string name="company">Společnost</string>
     <string name="account">Účet</string>
     <string name="add_phone">Přidat telefon</string>
-    <string name="remove_phone">Odebrat telefon</string>
     <string name="add_email">Přidat e-mail</string>
-    <string name="remove_email">Odebrat e-mail</string>
     <string name="add_address">Přidat adresu</string>
-    <string name="remove_address">Odebrat adresu</string>
     <string name="add_date">Přidat datum</string>
     <string name="dates">Data</string>
     <string name="phone">Telefon</string>
-    <string name="email">E-mail</string>
     <string name="addresses">Adresy</string>
     <string name="add_picture">Přidat obrázek</string>
-    <string name="remove_picture">Odebrat</string>
     <string name="visible_accounts">Viditelné Účty</string>
     <string name="enter_account_name">Zadejte jméno pro nový lokální účet:</string>
     <string name="account_name">Název Účtu</string>
     <string name="delete_contact_title">Smazat kontakt</string>
-    <string name="select_contact_hint">Vyberte kontakt pro zobrazení detailů</string>
     <string name="import_contacts">Importovat kontakty</string>
-    <string name="action_call">Volat</string>
     <string name="action_message">Zpráva</string>
     <string name="action_video">Video</string>
     <string name="calendar_sync">Synchronizace kalendáře</string>
     <string name="sync_contacts_calendar">Zobrazovat narozeniny v kalendáři</string>
-    <string name="contacts_calendar_name">Kontakty</string>
     <string name="anniversary">Výročí</string>
     <string name="backup_and_export">Záloha a Export</string>
     <string name="delete_selected_contacts_title">Smazat vybrané kontakty</string>
@@ -54,12 +45,19 @@
     <string name="delete_contact_name_confirm">Opravdu chcete smazat \"<xliff:g id="contact_name" example="Jan Novotný">%1$s</xliff:g>\"? Tuto akci nelze vrátit.</string>
     <string name="grant_contacts_permission">Udělte prosím oprávnění ke kontaktům</string>
     <string name="grant_calendar_permissions">Udělit oprávnění ke kalendáři</string>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> vybráno</string>
+    <plurals name="selected_count">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> vybraný</item>
+        <item quantity="few"><xliff:g id="count" example="3">%1$d</xliff:g> vybrané</item>
+        <item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> vybráno</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> vybráno</item>
+    </plurals>
     <string name="display">Zobrazit</string>
     <string name="include_year">Zahrnout rok</string>
     <string name="contact_photo_description"><xliff:g id="contact_name" example="John Doe">%1$s</xliff:g> fotka</string>
     <string name="on_device">V zařízení</string>
     <plurals name="delete_selected_contacts_confirm">
+        <item quantity="one">Opravdu chcete smazat <xliff:g id="count" example="5">%1$d</xliff:g> vybraný kontakt? This action cannot be undone.</item>
+        <item quantity="few">Opravdu chcete smazat <xliff:g id="count" example="5">%1$d</xliff:g> vybrané kontakty? This action cannot be undone.</item>
         <item quantity="many">Opravdu chcete smazat <xliff:g id="count" example="5">%1$d</xliff:g> vybraných kontaktů? This action cannot be undone.</item>
         <item quantity="other">Opravdu chcete smazat <xliff:g id="count" example="5">%1$d</xliff:g> vybraných kontaktů? This action cannot be undone.</item>
     </plurals>
@@ -69,9 +67,7 @@
     <string name="whatsapp">WhatsApp</string>
     <string name="telegram">Telegram</string>
     <string name="google_meet">Google Meet</string>
-    <string name="contacts">Kontakty</string>
     <string name="groups">Skupiny</string>
-    <string name="select_group_hint">Vyberte skupinu pro zobrazení kontaktů</string>
     <string name="add_to_group">Přidat do skupiny</string>
     <string name="add_group">Přidat skupinu</string>
     <string name="enter_group_name">Zadejte název skupiny</string>
@@ -79,6 +75,8 @@
     <string name="delete_group_confirm">Opravdu chcete smazat tuto skupinu? Kontakty nebudou smazány.</string>
     <string name="no_groups_found">Nebyly nalezeny žádné skupiny. Vytvořte ji na kartě skupiny.</string>
     <plurals name="contacts_count">
+        <item quantity="one"><xliff:g id="count" example="42">%1$d</xliff:g> kontakt</item>
+        <item quantity="few"><xliff:g id="count" example="42">%1$d</xliff:g> kontakty</item>
         <item quantity="many"><xliff:g id="count" example="42">%1$d</xliff:g> kontaktů</item>
         <item quantity="other"><xliff:g id="count" example="42">%1$d</xliff:g> kontaktů</item>
     </plurals>
@@ -87,6 +85,8 @@
     <string name="create_new_account_option">Vytvořit nový účet</string>
     <string name="no_contacts_found">Nenalezeny žádné kontaky</string>
     <plurals name="import_summary_contacts">
+        <item quantity="one"><xliff:g id="count" example="10">%1$d</xliff:g> kontakt je připraven k importování</item>
+        <item quantity="few"><xliff:g id="count" example="10">%1$d</xliff:g> kontakty jsou připraveny k importování</item>
         <item quantity="many"><xliff:g id="count" example="10">%1$d</xliff:g> kontaktů je připraveno k importování</item>
         <item quantity="other"><xliff:g id="count" example="10">%1$d</xliff:g> kontaktů je připraveno k importování</item>
     </plurals>

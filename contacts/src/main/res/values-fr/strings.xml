@@ -7,7 +7,6 @@
     <string name="share_contact">Partager le contact</string>
     <string name="about_name">À propos de %1$s</string>
     <string name="birthday">Anniversaire</string>
-    <string name="note">Note</string>
     <string name="favorites">Favoris</string>
     <string name="export_contacts">Exporter tous les contacts</string>
     <string name="on_device">Sur l\'appareil</string>
@@ -21,38 +20,34 @@
     <string name="account">Compte</string>
     <string name="account_display_format"><xliff:g id="account_name" example="Personal">%1$s</xliff:g> (<xliff:g id="account_type" example="com.google">%2$s</xliff:g>)</string>
     <string name="add_phone">Ajouter un numéro de téléphone</string>
-    <string name="remove_phone">Supprimer le numéro de téléphone</string>
     <string name="add_email">Ajouter une adresse e-mail</string>
-    <string name="remove_email">Supprimer l\'adresse e-mail</string>
     <string name="add_address">Ajouter une adresse</string>
-    <string name="remove_address">Supprimer l\'adresse</string>
     <string name="add_date">Ajouter une date</string>
     <string name="dates">Dates</string>
     <string name="phone">Numéro de téléphone</string>
-    <string name="email">E-mail</string>
     <string name="addresses">Adresses</string>
     <string name="contact_photo">Photo du contact</string>
     <string name="add_picture">Ajouter une photo</string>
     <string name="change_picture">Modifier</string>
-    <string name="remove_picture">Retirer</string>
     <string name="visible_accounts">Comptes visibles</string>
     <string name="add_contacts_account">Ajouter un compte de contacts</string>
     <string name="enter_account_name">Entrer un nom pour le nouveau compte local :</string>
     <string name="account_name">Nom du compte</string>
     <string name="delete_contact_title">Supprimer le contact</string>
-    <string name="select_contact_hint">Sélectionnez un contact pour voir ses détails</string>
     <string name="import_contacts">Importer des contacts</string>
-    <string name="action_call">Appeler</string>
     <string name="action_message">Envoyer un message</string>
     <string name="action_video">Démarrer un appel vidéo</string>
     <string name="calendar_sync">Synchroniser le calendrier</string>
     <string name="sync_contacts_calendar">Afficher les anniversaires dans le calendrier</string>
-    <string name="contacts_calendar_name">Contacts</string>
     <string name="anniversary">Anniversaire</string>
     <string name="backup_and_export">Sauvegarde et exportation</string>
     <string name="grant_calendar_permissions">Autoriser l\'accès au calendrier</string>
     <string name="delete_selected_contacts_title">Supprimer les contacts sélectionnés</string>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> sélectionné(s)</string>
+    <plurals name="selected_count">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> sélectionné</item>
+        <item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> sélectionnés</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> sélectionnés</item>
+    </plurals>
     <string name="display">Affichage</string>
     <string name="show_account_labels">Afficher les comptes de contact</string>
     <string name="delete_contact_confirm">Voulez-vous vraiment supprimer ce contact ? Cette action est irréversible.</string>
@@ -70,9 +65,7 @@
     <string name="whatsapp">WhatsApp</string>
     <string name="telegram">Telegram</string>
     <string name="google_meet">Google Meet</string>
-    <string name="contacts">Contacts</string>
     <string name="groups">Groupes</string>
-    <string name="select_group_hint">Sélectionnez un groupe pour afficher ses contacts</string>
     <string name="add_to_group">Ajouter au groupe</string>
     <string name="add_group">Ajouter un groupe</string>
     <string name="enter_group_name">Entrer le nom du groupe</string>
@@ -107,5 +100,4 @@
     <string name="account_name_exists">Un compte portant le même nom existe déjà</string>
     <string name="sim_limited_fields_hint">Seuls le nom, téléphone et courriel sont enregistrés pour les contacts sur la carte SIM.</string>
     <string name="save_failed">Échec de l\'enregistrement</string>
-    <string name="importing">En cours d\'importation…</string>
 </resources>

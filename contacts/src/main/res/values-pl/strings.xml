@@ -7,7 +7,6 @@
     <string name="share_contact">Udostępnij kontakt</string>
     <string name="about_name">O <xliff:g id="first_name" example="John">%1$s</xliff:g></string>
     <string name="birthday">Urodziny</string>
-    <string name="note">Notatka</string>
     <string name="favorites">Ulubione</string>
     <string name="export_contacts">Eksportuj wszystkie kontakty</string>
     <string name="on_device">Na urządzeniu</string>
@@ -21,12 +20,10 @@
     <string name="account">Konto</string>
     <string name="dates">Daty</string>
     <string name="phone">Telefon</string>
-    <string name="email">Email</string>
     <string name="addresses">Adresy</string>
     <string name="contact_photo">Zdjęcie kontaktu</string>
     <string name="add_picture">Dodaj zdjęcie</string>
     <string name="change_picture">Zmień</string>
-    <string name="remove_picture">Usuń</string>
     <string name="visible_accounts">Widoczne konta</string>
     <string name="add_contacts_account">Dodaj konto kontaktów</string>
     <string name="enter_account_name">Wprowadź nazwę nowego konta lokalnego:</string>
@@ -34,15 +31,10 @@
     <string name="delete_contact_title">Usuń kontakt</string>
     <string name="delete_contact_confirm">Czy na pewno chcesz usunąć ten kontakt? Tej czynności nie można cofnąć.</string>
     <string name="grant_contacts_permission">Proszę zezwolić na dostęp do kontaktów</string>
-    <string name="select_contact_hint">Wybierz kontakt, aby wyświetlić szczegóły</string>
     <string name="import_contacts">Importuj kontakty</string>
-    <string name="action_call">Zadzwoń</string>
     <string name="action_message">Wiadomość</string>
     <string name="action_video">Wideo</string>
     <string name="add_date">Dodaj datę</string>
-    <string name="remove_email">Usuń email</string>
-    <string name="remove_address">Usuń adres</string>
-    <string name="remove_phone">Usuń telefon</string>
     <string name="account_display_format"><xliff:g id="account_name" example="Personal">%1$s</xliff:g> (<xliff:g id="account_type" example="com.google">%2$s</xliff:g>)</string>
     <string name="add_address">Dodaj adres</string>
     <string name="add_phone">Dodaj telefon</string>
@@ -50,19 +42,21 @@
     <string name="add_email">Dodaj email</string>
     <string name="calendar_sync">Synchronizacja kalendarza</string>
     <string name="sync_contacts_calendar">Pokaż urodziny w kalendarzu</string>
-    <string name="contacts_calendar_name">Kontakty</string>
     <string name="anniversary">Rocznica</string>
     <string name="backup_and_export">Kopia zapasowa i eksport</string>
     <string name="grant_calendar_permissions">Udziel uprawnień do kalendarza</string>
     <string name="delete_selected_contacts_title">Usuń wybrane kontakty</string>
-    <string name="selected_count">Zaznaczono: <xliff:g id="count" example="3">%1$d</xliff:g></string>
+    <plurals name="selected_count">
+        <item quantity="one">Zaznaczono: <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="few">Zaznaczono: <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="many">Zaznaczono: <xliff:g id="count" example="3">%1$d</xliff:g></item>
+        <item quantity="other">Zaznaczono: <xliff:g id="count" example="3">%1$d</xliff:g></item>
+    </plurals>
     <string name="show_account_labels">Pokaż konta kontaktów</string>
     <string name="display">Wyświetl</string>
     <string name="search_contacts">Szukaj kontakty</string>
     <string name="include_year">Uwzględnij rok</string>
-    <string name="contacts">Kontakty</string>
     <string name="groups">Grupy</string>
-    <string name="select_group_hint">Wybierz grupę, aby wyświetlić kontakty</string>
     <string name="add_to_group">Dodaj do grupy</string>
     <string name="add_group">Dodaj grupę</string>
     <string name="enter_group_name">Wprowadź nazwę grupy</string>
@@ -106,7 +100,6 @@
     <string name="enter_custom_label">Wprowadź niestandardową etykietę</string>
     <string name="sim_limited_fields_hint">Kontakty na karcie SIM przechowują tylko imię, numer telefonu i adres e-mail.</string>
     <string name="save_failed">Nie udało się zapisać</string>
-    <string name="importing">Importowanie…</string>
     <string name="rename_account">Zmień nazwę konta</string>
     <string name="delete_account">Usuń konto</string>
     <string name="delete_local_account_confirm">Usunąć to konto i wszystkie kontakty? Tego nie da się cofnąć.</string>
@@ -119,7 +112,6 @@
     <string name="no_groups_yet_message">Dotknij przycisk Dodaj, aby tworzyć grupy kontaktów.</string>
     <string name="name_prefix">Zwrot grzecznościowy</string>
     <string name="name_suffix">Tytuł pokoleniowy</string>
-    <string name="name_affix_none">Brak</string>
     <string name="sim_name_or_phone_required">Wprowadź nazwę lub numer telefonu</string>
     <string name="sim_slot_label">SIM %1$d</string>
     <string name="move_to_account">Przenieś do konta</string>
@@ -150,7 +142,12 @@
         <item quantity="many">Przeniesiono <xliff:g id="count" example="5">%1$d</xliff:g> kontaktów</item>
         <item quantity="other">Przeniesiono <xliff:g id="count" example="5">%1$d</xliff:g> kontaktów</item>
     </plurals>
-    <string name="move_partial_failure">Przeniesiono: <xliff:g id="moved" example="2">%1$d</xliff:g>, nie przeniesiono: <xliff:g id="failed" example="1">%2$d</xliff:g></string>
+    <plurals name="move_partial_failure">
+        <item quantity="one">Przeniesiono: <xliff:g id="moved" example="2">%1$d</xliff:g>, nie przeniesiono: <xliff:g id="failed" example="1">%2$d</xliff:g></item>
+        <item quantity="few">Przeniesiono: <xliff:g id="moved" example="2">%1$d</xliff:g>, nie przeniesiono: <xliff:g id="failed" example="1">%2$d</xliff:g></item>
+        <item quantity="many">Przeniesiono: <xliff:g id="moved" example="2">%1$d</xliff:g>, nie przeniesiono: <xliff:g id="failed" example="1">%2$d</xliff:g></item>
+        <item quantity="other">Przeniesiono: <xliff:g id="moved" example="2">%1$d</xliff:g>, nie przeniesiono: <xliff:g id="failed" example="1">%2$d</xliff:g></item>
+    </plurals>
     <string name="move_failed">Błąd przenoszenia</string>
     <string name="name">Nazwa</string>
     <string name="gender">Płeć</string>

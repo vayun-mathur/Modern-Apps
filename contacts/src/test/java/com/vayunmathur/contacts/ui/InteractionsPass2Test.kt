@@ -31,9 +31,9 @@ import com.vayunmathur.contacts.data.Nickname
 import com.vayunmathur.contacts.data.CDKNickname
 import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.clearEditDraft
-import com.vayunmathur.contacts.util.initEditDraft
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.clearEditDraft
+import com.vayunmathur.contacts.platform.initEditDraft
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.NavBackStack
@@ -222,13 +222,13 @@ class InteractionsPass2Test {
     @Test
     fun groupsScreenAddGroupDialogFlow() {
         val added = mutableListOf<String>()
-        val actions = object : com.vayunmathur.contacts.util.ContactsActions {
+        val actions = object : com.vayunmathur.contacts.platform.ContactsActions {
             override fun addGroup(name: String) { added += name }
         }
         rule.setContent {
             DynamicTheme {
                 GroupsScreen(
-                    com.vayunmathur.contacts.util.GroupsUiState(groups = emptyList()),
+                    com.vayunmathur.contacts.platform.GroupsUiState(groups = emptyList()),
                     actions,
                 )
             }
@@ -262,7 +262,7 @@ class InteractionsPass2Test {
     fun contactListSelectionAndSearchInteractions() {
         val vm = vm()
         vm.allContactsState.value = listOf(fixtureContact())
-        val actions = object : com.vayunmathur.contacts.util.ContactsActions {
+        val actions = object : com.vayunmathur.contacts.platform.ContactsActions {
             val opened = mutableListOf<Contact>()
             override fun openContact(contact: Contact) { opened += contact }
         }
@@ -271,7 +271,7 @@ class InteractionsPass2Test {
             DynamicTheme {
                 Box(Modifier.requiredSize(420.dp, 700.dp)) {
                     ContactListScreen(
-                        com.vayunmathur.contacts.util.ContactListUiState(contacts = listOf(contact)),
+                        com.vayunmathur.contacts.platform.ContactListUiState(contacts = listOf(contact)),
                         actions,
                     )
                 }

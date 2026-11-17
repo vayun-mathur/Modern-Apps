@@ -24,9 +24,9 @@ import com.vayunmathur.contacts.data.CDKNickname
 import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.Photo
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.initEditDraft
-import com.vayunmathur.contacts.util.setEditDraftPhotoFromBitmap
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.initEditDraft
+import com.vayunmathur.contacts.platform.setEditDraftPhotoFromBitmap
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.NavBackStack

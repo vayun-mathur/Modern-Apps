@@ -9,8 +9,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.contacts.data.FakeProviderPass2Test
-import com.vayunmathur.contacts.util.ContactPlatforms
-import com.vayunmathur.contacts.util.PackageUtils
+import com.vayunmathur.contacts.platform.ContactPlatforms
+import com.vayunmathur.contacts.platform.PackageUtils
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals

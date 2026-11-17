@@ -16,7 +16,6 @@
     <!-- Field label for birthday date -->
     <string name="birthday">Geburtstag</string>
     <!-- Section header and field label for freeform notes -->
-    <string name="note">Notiz</string>
     <!-- Field label for the row showing which ringtone plays for calls from this contact -->
     <string name="ringtone">Klingelton</string>
     <!-- Title of the system ringtone picker opened from the ringtone row -->
@@ -69,15 +68,12 @@
     <!-- Button below phone section to add another phone number. Verb. -->
     <string name="add_phone">Telefonnummer hinzufügen</string>
     <!-- Button/accessibility to remove phone field entry. Verb. -->
-    <string name="remove_phone">Telefonnummer entfernen</string>
     <!-- Button to add another email address -->
     <string name="add_email">E-Mail hinzufügen</string>
     <!-- Button to remove email field entry -->
-    <string name="remove_email">E-Mail entfernen</string>
     <!-- Button to add another postal address -->
     <string name="add_address">Adresse hinzufügen</string>
     <!-- Button to remove address field entry -->
-    <string name="remove_address">Adresse entfernen</string>
     <!-- Button to add another date (e.g. anniversary) -->
     <string name="add_date">Datum hinzufügen</string>
     <!-- Section header for other important dates -->
@@ -85,7 +81,6 @@
     <!-- Field label and section header for phone numbers -->
     <string name="phone">Telefonnummer</string>
     <!-- Field label and section header for email addresses -->
-    <string name="email">E-Mail</string>
     <!-- Section header for postal addresses -->
     <string name="addresses">Adressen</string>
     <!-- Content description for contact photo placeholder/avatar when viewing -->
@@ -95,7 +90,6 @@
     <!-- Button to change existing contact photo. Short, verb. Keep short -->
     <string name="change_picture">Ändern</string>
     <!-- Button to remove contact photo -->
-    <string name="remove_picture">Entfernen</string>
     <!-- SettingsPage -->
     <!-- Settings section header: which accounts are visible in list -->
     <string name="visible_accounts">Angezeigte Accounts</string>
@@ -124,12 +118,10 @@
     <!-- Permission screen message when contacts permission not granted -->
     <string name="grant_contacts_permission">Bitte erlaube die Kontaktberechtigung</string>
     <!-- Two-pane layout hint on tablets: prompt to select contact from list -->
-    <string name="select_contact_hint">Wähle einen Kontakt aus um Details zu sehen</string>
     <!-- Import / Export VCF -->
     <!-- Settings and screen title for importing contacts from VCF -->
     <string name="import_contacts">Kontakte importieren</string>
     <!-- Quick action chip: call contact. Verb. -->
-    <string name="action_call">Anrufen</string>
     <!-- Quick action chip: message contact. Verb. -->
     <string name="action_message">Nachricht</string>
     <!-- Quick action chip: video call contact. Noun/Verb. -->
@@ -139,7 +131,6 @@
     <!-- Settings row: toggle to show contact birthdays in calendar app -->
     <string name="sync_contacts_calendar">Geburtstage im Kalender anzeigen</string>
     <!-- Calendar name used when creating contacts birthday calendar -->
-    <string name="contacts_calendar_name">Kontakte</string>
     <!-- Field label for anniversary date -->
     <string name="anniversary">Jubiläum</string>
     <!-- Settings section header for backup options -->
@@ -154,7 +145,10 @@
         <item quantity="other">Sind Sie sich sicher, dass sie die %1$d ausgewählten Kontakte löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.</item>
     </plurals>
     <!-- Top bar title in multi-select mode showing selection count. %1$d = count -->
-    <string name="selected_count">%1$d ausgewählt</string>
+    <plurals name="selected_count">
+        <item quantity="one">%1$d ausgewählt</item>
+        <item quantity="other">%1$d ausgewählt</item>
+    </plurals>
     <!-- Settings section header for display preferences -->
     <string name="display">Anzeige</string>
     <!-- Settings toggle: show account label chips in contact list -->
@@ -175,11 +169,9 @@
     <string name="google_meet">Google Meet</string>
     <!-- Bottom navigation -->
     <!-- Bottom nav label: contacts list tab -->
-    <string name="contacts">Kontakte</string>
     !-- Bottom nav label: groups tab --&gt;
     <string name="groups">Gruppen</string>
     <!-- Two-pane hint for groups screen on tablets -->
-    <string name="select_group_hint">Gruppe auswählen um Kontakte anzuschauen</string>
     <!-- Groups management -->
     <!-- Dialog title and action to add selected contacts to a group -->
     <string name="add_to_group">Zur Gruppe hinzufügen</string>
@@ -233,7 +225,6 @@
     <!-- SIM contacts (now virtual accounts) -->
     <string name="sim_limited_fields_hint">SIM-Kontakte speichern nur Name, Telefon und E-Mail.</string>
     <string name="save_failed">Speichern fehlgeschlagen</string>
-    <string name="importing">Importiert…</string>
     <!-- Empty states -->
     <!-- Contacts tab, shown on a first run or when every account is hidden -->
     <string name="no_contacts_yet">Noch keine Kontakte</string>

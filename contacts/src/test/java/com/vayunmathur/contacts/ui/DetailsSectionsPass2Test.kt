@@ -26,7 +26,7 @@ import com.vayunmathur.contacts.data.Nickname
 import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactsActions
+import com.vayunmathur.contacts.platform.ContactsActions
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlinx.datetime.LocalDate
 import org.junit.Rule
@@ -72,7 +72,7 @@ class DetailsSectionsPass2Test {
         rule.setContent {
             DynamicTheme {
                 Column {
-                    PhonesSection(contact.details, platforms = com.vayunmathur.contacts.util.ContactPlatforms(), arriving = false)
+                    PhonesSection(contact.details, platforms = com.vayunmathur.contacts.platform.ContactPlatforms(), arriving = false)
                     EmailsSection(contact.details, arriving = false)
                     AddressesSection(contact.details)
                     DatesSection(contact, contact.details)
@@ -160,7 +160,7 @@ class DetailsSectionsPass2Test {
         rule.setContent {
             DynamicTheme {
                 Column {
-                    PhonesSection(bare.details, platforms = com.vayunmathur.contacts.util.ContactPlatforms(), arriving = false)
+                    PhonesSection(bare.details, platforms = com.vayunmathur.contacts.platform.ContactPlatforms(), arriving = false)
                     EmailsSection(bare.details, arriving = false)
                     AddressesSection(bare.details)
                     DatesSection(bare, bare.details)

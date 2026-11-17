@@ -38,11 +38,11 @@ import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.PrefillValue
-import com.vayunmathur.contacts.util.ContactDetailsUiState
-import com.vayunmathur.contacts.util.ContactListUiState
-import com.vayunmathur.contacts.util.ContactPlatforms
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.ContactsActions
+import com.vayunmathur.contacts.platform.ContactDetailsUiState
+import com.vayunmathur.contacts.platform.ContactListUiState
+import com.vayunmathur.contacts.platform.ContactPlatforms
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactsActions
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.Dispatchers
@@ -231,7 +231,7 @@ class DeepInteractionsPass2Test {
     fun contactListWithAccountLabelsAndSortModes() {
         val actions = RecordingActions()
         val contact = contact()
-        var sortChanged: com.vayunmathur.contacts.util.ContactSorting.ContactSortMode? = null
+        var sortChanged: com.vayunmathur.contacts.domain.ContactSorting.ContactSortMode? = null
         rule.setContent {
             DynamicTheme {
                 ContactListScreen(
@@ -241,7 +241,7 @@ class DeepInteractionsPass2Test {
                         openContactId = 7L,
                     ),
                     actions,
-                    sortMode = com.vayunmathur.contacts.util.ContactSorting.ContactSortMode.LastName,
+                    sortMode = com.vayunmathur.contacts.domain.ContactSorting.ContactSortMode.LastName,
                     onSortModeChange = { sortChanged = it },
                 )
             }

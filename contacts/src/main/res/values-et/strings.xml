@@ -7,7 +7,6 @@
     <string name="share_contact">Jaga kontakti</string>
     <string name="about_name">Teave: <xliff:g id="first_name" example="Kadri">%1$s</xliff:g></string>
     <string name="birthday">Sünnipäev</string>
-    <string name="note">Märge</string>
     <string name="favorites">Lemmikud</string>
     <string name="export_contacts">Ekspordi kõik kontaktid</string>
     <string name="on_device">Seadmes</string>
@@ -21,27 +20,20 @@
     <string name="account">Kasutajakonto</string>
     <string name="dates">Kuupäevad</string>
     <string name="phone">Telefon</string>
-    <string name="email">E-posti aadress</string>
     <string name="addresses">Aadressid</string>
     <string name="contact_photo">Kontakti foto</string>
     <string name="add_picture">Lisa pilt</string>
     <string name="change_picture">Muuda</string>
-    <string name="remove_picture">Eemalda</string>
     <string name="visible_accounts">Nähtavad kasutajakontod</string>
     <string name="add_contacts_account">Lisa kontaktide kasutajakonto</string>
     <string name="enter_account_name">Sisesta nimi uue kohaliku kasutajakonto jaoks:</string>
     <string name="account_name">Kasutajakonto nimi</string>
     <string name="delete_contact_title">Kustuta kontakt</string>
     <string name="grant_contacts_permission">Palun anna õigused kontaktide kasutamiseks</string>
-    <string name="select_contact_hint">Üksikasjade vaatamiseks palun vali kontakt</string>
     <string name="import_contacts">Impordi kontakte</string>
-    <string name="action_call">Helista</string>
     <string name="action_message">Saada sõnum</string>
     <string name="action_video">Alusta videokõnet</string>
     <string name="add_date">Lisa kuupäev</string>
-    <string name="remove_email">Eemalda e-posti aadress</string>
-    <string name="remove_address">Eemalda aadress</string>
-    <string name="remove_phone">Eemalda telefon</string>
     <string name="delete_contact_confirm">Kas sa oled kindel, et soovid selle kontakti kustutada? Järgnevat tegevust ei saa tagasi pöörata.</string>
     <string name="account_display_format"><xliff:g id="account_name" example="Isiklik">%1$s</xliff:g> (<xliff:g id="account_type" example="com.google">%2$s</xliff:g>)</string>
     <string name="add_address">Lisa aadress</string>
@@ -50,7 +42,6 @@
     <string name="add_email">Lisa e-posti aadress</string>
     <string name="calendar_sync">Kalendri sünkroonimine</string>
     <string name="sync_contacts_calendar">Näita kalendris sünnipäevi</string>
-    <string name="contacts_calendar_name">Kontaktid</string>
     <string name="anniversary">Aastapäev</string>
     <string name="backup_and_export">Varundus ja eksport</string>
     <string name="grant_calendar_permissions">Anna õigused kalendri kasutamiseks</string>
@@ -59,7 +50,10 @@
         <item quantity="one">Kas oled kindel, et soovid kustutada <xliff:g id="count" example="1">%1$d</xliff:g> valitud kontakti? Seda tegevust ei saa tagasi pöörata.</item>
         <item quantity="other">Kas oled kindel, et soovid kustutada <xliff:g id="count" example="5">%1$d</xliff:g> valitud kontakti? Seda tegevust ei saa tagasi pöörata.</item>
     </plurals>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> on valitud</string>
+    <plurals name="selected_count">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> on valitud</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> on valitud</item>
+    </plurals>
     <string name="display">Ekraan</string>
     <string name="show_account_labels">Näita kontakti kasutajakontosid</string>
     <string name="search_contacts">Otsi kontaktide hulgast</string>
@@ -69,9 +63,7 @@
     <string name="whatsapp">WhatsApp</string>
     <string name="telegram">Telegram</string>
     <string name="google_meet">Google Meet</string>
-    <string name="contacts">Kontaktid</string>
     <string name="groups">Grupid</string>
-    <string name="select_group_hint">Kontaktide vaatamiseks vali grupp</string>
     <string name="add_to_group">Lisa gruppi</string>
     <string name="add_group">Lisa grupp</string>
     <string name="enter_group_name">Sisesta grupi nimi</string>
@@ -100,7 +92,6 @@
     <string name="enter_custom_label">Sisesta sinu soovitud silt</string>
     <string name="sim_limited_fields_hint">SIM-kaardi andmetesse saad kontaktidest salvestada vaid nime, telefoninumbri ja e-posti aadressi.</string>
     <string name="save_failed">Salvestamine ei õnnestunud</string>
-    <string name="importing">Impordin…</string>
     <string name="rename_account">Muuda kasutajakonto nime</string>
     <string name="delete_account">Kustuta kasutajakonto</string>
     <string name="delete_local_account_confirm">Kas kustutad selle kasutajakonto ning kõike tema kontaktid? Seda tegevust ei saa tagasi pöörata.</string>
@@ -113,7 +104,6 @@
     <string name="no_groups_yet_message">Kontaktide grupeerimiseks klõpsa lisamisnuppu.</string>
     <string name="name_prefix">Tiitel</string>
     <string name="name_suffix">Järelliide</string>
-    <string name="name_affix_none">Puudub</string>
     <string name="sim_name_or_phone_required">Sisesta nimi või telefoninumber</string>
     <string name="sim_slot_label">SIM-kaart %1$d</string>
     <string name="move_to_account">Tõsta muu kasutajakonto juurde</string>
@@ -140,7 +130,10 @@
         <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> kontakti on tõstetud ümber</item>
     </plurals>
     <string name="move_failed">Ümbertõstmine ei õnnestunud</string>
-    <string name="move_partial_failure"><xliff:g id="moved" example="2">%1$d</xliff:g> on tõstetud ümber, <xliff:g id="failed" example="1">%2$d</xliff:g> puhul ümbertõstmine ei õnnestunud</string>
+    <plurals name="move_partial_failure">
+        <item quantity="one"><xliff:g id="moved" example="2">%1$d</xliff:g> on tõstetud ümber, <xliff:g id="failed" example="1">%2$d</xliff:g> puhul ümbertõstmine ei õnnestunud</item>
+        <item quantity="other"><xliff:g id="moved" example="2">%1$d</xliff:g> on tõstetud ümber, <xliff:g id="failed" example="1">%2$d</xliff:g> puhul ümbertõstmine ei õnnestunud</item>
+    </plurals>
     <string name="move_to_sim_warning_body">Vaid nimi, telefon ja e-posti aadress jäävad SIM-kaardile <xliff:g id="sim_label" example="SIM 1">%1$s</xliff:g>. Järgnev läheb kaotsi: <xliff:g id="dropped" example="foto, aadressid">%2$s</xliff:g>.</string>
     <string name="name">Nimi</string>
     <string name="gender">Sugu</string>

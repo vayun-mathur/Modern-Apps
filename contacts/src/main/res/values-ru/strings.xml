@@ -7,7 +7,6 @@
     <string name="share_contact">Поделиться</string>
     <string name="about_name">О <xliff:g id="first_name" example="John">%1$s</xliff:g></string>
     <string name="birthday">День рождения</string>
-    <string name="note">Заметка</string>
     <string name="favorites">Избранное</string>
     <string name="export_contacts">Экспортировать все</string>
     <string name="on_device">На устройстве</string>
@@ -21,20 +20,15 @@
     <string name="account">Учётная запись</string>
     <string name="account_display_format"><xliff:g id="account_name" example="Personal">%1$s</xliff:g> (<xliff:g id="account_type" example="com.google">%2$s</xliff:g>)</string>
     <string name="add_phone">Добавить номер</string>
-    <string name="remove_phone">Удалить номер</string>
     <string name="add_email">Добавить email</string>
-    <string name="remove_email">Удалить email</string>
     <string name="add_address">Добавить адрес</string>
-    <string name="remove_address">Удалить адрес</string>
     <string name="add_date">Добавить дату</string>
     <string name="dates">Даты</string>
     <string name="phone">Телефон</string>
-    <string name="email">Email</string>
     <string name="addresses">Адреса</string>
     <string name="contact_photo">Фото</string>
     <string name="add_picture">Добавить фото</string>
     <string name="change_picture">Изменить</string>
-    <string name="remove_picture">Удалить</string>
     <string name="visible_accounts">Отображаемые учётки</string>
     <string name="add_contacts_account">Добавить учётку</string>
     <string name="enter_account_name">Введите имя для новой локальной учётки:</string>
@@ -43,19 +37,21 @@
     <string name="delete_contact_confirm">Вы уверены, что хотите удалить этот контакт? Это действие необратимо.</string>
     <string name="delete_contact_name_confirm">Вы уверены, что хотите удалить \"<xliff:g id="contact_name" example="John Doe">%1$s</xliff:g>\"? Это действие необратимо.</string>
     <string name="grant_contacts_permission">Пожалуйста, предоставьте разрешение на доступ к контактам</string>
-    <string name="select_contact_hint">Выберите контакт, чтобы просмотреть подробную информацию</string>
     <string name="import_contacts">Импортировать Контакты</string>
-    <string name="action_call">Позвонить</string>
     <string name="action_message">Сообщение</string>
     <string name="action_video">Видео</string>
     <string name="calendar_sync">Синхронизация Календаря</string>
     <string name="sync_contacts_calendar">Показывать дни рождения</string>
-    <string name="contacts_calendar_name">Контакты</string>
     <string name="anniversary">Памятные даты</string>
     <string name="backup_and_export">Резервное копирование и Экспорт</string>
     <string name="grant_calendar_permissions">Предоставить права доступа к календарю</string>
     <string name="delete_selected_contacts_title">Удалить выбранные контакты</string>
-    <string name="selected_count"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</string>
+    <plurals name="selected_count">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</item>
+        <item quantity="few"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</item>
+        <item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> выбрано</item>
+    </plurals>
     <string name="display">Дисплей</string>
     <string name="show_account_labels">Показывать учётки контакта</string>
     <string name="search_contacts">Поиск контактов</string>
@@ -65,9 +61,7 @@
     <string name="whatsapp">WhatsApp</string>
     <string name="telegram">Telegram</string>
     <string name="google_meet">Google Meet</string>
-    <string name="contacts">Контакты</string>
     <string name="groups">Группы</string>
-    <string name="select_group_hint">Выбор группы для просмотра</string>
     <string name="add_to_group">Добавить в Группу</string>
     <string name="add_group">Добавить Группу</string>
     <string name="enter_group_name">Введите имя группы</string>
@@ -112,14 +106,12 @@
     <string name="account_name_exists">Учетка с таким именем уже существует</string>
     <string name="sim_limited_fields_hint">В контактах на SIM-карте хранятся только имя, номер телефона и адрес электронной почты.</string>
     <string name="save_failed">Сохранение не удалось</string>
-    <string name="importing">Импорт…</string>
     <string name="no_contacts_yet">Пока нет контактов</string>
     <string name="no_contacts_yet_message">Нажмите кнопку Добавить, чтобы создать свой первый контакт.</string>
     <string name="no_groups_yet">Групп пока нет</string>
     <string name="no_groups_yet_message">Нажмите кнопку Добавить, чтобы объединить контакты в группу.</string>
     <string name="name_prefix">Префикс</string>
     <string name="name_suffix">Суффикс</string>
-    <string name="name_affix_none">Нет</string>
     <string name="sim_name_or_phone_required">Введите имя или номер телефона</string>
     <string name="sim_slot_label">SIM %1$d</string>
 </resources>

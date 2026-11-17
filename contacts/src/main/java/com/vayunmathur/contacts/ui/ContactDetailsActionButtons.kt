@@ -22,8 +22,8 @@ import com.vayunmathur.contacts.data.CommAction
 import com.vayunmathur.contacts.data.CommPlatform
 import com.vayunmathur.contacts.data.CommPrefResolver
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactPlatforms
-import com.vayunmathur.contacts.util.PackageUtils
+import com.vayunmathur.contacts.platform.ContactPlatforms
+import com.vayunmathur.contacts.platform.PackageUtils
 import com.vayunmathur.library.ui.BadgedBox
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
@@ -108,8 +108,8 @@ private fun commPlatformLabel(platform: CommPlatform): String = stringResource(
 fun ActionButton(
     icon: @Composable () -> Unit,
     label: String,
-    dropdownContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
+    dropdownContent: (@Composable () -> Unit)? = null,
     action: () -> Unit
 ) {
     // Grows with the row slot so every button owns an equal share of the width

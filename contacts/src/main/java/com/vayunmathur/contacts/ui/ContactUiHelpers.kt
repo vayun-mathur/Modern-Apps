@@ -27,7 +27,7 @@ import androidx.core.content.FileProvider
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactGroup
-import com.vayunmathur.contacts.util.VcfUtils
+import com.vayunmathur.contacts.data.VcfUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,52 +46,6 @@ fun contactGroupsOf(contact: Contact, allGroups: List<ContactGroup>): List<Conta
     allGroups.filter { group ->
         contact.details.groups.any { it.groupId == group.id } && group.name.trim().isNotEmpty()
     }
-
-/**
- * Circular avatar: decoded photo (off the main thread) or colored initials fallback.
- *
- * [decodePhoto] is the ViewModel's cached decoder, passed as a function so this stays
- * usable from a stateless screen. Only the photo keys the decode — the decoder itself is
- * effectively constant, and keying on it would restart the decode on every recomposition.
- */
-@Composable
-fun ContactAvatar(
-    contact: Contact,
-    decodePhoto: ((String) -> Bitmap?)?,
-    modifier: Modifier = Modifier,
-    initialsStyle: TextStyle = MaterialTheme.typography.bodyLarge,
-    /** Overridable so a caller can morph it - see the press feedback on a contact row. */
-    shape: Shape = CircleShape,
-) {
-    val photoBase64 = contact.photo?.photo
-    val avatarBitmap by produceState<Bitmap?>(initialValue = null, key1 = photoBase64) {
-        value = if (photoBase64 != null) {
-            withContext(Dispatchers.IO) { decodePhoto?.invoke(photoBase64) }
-        } else null
-    }
-    Box(modifier.clip(shape), contentAlignment = Alignment.Center) {
-        val bmp = avatarBitmap
-        if (bmp != null) {
-            Image(
-                bitmap = bmp.asImageBitmap(),
-                contentDescription = stringResource(R.string.contact_photo_description, contact.name.value),
-                modifier = Modifier.fillMaxSize().clip(shape)
-            )
-        } else {
-            Box(
-                Modifier.fillMaxSize().background(getAvatarColor(contact.id), shape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = contact.name.value.firstOrNull()?.uppercase() ?: "",
-                    color = Color.White,
-                    style = initialsStyle,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
 
 /** Exports [contacts] to a VCF cache file and fires a share chooser. Runs I/O on [scope]. */
 fun shareContactsAsVcf(

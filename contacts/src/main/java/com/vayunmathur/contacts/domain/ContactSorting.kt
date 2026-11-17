@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.domain
 
 import com.vayunmathur.contacts.data.Contact
 import java.text.Collator

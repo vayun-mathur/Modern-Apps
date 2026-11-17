@@ -34,13 +34,13 @@ fun DetailItem(
     icon: @Composable () -> Unit,
     data: String,
     label: String,
+    modifier: Modifier = Modifier,
     trailingIcon: (@Composable () -> Unit)? = null,
     onTrailingIconClick: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     dropdownContent: (@Composable () -> Unit)? = null,
     trailingDropdownContent: (@Composable () -> Unit)? = null,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
-    modifier: Modifier = Modifier,
     /**
      * Pairs this row's value text with the text inside the field it becomes, so the two travel together
      * while the row's box morphs into the field's box. Without it the box morphs alone and drags this
@@ -104,27 +104,4 @@ fun groupShape(
         bottomStart = if (isLast) outerRadius else innerRadius,
         bottomEnd = if (isLast) outerRadius else innerRadius,
     )
-}
-
-@Composable
-fun GroupedSection(
-    title: String,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
-        )
-        content()
-    }
 }

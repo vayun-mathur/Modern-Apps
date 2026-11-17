@@ -1,4 +1,5 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.platform
+import com.vayunmathur.contacts.domain.ContactSorting
 
 import android.app.Application
 import android.content.ContentProviderOperation

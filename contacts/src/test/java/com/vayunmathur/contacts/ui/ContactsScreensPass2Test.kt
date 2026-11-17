@@ -27,11 +27,11 @@ import com.vayunmathur.contacts.data.Nickname
 import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactDetailsUiState
-import com.vayunmathur.contacts.util.ContactListUiState
-import com.vayunmathur.contacts.util.ContactsActions
-import com.vayunmathur.contacts.util.GroupWithContacts
-import com.vayunmathur.contacts.util.GroupsUiState
+import com.vayunmathur.contacts.platform.ContactDetailsUiState
+import com.vayunmathur.contacts.platform.ContactListUiState
+import com.vayunmathur.contacts.platform.ContactsActions
+import com.vayunmathur.contacts.platform.GroupWithContacts
+import com.vayunmathur.contacts.platform.GroupsUiState
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlinx.datetime.LocalDate
 import org.junit.Rule

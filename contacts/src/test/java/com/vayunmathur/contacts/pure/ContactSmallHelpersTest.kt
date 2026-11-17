@@ -5,7 +5,7 @@ import com.vayunmathur.contacts.data.ContactPrefill
 import com.vayunmathur.contacts.data.PrefillValue
 import com.vayunmathur.contacts.ui.calculateAge
 import com.vayunmathur.contacts.ui.formatPhoneNumber
-import com.vayunmathur.contacts.util.PackageUtils
+import com.vayunmathur.contacts.platform.PackageUtils
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

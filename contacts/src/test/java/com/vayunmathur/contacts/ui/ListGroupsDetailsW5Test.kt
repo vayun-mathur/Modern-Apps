@@ -21,10 +21,10 @@ import com.vayunmathur.contacts.data.Name
 import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactListUiState
-import com.vayunmathur.contacts.util.ContactsActions
-import com.vayunmathur.contacts.util.GroupWithContacts
-import com.vayunmathur.contacts.util.GroupsUiState
+import com.vayunmathur.contacts.platform.ContactListUiState
+import com.vayunmathur.contacts.platform.ContactsActions
+import com.vayunmathur.contacts.platform.GroupWithContacts
+import com.vayunmathur.contacts.platform.GroupsUiState
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -158,7 +158,7 @@ class ListGroupsDetailsW5Test {
                 Column {
                     DatesSection(aisha, aisha.details)
                     NoteSection(aisha)
-                    PhonesSection(aisha.details, platforms = com.vayunmathur.contacts.util.ContactPlatforms(), arriving = false)
+                    PhonesSection(aisha.details, platforms = com.vayunmathur.contacts.platform.ContactPlatforms(), arriving = false)
                 }
             }
         }

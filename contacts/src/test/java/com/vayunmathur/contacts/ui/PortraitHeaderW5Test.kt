@@ -10,7 +10,7 @@ import com.vayunmathur.contacts.data.CommPlatform
 import com.vayunmathur.contacts.data.CommPref
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.ContactDetails
-import com.vayunmathur.contacts.util.ContactPlatforms
+import com.vayunmathur.contacts.platform.ContactPlatforms
 import com.vayunmathur.contacts.data.Name
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.library.ui.DynamicTheme

@@ -12,7 +12,7 @@ import com.vayunmathur.contacts.data.CDKPhone
 import com.vayunmathur.contacts.data.CommPlatform
 import com.vayunmathur.contacts.data.CommPref
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.library.ui.DynamicTheme
 import org.junit.Rule
 import org.junit.runner.RunWith

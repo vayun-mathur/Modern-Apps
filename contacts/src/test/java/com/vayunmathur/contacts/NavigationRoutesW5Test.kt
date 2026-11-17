@@ -12,7 +12,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.contacts.data.FakeProviderPass2Test
 import com.vayunmathur.contacts.data.SimProviderPass2Test
-import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactViewModel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue

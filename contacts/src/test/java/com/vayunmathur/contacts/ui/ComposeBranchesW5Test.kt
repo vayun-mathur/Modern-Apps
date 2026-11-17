@@ -20,9 +20,9 @@ import com.vayunmathur.contacts.data.Email
 import com.vayunmathur.contacts.data.NewContactRestriction
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.ProviderAccount
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactPlatforms
-import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactPlatforms
+import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals

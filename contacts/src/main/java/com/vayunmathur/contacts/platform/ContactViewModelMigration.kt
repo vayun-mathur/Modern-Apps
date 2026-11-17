@@ -1,11 +1,12 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.platform
+import com.vayunmathur.contacts.sync.CalendarSyncHelper
 
 import android.app.Application
 import android.content.ContentProviderOperation
 import android.provider.ContactsContract
 import com.vayunmathur.contacts.data.rewriteNoYearSentinel
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.contacts.util.ContactAccount
+import com.vayunmathur.contacts.platform.ContactAccount
 import com.vayunmathur.contacts.data.LOCAL_ACCOUNT_TYPE
 import kotlinx.coroutines.flow.first
 

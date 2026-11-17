@@ -17,8 +17,8 @@ import com.vayunmathur.contacts.data.Nickname
 import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactListUiState
-import com.vayunmathur.contacts.util.ContactsActions
+import com.vayunmathur.contacts.platform.ContactListUiState
+import com.vayunmathur.contacts.platform.ContactsActions
 import com.vayunmathur.library.ui.DynamicTheme
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -94,13 +94,13 @@ class ListSelectionPass2Test {
     fun selectionModeCountsAndToggles() {
         render()
         longPress("Aisha")
-        rule.onNodeWithText(str(R.string.selected_count, 1), substring = true).assertExists()
+        rule.onNodeWithText(ctx.resources.getQuantityString(R.plurals.selected_count, 1, 1), substring = true).assertExists()
         // tapping another row toggles it into the selection
         rule.onNodeWithText("Bob", substring = true).performClick()
-        rule.onNodeWithText(str(R.string.selected_count, 2), substring = true).assertExists()
+        rule.onNodeWithText(ctx.resources.getQuantityString(R.plurals.selected_count, 2, 2), substring = true).assertExists()
         // tapping a selected row again removes it
         rule.onNodeWithText("Bob", substring = true).performClick()
-        rule.onNodeWithText(str(R.string.selected_count, 1), substring = true).assertExists()
+        rule.onNodeWithText(ctx.resources.getQuantityString(R.plurals.selected_count, 1, 1), substring = true).assertExists()
         assertTrue(actions.opened.isEmpty(), "selection taps must not open contacts")
     }
 
@@ -109,7 +109,7 @@ class ListSelectionPass2Test {
         render()
         longPress("Aisha")
         rule.onNodeWithText("Bob", substring = true).performClick()
-        rule.onNodeWithText(str(R.string.selected_count, 2), substring = true).assertExists()
+        rule.onNodeWithText(ctx.resources.getQuantityString(R.plurals.selected_count, 2, 2), substring = true).assertExists()
 
         // click across the top strip (skipping the close button at index 0);
         // each of group/move/share must fire exactly once with [1, 2]
@@ -130,7 +130,7 @@ class ListSelectionPass2Test {
     fun selectionDeleteConfirmationDeletes() {
         render()
         longPress("Zoe")
-        rule.onNodeWithText(str(R.string.selected_count, 1), substring = true).assertExists()
+        rule.onNodeWithText(ctx.resources.getQuantityString(R.plurals.selected_count, 1, 1), substring = true).assertExists()
 
         // delete is the rightmost top action: click top nodes from the right until
         // the confirmation dialog appears

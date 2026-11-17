@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.sync
 
 import android.content.Context
 import androidx.work.Constraints

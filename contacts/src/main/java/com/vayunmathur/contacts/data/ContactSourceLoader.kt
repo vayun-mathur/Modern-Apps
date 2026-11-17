@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.data
 
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.library.log.Log

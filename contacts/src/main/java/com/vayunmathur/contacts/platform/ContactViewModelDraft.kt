@@ -1,6 +1,6 @@
 @file:OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
 
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.platform
 
 import android.app.Application
 import android.graphics.Bitmap

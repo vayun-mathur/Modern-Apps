@@ -27,7 +27,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.contacts.R
@@ -39,13 +38,13 @@ import com.vayunmathur.contacts.data.ContactDetail
 import com.vayunmathur.contacts.data.Email
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.SIM_ACCOUNT_TYPE
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.initEditDraft
-import com.vayunmathur.contacts.util.loadLastSelectedAccount
-import com.vayunmathur.contacts.util.refreshNewContactRestriction
-import com.vayunmathur.contacts.util.saveEditDraft
-import com.vayunmathur.contacts.util.setLastSelectedAccount
-import com.vayunmathur.contacts.util.updateEditDraft
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.initEditDraft
+import com.vayunmathur.contacts.platform.loadLastSelectedAccount
+import com.vayunmathur.contacts.platform.refreshNewContactRestriction
+import com.vayunmathur.contacts.platform.saveEditDraft
+import com.vayunmathur.contacts.platform.setLastSelectedAccount
+import com.vayunmathur.contacts.platform.updateEditDraft
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.util.NavBackStack
@@ -54,7 +53,7 @@ import com.vayunmathur.library.util.NavBackStack
 @Composable
 fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel, editRoute: Route.EditContact, onExit: () -> Unit = { backStack.pop() }) {
     val contactId = editRoute.contactId
-    val context = LocalContext.current
+    val saveFailedMessage = stringResource(R.string.save_failed)
     var saveError by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
     val isNewContact = contactId == null
@@ -113,7 +112,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                         }
                         onExit()
                     } else {
-                        saveError = err ?: context.getString(R.string.save_failed)
+                        saveError = err ?: saveFailedMessage
                     }
                 }
             }) {

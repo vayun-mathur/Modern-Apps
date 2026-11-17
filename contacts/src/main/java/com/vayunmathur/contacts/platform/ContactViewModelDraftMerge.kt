@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts.util
+package com.vayunmathur.contacts.platform
 
 import com.vayunmathur.contacts.data.Address
 import com.vayunmathur.contacts.data.CDKEmail

@@ -25,9 +25,9 @@ import com.vayunmathur.contacts.ui.dialogs.EventDatePickerDialog
 import com.vayunmathur.contacts.ui.dialogs.EventDeleteConfirmDialog
 import com.vayunmathur.contacts.ui.dialogs.MoveDialogHost
 import com.vayunmathur.contacts.ui.dialogs.MoveToAccountDialog
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.initEditDraft
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.initEditDraft
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.NavBackStack

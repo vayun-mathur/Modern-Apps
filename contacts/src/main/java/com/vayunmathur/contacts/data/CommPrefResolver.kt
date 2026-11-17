@@ -1,6 +1,6 @@
 package com.vayunmathur.contacts.data
 
-import com.vayunmathur.contacts.util.ContactPlatforms
+import com.vayunmathur.contacts.platform.ContactPlatforms
 
 /** Which header button is being resolved: call, message, or video. */
 enum class CommAction { CALL, MESSAGE, VIDEO }

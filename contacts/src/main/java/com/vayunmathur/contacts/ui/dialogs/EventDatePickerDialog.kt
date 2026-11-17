@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,6 +40,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,9 +71,9 @@ fun EventDatePickerDialog(id: String, initialDate: LocalDate?, onDismiss: () -> 
     val years = remember { (1900..2100).toList() }
     val months = remember { (1..12).toList() }
     
-    var selectedYear by remember { mutableStateOf(baseDate.year) }
-    var selectedMonth by remember { mutableStateOf(baseDate.monthNumber) }
-    var selectedDay by remember { mutableStateOf(baseDate.day) }
+    var selectedYear by remember { mutableIntStateOf(baseDate.year) }
+    var selectedMonth by remember { mutableIntStateOf(baseDate.monthNumber) }
+    var selectedDay by remember { mutableIntStateOf(baseDate.day) }
 
     val daysInMonth = remember(selectedMonth, selectedYear) {
         val nextMonth = if (selectedMonth == 12) 1 else selectedMonth + 1
@@ -109,7 +111,7 @@ fun EventDatePickerDialog(id: String, initialDate: LocalDate?, onDismiss: () -> 
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Date Preview — region-aware: ordering, month names and punctuation follow system locale.
-                val locale: Locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+                val locale: Locale = LocalLocale.current.platformLocale
                 val previewText = try {
                     val date = LocalDate(selectedYear, selectedMonth, selectedDay)
                     com.vayunmathur.library.ui.DateString.dateWithOptionalYear(date, includeYear, locale)

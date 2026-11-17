@@ -5,7 +5,7 @@ import com.vayunmathur.contacts.data.CommPlatform
 import com.vayunmathur.contacts.data.CommPref
 import com.vayunmathur.contacts.data.CommPrefResolver
 import com.vayunmathur.contacts.data.PhoneNumber
-import com.vayunmathur.contacts.util.ContactPlatforms
+import com.vayunmathur.contacts.platform.ContactPlatforms
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

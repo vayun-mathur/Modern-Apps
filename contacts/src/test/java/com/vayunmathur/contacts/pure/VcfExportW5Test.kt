@@ -19,7 +19,7 @@ import com.vayunmathur.contacts.data.Note
 import com.vayunmathur.contacts.data.Organization
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.Photo
-import com.vayunmathur.contacts.util.VcfUtils
+import com.vayunmathur.contacts.data.VcfUtils
 import java.io.ByteArrayOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals

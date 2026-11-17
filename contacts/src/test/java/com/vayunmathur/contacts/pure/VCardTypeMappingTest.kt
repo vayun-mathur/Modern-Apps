@@ -1,7 +1,7 @@
 package com.vayunmathur.contacts.pure
 
 import com.vayunmathur.contacts.data.Contact
-import com.vayunmathur.contacts.util.VcfUtils
+import com.vayunmathur.contacts.data.VcfUtils
 import java.io.ByteArrayInputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals

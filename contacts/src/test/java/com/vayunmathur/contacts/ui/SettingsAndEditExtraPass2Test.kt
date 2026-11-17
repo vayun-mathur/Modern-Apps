@@ -20,12 +20,12 @@ import com.vayunmathur.contacts.Route
 import com.vayunmathur.contacts.data.FakeProviderPass2Test
 import com.vayunmathur.contacts.data.LOCAL_ACCOUNT_TYPE
 import com.vayunmathur.contacts.data.SIM_ACCOUNT_TYPE
-import com.vayunmathur.contacts.util.ContactAccount
-import com.vayunmathur.contacts.util.ContactViewModel
-import com.vayunmathur.contacts.util.encodeExtraAccountEntry
-import com.vayunmathur.contacts.util.initEditDraft
-import com.vayunmathur.contacts.util.loadAccountsInternal
-import com.vayunmathur.contacts.util.updateEditDraft
+import com.vayunmathur.contacts.platform.ContactAccount
+import com.vayunmathur.contacts.platform.ContactViewModel
+import com.vayunmathur.contacts.platform.encodeExtraAccountEntry
+import com.vayunmathur.contacts.platform.initEditDraft
+import com.vayunmathur.contacts.platform.loadAccountsInternal
+import com.vayunmathur.contacts.platform.updateEditDraft
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.NavBackStack
@@ -73,7 +73,7 @@ class SettingsAndEditExtraPass2Test {
         runBlocking {
             vm.dataStore.addStringToSetIfAbsent(
                 "extra_accounts_set",
-                com.vayunmathur.contacts.util.encodeExtraAccountEntry("Family", LOCAL_ACCOUNT_TYPE),
+                com.vayunmathur.contacts.platform.encodeExtraAccountEntry("Family", LOCAL_ACCOUNT_TYPE),
             )
             vm.loadAccountsInternal()
         }
