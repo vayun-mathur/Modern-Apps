@@ -255,7 +255,9 @@ internal fun CameraViewModel.buildVideoPreview(
 }
 
 /** Builds the video capture with codec/mirror/dynamic-range + capture options. */
-@SuppressLint("RestrictedApi") // Recorder.Builder.setAudioSource(Int) is CameraX's documented public entry point for the mic source; the restriction is on the AudioSpec IntDef constants, not this builder method, and there is no public alternative.
+@SuppressLint("RestrictedApi") // Recorder.Builder.setAudioSource(Int) is CameraX's documented
+// public entry point for the mic source; the restriction is on the AudioSpec IntDef constants,
+// not this builder method, and there is no public alternative.
 internal fun CameraViewModel.buildVideoCapture(
     session: VideoSessionPrep,
     dynamicRange: androidx.camera.core.DynamicRange
