@@ -12,6 +12,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.madeveloper.data.GitHostRepository
+import com.vayunmathur.madeveloper.data.DevSocketTransport
 import com.vayunmathur.madeveloper.data.WebSocketDevTransport
 import com.vayunmathur.madeveloper.domain.CatalogApp
 import com.vayunmathur.madeveloper.domain.DevMessage
@@ -55,9 +56,17 @@ data class MaDevUiState(
 
 /** Holds MA Developer state: git pages, catalog, push socket and installs. */
 class MaDevViewModel(app: Application) : AndroidViewModel(app) {
-    private val repo = GitHostRepository()
+    // Test seams (internal, production defaults): the host repository, how
+    // the push socket is opened, and how a pushed APK's bytes are fetched.
+    // They exist so the state machine below can run off-device; the app
+    // itself always takes the defaults.
+    internal var repo: GitHostRepository = GitHostRepository()
+    internal var transportFactory: suspend (String, String?) -> DevSocketTransport =
+        { url, token -> WebSocketDevTransport.connect(url, token) }
+    internal var apkFetcher: suspend (String) -> Pair<Int, ByteArray> =
+        { url -> NetworkClient.performRequestBytes(url) }
     private val pairing = PairingStore(app)
-    private var transport: WebSocketDevTransport? = null
+    private var transport: DevSocketTransport? = null
     private var reconnectAttempt = 0
 
     var state by mutableStateOf(MaDevUiState(pairingCode = pairing.pairingCode(), paired = pairing.token() != null))
@@ -176,7 +185,7 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
             while (true) {
                 try {
                     val url = GitHostRepository.DEV_WS_URL + "?code=" + pairing.pairingCode()
-                    val socket = WebSocketDevTransport.connect(url, pairing.token())
+                    val socket = transportFactory(url, pairing.token())
                     transport = socket
                     reconnectAttempt = 0
                     state = state.copy(connected = true)
@@ -191,7 +200,7 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private suspend fun onServerMessage(message: DevMessage, socket: WebSocketDevTransport) {
+    private suspend fun onServerMessage(message: DevMessage, socket: DevSocketTransport) {
         when (message) {
             DevMessage.Ping -> socket.send("{\"type\":\"pong\"}")
             DevMessage.ListApps -> socket.send(DevProtocol.listAppsReply(installedApps()))
@@ -226,7 +235,7 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
             updatePending(DevProtocol.transition(install, InstallPhase.DOWNLOADING, 0f))
             try {
                 val bytes = withContext(Dispatchers.IO) {
-                    val (status, data) = NetworkClient.performRequestBytes(install.apkUrl)
+                    val (status, data) = apkFetcher(install.apkUrl)
                     if (status !in 200..299) throw java.io.IOException("Download failed: HTTP $status")
                     data
                 }

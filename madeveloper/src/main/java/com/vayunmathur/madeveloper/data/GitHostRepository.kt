@@ -21,7 +21,12 @@ import java.net.URLEncoder
  * endpoints. The JSON API may not be deployed yet — callers surface the
  * HTTP error (e.g. 404) rather than falling back to any mirror.
  */
-class GitHostRepository {
+class GitHostRepository(
+    // The one network seam: how a URL becomes its body text. Production goes
+    // through NetworkClient (below); tests substitute canned host replies so
+    // the parsing, caching and error behaviour above it run off-device.
+    private val fetcher: suspend (String) -> String = { url -> fetchViaNetwork(url) },
+) {
     private var treeCache: Map<String, List<TreeEntry>> = emptyMap()
     private var fileCache: Map<String, GitFile> = emptyMap()
 
@@ -74,12 +79,7 @@ class GitHostRepository {
         return file
     }
 
-    private suspend fun fetchText(url: String): String {
-        val headers = mapOf("Accept" to "application/json", "User-Agent" to "MADeveloper/1.0")
-        val response = NetworkClient.performRequest(url, headers = headers)
-        if (!response.isSuccess) throw java.io.IOException("HTTP " + response.status + " for " + url)
-        return response.body
-    }
+    private suspend fun fetchText(url: String): String = fetcher(url)
 
     /** Hosts and endpoints this app talks to. */
     companion object {
@@ -90,6 +90,14 @@ class GitHostRepository {
         /** Default commits page size for the commits screen. */
         const val COMMITS_PAGE_SIZE = 30
     }
+}
+
+/** Production [GitHostRepository] fetch: NetworkClient with this app's identity headers. */
+private suspend fun fetchViaNetwork(url: String): String {
+    val headers = mapOf("Accept" to "application/json", "User-Agent" to "MADeveloper/1.0")
+    val response = NetworkClient.performRequest(url, headers = headers)
+    if (!response.isSuccess) throw java.io.IOException("HTTP " + response.status + " for " + url)
+    return response.body
 }
 
 /** URL-encodes one path segment or query value. */
