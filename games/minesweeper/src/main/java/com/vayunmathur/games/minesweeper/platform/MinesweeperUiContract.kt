@@ -30,6 +30,7 @@ interface MinesweeperActions {
     fun restart() {}
     fun giveUp() {}
 
+    /** Holds the no-op [MinesweeperActions] used by previews. */
     companion object { val Noop: MinesweeperActions = object : MinesweeperActions {} }
 }
 

@@ -111,6 +111,7 @@ data class MinesweeperGameState(
     /** Indices of the up-to-eight cells touching [index], including diagonals. */
     fun neighbours(index: Int): List<Int> = neighbourIndices(cols, rows, index)
 
+    /** Factories for creating empty [MinesweeperGameState] fields. */
     companion object {
         /**
          * A field with no mines laid yet.

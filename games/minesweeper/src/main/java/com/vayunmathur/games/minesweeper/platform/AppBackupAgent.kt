@@ -2,6 +2,7 @@ package com.vayunmathur.games.minesweeper.platform
 
 import com.vayunmathur.library.util.BaseBackupAgent
 
+/** Backup agent declaring the Minesweeper preference and DataStore files restored with the app. */
 class AppBackupAgent : BaseBackupAgent() {
     override val prefNames: List<String> get() = listOf("minesweeper_stats")
 

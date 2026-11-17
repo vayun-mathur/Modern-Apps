@@ -6,6 +6,7 @@ import com.vayunmathur.games.minesweeper.data.Difficulty
 import com.vayunmathur.games.minesweeper.data.MinesweeperStatsRepository
 import com.vayunmathur.library.util.AchievementsManager
 
+/** Reports Minesweeper achievements and progress to the shared games hub. */
 class MinesweeperAchievementsManager(
     context: Context,
     json: String,
