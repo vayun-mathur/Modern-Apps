@@ -1,4 +1,7 @@
 package com.vayunmathur.flashcards.util
+import com.vayunmathur.flashcards.platform.ApkgExport
+import com.vayunmathur.flashcards.platform.ApkgImport
+import com.vayunmathur.flashcards.ui.NoteTypeWithConfig
 
 import android.net.Uri
 import androidx.room3.Room

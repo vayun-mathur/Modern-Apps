@@ -13,8 +13,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.flashcards.R
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.flashcards.util.Grade
-import com.vayunmathur.flashcards.util.ReviewUiState
+import com.vayunmathur.flashcards.domain.Grade
+import com.vayunmathur.flashcards.ui.ReviewUiState
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.ButtonDefaults
 import com.vayunmathur.library.ui.MaterialTheme

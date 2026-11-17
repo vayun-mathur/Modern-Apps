@@ -15,8 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.vayunmathur.flashcards.util.NoteListActions
-import com.vayunmathur.flashcards.util.NoteRow
+import com.vayunmathur.flashcards.ui.NoteListActions
+import com.vayunmathur.flashcards.ui.NoteRow
 import com.vayunmathur.library.ui.ReorderableItem
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.animatedDp
@@ -63,7 +63,8 @@ fun ReorderableNoteList(
                         selection = selection,
                         onOpen = { actions.openNote(row.note.id) },
                         onLongPress = { selection.toggle(row.note.id) },
-                        dragHandle = Modifier.reorderDragHandle(reorderState, key = row.note.id),
+                        modifier = Modifier.reorderDragHandle(reorderState, key = row.note.id),
+                        draggable = true,
                     )
                 }
             }

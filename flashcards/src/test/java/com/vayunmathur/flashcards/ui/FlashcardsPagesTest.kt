@@ -13,19 +13,20 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.flashcards.Route
+import com.vayunmathur.flashcards.ui.Navigation
 import com.vayunmathur.flashcards.data.Deck
 import com.vayunmathur.flashcards.data.FlashcardsDatabase
 import com.vayunmathur.flashcards.data.FlashcardsRepository
 import com.vayunmathur.flashcards.data.getAllNotesImpl
-import com.vayunmathur.flashcards.util.FlashcardsViewModel
-import com.vayunmathur.flashcards.util.ThemeMode
-import com.vayunmathur.flashcards.util.addDeckImpl
-import com.vayunmathur.flashcards.util.saveNoteImpl
-import com.vayunmathur.flashcards.util.setDesiredRetentionImpl
-import com.vayunmathur.flashcards.util.setThemeModeImpl
-import com.vayunmathur.flashcards.util.setAutoPlayImpl
-import com.vayunmathur.flashcards.util.setReminderEnabledImpl
-import com.vayunmathur.flashcards.util.upsertDeckImpl
+import com.vayunmathur.flashcards.platform.FlashcardsViewModel
+import com.vayunmathur.flashcards.ui.ThemeMode
+import com.vayunmathur.flashcards.platform.addDeckImpl
+import com.vayunmathur.flashcards.platform.saveNoteImpl
+import com.vayunmathur.flashcards.platform.setDesiredRetentionImpl
+import com.vayunmathur.flashcards.platform.setThemeModeImpl
+import com.vayunmathur.flashcards.platform.setAutoPlayImpl
+import com.vayunmathur.flashcards.platform.setReminderEnabledImpl
+import com.vayunmathur.flashcards.platform.upsertDeckImpl
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
@@ -259,7 +260,7 @@ class FlashcardsPagesTest {
         val deck = deckWithNote("NavDeck", "NavFront")
         vm.upsertDeckImpl(deck.copy(position = -2000.0))
         await("nav deck pinned") { vm.decks.value.firstOrNull { it.id == deck.id }?.position == -2000.0 }
-        rule.setContent { DynamicTheme { com.vayunmathur.flashcards.Navigation(vm) } }
+        rule.setContent { DynamicTheme { com.vayunmathur.flashcards.ui.Navigation(vm) } }
         rule.onNodeWithText("Decks").assertIsDisplayed()
         rule.onNodeWithText("NavDeck").assertIsDisplayed()
         rule.onNodeWithText("Stats").performClick()

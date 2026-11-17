@@ -1,4 +1,6 @@
 package com.vayunmathur.flashcards.util
+import com.vayunmathur.flashcards.domain.FsrsOptimizer
+import com.vayunmathur.flashcards.domain.Scheduler
 
 import com.vayunmathur.flashcards.data.ReviewLog
 import kotlin.test.Test

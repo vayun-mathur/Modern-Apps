@@ -1,4 +1,4 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.domain
 
 /** CSV import for bulk note creation. Per-deck sharing now uses `.apkg` (see [ApkgExport]). */
 object DeckIo {

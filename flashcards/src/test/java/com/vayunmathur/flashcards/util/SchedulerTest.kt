@@ -1,4 +1,6 @@
 package com.vayunmathur.flashcards.util
+import com.vayunmathur.flashcards.domain.Grade
+import com.vayunmathur.flashcards.domain.Scheduler
 
 import com.vayunmathur.flashcards.data.Card
 import com.vayunmathur.flashcards.data.CardState

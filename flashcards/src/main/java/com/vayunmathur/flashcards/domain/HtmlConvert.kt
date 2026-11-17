@@ -1,4 +1,4 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.domain
 
 /**
  * Best-effort conversion between the app's **markdown** and the HTML that Anki

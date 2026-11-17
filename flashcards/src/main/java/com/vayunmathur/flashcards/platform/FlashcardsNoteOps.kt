@@ -1,4 +1,5 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.platform
+import com.vayunmathur.flashcards.ui.TemplateDraft
 
 import android.app.Application
 import com.vayunmathur.flashcards.data.Card

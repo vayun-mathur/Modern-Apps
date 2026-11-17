@@ -1,4 +1,4 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.platform
 
 import com.vayunmathur.library.room.SqlCipherDbCodec
 import com.vayunmathur.library.util.BaseBackupAgent

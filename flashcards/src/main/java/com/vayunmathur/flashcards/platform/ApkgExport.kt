@@ -1,4 +1,6 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.platform
+import com.vayunmathur.flashcards.domain.HtmlConvert
+import com.vayunmathur.flashcards.ui.NoteTypeWithConfig
 
 import android.content.ContentValues
 import android.content.Context

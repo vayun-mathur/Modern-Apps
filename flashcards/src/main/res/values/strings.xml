@@ -13,7 +13,10 @@
     <string name="deck_name">Deck name</string>
     <!-- DeckListPage: Subtitle summarising a deck's due, new and total card counts.
          %1$d = cards due for review, %2$d = new cards, %3$d = total cards. -->
-    <string name="deck_summary">%1$d due · %2$d new · %3$d cards</string>
+    <plurals name="deck_summary">
+        <item quantity="one">%1$d due · %2$d new · %3$d cards</item>
+        <item quantity="other">%1$d due · %2$d new · %3$d cards</item>
+    </plurals>
     <!-- DeckListPage: Empty state when no decks exist. -->
     <string name="no_decks">No decks yet</string>
     <string name="no_decks_hint">Tap + to create your first deck</string>
@@ -35,14 +38,16 @@
     <string name="new_card">New card</string>
     <string name="edit_card">Edit card</string>
     <!-- CardEditPage: Field labels. Nouns. -->
-    <string name="front">Front</string>
     <string name="tags">Tags</string>
 
     <!-- NoteEditPage: pickers. -->
     <string name="note_type">Note type</string>
     <string name="deck">Deck</string>
     <!-- NoteListPage: badge showing how many cards a note generates. %1$d = count. -->
-    <string name="card_count_badge">%1$d cards</string>
+    <plurals name="card_count_badge">
+        <item quantity="one">%1$d cards</item>
+        <item quantity="other">%1$d cards</item>
+    </plurals>
 
     <!-- Note type manager. -->
     <string name="manage_note_types">Manage note types</string>
@@ -59,9 +64,15 @@
     <string name="note_type_standard">Standard</string>
     <string name="note_type_cloze">Cloze</string>
     <!-- Note type list subtitle. %1$d = fields, %2$d = templates, %3$d = notes. -->
-    <string name="note_type_summary">%1$d fields · %2$d templates · %3$d notes</string>
+    <plurals name="note_type_summary">
+        <item quantity="one">%1$d fields · %2$d templates · %3$d notes</item>
+        <item quantity="other">%1$d fields · %2$d templates · %3$d notes</item>
+    </plurals>
     <!-- Confirm before deleting a note type. %1$s = name, %2$d = affected notes. -->
-    <string name="delete_note_type_message">Delete \"%1$s\" and its %2$d notes?</string>
+    <plurals name="delete_note_type_message">
+        <item quantity="one">Delete \"%1$s\" and its %2$d notes?</item>
+        <item quantity="other">Delete \"%1$s\" and its %2$d notes?</item>
+    </plurals>
 
     <!-- Settings: data section. -->
     <string name="settings_data">Data</string>
@@ -74,7 +85,10 @@
     <string name="grade_again">Again</string>
     <string name="grade_good">Good</string>
     <!-- ReviewPage: Top-bar counts. %1$d = new, %2$d = learning, %3$d = review. -->
-    <string name="review_counts">%1$d new · %2$d learning · %3$d review</string>
+    <plurals name="review_counts">
+        <item quantity="one">%1$d new · %2$d learning · %3$d review</item>
+        <item quantity="other">%1$d new · %2$d learning · %3$d review</item>
+    </plurals>
     <!-- ReviewPage: Shown when there are no more cards due in the session. -->
     <string name="review_done">All caught up!</string>
     <string name="review_done_hint">You have finished this session</string>
@@ -91,7 +105,10 @@
     <string name="stat_streak">Streak</string>
     <string name="stat_mature">Mature</string>
     <!-- %1$d = number of days. -->
-    <string name="days_value">%1$d days</string>
+    <plurals name="days_value">
+        <item quantity="one">%1$d days</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
 
     <!-- SettingsPage -->
     <string name="settings_reminders">Reminders</string>
@@ -118,14 +135,15 @@
     <string name="deleted">Deleted</string>
 
     <!-- Suspend / leech -->
-    <string name="suspend">Suspend</string>
     <string name="unsuspend">Unsuspend</string>
-    <string name="suspend_card">Suspend card</string>
     <string name="suspended_badge">Suspended</string>
     <string name="leech_suspended">Card suspended (leech)</string>
 
     <!-- Bulk actions (note list selection mode) -->
-    <string name="selected_count">%1$d selected</string>
+    <plurals name="selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
     <string name="move_to_deck">Move to deck</string>
     <string name="add_tag">Add tag</string>
     <string name="remove_tag">Remove tag</string>
@@ -145,17 +163,13 @@
     <string name="start">Start</string>
 
     <!-- Review extras -->
-    <string name="speak">Speak</string>
     <string name="type_answer">Type the answer</string>
-    <string name="check">Check</string>
-    <string name="swipe_hint">Swipe to grade, or use the buttons</string>
 
     <!-- Settings additions -->
     <string name="setting_auto_play">Auto-play audio</string>
     <string name="setting_auto_play_hint">Read the front of each card aloud</string>
 
     <!-- Note editor toolbar -->
-    <string name="insert_image">Insert image</string>
     <string name="insert_cloze">Cloze deletion</string>
 
     <!-- Stats additions -->
@@ -173,8 +187,13 @@
 
     <!-- FSRS optimizer -->
     <string name="optimize_fsrs">Optimize FSRS parameters</string>
-    <string name="optimize_fsrs_hint">Estimates better scheduling from your review history (needs at least %1$d reviews)</string>
+    <plurals name="optimize_fsrs_hint">
+        <item quantity="one">Estimates better scheduling from your review history (needs at least %1$d reviews)</item>
+        <item quantity="other">Estimates better scheduling from your review history (needs at least %1$d reviews)</item>
+    </plurals>
     <string name="optimize_fsrs_too_few">Not enough reviews to optimize yet (%1$d of %2$d)</string>
-    <string name="optimize_fsrs_done">Updated FSRS parameters from %1$d reviews</string>
-    <string name="optimize_fsrs_running">Optimizing…</string>
+    <plurals name="optimize_fsrs_done">
+        <item quantity="one">Updated FSRS parameters from %1$d reviews</item>
+        <item quantity="other">Updated FSRS parameters from %1$d reviews</item>
+    </plurals>
 </resources>

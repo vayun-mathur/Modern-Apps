@@ -1,4 +1,5 @@
 package com.vayunmathur.flashcards.util
+import com.vayunmathur.flashcards.domain.TemplateEngine
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

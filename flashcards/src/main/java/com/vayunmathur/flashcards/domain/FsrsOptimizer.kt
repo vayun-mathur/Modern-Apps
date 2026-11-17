@@ -1,4 +1,4 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.domain
 
 import com.vayunmathur.flashcards.data.Card
 import com.vayunmathur.flashcards.data.ReviewLog

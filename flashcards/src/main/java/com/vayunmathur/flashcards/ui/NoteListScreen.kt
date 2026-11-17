@@ -14,12 +14,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.flashcards.R
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.flashcards.util.NoteListActions
-import com.vayunmathur.flashcards.util.NoteListUiState
+import com.vayunmathur.flashcards.ui.NoteListActions
+import com.vayunmathur.flashcards.ui.NoteListUiState
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CommonSearchBar
@@ -83,7 +84,7 @@ fun NoteListScreen(
     AppScaffold(
         title = {
             if (selection.isActive) {
-                Text(stringResource(R.string.selected_count, selection.count))
+                Text(pluralStringResource(R.plurals.selected_count, selection.count, selection.count))
             } else {
                 Text(
                     state.deckName,

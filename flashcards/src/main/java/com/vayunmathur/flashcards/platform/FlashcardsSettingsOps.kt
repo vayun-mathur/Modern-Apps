@@ -1,4 +1,13 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.platform
+import com.vayunmathur.flashcards.domain.DeckIo
+import com.vayunmathur.flashcards.domain.FsrsOptimizer
+import com.vayunmathur.flashcards.domain.Grade
+import com.vayunmathur.flashcards.domain.ReviewSession
+import com.vayunmathur.flashcards.domain.Scheduler
+import com.vayunmathur.flashcards.domain.TemplateEngine
+import com.vayunmathur.flashcards.ui.DeckPreset
+import com.vayunmathur.flashcards.ui.ReviewUiState
+import com.vayunmathur.flashcards.ui.StudyParams
 
 import android.app.Application
 import android.net.Uri
@@ -124,7 +133,7 @@ internal fun FlashcardsViewModel.optimizeAllDecksImpl() = launchIoImpl {
         }
     }
     if (optimizedDecks > 0) {
-        AppMessages.show(ctx.getString(R.string.optimize_fsrs_done, optimizedReviews))
+        AppMessages.show(ctx.resources.getQuantityString(R.plurals.optimize_fsrs_done, optimizedReviews, optimizedReviews))
     } else {
         AppMessages.show(ctx.getString(R.string.optimize_fsrs_too_few, mostReviews, FsrsOptimizer.MIN_REVIEWS))
     }

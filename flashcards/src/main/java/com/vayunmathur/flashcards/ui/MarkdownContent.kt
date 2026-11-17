@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.flashcards.util.MediaStore
+import com.vayunmathur.flashcards.platform.MediaStore
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text

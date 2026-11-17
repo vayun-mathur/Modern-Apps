@@ -12,13 +12,13 @@ import androidx.compose.ui.test.performTouchInput
 import com.vayunmathur.flashcards.data.Deck
 import com.vayunmathur.flashcards.data.FIELD_SEPARATOR
 import com.vayunmathur.flashcards.data.Note
-import com.vayunmathur.flashcards.util.DeckListActions
-import com.vayunmathur.flashcards.util.DeckListUiState
-import com.vayunmathur.flashcards.util.DeckSummary
-import com.vayunmathur.flashcards.util.NoteListActions
-import com.vayunmathur.flashcards.util.NoteListUiState
-import com.vayunmathur.flashcards.util.NoteRow
-import com.vayunmathur.flashcards.util.StudyParams
+import com.vayunmathur.flashcards.ui.DeckListActions
+import com.vayunmathur.flashcards.ui.DeckListUiState
+import com.vayunmathur.flashcards.ui.DeckSummary
+import com.vayunmathur.flashcards.ui.NoteListActions
+import com.vayunmathur.flashcards.ui.NoteListUiState
+import com.vayunmathur.flashcards.ui.NoteRow
+import com.vayunmathur.flashcards.ui.StudyParams
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -188,7 +188,7 @@ class FlashcardsListUiTest {
         rule.setContent {
             DynamicTheme {
                 MoveDeckDialog(
-                    decks = listOf(com.vayunmathur.flashcards.util.DeckOption(5, "Target"), com.vayunmathur.flashcards.util.DeckOption(null, "All")),
+                    decks = listOf(com.vayunmathur.flashcards.ui.DeckOption(5, "Target"), com.vayunmathur.flashcards.ui.DeckOption(null, "All")),
                     onPick = { picked = it },
                     onDismiss = {},
                 )
@@ -215,7 +215,7 @@ class FlashcardsListUiTest {
         rule.onNodeWithText("Custom study").assertIsDisplayed()
         rule.onNodeWithText("Study ahead").assertIsDisplayed()
         rule.onNodeWithText("Start").performClick()
-        assertEquals(com.vayunmathur.flashcards.util.StudyMode.AHEAD, started?.mode)
+        assertEquals(com.vayunmathur.flashcards.ui.StudyMode.AHEAD, started?.mode)
         assertEquals(20, started?.count)
         assertEquals(3, started?.daysAhead)
     }
@@ -227,7 +227,7 @@ class FlashcardsListUiTest {
         rule.onNodeWithText("Cram (ignore schedule)").performClick()
         rule.onNodeWithText("Days ahead").assertDoesNotExist()
         rule.onNodeWithText("Start").performClick()
-        assertEquals(com.vayunmathur.flashcards.util.StudyMode.CRAM, started?.mode)
+        assertEquals(com.vayunmathur.flashcards.ui.StudyMode.CRAM, started?.mode)
         assertTrue(started!!.previewOnly)
     }
 }

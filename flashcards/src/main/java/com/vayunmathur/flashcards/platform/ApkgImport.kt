@@ -1,4 +1,5 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.platform
+import com.vayunmathur.flashcards.domain.HtmlConvert
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase

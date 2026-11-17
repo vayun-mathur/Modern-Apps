@@ -1,4 +1,6 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.domain
+import com.vayunmathur.flashcards.ui.StudyMode
+import com.vayunmathur.flashcards.ui.StudyParams
 
 import com.vayunmathur.flashcards.data.Card
 import com.vayunmathur.flashcards.data.CardState

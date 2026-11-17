@@ -1,4 +1,4 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.platform
 
 import android.Manifest
 import android.app.NotificationManager

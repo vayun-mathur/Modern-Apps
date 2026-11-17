@@ -1,4 +1,5 @@
 package com.vayunmathur.flashcards.util
+import com.vayunmathur.flashcards.data.CardGenerator
 
 import com.vayunmathur.flashcards.data.CardTemplate
 import com.vayunmathur.flashcards.data.NoteType

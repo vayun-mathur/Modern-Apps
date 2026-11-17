@@ -2,20 +2,18 @@
 <resources>
     <string name="preview">Eelvaade</string>
     <string name="note_type_standard">Standardne</string>
-    <string name="add">Lisa</string>
-    <string name="cancel">Katkesta</string>
-    <string name="save">Salvesta</string>
-    <string name="speak">Räägi</string>
     <string name="nav_settings">Seadistused</string>
     <string name="app_name">Sähvikud</string>
     <string name="nav_decks">Pakid</string>
     <string name="nav_stats">Statistika</string>
     <string name="new_deck">Uus pakk</string>
     <string name="deck_name">Paki nimi</string>
-    <string name="deck_summary">Tähtajaga %1$d · uusi %2$d · kokku %3$d</string>
+    <plurals name="deck_summary">
+        <item quantity="one">Tähtajaga %1$d · uusi %2$d · kokku %3$d</item>
+        <item quantity="other">Tähtajaga %1$d · uusi %2$d · kokku %3$d</item>
+    </plurals>
     <string name="no_decks">Sähvikute pakke veel pole</string>
     <string name="no_decks_hint">Oma esimese paki lisamiseks klõpsa + ikooni</string>
-    <string name="delete">Kustuta</string>
     <string name="delete_deck_message">Kas kustutad „%1$s“ paki koos tema kõikide sähvikutega?</string>
     <string name="study">Alusta õppimist</string>
     <string name="no_cards">Ühtegi sähvikut veel pole</string>
@@ -24,16 +22,16 @@
     <string name="share_deck">Jaga sähvikupakki</string>
     <string name="new_card">Uus sähvik</string>
     <string name="edit_card">Muuda sähvikut</string>
-    <string name="front">Esikülg</string>
-    <string name="back">Tagakülg</string>
     <string name="tags">Sildid</string>
     <string name="note_type">Märkme tüüp</string>
     <string name="deck">Sähvikupakk</string>
-    <string name="card_count_badge">%1$d sähvikut</string>
+    <plurals name="card_count_badge">
+        <item quantity="one">%1$d sähvikut</item>
+        <item quantity="other">%1$d sähvikut</item>
+    </plurals>
     <string name="manage_note_types">Halda märkme tüüpe</string>
     <string name="new_note_type">Uue märkme tüüp</string>
     <string name="edit_note_type">Muuda märkme tüüpi</string>
-    <string name="name">Nimi</string>
     <string name="fields">Väljad</string>
     <string name="templates">Mallid</string>
     <string name="add_field">Lisa väli</string>
@@ -41,13 +39,14 @@
     <string name="template_name">Malli nimi</string>
     <string name="template_front">Esikülje mall</string>
     <string name="template_back">Tagakülje mall</string>
-    <string name="note_type_summary">%1$d välja · %2$d malli · %3$d märget</string>
+    <plurals name="note_type_summary">
+        <item quantity="one">%1$d välja · %2$d malli · %3$d märget</item>
+        <item quantity="other">%1$d välja · %2$d malli · %3$d märget</item>
+    </plurals>
     <string name="export_collection_hint">Jaga kõiki sähvikupakke Anki .apkg failina</string>
     <string name="show_answer">Näita vastust</string>
     <string name="grade_again">Uuesti</string>
-    <string name="grade_hard">Raske</string>
     <string name="grade_good">Hea</string>
-    <string name="grade_easy">Lihtne</string>
     <string name="theme_system">Süsteemi kujundus</string>
     <string name="theme_light">Hele kujundus</string>
     <string name="theme_dark">Tume kujundus</string>
@@ -56,22 +55,24 @@
     <string name="reminder_title">On aeg õppimiseks</string>
     <string name="start">Alusta</string>
     <string name="deleted">Kustutatud</string>
-    <string name="undo">Võta tegevus tagasi</string>
-    <string name="done">Valmis</string>
-    <string name="suspend">Lükka edasi</string>
     <string name="unsuspend">Lõpeta edasilükkamine</string>
     <string name="settings_data">Andmed</string>
     <string name="export_collection">Ekspordi sähvikute kogu</string>
     <string name="review_done">Kõik ongi tehtud!</string>
     <string name="review_done_hint">Sa oled selle sessiooni lõpetanud</string>
     <string name="all_decks">Kõik sähvikupakid</string>
-    <string name="days_value">%1$d päeva</string>
+    <plurals name="days_value">
+        <item quantity="one">%1$d päeva</item>
+        <item quantity="other">%1$d päeva</item>
+    </plurals>
     <string name="settings_reminders">Meeldetuletused</string>
-    <string name="settings_study">Õppimine</string>
     <string name="settings_appearance">Välimus</string>
     <string name="setting_retention">Soovitud säilitamine</string>
     <string name="setting_new_per_day">Uusi sähvikuid päevas</string>
-    <string name="selected_count">%1$d on valitud</string>
+    <plurals name="selected_count">
+        <item quantity="one">%1$d on valitud</item>
+        <item quantity="other">%1$d on valitud</item>
+    </plurals>
     <string name="move_to_deck">Tõsta sähvikupakki</string>
     <string name="add_tag">Lisa silt</string>
     <string name="remove_tag">Eemalda silt</string>
@@ -85,13 +86,16 @@
     <string name="apply_preset">Rakenda eelseadistus</string>
     <string name="save_preset">Salvesta eelseadistus</string>
     <string name="settings_presets">Sähvikupaki eelseadistused</string>
-    <string name="optimize_fsrs_running">Optimeerin…</string>
     <string name="note_type_cloze">Cloze-meetod</string>
-    <string name="delete_note_type_message">Kaskustutad sähvikupaki „%1$s“ ja tema %2$d märget?</string>
-    <string name="review_counts">%1$d uut · %2$d õppimisel · %3$d kordamisel</string>
-    <string name="insert_image">Lisa pilt</string>
+    <plurals name="delete_note_type_message">
+        <item quantity="one">Kaskustutad sähvikupaki „%1$s“ ja tema %2$d märget?</item>
+        <item quantity="other">Kaskustutad sähvikupaki „%1$s“ ja tema %2$d märget?</item>
+    </plurals>
+    <plurals name="review_counts">
+        <item quantity="one">%1$d uut · %2$d õppimisel · %3$d kordamisel</item>
+        <item quantity="other">%1$d uut · %2$d õppimisel · %3$d kordamisel</item>
+    </plurals>
     <string name="type_answer">Sisesta vastus</string>
-    <string name="check">Kontrolli</string>
     <string name="setting_auto_play">Esita heli automaatselt</string>
     <string name="setting_auto_play_hint">Loe sähviku esikülje tekst valjult ette</string>
     <string name="no_reviews_hint">Oma ajaloo nägemiseks vaata üle mõned kaardid</string>
@@ -109,7 +113,6 @@
     <string name="stat_heatmap">Kordamiste lugu</string>
     <string name="setting_reminder_enabled">Igapäevane meeldetuletus</string>
     <string name="setting_reminder_time">Meeldetuletuse aeg</string>
-    <string name="suspend_card">Lükka sähvik edasi</string>
     <string name="suspended_badge">Edasilükatud</string>
     <string name="leech_suspended">Sähvik on edasilükatud</string>
     <string name="custom_study_new">Ainult uued sähvikud</string>

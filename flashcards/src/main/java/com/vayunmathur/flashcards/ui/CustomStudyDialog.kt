@@ -15,8 +15,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.flashcards.R
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.flashcards.util.StudyMode
-import com.vayunmathur.flashcards.util.StudyParams
+import com.vayunmathur.flashcards.ui.StudyMode
+import com.vayunmathur.flashcards.ui.StudyParams
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text

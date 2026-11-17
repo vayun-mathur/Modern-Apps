@@ -2,7 +2,7 @@ package com.vayunmathur.flashcards.data
 
 import android.content.Context
 import android.net.Uri
-import com.vayunmathur.flashcards.util.ApkgImport
+import com.vayunmathur.flashcards.platform.ApkgImport
 import com.vayunmathur.library.room.RoomRepository
 import kotlinx.coroutines.flow.Flow
 

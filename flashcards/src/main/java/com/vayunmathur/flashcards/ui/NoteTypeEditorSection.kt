@@ -7,8 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.flashcards.R
-import com.vayunmathur.flashcards.util.TemplateDraft
-import com.vayunmathur.flashcards.util.TemplateEngine
+import com.vayunmathur.flashcards.ui.TemplateDraft
+import com.vayunmathur.flashcards.domain.TemplateEngine
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text

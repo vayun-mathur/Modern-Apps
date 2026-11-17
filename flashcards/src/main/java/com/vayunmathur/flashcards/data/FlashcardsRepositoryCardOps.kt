@@ -1,6 +1,6 @@
 package com.vayunmathur.flashcards.data
 
-import com.vayunmathur.flashcards.util.CardGenerator
+import com.vayunmathur.flashcards.data.CardGenerator
 
 // ------------------------------------------------------------------
 // Card + ReviewLog — moved from FlashcardsRepository.kt

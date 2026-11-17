@@ -14,7 +14,7 @@ import com.vayunmathur.flashcards.data.Deck
 import com.vayunmathur.flashcards.data.FlashcardsDatabase
 import com.vayunmathur.flashcards.data.FlashcardsRepository
 import com.vayunmathur.flashcards.data.Note
-import com.vayunmathur.flashcards.util.FlashcardsViewModelHelper
+import com.vayunmathur.flashcards.platform.FlashcardsViewModelHelper
 import com.vayunmathur.library.util.databases
 import kotlin.test.Test
 import kotlinx.coroutines.runBlocking

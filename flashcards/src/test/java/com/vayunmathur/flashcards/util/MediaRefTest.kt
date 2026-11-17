@@ -1,4 +1,5 @@
 package com.vayunmathur.flashcards.util
+import com.vayunmathur.flashcards.platform.MediaStore
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

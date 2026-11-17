@@ -1,22 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="speak">Läs upp</string>
-    <string name="delete">Ta bort</string>
-    <string name="name">Namn</string>
-    <string name="cancel">Avbryt</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Ljust</string>
     <string name="theme_dark">Mörkt</string>
     <string name="preview">Förhandsvisning</string>
-    <string name="save">Spara</string>
-    <string name="undo">Ångra</string>
     <string name="app_name">Instuderingskort</string>
     <string name="nav_decks">Kortlekar</string>
     <string name="nav_stats">Statistik</string>
     <string name="nav_settings">Inställningar</string>
     <string name="new_deck">Ny kortlek</string>
     <string name="deck_name">Kortlekens namn</string>
-    <string name="deck_summary">%1$d förfallna · %2$d nya · %3$d kort</string>
+    <plurals name="deck_summary">
+        <item quantity="one">%1$d förfallna · %2$d nya · %3$d kort</item>
+        <item quantity="other">%1$d förfallna · %2$d nya · %3$d kort</item>
+    </plurals>
     <string name="no_decks">Inga kortlekar ännu</string>
     <string name="no_decks_hint">Tryck på + för att skapa din första kortlek</string>
     <string name="delete_deck_message">Ta bort ”%1$s” och alla kort i den?</string>
@@ -27,11 +24,13 @@
     <string name="share_deck">Dela kortlek</string>
     <string name="new_card">Nytt kort</string>
     <string name="edit_card">Redigera kort</string>
-    <string name="front">Framsida</string>
     <string name="tags">Taggar</string>
     <string name="note_type">Anteckningstyp</string>
     <string name="deck">Kortlek</string>
-    <string name="card_count_badge">%1$d kort</string>
+    <plurals name="card_count_badge">
+        <item quantity="one">%1$d kort</item>
+        <item quantity="other">%1$d kort</item>
+    </plurals>
     <string name="manage_note_types">Hantera anteckningstyper</string>
     <string name="new_note_type">Ny anteckningstyp</string>
     <string name="edit_note_type">Redigera anteckningstyp</string>
@@ -44,15 +43,24 @@
     <string name="template_back">Mall för baksidan</string>
     <string name="note_type_standard">Standard</string>
     <string name="note_type_cloze">Lucktext</string>
-    <string name="note_type_summary">%1$d fält · %2$d mallar · %3$d anteckningar</string>
-    <string name="delete_note_type_message">Ta bort ”%1$s” och dess %2$d anteckningar?</string>
+    <plurals name="note_type_summary">
+        <item quantity="one">%1$d fält · %2$d mallar · %3$d anteckningar</item>
+        <item quantity="other">%1$d fält · %2$d mallar · %3$d anteckningar</item>
+    </plurals>
+    <plurals name="delete_note_type_message">
+        <item quantity="one">Ta bort ”%1$s” och dess %2$d anteckningar?</item>
+        <item quantity="other">Ta bort ”%1$s” och dess %2$d anteckningar?</item>
+    </plurals>
     <string name="settings_data">Data</string>
     <string name="export_collection">Exportera samling</string>
     <string name="export_collection_hint">Dela alla kortlekar som en Anki-fil i .apkg-format</string>
     <string name="show_answer">Visa svaret</string>
     <string name="grade_again">Igen</string>
     <string name="grade_good">Bra</string>
-    <string name="review_counts">%1$d nya · %2$d under inlärning · %3$d för repetition</string>
+    <plurals name="review_counts">
+        <item quantity="one">%1$d nya · %2$d under inlärning · %3$d för repetition</item>
+        <item quantity="other">%1$d nya · %2$d under inlärning · %3$d för repetition</item>
+    </plurals>
     <string name="review_done">Du är ikapp!</string>
     <string name="review_done_hint">Du har avslutat den här sessionen</string>
     <string name="all_decks">Alla kortlekar</string>
@@ -65,7 +73,10 @@
     <string name="stat_reviews">Repetitioner</string>
     <string name="stat_streak">Svit</string>
     <string name="stat_mature">Mogna</string>
-    <string name="days_value">%1$d dagar</string>
+    <plurals name="days_value">
+        <item quantity="one">%1$d dagar</item>
+        <item quantity="other">%1$d dagar</item>
+    </plurals>
     <string name="settings_reminders">Påminnelser</string>
     <string name="settings_appearance">Utseende</string>
     <string name="setting_retention">Önskad minnesgrad</string>
@@ -81,12 +92,13 @@
         <item quantity="other">%d kort ska repeteras</item>
     </plurals>
     <string name="deleted">Borttaget</string>
-    <string name="suspend">Pausa</string>
     <string name="unsuspend">Återuppta</string>
-    <string name="suspend_card">Pausa kort</string>
     <string name="suspended_badge">Pausat</string>
     <string name="leech_suspended">Kort pausat (svårinlärt)</string>
-    <string name="selected_count">%1$d valda</string>
+    <plurals name="selected_count">
+        <item quantity="one">%1$d valda</item>
+        <item quantity="other">%1$d valda</item>
+    </plurals>
     <string name="move_to_deck">Flytta till kortlek</string>
     <string name="add_tag">Lägg till tagg</string>
     <string name="remove_tag">Ta bort tagg</string>
@@ -103,11 +115,8 @@
     <string name="custom_study_days">Dagar i förväg</string>
     <string name="start">Starta</string>
     <string name="type_answer">Skriv svaret</string>
-    <string name="check">Kontrollera</string>
-    <string name="swipe_hint">Svep för att betygsätta eller använd knapparna</string>
     <string name="setting_auto_play">Spela upp ljud automatiskt</string>
     <string name="setting_auto_play_hint">Läs upp framsidan på varje kort</string>
-    <string name="insert_image">Infoga bild</string>
     <string name="insert_cloze">Lucktextborttagning</string>
     <string name="stat_forecast">Prognos för förfallna kort</string>
     <string name="stat_retention_by_interval">Minnesgrad per intervall</string>
@@ -119,8 +128,13 @@
     <string name="preset_saved">Förinställning sparad</string>
     <string name="preset_applied">Förinställning tillämpad</string>
     <string name="optimize_fsrs">Optimera FSRS-parametrar</string>
-    <string name="optimize_fsrs_hint">Beräknar bättre schemaläggning från din repetitionshistorik (kräver minst %1$d repetitioner)</string>
+    <plurals name="optimize_fsrs_hint">
+        <item quantity="one">Beräknar bättre schemaläggning från din repetitionshistorik (kräver minst %1$d repetitioner)</item>
+        <item quantity="other">Beräknar bättre schemaläggning från din repetitionshistorik (kräver minst %1$d repetitioner)</item>
+    </plurals>
     <string name="optimize_fsrs_too_few">Inte tillräckligt många repetitioner för att optimera ännu (%1$d av %2$d)</string>
-    <string name="optimize_fsrs_done">Uppdaterade FSRS-parametrar från %1$d repetitioner</string>
-    <string name="optimize_fsrs_running">Optimerar…</string>
+    <plurals name="optimize_fsrs_done">
+        <item quantity="one">Uppdaterade FSRS-parametrar från %1$d repetitioner</item>
+        <item quantity="other">Uppdaterade FSRS-parametrar från %1$d repetitioner</item>
+    </plurals>
 </resources>

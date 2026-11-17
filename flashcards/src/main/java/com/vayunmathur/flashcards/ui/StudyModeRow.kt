@@ -9,7 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.flashcards.util.StudyMode
+import com.vayunmathur.flashcards.ui.StudyMode
 import com.vayunmathur.library.ui.RadioButton
 import com.vayunmathur.library.ui.Text
 

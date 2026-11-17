@@ -1,4 +1,11 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.platform
+import com.vayunmathur.flashcards.domain.ReviewSession
+import com.vayunmathur.flashcards.domain.Scheduler
+import com.vayunmathur.flashcards.domain.TemplateEngine
+import com.vayunmathur.flashcards.ui.DeckPreset
+import com.vayunmathur.flashcards.ui.NoteTypeWithConfig
+import com.vayunmathur.flashcards.ui.ReviewUiState
+import com.vayunmathur.flashcards.ui.SettingsUiState
 
 import android.app.Application
 import android.net.Uri
@@ -145,7 +152,6 @@ class FlashcardsViewModel(
 
     override fun onCleared() {
         tts?.shutdown()
-        super.onCleared()
     }
 
     // -- Import / export / share ------------------------------------------

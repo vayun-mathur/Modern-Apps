@@ -11,18 +11,18 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
-import com.vayunmathur.flashcards.util.DeckOption
-import com.vayunmathur.flashcards.util.Grade
-import com.vayunmathur.flashcards.util.NoteEditActions
-import com.vayunmathur.flashcards.util.NoteEditUiState
-import com.vayunmathur.flashcards.util.NoteTypeConfig
-import com.vayunmathur.flashcards.util.NoteTypeEditActions
-import com.vayunmathur.flashcards.util.NoteTypeEditUiState
-import com.vayunmathur.flashcards.util.ReviewActions
-import com.vayunmathur.flashcards.util.ReviewUiState
-import com.vayunmathur.flashcards.util.SettingsActions
-import com.vayunmathur.flashcards.util.SettingsUiState
-import com.vayunmathur.flashcards.util.TemplateDraft
+import com.vayunmathur.flashcards.ui.DeckOption
+import com.vayunmathur.flashcards.domain.Grade
+import com.vayunmathur.flashcards.ui.NoteEditActions
+import com.vayunmathur.flashcards.ui.NoteEditUiState
+import com.vayunmathur.flashcards.ui.NoteTypeConfig
+import com.vayunmathur.flashcards.ui.NoteTypeEditActions
+import com.vayunmathur.flashcards.ui.NoteTypeEditUiState
+import com.vayunmathur.flashcards.ui.ReviewActions
+import com.vayunmathur.flashcards.ui.ReviewUiState
+import com.vayunmathur.flashcards.ui.SettingsActions
+import com.vayunmathur.flashcards.ui.SettingsUiState
+import com.vayunmathur.flashcards.ui.TemplateDraft
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -84,7 +84,7 @@ class FlashcardsExtraUiTest {
         rule.setContent { DynamicTheme { NoteTypeEditScreen(state, actions) } }
         rule.onNodeWithText("Add field").performScrollTo().performClick()
         // Delete the first template (its delete icon is in the template card header).
-        rule.onAllNodesWithContentDescription("Delete")
+        assertTrue(rule.onAllNodesWithContentDescription("Delete").fetchSemanticsNodes().isNotEmpty())
         // Switch to Cloze: extra templates are dropped.
         rule.onNodeWithText("Cloze").performScrollTo().performClick()
         rule.onNodeWithContentDescription("Save").performClick()
@@ -166,7 +166,7 @@ class FlashcardsExtraUiTest {
             override fun deleteDeckPreset(name: String) { deleted = name }
         }
         val state = SettingsUiState(
-            presets = listOf(com.vayunmathur.flashcards.util.DeckPreset("Focus", 10, 100, 0.95)),
+            presets = listOf(com.vayunmathur.flashcards.ui.DeckPreset("Focus", 10, 100, 0.95)),
         )
         rule.setContent { DynamicTheme { SettingsScreen(state, actions) } }
         rule.onNodeWithText("Focus").performScrollTo().assertIsDisplayed()

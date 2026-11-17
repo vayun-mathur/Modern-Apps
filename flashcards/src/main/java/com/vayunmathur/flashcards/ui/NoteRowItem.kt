@@ -6,9 +6,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.flashcards.R
-import com.vayunmathur.flashcards.util.NoteRow
+import com.vayunmathur.flashcards.ui.NoteRow
 import com.vayunmathur.library.ui.Checkbox
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDragHandle
@@ -24,7 +25,8 @@ fun NoteRowItem(
     selection: com.vayunmathur.library.ui.SelectionState<Long>,
     onOpen: () -> Unit,
     onLongPress: () -> Unit,
-    dragHandle: Modifier? = null,
+    modifier: Modifier = Modifier,
+    draggable: Boolean = false,
 ) {
     val fields = row.note.fieldList
     val muted = row.suspended
@@ -55,12 +57,10 @@ fun NoteRowItem(
                     )
                 }
                 if (row.cardCount != 1) {
-                    Text(stringResource(R.string.card_count_badge, row.cardCount))
+                    Text(pluralStringResource(R.plurals.card_count_badge, row.cardCount, row.cardCount))
                 }
-                if (!selection.isActive) {
-                    if (dragHandle != null) {
-                        IconButton(onClick = {}, modifier = dragHandle) { IconDragHandle() }
-                    }
+                if (!selection.isActive && draggable) {
+                    IconButton(onClick = {}, modifier = modifier) { IconDragHandle() }
                 }
             }
         },

@@ -13,14 +13,14 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import com.vayunmathur.flashcards.data.FIELD_SEPARATOR
 import com.vayunmathur.flashcards.data.Note
-import com.vayunmathur.flashcards.util.DeckOption
-import com.vayunmathur.flashcards.util.NoteEditActions
-import com.vayunmathur.flashcards.util.NoteEditUiState
-import com.vayunmathur.flashcards.util.NoteListActions
-import com.vayunmathur.flashcards.util.NoteListUiState
-import com.vayunmathur.flashcards.util.NoteRow
-import com.vayunmathur.flashcards.util.NoteTypeConfig
-import com.vayunmathur.flashcards.util.StudyParams
+import com.vayunmathur.flashcards.ui.DeckOption
+import com.vayunmathur.flashcards.ui.NoteEditActions
+import com.vayunmathur.flashcards.ui.NoteEditUiState
+import com.vayunmathur.flashcards.ui.NoteListActions
+import com.vayunmathur.flashcards.ui.NoteListUiState
+import com.vayunmathur.flashcards.ui.NoteRow
+import com.vayunmathur.flashcards.ui.NoteTypeConfig
+import com.vayunmathur.flashcards.ui.StudyParams
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -120,7 +120,7 @@ class FlashcardsSelectionUiTest {
         rule.onNodeWithContentDescription("More").performClick()
         rule.onNodeWithText("Custom study").performClick()
         rule.onNodeWithText("Start").performClick()
-        assertEquals(com.vayunmathur.flashcards.util.StudyMode.AHEAD, custom?.mode)
+        assertEquals(com.vayunmathur.flashcards.ui.StudyMode.AHEAD, custom?.mode)
     }
 
     @Test

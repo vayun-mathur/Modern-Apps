@@ -1,4 +1,4 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.domain
 
 /**
  * Renders Anki-style card templates into the markdown shown on a card's front and

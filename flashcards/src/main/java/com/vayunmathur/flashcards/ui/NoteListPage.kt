@@ -12,26 +12,26 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.flashcards.R
 import com.vayunmathur.flashcards.Route
 import com.vayunmathur.flashcards.data.Note
-import com.vayunmathur.flashcards.util.DeckOption
-import com.vayunmathur.flashcards.util.FlashcardsViewModel
-import com.vayunmathur.flashcards.util.exportApkgImpl
-import com.vayunmathur.flashcards.util.importApkgImpl
-import com.vayunmathur.flashcards.util.importCsvImpl
-import com.vayunmathur.flashcards.util.deleteNoteImpl
-import com.vayunmathur.flashcards.util.reorderNotesImpl
-import com.vayunmathur.flashcards.util.exportCsvImpl
-import com.vayunmathur.flashcards.util.deleteNotesImpl
-import com.vayunmathur.flashcards.util.NoteListActions
-import com.vayunmathur.flashcards.util.cardsForImpl
-import com.vayunmathur.flashcards.util.notesForImpl
-import com.vayunmathur.flashcards.util.moveNotesImpl
-import com.vayunmathur.flashcards.util.addTagImpl
-import com.vayunmathur.flashcards.util.removeTagImpl
-import com.vayunmathur.flashcards.util.setNotesSuspendedImpl
-import com.vayunmathur.flashcards.util.resetSchedulingForNotesImpl
-import com.vayunmathur.flashcards.util.NoteListUiState
-import com.vayunmathur.flashcards.util.NoteRow
-import com.vayunmathur.flashcards.util.StudyParams
+import com.vayunmathur.flashcards.ui.DeckOption
+import com.vayunmathur.flashcards.platform.FlashcardsViewModel
+import com.vayunmathur.flashcards.platform.exportApkgImpl
+import com.vayunmathur.flashcards.platform.importApkgImpl
+import com.vayunmathur.flashcards.platform.importCsvImpl
+import com.vayunmathur.flashcards.platform.deleteNoteImpl
+import com.vayunmathur.flashcards.platform.reorderNotesImpl
+import com.vayunmathur.flashcards.platform.exportCsvImpl
+import com.vayunmathur.flashcards.platform.deleteNotesImpl
+import com.vayunmathur.flashcards.ui.NoteListActions
+import com.vayunmathur.flashcards.platform.cardsForImpl
+import com.vayunmathur.flashcards.platform.notesForImpl
+import com.vayunmathur.flashcards.platform.moveNotesImpl
+import com.vayunmathur.flashcards.platform.addTagImpl
+import com.vayunmathur.flashcards.platform.removeTagImpl
+import com.vayunmathur.flashcards.platform.setNotesSuspendedImpl
+import com.vayunmathur.flashcards.platform.resetSchedulingForNotesImpl
+import com.vayunmathur.flashcards.ui.NoteListUiState
+import com.vayunmathur.flashcards.ui.NoteRow
+import com.vayunmathur.flashcards.ui.StudyParams
 import com.vayunmathur.library.util.NavBackStack
 
 /** Binds the deck with [deckId] to the stateless [NoteListScreen]. */
@@ -42,6 +42,7 @@ fun NoteListPage(
     deckId: Long,
 ) {
     val context = LocalContext.current
+    val shareTitle = androidx.compose.ui.res.stringResource(R.string.share_deck)
     val decks by viewModel.decks.collectAsStateWithLifecycle()
     val notes by remember(deckId) { viewModel.notesForImpl(deckId) }
         .collectAsStateWithLifecycle(emptyList())
@@ -73,7 +74,7 @@ fun NoteListPage(
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             context.startActivity(
-                Intent.createChooser(intent, context.getString(R.string.share_deck)),
+                Intent.createChooser(intent, shareTitle),
             )
         }
     }

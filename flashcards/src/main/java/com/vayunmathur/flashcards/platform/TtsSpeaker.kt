@@ -1,4 +1,4 @@
-package com.vayunmathur.flashcards.util
+package com.vayunmathur.flashcards.platform
 
 import android.content.Context
 import android.speech.tts.TextToSpeech

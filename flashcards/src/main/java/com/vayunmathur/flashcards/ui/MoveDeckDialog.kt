@@ -11,7 +11,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.flashcards.R
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.flashcards.util.DeckOption
+import com.vayunmathur.flashcards.ui.DeckOption
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton

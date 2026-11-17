@@ -6,14 +6,14 @@
     <string name="nav_settings">Impostazioni</string>
     <string name="new_deck">Nuovo mazzo</string>
     <string name="deck_name">Nome mazzo</string>
-    <string name="deck_summary">%1$d in scadenza · %2$d nuove · %3$d schede</string>
+    <plurals name="deck_summary">
+        <item quantity="one">%1$d in scadenza · %2$d nuove · %3$d schede</item>
+        <item quantity="many">%1$d in scadenza · %2$d nuove · %3$d schede</item>
+        <item quantity="other">%1$d in scadenza · %2$d nuove · %3$d schede</item>
+    </plurals>
     <string name="no_decks">Nessun mazzo</string>
     <string name="no_decks_hint">Tocca + per creare il tuo primo mazzo</string>
-    <string name="delete">Elimina</string>
     <string name="delete_deck_message">Eliminare \"%1$s\" e tutte le sue schede?</string>
-    <string name="add">Aggiungi</string>
-    <string name="cancel">Annulla</string>
-    <string name="save">Salva</string>
     <string name="study">Studia</string>
     <string name="no_cards">Nessuna scheda</string>
     <string name="no_cards_hint">Tocca + per aggiungere una scheda, o importa un CSV</string>
@@ -21,16 +21,17 @@
     <string name="share_deck">Condividi mazzo</string>
     <string name="new_card">Nuova scheda</string>
     <string name="edit_card">Modifica scheda</string>
-    <string name="front">Fronte</string>
-    <string name="back">Retro</string>
     <string name="tags">Tag</string>
     <string name="note_type">Tipologia nota</string>
     <string name="deck">Mazzo</string>
-    <string name="card_count_badge">%1$d schede</string>
+    <plurals name="card_count_badge">
+        <item quantity="one">%1$d schede</item>
+        <item quantity="many">%1$d schede</item>
+        <item quantity="other">%1$d schede</item>
+    </plurals>
     <string name="manage_note_types">Gestisci tipologie nota</string>
     <string name="new_note_type">Nuova tipologia nota</string>
     <string name="edit_note_type">Modifica tipologia nota</string>
-    <string name="name">Nome</string>
     <string name="fields">Campi</string>
     <string name="templates">Modelli</string>
     <string name="add_field">Aggiungi campo</string>
@@ -40,15 +41,21 @@
     <string name="template_back">Modello retro</string>
     <string name="preview">Anteprima</string>
     <string name="note_type_standard">Standard</string>
-    <string name="note_type_summary">%1$d campi · %2$d modelli · %3$d note</string>
-    <string name="delete_note_type_message">Eliminare \"%1$s\" e le sue %2$d note?</string>
+    <plurals name="note_type_summary">
+        <item quantity="one">%1$d campi · %2$d modelli · %3$d note</item>
+        <item quantity="many">%1$d campi · %2$d modelli · %3$d note</item>
+        <item quantity="other">%1$d campi · %2$d modelli · %3$d note</item>
+    </plurals>
+    <plurals name="delete_note_type_message">
+        <item quantity="one">Eliminare \"%1$s\" e le sue %2$d note?</item>
+        <item quantity="many">Eliminare \"%1$s\" e le sue %2$d note?</item>
+        <item quantity="other">Eliminare \"%1$s\" e le sue %2$d note?</item>
+    </plurals>
     <string name="settings_data">Dati</string>
     <string name="export_collection">Esporta collezione</string>
     <string name="export_collection_hint">Condividi tutti i mazzi come un file Anki .apkg</string>
     <string name="show_answer">Mostra risposta</string>
     <string name="grade_again">Di nuovo</string>
-    <string name="grade_hard">Difficile</string>
-    <string name="grade_easy">Facile</string>
     <string name="theme_system">Sistema</string>
     <string name="theme_light">Chiaro</string>
     <string name="theme_dark">Scuro</string>
