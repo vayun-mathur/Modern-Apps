@@ -17,6 +17,7 @@ class PqcIdentity internal constructor(
     /** Signs data with this identity's ML-DSA key. */
     fun sign(data: ByteArray): ByteArray = Pqc.signWith(dsaPrivate, data)
 
+    /** Loading and generation entry points for [PqcIdentity]. */
     companion object {
         /**
          * Loads the persisted PQC keypairs, generating + storing them on first use.
