@@ -133,7 +133,9 @@ internal fun FlashcardsViewModel.optimizeAllDecksImpl() = launchIoImpl {
         }
     }
     if (optimizedDecks > 0) {
-        AppMessages.show(ctx.resources.getQuantityString(R.plurals.optimize_fsrs_done, optimizedReviews, optimizedReviews))
+        AppMessages.show(
+            ctx.resources.getQuantityString(R.plurals.optimize_fsrs_done, optimizedReviews, optimizedReviews),
+        )
     } else {
         AppMessages.show(ctx.getString(R.string.optimize_fsrs_too_few, mostReviews, FsrsOptimizer.MIN_REVIEWS))
     }
