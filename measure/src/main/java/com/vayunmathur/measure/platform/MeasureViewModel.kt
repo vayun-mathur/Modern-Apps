@@ -12,7 +12,7 @@ import com.vayunmathur.measure.data.model.SavedMeasurement
 import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.data.model.UnitSystem
 import com.vayunmathur.measure.data.model.distanceTo
-import com.vayunmathur.measure.domain.MeasureNative
+import com.vayunmathur.measure.platform.opencv.OpenCvVioEngine
 import com.vayunmathur.measure.platform.sensor.ImuRecorder
 import com.vayunmathur.measure.platform.sensor.TiltSensor
 import com.vayunmathur.measure.domain.polygonArea
@@ -57,8 +57,15 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
     internal val diagnosticsState = MutableStateFlow(DiagnosticsUiState())
     val diagnostics: StateFlow<DiagnosticsUiState> = diagnosticsState
 
-    /** Native VIO session handle, mirrored from the AR page so reset can reach it. */
-    internal var nativeSessionHandle: Long = 0L
+    /** OpenCV engine, mirrored from the AR page so reset can reach it. */
+    internal var vioEngine: OpenCvVioEngine? = null
+
+    /**
+     * Whether the tracking engine can run here. A seam (not a direct
+     * static read) so flow tests can simulate a capable device:
+     * native availability is false on every JVM test host.
+     */
+    internal var engineAvailable: Boolean = OpenCvVioEngine.available
 
     internal var scanningSinceMs: Long? = null
     internal var lostSinceMs: Long? = null
@@ -138,7 +145,7 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
 
     fun onReticleHit(hit: com.vayunmathur.measure.domain.HitCandidate?) = onReticleHitImpl(hit)
 
-    fun onSessionChanged(handle: Long) = onSessionChangedImpl(handle)
+    fun onEngineChanged(engine: OpenCvVioEngine?) = onEngineChangedImpl(engine)
 
     fun setUnavailableReason(reason: com.vayunmathur.measure.domain.ArUnavailableReason?) {
         unavailableReason = reason
@@ -150,7 +157,7 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
 
     /** Poll the hit provider for the centre reticle and publish the result. */
     fun refreshReticle() {
-        onReticleHit(hitProvider.centreHit(nativeSessionHandle))
+        onReticleHit(hitProvider.centreHit(0L))
     }
 
     override fun placeAtReticle() {
@@ -212,8 +219,8 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
     override fun resetTracking() {
         // Actually reset the engine, not just the UI: without this the
         // diagnostics Reset button cleared the anchor list while the
-        // native session kept its (possibly diverged) pose and map.
-        MeasureNative.reset(nativeSessionHandle)
+        // engine kept its (possibly diverged) pose and map.
+        vioEngine?.reset()
         clearAnchors()
         arState.value = arState.value.copy(quality = TrackingQuality.Initialising, hasPlane = false)
     }
@@ -297,11 +304,3 @@ internal const val KEY_KEEP_SCREEN_ON = "measure_keep_screen_on"
 internal const val KEY_LEVEL_PITCH = "measure_level_pitch_offset"
 internal const val KEY_LEVEL_ROLL = "measure_level_roll_offset"
 internal const val KEY_LEVEL_EDGE = "measure_level_edge_offset"
-
-/** Quality code from the native engine mapped onto the UI enum. */
-fun trackingQualityFrom(code: Int): TrackingQuality = when (code) {
-    MeasureNative.QUALITY_LIMITED -> TrackingQuality.Limited
-    MeasureNative.QUALITY_GOOD -> TrackingQuality.Good
-    MeasureNative.QUALITY_LOST -> TrackingQuality.Lost
-    else -> TrackingQuality.Initialising
-}

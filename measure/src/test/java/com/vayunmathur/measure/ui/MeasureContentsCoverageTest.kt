@@ -165,7 +165,7 @@ class MeasureContentsCoverageTest {
         assertTrue(opened)
     }
 
-    // MeasureNative.available is true under Robolectric (loadLibrary is
+    // OpenCvVioEngine.available is false under Robolectric (no native
     // shadowed), so the full tracking UI renders; without camera permission
     // the unavailable notice is the reachable guard.
     @Test
@@ -369,21 +369,16 @@ class MeasureContentsCoverageTest {
     }
 
     @Test
-    fun nativeBridgeGuardsRejectZeroHandle() {
-        // Zero is never a live session: every bridge entry must refuse it
-        // without touching the native engine.
-        assertEquals(null, com.vayunmathur.measure.domain.MeasureNative.rayToWorld(0L, 10f, 20f))
-        assertEquals(null, com.vayunmathur.measure.domain.MeasureNative.getState(0L))
-        assertEquals(
-            0,
-            com.vayunmathur.measure.domain.MeasureNative
-                .projectPoints(0L, doubleArrayOf(1.0, 2.0, 3.0), 100.0, 100.0).size,
+    fun engineWithoutScaleProjectsNothingVisible() {
+        // No IMU scale lock means no metric world: candidates are empty
+        // and projections report invisible rather than guessing.
+        val engine = com.vayunmathur.measure.platform.opencv.OpenCvVioEngine(
+            com.vayunmathur.measure.platform.Intrinsics(500.0, 500.0, 320.0, 240.0, true)
         )
-        assertEquals(
-            0,
-            com.vayunmathur.measure.domain.MeasureNative
-                .projectPoints(1L, DoubleArray(0), 100.0, 100.0).size,
-        )
+        assertEquals(0, engine.centreCandidates(640, 480).size)
+        val projected = engine.projectPoints(doubleArrayOf(1.0, 2.0, 3.0), 640.0, 480.0)
+        assertEquals(3, projected.size)
+        assertEquals(0.0, projected[2])
     }
 
     @Test

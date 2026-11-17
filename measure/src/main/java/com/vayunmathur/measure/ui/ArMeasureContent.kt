@@ -30,7 +30,6 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.domain.ArFlowState
 import com.vayunmathur.measure.domain.ArUnavailableReason
-import com.vayunmathur.measure.domain.MeasureNative
 import com.vayunmathur.measure.domain.Units
 import com.vayunmathur.measure.platform.ArMeasureActions
 import com.vayunmathur.measure.platform.ArMeasureUiState
@@ -60,10 +59,6 @@ fun ArMeasureContent(
             when {
                 unavailableReason != null -> {
                     UnavailableNotice(unavailableMessage(unavailableReason), onOpenRuler)
-                    return@Box
-                }
-                !MeasureNative.available -> {
-                    UnavailableNotice(stringResource(R.string.ar_unavailable_native), onOpenRuler)
                     return@Box
                 }
                 !state.cameraPermissionGranted -> {

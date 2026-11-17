@@ -9,10 +9,9 @@ import androidx.camera.core.impl.TagBundle
 import androidx.camera.core.impl.utils.ExifData
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.measure.data.model.TrackingQuality
-import com.vayunmathur.measure.domain.MeasureNative
 import com.vayunmathur.measure.platform.MeasureViewModel
 import com.vayunmathur.measure.platform.sensor.ImuRecorder
-import com.vayunmathur.measure.ui.components.VioFrameAnalyzer
+import com.vayunmathur.measure.ui.components.OpenCvFrameAnalyzer
 import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -67,55 +66,29 @@ class MainActivityAndAnalyzerTest {
         override fun getImage(): android.media.Image? = null
     }
 
-    @Test fun analyzerWithNoSessionJustClosesFrames() {
+    @Test fun analyzerWithNoEngineJustClosesFrames() {
         val imu = ImuRecorder(app)
         var tracking = 0
-        val analyzer = VioFrameAnalyzer(0L, imu, { _, _ -> tracking++ }, { _, _, _, _, _, _ -> })
+        val analyzer = OpenCvFrameAnalyzer(null, imu, { _, _ -> tracking++ }, { _, _, _, _, _, _ -> })
         val image = FakeImage(ts = 1_000L)
         analyzer.analyze(image)
         assertTrue(image.closed)
         assertEquals(0, tracking)
     }
 
-    @Test fun analyzerPumpsImuAndReportsPerFrame() {
-        val sensorManager = app.getSystemService(android.content.Context.SENSOR_SERVICE) as android.hardware.SensorManager
-        shadowOf(sensorManager).addSensor(ShadowSensor.newInstance(Sensor.TYPE_GYROSCOPE_UNCALIBRATED))
-        shadowOf(sensorManager).addSensor(ShadowSensor.newInstance(Sensor.TYPE_ACCELEROMETER_UNCALIBRATED))
-        val imu = ImuRecorder(app)
-        imu.start()
-        fun ev(type: Int, values: FloatArray, ts: Long) = SensorEventBuilder.newBuilder()
-            .setSensor(ShadowSensor.newInstance(type)).setValues(values).setTimestamp(ts).build()
-        imu.onSensorChanged(ev(Sensor.TYPE_GYROSCOPE_UNCALIBRATED, floatArrayOf(1f, 2f, 3f), 0L))
-        imu.onSensorChanged(ev(Sensor.TYPE_ACCELEROMETER_UNCALIBRATED, floatArrayOf(0f, 0f, 9.81f), 1_000_000L))
-
-        val handle = if (MeasureNative.available) {
-            MeasureNative.createSession(500.0, 500.0, 320.0, 240.0)
-        } else {
-            4242L // guards in the bridge keep every call off the native side
-        }
-        val qualities = mutableListOf<Pair<Int, Boolean>>()
-        val diags = mutableListOf<List<Double>>()
-        val analyzer = VioFrameAnalyzer(
-            handle,
-            imu,
-            { q, plane -> qualities += q to plane },
-            { fps, skew, imuHz, tracked, landmarks, confidence ->
-                diags += listOf(fps, skew, imuHz, tracked.toDouble(), landmarks.toDouble(), confidence)
-            },
+    @Test fun engineIsUnavailableWithoutNativeLibrary() {
+        // Robolectric hosts have no OpenCV native library: the engine
+        // must report unavailable so the AR page falls back cleanly,
+        // and constructing one must still be safe (no native calls in
+        // the constructor) because the tests build stand-ins.
+        assertEquals(false, com.vayunmathur.measure.platform.opencv.OpenCvVioEngine.available)
+        val engine = com.vayunmathur.measure.platform.opencv.OpenCvVioEngine(
+            com.vayunmathur.measure.platform.Intrinsics(500.0, 500.0, 320.0, 240.0, true)
         )
-        val first = FakeImage(ts = 2_000_000L)
-        analyzer.analyze(first)
-        val second = FakeImage(ts = 18_000_000L)
-        analyzer.analyze(second)
-        assertTrue(first.closed && second.closed)
-        assertEquals(2, qualities.size)
-        assertEquals(2, diags.size)
-        // Second frame has a 16 ms interval behind it: fps is now positive
-        // (or zero only when the first-frame interval never seeded).
-        assertTrue(diags[1][0] >= 0.0)
-        assertTrue(diags[1][2] >= 0.0)
-        if (MeasureNative.available && handle != 0L) MeasureNative.destroySession(handle)
-        imu.stop()
+        assertEquals(0, engine.centreCandidates(640, 480).size)
+        assertEquals(3, engine.projectPoints(doubleArrayOf(1.0, 2.0, 3.0), 640.0, 480.0).size)
+        engine.reset()
+        engine.close()
         shadowOf(Looper.getMainLooper()).idle()
     }
 

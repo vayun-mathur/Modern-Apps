@@ -2,30 +2,32 @@ package com.vayunmathur.measure.platform
 
 import com.vayunmathur.measure.domain.HitCandidate
 import com.vayunmathur.measure.domain.HitSelector
-import com.vayunmathur.measure.domain.MeasureNative
+import com.vayunmathur.measure.platform.opencv.OpenCvVioEngine
 
 /**
  * Seam between the AR flow and whatever produces hit candidates.
  *
- * Production wraps the native VIO engine; tests and previews use
- * [FakeArHitProvider]. Keeping candidate *selection* ([HitSelector])
- * on this side of the seam is what makes the hit policy unit-testable
- * without a device, a camera, or the `.so`.
+ * Production wraps the OpenCV visual-inertial engine; tests and
+ * previews use [FakeArHitProvider]. Keeping candidate *selection*
+ * ([HitSelector]) on this side of the seam is what makes the hit
+ * policy unit-testable without a device, a camera, or native code.
+ * The [sessionHandle] argument is retained for the seam's shape; the
+ * OpenCV provider resolves its engine directly and ignores it.
  */
 interface ArHitProvider {
     /** The selected centre-reticle hit right now, or null. */
     fun centreHit(sessionHandle: Long): HitCandidate?
 }
 
-/** Production provider: native candidates through the shared selector. */
-class NativeArHitProvider(
-    private val centrePx: () -> Pair<Float, Float>,
+/** Production provider: OpenCV engine candidates through the shared selector. */
+class OpenCvArHitProvider(
+    private val engine: () -> OpenCvVioEngine?,
+    private val analysisWidth: Int,
+    private val analysisHeight: Int,
 ) : ArHitProvider {
     override fun centreHit(sessionHandle: Long): HitCandidate? {
-        if (sessionHandle == 0L) return null
-        val (px, py) = centrePx()
-        val candidates = MeasureNative.hitTest(sessionHandle, px, py)
-        return HitSelector.select(candidates)
+        val eng = engine() ?: return null
+        return HitSelector.select(eng.centreCandidates(analysisWidth, analysisHeight))
     }
 }
 

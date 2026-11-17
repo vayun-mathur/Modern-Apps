@@ -283,12 +283,4 @@ class MeasureViewModelTest {
         store.clear()
     }
 
-    @Test fun trackingQualityCodesMap() {
-        assertEquals(TrackingQuality.Limited, trackingQualityFrom(com.vayunmathur.measure.domain.MeasureNative.QUALITY_LIMITED))
-        assertEquals(TrackingQuality.Good, trackingQualityFrom(com.vayunmathur.measure.domain.MeasureNative.QUALITY_GOOD))
-        assertEquals(TrackingQuality.Lost, trackingQualityFrom(com.vayunmathur.measure.domain.MeasureNative.QUALITY_LOST))
-        assertEquals(TrackingQuality.Initialising, trackingQualityFrom(com.vayunmathur.measure.domain.MeasureNative.QUALITY_INITIALISING))
-        assertEquals(TrackingQuality.Initialising, trackingQualityFrom(99))
-        assertEquals(TrackingQuality.Initialising, trackingQualityFrom(-1))
-    }
 }

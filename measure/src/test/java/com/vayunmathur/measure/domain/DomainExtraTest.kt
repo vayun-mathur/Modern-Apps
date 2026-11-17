@@ -73,34 +73,4 @@ class DomainExtraTest {
         assertEquals(listOf("Distance", "Area", "Perimeter", "Angle", "Height"), MeasurementKind.entries.map { it.name })
         assertEquals(listOf("Metric", "Imperial"), UnitSystem.entries.map { it.name })
     }
-
-    @Test fun nativeBridgeDegradesCleanly() {
-        val n = MeasureNative
-        // Whatever the host provides, the guarded contract holds: a zero
-        // handle is always "lost", empty projections, no rays or state.
-        assertEquals(MeasureNative.QUALITY_LOST, n.pushFrame(0L, ByteArray(4), 2, 2, 2, 0L))
-        assertEquals(null, n.rayToWorld(0L, 1f, 1f))
-        assertEquals(null, n.getState(0L))
-        assertEquals(0, n.projectPoints(0L, doubleArrayOf(1.0, 2.0, 3.0), 100.0, 100.0).size)
-        assertEquals(0, n.projectPoints(1L, DoubleArray(0), 100.0, 100.0).size)
-        n.destroySession(0L)
-        n.reset(0L)
-        n.pushImu(0L, doubleArrayOf(1.0))
-        n.pushImu(1L, DoubleArray(0))
-        if (n.available) {
-            val handle = n.createSession(500.0, 500.0, 320.0, 240.0)
-            assertTrue(handle != 0L, "host engine should create a session")
-            val frame = ByteArray(640 * 480) { 128.toByte() }
-            val quality = n.pushFrame(handle, frame, 640, 480, 640, 1_000_000L)
-            assertTrue(quality in 0..3, "quality=$quality")
-            n.pushImu(handle, doubleArrayOf(1e9, 0.0, 0.0, 0.0, 0.0, 0.0, 9.81))
-            val state = n.getState(handle)
-            if (state != null) assertEquals(8, state.size)
-            n.reset(handle)
-            n.destroySession(handle)
-            n.destroySession(handle)
-        } else {
-            assertEquals(0L, n.createSession(500.0, 500.0, 320.0, 240.0))
-        }
-    }
 }

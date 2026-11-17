@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -23,11 +22,10 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import com.vayunmathur.measure.Route
 import com.vayunmathur.measure.domain.ArUnavailableReason
-import com.vayunmathur.measure.domain.MeasureNative
+import com.vayunmathur.measure.platform.opencv.OpenCvVioEngine
 import com.vayunmathur.measure.platform.CameraIntrinsicsResolver
 import com.vayunmathur.measure.platform.MeasureViewModel
-import com.vayunmathur.measure.platform.NativeArHitProvider
-import com.vayunmathur.measure.platform.trackingQualityFrom
+import com.vayunmathur.measure.platform.OpenCvArHitProvider
 import com.vayunmathur.measure.platform.updateDiagnosticsImpl
 import com.vayunmathur.measure.ui.components.MeasureBottomBar
 import com.vayunmathur.measure.ui.components.ANALYSIS_SIZE
@@ -37,7 +35,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
     val state by viewModel.ar.collectAsState()
-    var sessionHandle by remember { mutableLongStateOf(0L) }
+    var engine by remember { mutableStateOf<OpenCvVioEngine?>(null) }
     var screenPoints by remember { mutableStateOf<List<Offset?>>(emptyList()) }
     var canvasSize by remember { mutableStateOf(Size.Zero) }
     val context = LocalContext.current
@@ -49,17 +47,19 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
     // would otherwise coach "move your phone" forever (the old flow
     // never called timestampsAlignWithSensors at all).
     LaunchedEffect(Unit) {
-        viewModel.hitProvider = NativeArHitProvider {
-            (ANALYSIS_SIZE.width / 2f) to (ANALYSIS_SIZE.height / 2f)
-        }
+        viewModel.hitProvider = OpenCvArHitProvider(
+            engine = { engine },
+            analysisWidth = ANALYSIS_SIZE.width,
+            analysisHeight = ANALYSIS_SIZE.height,
+        )
         viewModel.setUnavailableReason(availabilityReason(context))
     }
 
     // Continuous centre-reticle hit test: the reticle, not the finger,
     // is the placement point, and it must snap to the best sane hit
     // every frame rather than resolving one raw ray at tap instant.
-    LaunchedEffect(sessionHandle) {
-        if (sessionHandle == 0L) return@LaunchedEffect
+    LaunchedEffect(engine) {
+        if (engine == null) return@LaunchedEffect
         while (true) {
             viewModel.refreshReticle()
             delay(RETICLE_INTERVAL_MS)
@@ -68,7 +68,8 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
 
     // Reproject anchors whenever the anchor set or the pose changes.
     LaunchedEffect(state.anchors, state.quality, canvasSize) {
-        if (sessionHandle == 0L || canvasSize == Size.Zero || state.anchors.isEmpty()) {
+        val eng = engine
+        if (eng == null || canvasSize == Size.Zero || state.anchors.isEmpty()) {
             screenPoints = emptyList()
             return@LaunchedEffect
         }
@@ -82,8 +83,7 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
             // The engine projects with analysis-stream intrinsics and
             // normalises by the size it is given, so it must be given the
             // analysis size, not the canvas size.
-            val projected = MeasureNative.projectPoints(
-                sessionHandle,
+            val projected = eng.projectPoints(
                 flat,
                 ANALYSIS_SIZE.width.toDouble(),
                 ANALYSIS_SIZE.height.toDouble(),
@@ -108,15 +108,15 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
         screenPoints = screenPoints,
         onCanvasSized = { canvasSize = it },
         cameraContent = {
-            if (cameraGranted && MeasureNative.available) {
+            if (cameraGranted && OpenCvVioEngine.available) {
                 MeasureCamera(
                     imuRecorder = viewModel.imuRecorder,
                     onTrackingUpdate = { q, hasPlane ->
-                        viewModel.onTrackingUpdate(trackingQualityFrom(q), hasPlane)
+                        viewModel.onTrackingUpdate(q, hasPlane)
                     },
-                    onSessionReady = {
-                        sessionHandle = it
-                        viewModel.onSessionChanged(it)
+                    onEngineReady = {
+                        engine = it
+                        viewModel.onEngineChanged(it)
                     },
                     onDiagnostics = { fps, skew, imuHz, tracked, landmarks, confidence ->
                         viewModel.updateDiagnosticsImpl {
@@ -128,7 +128,7 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
                                 featureCount = tracked,
                                 landmarkCount = landmarks,
                                 scaleConfidence = confidence,
-                                nativeEngineAvailable = MeasureNative.available,
+                                nativeEngineAvailable = OpenCvVioEngine.available,
                             )
                         }
                     },
@@ -144,7 +144,7 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
 
 /** Explicit availability states, checked once before the session starts. */
 private fun availabilityReason(context: Context): ArUnavailableReason? {
-    if (!MeasureNative.available) return ArUnavailableReason.NativeEngineMissing
+    if (!OpenCvVioEngine.available) return ArUnavailableReason.NativeEngineMissing
     val sensors = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         ?: return ArUnavailableReason.MotionSensorsMissing
     val hasGyro = sensors.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED) != null ||

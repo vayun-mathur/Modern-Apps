@@ -22,8 +22,16 @@ class ArFlowViewModelTest {
 
     private fun readyVm(): MeasureViewModel {
         val vm = MeasureViewModel(app)
+        vm.engineAvailable = true
         vm.setCameraPermission(true)
-        vm.onSessionChanged(42L)
+        // A stand-in engine: construction touches no native code (the
+        // OpenCV library only loads behind OpenCvVioEngine.available),
+        // which is exactly the seam the flow tests need.
+        vm.onEngineChanged(
+            com.vayunmathur.measure.platform.opencv.OpenCvVioEngine(
+                com.vayunmathur.measure.platform.Intrinsics(500.0, 500.0, 320.0, 240.0, true)
+            )
+        )
         vm.onTrackingUpdate(TrackingQuality.Good, hasPlane = true)
         return vm
     }

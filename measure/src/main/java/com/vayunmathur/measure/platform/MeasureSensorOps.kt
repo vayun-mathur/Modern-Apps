@@ -4,11 +4,11 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.measure.data.model.Anchor
 import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.data.model.UnitSystem
-import com.vayunmathur.measure.domain.MeasureNative
 import com.vayunmathur.measure.domain.areaIsTrustworthy
 import com.vayunmathur.measure.domain.lastSegmentLengthM
 import com.vayunmathur.measure.domain.polylineLengthM
 import com.vayunmathur.measure.domain.polygonArea
+import com.vayunmathur.measure.platform.opencv.OpenCvVioEngine
 import com.vayunmathur.measure.domain.polygonPerimeter
 import kotlinx.coroutines.launch
 
@@ -187,7 +187,7 @@ internal fun MeasureViewModel.refreshFlowImpl(nowMs: Long = System.currentTimeMi
     // Camera permission outranks device-capability reasons: it is the
     // one the user can fix on the spot, after which the rest re-check.
     val unavailable = when {
-        !MeasureNative.available ->
+        !engineAvailable ->
             com.vayunmathur.measure.domain.ArUnavailableReason.NativeEngineMissing
         !s.cameraPermissionGranted ->
             com.vayunmathur.measure.domain.ArUnavailableReason.CameraPermissionDenied
@@ -195,7 +195,7 @@ internal fun MeasureViewModel.refreshFlowImpl(nowMs: Long = System.currentTimeMi
     }
     val flow = com.vayunmathur.measure.domain.ArFlow.derive(
         unavailable = unavailable,
-        hasSession = nativeSessionHandle != 0L && s.cameraPermissionGranted,
+        hasSession = vioEngine != null && s.cameraPermissionGranted,
         quality = s.quality,
         reticleHit = s.reticleHit,
         scanningSinceMs = scanningSinceMs,
@@ -212,9 +212,9 @@ internal fun MeasureViewModel.onReticleHitImpl(
     refreshFlowImpl()
 }
 
-internal fun MeasureViewModel.onSessionChangedImpl(handle: Long) {
-    nativeSessionHandle = handle
-    if (handle == 0L) {
+internal fun MeasureViewModel.onEngineChangedImpl(engine: OpenCvVioEngine?) {
+    vioEngine = engine
+    if (engine == null) {
         arState.value = arState.value.copy(reticleHit = null)
     }
     refreshFlowImpl()

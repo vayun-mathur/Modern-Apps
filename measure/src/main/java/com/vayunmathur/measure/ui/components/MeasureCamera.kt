@@ -23,8 +23,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import com.vayunmathur.measure.domain.MeasureNative
+import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.platform.CameraIntrinsicsResolver
+import com.vayunmathur.measure.platform.opencv.OpenCvVioEngine
 import com.vayunmathur.measure.platform.sensor.ImuRecorder
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,17 +41,18 @@ typealias Diagnostics = (Double, Double, Double, Int, Int, Double) -> Unit
 internal val ANALYSIS_SIZE = Size(640, 480)
 
 /**
- * Camera viewfinder plus the frame pump that drives the VIO engine.
+ * Camera viewfinder plus the frame pump that drives the OpenCV tracker.
  *
- * The analyser hands the Y plane straight to JNI. No Bitmap is allocated and no colour
- * conversion happens: tracking only needs luminance, and an RGB conversion every frame
- * would dominate the pipeline's cost.
+ * The analyser hands the Y plane straight to the engine. No Bitmap is
+ * allocated and no colour conversion happens: tracking only needs
+ * luminance, and an RGB conversion every frame would dominate the
+ * pipeline's cost.
  */
 @Composable
 fun MeasureCamera(
     imuRecorder: ImuRecorder,
-    onTrackingUpdate: (quality: Int, hasPlane: Boolean) -> Unit,
-    onSessionReady: (handle: Long) -> Unit,
+    onTrackingUpdate: (quality: TrackingQuality, hasPlane: Boolean) -> Unit,
+    onEngineReady: (engine: OpenCvVioEngine?) -> Unit,
     modifier: Modifier = Modifier,
     onDiagnostics: Diagnostics = { _, _, _, _, _, _ -> },
 ) {
@@ -63,8 +65,8 @@ fun MeasureCamera(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             val executor = Executors.newSingleThreadExecutor()
             var provider: ProcessCameraProvider? = null
-            val handle = createSession(context)
-            onSessionReady(handle)
+            val engine = createEngine(context)
+            onEngineReady(engine)
             try {
                 provider = ProcessCameraProvider.awaitInstance(context)
                 provider.unbindAll()
@@ -91,7 +93,7 @@ fun MeasureCamera(
                     .also {
                         it.setAnalyzer(
                             executor,
-                            VioFrameAnalyzer(handle, imuRecorder, onTrackingUpdate, onDiagnostics),
+                            OpenCvFrameAnalyzer(engine, imuRecorder, onTrackingUpdate, onDiagnostics),
                         )
                     }
 
@@ -107,9 +109,9 @@ fun MeasureCamera(
                 imuRecorder.stop()
                 provider?.unbindAll()
                 executor.shutdown()
-                MeasureNative.destroySession(handle)
+                engine?.close()
                 surfaceRequest.value = null
-                onSessionReady(0L)
+                onEngineReady(null)
             }
         }
     }
@@ -119,15 +121,16 @@ fun MeasureCamera(
     }
 }
 
-private fun createSession(context: Context): Long {
-    val intr = CameraIntrinsicsResolver.resolve(context, ANALYSIS_SIZE) ?: return 0L
-    return MeasureNative.createSession(intr.fx, intr.fy, intr.cx, intr.cy)
+private fun createEngine(context: Context): OpenCvVioEngine? {
+    if (!OpenCvVioEngine.available) return null
+    val intr = CameraIntrinsicsResolver.resolve(context, ANALYSIS_SIZE) ?: return null
+    return OpenCvVioEngine(intr)
 }
 
-internal class VioFrameAnalyzer(
-    private val handle: Long,
+internal class OpenCvFrameAnalyzer(
+    private val engine: OpenCvVioEngine?,
     private val imuRecorder: ImuRecorder,
-    private val onTrackingUpdate: (Int, Boolean) -> Unit,
+    private val onTrackingUpdate: (TrackingQuality, Boolean) -> Unit,
     private val onDiagnostics: Diagnostics,
 ) : ImageAnalysis.Analyzer {
 
@@ -137,12 +140,12 @@ internal class VioFrameAnalyzer(
 
     override fun analyze(image: ImageProxy) {
         try {
-            if (handle == 0L) return
+            val eng = engine ?: return
 
             // Drain IMU first so every sample older than this frame is already queued,
-            // which is what lets the engine preintegrate over the correct interval.
+            // which is what lets the engine align its scale windows.
             val imu = imuRecorder.drain()
-            if (imu.isNotEmpty()) MeasureNative.pushImu(handle, imu)
+            if (imu.isNotEmpty()) eng.pushImu(imu)
 
             val plane = image.planes[0]
             val src = plane.buffer
@@ -151,18 +154,14 @@ internal class VioFrameAnalyzer(
             src.get(dst, 0, needed)
 
             val tNs = image.imageInfo.timestamp
-            val quality = MeasureNative.pushFrame(
-                handle = handle,
+            val result = eng.processFrame(
                 yPlane = dst,
                 width = image.width,
                 height = image.height,
                 rowStride = plane.rowStride,
                 timestampNs = tNs,
             )
-
-            val state = MeasureNative.getState(handle)
-            val hasPlane = state != null && state[4] > 0.5
-            onTrackingUpdate(quality, hasPlane)
+            onTrackingUpdate(result.quality, result.hasPlane)
 
             if (lastFrameNs != 0L) {
                 frameIntervalNs = (frameIntervalNs * 3 + (tNs - lastFrameNs)) / 4
@@ -177,9 +176,9 @@ internal class VioFrameAnalyzer(
                 fps,
                 skewMs,
                 imuRecorder.rateHz(),
-                state?.get(3)?.toInt() ?: 0,
-                state?.get(2)?.toInt() ?: 0,
-                state?.get(1) ?: 0.0,
+                result.trackedFeatures,
+                result.landmarkCount,
+                result.scaleConfidence,
             )
         } finally {
             image.close()
