@@ -14,7 +14,7 @@ import com.vayunmathur.madeveloper.ui.PushScreen
 import com.vayunmathur.madeveloper.ui.RepoScreen
 import com.vayunmathur.madeveloper.ui.TestsScreen
 
-/** Navigation for MA Developer. */
+/** Navigation for Developer. */
 @Composable
 fun Navigation(viewModel: MaDevViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Home)

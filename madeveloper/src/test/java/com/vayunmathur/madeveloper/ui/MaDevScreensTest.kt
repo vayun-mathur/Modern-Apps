@@ -110,7 +110,7 @@ class MaDevScreensTest {
                 onOpenPush = { pushOpened++ },
             )
         }
-        rule.onNodeWithText("MA Developer").assertIsDisplayed()
+        rule.onNodeWithText("Developer").assertIsDisplayed()
         rule.onNodeWithText("Push socket offline").assertIsDisplayed()
         rule.onNodeWithText("Pairing code: ABC234").assertIsDisplayed()
         rule.onNodeWithText("CI: passed").assertIsDisplayed()

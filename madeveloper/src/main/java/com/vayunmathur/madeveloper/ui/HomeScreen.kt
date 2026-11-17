@@ -23,7 +23,7 @@ import com.vayunmathur.madeveloper.platform.MaDevUiState
 /** Home: push status, CI summary and the hosted repositories. */
 @Composable
 fun HomeScreen(state: MaDevUiState, onRefresh: () -> Unit, onOpenRepo: (String) -> Unit, onOpenTests: () -> Unit, onOpenCatalog: () -> Unit, onOpenPush: () -> Unit) {
-    AppScaffold(title = "MA Developer", scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "Developer", scrollBehavior = appBarScrollBehavior()) { padding ->
         LazyColumn(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Card(Modifier.fillMaxWidth()) {

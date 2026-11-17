@@ -54,7 +54,7 @@ data class MaDevUiState(
     val pending: List<PendingInstall> = emptyList(),
 )
 
-/** Holds MA Developer state: git pages, catalog, push socket and installs. */
+/** Holds Developer state: git pages, catalog, push socket and installs. */
 class MaDevViewModel(app: Application) : AndroidViewModel(app) {
     // Test seams (internal, production defaults): the host repository, how
     // the push socket is opened, and how a pushed APK's bytes are fetched.

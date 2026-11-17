@@ -4,7 +4,7 @@ import com.vayunmathur.library.util.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable
-/** Navigation destinations for MA Developer. */
+/** Navigation destinations for Developer. */
 sealed interface Route : NavKey {
     @Serializable
     /** Home: repositories, CI summary and push status. */

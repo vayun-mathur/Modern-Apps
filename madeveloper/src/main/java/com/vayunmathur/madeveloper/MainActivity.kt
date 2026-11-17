@@ -8,7 +8,7 @@ import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.madeveloper.platform.MaDevViewModel
 import com.vayunmathur.madeveloper.platform.ReconnectWorker
 
-/** Entry activity for MA Developer. */
+/** Entry activity for Developer. */
 class MainActivity : MaActivity() {
     private val viewModel: MaDevViewModel by viewModels()
 
