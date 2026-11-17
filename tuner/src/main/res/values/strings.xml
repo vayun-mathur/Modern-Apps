@@ -14,11 +14,8 @@
     <!-- Title of the screen asking for microphone access. -->
     <string name="permission_title">Microphone access needed</string>
     <!-- Explains why the app needs the microphone. -->
-    <string name="permission_rationale">The tuner listens to your instrument through the microphone. Audio is analysed on your device and never leaves it.</string>
     <!-- Button that opens the system microphone permission prompt. -->
-    <string name="permission_action">Allow microphone</string>
     <!-- Button that opens this app\'s page in system settings, after a permanent denial. -->
-    <string name="permission_settings">Open settings</string>
     <!-- Shown when the microphone exists but could not be opened. -->
     <string name="capture_unavailable">The microphone could not be opened</string>
 
@@ -29,16 +26,13 @@
     <!-- Shown when the note is within a cent of its target. -->
     <string name="in_tune">In tune</string>
     <!-- Title of the instrument chooser. -->
-    <string name="instrument_title">Instrument</string>
     <!-- Instrument family names. These are the only names that need a code change to add. -->
     <string name="instrument_guitar">Guitar</string>
     <string name="instrument_ukulele">Ukulele</string>
     <string name="instrument_piano">Piano</string>
 
     <!-- Shown on the Chord tab, which is not built yet. -->
-    <string name="chord_unimplemented_title">Chord detection is not implemented yet</string>
     <!-- Explains what the Chord tab will do once it exists. -->
-    <string name="chord_unimplemented_detail">This tab will name the chord you play and show it on a keyboard and a fret diagram. Use the Note tab to tune one string at a time.</string>
     <!-- Explains why two chord names are shown at once. Some chords are literally the same
          notes, so only the bass note tells them apart. -->
     <string name="chord_ambiguous_note">These are the same notes either way. Only the bass note tells them apart, and it was not clear enough to decide.</string>
