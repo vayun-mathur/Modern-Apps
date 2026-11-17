@@ -45,16 +45,12 @@ class WorldClockCitiesTest {
         WorldClockCities.set(ds, emptyList())
         // Seed the legacy unordered set, then clear the ordered key via an empty write is not
         // enough (it stores ""), so remove both keys first through a fresh migrate cycle:
-        ds.addStringToSet("time_zones", "Zurich, Switzerland")
-        ds.addStringToSet("time_zones", "Athens, Greece")
-        // Wait for the async set writes to land.
-        var legacy = ds.getStringSetAwait("time_zones")
-        var tries = 0
-        while (legacy.size < 2 && tries++ < 50) {
-            Thread.sleep(20)
-            legacy = ds.getStringSetAwait("time_zones")
-        }
-        assertEquals(2, legacy.size)
+        // The suspending add commits each write before returning: the fire-and-forget
+        // addStringToSet launches on the store's scope, and polling for its landing
+        // with a fixed try count gave up under CI load before the edits ran.
+        ds.addStringToSetIfAbsent("time_zones", "Zurich, Switzerland")
+        ds.addStringToSetIfAbsent("time_zones", "Athens, Greece")
+        assertEquals(2, ds.getStringSetAwait("time_zones").size)
         // The ordered key currently holds "" (from the empty set above), which decodes to an
         // empty list but is non-null, so migrate is a no-op here; verify that contract.
         WorldClockCities.migrate(ds)
