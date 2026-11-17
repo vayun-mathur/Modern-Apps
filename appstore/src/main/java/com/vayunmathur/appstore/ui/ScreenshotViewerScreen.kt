@@ -145,13 +145,11 @@ private fun ZoomableScreenshot(
             .onSizeChanged { size = it }
             // On the page rather than the bitmap, which only appears once decoded.
             .semantics { contentDescription = description }
-            .then(
-                zoomGestures(
-                    zoom = zoom,
-                    containerSize = { size },
-                    onZoomChange = { zoom.value = it },
-                    onTap = { onTap() },
-                )
+            .zoomGestures(
+                zoom = zoom,
+                containerSize = { size },
+                onZoomChange = { zoom.value = it },
+                onTap = { onTap() },
             ),
         contentAlignment = Alignment.Center,
     ) {
