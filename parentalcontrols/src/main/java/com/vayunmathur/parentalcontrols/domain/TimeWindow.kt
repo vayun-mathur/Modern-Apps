@@ -36,6 +36,7 @@ data class TimeWindow(
 
     fun isDaySet(dayIndex: Int): Boolean = (daysMask shr dayIndex) and 1 == 1
 
+    /** Shared day and minute constants for recurring daily windows. */
     companion object {
         const val DAYS_IN_WEEK = 7
         const val ALL_DAYS = 0b111_1111

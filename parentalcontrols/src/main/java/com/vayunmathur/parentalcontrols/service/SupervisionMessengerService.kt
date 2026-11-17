@@ -129,6 +129,7 @@ class SupervisionMessengerService : Service() {
         }
     }
 
+    /** Bind action exposed to Settings for the supervision Messenger service. */
     companion object {
         const val SUPERVISION_BIND_ACTION =
             "android.app.supervision.action.SUPERVISION_MESSENGER_SERVICE"

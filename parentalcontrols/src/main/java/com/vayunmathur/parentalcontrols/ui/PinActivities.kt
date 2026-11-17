@@ -67,6 +67,7 @@ class PinGateActivity : ComponentActivity() {
         return false
     }
 
+    /** Result codes returned by the PIN-gate activity. */
     companion object {
         const val RESULT_VERIFIED = RESULT_FIRST_USER + 1
     }

@@ -85,6 +85,7 @@ abstract class BaseLockActivity : ComponentActivity() {
         }
     }
 
+    /** Bonus amount, intent extras and factory for lock-screen activities. */
     companion object {
         /** Minutes each on-device bonus grant adds. Matches the smallest fixed limit choice. */
         const val BONUS_MINUTES = 15

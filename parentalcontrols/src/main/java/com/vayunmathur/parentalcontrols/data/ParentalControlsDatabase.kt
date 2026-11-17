@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 const val DB_NAME = "parentalcontrols-db"
 
+/** Room DAO for per-app supervision rules. */
 @Dao
 interface AppRuleDao {
     @Query("SELECT * FROM AppRule ORDER BY packageName")
@@ -28,6 +29,7 @@ interface AppRuleDao {
     suspend fun delete(rule: AppRule)
 }
 
+/** Room DAO for the singleton bedtime schedule. */
 @Dao
 interface BedtimeDao {
     @Query("SELECT * FROM BedtimeSchedule WHERE id = :id")
@@ -40,6 +42,7 @@ interface BedtimeDao {
     suspend fun upsert(schedule: BedtimeSchedule)
 }
 
+/** Room DAO for the singleton downtime schedule. */
 @Dao
 interface DowntimeDao {
     @Query("SELECT * FROM DowntimeSchedule WHERE id = :id")
@@ -52,6 +55,7 @@ interface DowntimeDao {
     suspend fun upsert(schedule: DowntimeSchedule)
 }
 
+/** Room DAO for the singleton school-time schedule. */
 @Dao
 interface SchoolTimeDao {
     @Query("SELECT * FROM SchoolTimeSchedule WHERE id = :id")
@@ -64,6 +68,7 @@ interface SchoolTimeDao {
     suspend fun upsert(schedule: SchoolTimeSchedule)
 }
 
+/** Room DAO for the singleton device-wide daily limit. */
 @Dao
 interface DailyLimitDao {
     @Query("SELECT * FROM DailyLimit WHERE id = :id")
@@ -76,6 +81,7 @@ interface DailyLimitDao {
     suspend fun upsert(limit: DailyLimit)
 }
 
+/** Room DAO for one-day bonus-time grants. */
 @Dao
 interface BonusGrantDao {
     @Query("SELECT * FROM BonusGrant WHERE day = :day")
@@ -88,6 +94,7 @@ interface BonusGrantDao {
     suspend fun pruneForeignDays(day: String)
 }
 
+/** Room database holding all parental-controls rules and schedules. */
 @Database(
     entities = [
         AppRule::class,

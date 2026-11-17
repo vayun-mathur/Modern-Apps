@@ -40,6 +40,7 @@ class LimitReachedReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Intent factory and immediate-enforcement entry for [LimitReachedReceiver]. */
     companion object {
         fun intent(context: Context, packageName: String): Intent =
             Intent(context, LimitReachedReceiver::class.java)
@@ -78,6 +79,7 @@ class BedtimeReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Intent factory for [BedtimeReceiver]. */
     companion object {
         fun intent(context: Context): Intent = Intent(context, BedtimeReceiver::class.java)
     }

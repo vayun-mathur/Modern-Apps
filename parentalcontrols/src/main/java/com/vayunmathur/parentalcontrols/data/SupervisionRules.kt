@@ -94,6 +94,7 @@ class SupervisionRules private constructor(context: Context) :
 
     suspend fun grantBonus(grant: BonusGrant) = bonus.upsert(grant)
 
+    /** Process-wide singleton access to [SupervisionRules]. */
     companion object {
         @Volatile private var instance: SupervisionRules? = null
 

@@ -104,6 +104,7 @@ class ParentPin(context: Context) : DatabaseHelper(context.applicationContext) {
     private fun prefs() =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    /** Shared PIN constants and the factory for fresh [ParentPin] instances. */
     companion object {
         const val PREFS = "parentalcontrols_pin"
         const val MIN_LENGTH = 4

@@ -70,6 +70,7 @@ data class BedtimeSchedule(
             daysMask = daysMask,
         )
 
+    /** Singleton key and default 21:00-07:00 window for [BedtimeSchedule]. */
     companion object {
         /** There is one schedule. The table exists so Room can store it, not to hold many. */
         const val SINGLETON_ID = 0
@@ -116,6 +117,7 @@ data class DowntimeSchedule(
             daysMask = daysMask,
         )
 
+    /** Singleton key and default 12:00-14:00 window for [DowntimeSchedule]. */
     companion object {
         /** There is one schedule. The table exists so Room can store it, not to hold many. */
         const val SINGLETON_ID = 0
@@ -158,6 +160,7 @@ data class SchoolTimeSchedule(
             daysMask = daysMask,
         )
 
+    /** Singleton key and default 08:00-15:00 window for [SchoolTimeSchedule]. */
     companion object {
         /** There is one schedule. The table exists so Room can store it, not to hold many. */
         const val SINGLETON_ID = 0
@@ -184,6 +187,7 @@ data class DailyLimit(
     /** Minutes of screen time permitted per day, or null for no device-wide limit. */
     val dailyLimitMinutes: Int? = null,
 ) {
+    /** Singleton key for the one device-wide [DailyLimit] row. */
     companion object {
         /** There is one limit. The table exists so Room can store it, not to hold many. */
         const val SINGLETON_ID = 0

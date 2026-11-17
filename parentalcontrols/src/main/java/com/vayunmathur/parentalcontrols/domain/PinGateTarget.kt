@@ -29,6 +29,7 @@ enum class PinGateTarget {
         WebFilters -> Route.WebFilters
     }
 
+    /** Route lookup for the PIN-gate target guarding each editor. */
     companion object {
         /** The gate target guarding [route], or null for ungated destinations. */
         fun forRoute(route: Route): PinGateTarget? = when (route) {

@@ -54,6 +54,7 @@ class MainActivity : MaActivity() {
         pendingRoute = routeFor(intent)
     }
 
+    /** Intent actions and routing helpers for the Parental Controls host activity. */
     companion object {
         const val ACTION_DASHBOARD = "com.vayunmathur.parentalcontrols.action.DASHBOARD"
         const val ACTION_BEDTIME = "com.vayunmathur.parentalcontrols.action.BEDTIME"

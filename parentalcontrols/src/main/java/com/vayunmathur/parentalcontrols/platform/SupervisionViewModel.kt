@@ -40,6 +40,7 @@ data class SupervisionUiState(
     val loading: Boolean = true,
 )
 
+/** ViewModel combining supervision rules and installed apps into screen state. */
 class SupervisionViewModel(app: Application) : AndroidViewModel(app) {
 
     private val rules = SupervisionRules.get(app)
