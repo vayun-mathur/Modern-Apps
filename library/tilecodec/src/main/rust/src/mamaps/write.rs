@@ -63,4 +63,3 @@ pub use codec::{compress_body, compress_body_with, hash64};
 pub use codec::{compress_body_zstd, compress_body_zstd_level};
 pub use options::Options;
 pub use writer::{content_build_id, StreamWriter};
-pub(crate) use writer::Pending;

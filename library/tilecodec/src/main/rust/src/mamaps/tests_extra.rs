@@ -151,7 +151,7 @@ fn a_root_too_large_for_the_prefix_grows_its_leaves_instead() {
     let prefix = header::HEADER_LEN as u64 + header.dict_len as u64 + header.root_len as u64;
     assert!(prefix <= OPEN_PREFIX_BYTES as u64, "the prefix is {prefix} bytes");
     // And it still opens in one request and reads back.
-    let mut a = open(bytes);
+    let a = open(bytes);
     assert_eq!(a.reader.requests.borrow().len(), 1);
     assert_eq!(a.tile(6, 63, 63).expect("read").expect("present"), body_for(63 * 64 + 63));
 }
@@ -224,7 +224,6 @@ fn a_zstd_body_decodes_to_the_bytes_it_was_encoded_from() {
 /// section is smaller than the raw one — while the legacy all-raw layout still opens too.
 #[test]
 fn compressed_leaves_round_trip_and_keep_the_prefix_budget() {
-    use crate::mamaps::header::FLAG_LEAVES_COMPRESSED;
     use crate::mamaps::index::{LEAF_ENTRY_LEN, ROOT_ENTRY_LEN};
     // Enough tiles for several leaves, with repeats so runs and content dedup both fire.
     let mut tiles: Vec<(u8, u64, u64, i16)> = Vec::new();
@@ -267,7 +266,7 @@ fn compressed_leaves_round_trip_and_keep_the_prefix_budget() {
     }
     assert!(header.leaf_len < raw_total, "the stored section is smaller than the raw leaves");
     // And the whole archive reads back tile-for-tile through the range-reader path.
-    let mut a = open(bytes);
+    let a = open(bytes);
     assert_eq!(a.reader.requests.borrow().len(), 1, "open is still one request");
     for (z, x, y, seed) in &tiles {
         let tile = a.tile(*z, *x as u32, *y as u32).expect("read").expect("present");
@@ -300,7 +299,7 @@ fn raw_leaves_stay_byte_identical_and_still_open() {
     assert_eq!(c1, c2);
     // Both open and read on the same reader.
     for bytes in [raw, c1] {
-        let mut a = open(bytes);
+        let a = open(bytes);
         assert_eq!(a.tile(2, 3, 3).expect("read").expect("present"), body_for(15));
     }
 }
@@ -312,7 +311,8 @@ fn raw_leaves_stay_byte_identical_and_still_open() {
 /// to the old chunks(capacity) partitioning (NA sha FF312EC...).
 #[test]
 fn a_leaf_whose_data_span_would_exceed_u32_max_is_split_and_common_case_stays_byte_identical() {
-    use crate::mamaps::write::{Pending, Options, StreamWriter};
+    use crate::mamaps::write::writer::Pending;
+    use crate::mamaps::write::{Options, StreamWriter};
 
     // 1) Common case: all offsets within one capacity chunk and span < u32::MAX
     // → must yield ceil(N/capacity) leaves, same as old chunks(capacity).
@@ -324,7 +324,7 @@ fn a_leaf_whose_data_span_would_exceed_u32_max_is_split_and_common_case_stays_by
             .map(|i| Pending { tile_id: crate::pmtiles::tile_id(4, (i%32) as u64, (i/32) as u64), offset: i as u64 * 1024, run_length: 1, length: 100 })
             .collect();
         let split = crate::mamaps::write::StreamWriter::partition_for_test(&entries, cap).expect("partition").expect("split");
-        let expected_leaves = (n + cap as usize - 1)/ cap as usize;
+        let expected_leaves = n.div_ceil(cap as usize);
         assert_eq!(split.0.len(), expected_leaves, "common case must use count-only split");
         assert_eq!(split.1.iter().map(|l| l.len()).sum::<usize>(), n);
         // Every leaf leaf_offset must be byte-identical to old count-only: leaf_offset = leaf_index * cap*16
@@ -382,7 +382,7 @@ fn a_leaf_whose_data_span_would_exceed_u32_max_is_split_and_common_case_stays_by
     }, names: Vec::new(), ids: Vec::new(), turn_lanes: Vec::new(), buildings: Vec::new(), heightmap: None, carriageways: Vec::new(), convention: None, region_links: Vec::new() }).expect("append"); }
     let bytes = w.finish().expect("finish");
     let hdr = crate::mamaps::Header::parse(&bytes).expect("hdr");
-    assert_eq!(hdr.leaf_count as usize, (5000+4096-1)/4096);
+    assert_eq!(hdr.leaf_count as usize, 5000_usize.div_ceil(4096));
     eprintln!("end-to-end: 5000 tiles → leaf_count={} leaf_len={}", hdr.leaf_count, hdr.leaf_len);
 }
 

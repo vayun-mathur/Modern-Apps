@@ -126,10 +126,7 @@ impl<R: RangeReader> TileSource for OverlayArchive<R> {
             return Ok(None);
         }
         for segment in &self.segments {
-            match segment.tile(z, x, y)? {
-                some @ Some(_) => return Ok(some),
-                None => {}
-            }
+            if let some @ Some(_) = segment.tile(z, x, y)? { return Ok(some) }
         }
         self.base.tile(z, x, y)
     }

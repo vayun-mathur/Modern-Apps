@@ -4,6 +4,8 @@
 
 use super::*;
 
+type HeaderMutator = fn(&mut Header);
+
 /// A header naming sections that do not overlap, in a file big enough to hold them.
 fn plausible() -> Header {
     Header {
@@ -88,7 +90,7 @@ fn an_unknown_flag_or_a_dirty_reserved_word_is_refused() {
 /// impossible section has to fail here rather than somewhere uninformative.
 #[test]
 fn a_header_whose_sections_do_not_fit_the_file_is_refused() {
-    let cases: &[(&str, fn(&mut Header))] = &[
+    let cases: &[(&str, HeaderMutator)] = &[
         ("data past the end", |h| h.data_len = 1 << 40),
         ("a section inside the header", |h| h.dict_offset = 8),
         ("the dictionary over the root", |h| h.dict_len = 600),

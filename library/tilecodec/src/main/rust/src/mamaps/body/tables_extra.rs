@@ -2,7 +2,7 @@ use super::model::{
     BUILDING_ATTRS_LEN, BuildingAttrs, Carriageway, LaneTurns, Layer, MarkingConvention,
     ROOF_ORIENT_MAX, ROOF_SHAPE_MAX,
 };
-use super::tables::align4;
+use super::tables::{LayerTable, align4};
 use crate::proto::{Result, err};
 
 /// Parse the S3DB building attribute table: the same framing as [`super::tables::parse_ids`] — a `u32` entry
@@ -15,7 +15,7 @@ use crate::proto::{Result, err};
 /// is exactly as long as its feature vector — a mismatch would misattribute every building's
 /// height after the first. `roof_shape`, `roof_orientation` and the reserved bytes are checked so a
 /// corrupt record fails here rather than extruding a wrong shape on device.
-pub(crate) fn parse_buildings(buf: &[u8], layers: &[Layer]) -> Result<(Vec<(u8, Vec<BuildingAttrs>)>, usize)> {
+pub(crate) fn parse_buildings(buf: &[u8], layers: &[Layer]) -> Result<(LayerTable<BuildingAttrs>, usize)> {
     if buf.len() < 4 {
         return err("a .mamaps building table ends before its count");
     }
@@ -143,7 +143,7 @@ pub fn serialize_buildings(buildings: &[(u8, Vec<BuildingAttrs>)], out: &mut Vec
 pub(crate) fn parse_sparse_lanes(
     buf: &[u8],
     layers: &[Layer],
-) -> Result<(Vec<(u8, Vec<LaneTurns>)>, usize)> {
+) -> Result<(LayerTable<LaneTurns>, usize)> {
     if buf.len() < 4 {
         return err("a .mamaps sparse turn-lane table ends before its count");
     }
@@ -267,7 +267,7 @@ pub fn serialize_sparse_lanes(turn_lanes: &[(u8, Vec<LaneTurns>)], out: &mut Vec
 pub(crate) fn parse_sparse_carriageways(
     buf: &[u8],
     layers: &[Layer],
-) -> Result<(Vec<(u8, Vec<Carriageway>)>, MarkingConvention, usize)> {
+) -> Result<(LayerTable<Carriageway>, MarkingConvention, usize)> {
     if buf.len() < 8 {
         return err("a .mamaps sparse carriageway table ends before its header");
     }
@@ -415,7 +415,7 @@ fn pack_attrs(a: &BuildingAttrs) -> u8 {
 pub(crate) fn parse_sparse_buildings(
     buf: &[u8],
     layers: &[Layer],
-) -> Result<(Vec<(u8, Vec<BuildingAttrs>)>, usize)> {
+) -> Result<(LayerTable<BuildingAttrs>, usize)> {
     use super::model::{ROOF_ORIENT_ACROSS, ROOF_ORIENT_ALONG};
     if buf.len() < 4 {
         return err("a .mamaps sparse building table ends before its count");

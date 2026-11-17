@@ -118,7 +118,7 @@ impl Spill {
     }
 
     /// Append a body the caller hands over whole, through the background writer (started on
-    /// first use). Same offset, same bytes as [`Self::append`]; the body is written later, in
+    /// first use). Same offset, same bytes as the buffered append path; the body is written later, in
     /// order, and kept in memory until it is.
     pub(crate) fn append_shared(&mut self, body: std::sync::Arc<Vec<u8>>) -> Result<()> {
         if self.bg.is_none() {
@@ -256,6 +256,9 @@ impl Spill {
         Ok(())
     }
 
+    // Buffered append path: exercised by the spill tests and mixed-mode compares;
+    // production writers go through `append_shared`, so this is test-only in the lib build.
+    #[cfg(test)]
     pub(crate) fn append(&mut self, bytes: &[u8]) -> Result<()> {
         if self.bg.is_some() {
             return self.append_shared(std::sync::Arc::new(bytes.to_vec()));
@@ -280,7 +283,7 @@ impl Spill {
     /// The compare that makes a content-dedup hit a fact rather than a probability. Answered out of
     /// the buffer when the body is still in it, which costs nothing at all.
     pub(crate) fn matches_at(&mut self, offset: u64, candidate: &[u8]) -> Result<bool> {
-        let start = offset as u64;
+        let start = offset;
         let end = start + candidate.len() as u64;
         debug_assert!(end <= self.len(), "a dedup candidate past the end of the data section");
         self.confirms += 1;

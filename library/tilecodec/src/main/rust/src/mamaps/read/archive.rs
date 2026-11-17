@@ -487,7 +487,7 @@ impl<R: RangeReader> MamapsArchive<R> {
         }
         let raw_len = root.leaf_entry_count as u64 * index::LEAF_ENTRY_LEN as u64;
         let stored_len = if root.stored_len == 0 { raw_len } else { root.stored_len as u64 };
-        if root.leaf_offset + stored_len > self.header.leaf_len as u64 {
+        if root.leaf_offset + stored_len > self.header.leaf_len {
             return err("a .mamaps root entry runs past the leaf section");
         }
         let length = u32::try_from(stored_len)

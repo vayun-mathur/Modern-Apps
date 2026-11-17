@@ -14,12 +14,15 @@ use tilecodec::mamaps::body::{
 };
 use tilecodec::mamaps::dict;
 use tilecodec::mamaps::header::{Header, FORMAT_VERSION, FORMAT_VERSION_V9, HEADER_LEN};
-use tilecodec::mamaps::index::{self, LEAF_ENTRY_LEN, ROOT_ENTRY_LEN, RootEntry};
+use tilecodec::mamaps::index::{self, LEAF_ENTRY_LEN, ROOT_ENTRY_LEN};
 use tilecodec::mamaps::read::{self, MamapsArchive};
 use tilecodec::mamaps::write::{Options, StreamWriter};
 use tilecodec::pmtiles::tile_id;
 use tilecodec::proto::Result;
 use tilecodec::stream::{RangeReader, OPEN_PREFIX_BYTES};
+
+type Requests = Rc<RefCell<Vec<(u64, u32)>>>;
+type CountingArchive = MamapsArchive<Counting>;
 
 /// A [`RangeReader`] over bytes in memory that logs every range asked for, so a test can assert
 /// on the **number of round trips** as well as on the bytes.
@@ -87,7 +90,7 @@ fn archive(tiles: &[(u8, u64, u64, i16)], options: Options) -> Vec<u8> {
     writer.finish().expect("finish")
 }
 
-fn open(bytes: Vec<u8>) -> (MamapsArchive<Counting>, Rc<RefCell<Vec<(u64, u32)>>>) {
+fn open(bytes: Vec<u8>) -> (CountingArchive, Requests) {
     let requests = Rc::new(RefCell::new(Vec::new()));
     let a = MamapsArchive::open(Counting { bytes, requests: Rc::clone(&requests) })
         .expect("open");
@@ -147,7 +150,7 @@ fn compressed_leaves_round_trip_and_keep_the_prefix_budget() {
     }
     assert!(header.leaf_len < raw_total, "the stored section is smaller than the raw leaves");
     // And the whole archive reads back tile-for-tile through the range-reader path.
-    let (mut a, requests) = open(bytes);
+    let (a, requests) = open(bytes);
     assert_eq!(requests.borrow().len(), 1, "open is still one request");
     for (z, x, y, seed) in &tiles {
         let tile = a.tile(*z, *x as u32, *y as u32).expect("read").expect("present");
@@ -176,7 +179,7 @@ fn raw_leaves_stay_byte_identical_and_still_open() {
     assert_eq!(c1, c2);
     // Both open and read on the same reader.
     for bytes in [raw, c1] {
-        let (mut a, _) = open(bytes);
+        let (a, _) = open(bytes);
         assert_eq!(a.tile(2, 3, 3).expect("read").expect("present"), body_for(15));
     }
 }
@@ -187,7 +190,7 @@ fn raw_leaves_stay_byte_identical_and_still_open() {
 fn a_cold_tile_is_still_two_requests_and_a_warm_tile_one() {
     let tiles = leafy_tiles();
     let options = Options { leaf_entry_capacity: 16, ..Options::default() };
-    let (mut a, requests) = open(archive(&tiles, options));
+    let (a, requests) = open(archive(&tiles, options));
     assert!(a.header.leaf_count > 1, "this test needs several leaves");
     requests.borrow_mut().clear();
     assert!(a.tile(4, 0, 0).expect("read").is_some());

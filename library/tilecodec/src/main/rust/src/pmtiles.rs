@@ -50,7 +50,6 @@ pub use types::{
     COMPRESSION_GZIP, COMPRESSION_NONE, Entry, Header, HEADER_LEN, MAGIC, SPEC_VERSION,
     TILE_TYPE_MVT,
 };
-pub(crate) use types::MAX_ROOT_BYTES;
 pub use hilbert::{tile_id, tile_zxy, zoom_base};
 pub use directory::{parse_directory, serialize_directory};
 pub use read::Archive;

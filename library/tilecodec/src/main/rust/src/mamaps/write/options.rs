@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 pub const DEFAULT_LEAF_CAPACITY: u32 = 4096;
 /// Raw DEFLATE over everything but the body header.
-
 /// What a build declares about itself before the first tile.
 pub struct Options {
     pub min_zoom: u8,

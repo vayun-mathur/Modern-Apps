@@ -49,3 +49,9 @@ ruzstd.workspace = true
 # Pure-Rust zstd encoder, host-side only (writer): v9 bodies. Optional so the
 # cdylib never links it — Android reads archives, it never writes one.
 zstd-rs = { workspace = true, optional = true }
+
+[dev-dependencies]
+# Tests build archives, so they need the writer the Android cdylib never links.
+# Self dev-dependency (same pattern as :library:map and maps) enables `write`
+# only for test targets; the default lib build stays read-only.
+tilecodec = { path = ".", features = ["write"] }

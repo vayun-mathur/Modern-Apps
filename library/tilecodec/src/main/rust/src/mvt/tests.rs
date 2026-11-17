@@ -83,7 +83,7 @@ fn a_tile_round_trips_through_encode_and_decode() {
 
 #[test]
 fn every_value_kind_round_trips() {
-    let vals = vec![
+    let vals = [
         Value::String("s".into()),
         Value::Float(1.5),
         Value::Double(-2.25),

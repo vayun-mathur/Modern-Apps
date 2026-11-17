@@ -2,6 +2,9 @@ use super::consts::{BODY_HEADER_LEN, CARRIAGEWAY_RECORD_LEN, LAYER_INDEX_LEN};
 use super::model::{Carriageway, Heightmap, LaneTurns, Layer, MarkingConvention};
 use crate::proto::{Result, err};
 
+/// A per-layer table: `(layer id, records for that layer)` entries, ascending by layer id.
+pub(crate) type LayerTable<T> = Vec<(u8, Vec<T>)>;
+
 /// The unaligned end of the last layer payload, as the index declares it.
 ///
 /// Payload offsets and lengths live in the body's layer index (`index_end` is where the index
@@ -120,7 +123,7 @@ pub(crate) fn align4(at: usize) -> usize {
 /// a layer the body actually carries, entries must be ascending and distinct by layer id, and a
 /// layer's id vector must be exactly as long as its feature vector. A short or long vector would
 /// silently misattribute every id after the first mismatch.
-pub(crate) fn parse_ids(buf: &[u8], layers: &[Layer]) -> Result<(Vec<(u8, Vec<u64>)>, usize)> {
+pub(crate) fn parse_ids(buf: &[u8], layers: &[Layer]) -> Result<(LayerTable<u64>, usize)> {
     if buf.len() < 4 {
         return err("a .mamaps id table ends before its count");
     }
@@ -214,7 +217,7 @@ pub fn serialize_ids(ids: &[(u8, Vec<u64>)], out: &mut Vec<u8>) {
 pub(crate) fn parse_region_links(
     buf: &[u8],
     layers: &[Layer],
-) -> Result<(Vec<(u8, Vec<u64>)>, usize)> {
+) -> Result<(LayerTable<u64>, usize)> {
     if buf.len() < 4 {
         return err("a .mamaps region-link table ends before its count");
     }
@@ -308,7 +311,7 @@ pub fn serialize_region_links(links: &[(u8, Vec<u64>)], out: &mut Vec<u8>) {
 /// The same shape and validation as [`parse_ids`]: an entry must name a layer the body carries,
 /// entries ascend and are distinct by layer id, and a layer's turn vector is exactly as long as
 /// its feature vector — a mismatch would misattribute every feature's lanes after the first.
-pub(crate) fn parse_lanes(buf: &[u8], layers: &[Layer]) -> Result<(Vec<(u8, Vec<LaneTurns>)>, usize)> {
+pub(crate) fn parse_lanes(buf: &[u8], layers: &[Layer]) -> Result<(LayerTable<LaneTurns>, usize)> {
     if buf.len() < 4 {
         return err("a .mamaps turn-lane table ends before its count");
     }
@@ -420,7 +423,7 @@ pub fn serialize_lanes(turn_lanes: &[(u8, Vec<LaneTurns>)], out: &mut Vec<u8>) {
 pub(crate) fn parse_carriageways(
     buf: &[u8],
     layers: &[Layer],
-) -> Result<(Vec<(u8, Vec<Carriageway>)>, MarkingConvention, usize)> {
+) -> Result<(LayerTable<Carriageway>, MarkingConvention, usize)> {
     if buf.len() < 8 {
         return err("a .mamaps carriageway table ends before its header");
     }

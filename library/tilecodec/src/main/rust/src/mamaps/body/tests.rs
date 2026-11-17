@@ -1,6 +1,8 @@
 use super::*;
 use crate::mamaps::dict;
 
+type BodyMutator = fn(&mut Vec<u8>);
+
 /// A tile with one polygon carrying a hole and one road, which between them exercise every
 /// field the format has.
 fn sample() -> Body {
@@ -311,7 +313,7 @@ fn a_corrupt_body_is_refused_rather_than_decoded() {
     assert!(Body::parse(&good[..BODY_HEADER_LEN - 1]).is_err(), "shorter than the header");
     assert!(Body::parse(&good[..good.len() - 4]).is_err(), "declares more than it is");
 
-    let cases: &[(&str, fn(&mut Vec<u8>))] = &[
+    let cases: &[(&str, BodyMutator)] = &[
         ("bad magic", |b| b[0] = b'X'),
         ("a newer body version", |b| b[3] = 99),
         ("a zero extent", |b| b[8..10].copy_from_slice(&0u16.to_le_bytes())),

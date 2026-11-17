@@ -484,8 +484,6 @@ impl StreamWriter {
         Ok(out)
     }
 
-    /// Chop the entries into leaves
-
     /// Chop the entries into leaves of at most `capacity`, rebasing each leaf's ids and offsets.
     ///
     /// `None` when some leaf's tile-id span will not fit the `u32` a [`LeafEntry::tile_id_lo`]

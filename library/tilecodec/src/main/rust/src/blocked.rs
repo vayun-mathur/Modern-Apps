@@ -529,7 +529,6 @@ impl BlockedStreamWriter {
 
     /// Append whole records. Must be a multiple of the stride.
     pub fn push(&mut self, records: &[u8]) -> std::io::Result<()> {
-        use std::io::Write as _;
         assert_eq!(records.len() % self.record_len, 0, "whole records only");
         self.block.extend_from_slice(records);
         self.records += (records.len() / self.record_len) as u64;
@@ -692,8 +691,8 @@ mod tests {
         let mut out = Vec::with_capacity(n * len);
         for i in 0..n {
             let mut rec = Vec::with_capacity(12.max(len));
-            rec.extend_from_slice(&((350_000_000 + i as i32 * 37) as i32).to_le_bytes());
-            rec.extend_from_slice(&((-1_200_000_000 + i as i32 * 11) as i32).to_le_bytes());
+            rec.extend_from_slice(&(350_000_000 + i as i32 * 37).to_le_bytes());
+            rec.extend_from_slice(&(-1_200_000_000 + i as i32 * 11).to_le_bytes());
             rec.extend_from_slice(&(i as u32 * 3).to_le_bytes());
             rec.resize(len, 0);
             out.extend_from_slice(&rec);

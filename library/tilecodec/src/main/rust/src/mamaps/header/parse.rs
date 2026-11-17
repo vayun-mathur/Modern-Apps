@@ -185,7 +185,7 @@ impl Header {
         let sections = [
             ("the dictionary", self.dict_offset, self.dict_len as u64),
             ("the root index", self.root_offset, self.root_len as u64),
-            ("the leaf index", self.leaf_offset, self.leaf_len as u64),
+            ("the leaf index", self.leaf_offset, self.leaf_len),
             ("the tile data", self.data_offset, self.data_len),
         ];
         for (what, offset, len) in sections {

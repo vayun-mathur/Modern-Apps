@@ -270,7 +270,7 @@ fn a_large_archive_spills_into_leaf_directories() {
     let a = Archive::parse(&bytes).unwrap();
     assert!(a.header.leaf_length > 0, "must have spilled into leaves");
     assert!(
-        a.header.root_length as usize <= MAX_ROOT_BYTES,
+        a.header.root_length as usize <= super::types::MAX_ROOT_BYTES,
         "root must stay within one request"
     );
     // Spot-check across leaf boundaries.

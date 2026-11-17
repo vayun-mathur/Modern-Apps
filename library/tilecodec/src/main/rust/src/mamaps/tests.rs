@@ -1,7 +1,7 @@
 use super::*;
 use crate::mamaps::body::{Feature, Layer, Part, DEFAULT_EXTENT, GEOM_LINE, WINDING_OUTER};
 use crate::mamaps::write::{Options, StreamWriter};
-use crate::pmtiles::{tile_id, zoom_base};
+use crate::pmtiles::tile_id;
 use crate::proto::Result;
 use crate::stream::{RangeReader, OPEN_PREFIX_BYTES};
 use std::cell::RefCell;
@@ -139,7 +139,7 @@ fn wide_body_for(seed: i16) -> Body {
 #[test]
 fn a_tile_written_reads_back_exactly() {
     let bytes = archive(&[(0, 0, 0, 100), (1, 0, 0, 200), (1, 1, 1, 300)], Options::default());
-    let mut a = open(bytes);
+    let a = open(bytes);
     for (z, x, y, seed) in [(0u8, 0u32, 0u32, 100i16), (1, 0, 0, 200), (1, 1, 1, 300)] {
         let tile = a.tile(z, x, y).expect("read").expect("present");
         assert_eq!(tile, body_for(seed), "z{z}/{x}/{y}");
@@ -154,7 +154,7 @@ fn a_tile_written_reads_back_exactly() {
 #[test]
 fn a_tile_reads_back_uncompressed_too() {
     let options = Options { compress: false, ..Options::default() };
-    let mut a = open(archive(&[(0, 0, 0, 7)], options));
+    let a = open(archive(&[(0, 0, 0, 7)], options));
     assert!(!a.header.compressed());
     assert_eq!(a.tile(0, 0, 0).expect("read").expect("present"), body_for(7));
 }
@@ -175,7 +175,7 @@ fn open_is_one_request_a_warm_tile_one_a_cold_tile_two_and_never_three() {
         }
     }
     let options = Options { leaf_entry_capacity: 16, ..Options::default() };
-    let mut a = open(archive(&tiles, options));
+    let a = open(archive(&tiles, options));
     assert!(a.header.leaf_count > 1, "this test needs several leaves");
     assert_eq!(
         a.reader.requests.borrow().as_slice(),
@@ -207,7 +207,7 @@ fn open_is_one_request_a_warm_tile_one_a_cold_tile_two_and_never_three() {
 /// request, so it poisons that range for every later read.
 #[test]
 fn every_read_takes_its_length_from_a_declared_field() {
-    let mut a = open(archive(&[(0, 0, 0, 1), (1, 0, 0, 2)], Options::default()));
+    let a = open(archive(&[(0, 0, 0, 1), (1, 0, 0, 2)], Options::default()));
     let (leaf_len, leaf_offset) = (a.header.leaf_len, a.header.leaf_offset);
     a.reader.requests.borrow_mut().clear();
     assert!(a.tile(1, 0, 0).expect("read").is_some());
@@ -215,7 +215,7 @@ fn every_read_takes_its_length_from_a_declared_field() {
     assert_eq!(requests.len(), 2);
     // The leaf: offset and length both from the root entry and the header.
     assert_eq!(requests[0].0, leaf_offset, "the leaf is where the header says");
-    assert!(requests[0].1 as u64 <= leaf_len as u64, "and no longer than the section it is in");
+    assert!(requests[0].1 as u64 <= leaf_len, "and no longer than the section it is in");
     assert_eq!(
         requests[0].1 as usize % index::LEAF_ENTRY_LEN,
         0,
@@ -231,7 +231,7 @@ fn every_read_takes_its_length_from_a_declared_field() {
 fn a_range_that_comes_back_short_is_refused() {
     let full = archive(&[(0, 0, 0, 1), (1, 0, 0, 2)], Options::default());
     let truncated = full[..full.len() - 8].to_vec();
-    let mut a =
+    let a =
         MamapsArchive::open(Counting { bytes: truncated, requests: RefCell::new(Vec::new()) })
             .expect("the prefix is intact, so open still works");
     let failure = a.tile(1, 0, 0).expect_err("the last body is cut off");
@@ -249,7 +249,7 @@ fn identical_tiles_share_one_body_whether_or_not_they_are_consecutive() {
     assert_eq!(header.bodies_written, 2, "one distinct z1 body plus z0's");
     assert!(header.flags & header::FLAG_RUN_LENGTH_PRESENT != 0, "a run was used");
     // And all four still read back.
-    let mut a = open(bytes);
+    let a = open(bytes);
     for (x, y) in [(0u32, 0u32), (1, 0), (1, 1), (0, 1)] {
         assert_eq!(a.tile(1, x, y).expect("read").expect("present"), body_for(5));
     }
@@ -274,7 +274,7 @@ fn a_tile_can_share_a_body_written_for_an_earlier_leaf() {
     assert_eq!(header.tiles_addressed, 64);
     assert!(header.bodies_written <= 8, "{} bodies for two shapes", header.bodies_written);
     assert!(header.leaf_count > 4, "this test needs the repeats to cross leaves");
-    let mut a = open(bytes);
+    let a = open(bytes);
     for (z, x, y, seed) in &tiles {
         let tile = a.tile(*z, *x as u32, *y as u32).expect("read").expect("present");
         assert_eq!(tile, body_for(*seed), "z{z}/{x}/{y}");
@@ -315,7 +315,7 @@ fn content_dedup_confirms_a_candidate_that_has_already_reached_the_scratch_file(
     assert_eq!(header.bodies_written, DISTINCT as u64, "the second pass stored nothing new");
     // And every tile still reads back as itself, which is what confirming against the wrong
     // bytes would silently break.
-    let mut a = open(bytes);
+    let a = open(bytes);
     for (id, seed) in &rows {
         let (z, x, y) = crate::pmtiles::tile_zxy(*id);
         let tile = a.tile(z, x as u32, y as u32).expect("read").expect("present");
