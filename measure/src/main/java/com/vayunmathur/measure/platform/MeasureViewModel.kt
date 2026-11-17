@@ -60,6 +60,13 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
     /** Native VIO session handle, mirrored from the AR page so reset can reach it. */
     internal var nativeSessionHandle: Long = 0L
 
+    internal var scanningSinceMs: Long? = null
+    internal var lostSinceMs: Long? = null
+    internal var unavailableReason: com.vayunmathur.measure.domain.ArUnavailableReason? = null
+
+    /** Hit provider seam; the page swaps in the native-backed one. */
+    var hitProvider: ArHitProvider = FakeArHitProvider()
+
     internal var nextAnchorId = 1L
     internal var nextMeasurementId = 1L
 
@@ -129,6 +136,38 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
     /** Called by the AR page with a world point resolved by the native engine. */
     fun addResolvedAnchor(x: Double, y: Double, z: Double, onPlane: Boolean) = addResolvedAnchorImpl(x, y, z, onPlane)
 
+    fun onReticleHit(hit: com.vayunmathur.measure.domain.HitCandidate?) = onReticleHitImpl(hit)
+
+    fun onSessionChanged(handle: Long) = onSessionChangedImpl(handle)
+
+    fun setUnavailableReason(reason: com.vayunmathur.measure.domain.ArUnavailableReason?) {
+        unavailableReason = reason
+        refreshFlowImpl()
+    }
+
+    /** Re-derive the flow state (drives scanning/lost timeouts). */
+    fun tickFlow() = refreshFlowImpl()
+
+    /** Poll the hit provider for the centre reticle and publish the result. */
+    fun refreshReticle() {
+        onReticleHit(hitProvider.centreHit(nativeSessionHandle))
+    }
+
+    override fun placeAtReticle() {
+        val hit = arState.value.reticleHit ?: return
+        if (!com.vayunmathur.measure.domain.ArFlow.canPlace(arState.value.flowState)) return
+        addResolvedAnchor(
+            hit.position.x, hit.position.y, hit.position.z,
+            onPlane = hit.kind == com.vayunmathur.measure.domain.HitKind.Plane,
+        )
+    }
+
+    override fun removeAnchor(id: Long) {
+        val anchors = arState.value.anchors.filterNot { it.id == id }
+        arState.value = arState.value.copy(anchors = anchors, polygonClosed = false)
+            .recomputedImpl()
+    }
+
     override fun undoAnchor() {
         val anchors = arState.value.anchors.dropLast(1)
         arState.value = arState.value.copy(anchors = anchors, polygonClosed = false).recomputedImpl()
@@ -138,7 +177,9 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
         arState.value = arState.value.copy(
             anchors = emptyList(),
             distanceM = null,
+            totalDistanceM = null,
             areaM2 = null,
+            areaTrustworthy = true,
             perimeterM = null,
             polygonClosed = false,
         )

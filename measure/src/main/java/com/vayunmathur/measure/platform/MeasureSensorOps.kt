@@ -4,7 +4,10 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.measure.data.model.Anchor
 import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.data.model.UnitSystem
-import com.vayunmathur.measure.data.model.distanceTo
+import com.vayunmathur.measure.domain.MeasureNative
+import com.vayunmathur.measure.domain.areaIsTrustworthy
+import com.vayunmathur.measure.domain.lastSegmentLengthM
+import com.vayunmathur.measure.domain.polylineLengthM
 import com.vayunmathur.measure.domain.polygonArea
 import com.vayunmathur.measure.domain.polygonPerimeter
 import kotlinx.coroutines.launch
@@ -133,6 +136,14 @@ internal fun MeasureViewModel.setPixelsPerMmImpl(v: Float) {
 }
 
 internal fun MeasureViewModel.onTrackingUpdateImpl(quality: TrackingQuality, hasPlane: Boolean) {
+    val now = System.currentTimeMillis()
+    when (quality) {
+        TrackingQuality.Initialising, TrackingQuality.Limited ->
+            if (scanningSinceMs == null) scanningSinceMs = now
+        TrackingQuality.Good -> scanningSinceMs = null
+        TrackingQuality.Lost -> if (lostSinceMs == null) lostSinceMs = now
+    }
+    if (quality != TrackingQuality.Lost) lostSinceMs = null
     arState.value = if (quality == TrackingQuality.Lost) {
         // Anchors from before a loss sit in a world frame the engine can
         // no longer re-observe (see TrackingQuality.Lost); leaving them
@@ -143,17 +154,70 @@ internal fun MeasureViewModel.onTrackingUpdateImpl(quality: TrackingQuality, has
             hasPlane = hasPlane,
             anchors = emptyList(),
             distanceM = null,
+            totalDistanceM = null,
             areaM2 = null,
+            areaTrustworthy = true,
             perimeterM = null,
             polygonClosed = false,
         )
     } else {
         arState.value.copy(quality = quality, hasPlane = hasPlane)
     }
+    if (quality == TrackingQuality.Lost) {
+        arState.value = arState.value.copy(reticleHit = null)
+    }
+    refreshFlowImpl()
 }
 
 internal fun MeasureViewModel.setCameraPermissionImpl(granted: Boolean) {
+    if (!granted) {
+        unavailableReason = com.vayunmathur.measure.domain.ArUnavailableReason.CameraPermissionDenied
+    } else if (unavailableReason ==
+        com.vayunmathur.measure.domain.ArUnavailableReason.CameraPermissionDenied
+    ) {
+        unavailableReason = null
+    }
     arState.value = arState.value.copy(cameraPermissionGranted = granted)
+    refreshFlowImpl()
+}
+
+/** Recompute the typed flow state from availability/session/quality/reticle. */
+internal fun MeasureViewModel.refreshFlowImpl(nowMs: Long = System.currentTimeMillis()) {
+    val s = arState.value
+    // Camera permission outranks device-capability reasons: it is the
+    // one the user can fix on the spot, after which the rest re-check.
+    val unavailable = when {
+        !MeasureNative.available ->
+            com.vayunmathur.measure.domain.ArUnavailableReason.NativeEngineMissing
+        !s.cameraPermissionGranted ->
+            com.vayunmathur.measure.domain.ArUnavailableReason.CameraPermissionDenied
+        else -> unavailableReason
+    }
+    val flow = com.vayunmathur.measure.domain.ArFlow.derive(
+        unavailable = unavailable,
+        hasSession = nativeSessionHandle != 0L && s.cameraPermissionGranted,
+        quality = s.quality,
+        reticleHit = s.reticleHit,
+        scanningSinceMs = scanningSinceMs,
+        lostSinceMs = lostSinceMs,
+        nowMs = nowMs,
+    )
+    if (flow != s.flowState) arState.value = s.copy(flowState = flow)
+}
+
+internal fun MeasureViewModel.onReticleHitImpl(
+    hit: com.vayunmathur.measure.domain.HitCandidate?,
+) {
+    arState.value = arState.value.copy(reticleHit = hit)
+    refreshFlowImpl()
+}
+
+internal fun MeasureViewModel.onSessionChangedImpl(handle: Long) {
+    nativeSessionHandle = handle
+    if (handle == 0L) {
+        arState.value = arState.value.copy(reticleHit = null)
+    }
+    refreshFlowImpl()
 }
 
 /** Called by the AR page with a world point resolved by the native engine. */
@@ -174,16 +238,22 @@ internal fun MeasureViewModel.updateDiagnosticsImpl(update: DiagnosticsUiState.(
  * polygon is explicitly closed, since an open chain has no meaningful area.
  */
 internal fun ArMeasureUiState.recomputedImpl(): ArMeasureUiState {
-    val distance = if (anchors.size >= 2) {
-        anchors[anchors.size - 2].distanceTo(anchors[anchors.size - 1])
+    val trustworthy = areaIsTrustworthy(anchors)
+    val area = if (polygonClosed && anchors.size >= 3 && trustworthy) {
+        polygonArea(anchors)
     } else {
         null
     }
-    val area = if (polygonClosed && anchors.size >= 3) polygonArea(anchors) else null
     val perimeter = if (polygonClosed && anchors.size >= 3) {
         polygonPerimeter(anchors, closed = true)
     } else {
         null
     }
-    return copy(distanceM = distance, areaM2 = area, perimeterM = perimeter)
+    return copy(
+        distanceM = lastSegmentLengthM(anchors),
+        totalDistanceM = polylineLengthM(anchors),
+        areaM2 = area,
+        areaTrustworthy = trustworthy,
+        perimeterM = perimeter,
+    )
 }

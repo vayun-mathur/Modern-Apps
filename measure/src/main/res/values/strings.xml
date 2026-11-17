@@ -123,6 +123,21 @@
     <!-- ArMeasureContent: reason shown under ar_unavailable_title when the camera permission
          has not been granted. -->
     <string name="ar_unavailable_camera">Camera access is needed to measure in AR.</string>
+    <string name="ar_unavailable_timestamps">This camera\'s timestamps can\'t be matched with the motion sensors, so AR tracking can\'t work reliably on this device.</string>
+    <string name="ar_unavailable_sensors">This device is missing the motion sensors AR tracking needs.</string>
+    <string name="ar_scanning">Move your phone slowly sideways to scan the surface</string>
+    <string name="ar_searching">Point the centre marker at a surface</string>
+    <string name="ar_ready_place">Tap anywhere, or use +, to place a point</string>
+    <string name="ar_place_point">Place point</string>
+    <string name="ar_total">Total %1$s</string>
+    <string name="ar_area_unreliable">Shape is not flat — area not quoted</string>
+    <string name="ar_fallback_title">Use the ruler instead</string>
+    <string name="ar_fallback_body">AR tracking isn\'t available, but you can still measure on screen with the ruler tool.</string>
+    <string name="ar_open_ruler">Open ruler</string>
+    <string name="ar_try_again">Try AR again</string>
+    <string name="ar_scanning_timeout">Still no tracking — check light and texture, or use the ruler</string>
+    <string name="ar_lost_timeout">Tracking hasn\'t recovered — restart it or use the ruler</string>
+    <string name="ar_anchor_point">Point %1$d</string>
     <!-- SavedMeasurementsContent: heading of the empty state. -->
     <string name="saved_empty_title">No saved measurements</string>
     <!-- SavedMeasurementsContent: body of the empty state, telling the user how to add one. -->

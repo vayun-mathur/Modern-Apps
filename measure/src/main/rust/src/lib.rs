@@ -198,6 +198,46 @@ mod jni_bindings {
         .resolve::<jni::errors::LogErrorAndDefault>()
     }
 
+    /// All sane hit candidates along a screen ray, as a flat array of
+    /// `[kind, x, y, z, distanceM, angularErrorDeg, normalDotUp]` per
+    /// candidate (7 values each). Selection policy lives in Kotlin
+    /// (HitSelector) so it is unit-testable; the engine only reports
+    /// candidates that already pass its distance/angle/extent sanity.
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_measure_domain_MeasureNative_nativeHitTest<'l>(
+        mut env: EnvUnowned<'l>,
+        _class: JClass<'l>,
+        handle: jlong,
+        px: jfloat,
+        py: jfloat,
+    ) -> jdoubleArray {
+        env.with_env(|env| -> jni::errors::Result<jdoubleArray> {
+            let vals: Vec<f64> = {
+                let guard = sessions().lock().unwrap();
+                match guard.get(&handle) {
+                    Some(s) => s
+                        .hit_candidates(px, py)
+                        .iter()
+                        .flat_map(|c| {
+                            [
+                                c.kind as f64,
+                                c.point[0],
+                                c.point[1],
+                                c.point[2],
+                                c.distance_m,
+                                c.angular_error_rad.to_degrees(),
+                                c.normal_dot_up,
+                            ]
+                        })
+                        .collect(),
+                    None => Vec::new(),
+                }
+            };
+            Ok(make_double_array(env, &vals))
+        })
+        .resolve::<jni::errors::LogErrorAndDefault>()
+    }
+
     /// Diagnostics snapshot:
     /// `[quality, scaleConfidence, landmarkCount, trackedCount, hasPlane, gx, gy, gz]`.
     #[no_mangle]

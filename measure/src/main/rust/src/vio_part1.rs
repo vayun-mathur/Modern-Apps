@@ -97,6 +97,26 @@ mod tests {
     }
 
     #[test]
+    fn hit_test_rejects_a_landmark_far_off_the_ray() {
+        // Regression: the old ray cast returned this landmark anyway.
+        let mut s = VioSession::new(intr());
+        s.quality = Quality::Good;
+        s.landmarks = vec![Vector3::new(3.0, 0.0, 2.0)];
+        assert!(s.hit_candidates(320.0, 240.0).is_empty());
+        assert!(s.ray_to_world(320.0, 240.0).is_none());
+    }
+
+    #[test]
+    fn hit_test_accepts_a_landmark_on_the_ray_within_range() {
+        let mut s = VioSession::new(intr());
+        s.quality = Quality::Good;
+        s.landmarks = vec![Vector3::new(0.0, 0.0, 2.0), Vector3::new(0.0, 0.0, 20.0)];
+        let hits = s.hit_candidates(320.0, 240.0);
+        assert_eq!(hits.len(), 1, "out-of-range landmark must be filtered");
+        assert!((hits[0].distance_m - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
     fn median_of_even_and_odd_lengths() {
         assert!((median(&mut [3.0, 1.0, 2.0]) - 2.0).abs() < 1e-9);
         assert!((median(&mut [1.0]) - 1.0).abs() < 1e-9);

@@ -63,6 +63,35 @@ object MeasureNative {
     }
 
     /**
+     * All sane hit candidates along a screen ray, parsed from the flat
+     * native array. Selection policy ([HitSelector]) is applied by the
+     * caller so it stays unit-testable; empty when not measurable.
+     */
+    fun hitTest(handle: Long, px: Float, py: Float): List<HitCandidate> {
+        if (!available || handle == 0L) return emptyList()
+        val flat = nativeHitTest(handle, px, py) ?: return emptyList()
+        if (flat.size % HIT_CANDIDATE_STRIDE != 0) return emptyList()
+        return flat.toList().chunked(HIT_CANDIDATE_STRIDE).mapNotNull { c ->
+            val kind = when (c[0].toInt()) {
+                KIND_PLANE -> HitKind.Plane
+                KIND_FEATURE -> HitKind.FeaturePoint
+                else -> return@mapNotNull null
+            }
+            HitCandidate(
+                kind = kind,
+                position = Vec3(c[1], c[2], c[3]),
+                distanceM = c[4],
+                angularErrorDeg = c[5],
+                normalDotUp = c[6].takeIf { it >= 0.0 },
+            )
+        }
+    }
+
+    private const val HIT_CANDIDATE_STRIDE = 7
+    private const val KIND_PLANE = 0
+    private const val KIND_FEATURE = 1
+
+    /**
      * `[quality, scaleConfidence, landmarkCount, trackedCount, hasPlane, gx, gy, gz]`,
      * or null when the handle is unknown.
      */
@@ -94,6 +123,7 @@ object MeasureNative {
 
     private external fun nativePushImu(handle: Long, packed: DoubleArray)
     private external fun nativeRayToWorld(handle: Long, px: Float, py: Float): DoubleArray?
+    private external fun nativeHitTest(handle: Long, px: Float, py: Float): DoubleArray?
     private external fun nativeGetState(handle: Long): DoubleArray?
     private external fun nativeProjectPoints(
         handle: Long,

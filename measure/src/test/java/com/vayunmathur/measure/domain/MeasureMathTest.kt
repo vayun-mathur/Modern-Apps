@@ -35,7 +35,7 @@ class MeasureMathTest {
         )
         assertTrue(areaIsTrustworthy(flat))
         val bent = flat.mapIndexed { i, anchor ->
-            if (i == 3) anchor.copy(z = 0.4) else anchor
+            if (i == 3) anchor.copy(y = 0.4) else anchor
         }
         assertFalse(areaIsTrustworthy(bent))
     }

@@ -19,7 +19,7 @@ use crate::align::{align_visual_inertial, refine_gravity, AlignmentResult, Keyfr
 use crate::epipolar::{recover_pose, NPt};
 use crate::klt::{track, Pyramid};
 use crate::plane::{fit_plane_ransac, Plane};
-use crate::preintegrate::{preintegrate, ImuSample, Preintegrated};
+use crate::preintegrate::{estimate_gyro_bias, is_stationary, preintegrate, ImuSample, Preintegrated};
 use crate::triangulate::{triangulate_checked, CameraPose};
 use vision_core::features::detect_and_describe;
 use vision_core::imgbuf::Gray;
@@ -255,7 +255,21 @@ impl VioSession {
         (0..n as u64).map(|i| start + i).collect()
     }
 
+    /// Capture the gyro bias while the device is still at start-up.
+    /// Biases were previously left at zero for the whole session even
+    /// though preintegrate.rs already had the estimator: every interval
+    /// then integrated a constant rotation offset as if it were motion.
+    fn calibrate_gyro_bias_if_stationary(&mut self) {
+        if self.gyro_bias.norm() > 1e-9 || self.frame_count > 120 {
+            return;
+        }
+        if is_stationary(&self.pending_imu, 0.05, 0.5) {
+            self.gyro_bias = estimate_gyro_bias(&self.pending_imu);
+        }
+    }
+
     fn add_keyframe(&mut self, t_ns: i64) {
+        self.calibrate_gyro_bias_if_stationary();
         // Correspondences between the previous keyframe and now, matched by
         // feature id. Previously the relative pose was estimated between the
         // last two *frames* and then composed onto the last *keyframe*, which
@@ -457,42 +471,14 @@ impl VioSession {
     /// surface, not two independently noisy depths. Falls back to the nearest landmark
     /// along the ray when no plane is available.
     pub fn ray_to_world(&self, px: f32, py: f32) -> Option<(Vector3<f64>, bool)> {
-        if self.quality == Quality::Initialising || self.quality == Quality::Lost {
-            return None;
+        let candidates = self.hit_candidates(px, py);
+        // Plane first (it lies on the ray), else the smallest angular error.
+        if let Some(c) = candidates.iter().find(|c| c.kind == HitCandidate::KIND_PLANE) {
+            return Some((c.point, true));
         }
-        let (nx, ny) = self.intr.unproject(px, py);
-        // Camera ray in world coordinates.
-        let dir_cam = Vector3::new(nx, ny, 1.0);
-        let rt = self.pose.r.transpose();
-        let dir_world = rt * dir_cam;
-        let origin = self.pose.center();
-
-        if let Some(ref plane) = self.plane {
-            if let Some(hit) = plane.intersect_ray(&origin, &dir_world) {
-                return Some((hit, true));
-            }
-        }
-
-        // Nearest landmark by angle to the ray.
-        let dn = dir_world.norm();
-        if dn < 1e-9 || self.landmarks.is_empty() {
-            return None;
-        }
-        let unit = dir_world / dn;
-        let mut best: Option<(f64, Vector3<f64>)> = None;
-        for lm in &self.landmarks {
-            let v = *lm - origin;
-            let along = v.dot(&unit);
-            if along <= 0.0 {
-                continue;
-            }
-            let perp = (v - unit * along).norm();
-            if best.as_ref().is_none_or(|(d, _)| perp < *d) {
-                best = Some((perp, *lm));
-            }
-        }
-        best.map(|(_, p)| (p, false))
+        candidates.first().map(|c| (c.point, false))
     }
 }
 
+include!("vio_hit.rs");
 include!("vio_part1.rs");

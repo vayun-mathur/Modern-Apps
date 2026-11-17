@@ -98,10 +98,14 @@ data class RulerUiState(
 data class ArMeasureUiState(
     val quality: TrackingQuality = TrackingQuality.Initialising,
     val anchors: List<Anchor> = emptyList(),
-    /** Metres. Null when fewer than two anchors are placed. */
+    /** Metres, last segment. Null when fewer than two anchors are placed. */
     val distanceM: Double? = null,
+    /** Metres, whole open polyline. Null when fewer than two anchors. */
+    val totalDistanceM: Double? = null,
     /** Square metres. Null unless the polygon is closed with three or more anchors. */
     val areaM2: Double? = null,
+    /** False when a closed polygon is too bent out of plane to quote an area. */
+    val areaTrustworthy: Boolean = true,
     /** Metres. Null unless the polygon is closed. */
     val perimeterM: Double? = null,
     val polygonClosed: Boolean = false,
@@ -109,12 +113,20 @@ data class ArMeasureUiState(
     val hasPlane: Boolean = false,
     val unitSystem: UnitSystem = UnitSystem.Metric,
     val cameraPermissionGranted: Boolean = false,
+    /** Typed flow state: the only source the page uses to gate placement. */
+    val flowState: com.vayunmathur.measure.domain.ArFlowState =
+        com.vayunmathur.measure.domain.ArFlowState.NoSession,
+    /** Selected centre-reticle hit, mirrored for the overlay. */
+    val reticleHit: com.vayunmathur.measure.domain.HitCandidate? = null,
 )
 
 interface ArMeasureActions {
     /** Screen-space tap, normalised to 0..1 on both axes so the page need not know the resolution. */
     fun placeAnchor(nx: Float, ny: Float) {}
+    /** Place a point at the current centre reticle hit (the primary placement path). */
+    fun placeAtReticle() {}
     fun undoAnchor() {}
+    fun removeAnchor(id: Long) {}
     fun clearAnchors() {}
     fun closePolygon() {}
     fun saveCurrentMeasurement(label: String) {}
