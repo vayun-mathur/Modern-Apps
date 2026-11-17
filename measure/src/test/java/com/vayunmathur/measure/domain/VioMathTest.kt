@@ -9,9 +9,9 @@ import kotlin.test.assertTrue
 
 /**
  * Synthetic-ground-truth tests for the pure VIO geometry: the numbers
- * the OpenCV tracker quotes are only trustworthy if chaining,
+ * the Rust tracker quotes are only trustworthy if chaining,
  * triangulation, plane fitting and scale alignment recover known
- * scenes exactly. These run without a device, a camera, or OpenCV.
+ * scenes exactly. These run without a device, a camera, or native code.
  */
 class VioMathTest {
 

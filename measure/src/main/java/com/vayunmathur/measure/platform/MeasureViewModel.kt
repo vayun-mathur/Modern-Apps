@@ -12,7 +12,7 @@ import com.vayunmathur.measure.data.model.SavedMeasurement
 import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.data.model.UnitSystem
 import com.vayunmathur.measure.data.model.distanceTo
-import com.vayunmathur.measure.platform.opencv.OpenCvVioEngine
+import com.vayunmathur.measure.platform.vio.VioEngine
 import com.vayunmathur.measure.platform.sensor.ImuRecorder
 import com.vayunmathur.measure.platform.sensor.TiltSensor
 import com.vayunmathur.measure.domain.polygonArea
@@ -57,15 +57,15 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
     internal val diagnosticsState = MutableStateFlow(DiagnosticsUiState())
     val diagnostics: StateFlow<DiagnosticsUiState> = diagnosticsState
 
-    /** OpenCV engine, mirrored from the AR page so reset can reach it. */
-    internal var vioEngine: OpenCvVioEngine? = null
+    /** Rust VIO engine, mirrored from the AR page so reset can reach it. */
+    internal var vioEngine: VioEngine? = null
 
     /**
      * Whether the tracking engine can run here. A seam (not a direct
      * static read) so flow tests can simulate a capable device:
      * native availability is false on every JVM test host.
      */
-    internal var engineAvailable: Boolean = OpenCvVioEngine.available
+    internal var engineAvailable: Boolean = VioEngine.available
 
     internal var scanningSinceMs: Long? = null
     internal var lostSinceMs: Long? = null
@@ -145,7 +145,7 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
 
     fun onReticleHit(hit: com.vayunmathur.measure.domain.HitCandidate?) = onReticleHitImpl(hit)
 
-    fun onEngineChanged(engine: OpenCvVioEngine?) = onEngineChangedImpl(engine)
+    fun onEngineChanged(engine: VioEngine?) = onEngineChangedImpl(engine)
 
     fun setUnavailableReason(reason: com.vayunmathur.measure.domain.ArUnavailableReason?) {
         unavailableReason = reason

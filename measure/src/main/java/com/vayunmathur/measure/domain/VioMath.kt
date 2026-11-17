@@ -5,13 +5,14 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * Pure visual-inertial geometry behind the OpenCV tracker.
+ * Pure visual-inertial geometry behind the Rust CV tracker.
  *
- * OpenCV (in `platform/opencv/`) does the image work it is good at —
- * Shi-Tomasi corners, Lucas-Kanade flow, essential-matrix recovery. The
+ * The Rust core (in `platform/vio/`, crate `measure_cv`) does the
+ * per-frame image work — Shi-Tomasi corners, Lucas-Kanade flow,
+ * essential-matrix recovery. The
  * bookkeeping that decides whether a measurement may be trusted lives
  * here instead: pose chaining, triangulation, plane fitting and the
- * IMU/visual scale alignment. Keeping it free of OpenCV types makes
+ * IMU/visual scale alignment. Keeping it free of native types makes
  * every one of those decisions unit-testable with synthetic ground
  * truth, which is exactly what the home-grown Rust engine never had.
  *

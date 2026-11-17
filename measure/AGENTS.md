@@ -7,14 +7,14 @@ _Install: ./install measure (dev by default)._
 - Gradle: :measure / dir: measure/
 - Package roots present: ui, data, domain, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
-- Deps: CameraX + org.opencv:opencv 4.10.0 (Maven Central, catalog-pinned; AR tracking only — no Play Services)
+- Deps: CameraX + in-tree Rust `measure_cv` CV core (no third-party native CV; AR tracking only — no Play Services)
 - Metadata: metadata_data/measure.md (present)
-- Rust: crate present but unreferenced (legacy measure_vio, kept for reference) / screenshotTest: yes
+- Rust: `measure_cv` crate wired via rustNativeLib (corners/LK/essential JNI) / screenshotTest: yes
 
 ## Overview
-**Purpose:** Offline measuring toolkit — compass, level, ruler, protractor + AR distance/area over an OpenCV visual-inertial tracker (features/LK/essential pose/triangulation/IMU scale). Real metres, no Play Services.
-**Key features:** Per-tool pages (AR/compass/level/ruler/saved/settings) + diagnostics; `domain/` pure geometry (level math, tilt, polygons, units, VIO math); `platform/sensor/` IMU recording; camera intrinsics; OpenCV tracker in `platform/opencv/` behind the `ArHitProvider` seam.
-**Entry points:** `Route` → `MainActivity.kt` → `Navigation.kt` → `ui/ArMeasurePage.kt` → `platform/MeasureViewModel.kt` → `platform/opencv/OpenCvVioEngine.kt` (math in `domain/VioMath.kt`).
+**Purpose:** Offline measuring toolkit — compass, level, ruler, protractor + AR distance/area over a Rust visual-inertial tracker (features/LK/essential pose/triangulation/IMU scale). Real metres, no Play Services.
+**Key features:** Per-tool pages (AR/compass/level/ruler/saved/settings) + diagnostics; `domain/` pure geometry (level math, tilt, polygons, units, VIO math); `platform/sensor/` IMU recording; camera intrinsics; Rust CV tracker in `platform/vio/` behind the `ArHitProvider` seam.
+**Entry points:** `Route` → `MainActivity.kt` → `Navigation.kt` → `ui/ArMeasurePage.kt` → `platform/MeasureViewModel.kt` → `platform/vio/VioEngine.kt` over crate `measure_cv` (math in `domain/VioMath.kt`).
 **Gotchas:** VIO needs device calibration + motion — test measuring by moving, not screenshots; intrinsics vary per device.
 
 ## Key files

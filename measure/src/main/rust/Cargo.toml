@@ -1,12 +1,12 @@
 [package]
-name = "measure_vio"
+name = "measure_cv"
 version = "0.1.0"
 edition = "2021"
-description = "Monocular visual-inertial odometry for the measure app: metric-scale camera tracking from camera frames plus IMU, via JNI"
+description = "Per-frame computer vision for the measure app's visual-inertial tracker: Shi-Tomasi corners, pyramidal Lucas-Kanade tracking and essential-matrix pose recovery, via JNI. Geometry above the correspondences (triangulation, plane fit, IMU scale) stays in Kotlin."
 license = "GPL-2.0-only"
 
 [lib]
-name = "measure_vio"
+name = "measure_cv"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]

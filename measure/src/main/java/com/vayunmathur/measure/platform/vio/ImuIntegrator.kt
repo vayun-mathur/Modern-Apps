@@ -1,4 +1,4 @@
-package com.vayunmathur.measure.platform.opencv
+package com.vayunmathur.measure.platform.vio
 
 import com.vayunmathur.measure.domain.Vec3
 import com.vayunmathur.measure.domain.rotate3

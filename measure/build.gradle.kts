@@ -15,15 +15,25 @@ android {
     }
 }
 
-// Visual-inertial tracking runs on OpenCV (org.opencv:opencv, Maven Central — see
-// the catalog entry for provenance). The home-grown Rust `measure_vio` engine is no
-// longer wired into the measurement flow: its crate stays in the tree at
-// measure/src/main/rust/ for reference but is referenced by nothing.
+androidComponents {
+    onVariants { variant ->
+        variant.sources.jniLibs?.addStaticSourceDirectory(
+            layout.buildDirectory.dir("rustJniLibs").get().asFile.absolutePath
+        )
+    }
+}
+
+// Visual-inertial tracking runs on the in-tree Rust CV core (`measure_cv`:
+// Shi-Tomasi corners, pyramidal Lucas-Kanade, essential-matrix pose) behind
+// the ArHitProvider seam. No third-party native CV library ships in the APK,
+// so there is no prebuilt .so to fail 16 KB page-size alignment. See
+// measure/src/main/rust/.
+rustNativeLib("measure_cv", "measure")
+
 dependencies {
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.compose)
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.opencv)
 }

@@ -165,7 +165,7 @@ class MeasureContentsCoverageTest {
         assertTrue(opened)
     }
 
-    // OpenCvVioEngine.available is false under Robolectric (no native
+    // VioEngine.available is false under Robolectric (no native
     // shadowed), so the full tracking UI renders; without camera permission
     // the unavailable notice is the reachable guard.
     @Test
@@ -372,7 +372,7 @@ class MeasureContentsCoverageTest {
     fun engineWithoutScaleProjectsNothingVisible() {
         // No IMU scale lock means no metric world: candidates are empty
         // and projections report invisible rather than guessing.
-        val engine = com.vayunmathur.measure.platform.opencv.OpenCvVioEngine(
+        val engine = com.vayunmathur.measure.platform.vio.VioEngine(
             com.vayunmathur.measure.platform.Intrinsics(500.0, 500.0, 320.0, 240.0, true)
         )
         assertEquals(0, engine.centreCandidates(640, 480).size)

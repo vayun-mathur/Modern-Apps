@@ -25,7 +25,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.platform.CameraIntrinsicsResolver
-import com.vayunmathur.measure.platform.opencv.OpenCvVioEngine
+import com.vayunmathur.measure.platform.vio.VioEngine
 import com.vayunmathur.measure.platform.sensor.ImuRecorder
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +41,7 @@ typealias Diagnostics = (Double, Double, Double, Int, Int, Double) -> Unit
 internal val ANALYSIS_SIZE = Size(640, 480)
 
 /**
- * Camera viewfinder plus the frame pump that drives the OpenCV tracker.
+ * Camera viewfinder plus the frame pump that drives the Rust VIO tracker.
  *
  * The analyser hands the Y plane straight to the engine. No Bitmap is
  * allocated and no colour conversion happens: tracking only needs
@@ -52,7 +52,7 @@ internal val ANALYSIS_SIZE = Size(640, 480)
 fun MeasureCamera(
     imuRecorder: ImuRecorder,
     onTrackingUpdate: (quality: TrackingQuality, hasPlane: Boolean) -> Unit,
-    onEngineReady: (engine: OpenCvVioEngine?) -> Unit,
+    onEngineReady: (engine: VioEngine?) -> Unit,
     modifier: Modifier = Modifier,
     onDiagnostics: Diagnostics = { _, _, _, _, _, _ -> },
 ) {
@@ -93,11 +93,16 @@ fun MeasureCamera(
                     .also {
                         it.setAnalyzer(
                             executor,
-                            OpenCvFrameAnalyzer(engine, imuRecorder, onTrackingUpdate, onDiagnostics),
+                            VioFrameAnalyzer(engine, imuRecorder, onTrackingUpdate, onDiagnostics),
                         )
                     }
 
-                imuRecorder.start()
+                // Without live IMU the visual tracker can never lock metric
+                // scale. Report Limited (the flow's Scanning state) instead of
+                // letting a refused high-rate registration crash the session.
+                if (!imuRecorder.start()) {
+                    onTrackingUpdate(TrackingQuality.Limited, false)
+                }
                 provider.bindToLifecycle(
                     lifecycleOwner,
                     CameraSelector.DEFAULT_BACK_CAMERA,
@@ -121,14 +126,14 @@ fun MeasureCamera(
     }
 }
 
-private fun createEngine(context: Context): OpenCvVioEngine? {
-    if (!OpenCvVioEngine.available) return null
+private fun createEngine(context: Context): VioEngine? {
+    if (!VioEngine.available) return null
     val intr = CameraIntrinsicsResolver.resolve(context, ANALYSIS_SIZE) ?: return null
-    return OpenCvVioEngine(intr)
+    return VioEngine(intr)
 }
 
-internal class OpenCvFrameAnalyzer(
-    private val engine: OpenCvVioEngine?,
+internal class VioFrameAnalyzer(
+    private val engine: VioEngine?,
     private val imuRecorder: ImuRecorder,
     private val onTrackingUpdate: (TrackingQuality, Boolean) -> Unit,
     private val onDiagnostics: Diagnostics,
@@ -161,7 +166,15 @@ internal class OpenCvFrameAnalyzer(
                 rowStride = plane.rowStride,
                 timestampNs = tNs,
             )
-            onTrackingUpdate(result.quality, result.hasPlane)
+            // Cap at Limited while the IMU is down: visual tracking may run,
+            // but with no IMU windows the metric scale cannot lock, so Good
+            // (the only state that allows placing anchors) must not be quoted.
+            val quality = if (!imuRecorder.isActive && result.quality != TrackingQuality.Lost) {
+                TrackingQuality.Limited
+            } else {
+                result.quality
+            }
+            onTrackingUpdate(quality, result.hasPlane)
 
             if (lastFrameNs != 0L) {
                 frameIntervalNs = (frameIntervalNs * 3 + (tNs - lastFrameNs)) / 4

@@ -22,10 +22,10 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import com.vayunmathur.measure.Route
 import com.vayunmathur.measure.domain.ArUnavailableReason
-import com.vayunmathur.measure.platform.opencv.OpenCvVioEngine
+import com.vayunmathur.measure.platform.vio.VioEngine
 import com.vayunmathur.measure.platform.CameraIntrinsicsResolver
 import com.vayunmathur.measure.platform.MeasureViewModel
-import com.vayunmathur.measure.platform.OpenCvArHitProvider
+import com.vayunmathur.measure.platform.VioArHitProvider
 import com.vayunmathur.measure.platform.updateDiagnosticsImpl
 import com.vayunmathur.measure.ui.components.MeasureBottomBar
 import com.vayunmathur.measure.ui.components.ANALYSIS_SIZE
@@ -35,7 +35,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
     val state by viewModel.ar.collectAsState()
-    var engine by remember { mutableStateOf<OpenCvVioEngine?>(null) }
+    var engine by remember { mutableStateOf<VioEngine?>(null) }
     var screenPoints by remember { mutableStateOf<List<Offset?>>(emptyList()) }
     var canvasSize by remember { mutableStateOf(Size.Zero) }
     val context = LocalContext.current
@@ -47,7 +47,7 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
     // would otherwise coach "move your phone" forever (the old flow
     // never called timestampsAlignWithSensors at all).
     LaunchedEffect(Unit) {
-        viewModel.hitProvider = OpenCvArHitProvider(
+        viewModel.hitProvider = VioArHitProvider(
             engine = { engine },
             analysisWidth = ANALYSIS_SIZE.width,
             analysisHeight = ANALYSIS_SIZE.height,
@@ -108,7 +108,7 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
         screenPoints = screenPoints,
         onCanvasSized = { canvasSize = it },
         cameraContent = {
-            if (cameraGranted && OpenCvVioEngine.available) {
+            if (cameraGranted && VioEngine.available) {
                 MeasureCamera(
                     imuRecorder = viewModel.imuRecorder,
                     onTrackingUpdate = { q, hasPlane ->
@@ -128,7 +128,7 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
                                 featureCount = tracked,
                                 landmarkCount = landmarks,
                                 scaleConfidence = confidence,
-                                nativeEngineAvailable = OpenCvVioEngine.available,
+                                nativeEngineAvailable = VioEngine.available,
                             )
                         }
                     },
@@ -144,7 +144,7 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
 
 /** Explicit availability states, checked once before the session starts. */
 private fun availabilityReason(context: Context): ArUnavailableReason? {
-    if (!OpenCvVioEngine.available) return ArUnavailableReason.NativeEngineMissing
+    if (!VioEngine.available) return ArUnavailableReason.NativeEngineMissing
     val sensors = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         ?: return ArUnavailableReason.MotionSensorsMissing
     val hasGyro = sensors.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED) != null ||

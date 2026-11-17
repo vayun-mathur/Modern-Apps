@@ -8,7 +8,7 @@ import com.vayunmathur.measure.domain.areaIsTrustworthy
 import com.vayunmathur.measure.domain.lastSegmentLengthM
 import com.vayunmathur.measure.domain.polylineLengthM
 import com.vayunmathur.measure.domain.polygonArea
-import com.vayunmathur.measure.platform.opencv.OpenCvVioEngine
+import com.vayunmathur.measure.platform.vio.VioEngine
 import com.vayunmathur.measure.domain.polygonPerimeter
 import kotlinx.coroutines.launch
 
@@ -212,7 +212,7 @@ internal fun MeasureViewModel.onReticleHitImpl(
     refreshFlowImpl()
 }
 
-internal fun MeasureViewModel.onEngineChangedImpl(engine: OpenCvVioEngine?) {
+internal fun MeasureViewModel.onEngineChangedImpl(engine: VioEngine?) {
     vioEngine = engine
     if (engine == null) {
         arState.value = arState.value.copy(reticleHit = null)

@@ -3415,7 +3415,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "measure_vio"
+name = "measure_cv"
 version = "0.1.0"
 dependencies = [
  "jni",

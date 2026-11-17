@@ -11,7 +11,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.measure.data.model.TrackingQuality
 import com.vayunmathur.measure.platform.MeasureViewModel
 import com.vayunmathur.measure.platform.sensor.ImuRecorder
-import com.vayunmathur.measure.ui.components.OpenCvFrameAnalyzer
+import com.vayunmathur.measure.ui.components.VioFrameAnalyzer
 import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -69,7 +69,7 @@ class MainActivityAndAnalyzerTest {
     @Test fun analyzerWithNoEngineJustClosesFrames() {
         val imu = ImuRecorder(app)
         var tracking = 0
-        val analyzer = OpenCvFrameAnalyzer(null, imu, { _, _ -> tracking++ }, { _, _, _, _, _, _ -> })
+        val analyzer = VioFrameAnalyzer(null, imu, { _, _ -> tracking++ }, { _, _, _, _, _, _ -> })
         val image = FakeImage(ts = 1_000L)
         analyzer.analyze(image)
         assertTrue(image.closed)
@@ -77,12 +77,12 @@ class MainActivityAndAnalyzerTest {
     }
 
     @Test fun engineIsUnavailableWithoutNativeLibrary() {
-        // Robolectric hosts have no OpenCV native library: the engine
-        // must report unavailable so the AR page falls back cleanly,
-        // and constructing one must still be safe (no native calls in
-        // the constructor) because the tests build stand-ins.
-        assertEquals(false, com.vayunmathur.measure.platform.opencv.OpenCvVioEngine.available)
-        val engine = com.vayunmathur.measure.platform.opencv.OpenCvVioEngine(
+        // The Rust library does load on this host (the Gradle Rust task
+        // builds a host .so for unit tests), so availability itself is
+        // host-dependent; what must hold everywhere is that constructing
+        // and exercising an engine is safe and, with no frames or scale,
+        // it reports no candidates and projects nothing visible.
+        val engine = com.vayunmathur.measure.platform.vio.VioEngine(
             com.vayunmathur.measure.platform.Intrinsics(500.0, 500.0, 320.0, 240.0, true)
         )
         assertEquals(0, engine.centreCandidates(640, 480).size)

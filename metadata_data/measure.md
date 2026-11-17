@@ -3,7 +3,7 @@ A measuring toolkit that runs entirely on your device
 Features:
 - Compass, bubble level, on-screen ruler, and protractor
 - AR distance and area measurement
-- The camera is tracked by a visual-inertial odometry engine (OpenCV) fused with the motion sensors
+- The camera is tracked by a visual-inertial odometry engine (in-tree Rust) fused with the motion sensors
 - Measures in real metres without depending on Google Play Services
 
 100% offline

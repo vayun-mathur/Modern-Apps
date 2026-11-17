@@ -13,8 +13,14 @@ import android.hardware.SensorManager
  * and the calibrated sensors apply their own time-varying correction whose changes look
  * like real motion to a dead-reckoning integrator.
  *
- * `SENSOR_DELAY_FASTEST` requests the hardware maximum (400 Hz on the ICM45631 in recent
- * Pixels). Samples are drained in batches rather than pushed individually because
+ * [SAMPLING_PERIOD_US] requests 400 Hz (the hardware maximum on the ICM45631 in recent
+ * Pixels) as an explicit period rather than `SENSOR_DELAY_FASTEST` (0 µs): the explicit
+ * form is the documented contract for high-rate sampling and, together with the
+ * `HIGH_SAMPLING_RATE_SENSORS` manifest permission, avoids the `SecurityException`
+ * the platform throws for a 0 µs request without that permission. Registration is
+ * still treated as fallible — a device or policy that refuses it leaves the recorder
+ * stopped ([isActive] false) and the caller degrades to Limited tracking instead of
+ * crashing. Samples are drained in batches rather than pushed individually because
  * per-sample JNI overhead at that rate would exceed the integration work itself.
  */
 class ImuRecorder(context: Context) : SensorEventListener {
@@ -29,23 +35,44 @@ class ImuRecorder(context: Context) : SensorEventListener {
 
     private var lastGyro = FloatArray(3)
     private var haveGyro = false
+
+    @Volatile
     private var running = false
+
+    /** True while both sensors are registered; read cross-thread by the frame pump. */
+    val isActive: Boolean get() = running
 
     private var sampleCount = 0L
     private var firstSampleNs = 0L
     private var lastSampleNs = 0L
 
-    fun start() {
-        if (running) return
+    /**
+     * Register both sensors at [SAMPLING_PERIOD_US]. Returns false (and leaves the
+     * recorder stopped) when a sensor is missing or registration is refused —
+     * including the `SecurityException` for high-rate sampling without permission —
+     * so the caller can degrade to Limited tracking rather than crash.
+     */
+    fun start(): Boolean {
+        if (running) return true
         val gyro = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED)
             ?: sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
         val accel = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER_UNCALIBRATED)
             ?: sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        if (gyro == null || accel == null) return
+        if (gyro == null || accel == null) return false
 
-        sensorManager.registerListener(this, gyro, SensorManager.SENSOR_DELAY_FASTEST)
-        sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_FASTEST)
+        val registered = try {
+            sensorManager.registerListener(this, gyro, SAMPLING_PERIOD_US) &&
+                sensorManager.registerListener(this, accel, SAMPLING_PERIOD_US)
+        } catch (_: SecurityException) {
+            false
+        }
+        if (!registered) {
+            // Drop a half-registered pair: one sensor alone cannot be fused.
+            runCatching { sensorManager.unregisterListener(this) }
+            return false
+        }
         running = true
+        return true
     }
 
     fun stop() {
@@ -112,6 +139,8 @@ class ImuRecorder(context: Context) : SensorEventListener {
     }
 
     private companion object {
+        /** 400 Hz (2 500 µs): the explicit high-rate period; never 0 (`FASTEST`). */
+        const val SAMPLING_PERIOD_US = 2_500
         const val VALUES_PER_SAMPLE = 7
         /** ~20 s of headroom at 400 Hz. */
         const val MAX_PENDING_VALUES = VALUES_PER_SAMPLE * 8000
