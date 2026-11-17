@@ -2,7 +2,8 @@ package com.vayunmathur.web.platform.shields
 
 import android.content.Context
 import android.net.Uri
-import android.text.TextUtils
+import androidx.core.net.toUri
+import androidx.core.text.htmlEncode
 import com.vayunmathur.library.log.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -152,7 +153,7 @@ object ShieldsRequestFilter {
     private fun blockedPageResponse(context: Context, host: String): WebResourceResponse {
         val title = context.getString(R.string.cleartext_blocked_title)
         // Attacker-controlled text going into a document we render.
-        val message = context.getString(R.string.cleartext_blocked_message, TextUtils.htmlEncode(host))
+        val message = context.getString(R.string.cleartext_blocked_message, host.htmlEncode())
         val html = """
             <!DOCTYPE html>
             <html><head><meta charset="utf-8">
@@ -176,5 +177,5 @@ object ShieldsRequestFilter {
     }
 
     private fun hostOf(url: String): String =
-        runCatching { Uri.parse(url).host.orEmpty() }.getOrDefault("")
+        runCatching { url.toUri().host.orEmpty() }.getOrDefault("")
 }

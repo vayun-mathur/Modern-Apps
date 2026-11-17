@@ -1,6 +1,7 @@
 package com.vayunmathur.web.platform
 
 import android.net.Uri
+import androidx.core.net.toUri
 
 /**
  * Native self-hosted search tab URLs.
@@ -21,7 +22,7 @@ fun isNativeSearchUrl(url: String): Boolean = url.startsWith("search://")
 /** Extracts the query from a [nativeSearchUrl], or "" if it is not one. */
 fun nativeSearchQuery(url: String): String {
     if (!isNativeSearchUrl(url)) return ""
-    return runCatching { Uri.parse(url).getQueryParameter("q").orEmpty() }.getOrDefault("")
+    return runCatching { url.toUri().getQueryParameter("q").orEmpty() }.getOrDefault("")
 }
 
 /**

@@ -3,9 +3,11 @@ package com.vayunmathur.web.platform
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import androidx.core.graphics.createBitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.net.Uri
+import androidx.core.net.toUri
 import com.vayunmathur.library.log.Log
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
@@ -255,7 +257,7 @@ object PwaHelper {
     fun createPwaIntent(context: Context, url: String, title: String?): Intent {
         return Intent(context, com.vayunmathur.web.platform.PwaActivity::class.java).apply {
             action = Intent.ACTION_VIEW
-            data = Uri.parse(url)
+            data = url.toUri()
             putExtra(com.vayunmathur.web.platform.PwaActivity.EXTRA_URL, url)
             putExtra(com.vayunmathur.web.platform.PwaActivity.EXTRA_TITLE, title)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
@@ -282,7 +284,7 @@ object PwaHelper {
     }
 
     fun textIconBitmap(title: String, sizePx: Int = ICON_BITMAP_SIZE): Bitmap {
-        val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val bmp = createBitmap(sizePx, sizePx)
         val canvas = Canvas(bmp)
         val hash = title.hashCode()
         val rr = 80 + (hash shr 16 and 0x7F)

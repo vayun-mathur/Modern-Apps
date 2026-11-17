@@ -1,6 +1,7 @@
 package com.vayunmathur.web.platform
 
 import android.net.Uri
+import androidx.core.net.toUri
 import com.vayunmathur.web.domain.LocalNetwork
 import kotlinx.serialization.Serializable
 
@@ -222,11 +223,11 @@ object BrowserUtils {
     fun toNavigationUrl(input: String): String = toNavigationUrl(input, SearchEngine.DEFAULT)
 
     fun hostFromUrl(url: String): String =
-        runCatching { Uri.parse(url).host ?: url }.getOrDefault(url)
+        runCatching { url.toUri().host ?: url }.getOrDefault(url)
 
     fun originFromUrl(url: String): String {
         return runCatching {
-            val u = Uri.parse(url)
+            val u = url.toUri()
             val scheme = u.scheme ?: "https"
             val host = u.host ?: return@runCatching url
             val port = if (u.port != -1) ":${u.port}" else ""
@@ -237,7 +238,7 @@ object BrowserUtils {
     fun prettyUrl(url: String): String {
         if (url.isBlank()) return ""
         return runCatching {
-            val parsed = Uri.parse(url)
+            val parsed = url.toUri()
             val host = parsed.host ?: return@runCatching url
             val path = parsed.path ?: ""
             val display = if (path.isEmpty() || path == "/") host else host + path

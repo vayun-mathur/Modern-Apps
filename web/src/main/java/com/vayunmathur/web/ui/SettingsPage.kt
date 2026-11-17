@@ -70,6 +70,8 @@ fun SettingsPage(
     var showCacheDialog by remember { mutableStateOf(false) }
     var showSearchEngineDialog by remember { mutableStateOf(false) }
 
+    val historyEntries by viewModel.history.collectAsStateWithLifecycle()
+    val downloadEntries by viewModel.downloads.collectAsStateWithLifecycle()
     val storageCount by viewModel.storageInfos.collectAsStateWithLifecycle()
     val permCount by viewModel.sitePermissions.collectAsStateWithLifecycle()
     val installedCount by viewModel.installedSites.collectAsStateWithLifecycle()
@@ -187,7 +189,7 @@ fun SettingsPage(
             item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.history)) },
-                    supportingContent = { Text(pluralStringResource(R.plurals.entries, viewModel.history.value.size, viewModel.history.value.size)) },
+                    supportingContent = { Text(pluralStringResource(R.plurals.entries, historyEntries.size, historyEntries.size)) },
                     modifier = Modifier.clickable { backStack.add(Route.History) }
                 )
             }
@@ -195,7 +197,7 @@ fun SettingsPage(
             item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.downloads)) },
-                    supportingContent = { Text(pluralStringResource(R.plurals.files, viewModel.downloads.value.size, viewModel.downloads.value.size)) },
+                    supportingContent = { Text(pluralStringResource(R.plurals.files, downloadEntries.size, downloadEntries.size)) },
                     modifier = Modifier.clickable { backStack.add(Route.Downloads) }
                 )
             }

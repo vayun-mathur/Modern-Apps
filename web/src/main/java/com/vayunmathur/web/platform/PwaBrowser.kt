@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Environment
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -310,6 +311,9 @@ internal fun shouldAcceptPwaThirdPartyCookies(context: Context): Boolean {
     return !blocked
 }
 
+// Installed sites are web apps: JavaScript is required for them to run at all,
+// and Shields filtering still applies to every request they make.
+@SuppressLint("SetJavaScriptEnabled")
 private fun applyPwaWebSettings(webView: WebView, ctx: Context) {
     val settings = webView.settings
     settings.javaScriptEnabled = true
@@ -354,7 +358,7 @@ private fun enqueuePwaDownload(
     val fileName = URLUtil.guessFileName(url, contentDisposition, mimeType)
     runCatching {
         val dm = ctx.getSystemService(DownloadManager::class.java)
-        val request = DownloadManager.Request(Uri.parse(url)).apply {
+        val request = DownloadManager.Request(url.toUri()).apply {
             setMimeType(mimeType)
             addRequestHeader("User-Agent", userAgent)
             setDescription("Downloading $fileName")
@@ -365,7 +369,7 @@ private fun enqueuePwaDownload(
         dm.enqueue(request)
     }.onFailure {
         runCatching {
-            ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
         }

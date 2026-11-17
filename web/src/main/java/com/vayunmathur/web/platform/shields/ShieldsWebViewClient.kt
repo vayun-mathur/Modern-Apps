@@ -2,8 +2,9 @@ package com.vayunmathur.web.platform.shields
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
+import androidx.core.net.toUri
 import com.vayunmathur.library.log.Log
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -225,9 +226,23 @@ open class ShieldsWebViewClient(
         val query = runCatching { json.decodeFromString<CosmeticQuery>(raw) }.getOrNull() ?: return
         val selectors = ShieldsEngine.hiddenClassIdSelectors(query.classes, query.ids, query.exceptions)
         if (selectors.isEmpty()) return
+        // postMessage is only valid when the WEB_MESSAGE_LISTENER feature that
+        // installed this channel is present (checked again here at the call site).
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
         runCatching { reply.postMessage(json.encodeToString(selectors)) }
     }
 
+    /**
+     * The renderer process died (crash or system OOM kill). Returning true
+     * tells the framework this client handled it, so the app process is not
+     * killed along with the renderer; the dead view is unusable and its host
+     * recreates the tab/PWA view on the next composition.
+     */
+    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+        Log.error(TAG, "render process gone, didCrash=${detail.didCrash()}")
+        return true
+    }
+
     private fun hostOf(url: String): String =
-        runCatching { Uri.parse(url).host.orEmpty() }.getOrDefault("")
+        runCatching { url.toUri().host.orEmpty() }.getOrDefault("")
 }

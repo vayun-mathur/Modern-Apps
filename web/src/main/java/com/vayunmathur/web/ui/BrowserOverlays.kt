@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Box
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
@@ -60,6 +61,8 @@ internal fun BrowserOverlays(
     localNetworkRequest: (() -> Unit)?,
 ) {
     val context = LocalContext.current
+    val linkCopiedText = stringResource(R.string.link_copied)
+    val shareLinkTitle = stringResource(R.string.share_link)
 
     if (viewModel.showTabSwitcher) {
         TabSwitcher(
@@ -170,13 +173,13 @@ internal fun BrowserOverlays(
                     linkUrl,
                     linkUrl,
                 )
-                com.vayunmathur.library.util.AppMessages.show(context.getString(R.string.link_copied))
+                com.vayunmathur.library.util.AppMessages.show(linkCopiedText)
             },
             onShareLink = {
                 ExternalIntents.shareText(
                     context,
                     linkUrl,
-                    context.getString(R.string.share_link),
+                    shareLinkTitle,
                 )
             },
             onOpenInNewTab = { viewModel.newTab(url = linkUrl, isPrivate = viewModel.activeTab?.isPrivate ?: true) },

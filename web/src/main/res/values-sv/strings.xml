@@ -14,11 +14,9 @@
     <string name="app_name_2">Appnamn</string>
     <string name="recent">Senaste</string>
     <string name="private_prefix">Privat •</string>
-    <string name="private_tab">Privat flik</string>
     <string name="no_downloads">Inga hämtningar</string>
     <string name="general">Allmänt</string>
     <string name="search_engine">Sökmotor</string>
-    <string name="duckduckgo_locked">DuckDuckGo (låst)</string>
     <string name="cache_mode">Cacheläge</string>
     <string name="javascript">JavaScript</string>
     <string name="required_by_most_sites">Krävs av de flesta webbplatser</string>
@@ -28,8 +26,6 @@
     <string name="request_desktop_site">Begär skrivbordsversion</string>
     <string name="toolbar_at_bottom">Verktygsfält längst ned</string>
     <string name="keeps_the_address_bar_within_thumb_reach">Håller adressfältet inom tummens räckvidd</string>
-    <string name="ad_tracker_blocking">Blockering av annonser och spårare</string>
-    <string name="blocks_doubleclick_googletagmanager_anal">Blockerar doubleclick, googletagmanager och analytics</string>
     <string name="privacy_data">Integritet och data</string>
     <string name="clear_browsing_data">Rensa webbinformation</string>
     <string name="cookies_cache_history_storage_permission">Cookies, cache, historik, lagring, behörigheter</string>
@@ -90,7 +86,6 @@
     <string name="new_incognito_window">Nytt inkognitofönster</string>
     <string name="new_incognito_tab">Ny inkognitoflik</string>
     <string name="shields">Skydd</string>
-    <string name="shields_up">Skyddet är på</string>
     <string name="shields_down">Skyddet är av för den här webbplatsen</string>
     <string name="shields_for_host">Skydd för %1$s</string>
     <string name="shields_level">Skyddsnivå</string>
@@ -107,13 +102,11 @@
     <string name="shields_fingerprint_desc">Slumpar canvas-, WebGL-, ljud- och teckensnittsavläsningar</string>
     <string name="shields_https">Uppgradera anslutningar till HTTPS</string>
     <string name="shields_https_desc">Tar även bort utm_, fbclid och andra spårningsparametrar</string>
-    <string name="shields_blocked_count">%1$d blockerade på den här sidan</string>
     <string name="shields_reload_to_apply">Ladda om för att tillämpa</string>
     <string name="shields_site_exceptions">Undantag för webbplatser</string>
     <string name="shields_no_site_exceptions">Inga ändringar per webbplats ännu. Öppna skyddet i verktygsfältet för att ändra inställningar för en webbplats.</string>
     <string name="shields_reset_site">Återställ till standard</string>
     <string name="shields_clear_exceptions">Rensa alla undantag för webbplatser</string>
-    <string name="shields_engine_loading">Läser in filterlistor…</string>
     <string name="copy_link">Kopiera länk</string>
     <string name="open_in_new_tab">Öppna i ny flik</string>
     <string name="link_copied">Länken har kopierats</string>
@@ -123,4 +116,8 @@
     <string name="local_network_message">%1$s verkar vara en enhet i ditt nätverk. Android behöver behörighet till det lokala nätverket innan sidan kan läsas in.</string>
     <string name="open_link">Öppna länk</string>
     <string name="go_forward">Framåt</string>
+    <plurals name="shields_blocked_count">
+        <item quantity="one">%1$d blockerad på den här sidan</item>
+        <item quantity="other">%1$d blockerade på den här sidan</item>
+    </plurals>
 </resources>

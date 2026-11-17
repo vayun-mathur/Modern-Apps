@@ -3,7 +3,6 @@
     <string name="history">历史记录</string>
     <string name="storage">存储</string>
     <string name="clear_browsing_data_2">清除浏览数据？</string>
-    <string name="blocks_doubleclick_googletagmanager_anal">拦截 doubleclick、googletagmanager、analytics</string>
     <string name="request_desktop_site">请求桌面版网站</string>
     <string name="clears_cookies_cache_storage_history_dow">清除 Cookie、缓存、存储、历史记录、下载、权限。标签页保持打开状态。</string>
     <string name="may_break_logins">可能导致登录失败</string>
@@ -13,7 +12,6 @@
     <string name="delete_folder">删除文件夹</string>
     <string name="clear_browsing_data">清除浏览数据</string>
     <string name="folder_name">文件夹名称</string>
-    <string name="duckduckgo_locked">DuckDuckGo（已锁定）</string>
     <string name="your_choice_is_saved_per_site_change_it">您的选择按网站保存。可在设置 → 网站数据中进行更改。</string>
     <string name="javascript">JavaScript</string>
     <string name="installed_apps">已安装应用</string>
@@ -59,7 +57,6 @@
     <string name="recent">最近</string>
     <string name="pick_files">选择文件</string>
     <string name="app_name_2">应用名称</string>
-    <string name="private_tab">私密标签页</string>
     <string name="no_history_yet">尚无历史记录</string>
     <string name="no_installed_apps">没有已安装的应用</string>
     <string name="this_will_permanently_delete_your_browsi">这将永久删除您的浏览历史记录。</string>
@@ -74,7 +71,6 @@
     <string name="no_site_data_yet_cookies_localstorage_in">尚无网站数据。Cookie、localStorage、IndexedDB 和权限会在 WebView 配置文件目录中的加载过程中持续存在。私密标签页除外。</string>
     <string name="no_downloads">没有下载</string>
     <string name="new_tab">新标签页</string>
-    <string name="ad_tracker_blocking">广告跟踪器拦截</string>
     <string name="app_name">浏览器</string>
     <string name="no_bookmarks_yet">尚无书签</string>
     <string name="search_engine">搜索引擎</string>
@@ -85,7 +81,6 @@
     <string name="new_incognito_tab">新无痕标签页</string>
     <string name="shields">防护</string>
     <string name="shields_down">已为此网站关闭防护</string>
-    <string name="shields_up">已开启防护</string>
     <string name="shields_for_host">%1$s 的防护</string>
     <string name="shields_level">防护级别</string>
     <string name="shields_level_off_desc">不拦截广告、跟踪器或指纹识别</string>
@@ -101,13 +96,11 @@
     <string name="shields_fingerprint_desc">随机化 canvas、WebGL、音频和字体读取</string>
     <string name="shields_https">将连接升级到 HTTPS</string>
     <string name="shields_https_desc">同时除去 utm_、fbclid 和其他跟踪参数</string>
-    <string name="shields_blocked_count">在此页面上已拦截 %1$d 个</string>
     <string name="shields_reload_to_apply">重新加载以应用</string>
     <string name="shields_site_exceptions">网站例外</string>
     <string name="shields_no_site_exceptions">尚无针对单个网站的更改。请打开工具栏中的防护图标以更改网站的设置。</string>
     <string name="shields_reset_site">重置为默认</string>
     <string name="shields_clear_exceptions">清除所有网站例外</string>
-    <string name="shields_engine_loading">正在加载过滤列表…</string>
     <string name="copy_link">复制链接</string>
     <string name="open_in_new_tab">在新标签页中打开</string>
     <string name="link_copied">链接已复制</string>
@@ -117,4 +110,7 @@
     <string name="local_network_message">%1$s 似乎是您网络上的设备。Android 需要本地网络权限才能加载此页面。</string>
     <string name="toolbar_at_bottom">底部工具栏</string>
     <string name="keeps_the_address_bar_within_thumb_reach">让地址栏触手可及</string>
+    <plurals name="shields_blocked_count">
+        <item quantity="other">在此页面上已拦截 %1$d 个</item>
+    </plurals>
 </resources>

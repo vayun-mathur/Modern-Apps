@@ -3,6 +3,7 @@ package com.vayunmathur.web.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.core.graphics.scale
 import com.vayunmathur.library.log.Log
 import androidx.compose.runtime.mutableStateMapOf
 import com.vayunmathur.web.platform.BrowserUtils
@@ -114,8 +115,7 @@ object FaviconStore {
         val longEdge = max(icon.width, icon.height)
         if (longEdge <= ICON_MAX_DIM || longEdge == 0) return icon
         val scale = ICON_MAX_DIM.toFloat() / longEdge
-        return Bitmap.createScaledBitmap(
-            icon,
+        return icon.scale(
             max(1, (icon.width * scale).toInt()),
             max(1, (icon.height * scale).toInt()),
             true,

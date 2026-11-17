@@ -13,6 +13,7 @@ import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebViewClient
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.content.ContextCompat
@@ -295,6 +296,11 @@ internal fun createBrowserWebChromeClient(
             override fun onPageStarted(v: WebView, url: String?, favicon: Bitmap?) {
                 url?.let { onRequestNewTab(it) }
                 v.stopLoading()
+            }
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                // This popup view only forwards its URL to a new tab; returning
+                // true keeps a dead renderer from killing the app process.
+                return true
             }
         }
         transport.webView = newWebView

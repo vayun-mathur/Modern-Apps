@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
+<!-- Cleartext and user certificates stay permitted at the platform level so
+     LAN devices (routers, NAS boxes, dev servers with self-signed certs) can
+     load at all; LanPolicy in domain/ is the actual gate and blocks every
+     public cleartext request before it reaches the network. -->
+<network-security-config xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="AcceptsUserCertificates,InsecureBaseConfiguration">
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />

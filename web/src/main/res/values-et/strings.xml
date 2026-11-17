@@ -13,11 +13,9 @@
     <string name="app_name_2">Rakenduse nimi</string>
     <string name="recent">Hiljutine</string>
     <string name="private_prefix">Privaatne •</string>
-    <string name="private_tab">Privaatne vahekaart</string>
     <string name="no_downloads">Allalaadimisi pole</string>
     <string name="general">Üldist</string>
     <string name="search_engine">Otsingumootor</string>
-    <string name="duckduckgo_locked">DuckDuckGo (lukustatud)</string>
     <string name="cache_mode">Puhverduse viis</string>
     <string name="javascript">JavaScript</string>
     <string name="required_by_most_sites">Enamus saite eeldavad selle lubamist</string>
@@ -25,9 +23,7 @@
     <string name="may_break_logins">Võib teenused ja sisselogimised muuta mittetoimivaks</string>
     <string name="desktop_mode">Lauaarvutivaade</string>
     <string name="request_desktop_site">Kuva sait tavaarvutivaates</string>
-    <string name="ad_tracker_blocking">Reklaamide ja jälitajate blokeerimine</string>
     <string name="privacy_data">Privaatsus ja andmed</string>
-    <string name="blocks_doubleclick_googletagmanager_anal">Blokeerib teenused: doubleclick, googletagmanager, analytics</string>
     <string name="clear_browsing_data">Kustuta veebisirvimise andmed</string>
     <string name="cookies_cache_history_storage_permission">Küpsised, puhverdamine, ajalugu, andmeruum, õigused</string>
     <string name="allow">Luba</string>
@@ -88,16 +84,13 @@
     <string name="shields_fingerprint_desc">Kanvaa, WebGL-i, heli ja kirjatüüpide andmed on juhuslikud</string>
     <string name="shields_https">Muuda ühendused HTTPS-ühendusteks</string>
     <string name="shields_https_desc">Eemaldab utm_, fbclid ja muud jälitamistunnused</string>
-    <string name="shields_blocked_count">%1$d on sellel lehel blokeeritud</string>
     <string name="shields_reload_to_apply">Kasutamiseks laadi uuesti</string>
     <string name="shields_site_exceptions">Saidi erandid</string>
-    <string name="shields_engine_loading">Laadin filtriloendeid…</string>
     <string name="shields_clear_exceptions">Eemalda kõik saitide erandid</string>
     <string name="shields_reset_site">Lähtesta vaikimisi väärtusteks</string>
     <string name="your_choice_is_saved_per_site_change_it">Sinu eelistus salvestub saidikohaselt. Muutmiseks ava „Seadistused“ → „Saidiandmed“.</string>
     <string name="no_site_data_yet_cookies_localstorage_in">Saidiandmeid veel pole. Küpsised, localStorage, IndexedDB ja õigused salvestuvad WebView profiilikaustas sessiooniüleselt. Privaatsed vahekaardid andmeid ei salvesta.</string>
     <string name="shields">Kaitse</string>
-    <string name="shields_up">Kaitse on töös</string>
     <string name="shields_down">Kaitse pole selle saidi puhul töös</string>
     <string name="shields_for_host">Kaitse „%1$s“ saidi puhul</string>
     <string name="shields_no_site_exceptions">Veebisaidi-kohaseid muudatusi veel pole. Veebisaidi seadistuste kohendamiseks klõpsa tööriistaribal olevat kilpi.</string>
@@ -131,4 +124,8 @@
     <string name="search_no_results">Tulemusi ei leidu</string>
     <string name="search_more_results">Järgmised tulemused</string>
     <string name="search_open_classic">Ava klassikaline otsing</string>
+    <plurals name="shields_blocked_count">
+        <item quantity="one">%1$d on sellel lehel blokeeritud</item>
+        <item quantity="other">%1$d on sellel lehel blokeeritud</item>
+    </plurals>
 </resources>

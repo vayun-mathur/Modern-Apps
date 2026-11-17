@@ -1,6 +1,7 @@
 package com.vayunmathur.web.platform
 
 import android.graphics.Bitmap
+import androidx.core.graphics.createBitmap
 import android.graphics.Canvas
 import android.view.View
 import kotlin.math.max
@@ -25,10 +26,9 @@ fun captureThumb(view: View): Bitmap? {
     if (width <= 0 || height <= 0) return null
     val scale = (THUMB_MAX_DIM.toFloat() / max(width, height)).coerceAtMost(1f)
     return runCatching {
-        val bitmap = Bitmap.createBitmap(
+        val bitmap = createBitmap(
             max(1, (width * scale).toInt()),
             max(1, (height * scale).toInt()),
-            Bitmap.Config.ARGB_8888,
         )
         val canvas = Canvas(bitmap)
         canvas.scale(scale, scale)

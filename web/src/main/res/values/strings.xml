@@ -13,11 +13,9 @@
     <string name="app_name_2">App name</string>
     <string name="recent">Recent</string>
     <string name="private_prefix">Private • </string>
-    <string name="private_tab">Private tab</string>
     <string name="no_downloads">No downloads</string>
     <string name="general">General</string>
     <string name="search_engine">Search engine</string>
-    <string name="duckduckgo_locked">DuckDuckGo (locked)</string>
     <string name="cache_mode">Cache mode</string>
     <string name="javascript">JavaScript</string>
     <string name="required_by_most_sites">Required by most sites</string>
@@ -27,8 +25,6 @@
     <string name="request_desktop_site">Request desktop site</string>
     <string name="toolbar_at_bottom">Toolbar at bottom</string>
     <string name="keeps_the_address_bar_within_thumb_reach">Keeps the address bar within thumb reach</string>
-    <string name="ad_tracker_blocking">Ad-tracker blocking</string>
-    <string name="blocks_doubleclick_googletagmanager_anal">Blocks doubleclick, googletagmanager, analytics</string>
     <string name="privacy_data">Privacy &amp; data</string>
     <string name="clear_browsing_data">Clear browsing data</string>
     <string name="cookies_cache_history_storage_permission">Cookies, cache, history, storage, permissions</string>
@@ -90,7 +86,6 @@
     <string name="new_incognito_window">New Incognito Window</string>
     <string name="new_incognito_tab">New Incognito Tab</string>
     <string name="shields">Shields</string>
-    <string name="shields_up">Shields up</string>
     <string name="shields_down">Shields down for this site</string>
     <string name="shields_for_host">Shields for %1$s</string>
     <string name="shields_level">Protection level</string>
@@ -107,13 +102,11 @@
     <string name="shields_fingerprint_desc">Randomizes canvas, WebGL, audio and font readings</string>
     <string name="shields_https">Upgrade connections to HTTPS</string>
     <string name="shields_https_desc">Also strips utm_, fbclid and other tracking parameters</string>
-    <string name="shields_blocked_count">%1$d blocked on this page</string>
     <string name="shields_reload_to_apply">Reload to apply</string>
     <string name="shields_site_exceptions">Site exceptions</string>
     <string name="shields_no_site_exceptions">No per-site changes yet. Open the shield in the toolbar to change settings for a site.</string>
     <string name="shields_reset_site">Reset to defaults</string>
     <string name="shields_clear_exceptions">Clear all site exceptions</string>
-    <string name="shields_engine_loading">Loading filter lists…</string>
     <string name="copy_link">Copy link</string>
     <string name="open_link">Open link</string>
     <string name="go_forward">Forward</string>
@@ -131,4 +124,8 @@
     <string name="search_more_results">More results</string>
     <string name="search_open_classic">Open classic search</string>
     <string name="retry">Retry</string>
+    <plurals name="shields_blocked_count">
+        <item quantity="one">1 blocked on this page</item>
+        <item quantity="other">%1$d blocked on this page</item>
+    </plurals>
 </resources>

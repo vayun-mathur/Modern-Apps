@@ -65,6 +65,7 @@ fun SearchResultsPage(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val searchFailedText = stringResource(R.string.search_failed)
     val messenger = rememberMessenger()
     val scope = rememberCoroutineScope()
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -108,7 +109,7 @@ fun SearchResultsPage(
                 if (requestKind != kind) return@onFailure
                 failure = e.message ?: e.toString()
                 loading = false
-                messenger.show(context.getString(R.string.search_failed))
+                messenger.show(searchFailedText)
             }
         }
     }

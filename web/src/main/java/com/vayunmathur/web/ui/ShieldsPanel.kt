@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -79,7 +80,7 @@ fun ShieldsPanel(
                     if (effective.level == ShieldLevel.OFF) {
                         stringResource(R.string.shields_down)
                     } else {
-                        stringResource(R.string.shields_blocked_count, blockedCount)
+                        pluralStringResource(R.plurals.shields_blocked_count, blockedCount, blockedCount)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

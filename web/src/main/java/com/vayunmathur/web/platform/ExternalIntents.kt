@@ -3,7 +3,7 @@ package com.vayunmathur.web.platform
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import java.net.URISyntaxException
 
 /**
@@ -22,7 +22,7 @@ fun openExternalUri(context: Context, url: String, loadFallback: (String) -> Uni
         if (url.startsWith("intent:", ignoreCase = true)) {
             Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
         } else {
-            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            Intent(Intent.ACTION_VIEW, url.toUri())
         }
     } catch (_: URISyntaxException) {
         return false
@@ -45,7 +45,7 @@ fun openExternalUri(context: Context, url: String, loadFallback: (String) -> Uni
         intent.`package`?.let { pkg ->
             return try {
                 context.startActivity(
-                    Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg"))
+                    Intent(Intent.ACTION_VIEW, "market://details?id=$pkg".toUri())
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 )
                 true

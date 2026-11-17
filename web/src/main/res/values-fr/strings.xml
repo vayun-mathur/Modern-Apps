@@ -3,7 +3,6 @@
     <string name="history">Historique</string>
     <string name="storage">Stockage</string>
     <string name="clear_browsing_data_2">Effacer les données de navigation ?</string>
-    <string name="blocks_doubleclick_googletagmanager_anal">Bloque DoubleClick, Google Tag Manager et les outils d’analyse</string>
     <string name="request_desktop_site">Demander la version pour ordinateur</string>
     <string name="clears_cookies_cache_storage_history_dow">Efface les cookies, le cache, le stockage, l’historique, les téléchargements et les autorisations. Les onglets restent ouverts.</string>
     <string name="may_break_logins">Peut empêcher certaines connexions</string>
@@ -13,7 +12,6 @@
     <string name="delete_folder">Supprimer le dossier</string>
     <string name="clear_browsing_data">Effacer les données de navigation</string>
     <string name="folder_name">Nom du dossier</string>
-    <string name="duckduckgo_locked">DuckDuckGo (verrouillé)</string>
     <string name="your_choice_is_saved_per_site_change_it">Votre choix est enregistré pour chaque site. Modifiez-le dans Paramètres → Données des sites.</string>
     <string name="javascript">JavaScript</string>
     <string name="installed_apps">Applications installées</string>
@@ -63,7 +61,6 @@
     <string name="recent">Récents</string>
     <string name="pick_files">Sélectionner des fichiers</string>
     <string name="app_name_2">Nom de l’application</string>
-    <string name="private_tab">Onglet privé</string>
     <string name="no_history_yet">Aucun historique pour le moment</string>
     <string name="no_installed_apps">Aucune application installée</string>
     <string name="this_will_permanently_delete_your_browsi">Votre historique de navigation sera définitivement supprimé.</string>
@@ -82,7 +79,6 @@
     <string name="no_site_data_yet_cookies_localstorage_in">Aucune donnée de site pour le moment. Les cookies, localStorage, IndexedDB et les autorisations sont conservés entre les chargements dans le répertoire du profil WebView. Les onglets privés sont exclus.</string>
     <string name="no_downloads">Aucun téléchargement</string>
     <string name="new_tab">Nouvel onglet</string>
-    <string name="ad_tracker_blocking">Blocage des publicités et des traqueurs</string>
     <string name="app_name">Web</string>
     <string name="no_bookmarks_yet">Aucun favori pour le moment</string>
     <string name="search_engine">Moteur de recherche</string>
@@ -92,7 +88,6 @@
     <string name="new_incognito_window">Nouvelle fenêtre de navigation privée</string>
     <string name="new_incognito_tab">Nouvel onglet de navigation privée</string>
     <string name="shields">Protections</string>
-    <string name="shields_up">Protections activées</string>
     <string name="shields_down">Protections désactivées pour ce site</string>
     <string name="shields_for_host">Protections pour %1$s</string>
     <string name="shields_level">Niveau de protection</string>
@@ -109,11 +104,14 @@
     <string name="shields_fingerprint_desc">Brouille les données Canvas, WebGL, audio et des polices</string>
     <string name="shields_https">Passer les connexions en HTTPS</string>
     <string name="shields_https_desc">Supprime également les paramètres utm_, fbclid et autres paramètres de suivi</string>
-    <string name="shields_blocked_count">%1$d bloqués sur cette page</string>
     <string name="shields_reload_to_apply">Actualiser pour appliquer</string>
     <string name="shields_site_exceptions">Exceptions par site</string>
     <string name="shields_no_site_exceptions">Aucune modification par site pour le moment. Ouvrez le bouclier dans la barre d’outils pour modifier les paramètres d’un site.</string>
     <string name="shields_reset_site">Rétablir les paramètres par défaut</string>
     <string name="shields_clear_exceptions">Effacer toutes les exceptions par site</string>
-    <string name="shields_engine_loading">Chargement des listes de filtres…</string>
+    <plurals name="shields_blocked_count">
+        <item quantity="one">%1$d bloqué sur cette page</item>
+        <item quantity="many">%1$d bloqués sur cette page</item>
+        <item quantity="other">%1$d bloqués sur cette page</item>
+    </plurals>
 </resources>

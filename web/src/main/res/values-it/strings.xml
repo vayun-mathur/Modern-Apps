@@ -9,11 +9,9 @@
     <string name="app_name_2">Nome app</string>
     <string name="recent">Recenti</string>
     <string name="private_prefix">Privata •</string>
-    <string name="private_tab">Scheda privata</string>
     <string name="no_downloads">Nessun download</string>
     <string name="general">Generali</string>
     <string name="search_engine">Motore di ricerca</string>
-    <string name="duckduckgo_locked">DuckDuckGo (bloccato)</string>
     <string name="cache_mode">Modalità cache</string>
     <string name="javascript">JavaScript</string>
     <string name="clear_browsing_data_2">Cancellare i dati di navigazione?</string>
@@ -76,8 +74,6 @@
     <string name="block_third_party_cookies">Blocca cookie di terze parti</string>
     <string name="desktop_mode">Modalità desktop</string>
     <string name="request_desktop_site">Richiedi sito desktop</string>
-    <string name="ad_tracker_blocking">Blocco dei tracker degli annunci</string>
-    <string name="blocks_doubleclick_googletagmanager_anal">Blocca doubleclick, googletagmanager, analytics</string>
     <string name="privacy_data">Privacy e dati</string>
     <string name="clear_browsing_data">Cancella dati di navigazione</string>
     <string name="cookies_cache_history_storage_permission">Cookie, cache, cronologia, archiviazione, autorizzazioni</string>

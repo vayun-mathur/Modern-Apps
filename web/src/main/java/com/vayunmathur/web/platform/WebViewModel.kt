@@ -13,7 +13,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.web.data.Bookmark
 import com.vayunmathur.web.data.BookmarkFolder
@@ -57,7 +58,7 @@ internal const val P_SEARCH_BAR_BOTTOM = "web_search_bar_bottom"
 /** View model for the web screen: holds UI state and handles its actions. */
 class WebViewModel(
     internal val repository: WebStores,
-    internal val context: Context,
+    application: Application,
     /** Identifies this window's independent tab set; the default window keeps the legacy pref keys. */
     private val windowId: String = DEFAULT_WINDOW_ID,
     /** An incognito window: every tab is private and nothing is persisted. */
@@ -69,7 +70,28 @@ class WebViewModel(
      */
     initialShieldSettings: List<ShieldSetting> = emptyList(),
     val originStateClearer: OriginStateClearer = WebViewCookieClearer,
-) : ViewModel() {
+) : AndroidViewModel(application) {
+
+    /** The application context, via [AndroidViewModel.getApplication]: a ViewModel outlives any Activity, so no Activity context is ever held. */
+    internal val context: Context get() = getApplication()
+
+    /** Secondary constructor for callers (tests, the factory) that hold a plain [Context]. */
+    constructor(
+        repository: WebStores,
+        context: Context,
+        windowId: String = DEFAULT_WINDOW_ID,
+        incognito: Boolean = false,
+        initialShieldSettings: List<ShieldSetting> = emptyList(),
+        originStateClearer: OriginStateClearer = WebViewCookieClearer,
+    ) : this(
+        repository,
+        context.applicationContext as Application,
+        windowId,
+        incognito,
+        initialShieldSettings,
+        originStateClearer,
+    )
+
 
     /** Shared constants and helpers for WebViewModel. */
     companion object {
@@ -445,6 +467,5 @@ class WebViewModel(
 
     override fun onCleared() {
         onClearedPersist()
-        super.onCleared()
     }
 }

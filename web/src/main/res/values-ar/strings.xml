@@ -13,11 +13,9 @@
     <string name="app_name_2">اسم التطبيق</string>
     <string name="recent">الأخيرة</string>
     <string name="private_prefix">خاص •</string>
-    <string name="private_tab">علامة تبويب خاصة</string>
     <string name="no_downloads">لا تنزيلات</string>
     <string name="general">عام</string>
     <string name="search_engine">محرك البحث</string>
-    <string name="duckduckgo_locked">DuckDuckGo (مقفل)</string>
     <string name="cache_mode">وضع ذاكرة التخزين المؤقت</string>
     <string name="javascript">JavaScript</string>
     <string name="required_by_most_sites">مطلوب من قِبل معظم المواقع</string>
@@ -25,8 +23,6 @@
     <string name="may_break_logins">قد يؤدي إلى تعطيل تسجيلات الدخول</string>
     <string name="desktop_mode">وضع سطح المكتب</string>
     <string name="request_desktop_site">طلب موقع سطح المكتب</string>
-    <string name="ad_tracker_blocking">حظر متتبع الإعلانات</string>
-    <string name="blocks_doubleclick_googletagmanager_anal">يحظر doubleclick, googletagmanager, analytics</string>
     <string name="privacy_data">الخصوصية والبيانات</string>
     <string name="clear_browsing_data">مسح بيانات التصفح</string>
     <string name="cookies_cache_history_storage_permission">ملفات تعريف الارتباط، ذاكرة التخزين المؤقت، السجل، التخزين، الأذونات</string>
@@ -86,7 +82,6 @@
     <string name="new_incognito_tab">علامة تبويب التصفح الخفي جديدة</string>
     <string name="shields">الدروع</string>
     <string name="shields_down">الدروع متوقفة لهذا الموقع</string>
-    <string name="shields_up">الدروع مفعلة</string>
     <string name="shields_for_host">دروع لـ %1$s</string>
     <string name="shields_level">مستوى الحماية</string>
     <string name="shields_level_off_desc">لا حظر للإعلانات، أدوات التتبع أو البصمات</string>
@@ -101,13 +96,11 @@
     <string name="shields_fingerprint">حظر بصمات الأصابع</string>
     <string name="shields_https">ترقية الاتصالات إلى HTTPS</string>
     <string name="shields_https_desc">أيضًا يزيل utm_، fbclid ومعلمات التتبع الأخرى</string>
-    <string name="shields_blocked_count">تم حظر %1$d على هذه الصفحة</string>
     <string name="shields_reload_to_apply">أعد التحميل ليُطبق</string>
     <string name="shields_site_exceptions">استثناءات الموقع</string>
     <string name="shields_no_site_exceptions">لا تغييرات لكل موقع بعد. افتح الدرع في شريط الأدوات لتغيير إعدادات لـ موقع.</string>
     <string name="shields_reset_site">إعادة التعيين إلى الافتراضي</string>
     <string name="shields_clear_exceptions">مسح جميع استثناءات موقع</string>
-    <string name="shields_engine_loading">جارٍ تحميل قوائم التصفية…</string>
     <string name="copy_link">نسخ الرابط</string>
     <string name="open_in_new_tab">فتح في علامة تبويب جديدة</string>
     <string name="link_copied">تم نسخ الرابط</string>
@@ -138,5 +131,13 @@
         <item quantity="few">%1$s تطبيقات ويب تقدمية</item>
         <item quantity="many">%1$s تطبيق ويب تقدمي</item>
         <item quantity="other">%1$s تطبيق ويب تقدمي</item>
+    </plurals>
+    <plurals name="shields_blocked_count">
+        <item quantity="zero">لم يتم حظر أي عنصر على هذه الصفحة</item>
+        <item quantity="one">تم حظر عنصر واحد على هذه الصفحة</item>
+        <item quantity="two">تم حظر عنصرين على هذه الصفحة</item>
+        <item quantity="few">تم حظر %1$d عناصر على هذه الصفحة</item>
+        <item quantity="many">تم حظر %1$d عنصرًا على هذه الصفحة</item>
+        <item quantity="other">تم حظر %1$d على هذه الصفحة</item>
     </plurals>
 </resources>

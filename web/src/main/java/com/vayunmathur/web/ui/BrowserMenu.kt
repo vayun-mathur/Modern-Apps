@@ -66,6 +66,7 @@ internal fun BrowserMenu(
     onReload: () -> Unit,
 ) {
     val context = LocalContext.current
+    val shareLinkTitle = stringResource(R.string.share_link)
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
     val activeTab = viewModel.activeTab
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
@@ -144,7 +145,7 @@ internal fun BrowserMenu(
                     putExtra(android.content.Intent.EXTRA_TEXT, tab.url)
                     type = "text/plain"
                 }
-                ExternalIntents.launch(context, android.content.Intent.createChooser(sendIntent, context.getString(R.string.share_link)))
+                ExternalIntents.launch(context, android.content.Intent.createChooser(sendIntent, shareLinkTitle))
             }
         })
         DropdownMenuItem(text = { Text(stringResource(R.string.new_tab)) }, onClick = { onDismiss(); viewModel.newTab() })

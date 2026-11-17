@@ -3,6 +3,7 @@
 package com.vayunmathur.web.platform
 
 import android.content.Context
+import androidx.core.content.edit
 import android.content.pm.PackageManager
 import com.vayunmathur.library.log.Log
 import androidx.core.content.ContextCompat
@@ -235,7 +236,7 @@ fun WebViewModel.clearLocalNetworkPrompt(denied: Boolean) {
     scope.launch(Dispatchers.IO) {
         runCatching {
             context.getSharedPreferences("web_prefs", Context.MODE_PRIVATE)
-                .edit().putBoolean(P_LOCAL_NETWORK_DENIED, true).apply()
+                .edit { putBoolean(P_LOCAL_NETWORK_DENIED, true) }
         }.onFailure { Log.error(TAG, "persist local network denial failed", it) }
     }
 }

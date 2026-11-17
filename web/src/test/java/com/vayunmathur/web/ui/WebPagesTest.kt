@@ -1,6 +1,8 @@
 package com.vayunmathur.web.ui
 
 import android.os.Looper
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -222,9 +224,10 @@ class WebPagesTest {
         v.addBookmark("https://suggest.example", "Suggest Title")
         await("bookmark for suggestions") { v.bookmarks.value.any { it.title == "Suggest Title" } }
         rule.setContent {
+            val bookmarks by v.bookmarks.collectAsState()
             OmniboxEditor(
                 viewModel = v,
-                bookmarks = v.bookmarks.value,
+                bookmarks = bookmarks,
                 history = listOf(HistoryEntry(url = "https://past.example", title = "Past Title")),
                 searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                 onNavigate = {},

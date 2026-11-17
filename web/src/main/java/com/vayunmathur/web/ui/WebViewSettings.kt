@@ -57,15 +57,10 @@ private var cachedDefaultUserAgent: String? = null
 private fun defaultUserAgent(context: android.content.Context): String =
     cachedDefaultUserAgent ?: WebSettings.getDefaultUserAgent(context).also { cachedDefaultUserAgent = it }
 
-/** Process-wide: Safe Browsing support is a property of the installed WebView, not of a page. */
-@Volatile
-private var safeBrowsingSupported: Boolean? = null
-
 private fun applySafeBrowsing(settings: WebSettings) {
-    val supported = safeBrowsingSupported ?: runCatching {
-        WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_ENABLE)
-    }.getOrDefault(false).also { safeBrowsingSupported = it }
-    if (supported) runCatching { WebSettingsCompat.setSafeBrowsingEnabled(settings, true) }
+    if (WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_ENABLE)) {
+        runCatching { WebSettingsCompat.setSafeBrowsingEnabled(settings, true) }
+    }
 }
 
 internal fun applyWebViewSettings(webView: WebView, viewModel: WebViewModel) {

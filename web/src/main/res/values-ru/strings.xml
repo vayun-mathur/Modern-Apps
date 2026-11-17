@@ -15,10 +15,8 @@
     <string name="app_name_2">Имя приложения</string>
     <string name="recent">Последние</string>
     <string name="private_prefix">Приватный •</string>
-    <string name="private_tab">Приватная вкладка</string>
     <string name="no_downloads">Нет загрузок</string>
     <string name="search_engine">Поисковая система</string>
-    <string name="duckduckgo_locked">DuckDuckGo</string>
     <string name="cache_mode">Режим кэша</string>
     <string name="javascript">JavaScript</string>
     <string name="required_by_most_sites">Необходимые для большинства сайтов</string>
@@ -28,7 +26,6 @@
     <string name="request_desktop_site">Запрос десктопного сайта</string>
     <string name="toolbar_at_bottom">Панель инструментов внизу</string>
     <string name="keeps_the_address_bar_within_thumb_reach">Адресную строка в пределах досягаемости большого пальца</string>
-    <string name="ad_tracker_blocking">Блокировка рекламных трекеров</string>
     <string name="privacy_data">Конфиденциальность и данные</string>
     <string name="clear_browsing_data">Очистить данные просмотра</string>
     <string name="cookies_cache_history_storage_permission">Cookies, кэш, история, хранилище, разрешения</string>
@@ -97,7 +94,6 @@
     <string name="new_incognito_window">Новое окно Инкогнито</string>
     <string name="new_incognito_tab">Новая вкладка Incognito</string>
     <string name="shields">Щиты</string>
-    <string name="shields_up">Щиты включены</string>
     <string name="shields_down">Щиты отключены для этого сайта</string>
     <string name="shields_for_host">Щиты для %1$s</string>
     <string name="shields_level">Уровень защиты</string>
@@ -113,13 +109,11 @@
     <string name="shields_fingerprint">Блокировка отпечатков</string>
     <string name="shields_fingerprint_desc">Выполняет рандомизацию показаний для canvas, WebGL, аудио и шрифтов</string>
     <string name="shields_https">Апгрейд соединений на HTTPS</string>
-    <string name="shields_blocked_count">%1$d заблокировано на этой странице</string>
     <string name="shields_reload_to_apply">Обновите чтобы применить</string>
     <string name="shields_site_exceptions">Исключения</string>
     <string name="shields_no_site_exceptions">Пока нет изменений для отдельных сайтов. Откройте значок в виде щита на панели инструментов, чтобы изменить настройки для сайта.</string>
     <string name="shields_reset_site">Сброс до значений по умолчанию</string>
     <string name="shields_clear_exceptions">Очистить все исключения</string>
-    <string name="shields_engine_loading">Загрузка списков фильтров…</string>
     <string name="copy_link">Скопировать ссылку</string>
     <string name="open_in_new_tab">Открыть в новой вкладке</string>
     <string name="link_copied">Ссылка скопирована</string>
@@ -127,6 +121,11 @@
     <string name="cleartext_blocked_message">%1$s был запрошен по HTTP. Незашифрованные соединения допускаются только с устройствами в вашей локальной сети.</string>
     <string name="local_network_title">Разрешить доступ к локальной сети?</string>
     <string name="local_network_message">%1$s выглядит как устройство в вашей сети. Android нуждается в разрешении локальной сети, прежде чем эта страница сможет загрузиться.</string>
-    <string name="blocks_doubleclick_googletagmanager_anal">Блокирует doubleclick, googletagmanager, analytics</string>
     <string name="shields_https_desc">Также удаляет utm_, fbclid и другие параметры отслеживания</string>
+    <plurals name="shields_blocked_count">
+        <item quantity="one">%1$d заблокирован на этой странице</item>
+        <item quantity="few">%1$d заблокировано на этой странице</item>
+        <item quantity="many">%1$d заблокировано на этой странице</item>
+        <item quantity="other">%1$d заблокировано на этой странице</item>
+    </plurals>
 </resources>
