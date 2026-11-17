@@ -690,6 +690,7 @@ class ProjectionService : Service() {
         }
     }
 
+    /** Start helper and constants for [ProjectionService]. */
     companion object {
         internal const val TAG = "MaAuto.Service"
 

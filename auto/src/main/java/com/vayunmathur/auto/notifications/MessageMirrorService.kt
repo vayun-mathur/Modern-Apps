@@ -121,6 +121,7 @@ class MessageMirrorService : NotificationListenerService() {
         return null
     }
 
+    /** Constants for [MessageMirrorService]. */
     companion object {
         const val TAG = "MaAuto.MsgMirror"
 

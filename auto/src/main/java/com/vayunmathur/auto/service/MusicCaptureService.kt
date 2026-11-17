@@ -81,6 +81,7 @@ class MusicCaptureService : Service() {
             .build()
     }
 
+    /** Notification and logging constants for [MusicCaptureService]. */
     companion object {
         private const val TAG = "MaAuto.MusicCaptureSvc"
         private const val CHANNEL_ID = "music-capture"

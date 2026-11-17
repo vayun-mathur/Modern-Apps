@@ -24,6 +24,7 @@ class CarSetupService : Service() {
         return null
     }
 
+    /** Setup actions and constants for [CarSetupService]. */
     companion object {
         /** Setup handshake action, mirroring gearhead's `CAR_SETUP_SERVICE`. */
         const val ACTION_CAR_SETUP_SERVICE = "com.vayunmathur.auto.CAR_SETUP_SERVICE"

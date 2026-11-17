@@ -53,6 +53,7 @@ class CarStartupService : Service() {
         return null
     }
 
+    /** Startup actions and constants for [CarStartupService]. */
     companion object {
         /** Wireless head unit announcing over Bluetooth. */
         const val ACTION_BT_START = "com.vayunmathur.auto.BT_START"

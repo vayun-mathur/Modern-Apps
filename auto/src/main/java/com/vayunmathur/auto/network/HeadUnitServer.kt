@@ -58,6 +58,7 @@ class HeadUnitServer(private val port: Int = DHU_PORT) : Closeable {
         ServerSocket(port, BACKLOG, InetAddress.getByName(IPV4_LOOPBACK))
     }.getOrNull()
 
+    /** Constants for [HeadUnitServer], including the Desktop Head Unit port. */
     companion object {
         /** The port the Desktop Head Unit expects to be forwarded to. */
         const val DHU_PORT = 5277

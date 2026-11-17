@@ -15,6 +15,7 @@ import java.util.concurrent.CopyOnWriteArraySet
  * projection worker thread.
  */
 object MessageMirrorBus {
+    /** Callback receiving mirrored message threads for a projection session. */
     fun interface Listener {
         fun onMirror(thread: MessagingThread, message: MessagingMessage, route: MessageReplyRoute?)
     }

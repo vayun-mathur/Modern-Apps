@@ -42,6 +42,7 @@ class WirelessSetupSharedService : Service() {
         return null
     }
 
+    /** Extras and constants for [WirelessSetupSharedService]. */
     companion object {
         /** Optional CDM-associated BT MAC; absent means the tap stand-in path. */
         const val EXTRA_BT_ADDRESS = "com.vayunmathur.auto.EXTRA_BT_ADDRESS"

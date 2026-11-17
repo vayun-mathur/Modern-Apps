@@ -36,6 +36,7 @@ class ConnectionResetReceiver : BroadcastReceiver() {
         }
     }
 
+    /** Reset actions handled by [ConnectionResetReceiver]. */
     companion object {
         const val ACTION_RESET_USB_PORT = "com.vayunmathur.auto.RESET_USB_PORT"
         const val ACTION_RESET_GADGET = "com.vayunmathur.auto.RESET_GADGET"

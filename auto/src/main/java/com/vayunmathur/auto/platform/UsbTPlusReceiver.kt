@@ -32,6 +32,7 @@ class UsbTPlusReceiver : BroadcastReceiver() {
         }
     }
 
+    /** USB attach actions handled by [UsbTPlusReceiver]. */
     companion object {
         /** TPlus head-unit attach announcement (MA-defined, mirrors TPlus). */
         const val ACTION_USB_TPLUS_ATTACHED = "com.vayunmathur.auto.USB_TPLUS_ATTACHED"

@@ -37,6 +37,7 @@ class CarChimeraService : Service() {
         return null
     }
 
+    /** Start actions and constants for [CarChimeraService]. */
     companion object {
         /** GMS-compat start action, mirroring gearhead's `car.service.START`. */
         const val ACTION_START = "car.service.START"

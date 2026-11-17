@@ -28,6 +28,7 @@ class WirelessStartupReceiver : BroadcastReceiver() {
         ProjectionService.start(context)
     }
 
+    /** Wireless startup actions handled by [WirelessStartupReceiver]. */
     companion object {
         /** Platform announcement of a wireless head unit (MA-defined). */
         const val ACTION_WIRELESS_STARTUP = "com.vayunmathur.auto.WIRELESS_STARTUP"

@@ -11,6 +11,7 @@ import com.vayunmathur.auto.platform.TransportState
 import com.vayunmathur.auto.service.ProjectionService
 import com.vayunmathur.library.ui.MaActivity
 
+/** Phone-side entry activity for Auto pairing and projection status. */
 @androidx.car.app.annotations.ExperimentalCarApi
 class MainActivity : MaActivity() {
     private val viewModel: AutoViewModel by viewModels()

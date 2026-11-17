@@ -120,6 +120,7 @@ class CarProjectionInCallService : InCallService() {
         return lastAcceptedMs
     }
 
+    /** Shared state and constants for [CarProjectionInCallService]. */
     companion object {
         const val TAG = "MaAuto.InCallCar"
 
