@@ -105,6 +105,7 @@ import kotlin.math.PI
 private const val ACTION_PLACE = 0
 private const val ACTION_ACT = 1
 
+/** Game activity for Voxels; owns the engine session, pause state, and in-game HUD. */
 class MainActivity : ComponentActivity() {
     // Pause-menu state lives on the activity so onStop can pause the game: coming back from Home or
     // the lock screen lands on the pause menu instead of straight into whatever was attacking.

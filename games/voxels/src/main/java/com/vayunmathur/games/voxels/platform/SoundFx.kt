@@ -13,6 +13,7 @@ import kotlin.random.Random
 
 // Lightweight procedural SFX: synthesizes short break/place blips into cached WAVs and plays them via
 // SoundPool. No audio assets required. All calls are best-effort (never throw into the UI).
+/** Procedural sound effects for Voxels, synthesised locally and played via SoundPool. */
 object SoundFx {
     private const val SR = 22050
     private var pool: SoundPool? = null

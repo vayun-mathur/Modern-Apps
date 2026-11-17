@@ -50,6 +50,7 @@ import kotlin.random.Random
 // Launcher screen: lists saved worlds and hosts the world creator. Playing a world starts
 // MainActivity (the game) with the world's save directory + seed passed as intent extras. Online
 // worlds add the shared world id + AES key + role so the game can start VoxelsSync in host/client mode.
+/** Launcher menu for Voxels: lists saved worlds and hosts world creation and join links. */
 class MenuActivity : ComponentActivity() {
     // Bumped on each onResume so the world list reloads when returning from the game
     // (keeps last-played ordering fresh).

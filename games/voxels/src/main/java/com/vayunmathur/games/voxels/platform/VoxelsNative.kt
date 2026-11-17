@@ -8,6 +8,7 @@ import android.view.Surface
 
 // JNI bridge: one extern fun per native entry point (count is inherent to the
 // engine surface), and loadLibrary must catch Throwable (UnsatisfiedLinkError).
+/** JNI bridge to the Rust Voxels engine (`voxels_engine`). */
 @Suppress("TooManyFunctions", "TooGenericExceptionCaught")
 object VoxelsNative {
     val isAvailable: Boolean = try {

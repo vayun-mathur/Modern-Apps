@@ -7,6 +7,7 @@ import android.view.SurfaceView
 import com.vayunmathur.games.voxels.util.VoxelsNative
 import com.vayunmathur.library.log.Log
 
+/** SurfaceView that forwards its surface lifecycle to the Rust engine. */
 class VoxelSurfaceView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null

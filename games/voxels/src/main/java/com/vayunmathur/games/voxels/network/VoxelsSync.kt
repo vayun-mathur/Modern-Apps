@@ -376,14 +376,18 @@ object VoxelsSync {
     /** An owner-signed member record (only records with a valid owner signature are honored). */
     @Serializable data class SignedMember(val member: Member, val sig: String)
 
+    /** Pending world invites plus the relay cursor they were read at. */
     class InvitesResult(val invites: List<Invite>, val seq: Int)
+    /** Inbox contents — invites and join requests — plus the relay cursor. */
     class InboxResult(val invites: List<Invite>, val requests: List<JoinRequest>, val seq: Int)
+    /** Pulled world operations plus the relay cursor. */
     class OpsResult(val items: List<String>, val seq: Int)
 
     @Serializable private data class SubMsg(val t: String, val channel: String)
     @Serializable private data class PresenceMsg(val t: String, val channel: String, val data: String)
     @Serializable private data class AppendMsg(val t: String, val channel: String, val actions: List<String>)
 
+    /** Ephemeral live-relay message carrying presence or channel actions; never persisted. */
     @Serializable data class LiveMsg(
         val t: String = "",
         val channel: String = "",

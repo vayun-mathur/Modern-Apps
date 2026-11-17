@@ -41,11 +41,13 @@ import com.vayunmathur.games.voxels.util.VoxelsNative
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
 
+/** One furnace recipe: inputs, output, smelt time, and whether it needs a blast furnace. */
 data class SmeltRecipe(
     val inId: Int, val inN: Int, val in2Id: Int, val in2N: Int,
     val outId: Int, val outN: Int, val secs: Float, val blast: Boolean
 )
 
+/** Live furnace state: active recipe, progress, and remaining fuel. */
 data class SmeltState(val active: Boolean, val recipe: Int, val progress: Float, val fuel: Float)
 
 fun parseSmeltRecipes(json: String): List<SmeltRecipe> = try {

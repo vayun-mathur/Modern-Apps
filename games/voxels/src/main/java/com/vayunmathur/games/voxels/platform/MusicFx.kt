@@ -15,6 +15,7 @@ import com.vayunmathur.games.voxels.domain.musicVolumeScale
 // foreground and holds audio focus: it pauses on Home, the lock screen and calls, and resumes when
 // the game comes back. Best-effort; never throws into the UI.
 // MediaPlayer/AudioManager signal failure with assorted runtime exceptions; all are swallowed here.
+/** Background music for Voxels: ambient playlist and jukebox discs under audio-focus control. */
 @Suppress("TooGenericExceptionCaught", "TooManyFunctions")
 object MusicFx {
     private const val AMBIENT_VOLUME = 0.45f

@@ -32,9 +32,11 @@ import kotlinx.serialization.json.Json
 
 internal val voxelsJson = Json { ignoreUnknownKeys = true }
 
+/** One inventory slot: item id and stack count (durability for tools and armour). */
 @Serializable
 data class InvSlot(val id: Int, val count: Int)
 
+/** Player inventory snapshot from the engine: selected slot, hotbar slots, and armour. */
 @Serializable
 data class InventoryState(val selected: Int = 0, val slots: List<InvSlot> = List(9) { InvSlot(0, 0) }, val armor: List<InvSlot> = emptyList())
 

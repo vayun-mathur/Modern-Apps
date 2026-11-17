@@ -21,6 +21,7 @@ class VoxelsAchievementsManager(
     override fun checkExistingAchievements() {}
 }
 
+/** Two-tier Voxels achievements: per-world progress forwarded to the app-wide Games Hub tier. */
 class VoxelsAchievements(context: Context, json: String, worldId: String) {
     /** The tier the Games Hub sees. Unprefixed, and shared by every world. */
     val app = VoxelsAchievementsManager(context, json)

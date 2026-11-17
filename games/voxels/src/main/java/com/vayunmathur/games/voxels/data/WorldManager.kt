@@ -13,6 +13,7 @@ import kotlin.random.Random
 
 // On-disk metadata for a single world, stored as `world.json` inside the world's directory.
 // The `online` fields are absent on legacy single-player saves (defaults keep them loading).
+/** On-disk metadata for one world, stored as `world.json` in its save directory. */
 @Serializable
 data class WorldMeta(
     val name: String,
@@ -39,12 +40,14 @@ object WorldMode {
 }
 
 // A world plus its resolved id (directory name) and absolute save path. Not persisted directly.
+/** A world with its resolved id (directory name) and absolute save path. */
 data class WorldInfo(
     val id: String,
     val dir: String,
     val meta: WorldMeta,
 )
 
+/** Creates, lists, and resolves saved Voxels worlds on disk. */
 object WorldManager {
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
