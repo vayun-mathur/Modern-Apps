@@ -2,10 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="bookmarks">Segnalibri</string>
     <string name="new_folder">Nuova cartella</string>
-    <string name="create">Crea</string>
     <string name="new_file">Nuovo file</string>
-    <string name="rename">Rinomina</string>
-    <string name="close">Chiudi</string>
     <string name="app_name">File</string>
     <string name="enable_notifications">Abilitare le notifiche?</string>
     <string name="notification_permission_rationale">Attivando le notifiche potrai vedere il progresso delle azioni in background, come la compressione e l\'estrazione dei file.</string>
@@ -24,31 +21,37 @@
     <string name="zip_browse_only">I file negli zip possono essere solo sfogliati</string>
     <string name="install_permission_needed">Consenti a File di installare app sconosciute, dopo tocca nuovamente l\'APK</string>
     <string name="install_permission_denied">L\'autorizzazione ad installare app sconosciute non è stata concessa</string>
-    <string name="file_fallback">File</string>
     <string name="unzip_channel_name">Operazione di estrazione</string>
     <string name="unzipping">Estrazione…</string>
     <string name="zip_channel_name">Operazioni di archiviazione</string>
     <string name="archiving">Archiviazione…</string>
     <string name="files_saved">File salvati correttamente</string>
     <string name="search_files">Cerca file…</string>
-    <string name="sort_name">Nome</string>
-    <string name="sort_date">Data</string>
     <string name="sort_size">Dimensione</string>
     <string name="sort_type">Tipo</string>
     <string name="sort_ascending">Ascendente</string>
     <string name="sort_descending">Discendente</string>
-    <string name="home">Home</string>
     <string name="grid_view">Visualizzazione a griglia</string>
     <string name="list_view">Visualizzazione a elenco</string>
     <string name="select_all">Seleziona tutto</string>
-    <string name="copy">Copia</string>
     <string name="cut">Taglia</string>
     <string name="paste">Incolla</string>
-    <string name="share">Condividi</string>
     <string name="new_name_label">Nuovo nome</string>
-    <string name="copied_n">Copiati <xliff:g id="count" example="3">%1$d</xliff:g> elementi</string>
-    <string name="cut_n">Taglia <xliff:g id="count" example="3">%1$d</xliff:g> elementi</string>
-    <string name="ready_to_paste"><xliff:g id="count" example="3">%1$d</xliff:g> elementi pronti da incollare</string>
+    <plurals name="copied_n">
+        <item quantity="one">Copiati <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+                <item quantity="many">Copiati <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+        <item quantity="other">Copiati <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+    </plurals>
+    <plurals name="cut_n">
+        <item quantity="one">Taglia <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+                <item quantity="many">Taglia <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+        <item quantity="other">Taglia <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+    </plurals>
+    <plurals name="ready_to_paste">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> elementi pronti da incollare</item>
+                <item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> elementi pronti da incollare</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> elementi pronti da incollare</item>
+    </plurals>
     <string name="create_failed">Impossibile creare l\'elemento</string>
     <string name="bookmark_added">Segnalibro aggiunto</string>
     <string name="cat_images">Immagini</string>
@@ -69,28 +72,39 @@
     <string name="hide_hidden">Nascondi file nascosti</string>
     <string name="no_files">Non c\'è niente qui</string>
     <string name="prop_path">Percorso</string>
-    <string name="prop_type">Tipo</string>
-    <string name="prop_size">Dimensione</string>
     <string name="prop_modified">Modificato</string>
     <string name="prop_items">Contenuti</string>
     <string name="type_folder">Cartella</string>
     <string name="type_file">File</string>
-    <string name="items_count"><xliff:g id="count" example="12">%1$d</xliff:g> elementi</string>
     <string name="saf_title_open">Seleziona un file</string>
     <string name="saf_title_create">Salva file</string>
     <string name="saf_title_tree">Seleziona una cartella</string>
     <string name="saf_use_this_folder">Usa questa cartella</string>
-    <string name="saf_save">Salva</string>
     <string name="saf_select_count">Seleziona (<xliff:g id="count" example="3">%1$d</xliff:g>)</string>
     <string name="trash">Cestino</string>
     <string name="trash_empty">Il cestino è vuoto</string>
     <string name="trash_auto_delete_note">Gli elementi saranno eliminati definitivamente dopo 30 giorni</string>
-    <string name="restore">Ripristina</string>
     <string name="delete_forever">Elimina definitivamente</string>
     <string name="empty_trash">Svuota cestino</string>
-    <string name="delete_permanently_title">Eliminare definitivamente <xliff:g id="count" example="3">%1$d</xliff:g> elementi?</string>
+    <plurals name="delete_permanently_title">
+        <item quantity="one">Eliminare definitivamente <xliff:g id="count" example="3">%1$d</xliff:g> elementi?</item>
+                <item quantity="many">Eliminare definitivamente <xliff:g id="count" example="3">%1$d</xliff:g> elementi?</item>
+        <item quantity="other">Eliminare definitivamente <xliff:g id="count" example="3">%1$d</xliff:g> elementi?</item>
+    </plurals>
     <string name="delete_permanently_message">Questa operazione non può essere annullata. Le cartelle e alcuni file non possono essere spostati nel cestino.</string>
-    <string name="moved_to_trash">Spostati nel cestino <xliff:g id="count" example="3">%1$d</xliff:g> elementi</string>
-    <string name="restored_n">Ripristinati <xliff:g id="count" example="3">%1$d</xliff:g> elementi</string>
-    <string name="deleted_forever_n">Eleminati definitivamente <xliff:g id="count" example="3">%1$d</xliff:g> elementi</string>
+    <plurals name="moved_to_trash">
+        <item quantity="one">Spostati nel cestino <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+                <item quantity="many">Spostati nel cestino <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+        <item quantity="other">Spostati nel cestino <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+    </plurals>
+    <plurals name="restored_n">
+        <item quantity="one">Ripristinati <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+                <item quantity="many">Ripristinati <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+        <item quantity="other">Ripristinati <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+    </plurals>
+    <plurals name="deleted_forever_n">
+        <item quantity="one">Eleminati definitivamente <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+                <item quantity="many">Eleminati definitivamente <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+        <item quantity="other">Eleminati definitivamente <xliff:g id="count" example="3">%1$d</xliff:g> elementi</item>
+    </plurals>
 </resources>

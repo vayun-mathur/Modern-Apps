@@ -3,12 +3,8 @@
     <string name="app_name">الملفات</string>
     <string name="bookmarks">الإشارات المرجعية</string>
     <string name="new_folder">مجلد جديد</string>
-    <string name="create">إنشاء</string>
     <string name="new_file">ملف جديد</string>
-    <string name="rename">إعادة التسمية</string>
-    <string name="close">إغلاق</string>
     <string name="enable">تفعيل</string>
-    <string name="copy">نسخ</string>
     <string name="enable_notifications">تفعيل الإشعارات؟</string>
     <string name="notification_permission_rationale">سيتيح لك تشغيل الإشعارات رؤية التقدم المحرز في الإجراءات التي تتم في الخلفية مثل ضغط الملفات وفك ضغطها.</string>
     <string name="skip">تخطي</string>
@@ -25,30 +21,46 @@
     <string name="zip_browse_only">عرض الملفات داخل zip محدود لتصفح</string>
     <string name="install_permission_needed">اسمح لـ الملفات بتثبيت التطبيقات غير المعروفة، ثم اضغط على الـ APK مرة أخرى</string>
     <string name="install_permission_denied">إذن تثبيت التطبيقات غير ممنوح</string>
-    <string name="file_fallback">ملف</string>
     <string name="unzip_channel_name">عمليات فك الضغط</string>
     <string name="unzipping">جارٍ فك الضغط…</string>
     <string name="zip_channel_name">عمليات الضغط</string>
     <string name="archiving">جارٍ الأرشفة…</string>
     <string name="files_saved">تم حفظ الملفات بنجاح</string>
     <string name="search_files">البحث في الملفات…</string>
-    <string name="sort_name">الاسم</string>
-    <string name="sort_date">التاريخ</string>
     <string name="sort_size">الحجم</string>
     <string name="sort_type">النوع</string>
     <string name="sort_ascending">تصاعدي</string>
     <string name="sort_descending">تنازلي</string>
-    <string name="home">الصفحة الرئيسية</string>
     <string name="grid_view">عرض الشبكة</string>
     <string name="list_view">عرض القائمة</string>
     <string name="select_all">تحديد الكل</string>
     <string name="cut">قص</string>
     <string name="paste">لصق</string>
-    <string name="share">مشاركة</string>
     <string name="new_name_label">الاسم الجديد</string>
-    <string name="copied_n">تم نسخ <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</string>
-    <string name="cut_n">قص <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</string>
-    <string name="ready_to_paste"><xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر جاهزة للنسخ</string>
+    <plurals name="copied_n">
+        <item quantity="one">تم نسخ <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+                <item quantity="zero">تم نسخ <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="two">تم نسخ <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="few">تم نسخ <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="many">تم نسخ <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="other">تم نسخ <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+    </plurals>
+    <plurals name="cut_n">
+        <item quantity="one">قص <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+                <item quantity="zero">قص <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="two">قص <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="few">قص <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="many">قص <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="other">قص <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+    </plurals>
+    <plurals name="ready_to_paste">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر جاهزة للنسخ</item>
+                <item quantity="zero"><xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر جاهزة للنسخ</item>
+        <item quantity="two"><xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر جاهزة للنسخ</item>
+        <item quantity="few"><xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر جاهزة للنسخ</item>
+        <item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر جاهزة للنسخ</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر جاهزة للنسخ</item>
+    </plurals>
     <string name="create_failed">تعذّر إنشاء العنصر</string>
     <string name="bookmark_added">تمت إضافة الإشارة المرجعية</string>
     <string name="cat_images">الصور</string>
@@ -69,29 +81,52 @@
     <string name="hide_hidden">إخفاء الملفات المخفية</string>
     <string name="no_files">لا شيء هنا</string>
     <string name="prop_path">المسار</string>
-    <string name="prop_type">النوع</string>
-    <string name="prop_size">الحجم</string>
     <string name="prop_modified">تم التعديل</string>
     <string name="prop_items">المحتويات</string>
     <string name="type_folder">مجلد</string>
     <string name="type_file">ملف</string>
-    <string name="items_count"><xliff:g id="count" example="12">%1$d</xliff:g> عنـ(ا)صر</string>
     <string name="saf_title_open">اختر ملفًا</string>
     <string name="saf_title_create">حفظ الملف</string>
     <string name="saf_title_tree">اختر مجلدًا</string>
     <string name="saf_use_this_folder">استخدام هذا المجلد</string>
-    <string name="saf_save">حفظ</string>
     <string name="saf_select_count">تحديد (<xliff:g id="count" example="3">%1$d</xliff:g>)</string>
     <string name="trash">سلة المهملات</string>
     <string name="trash_empty">سلة المهملات فارغة</string>
     <string name="trash_auto_delete_note">يتم حذف العناصر نهائيًا بعد ٣٠ يومًا</string>
-    <string name="restore">استعادة</string>
     <string name="delete_forever">حذف نهائيًا</string>
     <string name="empty_trash">إفراغ سلة المهملات</string>
-    <string name="delete_permanently_title">حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا؟</string>
+    <plurals name="delete_permanently_title">
+        <item quantity="one">حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا؟</item>
+                <item quantity="zero">حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا؟</item>
+        <item quantity="two">حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا؟</item>
+        <item quantity="few">حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا؟</item>
+        <item quantity="many">حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا؟</item>
+        <item quantity="other">حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا؟</item>
+    </plurals>
     <string name="delete_permanently_message">لا يمكن التراجع عن هذا. لن يمكن نقل المجلدات وبعض الملفات إلى سلة المهملات.</string>
-    <string name="moved_to_trash">تم نقل <xliff:g id="count" example="3"> %1$d</xliff:g> عنـ(ا)صر إلى سلة المهملات</string>
-    <string name="restored_n">تم استعادة <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</string>
-    <string name="deleted_forever_n">تم حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا</string>
+    <plurals name="moved_to_trash">
+        <item quantity="one">تم نقل <xliff:g id="count" example="3"> %1$d</xliff:g> عنـ(ا)صر إلى سلة المهملات</item>
+                <item quantity="zero">تم نقل <xliff:g id="count" example="3"> %1$d</xliff:g> عنـ(ا)صر إلى سلة المهملات</item>
+        <item quantity="two">تم نقل <xliff:g id="count" example="3"> %1$d</xliff:g> عنـ(ا)صر إلى سلة المهملات</item>
+        <item quantity="few">تم نقل <xliff:g id="count" example="3"> %1$d</xliff:g> عنـ(ا)صر إلى سلة المهملات</item>
+        <item quantity="many">تم نقل <xliff:g id="count" example="3"> %1$d</xliff:g> عنـ(ا)صر إلى سلة المهملات</item>
+        <item quantity="other">تم نقل <xliff:g id="count" example="3"> %1$d</xliff:g> عنـ(ا)صر إلى سلة المهملات</item>
+    </plurals>
+    <plurals name="restored_n">
+        <item quantity="one">تم استعادة <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+                <item quantity="zero">تم استعادة <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="two">تم استعادة <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="few">تم استعادة <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="many">تم استعادة <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+        <item quantity="other">تم استعادة <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر</item>
+    </plurals>
+    <plurals name="deleted_forever_n">
+        <item quantity="one">تم حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا</item>
+                <item quantity="zero">تم حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا</item>
+        <item quantity="two">تم حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا</item>
+        <item quantity="few">تم حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا</item>
+        <item quantity="many">تم حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا</item>
+        <item quantity="other">تم حذف <xliff:g id="count" example="3">%1$d</xliff:g> عنـ(ا)صر نهائيًا</item>
+    </plurals>
     <string name="trash_request_failed">تعذّر فتح طلب سلة المهملات</string>
 </resources>

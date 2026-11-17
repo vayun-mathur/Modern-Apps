@@ -84,7 +84,7 @@ fun FilesShell(
         }
 
     val notificationsRequest =
-        rememberPermissionRequest(Manifest.permission.POST_NOTIFICATIONS) {
+        rememberPermissionRequest("android.permission.POST_NOTIFICATIONS") {
             viewModel.setNotificationsPrompted()
             showNotificationDialog = false
         }
@@ -92,7 +92,7 @@ fun FilesShell(
     LaunchedEffect(isFilesGranted, hasPromptedNotifications) {
         if (isFilesGranted && !hasPromptedNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val isGranted = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.POST_NOTIFICATIONS
+                context, "android.permission.POST_NOTIFICATIONS"
             ) == PackageManager.PERMISSION_GRANTED
             if (!isGranted) {
                 showNotificationDialog = true
@@ -148,6 +148,7 @@ fun FilesShell(
 
         // Exactly one collector for the system trash-consent dialogs, above the nav host:
         // both the directory delete flow and the trash screen emit into the same flow.
+        val trashRequestFailedMessage = stringResource(R.string.trash_request_failed)
         val trashConsentLauncher =
             rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
                 viewModel.onTrashConsentResult(result.resultCode == android.app.Activity.RESULT_OK)
@@ -159,7 +160,7 @@ fun FilesShell(
                         androidx.activity.result.IntentSenderRequest.Builder(pendingIntent.intentSender).build(),
                     )
                 } catch (_: Exception) {
-                    viewModel.showMessage(context.getString(R.string.trash_request_failed))
+                    viewModel.showMessage(trashRequestFailedMessage)
                 }
             }
         }

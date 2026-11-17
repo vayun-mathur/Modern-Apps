@@ -32,7 +32,7 @@ abstract class FilesTrashModel(application: Application) :
             if (trashable.isNotEmpty()) {
                 selectedPathsState.value = emptySet()
                 loadDirectory()
-                pendingTrashMessage = ctx.getString(R.string.moved_to_trash, trashable.size)
+                pendingTrashMessage = ctx.resources.getQuantityString(R.plurals.moved_to_trash, trashable.size, trashable.size)
                 trashConsentRequestsFlow.emit(
                     trashPendingIntent(ctx, trashable.values.toList(), true)
                 )
@@ -102,7 +102,7 @@ abstract class FilesTrashModel(application: Application) :
             val uris = urisForSelection(ctx, selection)
             if (uris.isEmpty()) return@launch
             trashSelectionState.value = emptySet()
-            pendingTrashMessage = ctx.getString(R.string.restored_n, uris.size)
+            pendingTrashMessage = ctx.resources.getQuantityString(R.plurals.restored_n, uris.size, uris.size)
             trashConsentRequestsFlow.emit(trashPendingIntent(ctx, uris, false))
         }
     }
@@ -115,7 +115,7 @@ abstract class FilesTrashModel(application: Application) :
             val uris = urisForSelection(ctx, selection)
             if (uris.isEmpty()) return@launch
             trashSelectionState.value = emptySet()
-            pendingTrashMessage = ctx.getString(R.string.deleted_forever_n, uris.size)
+            pendingTrashMessage = ctx.resources.getQuantityString(R.plurals.deleted_forever_n, uris.size, uris.size)
             trashConsentRequestsFlow.emit(deleteForeverPendingIntent(ctx, uris))
         }
     }
@@ -128,7 +128,7 @@ abstract class FilesTrashModel(application: Application) :
             val uris = items.mapNotNull { it.mediaUri }
             if (uris.isEmpty()) return@launch
             trashSelectionState.value = emptySet()
-            pendingTrashMessage = ctx.getString(R.string.deleted_forever_n, uris.size)
+            pendingTrashMessage = ctx.resources.getQuantityString(R.plurals.deleted_forever_n, uris.size, uris.size)
             trashConsentRequestsFlow.emit(deleteForeverPendingIntent(ctx, uris))
         }
     }

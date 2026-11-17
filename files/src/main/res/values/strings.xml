@@ -67,11 +67,20 @@
     <!-- Rename dialog: TextField label for the new name -->
     <string name="new_name_label">New name</string>
     <!-- Snackbar after copying to clipboard. %1$d = item count -->
-    <string name="copied_n">Copied <xliff:g id="count" example="3">%1$d</xliff:g> item(s)</string>
+    <plurals name="copied_n">
+        <item quantity="one">Copied <xliff:g id="count" example="1">%1$d</xliff:g> item</item>
+        <item quantity="other">Copied <xliff:g id="count" example="3">%1$d</xliff:g> items</item>
+    </plurals>
     <!-- Snackbar after cutting to clipboard. %1$d = item count -->
-    <string name="cut_n">Cut <xliff:g id="count" example="3">%1$d</xliff:g> item(s)</string>
+    <plurals name="cut_n">
+        <item quantity="one">Cut <xliff:g id="count" example="1">%1$d</xliff:g> item</item>
+        <item quantity="other">Cut <xliff:g id="count" example="3">%1$d</xliff:g> items</item>
+    </plurals>
     <!-- Paste bar label. %1$d = number of items on the clipboard -->
-    <string name="ready_to_paste"><xliff:g id="count" example="3">%1$d</xliff:g> item(s) ready to paste</string>
+    <plurals name="ready_to_paste">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> item ready to paste</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> items ready to paste</item>
+    </plurals>
 
     <!-- Snackbar when creating a file/folder fails -->
     <string name="create_failed">Could not create item</string>
@@ -118,7 +127,6 @@
     <string name="type_folder">Folder</string>
     <string name="type_file">File</string>
     <!-- Folder contents count. %1$d = number of items -->
-    <string name="items_count"><xliff:g id="count" example="12">%1$d</xliff:g> item(s)</string>
 
     <!-- SAF document picker (shown only when Files is the system documents UI) -->
     <!-- Title when the caller is opening/selecting existing files -->
@@ -139,21 +147,32 @@
     <!-- Trash screen: caption explaining the system trash auto-deletes. Noun phrase -->
     <string name="trash_auto_delete_note">Items are permanently deleted after 30 days</string>
     <!-- Selection action: restore trashed items to their original location -->
-    <string name="restore">Restore</string>
     <!-- Selection action: permanently delete trashed items -->
     <string name="delete_forever">Delete forever</string>
     <!-- Trash screen action: permanently delete everything in the trash -->
     <string name="empty_trash">Empty trash</string>
     <!-- Permanent-delete confirmation dialog title. %1$d = item count -->
-    <string name="delete_permanently_title">Delete <xliff:g id="count" example="3">%1$d</xliff:g> item(s) permanently?</string>
+    <plurals name="delete_permanently_title">
+        <item quantity="one">Delete <xliff:g id="count" example="1">%1$d</xliff:g> item permanently?</item>
+        <item quantity="other">Delete <xliff:g id="count" example="3">%1$d</xliff:g> items permanently?</item>
+    </plurals>
     <!-- Permanent-delete confirmation dialog body: folders cannot use the system trash -->
     <string name="delete_permanently_message">This cannot be undone. Folders and some files cannot be moved to the trash.</string>
     <!-- Snackbar after moving items to the system trash. %1$d = item count -->
-    <string name="moved_to_trash"><xliff:g id="count" example="3">%1$d</xliff:g> item(s) moved to trash</string>
+    <plurals name="moved_to_trash">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> item moved to trash</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> items moved to trash</item>
+    </plurals>
     <!-- Snackbar after restoring trashed items. %1$d = item count -->
-    <string name="restored_n">Restored <xliff:g id="count" example="3">%1$d</xliff:g> item(s)</string>
+    <plurals name="restored_n">
+        <item quantity="one">Restored <xliff:g id="count" example="1">%1$d</xliff:g> item</item>
+        <item quantity="other">Restored <xliff:g id="count" example="3">%1$d</xliff:g> items</item>
+    </plurals>
     <!-- Snackbar after permanently deleting trashed items. %1$d = item count -->
-    <string name="deleted_forever_n">Deleted <xliff:g id="count" example="3">%1$d</xliff:g> item(s) permanently</string>
+    <plurals name="deleted_forever_n">
+        <item quantity="one">Deleted <xliff:g id="count" example="1">%1$d</xliff:g> item permanently</item>
+        <item quantity="other">Deleted <xliff:g id="count" example="3">%1$d</xliff:g> items permanently</item>
+    </plurals>
     <!-- Snackbar when the system trash-consent dialog cannot be shown -->
     <string name="trash_request_failed">Could not open the trash request</string>
 

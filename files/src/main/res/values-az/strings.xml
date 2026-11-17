@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="create">Yarat</string>
     <string name="new_file">Yeni fayl</string>
     <string name="new_folder">Yeni qovluq</string>
-    <string name="rename">Adını dəyişdir</string>
 </resources>

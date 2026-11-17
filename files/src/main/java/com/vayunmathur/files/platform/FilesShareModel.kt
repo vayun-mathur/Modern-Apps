@@ -38,7 +38,7 @@ abstract class FilesShareModel(application: Application) :
         clipboardState.value = files
         clipboardIsCutState.value = false
         selectedPathsState.value = emptySet()
-        emit(getApplication<Application>().getString(R.string.copied_n, files.size))
+        emit(getApplication<Application>().resources.getQuantityString(R.plurals.copied_n, files.size, files.size))
     }
 
     override fun cutSelection() {
@@ -48,7 +48,7 @@ abstract class FilesShareModel(application: Application) :
         clipboardState.value = files
         clipboardIsCutState.value = true
         selectedPathsState.value = emptySet()
-        emit(getApplication<Application>().getString(R.string.cut_n, files.size))
+        emit(getApplication<Application>().resources.getQuantityString(R.plurals.cut_n, files.size, files.size))
     }
 
     override fun clearClipboard() {

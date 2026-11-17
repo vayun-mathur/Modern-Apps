@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.files.R
@@ -63,7 +64,7 @@ internal fun DirectoryListing(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            stringResource(R.string.ready_to_paste, state.clipboardCount),
+                            pluralStringResource(R.plurals.ready_to_paste, state.clipboardCount, state.clipboardCount),
                             modifier = Modifier.weight(1f),
                         )
                         TextButton(onClick = { actions.pasteHere() }) { Text(stringResource(R.string.paste)) }

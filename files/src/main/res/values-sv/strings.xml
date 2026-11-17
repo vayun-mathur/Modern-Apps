@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="copy">Kopiera</string>
     <string name="app_name">Filer</string>
     <string name="enable_notifications">Aktivera aviseringar?</string>
     <string name="notification_permission_rationale">Om du aktiverar aviseringar kan du se förloppet för bakgrundsåtgärder som att komprimera och extrahera filer.</string>
@@ -19,31 +18,34 @@
     <string name="zip_browse_only">Filer i zip-filen kan bara bläddras i</string>
     <string name="install_permission_needed">Tillåt Filer att installera okända appar och tryck sedan på APK-filen igen</string>
     <string name="install_permission_denied">Behörighet att installera appar beviljades inte</string>
-    <string name="file_fallback">Fil</string>
     <string name="unzip_channel_name">Extraheringsåtgärder</string>
     <string name="unzipping">Extraherar…</string>
     <string name="zip_channel_name">Komprimeringsåtgärder</string>
     <string name="archiving">Arkiverar…</string>
     <string name="files_saved">Filerna sparades</string>
     <string name="search_files">Sök filer…</string>
-    <string name="sort_name">Namn</string>
-    <string name="sort_date">Datum</string>
     <string name="sort_size">Storlek</string>
     <string name="sort_type">Typ</string>
     <string name="sort_ascending">Stigande</string>
     <string name="sort_descending">Fallande</string>
-    <string name="home">Hem</string>
     <string name="grid_view">Rutnätsvy</string>
     <string name="list_view">Listvy</string>
     <string name="select_all">Markera alla</string>
     <string name="cut">Klipp ut</string>
     <string name="paste">Klistra in</string>
-    <string name="share">Dela</string>
-    <string name="rename">Byt namn</string>
     <string name="new_name_label">Nytt namn</string>
-    <string name="copied_n">Kopierade <xliff:g id="count" example="3">%1$d</xliff:g> objekt</string>
-    <string name="cut_n">Klippte ut <xliff:g id="count" example="3">%1$d</xliff:g> objekt</string>
-    <string name="ready_to_paste"><xliff:g id="count" example="3">%1$d</xliff:g> objekt redo att klistra in</string>
+    <plurals name="copied_n">
+        <item quantity="one">Kopierade <xliff:g id="count" example="3">%1$d</xliff:g> objekt</item>
+        <item quantity="other">Kopierade <xliff:g id="count" example="3">%1$d</xliff:g> objekt</item>
+    </plurals>
+    <plurals name="cut_n">
+        <item quantity="one">Klippte ut <xliff:g id="count" example="3">%1$d</xliff:g> objekt</item>
+        <item quantity="other">Klippte ut <xliff:g id="count" example="3">%1$d</xliff:g> objekt</item>
+    </plurals>
+    <plurals name="ready_to_paste">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> objekt redo att klistra in</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> objekt redo att klistra in</item>
+    </plurals>
     <string name="create_failed">Det gick inte att skapa objektet</string>
     <string name="bookmark_added">Bokmärket lades till</string>
     <string name="cat_images">Bilder</string>
@@ -60,7 +62,6 @@
     <string name="new_file">Ny fil</string>
     <string name="folder_name_label">Mappnamn</string>
     <string name="file_name_label">Filnamn</string>
-    <string name="create">Skapa</string>
     <string name="open_with">Öppna med</string>
     <string name="properties">Egenskaper</string>
     <string name="add_bookmark">Lägg till bokmärke</string>
@@ -68,30 +69,36 @@
     <string name="hide_hidden">Dölj dolda filer</string>
     <string name="no_files">Det finns inget här</string>
     <string name="prop_path">Sökväg</string>
-    <string name="prop_type">Typ</string>
-    <string name="prop_size">Storlek</string>
     <string name="prop_modified">Ändrad</string>
     <string name="prop_items">Innehåll</string>
     <string name="type_folder">Mapp</string>
     <string name="type_file">Fil</string>
-    <string name="items_count"><xliff:g id="count" example="12">%1$d</xliff:g> objekt</string>
-    <string name="close">Stäng</string>
     <string name="saf_title_open">Välj en fil</string>
     <string name="saf_title_create">Spara fil</string>
     <string name="saf_title_tree">Välj en mapp</string>
     <string name="saf_use_this_folder">Använd den här mappen</string>
-    <string name="saf_save">Spara</string>
     <string name="saf_select_count">Välj (<xliff:g id="count" example="3">%1$d</xliff:g>)</string>
     <string name="trash">Papperskorg</string>
     <string name="trash_empty">Papperskorgen är tom</string>
     <string name="trash_auto_delete_note">Objekt raderas permanent efter 30 dagar</string>
-    <string name="restore">Återställ</string>
     <string name="delete_forever">Radera permanent</string>
     <string name="empty_trash">Töm papperskorgen</string>
-    <string name="delete_permanently_title">Radera <xliff:g id="count" example="3">%1$d</xliff:g> objekt permanent?</string>
+    <plurals name="delete_permanently_title">
+        <item quantity="one">Radera <xliff:g id="count" example="3">%1$d</xliff:g> objekt permanent?</item>
+        <item quantity="other">Radera <xliff:g id="count" example="3">%1$d</xliff:g> objekt permanent?</item>
+    </plurals>
     <string name="delete_permanently_message">Detta kan inte ångras. Mappar och vissa filer kan inte flyttas till papperskorgen.</string>
-    <string name="moved_to_trash">Flyttade <xliff:g id="count" example="3">%1$d</xliff:g> objekt till papperskorgen</string>
-    <string name="restored_n">Återställde <xliff:g id="count" example="3">%1$d</xliff:g> objekt</string>
-    <string name="deleted_forever_n">Raderade <xliff:g id="count" example="3">%1$d</xliff:g> objekt permanent</string>
+    <plurals name="moved_to_trash">
+        <item quantity="one">Flyttade <xliff:g id="count" example="3">%1$d</xliff:g> objekt till papperskorgen</item>
+        <item quantity="other">Flyttade <xliff:g id="count" example="3">%1$d</xliff:g> objekt till papperskorgen</item>
+    </plurals>
+    <plurals name="restored_n">
+        <item quantity="one">Återställde <xliff:g id="count" example="3">%1$d</xliff:g> objekt</item>
+        <item quantity="other">Återställde <xliff:g id="count" example="3">%1$d</xliff:g> objekt</item>
+    </plurals>
+    <plurals name="deleted_forever_n">
+        <item quantity="one">Raderade <xliff:g id="count" example="3">%1$d</xliff:g> objekt permanent</item>
+        <item quantity="other">Raderade <xliff:g id="count" example="3">%1$d</xliff:g> objekt permanent</item>
+    </plurals>
     <string name="trash_request_failed">Kunde inte öppna begäran om papperskorgen</string>
 </resources>

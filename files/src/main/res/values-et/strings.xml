@@ -3,7 +3,6 @@
     <string name="new_file">Uus fail</string>
     <string name="folder_name_label">Kausta nimi</string>
     <string name="file_name_label">Failinimi</string>
-    <string name="create">Loo</string>
     <string name="open_with">Ava rakendusega</string>
     <string name="properties">Omadused</string>
     <string name="add_bookmark">Lisa järjehoidjaks</string>
@@ -12,8 +11,6 @@
     <string name="no_files">Siin pole mitte midagi</string>
     <string name="prop_path">Asukoht</string>
     <string name="new_folder">Uus kaust</string>
-    <string name="close">Sulge</string>
-    <string name="rename">Muuda nime</string>
     <string name="app_name">Failid</string>
     <string name="enable_notifications">Kas lubad kasutada teavitusi?</string>
     <string name="notification_permission_rationale">Teavituste sisselülitamisel näed taustal toimuvate tegevuste, nagu kokku- ja lahtipakkimine, edenemist.</string>
@@ -31,15 +28,11 @@
     <string name="zip_browse_only">Failide kasutamine ZIP-faili sees on piiratud vaid sirvimisega</string>
     <string name="install_permission_needed">Luba rakendusel Failid paigaldada tundmatuid rakendusi ja siis klõpsa APK-faili uuesti</string>
     <string name="install_permission_denied">Rakenduste paigaldamise õigused jäid lubamata</string>
-    <string name="file_fallback">Fail</string>
-    <string name="home">Avaleht</string>
     <string name="grid_view">Ruudustikuvaade</string>
     <string name="list_view">Loendivaade</string>
     <string name="select_all">Vali kõik</string>
-    <string name="copy">Kopeeri</string>
     <string name="cut">Lõika</string>
     <string name="paste">Aseta</string>
-    <string name="share">Jaga</string>
     <string name="new_name_label">Uus nimi</string>
     <string name="bookmark_added">Järjehoidja on lisatud</string>
     <string name="cat_images">Pildid</string>
@@ -52,18 +45,14 @@
     <string name="bookmarks">Järjehoidjad</string>
     <string name="recent_files">Hiljutised failid</string>
     <string name="storage_usage"><xliff:g id="used" example="12 GB">%1$s</xliff:g> kogumahust <xliff:g id="total" example="128 GB">%2$s</xliff:g></string>
-    <string name="prop_type">Tüüp</string>
-    <string name="prop_size">Suurus</string>
     <string name="prop_modified">Muudetud</string>
     <string name="prop_items">Sisu</string>
     <string name="type_folder">Kaust</string>
     <string name="type_file">Fail</string>
-    <string name="items_count"><xliff:g id="count" example="12">%1$d</xliff:g> objekt(i)</string>
     <string name="saf_title_open">Vali fail</string>
     <string name="saf_title_create">Salvesta fail</string>
     <string name="saf_title_tree">Vali kaust</string>
     <string name="saf_use_this_folder">Kasuta seda kausta</string>
-    <string name="saf_save">Salvesta</string>
     <string name="saf_select_count">Vali mitu faili (<xliff:g id="count" example="3">%1$d</xliff:g>)</string>
     <string name="unzip_channel_name">Tegevused lahtipakkimisel</string>
     <string name="unzipping">Lahtipakkimisel…</string>
@@ -71,27 +60,45 @@
     <string name="archiving">Pakin kokku…</string>
     <string name="files_saved">Failide salvestamine õnnestus</string>
     <string name="search_files">Otsi faile…</string>
-    <string name="sort_name">Nime alusel</string>
-    <string name="sort_date">Kuupäeva alusel</string>
     <string name="sort_size">Suuruse alusel</string>
     <string name="sort_type">Tüübi alusel</string>
     <string name="sort_ascending">Järjesta kasvavalt</string>
     <string name="sort_descending">Järjesta kahanevalt</string>
-    <string name="copied_n"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on kopeeritud</string>
-    <string name="cut_n"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on lõigatud</string>
-    <string name="ready_to_paste"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on valmis asetamiseks</string>
+    <plurals name="copied_n">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on kopeeritud</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on kopeeritud</item>
+    </plurals>
+    <plurals name="cut_n">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on lõigatud</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on lõigatud</item>
+    </plurals>
+    <plurals name="ready_to_paste">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on valmis asetamiseks</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on valmis asetamiseks</item>
+    </plurals>
     <string name="create_failed">Faili või kausta loomine ei õnnestunud</string>
     <string name="zip_too_large_to_extract">Fail on lahtipakkimiseks liiga suur: vajalik oleks <xliff:g id="needed" example="4.2 GB">%1$s</xliff:g>, kuid on vaid <xliff:g id="available" example="1.1 GB">%2$s</xliff:g></string>
-    <string name="restored_n"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on taastatud</string>
-    <string name="delete_permanently_title">Kas kustutad <xliff:g id="count" example="3">%1$d</xliff:g> objekti lõplikult?</string>
+    <plurals name="restored_n">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on taastatud</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on taastatud</item>
+    </plurals>
+    <plurals name="delete_permanently_title">
+        <item quantity="one">Kas kustutad <xliff:g id="count" example="3">%1$d</xliff:g> objekti lõplikult?</item>
+        <item quantity="other">Kas kustutad <xliff:g id="count" example="3">%1$d</xliff:g> objekti lõplikult?</item>
+    </plurals>
     <string name="trash_request_failed">Prügikastipäringu käivitamine ei õnnestu</string>
     <string name="trash">Prügikast</string>
     <string name="trash_empty">Prügikast on tühi</string>
-    <string name="restore">Taasta</string>
     <string name="trash_auto_delete_note">Prügikastis olevad objektid kustutatakse lõplikult 30 päeva möödumisel</string>
     <string name="delete_permanently_message">Seda tegevust ei saa tagasi pöörata. Kaustu ja mõningaid faile ei saa prügikasti visata.</string>
     <string name="empty_trash">Tühjenda prügikast</string>
-    <string name="deleted_forever_n"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on lõplikult kustutatud</string>
+    <plurals name="deleted_forever_n">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on lõplikult kustutatud</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on lõplikult kustutatud</item>
+    </plurals>
     <string name="delete_forever">Kustuta lõplikult</string>
-    <string name="moved_to_trash"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on visatud prügikasti</string>
+    <plurals name="moved_to_trash">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on visatud prügikasti</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> objekt(i) on visatud prügikasti</item>
+    </plurals>
 </resources>

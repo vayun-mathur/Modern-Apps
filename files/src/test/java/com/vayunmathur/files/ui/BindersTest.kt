@@ -90,7 +90,7 @@ class BindersTest {
                 androidx.compose.material3.Text("shell-body")
             }
         }
-        rule.onNodeWithText("Delete 1 item(s) permanently?").assertIsDisplayed()
+        rule.onNodeWithText("Delete 1 item permanently?").assertIsDisplayed()
         rule.onNodeWithText("Delete").performClick()
         assertTrue(actions.calls.contains("confirmPD"))
         // notification prompt (fresh VM in this sandbox has not prompted yet)

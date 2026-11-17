@@ -10,10 +10,8 @@
     <string name="zip_file_name_label">压缩文件名</string>
     <string name="archiving_started">文件移动已开始…</string>
     <string name="new_folder">新建文件夹</string>
-    <string name="create">创建</string>
     <string name="no_app_found_to_open_file">没有可打开该文件的app</string>
     <string name="install_permission_needed">允许文件应用安装未知应用，然后再次点击安装包</string>
-    <string name="file_fallback">文件</string>
     <string name="unzipping">解压缩…</string>
     <string name="archive">压缩</string>
     <string name="sort_ascending">升序排列</string>
@@ -26,19 +24,13 @@
     <string name="internal_storage">内部存储</string>
     <string name="categories">类别</string>
     <string name="new_file">新建文件</string>
-    <string name="rename">重命名</string>
     <string name="install_permission_denied">安装应用的权限未授予</string>
     <string name="unzip_channel_name">解压操作</string>
     <string name="archiving">压缩中…</string>
-    <string name="sort_name">名称</string>
-    <string name="sort_date">日期</string>
     <string name="sort_size">大小</string>
     <string name="sort_type">类型</string>
-    <string name="home">主页</string>
-    <string name="copy">复制</string>
     <string name="cut">剪切</string>
     <string name="paste">粘贴</string>
-    <string name="share">分享</string>
     <string name="bookmarks">书签</string>
     <string name="recent_files">最近使用的文件</string>
 </resources>

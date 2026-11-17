@@ -14,30 +14,27 @@
     <string name="move_failed">ההעברה נכשלה: <xliff:g id="error" example="Permission denied">%1$s</xliff:g></string>
     <string name="could_not_open_zip">לא היה ניתן לפתוח את קובץ ה־zip‏: <xliff:g id="error" example="Invalid format">%1$s</xliff:g></string>
     <string name="no_app_found_to_open_file">לא נמצא יישום לפתיחת הקובץ הזה</string>
-    <string name="file_fallback">קובץ</string>
     <string name="unzip_channel_name">פעולות חילוץ</string>
     <string name="unzipping">מתבצע חילוץ…</string>
     <string name="zip_channel_name">פעולות דחיסה</string>
     <string name="archiving">מתבצעת דחיסה…</string>
     <string name="files_saved">הקובץ נשמר בהצלחה</string>
     <string name="search_files">חיפוש בקבצים…</string>
-    <string name="sort_name">שם</string>
-    <string name="sort_date">תאריך</string>
     <string name="sort_size">גודל</string>
     <string name="sort_type">סוג</string>
     <string name="sort_ascending">בסדר עולה</string>
     <string name="sort_descending">בסדר יורד</string>
-    <string name="home">בית</string>
     <string name="grid_view">תצוגת רשת</string>
     <string name="list_view">תצוגת רשימה</string>
     <string name="select_all">לבחור הכול</string>
-    <string name="copy">העתקה</string>
     <string name="cut">גזירה</string>
     <string name="paste">הדבקה</string>
-    <string name="share">שיתוף</string>
-    <string name="rename">שינוי שם</string>
     <string name="new_name_label">השם החדש</string>
-    <string name="copied_n">הועתקו <xliff:g id="count" example="3">%1$d</xliff:g> פריטים</string>
+    <plurals name="copied_n">
+        <item quantity="one">הועתקו <xliff:g id="count" example="3">%1$d</xliff:g> פריטים</item>
+                <item quantity="two">הועתקו <xliff:g id="count" example="3">%1$d</xliff:g> פריטים</item>
+        <item quantity="other">הועתקו <xliff:g id="count" example="3">%1$d</xliff:g> פריטים</item>
+    </plurals>
     <string name="create_failed">לא היה ניתן ליצור את הפריט</string>
     <string name="bookmark_added">הסימנייה נוספה</string>
     <string name="cat_images">קובצי תמונות</string>
@@ -53,7 +50,6 @@
     <string name="new_file">קובץ חדש</string>
     <string name="folder_name_label">שם תיקייה</string>
     <string name="file_name_label">שם קובץ</string>
-    <string name="create">יצירה</string>
     <string name="open_with">פתיחה באמצעות</string>
     <string name="properties">מאפיינים</string>
     <string name="add_bookmark">הוספת סימנייה</string>
@@ -61,25 +57,28 @@
     <string name="hide_hidden">הסתרת קבצים מוסתרים</string>
     <string name="no_files">אין כאן כלום</string>
     <string name="prop_path">נתיב</string>
-    <string name="prop_type">סוג</string>
-    <string name="prop_size">גודל</string>
     <string name="prop_modified">מועד שינוי אחרון</string>
     <string name="prop_items">תוכן</string>
     <string name="type_folder">תיקייה</string>
     <string name="type_file">קובץ</string>
-    <string name="close">סגירה</string>
     <string name="saf_title_open">נא לבחור קובץ</string>
     <string name="saf_title_create">שמירת קובץ</string>
     <string name="saf_title_tree">נא לבחור תיקייה</string>
     <string name="saf_use_this_folder">שימוש בתיקייה זו</string>
-    <string name="saf_save">שמירה</string>
     <string name="zip_too_large_to_extract">אין מספיק שטח: נחוצים <xliff:g id="needed" example="4.2 GB">%1$s</xliff:g>, רק <xliff:g id="available" example="1.1 GB">%2$s</xliff:g> זמינים לשימוש</string>
     <string name="zip_browse_only">הצגת קבצים בתוך קובץ zip מוגבלת לעיון</string>
     <string name="install_permission_needed">נא לאפשר ליישום הקבצים להתקין יישומים לא מוכרים, ואז ללחוץ שוב על קובץ ה־APK</string>
     <string name="install_permission_denied">ההרשאה להתקין יישומים לא הוענקה</string>
-    <string name="cut_n">גזירה של <xliff:g id="count" example="3">%1$d</xliff:g> פריטים</string>
-    <string name="ready_to_paste"><xliff:g id="count" example="3">%1$d</xliff:g> פריטים מוכנים להדבקה</string>
+    <plurals name="cut_n">
+        <item quantity="one">גזירה של <xliff:g id="count" example="3">%1$d</xliff:g> פריטים</item>
+                <item quantity="two">גזירה של <xliff:g id="count" example="3">%1$d</xliff:g> פריטים</item>
+        <item quantity="other">גזירה של <xliff:g id="count" example="3">%1$d</xliff:g> פריטים</item>
+    </plurals>
+    <plurals name="ready_to_paste">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> פריטים מוכנים להדבקה</item>
+                <item quantity="two"><xliff:g id="count" example="3">%1$d</xliff:g> פריטים מוכנים להדבקה</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> פריטים מוכנים להדבקה</item>
+    </plurals>
     <string name="storage_usage"><xliff:g id="used" example="12 GB">%1$s</xliff:g> בשימוש מתוך <xliff:g id="total" example="128 GB">%2$s</xliff:g></string>
-    <string name="items_count"><xliff:g id="count" example="12">%1$d</xliff:g> פריטים</string>
     <string name="saf_select_count">בחירה של (<xliff:g id="count" example="3">%1$d</xliff:g>)</string>
 </resources>

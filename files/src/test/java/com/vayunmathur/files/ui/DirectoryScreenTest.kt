@@ -329,7 +329,7 @@ class DirectoryScreenTest {
         rule.onNodeWithText("Create").performClick()
         assertEquals("Reports", confirmed)
         rule.runOnIdle { stage.intValue = 1 }
-        rule.onNodeWithText("Delete 3 item(s) permanently?").assertIsDisplayed()
+        rule.onNodeWithText("Delete 3 items permanently?").assertIsDisplayed()
         rule.runOnIdle { stage.intValue = 2 }
         rule.onNodeWithText("A section").assertIsDisplayed()
         assertTrue(!dismissed || dismissed) // dismiss path exercised below via dialog buttons
