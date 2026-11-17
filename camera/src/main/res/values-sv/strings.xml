@@ -10,7 +10,6 @@
     <string name="settings_mirror_front">Spegelvänd selfie</string>
     <string name="settings_mirror_front_description">Spegelvänd förhandsvisningen från främre kameran och sparade selfies</string>
     <string name="settings_video_codec">Videokodek</string>
-    <string name="settings_video_codec_label">Videokodek</string>
     <string name="codec_avc_label">H.264 / AVC</string>
     <string name="codec_avc_description">Mest kompatibel</string>
     <string name="codec_hevc_label">H.265 / HEVC</string>
@@ -18,7 +17,6 @@
     <string name="codec_av1_label">AV1</string>
     <string name="codec_av1_description">Mest effektiv</string>
     <string name="settings_audio_source">Ljudingångskälla</string>
-    <string name="settings_audio_source_label">Ljudingångskälla</string>
     <string name="audio_source_camcorder_label">Videokamera</string>
     <string name="audio_source_camcorder_description">Standard, anpassad för videoinspelning</string>
     <string name="audio_source_mic_label">Mikrofon</string>
@@ -31,22 +29,13 @@
     <string name="open_url">Öppna URL</string>
     <string name="no_app_to_open_url">Ingen app kan öppna länken</string>
     <string name="copy_text">Kopiera</string>
-    <string name="blur">Oskärpa</string>
     <string name="not_available">Ej tillgängligt</string>
     <string name="burst_count">Bildserie <xliff:g id="count" example="12">%1$d</xliff:g></string>
     <string name="ae_af_lock">LÅS AE/AF</string>
     <string name="processing_panorama_u2026">Bearbetar panorama…</string>
     <string name="auto">Automatiskt</string>
     <string name="night_2">Natt %1$s%%</string>
-    <string name="brightness">Ljusstyrka</string>
-    <string name="shadows">Skuggor</string>
-    <string name="warmth">Värme</string>
     <string name="qr_scanning_paused">QR-skanning pausad</string>
-    <string name="lens_ultrawide">UV</string>
-    <string name="lens_wide">1x</string>
-    <string name="lens_tele">Tele</string>
-    <string name="lens_mono">Mono</string>
-    <string name="lens_front">Främre</string>
     <string name="lens_picker_description">Kameralins</string>
     <string name="mode_photo">Foto</string>
     <string name="mode_portrait">Porträtt</string>
@@ -61,8 +50,10 @@
     <string name="settings_edge_sharpening">Kantskärpning</string>
     <string name="settings_edge_sharpening_description">Gör kanterna skarpare i foton och videor (stäng av för ett naturligt utseende)</string>
     <string name="settings_motion_duration">Längd på rörligt foto</string>
-    <string name="motion_duration_1s">%1$d sekund</string>
-    <string name="motion_duration_ns">%1$d sekunder</string>
+    <plurals name="motion_duration">
+        <item quantity="one">%1$d sekund</item>
+        <item quantity="other">%1$d sekunder</item>
+    </plurals>
     <string name="add_esim">Lägg till eSIM</string>
     <string name="no_app_to_add_esim">Ingen app kan lägga till detta eSIM</string>
     <string name="settings_save_location">Sparplats</string>

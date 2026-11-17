@@ -1,5 +1,8 @@
 package com.vayunmathur.camera.platform
 
+import androidx.annotation.OptIn
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraMetadata
 import com.vayunmathur.library.log.Log
@@ -12,7 +15,7 @@ import com.vayunmathur.camera.domain.LensLabels
 import com.vayunmathur.camera.domain.LensSelectionLogic
 import com.vayunmathur.camera.domain.LensType
 import com.vayunmathur.camera.domain.PhysicalLens
-import com.vayunmathur.camera.util.CameraViewModel
+import com.vayunmathur.camera.platform.CameraViewModel
 import kotlin.math.sqrt
 
 /** Maps the pure [LensFacing] to the CameraX selector constant. */
@@ -53,6 +56,9 @@ fun enumerateLenses(provider: ProcessCameraProvider): List<PhysicalLens> {
 }
 
 /** Full-frame diagonal (mm) of 35mm film; wide-reference eq focal length + family ratios. */
+/** Value CameraX returns from `CameraInfo.getIntrinsicZoomRatio()` when unknown. */
+private const val INTRINSIC_ZOOM_RATIO_UNKNOWN_SENTINEL = 1.0f
+
 private const val FULL_FRAME_DIAGONAL_MM = 43.27f
 private const val WIDE_REFERENCE_EQ_MM = 27f
 private const val ULTRA_WIDE_RATIO = 0.85f
@@ -70,6 +76,7 @@ private fun readRawLens(info: androidx.camera.core.CameraInfo): RawLens? {
 
 /** Physical-lens description probed off one CameraInfo (null for external/unknown lenses). */
 @Suppress("DEPRECATION")
+@OptIn(ExperimentalCamera2Interop::class)
 private fun readRawLensOrThrow(info: androidx.camera.core.CameraInfo): RawLens? {
     val cam2 = Camera2CameraInfo.from(info)
     val facing = when (
@@ -99,7 +106,9 @@ private fun readRawLensOrThrow(info: androidx.camera.core.CameraInfo): RawLens? 
     // camera's zoom range (intrinsic ratio < 1), so the picker can skip a
     // duplicate UW pill. Unknown on most HALs — the eq-35mm ratio stays primary.
     val intrinsic = info.intrinsicZoomRatio.takeUnless {
-        it == androidx.camera.core.CameraInfo.INTRINSIC_ZOOM_RATIO_UNKNOWN
+        // CameraX reports 1.0f when the intrinsic ratio is unknown (the value of
+        // its library-restricted INTRINSIC_ZOOM_RATIO_UNKNOWN sentinel).
+        it == INTRINSIC_ZOOM_RATIO_UNKNOWN_SENTINEL
     }
     val zoomFloor = info.zoomState.value?.minZoomRatio
     return RawLens(cam2.getCameraId(), facing, focal, eq35, mono, intrinsic, zoomFloor)
@@ -188,7 +197,7 @@ private fun labelOf(type: LensType): String {
 }
 
 /**
- * Fills [availableLensesMutable][com.vayunmathur.camera.util.CameraViewModel] once per
+ * Fills [availableLensesMutable][com.vayunmathur.camera.platform.CameraViewModel] once per
  * process and anchors the default selection (same-facing wide/front). No-op once
  * populated; call at the top of every session setup after obtaining the provider.
  */
@@ -224,6 +233,7 @@ fun CameraViewModel.currentLensFamily(): List<PhysicalLens> {
  * behavior.
  */
 @Suppress("DEPRECATION")
+@OptIn(ExperimentalCamera2Interop::class)
 fun CameraViewModel.lensSelector(facingInt: Int, lens: PhysicalLens?): CameraSelector {
     val builder = CameraSelector.Builder().requireLensFacing(facingInt)
     if (lens != null) {

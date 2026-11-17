@@ -27,9 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.camera.R
-import com.vayunmathur.camera.util.AspectRatioOption
-import com.vayunmathur.camera.util.FlashMode
-import com.vayunmathur.camera.util.TimerDuration
+import com.vayunmathur.camera.platform.AspectRatioOption
+import com.vayunmathur.camera.platform.FlashMode
+import com.vayunmathur.camera.platform.TimerDuration
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconFlashAuto
 import com.vayunmathur.library.ui.IconFlashOff

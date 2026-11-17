@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.core.content.IntentCompat
 import com.vayunmathur.camera.ui.CameraScreen
 import com.vayunmathur.camera.ui.SettingsPage
-import com.vayunmathur.camera.util.CameraViewModel
+import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.library.ui.AppPermissionsGate
 import com.vayunmathur.library.ui.AppPermissionsSpec
 import com.vayunmathur.library.ui.MaActivity
@@ -24,17 +24,6 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
-
-@Serializable
-/** Navigation destinations for the camera app. */
-sealed interface Route : NavKey {
-    @Serializable
-    /** The main camera capture screen. */
-    data object Camera : Route
-    @Serializable
-    /** Camera settings screen. */
-    data object Settings : Route
-}
 
 /** Entry activity hosting the camera and settings screens. */
 class MainActivity : MaActivity() {

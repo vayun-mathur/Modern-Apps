@@ -3,13 +3,13 @@ package com.vayunmathur.camera.platform
 import com.vayunmathur.library.log.Log
 import androidx.camera.core.Camera
 import com.vayunmathur.camera.domain.LensSelectionLogic
-import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.applyExposureCompensation
-import com.vayunmathur.camera.util.applyManualControls
-import com.vayunmathur.camera.util.readManualControlRanges
-import com.vayunmathur.camera.util.refreshNightExtensionUsable
-import com.vayunmathur.camera.util.restoreZoom
-import com.vayunmathur.camera.util.updateZoomLevels
+import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.applyExposureCompensation
+import com.vayunmathur.camera.platform.applyManualControls
+import com.vayunmathur.camera.platform.readManualControlRanges
+import com.vayunmathur.camera.platform.refreshNightExtensionUsable
+import com.vayunmathur.camera.platform.restoreZoom
+import com.vayunmathur.camera.platform.updateZoomLevels
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

@@ -5,18 +5,13 @@
     <string name="open_gallery">גלריה</string>
     <string name="settings_aspect_ratio">יחס תצוגה</string>
     <string name="settings_location">מיקום</string>
-    <string name="settings_video_codec_label">מפענח וידאו</string>
     <string name="audio_source_mic_label">מיקרופון</string>
     <string name="audio_source_mic_description">מיקרופון ראשי</string>
     <string name="audio_source_unprocessed_description">גולמי, ללא עיבוד</string>
     <string name="qr_result">קוד QR</string>
     <string name="open_url">פתיחת כתובת</string>
     <string name="copy_text">העתקה</string>
-    <string name="blur">טשטוש</string>
     <string name="auto">אוטומטי</string>
-    <string name="brightness">בהירות</string>
-    <string name="shadows">צלליות</string>
-    <string name="warmth">חום</string>
     <string name="lens_picker_description">עדשות מצלמה</string>
     <string name="settings_save_location">שמירת מיקום</string>
 </resources>

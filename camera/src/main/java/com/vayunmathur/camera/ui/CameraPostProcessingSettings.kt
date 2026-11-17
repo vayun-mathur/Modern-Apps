@@ -10,11 +10,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
-import com.vayunmathur.camera.util.MotionPhotoDuration
+import com.vayunmathur.camera.platform.MotionPhotoDuration
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.IconArrowDropDown
 import com.vayunmathur.library.ui.IconCheck
@@ -103,8 +104,5 @@ fun CameraPostProcessingSettings(
 
 /** Localized label for a Motion-Photo clip length ("1 second" / "3 seconds"). */
 @Composable
-private fun motionDurationLabel(seconds: Int): String = if (seconds == 1) {
-    stringResource(R.string.motion_duration_1s, seconds)
-} else {
-    stringResource(R.string.motion_duration_ns, seconds)
-}
+private fun motionDurationLabel(seconds: Int): String =
+    pluralStringResource(R.plurals.motion_duration, seconds, seconds)

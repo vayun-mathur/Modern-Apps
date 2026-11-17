@@ -11,13 +11,14 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.vayunmathur.camera.util.AspectRatioOption
-import com.vayunmathur.camera.util.AudioInputSource
-import com.vayunmathur.camera.util.CameraMode
-import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.FlashMode
-import com.vayunmathur.camera.util.TimerDuration
-import com.vayunmathur.camera.util.VideoCodec
+import com.vayunmathur.camera.platform.AspectRatioOption
+import com.vayunmathur.camera.platform.AudioInputSource
+import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.FlashMode
+import com.vayunmathur.camera.platform.TimerDuration
+import com.vayunmathur.camera.platform.VideoCodec
+import com.vayunmathur.camera.platform.BokehAnalyzer
 
 /**
  * All UI state read by [CameraScreen], collected from [CameraViewModel] flows in one
@@ -78,7 +79,7 @@ import com.vayunmathur.camera.util.VideoCodec
     val galleryBitmap: Bitmap?,
     val panoSweeping: Boolean,
     val panoStitching: Boolean,
-    val panoDots: List<com.vayunmathur.camera.util.GuideDot>,
+    val panoDots: List<com.vayunmathur.camera.platform.GuideDot>,
     val panoCurrentAngle: Float,
     val panoDirection: Int,
     val panoPitch: Float,

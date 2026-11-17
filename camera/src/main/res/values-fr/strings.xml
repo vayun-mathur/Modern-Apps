@@ -8,7 +8,6 @@
     <string name="settings_location">Localisation</string>
     <string name="settings_location_description">Enregistrer la position dans les métadonnées des photos</string>
     <string name="settings_video_codec">Codec vidéo</string>
-    <string name="settings_video_codec_label">Codec vidéo</string>
     <string name="codec_avc_label">H.264 / AVC</string>
     <string name="codec_avc_description">Le plus compatible</string>
     <string name="codec_hevc_label">H.265 / HEVC</string>
@@ -19,14 +18,10 @@
     <string name="open_url">Ouvrir le lien</string>
     <string name="no_app_to_open_url">Aucune application ne peut ouvrir ce lien</string>
     <string name="copy_text">Copier</string>
-    <string name="blur">Flou</string>
     <string name="not_available">N/D</string>
     <string name="burst_count">Rafale <xliff:g id="count" example="12">%1$d</xliff:g></string>
     <string name="ae_af_lock">VERROUILLAGE AE/AF</string>
     <string name="processing_panorama_u2026">Traitement du panorama…</string>
     <string name="auto">Auto</string>
     <string name="night_2">Nuit %1$s%%</string>
-    <string name="brightness">Luminosité</string>
-    <string name="shadows">Ombres</string>
-    <string name="warmth">Chaleur</string>
 </resources>

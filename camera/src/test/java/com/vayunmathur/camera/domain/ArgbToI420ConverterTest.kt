@@ -6,6 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import com.vayunmathur.camera.platform.MotionPhotoEncoder
 
 /**
  * Known-frame checks for the Motion Photo ARGB → YUV 4:2:0 conversion: colour order, BT.601

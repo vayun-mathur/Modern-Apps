@@ -8,7 +8,6 @@
     <string name="settings_location">位置</string>
     <string name="settings_location_description">在照片元数据中保存位置</string>
     <string name="settings_video_codec">视频编解码器</string>
-    <string name="settings_video_codec_label">视频编解码器</string>
     <string name="codec_avc_label">H.264 / AVC</string>
     <string name="codec_avc_description">兼容性最佳</string>
     <string name="codec_hevc_label">H.265 / HEVC</string>
@@ -19,18 +18,13 @@
     <string name="open_url">打开网址</string>
     <string name="no_app_to_open_url">没有应用可以打开此链接</string>
     <string name="copy_text">复制</string>
-    <string name="blur">模糊</string>
     <string name="not_available">不适用</string>
     <string name="burst_count">连拍 <xliff:g id="count" example="12">%1$d</xliff:g> 张</string>
     <string name="ae_af_lock">自动曝光/自动对焦锁定</string>
     <string name="processing_panorama_u2026">正在处理全景…</string>
     <string name="auto">自动</string>
     <string name="night_2">夜景 %1$s%%</string>
-    <string name="brightness">亮度</string>
-    <string name="shadows">阴影</string>
-    <string name="warmth">暖度</string>
     <string name="settings_audio_source">音频输入源</string>
-    <string name="settings_audio_source_label">音频输入源</string>
     <string name="audio_source_camcorder_label">摄像机</string>
     <string name="audio_source_camcorder_description">默认，针对视频优化</string>
     <string name="audio_source_mic_label">麦克风</string>
@@ -42,11 +36,6 @@
     <string name="settings_mirror_front">自拍镜像</string>
     <string name="settings_mirror_front_description">镜像前置摄像头预览和已保存的自拍照</string>
     <string name="qr_scanning_paused">二维码扫描已暂停</string>
-    <string name="lens_ultrawide">超广角</string>
-    <string name="lens_wide">1×</string>
-    <string name="lens_tele">长焦</string>
-    <string name="lens_mono">单色</string>
-    <string name="lens_front">前置</string>
     <string name="lens_picker_description">相机镜头</string>
     <string name="settings_save_location">保存位置</string>
     <string name="settings_save_location_default">DCIM/Camera</string>

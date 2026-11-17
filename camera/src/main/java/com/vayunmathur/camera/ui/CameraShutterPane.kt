@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.vayunmathur.camera.R
-import com.vayunmathur.camera.util.CameraMode
+import com.vayunmathur.camera.platform.CameraMode
 
 @Composable
 internal fun CameraShutterPane(

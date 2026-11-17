@@ -9,7 +9,6 @@
     <string name="settings_mirror_front">عكس السيلفي</string>
     <string name="settings_mirror_front_description">عكس معاينة الكاميرا الأمامية والسيلفيات المحفوظة</string>
     <string name="settings_video_codec">ترميز الفيديو</string>
-    <string name="settings_video_codec_label">ترميز الفيديو</string>
     <string name="codec_avc_label">H.264 / AVC</string>
     <string name="codec_avc_description">الأكثر توافقًا</string>
     <string name="codec_hevc_label">H.265 / HEVC</string>
@@ -17,7 +16,6 @@
     <string name="codec_av1_label">AV1</string>
     <string name="codec_av1_description">الأكثر كفاءة</string>
     <string name="settings_audio_source">مصدر إدخال الصوت</string>
-    <string name="settings_audio_source_label">مصدر إدخال الصوت</string>
     <string name="audio_source_camcorder_label">كاميرا الفيديو</string>
     <string name="audio_source_camcorder_description">الافتراضي، مُضَبَّط للفيديو</string>
     <string name="audio_source_mic_label">ميكروفون</string>
@@ -31,18 +29,12 @@
     <string name="no_app_to_open_url">لا تطبيق يمكنه فتح هذا الرابط</string>
     <string name="copy_text">نسخ</string>
     <string name="qr_scanning_paused">مسح الـ QR متوقف</string>
-    <string name="blur">الضبابية</string>
     <string name="not_available">غير متوفر</string>
     <string name="burst_count"><xliff:g id="count" example="12">%1$d</xliff:g> من اللقطة المتتابعة</string>
     <string name="ae_af_lock">تثبيت AE/AF</string>
     <string name="processing_panorama_u2026">جارٍ معالجة البانورامة…</string>
     <string name="auto">تلقائي</string>
     <string name="night_2">ليلي %1$s%%</string>
-    <string name="brightness">السطوع</string>
-    <string name="shadows">الظلال</string>
-    <string name="warmth">الدفء</string>
-    <string name="lens_mono">مونو</string>
-    <string name="lens_front">أمامي</string>
     <string name="lens_picker_description">عدسة الكاميرا</string>
     <string name="settings_save_location">حفظ الموقع</string>
     <string name="settings_save_location_choose">اختيار مجلد</string>
@@ -58,13 +50,18 @@
     <string name="mode_timelapse">تصوير متسارع</string>
     <string name="add_esim">إضافة eSIM</string>
     <string name="no_app_to_add_esim">لا تطبيق يمكنه إضافة هذه eSIM</string>
-    <string name="lens_wide">1x</string>
     <string name="settings_save_location_default">DCIM/Camera</string>
     <string name="settings_noise_reduction">تقليل التشويش</string>
     <string name="settings_noise_reduction_description">تخفيف التشويش في الصور ومقاطع الفيديو (إيقاف التشغيل للتفاصيل الخام)</string>
     <string name="settings_edge_sharpening_description">زِد حدّة الحواف في الصور ومقاطع الفيديو (إيقاف التشغيل لمظهر طبيعي)</string>
-    <string name="motion_duration_1s">%1$d ثانية</string>
-    <string name="motion_duration_ns">%1$d ثواني</string>
+    <plurals name="motion_duration">
+        <item quantity="zero">%1$d ثانية</item>
+        <item quantity="one">%1$d ثانية</item>
+        <item quantity="two">%1$d ثانيتان</item>
+        <item quantity="few">%1$d ثوانٍ</item>
+        <item quantity="many">%1$d ثواني</item>
+        <item quantity="other">%1$d ثواني</item>
+    </plurals>
     <string name="settings_edge_sharpening">زيادة حدّة الحواف</string>
     <string name="settings_motion_duration">طول الصورة المتحركة</string>
     <string name="settings_aspect_ratio">نسبة الأبعاد</string>

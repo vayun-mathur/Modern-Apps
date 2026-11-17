@@ -6,10 +6,10 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.camera.util.AspectRatioOption
-import com.vayunmathur.camera.util.CameraMode
-import com.vayunmathur.camera.util.FlashMode
-import com.vayunmathur.camera.util.TimerDuration
+import com.vayunmathur.camera.platform.AspectRatioOption
+import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.FlashMode
+import com.vayunmathur.camera.platform.TimerDuration
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.Test

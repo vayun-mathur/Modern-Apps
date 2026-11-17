@@ -10,9 +10,9 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.camera.util.AudioInputSource
-import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.MotionPhotoDuration
+import com.vayunmathur.camera.platform.AudioInputSource
+import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.MotionPhotoDuration
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import kotlin.test.assertEquals

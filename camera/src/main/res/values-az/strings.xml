@@ -10,7 +10,6 @@
     <string name="settings_mirror_front">Selfi güzgü əksi</string>
     <string name="settings_mirror_front_description">Ön kamera önizləməsini və yadda saxlanılan selfiləri güzgü effekti ilə əks etdirin</string>
     <string name="settings_video_codec">Video kodek</string>
-    <string name="settings_video_codec_label">Video kodek</string>
     <string name="codec_avc_label">H.264 / AVC</string>
     <string name="codec_avc_description">Ən uyğun</string>
     <string name="codec_hevc_label">H.265 / HEVC</string>
@@ -18,7 +17,6 @@
     <string name="codec_av1_label">AV1</string>
     <string name="codec_av1_description">Ən səmərəli</string>
     <string name="settings_audio_source">Audio giriş mənbəyi</string>
-    <string name="settings_audio_source_label">Audio giriş mənbəyi</string>
     <string name="audio_source_camcorder_label">Video kamera</string>
     <string name="audio_source_camcorder_description">Standart, video üçün tənzimlənib</string>
     <string name="audio_source_mic_label">Mikrofon</string>
@@ -32,21 +30,12 @@
     <string name="no_app_to_open_url">Heç bir tətbiq bu linki aça bilmir</string>
     <string name="copy_text">Kopyalayın</string>
     <string name="qr_scanning_paused">QR skaneri dayandırıldı</string>
-    <string name="blur">Bulanıqlıq</string>
     <string name="not_available">N/A</string>
     <string name="burst_count">Partlayış <xliff:g id="count" example="12">%1$d</xliff:g></string>
     <string name="ae_af_lock">AE/AF kilidi</string>
     <string name="processing_panorama_u2026">Panorama emal edilir…</string>
     <string name="auto">Avto</string>
     <string name="night_2">Gecə %1$s%%</string>
-    <string name="brightness">Parlaqlıq</string>
-    <string name="shadows">Kölgələr</string>
-    <string name="warmth">İstilik</string>
-    <string name="lens_ultrawide">UW</string>
-    <string name="lens_wide">1x</string>
-    <string name="lens_tele">Tele</string>
-    <string name="lens_mono">Mono</string>
-    <string name="lens_front">Ön</string>
     <string name="lens_picker_description">Kamera obyektivi</string>
     <string name="settings_save_location">Məkanı yadda saxla</string>
     <string name="settings_save_location_default">DCIM/Kamera</string>

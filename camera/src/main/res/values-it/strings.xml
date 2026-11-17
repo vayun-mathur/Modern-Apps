@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Fotocamera</string>
     <string name="night">Notte</string>
     <string name="open_gallery">Galleria</string>
@@ -8,30 +8,26 @@
     <string name="settings_location">Posizione</string>
     <string name="settings_location_description">Salva la posizione nei metadata della foto</string>
     <string name="settings_video_codec">Codec video</string>
-    <string name="settings_video_codec_label">Codec video</string>
     <string name="codec_avc_label">H.264 / AVC</string>
     <string name="codec_avc_description">Più compatibile</string>
     <string name="codec_hevc_label">H.265 / HEVC</string>
     <string name="codec_hevc_description">Più efficiente</string>
-    <string name="codec_av1_label">AV1</string>
+    <!-- AV1 is the AOMedia Video 1 codec name, not a typo. -->
+    <string name="codec_av1_label" tools:ignore="Typos">AV1</string>
     <string name="codec_av1_description">Il più efficiente</string>
     <string name="qr_result">Codice QR</string>
     <string name="open_url">Apri URL</string>
     <string name="no_app_to_open_url">Nessuna app può aprire questo collegamento</string>
     <string name="copy_text">Copia</string>
-    <string name="blur">Sfocatura</string>
     <string name="not_available">N/D</string>
     <string name="burst_count">Raffica <xliff:g id="count" example="12">%1$d</xliff:g></string>
     <string name="ae_af_lock">BLOCCO AE/AF</string>
     <string name="processing_panorama_u2026">Elaborazione panorama…</string>
     <string name="auto">Auto</string>
     <string name="night_2">Notte %1$s%%</string>
-    <string name="brightness">Luminosità</string>
-    <string name="shadows">Ombre</string>
     <string name="settings_mirror_front">Rifletti selfie</string>
     <string name="settings_mirror_front_description">Rifletti l\'anteprima della fotocamera frontale e i selfie salvati</string>
     <string name="settings_audio_source">Sorgente input audio</string>
-    <string name="settings_audio_source_label">Sorgente input audio</string>
     <string name="audio_source_camcorder_label">Camcorder</string>
     <string name="audio_source_camcorder_description">Predefinito, regolato per i video</string>
     <string name="audio_source_mic_label">Microfono</string>

@@ -5,14 +5,15 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.camera.Route
-import com.vayunmathur.camera.util.CameraMode
-import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.setQrResult
+import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.setQrResult
 import com.vayunmathur.library.util.NavBackStack
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.vayunmathur.camera.platform.BokehAnalyzer
 
 /** Cov-c2: CameraScreen in every mode and with live capture state overlays. */
 @RunWith(AndroidJUnit4::class)

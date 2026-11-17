@@ -13,22 +13,23 @@ import androidx.compose.ui.test.hasText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.camera.Route
-import com.vayunmathur.camera.util.AspectRatioOption
-import com.vayunmathur.camera.util.CameraMode
-import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.FlashMode
-import com.vayunmathur.camera.util.enableTorch
-import com.vayunmathur.camera.util.setAspectRatio
-import com.vayunmathur.camera.util.setFlashMode
-import com.vayunmathur.camera.util.setMirrorFront
-import com.vayunmathur.camera.util.setSaveTreeUri
-import com.vayunmathur.camera.util.setShadows
-import com.vayunmathur.camera.util.setWarmth
+import com.vayunmathur.camera.platform.AspectRatioOption
+import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.FlashMode
+import com.vayunmathur.camera.platform.enableTorch
+import com.vayunmathur.camera.data.setAspectRatio
+import com.vayunmathur.camera.data.setFlashMode
+import com.vayunmathur.camera.data.setMirrorFront
+import com.vayunmathur.camera.data.setSaveTreeUri
+import com.vayunmathur.camera.data.setShadows
+import com.vayunmathur.camera.data.setWarmth
 import com.vayunmathur.library.util.NavBackStack
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.vayunmathur.camera.platform.BokehAnalyzer
 
 /** Cov-w3 wave 3: camera screen in every mode with rich state, and settings interactions. */
 @RunWith(AndroidJUnit4::class)

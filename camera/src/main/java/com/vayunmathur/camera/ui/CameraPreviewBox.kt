@@ -38,22 +38,22 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.camera.util.BOKEH_SHADER
-import com.vayunmathur.camera.util.CameraMode
-import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.bokehBlurScale
-import com.vayunmathur.camera.util.buildColorAdjustmentMatrix
-import com.vayunmathur.camera.util.lockFocusAndMetering
-import com.vayunmathur.camera.util.onViewfinderZoomRatio
-import com.vayunmathur.camera.util.setBlurStrength
-import com.vayunmathur.camera.util.setExposureCompensation
-import com.vayunmathur.camera.util.setExposureTimeIndex
-import com.vayunmathur.camera.util.setManualIsoIndex
-import com.vayunmathur.camera.util.setQrResult
-import com.vayunmathur.camera.util.setShadows
-import com.vayunmathur.camera.util.setWarmth
-import com.vayunmathur.camera.util.setZoomRatio
-import com.vayunmathur.camera.util.toggleNightModeOverride
+import com.vayunmathur.camera.platform.BOKEH_SHADER
+import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.bokehBlurScale
+import com.vayunmathur.camera.platform.buildColorAdjustmentMatrix
+import com.vayunmathur.camera.platform.lockFocusAndMetering
+import com.vayunmathur.camera.platform.onViewfinderZoomRatio
+import com.vayunmathur.camera.data.setBlurStrength
+import com.vayunmathur.camera.data.setExposureCompensation
+import com.vayunmathur.camera.platform.setExposureTimeIndex
+import com.vayunmathur.camera.platform.setManualIsoIndex
+import com.vayunmathur.camera.platform.setQrResult
+import com.vayunmathur.camera.data.setShadows
+import com.vayunmathur.camera.data.setWarmth
+import com.vayunmathur.camera.platform.setZoomRatio
+import com.vayunmathur.camera.platform.toggleNightModeOverride
 
 /** Maps the CameraX selector facing int to the pure lens-facing model. */
 private fun currentLensFacing(selectorInt: Int): com.vayunmathur.camera.domain.LensFacing =
@@ -245,7 +245,7 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
         levelEnabled = state.levelEnabled,
         isPhotoType = state.isPhotoType,
         roll = state.roll,
-        previewSize = previewSize,
+        modifier = previewSize,
         timerCountdown = state.timerCountdown,
         longExposureProgress = state.longExposureProgress,
         longExposureRemaining = state.longExposureRemaining,

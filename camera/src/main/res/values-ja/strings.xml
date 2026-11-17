@@ -8,7 +8,6 @@
     <string name="settings_location">場所</string>
     <string name="settings_location_description">写真のメタデータ内に場所を保存</string>
     <string name="settings_video_codec">ビデオコーデック</string>
-    <string name="settings_video_codec_label">ビデオコーデック</string>
     <string name="codec_avc_label">H.264 / AVC</string>
     <string name="codec_avc_description">最も互換性が高い</string>
     <string name="codec_hevc_label">H.265 / HEVC</string>
@@ -19,14 +18,10 @@
     <string name="open_url">URLを開く</string>
     <string name="no_app_to_open_url">このリンクを開けるアプリがありません</string>
     <string name="copy_text">コピー</string>
-    <string name="blur">ぼかし</string>
     <string name="not_available">利用不可</string>
     <string name="burst_count">連写 <xliff:g id="count" example="12">%1$d</xliff:g></string>
     <string name="ae_af_lock">AE/AFロック</string>
     <string name="processing_panorama_u2026">パノラマを処理中…</string>
     <string name="auto">自動</string>
     <string name="night_2">夜景モード %1$s%%</string>
-    <string name="brightness">明るさ</string>
-    <string name="shadows">影</string>
-    <string name="warmth">暖かさ</string>
 </resources>

@@ -17,9 +17,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.camera.domain.LensFacing
 import com.vayunmathur.camera.domain.LensType
 import com.vayunmathur.camera.domain.PhysicalLens
-import com.vayunmathur.camera.util.CameraMode
-import com.vayunmathur.camera.util.GuideDot
-import com.vayunmathur.camera.util.GuideDotState
+import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.GuideDot
+import com.vayunmathur.camera.platform.GuideDotState
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.Rule
@@ -157,7 +157,7 @@ class CameraCovC2ComposeTest {
             Box(Modifier.fillMaxSize()) {
                 CameraPreviewOverlays(
                     gridEnabled = true, levelEnabled = true, isPhotoType = true, roll = 15f,
-                    previewSize = Modifier.fillMaxSize(), timerCountdown = 3,
+                    modifier = Modifier.fillMaxSize(), timerCountdown = 3,
                     longExposureProgress = 0.5f, longExposureRemaining = "2s",
                     lowLightDetected = true, nightExtAvailable = true, nightModeActive = true,
                     onToggleNightOverride = {}, iconRotation = 0f, extensionStrength = 50,

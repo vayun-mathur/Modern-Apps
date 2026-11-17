@@ -22,7 +22,7 @@ internal fun BoxScope.CameraPreviewOverlays(
     levelEnabled: Boolean,
     isPhotoType: Boolean,
     roll: Float,
-    previewSize: Modifier,
+    modifier: Modifier,
     timerCountdown: Int,
     longExposureProgress: Float,
     longExposureRemaining: String,
@@ -37,14 +37,14 @@ internal fun BoxScope.CameraPreviewOverlays(
 ) {
     if (gridEnabled) {
         GridOverlay(
-            modifier = previewSize
+            modifier = modifier
         )
     }
 
     if (levelEnabled && isPhotoType) {
         LevelOverlay(
             roll = roll,
-            modifier = previewSize
+            modifier = modifier
         )
     }
 

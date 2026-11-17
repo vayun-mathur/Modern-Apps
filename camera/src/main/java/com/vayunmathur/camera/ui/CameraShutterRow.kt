@@ -29,7 +29,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
-import com.vayunmathur.camera.util.CameraMode
+import com.vayunmathur.camera.platform.CameraMode
 import com.vayunmathur.library.ui.IconCamera
 import com.vayunmathur.library.ui.IconFlipCamera
 import com.vayunmathur.library.ui.IconPause

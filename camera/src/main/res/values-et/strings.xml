@@ -8,7 +8,6 @@
     <string name="settings_location">Asukoht</string>
     <string name="settings_location_description">Salvesta asukoha koordinaadid foto metateabesse</string>
     <string name="settings_video_codec">Videokoodek</string>
-    <string name="settings_video_codec_label">Videokoodek</string>
     <string name="codec_avc_label">H.264 / AVC</string>
     <string name="codec_avc_description">Parima ühilduvusega</string>
     <string name="codec_hevc_label">H.265 / HEVC</string>
@@ -19,18 +18,13 @@
     <string name="open_url">Ava võrguaadress</string>
     <string name="no_app_to_open_url">Ükski rakendus ei oska seda linki avada</string>
     <string name="copy_text">Kopeeri</string>
-    <string name="blur">Hägusta</string>
     <string name="not_available">pole saadaval</string>
     <string name="burst_count">Sarivõte: <xliff:g id="count" example="12">%1$d</xliff:g></string>
     <string name="ae_af_lock">AE/AF LUKUSTUS</string>
     <string name="processing_panorama_u2026">Töötlen panoraamfotot…</string>
     <string name="auto">Automaatne</string>
     <string name="night_2">Öö %1$s%%</string>
-    <string name="brightness">Eredus</string>
-    <string name="shadows">Varjud</string>
-    <string name="warmth">Värvi soojus</string>
     <string name="settings_audio_source">Helisisend</string>
-    <string name="settings_audio_source_label">Helisisend</string>
     <string name="audio_source_camcorder_label">Videokaamera</string>
     <string name="audio_source_camcorder_description">Vaikimisi, seadistatud video jaoks</string>
     <string name="audio_source_mic_label">Mikrofon</string>
@@ -42,12 +36,7 @@
     <string name="settings_mirror_front">Peegepilt selfie jaoks</string>
     <string name="settings_mirror_front_description">Peegelda esikaamera pilti selfie jaoks nii eelvaates, kui salvestatud failides</string>
     <string name="qr_scanning_paused">QR-koodi skaneerimine on peatatud</string>
-    <string name="lens_ultrawide">Ülilai</string>
-    <string name="lens_wide">1x</string>
-    <string name="lens_tele">Tele</string>
-    <string name="lens_mono">Mustvalge</string>
     <string name="lens_picker_description">Kaamera</string>
-    <string name="lens_front">Esikaamera</string>
     <string name="settings_save_location">Salvesta asukoht</string>
     <string name="settings_save_location_default">DCIM/Camera</string>
     <string name="settings_save_location_choose">Vali kaust</string>
@@ -68,8 +57,10 @@
     <string name="settings_edge_sharpening">Äärte teravdamine</string>
     <string name="settings_edge_sharpening_description">Teravda fotode ja videote servi (lülita välja, kui soovid loomulikku välimust)</string>
     <string name="settings_motion_duration">Foto+Video tüüpi sisu esituse kestus</string>
-    <string name="motion_duration_1s">%1$d sekund</string>
-    <string name="motion_duration_ns">%1$d sekundit</string>
+    <plurals name="motion_duration">
+        <item quantity="one">%1$d sekund</item>
+        <item quantity="other">%1$d sekundit</item>
+    </plurals>
     <string name="create_passkey">Lisa pääsuvõti</string>
     <string name="sign_in_with_passkey">Logi sisse pääsuvõtmega</string>
     <string name="use_passkey">Kasuta pääsuvõtit</string>

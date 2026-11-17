@@ -246,7 +246,7 @@ mod jni_bindings {
     use jni::{Env, EnvUnowned};
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_newSession<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_newSession<'l>(
         _env: EnvUnowned<'l>,
         _class: JClass<'l>,
         sphere: jboolean,
@@ -260,7 +260,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_addFrame<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_addFrame<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         handle: jlong,
@@ -288,7 +288,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_stitch<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_stitch<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         handle: jlong,
@@ -300,7 +300,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_merge<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_merge<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         handle: jlong,
@@ -312,7 +312,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_estimate<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_estimate<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         handle: jlong,
@@ -349,7 +349,7 @@ mod jni_bindings {
     // --- Lossless night path: RGBA frames without double JPEG ---
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_newNightSession<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_newNightSession<'l>(
         _env: EnvUnowned<'l>,
         _class: JClass<'l>,
     ) -> jlong {
@@ -359,7 +359,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_addNightRgbaFrame<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_addNightRgbaFrame<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         handle: jlong,
@@ -390,7 +390,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_mergeNight<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_mergeNight<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         handle: jlong,
@@ -413,7 +413,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_freeNight<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_freeNight<'l>(
         _env: EnvUnowned<'l>,
         _class: JClass<'l>,
         handle: jlong,
@@ -423,7 +423,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_free<'l>(
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_free<'l>(
         _env: EnvUnowned<'l>,
         _class: JClass<'l>,
         handle: jlong,

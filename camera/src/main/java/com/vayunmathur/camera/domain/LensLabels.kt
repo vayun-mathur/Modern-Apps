@@ -2,6 +2,7 @@ package com.vayunmathur.camera.domain
 
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.vayunmathur.camera.platform.formatZoomLabel
 
 /**
  * Aperture/Pixel-style zoom-factor labels for the physical-lens picker.

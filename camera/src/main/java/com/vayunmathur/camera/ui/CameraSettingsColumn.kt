@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.domain.isFidoDeepLink
 import com.vayunmathur.camera.domain.parseWifiQr
-import com.vayunmathur.camera.util.CameraMode
+import com.vayunmathur.camera.platform.CameraMode
 import com.vayunmathur.library.ui.IconBlur
 import com.vayunmathur.library.ui.IconContrast
 import com.vayunmathur.library.ui.IconIso

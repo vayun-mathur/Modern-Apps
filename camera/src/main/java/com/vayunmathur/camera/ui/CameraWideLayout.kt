@@ -20,8 +20,8 @@ import androidx.compose.ui.Modifier
 fun CameraWideLayout(
     shutter: @Composable () -> Unit,
     modes: @Composable () -> Unit,
-    sideBySide: Boolean = true,
     modifier: Modifier = Modifier,
+    sideBySide: Boolean = true,
 ) {
     if (sideBySide) {
         Row(modifier.fillMaxWidth()) {

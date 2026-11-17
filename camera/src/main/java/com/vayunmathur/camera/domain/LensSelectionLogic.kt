@@ -2,6 +2,10 @@ package com.vayunmathur.camera.domain
 
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.vayunmathur.camera.platform.formatZoomLabel
+import com.vayunmathur.camera.platform.highestFpsRange
+import com.vayunmathur.camera.platform.readManualControlRanges
+import com.vayunmathur.camera.platform.updateZoomLevels
 
 /**
  * Pure lens-selection logic with no Android/CameraX dependency, so it stays

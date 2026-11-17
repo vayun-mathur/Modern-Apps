@@ -24,9 +24,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.camera.R
-import com.vayunmathur.camera.util.CameraMode
-import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.formatZoomLabel
+import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.formatZoomLabel
 import com.vayunmathur.library.ui.IconBlur
 import com.vayunmathur.library.ui.IconContrast
 import com.vayunmathur.library.ui.IconIso

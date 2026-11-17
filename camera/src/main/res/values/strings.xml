@@ -1,4 +1,4 @@
-<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" xmlns:tools="http://schemas.android.com/tools">
     <!-- App name displayed in launcher -->
     <string name="app_name">Camera</string>
 
@@ -65,17 +65,19 @@
     <!-- Video codec description: more efficient than AVC -->
     <string name="codec_hevc_description">More efficient</string>
     <!-- Video codec option label: AV1 -->
-    <string name="codec_av1_label">AV1</string>
+    <!-- AV1 is the AOMedia Video 1 codec name, not a typo. -->
+    <string name="codec_av1_label" tools:ignore="Typos">AV1</string>
     <!-- Video codec description: most efficient but may not be supported everywhere -->
     <string name="codec_av1_description">Most efficient</string>
 
     <!-- Motion-Photo duration settings (SettingsPage, issue #712) -->
     <!-- SettingsPage: section header for motion-photo clip-length selection -->
     <string name="settings_motion_duration">Motion photo length</string>
-    <!-- Motion-Photo duration: 1-second clip. %1$d = seconds -->
-    <string name="motion_duration_1s">%1$d second</string>
-    <!-- Motion-Photo duration: multi-second clip. %1$d = seconds -->
-    <string name="motion_duration_ns">%1$d seconds</string>
+    <!-- Motion-Photo duration: clip length in seconds. %1$d = seconds -->
+    <plurals name="motion_duration">
+        <item quantity="one">%1$d second</item>
+        <item quantity="other">%1$d seconds</item>
+    </plurals>
 
     <!-- Audio input source settings (SettingsPage): mic source used for video recordings -->
     <!-- SettingsPage: section header for audio input source selection -->
@@ -133,7 +135,6 @@
 
     <!-- Pro / manual controls -->
     <!-- CameraScreen: slider label for portrait blur/bokeh strength -->
-    <string name="blur">Blur</string>
     <!-- Shown when ISO values not available. Abbreviation for Not Available -->
     <string name="not_available">N/A</string>
     <!-- ShutterRow overlay: counts burst shots taken while holding shutter. %1$d = shot count -->
@@ -150,21 +151,13 @@
     <!-- Generic auto option for ISO / exposure / flash etc. Noun/adjective -->
     <string name="auto">Auto</string>
     <string name="night_2">Night %1$s%%</string>
-    <string name="brightness">Brightness</string>
-    <string name="shadows">Shadows</string>
-    <string name="warmth">Warmth</string>
 
     <!-- LensBar: physical-lens picker above the zoom bar -->
     <!-- LensBar: label for the ultra-wide (0.5x) physical lens. Short pill label -->
-    <string name="lens_ultrawide">UW</string>
     <!-- LensBar: label for the default wide (1x) physical lens. Short pill label -->
-    <string name="lens_wide">1x</string>
     <!-- LensBar: label for the telephoto physical lens. Short pill label -->
-    <string name="lens_tele">Tele</string>
     <!-- LensBar: label for the monochrome physical lens. Short pill label -->
-    <string name="lens_mono">Mono</string>
     <!-- LensBar: label for the front-facing lens. Short pill label -->
-    <string name="lens_front">Front</string>
     <!-- LensBar: content description for the physical-lens picker row -->
     <string name="lens_picker_description">Camera lens</string>
 

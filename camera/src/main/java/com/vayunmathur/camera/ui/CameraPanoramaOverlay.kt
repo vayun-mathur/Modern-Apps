@@ -30,8 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.camera.R
-import com.vayunmathur.camera.util.GuideDot
-import com.vayunmathur.camera.util.GuideDotState
+import com.vayunmathur.camera.platform.GuideDot
+import com.vayunmathur.camera.platform.GuideDotState
 
 @Composable
 internal fun PanoramaOverlay(

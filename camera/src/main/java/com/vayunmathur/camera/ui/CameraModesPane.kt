@@ -1,7 +1,7 @@
 package com.vayunmathur.camera.ui
 
 import androidx.compose.runtime.Composable
-import com.vayunmathur.camera.util.CameraMode
+import com.vayunmathur.camera.platform.CameraMode
 
 @Composable
 internal fun CameraModesPane(

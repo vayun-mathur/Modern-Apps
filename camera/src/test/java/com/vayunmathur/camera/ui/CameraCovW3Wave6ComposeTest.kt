@@ -9,10 +9,10 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.camera.util.CameraMode
-import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.GuideDot
-import com.vayunmathur.camera.util.GuideDotState
+import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.GuideDot
+import com.vayunmathur.camera.platform.GuideDotState
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -77,7 +77,7 @@ class CameraCovW3Wave6ComposeTest {
             selectedLens = null,
             availableLenses = emptyList(),
             hasFlashUnit = true,
-            flashMode = com.vayunmathur.camera.util.FlashMode.AUTO,
+            flashMode = com.vayunmathur.camera.platform.FlashMode.AUTO,
             torchEnabled = false,
             videoCodec = viewModel.videoCodecMutable.value,
             audioInputSource = viewModel.audioInputSourceMutable.value,
@@ -85,10 +85,10 @@ class CameraCovW3Wave6ComposeTest {
             recordingDuration = 12,
             timerCountdown = 0,
             qrResult = if (mode == CameraMode.PHOTO) "covw3-qr" else null,
-            aspectRatio = com.vayunmathur.camera.util.AspectRatioOption.RATIO_4_3,
+            aspectRatio = com.vayunmathur.camera.platform.AspectRatioOption.RATIO_4_3,
             zoomRatio = 1.5f,
             mirrorFront = true,
-            timerDuration = com.vayunmathur.camera.util.TimerDuration.NONE,
+            timerDuration = com.vayunmathur.camera.platform.TimerDuration.NONE,
             isCapturing = false,
             burstActive = false,
             burstCount = 0,

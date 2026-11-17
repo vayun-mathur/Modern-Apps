@@ -18,15 +18,15 @@ import androidx.compose.ui.test.hasText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.camera.Route
-import com.vayunmathur.camera.util.CameraMode
-import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.GuideDot
-import com.vayunmathur.camera.util.GuideDotState
-import com.vayunmathur.camera.util.setSaveTreeUri
-import com.vayunmathur.camera.util.setShadows
-import com.vayunmathur.camera.util.setWarmth
-import com.vayunmathur.camera.util.setVideoCodec
-import com.vayunmathur.camera.util.VideoCodec
+import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.GuideDot
+import com.vayunmathur.camera.platform.GuideDotState
+import com.vayunmathur.camera.data.setSaveTreeUri
+import com.vayunmathur.camera.data.setShadows
+import com.vayunmathur.camera.data.setWarmth
+import com.vayunmathur.camera.data.setVideoCodec
+import com.vayunmathur.camera.platform.VideoCodec
 import com.vayunmathur.library.util.NavBackStack
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -46,14 +46,14 @@ class CameraCovX4ComposeTest {
         cameraMode = mode,
         lensFacing = androidx.camera.core.CameraSelector.LENS_FACING_BACK,
         selectedLens = null, availableLenses = emptyList(), hasFlashUnit = true,
-        flashMode = com.vayunmathur.camera.util.FlashMode.AUTO, torchEnabled = false,
+        flashMode = com.vayunmathur.camera.platform.FlashMode.AUTO, torchEnabled = false,
         videoCodec = viewModel.videoCodecMutable.value,
         audioInputSource = viewModel.audioInputSourceMutable.value,
         isRecording = mode == CameraMode.VIDEO, recordingDuration = 12, timerCountdown = 0,
         qrResult = null,
-        aspectRatio = com.vayunmathur.camera.util.AspectRatioOption.RATIO_4_3,
+        aspectRatio = com.vayunmathur.camera.platform.AspectRatioOption.RATIO_4_3,
         zoomRatio = 1.5f, mirrorFront = true,
-        timerDuration = com.vayunmathur.camera.util.TimerDuration.NONE,
+        timerDuration = com.vayunmathur.camera.platform.TimerDuration.NONE,
         isCapturing = false, burstActive = false, burstCount = 0, focusLocked = false,
         recordingPaused = false, micMuted = false, videoSnapshotSupported = false,
         lastCaptureUri = null, gridEnabled = true, levelEnabled = true, roll = 3f,
@@ -167,7 +167,7 @@ class CameraCovX4ComposeTest {
         rule.onAllNodesWithText("Reset", substring = true)[0].performClick()
         rule.waitForIdle()
         assertEquals(
-            com.vayunmathur.camera.util.SaveTarget.MediaStoreDefault,
+            com.vayunmathur.camera.data.SaveTarget.MediaStoreDefault,
             viewModel.saveTargetMutable.value,
         )
     }

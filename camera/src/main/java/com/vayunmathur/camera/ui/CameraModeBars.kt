@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.camera.R
-import com.vayunmathur.camera.util.CameraMode
+import com.vayunmathur.camera.platform.CameraMode
 
 @Composable
 internal fun ModeSelector(

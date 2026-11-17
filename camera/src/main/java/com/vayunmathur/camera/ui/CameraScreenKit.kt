@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import com.vayunmathur.camera.util.CameraMode
+import com.vayunmathur.camera.platform.CameraMode
 
 /** Which settings pane is open below the preview. */
 internal enum class CameraSetting {
