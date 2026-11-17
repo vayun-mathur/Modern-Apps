@@ -23,7 +23,6 @@
     <string name="ra_dec">RA: <xliff:g id="ra" example="5.5">%1$s</xliff:g>° Dec: <xliff:g id="dec" example="-8.2">%2$s</xliff:g>°</string>
     <string name="rise_1">Tõus: <xliff:g id="time" example="18:45">%1$s</xliff:g> ?:</string>
     <string name="set_1">Loojang: <xliff:g id="time" example="04:12">%1$s</xliff:g> ?:</string>
-    <string name="search_1">Otsi</string>
     <string name="search_stars_planets_messier">Otsi tähti, planeete ja Messier\' kataloogist</string>
     <string name="constellations">Tähekogud</string>
     <string name="planet_jupiter">Jupiter</string>
@@ -40,7 +39,6 @@
     <string name="never_rises_at_this_location">Selles asukohas ei tõuse iialgi</string>
     <string name="off">Pole kasutusel</string>
     <string name="lines_only">Vaid jooned</string>
-    <string name="show_below_horizon_all_sky">Näita taevast ka horisondi all (kogu taevast)</string>
     <string name="lines_art">Jooned + graafika</string>
     <string name="notes_true_north_correction_via_geomagne">Märkus: Tegeliku põhjasuuna korrigeerimine geomagneetilise deklinatsiooni abil. AR kasutab CameraX-i ja pöördevektori ühendamist.</string>
     <string name="catalog_stars_constellations_dso">Kataloog: <xliff:g id="star_count" example="5000">%1$s</xliff:g> tähte, <xliff:g id="constellation_count" example="88">%2$s</xliff:g> tähekogu, <xliff:g id="dso_count" example="110">%3$s</xliff:g> Messier\' kataloogi objekti.</string>

@@ -18,7 +18,6 @@
     <string name="rise_1">Lever : <xliff:g id="time" example="18:45">%1$s</xliff:g> ?:</string>
     <string name="set_1">Coucher : <xliff:g id="time" example="04:12">%1$s</xliff:g> ?:</string>
     <string name="ra_h_h">AD h : <xliff:g id="hours" example="5.5">%1$s</xliff:g> h</string>
-    <string name="search_1">Rechercher</string>
     <string name="search_stars_planets_messier">Rechercher des étoiles, des planètes ou des objets Messier</string>
     <string name="magnitude_limit">Magnitude limite : <xliff:g id="limit" example="4.5">%1$s</xliff:g></string>
     <string name="longitude_deg">Longitude (°)</string>
@@ -26,7 +25,6 @@
     <string name="catalog_stars_constellations_dso">Catalogue : <xliff:g id="star_count" example="5000">%1$s</xliff:g> étoiles, <xliff:g id="constellation_count" example="88">%2$s</xliff:g> constellations, <xliff:g id="dso_count" example="110">%3$s</xliff:g> objets du ciel profond.</string>
     <string name="constellations">Constellations</string>
     <string name="lines_only">Lignes uniquement</string>
-    <string name="show_below_horizon_all_sky">Afficher sous l’horizon (ciel entier)</string>
     <string name="notes_true_north_correction_via_geomagne">Remarques : correction du nord vrai via la déclinaison géomagnétique. La RA utilise CameraX et la fusion du vecteur de rotation.</string>
     <string name="lines_art">Lignes + illustrations</string>
     <string name="location">Position</string>

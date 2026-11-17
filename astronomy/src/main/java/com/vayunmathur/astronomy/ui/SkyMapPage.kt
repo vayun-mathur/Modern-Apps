@@ -102,93 +102,6 @@ fun SkyMapPage(backStack: NavBackStack<Route>, viewModel: AstronomyViewModel) {
     )
 }
 
-/**
- * The sky map, with no dependency on the ViewModel so it can be rendered from a
- * `@Preview` — see `src/screenshotTest`, which is where the store listing images come from.
- */
-@Composable
-fun SkyMapScreen(
-    backStack: NavBackStack<Route>,
-    state: SkyMapUiState,
-    actions: SkyMapActions,
-    /**
-     * Seed for the screen's own UI-only state (whether the camera AR overlay is up). The
-     * app always takes the default; a preview can set it to capture that mode directly.
-     */
-    initialCameraOn: Boolean = false,
-) {
-    var screenW by remember { mutableFloatStateOf(1080f) }
-    var screenH by remember { mutableFloatStateOf(1920f) }
-    // Camera feed replaces the sky background in place (AR overlay) instead of a
-    // separate page.
-    var cameraOn by remember { mutableStateOf(initialCameraOn) }
-
-    val viewState = remember(state.centerAzRad, state.centerAltRad, state.rotationRad, state.fovDeg, screenW, screenH) {
-        ViewState(state.centerAzRad, state.centerAltRad, state.fovDeg, screenW, screenH, state.rotationRad)
-    }
-
-    Box(
-        Modifier.fillMaxSize()
-            .onSizeChanged { sz -> screenW = sz.width.toFloat(); screenH = sz.height.toFloat() }
-    ) {
-        if (cameraOn) {
-            CameraBackground(Modifier.fillMaxSize()) { cameraOn = false }
-        }
-
-        SkyCanvas(
-            visibleSky = state.visibleSky,
-            viewState = viewState,
-            showConstellationLines = state.constellationMode != ConstellationMode.OFF,
-            showConstellationArt = state.constellationMode == ConstellationMode.LINES_AND_ART,
-            showGrid = state.showGrid,
-            showDeepSky = state.showDeepSky,
-            showPlanets = state.showPlanets,
-            transparentBackground = cameraOn,
-            trajectory = state.trajectory,
-            selectedId = state.selectedObjectId,
-            onPan = { _, _ -> /* disabled – always tracks phone */ },
-            onZoom = { actions.setFov(it) },
-            onTap = { _ -> },
-            onObjectTap = { id -> actions.selectObject(id) },
-            onObjectOpen = { id -> actions.selectObject(id); backStack.add(Route.ObjectDetail(id)) },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        HistoryScrubber(backStack, state, actions)
-
-        if (state.nightMode) {
-            Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0x44FF0000)))
-        }
-
-        CompassCalibrationBanner(
-            accuracy = state.accuracy,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 72.dp, start = 16.dp, end = 16.dp),
-        )
-
-        TopAppBarOverlay(
-            modifier = Modifier.align(Alignment.TopCenter),
-            actions = listOf(
-                OverlayAction(
-                    icon = { IconSearch() },
-                    contentDescription = "Search",
-                    onClick = { backStack.add(Route.Search) },
-                ),
-                OverlayAction(
-                    icon = { if (cameraOn) IconCameraOff() else IconCamera() },
-                    contentDescription = "Camera",
-                    onClick = { cameraOn = !cameraOn },
-                ),
-                OverlayAction(
-                    icon = { IconSettings() },
-                    contentDescription = "Settings",
-                    onClick = { backStack.add(Route.Settings) },
-                ),
-            ),
-        )
-    }
-}
 
 /**
  * Bottom-center time picker sharing its look/behaviour with FindFamily's history
@@ -198,7 +111,7 @@ fun SkyMapScreen(
  */
 @OptIn(ExperimentalTime::class)
 @Composable
-private fun BoxScope.HistoryScrubber(
+internal fun BoxScope.HistoryScrubber(
     backStack: NavBackStack<Route>,
     state: SkyMapUiState,
     actions: SkyMapActions,

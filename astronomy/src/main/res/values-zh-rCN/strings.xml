@@ -20,7 +20,6 @@
     <string name="catalog_stars_constellations_dso">星表：<xliff:g id="star_count" example="5000">%1$s</xliff:g> 颗恒星，<xliff:g id="constellation_count" example="88">%2$s</xliff:g> 个星座，<xliff:g id="dso_count" example="110">%3$s</xliff:g> 个深空天体。</string>
     <string name="planet_sun">太阳</string>
     <string name="mag">星等：<xliff:g id="magnitude" example="1.5">%1$s</xliff:g></string>
-    <string name="show_below_horizon_all_sky">显示地平线以下（整个天空）</string>
     <string name="planet_neptune">海王星</string>
     <string name="ra_dec">赤经：<xliff:g id="ra" example="5.5">%1$s</xliff:g>° 赤纬：<xliff:g id="dec" example="-8.2">%2$s</xliff:g>°</string>
     <string name="show_deep_sky">深空（梅西耶天体）</string>
@@ -30,7 +29,6 @@
     <string name="night_mode">夜间模式（红色）</string>
     <string name="alt_az">高度角：<xliff:g id="altitude" example="45">%1$s</xliff:g>° 方位角：<xliff:g id="azimuth" example="180">%2$s</xliff:g>°</string>
     <string name="rise_1">升起：<xliff:g id="time" example="18:45">%1$s</xliff:g> ?:</string>
-    <string name="search_1">搜索</string>
     <string name="save_location">保存位置</string>
     <string name="constellations">星座</string>
     <string name="coordinate_grid_whole_sphere">坐标网格（整个球体）</string>

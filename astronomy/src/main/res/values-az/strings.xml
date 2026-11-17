@@ -16,7 +16,6 @@
     <string name="rise_1">Çıxış: <xliff:g id="time" example="18:45">%1$s</xliff:g></string>
     <string name="set_1">Təyin et: <xliff:g id="time" example="04:12">%1$s</xliff:g> ?:</string>
     <string name="ra_h_h">RA h: <xliff:g id="hours" example="5.5">%1$s</xliff:g>h</string>
-    <string name="search_1">Axtarış</string>
     <string name="search_stars_planets_messier">Ulduzlar, planetlər və Messye obyektləri üzrə axtarış</string>
     <string name="settings">Parametrlər</string>
     <string name="magnitude_limit">Maqnituda həddi: <xliff:g id="limit" example="4.5">%1$s</xliff:g></string>
@@ -27,7 +26,6 @@
     <string name="display">Ekran</string>
     <string name="constellations">Bürclər</string>
     <string name="lines_only">Yalnız xətlər</string>
-    <string name="show_below_horizon_all_sky">Üfüqdən aşağıda göstər (bütün səma)</string>
     <string name="notes_true_north_correction_via_geomagne">Qeydlər: Geomaqnit meyli vasitəsilə əsl şimala düzəliş. AR, CameraX və fırlanma vektoru sintezindən istifadə edir.</string>
     <string name="lines_art">Xətlər və incəsənət</string>
     <string name="location">Yerləşmə</string>

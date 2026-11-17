@@ -42,7 +42,6 @@
 
     <!-- SearchPage -->
     <!-- SearchPage: TopAppBar title. Verb/Noun, action to search -->
-    <string name="search_1">Search</string>
     <!-- SearchPage: hint text in search field -->
     <string name="search_stars_planets_messier">Search stars, planets, Messier</string>
 
@@ -66,7 +65,6 @@
     <!-- SettingsPage: dropdown option to show constellation lines only -->
     <string name="lines_only">Lines only</string>
     <!-- SettingsPage: toggle to show sky below horizon (full sphere) -->
-    <string name="show_below_horizon_all_sky">Show below horizon (all sky)</string>
     <!-- SettingsPage: footer note explaining true north correction and AR implementation -->
     <string name="notes_true_north_correction_via_geomagne">Notes: True north correction via geomagnetic declination. AR uses CameraX + rotation vector fusion.</string>
     <!-- SettingsPage: dropdown option to show constellation lines plus artwork -->

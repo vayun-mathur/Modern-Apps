@@ -19,7 +19,6 @@
     <string name="rise_1">Uppgång: <xliff:g id="time" example="18:45">%1$s</xliff:g> ?:</string>
     <string name="set_1">Nedgång: <xliff:g id="time" example="04:12">%1$s</xliff:g> ?:</string>
     <string name="ra_h_h">RA h: <xliff:g id="hours" example="5.5">%1$s</xliff:g>h</string>
-    <string name="search_1">Sök</string>
     <string name="search_stars_planets_messier">Sök stjärnor, planeter, Messier</string>
     <string name="magnitude_limit">Magnitudgräns: <xliff:g id="limit" example="4.5">%1$s</xliff:g></string>
     <string name="longitude_deg">Longitudgrader</string>
@@ -28,7 +27,6 @@
     <string name="off">Av</string>
     <string name="constellations">Stjärnbilder</string>
     <string name="lines_only">Endast linjer</string>
-    <string name="show_below_horizon_all_sky">Visa under horisonten (hela himlen)</string>
     <string name="notes_true_north_correction_via_geomagne">Obs: Korrigering för geografisk nord via geomagnetisk deklination. AR använder CameraX och sammanslagning av rotationsvektorer.</string>
     <string name="lines_art">Linjer och illustrationer</string>
     <string name="location">Plats</string>
