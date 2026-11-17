@@ -14,8 +14,8 @@ import com.vayunmathur.health.data.SleepData
 import com.vayunmathur.health.platform.MedicalViewModel
 import com.vayunmathur.health.platform.PersonalHealthRecords
 import com.vayunmathur.health.platform.importFromHealthConnect
-import com.vayunmathur.health.util.HealthAPI
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.data.HealthAPI
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
 import java.time.Instant

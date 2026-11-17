@@ -4,8 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.vayunmathur.health.util.MetricDetailsActions
-import com.vayunmathur.health.util.MetricDetailsUiState
+import com.vayunmathur.health.platform.MetricDetailsActions
+import com.vayunmathur.health.platform.MetricDetailsUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

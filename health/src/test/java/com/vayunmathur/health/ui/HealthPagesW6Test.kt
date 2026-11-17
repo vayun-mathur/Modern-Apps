@@ -17,7 +17,7 @@ import com.vayunmathur.health.data.Ingredient
 import com.vayunmathur.health.data.NutritionData
 import com.vayunmathur.health.data.Recipe
 import com.vayunmathur.health.platform.MedicalViewModel
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
 import kotlin.test.BeforeTest
@@ -45,7 +45,7 @@ class HealthPagesW6Test {
     @BeforeTest
     fun setup() {
         com.vayunmathur.health.data.ReferenceCatalog.init(context)
-        com.vayunmathur.health.util.FoodDatabase.init(context)
+        com.vayunmathur.health.data.FoodDatabase.init(context)
         synchronized(databases) {
             if (databases[HealthDatabase::class] == null) {
                 databases[HealthDatabase::class] = Room

@@ -36,8 +36,8 @@ import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.health.ui.components.HealthRow
 import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.DashboardSectionDivider
-import com.vayunmathur.health.util.HealthViewModel
-import com.vayunmathur.health.util.displayString
+import com.vayunmathur.health.platform.HealthViewModel
+import com.vayunmathur.health.platform.displayString
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.NavBackStack

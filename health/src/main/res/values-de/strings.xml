@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="search">Suchen</string>
     <string name="month_year_format">%1$s %2$d</string>
     <string name="app_name">Gesundheit</string>
     <string name="grant_permissions">Berechtigungen erlauben</string>
@@ -8,7 +7,6 @@
     <string name="tab_week">Woche</string>
     <string name="tab_month">Monat</string>
     <string name="tab_year">Jahr</string>
-    <string name="week_range">%1$s – %2$s</string>
     <string name="no_data_available">Keine Daten für diesen Zeitraum verfügbar</string>
     <string name="unit_per_day_avg_format">%1$s pro Tag (Durchschnitt)</string>
     <string name="unit_only_format">" %1$s"</string>
@@ -41,25 +39,12 @@
     <string name="label_deep">Tief</string>
     <string name="section_body_composition">Körperbau</string>
     <string name="label_active">Aktiv</string>
-    <string name="label_today">Heute</string>
     <string name="slash_value_format">%1$s/%2$s</string>
     <string name="dash_value_format">%1$s - %2$s</string>
     <string name="hours_minutes_format">%1$dh %2$dm</string>
     <string name="minutes_format">%1$dm</string>
-    <string name="label_steps">Schritte</string>
-    <string name="label_wheelchair_pushes">Rollstuhl-Schübe</string>
     <string name="label_elevation">Höhe</string>
     <string name="label_floors">Stockwerke</string>
-    <string name="label_distance">Distanz</string>
-    <string name="label_heart_rate">Puls</string>
-    <string name="label_sleep">Schlaf</string>
-    <string name="label_hydration">Hydration</string>
-    <string name="label_blood_pressure">Blutdruck</string>
-    <string name="label_oxygen_saturation">Sauerstoffsättigung</string>
-    <string name="label_resting_heart_rate">Ruhepuls</string>
-    <string name="label_height">Größe</string>
-    <string name="label_weight">Gewicht</string>
-    <string name="label_body_fat">Körperfett</string>
     <string name="unit_bpm">Schläge pro Minute</string>
     <string name="unit_percent">%</string>
     <string name="unit_cm">cm</string>
@@ -67,7 +52,6 @@
     <string name="unit_ml">mL</string>
     <string name="unit_m">m</string>
     <string name="unit_km">km</string>
-    <string name="unit_steps">Schritte</string>
     <string name="unit_pushes">Schübe</string>
     <string name="unit_min">min</string>
     <string name="unit_cal">cal</string>
@@ -80,7 +64,6 @@
     <string name="save_recipe">Rezept speichern</string>
     <string name="set_quantity_for_format">Menge für %1$s</string>
     <string name="quantity">Menge</string>
-    <string name="unit">Einheit</string>
     <string name="confirm">Bestätigen</string>
     <string name="search_ingredient">Zutat suchen</string>
     <string name="log_hydration">Hydration</string>

@@ -1,4 +1,5 @@
 package com.vayunmathur.health.util
+import com.vayunmathur.health.data.FoodDatabase
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider

@@ -1,5 +1,4 @@
-package com.vayunmathur.health.util
-
+package com.vayunmathur.health.platform
 import com.vayunmathur.health.data.NutritionData
 import com.vayunmathur.health.ui.HealthMetricConfig
 import com.vayunmathur.health.ui.MetricDashboardData

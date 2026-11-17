@@ -1,4 +1,7 @@
 package com.vayunmathur.health.util
+import com.vayunmathur.health.data.FoodDatabase
+import com.vayunmathur.health.data.HealthAPI
+import com.vayunmathur.health.platform.HealthViewModel
 
 import android.app.Application
 import android.os.Looper

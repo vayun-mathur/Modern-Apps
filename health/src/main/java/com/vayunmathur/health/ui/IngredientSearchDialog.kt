@@ -38,7 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -49,7 +49,7 @@ fun IngredientSearchDialog(
     onIngredientSelected: (Ingredient) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    var remoteResults by remember { mutableStateOf(listOf<com.vayunmathur.health.util.FoodSearchAPI.SearchResult>()) }
+    var remoteResults by remember { mutableStateOf(listOf<com.vayunmathur.health.data.FoodSearchAPI.SearchResult>()) }
     var localResults by remember { mutableStateOf(listOf<Ingredient>()) }
     var isSearching by remember { mutableStateOf(false) }
     var isFetchingData by remember { mutableStateOf(false) }
@@ -126,7 +126,7 @@ fun IngredientSearchDialog(
                                     modifier = Modifier.clickable {
                                         isFetchingData = true
                                         scope.launch {
-                                            val ingredient = com.vayunmathur.health.util.FoodSearchAPI.getIngredientData(result.id, result.displayName)
+                                            val ingredient = com.vayunmathur.health.data.FoodSearchAPI.getIngredientData(result.id, result.displayName)
                                             isFetchingData = false
                                             if (ingredient != null) {
                                                 onIngredientSelected(ingredient)

@@ -1,6 +1,7 @@
 @file:OptIn(androidx.health.connect.client.ExperimentalMatchmakingApi::class)
 
 package com.vayunmathur.health.util
+import com.vayunmathur.health.data.HealthAPI
 
 import android.app.Application
 import androidx.health.connect.client.HealthConnectClient

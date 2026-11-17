@@ -5,10 +5,10 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.vayunmathur.health.util.MainPageMetrics
-import com.vayunmathur.health.util.TodayActions
-import com.vayunmathur.health.util.TodayUiState
-import com.vayunmathur.health.util.formatDuration
+import com.vayunmathur.health.platform.MainPageMetrics
+import com.vayunmathur.health.platform.TodayActions
+import com.vayunmathur.health.platform.TodayUiState
+import com.vayunmathur.health.platform.formatDuration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

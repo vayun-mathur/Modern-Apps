@@ -7,7 +7,6 @@
     <string name="tab_week">Tydzień</string>
     <string name="tab_month">Miesiąc</string>
     <string name="tab_year">Rok</string>
-    <string name="week_range"><xliff:g id="start_date" example="May 12">%1$s</xliff:g> – <xliff:g id="end_date" example="May 18">%2$s</xliff:g></string>
     <string name="no_data_available">Brak danych dla tego okresu</string>
     <string name="unit_per_day_avg_format"><xliff:g id="unit" example="steps">%1$s</xliff:g>/dzień (śr.)</string>
     <string name="unit_only_format"> <xliff:g id="unit" example="steps">%1$s</xliff:g></string>
@@ -46,29 +45,13 @@
     <string name="label_deep">Głęboki</string>
     <string name="section_body_composition">Skład ciała</string>
     <string name="label_active">Aktywność</string>
-    <string name="label_today">Dzisiaj</string>
     <string name="slash_value_format"><xliff:g id="first" example="120">%1$s</xliff:g>/<xliff:g id="second" example="80">%2$s</xliff:g></string>
     <string name="dash_value_format"><xliff:g id="min" example="60">%1$s</xliff:g> - <xliff:g id="max" example="140">%2$s</xliff:g></string>
     <string name="hours_minutes_format"><xliff:g id="hours" example="7">%1$d</xliff:g> godz. <xliff:g id="minutes" example="30">%2$d</xliff:g> min</string>
     <string name="minutes_format"><xliff:g id="minutes" example="25">%1$d</xliff:g> min</string>
-    <string name="label_steps">Kroki</string>
-    <string name="label_wheelchair_pushes">Pchnięcia wózka</string>
     <string name="label_mindfulness">Uważność</string>
     <string name="label_elevation">Wysokość</string>
     <string name="label_floors">Piętra</string>
-    <string name="label_distance">Dystans</string>
-    <string name="label_heart_rate">Tętno</string>
-    <string name="label_sleep">Sen</string>
-    <string name="label_hydration">Nawodnienie</string>
-    <string name="label_blood_pressure">Ciśnienie krwi</string>
-    <string name="label_oxygen_saturation">Natlenienie krwi</string>
-    <string name="label_resting_heart_rate">Tętno spoczynkowe</string>
-    <string name="label_height">Wzrost</string>
-    <string name="label_weight">Waga</string>
-    <string name="label_body_fat">Tkanka tłuszczowa</string>
-    <string name="label_lean_body_mass">Beztłuszczowa masa ciała</string>
-    <string name="label_bone_mass">Masa kostna</string>
-    <string name="label_body_water_mass">Zawartość wody w organizmie</string>
     <string name="unit_bpm">ud./min</string>
     <string name="unit_percent">%</string>
     <string name="unit_cm">cm</string>
@@ -77,7 +60,6 @@
     <string name="unit_fl">oz</string>
     <string name="unit_m">m</string>
     <string name="unit_km">km</string>
-    <string name="unit_steps">kroków</string>
     <string name="unit_pushes">pchnięć</string>
     <string name="unit_min">min</string>
     <string name="unit_cal">kcal</string>
@@ -91,10 +73,8 @@
     <string name="save_recipe">Zapisz przepis</string>
     <string name="set_quantity_for_format">Ustaw ilość dla: <xliff:g id="ingredient" example="Tomato">%1$s</xliff:g></string>
     <string name="quantity">Ilość</string>
-    <string name="unit">Jednostka</string>
     <string name="confirm">Zatwierdź</string>
     <string name="search_ingredient">Wyszukaj składnik</string>
-    <string name="search">Szukaj</string>
     <string name="log_hydration">Zapisz nawodnienie</string>
     <string name="log_meal">Zapisz posiłek</string>
     <string name="log_body_metric">Zapisz: <xliff:g id="metric" example="Weight">%1$s</xliff:g></string>
@@ -104,7 +84,6 @@
     <string name="section_latest_vitals">Najnowsze parametry</string>
     <string name="section_last_night">Ostatnia noc</string>
     <string name="section_quick_stats">Szybkie statystyki</string>
-    <string name="label_exercise">Ćwiczenia</string>
     <string name="no_workouts">Brak zarejestrowanych treningów</string>
     <string name="view_full_breakdown">Zobacz pełne zestawienie</string>
     <string name="no_results_found">Nie znaleziono wyników</string>
@@ -138,31 +117,14 @@
     <string name="servings">Porcje</string>
     <string name="kcal_2">kcal</string>
     <string name="nav_medication">Leki</string>
-    <string name="nav_records">Dokumentacja</string>
     <string name="vaccinations">Szczepienia</string>
     <string name="allergies">Alergie</string>
     <string name="conditions">Choroby</string>
-    <plurals name="records_recorded">
-        <item quantity="one">%1$d wpis</item>
-        <item quantity="few">%1$d wpisy</item>
-        <item quantity="many">%1$d wpisów</item>
-        <item quantity="other">%1$d wpisów</item>
-    </plurals>
-    <string name="nothing_recorded">Nie zapisano jeszcze żadnych danych</string>
     <string name="phr_unavailable">Usługa Health Connect na tym urządzeniu nie może przechowywać dokumentacji medycznej, dlatego dane te są przechowywane tylko w aplikacji.</string>
-    <string name="no_vaccinations">Brak szczepień</string>
-    <string name="no_vaccinations_message">Dodaj szczepienie, aby rozpocząć dokumentację, którą możesz przechowywać i udostępniać.</string>
     <string name="add_vaccination">Dodaj szczepienie</string>
     <string name="edit_vaccination">Edytuj szczepienie</string>
-    <string name="delete_vaccination_confirm">Usunąć wpis dotyczący szczepienia %1$s?</string>
-    <string name="cvx_code">CVX %1$s</string>
-    <string name="no_medications">Brak leków</string>
-    <string name="no_medications_message">Dodaj lek, aby śledzić, co przyjmujesz i kiedy.</string>
     <string name="add_medication">Dodaj lek</string>
     <string name="edit_medication">Edytuj lek</string>
-    <string name="delete_medication_confirm">Usunąć wpis dotyczący leku %1$s?</string>
-    <string name="medication_current">Aktualne</string>
-    <string name="medication_past">Przeszłe</string>
     <string name="medication_status_active">Przyjmowany</string>
     <string name="medication_status_completed">Zakończony</string>
     <string name="medication_status_stopped">Przerwany</string>
@@ -216,7 +178,6 @@
     <string name="no_end_date">Brak daty zakończenia</string>
     <string name="full_screen_intent_needed">Przypomnienia mogą przejąć ekran dopiero po zezwoleniu na powiadomienia pełnoekranowe.</string>
     <string name="grant_full_screen">Zezwól</string>
-    <string name="next_dose">Następna dawka <xliff:g example="Jutro 08:00" id="when">%1$s</xliff:g></string>
     <string name="day_initial_sunday">N</string>
     <string name="day_initial_monday">P</string>
     <string name="day_initial_tuesday">W</string>
@@ -224,11 +185,8 @@
     <string name="day_initial_thursday">C</string>
     <string name="day_initial_friday">P</string>
     <string name="day_initial_saturday">S</string>
-    <string name="no_allergies">Nie zapisano żadnych alergii</string>
-    <string name="no_allergies_message">Zapisz alergię, aby była przechowywana wraz z Twoimi danymi zdrowotnymi.</string>
     <string name="add_allergy">Dodaj alergię</string>
     <string name="edit_allergy">Edytuj alergię</string>
-    <string name="delete_allergy_confirm">Usunąć wpis dotyczący %1$s?</string>
     <string name="field_allergy_category">Typ</string>
     <string name="field_allergen">Alergen</string>
     <string name="choose_an_allergen">Wybierz alergen</string>
@@ -236,23 +194,18 @@
     <string name="field_reaction">Reakcja</string>
     <string name="field_first_noticed">Po raz pierwszy zauważono</string>
     <string name="not_recorded">Nie zapisano</string>
-    <string name="allergy_category_medication">Lek</string>
     <string name="allergy_category_food">Żywność</string>
     <string name="allergy_category_environment">Środowiskowa</string>
     <string name="allergy_category_biologic">Biologiczna</string>
     <string name="allergy_criticality_low">Niska</string>
     <string name="allergy_criticality_high">Wysoka</string>
     <string name="allergy_criticality_unknown">Nieznana</string>
-    <string name="no_conditions">Nie zapisano żadnych chorób</string>
-    <string name="no_conditions_message">Zapisz diagnozę, aby mieć swoją listę chorób zawsze przy sobie.</string>
     <string name="add_condition">Dodaj chorobę</string>
     <string name="edit_condition">Edytuj chorobę</string>
-    <string name="delete_condition_confirm">Usunąć wpis dotyczący %1$s?</string>
     <string name="field_condition">Choroba</string>
     <string name="choose_a_condition">Wybierz chorobę</string>
     <string name="field_diagnosed">Zdiagnozowano</string>
     <string name="field_resolved">Ustąpiła</string>
-    <string name="condition_status_active">Aktywna</string>
     <string name="condition_status_recurrence">Nawrót</string>
     <string name="condition_status_remission">W remisji</string>
     <string name="condition_status_resolved">Ustąpiła</string>
@@ -260,12 +213,8 @@
     <string name="search_conditions">Szukaj chorób</string>
     <string name="search_lab_tests">Szukaj badań laboratoryjnych</string>
     <string name="lab_results">Wyniki badań laboratoryjnych</string>
-    <string name="no_lab_results">Brak wyników badań laboratoryjnych</string>
-    <string name="no_lab_results_message">Zapisz wynik badania, aby przechowywać go wraz z pozostałą historią medyczną.</string>
     <string name="add_lab_result">Dodaj wynik badania</string>
     <string name="edit_lab_result">Edytuj wynik badania</string>
-    <string name="delete_lab_confirm">Usunąć wpis dotyczący %1$s?</string>
-    <string name="section_result">Wynik</string>
     <string name="field_lab_test">Badanie</string>
     <string name="choose_a_lab_test">Wybierz badanie</string>
     <string name="field_result">Wynik</string>
@@ -274,17 +223,9 @@
     <string name="field_reference_high">Norma do</string>
     <string name="field_taken_on">Data pobrania</string>
     <string name="about_you">O Tobie</string>
-    <string name="about_you_overline">Aktualny stan</string>
-    <string name="section_pregnancy">Ciąża</string>
-    <string name="section_smoking">Palenie</string>
-    <string name="field_pregnancy_status">Status</string>
     <string name="field_due_date">Przewidywany termin porodu</string>
-    <string name="field_smoking_status">Status</string>
-    <string name="recorded_on">Zapisano <xliff:g example="4 marca 2026" id="date">%1$s</xliff:g></string>
-    <string name="pregnancy_unknown">Brak odpowiedzi</string>
     <string name="pregnancy_pregnant">Jestem w ciąży</string>
     <string name="pregnancy_not_pregnant">Nie jestem w ciąży</string>
-    <string name="smoking_unknown">Brak odpowiedzi</string>
     <string name="smoking_never">Nie palę</string>
     <string name="smoking_former">Były palacz</string>
     <string name="smoking_current">Obecnie palę</string>
@@ -294,8 +235,6 @@
     <string name="social_food_worried">W ciągu ostatnich 12 miesięcy martwiliśmy się, czy nie zabraknie nam jedzenia, zanim zdobędziemy pieniądze na zakup kolejnego.</string>
     <string name="social_food_ran_out">W ciągu ostatnich 12 miesięcy kupione przez nas jedzenie po prostu się skończyło, a nie mieliśmy pieniędzy na zakup kolejnego.</string>
     <string name="social_transport">Czy brak transportu uniemożliwił Ci dotarcie na wizyty lekarskie, do pracy lub po rzeczy codziennego użytku?</string>
-    <string name="section_lifestyle">Styl życia</string>
-    <string name="section_circumstances">Sytuacja życiowa</string>
     <string name="not_answered">Bez odpowiedzi</string>
     <string name="freq_never">Nigdy</string>
     <string name="freq_once_or_twice">Raz lub dwa razy</string>
@@ -316,11 +255,8 @@
     <string name="transport_non_medical">Tak, do pracy lub po inne potrzebne rzeczy</string>
     <string name="transport_no">Nie</string>
     <string name="decline_to_answer">Wolę nie odpowiadać</string>
-    <string name="last_taken">Ostatnio przyjęto: %1$s</string>
     <string name="nav_medical">Medyczne</string>
     <string name="past_medications">Historia leków</string>
-    <string name="medications">Leki</string>
-    <string name="dose_reminder_exact_alarm_settings">Otwórz ustawienia</string>
     <string name="medical_empty">Brak</string>
     <string name="about_you_pregnancy_question">Czy jesteś w ciąży?</string>
     <string name="about_you_smoking_question">Czy palisz?</string>

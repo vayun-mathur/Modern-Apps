@@ -6,8 +6,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.health.data.NutritionData
-import com.vayunmathur.health.util.NutritionActions
-import com.vayunmathur.health.util.NutritionUiState
+import com.vayunmathur.health.platform.NutritionActions
+import com.vayunmathur.health.platform.NutritionUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

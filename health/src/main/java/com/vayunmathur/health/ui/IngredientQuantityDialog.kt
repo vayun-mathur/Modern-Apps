@@ -34,7 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -16,8 +16,8 @@ import com.vayunmathur.health.data.HealthDatabase
 import com.vayunmathur.health.data.HealthRepository
 import com.vayunmathur.health.service.DoseSoundService
 import com.vayunmathur.health.ui.components.Sparkline
-import com.vayunmathur.health.util.FoodDatabase
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.data.FoodDatabase
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.databases
 import kotlin.test.BeforeTest
 import kotlin.test.Test

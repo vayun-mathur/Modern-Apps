@@ -41,7 +41,7 @@ class HealthFormsW6Test {
     @BeforeTest
     fun setup() {
         com.vayunmathur.health.data.ReferenceCatalog.init(context)
-        com.vayunmathur.health.util.FoodDatabase.init(context)
+        com.vayunmathur.health.data.FoodDatabase.init(context)
         synchronized(databases) {
             if (databases[HealthDatabase::class] == null) {
                 databases[HealthDatabase::class] = Room

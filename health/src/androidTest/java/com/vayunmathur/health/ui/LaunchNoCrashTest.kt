@@ -1,4 +1,5 @@
 package com.vayunmathur.health.ui
+import com.vayunmathur.health.data.PERMISSIONS
 
 import android.app.UiAutomation
 import android.content.Intent

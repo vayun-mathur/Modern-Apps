@@ -22,8 +22,8 @@ import com.vayunmathur.health.data.HealthRepository
 import com.vayunmathur.health.data.RepeatUnit
 import com.vayunmathur.health.platform.MedicalViewModel
 import com.vayunmathur.health.ui.components.ScheduleSection
-import com.vayunmathur.health.util.FoodDatabase
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.data.FoodDatabase
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
 import kotlin.test.BeforeTest

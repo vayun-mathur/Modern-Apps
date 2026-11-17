@@ -42,7 +42,7 @@ import java.io.IOException
  * copyright © 1995-2024 Regenstrief Institute, Inc. and the LOINC Committee, available at no cost
  * under the licence at http://loinc.org/license.
  *
- * Deliberately much simpler than [com.vayunmathur.health.util.FoodDatabase], which ships a columnar
+ * Deliberately much simpler than [com.vayunmathur.health.data.FoodDatabase], which ships a columnar
  * file and rebuilds SQLite on device. That trade only pays at Open Food Facts' scale — here the
  * container and indexes compress to little more than the raw data, so this ships a finished database
  * and only has to decompress it. Everything else is the same: expanded into `filesDir` once, opened

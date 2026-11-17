@@ -1,4 +1,5 @@
 package com.vayunmathur.health.util
+import com.vayunmathur.health.platform.HealthViewModel
 
 import android.app.Application
 import androidx.room3.Room

@@ -50,9 +50,9 @@ import com.vayunmathur.health.data.NutritionData
 import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.health.ui.components.MetricRing
 import com.vayunmathur.library.ui.DashboardSection
-import com.vayunmathur.health.util.HealthViewModel
-import com.vayunmathur.health.util.NutritionActions
-import com.vayunmathur.health.util.NutritionUiState
+import com.vayunmathur.health.platform.HealthViewModel
+import com.vayunmathur.health.platform.NutritionActions
+import com.vayunmathur.health.platform.NutritionUiState
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.round
 import kotlin.time.Clock
@@ -167,123 +167,3 @@ fun NutritionPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
     )
 }
 
-/**
- * Slim nutrition home — answers "how am I doing on nutrition today?" at a glance.
- * Full meal log + nutrient breakdown live in [NutritionDetailsPage].
- *
- * No dependency on the ViewModel so it can be rendered from a `@Preview` — see
- * `src/screenshotTest`, which is where the store listing images come from.
- */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun NutritionScreen(state: NutritionUiState, actions: NutritionActions) {
-    val totalCalories = state.totals.calories
-    val totalProtein = state.totals.protein
-    val totalCarbs = state.totals.carbohydrates
-    val totalFat = state.totals.fat
-
-    var fabExpanded by remember { mutableStateOf(false) }
-
-    LazyListScaffold(
-        floatingActionButton = {
-            FloatingActionButtonMenu(
-                expanded = fabExpanded,
-                button = {
-                    ToggleFloatingActionButton(fabExpanded, { fabExpanded = it }) {
-                        if (!fabExpanded) IconAdd() else IconClose()
-                    }
-                }
-            ) {
-                FloatingActionButtonMenuItem(
-                    onClick = { fabExpanded = false; actions.logHydration() },
-                    text = { Text(stringResource(R.string.log_hydration)) },
-                    icon = { IconFire() }
-                )
-                FloatingActionButtonMenuItem(
-                    onClick = { fabExpanded = false; actions.logMeal() },
-                    text = { Text(stringResource(R.string.log_meal)) },
-                    icon = { IconFire() }
-                )
-                FloatingActionButtonMenuItem(
-                    onClick = { fabExpanded = false; actions.openRecipes() },
-                    text = { Text(stringResource(R.string.recipes)) },
-                    icon = { IconAdd() }
-                )
-            }
-        },
-        horizontalPadding = 16.dp,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        scrollBehavior = appBarScrollBehavior(),
-    ) {
-        // Calorie ring
-        item {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    val caloriesGoal = 2000.0
-                    val calorieProgress = (totalCalories / caloriesGoal).toFloat().coerceIn(0f, 1f)
-                    MetricRing(
-                        progress = calorieProgress,
-                        label = stringResource(com.vayunmathur.health.R.string.kcal_2),
-                        value = totalCalories.round(0).toInt().toString(),
-                        modifier = Modifier.size(140.dp),
-                        color = HealthColors.Nutrition,
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.calories),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = stringResource(R.string.kcal, totalCalories.round(0).toInt(), caloriesGoal.toInt()),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            }
-        }
-
-        // Macros as 3 compact rings
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                CompactMacroRing("Protein", totalProtein, 50.0, "g", proteinColor)
-                CompactMacroRing("Carbs", totalCarbs, 275.0, "g", carbsColor)
-                CompactMacroRing("Fat", totalFat, 78.0, "g", fatColor)
-            }
-        }
-
-        // Meals link + breakdown CTA
-        item {
-            DashboardSection(accentColor = HealthColors.Nutrition) {
-                ListItem(
-                    content = {
-                        Text(
-                            if (state.mealCount == 0) stringResource(R.string.no_meals_logged_today)
-                            else stringResource(R.string.meals_cal, state.mealCount, state.mealCalories.round(0).toInt())
-                        )
-                    },
-                    supportingContent = { Text(stringResource(R.string.view_full_breakdown)) },
-                    trailingContent = {
-                        IconArrowForward(
-                            tint = HealthColors.Nutrition,
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable { actions.openFullBreakdown() },
-                )
-            }
-        }
-    }
-}

@@ -25,8 +25,8 @@ import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.health.ui.components.MetricRow
 import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.DashboardSectionDivider
-import com.vayunmathur.health.util.HealthViewModel
-import com.vayunmathur.health.util.MainPageMetrics
+import com.vayunmathur.health.platform.HealthViewModel
+import com.vayunmathur.health.platform.MainPageMetrics
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconBodySystem
 import com.vayunmathur.library.ui.IconClose

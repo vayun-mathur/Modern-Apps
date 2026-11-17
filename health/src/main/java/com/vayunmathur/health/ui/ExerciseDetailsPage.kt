@@ -46,10 +46,10 @@ import com.vayunmathur.health.data.ExerciseLapData
 import com.vayunmathur.health.data.ExerciseSegmentData
 import com.vayunmathur.health.data.Record
 import com.vayunmathur.health.data.RecordType
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.ui.DashboardSection
-import com.vayunmathur.health.util.exerciseSegmentTypeName
-import com.vayunmathur.health.util.exerciseTypeName
+import com.vayunmathur.health.sync.exerciseSegmentTypeName
+import com.vayunmathur.health.sync.exerciseTypeName
 import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.rememberIs24Hour
 import com.vayunmathur.library.ui.AppScaffold
@@ -329,4 +329,4 @@ private fun ExerciseSessionCard(record: Record) {
     }
 }
 
-private fun formatDuration(minutes: Long): String = com.vayunmathur.health.util.formatDuration(minutes)
+private fun formatDuration(minutes: Long): String = com.vayunmathur.health.platform.formatDuration(minutes)

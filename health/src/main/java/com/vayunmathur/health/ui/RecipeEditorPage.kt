@@ -41,7 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.R as UiR
 

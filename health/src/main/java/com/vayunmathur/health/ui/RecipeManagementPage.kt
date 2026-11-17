@@ -56,9 +56,9 @@ import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.health.util.FoodDatabase
-import com.vayunmathur.health.util.FoodSearchAPI
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.data.FoodDatabase
+import com.vayunmathur.health.data.FoodSearchAPI
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.launch
 import java.text.NumberFormat

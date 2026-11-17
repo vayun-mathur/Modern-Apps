@@ -1,5 +1,4 @@
-package com.vayunmathur.health.util
-
+package com.vayunmathur.health.data
 import com.vayunmathur.health.data.Ingredient
 
 /**

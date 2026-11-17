@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="search">Rechercher</string>
-    <string name="label_oxygen_saturation">Saturation en oxygène</string>
-    <string name="label_blood_pressure">Tension artérielle</string>
-    <string name="label_resting_heart_rate">Fréquence cardiaque au repos</string>
     <string name="metric_height">Taille</string>
     <string name="label_deep">Profond</string>
     <string name="section_body_composition">Composition corporelle</string>
@@ -21,7 +17,6 @@
     <string name="tab_week">Semaine</string>
     <string name="metric_blood_glucose">Glycémie</string>
     <string name="metric_oxygen_saturation">Saturation en oxygène</string>
-    <string name="label_body_water_mass">Masse hydrique</string>
     <string name="metric_active_calories">Calories actives</string>
     <string name="metric_resting_heart_rate">Fréquence cardiaque au repos</string>
     <string name="label_core">Cœur</string>
@@ -34,14 +29,12 @@
     <string name="metric_sleep">Sommeil</string>
     <string name="value_unit_space_format"><xliff:g id="value" example="12 345">%1$s</xliff:g> <xliff:g id="unit" example="pas">%2$s</xliff:g></string>
     <string name="label_awake">Éveillé</string>
-    <string name="label_today">Aujourd\'hui</string>
     <string name="tab_year">Année</string>
     <string name="metric_basal_metabolic_rate">Taux métabolique de base</string>
     <string name="month_year_format"><xliff:g id="month" example="janvier">%1$s</xliff:g> <xliff:g id="year" example="2026">%2$d</xliff:g></string>
     <string name="unit_only_format"> <xliff:g id="unit" example="pas">%1$s</xliff:g></string>
     <string name="metric_energy_burned">Énergie consommée</string>
     <string name="metric_lean_body_mass">Masse maigre</string>
-    <string name="label_bone_mass">Masse osseuse</string>
     <string name="label_active">Actif</string>
     <string name="grant_permissions">Accorder les autorisations</string>
     <string name="metric_body_fat">Masse grasse</string>
@@ -49,11 +42,8 @@
     <string name="unit_per_day_avg_format"><xliff:g id="unit" example="pas">%1$s</xliff:g> par jour (en moyenne)</string>
     <string name="metric_weight">Poids</string>
     <string name="k_format"><xliff:g id="thousands" example="12">%1$s</xliff:g> k</string>
-    <string name="week_range"><xliff:g id="start_date" example="12 mai">%1$s</xliff:g> – <xliff:g id="end_date" example="18 mai">%2$s</xliff:g></string>
     <string name="metric_vo2_max">VO₂ max</string>
     <string name="metric_floors_climbed">Étages gravis</string>
-    <string name="label_height">Taille</string>
-    <string name="label_weight">Poids</string>
     <string name="unit_bpm">bpm</string>
     <string name="unit_percent">%</string>
     <string name="unit_cm">cm</string>
@@ -63,7 +53,6 @@
     <string name="unit_km">km</string>
     <string name="set_quantity_for_format">Définir la quantité de <xliff:g id="ingredient" example="tomate">%1$s</xliff:g></string>
     <string name="quantity">Quantité</string>
-    <string name="unit">Unité</string>
     <string name="confirm">Confirmer</string>
     <string name="search_ingredient">Rechercher un ingrédient</string>
     <string name="nav_today">Aujourd\'hui</string>
@@ -72,7 +61,6 @@
     <string name="section_latest_vitals">Dernières données vitales</string>
     <string name="section_last_night">Hier soir</string>
     <string name="section_quick_stats">Chiffres clés</string>
-    <string name="label_exercise">Exercice</string>
     <string name="no_workouts">Aucune séance d\'entraînement enregistrée</string>
     <string name="nutrition_breakdown">Composition nutritionnelle</string>
     <string name="recipes">Recettes</string>
@@ -84,18 +72,9 @@
     <string name="metric_wheelchair_pushes">Poussées de fauteuil roulant</string>
     <string name="hours_minutes_format"><xliff:g id="hours" example="7">%1$d</xliff:g> h <xliff:g id="minutes" example="30">%2$d</xliff:g> min</string>
     <string name="minutes_format"><xliff:g id="minutes" example="25">%1$d</xliff:g> min</string>
-    <string name="label_steps">Pas</string>
-    <string name="label_wheelchair_pushes">Poussées de fauteuil roulant</string>
     <string name="label_mindfulness">Pleine conscience</string>
     <string name="label_elevation">Altitude</string>
     <string name="label_floors">Étages</string>
-    <string name="label_distance">Distance</string>
-    <string name="label_heart_rate">Fréquence cardiaque</string>
-    <string name="label_sleep">Sommeil</string>
-    <string name="label_hydration">Hydratation</string>
-    <string name="label_body_fat">Masse grasse</string>
-    <string name="label_lean_body_mass">Masse maigre</string>
-    <string name="unit_steps">pas</string>
     <string name="unit_min">min</string>
     <string name="unit_cal">cal</string>
     <string name="label_blood_pressure_unit">mmHg</string>

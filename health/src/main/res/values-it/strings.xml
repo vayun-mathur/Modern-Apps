@@ -6,7 +6,6 @@
     <string name="tab_week">Settimana</string>
     <string name="tab_month">Mese</string>
     <string name="tab_year">Anno</string>
-    <string name="week_range">%1$s – %2$s</string>
     <string name="no_data_available">Nessun dato disponibile per questo periodo</string>
     <string name="unit_per_day_avg_format">%1$s al giorno (media)</string>
     <string name="unit_only_format">" %1$s"</string>
@@ -44,28 +43,12 @@
     <string name="label_deep">Sonno profondo</string>
     <string name="section_body_composition">Composizione corporea</string>
     <string name="label_active">Attivo</string>
-    <string name="label_today">Oggi</string>
     <string name="slash_value_format">%1$s/%2$s</string>
     <string name="dash_value_format">%1$s - %2$s</string>
     <string name="hours_minutes_format">%1$dh %2$dm</string>
     <string name="minutes_format">%1$dm</string>
-    <string name="label_steps">Passi</string>
-    <string name="label_wheelchair_pushes">Spinte in sedia a rotelle</string>
     <string name="label_elevation">Elevazione</string>
     <string name="label_floors">Piani</string>
-    <string name="label_distance">Distanza</string>
-    <string name="label_heart_rate">Frequenza cardiaca</string>
-    <string name="label_sleep">Sonno</string>
-    <string name="label_hydration">Idratazione</string>
-    <string name="label_blood_pressure">Pressione sanguigna</string>
-    <string name="label_oxygen_saturation">Saturazione ossigeno</string>
-    <string name="label_resting_heart_rate">Battito a riposo</string>
-    <string name="label_height">Altezza</string>
-    <string name="label_weight">Peso</string>
-    <string name="label_body_fat">Grasso corporeo</string>
-    <string name="label_lean_body_mass">Massa magra</string>
-    <string name="label_bone_mass">Massa ossea</string>
-    <string name="label_body_water_mass">Massa liquida</string>
     <string name="unit_bpm">bpm</string>
     <string name="unit_percent">%</string>
     <string name="unit_cm">cm</string>
@@ -73,7 +56,6 @@
     <string name="unit_ml">mL</string>
     <string name="unit_m">m</string>
     <string name="unit_km">km</string>
-    <string name="unit_steps">passi</string>
     <string name="unit_pushes">spinte</string>
     <string name="unit_min">min</string>
     <string name="unit_cal">cal</string>
@@ -84,7 +66,6 @@
     <string name="section_latest_vitals">Ultimi parametri vitali</string>
     <string name="section_last_night">Ultima notte</string>
     <string name="section_quick_stats">Statistiche rapide</string>
-    <string name="search">Cerca</string>
     <string name="label_mindfulness">Mindfulness</string>
     <string name="nutrition_breakdown">Dettaglio valori nutrizionali</string>
     <string name="recipes">Ricette</string>
@@ -95,14 +76,12 @@
     <string name="save_recipe">Salva ricetta</string>
     <string name="set_quantity_for_format">Imposta quantità per %1$s</string>
     <string name="quantity">Quantità</string>
-    <string name="unit">Unità</string>
     <string name="confirm">Conferma</string>
     <string name="search_ingredient">Cerca ingredienti</string>
     <string name="log_hydration">Registra idratazione</string>
     <string name="log_meal">Registra pasto</string>
     <string name="unit_fl">fl</string>
     <string name="metric_exercise_duration">Esercizio</string>
-    <string name="label_exercise">Esercizio</string>
     <string name="no_workouts">Nessun allenamento registrato</string>
     <string name="grant_permissions_rationale">Questa app legge e registra i tuoi dati sanitari tramite Health Connect. Nessun dato esce dal tuo dispositivo.</string>
 </resources>

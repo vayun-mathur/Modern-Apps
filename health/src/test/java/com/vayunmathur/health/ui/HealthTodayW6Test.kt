@@ -12,7 +12,7 @@ import com.vayunmathur.health.data.HealthDatabase
 import com.vayunmathur.health.data.HealthRepository
 import com.vayunmathur.health.data.Record
 import com.vayunmathur.health.data.RecordType
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
 import java.time.Instant
@@ -38,7 +38,7 @@ class HealthTodayW6Test {
     @BeforeTest
     fun setup() {
         com.vayunmathur.health.data.ReferenceCatalog.init(context)
-        com.vayunmathur.health.util.FoodDatabase.init(context)
+        com.vayunmathur.health.data.FoodDatabase.init(context)
         synchronized(databases) {
             if (databases[HealthDatabase::class] == null) {
                 databases[HealthDatabase::class] = Room

@@ -1,5 +1,5 @@
-package com.vayunmathur.health.util
-
+package com.vayunmathur.health.platform
+import com.vayunmathur.health.data.HealthAPI
 import android.content.res.Resources
 import com.vayunmathur.health.R
 import com.vayunmathur.health.data.HealthRepository

@@ -28,9 +28,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
-import com.vayunmathur.health.util.MetricDetailsActions
-import com.vayunmathur.health.util.MetricDetailsUiState
-import com.vayunmathur.health.util.displayString
+import com.vayunmathur.health.platform.MetricDetailsActions
+import com.vayunmathur.health.platform.MetricDetailsUiState
+import com.vayunmathur.health.platform.displayString
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.DashboardSectionDivider

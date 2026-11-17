@@ -23,8 +23,8 @@ import com.vayunmathur.health.data.NutritionData
 import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.health.platform.HealthConnectSetup
 import com.vayunmathur.health.platform.MedicalViewModel
-import com.vayunmathur.health.util.HealthAPI
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.data.HealthAPI
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavResultRegistry
@@ -66,7 +66,7 @@ class ThresholdBatchTest {
             }
         }
         HealthAPI.initLocal(context, HealthRepository.get(context))
-        com.vayunmathur.health.util.FoodDatabase.init(context)
+        com.vayunmathur.health.data.FoodDatabase.init(context)
         com.vayunmathur.health.data.ReferenceCatalog.init(context)
         runBlocking { HealthRepository.get(context).getLastRecord(RecordType.Steps) }
     }

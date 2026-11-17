@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="search">חיפוש</string>
     <string name="app_name">בריאות</string>
     <string name="grant_permissions">הענקת הרשאות</string>
     <string name="tab_day">יום</string>
@@ -21,32 +20,20 @@
     <string name="metric_exercise_duration">התעמלות</string>
     <string name="label_awake">ערות</string>
     <string name="label_deep">עמוקה</string>
-    <string name="label_today">היום</string>
-    <string name="label_distance">מרחק</string>
-    <string name="label_heart_rate">דופק</string>
-    <string name="label_sleep">שינה</string>
-    <string name="label_blood_pressure">לחץ דם</string>
     <string name="unit_per_day_avg_format"><xliff:g id="unit" example="steps">%1$s</xliff:g> ביום (בממוצע)</string>
     <string name="unit_only_format"><xliff:g id="unit" example="steps">%1$s</xliff:g></string>
     <string name="value_unit_space_format"><xliff:g id="value" example="12,345">%1$s</xliff:g> <xliff:g id="unit" example="steps">%2$s</xliff:g></string>
-    <string name="label_steps">צעדים</string>
-    <string name="unit_steps">צעדים</string>
     <string name="nav_today">היום</string>
-    <string name="label_resting_heart_rate">דופק במנוחה</string>
     <string name="metric_body_fat">שומן בגוף</string>
     <string name="metric_body_water_mass">מסת מים בגוף</string>
-    <string name="label_body_fat">שומן בגוף</string>
-    <string name="label_body_water_mass">מסת מים בגוף</string>
     <string name="log_body_metric">תיעוד <xliff:g id="metric" example="Weight">%1$s</xliff:g></string>
     <string name="nav_body">מדדי גוף</string>
-    <string name="label_exercise">התעמלות</string>
     <string name="label_floors">קומות</string>
     <string name="metric_active_calories">קלוריות שנשרפו בפעילות</string>
     <string name="label_active">פעילות</string>
     <string name="section_last_night">מהלילה האחרון</string>
     <string name="section_latest_vitals">מדדים אחרונים</string>
     <string name="section_quick_stats">סטטיסטיקה מהירה</string>
-    <string name="label_hydration">שתייה</string>
     <string name="log_hydration">תיעוד השתייה</string>
     <string name="hydration_liters">ליטרים</string>
     <string name="hydration_milliliters">מיליליטרים</string>

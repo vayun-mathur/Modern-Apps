@@ -16,7 +16,7 @@ import com.vayunmathur.health.data.NutritionData
 import com.vayunmathur.health.data.Recipe
 import com.vayunmathur.health.data.RecipeIngredient
 import com.vayunmathur.health.data.ServingUnit
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.databases
 import java.time.Instant
 import kotlin.test.BeforeTest

@@ -12,8 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
-import com.vayunmathur.health.util.FoodDatabase
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.data.FoodDatabase
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card

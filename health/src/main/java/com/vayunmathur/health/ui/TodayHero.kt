@@ -123,4 +123,4 @@ private fun RingLegendItem(
     }
 }
 
-internal fun formatSleep(minutes: Long): String = com.vayunmathur.health.util.formatDuration(minutes)
+internal fun formatSleep(minutes: Long): String = com.vayunmathur.health.platform.formatDuration(minutes)

@@ -1,4 +1,5 @@
 package com.vayunmathur.health.ui
+import com.vayunmathur.health.data.FoodDatabase
 
 import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4

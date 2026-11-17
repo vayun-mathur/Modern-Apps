@@ -18,7 +18,7 @@ import com.vayunmathur.health.data.HealthDatabase
 import com.vayunmathur.health.data.HealthRepository
 import com.vayunmathur.health.data.Ingredient
 import com.vayunmathur.health.data.NutritionData
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
 import kotlin.test.BeforeTest
@@ -51,7 +51,7 @@ class ChartDrawAndRecipeEditTest {
                     .build()
             }
         }
-        com.vayunmathur.health.util.FoodDatabase.init(context)
+        com.vayunmathur.health.data.FoodDatabase.init(context)
         runBlocking { HealthRepository.get(context).getLastRecord(com.vayunmathur.health.data.RecordType.Steps) }
     }
 

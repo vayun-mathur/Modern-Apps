@@ -13,7 +13,7 @@ import com.vayunmathur.health.data.HealthRepository
 import com.vayunmathur.health.data.RepeatUnit
 import com.vayunmathur.health.platform.MedicalViewModel
 import com.vayunmathur.health.ui.components.ScheduleSection
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
 import kotlin.test.BeforeTest
@@ -44,7 +44,7 @@ class ScheduleAndTodayPageTest {
                     .build()
             }
         }
-        com.vayunmathur.health.util.HealthAPI.initLocal(context, HealthRepository.get(context))
+        com.vayunmathur.health.data.HealthAPI.initLocal(context, HealthRepository.get(context))
         kotlinx.coroutines.runBlocking { HealthRepository.get(context).getLastRecord(com.vayunmathur.health.data.RecordType.Steps) }
     }
 

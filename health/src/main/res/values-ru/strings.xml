@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="search">Поиск</string>
     <string name="app_name">Здоровье</string>
     <string name="grant_permissions">Дать разрешения</string>
     <string name="grant_permissions_rationale">Это приложение считывает и записывает ваши данные о здоровье через Health Connect. Никакие данные не покидают ваше устройство.</string>
@@ -40,26 +39,9 @@
     <string name="label_deep">Глубокий</string>
     <string name="section_body_composition">Параметры тела</string>
     <string name="label_active">В движении</string>
-    <string name="label_today">Сегодня</string>
-    <string name="label_steps">Шаги</string>
-    <string name="label_wheelchair_pushes">Толкание коляски</string>
     <string name="label_mindfulness">Медитация</string>
     <string name="label_elevation">Набор высоты</string>
     <string name="label_floors">Этажи</string>
-    <string name="label_distance">Дистанция</string>
-    <string name="label_heart_rate">Пульс</string>
-    <string name="label_sleep">Сон</string>
-    <string name="label_hydration">Водный баланс</string>
-    <string name="label_blood_pressure">Кровяное давление</string>
-    <string name="label_oxygen_saturation">Кислород в крови</string>
-    <string name="label_resting_heart_rate">Пульс в состоянии покоя</string>
-    <string name="label_height">Рост</string>
-    <string name="label_weight">Вес</string>
-    <string name="label_body_fat">Процент жира</string>
-    <string name="label_lean_body_mass">Сухая масса</string>
-    <string name="label_bone_mass">Костная масса</string>
-    <string name="label_body_water_mass">Содержание воды</string>
-    <string name="unit_steps">шаги</string>
     <string name="unit_pushes">толкания</string>
     <string name="nutrition_breakdown">Пищевая ценность</string>
     <string name="recipes">Рецепты</string>
@@ -70,7 +52,6 @@
     <string name="save_recipe">Сохранить рецепт</string>
     <string name="set_quantity_for_format">Указать количество <xliff:g id="ingredient" example="Tomato">%1$s</xliff:g></string>
     <string name="quantity">Количество</string>
-    <string name="unit">Единица измерения</string>
     <string name="confirm">Подтвердить</string>
     <string name="search_ingredient">Поиск ингредиента</string>
     <string name="log_hydration">Добавить воду</string>
@@ -81,7 +62,6 @@
     <string name="section_latest_vitals">Последние измерения</string>
     <string name="section_last_night">Прошлой ночью</string>
     <string name="section_quick_stats">Сводка</string>
-    <string name="label_exercise">Тренировка</string>
     <string name="no_workouts">Нет записанных тренировок</string>
     <string name="view_full_breakdown">Посмотреть весь состав</string>
     <string name="no_results_found">Результаты не найдены</string>
@@ -110,7 +90,6 @@
     <string name="quantity_x_100g">Количество (x 100g)</string>
     <string name="servings">Порции</string>
     <string name="food_database_preparing">Preparing <xliff:g id="products_done" example="120,000">%1$s</xliff:g> <xliff:g id="products_total" example="465,000">%2$s</xliff:g> продукты</string>
-    <string name="week_range"><xliff:g id="start_date" example="May 12">%1$s</xliff:g> <xliff:g id="end_date" example="May 18">%2$s</xliff:g></string>
     <string name="unit_only_format"><xliff:g id="unit" example="steps">%1$s</xliff:g></string>
     <string name="month_year_format"><xliff:g id="month" example="January">%1$s</xliff:g> <xliff:g id="year" example="2026">%2$d</xliff:g></string>
     <string name="value_unit_space_format"><xliff:g id=" value" example="12,345">%1$s</xliff:g> <xliff:g id="unit" example="steps">%2$s</xliff:g></string>
@@ -134,30 +113,14 @@
     <string name="label_blood_pressure_unit">mmHg</string>
     <string name="kcal_2">kcal</string>
     <string name="nav_medication">Лекарства</string>
-    <string name="nav_records">Записи</string>
     <string name="vaccinations">Прививки</string>
     <string name="allergies">Аллергия</string>
     <string name="conditions">Условия</string>
-    <plurals name="records_recorded">
-        <item quantity="one">%1$d запись</item>
-        <item quantity="few">%1$d записи</item>
-        <item quantity="many">%1$d записей</item>
-        <item quantity="other">%1$d записей</item>
-    </plurals>
-    <string name="nothing_recorded">Пока ничего не записано</string>
     <string name="phr_unavailable">Health Connect на этом устройстве не может хранить медицинские записи, поэтому они хранятся только в приложении.</string>
-    <string name="no_vaccinations">Пока никаких прививок</string>
-    <string name="no_vaccinations_message">Добавьте прививку, чтобы начать запись, которую вы можете сохранить и поделиться.</string>
     <string name="add_vaccination">Добавить прививку</string>
     <string name="edit_vaccination">Редактировать прививку</string>
-    <string name="delete_vaccination_confirm">Удалить запись %1$s?</string>
-    <string name="no_medications">Пока нет лекарств</string>
-    <string name="no_medications_message">Добавьте лекарство, чтобы отслеживать, что вы принимаете и когда.</string>
     <string name="add_medication">Добавить лекарство</string>
     <string name="edit_medication">Редактировать лекарства</string>
-    <string name="delete_medication_confirm">Удалить запись %1$s?</string>
-    <string name="medication_current">Текущие</string>
-    <string name="medication_past">Прошлые</string>
     <string name="medication_status_active">Принимаемые</string>
     <string name="medication_status_completed">Законченные</string>
     <string name="medication_status_stopped">Прерванные</string>

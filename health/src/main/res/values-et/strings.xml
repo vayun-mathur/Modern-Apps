@@ -6,7 +6,6 @@
     <string name="tab_week">Nädal</string>
     <string name="tab_month">Kuu</string>
     <string name="tab_year">Aasta</string>
-    <string name="week_range"><xliff:g id="start_date" example="12. mai">%1$s</xliff:g> – <xliff:g id="end_date" example="18. mai">%2$s</xliff:g></string>
     <string name="no_data_available">Selle ajavahemiku kohta ei leidu andmeid</string>
     <string name="k_format"><xliff:g id="thousands" example="12">%1$s</xliff:g>k</string>
     <string name="value_unit_space_format"><xliff:g id="value" example="12,345">%1$s</xliff:g> <xliff:g id="unit" example="steps">%2$s</xliff:g></string>
@@ -23,29 +22,22 @@
     <string name="metric_body_fat">Keharasvu</string>
     <string name="section_last_night">Eile õhtul</string>
     <string name="section_quick_stats">Kiirstatistika</string>
-    <string name="search">Otsi</string>
     <string name="recipes">Retseptid</string>
     <string name="metric_distance">Vahemaa</string>
     <string name="metric_floors_climbed">Ronitud korruseid</string>
     <string name="metric_elevation_gained">Läbitud kõrgusi</string>
     <string name="metric_steps">Samme</string>
-    <string name="label_today">Täna</string>
     <string name="slash_value_format"><xliff:g id="first" example="120">%1$s</xliff:g>/<xliff:g id="second" example="80">%2$s</xliff:g></string>
     <string name="dash_value_format"><xliff:g id="min" example="60">%1$s</xliff:g> - <xliff:g id="max" example="140">%2$s</xliff:g></string>
     <string name="hours_minutes_format"><xliff:g id="hours" example="7">%1$d</xliff:g>h <xliff:g id="minutes" example="30">%2$d</xliff:g> min</string>
     <string name="minutes_format"><xliff:g id="minutes" example="25">%1$d</xliff:g> min</string>
-    <string name="label_steps">Samme</string>
     <string name="label_mindfulness">Teadvelolek</string>
     <string name="label_elevation">Kõrgus</string>
     <string name="label_floors">Korruseid</string>
-    <string name="label_distance">Vahemaa</string>
-    <string name="label_heart_rate">Pulss</string>
     <string name="metric_basal_metabolic_rate">Põhiainevahetuse kiirus</string>
     <string name="metric_blood_pressure">Vererõhk</string>
     <string name="metric_blood_glucose">Veresuhkur</string>
     <string name="metric_breathing_rate">Hingamissagedus</string>
-    <string name="label_oxygen_saturation">Hapnikusisaldus</string>
-    <string name="label_blood_pressure">Vererõhk</string>
     <string name="metric_sleep">Uni</string>
     <string name="metric_exercise_duration">Treening</string>
     <string name="label_awake">Ärkvelaeg</string>
@@ -59,7 +51,6 @@
     <string name="unit_fl">fl</string>
     <string name="unit_m">m</string>
     <string name="unit_km">km</string>
-    <string name="unit_steps">sammu</string>
     <string name="unit_min">min</string>
     <string name="unit_cal">cal</string>
     <string name="label_blood_pressure_unit">mm/Hg</string>
@@ -67,20 +58,16 @@
     <string name="save_recipe">Salvesta retsept</string>
     <string name="set_quantity_for_format">Sisesta kogus: <xliff:g id="ingredient" example="Tomat">%1$s</xliff:g></string>
     <string name="quantity">Kogus</string>
-    <string name="unit">Ühik</string>
     <string name="confirm">Kinnita</string>
     <string name="search_ingredient">Otsi koostisosa</string>
     <string name="rename_ingredient">Muuda koostisosa nime</string>
     <string name="ingredients">Koostisosad</string>
     <string name="nutrition_breakdown">Toitainete jaotus</string>
     <string name="custom_name">Sinu loodud nimi</string>
-    <string name="label_height">Pikkus</string>
-    <string name="label_weight">Kaal</string>
     <string name="nav_today">Täna</string>
     <string name="nav_nutrition">Toitumine</string>
     <string name="nav_body">Keha</string>
     <string name="no_workouts">Ühtegi treeningut pole kirjas</string>
-    <string name="label_exercise">Treening</string>
     <string name="no_results_found">Tulemusi ei leidu</string>
     <string name="original_1">Algne: <xliff:g id="original_name" example="Tomat">%1$s</xliff:g></string>
     <string name="saved_locally">Salvestatud kohalikus seadmes</string>
@@ -99,7 +86,6 @@
     <string name="select_recipe">Vali retsept</string>
     <string name="quantity_x_100g">Kogus (x 100g)</string>
     <string name="servings">Portsjoneid</string>
-    <string name="label_sleep">Uni</string>
     <string name="ingredient">(Koostisosa)</string>
     <string name="kcal_2">kcal</string>
     <string name="grant_permissions_rationale">See rakendus loeb ja kirjutab sinu terviseandmeid Health Connect taustateenuse abil. Mitte midagi ei lahku sinu nutiseadmest.</string>
@@ -112,21 +98,13 @@
     <string name="route_recorded">Teekond on salvestatud</string>
     <string name="reps"><xliff:g id="reps_count" example="12">%1$s</xliff:g> kordust</string>
     <string name="metric_lean_body_mass">Rasvavaba kehamass</string>
-    <string name="label_lean_body_mass">Rasvavaba kehamass</string>
     <string name="food_database_attribution">Toitumisandmed pärinevad Open Food Factsist, litsentseeritud ODbL v1.0 alusel</string>
     <string name="segments">Segmente</string>
     <string name="laps">Ringe</string>
     <string name="lap">Ring <xliff:g id="lap_index" example="1">%1$s</xliff:g></string>
     <string name="vaccinations">Vaktsineerimised</string>
     <string name="allergies">Allergiad</string>
-    <plurals name="records_recorded">
-        <item quantity="one">%1$d kirje</item>
-        <item quantity="other">%1$d kirjet</item>
-    </plurals>
-    <string name="nothing_recorded">Midagi pole veel salvestunud</string>
     <string name="phr_unavailable">Selle nutiseadme Health Connect ei saa terviseandmeid salvestada ja see hoiame beid vaid antud rakenduses.</string>
-    <string name="no_vaccinations">Ühtegi vaktsineerimist veel pole</string>
-    <string name="nav_records">Kirjed</string>
     <string name="nav_medication">Ravimid</string>
     <string name="unit_percent">%</string>
     <string name="pregnancy_pregnant">Lapseootel</string>

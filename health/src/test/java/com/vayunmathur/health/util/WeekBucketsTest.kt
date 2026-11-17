@@ -1,4 +1,5 @@
 package com.vayunmathur.health.util
+import com.vayunmathur.health.platform.HealthViewModel
 
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test

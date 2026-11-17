@@ -2,11 +2,6 @@ package com.vayunmathur.health
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.viewModels
-import androidx.lifecycle.lifecycleScope
-import com.vayunmathur.library.ui.IconBodySystem
-import com.vayunmathur.library.ui.IconFavorite
-import com.vayunmathur.library.ui.IconFire
-import com.vayunmathur.library.ui.MaActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -17,142 +12,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
-import androidx.health.connect.client.permission.HealthPermission
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
-import androidx.health.connect.client.records.BasalMetabolicRateRecord
-import androidx.health.connect.client.records.BloodGlucoseRecord
-import androidx.health.connect.client.records.BloodPressureRecord
-import androidx.health.connect.client.records.BodyFatRecord
-import androidx.health.connect.client.records.BodyWaterMassRecord
-import androidx.health.connect.client.records.BoneMassRecord
-import androidx.health.connect.client.records.DistanceRecord
-import androidx.health.connect.client.records.ElevationGainedRecord
-import androidx.health.connect.client.records.ExerciseSessionRecord
-import androidx.health.connect.client.records.FloorsClimbedRecord
-import androidx.health.connect.client.records.HeartRateRecord
-import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
-import androidx.health.connect.client.records.HeightRecord
-import androidx.health.connect.client.records.HydrationRecord
-import androidx.health.connect.client.records.LeanBodyMassRecord
-import androidx.health.connect.client.records.MindfulnessSessionRecord
-import androidx.health.connect.client.records.NutritionRecord
-import androidx.health.connect.client.records.OxygenSaturationRecord
-import androidx.health.connect.client.records.RespiratoryRateRecord
-import androidx.health.connect.client.records.RestingHeartRateRecord
-import androidx.health.connect.client.records.SkinTemperatureRecord
-import androidx.health.connect.client.records.SleepSessionRecord
-import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
-import androidx.health.connect.client.records.Vo2MaxRecord
-import androidx.health.connect.client.records.WeightRecord
-import androidx.health.connect.client.records.WheelchairPushesRecord
-import com.vayunmathur.library.util.MorphPage
-import com.vayunmathur.library.util.NavKey
+import androidx.lifecycle.lifecycleScope
+import com.vayunmathur.health.data.FoodDatabase
+import com.vayunmathur.health.data.HealthAPI
 import com.vayunmathur.health.data.HealthRepository
+import com.vayunmathur.health.data.PERMISSIONS
 import com.vayunmathur.health.data.ReferenceCatalog
 import com.vayunmathur.health.platform.HealthConnectAvailability
 import com.vayunmathur.health.platform.HealthConnectSetup
+import com.vayunmathur.health.platform.HealthViewModel
+import com.vayunmathur.health.platform.HealthViewModelFactory
 import com.vayunmathur.health.platform.MedicalViewModel
 import com.vayunmathur.health.platform.MedicalViewModelFactory
 import com.vayunmathur.health.platform.PersonalHealthRecords
-import com.vayunmathur.health.ui.AddAllergyPage
-import com.vayunmathur.health.ui.AddConditionPage
-import com.vayunmathur.health.ui.AddLabResultPage
-import com.vayunmathur.health.ui.AddMedicationPage
-import com.vayunmathur.health.ui.AddVaccinationPage
-import com.vayunmathur.health.ui.BarChartDetails
-import com.vayunmathur.health.ui.BodyPage
-import com.vayunmathur.health.ui.CatalogPickerPage
-import com.vayunmathur.health.ui.ExerciseDetailsPage
+import com.vayunmathur.health.sync.HealthSyncWorker
 import com.vayunmathur.health.ui.HealthConnectRequiredPage
-import com.vayunmathur.health.ui.HealthMetricConfig
-import com.vayunmathur.health.ui.MedicalPage
-
-import com.vayunmathur.health.ui.NutritionDetailsPage
-import com.vayunmathur.health.ui.NutritionPage
-import com.vayunmathur.health.ui.RecipeEditorPage
-import com.vayunmathur.health.ui.RecipeManagementPage
-import com.vayunmathur.health.ui.TodayPage
-import com.vayunmathur.health.util.FoodDatabase
-import com.vayunmathur.health.util.HealthAPI
-import com.vayunmathur.health.util.HealthSyncWorker
-import com.vayunmathur.health.util.HealthViewModel
-import com.vayunmathur.health.util.HealthViewModelFactory
 import com.vayunmathur.library.ui.AppPermissionsGate
 import com.vayunmathur.library.ui.AppPermissionsSpec
 import com.vayunmathur.library.ui.IconFavorite
-import com.vayunmathur.library.ui.IconMedicalServices
+import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.PermissionRequirement
-import com.vayunmathur.library.ui.dialog.DatePickerDialog
-import com.vayunmathur.library.ui.dialog.TimePickerDialogContent
-import com.vayunmathur.library.util.DialogPage
-import com.vayunmathur.library.util.EntryProviderScope
-import com.vayunmathur.library.util.ListDetailPage
-import com.vayunmathur.library.util.ListPage
-import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.util.SiblingPage
-import com.vayunmathur.library.util.rememberNavBackStack
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
-import kotlinx.serialization.Serializable
-
-val CLASSES = setOf(
-    // Activity & Energy
-    StepsRecord::class,
-    WheelchairPushesRecord::class,
-    DistanceRecord::class,
-    TotalCaloriesBurnedRecord::class,
-    ActiveCaloriesBurnedRecord::class,
-    BasalMetabolicRateRecord::class,
-    FloorsClimbedRecord::class,
-    ElevationGainedRecord::class,
-
-    // Vitals & Clinical
-    HeartRateRecord::class,
-    RestingHeartRateRecord::class,
-    HeartRateVariabilityRmssdRecord::class,
-    RespiratoryRateRecord::class,
-    OxygenSaturationRecord::class,
-    BloodPressureRecord::class,
-    BloodGlucoseRecord::class,
-    Vo2MaxRecord::class,
-    SkinTemperatureRecord::class,
-
-    // Body Composition
-    WeightRecord::class,
-    HeightRecord::class,
-    BodyFatRecord::class,
-    LeanBodyMassRecord::class,
-    BoneMassRecord::class,
-    BodyWaterMassRecord::class,
-
-    // Exercise
-    ExerciseSessionRecord::class,
-
-    // Lifestyle & Nutrition
-    MindfulnessSessionRecord::class,
-    HydrationRecord::class,
-    NutritionRecord::class,
-    SleepSessionRecord::class,
-)
-
-val PERMISSIONS = CLASSES.map { HealthPermission.getReadPermission(it) }.toSet() + 
-    setOf(
-        HealthPermission.getWritePermission(NutritionRecord::class),
-        HealthPermission.getWritePermission(HydrationRecord::class),
-        HealthPermission.getWritePermission(WeightRecord::class),
-        HealthPermission.getWritePermission(HeightRecord::class),
-        HealthPermission.getWritePermission(BodyFatRecord::class),
-        HealthPermission.getWritePermission(LeanBodyMassRecord::class),
-        HealthPermission.getWritePermission(BoneMassRecord::class),
-        HealthPermission.getWritePermission(BodyWaterMassRecord::class),
-        "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"
-    )
-
 
 /** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
@@ -267,205 +149,4 @@ class MainActivity : MaActivity() {
             Navigation(healthViewModel, medicalViewModel)
         }
     }
-}
-
-/** Contract for route. */
-@Serializable
-sealed interface Route: NavKey {
-    /** Singleton holding today state and operations. */
-    @Serializable
-    data object Today: Route
-
-    /** Singleton holding body state and operations. */
-    @Serializable
-    data object Body: Route
-
-    /** Singleton holding nutrition details state and operations. */
-    @Serializable
-    data object NutritionDetails: Route
-
-    /** Singleton holding nutrition full breakdown state and operations. */
-    @Serializable
-    data object NutritionFullBreakdown: Route
-
-    /** Singleton holding recipe management state and operations. */
-    @Serializable
-    data object RecipeManagement: Route
-
-    /** Immutable value describing recipe editor; carries recipeId. */
-    @Serializable
-    data class RecipeEditor(val recipeId: String? = null): Route
-
-    /** Immutable value describing bar chart details; carries healthMetric. */
-    @Serializable
-    data class BarChartDetails(val healthMetric: HealthMetricConfig): Route
-
-    /** Singleton holding sleep details state and operations. */
-    @Serializable
-    data object SleepDetails: Route
-
-    /** Singleton holding exercise details state and operations. */
-    @Serializable
-    data object ExerciseDetails: Route
-
-    /** Singleton holding medical state and operations. */
-    @Serializable
-    data object Medical: Route
-
-    /** The vaccination form. A null [id] adds a new record; otherwise it edits that one. */
-    @Serializable
-    data class EditVaccination(val id: String? = null): Route
-
-    /** The medication form. A null [id] adds a new record; otherwise it edits that one. */
-    @Serializable
-    data class EditMedication(val id: String? = null): Route
-
-    /** The allergy form. A null [id] adds a new record; otherwise it edits that one. */
-    @Serializable
-    data class EditAllergy(val id: String? = null): Route
-
-    /** The condition form. A null [id] adds a new record; otherwise it edits that one. */
-    @Serializable
-    data class EditCondition(val id: String? = null): Route
-
-    /** The lab result form. A null [id] adds a new record; otherwise it edits that one. */
-    @Serializable
-    data class EditLabResult(val id: String? = null): Route
-
-    /**
-     * The searchable reference-data picker. [ingredient] narrows
-     * [com.vayunmathur.health.ui.CatalogKind.MedicationProduct] to one drug and is unused otherwise.
-     *
-     * Carries no result key: the picker writes straight into the ViewModel's draft, because this is
-     * a full-screen destination and the form underneath is not composed while it is open.
-     */
-    @Serializable
-    data class CatalogPicker(
-        val kind: com.vayunmathur.health.ui.CatalogKind,
-        val ingredient: String? = null,
-    ): Route
-
-    /**
-     * The shared date picker, hosted here so the medical forms can reach it.
-     *
-     * [allowClear] adds a Clear button and changes the result type to `DateSelection`; set it for
-     * any field that is allowed to have no date.
-     */
-    @Serializable
-    data class MedicalDatePicker(
-        val key: String,
-        val initialDate: LocalDate,
-        val allowClear: Boolean = false,
-    ): Route
-
-    /** The shared time picker, for dose reminder times. */
-    @Serializable
-    data class MedicalTimePicker(val key: String, val initialTime: LocalTime): Route
-}
-
-@Composable
-fun Navigation(viewModel: HealthViewModel, medicalViewModel: MedicalViewModel) {
-    val backStack = rememberNavBackStack<Route>(Route.Today)
-    MainNavigation(
-        backStack = backStack,
-        bottomBar = {
-            com.vayunmathur.library.util.BottomNavBar(
-                backStack = backStack,
-                pages = bottomBarItems(),
-                currentPage = backStack.last()
-            )
-        }
-    ) {
-        mainEntries(backStack, viewModel)
-        medicalEntries(backStack, medicalViewModel)
-    }
-}
-
-/** The four bottom tabs, in order. */
-@Composable
-private fun bottomBarItems() = listOf(
-    com.vayunmathur.library.util.BottomBarItem(
-        stringResource(R.string.nav_today),
-        Route.Today,
-    ) { IconFavorite() },
-    com.vayunmathur.library.util.BottomBarItem(
-        stringResource(R.string.nav_nutrition),
-        Route.NutritionDetails,
-    ) { IconFire() },
-    com.vayunmathur.library.util.BottomBarItem(
-        stringResource(R.string.nav_body),
-        Route.Body,
-    ) { IconBodySystem() },
-    com.vayunmathur.library.util.BottomBarItem(
-        stringResource(R.string.nav_medical),
-        Route.Medical,
-) { IconMedicalServices() },
-)
-
-/** Fitness and nutrition destinations. */
-private fun EntryProviderScope<Route>.mainEntries(
-    backStack: NavBackStack<Route>,
-    viewModel: HealthViewModel,
-) {
-        entry<Route.Today>(metadata = SiblingPage()) {
-            TodayPage(backStack, viewModel)
-        }
-        entry<Route.Body>(metadata = SiblingPage()) {
-            BodyPage(backStack, viewModel)
-        }
-        entry<Route.NutritionDetails>(metadata = SiblingPage()) {
-            NutritionPage(backStack, viewModel)
-        }
-        entry<Route.NutritionFullBreakdown> {
-            NutritionDetailsPage(backStack, viewModel)
-        }
-        entry<Route.RecipeManagement> {
-            RecipeManagementPage(backStack, viewModel)
-        }
-        entry<Route.RecipeEditor> {
-            RecipeEditorPage(backStack, viewModel, it.recipeId)
-        }
-        entry<Route.BarChartDetails>(metadata = MorphPage()) {
-            BarChartDetails(backStack, viewModel, it.healthMetric)
-        }
-        entry<Route.SleepDetails>(metadata = MorphPage()) {
-            com.vayunmathur.health.ui.SleepDetailsPage(backStack, viewModel)
-        }
-        entry<Route.ExerciseDetails>(metadata = MorphPage()) {
-            ExerciseDetailsPage(backStack, viewModel)
-        }
-}
-
-/** Medical records destinations. */
-private fun EntryProviderScope<Route>.medicalEntries(
-    backStack: NavBackStack<Route>,
-    medicalViewModel: MedicalViewModel,
-) {
-        entry<Route.Medical>(metadata = SiblingPage() + ListPage()) {
-            MedicalPage(backStack, medicalViewModel)
-        }
-        entry<Route.EditVaccination>(metadata = ListDetailPage()) {
-            AddVaccinationPage(backStack, medicalViewModel)
-        }
-        entry<Route.EditMedication>(metadata = ListDetailPage()) {
-            AddMedicationPage(backStack, medicalViewModel)
-        }
-        entry<Route.EditAllergy>(metadata = ListDetailPage()) {
-            AddAllergyPage(backStack, medicalViewModel)
-        }
-        entry<Route.EditCondition>(metadata = ListDetailPage()) {
-            AddConditionPage(backStack, medicalViewModel)
-        }
-        entry<Route.EditLabResult>(metadata = ListDetailPage()) {
-            AddLabResultPage(backStack, medicalViewModel)
-        }
-        entry<Route.CatalogPicker>(metadata = ListDetailPage()) {
-            CatalogPickerPage(backStack, medicalViewModel, it)
-        }
-        entry<Route.MedicalDatePicker>(metadata = DialogPage()) {
-            DatePickerDialog(backStack, it.key, it.initialDate, allowClear = it.allowClear)
-        }
-        entry<Route.MedicalTimePicker>(metadata = DialogPage()) {
-            TimePickerDialogContent(backStack, it.key, it.initialTime)
-        }
 }

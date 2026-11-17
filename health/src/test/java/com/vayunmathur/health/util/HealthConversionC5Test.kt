@@ -1,4 +1,7 @@
 package com.vayunmathur.health.util
+import com.vayunmathur.health.sync.toRecord
+import com.vayunmathur.health.sync.exerciseSegmentTypeName
+import com.vayunmathur.health.sync.exerciseTypeName
 
 import androidx.health.connect.client.records.BasalMetabolicRateRecord
 import androidx.health.connect.client.records.BloodGlucoseRecord

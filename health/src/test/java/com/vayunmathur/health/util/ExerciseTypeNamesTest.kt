@@ -1,4 +1,6 @@
 package com.vayunmathur.health.util
+import com.vayunmathur.health.sync.exerciseSegmentTypeName
+import com.vayunmathur.health.sync.exerciseTypeName
 
 import androidx.health.connect.client.records.ExerciseSegment
 import androidx.health.connect.client.records.ExerciseSessionRecord

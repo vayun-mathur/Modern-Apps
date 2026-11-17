@@ -1,7 +1,6 @@
 @file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 
-package com.vayunmathur.health.util
-
+package com.vayunmathur.health.data
 import kotlin.uuid.Uuid
 import android.content.Context
 import android.content.SharedPreferences

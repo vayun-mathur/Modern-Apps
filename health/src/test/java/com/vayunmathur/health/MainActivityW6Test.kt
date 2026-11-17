@@ -35,7 +35,7 @@ class MainActivityW6Test {
                 context, androidx.work.Configuration.Builder().build(),
             )
         } catch (_: IllegalStateException) { /* already initialised */ }
-        com.vayunmathur.health.util.HealthSyncWorker.enqueue(context)
+        com.vayunmathur.health.sync.HealthSyncWorker.enqueue(context)
         val infos = runBlocking {
             androidx.work.WorkManager.getInstance(context)
                 .getWorkInfosForUniqueWork("HealthSyncWork").get()

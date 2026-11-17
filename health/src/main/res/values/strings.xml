@@ -35,10 +35,8 @@
     <!-- BarChartDetails: Tab for yearly aggregation. Noun -->
     <string name="tab_year">Year</string>
 
-
     <!-- BarChartDetails / SleepDetailsPage: Empty chart placeholder when no health data for period. Sentence -->
     <string name="no_data_available">No data available for this period</string>
-
 
     <!-- BarChartDetails: Unit shown when tab != Day and not line chart, displaying average per day. %1$s = unit string e.g. steps, kcal, km -->
     <string name="unit_per_day_avg_format"><xliff:g id="unit" example="steps">%1$s</xliff:g> per day (avg)</string>
@@ -133,7 +131,6 @@
     <string name="label_elevation">Elevation</string>
     <!-- TodayPage: Label for Floors climbed row. Noun -->
     <string name="label_floors">Floors</string>
-
 
     <!-- Units: Beats per minute. Abbreviation -->
     <string name="unit_bpm">bpm</string>
@@ -276,7 +273,6 @@
     <!-- MedicalPage: Navigation label and section title for the medications list. Noun, plural -->
     <string name="nav_medication">Medications</string>
     <!-- MedicalPage: Navigation label for the records section. Noun, plural -->
-    <string name="nav_records">Records</string>
 
     <!-- BottomNavBar: Tab for the medical page, which contains all medical logs. Noun -->
     <string name="nav_medical">Medical</string>
@@ -286,9 +282,7 @@
     <!-- MedicalPage: Row opening the vaccination log. Noun, plural -->
     <string name="vaccinations">Vaccinations</string>
     <!-- MedicalPage: Empty state when no vaccinations are recorded. Sentence -->
-    <string name="no_vaccinations">No vaccinations</string>
     <!-- MedicalPage: Empty-state body for the vaccination list. Sentence -->
-    <string name="no_vaccinations_message">Add a vaccination to start a record you can keep and share.</string>
     <!-- MedicalPage: Row opening the allergy list. Noun, plural -->
     <string name="allergies">Allergies</string>
     <!-- MedicalPage: Row opening the diagnosis list. Noun, plural -->
@@ -297,7 +291,6 @@
     <!-- MedicalPage: Banner shown when the device cannot store FHIR records. Sentence -->
     <string name="phr_unavailable">Health Connect on this device cannot store medical records, so these are kept in the app only.</string>
     <!-- MedicalPage: Shown when no records exist in any category. Sentence -->
-    <string name="nothing_recorded">Nothing recorded yet</string>
 
     <!-- MedicalPage: FAB entry and add screen title. Verb phrase -->
     <string name="add_vaccination">Add vaccination</string>
@@ -306,20 +299,15 @@
     <!-- MedicalPage: Confirm deleting one medical record (vaccination, medication, allergy, condition, lab result). %1$s = record display name. Sentence -->
     <string name="delete_record_confirm">Delete the record of %1$s?</string>
     <!-- MedicalPage: CVX code shown under a vaccination entry. %1$s = code, e.g. 08 -->
-    <string name="cvx_code">CVX %1$s</string>
 
     <!-- MedicalPage: Empty state when no medications are recorded. Sentence -->
-    <string name="no_medications">No medications</string>
     <!-- MedicalPage: Empty-state body for the medications list. Sentence -->
-    <string name="no_medications_message">Add a medication to track what you take and when.</string>
     <!-- MedicalPage: FAB entry and add screen title. Verb phrase -->
     <string name="add_medication">Add medication</string>
     <!-- AddMedicationPage: Title when changing an existing record. Verb phrase -->
     <string name="edit_medication">Edit medication</string>
     <!-- MedicalPage: Tab showing medications still being taken. Adjective -->
-    <string name="medication_current">Current</string>
     <!-- MedicalPage: Tab showing finished and stopped medications. Adjective -->
-    <string name="medication_past">Past</string>
     <!-- AddMedicationPage: Status shown on a medication still being taken. Adjective -->
     <string name="medication_status_active">Taking</string>
     <!-- AddMedicationPage: Status shown on a completed course. Adjective -->
@@ -432,13 +420,10 @@
     <!-- AddMedicationPage: Warning that reminders cannot take over the screen without a permission. Sentence -->
     <string name="full_screen_intent_needed">Reminders can only take over the screen once you allow full-screen notifications.</string>
     <!-- AddMedicationPage: Button opening the system settings screen for that permission. Verb phrase -->
-    <string name="dose_reminder_exact_alarm_settings">Open settings</string>
     <!-- AddMedicationPage: Button opening the system full-screen intent settings. Verb -->
     <string name="grant_full_screen">Allow</string>
     <!-- MedicalPage: Next scheduled dose shown on a current medication. %1$s = when, e.g. Tomorrow 08:00 -->
-    <string name="next_dose">Next dose <xliff:g id="when" example="Tomorrow 08:00">%1$s</xliff:g></string>
     <!-- MedicalPage: When the last dose was taken. %1$s = date or relative time, e.g. Mar 4 2026 -->
-    <string name="last_taken">Last taken: %1$s</string>
 
     <!-- Weekday initials for the reminder day selector. Single letters, Sunday first -->
     <string name="day_initial_sunday">S</string>
@@ -452,9 +437,7 @@
     <!-- MedicalPage: FAB entry and add screen title. Verb phrase -->
     <string name="add_allergy">Add allergy</string>
     <!-- MedicalPage: Empty state when no allergies are recorded. Sentence -->
-    <string name="no_allergies">No allergies recorded</string>
     <!-- MedicalPage: Empty-state body for the allergy list. Sentence -->
-    <string name="no_allergies_message">Record an allergy so it stays with your health data.</string>
     <!-- AddAllergyPage: Title when changing an existing record. Verb phrase -->
     <string name="edit_allergy">Edit allergy</string>
     <!-- AddAllergyPage: What kind of thing the allergen is. Noun -->
@@ -487,9 +470,7 @@
     <!-- MedicalPage: FAB entry and add screen title. Verb phrase -->
     <string name="add_condition">Add condition</string>
     <!-- MedicalPage: Empty state when no conditions are recorded. Sentence -->
-    <string name="no_conditions">No conditions recorded</string>
     <!-- MedicalPage: Empty-state body for the condition list. Sentence -->
-    <string name="no_conditions_message">Record a diagnosis so your condition list is always with you.</string>
     <!-- AddConditionPage: Title when changing an existing record. Verb phrase -->
     <string name="edit_condition">Edit condition</string>
     <!-- AddConditionPage: The diagnosis itself. Noun -->
@@ -517,9 +498,7 @@
     <!-- MedicalPage: The lab results log. Noun phrase, plural -->
     <string name="lab_results">Lab results</string>
     <!-- MedicalPage: Empty state when no lab results are recorded. Sentence -->
-    <string name="no_lab_results">No lab results</string>
     <!-- MedicalPage: Empty-state body for the lab results list. Sentence -->
-    <string name="no_lab_results_message">Record a lab result to keep it with the rest of your medical history.</string>
     <!-- MedicalPage: FAB entry and add screen title. Verb phrase -->
     <string name="add_lab_result">Add lab result</string>
     <!-- AddLabResultPage: Title when changing an existing record. Verb phrase -->
@@ -541,11 +520,8 @@
     <!-- AboutYouPage: Screen of standing facts about the user. Noun phrase -->
     <string name="about_you">About you</string>
     <!-- AboutYouPage: Overline above the current-status summary. Noun phrase -->
-    <string name="about_you_overline">Current state</string>
     <!-- AboutYouPage: Section heading for pregnancy facts. Noun -->
-    <string name="section_pregnancy">Pregnancy</string>
     <!-- AboutYouPage: Section heading for smoking facts. Noun -->
-    <string name="section_smoking">Smoking</string>
     <!-- MedicalPage: Trailing text on a category with no entries, so tapping it and seeing nothing change reads as an answer rather than a broken row. Adjective -->
     <string name="medical_empty">None</string>
     <!-- MedicalPage About you: The pregnancy question, shown as the row headline. Question -->
@@ -555,7 +531,6 @@
     <!-- MedicalPage About you: Estimated delivery date. Noun phrase -->
     <string name="field_due_date">Due date</string>
     <!-- AboutYouPage: Date a fact was recorded. %1$s = date e.g. Mar 4 2026 -->
-    <string name="recorded_on">Recorded <xliff:g id="date" example="Mar 4 2026">%1$s</xliff:g></string>
     <!-- Shared unanswered status for pregnancy/smoking facts. Adjective -->
     <string name="answer_unknown">No answer</string>
     <!-- Pregnancy status: currently pregnant. Adjective -->
@@ -582,9 +557,7 @@
     <!-- AboutYouPage: The transport question. Question -->
     <string name="social_transport">Has a lack of transport kept you from medical appointments, work, or from getting things you need for daily living?</string>
     <!-- AboutYouPage: Section heading for lifestyle questions. Noun phrase -->
-    <string name="section_lifestyle">Lifestyle</string>
     <!-- AboutYouPage: Section heading for living-circumstance questions. Noun phrase -->
-    <string name="section_circumstances">Living situation</string>
     <!-- AboutYouPage: Default option on every question the user has not answered. Adjective -->
     <string name="not_answered">Not answered</string>
 
@@ -628,8 +601,4 @@
     <string name="decline_to_answer">I choose not to answer</string>
 
     <!-- MedicalPage: Count of records. %1$d = count -->
-    <plurals name="records_recorded">
-        <item quantity="one">%1$d record</item>
-        <item quantity="other">%1$d records</item>
-    </plurals>
 </resources>

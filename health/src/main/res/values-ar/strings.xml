@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">الصحة</string>
-    <string name="search">البحث</string>
     <string name="grant_permissions">منح الأذونات</string>
     <string name="grant_permissions_rationale">هذا التطبيق يقرأ و يكتب بياناتك الصحية من خلال Health Connect. لا شئ يغادر جهازك.</string>
     <string name="tab_day">اليوم</string>
@@ -56,7 +55,6 @@
     <string name="unit_km">كم</string>
     <string name="unit_min">د</string>
     <string name="unit_cal">كالوري</string>
-    <string name="dose_reminder_exact_alarm_settings">فتح الإعدادات</string>
     <string name="field_vaccine">اللقاح</string>
     <string name="field_site">الموضع</string>
     <string name="field_dose">الجرعة</string>

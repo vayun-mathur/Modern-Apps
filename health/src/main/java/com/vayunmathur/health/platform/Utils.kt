@@ -1,5 +1,4 @@
-package com.vayunmathur.health.util
-
+package com.vayunmathur.health.platform
 import com.vayunmathur.library.ui.DateString
 import kotlinx.datetime.LocalDate
 import kotlin.time.Duration.Companion.minutes

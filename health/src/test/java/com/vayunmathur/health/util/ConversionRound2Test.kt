@@ -1,4 +1,5 @@
 package com.vayunmathur.health.util
+import com.vayunmathur.health.sync.toRecord
 
 import androidx.health.connect.client.records.BasalMetabolicRateRecord
 import androidx.health.connect.client.records.BloodGlucoseRecord

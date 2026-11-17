@@ -7,7 +7,6 @@
     <string name="tab_week">Săptămână</string>
     <string name="tab_month">Lună</string>
     <string name="tab_year">An</string>
-    <string name="week_range"><xliff:g id="start_date" example="May 12">%1$s</xliff:g> – <xliff:g id="end_date" example="May 18">%2$s</xliff:g></string>
     <string name="no_data_available">Nu sunt disponibile date pentru această perioadă</string>
     <string name="unit_per_day_avg_format"><xliff:g id="unit" example="steps">%1$s</xliff:g> pe zi (mediu)</string>
     <string name="unit_only_format"> <xliff:g id="unit" example="steps">%1$s</xliff:g></string>
@@ -46,29 +45,13 @@
     <string name="label_deep">Adânc</string>
     <string name="section_body_composition">Compoziția corporală</string>
     <string name="label_active">Activitate</string>
-    <string name="label_today">Astăzi</string>
     <string name="slash_value_format"><xliff:g id="first" example="120">%1$s</xliff:g>/<xliff:g id="second" example="80">%2$s</xliff:g></string>
     <string name="dash_value_format"><xliff:g id="min" example="60">%1$s</xliff:g> - <xliff:g id="max" example="140">%2$s</xliff:g></string>
     <string name="hours_minutes_format"><xliff:g id="hours" example="7">%1$d</xliff:g>h <xliff:g id="minutes" example="30">%2$d</xliff:g>m</string>
     <string name="minutes_format"><xliff:g id="minutes" example="25">%1$d</xliff:g>m</string>
-    <string name="label_steps">Pași</string>
-    <string name="label_wheelchair_pushes">Împingeri cărucior</string>
     <string name="label_mindfulness">Meditaţie</string>
     <string name="label_elevation">Altitudine</string>
     <string name="label_floors">Etaje</string>
-    <string name="label_distance">Distanță</string>
-    <string name="label_heart_rate">Ritmul cardiac</string>
-    <string name="label_sleep">Somn</string>
-    <string name="label_hydration">Hidratare</string>
-    <string name="label_blood_pressure">Tensiunea arterială</string>
-    <string name="label_oxygen_saturation">Saturația oxigenului</string>
-    <string name="label_resting_heart_rate">Ritm cardiac în repaus</string>
-    <string name="label_height">Înălțime</string>
-    <string name="label_weight">Greutate</string>
-    <string name="label_body_fat">Grăsime corporală</string>
-    <string name="label_lean_body_mass">Masa corporală slabă</string>
-    <string name="label_bone_mass">Masa osoasă</string>
-    <string name="label_body_water_mass">Masa apei corporale</string>
     <string name="unit_bpm">bpm</string>
     <string name="unit_percent">%</string>
     <string name="unit_cm">cm</string>
@@ -77,7 +60,6 @@
     <string name="unit_fl">fl</string>
     <string name="unit_m">m</string>
     <string name="unit_km">km</string>
-    <string name="unit_steps">pași</string>
     <string name="unit_pushes">împingeri</string>
     <string name="unit_min">min</string>
     <string name="unit_cal">cal</string>
@@ -91,10 +73,8 @@
     <string name="save_recipe">Salvează rețeta</string>
     <string name="set_quantity_for_format">Setează cantitatea pentru <xliff:g id="ingredient" example="Tomato">%1$s</xliff:g></string>
     <string name="quantity">Cantitate</string>
-    <string name="unit">Unități</string>
     <string name="confirm">Confirmare</string>
     <string name="search_ingredient">Căutare ingredient</string>
-    <string name="search">Căutare</string>
     <string name="log_hydration">Adăugare hidratare</string>
     <string name="log_meal">Adăugare mâncare</string>
     <string name="log_body_metric">Adăugare <xliff:g id="metric" example="Weight">%1$s</xliff:g></string>
@@ -104,7 +84,6 @@
     <string name="section_latest_vitals">Ultimele măsurători</string>
     <string name="section_last_night">Aseară</string>
     <string name="section_quick_stats">Rezumat</string>
-    <string name="label_exercise">Antrenament</string>
     <string name="no_workouts">Niciun antrenament înregistrat</string>
     <string name="view_full_breakdown">Vezi detalierea completă</string>
     <string name="no_results_found">Nu s-au găsit rezultate</string>
@@ -145,11 +124,8 @@
     <string name="phr_unavailable">Health Connect de pe acest dispozitiv nu poate stoca dosare medicale, așa că acestea sunt păstrate doar în aplicație.</string>
     <string name="add_vaccination">Adaugă vaccin</string>
     <string name="edit_vaccination">Editează vaccinarea</string>
-    <string name="delete_vaccination_confirm">Ștergi înregistrarea %1$s?</string>
-    <string name="medications">Medicamente</string>
     <string name="add_medication">Adaugă medicamente</string>
     <string name="edit_medication">Editează medicamentele</string>
-    <string name="delete_medication_confirm">Ștergi înregistrarea %1$s?</string>
     <string name="medication_status_active">Se iau</string>
     <string name="medication_status_completed">Finalizat</string>
     <string name="medication_status_stopped">Oprite</string>
@@ -195,7 +171,6 @@
     <string name="on_these_days">În aceste zile</string>
     <string name="reminders_until">Până la</string>
     <string name="no_end_date">Fără dată scadență</string>
-    <string name="dose_reminder_exact_alarm_settings">Deschide setările</string>
     <string name="grant_full_screen">Permite</string>
     <string name="day_initial_sunday">D</string>
     <string name="day_initial_monday">L</string>
@@ -204,16 +179,11 @@
     <string name="day_initial_thursday">J</string>
     <string name="day_initial_friday">V</string>
     <string name="day_initial_saturday">S</string>
-    <string name="delete_allergy_confirm">Ștergi înregistrarea %1$s?</string>
     <string name="field_allergy_category">Tip</string>
     <string name="choose_an_allergen">Alege un medicament</string>
-    <string name="allergy_category_medication">Medicamente</string>
     <string name="allergy_criticality_unknown">Necunoscut</string>
-    <string name="delete_condition_confirm">Ștergi înregistrarea %1$s?</string>
     <string name="field_condition">Condiție</string>
     <string name="search_allergens">Caută medicamente</string>
-    <string name="delete_lab_confirm">Ștergi înregistrarea %1$s?</string>
-    <string name="section_result">Rezultat</string>
     <string name="field_result">Rezultat</string>
     <string name="field_unit">Unități</string>
     <string name="about_you">Despre tine</string>
@@ -249,7 +219,6 @@
     <string name="choose_a_condition">Alege o condiție</string>
     <string name="field_diagnosed">Diagnosticat</string>
     <string name="field_resolved">Rezolvat</string>
-    <string name="condition_status_active">Activ</string>
     <string name="condition_status_recurrence">Recurență</string>
     <string name="condition_status_remission">În remisie</string>
     <string name="condition_status_resolved">Rezolvat</string>

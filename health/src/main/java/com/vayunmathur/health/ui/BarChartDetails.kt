@@ -5,9 +5,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.util.HealthViewModel
-import com.vayunmathur.health.util.MetricDetailsActions
-import com.vayunmathur.health.util.MetricDetailsUiState
+import com.vayunmathur.health.platform.HealthViewModel
+import com.vayunmathur.health.platform.MetricDetailsActions
+import com.vayunmathur.health.platform.MetricDetailsUiState
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone

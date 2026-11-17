@@ -57,18 +57,3 @@ fun SleepStageBreakdown(data: SleepData) {
     }
 }
 
-@Composable
-fun StageRow(label: String, duration: String, color: Color) {
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(Modifier.size(12.dp), shape = MaterialTheme.shapes.extraSmall, color = color) {}
-            Spacer(Modifier.width(12.dp))
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-        }
-        Text(duration, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-    }
-}

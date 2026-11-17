@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="search">Hledat</string>
     <string name="month_year_format"><xliff:g id="month" example="Leden">%1$s</xliff:g> <xliff:g id="year" example="2026">%2$d</xliff:g></string>
     <string name="app_name">Zdraví</string>
     <string name="grant_permissions">Udělit oprávnění</string>
@@ -8,7 +7,6 @@
     <string name="tab_week">Týden</string>
     <string name="tab_month">Měsíc</string>
     <string name="tab_year">Rok</string>
-    <string name="week_range"><xliff:g id="start_date" example="Kvě 12.">%1$s</xliff:g> – <xliff:g id="end_date" example="Kvě 18.">%2$s</xliff:g></string>
     <string name="no_data_available">Nejsou dostupná žádna data pro toto období</string>
     <string name="unit_per_day_avg_format"><xliff:g id="unit" example="kroků">%1$s</xliff:g> za den (prům)</string>
     <string name="unit_only_format"><xliff:g id="unit" example="steps">%1$s</xliff:g></string>
@@ -46,29 +44,13 @@
     <string name="label_deep">Hluboký spánek</string>
     <string name="section_body_composition">Tělesné složení</string>
     <string name="label_active">Aktivní</string>
-    <string name="label_today">Dnes</string>
     <string name="slash_value_format"><xliff:g id="first" example="120">%1$s</xliff:g>/<xliff:g id="second" example="80">%2$s</xliff:g></string>
     <string name="dash_value_format"><xliff:g id="min" example="60">%1$s</xliff:g> - <xliff:g id="max" example="140">%2$s</xliff:g></string>
     <string name="hours_minutes_format"><xliff:g id="hours" example="7">%1$d</xliff:g>h <xliff:g id="minutes" example="30">%2$d</xliff:g>min</string>
     <string name="minutes_format"><xliff:g id="minutes" example="25">%1$d</xliff:g> min</string>
-    <string name="label_steps">Kroky</string>
-    <string name="label_wheelchair_pushes">Odrazy na vozíku</string>
     <string name="label_mindfulness">Všímavost</string>
     <string name="label_elevation">Nadmořská výška</string>
     <string name="label_floors">Patra</string>
-    <string name="label_distance">Vzdálenost</string>
-    <string name="label_heart_rate">Tepová frekvence</string>
-    <string name="label_sleep">Spánek</string>
-    <string name="label_hydration">Hydratace</string>
-    <string name="label_blood_pressure">Krevní tlak</string>
-    <string name="label_oxygen_saturation">Okysličení krve</string>
-    <string name="label_resting_heart_rate">Klidová tepová frekvence</string>
-    <string name="label_height">Výška</string>
-    <string name="label_weight">Váha</string>
-    <string name="label_body_fat">Tělesný tuk</string>
-    <string name="label_lean_body_mass">Aktivní tělesná hmota</string>
-    <string name="label_bone_mass">Kostní hmota</string>
-    <string name="label_body_water_mass">Tělesná voda</string>
     <string name="unit_bpm">tep/min</string>
     <string name="unit_percent">%</string>
     <string name="unit_cm">cm</string>
@@ -77,7 +59,6 @@
     <string name="unit_fl">fl</string>
     <string name="unit_m">m</string>
     <string name="unit_km">km</string>
-    <string name="unit_steps">kroků</string>
     <string name="unit_pushes">odrazy</string>
     <string name="unit_min">min</string>
     <string name="unit_cal">cal</string>
@@ -91,7 +72,6 @@
     <string name="save_recipe">Uložit recept</string>
     <string name="set_quantity_for_format">Nastavit množství pro <xliff:g id="ingredient" example="Tomato">%1$s</xliff:g></string>
     <string name="quantity">Množství</string>
-    <string name="unit">Jednotka</string>
     <string name="confirm">Potvrdit</string>
     <string name="search_ingredient">Vyhledat ingredienci</string>
     <string name="log_hydration">Zapsat napití</string>
@@ -102,7 +82,6 @@
     <string name="section_latest_vitals">Nejnovější vitální funkce</string>
     <string name="section_last_night">Minulá noc</string>
     <string name="section_quick_stats">Rychlá statistika</string>
-    <string name="label_exercise">Cvičení</string>
     <string name="no_workouts">Žádné zaznamenané cviky</string>
     <string name="log_body_metric">Zapsat <xliff:g id="metric" example="váha">%1$s</xliff:g></string>
     <string name="view_full_breakdown">Zobrazit celý rozpis</string>

@@ -11,9 +11,9 @@ import com.vayunmathur.health.data.HealthDatabase
 import com.vayunmathur.health.data.HealthRepository
 import com.vayunmathur.health.data.Record
 import com.vayunmathur.health.data.RecordType
-import com.vayunmathur.health.util.FoodDatabase
-import com.vayunmathur.health.util.HealthAPI
-import com.vayunmathur.health.util.HealthViewModel
+import com.vayunmathur.health.data.FoodDatabase
+import com.vayunmathur.health.data.HealthAPI
+import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
 import java.time.Instant

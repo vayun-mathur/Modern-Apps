@@ -1,4 +1,5 @@
 package com.vayunmathur.health.util
+import com.vayunmathur.health.data.HealthAPI
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
