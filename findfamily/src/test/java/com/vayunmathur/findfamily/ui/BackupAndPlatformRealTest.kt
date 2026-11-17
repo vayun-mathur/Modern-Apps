@@ -13,7 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.findfamily.util.Platform
+import com.vayunmathur.findfamily.platform.Platform
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.ui.DynamicTheme
 import org.junit.Rule

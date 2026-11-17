@@ -9,8 +9,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
-import com.vayunmathur.findfamily.util.PersonActions
-import com.vayunmathur.findfamily.util.PersonUiState
+import com.vayunmathur.findfamily.platform.PersonActions
+import com.vayunmathur.findfamily.platform.PersonUiState
 import kotlin.time.Clock
 import org.junit.Rule
 import org.junit.runner.RunWith

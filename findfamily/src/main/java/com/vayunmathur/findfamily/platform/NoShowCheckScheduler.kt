@@ -11,7 +11,7 @@ import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.FindFamilyRepository
 import com.vayunmathur.findfamily.data.NoShowAlert
 import com.vayunmathur.findfamily.domain.NoShowPolicy
-import com.vayunmathur.findfamily.util.notifyNoShowAlert
+import com.vayunmathur.findfamily.notifications.notifyNoShowAlert
 import java.util.concurrent.TimeUnit
 import kotlin.time.Clock
 import kotlin.time.Duration

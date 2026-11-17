@@ -6,8 +6,8 @@ import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.findfamily.data.TestFindFamilyRepository
 import com.vayunmathur.findfamily.platform.NoShowCheckScheduler
-import com.vayunmathur.findfamily.util.BootReceiver
-import com.vayunmathur.findfamily.util.FindFamilyNotificationChannels
+import com.vayunmathur.findfamily.platform.BootReceiver
+import com.vayunmathur.findfamily.notifications.FindFamilyNotificationChannels
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.resetMain

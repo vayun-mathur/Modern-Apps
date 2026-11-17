@@ -1,10 +1,10 @@
 package com.vayunmathur.findfamily.intents
-import com.vayunmathur.findfamily.util.generatePqcLinkKey
+import com.vayunmathur.findfamily.network.generatePqcLinkKey
 
 import com.vayunmathur.findfamily.data.FindFamilyRepository
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.ui.dialogs.encodeBase26
-import com.vayunmathur.findfamily.util.Networking
+import com.vayunmathur.findfamily.network.Networking
 import com.vayunmathur.library.util.AssistantIntent
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable

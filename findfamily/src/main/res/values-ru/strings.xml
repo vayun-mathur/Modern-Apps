@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="unknown">Неизвестный</string>
     <string name="computing">Вычисление…</string>
     <string name="notification_channel_battery_desc">Оповещает когда у члена семьи разряжена батарея</string>
     <string name="notification_channel_entry_exit_name">Прибытие и отправление</string>
@@ -10,13 +9,7 @@
     <string name="notification_low_battery">У <xliff:g id="person_name" example="Алиса">%1$s</xliff:g> разряжена батарея</string>
     <string name="notification_entered_waypoint"><xliff:g id="person_name" example="Алиса">%1$s</xliff:g> вошёл в <xliff:g id="waypoint_name" example="Дом">%2$s</xliff:g></string>
     <string name="notification_exited_waypoint"><xliff:g id="person_name" example="Алиса">%1$s</xliff:g> вышел из <xliff:g id="waypoint_name" example="Дом">%2$s</xliff:g></string>
-    <string name="permission_fine_location_granted">✅ Точное местоположение позволено</string>
     <string name="permission_grant_fine_location">1. Предоставить разрешение на точное местоположение</string>
-    <string name="permission_background_granted">✅ Работа в фоне позволена</string>
-    <string name="permission_enable_all_the_time">2. Включить «Разрешить постоянно»</string>
-    <string name="permission_background_explanation">Чтобы включить фоновое отслеживание, выберите «Разрешить постоянно» на следующем экране.</string>
-    <string name="permission_approximate_only_explanation">FindFamily работает только с точным местоположением. Вы указали только приблизительное местоположение. Чтобы продолжить, укажите точное местоположение.</string>
-    <string name="permission_reopen_upgrade_prompt">Обновить до точного местоположения</string>
     <string name="permission_upgrade_dialog_title">Требуется точное местоположение</string>
     <string name="permission_upgrade_dialog_message">FindFamily необходимо знать точное местоположение, чтобы сообщить где вы. Пожалуйста, разрешите точное местоположение.</string>
     <string name="permission_upgrade_dialog_confirm">Позволить точное местоположение</string>
@@ -33,20 +26,55 @@
     <string name="user_is_here"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> сейчас здесь</string>
     <string name="users_are_here"><xliff:g id="person_names" example="Алиса, Боб">%1$s</xliff:g> сейчас здесь</string>
     <string name="since_just_now">Недавно</string>
-    <string name="since_minutes_ago"><xliff:g id="минуты" example="5">%1$d</xliff:g> минут назад</string>
+    <plurals name="since_minutes_ago">
+        <item quantity="one"><xliff:g id="минуты" example="5">%1$d</xliff:g> минут назад</item>
+        <item quantity="few"><xliff:g id="минуты" example="5">%1$d</xliff:g> минут назад</item>
+        <item quantity="many"><xliff:g id="минуты" example="5">%1$d</xliff:g> минут назад</item>
+        <item quantity="other"><xliff:g id="минуты" example="5">%1$d</xliff:g> минут назад</item>
+    </plurals>
     <string name="since_time_date">С <xliff:g id="time" example="15:45">%1$s</xliff:g> <xliff:g id="date" example="today">%2$s</xliff:g></string>
     <string name="today">сегодня</string>
     <string name="yesterday">вчера</string>
     <string name="user_card_status">Обновлено <xliff:g id="last_updated" example="5 минут назад">%1$s</xliff:g>\nВ <xliff:g id="location_name" example="Дом">%2$s</xliff:g>\n<xliff:g id="since_text" example="С сегодняшнего дня">%3$s</xliff:g></string>
     <string name="battery_percentage"><xliff:g id="battery_level" example="85">%1$d</xliff:g>%%</string>
     <string name="time_just_now">только что</string>
-    <string name="time_minutes_ago"><xliff:g id="minites" example="5">%1$d</xliff:g> минут назад</string>
-    <string name="time_hours_ago"><xliff:g id="hours" example="2">%1$d</xliff:g> часов назад</string>
-    <string name="time_days_ago"><xliff:g id="days" example="3">%1$d</xliff:g> дней назад</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one"><xliff:g id="minites" example="5">%1$d</xliff:g> минут назад</item>
+        <item quantity="few"><xliff:g id="minites" example="5">%1$d</xliff:g> минут назад</item>
+        <item quantity="many"><xliff:g id="minites" example="5">%1$d</xliff:g> минут назад</item>
+        <item quantity="other"><xliff:g id="minites" example="5">%1$d</xliff:g> минут назад</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="one"><xliff:g id="hours" example="2">%1$d</xliff:g> часов назад</item>
+        <item quantity="few"><xliff:g id="hours" example="2">%1$d</xliff:g> часов назад</item>
+        <item quantity="many"><xliff:g id="hours" example="2">%1$d</xliff:g> часов назад</item>
+        <item quantity="other"><xliff:g id="hours" example="2">%1$d</xliff:g> часов назад</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one"><xliff:g id="days" example="3">%1$d</xliff:g> дней назад</item>
+        <item quantity="few"><xliff:g id="days" example="3">%1$d</xliff:g> дней назад</item>
+        <item quantity="many"><xliff:g id="days" example="3">%1$d</xliff:g> дней назад</item>
+        <item quantity="other"><xliff:g id="days" example="3">%1$d</xliff:g> дней назад</item>
+    </plurals>
     <string name="time_very_soon">очень скоро</string>
-    <string name="time_in_minutes">через <xliff:g id="минуты" example="5">%1$d</xliff:g> минут</string>
-    <string name="time_in_hours">через <xliff:g id="hours" example="2">%1$d</xliff:g> часов</string>
-    <string name="time_in_days">через <xliff:g id="days" example="3">%1$d</xliff:g> дней</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">через <xliff:g id="минуты" example="5">%1$d</xliff:g> минут</item>
+        <item quantity="few">через <xliff:g id="минуты" example="5">%1$d</xliff:g> минут</item>
+        <item quantity="many">через <xliff:g id="минуты" example="5">%1$d</xliff:g> минут</item>
+        <item quantity="other">через <xliff:g id="минуты" example="5">%1$d</xliff:g> минут</item>
+    </plurals>
+    <plurals name="time_in_hours">
+        <item quantity="one">через <xliff:g id="hours" example="2">%1$d</xliff:g> часов</item>
+        <item quantity="few">через <xliff:g id="hours" example="2">%1$d</xliff:g> часов</item>
+        <item quantity="many">через <xliff:g id="hours" example="2">%1$d</xliff:g> часов</item>
+        <item quantity="other">через <xliff:g id="hours" example="2">%1$d</xliff:g> часов</item>
+    </plurals>
+    <plurals name="time_in_days">
+        <item quantity="one">через <xliff:g id="days" example="3">%1$d</xliff:g> дней</item>
+        <item quantity="few">через <xliff:g id="days" example="3">%1$d</xliff:g> дней</item>
+        <item quantity="many">через <xliff:g id="days" example="3">%1$d</xliff:g> дней</item>
+        <item quantity="other">через <xliff:g id="days" example="3">%1$d</xliff:g> дней</item>
+    </plurals>
     <string name="share_your_location">Делится своим местоположением с этим человеком</string>
     <string name="change_connected_contact">Изменить подключенный контакт</string>
     <string name="disable_after">Отключить после</string>
@@ -62,7 +90,6 @@
     <string name="waypoint_range_error">Диапазон должен быть числом</string>
     <string name="waypoint_range_suffix">метры</string>
     <string name="add_link_title">Поделиться по ссылке</string>
-    <string name="add_link_label">Метка ссылки (для различения ссылок)</string>
     <string name="expiry_time_label">Срок действия</string>
     <string name="create_temporary_link">Создать временную ссылку</string>
     <string name="link_pqc_unavailable">Не удалось создать ссылку на этом устройстве.</string>

@@ -28,10 +28,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
-import com.vayunmathur.findfamily.util.FamilyListActions
-import com.vayunmathur.findfamily.util.MainPageActions
-import com.vayunmathur.findfamily.util.MainPageUiState
-import com.vayunmathur.findfamily.util.PersonActions
+import com.vayunmathur.findfamily.platform.FamilyListActions
+import com.vayunmathur.findfamily.platform.MainPageActions
+import com.vayunmathur.findfamily.platform.MainPageUiState
+import com.vayunmathur.findfamily.platform.PersonActions
 import com.vayunmathur.library.ui.isExpandedWidth
 import kotlin.time.ExperimentalTime
 

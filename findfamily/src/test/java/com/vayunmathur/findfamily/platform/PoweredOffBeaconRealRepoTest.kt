@@ -6,8 +6,8 @@ import com.vayunmathur.findfamily.data.DirectBootStore
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.TestFindFamilyRepository
 import com.vayunmathur.findfamily.data.User
-import com.vayunmathur.findfamily.tracker.PoweredOffKeyStore
-import com.vayunmathur.findfamily.util.Networking
+import com.vayunmathur.findfamily.data.PoweredOffKeyStore
+import com.vayunmathur.findfamily.network.Networking
 import com.vayunmathur.library.network.WebSocketClient
 import com.vayunmathur.library.network.WsSession
 import com.vayunmathur.library.util.DataStoreUtils

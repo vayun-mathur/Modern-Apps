@@ -8,11 +8,11 @@ import android.content.Intent
 import android.os.PowerManager
 import android.os.SystemClock
 import com.vayunmathur.findfamily.domain.ForcedFixPolicy
-import com.vayunmathur.findfamily.util.LocationServiceController
-import com.vayunmathur.findfamily.util.LocationTrackingService
-import com.vayunmathur.findfamily.util.Networking
-import com.vayunmathur.findfamily.util.publishDirectBoot
-import com.vayunmathur.findfamily.util.syncHeartbeat
+import com.vayunmathur.findfamily.platform.LocationServiceController
+import com.vayunmathur.findfamily.platform.LocationTrackingService
+import com.vayunmathur.findfamily.network.Networking
+import com.vayunmathur.findfamily.platform.publishDirectBoot
+import com.vayunmathur.findfamily.platform.syncHeartbeat
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

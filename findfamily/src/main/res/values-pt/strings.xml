@@ -5,6 +5,5 @@
     <string name="notification_low_battery">%1$s tem bateria baixa</string>
     <string name="notification_entered_waypoint">%1$s entrou %2$s</string>
     <string name="notification_exited_waypoint">%1$s saiu %2$s</string>
-    <string name="permission_fine_location_granted">✅ Localização Precisa</string>
     <string name="fab_link">Link</string>
 </resources>

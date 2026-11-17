@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.findfamily.data.User
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.findfamily.R
 

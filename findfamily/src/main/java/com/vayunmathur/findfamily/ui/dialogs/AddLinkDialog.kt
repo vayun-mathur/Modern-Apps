@@ -24,7 +24,7 @@ import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.R
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -85,29 +85,4 @@ fun AddLinkDialog(backStack: NavBackStack<Route>, ffViewModel: FindFamilyViewMod
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DropdownField(value: String, setValue: (String) -> Unit, options: Collection<String>) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedTextField(
-            value, {},
-            interactionSource = interactionSourceClickable { expanded = true },
-            readOnly = true,
-            label = { Text(stringResource(R.string.expiry_time_label)) },
-            trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(
-                    expanded = expanded
-                )
-            },
-        )
-        DropdownMenu(expanded, { expanded = false }) {
-            options.forEach { selectionOption ->
-                DropdownMenuItem({Text(text = selectionOption)}, {
-                    setValue(selectionOption)
-                    expanded = false
-                })
-            }
-        }
-    }
-}
+

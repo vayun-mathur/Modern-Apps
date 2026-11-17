@@ -13,10 +13,10 @@ import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
-import com.vayunmathur.findfamily.util.FamilyListActions
-import com.vayunmathur.findfamily.util.FamilyListUiState
-import com.vayunmathur.findfamily.util.PersonActions
-import com.vayunmathur.findfamily.util.PersonUiState
+import com.vayunmathur.findfamily.platform.FamilyListActions
+import com.vayunmathur.findfamily.platform.FamilyListUiState
+import com.vayunmathur.findfamily.platform.PersonActions
+import com.vayunmathur.findfamily.platform.PersonUiState
 import kotlin.time.Instant
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -64,7 +64,7 @@ class PersonAndFamilySheetsRealTest {
         }
         rule.onNodeWithText("Alice").assertIsDisplayed()
         // Flip the sharing switch off.
-        rule.onAllNodesWithText("Share", substring = true)
+        assertTrue(rule.onAllNodesWithText("Share", substring = true).fetchSemanticsNodes().isNotEmpty())
         rule.waitForIdle()
         // The switch is the only toggleable; click by its row text proximity via semantics on the switch role.
         rule.onNodeWithText("Share your location", substring = true).assertIsDisplayed()
@@ -82,7 +82,7 @@ class PersonAndFamilySheetsRealTest {
         // Networking.userid is 0 in a fresh sandbox; the self row (id 0 below
         // is avoided by using a fixed non-zero id and relying on the same
         // equality the production code uses).
-        val self = user(com.vayunmathur.findfamily.util.Networking.userid, "Me")
+        val self = user(com.vayunmathur.findfamily.network.Networking.userid, "Me")
         rule.setContent {
             PersonDetailSheet(
                 PersonUiState(self, null, emptyList(), sharingGloballyEnabled = true, crowdFindingEnabled = false),

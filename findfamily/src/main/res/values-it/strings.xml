@@ -9,11 +9,7 @@
     <string name="notification_low_battery"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> ha la batteria scarica</string>
     <string name="notification_entered_waypoint"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> è entrato in <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
     <string name="notification_exited_waypoint"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> è uscito da <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
-    <string name="permission_fine_location_granted">✅ Posizione precisa concessa</string>
     <string name="permission_grant_fine_location">1. Concedi la posizione precisa</string>
-    <string name="permission_background_granted">✅ Background concesso</string>
-    <string name="permission_enable_all_the_time">2. Attiva \"Consenti sempre\"</string>
-    <string name="permission_background_explanation">Per attivare il tracciamento in background, seleziona \"Consenti sempre\" nella schermata successiva.</string>
     <string name="fab_person">Persona</string>
     <string name="fab_location">Posizione</string>
     <string name="fab_link">Collegamento</string>
@@ -25,26 +21,53 @@
     <string name="user_is_here"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> è qui in questo momento</string>
     <string name="users_are_here"><xliff:g id="person_names" example="Alice, Bob">%1$s</xliff:g> sono qui in questo momento</string>
     <string name="since_just_now">Da adesso</string>
-    <string name="since_minutes_ago">Da <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</string>
+    <plurals name="since_minutes_ago">
+        <item quantity="one">Da <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</item>
+        <item quantity="many">Da <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</item>
+        <item quantity="other">Da <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</item>
+    </plurals>
     <string name="since_time_date">Da %1$s %2$s</string>
     <string name="today">oggi</string>
     <string name="yesterday">ieri</string>
     <string name="user_card_status">Aggiornato <xliff:g id="last_updated" example="5 minutes ago">%1$s</xliff:g>\nA <xliff:g id="location_name" example="Home">%2$s</xliff:g>\n<xliff:g id="since_text" example="Since today">%3$s</xliff:g></string>
     <string name="battery_percentage"><xliff:g id="battery_level" example="85">%1$d</xliff:g>%%</string>
     <string name="time_just_now">in questo momento</string>
-    <string name="time_minutes_ago"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</string>
-    <string name="time_hours_ago"><xliff:g id="hours" example="2">%1$d</xliff:g> ore fa</string>
-    <string name="time_days_ago"><xliff:g id="days" example="3">%1$d</xliff:g> giorni fa</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</item>
+        <item quantity="many"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</item>
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti fa</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="one"><xliff:g id="hours" example="2">%1$d</xliff:g> ore fa</item>
+        <item quantity="many"><xliff:g id="hours" example="2">%1$d</xliff:g> ore fa</item>
+        <item quantity="other"><xliff:g id="hours" example="2">%1$d</xliff:g> ore fa</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one"><xliff:g id="days" example="3">%1$d</xliff:g> giorni fa</item>
+        <item quantity="many"><xliff:g id="days" example="3">%1$d</xliff:g> giorni fa</item>
+        <item quantity="other"><xliff:g id="days" example="3">%1$d</xliff:g> giorni fa</item>
+    </plurals>
     <string name="time_very_soon">molto presto</string>
-    <string name="time_in_minutes">in <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti</string>
-    <string name="time_in_hours">in <xliff:g id="hours" example="2">%1$d</xliff:g> ore</string>
-    <string name="time_in_days">in <xliff:g id="days" example="3">%1$d</xliff:g> giorni</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">in <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti</item>
+        <item quantity="many">in <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti</item>
+        <item quantity="other">in <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti</item>
+    </plurals>
+    <plurals name="time_in_hours">
+        <item quantity="one">in <xliff:g id="hours" example="2">%1$d</xliff:g> ore</item>
+        <item quantity="many">in <xliff:g id="hours" example="2">%1$d</xliff:g> ore</item>
+        <item quantity="other">in <xliff:g id="hours" example="2">%1$d</xliff:g> ore</item>
+    </plurals>
+    <plurals name="time_in_days">
+        <item quantity="one">in <xliff:g id="days" example="3">%1$d</xliff:g> giorni</item>
+        <item quantity="many">in <xliff:g id="days" example="3">%1$d</xliff:g> giorni</item>
+        <item quantity="other">in <xliff:g id="days" example="3">%1$d</xliff:g> giorni</item>
+    </plurals>
     <string name="change_connected_contact">Cambia il contatto connesso</string>
     <string name="waypoint_name_blank_error">Il nome non può essere vuoto</string>
     <string name="waypoint_range_error">L\'intervallo deve essere un numero</string>
     <string name="waypoint_range_suffix">metri</string>
     <string name="add_link_title">Condividi tramite link</string>
-    <string name="add_link_label">Etichetta del link (per differenziare i link)</string>
     <string name="expiry_time_label">Data di scadenza</string>
     <string name="create_temporary_link">Crea link temporaneo</string>
     <string name="expiry_15_minutes">15 minuti</string>
@@ -84,8 +107,6 @@
     <string name="uwb_status_peer_disconnected">Connessione con l\'altro dispositivo persa. Avvicinati.</string>
     <string name="uwb_status_unsupported">Trova nelle vicinanze (UWB) non è supportata su questo dispositivo.</string>
     <string name="uwb_status_failed">Ricerca nelle vicinanze (UWB) non riuscita.</string>
-    <string name="permission_approximate_only_explanation">FindFamily funziona unicamente con la posizione esatta. Hai concesso solo la posizione approssimativa: aggiorna alla posizione esatta per continuare.</string>
-    <string name="permission_reopen_upgrade_prompt">Aggiorna alla posizione esatta</string>
     <string name="permission_upgrade_dialog_title">Posizione esatta necessaria</string>
     <string name="permission_upgrade_dialog_message">FindFamily richiede la posizione esatta per condividere la tua posizione precisa. Concedi la posizione esatta.</string>
     <string name="permission_upgrade_dialog_confirm">Concedi posizione esatta</string>

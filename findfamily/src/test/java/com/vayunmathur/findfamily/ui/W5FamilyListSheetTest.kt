@@ -11,8 +11,8 @@ import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.ui.dialogs.encodeBase26
-import com.vayunmathur.findfamily.util.FamilyListActions
-import com.vayunmathur.findfamily.util.FamilyListUiState
+import com.vayunmathur.findfamily.platform.FamilyListActions
+import com.vayunmathur.findfamily.platform.FamilyListUiState
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import org.junit.Rule

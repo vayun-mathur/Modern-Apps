@@ -17,13 +17,7 @@
     <string name="notification_low_battery"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> har låg batterinivå</string>
     <string name="notification_entered_waypoint"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> har anlänt till <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
     <string name="notification_exited_waypoint"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> har lämnat <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
-    <string name="permission_fine_location_granted">✅ Exakt plats har beviljats</string>
     <string name="permission_grant_fine_location">1. Bevilja exakt plats</string>
-    <string name="permission_background_granted">✅ Bakgrundsbehörighet har beviljats</string>
-    <string name="permission_enable_all_the_time">2. Aktivera ”Tillåt alltid”</string>
-    <string name="permission_background_explanation">Välj ”Tillåt alltid” på nästa skärm för att aktivera spårning i bakgrunden.</string>
-    <string name="permission_approximate_only_explanation">Find Family fungerar bara med exakt plats. Du har bara beviljat ungefärlig plats. Uppgradera till exakt plats för att fortsätta.</string>
-    <string name="permission_reopen_upgrade_prompt">Uppgradera till exakt plats</string>
     <string name="permission_upgrade_dialog_title">Exakt plats krävs</string>
     <string name="permission_upgrade_dialog_message">Find Family behöver exakt plats för att dela din exakta position. Tillåt exakt plats.</string>
     <string name="permission_upgrade_dialog_confirm">Tillåt exakt plats</string>
@@ -47,20 +41,41 @@
     <string name="user_is_here"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> är här just nu</string>
     <string name="users_are_here"><xliff:g id="person_names" example="Alice, Bob">%1$s</xliff:g> är här just nu</string>
     <string name="since_just_now">Sedan nyss</string>
-    <string name="since_minutes_ago">Sedan <xliff:g id="minutes" example="5">%1$d</xliff:g> minuter</string>
+    <plurals name="since_minutes_ago">
+        <item quantity="one">Sedan <xliff:g id="minutes" example="5">%1$d</xliff:g> minuter</item>
+        <item quantity="other">Sedan <xliff:g id="minutes" example="5">%1$d</xliff:g> minuter</item>
+    </plurals>
     <string name="since_time_date">Sedan <xliff:g id="time" example="3:45 PM">%1$s</xliff:g> <xliff:g id="date" example="today">%2$s</xliff:g></string>
     <string name="today">i dag</string>
     <string name="yesterday">i går</string>
     <string name="user_card_status">Uppdaterad <xliff:g id="last_updated" example="5 minutes ago">%1$s</xliff:g>\nVid <xliff:g id="location_name" example="Home">%2$s</xliff:g>\n<xliff:g id="since_text" example="Since today">%3$s</xliff:g></string>
     <string name="battery_percentage"><xliff:g id="battery_level" example="85">%1$d</xliff:g>%%</string>
     <string name="time_just_now">nyss</string>
-    <string name="time_minutes_ago"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuter sedan</string>
-    <string name="time_hours_ago"><xliff:g id="hours" example="2">%1$d</xliff:g> timmar sedan</string>
-    <string name="time_days_ago"><xliff:g id="days" example="3">%1$d</xliff:g> dagar sedan</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuter sedan</item>
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuter sedan</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="one"><xliff:g id="hours" example="2">%1$d</xliff:g> timmar sedan</item>
+        <item quantity="other"><xliff:g id="hours" example="2">%1$d</xliff:g> timmar sedan</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one"><xliff:g id="days" example="3">%1$d</xliff:g> dagar sedan</item>
+        <item quantity="other"><xliff:g id="days" example="3">%1$d</xliff:g> dagar sedan</item>
+    </plurals>
     <string name="time_very_soon">mycket snart</string>
-    <string name="time_in_minutes">om <xliff:g id="minutes" example="5">%1$d</xliff:g> minuter</string>
-    <string name="time_in_hours">om <xliff:g id="hours" example="2">%1$d</xliff:g> timmar</string>
-    <string name="time_in_days">om <xliff:g id="days" example="3">%1$d</xliff:g> dagar</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">om <xliff:g id="minutes" example="5">%1$d</xliff:g> minuter</item>
+        <item quantity="other">om <xliff:g id="minutes" example="5">%1$d</xliff:g> minuter</item>
+    </plurals>
+    <plurals name="time_in_hours">
+        <item quantity="one">om <xliff:g id="hours" example="2">%1$d</xliff:g> timmar</item>
+        <item quantity="other">om <xliff:g id="hours" example="2">%1$d</xliff:g> timmar</item>
+    </plurals>
+    <plurals name="time_in_days">
+        <item quantity="one">om <xliff:g id="days" example="3">%1$d</xliff:g> dagar</item>
+        <item quantity="other">om <xliff:g id="days" example="3">%1$d</xliff:g> dagar</item>
+    </plurals>
     <string name="share_your_location">Dela din plats med den här personen</string>
     <string name="change_connected_contact">Ändra ansluten kontakt</string>
     <string name="disable_after">Inaktivera efter</string>
@@ -78,7 +93,6 @@
     <string name="waypoint_range_error">Området måste vara ett tal</string>
     <string name="waypoint_range_suffix">meter</string>
     <string name="add_link_title">Dela via länk</string>
-    <string name="add_link_label">Länketikett (för att skilja länkar åt)</string>
     <string name="expiry_time_label">Giltighetstid</string>
     <string name="create_temporary_link">Skapa tillfällig länk</string>
     <string name="link_pqc_unavailable">Kunde inte skapa länken på den här enheten.</string>
@@ -122,7 +136,6 @@
     <string name="compare_this_code_with_on_their_device_i">Jämför den här koden med <xliff:g id="person_name" example="Bob">%1$s</xliff:g> på personens enhet. Om siffrorna matchar på båda telefonerna är anslutningen verifierad från ände till ände. Ingen avlyssnar den.</string>
     <string name="computing">Beräknar…</string>
     <string name="couldn_t_compute_yet_s_key_isn_t_availab">Kan inte beräkna ännu: nyckeln för <xliff:g id="person_name" example="Bob">%1$s</xliff:g> är inte tillgänglig. Kontrollera att ni båda är anslutna och försök sedan igen.</string>
-    <string name="unknown">Okänd</string>
     <string name="dist">avst:</string>
     <string name="az">az:</string>
     <string name="el">el:</string>
@@ -140,26 +153,12 @@
     <string name="tile_subtitle_no_permission">Tryck för att konfigurera</string>
     <string name="sharing_tile_label">Find Family-delning</string>
     <string name="sharing_paused_note">Delning är pausad för alla från snabbinställningsrutan</string>
-    <string name="crowd_finding_title">Hjälp till att hitta borttappade enheter</string>
-    <string name="crowd_finding_explanation">Telefonen letar i det tysta efter avstängda enheter i närheten och skickar en krypterad notis till ägaren om var du var när du passerade en. Du får aldrig veta vems enhet det var eller var den är, och notisen kan bara läsas av dess ägare. Det använder nästan inget batteri, och andras telefoner kan göra samma sak för din.</string>
-    <string name="crowd_finding_needs_bluetooth">Att hitta närliggande enheter kräver behörighet att söka efter Bluetooth-enheter</string>
     <string name="user_card_network_sighting">Sedd av en passerande telefon <xliff:g id="last_seen" example="2 hours ago">%1$s</xliff:g>\nNågonstans nära <xliff:g id="location_name" example="Home">%2$s</xliff:g> (ungefärligt)</string>
-    <string name="poweroff_finding_title">Kan hittas när den är avstängd</string>
-    <string name="poweroff_finding_explanation">När du stänger av telefonen fortsätter Bluetooth-chippet att sända en kort anonym signal så att en familjemedlem som passerar kan se var den är. Signalen ändras var 17:e minut och bara din familj kan känna igen den. Ingen, inte ens vi, kan läsa var den sågs utom du.</string>
-    <string name="poweroff_finding_limit">Detta fungerar i ungefär tre dagar efter att du har stängt av telefonen och upphör sedan. Det är en begränsning i Bluetooth-chippet, inte en inställning.</string>
-    <string name="poweroff_finding_off_hint">Stäng av detta så sänder telefonen ingenting alls när den är avstängd.</string>
-    <string name="poweroff_finding_unsupported">Telefonens Bluetooth-chip kan inte fortsätta vara sökbart när den är avstängd.</string>
     <string name="map_menu_content_description">Fler alternativ</string>
     <string name="find_nearby_content_description">Hitta i närheten</string>
     <string name="verify_security_code_content_description">Verifiera säkerhetskod</string>
     <string name="delete_person_content_description">Ta bort person</string>
     <string name="delete_place_content_description">Ta bort sparad plats</string>
-    <string name="poweroff_grant_tracking_warning">Vem som helst du väljer kan också själv söka efter den här telefonen när som helst, så länge de finns kvar på listan. Att läsa var telefonen har setts och att söka efter den använder samma nyckel, så det går inte att ge den ena rättigheten utan den andra. Välj endast personer som du är bekväm med att låta hitta den här telefonen.</string>
-    <string name="poweroff_grant_revoke_warning">Att ta bort någon från listan hindrar personen från att se vart den här telefonen tar vägen från och med då. Det kan inte återta platser som personen redan har samlat in och det kan inte få personen att glömma. Platser där telefonen nyligen har setts, men som ingen ännu har hämtat, kan också gå förlorade för dig.</string>
-    <string name="poweroff_grant_no_peers">När du är ansluten till någon kan du välja personen här.</string>
-    <string name="permission_grant_bluetooth">Tillåt Bluetooth</string>
-    <string name="permission_bluetooth_granted">Bluetooth är tillåtet</string>
-    <string name="permission_bluetooth_explanation">Behövs för att hitta enheter i närheten.</string>
     <string name="notification_channel_noshow_name"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> · Varningar vid utebliven ankomst</string>
     <string name="notification_channel_noshow_desc">Aviseringar när <xliff:g id="person_name" example="Alice">%1$s</xliff:g> inte kommer till en förväntad plats</string>
     <string name="noshow_watch_button">Bevaka utebliven ankomst</string>

@@ -1,5 +1,5 @@
 package com.vayunmathur.findfamily.ui.dialogs
-import com.vayunmathur.findfamily.util.myInviteFingerprint
+import com.vayunmathur.findfamily.network.myInviteFingerprint
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
@@ -29,9 +29,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
-import com.vayunmathur.findfamily.util.Networking
-import com.vayunmathur.findfamily.util.Platform
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
+import com.vayunmathur.findfamily.network.Networking
+import com.vayunmathur.findfamily.platform.Platform
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.RequestStatus
@@ -62,6 +62,7 @@ fun AddPersonDialog(
     val parsedUserId = runCatching { userid.decodeBase26() }.getOrNull()
     val userStatus = parsedUserId?.let { usersByID[it]?.requestStatus }
     val context = LocalContext.current
+    val shareInviteChooser = stringResource(R.string.share_invite_link_chooser)
     var showOutdatedPeer by remember { mutableStateOf(false) }
     var showKeyMismatch by remember { mutableStateOf(false) }
 
@@ -101,7 +102,7 @@ fun AddPersonDialog(
                         ExternalIntents.shareText(
                             context,
                             link,
-                            context.getString(R.string.share_invite_link_chooser),
+                            shareInviteChooser,
                         )
                     },
                     Modifier.fillMaxWidth()
@@ -206,16 +207,4 @@ fun Long.encodeBase26(): String = buildString {
     }
 }
 
-@Composable
-fun interactionSourceClickable(onClick: () -> Unit): MutableInteractionSource {
-    return remember { MutableInteractionSource() }
-        .also { interactionSource ->
-            LaunchedEffect(interactionSource) {
-                interactionSource.interactions.collect {
-                    if (it is PressInteraction.Release) {
-                        onClick()
-                    }
-                }
-            }
-        }
-}
+

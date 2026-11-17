@@ -20,9 +20,9 @@ import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.awaitFamilyCondition
 import com.vayunmathur.findfamily.platform.FakeAndroidKeyStore
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
-import com.vayunmathur.findfamily.util.PersonActions
-import com.vayunmathur.findfamily.util.Platform
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.PersonActions
+import com.vayunmathur.findfamily.platform.Platform
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DatabaseHelper
 import com.vayunmathur.library.util.NavBackStack
@@ -193,11 +193,11 @@ class DialogsRealRepoInteractionsTest {
     @Test fun securityCodeDialogShowsCodeForBundledPeer() = runBlocking {
         // Networking is initialised by the VM; a peer whose bundle is our own
         // identity's bundle gets a real, computable security code.
-        com.vayunmathur.findfamily.util.Networking.init(
+        com.vayunmathur.findfamily.network.Networking.init(
             repo, com.vayunmathur.library.util.DataStoreUtils.getInstance(app), "Me",
         )
         val bundle = kotlin.io.encoding.Base64.encode(
-            com.vayunmathur.findfamily.util.Networking.pqcIdentity.publicBundle
+            com.vayunmathur.findfamily.network.Networking.pqcIdentity.publicBundle
         )
         val peer = user(201L, "Secure Peer").copy(pqcEncryptionKey = bundle)
         repo.upsertUser(peer)

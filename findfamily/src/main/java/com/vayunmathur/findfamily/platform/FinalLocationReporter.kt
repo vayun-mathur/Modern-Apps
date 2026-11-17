@@ -7,12 +7,13 @@ import android.content.IntentFilter
 import android.location.Location
 import android.os.BatteryManager
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.DirectBootStore
 import com.vayunmathur.findfamily.data.LocationSource
 import com.vayunmathur.findfamily.data.LocationValue
-import com.vayunmathur.findfamily.util.Networking
+import com.vayunmathur.findfamily.network.Networking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -132,7 +133,7 @@ object FinalLocationReporter {
             addAction(Intent.ACTION_REBOOT)
             addAction(Intent.ACTION_BATTERY_LOW)
         }
-        appContext.registerReceiver(r, filter, Context.RECEIVER_NOT_EXPORTED)
+        ContextCompat.registerReceiver(appContext, r, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         receiver = r
     }
 

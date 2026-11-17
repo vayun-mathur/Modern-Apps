@@ -8,8 +8,8 @@ import com.vayunmathur.findfamily.domain.FixSample
 import com.vayunmathur.findfamily.domain.ForcedFixPolicy
 import com.vayunmathur.findfamily.domain.ForcedFixReason
 import com.vayunmathur.findfamily.domain.NoShowPolicy
-import com.vayunmathur.findfamily.util.LocationTrackingService
-import com.vayunmathur.findfamily.util.recordFix
+import com.vayunmathur.findfamily.platform.LocationTrackingService
+import com.vayunmathur.findfamily.platform.recordFix
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

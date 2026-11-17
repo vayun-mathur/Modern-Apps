@@ -22,9 +22,9 @@ import com.vayunmathur.findfamily.ui.dialogs.GpsFallbackWarningDialog
 import com.vayunmathur.findfamily.ui.dialogs.KeyMismatchDialog
 import com.vayunmathur.findfamily.ui.dialogs.OutdatedPeerDialog
 import com.vayunmathur.findfamily.ui.dialogs.SecurityCodeDialog
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
-import com.vayunmathur.findfamily.util.Platform
-import com.vayunmathur.findfamily.util.UwbSessionManager
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.Platform
+import com.vayunmathur.findfamily.platform.UwbSessionManager
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.runBlocking
@@ -80,7 +80,7 @@ class DialogsWithVmTest {
             UwbRangingContent(
                 peerName = "Carol",
                 session = UwbSessionManager.UwbSessionState.Ranging(
-                    com.vayunmathur.findfamily.uwb.RangingSample(
+                    com.vayunmathur.findfamily.platform.RangingSample(
                         distanceMeters = 2.5f, azimuthDeg = 10f, elevationDeg = null,
                         timestampNanos = 1_000_000L,
                     )

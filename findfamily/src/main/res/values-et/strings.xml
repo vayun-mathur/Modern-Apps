@@ -1,19 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="time_just_now">hetk tagasi</string>
-    <string name="time_minutes_ago"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti eest</string>
-    <string name="time_hours_ago"><xliff:g id="hours" example="2">%1$d</xliff:g> tunni eest</string>
-    <string name="time_days_ago"><xliff:g id="days" example="3">%1$d</xliff:g> päeva eest</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti eest</item>
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> minuti eest</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="one"><xliff:g id="hours" example="2">%1$d</xliff:g> tunni eest</item>
+        <item quantity="other"><xliff:g id="hours" example="2">%1$d</xliff:g> tunni eest</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one"><xliff:g id="days" example="3">%1$d</xliff:g> päeva eest</item>
+        <item quantity="other"><xliff:g id="days" example="3">%1$d</xliff:g> päeva eest</item>
+    </plurals>
     <string name="time_very_soon">üsna varsti</string>
-    <string name="time_in_minutes">in <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti pärast</string>
-    <string name="time_in_hours">in <xliff:g id="hours" example="2">%1$d</xliff:g> tunni pärast</string>
-    <string name="time_in_days">in <xliff:g id="days" example="3">%1$d</xliff:g> päeva pärast</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">in <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti pärast</item>
+        <item quantity="other">in <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti pärast</item>
+    </plurals>
+    <plurals name="time_in_hours">
+        <item quantity="one">in <xliff:g id="hours" example="2">%1$d</xliff:g> tunni pärast</item>
+        <item quantity="other">in <xliff:g id="hours" example="2">%1$d</xliff:g> tunni pärast</item>
+    </plurals>
+    <plurals name="time_in_days">
+        <item quantity="one">in <xliff:g id="days" example="3">%1$d</xliff:g> päeva pärast</item>
+        <item quantity="other">in <xliff:g id="days" example="3">%1$d</xliff:g> päeva pärast</item>
+    </plurals>
     <string name="change_connected_contact">Muuda ühendatud kasutajakontot</string>
     <string name="waypoint_name_blank_error">Nimi ei saa jääda tühjaks</string>
     <string name="waypoint_range_error">Vahemik peab olema number</string>
     <string name="waypoint_range_suffix">meetrit</string>
     <string name="add_link_title">Jaga lingi vahendusel</string>
-    <string name="add_link_label">Lingi silt (linkide eristamiseks)</string>
     <string name="expiry_time_label">Aegumine</string>
     <string name="create_temporary_link">Loo ajutine link</string>
     <string name="expiry_15_minutes">15 minutit</string>
@@ -55,7 +72,10 @@
     <string name="user_is_here"><xliff:g id="person_name" example="Kadri">%1$s</xliff:g> on praegu siin</string>
     <string name="users_are_here"><xliff:g id="person_names" example="Kadri, Mati">%1$s</xliff:g> on praegu siin üheskoos</string>
     <string name="since_just_now">Tulid äsja</string>
-    <string name="since_minutes_ago">Tulid <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti eest</string>
+    <plurals name="since_minutes_ago">
+        <item quantity="one">Tulid <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti eest</item>
+        <item quantity="other">Tulid <xliff:g id="minutes" example="5">%1$d</xliff:g> minuti eest</item>
+    </plurals>
     <string name="since_time_date">Tulid <xliff:g id="time" example="15:45">%1$s</xliff:g> <xliff:g id="date" example="täna">%2$s</xliff:g></string>
     <string name="add_person_title">Lisa isik</string>
     <string name="status_awaiting_request">See osaleja soovib teada sinu asukohta</string>
@@ -68,11 +88,7 @@
     <string name="clipboard_label">tekst</string>
     <string name="me_label">Mina</string>
     <string name="missing_features_title">Nõutav funktsionaalsus pole lubatud</string>
-    <string name="permission_fine_location_granted">✅ Asukoha täpistuvastus on lubatud</string>
     <string name="permission_grant_fine_location">1. Luba asukoha täpistuvastus</string>
-    <string name="permission_background_granted">✅ Taustal töötamine on lubatud</string>
-    <string name="permission_enable_all_the_time">2. Valikust „Luba alati“ anna nõusolek taustal töötamiseks</string>
-    <string name="permission_background_explanation">Tagamaks, et asukoha tuvastamine toimib taustateenusena, vali järgmisest vaatest „Luba alati“.</string>
     <string name="user_card_status">Uuendatud <xliff:g id="last_updated" example="5 minutit tagasi">%1$s</xliff:g>\n<xliff:g id="location_name" example="Kodu">%2$s</xliff:g>\n<xliff:g id="since_text" example="Alates tänasest">%3$s</xliff:g></string>
     <string name="notification_channel_uwb_request_name">Otsi lähedalt (UWB) päringud</string>
     <string name="notification_channel_uwb_request_desc">Keegi kasutab sinu asukoha tuvastamiseks Otsi lähedalt (UWB)</string>
@@ -89,8 +105,6 @@
     <string name="permission_upgrade_dialog_confirm">Luba täpse asukoha kasutamist</string>
     <string name="permission_upgrade_dialog_message">Pere asukoha rakendus (FindFamily) vajab sinu asukoha näitamiseks täpse asukoha tuvastamist. Palun luba seadistustes vastavad õigused.</string>
     <string name="permission_upgrade_dialog_title">Täpse asukoha tuvastamine on vajalik</string>
-    <string name="permission_reopen_upgrade_prompt">Muud asukohatuvastuse tüüpi</string>
-    <string name="permission_approximate_only_explanation">Pere asukoha rakendus (FindFamily) toimib vaid siis, kui kasutusel on täpse asukoha tuvastamine. Jätkamiseks palun luba seadistustes vastavad õigused.</string>
     <string name="history_title">Ajalugu: <xliff:g id="person_name" example="Kadri">%1$s</xliff:g></string>
     <string name="history_step_minus_5m">-5 min</string>
     <string name="history_step_minus_1m">-1 min</string>
@@ -108,7 +122,6 @@
     <string name="az">as:</string>
     <string name="el">krg:</string>
     <string name="point_the_back_of_your_phone_toward_your">Pööra oma telefoni tagaosa kontakti suunas</string>
-    <string name="unknown">Pole teada</string>
     <string name="couldn_t_compute_yet_s_key_isn_t_availab">Arvutamine veel ei õnnestunud: kasutaja „<xliff:g id="person_name" example="Bob">%1$s</xliff:g>“ võti pole saadaval. Palun kontrolli, et teil mõlemal ühendus toimib ja proovi siis uuesti.</string>
     <string name="compare_this_code_with_on_their_device_i">Võrdle sead koodi kasutajaga „<xliff:g id="person_name" example="Mati">%1$s</xliff:g>“ tema seadmes kuvatavaga. Kui numbrid on mõlemas seadmes samad, siis on ühendus läbivalt krüptitud ja verifitseeritud ning mitte keegi ei saa seda vahepealt jälgida.</string>
     <string name="share_invite_link">Jaga kutselinki</string>
@@ -140,26 +153,12 @@
     <string name="notification_settings_departure">Lahkumiste teavitused</string>
     <string name="sharing_tile_label">Pere asukoha jagamine</string>
     <string name="sharing_paused_note">Jagamine on kõigi jaoks peatatud Kiirseadistuste paanist</string>
-    <string name="crowd_finding_title">Aitab leida kadunud seadmeid</string>
-    <string name="crowd_finding_explanation">Sinu telefon jälgib vaikselt läheduses olevaid väljalülitatud seadmeid ja saadab nende omanikule krüptitud teate, milles on kirjas, kus sa olid, kui sellest seadmest möödusid. Sa ei saa kunagi teada, kelle seade see oli või kus see asub, ning teadet saab lugeda ainult selle omanik. See peaaegu üldse ei koorma akut ning teiste inimeste telefonid võivad sinu seadme puhul sama teha.</string>
-    <string name="crowd_finding_needs_bluetooth">Läheduses olevate seadmete leidmine eeldab Bluetoothi seadmete otsimise luba</string>
     <string name="user_card_network_sighting">Mööduv telefon nägi seda <xliff:g id="last_seen" example="2 tundi tagasi">%1$s</xliff:g>\nKusagil hinnangulises asukohas <xliff:g id="location_name" example="Kodu">%2$s</xliff:g></string>
-    <string name="poweroff_finding_title">Leitav väljalülitamisel</string>
-    <string name="poweroff_finding_explanation">Kui lülitad selle telefoni välja, saadab selle Bluetoothi-kiip jätkuvalt välja lühikese anonüümse signaali, nii et mööduv pereliige saab sulle öelda, kus telefon asub. Signaal muutub iga 17 minuti järel ja ainult sinu perekonnaliikmed suudavad seda ära tunda. Keegi, kaasa arvatud meie, ei saa teada, kus seda nähti, välja arvatud sina ise.</string>
-    <string name="poweroff_finding_limit">Selline võimalus kehtib umbes kolme päeva jagu peale telefoni väljalülitamist. Tegemist on Bluetoothi kiibi tehnilise piiranguga ja seda ei saa seadistada.</string>
-    <string name="poweroff_finding_off_hint">Kui lülitad selle seadistuse välja, siis telefon ei edasta väljalülitamisel mitte midagi.</string>
-    <string name="poweroff_finding_unsupported">Selle telefoni Bluetoothi kiip ei suuda olla leitav väljalülitatud olekus.</string>
     <string name="map_menu_content_description">Lisavalikud</string>
     <string name="find_nearby_content_description">Otsi lähedusest</string>
     <string name="verify_security_code_content_description">Kontrolli turvakoodi</string>
     <string name="delete_person_content_description">Eemalda isik</string>
     <string name="delete_place_content_description">Kustuta lisatud asukoht</string>
-    <string name="permission_grant_bluetooth">Luba Bluetoothi kasutamine</string>
-    <string name="permission_bluetooth_granted">Bluetoothi kasutamine on lülitatud sisse</string>
-    <string name="permission_bluetooth_explanation">Vajalik seadmete otsimiseks lähedusest.</string>
-    <string name="poweroff_grant_tracking_warning">Igaüks, kelle sa valid, võib seda telefoni ka ise otsima minna, millal iganes ta soovib, niikaua kui ta selles nimekirjas püsib. Selleks, et tuvastada, kus telefoni on nähtud, ja seda otsida, kasutatakse sama võtit, seega ei ole võimalik üht anda ilma teiseta. Vali ainult inimesed, kellele sa soovid, et nad selle telefoni üles leiaksid.</string>
-    <string name="poweroff_grant_revoke_warning">Kui keegi nimekirjast eemaldada, ei näe ta enam, kuhu see telefon edaspidi satub. See ei võta tagasi kohti, mida ta on juba kogunud, ega pane neid unustama. Kõik asukohad, kus seda telefoni hiljuti nähti, kuid mida keegi veel üles pole korjanud, võivad ka sinu jaoks kaduma minna.</string>
-    <string name="poweroff_grant_no_peers">Kui oled kellegagi ühendatud, saad tema siit valida.</string>
     <string name="notification_channel_noshow_name"><xliff:g id="person_name" example="Kadri">%1$s</xliff:g> · Teateid ei kuvata</string>
     <string name="notification_channel_noshow_desc">Teaded, kui <xliff:g id="person_name" example="Kadri">%1$s</xliff:g> ei saabu eeldatud kohta</string>
     <string name="noshow_watch_button">Jälgi kohale mittetulemist</string>

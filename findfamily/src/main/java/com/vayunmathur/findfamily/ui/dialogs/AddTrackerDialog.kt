@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.Route
-import com.vayunmathur.findfamily.tracker.TrackerBinder
-import com.vayunmathur.findfamily.tracker.TrackerProvisioner
+import com.vayunmathur.findfamily.platform.TrackerBinder
+import com.vayunmathur.findfamily.platform.TrackerProvisioner
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.ListItem

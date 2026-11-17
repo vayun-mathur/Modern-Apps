@@ -9,8 +9,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.findfamily.data.DirectBootStore
 import com.vayunmathur.findfamily.data.NoShowAlert
 import com.vayunmathur.findfamily.service.SharingTileService
-import com.vayunmathur.findfamily.util.LocationServiceController
-import com.vayunmathur.findfamily.util.Platform
+import com.vayunmathur.findfamily.platform.LocationServiceController
+import com.vayunmathur.findfamily.platform.Platform
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -102,7 +102,7 @@ class PlatformServicesTest {
     @Test
     fun trackingTileLifecycle() {
         Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.ACCESS_FINE_LOCATION)
-        val cls = com.vayunmathur.findfamily.util.TrackingTileService::class.java
+        val cls = com.vayunmathur.findfamily.service.TrackingTileService::class.java
         val controller = Robolectric.buildService(cls)
         val service = controller.create().get()
         service.onTileAdded()
@@ -141,7 +141,7 @@ class PlatformServicesTest {
 
     @Test
     fun bootReceiverIgnoresAndHandles() {
-        val receiver = com.vayunmathur.findfamily.util.BootReceiver()
+        val receiver = com.vayunmathur.findfamily.platform.BootReceiver()
         receiver.onReceive(ctx, Intent("com.example.OTHER"))
         receiver.onReceive(ctx, Intent(Intent.ACTION_BOOT_COMPLETED))
         Thread.sleep(400)
@@ -150,7 +150,7 @@ class PlatformServicesTest {
 
     @Test
     fun notificationChannelsEnsure() {
-        val channels = com.vayunmathur.findfamily.util.FindFamilyNotificationChannels
+        val channels = com.vayunmathur.findfamily.notifications.FindFamilyNotificationChannels
         assertEquals("no_show_7", channels.noShowChannelId(7L))
         channels.ensureNoShowChannel(ctx, 7L, "Alice")
         channels.ensureEntryExitChannels(ctx, 7L, "Alice")

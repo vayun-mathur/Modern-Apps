@@ -1,13 +1,14 @@
 package com.vayunmathur.findfamily.util
+import com.vayunmathur.findfamily.platform.UwbSessionManager
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.TestFindFamilyRepository
 import com.vayunmathur.findfamily.data.User
-import com.vayunmathur.findfamily.uwb.UwbEnvelope
-import com.vayunmathur.findfamily.uwb.UwbEnvelopeKind
-import com.vayunmathur.findfamily.uwb.UwbInbox
+import com.vayunmathur.findfamily.domain.UwbEnvelope
+import com.vayunmathur.findfamily.domain.UwbEnvelopeKind
+import com.vayunmathur.findfamily.domain.UwbInbox
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith

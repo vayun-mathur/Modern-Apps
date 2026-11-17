@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
-import com.vayunmathur.findfamily.util.PersonActions
+import com.vayunmathur.findfamily.platform.PersonActions
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Clock
 

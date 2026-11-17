@@ -12,7 +12,7 @@ package com.vayunmathur.findfamily.domain
  * same names from [dbName]/[datastoreName].
  *
  * The manual backup covers the same payload as the OS-triggered one
- * ([com.vayunmathur.findfamily.util.AppBackupAgent]): the encrypted Room
+ * ([com.vayunmathur.findfamily.platform.AppBackupAgent]): the encrypted Room
  * database plus the default DataStore, which holds the stable device identity
  * and the E2EE key material. Pre-removal manual backups contained only the
  * database entry; such legacy files still restore — the missing DataStore

@@ -1,4 +1,16 @@
 package com.vayunmathur.findfamily.util
+import com.vayunmathur.findfamily.network.InboundFix
+import com.vayunmathur.findfamily.platform.LocationTrackingService
+import com.vayunmathur.findfamily.notifications.createNotification
+import com.vayunmathur.findfamily.notifications.createNotificationWithCategory
+import com.vayunmathur.findfamily.notifications.createUwbRequestNotification
+import com.vayunmathur.findfamily.platform.enrichIncomingLocations
+import com.vayunmathur.findfamily.platform.handleUwbEnvelopes
+import com.vayunmathur.findfamily.notifications.notifyEntryExit
+import com.vayunmathur.findfamily.notifications.notifyNoShow
+import com.vayunmathur.findfamily.platform.processIncomingFixes
+import com.vayunmathur.findfamily.platform.processIncomingLocations
+import com.vayunmathur.findfamily.notifications.setupNotificationChannels
 
 import android.app.Application
 import android.app.NotificationManager
@@ -15,10 +27,10 @@ import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
-import com.vayunmathur.findfamily.uwb.UwbCancelReason
-import com.vayunmathur.findfamily.uwb.UwbEnvelope
-import com.vayunmathur.findfamily.uwb.UwbEnvelopeKind
-import com.vayunmathur.findfamily.uwb.UwbInbox
+import com.vayunmathur.findfamily.domain.UwbCancelReason
+import com.vayunmathur.findfamily.domain.UwbEnvelope
+import com.vayunmathur.findfamily.domain.UwbEnvelopeKind
+import com.vayunmathur.findfamily.domain.UwbInbox
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -182,7 +194,7 @@ class LocationTrackingInboundTest {
         // Powered-off grant from unknown/unconfigured path: silently ignored (no keys store).
         service.handleUwbEnvelopes(listOf(
             UwbEnvelope(sessionId = "s3", sender = 55uL, senderPlatform = "android", kind = UwbEnvelopeKind.POF_GRANT,
-                recovery = com.vayunmathur.findfamily.uwb.PoweredOffGrant(epoch = 1, secretB64 = "AA==", recoveryPrivB64 = "AA==", sigB64 = "AA==")),
+                recovery = com.vayunmathur.findfamily.domain.PoweredOffGrant(epoch = 1, secretB64 = "AA==", recoveryPrivB64 = "AA==", sigB64 = "AA==")),
         ))
         Unit
     }

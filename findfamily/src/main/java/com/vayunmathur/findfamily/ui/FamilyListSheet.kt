@@ -28,8 +28,8 @@ import androidx.compose.runtime.Composable
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.ui.dialogs.encodeBase26
-import com.vayunmathur.findfamily.util.FamilyListActions
-import com.vayunmathur.findfamily.util.FamilyListUiState
+import com.vayunmathur.findfamily.platform.FamilyListActions
+import com.vayunmathur.findfamily.platform.FamilyListUiState
 import com.vayunmathur.library.ui.IconCopy
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
@@ -79,68 +79,10 @@ fun FamilyListSheet(state: FamilyListUiState, actions: FamilyListActions) {
     }
 }
 
-@Composable
-fun SectionHeader(title: String) {
-    Text(
-        title,
-        Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 2.dp),
-        color = MaterialTheme.colorScheme.primary,
-        style = MaterialTheme.typography.titleSmallEmphasized
-    )
-}
 
-@Composable
-fun AwaitingRequestCard(id: Long, onAccept: () -> Unit) {
-    Card {
-        ListItem(
-            { Text(stringResource(R.string.request_from, id.encodeBase26())) },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            trailingContent = {
-                IconButton(onAccept) {
-                    IconAdd()
-                }
-            }
-        )
-    }
-}
 
-@Composable
-fun TemporaryLinkCard(temporaryLink: TemporaryLink, onCopy: () -> Unit, onDelete: () -> Unit) {
-    val context = LocalContext.current
-    Card {
-        ListItem(
-            { Text(temporaryLink.name, fontWeight = FontWeight.Bold) },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            supportingContent = {
-                Text(stringResource(R.string.expires, timestring(temporaryLink.deleteAt, true, context)))
-            },
-            trailingContent = {
-                Row {
-                    IconButton(onCopy) {
-                        IconCopy()
-                    }
-                    IconButton(onDelete) {
-                        IconDelete()
-                    }
-                }
-            }
-        )
-    }
-}
 
-@Composable
-fun WaypointCard(waypoint: Waypoint, userNamesHere: List<String>, onSelect: () -> Unit) {
-    val usersString = when (userNamesHere.size) {
-        0 -> stringResource(R.string.nobody_here)
-        1 -> stringResource(R.string.user_is_here, userNamesHere.first())
-        else -> stringResource(R.string.users_are_here, userNamesHere.joinToString())
-    }
-    Card(Modifier.clickable(onClick = onSelect)) {
-        ListItem(
-            content = { Text(waypoint.name, fontWeight = FontWeight.Bold) },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            supportingContent = { Text(usersString, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            trailingContent = { IconEdit() }
-        )
-    }
-}
+
+
+
+

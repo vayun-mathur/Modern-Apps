@@ -18,8 +18,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.findfamily.R
-import com.vayunmathur.findfamily.util.MainPageActions
-import com.vayunmathur.findfamily.util.MainPageUiState
+import com.vayunmathur.findfamily.platform.MainPageActions
+import com.vayunmathur.findfamily.platform.MainPageUiState
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigationArrow
 import com.vayunmathur.library.ui.IconVerify

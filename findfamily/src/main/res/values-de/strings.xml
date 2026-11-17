@@ -11,11 +11,7 @@
     <string name="notification_low_battery">%1$s\'s Akkustand ist niedrig</string>
     <string name="notification_entered_waypoint">%1$s ist bei %2$s angekommen</string>
     <string name="notification_exited_waypoint">%1$s hat %2$s verlassen</string>
-    <string name="permission_fine_location_granted">✅ Genauer Standort zugelassen</string>
     <string name="permission_grant_fine_location">1. Genauen Standort zulassen</string>
-    <string name="permission_background_granted">✅ Hintergrundaktivität zugelassen</string>
-    <string name="permission_enable_all_the_time">2. \"Immer zulassen\" einschalten</string>
-    <string name="permission_background_explanation">Um im Hintergrund Standortaktualisierungen zuzulassen, wählen Sie bitte \"Immer zulassen\" im nächsten Menu.</string>
     <string name="fab_person">Person</string>
     <string name="fab_location">Standort</string>
     <string name="fab_link">Link</string>
@@ -28,26 +24,46 @@
     <string name="user_is_here">%1$s ist gerade hier</string>
     <string name="users_are_here">%1$s sind gerade hier</string>
     <string name="since_just_now">Seit jetzt</string>
-    <string name="since_minutes_ago">Seit %1$d minuten</string>
+    <plurals name="since_minutes_ago">
+        <item quantity="one">Seit %1$d minuten</item>
+        <item quantity="other">Seit %1$d minuten</item>
+    </plurals>
     <string name="since_time_date">Seit %1$s %2$s</string>
     <string name="today">heute</string>
     <string name="yesterday">gestern</string>
     <string name="user_card_status">Aktualisiert %1$s\nUm %2$s\n%3$s</string>
     <string name="battery_percentage">%1$d%%</string>
     <string name="time_just_now">jetzt</string>
-    <string name="time_minutes_ago">vor %1$d Minuten</string>
-    <string name="time_hours_ago">Vor %1$d Stunden</string>
-    <string name="time_days_ago">Vor %1$d Tagen</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one">vor %1$d Minuten</item>
+        <item quantity="other">vor %1$d Minuten</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="one">Vor %1$d Stunden</item>
+        <item quantity="other">Vor %1$d Stunden</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one">Vor %1$d Tagen</item>
+        <item quantity="other">Vor %1$d Tagen</item>
+    </plurals>
     <string name="time_very_soon">sehr bald</string>
-    <string name="time_in_minutes">in %1$d Minuten</string>
-    <string name="time_in_hours">in %1$d Stunden</string>
-    <string name="time_in_days">in %1$d Tagen</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">in %1$d Minuten</item>
+        <item quantity="other">in %1$d Minuten</item>
+    </plurals>
+    <plurals name="time_in_hours">
+        <item quantity="one">in %1$d Stunden</item>
+        <item quantity="other">in %1$d Stunden</item>
+    </plurals>
+    <plurals name="time_in_days">
+        <item quantity="one">in %1$d Tagen</item>
+        <item quantity="other">in %1$d Tagen</item>
+    </plurals>
     <string name="change_connected_contact">Verbundenen Kontakt ändern</string>
     <string name="waypoint_name_blank_error">Name kann nicht leer sein</string>
     <string name="waypoint_range_error">Durchmesser muss eine Zahl sein</string>
     <string name="waypoint_range_suffix">Meter</string>
     <string name="add_link_title">Via Link teilen</string>
-    <string name="add_link_label">Link Label (um Links zu unterscheiden)</string>
     <string name="expiry_time_label">Ablaufzeit</string>
     <string name="create_temporary_link">Temporären Link erstellen</string>
     <string name="expiry_15_minutes">15 Minuten</string>

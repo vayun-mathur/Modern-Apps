@@ -11,11 +11,7 @@
     <string name="notification_low_battery"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> 电量低</string>
     <string name="notification_entered_waypoint"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> 已进入 <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
     <string name="notification_exited_waypoint"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> 已离开 <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
-    <string name="permission_fine_location_granted">✅ 精确位置权限已授予</string>
     <string name="permission_grant_fine_location">1. 授予精确位置权限</string>
-    <string name="permission_background_granted">✅ 后台权限已授予</string>
-    <string name="permission_enable_all_the_time">2. 启用“始终允许”</string>
-    <string name="permission_background_explanation">要启用后台追踪，请在下一个屏幕中选择“始终允许”。</string>
     <string name="fab_person">人员</string>
     <string name="fab_location">位置</string>
     <string name="fab_link">链接</string>
@@ -28,16 +24,24 @@
     <string name="user_is_here"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> 当前在此</string>
     <string name="users_are_here"><xliff:g id="person_names" example="Alice, Bob">%1$s</xliff:g> 当前在此</string>
     <string name="since_just_now">刚刚</string>
-    <string name="since_minutes_ago">自 <xliff:g id="minutes" example="5">%1$d</xliff:g> 分钟前起</string>
+    <plurals name="since_minutes_ago">
+        <item quantity="other">自 <xliff:g id="minutes" example="5">%1$d</xliff:g> 分钟前起</item>
+    </plurals>
     <string name="since_time_date">自 <xliff:g id="time" example="3:45 PM">%1$s</xliff:g> <xliff:g id="date" example="today">%2$s</xliff:g> 起</string>
     <string name="today">今天</string>
     <string name="yesterday">昨天</string>
     <string name="user_card_status">更新于 <xliff:g id="last_updated" example="5 minutes ago">%1$s</xliff:g>\n在 <xliff:g id="location_name" example="Home">%2$s</xliff:g>\n<xliff:g id="since_text" example="Since today">%3$s</xliff:g></string>
     <string name="battery_percentage"><xliff:g id="battery_level" example="85">%1$d</xliff:g>%%</string>
     <string name="time_just_now">刚刚</string>
-    <string name="time_minutes_ago"><xliff:g id="minutes" example="5">%1$d</xliff:g> 分钟前</string>
-    <string name="time_hours_ago"><xliff:g id="hours" example="2">%1$d</xliff:g> 小时前</string>
-    <string name="time_days_ago"><xliff:g id="days" example="3">%1$d</xliff:g> 天前</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> 分钟前</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="other"><xliff:g id="hours" example="2">%1$d</xliff:g> 小时前</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="other"><xliff:g id="days" example="3">%1$d</xliff:g> 天前</item>
+    </plurals>
     <string name="expiry_15_minutes">15 分钟</string>
     <string name="expiry_30_minutes">30 分钟</string>
     <string name="expiry_1_hour">1 小时</string>
@@ -49,15 +53,20 @@
     <string name="expiry_2_days">2 天</string>
     <string name="expiry_1_week">1 周</string>
     <string name="time_very_soon">很快</string>
-    <string name="time_in_minutes"><xliff:g id="minutes" example="5">%1$d</xliff:g> 分钟后</string>
-    <string name="time_in_hours"><xliff:g id="hours" example="2">%1$d</xliff:g> 小时后</string>
-    <string name="time_in_days"><xliff:g id="days" example="3">%1$d</xliff:g> 天后</string>
+    <plurals name="time_in_minutes">
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> 分钟后</item>
+    </plurals>
+    <plurals name="time_in_hours">
+        <item quantity="other"><xliff:g id="hours" example="2">%1$d</xliff:g> 小时后</item>
+    </plurals>
+    <plurals name="time_in_days">
+        <item quantity="other"><xliff:g id="days" example="3">%1$d</xliff:g> 天后</item>
+    </plurals>
     <string name="change_connected_contact">更改已连接的联系人</string>
     <string name="waypoint_name_blank_error">名称不能为空</string>
     <string name="waypoint_range_error">范围必须为数字</string>
     <string name="waypoint_range_suffix">米</string>
     <string name="add_link_title">通过链接分享</string>
-    <string name="add_link_label">链接标签（用于区分链接）</string>
     <string name="expiry_time_label">过期时间</string>
     <string name="create_temporary_link">创建临时链接</string>
     <string name="add_person_title">添加人员</string>
@@ -84,8 +93,6 @@
     <string name="uwb_status_peer_disconnected">与对方设备失去连接。请靠近一些。</string>
     <string name="uwb_status_unsupported">此设备不支持附近查找（UWB）。</string>
     <string name="uwb_status_failed">附近查找（UWB）失败。</string>
-    <string name="permission_approximate_only_explanation">FindFamily 仅支持确切（精确）位置。您目前仅授予了大致位置 — 请升级到确切位置以继续。</string>
-    <string name="permission_reopen_upgrade_prompt">升级到确切位置</string>
     <string name="permission_upgrade_dialog_title">需要确切位置</string>
     <string name="permission_upgrade_dialog_message">FindFamily 需要确切（精确）位置才能分享您的准确位置。请允许确切位置。</string>
     <string name="permission_upgrade_dialog_confirm">允许确切位置</string>
@@ -101,7 +108,6 @@
     <string name="point_the_back_of_your_phone_toward_your">请将手机背面朝向您的联系人</string>
     <string name="compare_this_code_with_on_their_device_i">请将此验证码与 <xliff:g id="person_name" example="Bob">%1$s</xliff:g> 设备上的验证码进行比对。如果两部手机上的数字一致，则表示您的连接已通过端到端验证 — 没有人截获您的连接。</string>
     <string name="dist">距离：</string>
-    <string name="unknown">未知</string>
     <string name="couldn_t_compute_yet_s_key_isn_t_availab">尚无法计算 — <xliff:g id="person_name" example="Bob">%1$s</xliff:g> 的密钥不可用。请确保双方都已连接，然后重试。</string>
     <string name="security_code">安全码</string>
     <string name="el">海拔：</string>

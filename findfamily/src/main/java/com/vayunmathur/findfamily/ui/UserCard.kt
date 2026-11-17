@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -51,7 +52,7 @@ fun UserCard(user: User, locationValue: LocationValue?, showSupportingContent: B
     val sinceString = when {
         user.locationName == "Unnamed Location" -> ""
         timeSinceEntry < 60.seconds -> stringResource(R.string.since_just_now)
-        timeSinceEntry < 15.minutes -> stringResource(R.string.since_minutes_ago, timeSinceEntry.inWholeMinutes)
+        timeSinceEntry < 15.minutes -> pluralStringResource(R.plurals.since_minutes_ago, timeSinceEntry.inWholeMinutes.toInt(), timeSinceEntry.inWholeMinutes)
         else -> {
             val formattedTime = DateString.time(sinceTime.time, is24Hour(context))
             val formattedDate = when (Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toEpochDays() - sinceTime.date.toEpochDays()) {
@@ -139,18 +140,4 @@ fun UserCard(user: User, locationValue: LocationValue?, showSupportingContent: B
     }
 }
 
-@Composable
-fun BatteryBar(percent: Float, width: Dp = 24.dp, height: Dp = 12.dp) {
-    val color = when {
-        percent > 50 -> MaterialTheme.colorScheme.primary
-        percent > 20 -> MaterialTheme.colorScheme.tertiary
-        else -> MaterialTheme.colorScheme.error
-    }
 
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(Modifier.size(width, height).border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(3.dp))) {
-            Box(Modifier.fillMaxWidthFraction(percent).height(height).background(color, RoundedCornerShape(3.dp)))
-        }
-        Text(stringResource(R.string.battery_percentage, percent.toInt()), fontSize = 11.sp)
-    }
-}

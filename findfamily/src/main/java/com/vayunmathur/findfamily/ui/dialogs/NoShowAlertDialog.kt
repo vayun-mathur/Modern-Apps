@@ -29,22 +29,24 @@ import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.ui.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
-import com.vayunmathur.findfamily.util.PersonActions
+import com.vayunmathur.findfamily.platform.PersonActions
 import java.time.Instant as JavaInstant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.Locale
 import kotlin.time.Instant
 import com.vayunmathur.library.ui.R as UiR
 
@@ -71,7 +73,7 @@ fun NoShowAlertDialog(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var graceExpanded by remember { mutableStateOf(false) }
-    var graceMinutes by remember { mutableStateOf(30) }
+    var graceMinutes by remember { mutableIntStateOf(30) }
     val messenger = rememberMessenger()
 
     val anyPlaceLabel = stringResource(R.string.noshow_place_any)
@@ -84,7 +86,7 @@ fun NoShowAlertDialog(
         JavaInstant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().toString()
     } ?: stringResource(R.string.noshow_pick_date)
     val timeLabel = if (hour != null && minute != null) {
-        String.format("%02d:%02d", hour, minute)
+        String.format(Locale.ROOT, "%02d:%02d", hour, minute)
     } else {
         stringResource(R.string.noshow_pick_time)
     }
@@ -105,9 +107,9 @@ fun NoShowAlertDialog(
     }
     val graceOptions = remember { listOf(0, 15, 30, 60, 120) }
     val scheduledMessage = stringResource(R.string.noshow_scheduled)
-    val context = LocalContext.current
+    val resources = LocalResources.current
     fun graceLabel(minutesValue: Int): String =
-        context.resources.getQuantityString(R.plurals.noshow_grace_minutes, minutesValue, minutesValue)
+        resources.getQuantityString(R.plurals.noshow_grace_minutes, minutesValue, minutesValue)
 
     Dialog(onDismissRequest = onDismiss) {
         Card {

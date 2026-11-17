@@ -1,4 +1,5 @@
 package com.vayunmathur.findfamily.util
+import com.vayunmathur.findfamily.platform.LocationTrackingService
 
 import android.content.Intent
 import android.hardware.Sensor

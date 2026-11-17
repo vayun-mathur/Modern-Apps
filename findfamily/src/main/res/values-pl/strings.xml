@@ -11,11 +11,7 @@
     <string name="notification_low_battery">%1$s ma niski poziom bateri</string>
     <string name="notification_entered_waypoint">%1$s dotarł do %2$s</string>
     <string name="notification_exited_waypoint">%1$s opuścił %2$s</string>
-    <string name="permission_fine_location_granted">✅ Przyznano dostęp do dokładnej lokalizacji</string>
     <string name="permission_grant_fine_location">1. Zezwól na dostęp do dokładnej lokalizacji</string>
-    <string name="permission_background_granted">✅Przyznano dostęp do pracy w tle</string>
-    <string name="permission_enable_all_the_time">2. Włącz opcję „Zawsze zezwalaj”</string>
-    <string name="permission_background_explanation">Aby włączyć śledzenie w tle, wybierz na następnym ekranie opcję „Zezwalaj zawsze”.</string>
     <string name="fab_person">Osoba</string>
     <string name="fab_location">Lokalizacja</string>
     <string name="fab_link">Link</string>
@@ -28,26 +24,60 @@
     <string name="user_is_here">%1$s znajduje się obecnie tutaj</string>
     <string name="users_are_here">%1$s są teraz tutaj</string>
     <string name="since_just_now">Od chwili</string>
-    <string name="since_minutes_ago">Od %1$d minut</string>
+    <plurals name="since_minutes_ago">
+        <item quantity="one">Od %1$d minut</item>
+        <item quantity="few">Od %1$d minut</item>
+        <item quantity="many">Od %1$d minut</item>
+        <item quantity="other">Od %1$d minut</item>
+    </plurals>
     <string name="since_time_date">Od %1$s %2$s</string>
     <string name="today">dzisiaj</string>
     <string name="yesterday">wczoraj</string>
     <string name="user_card_status">Zaktualizowano %1$s\nO %2$s\n%3$s</string>
     <string name="battery_percentage">%1$d%%</string>
     <string name="time_just_now">przed chwilą</string>
-    <string name="time_minutes_ago">%1$d minut temu</string>
-    <string name="time_hours_ago">%1$d godzin temu</string>
-    <string name="time_days_ago">%1$d dni temu</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one">%1$d minut temu</item>
+        <item quantity="few">%1$d minut temu</item>
+        <item quantity="many">%1$d minut temu</item>
+        <item quantity="other">%1$d minut temu</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="one">%1$d godzin temu</item>
+        <item quantity="few">%1$d godzin temu</item>
+        <item quantity="many">%1$d godzin temu</item>
+        <item quantity="other">%1$d godzin temu</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one">%1$d dni temu</item>
+        <item quantity="few">%1$d dni temu</item>
+        <item quantity="many">%1$d dni temu</item>
+        <item quantity="other">%1$d dni temu</item>
+    </plurals>
     <string name="time_very_soon">Już niedługo</string>
-    <string name="time_in_minutes">za %1$d minut</string>
-    <string name="time_in_hours">za %1$d godzin</string>
-    <string name="time_in_days">za %1$d dni</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">za %1$d minut</item>
+        <item quantity="few">za %1$d minut</item>
+        <item quantity="many">za %1$d minut</item>
+        <item quantity="other">za %1$d minut</item>
+    </plurals>
+    <plurals name="time_in_hours">
+        <item quantity="one">za %1$d godzin</item>
+        <item quantity="few">za %1$d godzin</item>
+        <item quantity="many">za %1$d godzin</item>
+        <item quantity="other">za %1$d godzin</item>
+    </plurals>
+    <plurals name="time_in_days">
+        <item quantity="one">za %1$d dni</item>
+        <item quantity="few">za %1$d dni</item>
+        <item quantity="many">za %1$d dni</item>
+        <item quantity="other">za %1$d dni</item>
+    </plurals>
     <string name="change_connected_contact">Zmień powiązany kontakt</string>
     <string name="waypoint_name_blank_error">Pole „Imię” nie może pozostać puste</string>
     <string name="waypoint_range_error">Wartość musi być liczbą</string>
     <string name="waypoint_range_suffix">metry</string>
     <string name="add_link_title">Udostępnij za pomocą linku</string>
-    <string name="add_link_label">Nazwa linku (w celu rozróżnienia linków)</string>
     <string name="expiry_time_label">Czas wygaśnięcia</string>
     <string name="create_temporary_link">Utwórz link tymczasowy</string>
     <string name="expiry_15_minutes">15 minut</string>

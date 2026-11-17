@@ -18,8 +18,8 @@ import com.vayunmathur.findfamily.data.FindFamilyRepository
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.domain.ForcedFixPolicy
-import com.vayunmathur.findfamily.util.LocationTrackingService
-import com.vayunmathur.findfamily.util.Networking
+import com.vayunmathur.findfamily.platform.LocationTrackingService
+import com.vayunmathur.findfamily.network.Networking
 import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel

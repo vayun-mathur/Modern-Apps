@@ -1,4 +1,6 @@
 package com.vayunmathur.findfamily.util
+import com.vayunmathur.findfamily.platform.LocationServiceController
+import com.vayunmathur.findfamily.platform.MapPageState
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider

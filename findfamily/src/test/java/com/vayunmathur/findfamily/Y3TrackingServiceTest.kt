@@ -8,7 +8,7 @@ import android.location.Location
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.findfamily.data.TestFindFamilyRepository
 import com.vayunmathur.findfamily.platform.FakeAndroidKeyStore
-import com.vayunmathur.findfamily.util.LocationTrackingService
+import com.vayunmathur.findfamily.platform.LocationTrackingService
 import com.vayunmathur.findfamily.domain.MotionTransition
 import com.vayunmathur.library.util.DatabaseHelper
 import kotlinx.coroutines.Dispatchers

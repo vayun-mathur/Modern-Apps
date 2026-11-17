@@ -24,10 +24,10 @@ import androidx.compose.runtime.setValue
 import com.vayunmathur.findfamily.R
 import androidx.compose.runtime.Composable
 import com.vayunmathur.findfamily.ui.dialogs.NoShowAlertDialog
-import com.vayunmathur.findfamily.util.FindFamilyNotificationChannels
-import com.vayunmathur.findfamily.util.Networking
-import com.vayunmathur.findfamily.util.PersonActions
-import com.vayunmathur.findfamily.util.PersonUiState
+import com.vayunmathur.findfamily.notifications.FindFamilyNotificationChannels
+import com.vayunmathur.findfamily.network.Networking
+import com.vayunmathur.findfamily.platform.PersonActions
+import com.vayunmathur.findfamily.platform.PersonUiState
 
 @Composable
 fun PersonDetailSheet(state: PersonUiState, actions: PersonActions) {

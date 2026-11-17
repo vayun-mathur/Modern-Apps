@@ -5,7 +5,7 @@ import android.content.Context
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.vayunmathur.findfamily.R
-import com.vayunmathur.findfamily.util.LocationServiceController
+import com.vayunmathur.findfamily.platform.LocationServiceController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

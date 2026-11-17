@@ -1,4 +1,5 @@
 package com.vayunmathur.findfamily.tracker
+import com.vayunmathur.findfamily.sync.PoweredOffReporting
 
 import kotlin.test.Test
 import kotlin.test.assertFalse

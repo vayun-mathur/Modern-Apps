@@ -1,4 +1,5 @@
 package com.vayunmathur.findfamily.util
+import com.vayunmathur.findfamily.platform.MapPageState
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4

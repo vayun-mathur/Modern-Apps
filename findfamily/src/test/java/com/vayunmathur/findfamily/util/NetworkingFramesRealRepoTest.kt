@@ -1,4 +1,20 @@
 package com.vayunmathur.findfamily.util
+import com.vayunmathur.findfamily.network.generatePqcIdentityKeyPair
+import com.vayunmathur.findfamily.network.generatePqcLinkKey
+import com.vayunmathur.findfamily.network.myInviteFingerprint
+import com.vayunmathur.findfamily.network.registerTracker
+import com.vayunmathur.findfamily.network.resolveTrackerBundle
+import com.vayunmathur.findfamily.network.uploadTrackerReport
+import com.vayunmathur.findfamily.network.fetchTrackerReports
+import com.vayunmathur.findfamily.network.registerPoweredOffEids
+import com.vayunmathur.findfamily.network.WS_OP_POF_REGISTER
+import com.vayunmathur.findfamily.network.WS_OP_REPORT_GET_RESP
+import com.vayunmathur.findfamily.network.WS_OP_REPORT_PUT
+import com.vayunmathur.findfamily.network.WS_OP_RESOLVE_RESP
+import com.vayunmathur.findfamily.network.WS_OP_TRACKER_REGISTER
+import com.vayunmathur.findfamily.network.Networking
+import com.vayunmathur.findfamily.network.dispatchLiveFrame
+import com.vayunmathur.findfamily.network.toHex
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -169,7 +185,7 @@ class NetworkingFramesRealRepoTest {
         assertFalse(Networking.publishLocation(fix(42), link))
         assertFalse(Networking.publishLocation(fix(42), 42L, "aGVsbG8="))
         assertFalse(Networking.publishUwbMessage(
-            com.vayunmathur.findfamily.uwb.UwbEnvelope(
+            com.vayunmathur.findfamily.domain.UwbEnvelope(
                 sessionId = "s", sender = 1uL, senderPlatform = "android", kind = "request",
             ), 42L, user(),
         ))

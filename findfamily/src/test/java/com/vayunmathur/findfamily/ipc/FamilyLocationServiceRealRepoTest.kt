@@ -14,8 +14,8 @@ import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.TestFindFamilyRepository
 import com.vayunmathur.findfamily.data.User
-import com.vayunmathur.findfamily.ipc.FamilyLocationProtocol
-import com.vayunmathur.findfamily.ipc.FamilyLocationService
+import com.vayunmathur.findfamily.domain.FamilyLocationProtocol
+import com.vayunmathur.findfamily.service.FamilyLocationService
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric

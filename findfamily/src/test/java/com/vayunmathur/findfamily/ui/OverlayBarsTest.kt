@@ -13,8 +13,8 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
-import com.vayunmathur.findfamily.util.MainPageActions
-import com.vayunmathur.findfamily.util.MainPageUiState
+import com.vayunmathur.findfamily.platform.MainPageActions
+import com.vayunmathur.findfamily.platform.MainPageUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test

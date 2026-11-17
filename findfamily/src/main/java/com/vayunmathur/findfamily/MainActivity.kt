@@ -1,23 +1,7 @@
 package com.vayunmathur.findfamily
 
-import android.Manifest
 import android.content.Intent
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.ConfirmDialog
-import com.vayunmathur.library.ui.MaActivity
-import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Surface
-import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,37 +10,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.findfamily.data.FindFamilyRepository
-import com.vayunmathur.findfamily.ui.MainPage
-import com.vayunmathur.findfamily.ui.PersonSheet
-import com.vayunmathur.findfamily.ui.UwbRangingScreen
-import com.vayunmathur.findfamily.ui.WaypointSheet
-import com.vayunmathur.findfamily.ui.dialogs.AddLinkDialog
-import com.vayunmathur.findfamily.ui.dialogs.AddPersonDialog
-import com.vayunmathur.findfamily.ui.dialogs.AddTrackerDialog
+import com.vayunmathur.findfamily.domain.AddInvite
+import com.vayunmathur.findfamily.notifications.EXTRA_NOSHOW_USER_ID
+import com.vayunmathur.findfamily.notifications.EXTRA_NOSHOW_WAYPOINT_ID
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.FindFamilyViewModelFactory
+import com.vayunmathur.findfamily.platform.Platform
 import com.vayunmathur.findfamily.ui.dialogs.decodeBase26
-import com.vayunmathur.library.ui.AppPermissionsGate
-import com.vayunmathur.library.ui.AppPermissionsSpec
-import com.vayunmathur.library.ui.IconBluetooth
-import com.vayunmathur.library.ui.PermissionRequirement
-import com.vayunmathur.library.ui.dialog.DatePickerDialog
-import com.vayunmathur.library.util.DialogPage
-import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.util.rememberNavBackStack
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.Serializable
-import kotlin.time.Clock
-import com.vayunmathur.findfamily.util.EXTRA_NOSHOW_USER_ID
-import com.vayunmathur.findfamily.util.EXTRA_NOSHOW_WAYPOINT_ID
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
-import com.vayunmathur.findfamily.util.FindFamilyViewModelFactory
-import com.vayunmathur.findfamily.util.Platform
+import com.vayunmathur.findfamily.ui.findFamilyPermissionsSpec
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
+import com.vayunmathur.library.ui.AppPermissionsGate
+import com.vayunmathur.library.ui.ConfirmDialog
+import com.vayunmathur.library.ui.MaActivity
 
 /**
  * FindFamily entry activity: initialises the first-party network client, parses invite
@@ -168,187 +135,5 @@ class MainActivity : MaActivity() {
         val fingerprint = runCatching { data.getQueryParameter("k")?.trim() }.getOrNull()
             ?.takeIf { it.isNotEmpty() && it.all { c -> c.isLetterOrDigit() || c == '-' || c == '_' } }
         return AddInvite(id, fingerprint)
-    }
-}
-
-/** A tapped invite link: the sender's id, plus the bundle fingerprint it vouched for. */
-data class AddInvite(val id: Long, val fingerprint: String?)
-
-/** The foreground/background-location + BT-scan gate every FindFamily surface sits behind. */
-@Composable
-private fun findFamilyPermissionsSpec() = AppPermissionsSpec(
-    title = stringResource(R.string.permission_grant_fine_location),
-    icon = { IconBluetooth() },
-    requirements = listOf(
-        // Request fine AND coarse together: on Android 12+
-        // this surfaces the Precise/Approximate choice;
-        // requesting fine alone is ignored by the system.
-        PermissionRequirement.Runtime(
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-            )
-        ),
-        PermissionRequirement.Runtime(
-            arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        ),
-        // The finder half of powered-off finding is always
-        // on, so the scanner needs BLUETOOTH_SCAN from the
-        // start; without it it starts and immediately closes.
-        PermissionRequirement.Runtime(
-            arrayOf(Manifest.permission.BLUETOOTH_SCAN)
-        ),
-    )
-)
-
-@Composable
-fun MissingFeaturesDialog(backStack: NavBackStack<Route>) {
-    Surface(
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.padding(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(R.string.missing_features_title),
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.missing_features_explanation),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(24.dp))
-            Button(onClick = { backStack.pop() }) {
-                Text(stringResource(android.R.string.ok))
-            }
-        }
-    }
-}
-
-@Serializable
-/** Navigation destinations for FindFamily's single-activity graph. */
-sealed interface Route: NavKey {
-    @Serializable
-    /** Map home destination. Selection lives in [PersonSheet]/[WaypointSheet], not here. */
-    data object MainPage: Route
-
-    @Serializable
-    /** Sheet for the given person, shown over the map. */
-    data class PersonSheet(val userId: Long): Route
-
-    @Serializable
-    /** Sheet for the given waypoint (0 = create a new one), shown over the map. */
-    data class WaypointSheet(val waypointId: Long): Route
-
-    @Serializable
-    /** Dialog for picking the date whose location history to show. */
-    data class UserPageHistoryDatePicker(val initialDate: LocalDate): Route
-
-    @Serializable
-    /** Dialog for connecting to a person, optionally prefilled from an invite link. */
-    data class AddPersonDialog(val id: Long? = null, val fingerprint: String? = null): Route
-
-    @Serializable
-    /** Dialog for creating a temporary share link. */
-    data object AddLinkDialog: Route
-
-    /** Dev-only (DEV_BUILD): bind a new custom UWB tracker. */
-    @Serializable
-    data object AddTrackerDialog: Route
-
-    @Serializable
-    /** Dialog explaining features unavailable on this device. */
-    data object MissingFeaturesDialog: Route
-
-    /** UWB Find Nearby (UWB) screen for the given peer. Full screen (no DialogPage metadata). */
-    @Serializable
-    data class UwbRangingPage(val userId: Long): Route
-}
-
-@Composable
-fun Navigation(
-    platform: Platform,
-    ffViewModel: FindFamilyViewModel,
-    showMissingFeatures: Boolean,
-    deepLinkUwbPeerId: Long? = null,
-    deepLinkAddInvite: AddInvite? = null,
-    onDeepLinkAddConsumed: () -> Unit = {},
-    noShowTarget: Pair<Long, Long?>? = null,
-    onNoShowTargetConsumed: () -> Unit = {},
-) {
-    val backStack = rememberNavBackStack<Route>(Route.MainPage)
-
-    LaunchedEffect(showMissingFeatures) {
-        if (showMissingFeatures) {
-            backStack.add(Route.MissingFeaturesDialog)
-        }
-    }
-
-    LaunchedEffect(deepLinkUwbPeerId) {
-        if (deepLinkUwbPeerId != null) {
-            backStack.add(Route.UwbRangingPage(deepLinkUwbPeerId))
-        }
-    }
-
-    // A tapped invite prefills the Add Person dialog; the user still explicitly
-    // accepts, so the connection/crypto flow is unchanged.
-    LaunchedEffect(deepLinkAddInvite) {
-        if (deepLinkAddInvite != null) {
-            backStack.add(Route.AddPersonDialog(deepLinkAddInvite.id, deepLinkAddInvite.fingerprint))
-            onDeepLinkAddConsumed()
-        }
-    }
-
-    // A tapped no-show notification opens the watched person's sheet over
-    // the map. The expected place rides along in the alert itself; selection
-    // holds one destination, and the person is what the sheet showed first
-    // before this refactor too.
-    LaunchedEffect(noShowTarget) {
-        if (noShowTarget != null) {
-            backStack.add(Route.PersonSheet(noShowTarget.first))
-            onNoShowTargetConsumed()
-        }
-    }
-
-    MainNavigation(backStack) {
-        entry<Route.MainPage> {
-            MainPage(platform, backStack, ffViewModel)
-        }
-        entry<Route.PersonSheet>(metadata = DialogPage()) {
-            PersonSheet(backStack, ffViewModel, platform, it.userId)
-        }
-        entry<Route.WaypointSheet>(metadata = DialogPage()) {
-            WaypointSheet(backStack, ffViewModel, it.waypointId)
-        }
-        entry<Route.UserPageHistoryDatePicker>(metadata = DialogPage()) {
-            DatePickerDialog(
-                backStack,
-                "HistoryDatePicker",
-                it.initialDate,
-                maxDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-            )
-        }
-        entry<Route.AddPersonDialog>(metadata = DialogPage()) {
-            AddPersonDialog(backStack, ffViewModel, platform, it.id, it.fingerprint)
-        }
-        entry<Route.AddLinkDialog>(metadata = DialogPage()) {
-            AddLinkDialog(backStack, ffViewModel)
-        }
-        entry<Route.AddTrackerDialog>(metadata = DialogPage()) {
-            AddTrackerDialog(backStack)
-        }
-        entry<Route.MissingFeaturesDialog>(metadata = DialogPage()) {
-            MissingFeaturesDialog(backStack)
-        }
-        entry<Route.UwbRangingPage> {
-            UwbRangingScreen(backStack, ffViewModel, it.userId)
-        }
     }
 }

@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.findfamily.MissingFeaturesDialog
+import com.vayunmathur.findfamily.ui.MissingFeaturesDialog
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.library.util.NavBackStack
 import org.junit.Rule

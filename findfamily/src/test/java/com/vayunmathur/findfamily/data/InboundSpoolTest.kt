@@ -3,7 +3,7 @@ package com.vayunmathur.findfamily.data
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.findfamily.util.dispatchLiveFrame
+import com.vayunmathur.findfamily.network.dispatchLiveFrame
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith

@@ -3,8 +3,11 @@
     <string name="notification_channel_location_tracking_name">Suivi de la localisation</string>
     <string name="contact_findfamily_id">Identifiant Trouver sa famille du contact</string>
     <string name="expiry_1_week">1 semaine</string>
-    <string name="add_link_label">Libellé du lien (pour distinguer les liens)</string>
-    <string name="time_in_minutes">en %1$d minutes</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">en %1$d minutes</item>
+        <item quantity="many">en %1$d minutes</item>
+        <item quantity="other">en %1$d minutes</item>
+    </plurals>
     <string name="expiry_12_hours">12 heures</string>
     <string name="notification_channel_entry_exit_name">Arrivées et départs</string>
     <string name="notification_channel_battery_name">Alertes relatives à la batterie</string>
@@ -27,30 +30,42 @@
     <string name="permission_upgrade_dialog_title">Localisation précise requise</string>
     <string name="expiry_15_minutes">15 minutes</string>
     <string name="notification_exited_waypoint">%1$s a quitté %2$s</string>
-    <string name="since_minutes_ago">Il y a %1$d minutes</string>
+    <plurals name="since_minutes_ago">
+        <item quantity="one">Il y a %1$d minutes</item>
+        <item quantity="many">Il y a %1$d minutes</item>
+        <item quantity="other">Il y a %1$d minutes</item>
+    </plurals>
     <string name="expiry_4_hours">4 heures</string>
     <string name="expiry_30_minutes">30 minutes</string>
     <string name="notification_channel_entry_exit_desc">Notifications lorsque des membres de la famille passent par des points de passage ou en sortent</string>
     <string name="missing_features_explanation">Trouver sa famille nécessite l\'accès à la localisation réseau et un géocodeur pour fonctionner correctement. Vous devez les activer pour pouvoir continuer.</string>
     <string name="since_time_date">Depuis %1$s %2$s</string>
     <string name="expiry_2_days">2 jours</string>
-    <string name="permission_approximate_only_explanation">Trouver sa famille ne fonctionne qu\'avec une localisation précise. Vous n\'avez autorisé qu\'une localisation approximative ; veuillez passer à une localisation précise pour continuer.</string>
     <string name="permission_grant_fine_location">1. Autoriser la localisation précise</string>
     <string name="expiry_2_hours">2 heures</string>
     <string name="nobody_here">Il n\'y a personne ici pour le moment.</string>
     <string name="notification_channel_battery_desc">Envoie une alerte lorsque la batterie d\'un membre de la famille est faible</string>
     <string name="create_temporary_link">Créer un lien temporaire</string>
-    <string name="permission_enable_all_the_time">2. Activer l\'option « Toujours autoriser »</string>
-    <string name="time_minutes_ago">Il y a %1$d minutes</string>
-    <string name="time_days_ago">Il y a %1$d jours</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one">Il y a %1$d minutes</item>
+        <item quantity="many">Il y a %1$d minutes</item>
+        <item quantity="other">Il y a %1$d minutes</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one">Il y a %1$d jours</item>
+        <item quantity="many">Il y a %1$d jours</item>
+        <item quantity="other">Il y a %1$d jours</item>
+    </plurals>
     <string name="notification_tracking_title">Trouver sa famille est actif</string>
-    <string name="time_hours_ago">Il y a %1$d heures</string>
+    <plurals name="time_hours_ago">
+        <item quantity="one">Il y a %1$d heures</item>
+        <item quantity="many">Il y a %1$d heures</item>
+        <item quantity="other">Il y a %1$d heures</item>
+    </plurals>
     <string name="yesterday">hier</string>
     <string name="section_location_sharing_requests">Demandes de partage de position</string>
     <string name="waypoint_name_blank_error">Le champ « Nom » ne peut pas être laissé vide</string>
-    <string name="permission_reopen_upgrade_prompt">Passer à la localisation précise</string>
     <string name="your_findfamily_id">Votre identifiant Trouver sa famille</string>
-    <string name="permission_fine_location_granted">✅ Accès à la localisation précise autorisé</string>
     <string name="fab_location">Localisation</string>
     <string name="time_just_now">il y a un instant</string>
     <string name="expiry_1_hour">1 heure</string>
@@ -62,13 +77,19 @@
     <string name="waypoint_range_suffix">mètres</string>
     <string name="section_temporary_links">Liens temporaires</string>
     <string name="notification_channel_location_tracking_desc">Utilisé pour les mises à jour de localisation en arrière-plan de Trouver sa famille</string>
-    <string name="time_in_hours">en %1$d heures</string>
+    <plurals name="time_in_hours">
+        <item quantity="one">en %1$d heures</item>
+        <item quantity="many">en %1$d heures</item>
+        <item quantity="other">en %1$d heures</item>
+    </plurals>
     <string name="today">aujourd\'hui</string>
-    <string name="permission_background_explanation">Pour activer le suivi en arrière-plan, veuillez sélectionner « Autoriser en permanence » sur l\'écran suivant.</string>
-    <string name="permission_background_granted">✅ Autorisation accordée en arrière-plan</string>
     <string name="expires">Expire le %1$s</string>
     <string name="battery_percentage">%1$d%%</string>
-    <string name="time_in_days">en %1$d jours</string>
+    <plurals name="time_in_days">
+        <item quantity="one">en %1$d jours</item>
+        <item quantity="many">en %1$d jours</item>
+        <item quantity="other">en %1$d jours</item>
+    </plurals>
     <string name="share_your_location">Partagez votre position avec cette personne</string>
     <string name="change_connected_contact">Modifier le contact associé</string>
     <string name="history_title">Historique : %1$s</string>
@@ -98,6 +119,5 @@
     <string name="uwb_status_failed">Échec de la recherche « À proximité » (UWB).</string>
     <string name="request_from">Demande de %1$s</string>
     <string name="status_already_requested">Demande de partage déjà envoyée à cette personne</string>
-    <string name="unknown">Inconnu</string>
     <string name="computing">Calcul en cours…</string>
 </resources>

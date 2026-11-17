@@ -15,7 +15,7 @@ import com.vayunmathur.findfamily.domain.ForcedFixPolicy
 import com.vayunmathur.findfamily.domain.ForcedFixReason
 import com.vayunmathur.findfamily.domain.MotionTransition
 import com.vayunmathur.findfamily.domain.MovementDetector
-import com.vayunmathur.findfamily.util.LocationTrackingService
+import com.vayunmathur.findfamily.platform.LocationTrackingService
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith

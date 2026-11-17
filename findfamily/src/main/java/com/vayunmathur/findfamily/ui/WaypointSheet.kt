@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.Route
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.OutlinedButton

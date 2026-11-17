@@ -1,13 +1,14 @@
 package com.vayunmathur.findfamily.util
+import com.vayunmathur.findfamily.platform.UwbSessionManager
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.findfamily.ui.UwbRangingContent
-import com.vayunmathur.findfamily.uwb.UwbCancelReason
-import com.vayunmathur.findfamily.uwb.UwbEnvelope
-import com.vayunmathur.findfamily.uwb.UwbEnvelopeKind
+import com.vayunmathur.findfamily.domain.UwbCancelReason
+import com.vayunmathur.findfamily.domain.UwbEnvelope
+import com.vayunmathur.findfamily.domain.UwbEnvelopeKind
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test

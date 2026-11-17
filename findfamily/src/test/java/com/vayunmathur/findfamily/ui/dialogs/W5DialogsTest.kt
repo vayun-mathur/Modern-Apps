@@ -11,7 +11,7 @@ import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.Coord
-import com.vayunmathur.findfamily.util.PersonActions
+import com.vayunmathur.findfamily.platform.PersonActions
 import kotlin.time.Instant
 import org.junit.Rule
 import org.junit.runner.RunWith

@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.map
  *
  * Owns the one [FFDatabase] instance (via [RoomRepository]) and is the only place
  * the four DAOs are touched. The app (ViewModel), the background
- * [com.vayunmathur.findfamily.util.LocationTrackingService], networking, the
+ * [com.vayunmathur.findfamily.platform.LocationTrackingService], networking, the
  * assistant intents, `LocationServiceController`, and the tracker all read/write
  * through here — so the UI and the service share one live, invalidation-backed
  * view of the data.

@@ -1,4 +1,5 @@
 package com.vayunmathur.findfamily.ui
+import com.vayunmathur.findfamily.domain.AddInvite
 
 import android.app.Application
 import android.os.Looper
@@ -8,7 +9,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.findfamily.AddInvite
 import com.vayunmathur.findfamily.Navigation
 import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.FindFamilyRepository
@@ -20,8 +20,8 @@ import com.vayunmathur.findfamily.data.TestFindFamilyRepository
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.platform.FakeAndroidKeyStore
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
-import com.vayunmathur.findfamily.util.Platform
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.Platform
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DatabaseHelper
 import kotlinx.coroutines.runBlocking

@@ -8,8 +8,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.findfamily.data.TestFindFamilyRepository
 import com.vayunmathur.findfamily.platform.FakeAndroidKeyStore
-import com.vayunmathur.findfamily.util.EXTRA_NOSHOW_USER_ID
-import com.vayunmathur.findfamily.util.EXTRA_NOSHOW_WAYPOINT_ID
+import com.vayunmathur.findfamily.notifications.EXTRA_NOSHOW_USER_ID
+import com.vayunmathur.findfamily.notifications.EXTRA_NOSHOW_WAYPOINT_ID
 import com.vayunmathur.library.util.DatabaseHelper
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric

@@ -5,8 +5,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.findfamily.util.UwbSessionManager
-import com.vayunmathur.findfamily.uwb.RangingSample
+import com.vayunmathur.findfamily.platform.UwbSessionManager
+import com.vayunmathur.findfamily.platform.RangingSample
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test

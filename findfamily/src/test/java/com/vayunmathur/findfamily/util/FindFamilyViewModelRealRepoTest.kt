@@ -1,4 +1,6 @@
 package com.vayunmathur.findfamily.util
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.FindFamilyViewModelFactory
 
 import android.app.Application
 import android.os.Looper

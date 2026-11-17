@@ -36,8 +36,8 @@ import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.toGeoPoint
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
-import com.vayunmathur.findfamily.util.PersonActions
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.PersonActions
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.ResultEffect
@@ -104,9 +104,9 @@ fun timestring(timestamp: Instant, future: Boolean, context: Context): String {
     val duration = (Clock.System.now() - timestamp).absoluteValue
     return when {
         duration.inWholeSeconds < 60 -> context.getString(if (future) R.string.time_very_soon else R.string.time_just_now)
-        duration.inWholeMinutes < 60 -> context.getString(if (future) R.string.time_in_minutes else R.string.time_minutes_ago, duration.inWholeMinutes)
-        duration.inWholeHours < 24 -> context.getString(if (future) R.string.time_in_hours else R.string.time_hours_ago, duration.inWholeHours)
-        else -> context.getString(if (future) R.string.time_in_days else R.string.time_days_ago, duration.inWholeDays)
+        duration.inWholeMinutes < 60 -> context.resources.getQuantityString(if (future) R.plurals.time_in_minutes else R.plurals.time_minutes_ago, duration.inWholeMinutes.toInt(), duration.inWholeMinutes)
+        duration.inWholeHours < 24 -> context.resources.getQuantityString(if (future) R.plurals.time_in_hours else R.plurals.time_hours_ago, duration.inWholeHours.toInt(), duration.inWholeHours)
+        else -> context.resources.getQuantityString(if (future) R.plurals.time_in_days else R.plurals.time_days_ago, duration.inWholeDays.toInt(), duration.inWholeDays)
     }
 }
 

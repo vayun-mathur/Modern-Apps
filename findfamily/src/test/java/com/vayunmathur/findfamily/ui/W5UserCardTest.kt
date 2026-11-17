@@ -10,7 +10,7 @@ import com.vayunmathur.findfamily.data.LocationSource
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
-import com.vayunmathur.findfamily.util.PersonActions
+import com.vayunmathur.findfamily.platform.PersonActions
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant

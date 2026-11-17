@@ -1,4 +1,7 @@
 package com.vayunmathur.findfamily.tracker
+import com.vayunmathur.findfamily.domain.PoweredOffRecovery
+import com.vayunmathur.findfamily.domain.RecoveryKeypair
+import com.vayunmathur.findfamily.domain.poweredOffGrantSigningBytes
 
 import com.vayunmathur.e2ee.E2eeKeyStore
 import kotlinx.coroutines.runBlocking

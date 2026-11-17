@@ -15,9 +15,9 @@ import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.awaitFamilyCondition
 import com.vayunmathur.findfamily.platform.FakeAndroidKeyStore
-import com.vayunmathur.findfamily.util.FindFamilyViewModel
-import com.vayunmathur.findfamily.util.MainPageActions
-import com.vayunmathur.findfamily.util.Platform
+import com.vayunmathur.findfamily.platform.FindFamilyViewModel
+import com.vayunmathur.findfamily.platform.MainPageActions
+import com.vayunmathur.findfamily.platform.Platform
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DatabaseHelper
 import com.vayunmathur.library.util.NavBackStack
@@ -66,7 +66,7 @@ class MainPageActionsRealRepoTest {
         val stack = NavBackStack<Route>(arrayOf(Route.MainPage))
         var gpsShown = false
         var captured: Pair<
-            com.vayunmathur.findfamily.util.FamilyListActions,
+            com.vayunmathur.findfamily.platform.FamilyListActions,
             MainPageActions>? = null
         rule.setContent {
             DynamicTheme {

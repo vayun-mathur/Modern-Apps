@@ -47,21 +47,8 @@
     <string name="notification_entered_waypoint"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> has entered <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
     <!-- LocationTrackingService: Dynamic notification when contact exits waypoint. %1$s = person name, %2$s = waypoint name -->
     <string name="notification_exited_waypoint"><xliff:g id="person_name" example="Alice">%1$s</xliff:g> has exited <xliff:g id="waypoint_name" example="Home">%2$s</xliff:g></string>
-
-    <!-- Permission screen: Shown after fine location granted. Status label with emoji -->
-    <string name="permission_fine_location_granted">✅ Fine Location Granted</string>
     <!-- Permission screen: Button to request ACCESS_FINE_LOCATION. Verb phrase, step 1 -->
     <string name="permission_grant_fine_location">1. Grant Fine Location</string>
-    <!-- Permission screen: Status label after background location granted. Noun phrase -->
-    <string name="permission_background_granted">✅ Background Granted</string>
-    <!-- Permission screen: Button to enable background 'Allow all the time'. Verb phrase, step 2 -->
-    <string name="permission_enable_all_the_time">2. Enable \'Allow all the time\'</string>
-    <!-- Permission screen: Explanation for background permission rationale. Sentence -->
-    <string name="permission_background_explanation">To enable background tracking, please select \'Allow all the time\' in the next screen.</string>
-    <!-- Permission screen: Message when user granted only approximate location. Sentence, requires upgrade -->
-    <string name="permission_approximate_only_explanation">FindFamily only works with precise (fine) location. You granted approximate location only — please upgrade to precise location to continue.</string>
-    <!-- Permission screen: Button to reopen upgrade prompt for precise location. Verb phrase -->
-    <string name="permission_reopen_upgrade_prompt">Upgrade to precise location</string>
     <!-- Permission upgrade dialog: Title. Noun phrase -->
     <string name="permission_upgrade_dialog_title">Precise location required</string>
     <!-- Permission upgrade dialog: Body message explaining why precise location needed. Sentence -->
@@ -113,7 +100,10 @@
     <!-- MainPage: UserCard since label when last entry just happened (<60s). Adverbial phrase -->
     <string name="since_just_now">Since just now</string>
     <!-- MainPage: UserCard since label for minutes. %1$d = minutes count, e.g. 5 -->
-    <string name="since_minutes_ago">Since <xliff:g id="minutes" example="5">%1$d</xliff:g> minutes ago</string>
+    <plurals name="since_minutes_ago">
+        <item quantity="one">Since <xliff:g id="count" example="5">%1$d</xliff:g> minute ago</item>
+        <item quantity="other">Since <xliff:g id="minutes" example="5">%1$d</xliff:g> minutes ago</item>
+    </plurals>
     <!-- MainPage: UserCard since label with formatted time and date. %1$s = time e.g. 3:45 PM, %2$s = date e.g. today/yesterday/Jun 4 -->
     <string name="since_time_date">Since <xliff:g id="time" example="3:45 PM">%1$s</xliff:g> <xliff:g id="date" example="today">%2$s</xliff:g></string>
     <!-- MainPage: Date token for today. Noun, used inside since_time_date -->
@@ -132,19 +122,37 @@
     <!-- MainPage: timestring helper for just now. Adverbial phrase, past -->
     <string name="time_just_now">just now</string>
     <!-- MainPage: timestring past minutes. %1$d = count, e.g. 5 -->
-    <string name="time_minutes_ago"><xliff:g id="minutes" example="5">%1$d</xliff:g> minutes ago</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one"><xliff:g id="count" example="5">%1$d</xliff:g> minute ago</item>
+        <item quantity="other"><xliff:g id="minutes" example="5">%1$d</xliff:g> minutes ago</item>
+    </plurals>
     <!-- MainPage: timestring past hours. %1$d = hours count, e.g. 2 -->
-    <string name="time_hours_ago"><xliff:g id="hours" example="2">%1$d</xliff:g> hours ago</string>
+    <plurals name="time_hours_ago">
+        <item quantity="one"><xliff:g id="count" example="2">%1$d</xliff:g> hour ago</item>
+        <item quantity="other"><xliff:g id="hours" example="2">%1$d</xliff:g> hours ago</item>
+    </plurals>
     <!-- MainPage: timestring past days. %1$d = days count, e.g. 3 -->
-    <string name="time_days_ago"><xliff:g id="days" example="3">%1$d</xliff:g> days ago</string>
+    <plurals name="time_days_ago">
+        <item quantity="one"><xliff:g id="count" example="3">%1$d</xliff:g> day ago</item>
+        <item quantity="other"><xliff:g id="days" example="3">%1$d</xliff:g> days ago</item>
+    </plurals>
     <!-- MainPage: timestring future very soon. Adverb phrase for expiry -->
     <string name="time_very_soon">very soon</string>
     <!-- MainPage: timestring future minutes. %1$d = minutes, e.g. 5 -->
-    <string name="time_in_minutes">in <xliff:g id="minutes" example="5">%1$d</xliff:g> minutes</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">in <xliff:g id="count" example="5">%1$d</xliff:g> minute</item>
+        <item quantity="other">in <xliff:g id="minutes" example="5">%1$d</xliff:g> minutes</item>
+    </plurals>
     <!-- MainPage: timestring future hours. %1$d = hours count -->
-    <string name="time_in_hours">in <xliff:g id="hours" example="2">%1$d</xliff:g> hours</string>
+    <plurals name="time_in_hours">
+        <item quantity="one">in <xliff:g id="count" example="2">%1$d</xliff:g> hour</item>
+        <item quantity="other">in <xliff:g id="hours" example="2">%1$d</xliff:g> hours</item>
+    </plurals>
     <!-- MainPage: timestring future days. %1$d = days count -->
-    <string name="time_in_days">in <xliff:g id="days" example="3">%1$d</xliff:g> days</string>
+    <plurals name="time_in_days">
+        <item quantity="one">in <xliff:g id="count" example="3">%1$d</xliff:g> day</item>
+        <item quantity="other">in <xliff:g id="days" example="3">%1$d</xliff:g> days</item>
+    </plurals>
 
     <!-- UserPage: Toggle description to share location. Verb phrase -->
     <string name="share_your_location">Share your location with this person</string>
@@ -182,8 +190,6 @@
 
     <!-- AddLinkDialog: Title for share via link dialog. Noun phrase -->
     <string name="add_link_title">Share via link</string>
-    <!-- AddLinkDialog: Text field label for link label. Noun phrase -->
-    <string name="add_link_label">Link Label (to differentiate links)</string>
     <!-- AddLinkDialog: Label for expiry dropdown. Noun phrase -->
     <string name="expiry_time_label">Expiry Time</string>
     <!-- AddLinkDialog: Primary button to create temporary link. Verb phrase -->
@@ -333,38 +339,8 @@
     <!-- UserPage: Note under the disabled sharing switch when the Quick Settings sharing tile is off. Sentence -->
     <string name="sharing_paused_note">Sharing is paused for everyone from the Quick Settings tile</string>
 
-    <!-- PersonDetailSheet, own entry: header for the crowd-finding section. Noun phrase -->
-    <string name="crowd_finding_title">Help find lost devices</string>
-    <!-- PersonDetailSheet, own entry: explains quiet background scanning for switched-off devices and the encrypted sighting report. Paragraph -->
-    <string name="crowd_finding_explanation">Your phone quietly looks for switched-off devices nearby and sends the owner an encrypted notice of where you were when you passed one. You never learn whose device it was, and only its owner can read the notice. It uses almost no battery, and other phones can do the same for yours.</string>
-    <!-- PersonDetailSheet, own entry: shown when the Bluetooth scan permission is missing. Sentence -->
-    <string name="crowd_finding_needs_bluetooth">Finding nearby devices needs permission to scan for Bluetooth devices</string>
-
     <!-- UserCard: status line for a position that came from another phone spotting this device's beacon rather than from the device itself. Deliberately vaguer than the live wording. Two lines -->
     <string name="user_card_network_sighting">Seen by a passing phone <xliff:g id="last_seen" example="2 hours ago">%1$s</xliff:g>\nSomewhere near <xliff:g id="location_name" example="Home">%2$s</xliff:g> — approximate</string>
-    <!-- PersonDetailSheet, own entry: title for the findable-while-off section. Noun phrase -->
-    <string name="poweroff_finding_title">Findable when switched off</string>
-    <!-- PersonDetailSheet, own entry: explains the rotating anonymous Bluetooth signal. Paragraph -->
-    <string name="poweroff_finding_explanation">When this phone is switched off, its Bluetooth chip keeps sending a short anonymous signal so a passing family member can report where the phone is. The signal changes every 17 minutes and only your family members can recognize it. Nobody, including us, can learn where it was seen except you.</string>
-    <!-- PersonDetailSheet, own entry: the limit, shown under the explanation whether the switch is on or off. Must not be hidden behind the switch. Two sentences -->
-    <string name="poweroff_finding_limit">This lasts about 3 days after you switch the phone off, then it stops. It is a limit of the Bluetooth chip, not a setting.</string>
-    <!-- PersonDetailSheet, own entry: shown under the switch when poweroff finding is off. Sentence -->
-    <string name="poweroff_finding_off_hint">If you switch this setting off, the phone broadcasts nothing at all when switched off.</string>
-    <!-- PersonDetailSheet, own entry: shown when the Bluetooth chip cannot advertise while off. Sentence -->
-    <string name="poweroff_finding_unsupported">This phone\'s Bluetooth chip cannot stay findable while switched off.</string>
-    <!-- PersonDetailSheet, own entry: the capability the user cannot be shielded from. Must not be softened or hidden behind a tap: choosing someone also lets that person track the phone. Paragraph -->
-    <string name="poweroff_grant_tracking_warning">Anyone you choose can go looking for this phone themselves, whenever they like, for as long as they stay on this list. Reading where it was seen and looking for it use the same key, so one cannot be given without the other. Only choose people you would be happy to have find this phone.</string>
-    <!-- PersonDetailSheet, own entry: what removing someone does and does not do. Must state plainly that revocation is forward-only. Paragraph -->
-    <string name="poweroff_grant_revoke_warning">Taking someone off the list stops them seeing anywhere this phone goes from then on. It cannot take back places they already collected, or make them forget. Anything seen recently but not yet picked up may be lost to you as well.</string>
-    <!-- PersonDetailSheet, own entry: shown in place of the list when the user has no connected family members to choose from. Sentence -->
-    <string name="poweroff_grant_no_peers">Once you are connected to someone, you can choose them here.</string>
-
-    <!-- Initial permission screen, step 3: button label before BLUETOOTH_SCAN is granted -->
-    <string name="permission_grant_bluetooth">Allow Bluetooth</string>
-    <!-- Initial permission screen, step 3: button label once BLUETOOTH_SCAN is granted -->
-    <string name="permission_bluetooth_granted">Bluetooth allowed</string>
-    <!-- Initial permission screen, step 3: why Bluetooth is needed. Kept to one sentence -->
-    <string name="permission_bluetooth_explanation">Needed to find devices that are nearby.</string>
 
     <!-- PersonDetailSheet: button opening the no-show watch dialog for this person. Verb phrase -->
     <string name="noshow_watch_button">Watch for no-show</string>
