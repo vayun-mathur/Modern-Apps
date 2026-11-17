@@ -34,4 +34,8 @@
     <string name="cd_submit">Skicka</string>
     <string name="cd_backspace">Backsteg</string>
     <string name="no_definition_available">Ingen definition finns tillgänglig för detta ord.</string>
+    <plurals name="bonus_words_title">
+        <item quantity="one">Bonusord (<xliff:g id="count" example="1">%1$d</xliff:g>)</item>
+        <item quantity="other">Bonusord (<xliff:g id="count" example="3">%1$d</xliff:g>)</item>
+    </plurals>
 </resources>
