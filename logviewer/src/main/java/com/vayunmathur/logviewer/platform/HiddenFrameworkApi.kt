@@ -28,7 +28,8 @@ import android.os.UserManager
  * enforcement on MAOS. If it is not, these degrade to a header with three fewer fields instead of a
  * crash.
  */
-@SuppressLint("PrivateApi") // Reflection is the documented design here: hidden members of public classes cannot be stubbed (see above).
+@SuppressLint("PrivateApi") // Reflection is the documented design here: hidden members of
+// public classes cannot be stubbed (see above).
 internal object HiddenFrameworkApi {
 
     /**
