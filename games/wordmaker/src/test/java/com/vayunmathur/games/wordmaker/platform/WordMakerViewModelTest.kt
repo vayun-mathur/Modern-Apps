@@ -34,13 +34,13 @@ class WordMakerViewModelTest {
     private val collectorScope = CoroutineScope(Dispatchers.Unconfined)
 
     @BeforeTest fun setUp() {
-        Dispatchers.setMain(Dispatchers.Unconfined)
+        retryingMain { Dispatchers.setMain(Dispatchers.Unconfined) }
         // DailyPuzzleReminder reschedules through WorkManager, which Robolectric does not init.
         runCatching {
             androidx.work.WorkManager.initialize(context, androidx.work.Configuration.Builder().build())
         }
     }
-    @AfterTest fun tearDown() { collectorScope.cancel(); Dispatchers.resetMain() }
+    @AfterTest fun tearDown() { collectorScope.cancel(); retryingMain { Dispatchers.resetMain() } }
 
     /** StateIn(WhileSubscribed) flows only compute while collected, as the UI collects them. */
     private fun vm(): WordMakerViewModel {
@@ -65,9 +65,21 @@ class WordMakerViewModelTest {
         return vm
     }
 
+
+    /** set/resetMain throw if a background coroutine is using Main at that instant (a stale ViewModel's flow resuming); retry briefly, as the nonogram suite does. */
+    private fun retryingMain(action: () -> Unit) {
+        var attempts = 0
+        while (attempts++ < 50 && runCatching(action).isFailure) Thread.sleep(10)
+        if (attempts > 50) action()
+    }
     private fun pollUntil(deadlineMs: Long = 15000, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + deadlineMs
-        while (System.currentTimeMillis() < deadline && !cond()) Thread.sleep(50)
+        // Step-counted, not wall-clock: Robolectric's substituted
+        // currentTimeMillis only advances when its scheduler runs, so a
+        // deadline poll could spin forever (the CI build timeout) if the
+        // condition it waited for never landed, or expire instantly.
+        // Each step sleeps real time, bounding the wait in real time.
+        var steps = (deadlineMs / 50).toInt()
+        while (steps-- > 0 && !cond()) Thread.sleep(50)
         assertTrue(cond())
     }
 

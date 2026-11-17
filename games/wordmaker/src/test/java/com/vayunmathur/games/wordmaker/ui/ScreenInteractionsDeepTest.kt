@@ -58,12 +58,12 @@ class ScreenInteractionsDeepTest {
     private val scope = CoroutineScope(Dispatchers.Unconfined)
 
     @BeforeTest fun setUp() {
-        Dispatchers.setMain(Dispatchers.Unconfined)
+        retryingMain { Dispatchers.setMain(Dispatchers.Unconfined) }
     }
 
     @AfterTest fun tearDown() {
         scope.cancel()
-        Dispatchers.resetMain()
+        retryingMain { Dispatchers.resetMain() }
     }
 
     private fun board() = CrosswordData.fromString("CAT\n C \n T ")!!
@@ -77,6 +77,13 @@ class ScreenInteractionsDeepTest {
         bonusWords = bonus, gameMode = mode,
     )
 
+
+    /** set/resetMain throw if a background coroutine is using Main at that instant (a stale ViewModel's flow resuming); retry briefly, as the nonogram suite does. */
+    private fun retryingMain(action: () -> Unit) {
+        var attempts = 0
+        while (attempts++ < 50 && runCatching(action).isFailure) Thread.sleep(10)
+        if (attempts > 50) action()
+    }
     @Test fun shuffleChangesTheWheelOrder() {
         rule.setContent {
             DynamicTheme {

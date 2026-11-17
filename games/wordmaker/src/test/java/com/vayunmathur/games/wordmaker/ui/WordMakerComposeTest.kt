@@ -69,13 +69,20 @@ class WordMakerComposeTest {
     private val scope = CoroutineScope(Dispatchers.Unconfined)
 
     @BeforeTest fun setUp() {
-        Dispatchers.setMain(Dispatchers.Unconfined)
+        retryingMain { Dispatchers.setMain(Dispatchers.Unconfined) }
         // DailyPuzzleReminder reschedules through WorkManager, which Robolectric does not init.
         runCatching {
             androidx.work.WorkManager.initialize(context, androidx.work.Configuration.Builder().build())
         }
     }
-    @AfterTest fun tearDown() { scope.cancel(); Dispatchers.resetMain() }
+    @AfterTest fun tearDown() { scope.cancel(); retryingMain { Dispatchers.resetMain() } }
+
+    /** set/resetMain throw if a background coroutine is using Main at that instant (a stale ViewModel's flow resuming); retry briefly, as the nonogram suite does. */
+    private fun retryingMain(action: () -> Unit) {
+        var attempts = 0
+        while (attempts++ < 50 && runCatching(action).isFailure) Thread.sleep(10)
+        if (attempts > 50) action()
+    }
 
     private fun board() = CrosswordData.fromString("CAT\n C \n T ")!!
     private val level101 = CrosswordData.fromString("...FIVE.\n.F.I.E..\nRIFE.R.R\n.R.R.IVY\nVERY.F.E\n.....Y..")!!
@@ -444,9 +451,10 @@ class WordMakerComposeTest {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val vm = WordMakerViewModel(app)
         scope.launch { vm.crosswordData.collect {} }
-        // wait for the casual level to load
-        val deadline = System.currentTimeMillis() + 20000
-        while (System.currentTimeMillis() < deadline && vm.crosswordData.value == null) Thread.sleep(50)
+        // wait for the casual level to load (step-counted: the
+        // substituted clock can freeze, see pollUntil below)
+        var steps = 400
+        while (steps-- > 0 && vm.crosswordData.value == null) Thread.sleep(50)
         val data = vm.crosswordData.value
         assertTrue(data != null)
         val json = context.assets.open("achievements.json").bufferedReader().use { it.readText() }
@@ -466,13 +474,13 @@ class WordMakerNavAndDragTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val scope = CoroutineScope(Dispatchers.Unconfined)
     @BeforeTest fun setUp() {
-        Dispatchers.setMain(Dispatchers.Unconfined)
+        retryingMain { Dispatchers.setMain(Dispatchers.Unconfined) }
         // DailyPuzzleReminder reschedules through WorkManager, which Robolectric does not init.
         runCatching {
             androidx.work.WorkManager.initialize(context, androidx.work.Configuration.Builder().build())
         }
     }
-    @AfterTest fun tearDown() { scope.cancel(); Dispatchers.resetMain() }
+    @AfterTest fun tearDown() { scope.cancel(); retryingMain { Dispatchers.resetMain() } }
 
     private fun vm(): WordMakerViewModel {
         val vm = WordMakerViewModel(ApplicationProvider.getApplicationContext<Application>())
@@ -483,9 +491,21 @@ class WordMakerNavAndDragTest {
         scope.launch { vm.bonusWords.collect {} }
         return vm
     }
+
+    /** set/resetMain throw if a background coroutine is using Main at that instant (a stale ViewModel's flow resuming); retry briefly, as the nonogram suite does. */
+    private fun retryingMain(action: () -> Unit) {
+        var attempts = 0
+        while (attempts++ < 50 && runCatching(action).isFailure) Thread.sleep(10)
+        if (attempts > 50) action()
+    }
     private fun pollUntil(deadlineMs: Long = 20000, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + deadlineMs
-        while (System.currentTimeMillis() < deadline && !cond()) Thread.sleep(50)
+        // Step-counted, not wall-clock: Robolectric's substituted
+        // currentTimeMillis only advances when its scheduler runs, so a
+        // deadline poll could spin forever (the CI build timeout) if the
+        // condition it waited for never landed, or expire instantly.
+        // Each step sleeps real time, bounding the wait in real time.
+        var steps = (deadlineMs / 50).toInt()
+        while (steps-- > 0 && !cond()) Thread.sleep(50)
         assertTrue(cond())
     }
 
