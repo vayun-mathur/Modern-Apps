@@ -24,10 +24,16 @@ class RcsSlice3Pass2ProvisioningShadow {
     // The app queries call-composer (an MmTel capability) through the
     // non-RCS provisioning pair, so the shadow reports the flag there too.
     @Implementation
-    fun isProvisioningRequiredForCapability(capability: Int, tech: Int): Boolean = provisioningRequired
+    fun isProvisioningRequiredForCapability(
+        @Suppress("UnusedParameter") capability: Int,
+        @Suppress("UnusedParameter") tech: Int,
+    ): Boolean = provisioningRequired
 
     @Implementation
-    fun getProvisioningStatusForCapability(capability: Int, tech: Int): Boolean = !provisioningRequired
+    fun getProvisioningStatusForCapability(
+        @Suppress("UnusedParameter") capability: Int,
+        @Suppress("UnusedParameter") tech: Int,
+    ): Boolean = !provisioningRequired
 
     @Implementation
     fun getRcsProvisioningStatusForCapability(

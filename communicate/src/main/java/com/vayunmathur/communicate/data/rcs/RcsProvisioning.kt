@@ -128,7 +128,7 @@ object RcsProvisioning {
         } catch (e: SecurityException) {
             Log.status(TAG, "probe: carrier-config read denied: $e")
             return RcsRegistrationState.Unavailable(RcsUnavailableReason.ServiceUnavailable)
-        } catch (e: Exception) {
+        } catch (e: IllegalStateException) {
             Log.status(TAG, "probe: carrier-config read failed: $e")
             return RcsRegistrationState.Unavailable(RcsUnavailableReason.ServiceUnavailable)
         }

@@ -34,6 +34,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 object GoogleVoiceWebSender {
 
     private const val TAG = "GVAUTO"
+    /** Token-mint timeout with no media to upload first. */
+    private const val MINT_TIMEOUT_MS = 60_000L
+    /** Token-mint timeout when attachments must upload before the send can be built. */
+    private const val MINT_WITH_ATTACHMENTS_TIMEOUT_MS = 120_000L
 
     /**
      * Mint the bot-defense token by letting the GV web app build a `sendsms` request in an
@@ -74,7 +78,9 @@ object GoogleVoiceWebSender {
                 val wv = session.ensureWebView(activity)
                 wv.loadUrl("https://voice.google.com/u/0/messages")
             }
-            return withTimeoutOrNull(if (attachments.isEmpty()) 60_000 else 120_000) {
+            return withTimeoutOrNull(
+                if (attachments.isEmpty()) MINT_TIMEOUT_MS else MINT_WITH_ATTACHMENTS_TIMEOUT_MS,
+            ) {
                 session.deferred.await()
             }
         } finally {
