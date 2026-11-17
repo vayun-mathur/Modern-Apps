@@ -1,8 +1,26 @@
 package com.vayunmathur.education.content
 
-import com.vayunmathur.education.data.*
-import com.vayunmathur.education.domain.*
-import com.vayunmathur.education.platform.*
+import com.vayunmathur.education.domain.Band
+import com.vayunmathur.education.domain.Choice
+import com.vayunmathur.education.domain.ContentPack
+import com.vayunmathur.education.domain.ContentValidator
+import com.vayunmathur.education.domain.Course
+import com.vayunmathur.education.domain.CourseUnit
+import com.vayunmathur.education.domain.Exercise
+import com.vayunmathur.education.domain.Grades
+import com.vayunmathur.education.domain.Lesson
+import com.vayunmathur.education.domain.MatchingQuestion
+import com.vayunmathur.education.domain.MultipleChoiceQuestion
+import com.vayunmathur.education.domain.MultipleSelectQuestion
+import com.vayunmathur.education.domain.NumericQuestion
+import com.vayunmathur.education.domain.OrderingQuestion
+import com.vayunmathur.education.domain.Prompt
+import com.vayunmathur.education.domain.Question
+import com.vayunmathur.education.domain.ShortTextQuestion
+import com.vayunmathur.education.domain.Skill
+import com.vayunmathur.education.domain.Subject
+import com.vayunmathur.education.domain.TracingQuestion
+import com.vayunmathur.education.domain.VideoRef
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

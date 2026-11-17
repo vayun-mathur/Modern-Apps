@@ -1,8 +1,11 @@
 package com.vayunmathur.education.util
 
-import com.vayunmathur.education.data.*
-import com.vayunmathur.education.domain.*
-import com.vayunmathur.education.platform.*
+import com.vayunmathur.education.domain.Subject
+import com.vayunmathur.education.platform.EducationAchievements
+import com.vayunmathur.education.platform.EducationViewModel
+import com.vayunmathur.education.platform.EducationViewModelFactory
+import com.vayunmathur.education.platform.Narrator
+import com.vayunmathur.education.platform.QuizResult
 
 import android.app.Application
 import android.content.Context
