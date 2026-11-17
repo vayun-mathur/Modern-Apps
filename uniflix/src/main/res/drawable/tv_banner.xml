@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Leanback-row banner (320x180): a dark tile with an amber screen + play triangle.
+<!-- Leanback-row banner (320x180 viewport, 200dp intrinsic cap): a dark tile with an amber screen + play triangle.
   The launcher icon (launcherIcon symbol="movie") stays the phone adaptive icon;
   this is what TV rows show. Modelled on youpipe's tv_banner in the brand accent. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="320dp"
-    android:height="180dp"
+    android:width="200dp"
+    android:height="112.5dp"
     android:viewportWidth="320"
     android:viewportHeight="180">
     <path

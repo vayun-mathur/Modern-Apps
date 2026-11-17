@@ -2,6 +2,7 @@ package com.vayunmathur.uniflix.ui.tv
 
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +25,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.tv.material3.MaterialTheme
@@ -52,6 +55,7 @@ private enum class WatchPicker { Server, Subtitles, Quality }
  * hidden, BACK hides the overlay before exiting. Server/subtitle/quality pickers
  * are dialogs — no bottom sheets on a TV.
  */
+@OptIn(UnstableApi::class)
 @Composable
 fun TvWatchPage(
     backStack: NavBackStack<TvRoute>,
@@ -76,7 +80,7 @@ fun TvWatchPage(
     var picker by remember { mutableStateOf<WatchPicker?>(null) }
     var selectedSubtitle by remember(source?.streamUrl) { mutableStateOf<SubtitleTrack?>(null) }
     var selectedHeight by remember(source?.streamUrl) { mutableStateOf<Int?>(null) }
-    var retryTicket by remember { mutableStateOf(0) }
+    var retryTicket by remember { mutableIntStateOf(0) }
     var carriedPosition by remember { mutableStateOf<Long?>(null) }
 
     val playerState = rememberWatchPlayerState(

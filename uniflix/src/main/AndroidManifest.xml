@@ -8,6 +8,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Leanback is supported, not required: one APK serves phones and TVs. Without these,
       a TV launcher never lists the app; with required="true" phones would lose it. -->
@@ -50,7 +51,6 @@
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:launchMode="singleTask"
-            android:screenOrientation="landscape"
             android:theme="@style/Theme.General">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

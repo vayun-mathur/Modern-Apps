@@ -11,7 +11,7 @@ import com.vayunmathur.library.ui.MaActivity
  * The TV entry: opened from TV launcher rows (LEANBACK_LAUNCHER). The phone
  * MainActivity stays exactly as it is — this activity hosts the D-pad UI.
  *
- * Landscape-locked and non-edge-to-edge per the manifest, always dark in the
+ * Non-edge-to-edge per the manifest (TV displays are landscape), always dark in the
  * Uniflix amber accent.
  */
 class TvMainActivity : MaActivity() {

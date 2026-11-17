@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -80,7 +81,7 @@ fun WatchScreen(
     var menusOpen by remember { mutableStateOf(false) }
     var selectedSubtitle by remember(source?.streamUrl) { mutableStateOf<SubtitleTrack?>(null) }
     var selectedHeight by remember(source?.streamUrl) { mutableStateOf<Int?>(null) }
-    var retryTicket by remember { mutableStateOf(0) }
+    var retryTicket by remember { mutableIntStateOf(0) }
     var carriedPosition by remember { mutableStateOf<Long?>(null) }
     var landscapeLocked by remember { mutableStateOf(true) }
 

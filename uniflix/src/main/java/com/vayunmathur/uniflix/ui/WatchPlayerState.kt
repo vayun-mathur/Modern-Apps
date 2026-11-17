@@ -164,7 +164,7 @@ internal fun rememberWatchPlayerState(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 bufferingState.value = playbackState == Player.STATE_BUFFERING
                 if (playbackState == Player.STATE_READY) {
-                    durationState.value = player.duration.coerceAtLeast(0L)
+                    durationState.longValue = player.duration.coerceAtLeast(0L)
                 }
             }
 

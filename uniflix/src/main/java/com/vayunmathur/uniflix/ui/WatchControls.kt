@@ -44,8 +44,8 @@ import com.vayunmathur.uniflix.domain.SubtitleTrack
 
 internal const val SKIP_MS = 10_000L
 
-private fun chipModifier(): Modifier =
-    Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+private fun Modifier.chipModifier(): Modifier =
+    background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
 
 internal fun formatWatchTime(ms: Long): String {
     val totalSeconds = (ms / 1000).coerceAtLeast(0L)
@@ -105,7 +105,7 @@ internal fun WatchTopBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack, modifier = chipModifier()) {
+        IconButton(onClick = onBack, modifier = Modifier.chipModifier()) {
             IconBack(tint = Color.White)
         }
         Text(

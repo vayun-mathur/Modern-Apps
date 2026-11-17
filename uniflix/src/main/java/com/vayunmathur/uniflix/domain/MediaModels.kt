@@ -5,6 +5,10 @@ import kotlinx.serialization.Serializable
 /** Movie or series, as keyed across catalog, artwork, and local watch state. */
 enum class MediaType { MOVIE, TV }
 
+/** Parse the route's lowercase media-type string; anything but `"tv"` is a movie. */
+fun mediaTypeOf(raw: String): MediaType =
+    if (raw == "tv") MediaType.TV else MediaType.MOVIE
+
 /** A catalog row: id + artwork paths, resolved to CDN URLs by TmdbImageUrl. */
 @Serializable
 data class MediaItem(
