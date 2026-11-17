@@ -59,6 +59,7 @@ class SessionKeys private constructor(secret: ByteArray) {
     fun deviceProof(deviceKey: ByteArray, transcript: ByteArray): ByteArray =
         hmac(deviceKeyProofKey, deviceKey + transcript)
 
+    /** Derives [SessionKeys] from the shared session secret and defines its sizes. */
     companion object {
         const val SECRET_BYTES = 32
         private const val CONTROL_KEY_BYTES = 32

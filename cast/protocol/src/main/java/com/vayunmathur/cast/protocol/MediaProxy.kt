@@ -116,6 +116,7 @@ sealed interface RangeSpec {
 /** How an exchange ended, for the listener to log. */
 sealed interface ExchangeOutcome {
 
+    /** Outcome for a successfully served media resource and the range delivered. */
     data class Served(val resourceId: String, val range: RangeSpec, val bytes: Long) : ExchangeOutcome
 
     /** Answered with an error status. [detail] is for the log, never for the client. */
@@ -301,6 +302,7 @@ class MediaProxyExchange(
         output.write(head.toString().toByteArray(Charsets.ISO_8859_1))
     }
 
+    /** Result of one media-proxy exchange: its outcome and whether the connection can be reused. */
     data class Result(val outcome: ExchangeOutcome, val reusable: Boolean)
 
     /**
@@ -446,6 +448,7 @@ class MediaProxyExchange(
         else -> "Error"
     }
 
+    /** HTTP status codes and path parsing for [MediaProxy]. */
     companion object {
         private const val HTTP_BAD_REQUEST = 400
         private const val HTTP_FORBIDDEN = 403
@@ -457,6 +460,7 @@ class MediaProxyExchange(
         private const val PERCENT_HEX_DIGITS = 3
         private const val HEX_RADIX = 16
 
+        /** Parsed media-proxy path: capability token plus the requested resource id. */
         data class ProxyPath(val token: String, val resourceId: String)
 
         /**

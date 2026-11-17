@@ -106,6 +106,7 @@ data class Negotiation(
     val video: NegotiatedStream? get() = streams.firstOrNull { it.kind == StreamKind.Video }
     val hasVideo: Boolean get() = video != null
 
+    /** Builds the negotiated stream set both cast ends derive from the handshake. */
     companion object {
         /**
          * Build the routes both ends will use, from the two halves of the handshake.

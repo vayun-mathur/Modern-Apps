@@ -32,6 +32,7 @@ value class FrameId(val value: Long) : Comparable<FrameId> {
 
     override fun toString(): String = value.toString()
 
+    /** Well-known [FrameId] values for the first and leader frames. */
     companion object {
         /** `FrameId::first()`. */
         val First = FrameId(0)

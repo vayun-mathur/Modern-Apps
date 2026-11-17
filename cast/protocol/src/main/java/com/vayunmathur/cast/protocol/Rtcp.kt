@@ -506,6 +506,7 @@ object Rtcp {
 data class PacketNack(val frameId: FrameId, val packetId: Int) {
     val isWholeFrame: Boolean get() = packetId == Rtcp.ALL_PACKETS_LOST
 
+    /** Factories for [PacketNack]. */
     companion object {
         /** Nothing at all arrived for this frame, so every packet of it is missing. */
         fun wholeFrame(frameId: FrameId): PacketNack = PacketNack(frameId, Rtcp.ALL_PACKETS_LOST)

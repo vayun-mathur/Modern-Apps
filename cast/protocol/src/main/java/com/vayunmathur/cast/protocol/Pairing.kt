@@ -84,6 +84,7 @@ class PairingGate(private val newCode: () -> String = { PairCode.random() }) {
         attemptsLeft = PairCode.MAX_ATTEMPTS
     }
 
+    /** Device-key constants and minting for [PairingGate]. */
     companion object {
         const val DEVICE_KEY_BYTES = 32
 
