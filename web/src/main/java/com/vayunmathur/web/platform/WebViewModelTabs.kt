@@ -200,6 +200,15 @@ fun WebViewModel.allowExternalRedirect(tabId: String, userGesture: Boolean): Boo
 fun WebViewModel.externalIntentUrl(url: String) {
     // Per product requirement: external links from other apps always open a new tab.
     newTab(url = url, makeActive = true)
+    // A deep link must land the user on the tab it just opened. The tab
+    // switcher is an overlay on the Browser route (not a route of its
+    // own), and newTab alone leaves it up: on a warm start where the
+    // user had left the switcher open, the new tab was created and made
+    // active behind it and the app appeared stuck on the tab-selection
+    // screen. Dismiss the switcher so the switch to the link's tab is
+    // visible. This is the same dismissal switchToTab performs.
+    showTabSwitcher = false
+    omniboxFocused = false
 }
 
 // ---- Local network permission ----

@@ -141,6 +141,45 @@ class WebViewModelTest {
         assertEquals("https://ext.example", v.activeTab?.url)
     }
 
+    @Test fun externalIntentOnColdStartOpensLinkTab() {
+        val v = vm()
+        // No prior browsing: the link is the first real tab content.
+        v.externalIntentUrl("https://cold.example/start")
+        assertEquals("https://cold.example/start", v.activeTab?.url)
+        assertFalse(v.showTabSwitcher)
+        assertFalse(v.omniboxFocused)
+    }
+
+    @Test fun externalIntentWhileOnTabSwitcherSwitchesToLinkTab() {
+        val v = vm()
+        v.newTab(url = "https://a.example")
+        v.newTab(url = "https://b.example")
+        // The user left the app sitting on the tab-selection screen.
+        v.showTabSwitcher = true
+        v.externalIntentUrl("https://link.example/deep")
+        // The link's tab is active and the selector is gone, so the
+        // browser shows that tab instead of staying on the selector.
+        assertEquals("https://link.example/deep", v.activeTab?.url)
+        assertFalse(v.showTabSwitcher)
+    }
+
+    @Test fun externalIntentForAlreadyOpenUrlStillOpensNewTabAndLeavesSwitcher() {
+        val v = vm()
+        v.newTab(url = "https://dup.example/page")
+        val existingId = v.activeTabId
+        val before = v.tabs.size
+        v.showTabSwitcher = true
+        v.externalIntentUrl("https://dup.example/page")
+        // Existing behaviour preserved: external links always open a
+        // new tab, even when the URL is already open; only the
+        // stuck-on-selector part changes.
+        assertEquals(before + 1, v.tabs.size)
+        assertEquals("https://dup.example/page", v.activeTab?.url)
+        assertTrue(v.activeTabId != existingId)
+        assertEquals(2, v.tabs.count { it.url == "https://dup.example/page" })
+        assertFalse(v.showTabSwitcher)
+    }
+
     @Test fun settingsUpdatesApply() {
         val v = vm()
         v.updateCacheMode(CacheMode.NO_CACHE); assertEquals(CacheMode.NO_CACHE, v.cacheMode)
