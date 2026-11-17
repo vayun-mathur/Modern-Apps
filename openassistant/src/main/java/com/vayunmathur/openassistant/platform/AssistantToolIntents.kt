@@ -65,12 +65,16 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.serializer
 
+private const val CONVERSATION_SNIPPET_CHARS = 80
+private const val MESSAGE_BODY_CHARS = 200
+private const val RESTAURANT_ADDRESS_CHARS = 60
+
 /**
  * Intent-launching back end for the assistant tool registry
  * ([com.vayunmathur.openassistant.platform.AssistantTools]); every tool
  * delegates here for the actual cross-app call.
  */
-internal class AssistantToolIntents(private val context: Context) {
+internal class AssistantToolIntents(context: Context) : AssistantCoreToolIntents(context) {
 
     companion object {
         private val APP_NAMES = mapOf(
@@ -95,203 +99,6 @@ internal class AssistantToolIntents(private val context: Context) {
             return "The $appName app is required but not installed. " +
                 "[Download from GitHub](https://github.com/vayun-mathur/Modern-Apps)."
         }
-    }
-
-    fun handleMissingApp(packageName: String): String {
-        Log.dev("AssistantToolSet", "Handling missing app: $packageName")
-        return getMissingAppMessage(packageName) +
-            " Try to help the user with your own knowledge instead."
-    }
-
-    fun runTool(block: suspend () -> String): String = runBlocking {
-        try {
-            block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: MissingAppException) {
-            handleMissingApp(e.packageName)
-        } catch (expected: Exception) {
-            "Error: ${expected.message}"
-        }
-    }
-
-    suspend fun getNotes(): String = launchIntent<Unit, List<NoteData>>(
-        context,
-        "com.vayunmathur.notes",
-        "com.vayunmathur.notes.intents.GetIntent",
-        Unit,
-    ).toString()
-
-    suspend fun insertNote(data: NoteData) = launchIntentU(
-        context,
-        "com.vayunmathur.notes",
-        "com.vayunmathur.notes.intents.InsertIntent",
-        data,
-    )
-
-    suspend fun getTodos(query: GetTodosQuery): String = launchIntent<GetTodosQuery, List<TodoData>>(
-        context,
-        "com.vayunmathur.todo",
-        "com.vayunmathur.todo.intents.GetTodosIntent",
-        query,
-    ).toString()
-
-    suspend fun insertTodo(data: InsertTodoData): String = launchIntent<InsertTodoData, String>(
-        context,
-        "com.vayunmathur.todo",
-        "com.vayunmathur.todo.intents.InsertTodoIntent",
-        data,
-    )
-
-    suspend fun completeTodo(data: CompleteTodoData): Boolean = launchIntent<CompleteTodoData, Boolean>(
-        context,
-        "com.vayunmathur.todo",
-        "com.vayunmathur.todo.intents.CompleteTodoIntent",
-        data,
-    )
-
-    suspend fun getContacts(): String = launchIntent<Unit, List<ContactData>>(
-        context,
-        "com.vayunmathur.contacts",
-        "com.vayunmathur.contacts.intents.GetIntent",
-        Unit,
-    ).toString()
-
-    suspend fun insertContact(data: ContactData) = launchIntentU(
-        context,
-        "com.vayunmathur.contacts",
-        "com.vayunmathur.contacts.intents.InsertIntent",
-        data,
-    )
-
-    suspend fun getCalendarEvents(): String = launchIntent<Unit, List<EventData>>(
-        context,
-        "com.vayunmathur.calendar",
-        "com.vayunmathur.calendar.intents.GetIntent",
-        Unit,
-    ).toString()
-
-    suspend fun insertCalendarEvent(data: EventData) = launchIntentU(
-        context,
-        "com.vayunmathur.calendar",
-        "com.vayunmathur.calendar.intents.InsertIntent",
-        data,
-    )
-
-    suspend fun getFamilyLocations(): String = launchIntent<Unit, List<FamilyMemberData>>(
-        context,
-        "com.vayunmathur.findfamily",
-        "com.vayunmathur.findfamily.intents.GetIntent",
-        Unit,
-    ).toString()
-
-    suspend fun createLocationShareLink(name: String, durationMillis: Double): String =
-        launchIntent<CreateLinkRequest, String>(
-            context,
-            "com.vayunmathur.findfamily",
-            "com.vayunmathur.findfamily.intents.CreateLinkIntent",
-            CreateLinkRequest(name, durationMillis.toLong()),
-        )
-
-    suspend fun searchMusic(query: String): String =
-        launchIntent<String, List<MusicSearchResult>>(
-            context,
-            "com.vayunmathur.music",
-            "com.vayunmathur.music.intents.SearchIntent",
-            query,
-        ).toString()
-
-    suspend fun playMusic(data: PlayMusicData) = launchIntentU(
-        context,
-        "com.vayunmathur.music",
-        "com.vayunmathur.music.intents.PlayIntent",
-        data,
-    )
-
-    suspend fun searchEmails(query: String): String =
-        launchIntent<EmailSearchQuery, List<EmailData>>(
-            context,
-            "com.vayunmathur.email",
-            "com.vayunmathur.email.intents.SearchIntent",
-            EmailSearchQuery(query),
-        ).toString()
-
-    suspend fun getRecentEmails(): String = launchIntent<Unit, List<EmailData>>(
-        context,
-        "com.vayunmathur.email",
-        "com.vayunmathur.email.intents.GetRecentIntent",
-        Unit,
-    ).toString()
-
-    suspend fun setAlarm(data: SetAlarmData) = launchIntentU(
-        context,
-        "com.vayunmathur.clock",
-        "com.vayunmathur.clock.intents.SetAlarmIntent",
-        data,
-    )
-
-    suspend fun setTimer(data: SetTimerData) = launchIntentU(
-        context,
-        "com.vayunmathur.clock",
-        "com.vayunmathur.clock.intents.SetTimerIntent",
-        data,
-    )
-
-    suspend fun getWeather(latitude: Double, longitude: Double): String {
-        val result: WeatherData = launchIntent(
-            context,
-            "com.vayunmathur.weather",
-            "com.vayunmathur.weather.intents.GetWeatherIntent",
-            WeatherLatLonRequest(latitude, longitude),
-        )
-        return result.error ?: result.toString()
-    }
-
-    suspend fun getWeatherByName(location: String): String {
-        val result: WeatherData = launchIntent(
-            context,
-            "com.vayunmathur.weather",
-            "com.vayunmathur.weather.intents.GetWeatherByNameIntent",
-            WeatherNameRequest(location),
-        )
-        return result.error ?: result.toString()
-    }
-
-    suspend fun getDirections(
-        fromLat: Double,
-        fromLng: Double,
-        toLat: Double,
-        toLng: Double,
-        mode: String,
-    ): String {
-        val result: DirectionsResult = launchIntent(
-            context,
-            "com.vayunmathur.maps",
-            "com.vayunmathur.maps.intents.DirectionsIntent",
-            DirectionsRequest(fromLat, fromLng, toLat, toLng, mode.ifBlank { "drive" }),
-        )
-        return summarizeDirections(result)
-    }
-
-    suspend fun getRideEstimate(
-        pickupLat: Double,
-        pickupLng: Double,
-        destLat: Double,
-        destLng: Double,
-        pickupLabel: String,
-        destLabel: String,
-    ): String {
-        val result: RideEstimateResult = launchIntent(
-            context,
-            "com.vayunmathur.taxi",
-            "com.vayunmathur.taxi.intents.RideEstimateIntent",
-            RideEstimateRequest(
-                pickupLat, pickupLng, destLat, destLng,
-                pickupLabel.takeIf { it.isNotBlank() },
-                destLabel.takeIf { it.isNotBlank() },
-            ),
-        )
-        return summarizeRideEstimate(result)
     }
 
     suspend fun foodOrderLookup(name: String, lat: Double, lng: Double, address: String): String {
@@ -325,7 +132,12 @@ internal class AssistantToolIntents(private val context: Context) {
         request,
     )
 
-    suspend fun findRestaurants(query: String, lat: Double, lng: Double, limit: Int): List<RestaurantData> = launchIntent(
+    suspend fun findRestaurants(
+        query: String,
+        lat: Double,
+        lng: Double,
+        limit: Int,
+    ): List<RestaurantData> = launchIntent(
         context,
         "com.vayunmathur.fooddelivery",
         "com.vayunmathur.fooddelivery.intents.FindRestaurantsIntent",
@@ -374,7 +186,11 @@ internal class AssistantToolIntents(private val context: Context) {
         SearchProductsQuery(query, limit),
     )
 
-    suspend fun getProductDetail(shopDomain: String, productId: String, variantId: String?): ProductDetailData = launchIntent(
+    suspend fun getProductDetail(
+        shopDomain: String,
+        productId: String,
+        variantId: String?,
+    ): ProductDetailData = launchIntent(
         context,
         "com.vayunmathur.shop",
         "com.vayunmathur.shop.intents.GetProductIntent",
@@ -518,7 +334,8 @@ fun summarizeConversations(list: List<ConversationData>): String =
     } else {
         list.joinToString("\n") { c ->
             val who = c.displayName?.takeIf { it.isNotBlank() } ?: c.address
-            "thread_key=${c.threadKey} $who [${c.line}] ${c.snippet.take(80)}"
+            "thread_key=${c.threadKey} $who [${c.line}] " +
+                c.snippet.take(CONVERSATION_SNIPPET_CHARS)
         }
     }
 
@@ -529,7 +346,7 @@ fun summarizeConversationMessages(list: List<ConversationMessageData>): String =
     } else {
         list.joinToString("\n") { m ->
             val dir = if (m.outgoing) "me" else m.address
-            "[$dir ${m.line}] ${m.body.take(200)}"
+            "[$dir ${m.line}] " + m.body.take(MESSAGE_BODY_CHARS)
         }
     }
 
@@ -540,7 +357,9 @@ fun summarizeRestaurants(list: List<RestaurantData>): String =
     } else {
         list.joinToString("\n") { r ->
             val rating = r.rating?.let { " ★$it" } ?: ""
-            "merchant_id=${r.id} ${r.name}$rating ${if (r.isOpen) "open" else "closed"} ${r.address.take(60)}"
+            "merchant_id=${r.id} ${r.name}$rating " +
+                "${if (r.isOpen) "open" else "closed"} " +
+                r.address.take(RESTAURANT_ADDRESS_CHARS)
         }
     }
 
@@ -551,9 +370,12 @@ fun summarizeMenu(menu: MenuData, cap: Int = 24): String {
     val shown = menu.items.take(cap)
     val lines = shown.joinToString("\n") { item ->
         val mods = item.modifierGroups.joinToString(";") { g ->
-            "${g.name}[${g.modifiers.joinToString(",") { "${it.id}:${it.name}" }}] req=${g.required} min=${g.minSelections} max=${g.maxSelections}"
+            "${g.name}[${g.modifiers.joinToString(",") { "${it.id}:${it.name}" }}] " +
+                "req=${g.required} min=${g.minSelections} max=${g.maxSelections}"
         }
-        "item_id=${item.id} ${item.name} ${item.priceCents}c ${if (item.available) "available" else "unavailable"} ${item.category}${if (mods.isBlank()) "" else " $mods"}"
+        "item_id=${item.id} ${item.name} ${item.priceCents}c " +
+            "${if (item.available) "available" else "unavailable"} " +
+            "${item.category}${if (mods.isBlank()) "" else " $mods"}"
     }
     val more = if (menu.items.size > cap) "\n(${menu.items.size - cap} more items not shown)" else ""
     return "Menu ${menu.merchantName} (merchant_id=${menu.merchantId}):\n$lines$more"
@@ -588,15 +410,28 @@ fun summarizeFoodOrders(list: List<FoodOrderData>, cap: Int = 10): String =
 
 /** Parses the food_set_cart items_json arg ([{itemId, qty, modifierIds}]). */
 fun parseSetCartItems(itemsJson: String): List<SetCartItem>? {
-    val root = runCatching { Json.parseToJsonElement(itemsJson) }.getOrNull() ?: return null
+    val root = runCatching { Json.parseToJsonElement(itemsJson) }.getOrNull()
     val array = root as? kotlinx.serialization.json.JsonArray ?: return null
-    return array.map { element ->
-        val obj = element as? kotlinx.serialization.json.JsonObject ?: return null
-        val itemId = (obj["itemId"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return null
-        val qty = (obj["qty"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return null
-        val mods = (obj["modifierIds"] as? kotlinx.serialization.json.JsonArray)
-            ?.map { (it as? JsonPrimitive)?.content?.toIntOrNull() ?: return null } ?: emptyList()
-        SetCartItem(itemId, qty, mods)
+    val parsed = array.map { element -> parseSetCartItem(element) }
+    return if (parsed.any { it == null }) null else parsed.filterNotNull()
+}
+
+/** Parses one cart item object, or null when it does not match the documented shape. */
+private fun parseSetCartItem(
+    element: kotlinx.serialization.json.JsonElement,
+): SetCartItem? {
+    val obj = element as? kotlinx.serialization.json.JsonObject ?: return null
+    val itemId = (obj["itemId"] as? JsonPrimitive)?.content?.toIntOrNull()
+    val qty = (obj["qty"] as? JsonPrimitive)?.content?.toIntOrNull()
+    if (itemId == null || qty == null) return null
+    val modElements = obj["modifierIds"] as? kotlinx.serialization.json.JsonArray
+    val mods = modElements?.map { element ->
+        (element as? JsonPrimitive)?.content?.toIntOrNull()
+    }
+    return if (mods != null && mods.any { it == null }) {
+        null
+    } else {
+        SetCartItem(itemId, qty, mods?.filterNotNull() ?: emptyList())
     }
 }
 
@@ -606,7 +441,9 @@ fun summarizeProducts(list: List<ProductData>): String =
         "No products found"
     } else {
         list.joinToString("\n") { p ->
-            "variant_id=${p.variantId} product_id=${p.productId} ${p.title} ${p.price} ${p.currency} @ ${p.storeName} (${p.shopDomain}) checkout=${p.checkoutEligible}"
+            "variant_id=${p.variantId} product_id=${p.productId} ${p.title} " +
+                "${p.price} ${p.currency} @ ${p.storeName} (${p.shopDomain}) " +
+                "checkout=${p.checkoutEligible}"
         }
     }
 
@@ -614,9 +451,11 @@ fun summarizeProducts(list: List<ProductData>): String =
 fun summarizeProductDetail(detail: ProductDetailData): String {
     if (detail.error != null) return "Error: product unavailable (${detail.error})"
     val variants = detail.variants.joinToString("\n") { v ->
-        "variant_id=${v.variantId} ${v.title} ${v.price} ${v.currency} ${if (v.available) "available" else "unavailable"}"
+        "variant_id=${v.variantId} ${v.title} ${v.price} ${v.currency} " +
+            if (v.available) "available" else "unavailable"
     }
-    return "Product ${detail.title} @ ${detail.storeName} (${detail.shopDomain}) from ${detail.price} ${detail.currency}:\n$variants"
+    return "Product ${detail.title} @ ${detail.storeName} (${detail.shopDomain}) " +
+        "from ${detail.price} ${detail.currency}:\n$variants"
 }
 
 /** Shop cart for the model, grouped per store; a refused write leaves it unchanged. */

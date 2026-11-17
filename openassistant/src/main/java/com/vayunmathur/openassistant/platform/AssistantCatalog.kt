@@ -157,12 +157,18 @@ class AssistantCatalog(urlOpener: A2uiUrlOpener, messageFormatter: A2uiMessageFo
             appendLine("""The component with id "root" is shown. Types:""")
             COMPONENTS.forEach { appendLine("- ${it.name}: ${it.promptProps}") }
             appendLine("""Any text may be {"path":"/field"} to show a data value. "data" sets initial values.""")
-            appendLine("""Button/Picker context values may be {"path":"/field"} to send what the user entered or picked.""")
+            appendLine(
+                """Button/Picker context values may be {"path":"/field"} to send """ +
+                    "what the user entered or picked.",
+            )
             appendLine(
                 "Steppers and text fields only edit the card's data; they do not send a turn. " +
                     "Buttons and Picker selections do.",
             )
-            appendLine("""When the user taps a control you receive a turn like [UI action "name": {...}]. Respond to it.""")
+            appendLine(
+                """When the user taps a control you receive a turn """ +
+                    """like [UI action "name": {...}]. Respond to it.""",
+            )
             appendLine(
                 "Action names are namespaced: pick.* (a Picker/list choice, context has \"id\"; " +
                     "pick.conversation carries a thread_key), " +

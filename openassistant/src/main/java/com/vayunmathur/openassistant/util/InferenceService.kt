@@ -191,11 +191,6 @@ class InferenceService : Service() {
     override fun onCreate() {
         super.onCreate()
         startForegroundTask()
-        launchPrewarm()
-        launchJobLoop()
-    }
-
-    private fun launchPrewarm() {
         serviceScope.launch {
             try {
                 ensureEngineInitialized()
@@ -203,6 +198,7 @@ class InferenceService : Service() {
                 Log.error("InferenceService", "Error pre-warming engine", expected)
             }
         }
+        launchJobLoop()
     }
 
     private fun launchJobLoop() {
@@ -345,7 +341,7 @@ class InferenceService : Service() {
 
     private suspend fun loadHistory(conversationId: Long, userText: String): List<HistoryTurn> {
         val cutoff = Clock.System.now().toEpochMilliseconds() - HISTORY_RECENCY_MILLIS
-        return fetchHistoryFromDb(conversationId)
+        return store.history(conversationId)
             .filter { it.text != userText || it.timestamp < cutoff }
             .map { HistoryTurn(fromUser = it.role != "assistant", text = withA2uiBlock(it.text, it.a2ui)) }
     }
@@ -416,7 +412,7 @@ class InferenceService : Service() {
         Log.debug("InferenceService", "Sending intent inference request (streaming for early halt)")
         val reply = chat.extract(intentSystemPrompt(schema), userText, imagePaths.toList()) { text ->
             if (job?.isActive == false) return@extract false
-            val candidate = tryExtractLargestJson(text)
+            val candidate = JsonExtractor.largestObject(text)
             if (candidate != null && JsonSchemaValidator.validateJsonAgainstSchema(candidate, schema) == null) {
                 Log.status("InferenceService", "Valid JSON extracted and verified against schema. Halting.")
                 receiver.send(RESULT_OK_CODE, Bundle().apply { putString("json_result", candidate) })
@@ -427,10 +423,12 @@ class InferenceService : Service() {
             }
         }
         if (sent) return
-        currentCoroutineContext()[Job]?.let { if (!it.isActive) failCancelled() }
+        currentCoroutineContext()[Job]?.let {
+            if (!it.isActive) throw CancellationException("intent cancelled")
+        }
         if (reply == null) failEngine()
 
-        val finalJson = tryExtractLargestJson(reply)
+        val finalJson = JsonExtractor.largestObject(reply)
         if (finalJson != null && JsonSchemaValidator.validateJsonAgainstSchema(finalJson, schema) == null) {
             receiver.send(RESULT_OK_CODE, Bundle().apply { putString("json_result", finalJson) })
             Log.dev("InferenceService", "AI produced output: $finalJson")
@@ -448,12 +446,6 @@ class InferenceService : Service() {
     private fun failEngine(): Nothing =
         throw IllegalStateException(getString(R.string.error_ai_engine_failed))
 
-    /** Fails with a cancellation; keeps throw sites out of the inference paths. */
-    private fun failCancelled(): Nothing = throw CancellationException("intent cancelled")
-
-    private fun tryExtractLargestJson(text: String): String? =
-        JsonExtractor.largestObject(text)
-
     private suspend fun ensureEngineInitialized() = engineLock.withLock {
         if (engine != null) return@withLock
         val dir = ModelUrls.GemmaMaml.modelDir(applicationContext)
@@ -463,16 +455,19 @@ class InferenceService : Service() {
             created.close()
             // Say which it was (#917): "missing or failed to load" read as "missing" to a
             // user whose verified files were all there and whose GPU had refused them.
-            throw IllegalStateException(modelLoadFailure(dir, detail).describe(dir.absolutePath))
+            val names = (Gemma4Handle.FILES + GEMMA4_EXPECTED_BYTES.keys).distinct()
+            val sizes = names.associateWith { name ->
+                File(dir, name).takeIf { it.isFile }?.length()
+            }
+            val failure = classifyModelLoadFailure(
+                sizes,
+                Gemma4Handle.FILES,
+                GEMMA4_EXPECTED_BYTES,
+                detail,
+            )
+            throw IllegalStateException(failure.describe(dir.absolutePath))
         }
         engine = created
-    }
-
-    /** What is on disk in [dir], classified against the engine's own [engineError]. */
-    private fun modelLoadFailure(dir: File, engineError: String?): ModelLoadFailure {
-        val names = (Gemma4Handle.FILES + GEMMA4_EXPECTED_BYTES.keys).distinct()
-        val sizes = names.associateWith { name -> File(dir, name).takeIf { it.isFile }?.length() }
-        return classifyModelLoadFailure(sizes, Gemma4Handle.FILES, GEMMA4_EXPECTED_BYTES, engineError)
     }
 
     /** The user's (or default) prompt plus the A2UI section, which custom prompts must not lose. */
@@ -482,39 +477,14 @@ class InferenceService : Service() {
         return base + "\n\n" + AssistantCatalog.PROMPT_SECTION
     }
 
-    private fun PendingToolCallEntity.toDomain(): PendingToolCall = PendingToolCall(
-        id = id,
-        name = toolName,
-        args = runCatching {
-            Json.parseToJsonElement(argsJson).jsonObject
-                .mapValues { it.value.jsonPrimitive.content }
-        }.getOrDefault(emptyMap()),
-        summary = summary,
-        createdAtMillis = createdAt,
-        expiresAtMillis = expiresAt,
-        consumed = consumed,
-    )
-
-    private fun PendingToolCall.toEntity(conversationId: Long): PendingToolCallEntity =
-        PendingToolCallEntity(
-            id = id,
-            conversationId = conversationId,
-            toolName = name,
-            argsJson = JsonObject(args.mapValues { JsonPrimitive(it.value) }).toString(),
-            summary = summary,
-            createdAt = createdAtMillis,
-            expiresAt = expiresAtMillis,
-            consumed = consumed,
-        )
-
     private suspend fun loadPendingDomain(id: String): PendingToolCall? {
         tools.pendingById(id)?.let { return it }
         val entity = runCatching { pendingDao?.getById(id) }.getOrNull() ?: return null
-        return entity.toDomain().also { tools.restorePending(it) }
+        return store.pendingToDomain(entity).also { tools.restorePending(it) }
     }
 
     private suspend fun persistPending(conversationId: Long, pending: PendingToolCall) {
-        runCatching { pendingDao?.upsert(pending.toEntity(conversationId)) }
+        runCatching { pendingDao?.upsert(store.pendingToEntity(pending, conversationId)) }
     }
 
     /**
@@ -584,7 +554,9 @@ class InferenceService : Service() {
                 ),
             )
         }
-        runCatching { pendingDao?.upsert(pending.copy(consumed = true).toEntity(conversationId)) }
+        runCatching {
+            pendingDao?.upsert(store.pendingToEntity(pending.copy(consumed = true), conversationId))
+        }
         store.upsert(
             DbMessage(
                 conversationId = conversationId,
@@ -643,7 +615,14 @@ class InferenceService : Service() {
             withContext(NonCancellable) { writer.cancelAndJoin() }
         }
         flushTitle(conversationId)
+        handleInferenceResult(conversationId, aiMsgId, result)
+    }
 
+    private suspend fun handleInferenceResult(
+        conversationId: Long,
+        aiMsgId: Long,
+        result: ChatResult,
+    ) {
         when (result) {
             is ChatResult.Reply -> if (result.halted || halt) {
                 halt = false
@@ -666,7 +645,10 @@ class InferenceService : Service() {
             }
             ChatResult.TooLong -> store.updateMessage(
                 aiMsgId,
-                getString(R.string.error_prefix, "the message is too long for the model's context"),
+                getString(
+                    R.string.error_prefix,
+                    "the message is too long for the model's context",
+                ),
             )
             ChatResult.Unavailable -> {
                 messageDao.deleteById(aiMsgId)
@@ -698,8 +680,6 @@ class InferenceService : Service() {
         newTitle = null
         store.updateTitle(conversationId, title)
     }
-
-    private suspend fun fetchHistoryFromDb(id: Long): List<DbMessage> = store.history(id)
 
     /** Stores a finished reply: the prose as its text, any A2UI block beside it. */
 
@@ -734,6 +714,35 @@ internal class MessageStore(
         val existing = messageDao.getById(id) ?: return
         upsert(existing.copy(text = text, a2ui = a2ui))
     }
+
+    /** Converts a persisted pending tool call back to its domain form. */
+    fun pendingToDomain(entity: PendingToolCallEntity): PendingToolCall = PendingToolCall(
+        id = entity.id,
+        name = entity.toolName,
+        args = runCatching {
+            Json.parseToJsonElement(entity.argsJson).jsonObject
+                .mapValues { it.value.jsonPrimitive.content }
+        }.getOrDefault(emptyMap()),
+        summary = entity.summary,
+        createdAtMillis = entity.createdAt,
+        expiresAtMillis = entity.expiresAt,
+        consumed = entity.consumed,
+    )
+
+    /** Converts a domain pending tool call to its persisted form. */
+    fun pendingToEntity(
+        pending: PendingToolCall,
+        conversationId: Long,
+    ): PendingToolCallEntity = PendingToolCallEntity(
+        id = pending.id,
+        conversationId = conversationId,
+        toolName = pending.name,
+        argsJson = JsonObject(pending.args.mapValues { JsonPrimitive(it.value) }).toString(),
+        summary = pending.summary,
+        createdAt = pending.createdAtMillis,
+        expiresAt = pending.expiresAtMillis,
+        consumed = pending.consumed,
+    )
 
     /** Sets the conversation title. */
     suspend fun updateTitle(id: Long, title: String) {

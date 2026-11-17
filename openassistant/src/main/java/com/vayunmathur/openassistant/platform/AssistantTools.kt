@@ -27,6 +27,7 @@ import com.vayunmathur.openassistant.domain.pendingToolSummary
 import com.vayunmathur.openassistant.platform.AssistantDeviceTools
 import com.vayunmathur.openassistant.platform.AssistantToolIntents
 import com.vayunmathur.openassistant.network.AssistantWebTools
+import com.vayunmathur.library.intents.shop.CartData as ShopCartData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -383,14 +384,7 @@ class AssistantTools(
             intents.runTool {
                 val cart = intents.getShopCart()
                 if (cart.error == null && cart.totalItems > 0) {
-                    pendingRenderUi = A2uiTemplates.shopCart(
-                        cart.stores.map { store ->
-                            store.storeName to store.lines.map {
-                                "${it.title} ${it.variantTitle} × ${it.quantity} — ${formatMoney(it.price * it.quantity, it.currency)}"
-                            }
-                        },
-                        cart.totalItems,
-                    )
+                    renderShopCart(cart)
                 }
                 com.vayunmathur.openassistant.platform.summarizeShopCart(cart)
             }
@@ -405,14 +399,7 @@ class AssistantTools(
                 )
                 // Light write: executed once, cart rendered back, never auto-retried.
                 if (cart.error == null) {
-                    pendingRenderUi = A2uiTemplates.shopCart(
-                        cart.stores.map { store ->
-                            store.storeName to store.lines.map {
-                                "${it.title} ${it.variantTitle} × ${it.quantity} — ${formatMoney(it.price * it.quantity, it.currency)}"
-                            }
-                        },
-                        cart.totalItems,
-                    )
+                    renderShopCart(cart)
                 }
                 com.vayunmathur.openassistant.platform.summarizeShopCart(cart)
             }
@@ -421,14 +408,7 @@ class AssistantTools(
             intents.runTool {
                 val cart = intents.removeFromShopCart(a.string("variant_id"))
                 if (cart.error == null) {
-                    pendingRenderUi = A2uiTemplates.shopCart(
-                        cart.stores.map { store ->
-                            store.storeName to store.lines.map {
-                                "${it.title} ${it.variantTitle} × ${it.quantity} — ${formatMoney(it.price * it.quantity, it.currency)}"
-                            }
-                        },
-                        cart.totalItems,
-                    )
+                    renderShopCart(cart)
                 }
                 com.vayunmathur.openassistant.platform.summarizeShopCart(cart)
             }
@@ -440,8 +420,14 @@ class AssistantTools(
                 if (cart.error == null && store != null && store.lines.isNotEmpty()) {
                     pendingRenderUi = A2uiTemplates.shopCheckoutSummary(
                         store.storeName, store.shopDomain,
-                        store.lines.map {
-                            "${it.title} ${it.variantTitle} × ${it.quantity} — ${formatMoney(it.price * it.quantity, it.currency)}"
+                        store.lines.map { line ->
+                            shopCartLineText(
+                                line.title,
+                                line.variantTitle,
+                                line.quantity,
+                                line.price,
+                                line.currency,
+                            )
                         },
                     )
                 }
@@ -520,17 +506,17 @@ class AssistantTools(
     fun invokeConfirmed(pendingId: String): String {
         val pending = pendingStore.get(pendingId)
             ?: return "Error: pending tool call not found"
-        if (pending.consumed) return "Error: pending tool call already consumed"
-        if (pending.isExpired(nowMillis())) return "Error: pending tool call expired"
-        val spec = specs[pending.name] ?: return "Error: unknown tool '${pending.name}'"
-        val coerced = when (val result = coerceToolArgs(spec, pending.args)) {
-            is ToolArgsResult.Invalid -> return result.message
-            is ToolArgsResult.Ok -> result.args
+        val spec = specs[pending.name]
+        val coerced = spec?.let { coerceToolArgs(it, pending.args) }
+        return when {
+            pending.consumed -> "Error: pending tool call already consumed"
+            pending.isExpired(nowMillis()) -> "Error: pending tool call expired"
+            spec == null -> "Error: unknown tool '${pending.name}'"
+            coerced is ToolArgsResult.Invalid -> coerced.message
+            !pendingStore.markConsumed(pendingId) ->
+                "Error: pending tool call already consumed"
+            else -> execute(spec.name, (coerced as ToolArgsResult.Ok).args)
         }
-        if (!pendingStore.markConsumed(pendingId)) {
-            return "Error: pending tool call already consumed"
-        }
-        return execute(spec.name, coerced)
     }
 
     /** Takes and clears the stashed [pendingRenderUi] envelope, if any. */
@@ -583,6 +569,33 @@ class AssistantTools(
             else -> null
         }
     }
+
+    private fun renderShopCart(cart: ShopCartData) {
+        pendingRenderUi = A2uiTemplates.shopCart(
+            cart.stores.map { store ->
+                store.storeName to store.lines.map { line ->
+                    shopCartLineText(
+                        line.title,
+                        line.variantTitle,
+                        line.quantity,
+                        line.price,
+                        line.currency,
+                    )
+                }
+            },
+            cart.totalItems,
+        )
+    }
+
+    private fun shopCartLineText(
+        title: String,
+        variantTitle: String,
+        quantity: Int,
+        price: Long,
+        currency: String,
+    ): String =
+        "$title $variantTitle × $quantity — " +
+            formatMoney(price * quantity, currency)
 
     private fun execute(name: String, args: ToolArgs): String = try {
         handlers.getValue(name)(args)

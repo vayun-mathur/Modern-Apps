@@ -129,70 +129,76 @@ class AssistantViewModel(
         conversationId: Long,
         eventName: String,
         context: Map<String, Any?>,
+    ): Boolean = when (eventName) {
+        "msg.send" -> handleHostSendMessage(conversationId, context)
+        "handoff.shop_checkout", "handoff.food_checkout" -> openUrlFromContext(context, "deepLink")
+        "open.conversation" -> openConversationFromContext(context)
+        "web.open" -> openUrlFromContext(context, "url")
+        "web.read" -> handleHostWebRead(conversationId, context)
+        "confirm.tool", "cancel.tool" -> handleHostToolGate(conversationId, eventName, context)
+        else -> false
+    }
+
+    private fun handleHostSendMessage(
+        conversationId: Long,
+        context: Map<String, Any?>,
     ): Boolean {
-        when (eventName) {
-            "msg.send" -> {
-                val address = context["address"]?.toString().orEmpty()
-                val body = context["body"]?.toString().orEmpty()
-                if (address.isBlank() || body.isBlank()) return false
-                val line = context["line"]?.toString().orEmpty()
-                val threadRemoteId = context["thread_remote_id"]?.toString().orEmpty()
-                val payload = buildJsonObject {
-                    put("address", address)
-                    put("line", line)
-                    put("body", body)
-                    if (threadRemoteId.isNotBlank()) put("thread_remote_id", threadRemoteId)
-                }.toString()
-                val text = "[HostSendMsg $payload]"
-                viewModelScope.launch {
-                    upsertMessage(Message(conversationId, text, "user"))
-                    requestInference(conversationId, text, emptyList(), null)
-                }
-                return true
-            }
-            "handoff.shop_checkout" -> {
-                val link = context["deepLink"]?.toString().orEmpty()
-                if (link.isBlank()) return false
-                openUrl(link)
-                return true
-            }
-            "handoff.food_checkout" -> {
-                val link = context["deepLink"]?.toString().orEmpty()
-                if (link.isBlank()) return false
-                openUrl(link)
-                return true
-            }
-            "open.conversation" -> {
-                val address = context["address"]?.toString().orEmpty()
-                if (address.isBlank()) return false
-                openConversation(address)
-                return true
-            }
-            "web.open" -> {
-                val url = context["url"]?.toString().orEmpty()
-                if (url.isBlank()) return false
-                openUrl(url)
-                return true
-            }
-            "web.read" -> {
-                val index = contextIndex(context) ?: return false
-                viewModelScope.launch {
-                    // Fresh instance: NetworkClient is already inited in
-                    // MainActivity, and the last-search slot is process-wide
-                    // (see AssistantWebTools), so index resolution works here.
-                    val fetched = AssistantWebTools().webReadResultText(index)
-                    val text = "[Web read $index: $fetched]"
-                    upsertMessage(Message(conversationId, text, "user"))
-                    requestInference(conversationId, text, emptyList(), null)
-                }
-                return true
-            }
+        val address = context["address"]?.toString().orEmpty()
+        val body = context["body"]?.toString().orEmpty()
+        if (address.isBlank() || body.isBlank()) return false
+        val line = context["line"]?.toString().orEmpty()
+        val threadRemoteId = context["thread_remote_id"]?.toString().orEmpty()
+        val payload = buildJsonObject {
+            put("address", address)
+            put("line", line)
+            put("body", body)
+            if (threadRemoteId.isNotBlank()) put("thread_remote_id", threadRemoteId)
+        }.toString()
+        val text = "[HostSendMsg $payload]"
+        viewModelScope.launch {
+            upsertMessage(Message(conversationId, text, "user"))
+            requestInference(conversationId, text, emptyList(), null)
         }
-        val marker = when (eventName) {
-            "confirm.tool" -> "HostConfirm"
-            "cancel.tool" -> "HostCancel"
-            else -> return false
+        return true
+    }
+
+    private fun openUrlFromContext(context: Map<String, Any?>, key: String): Boolean {
+        val url = context[key]?.toString().orEmpty()
+        if (url.isBlank()) return false
+        openUrl(url)
+        return true
+    }
+
+    private fun openConversationFromContext(context: Map<String, Any?>): Boolean {
+        val address = context["address"]?.toString().orEmpty()
+        if (address.isBlank()) return false
+        openConversation(address)
+        return true
+    }
+
+    private fun handleHostWebRead(
+        conversationId: Long,
+        context: Map<String, Any?>,
+    ): Boolean {
+        val index = contextIndex(context) ?: return false
+        viewModelScope.launch {
+            // Fresh instance: NetworkClient is already inited in
+            // MainActivity, and the last-search slot is process-wide
+            // (see AssistantWebTools), so index resolution works here.
+            val fetched = AssistantWebTools().webReadResultText(index)
+            val text = "[Web read $index: $fetched]"
+            upsertMessage(Message(conversationId, text, "user"))
+            requestInference(conversationId, text, emptyList(), null)
         }
+        return true
+    }
+
+    private fun handleHostToolGate(
+        conversationId: Long,
+        eventName: String,
+        context: Map<String, Any?>,
+    ): Boolean {
+        val marker = if (eventName == "confirm.tool") "HostConfirm" else "HostCancel"
         val id = context["id"]?.toString().orEmpty()
         if (id.isBlank()) return false
         val text = "[$marker $id]"

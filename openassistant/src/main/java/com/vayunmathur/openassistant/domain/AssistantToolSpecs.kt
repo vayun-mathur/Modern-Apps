@@ -28,8 +28,9 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
     ),
     ToolSpec(
         "create_todo",
-        "Create a task in the todo app (requires confirmation). Should only be used with EXPLICIT request by user. The title may " +
-            "include words like 'tomorrow 6pm' or '#tag', which are understood when no due time is given.",
+        "Create a task in the todo app (requires confirmation). Should only be used with " +
+            "EXPLICIT request by user. The title may include words like 'tomorrow 6pm' or " +
+            "'#tag', which are understood when no due time is given.",
         listOf(
             p("title"),
             p("due", NUMBER, "optional due time as epoch milliseconds", required = false),
@@ -46,7 +47,12 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
         ), risk = WRITE_CONFIRM,
     ),
     ToolSpec("get_contacts", "Get a list of all contacts"),
-    ToolSpec("create_contact", "Create a new contact (requires confirmation)", listOf(p("name"), p("phone_number")), risk = WRITE_CONFIRM),
+    ToolSpec(
+        "create_contact",
+        "Create a new contact (requires confirmation)",
+        listOf(p("name"), p("phone_number")),
+        risk = WRITE_CONFIRM,
+    ),
     ToolSpec(
         "get_calendar_events",
         "Get a list of calendar events. Each event's start and end times are epoch milliseconds.",
@@ -118,7 +124,8 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
     ToolSpec(
         "render_ui",
         "Render a rich UI card (A2UI) attached to your reply. Prefer this over writing a ```a2ui fence. " +
-            "components_json is a JSON string: {\"components\":[...]} (or a bare component array) using the RICH UI types; " +
+            "components_json is a JSON string: {\"components\":[...]} (or a bare component " +
+            "array) using the RICH UI types; " +
             "data_json is an optional JSON object string with initial data values.",
         listOf(
             p("components_json", description = "A2UI components as a JSON string"),
@@ -320,6 +327,11 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
     ),
     ToolSpec("get_shop_orders", "Get the user's Shop order summaries"),
     ToolSpec("get_memories", "Get a list of all memories"),
-    ToolSpec("remove_memory", "Remove a memory by its id (requires confirmation)", listOf(p("id", NUMBER)), risk = WRITE_CONFIRM),
+    ToolSpec(
+        "remove_memory",
+        "Remove a memory by its id (requires confirmation)",
+        listOf(p("id", NUMBER)),
+        risk = WRITE_CONFIRM,
+    ),
     ToolSpec("add_to_memory", "Add a new memory to the list of memories", listOf(p("content"))),
 )

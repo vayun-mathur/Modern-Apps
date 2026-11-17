@@ -165,7 +165,13 @@ class AssistantWebTools(
         } catch (expected: Exception) {
             return "Error: could not read page: could not parse reader response"
         }
-        return formatReadResult(parsed.title, parsed.url.ifBlank { url }, parsed.text, parsed.truncated, parsed.nextOffset)
+        return formatReadResult(
+            parsed.title,
+            parsed.url.ifBlank { url },
+            parsed.text,
+            parsed.truncated,
+            parsed.nextOffset,
+        )
     }
 
     suspend fun webReadResult(index: Int, offset: Int = 0): String {

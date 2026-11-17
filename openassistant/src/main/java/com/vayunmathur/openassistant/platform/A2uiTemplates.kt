@@ -48,11 +48,15 @@ data class CartLineRow(
     val lineTotalCents: Int,
 )
 
+private const val CENTS_PER_DOLLAR = 100
+
 /** Formats integer cents as a dollar string ($12.34, -$1.00). */
 fun formatCents(cents: Int): String {
     val sign = if (cents < 0) "-" else ""
     val abs = kotlin.math.abs(cents)
-    return "$sign\$${abs / 100}.${(abs % 100).toString().padStart(2, '0')}"
+    val dollars = abs / CENTS_PER_DOLLAR
+    val centsPart = (abs % CENTS_PER_DOLLAR).toString().padStart(2, '0')
+    return "$sign\$$dollars.$centsPart"
 }
 
 /** One web search result in a [A2uiTemplates.searchResults] card. */
@@ -63,6 +67,26 @@ data class SearchResultItem(
     val domain: String,
     val url: String,
 )
+
+private fun foodMenuData(merchantId: Int, items: List<MenuItemRow>): JsonObject =
+    buildJsonObject {
+        put("merchantId", merchantId)
+        put(
+            "items",
+            JsonArray(
+                items.map { item ->
+                    buildJsonObject {
+                        put("id", item.id)
+                        put("name", item.name)
+                        put("priceCents", item.priceCents)
+                        val availability = if (item.available) "" else " · unavailable"
+                        put("priceText", formatCents(item.priceCents) + availability)
+                        put("qty", item.qty)
+                    }
+                },
+            ),
+        )
+    }
 
 /** Host-generated A2UI cards. The model never authors these. */
 object A2uiTemplates {
@@ -183,7 +207,10 @@ object A2uiTemplates {
                     obj(
                         "id" to s("btnAction"), "component" to s("Button"), "label" to s(actionLabel),
                         "primary" to JsonPrimitive(true),
-                        "action" to action(actionName, (actionContext ?: emptyMap()).mapValues { valueToJson(it.value) }),
+                        "action" to action(
+                            actionName,
+                            (actionContext ?: emptyMap()).mapValues { valueToJson(it.value) },
+                        ),
                     ),
                 )
             }
@@ -310,24 +337,7 @@ object A2uiTemplates {
                 ),
             )
         }
-        val data = buildJsonObject {
-            put("merchantId", merchantId)
-            put(
-                "items",
-                JsonArray(
-                    items.map { item ->
-                        buildJsonObject {
-                            put("id", item.id)
-                            put("name", item.name)
-                            put("priceCents", item.priceCents)
-                            put("priceText", formatCents(item.priceCents) + if (item.available) "" else " · unavailable")
-                            put("qty", item.qty)
-                        }
-                    },
-                ),
-            )
-        }
-        return envelope(components, data)
+        return envelope(components, foodMenuData(merchantId, items))
     }
 
     /** Cart card: lines, total, and (when non-empty) a checkout handoff button. */
@@ -439,27 +449,32 @@ object A2uiTemplates {
                 ),
             )
         }
-        val data = buildJsonObject {
-            put("shopDomain", shopDomain)
-            put(
-                "variants",
-                JsonArray(
-                    variants.map { v ->
-                        buildJsonObject {
-                            put("id", v.variantId)
-                            put("title", v.title)
-                            put(
-                                "caption",
-                                formatMoney(v.price, v.currency) + if (v.available) "" else " · unavailable",
-                            )
-                        }
-                    },
-                ),
-            )
-            put("variant", variants.firstOrNull()?.variantId ?: "")
-            put("qty", 1)
-        }
-        return envelope(components, data)
+        return envelope(components, productCardData(shopDomain, variants))
+    }
+
+    private fun productCardData(
+        shopDomain: String,
+        variants: List<ProductVariantRow>,
+    ): JsonObject = buildJsonObject {
+        put("shopDomain", shopDomain)
+        put(
+            "variants",
+            JsonArray(
+                variants.map { v ->
+                    buildJsonObject {
+                        put("id", v.variantId)
+                        put("title", v.title)
+                        put(
+                            "caption",
+                            formatMoney(v.price, v.currency) +
+                                if (v.available) "" else " · unavailable",
+                        )
+                    }
+                },
+            ),
+        )
+        put("variant", variants.firstOrNull()?.variantId ?: "")
+        put("qty", 1)
     }
 
     /** Shop cart card: every store's lines and per-store totals. */
@@ -595,25 +610,29 @@ object A2uiTemplates {
                 ),
             )
         }
-        val data = buildJsonObject {
-            put("query", query)
-            put(
-                "results",
-                JsonArray(
-                    results.map { r ->
-                        buildJsonObject {
-                            put("index", r.index)
-                            put("title", r.title)
-                            put("displayTitle", "[${r.index}] ${r.title}")
-                            put("snippet", r.snippet)
-                            put("domain", r.domain)
-                            put("url", r.url)
-                        }
-                    },
-                ),
-            )
-        }
-        return envelope(components, data)
+        return envelope(components, searchResultsData(query, results))
+    }
+
+    private fun searchResultsData(
+        query: String,
+        results: List<SearchResultItem>,
+    ): JsonObject = buildJsonObject {
+        put("query", query)
+        put(
+            "results",
+            JsonArray(
+                results.map { r ->
+                    buildJsonObject {
+                        put("index", r.index)
+                        put("title", r.title)
+                        put("displayTitle", "[${r.index}] ${r.title}")
+                        put("snippet", r.snippet)
+                        put("domain", r.domain)
+                        put("url", r.url)
+                    }
+                },
+            ),
+        )
     }
 
     private fun envelope(components: JsonArray, data: JsonObject): String =
