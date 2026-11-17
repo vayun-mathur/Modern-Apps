@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <!-- Manifest / TopAppBar: App name. Noun, proper -->
-    <string name="app_name" translatable="false">Nonogram</string>
     <!-- GameModeDropdown: Mode playing the numbered level progression. Adjective -->
     <string name="mode_casual">Poziomy</string>
     <!-- GameModeDropdown: Mode playing today's shared puzzle. Adjective -->
     <string name="mode_daily">Wyzwanie dzienne</string>
     <!-- NonogramGameScreen TopAppBar: Current level in the progression. %1$d = level number, e.g. 12 -->
     <string name="level_title">Poziom <xliff:g id="level" example="12">%1$d</xliff:g></string>
-    <!-- NonogramGameScreen: Button advancing to the next level after a win. Verb phrase -->
-    <string name="next_level">Kolejny poziom</string>
-    <!-- NonogramGameScreen: Clears every mark on the current puzzle. Verb -->
-    <string name="restart">Zacznij od nowa</string>
     <!-- NonogramGameScreen: Shown after finishing the daily, since there is only one per day. Sentence -->
     <string name="daily_come_back_tomorrow">Rozwiązano! Wróć jutro po nową łamigłówkę.</string>
     <!-- NonogramGameScreen: Celebratory line shown when a level is completed. Declarative -->

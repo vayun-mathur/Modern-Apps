@@ -21,7 +21,14 @@ import com.vayunmathur.library.ui.rememberPermissionRequest
 fun SettingsPage(viewModel: NonogramViewModel, onBack: () -> Unit) {
     val reminderEnabled by viewModel.reminderEnabled.collectAsState()
     val reminderMinutes by viewModel.reminderMinutesOfDay.collectAsState()
-    val requestNotifications = rememberPermissionRequest(Manifest.permission.POST_NOTIFICATIONS)
+    // POST_NOTIFICATIONS is a String constant inlined at compile time, so referencing
+    // it below API 33 is safe; it is only requested on API 33+ (see setReminderEnabled).
+    val notificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.POST_NOTIFICATIONS
+    } else {
+        ""
+    }
+    val requestNotifications = rememberPermissionRequest(notificationPermission)
 
     SettingsScreen(
         state = SettingsUiState(
