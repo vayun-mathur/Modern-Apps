@@ -214,7 +214,7 @@ mod tests {
     fn kotlin_parser_src() -> String {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../java/com/vayunmathur/pdf/util/SafePdfParser.kt"
+            "/../java/com/vayunmathur/pdf/platform/SafePdfParser.kt"
         );
         std::fs::read_to_string(path)
             .unwrap_or_else(|e| panic!("cannot read the wire format's only consumer {path}: {e}"))
@@ -226,7 +226,7 @@ mod tests {
     fn kotlin_images_src() -> String {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../java/com/vayunmathur/pdf/util/SafePdfImages.kt"
+            "/../java/com/vayunmathur/pdf/platform/SafePdfImages.kt"
         );
         std::fs::read_to_string(path)
             .unwrap_or_else(|e| panic!("cannot read the image-budget owner {path}: {e}"))

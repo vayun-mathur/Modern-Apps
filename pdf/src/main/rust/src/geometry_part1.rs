@@ -93,7 +93,7 @@ mod geometry_tests {
     fn the_page_bound_matches_the_kotlin_consumers_clamp() {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../java/com/vayunmathur/pdf/util/SafePdfParser.kt"
+            "/../java/com/vayunmathur/pdf/platform/SafePdfParser.kt"
         );
         let src = std::fs::read_to_string(path)
             .unwrap_or_else(|e| panic!("cannot read the page box's only consumer {path}: {e}"));

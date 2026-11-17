@@ -5,7 +5,7 @@ const WIRE_MAGIC: u32 = 0x50444657; // 'PDFW'
 /// per-image alpha).
 ///
 /// KEEP IN SYNC WITH `SafePdfParser.WIRE_VERSION` in
-/// `pdf/src/main/java/com/vayunmathur/pdf/util/SafePdfParser.kt`. That constant is the
+/// `pdf/src/main/java/com/vayunmathur/pdf/platform/SafePdfParser.kt`. That constant is the
 /// HIGHEST version the parser understands, so it may legitimately run AHEAD of this one
 /// (it gates the newer fields off) but must never fall behind it: the parser does not
 /// reject a higher version, it forward-compat parses with those gates closed and so reads
