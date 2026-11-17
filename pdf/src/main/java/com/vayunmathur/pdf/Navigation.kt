@@ -80,6 +80,20 @@ fun Navigation(
                 },
             )
         }
+        captureEntries(viewModel, backStack, leaveCapture = { leaveCapture() })
+        entry<Route.CutGlue>(metadata = DetailPage()) {
+            CutGlueScreen(onBack = { backStack.pop() })
+        }
+    }
+}
+
+
+/** Capture, captured-page and crop destinations. */
+private fun com.vayunmathur.library.util.EntryProviderScope<Route>.captureEntries(
+    viewModel: PdfViewModel,
+    backStack: com.vayunmathur.library.util.NavBackStack<Route>,
+    leaveCapture: () -> Unit,
+) {
         entry<Route.Capture>(metadata = DetailPage()) {
             CapturePdfScreen(
                 viewModel = viewModel,
@@ -131,8 +145,4 @@ fun Navigation(
                 LaunchedEffect(route.index) { backStack.pop() }
             }
         }
-        entry<Route.CutGlue>(metadata = DetailPage()) {
-            CutGlueScreen(onBack = { backStack.pop() })
-        }
-    }
 }

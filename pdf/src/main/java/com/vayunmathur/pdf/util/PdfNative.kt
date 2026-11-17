@@ -1,4 +1,5 @@
-// PACKAGE STRUCTURE EXCEPTION (JNI): FQN frozen for native symbol mangling (Java_com_vayunmathur_pdf_util_PdfNative_* in Rust jni_bindings)
+// PACKAGE STRUCTURE EXCEPTION (JNI): FQN frozen for native symbol mangling
+// (Java_com_vayunmathur_pdf_util_PdfNative_* in Rust jni_bindings)
 package com.vayunmathur.pdf.util
 import com.vayunmathur.library.log.Log
 
