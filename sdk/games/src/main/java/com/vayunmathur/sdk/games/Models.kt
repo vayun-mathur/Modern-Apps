@@ -82,5 +82,6 @@ data class AchievementStatus(
     val unlockedAt: Long?
 )
 
+/** Thrown when the Games Hub app is not installed on this device. */
 class GameHubNotInstalledException :
     Exception("Games Hub app is not installed on this device")

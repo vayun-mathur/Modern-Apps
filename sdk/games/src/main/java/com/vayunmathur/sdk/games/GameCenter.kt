@@ -80,6 +80,7 @@ class GameCenterLegacy(private val context: android.content.Context, private val
     fun isHubInstalled(): Boolean = client.isHubInstalled()
 }
 
+/** Legacy score record retained for the old GameCenter API; leaderboards are no longer populated. */
 data class ScoreEntry(
     val gameId: String,
     val category: String,

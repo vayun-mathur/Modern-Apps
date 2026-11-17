@@ -20,6 +20,7 @@ object GameHubContract {
     val BASE_URI: Uri = "content://$AUTHORITY".toUri()
     val LEGACY_BASE_URI: Uri = "content://$LEGACY_AUTHORITY".toUri()
 
+    /** Column names for the Games Hub games table. */
     object Games {
         const val GAME_ID = "game_id"
         const val PACKAGE_NAME = "package_name"
@@ -31,6 +32,7 @@ object GameHubContract {
         const val LAST_SEEN_AT = "last_seen_at"
     }
 
+    /** Column names for the Games Hub achievement-definitions table. */
     object AchievementDefs {
         const val GAME_ID = "game_id"
         const val ACHIEVEMENT_ID = "achievement_id"
@@ -43,6 +45,7 @@ object GameHubContract {
         const val ICON_RES_NAME = "icon_res_name"
     }
 
+    /** Column names for the Games Hub achievement-progress table. */
     object AchievementProgressCols {
         const val GAME_ID = "game_id"
         const val ACHIEVEMENT_ID = "achievement_id"
@@ -52,6 +55,7 @@ object GameHubContract {
         const val LAST_UPDATED = "last_updated"
     }
 
+    /** Column names for the Games Hub play-sessions table. */
     object Sessions {
         const val GAME_ID = "game_id"
         const val SESSION_ID = "session_id"
@@ -73,6 +77,7 @@ object GameHubContract {
     }
 
     // Legacy columns (from old SDK)
+    /** Legacy column names kept for the older Games Hub provider schema. */
     object Legacy {
         const val ACHIEVEMENT_ID = "achievement_id"
         const val NAME = "name"
