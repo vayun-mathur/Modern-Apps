@@ -1,5 +1,6 @@
 package com.vayunmathur.cast.protocol
 
+import android.annotation.SuppressLint
 import java.io.ByteArrayInputStream
 import java.math.BigInteger
 import java.net.InetAddress
@@ -142,6 +143,15 @@ object EphemeralTls {
     fun fingerprintOf(certificate: X509Certificate): ByteArray =
         MessageDigest.getInstance("SHA-256").digest(certificate.encoded)
 
+    // CustomX509TrustManager suppressed with justification: this is not a
+    // permissive trust manager. checkServerTrusted accepts exactly one leaf
+    // whose SHA-256 fingerprint equals the session pin (constant-time
+    // MessageDigest.isEqual) and throws CertificateException otherwise;
+    // checkClientTrusted always throws and no issuers are accepted. The pin
+    // arrives over the pairing-authenticated, AES-256-GCM control channel, so
+    // certificate validation is strengthened, not disabled. Wire format and
+    // crypto behaviour are unchanged.
+    @SuppressLint("CustomX509TrustManager")
     private class PinnedTrustManager(private val fingerprint: ByteArray) : X509TrustManager {
 
         override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
