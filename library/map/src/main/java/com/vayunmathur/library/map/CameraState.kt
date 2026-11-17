@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -108,7 +109,7 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
      * load, exactly like the renderer's fallback. Only read under pitch (flat frames key
      * heights out) and never on the globe path, which projects differently.
      */
-    internal var pivotDp: Double by mutableStateOf(0.0)
+    internal var pivotDp: Double by mutableDoubleStateOf(0.0)
 
     /**
      * Task-17 pick provider: registered by the rendered surface (see

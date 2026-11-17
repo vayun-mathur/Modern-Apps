@@ -62,6 +62,7 @@ internal fun VulkanMapSurface(
     cameraState: CameraState,
     darkBasemap: Boolean,
     muted: Boolean,
+    modifier: Modifier = Modifier,
     layerOptions: LayerOptions = LayerOptions(),
     tileSource: TileSource = TileSource.Server,
     userPuck: UserPuck? = null,
@@ -105,7 +106,6 @@ internal fun VulkanMapSurface(
      * of the pin tap-pick.
      */
     vehicles: List<MapMarker> = emptyList(),
-    modifier: Modifier = Modifier,
     onFrame: () -> Unit = {},
     fallback: @Composable (MapRenderState.Unavailable) -> Unit = {},
     /**
