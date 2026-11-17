@@ -19,9 +19,11 @@ import com.vayunmathur.email.data.EmailRepository
 import com.vayunmathur.email.platform.EmailViewModel
 import com.vayunmathur.email.platform.IntentState
 import com.vayunmathur.email.ui.MainContent
+import androidx.lifecycle.viewModelScope
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -63,6 +65,13 @@ class NavigationTest {
     @AfterTest
     fun close() {
         IntentState.navigationRoute = null
+        // Cancel the ViewModel's collectors before closing the database:
+        // its accounts StateFlow (WhileSubscribed) can still query the
+        // pool after the compose content is gone, and that query then
+        // throws "connection pool has been closed" into a later test.
+        if (::vm.isInitialized) {
+            vm.viewModelScope.cancel()
+        }
         com.vayunmathur.library.util.databases.remove(EmailDatabase::class)
         val field = EmailRepository::class.java.getDeclaredField("instance")
         field.isAccessible = true
