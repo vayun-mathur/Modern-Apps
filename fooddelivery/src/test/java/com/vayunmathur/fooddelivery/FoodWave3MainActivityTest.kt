@@ -1,12 +1,16 @@
 package com.vayunmathur.fooddelivery
 
+import com.vayunmathur.fooddelivery.platform.canAddFromSameMerchant
+import com.vayunmathur.fooddelivery.platform.pushDetail
+import com.vayunmathur.fooddelivery.platform.tabRouteFor
+
 import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.fooddelivery.api.BitesAuth
-import com.vayunmathur.fooddelivery.api.BitesCore
+import com.vayunmathur.fooddelivery.network.BitesAuth
+import com.vayunmathur.fooddelivery.network.BitesCore
 import com.vayunmathur.fooddelivery.data.AuthToken
 import com.vayunmathur.fooddelivery.data.CartItem
 import com.vayunmathur.fooddelivery.data.MenuItem

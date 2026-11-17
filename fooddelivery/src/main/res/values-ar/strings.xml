@@ -2,8 +2,6 @@
 <resources>
     <string name="first_name">الاسم الأول</string>
     <string name="last_name">اسم العائلة</string>
-    <string name="email">البريد الإلكتروني</string>
     <string name="addresses">العناوين</string>
     <string name="delete_account">حذف الحساب</string>
-    <string name="action_cancel">إلغاء</string>
 </resources>

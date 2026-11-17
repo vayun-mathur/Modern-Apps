@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,11 +37,11 @@ import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconEmojiEvents
 import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.fooddelivery.R
-import com.vayunmathur.fooddelivery.api.BitesDeals
+import com.vayunmathur.fooddelivery.network.BitesDeals
 import com.vayunmathur.fooddelivery.data.Deal
 import com.vayunmathur.fooddelivery.data.DealProgress
 import com.vayunmathur.fooddelivery.platform.AppInit
@@ -77,7 +78,7 @@ fun DealsScreen(onMerchantClick: (Int) -> Unit) {
         }
     }
 
-    Scaffold { padding ->
+    AppScaffold(topBar = {}) { padding ->
         when {
             loading -> Box(
                 Modifier.fillMaxSize().padding(padding),
@@ -166,7 +167,7 @@ private fun DealCard(deal: Deal, progress: DealProgress?, onClick: () -> Unit) {
                     Spacer(Modifier.height(4.dp))
                     Text(
                         if (p.isUnlocked(needed)) stringResource(R.string.deal_unlocked)
-                        else stringResource(R.string.deal_progress, p.ordersCount, needed),
+                        else pluralStringResource(R.plurals.deal_progress, needed, p.ordersCount, needed),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

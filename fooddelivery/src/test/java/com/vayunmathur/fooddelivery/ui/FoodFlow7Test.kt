@@ -8,8 +8,8 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.fooddelivery.api.BitesAuth
-import com.vayunmathur.fooddelivery.api.BitesCore
+import com.vayunmathur.fooddelivery.network.BitesAuth
+import com.vayunmathur.fooddelivery.network.BitesCore
 import com.vayunmathur.fooddelivery.platform.AppInit
 import com.vayunmathur.library.network.SimpleResponse
 import org.junit.Rule

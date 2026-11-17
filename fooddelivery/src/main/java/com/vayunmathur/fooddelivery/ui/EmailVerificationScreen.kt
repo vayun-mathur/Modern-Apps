@@ -20,7 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.fooddelivery.R
-import com.vayunmathur.fooddelivery.api.BitesCustomers
+import com.vayunmathur.fooddelivery.network.BitesCustomers
 import com.vayunmathur.fooddelivery.platform.AppInit
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button

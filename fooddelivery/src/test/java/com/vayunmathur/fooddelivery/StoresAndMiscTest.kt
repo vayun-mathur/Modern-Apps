@@ -1,5 +1,7 @@
 package com.vayunmathur.fooddelivery
 
+import com.vayunmathur.fooddelivery.platform.canAddFromSameMerchant
+
 import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -11,7 +13,7 @@ import com.vayunmathur.fooddelivery.data.Order
 import com.vayunmathur.fooddelivery.data.OrderStage
 import com.vayunmathur.fooddelivery.data.SavedAddress
 import com.vayunmathur.fooddelivery.data.parseIsoMillis
-import com.vayunmathur.fooddelivery.ipc.OrderLookupContract
+import com.vayunmathur.fooddelivery.intents.OrderLookupContract
 import com.vayunmathur.fooddelivery.notifications.OrderLiveUpdate
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith

@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,13 +47,13 @@ import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.util.sharedText
-import com.vayunmathur.fooddelivery.api.BitesAuth
-import com.vayunmathur.fooddelivery.api.BitesOrders
+import com.vayunmathur.fooddelivery.network.BitesAuth
+import com.vayunmathur.fooddelivery.network.BitesOrders
 import com.vayunmathur.fooddelivery.data.FeedbackRequest
 import com.vayunmathur.fooddelivery.data.Order
 import com.vayunmathur.fooddelivery.platform.AppInit
@@ -111,7 +112,7 @@ fun OrdersScreen(onTrackOrder: (Int) -> Unit = {}) {
         loading = false
     }
 
-    Scaffold { padding ->
+    AppScaffold(topBar = {}) { padding ->
         if (loading) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -292,9 +293,9 @@ private fun FeedbackDialog(
     onDismiss: () -> Unit,
     onSubmit: (rating: Int, note: String, extraTipCents: Int) -> Unit,
 ) {
-    var rating by remember { mutableStateOf(5) }
+    var rating by remember { mutableIntStateOf(5) }
     var note by remember { mutableStateOf("") }
-    var extraTip by remember { mutableStateOf(0) }
+    var extraTip by remember { mutableIntStateOf(0) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

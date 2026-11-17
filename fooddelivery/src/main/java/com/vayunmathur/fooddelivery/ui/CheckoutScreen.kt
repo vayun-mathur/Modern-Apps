@@ -29,9 +29,9 @@ import com.stripe.android.paymentsheet.PaymentSheetResult
 import com.stripe.android.paymentsheet.rememberPaymentSheet
 import com.vayunmathur.fooddelivery.BuildConfig
 import com.vayunmathur.fooddelivery.R
-import com.vayunmathur.fooddelivery.api.BitesCustomers
-import com.vayunmathur.fooddelivery.api.BitesDeals
-import com.vayunmathur.fooddelivery.api.BitesOrders
+import com.vayunmathur.fooddelivery.network.BitesCustomers
+import com.vayunmathur.fooddelivery.network.BitesDeals
+import com.vayunmathur.fooddelivery.network.BitesOrders
 import com.vayunmathur.fooddelivery.data.AddressStore
 import com.vayunmathur.fooddelivery.data.CartItem
 import com.vayunmathur.fooddelivery.data.CheckoutAddress

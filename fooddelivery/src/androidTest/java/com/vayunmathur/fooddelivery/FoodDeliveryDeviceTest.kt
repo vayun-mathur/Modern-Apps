@@ -9,7 +9,7 @@ import android.os.Looper
 import android.os.ResultReceiver
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.vayunmathur.fooddelivery.api.BitesCore
+import com.vayunmathur.fooddelivery.network.BitesCore
 import com.vayunmathur.fooddelivery.intents.OrderLookupIntent
 import com.vayunmathur.fooddelivery.platform.AppInit
 import com.vayunmathur.library.network.SimpleResponse

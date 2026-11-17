@@ -1,8 +1,8 @@
 package com.vayunmathur.fooddelivery.intents
 
-import com.vayunmathur.fooddelivery.api.BitesMerchants
+import com.vayunmathur.fooddelivery.network.BitesMerchants
 import com.vayunmathur.fooddelivery.data.Merchant
-import com.vayunmathur.fooddelivery.ipc.OrderLookupContract
+import com.vayunmathur.fooddelivery.intents.OrderLookupContract
 import com.vayunmathur.fooddelivery.platform.AppInit
 import com.vayunmathur.library.intents.fooddelivery.OrderLookupRequest
 import com.vayunmathur.library.intents.fooddelivery.OrderLookupResult

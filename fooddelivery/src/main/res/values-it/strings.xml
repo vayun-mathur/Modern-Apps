@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="action_cancel">Annulla</string>
     <string name="delete_account">Elimina account</string>
 </resources>

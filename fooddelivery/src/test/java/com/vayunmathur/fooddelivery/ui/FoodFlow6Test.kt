@@ -12,8 +12,8 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.fooddelivery.api.BitesAuth
-import com.vayunmathur.fooddelivery.api.BitesCore
+import com.vayunmathur.fooddelivery.network.BitesAuth
+import com.vayunmathur.fooddelivery.network.BitesCore
 import com.vayunmathur.fooddelivery.data.AddressStore
 import com.vayunmathur.fooddelivery.data.AuthToken
 import com.vayunmathur.fooddelivery.data.SavedAddress
@@ -78,7 +78,7 @@ class FoodFlow6Test {
 
     @Test fun ordersRenderItemsAndModifiers() {
         installFake("""{"data":[{"id":9,"uuid":"u9","foodTotal":1000,"orderTotal":1500,"channel":"ORDER_CHANNEL_STOREFRONT_DELIVERY","createdAt":"2024-01-01T12:00:00Z","deliveredAt":"2024-01-01T00:00:00Z","merchant":{"id":1,"name":"Burger Barn","imageUrl":"https://example.com/m.png"},"orderItems":[{"id":1,"name":"Burger","quantity":2,"price":999,"modifiers":[{"name":"Cheese","price":100,"quantity":1}]},{"id":2,"name":"Fries","quantity":1,"price":399}]}]}""")
-        val fetched = kotlinx.coroutines.runBlocking { com.vayunmathur.fooddelivery.api.BitesOrders.getOrders() }
+        val fetched = kotlinx.coroutines.runBlocking { com.vayunmathur.fooddelivery.network.BitesOrders.getOrders() }
         assertTrue(fetched.size == 1, "orders fake did not decode: $fetched")
         rule.setContent { OrdersScreen {} }
         awaitNode("Burger Barn")

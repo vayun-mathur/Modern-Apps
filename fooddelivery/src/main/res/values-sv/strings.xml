@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="action_cancel">Avbryt</string>
     <string name="first_name">Förnamn</string>
     <string name="last_name">Efternamn</string>
-    <string name="email">E-post</string>
     <string name="addresses">Adresser</string>
     <string name="delete_account">Ta bort konto</string>
     <string name="app_name">Matleverans</string>
@@ -27,7 +25,10 @@
     <string name="no_deals_yet">Inga erbjudanden just nu</string>
     <string name="deals_will_appear_here">Nya erbjudanden visas här</string>
     <string name="deal_unlocked">Erbjudande upplåst</string>
-    <string name="deal_progress">%1$d av %2$d beställningar</string>
+    <plurals name="deal_progress">
+        <item quantity="one">%1$d av %2$d beställning</item>
+        <item quantity="other">%1$d av %2$d beställningar</item>
+    </plurals>
     <string name="rewards">Belöningar</string>
     <string name="rewards_available">Belöningar för %1$s finns här</string>
     <string name="no_rewards_here_yet">Inga belöningar på den här restaurangen ännu</string>

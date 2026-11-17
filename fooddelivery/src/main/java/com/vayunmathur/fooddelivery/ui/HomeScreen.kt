@@ -40,11 +40,10 @@ import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.library.util.sharedText
-import com.vayunmathur.fooddelivery.api.BitesMerchants
+import com.vayunmathur.fooddelivery.network.BitesMerchants
 import com.vayunmathur.fooddelivery.data.AddressStore
 import com.vayunmathur.fooddelivery.data.Merchant
 import com.vayunmathur.fooddelivery.platform.AppInit
@@ -82,68 +81,9 @@ fun HomeScreen(onMerchantClick: (Int) -> Unit) {
     )
 }
 
-/**
- * The nearby-restaurant list, with no API call or address lookup of its own so it can be
- * rendered from a `@Preview` — see `src/screenshotTest`, which is where the store listing
- * images come from.
- */
-@Composable
-fun HomeContent(
-    merchants: List<Merchant>,
-    loading: Boolean = false,
-    noAddress: Boolean = false,
-    onMerchantClick: (Int) -> Unit = {},
-) {
-    Scaffold { padding ->
-        if (loading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (noAddress) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconHome(modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(12.dp))
-                    Text(stringResource(R.string.set_your_address), style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(4.dp))
-                    Text(stringResource(R.string.add_an_address_in_account_to_see_nearby),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        } else if (merchants.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.no_restaurants_found), style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.check_your_connection_or_try_again_later),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 300.dp),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(padding)
-            ) {
-                // Deliberately unkeyed: /merchants/all/stores can return several store rows
-                // per merchant and Merchant has no id-independent identity, so a key risks the
-                // duplicate-key crash. It would buy nothing anyway — `merchants` is assigned
-                // once and never replaced while the grid is on screen.
-                items(merchants) { merchant ->
-                    MerchantCard(merchant) { onMerchantClick(merchant.id) }
-                }
-            }
-        }
-    }
-}
 
 @Composable
-private fun MerchantCard(merchant: Merchant, onClick: () -> Unit) {
+internal fun MerchantCard(merchant: Merchant, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column {
             if (merchant.displayImage.isNotEmpty()) {

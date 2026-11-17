@@ -1,4 +1,4 @@
-package com.vayunmathur.fooddelivery.api
+package com.vayunmathur.fooddelivery.network
 
 import com.vayunmathur.fooddelivery.data.MerchantRewards
 import com.vayunmathur.fooddelivery.data.PlatformSavings

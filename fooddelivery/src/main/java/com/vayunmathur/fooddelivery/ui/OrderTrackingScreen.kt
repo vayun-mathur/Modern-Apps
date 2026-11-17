@@ -58,7 +58,7 @@ import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.fooddelivery.R
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.fooddelivery.api.BitesOrders
+import com.vayunmathur.fooddelivery.network.BitesOrders
 import com.vayunmathur.fooddelivery.data.Order
 import com.vayunmathur.fooddelivery.data.OrderStage
 import com.vayunmathur.fooddelivery.notifications.OrderTrackingService

@@ -12,8 +12,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.fooddelivery.api.BitesAuth
-import com.vayunmathur.fooddelivery.api.BitesCore
+import com.vayunmathur.fooddelivery.network.BitesAuth
+import com.vayunmathur.fooddelivery.network.BitesCore
 import com.vayunmathur.fooddelivery.data.AuthToken
 import com.vayunmathur.fooddelivery.data.CartItem
 import com.vayunmathur.fooddelivery.data.Customer

@@ -1,4 +1,4 @@
-package com.vayunmathur.fooddelivery.ipc
+package com.vayunmathur.fooddelivery.intents
 
 /**
  * Wire contract for the `fooddelivery://restaurant/<id>` cross-app deep link that opens a specific

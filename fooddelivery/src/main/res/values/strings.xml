@@ -23,8 +23,11 @@
     <string name="no_deals_yet">No deals right now</string>
     <string name="deals_will_appear_here">New offers will show up here</string>
     <string name="deal_unlocked">Deal unlocked</string>
-    <!-- %1$d = orders so far, %2$d = orders needed -->
-    <string name="deal_progress">%1$d of %2$d orders</string>
+    <!-- %1$d = orders so far, %2$d = orders needed (the total, which drives the plural) -->
+    <plurals name="deal_progress">
+        <item quantity="one">%1$d of %2$d order</item>
+        <item quantity="other">%1$d of %2$d orders</item>
+    </plurals>
     <string name="rewards">Rewards</string>
     <!-- %1$s = a dollar amount of reward credit -->
     <string name="rewards_available">%1$s in rewards available here</string>

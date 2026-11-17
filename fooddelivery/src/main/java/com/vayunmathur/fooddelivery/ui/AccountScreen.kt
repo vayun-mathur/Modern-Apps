@@ -28,9 +28,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.vayunmathur.fooddelivery.R
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.fooddelivery.api.BitesAuth
-import com.vayunmathur.fooddelivery.api.BitesCustomers
-import com.vayunmathur.fooddelivery.api.BitesRewards
+import com.vayunmathur.fooddelivery.network.BitesAuth
+import com.vayunmathur.fooddelivery.network.BitesCustomers
+import com.vayunmathur.fooddelivery.network.BitesRewards
 import com.vayunmathur.fooddelivery.data.AddressStore
 import com.vayunmathur.fooddelivery.data.Customer
 import com.vayunmathur.fooddelivery.data.CustomerSavings
@@ -46,7 +46,7 @@ import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import androidx.compose.ui.platform.LocalContext
@@ -108,7 +108,7 @@ fun AccountScreen() {
         }
     }
 
-    Scaffold { padding ->
+    AppScaffold(topBar = {}) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding)
                 .verticalScroll(rememberScrollState()).padding(16.dp),

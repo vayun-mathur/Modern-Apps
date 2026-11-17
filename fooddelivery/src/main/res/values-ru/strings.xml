@@ -2,7 +2,6 @@
 <resources>
     <string name="first_name">Имя</string>
     <string name="last_name">Фамилия</string>
-    <string name="email">Email</string>
     <string name="addresses">Адреса</string>
     <string name="delete_account">Удалить учетку</string>
 </resources>

@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="action_cancel">キャンセル</string>
     <string name="first_name">名</string>
     <string name="last_name">姓</string>
-    <string name="email">Eメール</string>
     <string name="addresses">住所</string>
 </resources>

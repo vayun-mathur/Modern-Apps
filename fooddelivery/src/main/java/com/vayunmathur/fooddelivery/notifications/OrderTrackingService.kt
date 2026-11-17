@@ -9,7 +9,7 @@ import android.os.Build
 import android.os.IBinder
 import com.vayunmathur.library.log.Log
 import androidx.core.app.NotificationManagerCompat
-import com.vayunmathur.fooddelivery.api.BitesOrders
+import com.vayunmathur.fooddelivery.network.BitesOrders
 import com.vayunmathur.fooddelivery.data.Order
 import com.vayunmathur.fooddelivery.platform.AppInit
 import kotlinx.coroutines.CoroutineScope

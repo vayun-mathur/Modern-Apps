@@ -1,4 +1,4 @@
-package com.vayunmathur.fooddelivery.api
+package com.vayunmathur.fooddelivery.network
 
 import android.app.Application
 import com.vayunmathur.fooddelivery.data.AuthToken

@@ -1,8 +1,8 @@
 package com.vayunmathur.fooddelivery.intents
 
 import android.content.Context
-import com.vayunmathur.fooddelivery.api.BitesMerchants
-import com.vayunmathur.fooddelivery.api.BitesOrders
+import com.vayunmathur.fooddelivery.network.BitesMerchants
+import com.vayunmathur.fooddelivery.network.BitesOrders
 import com.vayunmathur.fooddelivery.data.AddressStore
 import com.vayunmathur.fooddelivery.data.CartItem
 import com.vayunmathur.fooddelivery.data.CartStore

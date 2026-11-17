@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.fooddelivery.api.BitesCore
+import com.vayunmathur.fooddelivery.network.BitesCore
 import com.vayunmathur.fooddelivery.notifications.OrderTrackingService
 import com.vayunmathur.library.network.SimpleResponse
 import org.junit.runner.RunWith

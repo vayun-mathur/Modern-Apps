@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="email">E-mail</string>
-    <string name="action_cancel">Annuler</string>
     <string name="delete_account">Supprimer le compte</string>
 </resources>

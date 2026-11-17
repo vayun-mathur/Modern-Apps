@@ -5,7 +5,7 @@ import com.vayunmathur.fooddelivery.data.RemoteImageFetchers
 import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.log.Log
 import androidx.core.content.edit
-import com.vayunmathur.fooddelivery.api.BitesAuth
+import com.vayunmathur.fooddelivery.network.BitesAuth
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import kotlinx.coroutines.CompletableDeferred
