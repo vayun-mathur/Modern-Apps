@@ -29,9 +29,9 @@ import com.vayunmathur.launcher.platform.onStartImpl
 import com.vayunmathur.launcher.platform.reconcileNowImpl
 import com.vayunmathur.launcher.platform.onStopImpl
 import com.vayunmathur.launcher.platform.refreshDefaultHomeImpl
-import com.vayunmathur.launcher.tv.platform.TvHomeViewModel
-import com.vayunmathur.launcher.tv.TvNavigation
-import com.vayunmathur.launcher.tv.TvRoute
+import com.vayunmathur.launcher.platform.TvHomeViewModel
+import com.vayunmathur.launcher.ui.TvNavigation
+import com.vayunmathur.launcher.ui.TvRoute
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.NavBackStack

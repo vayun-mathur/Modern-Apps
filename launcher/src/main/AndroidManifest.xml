@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.MODIFY_QUIET_MODE"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Only for the TV network tile: Wi-Fi, Ethernet or offline, and the Wi-Fi signal. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -56,6 +57,10 @@
         android:required="false" />
     <uses-feature
         android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <!-- Wi-Fi is only read for the TV network tile; Ethernet-only TVs must still install. -->
+    <uses-feature
+        android:name="android.hardware.wifi"
         android:required="false" />
 
     <application

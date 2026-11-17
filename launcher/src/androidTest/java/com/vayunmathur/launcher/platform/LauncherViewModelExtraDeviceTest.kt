@@ -5,7 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import com.vayunmathur.launcher.domain.toRaw
-import com.vayunmathur.launcher.tv.platform.TvInputs
+import com.vayunmathur.launcher.platform.TvInputs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
