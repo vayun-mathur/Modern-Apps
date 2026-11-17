@@ -9,13 +9,12 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Constraints
-import com.vayunmathur.code.syntax.LanguageSpec
-import com.vayunmathur.code.syntax.SyntaxColors
-import com.vayunmathur.code.syntax.TsColorSpan
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.FoldRegion
-
+import com.vayunmathur.code.domain.syntax.LanguageSpec
+import com.vayunmathur.code.domain.syntax.SyntaxColors
+import com.vayunmathur.code.domain.syntax.TsColorSpan
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.domain.FoldRegion
 /** Largest visible-line index k with `visualStarts[k] <= visualRow` (soft-wrap row lookup). */
 internal fun visualRowToVisibleIndex(visibleLines: List<Int>, visualStarts: IntArray, visualRow: Int): Int {
     if (visibleLines.isEmpty()) return 0

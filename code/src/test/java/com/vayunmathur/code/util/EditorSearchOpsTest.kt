@@ -8,6 +8,21 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.code.platform.COMPLETIONS_DELAY_MS
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.MAX_COMPLETIONS
+import com.vayunmathur.code.platform.MAX_COMPLETION_BUFFER_CHARS
+import com.vayunmathur.code.platform.MAX_MATCHES_PER_FILE
+import com.vayunmathur.code.platform.MAX_PROJECT_FILES
+import com.vayunmathur.code.platform.MAX_RECENT_FILES
+import com.vayunmathur.code.platform.MAX_SEARCH_FILE_SIZE
+import com.vayunmathur.code.platform.MAX_SEARCH_RESULTS
+import com.vayunmathur.code.platform.MIN_COMPLETION_PREFIX
+import com.vayunmathur.code.platform.SKIP_DIRS
+import com.vayunmathur.code.platform.loadGitIgnore
+import com.vayunmathur.code.platform.relativeTo
+import com.vayunmathur.code.platform.addRecentFile
+import com.vayunmathur.code.platform.toProjectEntry
 
 /** Tests for the pure project-search helpers: path math, gitignore loading, search constants. */
 @RunWith(RobolectricTestRunner::class)

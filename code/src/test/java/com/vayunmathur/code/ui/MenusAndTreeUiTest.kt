@@ -14,11 +14,11 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.TabUiState
-import com.vayunmathur.code.util.TreeRowUiState
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.platform.TabUiState
+import com.vayunmathur.code.platform.TreeRowUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test

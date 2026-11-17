@@ -6,6 +6,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.LineEnding
+import com.vayunmathur.code.domain.TextEncoding
 
 /** Unit tests for the pure encoding / line-ending detection and round-tripping. */
 class TextEncodingTest {

@@ -14,9 +14,9 @@ import com.vayunmathur.library.util.NavBackStack
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.util.EditorViewModel
-import com.vayunmathur.code.util.OpenTab
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.OpenTab
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test

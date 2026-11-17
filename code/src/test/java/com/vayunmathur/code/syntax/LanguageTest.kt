@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.domain.syntax.TokenKind
 
 /**
  * Pure-JVM coverage for the language table ([Language.fromFileName],

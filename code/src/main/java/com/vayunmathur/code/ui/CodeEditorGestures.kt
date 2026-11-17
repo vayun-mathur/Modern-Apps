@@ -41,8 +41,8 @@ internal fun offsetAtWrapped(
     measurer: TextMeasurer,
     style: TextStyle,
     wrapConstraints: Constraints,
-    spec: com.vayunmathur.code.syntax.LanguageSpec?,
-    colors: com.vayunmathur.code.syntax.SyntaxColors,
+    spec: com.vayunmathur.code.domain.syntax.LanguageSpec?,
+    colors: com.vayunmathur.code.domain.syntax.SyntaxColors,
 ): Int {
     if (visibleLines.isEmpty()) return 0
     val visualRow = ((y + scrollY) / lineHeight).toInt().coerceIn(0, (totalVisualRows - 1).coerceAtLeast(0))

@@ -6,8 +6,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.util.EditorViewModel
-import com.vayunmathur.code.util.clearGitMessage
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.clearGitMessage
 import com.vayunmathur.library.util.NavBackStack
 import org.junit.Rule
 import org.junit.runner.RunWith

@@ -20,13 +20,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
-import com.vayunmathur.code.syntax.SyntaxColors
-import com.vayunmathur.code.syntax.TsColorSpan
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.FoldRegion
-
+import com.vayunmathur.code.domain.syntax.SyntaxColors
+import com.vayunmathur.code.domain.syntax.TsColorSpan
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.domain.FoldRegion
 /** Values the editor canvas reads; built per composition in [CodeEditorView]. */
 internal data class EditorCanvasData(
     val value: TextFieldValue,
@@ -46,7 +45,7 @@ internal data class EditorCanvasData(
     val wrapConstraints: Constraints,
     val style: TextStyle,
     val colors: SyntaxColors,
-    val spec: com.vayunmathur.code.syntax.LanguageSpec?,
+    val spec: com.vayunmathur.code.domain.syntax.LanguageSpec?,
     val tsSpans: List<TsColorSpan>?,
     val highlightMatches: List<IntRange>,
     val activeMatch: Int,

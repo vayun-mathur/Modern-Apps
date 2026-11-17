@@ -12,7 +12,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.code.MainActivity
 import com.vayunmathur.code.Navigation
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.util.EditorViewModel
+import com.vayunmathur.code.platform.EditorViewModel
 import java.io.File
 import kotlinx.serialization.json.Json
 import org.junit.Rule
@@ -78,17 +78,17 @@ class MainAndExpandedUiTest {
     @Test
     @Config(qualifiers = "w1000dp-h800dp")
     fun expandedEditorScreenShowsTreeBesideEditor() {
-        val s = com.vayunmathur.code.util.CodeUiState(
+        val s = com.vayunmathur.code.platform.CodeUiState(
             tabs = listOf(
-                com.vayunmathur.code.util.TabUiState(
+                com.vayunmathur.code.platform.TabUiState(
                     name = "a.kt",
                     value = androidx.compose.ui.text.input.TextFieldValue("fun f() {}"),
-                    language = com.vayunmathur.code.syntax.Language.KOTLIN,
+                    language = com.vayunmathur.code.domain.syntax.Language.KOTLIN,
                 ),
             ),
             currentIndex = 0, folderOpen = true, rootName = "proj",
         )
-        rule.setContent { EditorScreen(state = s, actions = com.vayunmathur.code.util.CodeActions.Noop) }
+        rule.setContent { EditorScreen(state = s, actions = com.vayunmathur.code.platform.CodeActions.Noop) }
         rule.onNodeWithText("proj").assertIsDisplayed()
         rule.onNodeWithText("No file open").assertDoesNotExist()
     }
@@ -97,14 +97,14 @@ class MainAndExpandedUiTest {
     fun findBarReplaceButtonsFire() {
         var replaced = 0
         var replacedAll = 0
-        val actions = object : com.vayunmathur.code.util.CodeActions {
+        val actions = object : com.vayunmathur.code.platform.CodeActions {
             override fun replaceRange(range: IntRange, replacement: String) { replaced++ }
             override fun replaceAll(matches: List<IntRange>, replacement: String) { replacedAll++ }
         }
-        val tab = com.vayunmathur.code.util.TabUiState(
+        val tab = com.vayunmathur.code.platform.TabUiState(
             name = "a.kt",
             value = androidx.compose.ui.text.input.TextFieldValue("fun fun"),
-            language = com.vayunmathur.code.syntax.Language.KOTLIN,
+            language = com.vayunmathur.code.domain.syntax.Language.KOTLIN,
         )
         rule.setContent {
             CodeEditor(tab = tab, actions = actions, softWrap = false, showFind = true, onCloseFind = {}, initialQuery = "fun")
@@ -117,18 +117,18 @@ class MainAndExpandedUiTest {
     @Test
     fun completionPopupAcceptFires() {
         var accepted: String? = null
-        val actions = object : com.vayunmathur.code.util.CodeActions {
-            override fun acceptCompletion(completion: com.vayunmathur.code.util.Completion) { accepted = completion.insertText }
+        val actions = object : com.vayunmathur.code.platform.CodeActions {
+            override fun acceptCompletion(completion: com.vayunmathur.code.domain.Completion) { accepted = completion.insertText }
         }
-        val tab = com.vayunmathur.code.util.TabUiState(
+        val tab = com.vayunmathur.code.platform.TabUiState(
             name = "a.kt",
             value = androidx.compose.ui.text.input.TextFieldValue("cou", androidx.compose.ui.text.TextRange(3)),
-            language = com.vayunmathur.code.syntax.Language.KOTLIN,
+            language = com.vayunmathur.code.domain.syntax.Language.KOTLIN,
         )
         rule.setContent {
             CodeEditor(
                 tab = tab, actions = actions, softWrap = false, showFind = false, onCloseFind = {},
-                completions = listOf(com.vayunmathur.code.util.Completion("counter", "counter", 7, com.vayunmathur.code.util.CompletionKind.WORD)),
+                completions = listOf(com.vayunmathur.code.domain.Completion("counter", "counter", 7, com.vayunmathur.code.domain.CompletionKind.WORD)),
                 showCompletions = true,
             )
         }

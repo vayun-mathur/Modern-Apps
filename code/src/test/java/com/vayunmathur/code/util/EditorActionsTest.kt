@@ -3,13 +3,19 @@ package com.vayunmathur.code.util
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.Completion
+import com.vayunmathur.code.domain.CompletionKind
+import com.vayunmathur.code.domain.Edit
+import com.vayunmathur.code.domain.Resolution
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.OpenTab
 
 /** Robolectric tests for the synchronous action-delegate paths (tabs, edits, folds, completion accept). */
 @RunWith(RobolectricTestRunner::class)

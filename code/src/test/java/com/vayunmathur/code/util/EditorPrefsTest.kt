@@ -9,6 +9,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.code.data.EditorPrefs
+import com.vayunmathur.code.domain.UserSnippet
+import com.vayunmathur.code.platform.setGitAuthorEmail
+import com.vayunmathur.code.platform.setGitAuthorName
+import com.vayunmathur.code.platform.setGitToken
+import com.vayunmathur.code.platform.setGitUsername
 
 /** Robolectric tests for [EditorPrefs] DataStore round-trips (defaults, setters, clears). */
 @RunWith(RobolectricTestRunner::class)

@@ -15,7 +15,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,13 +33,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vayunmathur.code.syntax.SyntaxTransformation
-import com.vayunmathur.code.syntax.rememberSyntaxColors
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.Completion
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.TabUiState
+import com.vayunmathur.code.domain.syntax.SyntaxTransformation
+import com.vayunmathur.code.domain.syntax.rememberSyntaxColors
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.domain.Completion
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.platform.TabUiState
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -61,7 +63,7 @@ fun CodeEditor(
     initialQuery: String = "",
     completions: List<Completion> = emptyList(),
     showCompletions: Boolean = false,
-    editorTheme: String = com.vayunmathur.code.syntax.EditorThemes.DEFAULT,
+    editorTheme: String = com.vayunmathur.code.domain.syntax.EditorThemes.DEFAULT,
     diagnostics: List<Diagnostic> = emptyList(),
     /** True when this is the secondary split pane, so focus routes shared actions there. */
     secondaryPane: Boolean = false,
@@ -75,7 +77,7 @@ fun CodeEditor(
     var replacement by remember(tab.name) { mutableStateOf("") }
     var caseSensitive by remember(tab.name) { mutableStateOf(false) }
     var useRegex by remember(tab.name) { mutableStateOf(false) }
-    var activeMatch by remember(tab.name) { mutableStateOf(0) }
+    var activeMatch by remember(tab.name) { mutableIntStateOf(0) }
 
     val text = tab.value.text
     val regexValid = remember(query, useRegex) {
@@ -151,6 +153,11 @@ fun CodeEditor(
 
         val verticalScroll = rememberScrollState()
         val horizontalScroll = rememberScrollState()
+        // Scroll offsets change on every scroll frame; read them through derived
+        // state so composition itself does not subscribe to the raw scroll values
+        // (only the completion-popup position below observes them).
+        val hScrollPx by remember { derivedStateOf { horizontalScroll.value } }
+        val vScrollPx by remember { derivedStateOf { verticalScroll.value } }
         val lineCount = remember(text) { text.count { it == '\n' } + 1 }
         var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
@@ -176,8 +183,8 @@ fun CodeEditor(
                     val padPx = with(LocalDensity.current) { 8.dp.roundToPx() }
                     val safeCaret = caret.coerceIn(0, layout.layoutInput.text.length)
                     val cursorRect = layout.getCursorRect(safeCaret)
-                    val x = (cursorRect.left - horizontalScroll.value + padPx).roundToInt()
-                    val y = (cursorRect.bottom - verticalScroll.value).roundToInt()
+                    val x = (cursorRect.left - hScrollPx + padPx).roundToInt()
+                    val y = (cursorRect.bottom - vScrollPx).roundToInt()
                     CompletionPopup(
                         completions = completions,
                         offsetX = x,

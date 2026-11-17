@@ -10,7 +10,6 @@
     <string name="open_a_folder_to_browse_your_project_or">Open a folder to browse your project, or open a single file.</string>
     <string name="new_file">New file</string>
     <string name="new_folder">New folder</string>
-    <string name="more_actions">More actions</string>
     <string name="delete_title">Delete "%1$s"?</string>
     <string name="delete_message">This cannot be undone.</string>
     <string name="appearance">Appearance</string>
@@ -37,12 +36,9 @@
     <string name="use_regex">Regex</string>
     <string name="invalid_regex">Invalid pattern</string>
     <string name="search_in_project">Search in project</string>
-    <string name="searching">Searching\u2026</string>
     <string name="no_results">No results</string>
-    <string name="line_number">Line %1$d</string>
     <string name="storage_permission_title">Storage access needed</string>
     <string name="storage_permission_rationale">Code needs all-files access to open your projects, run git and use the terminal on real file paths.</string>
-    <string name="grant_access">Grant access</string>
     <string name="open_this_folder">Open this folder</string>
     <string name="toggle_comment">Toggle comment</string>
     <string name="duplicate_line">Duplicate line</string>
@@ -123,7 +119,5 @@
     <string name="show_indent_guides_desc">Draw vertical guides at each indent level</string>
     <string name="show_minimap">Minimap</string>
     <string name="show_minimap_desc">Show a code overview beside the experimental editor</string>
-    <string name="fold_all">Fold all</string>
-    <string name="unfold_all">Unfold all</string>
     <string name="problems">Problems</string>
 </resources>

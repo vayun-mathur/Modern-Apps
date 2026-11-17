@@ -17,16 +17,16 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.DiffRow
-import com.vayunmathur.code.util.DiffRowType
-import com.vayunmathur.code.util.EditorViewModel
-import com.vayunmathur.code.util.GitRepo
-import com.vayunmathur.code.util.TabUiState
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.domain.DiffRow
+import com.vayunmathur.code.domain.DiffRowType
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.data.GitRepo
+import com.vayunmathur.code.platform.TabUiState
 import com.vayunmathur.library.util.NavBackStack
 import java.io.File
 import org.junit.Rule
@@ -34,6 +34,10 @@ import org.junit.runner.RunWith
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.platform.deleteLine
+import com.vayunmathur.code.platform.duplicateLine
+import com.vayunmathur.code.platform.moveLineDown
+import com.vayunmathur.code.platform.moveLineUp
 
 /** Wave-2: GitPage repo interactions and EditorToolbar overflow / dialogs. */
 @RunWith(AndroidJUnit4::class)

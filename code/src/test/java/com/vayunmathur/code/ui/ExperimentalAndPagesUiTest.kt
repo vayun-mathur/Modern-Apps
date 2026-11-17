@@ -17,22 +17,23 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.Completion
-import com.vayunmathur.code.util.CompletionKind
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.EditorViewModel
-import com.vayunmathur.code.util.ProjectFileEntry
-import com.vayunmathur.code.util.TabUiState
-import com.vayunmathur.code.util.CodeUiState
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.domain.Completion
+import com.vayunmathur.code.domain.CompletionKind
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.ProjectFileEntry
+import com.vayunmathur.code.platform.TabUiState
+import com.vayunmathur.code.platform.CodeUiState
 import com.vayunmathur.library.util.NavBackStack
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.Edit
 
 /** Robolectric tests for the experimental editor, folder browser, terminal-with-folder, snippet dialogs and command items. */
 @RunWith(AndroidJUnit4::class)
@@ -159,7 +160,7 @@ class ExperimentalAndPagesUiTest {
     @Test
     fun snippetsEditDialogPrefills() {
         val v = vm()
-        v.userSnippets.add(com.vayunmathur.code.util.UserSnippet("log", "println()", "KOTLIN"))
+        v.userSnippets.add(com.vayunmathur.code.domain.UserSnippet("log", "println()", "KOTLIN"))
         rule.setContent { SnippetsPage(v, backStack()) }
         rule.onNodeWithText("log").assertIsDisplayed()
         rule.onNodeWithText("Kotlin").assertIsDisplayed()

@@ -2,9 +2,14 @@ package com.vayunmathur.code.util
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.code.data.decodeFoldState
+import com.vayunmathur.code.data.decodeSnippets
+import com.vayunmathur.code.data.encodeFoldState
+import com.vayunmathur.code.data.encodeSnippets
+import com.vayunmathur.code.domain.UserSnippet
 
 /** Unit tests for the snippet/fold-state JSON codecs (org.json runs for real under Robolectric). */
 @RunWith(RobolectricTestRunner::class)

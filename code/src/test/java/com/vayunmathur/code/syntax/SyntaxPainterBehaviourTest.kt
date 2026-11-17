@@ -5,6 +5,14 @@ import androidx.compose.ui.text.AnnotatedString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.syntax.EditorThemes
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.domain.syntax.LanguageSpec
+import com.vayunmathur.code.domain.syntax.MAX_HIGHLIGHT_CHARS
+import com.vayunmathur.code.domain.syntax.SyntaxColors
+import com.vayunmathur.code.domain.syntax.SyntaxTransformation
+import com.vayunmathur.code.domain.syntax.TokenKind
+import com.vayunmathur.code.domain.syntax.TsColorSpan
 
 /** Edge branches of [SyntaxTransformation]: budgets, ts spans, bracket matching, matches. */
 class SyntaxPainterBehaviourTest {

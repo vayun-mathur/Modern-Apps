@@ -5,6 +5,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.domain.syntax.LanguageSpec
+import com.vayunmathur.code.domain.syntax.TokenKind
 
 /** Tokenizer coverage across every language spec: keywords, strings, comments, numbers. */
 class SyntaxSpecsTest {

@@ -2,7 +2,7 @@ package com.vayunmathur.code.util
 
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
@@ -12,6 +12,10 @@ import org.robolectric.Shadows.shadowOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.OpenTab
+import com.vayunmathur.code.platform.applyReload
+import com.vayunmathur.code.platform.openFile
 
 /**
  * A failed file read must never fabricate an empty buffer: an empty tab (or an emptied reload)

@@ -22,8 +22,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.code.R
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.fuzzyRank
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.domain.fuzzyRank
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField

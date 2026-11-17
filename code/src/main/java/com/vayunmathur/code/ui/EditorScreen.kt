@@ -1,8 +1,6 @@
 package com.vayunmathur.code.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,15 +19,12 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.code.R
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.EditorViewModel
-import com.vayunmathur.code.util.extractSymbols
-import com.vayunmathur.code.util.openExternal
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.domain.extractSymbols
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DrawerValue
@@ -45,41 +40,6 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.ui.rememberDrawerState
 import kotlinx.coroutines.launch
-
-/**
- * Binds [EditorViewModel] to the stateless [EditorScreen].
- *
- * The two document pickers stay here: they need an activity result launcher, which is
- * exactly what a `@Preview` cannot provide.
- */
-@Composable
-fun EditorPage(
-    viewModel: EditorViewModel,
-    onOpenSettings: () -> Unit = {},
-    onOpenSearch: () -> Unit = {},
-    onOpenFolder: () -> Unit = {},
-    onOpenGit: () -> Unit = {},
-    onOpenTerminal: () -> Unit = {},
-    onOpenPreview: () -> Unit = {},
-) {
-    val fileLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri -> uri?.let(viewModel::openExternal) }
-    val activity = LocalContext.current as? android.app.Activity
-
-    EditorScreen(
-        state = viewModel.uiState,
-        actions = viewModel.actions,
-        onOpenFolder = onOpenFolder,
-        onOpenFile = { fileLauncher.launch(arrayOf("*/*")) },
-        onOpenSettings = onOpenSettings,
-        onOpenSearch = onOpenSearch,
-        onOpenGit = onOpenGit,
-        onOpenTerminal = onOpenTerminal,
-        onOpenPreview = onOpenPreview,
-        onExitApp = { activity?.finish() },
-    )
-}
 
 /**
  * Top-level editor scaffold: a navigation drawer holding the [FileTreePane], a top bar to

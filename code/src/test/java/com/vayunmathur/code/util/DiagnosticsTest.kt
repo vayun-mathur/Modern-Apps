@@ -1,11 +1,14 @@
 package com.vayunmathur.code.util
 
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.domain.computeDiagnostics
 
 /**
  * Unit tests for the pure diagnostics validators. JSON is validated via `org.json`, which runs

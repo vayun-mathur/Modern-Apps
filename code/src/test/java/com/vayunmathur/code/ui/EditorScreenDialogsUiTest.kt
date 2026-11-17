@@ -10,12 +10,12 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.TabUiState
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.platform.TabUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test
@@ -129,7 +129,7 @@ class EditorScreenDialogsUiTest {
     @Test
     fun editorPageBindsViewModel() {
         val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>() as android.app.Application
-        val v = com.vayunmathur.code.util.EditorViewModel(ctx)
+        val v = com.vayunmathur.code.platform.EditorViewModel(ctx)
         rule.setContent { EditorPage(v) }
         rule.onNodeWithText("No file open").assertIsDisplayed()
     }

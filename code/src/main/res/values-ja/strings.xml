@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="apply">適用</string>
     <string name="theme">テーマ</string>
     <string name="theme_light">ライト</string>
     <string name="theme_dark">ダーク</string>
-    <string name="create">作成</string>
-    <string name="search">検索</string>
     <string name="reload">再読み込み</string>
-    <string name="all">全て</string>
     <string name="new_folder">新しいフォルダ</string>
 </resources>

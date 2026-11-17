@@ -6,13 +6,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.Resolution
-import com.vayunmathur.code.util.TabUiState
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.domain.Resolution
+import com.vayunmathur.code.platform.TabUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test
@@ -76,7 +76,7 @@ class EditorScreenUiTest {
     fun outlineSymbolsFromBuffer() {
         val s = tabbed()
         val tab = s.activeTab!!
-        val symbols = com.vayunmathur.code.util.extractSymbols(tab.value.text, tab.language)
+        val symbols = com.vayunmathur.code.domain.extractSymbols(tab.value.text, tab.language)
         // Single Kotlin function "f" in the buffer.
         assertTrue(symbols.any { it.name == "f" })
     }

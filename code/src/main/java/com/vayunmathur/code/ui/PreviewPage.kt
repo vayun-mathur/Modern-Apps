@@ -14,9 +14,9 @@ import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import com.vayunmathur.code.R
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.util.EditorViewModel
-import com.vayunmathur.code.util.markdownToHtml
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.domain.markdownToHtml
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text

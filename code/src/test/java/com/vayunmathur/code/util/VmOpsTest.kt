@@ -4,7 +4,7 @@ import android.net.Uri
 import android.os.Looper
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import java.io.File
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -14,6 +14,32 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.vayunmathur.code.data.FileEntry
+import com.vayunmathur.code.data.FileFiles
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.OpenTab
+import com.vayunmathur.code.platform.TreeNode
+import com.vayunmathur.code.platform.checkExternalChanges
+import com.vayunmathur.code.platform.createFileImpl
+import com.vayunmathur.code.platform.createFolderImpl
+import com.vayunmathur.code.platform.deleteNodeImpl
+import com.vayunmathur.code.platform.gitCheckout
+import com.vayunmathur.code.platform.gitCommit
+import com.vayunmathur.code.platform.gitCreateBranch
+import com.vayunmathur.code.platform.gitInit
+import com.vayunmathur.code.platform.gitStage
+import com.vayunmathur.code.platform.loadFolder
+import com.vayunmathur.code.platform.loadGitDiff
+import com.vayunmathur.code.platform.loadSideBySideDiff
+import com.vayunmathur.code.platform.openExternal
+import com.vayunmathur.code.platform.openFile
+import com.vayunmathur.code.platform.openSearchResultImpl
+import com.vayunmathur.code.platform.refreshGit
+import com.vayunmathur.code.platform.refreshProjectFilesImpl
+import com.vayunmathur.code.platform.renameNodeImpl
+import com.vayunmathur.code.platform.saveTab
+import com.vayunmathur.code.platform.scheduleAutoSave
+import com.vayunmathur.code.platform.searchProjectImpl
 
 /** Robolectric tests for the ViewModel's async file/git/search/save operations (real temp dirs). */
 @RunWith(RobolectricTestRunner::class)

@@ -17,6 +17,7 @@ import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.currentValueOf
+import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformTextInputModifierNode
@@ -53,6 +54,11 @@ private data class CodeEditorInputElement(
     val onComposingChange: (TextRange?) -> Unit,
 ) : ModifierNodeElement<CodeEditorInputNode>() {
     override fun create() = CodeEditorInputNode(enabled, value, onValueChange, onComposingChange)
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "codeEditorInput"
+        properties["enabled"] = enabled
+    }
 
     override fun update(node: CodeEditorInputNode) {
         node.update(enabled, value, onValueChange, onComposingChange)

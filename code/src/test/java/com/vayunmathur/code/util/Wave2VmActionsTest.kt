@@ -3,12 +3,17 @@ package com.vayunmathur.code.util
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import java.io.File
 import org.junit.runner.RunWith
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.Edit
+import com.vayunmathur.code.domain.Resolution
+import com.vayunmathur.code.domain.UserSnippet
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.loadFolder
 
 /** Wave-2b: drives EditorViewModel.actions (tab/tree/edit/search/settings) over a real temp project. */
 @RunWith(org.robolectric.RobolectricTestRunner::class)

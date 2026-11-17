@@ -2,17 +2,11 @@
 <resources>
     <string name="theme">Tema</string>
     <string name="all_languages">Alla språk</string>
-    <string name="rename">Byt namn</string>
     <string name="new_folder">Ny mapp</string>
     <string name="new_file">Ny fil</string>
-    <string name="create">Skapa</string>
-    <string name="close">Stäng</string>
-    <string name="search">Sök</string>
     <string name="reload">Ladda om</string>
-    <string name="all">Alla</string>
     <string name="font_size">Teckenstorlek</string>
     <string name="no_results">Inga resultat</string>
-    <string name="settings">Inställningar</string>
     <string name="app_name">Kod</string>
     <string name="open_folder">Öppna mapp</string>
     <string name="no_file_open">Ingen fil är öppen</string>
@@ -21,10 +15,6 @@
     <string name="replace">Ersätt</string>
     <string name="no_folder_opened">Ingen mapp är öppen</string>
     <string name="open_a_folder_to_browse_your_project_or">Öppna en mapp för att bläddra i projektet, eller öppna en enskild fil.</string>
-    <string name="delete">Ta bort</string>
-    <string name="name">Namn</string>
-    <string name="cancel">Avbryt</string>
-    <string name="more_actions">Fler åtgärder</string>
     <string name="delete_title">Ta bort %1$s?</string>
     <string name="delete_message">Detta kan inte ångras.</string>
     <string name="appearance">Utseende</string>
@@ -49,11 +39,8 @@
     <string name="use_regex">Reguljärt uttryck</string>
     <string name="invalid_regex">Ogiltigt mönster</string>
     <string name="search_in_project">Sök i projektet</string>
-    <string name="searching">Söker…</string>
-    <string name="line_number">Rad %1$d</string>
     <string name="storage_permission_title">Lagringsåtkomst krävs</string>
     <string name="storage_permission_rationale">Kod behöver åtkomst till alla filer för att öppna projekt, köra Git och använda terminalen på riktiga filsökvägar.</string>
-    <string name="grant_access">Ge åtkomst</string>
     <string name="open_this_folder">Öppna den här mappen</string>
     <string name="toggle_comment">Växla kommentar</string>
     <string name="duplicate_line">Duplicera rad</string>
@@ -98,8 +85,6 @@
     <string name="quick_open_hint">Skriv ett filnamn</string>
     <string name="command_palette">Kommandopalett</string>
     <string name="command_palette_hint">Skriv ett kommando</string>
-    <string name="save">Spara</string>
-    <string name="undo">Ångra</string>
     <string name="redo">Gör om</string>
     <string name="save_all">Spara alla</string>
     <string name="disk_changed">Den här filen har ändrats på disken.</string>
@@ -120,7 +105,6 @@
     <string name="side_by_side">Sida vid sida</string>
     <string name="resolve_conflicts">Lös konflikter</string>
     <string name="no_conflicts">Inga sammanfogningskonflikter i den här filen.</string>
-    <string name="apply">Tillämpa</string>
     <string name="conflict_ours">Aktuell (vår)</string>
     <string name="conflict_theirs">Inkommande (deras)</string>
     <string name="conflict_keep_ours">Vår</string>
@@ -135,7 +119,5 @@
     <string name="show_indent_guides_desc">Rita lodräta hjälplinjer vid varje indragningsnivå</string>
     <string name="show_minimap">Minikarta</string>
     <string name="show_minimap_desc">Visa en kodöversikt bredvid den experimentella redigeraren</string>
-    <string name="fold_all">Fäll ihop alla</string>
-    <string name="unfold_all">Fäll ut alla</string>
     <string name="problems">Problem</string>
 </resources>

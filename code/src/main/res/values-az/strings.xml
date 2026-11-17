@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings">Parametrlər</string>
     <string name="theme_light">İşıq</string>
     <string name="theme_dark">Qaranlıq</string>
-    <string name="create">Yarat</string>
-    <string name="search">Axtarış</string>
     <string name="theme">Mövzu</string>
     <string name="app_name">Kod</string>
     <string name="open_folder">Qovluğu aç</string>
@@ -12,13 +9,8 @@
     <string name="open_file">Faylı aç</string>
     <string name="find">Tap</string>
     <string name="replace">Əvəz et</string>
-    <string name="all">Hamısı</string>
     <string name="no_folder_opened">Heç bir qovluq açılmayıb</string>
     <string name="open_a_folder_to_browse_your_project_or">Layihənizə nəzər salmaq üçün qovluq və ya tək bir fayl açın.</string>
     <string name="new_file">Yeni fayl</string>
     <string name="new_folder">Yeni qovluq</string>
-    <string name="rename">Adını dəyişdir</string>
-    <string name="delete">Sil</string>
-    <string name="name">Ad</string>
-    <string name="cancel">Ləğv et</string>
 </resources>

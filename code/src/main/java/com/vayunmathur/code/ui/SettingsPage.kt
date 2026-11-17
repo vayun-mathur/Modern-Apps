@@ -23,9 +23,9 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.code.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.syntax.EditorThemes
-import com.vayunmathur.code.util.EditorPrefs
-import com.vayunmathur.code.util.EditorViewModel
+import com.vayunmathur.code.domain.syntax.EditorThemes
+import com.vayunmathur.code.data.EditorPrefs
+import com.vayunmathur.code.platform.EditorViewModel
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.MaterialTheme

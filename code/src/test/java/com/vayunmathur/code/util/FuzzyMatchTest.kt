@@ -5,6 +5,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.fuzzyRank
+import com.vayunmathur.code.domain.fuzzyScore
+import com.vayunmathur.code.platform.EditorViewModel
 
 /** Unit tests for the pure fuzzy matcher used by quick-open and the command palette. */
 class FuzzyMatchTest {

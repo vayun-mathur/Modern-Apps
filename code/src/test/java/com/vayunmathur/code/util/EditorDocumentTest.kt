@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.Edit
+import com.vayunmathur.code.domain.EditorDocument
 
 /** Unit tests for the pure line-indexed document model. */
 class EditorDocumentTest {

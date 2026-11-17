@@ -5,6 +5,10 @@ import androidx.compose.ui.text.input.TextFieldValue
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.FoldRegion
+import com.vayunmathur.code.domain.computeFoldRegions
+import com.vayunmathur.code.platform.dedentSelection
+import com.vayunmathur.code.platform.indentSelection
 
 /** Unit tests for the pure fold-region computation and indent/dedent helpers. */
 class FoldRegionsTest {

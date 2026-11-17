@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="all">Wszystko</string>
     <string name="font_size">Rozmiar czcionki</string>
     <string name="theme_light">Jasny</string>
     <string name="theme_dark">Ciemny</string>
-    <string name="create">Utwórz</string>
 </resources>

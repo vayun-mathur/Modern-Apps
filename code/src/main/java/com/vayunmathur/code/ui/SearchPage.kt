@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.code.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.util.EditorViewModel
+import com.vayunmathur.code.platform.EditorViewModel
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconSearch

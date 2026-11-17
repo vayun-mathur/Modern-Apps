@@ -3,13 +3,7 @@
     <string name="font_size">Dimensione carattere</string>
     <string name="language">Lingua</string>
     <string name="reload">Ricarica</string>
-    <string name="all">Tutti</string>
     <string name="new_folder">Nuova cartella</string>
-    <string name="create">Crea</string>
-    <string name="delete">Elimina</string>
-    <string name="cancel">Annulla</string>
-    <string name="save">Salva</string>
-    <string name="name">Nome</string>
     <string name="preview">Anteprima</string>
     <string name="app_name">Codice</string>
     <string name="open_folder">Apri cartella</string>
@@ -20,11 +14,8 @@
     <string name="no_folder_opened">Nessuna cartella aperta</string>
     <string name="open_a_folder_to_browse_your_project_or">Apri una cartella per esplorare il progetto, o apri un file singolo.</string>
     <string name="new_file">Nuovo file</string>
-    <string name="rename">Rinomina</string>
-    <string name="more_actions">Altre azioni</string>
     <string name="delete_title">Eliminare %1$s?</string>
     <string name="delete_message">Questa operazione non può essere annullata.</string>
-    <string name="settings">Impostazioni</string>
     <string name="appearance">Aspetto</string>
     <string name="editor">Editor</string>
     <string name="tab_width">Larghezza scheda</string>
@@ -39,7 +30,6 @@
     <string name="auto_close_brackets_desc">Inserisci la parentesi o la virgoletta di chiusura corrispondente</string>
     <string name="soft_wrap">A capo automatico</string>
     <string name="soft_wrap_desc">Vai a capo automaticamente per le righe lunghe invece di scorrere</string>
-    <string name="close">Chiudi</string>
     <string name="go_to_line">Vai alla riga</string>
     <string name="line">Riga</string>
     <string name="go">Vai</string>

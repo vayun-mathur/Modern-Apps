@@ -3,6 +3,8 @@ package com.vayunmathur.code.util
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.GitIgnore
+import com.vayunmathur.code.domain.parseGitIgnore
 
 /** Unit tests for the pure [GitIgnore] matcher. */
 class GitIgnoreTest {

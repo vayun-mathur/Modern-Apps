@@ -9,11 +9,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import com.vayunmathur.code.util.Edit
-import com.vayunmathur.code.util.EditorDocument
-import com.vayunmathur.code.util.dedentSelection
-import com.vayunmathur.code.util.indentSelection
-
+import com.vayunmathur.code.domain.Edit
+import com.vayunmathur.code.domain.EditorDocument
+import com.vayunmathur.code.platform.dedentSelection
+import com.vayunmathur.code.platform.indentSelection
 /**
  * Handles an editor key press. Text edits go through [emit] (so smart input, undo/redo and
  * auto-save apply); multi-caret inserts/deletes are computed with an [EditorDocument]. Returns true

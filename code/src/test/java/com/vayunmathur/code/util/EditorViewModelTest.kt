@@ -3,7 +3,7 @@ package com.vayunmathur.code.util
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
@@ -11,6 +11,23 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.UserSnippet
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.OpenTab
+import com.vayunmathur.code.platform.TERMINAL_SCROLLBACK
+import com.vayunmathur.code.platform.duplicateLine
+import com.vayunmathur.code.platform.startTerminal
+import com.vayunmathur.code.platform.appendTerminalLine
+import com.vayunmathur.code.platform.clearDiffRows
+import com.vayunmathur.code.platform.clearGitDiff
+import com.vayunmathur.code.platform.clearGitMessage
+import com.vayunmathur.code.platform.clearTerminal
+import com.vayunmathur.code.platform.closeFolder
+import com.vayunmathur.code.platform.setGitAuthorEmail
+import com.vayunmathur.code.platform.setGitAuthorName
+import com.vayunmathur.code.platform.setGitToken
+import com.vayunmathur.code.platform.setGitUsername
+import com.vayunmathur.code.platform.terminalInterrupt
 
 /** Robolectric tests for [EditorViewModel] pure-state paths: tabs, prefs setters, snippets, terminal. */
 @RunWith(RobolectricTestRunner::class)

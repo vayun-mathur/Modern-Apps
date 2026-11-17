@@ -1,24 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="all">الكل</string>
     <string name="font_size">حجم الخط</string>
     <string name="reload">إعادة التحميل</string>
     <string name="new_folder">مجلد جديد</string>
-    <string name="create">إنشاء</string>
     <string name="open_folder">فتح مجلد</string>
     <string name="no_file_open">لا ملف مفتوح</string>
     <string name="open_file">فتح ملف</string>
     <string name="new_file">ملف جديد</string>
     <string name="no_folder_opened">لم يتم فتح أي مجلد</string>
     <string name="open_a_folder_to_browse_your_project_or">افتح مجلدًا لتصفح مشروعك، أو افتح ملفًا واحدًا.</string>
-    <string name="rename">إعادة التسمية</string>
-    <string name="delete">حذف</string>
-    <string name="name">الاسم</string>
-    <string name="cancel">إلغاء</string>
-    <string name="more_actions">المزيد من الإجراءات</string>
     <string name="delete_title">حذف %1$s؟</string>
     <string name="delete_message">هذا لا يمكن التراجع عنه.</string>
-    <string name="settings">الإعدادات</string>
     <string name="appearance">المظهر</string>
     <string name="editor">المحرر</string>
     <string name="theme">السمة</string>
@@ -26,20 +18,15 @@
     <string name="theme_system">النظام</string>
     <string name="theme_light">فاتح</string>
     <string name="theme_dark">داكن</string>
-    <string name="close">إغلاق</string>
     <string name="go_to_line">الانتقال إلى سطر</string>
     <string name="line">السطر</string>
     <string name="go">انتقل</string>
     <string name="discard_changes_title">تجاهل التغييرات غير المحفوظة؟</string>
     <string name="discard">تجاهل</string>
     <string name="search_in_project">البحث في المشروع</string>
-    <string name="search">البحث</string>
-    <string name="searching">جارٍ البحث…</string>
     <string name="no_results">لا نتائج</string>
-    <string name="line_number">السطر %1$d</string>
     <string name="storage_permission_title">مطلوب الوصول إلى التخزين</string>
     <string name="storage_permission_rationale">Code يحتاج للوصول إلى جميع الملفات لفتح مشاريعك، وتشغيل git واستخدام المحطة الطرفية على مسارات ملفات حقيقية.</string>
-    <string name="grant_access">منح الوصول</string>
     <string name="open_this_folder">فتح هذا المجلد</string>
     <string name="duplicate_line">تكرار السطر</string>
     <string name="move_line_up">تحريك السطر لأعلى</string>
@@ -59,8 +46,6 @@
     <string name="quick_open">فتح سريع</string>
     <string name="quick_open_hint">اكتب اسم ملف</string>
     <string name="command_palette_hint">اكتب أمرًا</string>
-    <string name="save">حفظ</string>
-    <string name="undo">تراجع</string>
     <string name="redo">إعادة</string>
     <string name="save_all">حفظ الكل</string>
     <string name="disk_changed">تم تغيير هذا الملف على القرص.</string>
@@ -68,7 +53,6 @@
     <string name="exit_unsaved_message">لديك تغييرات غير محفوظة. احفظهم قبل المغادرة؟</string>
     <string name="all_languages">جميع اللغات</string>
     <string name="language">اللغة</string>
-    <string name="apply">تطبيق</string>
     <string name="split_view">عرض مقسّم</string>
     <string name="experimental_editor">محرر تجريبي</string>
     <string name="app_name">كود</string>

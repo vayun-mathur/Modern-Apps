@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rename">שינוי שם</string>
     <string name="new_folder">תיקייה חדשה</string>
     <string name="new_file">קובץ חדש</string>
-    <string name="create">יצירה</string>
-    <string name="close">סגירה</string>
-    <string name="apply">החלה</string>
 </resources>

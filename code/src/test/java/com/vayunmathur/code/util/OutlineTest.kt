@@ -1,9 +1,11 @@
 package com.vayunmathur.code.util
 
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.SymbolKind
+import com.vayunmathur.code.domain.extractSymbols
 
 /** Unit tests for the pure per-language symbol extraction. */
 class OutlineTest {

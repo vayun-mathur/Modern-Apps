@@ -4,6 +4,17 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import com.vayunmathur.code.platform.applyEditorInput
+import com.vayunmathur.code.platform.deleteLine
+import com.vayunmathur.code.platform.duplicateLine
+import com.vayunmathur.code.platform.ensureFinalNewline
+import com.vayunmathur.code.platform.findLineMatches
+import com.vayunmathur.code.platform.lineStartOffset
+import com.vayunmathur.code.platform.moveLineDown
+import com.vayunmathur.code.platform.moveLineUp
+import com.vayunmathur.code.platform.reindentPaste
+import com.vayunmathur.code.platform.toggleLineComment
+import com.vayunmathur.code.platform.trimTrailingWhitespace
 
 /**
  * Unit tests for the pure editor helpers: smart input (indent carry, block-open, auto-close,

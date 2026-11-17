@@ -1,9 +1,13 @@
 package com.vayunmathur.code.util
 
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.CompletionKind
+import com.vayunmathur.code.domain.UserSnippet
+import com.vayunmathur.code.domain.computeCompletions
+import com.vayunmathur.code.domain.currentWordPrefix
 
 /** Unit tests for the pure completion core: prefix extraction, ranking and snippet expansion. */
 class CompletionTest {

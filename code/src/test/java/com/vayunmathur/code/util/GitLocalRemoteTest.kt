@@ -4,6 +4,7 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.data.GitRepo
 
 /** Tests for [GitRepo] clone/pull against local (file) remotes — no network. */
 class GitLocalRemoteTest {

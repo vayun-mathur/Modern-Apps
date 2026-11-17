@@ -1,6 +1,6 @@
 package com.vayunmathur.code.util
 
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

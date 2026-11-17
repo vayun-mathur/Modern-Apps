@@ -28,22 +28,22 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.code.MainActivity
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.syntax.SyntaxTransformation
-import com.vayunmathur.code.syntax.rememberSyntaxColors
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.Completion
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.EditorViewModel
-import com.vayunmathur.code.util.FileFiles
-import com.vayunmathur.code.util.OpenTab
-import com.vayunmathur.code.util.SearchResult
-import com.vayunmathur.code.util.TabUiState
-import com.vayunmathur.code.util.findLineMatches
-import com.vayunmathur.code.util.loadFolder
-import com.vayunmathur.code.util.openExternal
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.domain.syntax.SyntaxTransformation
+import com.vayunmathur.code.domain.syntax.rememberSyntaxColors
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.domain.Completion
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.data.FileFiles
+import com.vayunmathur.code.platform.OpenTab
+import com.vayunmathur.code.platform.SearchResult
+import com.vayunmathur.code.platform.TabUiState
+import com.vayunmathur.code.platform.findLineMatches
+import com.vayunmathur.code.platform.loadFolder
+import com.vayunmathur.code.platform.openExternal
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
@@ -57,6 +57,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.Shadows
 import org.robolectric.shadows.ShadowContentResolver
+import com.vayunmathur.code.platform.openFile
 
 /** Wave-3 final push: remaining syntax languages, project search/replace, URI files, editor states, MainActivity. */
 @RunWith(AndroidJUnit4::class)
@@ -115,7 +116,7 @@ class Wave3FinalPushTest {
             Language.DOCKERFILE to "# c\nFROM alpine\nRUN echo \"hi\"\nEXPOSE 8080",
             Language.GRADLE to "// c\ndef s = \"\"\"x\"\"\"\nif (true) { return 42 }",
         )
-        val colors = com.vayunmathur.code.syntax.SyntaxColors(
+        val colors = com.vayunmathur.code.domain.syntax.SyntaxColors(
             Color.Red, Color.Green, Color.Blue, Color.Gray, Color.Yellow, Color.Cyan, Color.Magenta,
             Color(0xFF111111), Color(0xFF222222), Color(0xFF333333), Color(0xFF444444), Color(0xFF555555),
             listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow),
@@ -164,7 +165,7 @@ class Wave3FinalPushTest {
     }
 
     @org.junit.Test fun syntaxThemesViaComposable() {
-        var captured: com.vayunmathur.code.syntax.SyntaxColors? = null
+        var captured: com.vayunmathur.code.domain.syntax.SyntaxColors? = null
         var theme by androidx.compose.runtime.mutableStateOf("monokai")
         rule.setContent { captured = rememberSyntaxColors(theme) }
         assertEquals(Color(0xFFF92672), captured!!.keyword)

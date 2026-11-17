@@ -1,7 +1,7 @@
 package com.vayunmathur.code.util
 
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -11,6 +11,18 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.code.data.FileEntry
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.OpenTab
+import com.vayunmathur.code.platform.TreeNode
+import com.vayunmathur.code.platform.closeFolder
+import com.vayunmathur.code.platform.closeTabImpl
+import com.vayunmathur.code.platform.closeTabsUnder
+import com.vayunmathur.code.platform.loadFolder
+import com.vayunmathur.code.platform.parentFileFor
+import com.vayunmathur.code.platform.refreshChildren
+import com.vayunmathur.code.platform.removeDescendants
+import com.vayunmathur.code.platform.selectTabImpl
 
 /** Robolectric tests for the file-tree operations: refresh, remove, select/close impls, tab repoint. */
 @RunWith(RobolectricTestRunner::class)

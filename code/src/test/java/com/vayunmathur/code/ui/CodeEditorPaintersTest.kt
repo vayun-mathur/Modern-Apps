@@ -16,11 +16,11 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.geometry.Size
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.syntax.SyntaxColors
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.FoldRegion
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.domain.syntax.SyntaxColors
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.domain.FoldRegion
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test
@@ -81,7 +81,7 @@ class CodeEditorPaintersTest {
                 measurer = m, style = style, charWidth = 8f, lineHeight = 20f, gutterWidth = 40f,
                 scrollX = 100f, scrollY = 20f, visibleLines = listOf(0,1,2), lines = lines, lineStarts = starts,
                 caret = -1, selMin = 5, selMax = 3, highlightMatches = emptyList(), activeMatch = -1,
-                caretColor = Color.Blue, colors = colors, spec = null, tsSpans = listOf(com.vayunmathur.code.syntax.TsColorSpan(0,3,Color.Green)),
+                caretColor = Color.Blue, colors = colors, spec = null, tsSpans = listOf(com.vayunmathur.code.domain.syntax.TsColorSpan(0,3,Color.Green)),
                 diagnosticsByLine = emptyMap(), severityColor = { Color.Red }, foldedHeaders = emptySet(), foldByHeader = emptyMap(),
                 extraCarets = listOf(9999), extraCaretColor = Color.Cyan, composing = null,
                 showIndentGuides = false, tabWidth = 4, guideColor = Color.Gray, showWhitespace = false, gutterColor = Color.Gray,

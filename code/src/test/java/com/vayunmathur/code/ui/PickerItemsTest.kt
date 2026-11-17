@@ -1,7 +1,7 @@
 package com.vayunmathur.code.ui
 
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.ProjectFileEntry
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.platform.ProjectFileEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

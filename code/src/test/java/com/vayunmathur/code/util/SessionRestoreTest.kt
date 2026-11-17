@@ -11,6 +11,8 @@ import org.robolectric.Shadows.shadowOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.data.EditorPrefs
+import com.vayunmathur.code.platform.EditorViewModel
 
 /** Tests that a fresh [EditorViewModel] restores the persisted folder, session tabs and fold state. */
 @RunWith(RobolectricTestRunner::class)

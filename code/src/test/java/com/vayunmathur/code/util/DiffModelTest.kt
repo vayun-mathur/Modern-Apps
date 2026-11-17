@@ -3,6 +3,8 @@ package com.vayunmathur.code.util
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.DiffRowType
+import com.vayunmathur.code.domain.parseUnifiedDiff
 
 /** Unit tests for the pure unified-diff parser. */
 class DiffModelTest {

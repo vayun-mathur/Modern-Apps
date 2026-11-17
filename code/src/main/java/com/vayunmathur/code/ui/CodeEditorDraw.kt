@@ -5,10 +5,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import com.vayunmathur.code.syntax.LanguageSpec
-import com.vayunmathur.code.syntax.SyntaxColors
-import com.vayunmathur.code.syntax.TsColorSpan
-
+import com.vayunmathur.code.domain.syntax.LanguageSpec
+import com.vayunmathur.code.domain.syntax.SyntaxColors
+import com.vayunmathur.code.domain.syntax.TsColorSpan
 /** Tokenizes a single line with [spec] and paints rainbow brackets; returns a colored string. */
 internal fun annotatedLine(
     line: String,

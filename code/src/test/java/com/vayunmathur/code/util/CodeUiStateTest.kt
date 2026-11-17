@@ -2,12 +2,19 @@ package com.vayunmathur.code.util
 
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.platform.ProjectFileEntry
+import com.vayunmathur.code.platform.SearchResult
+import com.vayunmathur.code.platform.TabUiState
+import com.vayunmathur.code.platform.TreeRowUiState
 
 /** Unit tests for the UI contract state: derived getters and picker-item builders. */
 class CodeUiStateTest {

@@ -3,6 +3,9 @@ package com.vayunmathur.code.util
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.Resolution
+import com.vayunmathur.code.domain.applyResolutions
+import com.vayunmathur.code.domain.parseConflicts
 
 /** Unit tests for the pure merge-conflict parser and resolver. */
 class MergeConflictsTest {

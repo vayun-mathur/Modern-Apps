@@ -4,6 +4,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.vayunmathur.code.domain.formatJson
+import com.vayunmathur.code.domain.formatXml
+import com.vayunmathur.code.domain.markdownToHtml
 
 /** Unit tests for the pure preview/format helpers: Markdown → HTML and JSON/XML pretty-printing. */
 class MarkdownFormattingTest {

@@ -8,13 +8,12 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import com.vayunmathur.code.syntax.LanguageSpec
-import com.vayunmathur.code.syntax.SyntaxColors
-import com.vayunmathur.code.syntax.TsColorSpan
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.FoldRegion
-
+import com.vayunmathur.code.domain.syntax.LanguageSpec
+import com.vayunmathur.code.domain.syntax.SyntaxColors
+import com.vayunmathur.code.domain.syntax.TsColorSpan
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.domain.FoldRegion
 internal class PlainRowPainter(
     val scope: DrawScope,
     val row: Int,

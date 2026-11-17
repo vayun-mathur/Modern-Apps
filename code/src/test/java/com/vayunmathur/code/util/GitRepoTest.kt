@@ -5,6 +5,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.vayunmathur.code.data.GitRepo
+import com.vayunmathur.code.domain.DiffRowType
 
 /** Unit tests for [GitRepo] against temp-dir repositories (JGit, no network). */
 class GitRepoTest {

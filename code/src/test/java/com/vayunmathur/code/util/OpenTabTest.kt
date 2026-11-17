@@ -2,13 +2,18 @@ package com.vayunmathur.code.util
 
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import com.vayunmathur.code.syntax.Language
+import com.vayunmathur.code.domain.syntax.Language
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.code.data.FileEntry
+import com.vayunmathur.code.data.GitCommitInfo
+import com.vayunmathur.code.data.GitStatus
+import com.vayunmathur.code.platform.OpenTab
+import com.vayunmathur.code.platform.TreeNode
 
 /** Unit tests for [OpenTab] undo/redo/dirty/key and [TreeNode] defaults. Robolectric (Uri). */
 @RunWith(RobolectricTestRunner::class)

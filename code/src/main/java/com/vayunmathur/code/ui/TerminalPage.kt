@@ -23,11 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.code.R
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.util.EditorViewModel
-import com.vayunmathur.code.util.clearTerminal
-import com.vayunmathur.code.util.startTerminal
-import com.vayunmathur.code.util.terminalInterrupt
-import com.vayunmathur.code.util.terminalSend
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.clearTerminal
+import com.vayunmathur.code.platform.startTerminal
+import com.vayunmathur.code.platform.terminalInterrupt
+import com.vayunmathur.code.platform.terminalSend
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDelete
@@ -42,7 +42,7 @@ import com.vayunmathur.library.util.NavBackStack
 /**
  * A line-based terminal scoped to the open project. Scrollback above, a monospace input with
  * Run/Stop below. Not a PTY: no ANSI colours or full-screen apps, system `sh`/toybox only, and
- * only the granted external-storage tree is reachable (see [com.vayunmathur.code.util.TerminalSession]).
+ * only the granted external-storage tree is reachable (see [com.vayunmathur.code.platform.TerminalSession]).
  */
 @Composable
 fun TerminalPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {

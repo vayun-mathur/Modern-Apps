@@ -24,8 +24,8 @@ fun CodeWideLayout(
     tree: @Composable (Modifier) -> Unit,
     editor: @Composable (Modifier) -> Unit,
     terminal: @Composable (Modifier) -> Unit,
-    showTerminal: Boolean = true,
     modifier: Modifier = Modifier,
+    showTerminal: Boolean = true,
 ) {
     Row(modifier.fillMaxSize()) {
         Box(Modifier.weight(0.28f).fillMaxHeight()) {

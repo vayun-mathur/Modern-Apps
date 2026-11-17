@@ -10,10 +10,10 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.code.Route
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.EditorViewModel
-import com.vayunmathur.code.util.TabUiState
-import com.vayunmathur.code.util.UserSnippet
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.platform.EditorViewModel
+import com.vayunmathur.code.platform.TabUiState
+import com.vayunmathur.code.domain.UserSnippet
 import com.vayunmathur.library.util.NavBackStack
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -88,7 +88,7 @@ class EditorPagesUiTest {
         rule.setContent {
             EditorBody(
                 state = CodeUiState(),
-                actions = com.vayunmathur.code.util.CodeActions.Noop,
+                actions = com.vayunmathur.code.platform.CodeActions.Noop,
                 onOpenFolder = { folder = true },
                 onOpenFile = {},
                 onOpenSearch = {},
@@ -115,13 +115,13 @@ class EditorPagesUiTest {
     @Test
     fun editorBodyWithTabShowsToolbar() {
         val s = CodeUiState(
-            tabs = listOf(TabUiState(name = "a.kt", language = com.vayunmathur.code.syntax.Language.KOTLIN)),
+            tabs = listOf(TabUiState(name = "a.kt", language = com.vayunmathur.code.domain.syntax.Language.KOTLIN)),
             currentIndex = 0,
         )
         rule.setContent {
             EditorBody(
                 state = s,
-                actions = com.vayunmathur.code.util.CodeActions.Noop,
+                actions = com.vayunmathur.code.platform.CodeActions.Noop,
                 onOpenFolder = {},
                 onOpenFile = {},
                 onOpenSearch = {},
@@ -177,9 +177,9 @@ class EditorPagesUiTest {
     fun codeWideLayoutRendersSlots() {
         rule.setContent {
             CodeWideLayout(
-                tree = { m -> androidx.compose.foundation.layout.Box(m) { onTreeSlot() } },
-                editor = { m -> androidx.compose.foundation.layout.Box(m) { onEditorSlot() } },
-                terminal = { m -> androidx.compose.foundation.layout.Box(m) { onTerminalSlot() } },
+                tree = { m -> androidx.compose.foundation.layout.Box(m) { TreeSlot() } },
+                editor = { m -> androidx.compose.foundation.layout.Box(m) { EditorSlot() } },
+                terminal = { m -> androidx.compose.foundation.layout.Box(m) { TerminalSlot() } },
             )
         }
         rule.onNodeWithText("tree-slot").assertIsDisplayed()
@@ -193,7 +193,7 @@ class EditorPagesUiTest {
             CodeWideLayout(
                 tree = { m -> androidx.compose.foundation.layout.Box(m) {} },
                 editor = { m -> androidx.compose.foundation.layout.Box(m) {} },
-                terminal = { m -> androidx.compose.foundation.layout.Box(m) { onTerminalSlot() } },
+                terminal = { m -> androidx.compose.foundation.layout.Box(m) { TerminalSlot() } },
                 showTerminal = false,
             )
         }
@@ -201,17 +201,17 @@ class EditorPagesUiTest {
     }
 
     @androidx.compose.runtime.Composable
-    private fun onTreeSlot() {
+    private fun TreeSlot() {
         androidx.compose.material3.Text("tree-slot")
     }
 
     @androidx.compose.runtime.Composable
-    private fun onEditorSlot() {
+    private fun EditorSlot() {
         androidx.compose.material3.Text("editor-slot")
     }
 
     @androidx.compose.runtime.Composable
-    private fun onTerminalSlot() {
+    private fun TerminalSlot() {
         androidx.compose.material3.Text("terminal-slot")
     }
 }

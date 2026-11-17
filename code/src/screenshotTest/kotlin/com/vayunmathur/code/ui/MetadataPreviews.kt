@@ -4,12 +4,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.CodeUiState
-import com.vayunmathur.code.util.TabUiState
-import com.vayunmathur.code.util.TreeRowUiState
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.platform.CodeUiState
+import com.vayunmathur.code.platform.TabUiState
+import com.vayunmathur.code.platform.TreeRowUiState
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.code.data.EditorPrefs
+import com.vayunmathur.code.data.FileFiles
+import com.vayunmathur.code.platform.EditorViewModel
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"

@@ -6,25 +6,16 @@
     <string name="open_file">Ouvrir un fichier</string>
     <string name="find">Rechercher</string>
     <string name="replace">Remplacer</string>
-    <string name="all">Tout</string>
     <string name="no_folder_opened">Aucun dossier ouvert</string>
     <string name="open_a_folder_to_browse_your_project_or">Ouvrez un dossier pour parcourir votre projet, ou ouvrez un fichier individuel.</string>
     <string name="theme_light">Clair</string>
     <string name="theme_dark">Sombre</string>
-    <string name="create">Créer</string>
     <string name="font_size">Taille de la police</string>
-    <string name="apply">Appliquer</string>
     <string name="line">Ligne</string>
     <string name="new_folder">Nouveau dossier</string>
     <string name="new_file">Nouveau fichier</string>
-    <string name="rename">Renommer</string>
-    <string name="delete">Supprimer</string>
-    <string name="name">Nom</string>
-    <string name="cancel">Annuler</string>
-    <string name="more_actions">Plus d’actions</string>
     <string name="delete_title">Supprimer %1$s ?</string>
     <string name="delete_message">Cette action est irréversible.</string>
-    <string name="settings">Paramètres</string>
     <string name="appearance">Apparence</string>
     <string name="editor">Éditeur</string>
     <string name="tab_width">Largeur des tabulations</string>
@@ -37,7 +28,6 @@
     <string name="auto_close_brackets_desc">Insérer la parenthèse ou le guillemet fermant correspondant</string>
     <string name="soft_wrap">Retour à la ligne automatique</string>
     <string name="soft_wrap_desc">Renvoyer automatiquement les lignes longues à la ligne au lieu de les faire défiler horizontalement</string>
-    <string name="close">Fermer</string>
     <string name="go_to_line">Aller à la ligne</string>
     <string name="go">Aller</string>
     <string name="discard_changes_title">Abandonner les modifications non enregistrées ?</string>
@@ -46,13 +36,9 @@
     <string name="use_regex">Expression régulière</string>
     <string name="invalid_regex">Motif non valide</string>
     <string name="search_in_project">Rechercher dans le projet</string>
-    <string name="search">Rechercher</string>
-    <string name="searching">Recherche en cours…</string>
     <string name="no_results">Aucun résultat</string>
-    <string name="line_number">Ligne %1$d</string>
     <string name="storage_permission_title">Accès au stockage requis</string>
     <string name="storage_permission_rationale">Code a besoin d’accéder à tous les fichiers pour ouvrir vos projets, exécuter Git et utiliser le terminal avec de véritables chemins de fichiers.</string>
-    <string name="grant_access">Autoriser l’accès</string>
     <string name="open_this_folder">Ouvrir ce dossier</string>
     <string name="toggle_comment">Commenter ou décommenter</string>
     <string name="duplicate_line">Dupliquer la ligne</string>
@@ -97,8 +83,6 @@
     <string name="quick_open_hint">Saisissez un nom de fichier</string>
     <string name="command_palette">Palette de commandes</string>
     <string name="command_palette_hint">Saisissez une commande</string>
-    <string name="save">Enregistrer</string>
-    <string name="undo">Annuler</string>
     <string name="redo">Rétablir</string>
     <string name="save_all">Tout enregistrer</string>
     <string name="disk_changed">Ce fichier a été modifié sur le disque.</string>
@@ -135,7 +119,5 @@
     <string name="show_indent_guides_desc">Afficher des guides verticaux à chaque niveau d’indentation</string>
     <string name="show_minimap">Minicarte</string>
     <string name="show_minimap_desc">Afficher un aperçu du code à côté de l’éditeur expérimental</string>
-    <string name="fold_all">Tout replier</string>
-    <string name="unfold_all">Tout déplier</string>
     <string name="problems">Problèmes</string>
 </resources>

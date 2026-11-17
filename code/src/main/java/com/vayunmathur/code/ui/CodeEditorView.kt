@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -23,16 +25,16 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Constraints
-import com.vayunmathur.code.syntax.LanguageSpec
-import com.vayunmathur.code.syntax.SyntaxColors
-import com.vayunmathur.code.syntax.TsColorSpan
-import com.vayunmathur.code.syntax.rememberSyntaxColors
-import com.vayunmathur.code.util.CodeActions
-import com.vayunmathur.code.util.Completion
-import com.vayunmathur.code.util.Diagnostic
-import com.vayunmathur.code.util.DiagnosticSeverity
-import com.vayunmathur.code.util.TabUiState
-import com.vayunmathur.code.util.computeFoldRegions
+import com.vayunmathur.code.domain.syntax.LanguageSpec
+import com.vayunmathur.code.domain.syntax.SyntaxColors
+import com.vayunmathur.code.domain.syntax.TsColorSpan
+import com.vayunmathur.code.domain.syntax.rememberSyntaxColors
+import com.vayunmathur.code.platform.CodeActions
+import com.vayunmathur.code.domain.Completion
+import com.vayunmathur.code.domain.Diagnostic
+import com.vayunmathur.code.domain.DiagnosticSeverity
+import com.vayunmathur.code.platform.TabUiState
+import com.vayunmathur.code.domain.computeFoldRegions
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.MaterialTheme
 
@@ -129,8 +131,8 @@ fun CodeEditorView(
     }
     val visibleLines = remember(text, hiddenLines) { lines.indices.filter { it !in hiddenLines } }
 
-    var scrollY by remember { mutableStateOf(0f) }
-    var scrollX by remember { mutableStateOf(0f) }
+    var scrollY by remember { mutableFloatStateOf(0f) }
+    var scrollX by remember { mutableFloatStateOf(0f) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
     val focusRequester = remember { FocusRequester() }
 
@@ -190,7 +192,7 @@ fun CodeEditorView(
     var replacement by remember(tab.name) { mutableStateOf("") }
     var caseSensitive by remember(tab.name) { mutableStateOf(false) }
     var useRegex by remember(tab.name) { mutableStateOf(false) }
-    var activeMatch by remember(tab.name) { mutableStateOf(0) }
+    var activeMatch by remember(tab.name) { mutableIntStateOf(0) }
     val regexValid = remember(query, useRegex) {
         !useRegex || query.isEmpty() || runCatching { Regex(query) }.isSuccess
     }

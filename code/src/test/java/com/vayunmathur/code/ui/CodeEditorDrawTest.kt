@@ -1,9 +1,9 @@
 package com.vayunmathur.code.ui
 
 import androidx.compose.ui.graphics.Color
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.syntax.SyntaxColors
-import com.vayunmathur.code.syntax.TsColorSpan
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.domain.syntax.SyntaxColors
+import com.vayunmathur.code.domain.syntax.TsColorSpan
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

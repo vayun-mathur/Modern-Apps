@@ -1,6 +1,12 @@
 package com.vayunmathur.code.util
 
-import com.vayunmathur.code.syntax.Language
+// PACKAGE STRUCTURE EXCEPTION (JNI)
+// This file stays in `util` on purpose: the Rust side binds the class by its
+// fully-qualified name (Java_com_vayunmathur_code_util_TreeSitterNative_highlight
+// in code/src/main/rust/src/lib.rs), so moving it would break the JNI linkage
+// and silently drop tree-sitter highlighting to the regex fallback.
+
+import com.vayunmathur.code.domain.syntax.Language
 import com.vayunmathur.library.log.Log
 
 /** A tree-sitter capture kind, aligned 1:1 (by ordinal) with the Rust side's enum. */

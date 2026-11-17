@@ -1,8 +1,8 @@
 package com.vayunmathur.code.ui
 
 import androidx.compose.ui.graphics.Color
-import com.vayunmathur.code.syntax.Language
-import com.vayunmathur.code.syntax.SyntaxColors
+import com.vayunmathur.code.domain.syntax.Language
+import com.vayunmathur.code.domain.syntax.SyntaxColors
 import com.vayunmathur.code.util.TsKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -102,10 +102,10 @@ class EditorChromeLogicTest {
     @Test
     fun syntaxColorsColorForMapsTokenKinds() {
         val c = colors()
-        assertEquals(Color.Red, c.colorFor(com.vayunmathur.code.syntax.TokenKind.KEYWORD))
-        assertEquals(Color.Green, c.colorFor(com.vayunmathur.code.syntax.TokenKind.STRING))
-        assertEquals(Color.Blue, c.colorFor(com.vayunmathur.code.syntax.TokenKind.NUMBER))
-        assertEquals(Color.Gray, c.colorFor(com.vayunmathur.code.syntax.TokenKind.COMMENT))
-        assertEquals(Color.Yellow, c.colorFor(com.vayunmathur.code.syntax.TokenKind.ANNOTATION))
+        assertEquals(Color.Red, c.colorFor(com.vayunmathur.code.domain.syntax.TokenKind.KEYWORD))
+        assertEquals(Color.Green, c.colorFor(com.vayunmathur.code.domain.syntax.TokenKind.STRING))
+        assertEquals(Color.Blue, c.colorFor(com.vayunmathur.code.domain.syntax.TokenKind.NUMBER))
+        assertEquals(Color.Gray, c.colorFor(com.vayunmathur.code.domain.syntax.TokenKind.COMMENT))
+        assertEquals(Color.Yellow, c.colorFor(com.vayunmathur.code.domain.syntax.TokenKind.ANNOTATION))
     }
 }
