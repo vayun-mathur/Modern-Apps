@@ -1,6 +1,7 @@
 package com.vayunmathur.madeveloper.platform
 
 import android.content.Context
+import androidx.core.content.edit
 import com.vayunmathur.madeveloper.domain.DevProtocol
 
 /** Persists the pairing code and the server-issued push token for this device. */
@@ -9,7 +10,7 @@ class PairingStore(context: Context) {
 
     /** The pairing code shown until the server pairs this device. */
     fun pairingCode(): String = prefs.getString(KEY_CODE, null) ?: DevProtocol.newPairingCode().also {
-        prefs.edit().putString(KEY_CODE, it).apply()
+        prefs.edit { putString(KEY_CODE, it) }
     }
 
     /** The durable push token, or null while unpaired. */
@@ -20,11 +21,11 @@ class PairingStore(context: Context) {
 
     /** Stores the credentials from a paired message. */
     fun savePaired(token: String, deviceId: String) {
-        prefs.edit().putString(KEY_TOKEN, token).putString(KEY_DEVICE, deviceId).apply()
+        prefs.edit { putString(KEY_TOKEN, token); putString(KEY_DEVICE, deviceId) }
     }
 
     /** Clears pairing so a new code is generated on next launch. */
-    fun clear() { prefs.edit().clear().apply() }
+    fun clear() { prefs.edit { clear() } }
 
     private companion object {
         const val PREFS = "dev_push"
