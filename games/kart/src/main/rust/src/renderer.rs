@@ -13,9 +13,11 @@ use crate::vulkan::renderer::KartRenderer;
 /// falls back to GLES, and fails only when both fail.
 pub enum Renderer {
     /// Vulkan path (`ash` loaded): instance + swapchain + pipeline.
-    Vulkan(KartRenderer),
+    /// Boxed so the enum stays pointer-sized (both renderers are large).
+    Vulkan(Box<KartRenderer>),
     /// GLES 3.0 path (`glow` + `khronos-egl`): EGL surface + GL program.
-    Gles(GlesRenderer),
+    /// Boxed for the same reason as the Vulkan variant.
+    Gles(Box<GlesRenderer>),
 }
 
 impl Renderer {
@@ -114,7 +116,7 @@ impl Renderer {
             match unsafe { GlesRenderer::new(window, state_width, state_height) } {
                 Ok(r) => {
                     crate::engine::log_backend("GLES");
-                    Ok(Self::Gles(r))
+                    Ok(Self::Gles(Box::new(r)))
                 }
                 Err(gles_err) => {
                     match crate::engine::try_vulkan(window, width, height, state_width, state_height)
@@ -145,7 +147,7 @@ impl Renderer {
                             crate::engine::log_backend(&format!(
                                 "GLES (Vulkan init failed: {vulkan_err})"
                             ));
-                            Ok(Self::Gles(r))
+                            Ok(Self::Gles(Box::new(r)))
                         }
                         Err(gles_err) => Err(format!(
                             "no renderer (Vulkan: {vulkan_err}; GLES: {gles_err})"

@@ -215,7 +215,7 @@ pub(crate) unsafe fn try_vulkan(
         Err(e) => return Err(format!("context: {e}")),
     };
     match unsafe { KartRenderer::new(ctx, state_width, state_height) } {
-        Ok(r) => Ok(Renderer::Vulkan(r)),
+        Ok(r) => Ok(Renderer::Vulkan(Box::new(r))),
         Err(e) => Err(format!("renderer: {e}")),
     }
 }
@@ -285,7 +285,7 @@ pub fn resize_renderer(width: i32, height: i32) {
             };
             match unsafe { KartRenderer::new(ctx, state.width, state.height) } {
                 Ok(fresh) => {
-                    let mut fresh = Renderer::Vulkan(fresh);
+                    let mut fresh = Renderer::Vulkan(Box::new(fresh));
                     let mesh = mesh::build_track_mesh();
                     state.track_count = mesh.len();
                     unsafe { fresh.upload_track(&mesh) };
@@ -369,7 +369,18 @@ pub fn tick_and_render() {
         // Dynamic mesh: karts + shells + boxes.
         let mut dynamic: Vec<KartVertex> = Vec::new();
         for (seat, (x, z, yaw, ai)) in race.kart_transforms().iter().enumerate() {
-            mesh::build_kart_mesh(&mut dynamic, *x, *z, *yaw, seat, *ai, 0.0, false);
+            mesh::build_kart_mesh(
+                &mut dynamic,
+                mesh::KartMeshSpec {
+                    x: *x,
+                    z: *z,
+                    yaw: *yaw,
+                    seat,
+                    ai: *ai,
+                    spin: 0.0,
+                    boost: false,
+                },
+            );
         }
         for (x, z) in race.shell_positions() {
             mesh::build_shell_mesh(&mut dynamic, x, z, race.ticks);

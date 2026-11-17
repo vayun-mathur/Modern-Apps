@@ -1,10 +1,11 @@
 //! Graphics pipeline: one unlit vertex-color pipeline for the whole world.
 //!
-//! The kart shader takes per-vertex colors and a single UBO (view-projection
-//! + sun + camera), so one descriptor set with one uniform buffer is the
-//! entire layout — no samplers, no atlases. Culling is off: the shader's
-//! Vulkan Y flip inverts winding (same fix as games/voxels, where BACK
-//! culled everything to black).
+//! The kart shader takes per-vertex colors and a single UBO
+//! (view-projection, sun, and camera), so one descriptor set with one
+//! uniform buffer is the entire layout: no samplers, no atlases.
+//!
+//! Culling is off: the shader's Vulkan Y flip inverts winding (the same
+//! fix as games/voxels, where BACK culled everything to black).
 use ash::vk;
 use std::ffi::CString;
 
@@ -27,6 +28,10 @@ pub struct Pipelines {
 
 impl Pipelines {
     /// Build against the swapchain's render pass, binding `ubo_buffer`.
+    ///
+    /// # Safety
+    /// `device`, `render_pass`, and `ubo_buffer` must be valid handles
+    /// from a live Vulkan context that outlives the returned pipelines.
     pub unsafe fn new(
         device: &ash::Device,
         render_pass: vk::RenderPass,
@@ -159,6 +164,10 @@ impl Pipelines {
     }
 
     /// Free pipeline, layout, pool, set layout.
+    ///
+    /// # Safety
+    /// `device` must be the device that created these objects; they must
+    /// not be in use by the GPU and must not be destroyed twice.
     pub unsafe fn destroy(&mut self, device: &ash::Device) {
         device.destroy_pipeline(self.pipeline, None);
         device.destroy_pipeline_layout(self.layout, None);

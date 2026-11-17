@@ -10,7 +10,6 @@
 use crate::gles::renderer::{DYNAMIC_VERT_CAP, TRACK_VERT_CAP};
 use crate::mesh::KartVertex;
 use glow::HasContext as _;
-use std::mem;
 
 /// One VAO + VBO pair: vertex layout bound once, store re-sized per upload.
 pub struct MeshBuffer {
@@ -98,7 +97,7 @@ fn bytes_of(mesh: &[KartVertex]) -> &[u8] {
     unsafe {
         std::slice::from_raw_parts(
             mesh.as_ptr() as *const u8,
-            mesh.len() * mem::size_of::<KartVertex>(),
+            std::mem::size_of_val(mesh),
         )
     }
 }

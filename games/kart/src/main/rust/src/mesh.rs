@@ -72,8 +72,11 @@ fn quad(
     }
 }
 
-/// Push an axis-aligned box centred at (`x`, `y`, `z`) into `out`.
-fn box_at(out: &mut Vec<KartVertex>, x: f32, y: f32, z: f32, sx: f32, sy: f32, sz: f32, color: [f32; 3]) {
+/// Push an axis-aligned box into `out`: `center` is the bottom-centre
+/// ([x, y, z]) and `size` the full extents ([sx, sy, sz]).
+fn box_at(out: &mut Vec<KartVertex>, center: [f32; 3], size: [f32; 3], color: [f32; 3]) {
+    let (x, y, z) = (center[0], center[1], center[2]);
+    let (sx, sy, sz) = (size[0], size[1], size[2]);
     let x0 = x - sx / 2.0;
     let x1 = x + sx / 2.0;
     let y0 = y;
@@ -188,18 +191,28 @@ pub fn build_track_mesh() -> Vec<KartVertex> {
     out
 }
 
-/// Build one kart mesh at (`x`, `z`, `yaw`) with seat color `seat`.
-/// `spin` rotates the body (item-hit feedback); `boost` stretches it slightly.
-pub fn build_kart_mesh(
-    mut out: &mut Vec<KartVertex>,
-    x: f32,
-    z: f32,
-    yaw: f32,
-    seat: usize,
-    ai: bool,
-    spin: f32,
-    boost: bool,
-) {
+/// Placement and identity for one kart in [`build_kart_mesh`].
+#[derive(Clone, Copy, Debug)]
+pub struct KartMeshSpec {
+    /// World X of the kart centre.
+    pub x: f32,
+    /// World Z of the kart centre.
+    pub z: f32,
+    /// Heading in radians.
+    pub yaw: f32,
+    /// Seat index (selects the body colour).
+    pub seat: usize,
+    /// AI karts use a darkened body colour.
+    pub ai: bool,
+    /// Extra rotation in radians (item-hit feedback).
+    pub spin: f32,
+    /// Stretch the body slightly (boost feedback).
+    pub boost: bool,
+}
+
+/// Build one kart mesh from `spec` into `out`.
+pub fn build_kart_mesh(out: &mut Vec<KartVertex>, spec: KartMeshSpec) {
+    let KartMeshSpec { x, z, yaw, seat, ai, spin, boost } = spec;
     let mut color = KART_COLORS[seat % KART_COLORS.len()];
     if ai {
         color = darken(color, AI_DARKEN);
@@ -228,11 +241,11 @@ pub fn build_kart_mesh(
         put(-hx, y0 + 0.55, hz),
         put(hx, y0 + 0.55, hz),
     ];
-    quad(&mut out, top[0], top[1], top[2], top[3], body);
-    quad(&mut out, corners[2], corners[3], top[2], top[3], darken(body, 0.9));
-    quad(&mut out, corners[1], corners[0], top[1], top[0], darken(body, 0.85));
-    quad(&mut out, corners[0], corners[2], top[0], top[2], darken(body, 0.75));
-    quad(&mut out, corners[3], corners[1], top[3], top[1], darken(body, 0.75));
+    quad(out, top[0], top[1], top[2], top[3], body);
+    quad(out, corners[2], corners[3], top[2], top[3], darken(body, 0.9));
+    quad(out, corners[1], corners[0], top[1], top[0], darken(body, 0.85));
+    quad(out, corners[0], corners[2], top[0], top[2], darken(body, 0.75));
+    quad(out, corners[3], corners[1], top[3], top[1], darken(body, 0.75));
     // Cabin: smaller darker box on top.
     let cabin = darken(color, 0.6);
     let (cx, cz) = (1.0 / 2.0, 1.1 / 2.0);
@@ -248,14 +261,14 @@ pub fn build_kart_mesh(
         put(-cx, y0 + 1.15, cz),
         put(cx, y0 + 1.15, cz),
     ];
-    quad(&mut out, ct[0], ct[1], ct[2], ct[3], cabin);
-    quad(&mut out, cc[0], cc[2], ct[0], ct[2], darken(cabin, 0.85));
-    quad(&mut out, cc[3], cc[1], ct[3], ct[1], darken(cabin, 0.85));
+    quad(out, ct[0], ct[1], ct[2], ct[3], cabin);
+    quad(out, cc[0], cc[2], ct[0], ct[2], darken(cabin, 0.85));
+    quad(out, cc[3], cc[1], ct[3], ct[1], darken(cabin, 0.85));
     // Wheels: four dark boxes.
     let wheel = [0.10, 0.10, 0.10];
     for (wx, wz) in [(-0.85, -0.85), (0.85, -0.85), (-0.85, 0.85), (0.85, 0.85)] {
         let c = put(wx, 0.0, wz * stretch);
-        box_at(&mut out, c[0], c[1], c[2], 0.42, 0.5, 0.42, wheel);
+        box_at(out, c, [0.42, 0.5, 0.42], wheel);
     }
     let _ = corners;
 }
@@ -263,13 +276,13 @@ pub fn build_kart_mesh(
 /// Build one item box marker (floating cube, bobbed by `ticks`).
 pub fn build_box_mesh(out: &mut Vec<KartVertex>, x: f32, z: f32, ticks: u64) {
     let bob = 0.9 + 0.25 * ((ticks as f32 / 30.0).sin());
-    box_at(out, x, bob, z, 1.2, 1.2, 1.2, BOX_COLOR);
+    box_at(out, [x, bob, z], [1.2, 1.2, 1.2], BOX_COLOR);
 }
 
 /// Build one shell marker (low spinning tetra-ish box).
 pub fn build_shell_mesh(out: &mut Vec<KartVertex>, x: f32, z: f32, ticks: u64) {
     let _ = ticks;
-    box_at(out, x, 0.35, z, 0.9, 0.7, 0.9, SHELL_COLOR);
+    box_at(out, [x, 0.35, z], [0.9, 0.7, 0.9], SHELL_COLOR);
 }
 
 #[cfg(test)]
@@ -288,7 +301,10 @@ mod tests {
     #[test]
     fn kart_mesh_has_body_cabin_wheels() {
         let mut out = Vec::new();
-        build_kart_mesh(&mut out, 0.0, 0.0, 0.0, 0, false, 0.0, false);
+        build_kart_mesh(
+            &mut out,
+            KartMeshSpec { x: 0.0, z: 0.0, yaw: 0.0, seat: 0, ai: false, spin: 0.0, boost: false },
+        );
         // Body top (6) + front/back/sides (24) + cabin (12) + 4 wheels (4x30).
         assert!(out.len() >= 100, "verts={}", out.len());
     }

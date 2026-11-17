@@ -22,14 +22,27 @@ extern "C" {
     pub fn ANativeWindow_release(window: *mut ANativeWindow);
 }
 
+/// Host stub for the NDK function (returns null).
+///
+/// # Safety
+/// The pointers are ignored; callers must not use the returned null
+/// window as a real `ANativeWindow`.
 #[cfg(not(target_os = "android"))]
 #[allow(non_snake_case)]
 pub unsafe fn ANativeWindow_fromSurface(_env: *mut c_void, _surface: *mut c_void) -> *mut ANativeWindow {
     std::ptr::null_mut()
 }
+/// Host stub for the NDK function (no-op).
+///
+/// # Safety
+/// The pointer is ignored.
 #[cfg(not(target_os = "android"))]
 #[allow(non_snake_case)]
 pub unsafe fn ANativeWindow_acquire(_window: *mut ANativeWindow) {}
+/// Host stub for the NDK function (no-op).
+///
+/// # Safety
+/// The pointer is ignored.
 #[cfg(not(target_os = "android"))]
 #[allow(non_snake_case)]
 pub unsafe fn ANativeWindow_release(_window: *mut ANativeWindow) {}
@@ -61,6 +74,10 @@ pub struct VulkanContext {
 impl VulkanContext {
     /// Create everything from a live `ANativeWindow`. Fails cleanly (the
     /// caller logs and keeps the placeholder) rather than panicking.
+    ///
+    /// # Safety
+    /// `window` must be a live `ANativeWindow` adopted from the JNI
+    /// surface; ownership stays with the caller. Render thread only.
     pub unsafe fn new(window: *mut ANativeWindow, _width: i32, _height: i32) -> Result<Self, String> {
         let entry = unsafe { Entry::load().map_err(|e| format!("Entry::load failed: {e:?}"))? };
         let app_name = CString::new("Kart").unwrap();

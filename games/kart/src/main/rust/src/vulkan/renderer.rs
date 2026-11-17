@@ -50,6 +50,10 @@ pub struct KartRenderer {
 
 impl KartRenderer {
     /// Create from a live window at `width` x `height`. Fails cleanly.
+    ///
+    /// # Safety
+    /// `ctx` must come from a live `ANativeWindow` (see
+    /// [`VulkanContext::new`]); render thread only.
     pub unsafe fn new(
         ctx: VulkanContext,
         width: u32,
@@ -119,6 +123,10 @@ impl KartRenderer {
     }
 
     /// Upload the static track mesh (once per race; capped at the budget).
+    ///
+    /// # Safety
+    /// Must be called on the render thread while this renderer's device
+    /// is live and its buffers are not in use by the GPU.
     pub unsafe fn upload_track(&self, mesh: &[KartVertex]) {
         let n = mesh.len().min(TRACK_VERT_CAP);
         let bytes = unsafe {
@@ -134,6 +142,10 @@ impl KartRenderer {
 
     /// Draw one frame: upload UBO + dynamic mesh, record, submit, present.
     /// `track_count` is the vertex count from the last [`Self::upload_track`].
+    ///
+    /// # Safety
+    /// Must be called on the render thread while this renderer's device
+    /// and swapchain are live.
     #[allow(clippy::too_many_arguments)]
     pub unsafe fn draw(
         &mut self,
@@ -265,6 +277,10 @@ impl KartRenderer {
     }
 
     /// Free everything except the context (the engine releases the window).
+    ///
+    /// # Safety
+    /// Must be called on the render thread that owns this renderer, at
+    /// most once.
     pub unsafe fn destroy(&mut self) {
         let device = &self.ctx.device;
         device.device_wait_idle().ok();

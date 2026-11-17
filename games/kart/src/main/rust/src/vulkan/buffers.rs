@@ -86,6 +86,10 @@ pub struct AllocatedBuffer {
 
 impl AllocatedBuffer {
     /// Allocate host-visible coherent memory and bind it. Fails cleanly.
+    ///
+    /// # Safety
+    /// `instance`, `device`, and `phys` must be valid handles from a live
+    /// Vulkan context that outlives the returned buffer.
     pub unsafe fn new(
         instance: &ash::Instance,
         device: &ash::Device,
@@ -125,6 +129,10 @@ impl AllocatedBuffer {
     }
 
     /// Map, copy, unmap. Empty uploads are a no-op.
+    ///
+    /// # Safety
+    /// `device` must be the device that created this buffer, and the buffer
+    /// memory must not be in use by the GPU. Render thread only.
     pub unsafe fn upload(&self, device: &ash::Device, data: &[u8]) {
         if data.is_empty() {
             return;
@@ -142,6 +150,10 @@ impl AllocatedBuffer {
     }
 
     /// Free memory + buffer.
+    ///
+    /// # Safety
+    /// `device` must be the device that created this buffer; the buffer
+    /// must not be in use by the GPU and must not be destroyed twice.
     pub unsafe fn destroy(&mut self, device: &ash::Device) {
         device.destroy_buffer(self.buffer, None);
         device.free_memory(self.memory, None);
