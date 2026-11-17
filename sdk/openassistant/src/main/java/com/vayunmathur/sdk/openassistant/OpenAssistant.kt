@@ -12,8 +12,10 @@ import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+/** Client for requesting on-device inference from the OpenAssistant app. */
 class OpenAssistant(private val context: Context, private val timeoutMs: Long = 60_000L) {
 
+    /** OpenAssistant service identity and default response schema. */
     companion object {
         private const val OA_PACKAGE = "com.vayunmathur.openassistant"
         private const val OA_SERVICE = "$OA_PACKAGE.util.InferenceService"
