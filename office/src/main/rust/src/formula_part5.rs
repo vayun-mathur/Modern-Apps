@@ -316,7 +316,10 @@ impl<'a> Evaluator<'a> {
                     .map(|w| {
                         let mut ch = w.chars();
                         match ch.next() {
-                            Some(f) => f.to_uppercase().collect::<String>() + ch.as_str(),
+                            Some(f) => {
+                                f.to_uppercase().collect::<String>()
+                                    + &ch.flat_map(|c| c.to_lowercase()).collect::<String>()
+                            }
                             None => String::new(),
                         }
                     })

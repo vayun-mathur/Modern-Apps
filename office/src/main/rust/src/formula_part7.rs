@@ -24,12 +24,19 @@ impl<'a> Evaluator<'a> {
                 let unit = self.t_str(&a[2])?.to_uppercase();
                 let c1 = serial_to_datetime(n0);
                 let c2 = serial_to_datetime(n1);
+                // Complete months between the dates (Excel DATEDIF semantics):
+                // the day-of-month must have been reached to count the month.
+                let complete_months = {
+                    let mut m = (c2.year - c1.year) * 12 + (c2.month - c1.month);
+                    if c2.day < c1.day {
+                        m -= 1;
+                    }
+                    m
+                };
                 match unit.as_str() {
                     "D" => Ok(Value::Num(n1.floor() - n0.floor())),
-                    "M" => Ok(Value::Num(
-                        ((c2.year - c1.year) * 12 + (c2.month - c1.month)) as f64,
-                    )),
-                    "Y" => Ok(Value::Num((c2.year - c1.year) as f64)),
+                    "M" => Ok(Value::Num(complete_months as f64)),
+                    "Y" => Ok(Value::Num(complete_months.div_euclid(12) as f64)),
                     "MD" => {
                         let d1 = c1.day;
                         let d2 = c2.day;

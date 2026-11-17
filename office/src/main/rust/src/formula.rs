@@ -490,3 +490,10 @@ include!("formula_part10.rs");
 include!("formula_part11.rs");
 include!("formula_part12.rs");
 include!("formula_part13.rs");
+
+#[cfg(test)]
+#[path = "formula_tests.rs"]
+mod formula_tests;
+#[cfg(test)]
+#[path = "formula_helper_tests.rs"]
+mod formula_helper_tests;
