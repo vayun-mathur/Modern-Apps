@@ -145,6 +145,37 @@ class VpnViewModelTest {
         delay(200)
     } }
 
+    @Test fun importFromUriMavpnBundle() { runBlocking {
+        val dao = FakeConfigDao(); val vm = vm(dao)
+        val ctx = app as Context
+        val manifest = """{"format":"mavpn/1","provider":"Example VPN","servers":[""" +
+            """{"id":"de-1","country":"DE","city":"Frankfurt","file":"servers/de-1.conf", """ +
+            """"endpoint":"manifest.example:9999"}]}"""
+        val conf = "[Interface]\nPrivateKey = abc=\nAddress = 10.0.0.2/32\n[Peer]\nPublicKey = def=\nEndpoint = conf.example:51820\n"
+        val bundleFile = File(ctx.cacheDir, "demo.mavpn")
+        java.util.zip.ZipOutputStream(bundleFile.outputStream()).use { zip ->
+            for ((name, text) in listOf("manifest.json" to manifest, "servers/de-1.conf" to conf)) {
+                zip.putNextEntry(java.util.zip.ZipEntry(name)); zip.write(text.encodeToByteArray()); zip.closeEntry()
+            }
+        }
+        vm.importFromUri(ctx, Uri.fromFile(bundleFile))
+        withTimeout(8000) { while (dao.rows.value.isEmpty()) delay(25) }
+        val row = dao.rows.value.single()
+        assertEquals("Example VPN", row.provider); assertEquals("DE", row.countryCode)
+        assertEquals("Frankfurt", row.city); assertEquals("de-1", row.bundleServerId)
+        assertEquals("manifest.example:9999", row.peerEndpoint)
+        withTimeout(5000) { while (vm.status.value?.startsWith("Imported 1 servers") != true) delay(25) }
+        assertEquals(listOf("Example VPN"), withTimeout(5000) { vm.importedProviders.first { it.isNotEmpty() } })
+        assertEquals("Frankfurt", withTimeout(5000) { vm.geoCountries.first { it.isNotEmpty() } }.single().cities.single().city)
+        // The bundle was stored in app-private storage under its bundle id.
+        assertTrue(java.io.File(ctx.filesDir, "mavpn-bundles").listFiles()?.isNotEmpty() == true)
+        // A corrupt bundle fails cleanly with no new rows.
+        val badFile = File(ctx.cacheDir, "bad.mavpn").apply { writeBytes("not a zip".encodeToByteArray()) }
+        vm.importFromUri(ctx, Uri.fromFile(badFile))
+        withTimeout(5000) { while (vm.status.value?.startsWith("Import failed") != true) delay(25) }
+        assertEquals(1, dao.rows.value.size)
+    } }
+
     @Test fun importNameFromEndpointWhenNoFileName() { runBlocking {
         val dao = FakeConfigDao(); val vm = vm(dao)
         val ctx = app as Context

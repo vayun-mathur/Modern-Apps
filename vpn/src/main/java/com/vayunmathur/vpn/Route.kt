@@ -30,4 +30,21 @@ sealed interface Route : NavKey {
     /** Singleton holding bypass list state and operations. */
     @Serializable
     data object BypassList : Route
+
+    /**
+     * The geo picker for `.mavpn`-imported servers: a pushed destination
+     * listing countries. Drilling into a country/city and picking a server
+     * are navigation too (see [GeoCountry]/[GeoCity]), matching how a tunnel
+     * is picked today — the tunnel list pushes [Detail] with the config id.
+     */
+    @Serializable
+    data object GeoPicker : Route
+
+    /** One country in the geo picker; carries the ISO alpha-2 [countryCode]. */
+    @Serializable
+    data class GeoCountry(val countryCode: String) : Route
+
+    /** One city in the geo picker; carries its [countryCode] and [city]. */
+    @Serializable
+    data class GeoCity(val countryCode: String, val city: String) : Route
 }

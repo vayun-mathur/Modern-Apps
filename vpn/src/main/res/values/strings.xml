@@ -39,4 +39,12 @@
     <string name="publickey">PublicKey: %1$s</string>
     <string name="peer_publickey">Peer PublicKey: %1$s</string>
     <string name="vpn_channel_name">VPN Tunnel</string>
+    <!-- Geo picker (Route.GeoPicker/GeoCountry/GeoCity) for .mavpn-imported servers -->
+    <string name="browse_by_location">Browse by location</string>
+    <string name="geo_picker_title">Browse by location</string>
+    <string name="geo_search_hint">Search countries, cities, providers</string>
+    <string name="geo_no_bundles">No provider bundles imported yet. Import a .mavpn file from the tunnels tab to browse servers by location.</string>
+    <string name="geo_no_matches">No servers match your search</string>
+    <string name="geo_server_count">%1$d servers</string>
+    <string name="geo_connect">Connect</string>
 </resources>

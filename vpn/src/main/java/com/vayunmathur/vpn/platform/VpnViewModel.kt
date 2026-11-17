@@ -21,8 +21,16 @@ import com.vayunmathur.vpn.data.VpnConfig
 import com.vayunmathur.vpn.data.VpnConfigDao
 import com.vayunmathur.vpn.data.WgConfigParser
 import com.vayunmathur.vpn.data.endpointHostOf
+import com.vayunmathur.vpn.data.MavpnBundleStore
+import com.vayunmathur.vpn.data.bundleIdFor
 import com.vayunmathur.vpn.data.toEntity
+import com.vayunmathur.vpn.data.toGeoServerOrNull
 import com.vayunmathur.vpn.data.toModel
+import com.vayunmathur.vpn.data.toVpnConfigs
+import com.vayunmathur.vpn.domain.GeoCountry
+import com.vayunmathur.vpn.domain.MavpnBundle
+import com.vayunmathur.vpn.domain.MavpnParser
+import com.vayunmathur.vpn.domain.buildGeoCountries
 import com.vayunmathur.vpn.service.AppResolver
 import com.vayunmathur.vpn.service.ConnectionTracker
 import com.vayunmathur.vpn.service.VpnTunnelService
@@ -38,6 +46,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import java.io.IOException
 
 /** View model for the vpn screen: holds UI state and handles its actions. */
@@ -66,6 +78,16 @@ class VpnViewModel(
 
     val domainsByBytesFlow: StateFlow<List<DomainBytesSummary>> = logDao.flowDomainsByBytes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
+    /** Providers of imported `.mavpn` bundles, from the same config list the tunnels tab shows. */
+    val importedProviders: StateFlow<List<String>> =
+        configs.map { list -> list.map { it.provider }.filter { it.isNotBlank() }.distinct().sorted() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
+    /** Imported servers grouped countries → cities → servers for the geo picker routes. */
+    val geoCountries: StateFlow<List<GeoCountry>> =
+        configs.map { list -> buildGeoCountries(list.mapNotNull { it.toGeoServerOrNull() }) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
 
     init {
         viewModelScope.launch {
@@ -151,7 +173,8 @@ class VpnViewModel(
     }
 
     /**
-     * The only way to create a new tunnel — open a WireGuard .conf file.
+     * Creates tunnels from a picked file: a `.mavpn` bundle (ZIP magic or
+     * `.mavpn` name) or a single WireGuard `.conf`.
      * Parses [Interface] + [Peer] using the same tiny wg-quick parser the Rust side (gotatun/mullvad) expects.
      * Derives public key via Rust X25519 if native .so is loaded; otherwise stores empty pubkey.
      */
@@ -164,12 +187,15 @@ class VpnViewModel(
                 } catch (expected: SecurityException) {
                     Log.status("VpnVM", "persist permission denied for $uri", expected)
                 }
-                val text = context.contentResolver.openInputStream(uri)?.use {
-                    it.bufferedReader().readText()
-                } ?: run {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: run {
                     _status.value = "Failed to read file"
                     return@launch
                 }
+                if (isBundle(bytes, uri)) {
+                    importBundle(context, bytes)
+                    return@launch
+                }
+                val text = bytes.decodeToString()
                 val imp = WgConfigParser.parse(text).getOrElse {
                     _status.value = "Import failed: ${it.message}"
                     return@launch
@@ -209,6 +235,54 @@ class VpnViewModel(
         }
     }
 
+    private fun isBundle(bytes: ByteArray, uri: Uri): Boolean =
+        uri.lastPathSegment?.endsWith(".mavpn", ignoreCase = true) == true ||
+            (bytes.size >= ZIP_MAGIC.size && ZIP_MAGIC.indices.all { bytes[it] == ZIP_MAGIC[it] })
+
+    /**
+     * Validates a `.mavpn` bundle through the existing WireGuard parser,
+     * stores it in app-private storage, and upserts every server as a normal
+     * selectable config. Re-importing the same bundle updates its servers in
+     * place (matched by bundle id + server id) instead of duplicating them.
+     * Config contents are never logged; failures report only the reason.
+     */
+    private suspend fun importBundle(context: Context, bytes: ByteArray) {
+        val bundle = MavpnParser.parse(bytes, WgConfigParser::parse).getOrElse {
+            _status.value = "Import failed: ${it.message}"
+            return
+        }
+        val bundleId = bundleIdFor(bundle.manifest.provider, bundle.servers.map { it.entry.id })
+        runCatching {
+            MavpnBundleStore.save(context, bundleId, bundle, manifestJson(bundle))
+        }.onFailure {
+            _status.value = "Import failed: could not store bundle"
+            return
+        }
+        val existing = dao.getAll().map { it.toModel() }
+        val models = bundle.toVpnConfigs(bundleId, existing) { privateKey ->
+            runCatching { VpnNative.derivePublicKey(privateKey) }.getOrNull() ?: ""
+        }
+        models.forEach { dao.upsert(it.toEntity()) }
+        _status.value = "Imported ${models.size} servers from ${bundle.manifest.provider}"
+    }
+
+    private fun manifestJson(bundle: MavpnBundle<*>): String =
+        buildJsonObject {
+            put("format", bundle.manifest.format)
+            put("provider", bundle.manifest.provider)
+            putJsonArray("servers") {
+                bundle.manifest.servers.forEach { server ->
+                    addJsonObject {
+                        put("id", server.id)
+                        put("country", server.country)
+                        put("city", server.city)
+                        put("file", server.file)
+                        server.endpoint?.let { put("endpoint", it) }
+                    }
+                }
+            }
+        }.toString()
+
     fun deleteAllLogs() {
         viewModelScope.launch(Dispatchers.IO) {
             logDao.deleteAll()
@@ -229,6 +303,7 @@ class VpnViewModel(
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
         private const val POLL_RUNNING_MS = 500L
+        private val ZIP_MAGIC = byteArrayOf('P'.code.toByte(), 'K'.code.toByte(), 3, 4)
     }
 }
 

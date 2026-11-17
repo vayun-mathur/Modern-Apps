@@ -19,6 +19,12 @@ data class VpnConfig(
     val peerEndpoint: String = "",
     val peerKeepalive: Int = 25,
     val lastUsed: Long = 0,
+    /** Bundle metadata for `.mavpn`-imported servers; empty for plain `.conf` imports. */
+    val provider: String = "",
+    val countryCode: String = "",
+    val city: String = "",
+    val bundleId: String = "",
+    val bundleServerId: String = "",
 ) : DatabaseItem
 
 /** Immutable value describing wg quick import. */

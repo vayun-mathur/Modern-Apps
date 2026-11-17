@@ -34,6 +34,11 @@ data class VpnConfigEntity(
     val peerEndpoint: String = "",
     val peerKeepalive: Int = 25,
     val lastUsed: Long = 0,
+    val provider: String = "",
+    val countryCode: String = "",
+    val city: String = "",
+    val bundleId: String = "",
+    val bundleServerId: String = "",
 ) : DatabaseItem
 
 fun VpnConfigEntity.toModel() = VpnConfig(
@@ -41,7 +46,8 @@ fun VpnConfigEntity.toModel() = VpnConfig(
     address = address, dns = dns, mtu = mtu,
     peerPublicKey = peerPublicKey, peerPresharedKey = peerPresharedKey,
     peerAllowedIPs = peerAllowedIPs, peerEndpoint = peerEndpoint, peerKeepalive = peerKeepalive,
-    lastUsed = lastUsed,
+    lastUsed = lastUsed, provider = provider, countryCode = countryCode, city = city,
+    bundleId = bundleId, bundleServerId = bundleServerId,
 )
 
 fun VpnConfig.toEntity() = VpnConfigEntity(
@@ -49,7 +55,8 @@ fun VpnConfig.toEntity() = VpnConfigEntity(
     address = address, dns = dns, mtu = mtu,
     peerPublicKey = peerPublicKey, peerPresharedKey = peerPresharedKey,
     peerAllowedIPs = peerAllowedIPs, peerEndpoint = peerEndpoint, peerKeepalive = peerKeepalive,
-    lastUsed = lastUsed,
+    lastUsed = lastUsed, provider = provider, countryCode = countryCode, city = city,
+    bundleId = bundleId, bundleServerId = bundleServerId,
 )
 
 /** Contract for vpn config dao. */
@@ -118,15 +125,24 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        // `.mavpn` bundle metadata on imported configs; plain `.conf` rows keep the empty defaults.
+        for (column in listOf("provider", "countryCode", "city", "bundleId", "bundleServerId")) {
+            connection.execSQL("ALTER TABLE `VpnConfigEntity` ADD COLUMN `$column` TEXT NOT NULL DEFAULT ''")
+        }
+    }
+}
+
 /** Vpn Database: a room database implementation for vpn database. */
-@Database(entities = [VpnConfigEntity::class, ConnectionLogEntity::class], version = 2, exportSchema = false)
+@Database(entities = [VpnConfigEntity::class, ConnectionLogEntity::class], version = 3, exportSchema = false)
 abstract class VpnDatabase : RoomDatabase() {
     abstract fun vpnConfigDao(): VpnConfigDao
     abstract fun connectionLogDao(): ConnectionLogDao
 
     /** Shared constants and helpers for VpnDatabase. */
     companion object : DatabaseMigrations {
-        override val migrations: List<Migration> = listOf(MIGRATION_1_2)
+        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3)
 
         /**
          * The process-wide database. Delegates to [VpnRepository] so the single

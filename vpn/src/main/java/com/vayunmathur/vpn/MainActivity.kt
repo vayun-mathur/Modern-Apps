@@ -60,7 +60,7 @@ class MainActivity : MaActivity() {
 
     private fun handleIntent(intent: Intent?) {
         intent ?: return
-        // Accept VIEW intents for .conf files from Files / Downloads etc.
+        // Accept VIEW intents for .conf / .mavpn files from Files / Downloads etc.
         if (intent.action == Intent.ACTION_VIEW) {
             val uri = intent.data ?: return
             vm.importFromUri(this, uri)

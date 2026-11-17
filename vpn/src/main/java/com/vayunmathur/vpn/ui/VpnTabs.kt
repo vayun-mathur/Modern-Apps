@@ -69,6 +69,11 @@ fun VpnTabs(backStack: NavBackStack<Route>, vm: VpnViewModel) {
                 ConfigDetailPage(backStack, vm, it.id)
             }
             entry<Route.BypassList>(metadata = ListDetailPage()) { BypassListPage(backStack) }
+            entry<Route.GeoPicker>(metadata = ListDetailPage()) { GeoPickerPage(backStack, vm) }
+            entry<Route.GeoCountry>(metadata = ListDetailPage()) { GeoCountryPage(backStack, vm, it.countryCode) }
+            entry<Route.GeoCity>(metadata = ListDetailPage()) {
+                GeoCityPage(backStack, vm, it.countryCode, it.city)
+            }
         }
     }
 }

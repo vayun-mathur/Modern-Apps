@@ -70,8 +70,9 @@ fun ConfigListPage(backStack: NavBackStack<Route>, vm: VpnViewModel) {
         // and that point the row shows the spinner instead.
         activeId = connectingId?.takeIf { VpnTunnelService.isRunning },
         snackbar = snackbar,
-        // Open a .conf file — only import option per user request.
+        // Open a .conf or .mavpn bundle file via SAF; the ViewModel sniffs which it is.
         onImport = { filePicker.launch(arrayOf("*/*")) },
+        onGeoPicker = { backStack.add(Route.GeoPicker) },
         onToggleConnect = { cfg ->
             if (connectingId != null && VpnTunnelService.isRunning) {
                 vm.stopVpn()

@@ -49,6 +49,7 @@ fun ConfigListContent(
     activeId: Long?,
     snackbar: SnackbarHostState = remember { SnackbarHostState() },
     onImport: () -> Unit = {},
+    onGeoPicker: () -> Unit = {},
     onToggleConnect: (VpnConfig) -> Unit = {},
     onOpen: (VpnConfig) -> Unit = {},
     onDelete: (VpnConfig) -> Unit = {},
@@ -65,6 +66,9 @@ fun ConfigListContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         scrollBehavior = appBarScrollBehavior(),
     ) {
+        item {
+            Button(onGeoPicker, Modifier.fillMaxWidth()) { Text(stringResource(R.string.browse_by_location)) }
+        }
         if (configs.isEmpty()) {
             item {
                 Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
@@ -115,6 +119,14 @@ private fun ConfigRow(
                         fontSize = 16.sp,
                         modifier = Modifier.sharedText("vpn-title-${cfg.id}"),
                     )
+                    if (cfg.provider.isNotBlank()) {
+                        Text(
+                            listOf(cfg.provider, cfg.city, cfg.countryCode).filter { it.isNotBlank() }
+                                .joinToString(" — "),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Text(
                         cfg.peerEndpoint,
                         fontSize = 12.sp,
