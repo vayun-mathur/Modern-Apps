@@ -123,4 +123,5 @@
     <string name="local_network_message">%1$s verkar vara en enhet i ditt nätverk. Android behöver behörighet till det lokala nätverket innan sidan kan läsas in.</string>
     <string name="open_link">Öppna länk</string>
     <string name="go_forward">Framåt</string>
+    <string name="retry">Försök igen</string>
 </resources>
