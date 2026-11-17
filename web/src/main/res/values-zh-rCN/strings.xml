@@ -48,7 +48,6 @@
     <string name="privacy_data">隐私和数据</string>
     <string name="open_a_site_and_tap_menu_install_app_add">打开一个网站，点击菜单 → 安装应用 / 添加到主屏幕。这将创建一个固定快捷方式，用于独立启动 PwaActivity（无浏览器界面）。图标将优先使用最佳的 192×192 图标或 apple-touch-icon；如果没有，则回退为字母图标。</string>
     <string name="new_private_tab">新私密标签页</string>
-    <string name="reload">重新加载</string>
     <string name="blank_new_tab_tap_the_address_pill_to_se">空白新标签页 — 点击地址栏进行搜索。地址栏中显示完整网址。在展开的搜索栏卡片中可直接刷新/清除实时内容。</string>
     <string name="delete_bookmark">删除书签？</string>
     <string name="bookmarks_inside_will_also_be_deleted">“%1$s”中的书签也将被删除。</string>

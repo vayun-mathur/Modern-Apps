@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">Web</string>
     <string name="search_or_enter_address">Search or enter address</string>
-    <string name="reload">Reload</string>
     <string name="bookmarks">Bookmarks</string>
     <string name="history">History</string>
     <string name="new_tab">New tab</string>
@@ -109,7 +108,6 @@
     <string name="shields_clear_exceptions">Clear all site exceptions</string>
     <string name="copy_link">Copy link</string>
     <string name="open_link">Open link</string>
-    <string name="go_forward">Forward</string>
     <string name="open_in_new_tab">Open in new tab</string>
     <string name="link_copied">Link copied</string>
     <string name="cleartext_blocked_title">Insecure connection blocked</string>

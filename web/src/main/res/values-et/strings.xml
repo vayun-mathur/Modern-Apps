@@ -3,7 +3,6 @@
     <string name="history">Ajalugu</string>
     <string name="app_name">Veeb</string>
     <string name="search_or_enter_address">Otsi või sisesta aadress</string>
-    <string name="reload">Laadi uuesti</string>
     <string name="bookmarks">Järjehoidjad</string>
     <string name="new_tab">Uus vahekaart</string>
     <string name="new_private_tab">Uus privaatne vahekaart</string>
@@ -115,7 +114,6 @@
     <string name="toolbar_at_bottom">Tööriistariba all ääres</string>
     <string name="keeps_the_address_bar_within_thumb_reach">Kuvab aadressi- ja tööriistariba pöidlavajutuse kaugusel</string>
     <string name="open_link">Ava link</string>
-    <string name="go_forward">Edasi</string>
     <string name="retry">Proovi uuesti</string>
     <string name="search_tab_text">Veeb</string>
     <string name="search_tab_images">Pildid</string>

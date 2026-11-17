@@ -5,7 +5,6 @@
     <string name="history">Historik</string>
     <string name="app_name">Webb</string>
     <string name="search_or_enter_address">Sök eller ange adress</string>
-    <string name="reload">Ladda om</string>
     <string name="new_tab">Ny flik</string>
     <string name="new_private_tab">Ny privat flik</string>
     <string name="downloads">Hämtningar</string>
@@ -115,7 +114,6 @@
     <string name="local_network_title">Tillåt åtkomst till lokalt nätverk?</string>
     <string name="local_network_message">%1$s verkar vara en enhet i ditt nätverk. Android behöver behörighet till det lokala nätverket innan sidan kan läsas in.</string>
     <string name="open_link">Öppna länk</string>
-    <string name="go_forward">Framåt</string>
     <plurals name="shields_blocked_count">
         <item quantity="one">%1$d blockerad på den här sidan</item>
         <item quantity="other">%1$d blockerade på den här sidan</item>

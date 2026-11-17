@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.room3.Room
@@ -196,7 +197,7 @@ class WebPagesTest {
             )
         }
         rule.waitForIdle()
-        rule.onNodeWithText("History").performClick()
+        rule.onNodeWithContentDescription("History").performClick()
         rule.waitForIdle()
         assertTrue(dismissed)
         assertEquals(Route.History, stack.backStack.last())

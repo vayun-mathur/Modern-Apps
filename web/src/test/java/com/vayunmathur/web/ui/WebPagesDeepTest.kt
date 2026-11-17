@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performClick
@@ -305,16 +306,16 @@ class WebPagesDeepTest {
             )
         }
         rule.waitForIdle()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithContentDescription("Back").performClick()
         rule.waitForIdle()
         assertTrue(back)
-        rule.onNodeWithText("Forward").performClick()
+        rule.onNodeWithContentDescription("Forward").performClick()
         rule.waitForIdle()
         assertTrue(forward)
         rule.onNodeWithText("Shields").performClick()
         rule.waitForIdle()
         assertTrue(shields)
-        rule.onNodeWithText("Reload").performClick()
+        rule.onNodeWithContentDescription("Refresh").performClick()
         rule.waitForIdle()
         assertTrue(reload)
         scrollToText("Bookmarks")

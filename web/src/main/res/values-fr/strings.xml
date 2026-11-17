@@ -52,7 +52,6 @@
     <string name="privacy_data">Confidentialité et données</string>
     <string name="open_a_site_and_tap_menu_install_app_add">Ouvrez un site et appuyez sur Menu → Installer l’application / Ajouter à l’écran d’accueil. Cela crée un raccourci épinglé qui lance PwaActivity en mode autonome, sans interface du navigateur. La meilleure icône 192 × 192 ou apple-touch-icon est utilisée ; à défaut, une tuile avec une lettre s’affiche.</string>
     <string name="new_private_tab">Nouvel onglet privé</string>
-    <string name="reload">Recharger</string>
     <string name="blank_new_tab_tap_the_address_pill_to_se">Nouvel onglet vide — appuyez sur la barre d’adresse pour effectuer une recherche. L’URL complète y est visible. Les commandes d’actualisation et d’effacement se trouvent dans la carte développée de la barre de recherche.</string>
     <string name="delete_bookmark">Supprimer le favori ?</string>
     <string name="bookmarks_inside_will_also_be_deleted">Les favoris contenus dans « %1$s » seront également supprimés.</string>

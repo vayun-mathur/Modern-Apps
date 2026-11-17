@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -118,8 +119,7 @@ class SearchAndMenuDeepTest {
         rule.waitForIdle()
         // Remove-bookmark item (already bookmarked state) is present.
         rule.onNodeWithText("Remove bookmark").assertIsDisplayed()
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Share"))
-        rule.onNodeWithText("Share").performClick()
+        rule.onNodeWithContentDescription("Share").performClick()
         rule.waitForIdle()
         // Robolectric records the chooser intent the share item fires.
         val started = shadowOf(context as android.app.Application).nextStartedActivity

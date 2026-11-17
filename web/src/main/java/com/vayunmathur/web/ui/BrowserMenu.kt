@@ -2,6 +2,7 @@ package com.vayunmathur.web.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,10 @@ import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.ui.IconArrowForward
 import com.vayunmathur.library.ui.IconBack
+import com.vayunmathur.library.ui.IconButton
+import com.vayunmathur.library.ui.IconHistory
+import com.vayunmathur.library.ui.IconRefresh
+import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.IconShield
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
@@ -44,8 +49,12 @@ import com.vayunmathur.web.platform.newTab
 import com.vayunmathur.web.platform.removeBookmark
 
 /**
- * Overflow menu for the browser chrome: nav, shields, reload, install/pin,
- * bookmark, share, new tabs, and the library/settings destinations.
+ * Overflow ("dropup") menu for the browser chrome. Its first item is a
+ * row of five icon-only buttons — back, forward, reload, share,
+ * history — followed by shields, install/pin, bookmark, new tabs, and
+ * the remaining library/settings destinations as text rows. The five
+ * icon actions deliberately have no text rows below: one entry point
+ * per action.
  */
 @Composable
 internal fun BrowserMenu(
@@ -69,25 +78,38 @@ internal fun BrowserMenu(
     val shareLinkTitle = stringResource(R.string.share_link)
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
     val activeTab = viewModel.activeTab
+    val shareEnabled = activeTab?.url?.isNotBlank() == true
+    val onShare: () -> Unit = {
+        onDismiss()
+        activeTab?.let { tab ->
+            if (tab.url.isBlank()) return@let
+            val sendIntent = android.content.Intent().apply {
+                action = android.content.Intent.ACTION_SEND
+                putExtra(android.content.Intent.EXTRA_TEXT, tab.url)
+                type = "text/plain"
+            }
+            ExternalIntents.launch(context, android.content.Intent.createChooser(sendIntent, shareLinkTitle))
+        }
+    }
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        DropdownMenuItem(
-            text = { Text(stringResource(UiR.string.back)) },
-            leadingIcon = { IconBack() },
-            onClick = {
-                onDismiss()
-                onGoBack()
-            },
-            enabled = canGoBack,
-        )
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.go_forward)) },
-            leadingIcon = { IconArrowForward() },
-            onClick = {
-                onDismiss()
-                onGoForward()
-            },
-            enabled = canGoForward,
-        )
+        // First item: the five frequent actions as one icon-only row.
+        // These replace the old Back/Forward/Reload/Share/History text
+        // rows below — those destinations must not appear twice. Icons
+        // come from library/ui (IconBack & friends), never material
+        // icons directly. IconButton greys its content out when
+        // disabled, so unavailable actions (no back history, nothing
+        // to reload/share on a new tab) read as disabled in place
+        // instead of vanishing and reflowing the row.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            IconButton(onClick = { onDismiss(); onGoBack() }, enabled = canGoBack) { IconBack() }
+            IconButton(onClick = { onDismiss(); onGoForward() }, enabled = canGoForward) { IconArrowForward() }
+            IconButton(onClick = { onDismiss(); onReload() }, enabled = !isNewTabActive) { IconRefresh() }
+            IconButton(onClick = onShare, enabled = shareEnabled) { IconShare() }
+            IconButton(onClick = { onDismiss(); backStack.add(Route.History) }) { IconHistory() }
+        }
         if (shieldHost != null) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.shields)) },
@@ -101,16 +123,6 @@ internal fun BrowserMenu(
                 },
             )
         }
-        if (!isNewTabActive) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.reload)) },
-                onClick = {
-                    onDismiss()
-                    onReload()
-                }
-            )
-        }
-
         if (activeTab != null && !isNewTabActive) {
             val pwa = viewModel.getPwaInfo(activeTab.id)
             val pinSupported = PwaHelper.isPinSupported(context)
@@ -136,21 +148,8 @@ internal fun BrowserMenu(
                 }
             }
         )
-        DropdownMenuItem(text = { Text(stringResource(UiR.string.share)) }, onClick = {
-            onDismiss()
-            activeTab?.let { tab ->
-                if (tab.url.isBlank()) return@let
-                val sendIntent = android.content.Intent().apply {
-                    action = android.content.Intent.ACTION_SEND
-                    putExtra(android.content.Intent.EXTRA_TEXT, tab.url)
-                    type = "text/plain"
-                }
-                ExternalIntents.launch(context, android.content.Intent.createChooser(sendIntent, shareLinkTitle))
-            }
-        })
         DropdownMenuItem(text = { Text(stringResource(R.string.new_tab)) }, onClick = { onDismiss(); viewModel.newTab() })
         DropdownMenuItem(text = { Text(stringResource(R.string.new_private_tab)) }, onClick = { onDismiss(); viewModel.newTab(isPrivate = true) })
-        DropdownMenuItem(text = { Text(stringResource(R.string.history)) }, onClick = { onDismiss(); backStack.add(Route.History) })
         DropdownMenuItem(text = { Text(stringResource(R.string.bookmarks)) }, onClick = { onDismiss(); backStack.add(Route.Bookmarks) })
         DropdownMenuItem(text = { Text(stringResource(R.string.downloads)) }, onClick = { onDismiss(); backStack.add(Route.Downloads) })
         DropdownMenuItem(text = { Text(stringResource(R.string.installed_apps)) }, onClick = { onDismiss(); backStack.add(Route.InstalledSites) })

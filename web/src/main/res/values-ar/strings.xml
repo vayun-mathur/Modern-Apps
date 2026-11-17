@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">الويب</string>
     <string name="search_or_enter_address">ابحث أو أدخل عنوانًا</string>
-    <string name="reload">إعادة التحميل</string>
     <string name="bookmarks">الإشارات المرجعية</string>
     <string name="history">السجل</string>
     <string name="new_tab">علامة تبويب جديدة</string>
@@ -117,7 +116,6 @@
     </plurals>
     <string name="no_site_data_yet_cookies_localstorage_in">لا بيانات موقع بعد. تستمر ملفات تعريف الارتباط، التخزين المحلي، قاعدة البيانات المفهرسة والأذونات عبر عمليات التحميل في دليل ملف تعريف الـ WebView. يتم استبعاد علامات التبويب الخاصة.</string>
     <string name="open_link">فتح الرابط</string>
-    <string name="go_forward">إلى الأمام</string>
     <string name="cleartext_blocked_title">تم حظر الاتصال غير الآمن</string>
     <string name="cleartext_blocked_message">تم طلب %1$s عبر HTTP عادي. الاتصالات غير المشفرة مسموحة فقط للأجهزة على شبكتك المحلية.</string>
     <string name="local_network_title">السماح بالوصول للشبكة المحلية؟</string>
