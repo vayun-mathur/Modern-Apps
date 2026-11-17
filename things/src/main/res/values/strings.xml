@@ -3,11 +3,9 @@
     <string name="app_name">Things</string>
 
     <!-- Devices screen title: device management (scan/connect/disconnect). Noun -->
-    <string name="devices">Devices</string>
     <!-- Home empty state when no device has been added yet. Sentence -->
     <string name="no_devices">No devices added</string>
     <!-- Button on Home empty state that opens the Add device screen. Verb phrase -->
-    <string name="open_devices">Open Devices</string>
     <!-- Add device screen title, and the button that opens it. Verb phrase -->
     <string name="add_device">Add device</string>
     <!-- Large button on the Add device screen, starts a scan for a smart water bottle. Verb phrase -->
@@ -26,11 +24,8 @@
     <string name="syncs_to_health_connect">Measurements sync to Health Connect</string>
 
     <!-- Button to start BLE scan for smart bottle/cup. Verb, short action label -->
-    <string name="scan">Scan</string>
     <!-- Device list label when BLE devices discovered. Noun phrase, colon intentional -->
-    <string name="devices_found">Devices found:</string>
     <!-- Button to disconnect from BLE device. Verb -->
-    <string name="disconnect">Disconnect</string>
     <!-- Bottle status section header shown when connected and sensor values available -->
     <string name="bottle_status">Bottle status</string>
     <!-- Row labels in the bottle status card -->
@@ -55,7 +50,6 @@
     <!-- Scale section title. Noun -->
     <string name="scale_title">Body Scale</string>
     <!-- Scale section subtitle. Explains offline BLE -->
-    <string name="scale_subtitle">Renpho Elis 1 — offline BLE, no cloud</string>
     <!-- Scale profile header -->
     <string name="scale_profile">Profile</string>
     <!-- Sex options -->
@@ -76,7 +70,6 @@
     <!-- Warns that the reset is not limited to this app's own slot -->
     <string name="scale_reset_message">This erases all eight user profiles stored on the scale, including any belonging to other people in your household. They would each have to set the scale up again. Your own measurements already in Health Connect are not affected.</string>
     <!-- Scale scan button -->
-    <string name="scan_scale">Scan scale</string>
     <!-- Health Connect -->
 
     <!-- First-run permission screen -->

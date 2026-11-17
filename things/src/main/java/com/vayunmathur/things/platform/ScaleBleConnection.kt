@@ -6,6 +6,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import androidx.core.util.isNotEmpty
 import com.vayunmathur.library.log.Log
 
 /**
@@ -22,11 +23,15 @@ private fun ScaleBleManager.isScaleName(name: String?): Boolean {
 
 internal fun ScaleBleManager.makeScanCallback(): ScanCallback = object : ScanCallback() {
     override fun onScanResult(callbackType: Int, result: ScanResult) {
-        val name = result.device.name
+        val name = try {
+            result.device.name
+        } catch (_: SecurityException) {
+            return
+        }
         if (!isScaleName(name)) return
         val addr = result.device.address
         result.scanRecord?.manufacturerSpecificData?.let { data ->
-            if (data.size() > 0) data.valueAt(0)?.let {
+            if (data.isNotEmpty()) data.valueAt(0)?.let {
                 manufacturerData[addr] = it
                 Log.dev(
                     ScaleBleManager.TAG,
@@ -53,7 +58,7 @@ internal fun ScaleBleManager.makeWatchCallback(): ScanCallback = object : ScanCa
     override fun onScanResult(callbackType: Int, result: ScanResult) {
         if (!result.device.address.equals(watchAddress, ignoreCase = true)) return
         result.scanRecord?.manufacturerSpecificData?.let { data ->
-            if (data.size() > 0) data.valueAt(0)?.let { manufacturerData[result.device.address] = it }
+            if (data.isNotEmpty()) data.valueAt(0)?.let { manufacturerData[result.device.address] = it }
         }
         Log.dev(ScaleBleManager.TAG, "scale woke up; connecting")
         stopWatch()
@@ -153,7 +158,11 @@ internal fun ScaleBleManager.closeGattNow() {
     handler.removeCallbacks(sendStart)
     stopWatch()
     gatt?.let {
-        it.close()
+        try {
+            it.close()
+        } catch (_: SecurityException) {
+            // Permission revoked after connecting: the reference is dropped below anyway.
+        }
         refreshCache(it)
     }
     gatt = null

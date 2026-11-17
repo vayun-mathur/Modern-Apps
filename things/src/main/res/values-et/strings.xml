@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Asjad</string>
-    <string name="devices">Seadmed</string>
     <string name="no_devices">Ühtegi seadet pole lisatud</string>
-    <string name="open_devices">Ava seadmete vaade</string>
     <string name="add_device">Lisa seade</string>
     <string name="connect_new_bottle">Ühenda uus veepudel</string>
     <string name="connect_new_scale">Ühenda uus kaal</string>
@@ -13,7 +11,6 @@
     <string name="forget_device">Unusta see seade</string>
     <string name="permission_open_settings">Ava seadistused</string>
     <string name="device_channel_name">Seadme ühendus</string>
-    <string name="disconnect">Katkesta ühendus</string>
     <string name="bottle_status">Pudeli olek</string>
     <string name="label_battery">Aku</string>
     <string name="label_water_level">Veetase</string>
