@@ -12,11 +12,12 @@ import kotlin.test.assertEquals
 
 @RunWith(RobolectricTestRunner::class)
 class ManifestTest {
-    // The HUD (hotbar ~572 dp wide, inventory panels) only fits sideways; a portrait game screen
-    // could not even open the inventory.
-    @Test fun `the game screen is locked to landscape`() {
+    // No fixed orientation: Android 16 ignores fixed orientations on large screens, so the
+    // game must not declare one (DiscouragedApi). MainActivity already handles orientation in
+    // configChanges, so rotation resizes the surface instead of recreating the activity.
+    @Test fun `the game screen does not declare a fixed orientation`() {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         val info = ctx.packageManager.getActivityInfo(ComponentName(ctx, MainActivity::class.java), 0)
-        assertEquals(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE, info.screenOrientation)
+        assertEquals(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED, info.screenOrientation)
     }
 }

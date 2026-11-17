@@ -1,5 +1,6 @@
 package com.vayunmathur.games.voxels.ui
 
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.games.voxels.R
 import androidx.compose.foundation.Image
@@ -33,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -84,8 +86,8 @@ fun InventoryOverlay(
     }
     val slots = inv.slots
     // 0 Inventory, 1 Outfit, 2 Crafting, 3 Blessings, 4 Achievements
-    var leftTab by remember { mutableStateOf(startTab) }
-    var catTab by remember { mutableStateOf(0) }
+    var leftTab by remember { mutableIntStateOf(startTab) }
+    var catTab by remember { mutableIntStateOf(0) }
     val bounds = remember { mutableStateMapOf<Int, Rect>() }
     var drag by remember { mutableStateOf<DragState?>(null) }
     val density = LocalDensity.current
@@ -301,7 +303,7 @@ private fun AchievementsView(manager: AchievementsManager?) {
     val earned = ordered.count { it.isUnlocked }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            stringResource(R.string.achievements_earned, earned, ordered.size),
+            pluralStringResource(R.plurals.achievements_earned, earned, earned, ordered.size),
             color = Color.White.copy(0.75f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
         )
         Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),

@@ -28,7 +28,7 @@ class OnlineHudTest {
     @Test fun `joiners see whether the host is here`() {
         rule.setContent { OnlineHud(NetStatus.Connected, """[{"device":"host"}]""", ownerDevice = "host", isHost = false) }
         rule.onNodeWithText("Host is here").assertExists()
-        rule.onNodeWithText("2 online").assertExists()
+        rule.onNodeWithText("2 players online").assertExists()
     }
 
     @Test fun `failures say why`() {

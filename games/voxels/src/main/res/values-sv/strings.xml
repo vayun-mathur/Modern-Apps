@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="copy">Kopiera</string>
-    <string name="close">Stäng</string>
     <string name="share_link">Dela länk</string>
     <string name="rust_lib_missing_vulkan_unavailable">Rust-bibliotek saknas. Vulkan är inte tillgängligt</string>
     <string name="paused">Pausat</string>
@@ -24,12 +22,18 @@
     <string name="villager_trades">Bybors byten</string>
     <string name="tap_a_trade_to_exchange_need_the_cost_it">Tryck på ett byte för att byta. Du behöver de angivna föremålen.</string>
     <string name="villager_level">Nivå %1$d av %2$d</string>
-    <string name="villager_next_tier">%1$d fler byten låser upp nästa nivå.</string>
+    <plurals name="villager_next_tier">
+        <item quantity="one">%1$d fler byte låser upp nästa nivå.</item>
+        <item quantity="other">%1$d fler byten låser upp nästa nivå.</item>
+    </plurals>
     <string name="villager_tier">Nivå %1$d</string>
     <string name="recipes_show_locked">Visa låsta</string>
     <string name="recipe_requires">Kräver: tillverka %1$s först</string>
     <string name="achievements">Utmärkelser</string>
-    <string name="achievements_earned">%1$d av %2$d erhållna i den här världen</string>
+    <plurals name="achievements_earned">
+        <item quantity="one">%1$d av %2$d erhållna i den här världen</item>
+        <item quantity="other">%1$d av %2$d erhållna i den här världen</item>
+    </plurals>
     <string name="achievements_unavailable">Utmärkelser läses fortfarande in.</string>
     <string name="seed_2">Frö: %1$s • %2$s</string>
     <string name="estus">Estus ×%1$s</string>
@@ -80,5 +84,8 @@
     <string name="requesting_access">Begär åtkomst…</string>
     <string name="join_request_sent">Begärde att få gå med. Du får åtkomst när värden godkänner.</string>
     <string name="connection_lost">Anslutningen bröts. Väntar på att återansluta…</string>
-    <string name="players_online">%1$d online</string>
+    <plurals name="players_online">
+        <item quantity="one">%1$d online</item>
+        <item quantity="other">%1$d online</item>
+    </plurals>
 </resources>

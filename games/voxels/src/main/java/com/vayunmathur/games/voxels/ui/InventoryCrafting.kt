@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,7 +51,7 @@ internal fun CraftingTable(recipesJson: String) {
             }
         } catch (_: Exception) { emptyList() }
     }
-    var sel by remember { mutableStateOf(0) }
+    var sel by remember { mutableIntStateOf(0) }
     var cat by remember { mutableStateOf("block") }
     // Locked recipes are hidden by default so the list grows with the player, but they can be
     // browsed on demand: knowing what a tier leads to is half the reason to chase it.

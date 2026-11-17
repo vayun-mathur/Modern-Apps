@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="copy">Копировать</string>
     <string name="share_link">Поделиться ссылкой</string>
     <string name="requests_header">Запросы</string>
     <string name="approve">Разрешить</string>
     <string name="deny">Запретить</string>
     <string name="request_wants_to_join">%1$s хочет присоединиться к «%2$s»</string>
-    <string name="stop">Стоп</string>
     <string name="shared_with_you">Поделились с вами</string>
     <string name="join_request_sent">Запрос отправлен — вы получите доступ, как только владелец одобрит.</string>
     <string name="connection_lost">Подключение прервано — ожидание переподключения…</string>
-    <string name="players_online">%1$d в сети</string>
+    <plurals name="players_online">
+        <item quantity="one">%1$d в сети</item>
+        <item quantity="few">%1$d в сети</item>
+        <item quantity="many">%1$d в сети</item>
+        <item quantity="other">%1$d в сети</item>
+    </plurals>
     <string name="rust_lib_missing_vulkan_unavailable">Отсутствует библиотека Rust — Vulkan недоступен</string>
     <string name="paused">Приостановлено</string>
     <string name="resume">Продолжить</string>
@@ -31,12 +34,22 @@
     <string name="villager_trades">Сельские торговцы</string>
     <string name="tap_a_trade_to_exchange_need_the_cost_it">Нажмите на сделку для обмена (нужны элементы стоимости).</string>
     <string name="villager_level">Уровень %1$d из %2$d</string>
-    <string name="villager_next_tier">«Больше %1$d сделок открывает следующий уровень».</string>
+    <plurals name="villager_next_tier">
+        <item quantity="one">«Ещё %1$d сделка открывает следующий уровень».</item>
+        <item quantity="few">«Ещё %1$d сделки открывает следующий уровень».</item>
+        <item quantity="many">«Больше %1$d сделок открывает следующий уровень».</item>
+        <item quantity="other">«Больше %1$d сделок открывает следующий уровень».</item>
+    </plurals>
     <string name="villager_tier">Уровень %1$d</string>
     <string name="recipes_show_locked">Показать заблокированное</string>
     <string name="recipe_requires">Требует: сначала создать %1$s</string>
     <string name="achievements">Награды</string>
-    <string name="achievements_earned">%1$d из %2$d, заработанных в этом мире</string>
+    <plurals name="achievements_earned">
+        <item quantity="one">%1$d из %2$d, заработанных в этом мире</item>
+        <item quantity="few">%1$d из %2$d, заработанных в этом мире</item>
+        <item quantity="many">%1$d из %2$d, заработанных в этом мире</item>
+        <item quantity="other">%1$d из %2$d, заработанных в этом мире</item>
+    </plurals>
     <string name="achievements_unavailable">Награды все еще загружаются.</string>
     <string name="seed_2">Начальное число: %1$s • %2$s</string>
     <string name="estus">Эстус ×%1$s</string>
@@ -44,7 +57,6 @@
     <string name="furnace">Печь</string>
     <string name="blast_furnace">Доменная печь</string>
     <string name="smelt">Корюшка</string>
-    <string name="close">Закрыть</string>
     <string name="inventory">Инвентарь</string>
     <string name="crafting">Ремесленничество</string>
     <string name="outfit">Наряд</string>

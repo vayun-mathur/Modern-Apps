@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.voxels.R
@@ -54,7 +55,7 @@ fun OnlineHud(status: NetStatus, peersJson: String, ownerDevice: String, isHost:
         c.left.forEachIndexed { i, id -> notices += Notice(now + 1000 + i, playerSuffix(id), joined = false) }
     }
     Column(modifier.widthIn(max = 320.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Chip(stringResource(R.string.players_online, peers.size + 1), Color(0x99000000))
+        Chip(pluralStringResource(R.plurals.players_online, peers.size + 1, peers.size + 1), Color(0x99000000))
         if (!isHost && status == NetStatus.Connected) {
             val here = ownerDevice in peers
             Chip(stringResource(if (here) R.string.host_here else R.string.host_away), if (here) Color(0x992E7D32) else Color(0x99000000))

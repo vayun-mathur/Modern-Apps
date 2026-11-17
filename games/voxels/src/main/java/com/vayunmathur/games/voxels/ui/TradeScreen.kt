@@ -1,5 +1,6 @@
 package com.vayunmathur.games.voxels.ui
 
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.games.voxels.R
 import com.vayunmathur.games.voxels.platform.SoundFx
@@ -100,7 +101,7 @@ fun TradeOverlay(tradesJson: String, onClose: () -> Unit) {
             )
             val nextAt = stall.nextAt
             Text(
-                if (nextAt != null) stringResource(R.string.villager_next_tier, nextAt - stall.done)
+                if (nextAt != null) pluralStringResource(R.plurals.villager_next_tier, nextAt - stall.done, nextAt - stall.done)
                 else stringResource(R.string.tap_a_trade_to_exchange_need_the_cost_it),
                 color = Color.White.copy(0.6f), fontSize = 12.sp,
             )

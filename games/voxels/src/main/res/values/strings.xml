@@ -34,12 +34,18 @@
     <string name="villager_trades">Villager Trades</string>
     <string name="tap_a_trade_to_exchange_need_the_cost_it">Tap a trade to exchange (need the cost items).</string>
     <string name="villager_level">Level %1$d of %2$d</string>
-    <string name="villager_next_tier">%1$d more trades unlocks the next tier.</string>
+    <plurals name="villager_next_tier">
+        <item quantity="one">%1$d more trade unlocks the next tier.</item>
+        <item quantity="other">%1$d more trades unlock the next tier.</item>
+    </plurals>
     <string name="villager_tier">Tier %1$d</string>
     <string name="recipes_show_locked">Show locked</string>
     <string name="recipe_requires">Requires: craft %1$s first</string>
     <string name="achievements">Awards</string>
-    <string name="achievements_earned">%1$d of %2$d earned in this world</string>
+    <plurals name="achievements_earned">
+        <item quantity="one">%1$d of %2$d earned in this world</item>
+        <item quantity="other">%1$d of %2$d earned in this world</item>
+    </plurals>
     <string name="achievements_unavailable">Awards are still loading.</string>
     <string name="seed_2">Seed: %1$s  •  %2$s</string>
     <string name="estus">Estus ×%1$s</string>
@@ -103,7 +109,10 @@
     <!-- MenuActivity: Toast when a join request was sent. Sentence -->
     <string name="join_request_sent">Requested to join — you\'ll get access once the host approves.</string>
     <string name="connection_lost">Connection lost — waiting to reconnect…</string>
-    <string name="players_online">%1$d online</string>
+    <plurals name="players_online">
+        <item quantity="one">%1$d player online</item>
+        <item quantity="other">%1$d players online</item>
+    </plurals>
     <!-- Online HUD while the first connection to a shared world is being made. Sentence fragment -->
     <string name="online_connecting">Connecting…</string>
     <!-- Online HUD for joiners: the host is (not) connected right now. Sentence fragment -->

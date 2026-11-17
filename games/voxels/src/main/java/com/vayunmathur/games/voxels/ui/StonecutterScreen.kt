@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,7 +68,7 @@ fun StonecutterOverlay(cutsJson: String, inventoryJson: String, onClose: () -> U
     val held = remember(inv, cuts) {
         cuts.map { it.inId }.distinct().filter { id -> inv.slots.any { it.id == id && it.count > 0 } }
     }
-    var material by remember(held) { mutableStateOf(held.firstOrNull() ?: 0) }
+    var material by remember(held) { mutableIntStateOf(held.firstOrNull() ?: 0) }
     val options = remember(material, cuts) { cuts.filter { it.inId == material } }
 
     Box(

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,7 +53,7 @@ import kotlin.random.Random
 class MenuActivity : ComponentActivity() {
     // Bumped on each onResume so the world list reloads when returning from the game
     // (keeps last-played ordering fresh).
-    private var resumeTick by mutableStateOf(0)
+    private var resumeTick by mutableIntStateOf(0)
     // True while the menu is in the foreground; drives the inbox poll.
     private var menuResumed by mutableStateOf(false)
 

@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -76,7 +77,7 @@ fun FurnaceOverlay(smeltingJson: String, smeltJson: String, isBlast: Boolean, on
     // Keep the original indices: startSmelt() addresses recipes by their position in the table.
     val visible = remember(all, isBlast) { all.withIndex().filter { isBlast || !it.value.blast } }
     val state = parseSmeltState(smeltJson)
-    var sel by remember { mutableStateOf(visible.firstOrNull()?.index ?: 0) }
+    var sel by remember { mutableIntStateOf(visible.firstOrNull()?.index ?: 0) }
     val recipe = all.getOrNull(sel)
 
     Box(

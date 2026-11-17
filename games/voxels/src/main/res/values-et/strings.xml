@@ -4,11 +4,9 @@
     <string name="resume">Jätka</string>
     <string name="create_new_world">Loo usu maailm</string>
     <string name="create_world">Loo maailm</string>
-    <string name="close">Sulge</string>
     <string name="rust_lib_missing_vulkan_unavailable">Rusti teek on puudu - Vulkan pole kasutatav</string>
     <string name="save_quit_to_menu">Salvesta ja välju menüüsse</string>
     <string name="or_add_by_device_id">Või lisa seadme tunnus</string>
-    <string name="stop">Lõpeta</string>
     <string name="share_link">Jaga linki</string>
     <string name="requests_header">Liitumispäringud</string>
     <string name="approve">Nõustu</string>
@@ -16,7 +14,6 @@
     <string name="request_wants_to_join">%1$s soovib liitud „%2$s“ dokuemendiga</string>
     <string name="join_request_sent">Liitumispäring on edastatud ja sa saad ligipääsu, kui omanik sellega nõustub.</string>
     <string name="shared_with_you">Jagatud sinuga</string>
-    <string name="copy">Kopeeri</string>
     <string name="no_worlds_yet_create_one_to_start">Uusi maailmu veel pole - alustamiseks loo mõni.</string>
     <string name="world_name">Maailma nimi</string>
     <string name="your_device_id">Sinu seadme tunnus (kutse saamiseks jaga seda teistega):</string>
@@ -34,9 +31,15 @@
     <string name="online_worlds">Maailmad võrgus</string>
     <string name="host_online_world">Jaga oma maailma võrku</string>
     <string name="connection_lost">Ühendus on katkenud - ootan selle taastumist…</string>
-    <string name="players_online">Võrgus on %1$d mängijat</string>
+    <plurals name="players_online">
+        <item quantity="one">Võrgus on %1$d mängija</item>
+        <item quantity="other">Võrgus on %1$d mängijat</item>
+    </plurals>
     <string name="achievements">Auhinnad</string>
-    <string name="achievements_earned">Selles maailmas on teenitud %1$d / %2$d</string>
+    <plurals name="achievements_earned">
+        <item quantity="one">Selles maailmas on teenitud %1$d / %2$d</item>
+        <item quantity="other">Selles maailmas on teenitud %1$d / %2$d</item>
+    </plurals>
     <string name="achievements_unavailable">Auhinnad on veel laadimisel.</string>
     <string name="select_a_world">Vali maailm</string>
     <string name="leave_blank_for_random">Juhuslikuse jaoks jäta tühjaks</string>

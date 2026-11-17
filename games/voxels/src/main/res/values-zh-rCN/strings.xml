@@ -28,5 +28,4 @@
     <string name="approve">批准</string>
     <string name="deny">拒绝</string>
     <string name="request_wants_to_join">%1$s 想要加入“%2$s”</string>
-    <string name="copy">复制</string>
 </resources>

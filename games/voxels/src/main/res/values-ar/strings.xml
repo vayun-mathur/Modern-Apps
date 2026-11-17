@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="share_link">مشاركة الرابط</string>
-    <string name="close">إغلاق</string>
-    <string name="copy">نسخ</string>
     <string name="requests_header">الطلبات</string>
     <string name="approve">موافقة</string>
     <string name="deny">رفض</string>
     <string name="request_wants_to_join">%1$s يريد الانضمام إلى \"%2$s\"</string>
-    <string name="stop">توقف</string>
     <string name="shared_with_you">تمت المشاركة معك</string>
 </resources>

@@ -244,6 +244,7 @@ fun ShareOnlineDialog(
 ) {
     var recipient by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val shareLinkChooser = stringResource(R.string.share_link_chooser)
     Dialog(onDismissRequest = onDismiss) {
         Card(Modifier.fillMaxWidth().padding(8.dp)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -255,7 +256,7 @@ fun ShareOnlineDialog(
                 OutlinedButton(
                     onClick = {
                         val link = "https://maproj.org/vx/share#id=${world.meta.worldId}&owner=${world.meta.ownerDeviceId}"
-                        ExternalIntents.shareText(context, link, context.getString(R.string.share_link_chooser))
+                        ExternalIntents.shareText(context, link, shareLinkChooser)
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
