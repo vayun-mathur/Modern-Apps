@@ -35,7 +35,12 @@ class UsageHistoryDeepTest {
     private fun addStats(pkg: String, day: LocalDate, foregroundMs: Long) {
         val stats = ShadowUsageStatsManager.UsageStatsBuilder.newBuilder()
             .setPackageName(pkg)
-            .setFirstTimeStamp(dayStart(day))
+            // One minute into the day, not exactly at midnight: the shadow's
+            // queryUsageStats connects ranges that merely touch at an endpoint,
+            // so a midnight-aligned range is also returned for the previous
+            // day's query and the week loop would count it twice (which day
+            // that is depends on the local timezone's current weekday).
+            .setFirstTimeStamp(dayStart(day) + 60_000)
             .setLastTimeStamp(dayStart(day) + 3_600_000)
             .setTotalTimeInForeground(foregroundMs)
             .build()
