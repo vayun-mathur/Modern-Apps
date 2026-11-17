@@ -475,10 +475,16 @@
     <string name="lg_component_default_name">Component <xliff:g id="number" example="3">%1$d</xliff:g></string>
     <!-- Sandbox list: default group a new component is filed under. Short noun phrase -->
     <string name="lg_component_default_group">My components</string>
-    <!-- Sandbox list card: pin and cost summary -->
-    <string name="lg_component_summary"><xliff:g id="inputs" example="2">%1$d</xliff:g> in · <xliff:g id="outputs" example="1">%2$d</xliff:g> out · <xliff:g id="cost" example="4">%3$d</xliff:g> NAND</string>
-    <!-- Sandbox list card: summary when the component cannot be built because it contains itself -->
-    <string name="lg_component_broken"><xliff:g id="inputs" example="2">%1$d</xliff:g> in · <xliff:g id="outputs" example="1">%2$d</xliff:g> out · contains itself</string>
+    <!-- Sandbox list card: pin and cost summary. Quantity is the output count (%2$d); "in"/"out"/"NAND" are invariant abbreviations, so the forms are identical -->
+    <plurals name="lg_component_summary">
+        <item quantity="one"><xliff:g id="inputs" example="2">%1$d</xliff:g> in · <xliff:g id="outputs" example="1">%2$d</xliff:g> out · <xliff:g id="cost" example="4">%3$d</xliff:g> NAND</item>
+        <item quantity="other"><xliff:g id="inputs" example="2">%1$d</xliff:g> in · <xliff:g id="outputs" example="1">%2$d</xliff:g> out · <xliff:g id="cost" example="4">%3$d</xliff:g> NAND</item>
+    </plurals>
+    <!-- Sandbox list card: summary when the component cannot be built because it contains itself. Quantity is the output count (%2$d) -->
+    <plurals name="lg_component_broken">
+        <item quantity="one"><xliff:g id="inputs" example="2">%1$d</xliff:g> in · <xliff:g id="outputs" example="1">%2$d</xliff:g> out · contains itself</item>
+        <item quantity="other"><xliff:g id="inputs" example="2">%1$d</xliff:g> in · <xliff:g id="outputs" example="1">%2$d</xliff:g> out · contains itself</item>
+    </plurals>
     <!-- Component sheet: name field label -->
     <string name="lg_component_name">Name</string>
     <!-- Component sheet: group field label -->

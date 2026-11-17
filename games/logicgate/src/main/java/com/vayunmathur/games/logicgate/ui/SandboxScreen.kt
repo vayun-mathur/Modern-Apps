@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.platform.ComponentCard
@@ -90,8 +91,8 @@ private fun ComponentRow(card: ComponentCard, onOpen: (String) -> Unit) {
         Column(Modifier.padding(Spacing.md)) {
             Text(card.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                card.cost?.let { stringResource(R.string.lg_component_summary, card.inputs, card.outputs, it) }
-                    ?: stringResource(R.string.lg_component_broken, card.inputs, card.outputs),
+                card.cost?.let { pluralStringResource(R.plurals.lg_component_summary, card.outputs, card.inputs, card.outputs, it) }
+                    ?: pluralStringResource(R.plurals.lg_component_broken, card.outputs, card.inputs, card.outputs),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
