@@ -142,13 +142,6 @@ mod tests_continued {
         vec![(0u32, 0x00_00_10u32, "Main", main), (1, 0x00_00_20, "Join", joining)]
     }
 
-    /// The corridor a polyline would be the reference of, for measuring the output against.
-    fn corridor_of(points: &[(i32, i32)]) -> Corridor {
-        let points = canonical(points);
-        let cum = cumulative(&points);
-        Corridor::new(points, cum, Vec::new())
-    }
-
     /// `n` services sharing `metres` of trunk running north and then leaving it in
     /// different directions for 20 km.
     fn trunk_then_branches(metres: f64, n: usize) -> Vec<Fixture> {

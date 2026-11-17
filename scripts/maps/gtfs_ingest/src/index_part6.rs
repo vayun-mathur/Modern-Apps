@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod shape_tests {
     use super::*;
-    use super::tests::{ShapeSpec, agency, assert_shape_invariants, one_feed, shape_map, shaped_feed};
+    use super::tests::{agency, assert_shape_invariants, one_feed, shape_map, shaped_feed};
     use crate::gtfs::parse_csv;
     use crate::reader::{Reader, SEC_SHAPE_COORDS};
 

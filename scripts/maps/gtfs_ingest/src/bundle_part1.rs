@@ -87,7 +87,7 @@ fn corridors_of(
     // spreads across the machine with no coordination beyond handing out indices. Results go
     // into a `BTreeMap` keyed by set id, which is ordered by key rather than by insertion, so
     // the output is byte-identical however the threads interleave.
-    let entries: Vec<(u32, Vec<(usize, f64, f64)>)> = members.into_iter().collect();
+    let entries: Vec<(u32, CorridorMembers)> = members.into_iter().collect();
     let total = entries.len();
     let threads = crate::par::threads();
     let next = AtomicUsize::new(0);

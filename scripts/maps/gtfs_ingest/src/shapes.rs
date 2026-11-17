@@ -76,7 +76,7 @@ pub fn distance_m(a: (i32, i32), b: (i32, i32)) -> f64 {
 /// [`project`]: that measures across a polyline, this measures along one, and
 /// together they are enough to ask whether two polylines are the same line.
 pub fn resample(points: &[(i32, i32)], step_m: f64) -> Vec<(i32, i32)> {
-    if points.len() < 2 || !(step_m > 0.0) {
+    if points.len() < 2 || step_m.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
         return points.to_vec();
     }
     let lerp = |a: i32, b: i32, t: f64| (a as f64 + (b as f64 - a as f64) * t).round() as i32;

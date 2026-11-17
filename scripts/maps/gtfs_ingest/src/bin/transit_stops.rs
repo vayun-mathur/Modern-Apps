@@ -14,12 +14,12 @@
 //! every camera idle. Each feature carries
 //!
 //!   * `motis_id`   — `<motis_prefix>_<gtfs stop_id>`, the id the realtime
-//!                    `/stoptimes` overlay needs. Omitted when the feed's prefix
-//!                    is unknown, in which case a tap can still open the offline
-//!                    board but gets no live delays.
+//!     `/stoptimes` overlay needs. Omitted when the feed's prefix
+//!     is unknown, in which case a tap can still open the offline
+//!     board but gets no live delays.
 //!   * `name`       — `stop_name`.
 //!   * `route_type` — the GTFS route type of the most prominent mode serving the
-//!                    stop, so the layer can be styled per mode.
+//!     stop, so the layer can be styled per mode.
 //!
 //! Mirrors `build_pois_layer.sh`'s shape: a Rust binary writes the geojsonseq
 //! directly, with no osmium or python stage.

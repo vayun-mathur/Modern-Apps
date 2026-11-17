@@ -138,6 +138,13 @@ const TAPER_M: f64 = 100.0;
 /// 255/9, about 1 Dp at a 9 Dp offset.
 const TAPER_STEPS: usize = 8;
 
+/// Per-probe-range part: range index, per-sample local set ids, and the distinct
+/// sets' flat `(values, ends)` buffers.
+type ProbePart = (usize, Vec<u32>, Vec<u32>, Vec<u32>);
+
+/// One corridor entry: set id plus its members as `(member, from, to)` spans.
+type CorridorMembers = Vec<(usize, f64, f64)>;
+
 /// How much of a member's own survey, immediately outside the corridor mouth, decides which
 /// side of the corridor it takes.
 ///
@@ -252,7 +259,7 @@ pub fn assign_with_timer(
     let probed = AtomicUsize::new(0);
     // Per range: its samples as local set ids, plus its distinct sets in the order it first saw
     // them, flat (`values`, `ends`).
-    let parts: Mutex<Vec<(usize, Vec<u32>, Vec<u32>, Vec<u32>)>> = Mutex::new(Vec::new());
+    let parts: Mutex<Vec<ProbePart>> = Mutex::new(Vec::new());
     {
         let grid = &grid;
         let samples = &samples;
@@ -268,7 +275,7 @@ pub fn assign_with_timer(
                     let mut seen: Vec<u32> = vec![0; route_count];
                     let mut stamp: u32 = 0;
                     let mut near: Vec<u32> = Vec::new();
-                    let mut done: Vec<(usize, Vec<u32>, Vec<u32>, Vec<u32>)> = Vec::new();
+                    let mut done: Vec<ProbePart> = Vec::new();
                     loop {
                         let r = next_range.fetch_add(1, AtomicOrdering::Relaxed);
                         if r >= ranges {

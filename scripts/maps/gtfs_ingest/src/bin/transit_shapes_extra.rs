@@ -215,7 +215,7 @@ fn a_routes_two_directions_draw_as_one_line() {
     assert_eq!(feed.shapes_read, 3, "every shape reaches the cross-feed pass whole");
 
     let out = root.join("routes.geojsonseq");
-    run(&out, &vec![("solo".to_string(), root.clone(), String::new())]).unwrap();
+    run(&out, &[("solo".to_string(), root.clone(), String::new())]).unwrap();
     let text = std::fs::read_to_string(&out).unwrap();
     let emitted: Vec<&str> = text.lines().collect();
     assert_eq!(emitted.len(), 2, "the trunk once, plus the branch's own leg: {text}");
