@@ -6,16 +6,22 @@ import com.vayunmathur.youpipe.Route
 
 // --- Default startup page ("Open to" setting) ---
 
+private const val TAB_INDEX_HOME = 0
+private const val TAB_INDEX_SUBSCRIPTIONS = 1
+private const val TAB_INDEX_HISTORY = 2
+private const val TAB_INDEX_SAVED = 3
+private const val TAB_INDEX_SETTINGS = 4
+
 /**
  * The sibling tab route for a legacy tab index (deep-link / default-page
  * `initialTab`): the index now only chooses the start route, never live
  * pager state. Out-of-range indices fall back to Home.
  */
 fun tabRoute(initialTab: Int): Route = when (initialTab) {
-    1 -> Route.Subscriptions
-    2 -> Route.History
-    3 -> Route.Saved
-    4 -> Route.Settings
+    TAB_INDEX_SUBSCRIPTIONS -> Route.Subscriptions
+    TAB_INDEX_HISTORY -> Route.History
+    TAB_INDEX_SAVED -> Route.Saved
+    TAB_INDEX_SETTINGS -> Route.Settings
     else -> Route.Home
 }
 
@@ -46,14 +52,14 @@ val DEFAULT_PAGE_OPTIONS: List<Pair<String, Int>> = listOf(
 
 /** Map a persisted default-page key to the initial backstack to launch with. */
 fun defaultBackStack(key: String?): List<Route> = when (key) {
-    DEFAULT_PAGE_SUBSCRIPTIONS -> listOf(tabRoute(1))
+    DEFAULT_PAGE_SUBSCRIPTIONS -> listOf(tabRoute(TAB_INDEX_SUBSCRIPTIONS))
     // Seed the Subscriptions root beneath the all-subscriptions feed so Back
     // returns to the Subscriptions list instead of exiting the app.
     DEFAULT_PAGE_ALL_SUBSCRIPTIONS ->
-        listOf(tabRoute(1), Route.SubscriptionVideosPage(null))
-    DEFAULT_PAGE_HISTORY -> listOf(tabRoute(2))
+        listOf(tabRoute(TAB_INDEX_SUBSCRIPTIONS), Route.SubscriptionVideosPage(null))
+    DEFAULT_PAGE_HISTORY -> listOf(tabRoute(TAB_INDEX_HISTORY))
     // Both the legacy "downloads" key and the new "saved" key open the Saved hub.
-    DEFAULT_PAGE_DOWNLOADS, DEFAULT_PAGE_SAVED -> listOf(tabRoute(3))
-    DEFAULT_PAGE_SETTINGS -> listOf(tabRoute(4))
-    else -> listOf(tabRoute(0)) // home / unset / unknown
+    DEFAULT_PAGE_DOWNLOADS, DEFAULT_PAGE_SAVED -> listOf(tabRoute(TAB_INDEX_SAVED))
+    DEFAULT_PAGE_SETTINGS -> listOf(tabRoute(TAB_INDEX_SETTINGS))
+    else -> listOf(tabRoute(TAB_INDEX_HOME)) // home / unset / unknown
 }

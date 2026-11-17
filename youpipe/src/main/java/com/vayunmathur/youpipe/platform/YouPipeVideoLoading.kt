@@ -270,7 +270,9 @@ private fun registerSabrInfo(
     videoId: String,
     sabrVideoOnly: List<org.schabi.newpipe.extractor.stream.VideoStream>,
 ) {
-    // Register SABR session metadata for the playback service if present. The content PoToken is minted at play time by createSourceSpec; prewarming it here regressed SABR bootstrap.
+    // Register SABR session metadata for the playback service if present. The content
+    // PoToken is minted at play time by createSourceSpec; prewarming it here regressed
+    // SABR bootstrap.
     if (sabrVideoOnly.isEmpty()) return
     sabrVideoOnly.firstOrNull {
         it.getDeliveryMethodInfo() is
