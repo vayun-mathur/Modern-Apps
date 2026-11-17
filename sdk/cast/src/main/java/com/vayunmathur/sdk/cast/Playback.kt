@@ -111,6 +111,7 @@ data class PlaybackCommand(
         value?.let { putDouble(CastContract.KEY_ACTION_VALUE, it) }
     }
 
+    /** Bundle parsing helpers for [PlaybackCommand]. */
     companion object {
         /**
          * Read one back, or null for an action this build does not know.
