@@ -2,6 +2,7 @@ package com.vayunmathur.emergency.data
 
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.core.net.toUri
 
 /**
  * The owner's identity details plus their emergency contacts.
@@ -92,5 +93,5 @@ fun serializeContacts(uris: List<Uri>): String = uris.joinToString(CONTACT_SEPAR
 fun parseContactUris(serialized: String): List<Uri> =
     serialized.split(CONTACT_SEPARATOR).mapNotNull {
         val trimmed = it.trim()
-        if (trimmed.isEmpty()) null else runCatching { Uri.parse(trimmed) }.getOrNull()
+        if (trimmed.isEmpty()) null else runCatching { trimmed.toUri() }.getOrNull()
     }

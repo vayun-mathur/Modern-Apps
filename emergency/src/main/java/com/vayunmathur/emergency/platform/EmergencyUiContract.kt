@@ -1,6 +1,7 @@
 package com.vayunmathur.emergency.platform
 
 import android.net.Uri
+import androidx.core.net.toUri
 import com.vayunmathur.emergency.data.EmergencyContact
 import com.vayunmathur.emergency.data.EmergencyInfo
 import com.vayunmathur.emergency.data.ImportedAllergy
@@ -125,7 +126,7 @@ interface SosActions {
 
 /** Preview/sample contact for screenshots. */
 fun sampleContact(): EmergencyContact = EmergencyContact(
-    phoneUri = Uri.parse("content://com.android.contacts/data/1"),
+    phoneUri = "content://com.android.contacts/data/1".toUri(),
     displayName = "Alex Rivera",
     phoneNumber = "(555) 010-2030",
     phoneType = "Mobile",

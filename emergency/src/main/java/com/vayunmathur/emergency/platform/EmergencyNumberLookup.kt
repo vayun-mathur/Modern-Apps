@@ -42,10 +42,16 @@ class EmergencyNumberLookup(private val context: Context) {
         }
         if (!hasPhoneStateGrant()) return null
         val telecom = context.getSystemService<TelephonyManager>() ?: return null
-        val lists = runCatching {
+        // getEmergencyNumberList needs READ_PRIVILEGED_PHONE_STATE on top of the
+        // READ_PHONE_STATE grant checked above; without the privileged half the platform
+        // throws SecurityException, which degrades to the fallback number like a missing grant.
+        val lists = try {
             telecom.getEmergencyNumberList(EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE)
-        }.getOrElse {
-            Log.status(TAG, "could not read the emergency-number list", it)
+        } catch (e: SecurityException) {
+            Log.status(TAG, "no privileged grant for the emergency-number list", e)
+            return null
+        } catch (e: Exception) {
+            Log.status(TAG, "could not read the emergency-number list", e)
             return null
         }
         if (lists.isNullOrEmpty()) return null

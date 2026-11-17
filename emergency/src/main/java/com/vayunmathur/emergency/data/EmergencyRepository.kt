@@ -30,14 +30,13 @@ private const val TAG = "EmergencyRepository"
  * the credential-encrypted contacts provider. Reads pre-unlock return whatever is already
  * stored without pruning.
  */
-class EmergencyRepository private constructor(private val app: Context) {
-
-    private val prefs: SharedPreferences by lazy {
-        // Device-protected storage so the lock-screen view can read post-reboot pre-unlock;
-        // contact URIs stored here are only *resolved* once unlocked (see load below).
-        val device = app.createDeviceProtectedStorageContext()
-        device.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    }
+class EmergencyRepository private constructor(
+    private val prefs: SharedPreferences,
+    private val contacts: ContactReader,
+    private val userManager: UserManager?,
+    private val packageManager: PackageManager,
+    private val packageName: String,
+) {
 
     private val mutable = MutableStateFlow(EmergencyInfo())
     val info: StateFlow<EmergencyInfo> = mutable.asStateFlow()
@@ -77,8 +76,7 @@ class EmergencyRepository private constructor(private val app: Context) {
 
     /** Adds a contact URI after validating it still resolves; returns false when rejected. */
     suspend fun addContact(phoneUri: Uri): Boolean = withContext(Dispatchers.IO) {
-        val reader = ContactReader(app)
-        val contact = reader.read(phoneUri) ?: return@withContext false
+        val contact = contacts.read(phoneUri) ?: return@withContext false
         val current = mutable.value.contacts
         if (current.any { it.phoneUri == phoneUri }) return@withContext true
         persistUris(current.map { it.phoneUri } + phoneUri)
@@ -107,7 +105,7 @@ class EmergencyRepository private constructor(private val app: Context) {
         val uris = parseContactUris(serialized)
         // Pre-unlock the contacts cannot be resolved; carry the URIs with blank snapshots.
         val contacts = if (isUnlocked()) {
-            ContactReader(app).readAll(uris)
+            contacts.readAll(uris)
         } else {
             uris.map { EmergencyContact(it, "", "", "") }
         }
@@ -127,7 +125,7 @@ class EmergencyRepository private constructor(private val app: Context) {
      */
     private fun resolveAndPrune(info: EmergencyInfo): EmergencyInfo {
         val uris = info.contacts.map { it.phoneUri }
-        val resolved = ContactReader(app).readAll(uris)
+        val resolved = contacts.readAll(uris)
         if (resolved.size != uris.size) {
             persistUris(resolved.map { it.phoneUri })
             return info.copy(contacts = resolved)
@@ -141,8 +139,7 @@ class EmergencyRepository private constructor(private val app: Context) {
         prefs.edit { putString(EmergencyKeys.CONTACTS, serializeContacts(uris)) }
     }
 
-    private fun isUnlocked(): Boolean =
-        app.getSystemService(UserManager::class.java)?.isUserUnlocked != false
+    private fun isUnlocked(): Boolean = userManager?.isUserUnlocked != false
 
     /**
      * Disables the Settings first-run suggestion once anything is set, re-enables when the
@@ -155,8 +152,8 @@ class EmergencyRepository private constructor(private val app: Context) {
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         }
         runCatching {
-            app.packageManager.setComponentEnabledSetting(
-                ComponentName(app, SUGGESTION_CLASS),
+            packageManager.setComponentEnabledSetting(
+                ComponentName(packageName, SUGGESTION_CLASS),
                 state,
                 PackageManager.DONT_KILL_APP,
             )
@@ -173,7 +170,25 @@ class EmergencyRepository private constructor(private val app: Context) {
 
         fun get(context: Context): EmergencyRepository =
             instance ?: synchronized(this) {
-                instance ?: EmergencyRepository(context.applicationContext).also { instance = it }
+                instance ?: create(context.applicationContext).also { instance = it }
             }
+
+        /**
+         * Builds the singleton from non-Context collaborators derived from the application
+         * context, so the static instance holds no [Context] (StaticFieldLeak): preferences,
+         * the contacts reader's resolver/resources, and the two system services it needs.
+         */
+        private fun create(app: Context): EmergencyRepository {
+            // Device-protected storage so the lock-screen view can read post-reboot pre-unlock;
+            // contact URIs stored here are only *resolved* once unlocked (see load).
+            val device = app.createDeviceProtectedStorageContext()
+            return EmergencyRepository(
+                prefs = device.getSharedPreferences(PREFS, Context.MODE_PRIVATE),
+                contacts = ContactReader(app.contentResolver, app.resources),
+                userManager = app.getSystemService(UserManager::class.java),
+                packageManager = app.packageManager,
+                packageName = app.packageName,
+            )
+        }
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,7 +35,7 @@ import com.vayunmathur.emergency.R
 import com.vayunmathur.emergency.platform.SosActions
 import com.vayunmathur.emergency.platform.SosCoordinator
 import com.vayunmathur.emergency.platform.SosUiState
-import com.vayunmathur.emergency.receiver.SosActionReceiver
+import com.vayunmathur.emergency.notifications.SosActionReceiver
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.Text
@@ -71,7 +72,7 @@ class SosActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             DynamicTheme {
-                com.vayunmathur.emergency.SosNavigation(coordinator)
+                SosNavigation(coordinator)
             }
         }
     }
@@ -137,11 +138,12 @@ fun SosScreen(state: SosUiState, actions: SosActions) {
     // Screenshots render this screen with literal state; the countdown effect must not fire
     // there (no broadcast stack, no activity to finish).
     val inspection = LocalInspectionMode.current
+    val sosTickMillis = integerResource(R.integer.sos_count_down_interval)
 
     // Firing the call exactly once when the clock hits zero.
     if (!inspection) {
         LaunchedEffect(state.totalMillis) {
-            val tick = context.resources.getInteger(R.integer.sos_count_down_interval).toLong()
+            val tick = sosTickMillis.toLong()
             var left = state.totalMillis
             while (left > 0) {
                 delay(tick.coerceAtMost(left))

@@ -5,12 +5,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.emergency.platform.EmergencyViewModel
-import com.vayunmathur.emergency.platform.SosCoordinator
 import com.vayunmathur.emergency.ui.EditInfoPage
-import com.vayunmathur.emergency.ui.SosScreen
 import com.vayunmathur.emergency.ui.ViewInfoScreen
 import com.vayunmathur.library.util.DetailPage
-import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -19,7 +16,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
  * Navigation host for the info surfaces: view and edit.
  *
  * The SOS countdown is not hosted here: it keeps its own activity (see
- * SosActivity in the manifest) and renders through [SosNavigation], so the
+ * SosActivity in the manifest) and renders through [com.vayunmathur.emergency.ui.SosNavigation], so the
  * shared graph has all three destinations without the countdown inheriting
  * this host's task or the host inheriting the countdown's lock-screen,
  * single-instance, no-history semantics.
@@ -58,14 +55,3 @@ fun Navigation(
     }
 }
 
-/** The one-destination SOS host inside SosActivity. */
-@Composable
-fun SosNavigation(coordinator: SosCoordinator) {
-    val backStack = rememberNavBackStack<Route>(Route.Sos)
-    MainNavigation(backStack) {
-        entry<Route.Sos>(metadata = FullscreenPage()) {
-            val state by coordinator.state.collectAsStateWithLifecycle()
-            SosScreen(state = state, actions = coordinator)
-        }
-    }
-}

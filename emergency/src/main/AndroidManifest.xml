@@ -31,13 +31,16 @@
 
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- The SOS receiver fires the call broadcast from the background alarm. -->
-    <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND" />
+    <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND"
+        tools:ignore="ProtectedPermissions" />
     <!-- The SOS countdown runs as a foreground service with its notification. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- specialUse foreground subtype for the SOS countdown service. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Reads the SIM emergency-number list so the SOS screen names the real number. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Telephony is optional hardware (e.g. ChromeOS tablets); the SOS flow degrades to the 112 fallback without it. -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <!-- Privileged half of emergency-number lookup. Inert without priv-app promotion. -->
     <uses-permission android:name="android.permission.READ_PRIVILEGED_PHONE_STATE"
         tools:ignore="ProtectedPermissions" />
@@ -109,7 +112,6 @@
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:directBootAware="true"
             android:exported="true"
-            android:label="@string/app_name"
             android:launchMode="singleTask"
             android:showWhenLocked="true"
             android:taskAffinity="com.android.settings"
@@ -118,7 +120,6 @@
         <!-- The lock-screen view card, answering EMERGENCY_ASSISTANCE. -->
         <activity-alias
             android:name=".ui.ViewInfoActivity"
-            android:directBootAware="true"
             android:exported="true"
             android:label="@string/app_name"
             android:targetActivity=".MainActivity">
@@ -243,7 +244,6 @@
         -->
         <activity-alias
             android:name=".ui.SosEntryPoint"
-            android:directBootAware="true"
             android:exported="true"
             android:label="@string/sos_channel_name"
             android:permission="android.permission.MANAGE_SENSOR_PRIVACY"
@@ -277,7 +277,7 @@
           both are explicit-class intents from our own notification, alarm and screen.
         -->
         <receiver
-            android:name=".receiver.SosActionReceiver"
+            android:name=".notifications.SosActionReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.vayunmathur.emergency.broadcast.MAKE_EMERGENCY_CALL" />

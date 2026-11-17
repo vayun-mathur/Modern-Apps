@@ -51,15 +51,15 @@ class ReaderFailureModesTest {
     @Test
     fun `provider failures and null cursors degrade to null`() {
         FakeContactsProvider.failUris += phoneUri.toString()
-        assertNull(ContactReader(ctx).read(phoneUri))
-        assertFalse(ContactReader(ctx).isValid(phoneUri))
+        assertNull(ContactReader(ctx.contentResolver, ctx.resources).read(phoneUri))
+        assertFalse(ContactReader(ctx.contentResolver, ctx.resources).isValid(phoneUri))
         val rawUri = Uri.parse("content://com.android.contacts/raw_contacts/7")
         FakeContactsProvider.failUris += rawUri.toString()
         assertNull(OwnerIdentityReader(ctx).read(rawUri))
         FakeContactsProvider.failUris.clear()
         FakeContactsProvider.nullUris += phoneUri.toString()
-        assertNull(ContactReader(ctx).read(phoneUri))
-        assertFalse(ContactReader(ctx).isValid(phoneUri))
+        assertNull(ContactReader(ctx.contentResolver, ctx.resources).read(phoneUri))
+        assertFalse(ContactReader(ctx.contentResolver, ctx.resources).isValid(phoneUri))
     }
 
     @Test

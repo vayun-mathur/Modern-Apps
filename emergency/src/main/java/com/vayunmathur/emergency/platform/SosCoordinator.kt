@@ -3,7 +3,7 @@ package com.vayunmathur.emergency.platform
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.vayunmathur.emergency.receiver.SosActionReceiver
+import com.vayunmathur.emergency.notifications.SosActionReceiver
 import com.vayunmathur.emergency.service.SosCountdownService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -16,7 +16,7 @@ import com.vayunmathur.emergency.notifications.SosNotifications
 import com.vayunmathur.emergency.platform.EmergencyNumberLookup
 import com.vayunmathur.emergency.platform.GestureProvider
 import com.vayunmathur.emergency.platform.SosSound
-import com.vayunmathur.emergency.receiver.SosActionReceiver
+import com.vayunmathur.emergency.notifications.SosActionReceiver
 import com.vayunmathur.emergency.ui.SosActivity
 
 private const val TAG = "EmergencySosService"

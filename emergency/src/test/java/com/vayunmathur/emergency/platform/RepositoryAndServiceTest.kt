@@ -7,7 +7,7 @@ import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.emergency.data.EmergencyRepository
 import com.vayunmathur.emergency.notifications.SosNotifications
-import com.vayunmathur.emergency.receiver.SosActionReceiver
+import com.vayunmathur.emergency.notifications.SosActionReceiver
 import com.vayunmathur.emergency.service.SosCountdownService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

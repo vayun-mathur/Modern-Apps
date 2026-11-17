@@ -1,4 +1,4 @@
-package com.vayunmathur.emergency.receiver
+package com.vayunmathur.emergency.notifications
 
 import android.app.AlarmManager
 import android.app.PendingIntent

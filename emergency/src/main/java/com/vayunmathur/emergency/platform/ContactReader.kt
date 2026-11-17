@@ -1,7 +1,8 @@
 package com.vayunmathur.emergency.platform
 
+import android.content.ContentResolver
 import android.content.ContentUris
-import android.content.Context
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -20,12 +21,15 @@ private const val TAG = "EmergencyContactReader"
  * resolves so contacts deleted from the address book can be pruned. Needs `READ_CONTACTS`
  * (a normal runtime grant); without it every read returns null and the UI must prompt.
  */
-class ContactReader(private val context: Context) {
+class ContactReader(
+    private val resolver: ContentResolver,
+    private val resources: Resources,
+) {
 
     /** Reads one contact, or null when the URI no longer resolves or access is denied. */
     fun read(phoneUri: Uri): EmergencyContact? {
         val cursor = runCatching {
-            context.contentResolver.query(
+            resolver.query(
                 phoneUri,
                 arrayOf(
                     ContactsContract.Contacts.DISPLAY_NAME,
@@ -46,7 +50,7 @@ class ContactReader(private val context: Context) {
             val number = it.getString(1).orEmpty()
             if (number.isBlank()) return null
             val type = ContactsContract.CommonDataKinds.Phone.getTypeLabel(
-                context.resources, it.getInt(2), it.getString(3),
+                resources, it.getInt(2), it.getString(3),
             ).toString()
             val photo = readPhoto(it.getLong(4))
             return EmergencyContact(phoneUri, name, number, type, photo)
@@ -60,7 +64,7 @@ class ContactReader(private val context: Context) {
     fun isValid(phoneUri: Uri?): Boolean {
         if (phoneUri == null) return false
         val cursor = runCatching {
-            context.contentResolver.query(phoneUri, null, null, null, null)
+            resolver.query(phoneUri, null, null, null, null)
         }.getOrElse {
             Log.status(TAG, "unable to validate contact $phoneUri", it)
             return false
@@ -72,7 +76,7 @@ class ContactReader(private val context: Context) {
         if (photoId <= 0) return null
         val photoUri = ContentUris.withAppendedId(ContactsContract.Data.CONTENT_URI, photoId)
         val cursor = runCatching {
-            context.contentResolver.query(
+            resolver.query(
                 photoUri, arrayOf(ContactsContract.Contacts.Photo.PHOTO), null, null, null,
             )
         }.getOrNull() ?: return null

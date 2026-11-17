@@ -115,7 +115,7 @@ class EmergencyScreensTest {
             rule.waitForIdle()
             val shadow = org.robolectric.Shadows.shadowOf(app)
             fired = shadow.broadcastIntents.any {
-                it.action == com.vayunmathur.emergency.receiver.SosActionReceiver.ACTION_MAKE_CALL
+                it.action == com.vayunmathur.emergency.notifications.SosActionReceiver.ACTION_MAKE_CALL
             } || shadow.nextStartedActivity != null
             if (!fired) Thread.sleep(50)
         }

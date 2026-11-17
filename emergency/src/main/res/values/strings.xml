@@ -10,10 +10,6 @@
     <!-- Settings suggestion: explanation shown to first-run users. -->
     <string name="settings_suggestion_body">First responders can see it from the lock screen in an emergency.</string>
 
-    <!-- View screen: tab showing the owner's medical details. Noun. -->
-    <string name="tab_title_info">Info</string>
-    <!-- View screen: tab showing the emergency contacts. Noun. -->
-    <string name="tab_title_contacts">Contacts</string>
     <!-- View screen: heading above the owner's name and address cards. Noun. -->
     <string name="group_owner">Owner</string>
     <!-- View screen: heading above each emergency contact's name and number cards. Noun phrase. -->
@@ -57,15 +53,11 @@
     <string name="section_medical_info">Medical information</string>
     <!-- Contact row: button that removes the contact. Verb. -->
     <string name="remove_contact">Remove</string>
-    <!-- Contact row: button that opens the contact. Verb. -->
-    <string name="view_contact">View</string>
 
     <!-- Contacts permission: title of the prompt shown before the contact list. -->
     <string name="contacts_permission_title">Contacts access is off</string>
     <!-- Contacts permission: explanation shown before the contact list. -->
     <string name="contacts_permission_hint">Allow Emergency to read contacts to choose who to call for you.</string>
-    <!-- Contacts permission: button that requests the permission. Verb phrase. -->
-    <string name="contacts_permission_action">Allow contacts access</string>
     <!-- SOS: countdown subtitle naming the number about to be dialled. Has the number as its argument. -->
     <string name="sos_subtitle">Calling <xliff:g id="number" example="911">%1$s</xliff:g> in <xliff:g id="seconds" example="5">%2$d</xliff:g></string>
     <!-- SOS: slide-to-cancel control. Verb. -->
@@ -84,8 +76,6 @@
 
     <!-- View screen: heading above current medications read from Health Connect. Noun phrase. -->
     <string name="section_current_medications">Medications</string>
-    <!-- Attribution shown under the Health Connect sections. -->
-    <string name="from_health_connect">From Health Connect</string>
     <!-- Allergy criticality shown as a trailing label on high-severity allergies. Noun phrase. -->
     <string name="allergy_high">Severe</string>
     <!-- Allergy criticality shown as a trailing label on low-severity allergies. Noun. -->

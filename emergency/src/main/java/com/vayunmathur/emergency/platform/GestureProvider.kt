@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
+import androidx.core.content.edit
 import com.vayunmathur.library.log.Log
 
 private const val TAG = "EmergencyGestureProvider"
@@ -44,9 +45,9 @@ class GestureProvider : ContentProvider() {
                 )
             }
             METHOD_SET_NUMBER_OVERRIDE -> {
-                prefs().edit()
-                    .putString(EXTRA_CALL_NUMBER, extras?.getString(EXTRA_CALL_NUMBER))
-                    .apply()
+                prefs().edit {
+                    putString(EXTRA_CALL_NUMBER, extras?.getString(EXTRA_CALL_NUMBER))
+                }
                 // Stock notifies observers of the gesture authority URI here; Settings
                 // registers a content observer on it, so without this the override row
                 // never refreshes after a set. Both authorities served in the manifest,

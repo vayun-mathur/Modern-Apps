@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.vayunmathur.emergency.R
-import com.vayunmathur.emergency.receiver.SosActionReceiver
 
 /**
  * The SOS countdown notification.

@@ -53,7 +53,7 @@ class ContactReaderTest {
     fun `reads name number type and photo`() {
         FakeContactsProvider.phones[phoneUri.toString()] =
             FakeContactsProvider.PhoneRow("Alex Rivera", "(555) 010-2030", photoId = 9)
-        val contact = ContactReader(ctx).read(phoneUri)
+        val contact = ContactReader(ctx.contentResolver, ctx.resources).read(phoneUri)
         assertNotNull(contact)
         assertEquals("Alex Rivera", contact.displayName)
         assertEquals("(555) 010-2030", contact.phoneNumber)
@@ -64,17 +64,17 @@ class ContactReaderTest {
 
     @Test
     fun `missing contact and blank number read as null`() {
-        assertNull(ContactReader(ctx).read(phoneUri))
+        assertNull(ContactReader(ctx.contentResolver, ctx.resources).read(phoneUri))
         FakeContactsProvider.phones[phoneUri.toString()] =
             FakeContactsProvider.PhoneRow("No Number", "  ")
-        assertNull(ContactReader(ctx).read(phoneUri))
+        assertNull(ContactReader(ctx.contentResolver, ctx.resources).read(phoneUri))
         // custom type label is used when present
         FakeContactsProvider.phones[phoneUri.toString()] =
             FakeContactsProvider.PhoneRow(
                 "Custom", "123",
                 ContactsContract.CommonDataKinds.Phone.TYPE_CUSTOM, "Cabin",
             )
-        assertEquals("Cabin", ContactReader(ctx).read(phoneUri)?.phoneType)
+        assertEquals("Cabin", ContactReader(ctx.contentResolver, ctx.resources).read(phoneUri)?.phoneType)
     }
 
     @Test
@@ -82,23 +82,23 @@ class ContactReaderTest {
         FakeContactsProvider.phones[phoneUri.toString()] =
             FakeContactsProvider.PhoneRow("Alex", "123")
         val dead = Uri.parse("content://com.android.contacts/data/phones/99")
-        val all = ContactReader(ctx).readAll(listOf(phoneUri, dead))
+        val all = ContactReader(ctx.contentResolver, ctx.resources).readAll(listOf(phoneUri, dead))
         assertEquals(1, all.size)
-        assertTrue(ContactReader(ctx).isValid(phoneUri))
-        assertFalse(ContactReader(ctx).isValid(dead))
-        assertFalse(ContactReader(ctx).isValid(null))
+        assertTrue(ContactReader(ctx.contentResolver, ctx.resources).isValid(phoneUri))
+        assertFalse(ContactReader(ctx.contentResolver, ctx.resources).isValid(dead))
+        assertFalse(ContactReader(ctx.contentResolver, ctx.resources).isValid(null))
     }
 
     @Test
     fun `photo id zero skips photo read`() {
         FakeContactsProvider.phones[phoneUri.toString()] =
             FakeContactsProvider.PhoneRow("Alex", "123", photoId = 0)
-        assertNull(ContactReader(ctx).read(phoneUri)?.photo)
+        assertNull(ContactReader(ctx.contentResolver, ctx.resources).read(phoneUri)?.photo)
         // a photo row with no bytes degrades to null, not a crash
         FakeContactsProvider.photoBytes = null
         FakeContactsProvider.phones[phoneUri.toString()] =
             FakeContactsProvider.PhoneRow("Alex", "123", photoId = 3)
-        assertNull(ContactReader(ctx).read(phoneUri)?.photo)
+        assertNull(ContactReader(ctx.contentResolver, ctx.resources).read(phoneUri)?.photo)
     }
 }
 
