@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">密码</string>
-    <string name="label_name">名称</string>
     <string name="label_username">用户名</string>
-    <string name="label_email">邮箱</string>
     <string name="label_password">密码</string>
     <string name="label_totp_secret">TOTP 密钥</string>
     <string name="label_add_website">添加网站</string>
@@ -11,7 +9,6 @@
     <string name="edit_password">编辑密码</string>
     <string name="hide">隐藏</string>
     <string name="show">显示</string>
-    <string name="section_password">密码</string>
     <string name="section_totp">TOTP</string>
     <string name="totp_not_configured">（未配置）</string>
     <string name="totp_refreshes_in">将在 <xliff:g id="seconds" example="15">%1$d</xliff:g> 秒后刷新</string>
@@ -28,7 +25,6 @@
     <string name="passkey_created">创建时间</string>
     <string name="passkey_last_used">最后使用时间</string>
     <string name="unlock_database">解锁密码</string>
-    <string name="title_settings">设置</string>
     <string name="import_csv_warning">导入 CSV 会将明文凭据引入本应用。导入后请删除导出文件。</string>
     <string name="import_passwords">导入密码</string>
     <string name="import_source_bitwarden">Bitwarden</string>
@@ -46,20 +42,15 @@
     <string name="sync_file_none">（未选择）</string>
     <string name="sync_choose_file">选择现有文件</string>
     <string name="sync_create_file">创建新文件</string>
-    <string name="sync_save">保存</string>
-    <string name="sync_cancel">取消</string>
     <string name="sync_last">上次同步</string>
     <string name="sync_never">从未</string>
     <string name="sync_now">立即同步</string>
-    <string name="label_note">备注</string>
-    <string name="section_note">备注</string>
     <string name="import_source_proton_pass">Proton Pass</string>
     <string name="sync_section">KDBX 同步</string>
     <string name="sync_enable">与 KDBX 文件同步</string>
     <string name="sync_enable_description">每 15 分钟以及每次更改后，保持此密码库与 KeePass 文件一致。</string>
     <string name="sync_file">KDBX 文件</string>
     <string name="sync_vault_password">密码库密码</string>
-    <string name="sync_vault_password_set">已保存</string>
     <string name="sync_vault_password_unset">（未设置）</string>
     <string name="sync_error_file_missing">无法打开 KDBX 文件。本地未进行任何更改。</string>
     <string name="sync_error_wrong_password">密码库密码错误。本地未进行任何更改。</string>
@@ -71,7 +62,6 @@
     <string name="passkey_link_auto">自动匹配</string>
     <string name="passkey_link_manual">由您关联</string>
     <string name="passkey_link_detached">已断开连接。将不会自动匹配。</string>
-    <string name="passkey_connect">关联到条目</string>
     <string name="passkey_disconnect">取消关联</string>
     <string name="passkey_link_use_auto">自动匹配</string>
     <string name="passkey_link_dialog_title">关联到条目</string>

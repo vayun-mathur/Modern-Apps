@@ -1,5 +1,6 @@
 package com.vayunmathur.passwords.platform.cable
 
+import android.annotation.SuppressLint
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.Mac
@@ -59,6 +60,10 @@ object CableEid {
     }
 
     /** Encrypts + authenticates the 16-byte EID into the 20-byte advertised value. */
+    // caBLE EID is exactly one 16-byte AES block per the Chromium spec; ECB here is the raw
+    // single-block AES operation (no IV/padding/multi-block confidentiality pattern), and
+    // authenticity comes from the appended HMAC tag. Any other mode would break interop.
+    @SuppressLint("GetInstance")
     fun encrypt(plaintextEid: ByteArray, eidKey: ByteArray): ByteArray {
         require(plaintextEid.size == EID_SIZE) { "EID must be $EID_SIZE bytes" }
         require(eidKey.size == CableKeys.EID_KEY_SIZE) { "EID key must be ${CableKeys.EID_KEY_SIZE} bytes" }

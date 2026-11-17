@@ -66,6 +66,11 @@ fun PasskeyPage(
     val link = passkey.link()
     val messenger = rememberMessenger()
     var picking by remember { mutableStateOf(false) }
+    // Configuration-aware strings captured in composition for use in callbacks below
+    // (LocalContext.getString would be stale after a configuration change).
+    val noNameText = stringResource(R.string.no_name)
+    val passkeyLinkedTemplate = stringResource(R.string.passkey_linked_message)
+    val passkeyUnlinkedMessage = stringResource(R.string.passkey_unlinked_message)
 
     val context = LocalContext.current
     val mediumDate = DateFormat.getMediumDateFormat(context)
@@ -80,10 +85,7 @@ fun PasskeyPage(
                 picking = false
                 viewModel.setPasskeyLink(passkey, PasskeyLink.To(password.syncId))
                 messenger.show(
-                    context.getString(
-                        R.string.passkey_linked_message,
-                        password.name.ifBlank { context.getString(R.string.no_name) },
-                    )
+                    passkeyLinkedTemplate.format(password.name.ifBlank { noNameText })
                 )
             },
         )
@@ -131,7 +133,7 @@ fun PasskeyPage(
                     if (linkedTo != null) {
                         TextButton(onClick = {
                             viewModel.setPasskeyLink(passkey, PasskeyLink.Detached)
-                            messenger.show(context.getString(R.string.passkey_unlinked_message))
+                            messenger.show(passkeyUnlinkedMessage)
                         }) {
                             IconLinkOff()
                             Spacer(Modifier.width(8.dp))

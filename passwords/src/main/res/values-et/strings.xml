@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Salasõnad</string>
-    <string name="label_name">Nimi</string>
     <string name="label_username">Kasutajanimi</string>
-    <string name="label_email">E-posti aadress</string>
     <string name="label_password">Salasõna</string>
     <string name="label_totp_secret">TOTP saladus</string>
     <string name="label_add_website">Lisa veebisait</string>
@@ -11,7 +9,6 @@
     <string name="edit_password">Muuda salasõna</string>
     <string name="hide">Peida</string>
     <string name="show">Näita</string>
-    <string name="section_password">Salasõna</string>
     <string name="section_totp">TOTP ehk ajapõhine ühekordne salasõna</string>
     <string name="totp_not_configured">(pole seadistatud)</string>
     <string name="totp_refreshes_in">Uuendamse aeg on <xliff:g id="seconds" example="15">%1$d</xliff:g> sek</string>
@@ -29,11 +26,8 @@
     <string name="passkey_rp_id">Edastava osapoole tunnus (ID)</string>
     <string name="passkey_user_name">Kasutajanimi</string>
     <string name="passkey_user_display_name">Kuvatav nimi</string>
-    <string name="title_settings">Seadistused</string>
     <string name="passkey_credential_id">Tuvastuskirje tunnus (ID)</string>
     <string name="passkey_created">Loodud</string>
-    <string name="label_note">Märge</string>
-    <string name="section_note">Märge</string>
     <string name="import_source_bitwarden">Bitwarden</string>
     <string name="import_source_chrome">Google Chrome</string>
     <string name="import_source_firefox">Firefox</string>
@@ -47,10 +41,7 @@
     <string name="sync_choose_file">Vali olemasolev fail</string>
     <string name="sync_create_file">Tee uus fail</string>
     <string name="sync_vault_password">Salasõnahoidla salasõna</string>
-    <string name="sync_vault_password_set">Salvestatud</string>
     <string name="sync_vault_password_unset">(määratlemata)</string>
-    <string name="sync_save">Salvesta</string>
-    <string name="sync_cancel">Katkesta</string>
     <string name="sync_last">Viimane sünkroonimine</string>
     <string name="sync_never">Mitte kunagi</string>
     <string name="sync_now">Sünkrooni kohe</string>
@@ -71,7 +62,6 @@
     <string name="passkey_link_auto">Vastendatud automaatselt</string>
     <string name="passkey_link_manual">Seotud sinu poolt</string>
     <string name="passkey_link_detached">Ühendus on katkestatud. Teda ei vastendata automaatselt.</string>
-    <string name="passkey_connect">Seo kirjega</string>
     <string name="passkey_disconnect">Lõpeta sidumine kirjega</string>
     <string name="passkey_link_use_auto">Vastenda automaatselt</string>
     <string name="passkey_link_dialog_title">Kirje link</string>

@@ -6,6 +6,7 @@ import android.content.UriMatcher
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Binder
 import android.os.Process
 import android.util.Base64
@@ -106,13 +107,13 @@ class RelayPasswordProvider : ContentProvider() {
         private val json = Json { ignoreUnknownKeys = true }
 
         fun passwordsUri(vaultId: String): Uri =
-            Uri.parse("content://$AUTHORITY/vault/$vaultId/passwords")
+            "content://$AUTHORITY/vault/$vaultId/passwords".toUri()
 
         fun passkeysUri(vaultId: String): Uri =
-            Uri.parse("content://$AUTHORITY/vault/$vaultId/passkeys")
+            "content://$AUTHORITY/vault/$vaultId/passkeys".toUri()
 
         fun snapshotsUri(vaultId: String): Uri =
-            Uri.parse("content://$AUTHORITY/vault/$vaultId/snapshots")
+            "content://$AUTHORITY/vault/$vaultId/snapshots".toUri()
     }
 
     private fun repo(): PasswordRepository {

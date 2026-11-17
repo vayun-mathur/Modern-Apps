@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Password</string>
-    <string name="label_name">Nome</string>
     <string name="label_username">Nome utente</string>
-    <string name="label_email">Email</string>
     <string name="label_password">Password</string>
     <string name="label_totp_secret">Chiave segreta TOTP</string>
     <string name="label_add_website">Aggiungi sito web</string>
@@ -11,7 +9,6 @@
     <string name="edit_password">Modifica password</string>
     <string name="hide">Nascondi</string>
     <string name="show">Mostra</string>
-    <string name="section_password">Password</string>
     <string name="section_totp">TOTP</string>
     <string name="totp_not_configured">(non confogurata)</string>
     <string name="totp_refreshes_in">Aggiornamento tra <xliff:g id="seconds" example="15">%1$d</xliff:g> s</string>
@@ -28,7 +25,6 @@
     <string name="passkey_created">Creazione</string>
     <string name="passkey_last_used">Ultimo utilizzo</string>
     <string name="unlock_database">Sblocca Password</string>
-    <string name="title_settings">Impostazioni</string>
     <string name="import_csv_warning">L\'importazione di un file CSV caricherà le credenziali in testo chiaro in questa app. Elimina il file esportato dopo aver completato l\'importazione.</string>
     <string name="import_passwords">Importa password</string>
     <string name="import_source_bitwarden">Bitwarden</string>

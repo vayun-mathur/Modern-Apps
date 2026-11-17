@@ -8,7 +8,6 @@ import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.PersistableBundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -182,11 +181,9 @@ class PasswordsViewModel(
         val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText(label, text)
         // Tells the system UI (and any keyboard with a clipboard history) not to show this
-        // in the clear. Android 13+; older releases have no way to say it.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            clip.description.extras = PersistableBundle().apply {
-                putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
-            }
+        // in the clear (minSdk 35 is always Android 13+).
+        clip.description.extras = PersistableBundle().apply {
+            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
         }
         clipboard.setPrimaryClip(clip)
         if (feedback != null) {

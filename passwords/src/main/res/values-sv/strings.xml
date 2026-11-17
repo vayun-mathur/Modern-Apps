@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Lösenord</string>
-    <string name="label_name">Namn</string>
     <string name="label_username">Användarnamn</string>
-    <string name="label_email">E-post</string>
-    <string name="label_note">Anteckning</string>
     <string name="label_password">Lösenord</string>
     <string name="label_totp_secret">TOTP-hemlighet</string>
     <string name="label_add_website">Lägg till webbplats</string>
@@ -12,14 +9,12 @@
     <string name="edit_password">Redigera lösenord</string>
     <string name="hide">Dölj</string>
     <string name="show">Visa</string>
-    <string name="section_password">Lösenord</string>
     <string name="section_totp">TOTP</string>
     <string name="totp_not_configured">(inte konfigurerat)</string>
     <string name="totp_refreshes_in">Uppdateras om <xliff:g id="seconds" example="15">%1$d</xliff:g> s</string>
     <string name="section_websites">Webbplatser</string>
     <string name="websites_none">(inga)</string>
     <string name="no_name">(inget namn)</string>
-    <string name="section_note">Anteckning</string>
     <string name="no_user">(ingen användare)</string>
     <string name="passkey_detail_title">Passkey</string>
     <string name="passkey_rp_id">Förlitande parts ID</string>
@@ -35,7 +30,6 @@
     <string name="passkey_link_auto">Matchades automatiskt</string>
     <string name="passkey_link_manual">Länkad av dig</string>
     <string name="passkey_link_detached">Frånkopplad. Den matchas inte automatiskt.</string>
-    <string name="passkey_connect">Länka till post</string>
     <string name="passkey_disconnect">Ta bort länk</string>
     <string name="passkey_link_use_auto">Matcha automatiskt</string>
     <string name="passkey_link_dialog_title">Länka till post</string>
@@ -44,7 +38,6 @@
     <string name="passkey_unlinked_message">Länken till passkey togs bort</string>
     <string name="passkey_count">%1$d</string>
     <string name="unlock_database">Lås upp Lösenord</string>
-    <string name="title_settings">Inställningar</string>
     <string name="import_csv_warning">Import av en CSV-fil lägger in okrypterade inloggningsuppgifter i den här appen. Ta bort exportfilen efter importen.</string>
     <string name="import_passwords">Importera lösenord</string>
     <string name="import_source_bitwarden">Bitwarden</string>
@@ -76,10 +69,7 @@
     <string name="sync_choose_file">Välj befintlig fil</string>
     <string name="sync_create_file">Skapa ny fil</string>
     <string name="sync_vault_password">Valvlösenord</string>
-    <string name="sync_vault_password_set">Sparat</string>
     <string name="sync_vault_password_unset">(inte angivet)</string>
-    <string name="sync_save">Spara</string>
-    <string name="sync_cancel">Avbryt</string>
     <string name="sync_last">Senaste synkronisering</string>
     <string name="sync_never">Aldrig</string>
     <string name="sync_now">Synkronisera nu</string>
