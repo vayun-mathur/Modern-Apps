@@ -11,14 +11,14 @@ import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 
 @Composable
 fun Navigation(viewModel: EverySyncViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Accounts)
     // Land on settings when opened from the system App Info page.
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     MainNavigation(backStack) {
         entry<Route.Accounts>(metadata = ListPage()) { AccountsScreen(backStack, viewModel) }
         entry<Route.AddAccount>(metadata = ListPage()) { AddAccountScreen(backStack, viewModel) }

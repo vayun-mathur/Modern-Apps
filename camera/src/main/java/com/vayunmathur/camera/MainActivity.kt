@@ -18,7 +18,7 @@ import com.vayunmathur.library.ui.AppPermissionsGate
 import com.vayunmathur.library.ui.AppPermissionsSpec
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.PermissionRequirement
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
@@ -81,7 +81,7 @@ class MainActivity : MaActivity() {
         ) {
             val backStack = rememberNavBackStack<Route>(Route.Camera)
             // Land on settings when opened from the system App Info page.
-            backStack.openSettingsIfRequested(Route.Settings)
+            backStack.OpenSettingsIfRequested(Route.Settings)
             MainNavigation(backStack) {
                 entry<Route.Camera>(metadata = FullscreenPage()) {
                     CameraScreen(

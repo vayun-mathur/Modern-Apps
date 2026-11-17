@@ -15,7 +15,7 @@ import com.vayunmathur.launcher.ui.components.LocalLauncherDrag
 import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 
 @Composable
 fun Navigation(
@@ -23,7 +23,7 @@ fun Navigation(
     bridge: ActivityBridge,
     backStack: NavBackStack<Route>,
 ) {
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
 
     // One controller for the whole app, above the nav host, so it outlives anything opening over
     // the home screen while a drag is in flight.

@@ -8,7 +8,7 @@ import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.travel.platform.TravelViewModel
@@ -36,7 +36,7 @@ import com.vayunmathur.travel.ui.TripsPage
 fun Navigation(viewModel: TravelViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.FlightsHome)
     // Land on settings when opened from the system App Info page.
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     Box(Modifier.fillMaxSize()) {
         MainNavigation(backStack) {
             entry<Route.FlightsHome>(metadata = SiblingPage()) { HomePage(backStack, viewModel, it) }

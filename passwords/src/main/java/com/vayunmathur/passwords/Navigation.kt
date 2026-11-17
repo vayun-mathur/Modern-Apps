@@ -5,7 +5,7 @@ import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.MorphPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.passwords.platform.PasswordsViewModel
 import com.vayunmathur.passwords.ui.MenuPage
@@ -20,7 +20,7 @@ fun Navigation(
 ) {
     val backStack = rememberNavBackStack<Route>(Route.Menu)
     // Land on settings when opened from the system App Info page.
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     MainNavigation(backStack) {
         entry<Route.Menu>(metadata = ListPage()) {
             MenuPage(backStack, passwordsViewModel)

@@ -2,7 +2,7 @@ package com.vayunmathur.web
 
 import androidx.compose.runtime.Composable
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.web.platform.WebViewModel
 import com.vayunmathur.web.ui.BookmarksPage
@@ -17,7 +17,7 @@ import com.vayunmathur.web.ui.SiteDataPage
 @Composable
 fun Navigation(viewModel: WebViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Browser)
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     // No list-detail metadata: the browser is not a list and History/Bookmarks
     // are not its details, so every destination is a full-screen push. The
     // previous wiring marked the browser as a list pane to keep it visible

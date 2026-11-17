@@ -28,7 +28,7 @@ import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.launch
 
@@ -45,7 +45,7 @@ fun Navigation(viewModel: EmailViewModel) {
     val outbox by viewModel.outbox.collectAsStateWithLifecycle(emptyList())
 
     val backStack = rememberNavBackStack<Route>(Route.MessageList)
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
 
     val navigationRoute = IntentState.navigationRoute
     LaunchedEffect(navigationRoute) {

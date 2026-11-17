@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.SiblingPage
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.measure.platform.MeasureViewModel
 import com.vayunmathur.measure.ui.ArMeasurePage
@@ -18,7 +18,7 @@ import com.vayunmathur.measure.ui.SettingsPage
 @Composable
 fun Navigation(viewModel: MeasureViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Compass)
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     MainNavigation(backStack) {
         entry<Route.Compass>(metadata = SiblingPage()) { CompassPage(backStack, viewModel) }
         entry<Route.Level>(metadata = SiblingPage()) { LevelPage(backStack, viewModel) }
