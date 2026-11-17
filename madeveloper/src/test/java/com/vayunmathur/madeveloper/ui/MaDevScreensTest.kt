@@ -4,10 +4,12 @@ import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
@@ -77,6 +79,16 @@ class MaDevScreensTest {
         rule.onAllNodesWithText(text, useUnmergedTree = true)[0].performClick()
     }
 
+    /** Clicks the tappable row/button that contains [text]. */
+    private fun clickRow(text: String) {
+        val matcher = androidx.compose.ui.test.hasClickAction() and
+            androidx.compose.ui.test.hasText(text)
+        rule.onNode(androidx.compose.ui.test.hasScrollAction())
+            .performScrollToNode(androidx.compose.ui.test.hasText(text))
+        rule.waitForIdle()
+        rule.onAllNodes(matcher)[0].performScrollTo().performClick()
+    }
+
     private fun state() = MaDevUiState(
         pairingCode = "ABC234",
         tests = TestsStatus(
@@ -113,15 +125,13 @@ class MaDevScreensTest {
         rule.onNodeWithText("Developer").assertIsDisplayed()
         rule.onNodeWithText("Push socket offline").assertIsDisplayed()
         rule.onNodeWithText("Pairing code: ABC234").assertIsDisplayed()
-        rule.onNodeWithText("CI: passed").assertIsDisplayed()
+        rule.onNodeWithText("passed").assertIsDisplayed()
         rule.onNodeWithText("Coverage 50.0%").assertIsDisplayed()
-        rule.onNode(androidx.compose.ui.test.hasScrollAction())
-            .performScrollToNode(androidx.compose.ui.test.hasText("Open Modern-Apps"))
-        clickButton("Pushed installs")
-        clickButton("Test history")
-        clickButton("Available builds (read-only catalog)")
-        clickButton("Refresh")
-        clickButton("Open Modern-Apps")
+        clickRow("Pushed installs")
+        clickRow("Test history")
+        clickRow("Available builds")
+        rule.onNodeWithContentDescription("Refresh").performClick()
+        clickRow("Modern-Apps")
         assertEquals("Modern-Apps", openedRepo)
         assertEquals(1, testsOpened)
         assertEquals(1, catalogOpened)
@@ -136,7 +146,18 @@ class MaDevScreensTest {
                 {}, {}, {}, {}, {},
             )
         }
+        rule.onNode(androidx.compose.ui.test.hasScrollAction())
+            .performScrollToNode(androidx.compose.ui.test.hasText("HTTP 404 for repos"))
         rule.onNodeWithText("HTTP 404 for repos").assertIsDisplayed()
+    }
+
+    @Test fun homeEmptyAndLanguageChipRender() {
+        rule.setContent {
+            HomeScreen(MaDevUiState(pairingCode = "ABC234"), {}, {}, {}, {}, {})
+        }
+        rule.onNode(androidx.compose.ui.test.hasScrollAction())
+            .performScrollToNode(androidx.compose.ui.test.hasText("No repositories"))
+        rule.onNodeWithText("No repositories").assertIsDisplayed()
     }
 
     @Test fun testsAndCatalogScreensListTheirRows() {
@@ -149,7 +170,7 @@ class MaDevScreensTest {
                 else -> CatalogScreen(MaDevUiState()) {}
             }
         }
-        rule.onNodeWithText("Running: running now").assertIsDisplayed()
+        rule.onNodeWithText("running now").assertIsDisplayed()
         rule.onNodeWithText("old run").assertIsDisplayed()
         rule.runOnIdle { page = 1 }
         rule.onNodeWithText("Example").assertIsDisplayed()
@@ -212,16 +233,14 @@ class MaDevScreensTest {
             ) {}
         }
         await("repo loaded") { viewModel.browser("Modern-Apps") != null }
-        rule.onNodeWithText("Clone: https://git.maproj.org/Modern-Apps.git").assertIsDisplayed()
+        rule.onNodeWithText("https://git.maproj.org/Modern-Apps.git").assertIsDisplayed()
         rule.onNodeWithText("Recent commits").assertIsDisplayed()
         rule.onNodeWithText("recent work").assertIsDisplayed()
         rule.onNode(androidx.compose.ui.test.hasScrollAction())
             .performScrollToNode(androidx.compose.ui.test.hasText("src"))
         rule.onNodeWithText("src").assertIsDisplayed()
         // Descend into the folder, then read the file inside it.
-        rule.onNode(androidx.compose.ui.test.hasScrollAction())
-            .performScrollToNode(androidx.compose.ui.test.hasText("Open folder"))
-        clickButton("Open folder")
+        clickRow("src")
         await("descended") { viewModel.browser("Modern-Apps")!!.path == "src" }
         rule.onNodeWithText("Main.kt").assertIsDisplayed()
         clickButton("Root")
@@ -232,7 +251,7 @@ class MaDevScreensTest {
         assertEquals(0, rule.onAllNodesWithText("src").fetchSemanticsNodes().size)
         rule.onNodeWithText("README.md").assertIsDisplayed()
         // Commit + commits navigation callbacks fire.
-        clickButton("View commit")
+        clickRow("recent work")
         assertEquals("main", openedCommit!!.first)
         clickButton("All commits")
         assertEquals("main", openedCommits)
@@ -254,13 +273,13 @@ class MaDevScreensTest {
         }
         await("commits loaded") { viewModel.browser("Modern-Apps")?.commits?.isNotEmpty() == true }
         rule.onNodeWithText("recent work").assertIsDisplayed()
-        clickButton("View commit")
+        clickRow("recent work")
         assertEquals("recent0001aaaa", openedCommit)
 
         rule.runOnIdle { page = 1 }
         rule.onNodeWithText("recent work").assertIsDisplayed()
-        rule.onNodeWithText("Author: vayun").assertIsDisplayed()
-        rule.onNodeWithText("SHA: recent0001aaaa").assertIsDisplayed()
+        rule.onNodeWithText("vayun").assertIsDisplayed()
+        rule.onNodeWithText("recent0001aaaa").assertIsDisplayed()
         rule.onNodeWithText("notes").assertIsDisplayed()
 
         rule.runOnIdle { page = 2 }
