@@ -1,3 +1,18 @@
+/// Head/dynamic/scale options for [`Builder::attn_scores_cached_at`].
+#[derive(Clone, Copy)]
+pub(crate) struct CachedScores {
+    /// Query heads.
+    pub heads: u32,
+    /// Key/value heads supplying the cache.
+    pub kv_heads: u32,
+    /// Whether the key count is supplied by the step.
+    pub dynamic: bool,
+    /// Whether to derive `1 / sqrt(head_dim)` here.
+    pub derive_scale: bool,
+    /// Whether this layer's sliding window applies.
+    pub sliding: bool,
+}
+
 impl<'a> Builder<'a> {
     fn weight(&mut self, index: usize, dims: &[u32]) -> u32 {
         match self.read.get_mut(index) {
@@ -23,7 +38,7 @@ impl<'a> Builder<'a> {
     /// deliberately not modelled. [`tests::u2netp_pools_only_even_extents`] holds that.
     pub fn max_pool_2x2(&mut self, input: Id) -> Id {
         let in_shape = self.shape_of(input);
-        if !in_shape.h.is_multiple_of(2) || !in_shape.w.is_multiple_of(2) {
+        if in_shape.h % (2) != 0 || in_shape.w % (2) != 0 {
             self.fail(format!(
                 "max_pool_2x2 on {}x{}: ceil_mode is not modelled, so an odd extent \
                  would silently drop a row",
@@ -282,7 +297,7 @@ impl<'a> Builder<'a> {
         groups: u32,
     ) -> Id {
         let shape = self.shape_of(input);
-        if groups == 0 || !shape.c.is_multiple_of(groups) {
+        if groups == 0 || shape.c % (groups) != 0 {
             self.fail(format!("{} channels do not split into {groups} groups", shape.c));
         }
         let per_group = shape.c.checked_div(groups.max(1)).unwrap_or(0);
@@ -352,7 +367,7 @@ impl<'a> Builder<'a> {
     /// One query is what makes a causal mask unnecessary — a decode step attends over exactly the
     /// positions in the cache, so the prefix bound is the tensor's own length.
     pub fn attn_scores_cached(&mut self, q: Id, cache: Id, heads: u32) -> Id {
-        self.attn_scores_cached_at(q, cache, heads, heads, false, true, true)
+        self.attn_scores_cached_at(q, cache, CachedScores { heads, kv_heads: heads, dynamic: false, derive_scale: true, sliding: true })
     }
 
     /// [`Builder::attn_scores_cached`] with the key count supplied by the step, not the shape.
@@ -360,7 +375,7 @@ impl<'a> Builder<'a> {
     /// `cache` is then sized to the **maximum** context the plan is built for, and only its
     /// leading `prefix + 1` positions are attended. See [`Push::dyn_keys`].
     pub fn attn_scores_cached_dynamic(&mut self, q: Id, cache: Id, heads: u32) -> Id {
-        self.attn_scores_cached_at(q, cache, heads, heads, true, true, true)
+        self.attn_scores_cached_at(q, cache, CachedScores { heads, kv_heads: heads, dynamic: true, derive_scale: true, sliding: true })
     }
 
     /// [`Builder::attn_scores_cached_dynamic`] where `kv_heads` heads supply the keys.
@@ -374,7 +389,7 @@ impl<'a> Builder<'a> {
         heads: u32,
         kv_heads: u32,
     ) -> Id {
-        self.attn_scores_cached_at(q, cache, heads, kv_heads, true, true, true)
+        self.attn_scores_cached_at(q, cache, CachedScores { heads, kv_heads, dynamic: true, derive_scale: true, sliding: true })
     }
 
     /// [`Builder::attn_scores_cached_grouped`] for a query that is **already scaled**.
@@ -394,19 +409,11 @@ impl<'a> Builder<'a> {
         kv_heads: u32,
         sliding: bool,
     ) -> Id {
-        self.attn_scores_cached_at(q, cache, heads, kv_heads, true, false, sliding)
+        self.attn_scores_cached_at(q, cache, CachedScores { heads, kv_heads, dynamic: true, derive_scale: false, sliding })
     }
 
-    fn attn_scores_cached_at(
-        &mut self,
-        q: Id,
-        cache: Id,
-        heads: u32,
-        kv_heads: u32,
-        dynamic: bool,
-        derive_scale: bool,
-        sliding: bool,
-    ) -> Id {
+    fn attn_scores_cached_at(&mut self, q: Id, cache: Id, scores: CachedScores) -> Id {
+        let CachedScores { heads, kv_heads, dynamic, derive_scale, sliding } = scores;
         let (sq, sc) = (self.shape_of(q), self.shape_of(cache));
         if sq.h != 1 || sq.w != 1 {
             self.fail(format!(
@@ -420,7 +427,7 @@ impl<'a> Builder<'a> {
                  [keys, 1, kv_heads * head_dim], so its channels are the keys"
             ));
         }
-        if heads == 0 || !sq.c.is_multiple_of(heads) {
+        if heads == 0 || sq.c % (heads) != 0 {
             self.fail(format!("{} channels do not split into {heads} heads", sq.c));
         }
         let head_dim = sq.c.checked_div(heads).unwrap_or(0);

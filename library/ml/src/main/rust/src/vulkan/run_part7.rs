@@ -115,40 +115,6 @@ impl Net {
         );
     }
 
-    /// # Safety
-    ///
-    /// `buffer` must be recorded and not already pending.
-    unsafe fn submit_and_wait(&self, buffer: vk::CommandBuffer) -> Result<(), String> {
-        let device = &self.context.device;
-        let fence = device
-            .create_fence(&vk::FenceCreateInfo::default(), None)
-            .map_err(|e| format!("create_fence {e:?}"))?;
-        let buffers = [buffer];
-        let submit = vk::SubmitInfo::default().command_buffers(&buffers);
-        let guard = self.context.lock_queue();
-        let submitted = device
-            .queue_submit(self.context.queue, std::slice::from_ref(&submit), fence)
-            .map_err(|e| format!("queue_submit {e:?}"));
-        drop(guard);
-
-        let result = submitted.and_then(|()| {
-            device
-                .wait_for_fences(&[fence], true, FENCE_TIMEOUT_NS)
-                .map_err(|e| format!("wait_for_fences {e:?}"))
-        });
-        // On a timeout the submission is still in flight, and the caller is about to drop
-        // both the fence and the staging buffer it reads from. Wait the device out first:
-        // destroying either while a queue operation references it is undefined, and a
-        // one-off weights upload has nowhere to defer the cleanup to.
-        if result.is_err() {
-            let guard = self.context.lock_queue();
-            let _ = device.device_wait_idle();
-            drop(guard);
-        }
-        device.destroy_fence(fence, None);
-        result
-    }
-
     /// Preprocess `pixels`, run the network, and return the mask as `0..1` floats.
     ///
     /// `pixels` is `ARGB_8888` as `Bitmap.getPixels` produces it. The returned mask is

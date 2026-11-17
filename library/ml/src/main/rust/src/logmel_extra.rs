@@ -1,4 +1,9 @@
 #[cfg(test)]
+// Generated constants (see the generator note inside): the literals are
+// reference outputs with more digits than `f32` can represent, and rounding
+// them would change the ML numerics the tests compare against, so
+// `excessive_precision` is allowed for this generated test module only.
+#[allow(clippy::excessive_precision)]
 mod tests {
     use crate::logmel::*;
 

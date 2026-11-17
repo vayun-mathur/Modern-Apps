@@ -243,7 +243,7 @@ fn a_banded_score_map_matches_the_cpu_oracle() {
         &[Shape::new(HEADS * HEAD_DIM, 1, T), Shape::new(HEADS * HEAD_DIM, 1, T)],
         &[&q, &k],
         &[(vec![HEADS, OFFSETS, HEAD_DIM], table)],
-        |b, ids| b.attn_scores_banded(ids[0], ids[1], HEADS, BAND, 0, OFFSETS, 1.0, 2.0),
+        |b, ids| b.attn_scores_banded(ids[0], ids[1], crate::nets::BandedScores { heads: HEADS, band: BAND, table: 0, offsets: OFFSETS, scale: 1.0, cap: 2.0 }),
     );
 }
 
@@ -342,7 +342,7 @@ fn banded_scores(band: u32, offsets: u32) -> Vec<f32> {
         // The scale is 1.0 and not the export's 0.127517431974411: `maml_convert.py` folds that
         // into the per-layer `QueryScale` tensor, so Q reaches this op already scaled. See
         // `Builder::attn_scores_banded`.
-        b.attn_scores_banded(ids[0], ids[1], FIXTURE_HEADS, band, 0, offsets, 1.0, FIXTURE_CAP)
+        b.attn_scores_banded(ids[0], ids[1], crate::nets::BandedScores { heads: FIXTURE_HEADS, band, table: 0, offsets, scale: 1.0, cap: FIXTURE_CAP })
     });
     let outputs =
         run_multi(&plan, given.data(), &[&q, &k]).expect("the banded score fixture runs");

@@ -130,7 +130,7 @@ mod tests {
         let values = patchify(grid, &pixels).expect("patches");
         let patches = grid.patches() as usize;
         assert_eq!(values.len(), D_MODEL as usize * patches);
-        let patch = 1 * 3 + 2;
+        let patch = 3 + 2;
         let within = (4 * 16 + 3) * 3;
         assert_eq!(values[within * patches + patch], 1.0, "red is saturated");
         assert_eq!(values[(within + 1) * patches + patch], -1.0, "green is off");
@@ -152,7 +152,7 @@ mod tests {
         let half = frequencies.len();
 
         // Patch 8 is row 1, column 2 of a 3-row, 6-column grid.
-        let at = 1 * 6 + 2;
+        let at = 6 + 2;
         for (i, frequency) in frequencies.iter().enumerate() {
             let column = 2.0 * frequency;
             let row = 1.0 * frequency;

@@ -41,8 +41,6 @@ use super::context::Context;
 use super::pipeline::{Pipelines, MAX_WORKGROUPS_PER_DIM, WORKGROUP};
 use super::segment::Segments;
 
-use crate::timing;
-
 /// How [`Net::barrier_over`] spells the dependency between two ops.
 ///
 /// Selected by `MODELRUNNER_BARRIER` or `debug.modelrunner.barrier`, defaulting to

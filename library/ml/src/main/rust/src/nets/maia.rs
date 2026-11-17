@@ -189,7 +189,7 @@ const BLOCK: usize = SMOLGEN + 3;
 ///
 /// Eight projections of three — the bias generator's two, q, k, v, the output projection and
 /// the two feed-forward — two layer norms of two, and the two RMS norms of one.
-const BLOCK_TENSORS: usize = 8 * 3 + 2 * 2 + 2 * 1;
+const BLOCK_TENSORS: usize = 8 * 3 + 2 * 2 + 2;
 
 /// `transformer.norm`, the layer norm closing the stack.
 const FINAL_NORM: usize = BLOCK + BLOCKS * BLOCK_TENSORS;

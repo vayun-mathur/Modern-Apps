@@ -1,4 +1,9 @@
 #[cfg(test)]
+// Generated constants (see the generator note inside): the literals are
+// reference outputs with more digits than `f32` can represent, and rounding
+// them would change the ML numerics the tests compare against, so
+// `excessive_precision` is allowed for this generated test module only.
+#[allow(clippy::excessive_precision)]
 mod tests {
     use super::*;
 
@@ -280,7 +285,7 @@ mod tests {
         frontend.reset();
         // Without the reset the leftover 300 would complete a window after only 100 more.
         assert_eq!(frontend.process(&vec![1i16; 300], &mut frames), 0);
-        assert_eq!(frontend.process(&vec![1i16; 100], &mut frames), 1);
+        assert_eq!(frontend.process(&[1i16; 100], &mut frames), 1);
     }
 
     #[test]

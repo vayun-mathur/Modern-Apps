@@ -192,7 +192,7 @@ impl Graph {
                     if *group == 0 {
                         return Err(format!("{what} has no groups"));
                     }
-                    if !input_shape[0].is_multiple_of(*group) {
+                    if input_shape[0] % (*group) != 0 {
                         return Err(format!(
                             "{what}: {} channels do not split into {group} groups",
                             input_shape[0],
@@ -244,7 +244,7 @@ impl Graph {
                     }
                     let input_shape = computed(*input, &what)?;
                     let (kh, kw) = *kernel;
-                    if *group == 0 || !input_shape[0].is_multiple_of(*group) {
+                    if *group == 0 || input_shape[0] % (*group) != 0 {
                         return Err(format!("{what}: bad groups for {}", input_shape[0]));
                     }
                     let per_group = input_shape[0] / group;

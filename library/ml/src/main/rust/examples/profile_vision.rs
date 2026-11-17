@@ -287,7 +287,7 @@ fn profile_rec_batch(path: &str, passes: u32) -> Result<(), String> {
     println!("load      batch of {LINES} {:.1} ms", since(t));
     let len = ppocr_rec::HEIGHT as usize * REC_WIDTH as usize;
     let strips: Vec<Vec<i32>> = (0..LINES as usize)
-        .map(|i| (0..len).map(|p| (0xff00_0000u32 | ((p * 37 + i * 101) as u32 * 2_654_435_761 >> 8)) as i32).collect())
+        .map(|i| (0..len).map(|p| (0xff00_0000u32 | (((p * 37 + i * 101) as u32 * 2_654_435_761) >> 8)) as i32).collect())
         .collect();
     let shape = modelrunner::nets::Shape::new(3, ppocr_rec::HEIGHT, REC_WIDTH);
     let mut half = vec![0u16; shape.len() as usize];

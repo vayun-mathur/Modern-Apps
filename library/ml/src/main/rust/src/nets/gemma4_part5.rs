@@ -1,3 +1,7 @@
+// Generated constant tables: the scale literals below are read off the
+// source bundle with more digits than `f32` can represent. Rounding them
+// would change ML numerics, so each generated table carries a scoped
+// `excessive_precision` allow instead of rounded literals.
 // Live int8 round-trip scales for Gemma 4's attention path (part of `nets::gemma4`).
 //
 // S10's per-tensor quantization scales, one per layer, for the attention
@@ -28,6 +32,7 @@
 /// and diverges past any cosine gate (fp `Mm` vs live: 0.67; round-tripped:
 /// 0.97865 at L0 - see `analysis/ablate_o_tail.py`).
 #[rustfmt::skip]
+#[allow(clippy::excessive_precision)]
 pub const MM_SCALE: [f32; LAYERS] = [
     0.03026575781404972,
     0.023129930719733238,
@@ -68,6 +73,7 @@ pub const MM_SCALE: [f32; LAYERS] = [
 
 /// Live int8 scale for q_in (`q_einsum/composite`). See [`MM_SCALE`].
 #[rustfmt::skip]
+#[allow(clippy::excessive_precision)]
 pub const QI_SCALE: [f32; 35] = [
     0.6088034510612488,
     0.4842597544193268,
@@ -108,6 +114,7 @@ pub const QI_SCALE: [f32; 35] = [
 
 /// Live int8 scale for q_out (`q_einsum/dot_general1`). See [`MM_SCALE`].
 #[rustfmt::skip]
+#[allow(clippy::excessive_precision)]
 pub const QO_SCALE: [f32; 35] = [
     3.118110179901123,
     0.35039371252059937,
@@ -149,6 +156,7 @@ pub const QO_SCALE: [f32; 35] = [
 /// Live int8 scale for k_out (`k_einsum/dot_general1`, owning layers only).
 /// See [`MM_SCALE`].
 #[rustfmt::skip]
+#[allow(clippy::excessive_precision)]
 pub const KO_SCALE: [f32; 15] = [
     1.535433053970337,
     0.41535434126853943,
@@ -170,6 +178,7 @@ pub const KO_SCALE: [f32; 15] = [
 /// Live int8 scale for v_out (`v_einsum/dot_general1`, owning layers only).
 /// See [`MM_SCALE`].
 #[rustfmt::skip]
+#[allow(clippy::excessive_precision)]
 pub const VO_SCALE: [f32; 15] = [
     1.535433053970337,
     0.41535434126853943,
@@ -190,6 +199,7 @@ pub const VO_SCALE: [f32; 15] = [
 
 /// Live int8 scale for o_in (`attn_vec_einsum/dot_general1`). See [`MM_SCALE`].
 #[rustfmt::skip]
+#[allow(clippy::excessive_precision)]
 pub const O_SCALE: [f32; 35] = [
     0.21056734025478363,
     0.03322756290435791,

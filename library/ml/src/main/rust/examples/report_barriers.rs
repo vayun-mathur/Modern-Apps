@@ -148,8 +148,8 @@ fn barrier_table(plans: &[(String, Plan)]) {
     println!("Barriers a dependency-correct recorder would emit, against one per op.");
     println!();
     println!(
-        "{:<22} {:>6} {:>8} {:>8} {:>7}   {}",
-        "plan", "ops", "today", "needed", "saved", "of the needed ones"
+        "{:<22} {:>6} {:>8} {:>8} {:>7}   of the needed ones",
+        "plan", "ops", "today", "needed", "saved"
     );
     for (name, plan) in plans {
         let s = schedule::schedule(plan);
@@ -247,12 +247,12 @@ fn adjacency_table(plans: &[(String, Plan)]) {
             }
         }
     }
-    pairs.sort_by(|a, b| b.1.cmp(&a.1));
+    pairs.sort_by_key(|b| std::cmp::Reverse(b.1));
 
     println!("Chained producer -> consumer pairs, every plan above summed. {total} in total.");
     println!("Each fused pair removes one dispatch and one barrier everywhere it occurs.");
     println!();
-    println!("{:>6} {:>6}  {:<44} {}", "count", "share", "pair", "arrives as");
+    println!("{:>6} {:>6}  {:<44} arrives as", "count", "share", "pair");
     for ((from, to, operand), n) in pairs.iter().take(24) {
         let share = 100.0 * *n as f64 / total.max(1) as f64;
         let pair = format!("{from:?} -> {to:?}");

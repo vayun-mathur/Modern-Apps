@@ -157,19 +157,17 @@ pub struct Id(pub(crate) usize);
 /// read flags, shapes, and bindings — without re-deriving anything. The plan is what
 /// runs; the rest is what the converter needs to reproduce it.
 #[derive(Debug)]
-pub(crate) struct Recorded {
+pub struct Recorded {
     /// The resolved plan, as `finish` has always returned.
     pub plan: Plan,
     /// The fused nodes, in execution order.
-    pub nodes: Vec<Node>,
+    pub(crate) nodes: Vec<Node>,
     /// Shape per tensor id.
-    pub shapes: Vec<Shape>,
+    pub(crate) shapes: Vec<Shape>,
     /// Input ids, in declaration order.
-    pub inputs: Vec<Id>,
-    /// Pinned ids (inputs, outputs, persistent).
-    pub pinned: Vec<Id>,
+    pub(crate) inputs: Vec<Id>,
     /// Per-file-tensor read flags, so the emitter can name host tensors.
-    pub read: Vec<bool>,
+    pub(crate) read: Vec<bool>,
 }
 
 /// An unresolved step, against [`Id`]s rather than offsets.

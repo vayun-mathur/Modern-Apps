@@ -13,8 +13,8 @@ impl Graph {
     /// byte layout matches [`Graph::parse`] field for field; the two are tested by
     /// round-trip (`emit` then `parse` then `lower` then `finish`).
     ///
-    /// `outputs` are the plan's output ids — `Recorded` carries inputs and pins but
-    /// not which pins are outputs, and the section must name them.
+    /// `outputs` are the plan's output ids — `Recorded` carries inputs but
+    /// not which tensors are outputs, and the section must name them.
     pub fn emit(
         recorded: &crate::nets::Recorded,
         table: &Offsets,
@@ -22,7 +22,7 @@ impl Graph {
     ) -> Result<Vec<u8>, String> {
         use crate::nets::{Act, Node, Quant};
         let mut bytes = Vec::new();
-        let mut nodes_bytes: Vec<u8> = Vec::new();
+        let _nodes_bytes: Vec<u8> = Vec::new();
         let u32s = |bytes: &mut Vec<u8>, values: &[u32]| {
             for v in values {
                 bytes.extend_from_slice(&v.to_le_bytes());

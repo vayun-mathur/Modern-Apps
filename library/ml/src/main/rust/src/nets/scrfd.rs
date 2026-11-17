@@ -163,7 +163,7 @@ pub fn build(weights: &dyn WeightSource, height: u32, width: u32) -> Result<Plan
     if height == 0 || width == 0 {
         return Err(format!("a {width}x{height} input"));
     }
-    if !height.is_multiple_of(EXTENT_MULTIPLE) || !width.is_multiple_of(EXTENT_MULTIPLE) {
+    if height % (EXTENT_MULTIPLE) != 0 || width % (EXTENT_MULTIPLE) != 0 {
         return Err(format!(
             "a {width}x{height} input: both extents must be a multiple of \
              {EXTENT_MULTIPLE}, or the neck's three branches are not exactly 2x apart"

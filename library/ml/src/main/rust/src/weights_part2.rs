@@ -115,7 +115,7 @@ impl<'a> Reader<'a> {
             return Err(format!("row {row} of a {rows}-row tensor {index}"));
         }
         let taps = (found.len / rows) as usize;
-        if !taps.is_multiple_of(Q2K_BLOCK as usize) {
+        if taps % (Q2K_BLOCK as usize) != 0 {
             return Err(format!("tensor {index} has {taps} taps a row, not block-divisible"));
         }
         let blocks = taps / Q2K_BLOCK as usize;
@@ -159,8 +159,8 @@ impl<'a> Reader<'a> {
                     let sc = scales[half * 8 + lane * 2];
                     let lo = f32::from(sc & 15);
                     let hi = f32::from(sc >> 4);
-                    for l in 0..16usize {
-                        let q = f32::from((hqs[l] >> shift) & 3);
+                    for &hq in hqs.iter().take(16) {
+                        let q = f32::from((hq >> shift) & 3);
                         out.push(dall * q * lo - dmin * hi);
                     }
                     let sc = scales[half * 8 + lane * 2 + 1];
@@ -301,7 +301,7 @@ impl<'a> Reader<'a> {
             return Err(format!("rows {start}..{} of a {rows}-row tensor {index}", start + count));
         }
         let stride = (found.len / rows) as usize;
-        if !stride.is_multiple_of(2) {
+        if stride % (2) != 0 {
             return Err(format!(
                 "tensor {index} has a {stride}-element row, which does not start on a byte"
             ));
@@ -325,7 +325,7 @@ impl<'a> Reader<'a> {
                 .map(|pair| f16_to_f32(u16::from_le_bytes([pair[0], pair[1]])))
                 .collect();
             let row = &packed[r * stride / 2..(r + 1) * stride / 2];
-            for (at, &byte) in row.iter().enumerate() {
+            for &byte in row.iter() {
                 for nibble in [byte & 0x0f, byte >> 4] {
                     let code = if nibble >= 8 { i32::from(nibble) - 16 } else { i32::from(nibble) };
                     let column = out.len() - r * stride;
@@ -440,7 +440,7 @@ pub(crate) fn write_mixed(graph_id: u32, tensors: &[Fixture]) -> Vec<u8> {
                 (dims, DTYPE_Q2K, elements, bytes.clone())
             }
         };
-        while !data.len().is_multiple_of(ALIGNMENT as usize) {
+        while data.len() % (ALIGNMENT as usize) != 0 {
             data.push(0);
         }
         let offset = data.len() as u32;

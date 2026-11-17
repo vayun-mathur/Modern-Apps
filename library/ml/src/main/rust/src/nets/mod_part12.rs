@@ -95,6 +95,7 @@
     ///
     /// `Weights::parse` requires the file to end exactly where the data section does,
     /// so the returned vector is padded with zeros to the declared length.
+    #[cfg(test)]
     fn maml_header(shapes: &[(&[u32], u32)]) -> Vec<u8> {
         use crate::weights::graph;
         let count = shapes.len() as u32;

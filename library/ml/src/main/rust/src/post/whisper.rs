@@ -443,7 +443,7 @@ mod tests {
         let mut config = config();
         config.max_length = PROMPT_TOKENS + 3;
         assert_eq!(config.budget(), 3);
-        let mut nets = scripted(&vec![100u32; 50]);
+        let mut nets = scripted(&[100u32; 50]);
         let out = transcribe(&mut nets, &config, &mel(), Some(EN)).expect("transcribes");
         assert_eq!(out.len(), 3);
     }

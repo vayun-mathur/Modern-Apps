@@ -88,7 +88,7 @@ impl Reference {
     /// `tanh(x / cap) * cap`. See `shaders/softcap.comp`.
     fn softcap(&mut self, p: &Push) -> Result<(), String> {
         let cap = f32::from_bits(p.param0_bits);
-        if !(cap > 0.0) {
+        if cap.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
             return Err(format!("a softcap of {cap}"));
         }
         for index in 0..p.count {
@@ -101,7 +101,7 @@ impl Reference {
     /// S10's int8 round-trip. See `shaders/quantize.comp`.
     fn quantize(&mut self, p: &Push) -> Result<(), String> {
         let scale = f32::from_bits(p.param0_bits);
-        if !(scale > 0.0) {
+        if scale.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
             return Err(format!("a quantize of {scale}"));
         }
         for index in 0..p.count {

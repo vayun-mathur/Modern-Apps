@@ -44,7 +44,7 @@ fn main() {
         println!("usage: trace_collapse <text.maml> <embed.maml> [max_layers]");
         return;
     };
-    let max_layers: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(gemma4::LAYERS as usize);
+    let max_layers: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(gemma4::LAYERS);
     let text_bytes = std::fs::read(&text).unwrap();
     let embed_bytes = std::fs::read(&embed).unwrap();
     let weights = Weights::parse(&text_bytes, graph::GEMMA4_TEXT).unwrap();
@@ -52,7 +52,7 @@ fn main() {
     let context = context::shared().unwrap();
     let reader = embed_weights.reader();
     let rotary = weights.reader();
-    for layers in 0..=max_layers.min(gemma4::LAYERS as usize) {
+    for layers in 0..=max_layers.min(gemma4::LAYERS) {
         let mode = gemma4::Mode::Trace { layers }.at(TIER);
         let mut net = match Reshaped::new(
             Arc::clone(&context),

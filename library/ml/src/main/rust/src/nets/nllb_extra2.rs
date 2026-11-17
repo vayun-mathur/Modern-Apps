@@ -30,7 +30,8 @@ pub(crate) fn decode_step(weights: &dyn WeightSource, src_len: u32) -> Result<Pl
     let b = &mut builder;
     // The decoder plus the tied head, which this pass computes in the same plan, minus the
     // cross-attention K and V projections the encode pass ran. The encoder belongs to that pass.
-    let mut read = vec![HEAD..ENCODER];
+    let mut read = Vec::new();
+    read.push(HEAD..ENCODER);
     let mut at = DECODER;
     for layer in 0..DECODER_LAYERS {
         let skipped = cross_kv(layer);

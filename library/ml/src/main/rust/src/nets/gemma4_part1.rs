@@ -208,7 +208,8 @@ pub fn build(weights: &dyn WeightSource, pass: Pass) -> Result<Plan, String> {
     // A fresh prefill attends its own chunk, so the owning layers' K and V are carried forward
     // to the shared layers as tensors (the `cache_source` mapping, resolved to tensors).
     let fresh = matches!(mode, Mode::PrefillFresh { .. });
-    let (mut sliding_kv, mut full_kv): (Option<(Id, Id)>, Option<(Id, Id)>) = (None, None);
+    type KvPair = Option<(Id, Id)>;
+    let (mut sliding_kv, mut full_kv): (KvPair, KvPair) = (None, None);
     for index in run.clone() {
         let angles = if is_full_attention(index) { angles_global } else { angles_local };
         let (cache_k, cache_v) = *caches
@@ -299,12 +300,12 @@ fn prefill_layer(
     let inner = ffn(index);
     let at = layer_at(index);
     let mut next = at;
-    let mut plain = |n: &mut usize| {
+    let plain = |n: &mut usize| {
         let here = *n;
         *n += 1;
         here
     };
-    let mut proj = |n: &mut usize| {
+    let proj = |n: &mut usize| {
         let here = *n;
         *n += PROJECTION_TENSORS;
         here

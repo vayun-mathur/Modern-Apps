@@ -380,7 +380,7 @@ impl Grid {
         if rows == 0 || cols == 0 {
             return Err(format!("a patch grid of {rows}x{cols}"));
         }
-        if !rows.is_multiple_of(POOL) || !cols.is_multiple_of(POOL) {
+        if rows % (POOL) != 0 || cols % (POOL) != 0 {
             return Err(format!(
                 "a {rows}x{cols} patch grid does not divide by the pooling kernel {POOL}, so a \
                  pooled cell would straddle the edge"

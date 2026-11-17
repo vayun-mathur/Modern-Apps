@@ -105,6 +105,8 @@ fn l2(v: &mut [f32]) {
     }
 }
 
+type EmbedAll = (Vec<(f32, Vec<f32>)>, Vec<f32>);
+
 /// Slide the 478-frame window over `frames` and embed each position.
 ///
 /// Returns the L2-normalised embeddings for matching, and separately the raw pre-normalisation
@@ -113,7 +115,7 @@ fn embed_all(
     net: &mut Net,
     frames: &[f32],
     hop_frames: usize,
-) -> Result<(Vec<(f32, Vec<f32>)>, Vec<f32>), String> {
+) -> Result<EmbedAll, String> {
     let bins = nnfp::MEL_BINS as usize;
     let window = nnfp::WINDOW_FRAMES as usize;
     let total = frames.len() / bins;

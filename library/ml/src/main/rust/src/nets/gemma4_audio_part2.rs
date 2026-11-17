@@ -80,7 +80,7 @@ fn layer(b: &mut Builder, index: usize, x: Id) -> Result<Id, String> {
     let k = b.affine(k, K_SCALE, 0.0);
     // The cap is fused into the scores op, before its own masking sentinel; see `LOGIT_CAP`.
     let scores =
-        b.attn_scores_banded(q, k, HEADS, ATTEND_SPAN, relative, REL_OFFSETS, 1.0, LOGIT_CAP);
+        b.attn_scores_banded(q, k, crate::nets::BandedScores { heads: HEADS, band: ATTEND_SPAN, table: relative, offsets: REL_OFFSETS, scale: 1.0, cap: LOGIT_CAP });
     let probs = b.softmax(scores);
     let mixed = b.attn_apply_banded(probs, v, HEADS, ATTEND_SPAN);
     let mixed = b.clamp(mixed, clip_attn);

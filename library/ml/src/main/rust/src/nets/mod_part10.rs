@@ -107,20 +107,6 @@ impl Node {
     }
 }
 
-/// The convolution node that wrote `id`, if one did.
-///
-/// `finish`'s fusion fold only folds into convolutions — the op whose store does the adding —
-/// so this is the predicate that names a foldable producer. Anything else (`None`) keeps the
-/// binary as its own op.
-fn producer_of(nodes: &[Node], id: Id) -> Option<usize> {
-    nodes.iter().position(|node| {
-        matches!(
-            node,
-            Node::Conv { .. } | Node::ConvInt8 { .. } | Node::RmsNorm { .. }
-        ) && node.out() == id
-    })
-}
-
 /// `floor((in + pad - dilation * (k - 1) - 1) / stride) + 1`, ONNX's convolution
 /// output size.
 fn conv_out(input: u32, kernel: u32, stride: u32, dilation: u32, pad_total: u32) -> u32 {

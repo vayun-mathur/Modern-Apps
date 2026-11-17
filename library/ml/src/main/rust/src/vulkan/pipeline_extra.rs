@@ -9,19 +9,19 @@ use super::pipeline::{Cleanup, Shaders, SPIRV};
 // Lives here rather than in `pipeline.rs` so that file stays under the
 // 500-line Rust limit.
 pub(crate) const QUANTIZE: &[u8] =
-    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/quantize.comp.spv"));
+    include_bytes!(concat!(env!("OUT_DIR"), "/quantize.comp.spv"));
 
 // The Q2_K pair, beside the table they join (see `SPIRV`). Same reason as
 // `QUANTIZE` above: `pipeline.rs` must stay under the 500-line Rust limit.
 pub(crate) const CONV_POINT_Q2K: &[u8] =
-    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_point_q2k.comp.spv"));
+    include_bytes!(concat!(env!("OUT_DIR"), "/conv_point_q2k.comp.spv"));
 pub(crate) const CONV_Q2K: &[u8] =
-    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_q2k.comp.spv"));
+    include_bytes!(concat!(env!("OUT_DIR"), "/conv_q2k.comp.spv"));
 pub(crate) const QUANTIZE_BLOCKS: &[u8] =
-    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/quantize_blocks.comp.spv"));
+    include_bytes!(concat!(env!("OUT_DIR"), "/quantize_blocks.comp.spv"));
 /// Declares `DotProductKHR`, so it is built only on a device that enabled the extension.
 const CONV_POINT_INT4_DOT: &[u8] =
-    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_point_int4_dot.comp.spv"));
+    include_bytes!(concat!(env!("OUT_DIR"), "/conv_point_int4_dot.comp.spv"));
 
 impl Shaders {
     /// Compile every shader and build the two layouts. Called once per device.
@@ -414,7 +414,7 @@ unsafe fn shader_module(device: &ash::Device, spirv: &[u8]) -> Result<vk::Shader
     // no alignment guarantee, and a misaligned `u32` read is undefined behaviour even
     // where the hardware tolerates it. This is `library/map`'s approach, not
     // `games/voxels`' pointer cast.
-    if !spirv.len().is_multiple_of(4) || spirv.len() < 20 {
+    if spirv.len() % (4) != 0 || spirv.len() < 20 {
         return Err(format!("{} bytes is not a SPIR-V module", spirv.len()));
     }
     let mut words = Vec::with_capacity(spirv.len() / 4);

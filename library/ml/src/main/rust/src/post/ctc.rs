@@ -126,7 +126,7 @@ pub fn decode(logits: &[f32], used: usize, dictionary: &Dictionary) -> Result<De
     if logits.is_empty() {
         return Err("no logits at all, so the recogniser produced no timesteps".into());
     }
-    if !logits.len().is_multiple_of(labels) {
+    if logits.len() % (labels) != 0 {
         return Err(format!(
             "{} logits is not a whole number of {labels}-wide timesteps",
             logits.len()

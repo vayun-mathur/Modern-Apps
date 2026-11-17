@@ -61,8 +61,6 @@ const NECK: u32 = 96;
 /// Channels each head branch produces, four of which concatenate back to [`NECK`].
 const HEAD: u32 = 24;
 
-/// Hands out `.maml` tensor indices
-
 /// Hands out `.maml` tensor indices in the order the layers appear. Every folded layer is
 /// a convolution with a weight and a bias, so this steps by two throughout.
 struct Layers {
@@ -144,7 +142,7 @@ fn compile(
     if height == 0 || width == 0 {
         return Err(format!("a {width}x{height} input"));
     }
-    if !height.is_multiple_of(EXTENT_MULTIPLE) || !width.is_multiple_of(EXTENT_MULTIPLE) {
+    if height % (EXTENT_MULTIPLE) != 0 || width % (EXTENT_MULTIPLE) != 0 {
         return Err(format!(
             "a {width}x{height} input: both extents must be a multiple of \
              {EXTENT_MULTIPLE}, or the pyramid's four levels are not exactly 2x apart"

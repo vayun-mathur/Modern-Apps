@@ -31,8 +31,8 @@ use ash::vk;
 use crate::vulkan::buffers::Buffer;
 use crate::vulkan::context::Context;
 
-const SSBO: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/probe_ssbo.comp.spv"));
-const TEXEL: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/probe_texel.comp.spv"));
+const SSBO: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/probe_ssbo.comp.spv"));
+const TEXEL: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/probe_texel.comp.spv"));
 
 /// Bytes to sweep. Comfortably past any cache, and the order of a large weight tensor.
 const BYTES: u64 = 256 * 1024 * 1024;
@@ -80,13 +80,9 @@ pub fn compare(context: &Arc<Context>) -> Result<(f64, f64), String> {
 /// device that lives as long as the process, and a `Drop` would need a context reference threaded
 /// through it for no benefit. Stated rather than hidden behind an empty `Drop`.
 struct Probe {
-    layout: vk::DescriptorSetLayout,
-    pool: vk::DescriptorPool,
     set: vk::DescriptorSet,
     pipeline_layout: vk::PipelineLayout,
     pipeline: vk::Pipeline,
-    module: vk::ShaderModule,
-    command_pool: vk::CommandPool,
     command_buffer: vk::CommandBuffer,
     fence: vk::Fence,
 }
@@ -187,17 +183,11 @@ impl Probe {
             let fence = device
                 .create_fence(&vk::FenceCreateInfo::default(), None)
                 .map_err(|e| format!("fence: {e:?}"))?;
-            Ok(Probe {
-                layout,
-                pool,
-                set,
-                pipeline_layout,
-                pipeline,
-                module,
-                command_pool,
-                command_buffer,
-                fence,
-            })
+            // `layout`, `pool`, `module` and `command_pool` are not stored:
+            // Vulkan handles are plain ids, and these objects are never
+            // destroyed by design (see the struct docs), so only the handles
+            // later calls use are kept.
+            Ok(Probe { set, pipeline_layout, pipeline, command_buffer, fence })
         }
     }
 

@@ -279,7 +279,7 @@ mod tests {
         // a reader that treated the nibbles as unsigned would give 8 and 7 rather than -8 and 7.
         let packed = &weights.data()[0..3];
         assert_eq!(packed[0], 0x08 | (0x0f << 4), "-8 then -1");
-        assert_eq!(packed[1], 0x00 | (0x01 << 4), "0 then 1");
+        assert_eq!(packed[1], (0x01 << 4), "0 then 1");
         assert_eq!(packed[2], 0x07, "7, with the high nibble left as padding");
     }
 

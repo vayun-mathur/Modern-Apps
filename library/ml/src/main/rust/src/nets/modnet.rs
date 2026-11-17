@@ -64,11 +64,6 @@ impl Layers {
     }
 }
 
-/// A 3x3 convolution at unchanged resolution.
-fn conv3x3(b: &mut Builder, layers: &mut Layers, x: Id, out: u32, act: Act) -> Id {
-    b.conv_same(x, layers.take(), out, 3, 1, act)
-}
-
 /// A MobileNetV2 inverted-residual block: expand 1x1 (ReLU6), depthwise 3x3
 /// (ReLU6), linear projection 1x1, optionally added back to the input.
 fn inverted_residual(

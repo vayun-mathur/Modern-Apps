@@ -36,7 +36,7 @@ pub fn build_dual_padded(
 /// A channel-major `[channels, frames]` tensor widened to [`padded_frames`] with a zero tail.
 pub fn pad_frames(values: &[f32], frames: u32) -> Result<Vec<f32>, String> {
     let (real, padded) = (frames as usize, padded_frames(frames) as usize);
-    if real == 0 || values.is_empty() || !values.len().is_multiple_of(real) {
+    if real == 0 || values.is_empty() || values.len() % (real) != 0 {
         return Err(format!("{} values are not whole rows of {real} frames", values.len()));
     }
     let mut out = vec![0.0; values.len() / real * padded];
@@ -49,7 +49,7 @@ pub fn pad_frames(values: &[f32], frames: u32) -> Result<Vec<f32>, String> {
 /// The first `frames` positions of each row of a [`padded_frames`]-wide tensor.
 pub fn unpad_frames(values: &[f32], frames: u32) -> Result<Vec<f32>, String> {
     let (real, padded) = (frames as usize, padded_frames(frames) as usize);
-    if real == 0 || values.is_empty() || !values.len().is_multiple_of(padded) {
+    if real == 0 || values.is_empty() || values.len() % (padded) != 0 {
         return Err(format!("{} values are not whole rows of {padded} frames", values.len()));
     }
     Ok(values.chunks_exact(padded).flat_map(|row| &row[..real]).copied().collect())

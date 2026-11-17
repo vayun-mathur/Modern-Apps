@@ -9,7 +9,7 @@ use super::ppocr_rec::{along_sequence, block, depthwise, point, squeeze_excite};
 /// `width` must be a positive multiple of [`WIDTH_MULTIPLE`]; the output is
 /// `[LOGITS, 1, width / 8]`.
 pub fn build(weights: &dyn WeightSource, width: u32) -> Result<Plan, String> {
-    if width == 0 || !width.is_multiple_of(WIDTH_MULTIPLE) {
+    if width == 0 || width % (WIDTH_MULTIPLE) != 0 {
         return Err(format!(
             "a recognition width of {width}: three stride-2 stages act on it, so it must \
              be a positive multiple of {WIDTH_MULTIPLE}"
@@ -25,7 +25,7 @@ pub fn build(weights: &dyn WeightSource, width: u32) -> Result<Plan, String> {
 /// [`build`] for `lines` crops at once: independent copies of the pass in one plan, so a
 /// whole OCR request's lines are one submit. Input and output `i` are line `i`'s.
 pub fn build_batch(weights: &dyn WeightSource, width: u32, lines: u32) -> Result<Plan, String> {
-    if width == 0 || !width.is_multiple_of(WIDTH_MULTIPLE) || lines == 0 {
+    if width == 0 || width % (WIDTH_MULTIPLE) != 0 || lines == 0 {
         return Err(format!("a batch of {lines} recognitions at width {width}"));
     }
     let mut builder = Builder::new(weights);

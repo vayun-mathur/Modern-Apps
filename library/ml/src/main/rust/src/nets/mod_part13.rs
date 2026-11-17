@@ -134,8 +134,5 @@ fn quant_producer_of(nodes: &[Node], id: Id) -> Option<usize> {
 /// explicit opt-out (`0`, `off` or `false`) disables it; anything else —
 /// including unset — folds.
 pub(crate) fn quant_fold_on(value: Option<String>) -> bool {
-    match value.as_deref() {
-        Some("0") | Some("off") | Some("false") => false,
-        _ => true,
-    }
+    !matches!(value.as_deref(), Some("0" | "off" | "false"))
 }

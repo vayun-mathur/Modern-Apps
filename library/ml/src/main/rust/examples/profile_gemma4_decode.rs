@@ -103,7 +103,7 @@ fn main() {
             None => per_kind.push((*kind, 1, bytes)),
         }
     }
-    per_kind.sort_by(|a, b| b.2.cmp(&a.2));
+    per_kind.sort_by_key(|b| std::cmp::Reverse(b.2));
     println!();
     println!("{:>6} {:>10}  {:?}", "count", "wt-bytes", "kind");
     let mut total_bytes = 0u64;

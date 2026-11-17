@@ -91,7 +91,7 @@ pub fn build_plan_at(weights: &dyn WeightSource, width: u32) -> Result<Plan, Str
     // see the module docs for why the row lookups did not move.)
     for index in 0..embed::TABLES {
         match index {
-            3 | 4 | 5 | 6 => {}
+            3..=6 => {}
             _ => b.host_tensor(index, &super::gemma4_head::dims_of(index)),
         }
     }

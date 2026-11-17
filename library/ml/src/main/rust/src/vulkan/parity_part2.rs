@@ -23,12 +23,7 @@ fn the_banded_ops_agree_with_the_cpu_arm_at_the_towers_own_span() {
         b.attn_scores_banded(
             ids[0],
             ids[1],
-            FIXTURE_HEADS,
-            ATTEND_SPAN,
-            0,
-            offsets,
-            1.0,
-            FIXTURE_CAP,
+            crate::nets::BandedScores { heads: FIXTURE_HEADS, band: ATTEND_SPAN, table: 0, offsets, scale: 1.0, cap: FIXTURE_CAP },
         )
     });
     let data = given.data().to_vec();

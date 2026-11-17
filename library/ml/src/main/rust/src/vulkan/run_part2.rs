@@ -83,7 +83,7 @@ impl Net {
                     100.0 * schedule.barriers() as f64 / schedule.steps.len().max(1) as f64
                 );
             }
-            let mut stamp_next = 0u32;
+            let _stamp_next = 0u32;
 
             // MODELRUNNER_TIMING only: where record's CPU time goes, per phase and per kind.
             let clock = crate::timing::enabled();
@@ -97,8 +97,8 @@ impl Net {
                 ($slot:expr) => {
                     if clock {
                         let now = std::time::Instant::now();
-                        phases[$slot] += (now - lap).as_secs_f64() * 1e3;
-                        lap = now;
+                        phases[$slot] +=
+                            (now - std::mem::replace(&mut lap, now)).as_secs_f64() * 1e3;
                     }
                 };
             }
@@ -121,9 +121,7 @@ impl Net {
                         } else {
                             match dirty {
                                 Some((0, u64::MAX)) | None => self.barrier(buffer),
-                                Some((lo, hi)) => unsafe {
-                                    self.barrier_compute(buffer, lo, hi - lo)
-                                },
+                                Some((lo, hi)) => self.barrier_compute(buffer, lo, hi - lo),
                             }
                         }
                         dirty = None;
@@ -271,7 +269,6 @@ impl Net {
             // barrier. The default path needs nothing here — its last op was barriered.
             if schedule.is_some() && dirty.is_some() {
                 self.barrier(buffer);
-                dirty = None;
             }
             if clock {
                 binds.sort_by(|a, b| b.1.total_cmp(&a.1));

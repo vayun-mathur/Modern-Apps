@@ -102,7 +102,7 @@ const LANES: usize = 2;
 
 /// `values / stride`, refusing a remainder. As in `bridge_part1.rs`.
 fn positions(what: &str, values: usize, stride: usize) -> Result<u32, String> {
-    if stride == 0 || values == 0 || !values.is_multiple_of(stride) {
+    if stride == 0 || values == 0 || values % (stride) != 0 {
         return Err(format!("{what}: {values} values is not a whole number of {stride}"));
     }
     Ok((values / stride) as u32)
@@ -305,7 +305,7 @@ fn run() -> Result<(), String> {
     let dir = args
         .first()
         .map(String::as_str)
-        .or_else(|| option_env!("MODELRUNNER_ASSETS"))
+        .or(option_env!("MODELRUNNER_ASSETS"))
         .map(str::to_owned)
         .or_else(|| std::env::var("MODELRUNNER_ASSETS").ok())
         .ok_or("pass the supertonic asset dir or set MODELRUNNER_ASSETS")?;

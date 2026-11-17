@@ -163,7 +163,7 @@ fn main() {
         },
         None => None,
     };
-    let golden = match std::fs::read_to_string(&golden) {
+    let golden = match std::fs::read_to_string(golden) {
         Ok(text) => text,
         Err(why) => return println!("cannot read the golden: {why}"),
     };
@@ -578,6 +578,8 @@ fn gather_plan(context: &Arc<context::Context>, embed: &Streamed) -> Result<Resh
 /// Positions one prefill submit covers. Mirrors the bridge's `CHUNK`.
 const CHUNK: usize = 256;
 
+type KindReports = Vec<(&'static str, Vec<(String, f64, f64)>)>;
+
 /// Milliseconds per stage of one prompt, summed over its chunks.
 #[derive(Default)]
 struct PrefillTimes {
@@ -590,7 +592,7 @@ struct PrefillTimes {
     /// The last token's `Mode::Tail` submit.
     tail: f64,
     /// Per-kind GPU tables of the last chunk's prefill and tail, under `MODELRUNNER_TIMESTAMPS`.
-    reports: Vec<(&'static str, Vec<(String, f64, f64)>)>,
+    reports: KindReports,
     /// The last token's final-normed state, which the head reads.
     state: Vec<f32>,
 }

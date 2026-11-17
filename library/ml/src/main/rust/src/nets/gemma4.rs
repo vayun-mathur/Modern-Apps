@@ -116,7 +116,8 @@ pub const MAX_CONTEXT: u32 = 16_384;
 ///
 /// Tiers rather than a smooth grow because each change re-records the plan and **loses the cache**
 /// - the arena is reallocated, so the whole prompt is prefilled again. Doubling makes that happen
-/// a handful of times over a long conversation instead of continuously.
+///   a handful of times over a long conversation instead of continuously.
+///
 /// Pinned tensors that are KV caches, and the first that many in the plan.
 ///
 /// `build` declares the caches before anything else, so they are a prefix of `Plan::pinned` -
@@ -180,10 +181,10 @@ pub const LOGIT_CAP: f32 = 30.0;
 /// the shapes agree and every logit merely saturates at `LOGIT_CAP`.
 pub const EMBED_GAIN: f32 = 39.25;
 
-/// Live int8 round-trip scales for the attention path.
-///
-/// Moved to gemma4_part5.rs (module-length lint): [MM_SCALE],
-/// [QI_SCALE], [QO_SCALE], [KO_SCALE], [VO_SCALE], [O_SCALE].
+// Live int8 round-trip scales for the attention path.
+//
+// Moved to gemma4_part5.rs (module-length lint): [MM_SCALE],
+// [QI_SCALE], [QO_SCALE], [KO_SCALE], [VO_SCALE], [O_SCALE].
 
 /// Whether `q_norm`'s gamma already carries `1 / sqrt(head_dim)`.
 ///
@@ -318,7 +319,7 @@ pub const TENSORS: usize = SHARED_TENSORS
 /// The first tensor index of layer `index`.
 pub const fn layer_at(index: usize) -> usize {
     let owning = if index < OWNS_CACHE_LAYERS { index } else { OWNS_CACHE_LAYERS };
-    let shared = if index < OWNS_CACHE_LAYERS { 0 } else { index - OWNS_CACHE_LAYERS };
+    let shared = index.saturating_sub(OWNS_CACHE_LAYERS);
     LAYER0 + owning * OWNING_LAYER_TENSORS + shared * SHARED_LAYER_TENSORS
 }
 

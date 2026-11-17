@@ -141,7 +141,7 @@ fn ctc_decoding_refuses_malformed_inputs_before_touching_the_net() {
     assert!(error.contains("not a whole number"), "{error}");
     // Asking for more timesteps than the map holds is refused rather than read past the end.
     let mut two_steps = vec![0.0; LOGITS * 2];
-    if let Some(slot) = two_steps.get_mut(1 * 2) {
+    if let Some(slot) = two_steps.get_mut(2) {
         *slot = 10.0;
     }
     let error = decode(&two_steps, 3, &dictionary).expect_err("three of two");

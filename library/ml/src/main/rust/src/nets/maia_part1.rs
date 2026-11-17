@@ -188,14 +188,14 @@ mod tests {
         // Each elo channel is one value repeated across all 64 squares, and self comes
         // before oppo.
         let after = (PLANES * HISTORY * SQUARES) as usize;
-        for channel in 0..ELO_DIM as usize {
+        for (channel, &value) in self_elo.iter().enumerate() {
             let at = after + channel * SQUARES as usize;
-            assert!(out[at..at + 64].iter().all(|&v| v == self_elo[channel]));
+            assert!(out[at..at + 64].iter().all(|&v| v == value));
         }
         let after_self = after + (ELO_DIM * SQUARES) as usize;
-        for channel in 0..ELO_DIM as usize {
+        for (channel, &value) in oppo_elo.iter().enumerate() {
             let at = after_self + channel * SQUARES as usize;
-            assert!(out[at..at + 64].iter().all(|&v| v == oppo_elo[channel]));
+            assert!(out[at..at + 64].iter().all(|&v| v == value));
         }
     }
 

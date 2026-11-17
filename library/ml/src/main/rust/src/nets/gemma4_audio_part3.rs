@@ -215,6 +215,9 @@ mod tests {
     }
 
     #[test]
+    // The two literals are the export's constants at full `f64` precision;
+    // rounding them would defeat the comparison against the folded scales.
+    #[allow(clippy::excessive_precision)]
     fn the_folded_scales_are_the_constants_the_export_holds() {
         // Measured in the graph as val_279 and val_280. The `/ ln 2` in the query scale is the
         // part nobody would guess, and reproducing `HEAD_DIM ** -0.5` alone would be off by

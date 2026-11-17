@@ -109,8 +109,10 @@ pub mod embed {
 /// `inputs_embeds` is the working-table row; `per_layer_inputs` is the COMBINED
 /// block the reference's `maybe_preprocess_per_layer_embeddings` produces:
 ///
-///     projected = hidden @ SHARED_PROJ
-///     combined  = (16 * embedded + rms_norm(projected)) * 1/sqrt(2)
+/// ```text
+/// projected = hidden @ SHARED_PROJ
+/// combined  = (16 * embedded + rms_norm(projected)) * 1/sqrt(2)
+/// ```
 ///
 /// S10 graph walk t319 -> t30: t307 `[16.0]` scales the gather side, t304
 /// `[1/sqrt(2)]` the sum. No `1/sqrt(d_model)` exists anywhere in S10 (and a
@@ -286,11 +288,13 @@ fn combine_timed(
     Ok((out, bulk_ms, matmul_ms))
 }
 
+type ProjectionPair = (std::sync::Arc<Vec<f32>>, std::sync::Arc<Vec<f32>>);
+
 /// The process-constant half of the combine, cached or freshly read.
 fn combine_projection(
     embed: &crate::weights::Reader<'_>,
     use_cache: bool,
-) -> Result<(std::sync::Arc<Vec<f32>>, std::sync::Arc<Vec<f32>>), String> {
+) -> Result<ProjectionPair, String> {
     let proj_dims = [LAYERS as u32 * PER_LAYER, D_MODEL, 1, 1];
     if !use_cache {
         let proj = embed.int8_all(embed::SHARED_PROJ, embed::SHARED_PROJ + 1, &proj_dims)?;

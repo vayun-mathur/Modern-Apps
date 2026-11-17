@@ -137,7 +137,7 @@ fn build_plan8(weights: &dyn WeightSource, greedy: bool) -> Result<Plan, String>
     // Every EMBED tensor this pass does not read, named so `finish` accepts
     // the plan. The int8 chunks are the only tensors read.
     for index in 0..TENSORS_WITH_HEAD8 {
-        if index < HEAD8_BASE || index >= HEAD8_BASE + HEAD8_CHUNK_TENSORS {
+        if !(HEAD8_BASE..HEAD8_BASE + HEAD8_CHUNK_TENSORS).contains(&index) {
             b.host_tensor(index, &dims_of(index));
         }
     }
@@ -166,7 +166,7 @@ fn finish_greedy(b: &mut Builder, outs: &mut Vec<Id>) {
     // copies within the arena — no extra allocation) and reduce to one
     // greedy id. The split outputs stay too, so the Kotlin sampling path
     // keeps working from the same recording.
-    let row = b.concat(&outs);
+    let row = b.concat(outs);
     let id = b.argmax(row);
     outs.push(id);
 }
@@ -179,7 +179,7 @@ fn build_plan_fp16(weights: &dyn WeightSource, greedy: bool) -> Result<Plan, Str
     // the plan. The fp16 chunks are the only tensors read; the legacy rank-2
     // table (tensor 112) stays host-side for gather-time fallback.
     for index in 0..TENSORS_WITH_HEAD {
-        if index < HEAD_BASE || index >= HEAD_BASE + HEAD_CHUNK_TENSORS {
+        if !(HEAD_BASE..HEAD_BASE + HEAD_CHUNK_TENSORS).contains(&index) {
             b.host_tensor(index, &dims_of(index));
         }
     }

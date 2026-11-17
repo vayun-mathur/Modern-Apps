@@ -45,7 +45,7 @@ impl<'a> Builder<'a> {
         if heads == 0 || kv_heads == 0 || heads % kv_heads != 0 {
             self.fail(format!("{heads} query heads do not group into {kv_heads} key/value heads"));
         }
-        if !sc.w.is_multiple_of(kv_heads.max(1)) {
+        if sc.w % (kv_heads.max(1)) != 0 {
             self.fail(format!("{} cache channels do not split into {kv_heads} heads", sc.w));
         }
         // The output is the **query** side's width, `heads * head_dim`, which is what the next
@@ -97,7 +97,7 @@ impl<'a> Builder<'a> {
                  one would silently reinterpret the layout"
             ));
         }
-        if heads == 0 || !sq.c.is_multiple_of(heads) {
+        if heads == 0 || sq.c % (heads) != 0 {
             self.fail(format!("{} channels do not split into {heads} heads", sq.c));
         }
         let head_dim = sq.c.checked_div(heads).unwrap_or(0);
@@ -228,7 +228,7 @@ impl<'a> Builder<'a> {
     }
     /// `tanh(x / cap) * cap`, elementwise. See [`Kind::Softcap`].
     pub fn softcap(&mut self, input: Id, cap: f32) -> Id {
-        if !(cap > 0.0) {
+        if cap.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
             self.fail(format!("a softcap of {cap}, which must be positive"));
         }
         let shape = self.shape_of(input);
@@ -270,7 +270,7 @@ impl<'a> Builder<'a> {
     /// compile-time constant like [`Builder::softcap`]'s cap, for the same reason:
     /// one float per layer, fixed by the source bundle (see `MM_SCALE`).
     pub fn quantize(&mut self, input: Id, scale: f32) -> Id {
-        if !(scale > 0.0) {
+        if scale.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
             self.fail(format!("a quantize of {scale}, whose scale must be positive"));
         }
         let shape = self.shape_of(input);
@@ -451,17 +451,17 @@ impl<'a> Builder<'a> {
         if sx.h != 1 || sa.h != 1 {
             self.fail(format!("rotary on {sx:?}: a sequence is [d_model, 1, T]"));
         }
-        if heads == 0 || !sx.c.is_multiple_of(heads) {
+        if heads == 0 || sx.c % (heads) != 0 {
             self.fail(format!("{} channels do not split into {heads} heads", sx.c));
         }
         let head_dim = sx.c.checked_div(heads.max(1)).unwrap_or(0);
-        if axes == 0 || !head_dim.is_multiple_of(axes.max(1)) {
+        if axes == 0 || head_dim % (axes.max(1)) != 0 {
             self.fail(format!(
                 "rotary over a head of {head_dim} in {axes} blocks, which does not divide"
             ));
         }
         let block = head_dim.checked_div(axes.max(1)).unwrap_or(0);
-        if block == 0 || !block.is_multiple_of(2) {
+        if block == 0 || block % (2) != 0 {
             self.fail(format!(
                 "rotary over a block of {block}: it rotates 2-planes, so the block must be even"
             ));

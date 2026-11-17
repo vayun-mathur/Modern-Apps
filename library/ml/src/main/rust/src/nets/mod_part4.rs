@@ -116,7 +116,7 @@ impl<'a> Builder<'a> {
         let in_shape = self.shape_of(input);
         let (kh, kw) = kernel;
         let splits =
-            group != 0 && in_shape.c.is_multiple_of(group) && m.is_multiple_of(group);
+            group != 0 && in_shape.c % (group) == 0 && m % (group) == 0;
         if !splits {
             self.fail(format!(
                 "tensor {weight_index}: {} in / {m} out channels do not split into \
@@ -313,7 +313,7 @@ impl<'a> Builder<'a> {
         let in_shape = self.shape_of(input);
         let (kh, kw) = kernel;
         let splits =
-            group != 0 && in_shape.c.is_multiple_of(group) && m.is_multiple_of(group);
+            group != 0 && in_shape.c % (group) == 0 && m % (group) == 0;
         if !splits {
             self.fail(format!(
                 "tensor {weight_index}: {} in / {m} out channels do not split into \

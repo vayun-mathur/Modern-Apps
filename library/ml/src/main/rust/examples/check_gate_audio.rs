@@ -269,7 +269,7 @@ fn features(signals: &[(String, Vec<i16>)]) {
         let mut frames = Vec::new();
         frontend.process(pcm, &mut frames);
         let count = frames.len() / CHANNELS;
-        let mut mean = vec![0.0f32; CHANNELS];
+        let mut mean = [0.0f32; CHANNELS];
         for frame in 0..count {
             for (channel, slot) in mean.iter_mut().enumerate() {
                 *slot += frames[frame * CHANNELS + channel];

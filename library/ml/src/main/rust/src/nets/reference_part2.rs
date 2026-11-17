@@ -331,8 +331,8 @@ impl Reference {
         let epsilon = f32::from_bits(p.param1_bits);
         // `count` is `groups * stride`, so this walks one group at one position at a time.
         for index in 0..p.count {
-            let group = if stride == 0 { 0 } else { index / stride };
-            let position = if stride == 0 { 0 } else { index % stride };
+            let group = index.checked_div(stride).unwrap_or(0);
+            let position = index.checked_rem(stride).unwrap_or(0);
             let base = group * per_group;
             let mut squares = 0.0;
             for c in 0..per_group {
@@ -411,7 +411,7 @@ impl Reference {
             return Ok(value);
         }
         let scale = f32::from_bits(p.param0_bits);
-        if !(scale > 0.0) {
+        if scale.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
             return Err(format!("a fused quantize of {scale}"));
         }
         let q = ((value / scale + 0.5).floor()).clamp(-128.0, 127.0);

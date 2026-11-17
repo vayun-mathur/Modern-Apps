@@ -344,7 +344,8 @@ fn encode(weights: &dyn WeightSource, len: u32) -> Result<Plan, String> {
     // The two heads, the decoder and the two bias tables belong elsewhere, except the decoder's
     // cross-attention K and V projections, which run here once per sentence. The trailing encoder
     // norm is part of the first range, so it runs to `DECODER` rather than to `ENCODER_NORM`.
-    let mut read = vec![ENCODER..DECODER];
+    let mut read = Vec::new();
+    read.push(ENCODER..DECODER);
     read.extend((0..DECODER_LAYERS).map(cross_kv));
     name_host_tensors(b, &read);
 

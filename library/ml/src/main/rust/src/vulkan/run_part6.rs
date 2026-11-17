@@ -1,3 +1,5 @@
+type UploadFill<'a> = dyn FnMut(u64, &mut [u8]) -> Result<(), String> + 'a;
+
 impl Net {
     /// Copy the weights blob to device-local memory through the staging buffer, in chunks.
     ///
@@ -28,7 +30,7 @@ impl Net {
         &self,
         dst: u64,
         total: u64,
-        fill: &mut dyn FnMut(u64, &mut [u8]) -> Result<(), String>,
+        fill: &mut UploadFill<'_>,
     ) -> Result<(), String> {
         if total == 0 {
             return Ok(());

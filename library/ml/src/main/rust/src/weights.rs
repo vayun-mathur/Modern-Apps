@@ -28,6 +28,7 @@ const MAGIC: [u8; 4] = *b"MAML";
 /// Version 1 is header + table + blob. Version 2 appends a graph section after the blob
 /// (see [`Graph`]); a v1 reader rejects a v2 file here, loudly, rather than running a
 /// topology it cannot see.
+#[cfg(test)]
 const FORMAT_VERSION: u32 = 1;
 /// The newest version this reader accepts. Kept distinct from [`FORMAT_VERSION`] — the
 /// version *written* by the converter — so emitting v2 files is a separate, deliberate
@@ -439,7 +440,7 @@ fn parse_header(bytes: &[u8], expect_graph: u32) -> Result<Header, String> {
         if expected != len as u64 {
             return Err(format!("tensor {i} has dims {dims:?} but len {len}"));
         }
-        if !offset.is_multiple_of(ALIGNMENT) {
+        if offset % (ALIGNMENT) != 0 {
             return Err(format!("tensor {i} is at {offset}, not {ALIGNMENT}-aligned"));
         }
         let end = (offset as u64) + dtype.bytes(len as u64);

@@ -1,3 +1,20 @@
+/// Window/scale options for [`Builder::attn_scores_banded`].
+#[derive(Clone, Copy)]
+pub struct BandedScores {
+    /// Attention heads.
+    pub heads: u32,
+    /// Keys a query may see.
+    pub band: u32,
+    /// Weight-file index of the relative-position table.
+    pub table: usize,
+    /// Relative offsets in the table.
+    pub offsets: u32,
+    /// Score scale (already-scaled queries pass 1.0).
+    pub scale: f32,
+    /// Logit cap fused into the scores.
+    pub cap: f32,
+}
+
 impl<'a> Builder<'a> {
     /// [`Builder::attn_apply`] plus the value-side relative term.
     pub fn attn_apply_relative(
@@ -42,17 +59,8 @@ impl<'a> Builder<'a> {
     /// vector, and the key by a different scalar, and neither of those can live here — a vector
     /// does not factor out of a dot product, and the key's scalar applies to the content term
     /// but not to the relative one.
-    pub fn attn_scores_banded(
-        &mut self,
-        q: Id,
-        k: Id,
-        heads: u32,
-        band: u32,
-        table: usize,
-        offsets: u32,
-        scale: f32,
-        cap: f32,
-    ) -> Id {
+    pub fn attn_scores_banded(&mut self, q: Id, k: Id, scores: BandedScores) -> Id {
+        let BandedScores { heads, band, table: table_index, offsets, scale, cap } = scores;
         let (sq, sk) = (self.shape_of(q), self.shape_of(k));
         if sq.c != sk.c || sq.w != sk.w {
             self.fail(format!(
@@ -66,7 +74,7 @@ impl<'a> Builder<'a> {
                  one would silently reinterpret the layout"
             ));
         }
-        if heads == 0 || !sq.c.is_multiple_of(heads) {
+        if heads == 0 || sq.c % (heads) != 0 {
             self.fail(format!("{} channels do not split into {heads} heads", sq.c));
         }
         if band == 0 || band > sq.w {
@@ -88,7 +96,7 @@ impl<'a> Builder<'a> {
             self.fail(format!("a logit cap of {cap}, which must be positive"));
         }
         let head_dim = sq.c.checked_div(heads.max(1)).unwrap_or(0);
-        let table = self.weight(table, &[heads, offsets, head_dim]);
+        let table = self.weight(table_index, &[heads, offsets, head_dim]);
         let out = self.tensor(Shape::new(heads, sq.w, band));
         self.nodes
             .push(Node::AttnScoresBanded { q, k, out, heads, band, table, offsets, scale, cap });
@@ -114,7 +122,7 @@ impl<'a> Builder<'a> {
                  value per key, and a band's queries and keys are the same sequence"
             ));
         }
-        if heads == 0 || !sv.c.is_multiple_of(heads) {
+        if heads == 0 || sv.c % (heads) != 0 {
             self.fail(format!("{} channels do not split into {heads} heads", sv.c));
         }
         let out = self.tensor(Shape::new(sv.c, 1, sv.w));
@@ -128,7 +136,7 @@ impl<'a> Builder<'a> {
     /// sequence length: for a one-phoneme utterance only the centre entry is ever reachable
     /// and the other eight go unused, which is correct rather than an error — "a" is a word.
     fn check_offsets(&mut self, offsets: u32) {
-        if offsets == 0 || offsets.is_multiple_of(2) {
+        if offsets == 0 || offsets % (2) == 0 {
             self.fail(format!(
                 "{offsets} relative offsets: the table is 2 * window + 1 entries centred on \
                  zero displacement, so an even count has no centre"
@@ -171,7 +179,7 @@ impl<'a> Builder<'a> {
         if sv.h != 1 {
             self.fail(format!("attention values {sv:?} are not [d_model, 1, T]"));
         }
-        if heads == 0 || !sv.c.is_multiple_of(heads) {
+        if heads == 0 || sv.c % (heads) != 0 {
             self.fail(format!("{} channels do not split into {heads} heads", sv.c));
         }
         self.tensor(Shape::new(sv.c, 1, sp.h))
@@ -241,7 +249,6 @@ impl<'a> Builder<'a> {
             nodes: self.nodes,
             shapes: self.shapes,
             inputs: self.inputs,
-            pinned: self.pinned,
             read: self.read,
         })
     }
@@ -372,10 +379,9 @@ impl<'a> Builder<'a> {
                 Node::Binary { kind: Kind::Add, a, b, out } => {
                     if let Some(index) = producer_of(&self.nodes, *a) {
                         (index, *a, Some(*b), None, *out)
-                    } else if let Some(index) = producer_of(&self.nodes, *b) {
-                        (index, *b, Some(*a), None, *out)
                     } else {
-                        return None;
+                        let index = producer_of(&self.nodes, *b)?;
+                        (index, *b, Some(*a), None, *out)
                     }
                 }
                 Node::Binary { kind: Kind::AddBroadcast, a, b, out } => {

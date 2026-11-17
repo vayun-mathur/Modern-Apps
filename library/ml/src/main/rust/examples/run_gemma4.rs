@@ -175,7 +175,7 @@ fn gather_parity_gate(
     embed: &Weights,
     table: &Table<'_>,
     prompt: &str,
-) -> () {
+) {
     use modelrunner::nets::gemma4_gather;
     let specials = ["<bos>", "<eos>", "<pad>", "<unk>"];
     let mut tokens = vec![GEMMA.bos];
@@ -295,7 +295,7 @@ fn head_logits(
     hidden: &[f32],
     head_embed: Option<&Weights>,
 ) -> Result<Vec<f32>, String> {
-    use modelrunner::nets::gemma4_head;
+    
     if std::env::var("GEMMA4_GREEDY").is_ok() {
         if let Some(embed) = head_embed {
             if let Some(id) = head_greedy_id(_context, embed, hidden)? {
@@ -560,7 +560,7 @@ fn run_chat(
     table: &Table<'_>,
     prompt: &str,
     limit: usize,
-) -> () {
+) {
     const MARKERS: [&str; 11] = [
         "<bos>", "<eos>", "<|turn>", "<turn|>", "<|tool>", "<tool|>", "<|tool_call>",
         "<tool_call|>", "<|tool_response>", "<tool_response|>", "<|\"|>",

@@ -60,7 +60,7 @@
 //! cannot change, and the winner's probability, which is `1 / sum(exp(x - max))` from the
 //! raw logits directly. So the pass is not merely moved to the host, it is deleted.
 
-use super::{Act, Builder, Id, Plan, Shape, WeightSource};
+use super::{Act, Builder, Id};
 
 /// Input height, in pixels. Fixed; see the module docs.
 pub const HEIGHT: u32 = 48;
@@ -226,7 +226,7 @@ pub use super::ppocr_rec_extra::{build, build_batch};
 #[cfg(test)]
 mod tests {
     use super::super::tests::{assert_no_aliasing, Shapes};
-    use super::super::{Kind, Op};
+    use super::super::{Kind, Op, Plan, Shape};
     use super::*;
 
     /// The width a line crop is padded to on device, and 320 / 8 = 40 timesteps.

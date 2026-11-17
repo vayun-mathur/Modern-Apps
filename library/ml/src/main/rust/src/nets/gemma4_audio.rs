@@ -353,7 +353,7 @@ pub fn layer_at(index: usize) -> usize {
 
 /// Positions surviving one stride-2, pad-1, kernel-3 convolution: `ceil(n / 2)`.
 pub const fn subsample(n: u32) -> u32 {
-    if n == 0 { 0 } else { (n + 1) / 2 }
+    if n == 0 { 0 } else { n.div_ceil(2) }
 }
 
 /// Soft tokens `frames` mel frames produce, one per twice-subsampled frame.

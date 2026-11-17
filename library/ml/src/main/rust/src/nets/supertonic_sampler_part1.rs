@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use super::super::tests::{assert_no_aliasing, Shapes};
-    use super::super::{Kind, Op};
+    use super::super::{Kind, Op, NO_FUSE};
     use super::*;
 
     /// About four seconds of audio, and a sentence to match.

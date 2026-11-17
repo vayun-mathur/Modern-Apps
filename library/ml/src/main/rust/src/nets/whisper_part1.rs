@@ -12,7 +12,7 @@ fn device_tensors(mode: Mode) -> Vec<usize> {
                 read.extend(cross_kv(layer)..cross_kv(layer) + 6);
             }
         }
-        Mode::DecodeStep { .. } => {
+        Mode::DecodeStep => {
             read.extend(HEAD..HEAD + 3);
             let skipped: std::collections::BTreeSet<usize> = (0..DECODER_LAYERS)
                 .flat_map(|layer| cross_kv(layer)..cross_kv(layer) + 6)

@@ -44,7 +44,8 @@ pub(crate) fn decode_step(weights: &dyn WeightSource, src_len: u32) -> Result<Pl
     // The decoder plus the logits head, minus the cross-attention K and V the encode pass ran.
     // The input table, the whole encoder and both bias tables belong elsewhere: the tables are
     // read on the host, never by a shader, so the range ends at TABLE_ENC.
-    let mut read = vec![HEAD_LM..ENCODER];
+    let mut read = Vec::new();
+    read.push(HEAD_LM..ENCODER);
     let mut at = DECODER;
     for layer in 0..DECODER_LAYERS {
         let skipped = cross_kv(layer);

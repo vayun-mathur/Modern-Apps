@@ -345,7 +345,7 @@ fn run(context: &Arc<Context>) -> Result<(), String> {
     {
         let warm = Pipeline::new(context, pipeline_layout, A)?;
         for _ in 0..WARMUP {
-            let _ = time_pass(context, command_buffer, fence, pipeline_layout, set, &warm, quads, GROUPS)?;
+            let _ = time_pass(Pass { context, cb: command_buffer, fence, layout: pipeline_layout, set, pipeline: &warm }, quads, GROUPS)?;
         }
         warm.destroy(context);
     }
@@ -382,7 +382,7 @@ fn run(context: &Arc<Context>) -> Result<(), String> {
 
     // One discarded pass each, so no variant's first timed pass pays for driver setup.
     for (_, pipeline, _, groups, _) in &built {
-        let _ = time_pass(context, command_buffer, fence, pipeline_layout, set, pipeline, quads, *groups)?;
+        let _ = time_pass(Pass { context, cb: command_buffer, fence, layout: pipeline_layout, set, pipeline }, quads, *groups)?;
     }
 
     let mut rates: Vec<Vec<f64>> = vec![Vec::with_capacity(RUNS); built.len()];
@@ -390,7 +390,7 @@ fn run(context: &Arc<Context>) -> Result<(), String> {
     for _ in 0..RUNS {
         for (index, (_, pipeline, _, groups, bytes)) in built.iter().enumerate() {
             let seconds =
-                time_pass(context, command_buffer, fence, pipeline_layout, set, pipeline, quads, *groups)?;
+                time_pass(Pass { context, cb: command_buffer, fence, layout: pipeline_layout, set, pipeline }, quads, *groups)?;
             if let Some(slot) = rates.get_mut(index) {
                 slot.push(*bytes as f64 / seconds / 1e9);
             }
@@ -669,7 +669,7 @@ struct Pipeline {
 
 impl Pipeline {
     fn new(context: &Arc<Context>, layout: vk::PipelineLayout, spirv: &[u8]) -> Result<Pipeline, String> {
-        if !spirv.len().is_multiple_of(4) || spirv.len() < 20 {
+        if spirv.len() % (4) != 0 || spirv.len() < 20 {
             return Err(format!(
                 "{} bytes is not a SPIR-V module - did the glslc step run? See analysis/gemv_probe/README.md",
                 spirv.len()
@@ -715,17 +715,20 @@ impl Pipeline {
     }
 }
 
-/// Seconds for one pass.
-fn time_pass(
-    context: &Arc<Context>,
+/// The Vulkan handles one timed pass binds, bundled so `time_pass` takes
+/// the pass plus its two sizes.
+struct Pass<'a> {
+    context: &'a Arc<Context>,
     cb: vk::CommandBuffer,
     fence: vk::Fence,
     layout: vk::PipelineLayout,
     set: vk::DescriptorSet,
-    pipeline: &Pipeline,
-    quads: u32,
-    groups: u32,
-) -> Result<f64, String> {
+    pipeline: &'a Pipeline,
+}
+
+/// Seconds for one pass.
+fn time_pass(pass: Pass<'_>, quads: u32, groups: u32) -> Result<f64, String> {
+    let Pass { context, cb, fence, layout, set, pipeline } = pass;
     let device = &context.device;
     // `quads` for the streaming variants, `in_c` and `count` for the gemv-shaped ones. All
     // three are pushed for every variant; a shader that does not declare a field ignores it.

@@ -138,7 +138,7 @@ fn run(context: &Arc<Context>) -> Result<(), String> {
     let g_layout = make_layout(context, g_set, &push_range)?;
     let tex_layout = make_layout(context, tex_set, &push_range)?;
 
-    let (command_pool, command_buffer, fence) = make_cmd(context)?;
+    let (_command_pool, command_buffer, fence) = make_cmd(context)?;
     let quads = (BYTES / 16) as u32;
     let count = gemv_out / 2;
 
@@ -228,9 +228,6 @@ fn upload_activations(context: &Arc<Context>, acts: &Buffer) -> Result<(), Strin
     }
     Ok(())
 }
-
-type SetLayouts = (vk::DescriptorSetLayout, vk::DescriptorPool, vk::DescriptorSet);
-type PipelineHandles = (vk::Pipeline, vk::ShaderModule);
 
 fn make_set(
     context: &Arc<Context>,

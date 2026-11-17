@@ -81,7 +81,7 @@
 //! at 0.29 from `main_blocks.11` on. A per-stage comparison found it in one run, which is much
 //! faster than reasoning about a 1004-node graph.
 
-use super::{Act, Builder, Id, Kind, Op, Plan, Shape, WeightSource, NO_FUSE};
+use super::{Act, Builder, Id, Kind, Op, Plan, Shape, WeightSource};
 
 /// Latent channels in and out. `ldim * chunk_compress_factor`, and the vocoder's `PACKED`.
 pub const LATENT: u32 = 144;

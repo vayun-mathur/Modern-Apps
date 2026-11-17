@@ -17,6 +17,8 @@ use crate::nets::Plan;
 use crate::preprocess::RESCALE_ONLY;
 use crate::weights::{Blob, Offsets, Weights};
 
+type Planner<S> = fn(&Offsets, S) -> Result<Plan, String>;
+
 use super::context::Context;
 use super::run::Net;
 
@@ -30,7 +32,7 @@ pub struct Reshaped<S> {
     net: Net,
     offsets: Offsets,
     at: S,
-    plan: fn(&Offsets, S) -> Result<Plan, String>,
+    plan: Planner<S>,
     /// The most recently built plans, newest last, so a shape seen again skips the build.
     ///
     /// Building a plan is pure CPU work over the graph and costs more than recording it: on a
@@ -149,7 +151,7 @@ impl<S: Copy + PartialEq> Reshaped<S> {
 
     /// What [`Reshaped::at`] would call to build a plan it does not hold, so a caller can build
     /// one off the thread that owns the net. See [`Reshaped::adopt`].
-    pub fn planner(&self) -> (fn(&Offsets, S) -> Result<Plan, String>, Offsets) {
+    pub fn planner(&self) -> (Planner<S>, Offsets) {
         (self.plan, self.offsets.clone())
     }
 

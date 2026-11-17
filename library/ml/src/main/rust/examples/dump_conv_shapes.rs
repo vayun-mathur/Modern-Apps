@@ -49,8 +49,8 @@ fn main() {
     open("maia", "maia3-5m.maml", graph::MAIA, &|w| maia::build(w));
 
     // (net, step, out_c, out_h, out_w, in_c, kh, kw, stride, dil, group, act, gmac)
-    let mut rows: Vec<(String, usize, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, f64)> =
-        Vec::new();
+    type ConvRow = (String, usize, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, f64);
+    let mut rows: Vec<ConvRow> = Vec::new();
     for (name, plan) in &plans {
         for (step, op) in plan.ops.iter().enumerate() {
             let Op::Dispatch { kind: Kind::Conv, push, .. } = op else { continue };

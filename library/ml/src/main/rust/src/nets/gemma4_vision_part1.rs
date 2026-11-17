@@ -347,12 +347,11 @@ pub fn prepare(
         .collect::<Result<Vec<_>, _>>()?;
 
     let mut positions = vec![0.0; D_MODEL as usize * patches];
-    for row in 0..grid.rows as usize {
-        for column in 0..grid.cols as usize {
+    for (row, row_values) in by_row.iter().enumerate() {
+        for (column, column_values) in by_column.iter().enumerate() {
             let at = row * grid.cols as usize + column;
             for channel in 0..D_MODEL as usize {
-                positions[channel * patches + at] =
-                    by_column[column][channel] + by_row[row][channel];
+                positions[channel * patches + at] = column_values[channel] + row_values[channel];
             }
         }
     }

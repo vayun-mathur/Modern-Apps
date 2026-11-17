@@ -265,7 +265,7 @@ mod tests {
         // A script of one repeated non-EOS token, longer than the cap.
         let script = vec![20u32; MAX_TOKENS + 10];
         let mut nets = scripted(&script);
-        let got = translate(&mut nets, &table, "<2en>", "a").expect("translates");
+        let _got = translate(&mut nets, &table, "<2en>", "a").expect("translates");
         assert_eq!(nets.steps.len(), MAX_TOKENS);
     }
 

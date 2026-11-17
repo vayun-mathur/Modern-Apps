@@ -139,7 +139,7 @@ mod tests {
             }
         }
         assert_eq!(scores, LAYERS, "one cached score map per layer");
-        assert!(Q_NORM_CARRIES_SCALE, "if this ever becomes false the assertion above flips");
+        // If `Q_NORM_CARRIES_SCALE` ever becomes false, the scale assertion above flips.
     }
 
     #[test]

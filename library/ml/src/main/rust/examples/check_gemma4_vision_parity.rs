@@ -207,7 +207,7 @@ fn against(got: &[f32], exact: &[f32], control: Option<&[f32]>, floor: f64) -> (
     match control {
         None => (format!("exact {exact_line}"), exact_cosine),
         Some(control) => {
-            let (line, cosine) = compare(got, control);
+            let (_line, cosine) = compare(got, control);
             let verdict = if cosine > floor { "ok" } else { "WRONG" };
             (
                 format!(

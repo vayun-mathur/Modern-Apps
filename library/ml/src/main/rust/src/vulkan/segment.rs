@@ -59,7 +59,6 @@
 use crate::nets::{Kind, Push};
 use crate::weights::Tensor;
 
-use super::context::Limits;
 
 /// The `.maml` tensor alignment, from `scripts/ml/maml_convert.py`.
 ///
