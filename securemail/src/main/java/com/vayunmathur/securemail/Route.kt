@@ -4,11 +4,6 @@ import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.securemail.data.MailFolder
 import kotlinx.serialization.Serializable
 
-/** Holds a pending deep-link/share route until Navigation consumes it. */
-object IntentState {
-    var navigationRoute: Route? = null
-}
-
 /** Contract for route. */
 @Serializable
 sealed interface Route : NavKey {

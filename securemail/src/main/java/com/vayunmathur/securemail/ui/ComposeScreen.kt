@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -74,8 +75,8 @@ fun ComposeScreen(
     var subject by remember { mutableStateOf(initialSubject) }
     var body by remember { mutableStateOf(initialBody) }
     val scope = rememberCoroutineScope()
-    var pickTarget by remember { mutableStateOf(0) }
-    var pickTick by remember { mutableStateOf(0) }
+    var pickTarget by remember { mutableIntStateOf(0) }
+    var pickTick by remember { mutableIntStateOf(0) }
     val contactPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->

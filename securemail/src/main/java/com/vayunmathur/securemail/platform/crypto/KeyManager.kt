@@ -1,6 +1,7 @@
 package com.vayunmathur.securemail.platform.crypto
 
 import android.content.Context
+import androidx.core.content.edit
 import android.util.Base64
 import com.vayunmathur.library.util.DatabaseHelper
 
@@ -56,10 +57,10 @@ class KeyManager(context: Context) : DatabaseHelper(context) {
         val cipher = getCipherForEncryption()
         val encrypted = cipher.doFinal(passphrase.toByteArray(Charsets.UTF_8))
         val prefs = context.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE)
-        prefs.edit()
-            .putString(s2kPassphraseKey, Base64.encodeToString(encrypted, Base64.NO_WRAP))
-            .putString(s2kIvKey, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
-            .apply()
+        prefs.edit {
+            putString(s2kPassphraseKey, Base64.encodeToString(encrypted, Base64.NO_WRAP))
+            putString(s2kIvKey, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+        }
     }
 
     /** Returns the sealed S2K passphrase, or null when never stored. */
@@ -82,7 +83,7 @@ class KeyManager(context: Context) : DatabaseHelper(context) {
 
     fun storeRelayToken(token: String) {
         val prefs = context.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE)
-        prefs.edit().putString(tokenKey, token).apply()
+        prefs.edit { putString(tokenKey, token) }
     }
 
     fun getRelayToken(): String? =
@@ -91,7 +92,7 @@ class KeyManager(context: Context) : DatabaseHelper(context) {
 
     fun storeOwnAddress(address: String) {
         val prefs = context.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE)
-        prefs.edit().putString(addressKey, address).apply()
+        prefs.edit { putString(addressKey, address) }
     }
 
     fun getOwnAddress(): String? =
@@ -101,11 +102,11 @@ class KeyManager(context: Context) : DatabaseHelper(context) {
     fun clear() {
         deleteKey()
         val prefs = context.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE)
-        prefs.edit()
-            .remove(tokenKey)
-            .remove(addressKey)
-            .remove(s2kPassphraseKey)
-            .remove(s2kIvKey)
-            .apply()
+        prefs.edit {
+            remove(tokenKey)
+            remove(addressKey)
+            remove(s2kPassphraseKey)
+            remove(s2kIvKey)
+        }
     }
 }

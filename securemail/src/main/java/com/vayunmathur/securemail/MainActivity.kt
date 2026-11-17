@@ -1,5 +1,7 @@
 package com.vayunmathur.securemail
 
+import com.vayunmathur.securemail.platform.IntentState
+
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

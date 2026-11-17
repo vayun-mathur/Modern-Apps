@@ -1,5 +1,7 @@
 package com.vayunmathur.securemail
 
+import com.vayunmathur.securemail.platform.IntentState
+
 import com.vayunmathur.securemail.data.MailFolder
 import kotlinx.serialization.json.Json
 import kotlin.test.Test

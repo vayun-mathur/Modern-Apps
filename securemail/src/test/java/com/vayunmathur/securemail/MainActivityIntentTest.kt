@@ -1,5 +1,7 @@
 package com.vayunmathur.securemail
 
+import com.vayunmathur.securemail.platform.IntentState
+
 import android.content.Intent
 import android.net.Uri
 import org.junit.runner.RunWith
