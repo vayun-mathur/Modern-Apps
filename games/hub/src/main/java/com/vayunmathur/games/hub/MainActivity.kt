@@ -140,6 +140,17 @@ fun HubNavigation(
                     )
                 }
             }
+            detailEntries(viewModel, backStack)
+        }
+    }
+}
+
+
+/** The pushed (non-tab) destinations of the hub graph. */
+private fun com.vayunmathur.library.util.EntryProviderScope<MainRoute>.detailEntries(
+    viewModel: GameHubViewModel,
+    backStack: com.vayunmathur.library.util.NavBackStack<MainRoute>,
+) {
             entry<MainRoute.GameDetail>(metadata = ListDetailPage() + MorphPage()) { route ->
                 GameDetailScreen(
                     gameId = route.gameId,
@@ -180,6 +191,4 @@ fun HubNavigation(
                     onDismiss = { backStack.pop() },
                 )
             }
-        }
-    }
 }
