@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.ui
+import com.vayunmathur.photos.platform.FaceRecognizer
 
 import android.app.Application
 import androidx.compose.runtime.Composable
@@ -12,15 +13,15 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.TestPhotosRepository
 import com.vayunmathur.photos.data.VaultPhoto
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.PhotoMapViewModel
-import com.vayunmathur.photos.util.SecureFolderViewModel
-import com.vayunmathur.photos.util.workInfosOverride
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.PhotoMapViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.platform.workInfosOverride
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.runBlocking
@@ -80,7 +81,7 @@ class PhotosPagesDeepDriveTest {
         val faces = listOf(all.getValue("group.jpg"), all.getValue("solo.jpg")).map { p ->
             com.vayunmathur.photos.data.PhotoFace(
                 photoId = p.id, clusterId = null,
-                embedding = com.vayunmathur.photos.util.FaceRecognizer.floatsToBytes(FloatArray(4) { 1f }),
+                embedding = com.vayunmathur.photos.platform.FaceRecognizer.floatsToBytes(FloatArray(4) { 1f }),
                 clusterable = true, left = 0f, top = 0f, right = 0.5f, bottom = 0.5f,
                 srcWidth = 100, srcHeight = 100,
             )

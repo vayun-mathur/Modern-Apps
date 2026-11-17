@@ -26,7 +26,7 @@ import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.DrawingLayer
 import com.vayunmathur.photos.data.DrawingTool
 import com.vayunmathur.photos.data.TextLayer
-import com.vayunmathur.photos.util.segmentSubject
+import com.vayunmathur.photos.platform.segmentSubject
 
 // Bottom controls: Home (category bar) or a tool screen. Placed below the image in a
 // Column so opening a panel shrinks the image instead of covering it. The Surface fills

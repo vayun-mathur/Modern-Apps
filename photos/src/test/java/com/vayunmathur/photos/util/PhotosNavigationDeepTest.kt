@@ -1,4 +1,8 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.PhotoMapViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.platform.workInfosOverride
 
 import android.app.Application
 import androidx.compose.runtime.Composable
@@ -13,7 +17,7 @@ import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Navigation
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.TestPhotosRepository

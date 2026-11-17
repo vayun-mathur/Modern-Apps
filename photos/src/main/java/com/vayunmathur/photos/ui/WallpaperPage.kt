@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,10 +39,10 @@ import com.vayunmathur.library.ui.TopAppBarDefaults
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
-import com.vayunmathur.photos.util.WallpaperLoadState
-import com.vayunmathur.photos.util.WallpaperUtil
-import com.vayunmathur.photos.util.WallpaperViewModel
-import com.vayunmathur.photos.util.WallpaperViewModelFactory
+import com.vayunmathur.photos.platform.WallpaperLoadState
+import com.vayunmathur.photos.platform.WallpaperUtil
+import com.vayunmathur.photos.platform.WallpaperViewModel
+import com.vayunmathur.photos.platform.WallpaperViewModelFactory
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 
@@ -83,7 +84,7 @@ fun WallpaperPage(
     }
 
     var isScrollable by rememberSaveable { mutableStateOf(false) }
-    var which by rememberSaveable { mutableStateOf(WallpaperManager.FLAG_SYSTEM) }
+    var which by rememberSaveable { mutableIntStateOf(WallpaperManager.FLAG_SYSTEM) }
     var isSetting by rememberSaveable { mutableStateOf(false) }
     var zoomScale by rememberSaveable { mutableFloatStateOf(1f) }
     var zoomOffset by rememberSaveable(stateSaver = OffsetSaver) { mutableStateOf(Offset.Zero) }

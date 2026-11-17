@@ -1,4 +1,9 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.AlbumsUiState
+import com.vayunmathur.photos.platform.DefaultAlbum
+import com.vayunmathur.photos.platform.DefaultAlbumKind
+import com.vayunmathur.photos.platform.GalleryActions
+import com.vayunmathur.photos.platform.GalleryUiState
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -19,7 +24,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo

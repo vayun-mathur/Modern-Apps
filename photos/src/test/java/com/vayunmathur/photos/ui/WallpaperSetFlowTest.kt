@@ -17,13 +17,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.TestPhotosRepository
 import com.vayunmathur.photos.data.awaitPhotosCondition
 import com.vayunmathur.photos.service.LiveWallpaperService
-import com.vayunmathur.photos.util.LiveWallpaperLauncher
-import com.vayunmathur.photos.util.workInfosOverride
+import com.vayunmathur.photos.platform.LiveWallpaperLauncher
+import com.vayunmathur.photos.platform.workInfosOverride
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.flow.flowOf

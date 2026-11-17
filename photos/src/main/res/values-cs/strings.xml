@@ -11,20 +11,26 @@
     <string name="photo_widget_description">Měnící se fotka z vaší galerie - klepnutím zamýcháte</string>
     <string name="label_people">Lidé</string>
     <string name="label_secure_folder">Zabezpečná složka</string>
-    <string name="items_selected">%1$d vybráno</string>
+    <plurals name="items_selected">
+        <item quantity="one">%1$d vybráno</item>
+        <item quantity="few">%1$d vybráno</item>
+        <item quantity="many">%1$d vybráno</item>
+        <item quantity="other">%1$d vybráno</item>
+    </plurals>
     <string name="taken_on">Vyfoceno: %1$s</string>
     <string name="location">Místo: %1$s</string>
     <string name="resolution">Rozlišení: %1$d x %2$d</string>
     <string name="view_360">Zobrazit 360°</string>
     <string name="detecting">Detekuji…</string>
     <string name="grant_image_video_permissions">Udělit přístup k fotkám/videím</string>
-    <string name="grant_storage_permission">Udělit přístup k souborům</string>
     <string name="search_placeholder">Hledat fokty…</string>
     <string name="people_empty">Nenalezeni žádní lidé. Skenováni probíha v pozadí - zkontroluje po indexaci vašich fotek.</string>
-    <string name="people_scanning">Seskupování obličejů... lidé se zde budou zobrazovat, jak budou nalezeni.</string>
+    <string name="people_scanning">Seskupování obličejů… lidé se zde budou zobrazovat, jak budou nalezeni.</string>
     <string name="face_indexing_progress">Indexování %1$d / %2$d</string>
     <string name="people_model_missing">Seskupování obličejů vyžaduje model MobileFaceNet. Přidejte soubor mobilefacenet.tflite s permisivní licencí do photos/src/main/assets (viz FaceRecognizer).</string>
     <plurals name="people_photo_count">
+        <item quantity="one">%1$d fotka</item>
+        <item quantity="few">%1$d fotky</item>
         <item quantity="many">%1$d fotek</item>
         <item quantity="other">%1$d fotek</item>
     </plurals>

@@ -37,14 +37,14 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.NavigationBar
+import com.vayunmathur.photos.ui.NavigationBar
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
-import com.vayunmathur.photos.util.Album
-import com.vayunmathur.photos.util.AlbumsUiState
-import com.vayunmathur.photos.util.DefaultAlbum
-import com.vayunmathur.photos.util.DefaultAlbumKind
+import com.vayunmathur.photos.platform.Album
+import com.vayunmathur.photos.platform.AlbumsUiState
+import com.vayunmathur.photos.platform.DefaultAlbum
+import com.vayunmathur.photos.platform.DefaultAlbumKind
 
 /**
  * The albums grid, with no dependency on the ViewModel so it can be rendered from a

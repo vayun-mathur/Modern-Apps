@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.PhotoMapViewModel
 
 import android.app.Application
 import androidx.compose.ui.unit.DpOffset

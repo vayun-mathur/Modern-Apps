@@ -49,8 +49,8 @@ import com.vayunmathur.photos.data.SmudgeStroke
 import com.vayunmathur.photos.data.SmudgeStrokes
 import com.vayunmathur.photos.data.applyHealingToBitmap
 import com.vayunmathur.photos.data.applyToBitmap
-import com.vayunmathur.photos.util.ExportFormat
-import com.vayunmathur.photos.util.PhotoEditViewModel
+import com.vayunmathur.photos.platform.ExportFormat
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

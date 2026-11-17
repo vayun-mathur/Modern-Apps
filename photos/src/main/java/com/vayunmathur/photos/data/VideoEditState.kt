@@ -5,7 +5,7 @@ enum class VideoTool { Trim, CropRotate, Audio, Filters }
 
 /**
  * One-tap color looks for video. Each maps to a small set of color effects in
- * [com.vayunmathur.photos.util.VideoEditViewModel.buildVideoEffects]; the
+ * [com.vayunmathur.photos.platform.VideoEditViewModel.buildVideoEffects]; the
  * per-slider brightness/contrast/saturation are applied on top.
  */
 enum class VideoFilterPreset { None, Mono, Warm, Cool, Vivid }

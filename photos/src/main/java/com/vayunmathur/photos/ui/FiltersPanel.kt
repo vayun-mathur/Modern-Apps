@@ -1,0 +1,86 @@
+package com.vayunmathur.photos.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.vayunmathur.library.ui.ButtonGroup
+import com.vayunmathur.library.ui.MaterialTheme
+import com.vayunmathur.library.ui.Slider
+import com.vayunmathur.library.ui.Surface
+import com.vayunmathur.library.ui.Switch
+import com.vayunmathur.library.ui.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.vayunmathur.photos.data.BlackAndWhiteAdjustment
+import com.vayunmathur.photos.data.ChannelMixerAdjustment
+import com.vayunmathur.photos.data.ColorBalanceAdjustment
+import com.vayunmathur.photos.data.FilterBlur
+import com.vayunmathur.photos.data.FilterBlurMode
+import com.vayunmathur.photos.data.LevelsAdjustment
+import com.vayunmathur.photos.data.NoiseParams
+import com.vayunmathur.photos.data.PhotoFilterAdj
+import com.vayunmathur.photos.data.SelectiveColorAdj
+import com.vayunmathur.photos.data.SelectiveColorRange
+import com.vayunmathur.photos.data.StylizeMode
+import com.vayunmathur.photos.data.StylizeParams
+import com.vayunmathur.photos.data.UnsharpMask
+import com.vayunmathur.photos.data.applyToBitmap
+import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.library.ui.R as UiR
+import com.vayunmathur.photos.R
+
+@Composable
+fun FiltersPanel(onAddFx: (com.vayunmathur.photos.data.LayerAdjustment) -> Unit) = PanelColumn {
+    var tool by remember { mutableStateOf("Sharpen") }
+    var amount by remember { mutableFloatStateOf(50f) }
+    var radius by remember { mutableFloatStateOf(2f) }
+    var angle by remember { mutableFloatStateOf(0f) }
+    val tools = listOf("Sharpen", "Gaussian", "Motion", "Radial", "Spin", "Noise", "Find Edges", "Emboss")
+    ButtonGroup(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+        tools.forEach { t -> toggleableItem(checked = tool == t, label = t, onCheckedChange = { tool = t }) }
+    }
+    when (tool) {
+        "Sharpen" -> {
+            LabeledSlider(stringResource(R.string.amount), amount, 0f..100f) { amount = it }
+            LabeledSlider(stringResource(R.string.radius), radius, 0.5f..10f) { radius = it }
+        }
+        "Motion" -> {
+            LabeledSlider(stringResource(R.string.length), amount, 1f..100f) { amount = it }
+            LabeledSlider(stringResource(R.string.angle), angle, 0f..360f) { angle = it }
+        }
+        "Noise" -> LabeledSlider(stringResource(R.string.amount), amount, 0f..100f) { amount = it }
+        else -> LabeledSlider(stringResource(R.string.amount), amount, 1f..100f) { amount = it }
+    }
+    ApplyButton {
+        val a = amount; val r = radius; val ang = angle
+        when (tool) {
+            "Sharpen" -> onAddFx(com.vayunmathur.photos.data.UnsharpAdj(UnsharpMask(amount = a, radius = r)))
+            "Gaussian" -> onAddFx(com.vayunmathur.photos.data.FilterBlurAdj(FilterBlur(FilterBlurMode.Gaussian, amount = a)))
+            "Motion" -> onAddFx(com.vayunmathur.photos.data.FilterBlurAdj(FilterBlur(FilterBlurMode.Motion, amount = a, angle = ang)))
+            "Radial" -> onAddFx(com.vayunmathur.photos.data.FilterBlurAdj(FilterBlur(FilterBlurMode.Radial, amount = a)))
+            "Spin" -> onAddFx(com.vayunmathur.photos.data.FilterBlurAdj(FilterBlur(FilterBlurMode.Spin, amount = a)))
+            "Noise" -> onAddFx(com.vayunmathur.photos.data.NoiseAdj(NoiseParams(amount = a)))
+            "Find Edges" -> onAddFx(com.vayunmathur.photos.data.StylizeAdj(StylizeParams(StylizeMode.FindEdges)))
+            "Emboss" -> onAddFx(com.vayunmathur.photos.data.StylizeAdj(StylizeParams(StylizeMode.Emboss)))
+        }
+    }
+}

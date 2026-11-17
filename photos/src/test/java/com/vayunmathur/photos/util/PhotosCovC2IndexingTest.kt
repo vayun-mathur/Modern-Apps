@@ -1,4 +1,7 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.runClipIndexing
+import com.vayunmathur.photos.platform.runOCR
+import com.vayunmathur.photos.platform.FaceRecognizer
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

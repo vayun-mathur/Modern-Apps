@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.photoslice2
+import com.vayunmathur.photos.ui.AdjustmentType
 
 import android.app.Activity
 import android.app.Application
@@ -39,8 +40,8 @@ import com.vayunmathur.photos.ui.VideoEditNavigation
 import com.vayunmathur.photos.ui.VideoEditPage
 import com.vayunmathur.photos.ui.hitTestStroke
 import com.vayunmathur.photos.ui.hitTestText
-import com.vayunmathur.photos.util.PhotoEditViewModel
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -120,7 +121,8 @@ class LoadedPagesEditingPass3Test {
     fun `video audio panel mute toggle flips state`() {
         val vm = VideoEditViewModel(app, PhotosRepository.get(app))
         vm.setDuration(60_000L)
-        rule.setContent { ToolPanel(vm, vm.state.value, VideoTool.Audio) }
+        val state = vm.state.value
+        rule.setContent { ToolPanel(vm, state, VideoTool.Audio) }
         rule.onNodeWithText(ctx.getString(com.vayunmathur.photos.R.string.video_audio_on))
             .performClick()
         assertTrue(vm.state.value.muted)
@@ -130,7 +132,8 @@ class LoadedPagesEditingPass3Test {
     fun `video filters panel preset buttons select presets`() {
         val vm = VideoEditViewModel(app, PhotosRepository.get(app))
         vm.setDuration(60_000L)
-        rule.setContent { ToolPanel(vm, vm.state.value, VideoTool.Filters) }
+        val state = vm.state.value
+        rule.setContent { ToolPanel(vm, state, VideoTool.Filters) }
         rule.onNodeWithText(ctx.getString(com.vayunmathur.photos.R.string.video_filter_mono))
             .performClick()
         assertEquals(VideoFilterPreset.Mono, vm.state.value.filterPreset)
@@ -140,7 +143,8 @@ class LoadedPagesEditingPass3Test {
     fun `video crop rotate panel renders its hint`() {
         val vm = VideoEditViewModel(app, PhotosRepository.get(app))
         vm.setDuration(60_000L)
-        rule.setContent { ToolPanel(vm, vm.state.value, VideoTool.CropRotate) }
+        val state = vm.state.value
+        rule.setContent { ToolPanel(vm, state, VideoTool.CropRotate) }
         rule.onNodeWithText(ctx.getString(com.vayunmathur.photos.R.string.video_crop_hint))
             .assertIsDisplayed()
     }
@@ -149,7 +153,8 @@ class LoadedPagesEditingPass3Test {
     fun `video trim panel renders its title`() {
         val vm = VideoEditViewModel(app, PhotosRepository.get(app))
         vm.setDuration(60_000L)
-        rule.setContent { ToolPanel(vm, vm.state.value, VideoTool.Trim) }
+        val state = vm.state.value
+        rule.setContent { ToolPanel(vm, state, VideoTool.Trim) }
         rule.onNodeWithText(ctx.getString(com.vayunmathur.photos.R.string.video_trim))
             .assertIsDisplayed()
     }

@@ -7,9 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
-import com.vayunmathur.photos.util.GalleryUiState
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.SecureFolderViewModel
+import com.vayunmathur.photos.platform.GalleryUiState
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 
 /** Binds [GalleryViewModel] to the stateless [FavoritesScreen]. */
 @Composable

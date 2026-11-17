@@ -8,20 +8,25 @@
     <string name="label_map">Mappa</string>
     <string name="label_trash">Cestino</string>
     <string name="label_secure_folder">Cartella sicura</string>
-    <string name="items_selected">%1$d selezionate</string>
+    <plurals name="items_selected">
+        <item quantity="one">%1$d selezionate</item>
+        <item quantity="many">%1$d selezionate</item>
+        <item quantity="other">%1$d selezionate</item>
+    </plurals>
     <string name="month_year_format">%1$s %2$d</string>
     <string name="location">Posizione: %1$s</string>
     <string name="resolution">Risoluzione: %1$d x %2$d</string>
     <string name="taken_on">Scattata: %1$s</string>
     <string name="detecting">Rilevamento in corso…</string>
     <string name="grant_image_video_permissions">Concedi autorizzazioni Immagine/video</string>
-    <string name="grant_storage_permission">Concedi autorizzazione di archiviazione</string>
     <string name="search_placeholder">Cerca foto…</string>
     <string name="label_people">Persone</string>
     <string name="people_empty">Nessuna persona trovata. La scansione avviene in background — controlla più tardi, dopo che le tue foto sono state indicizzate.</string>
     <string name="people_scanning">Raggruppamento volti… le persone appariranno qui non appena verranno trovate.</string>
     <string name="face_indexing_progress">Indicizzazione %1$d / %2$d</string>
     <plurals name="people_photo_count">
+        <item quantity="one">%1$d foto</item>
+        <item quantity="many">%1$d foto</item>
         <item quantity="other">%1$d foto</item>
     </plurals>
     <plurals name="people_in_photo">

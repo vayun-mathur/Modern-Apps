@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.ui
+import com.vayunmathur.photos.platform.FaceBox
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
@@ -18,10 +19,10 @@ import com.vayunmathur.photos.data.OcrBox
 import com.vayunmathur.photos.data.OcrLayout
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.TestPhotosRepository
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.PhotoFaceBoxes
-import com.vayunmathur.photos.util.PhotoMapViewModel
-import com.vayunmathur.photos.util.workInfosOverride
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.PhotoFaceBoxes
+import com.vayunmathur.photos.platform.PhotoMapViewModel
+import com.vayunmathur.photos.platform.workInfosOverride
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.runBlocking
@@ -98,7 +99,7 @@ class PhotoDetailAndFilmstripTest {
                     boxes = PhotoFaceBoxes(
                         srcWidth = 800, srcHeight = 600,
                         faces = listOf(
-                            com.vayunmathur.photos.util.FaceBox(
+                            com.vayunmathur.photos.platform.FaceBox(
                                 clusterId = 5L, name = "Alice",
                                 left = 0.1f, top = 0.1f, right = 0.5f, bottom = 0.5f,
                             ),

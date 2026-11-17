@@ -29,7 +29,7 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconPause
 import com.vayunmathur.library.ui.IconPlayCircle
 import com.vayunmathur.photos.data.VideoEditState
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 

@@ -68,7 +68,7 @@ import com.vayunmathur.photos.data.SelectiveMask
 import com.vayunmathur.photos.data.ThresholdAdj
 import com.vayunmathur.photos.data.VibranceAdj
 import com.vayunmathur.photos.data.toColorMatrix
-import com.vayunmathur.photos.util.PhotoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 import kotlin.math.roundToInt
 
 @Composable

@@ -1,4 +1,6 @@
 package com.vayunmathur.photos.ui
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 
 import android.content.Intent
 import android.os.Bundle
@@ -18,12 +20,13 @@ import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.photos.data.PhotosRepository
-import com.vayunmathur.photos.util.VideoEditViewModel
-import com.vayunmathur.photos.util.VideoEditViewModelFactory
+import com.vayunmathur.photos.platform.VideoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Video Edit Activity: a component activity implementation for video edit activity. */
+@OptIn(UnstableApi::class)
 class VideoEditActivity : ComponentActivity() {
     private val videoEditViewModel: VideoEditViewModel by viewModels {
         VideoEditViewModelFactory(application, PhotosRepository.get(application))
@@ -63,6 +66,7 @@ class VideoEditActivity : ComponentActivity() {
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 fun VideoEditNavigation(
     videoEditViewModel: VideoEditViewModel,

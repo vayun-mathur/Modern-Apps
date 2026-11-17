@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.photoslice2
+import com.vayunmathur.photos.ui.EditPhotoCanvas
 
 import android.app.Activity
 import android.app.Application
@@ -80,8 +81,8 @@ import com.vayunmathur.photos.ui.ToolTabs
 import com.vayunmathur.photos.ui.VibrancePanel
 import com.vayunmathur.photos.ui.cropWithinImage
 import com.vayunmathur.photos.ui.formatVideoTime
-import com.vayunmathur.photos.util.PhotoEditViewModel
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric

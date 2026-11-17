@@ -69,7 +69,6 @@ object OcrBoxStore {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
     private val inFlight = mutableMapOf<Long, Deferred<OcrLayout?>>()
-    private var engine: OcrEngine? = null
 
     suspend fun layoutFor(context: Context, photo: Photo): OcrLayout? {
         if (photo.videoData != null) return null
@@ -107,13 +106,9 @@ object OcrBoxStore {
         return job.await()
     }
 
-    /** Forget a finished job and, once nothing else is queued, free the models. */
+    /** Forget a finished job; engines are per-call and already closed. */
     private suspend fun release(photoId: Long) = lock.withLock {
         inFlight -= photoId
-        if (inFlight.isEmpty()) {
-            engine?.close()
-            engine = null
-        }
     }
 
     private suspend fun recognizeAndStore(
@@ -121,9 +116,24 @@ object OcrBoxStore {
         photo: Photo,
         scanRepository: PhotoScanRepository,
     ): OcrLayout? {
-        val ocr = lock.withLock { engine ?: OcrEngine(context).also { engine = it } }
-        if (!ocr.isAvailable()) return null
+        // A fresh engine per photo: retaining one in this singleton would
+        // statically hold its Context (StaticFieldLeak). Creation is cheap
+        // relative to decode + recognition, and close() frees the models.
+        val ocr = OcrEngine(context)
+        try {
+            if (!ocr.isAvailable()) return null
+            return recognizeWith(ocr, context, photo, scanRepository)
+        } finally {
+            ocr.close()
+        }
+    }
 
+    private suspend fun recognizeWith(
+        ocr: OcrEngine,
+        context: Context,
+        photo: Photo,
+        scanRepository: PhotoScanRepository,
+    ): OcrLayout? {
         val bitmap = decodeForOcr(context, photo.uri.toUri()) ?: return null
         // The stored geometry is relative to this bitmap, so its dimensions have
         // to be read before it's recycled.

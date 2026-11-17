@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconUnarchive
@@ -53,11 +54,11 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.room.SqlCipherDbCodec
 import java.io.File
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.VaultPhoto
-import com.vayunmathur.photos.util.SecureFolderViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,7 +87,7 @@ fun SecureFolderPage(
     }
     AppScaffold(
         title = if (isSelectionMode) {
-            stringResource(R.string.items_selected, selectedIds.size)
+            pluralStringResource(R.plurals.items_selected, selectedIds.size, selectedIds.size)
         } else {
             stringResource(R.string.label_secure_folder)
         },
@@ -188,79 +189,3 @@ private fun SecureFolderRelockDialog(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun VaultPhotoItem(
-    photo: VaultPhoto,
-    password: String,
-    isSelected: Boolean,
-    isSelectionMode: Boolean,
-    secureFolderViewModel: SecureFolderViewModel,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit = onClick,
-) {
-    val bitmap by remember(photo.thumbnailPath) {
-        secureFolderViewModel.thumbnailState(photo.thumbnailPath)
-    }
-
-    // Keyed on emptiness as well as path, so a thumbnail the LRU evicted while this
-    // item was still on screen is decrypted again rather than staying a grey box.
-    LaunchedEffect(photo.thumbnailPath, bitmap == null) {
-        if (bitmap == null) {
-            secureFolderViewModel.requestThumbnail(photo.thumbnailPath, password)
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // Guard against recycled bitmaps - defense in depth for the LRU cache bug.
-        // When column count >=4, more thumbnails are visible and cache eviction
-        // previously recycled bitmaps still being drawn by Compose.
-        val currentBitmap = bitmap
-        if (currentBitmap != null && !currentBitmap.isRecycled) {
-            Image(
-                bitmap = currentBitmap.asImageBitmap(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Box(Modifier.fillMaxSize().background(Color.DarkGray))
-        }
-
-        if (isSelectionMode) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                contentAlignment = Alignment.TopStart
-            ) {
-                if (isSelected) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        IconCheck(tint = MaterialTheme.colorScheme.onPrimary)
-                    }
-                } else {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.3f),
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                    }
-                }
-            }
-        }
-    }
-}

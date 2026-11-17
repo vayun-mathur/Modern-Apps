@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.ui
+import com.vayunmathur.photos.platform.workInfosOverride
 
 import android.app.Application
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -7,9 +8,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.TestPhotosRepository
 import com.vayunmathur.photos.data.awaitPhotosCondition
-import com.vayunmathur.photos.util.GalleryActions
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.SecureFolderViewModel
+import com.vayunmathur.photos.platform.GalleryActions
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -39,7 +40,7 @@ class GalleryActionsRealRepoTest {
         runCatching {
             androidx.work.WorkManager.initialize(app, androidx.work.Configuration.Builder().build())
         }
-        com.vayunmathur.photos.util.workInfosOverride = { _, _ -> flowOf(emptyList()) }
+        com.vayunmathur.photos.platform.workInfosOverride = { _, _ -> flowOf(emptyList()) }
         installed = TestPhotosRepository.install(app)
     }
 

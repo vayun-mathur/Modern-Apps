@@ -22,7 +22,7 @@ import com.vayunmathur.photos.ui.EditPhotoEditorState
 import com.vayunmathur.photos.ui.EditRoute
 import com.vayunmathur.photos.ui.EditorMode
 import com.vayunmathur.photos.ui.ToolCategory
-import com.vayunmathur.photos.util.PhotoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 import com.vayunmathur.library.util.NavBackStack
 import kotlin.test.Test
 import kotlin.test.assertEquals

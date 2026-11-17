@@ -8,14 +8,15 @@
     <string name="label_map">地图</string>
     <string name="label_trash">回收站</string>
     <string name="label_secure_folder">安全文件夹</string>
-    <string name="items_selected">已选择 <xliff:g id="count" example="5">%1$d</xliff:g> 项</string>
+    <plurals name="items_selected">
+        <item quantity="other">已选择 <xliff:g id="count" example="5">%1$d</xliff:g> 项</item>
+    </plurals>
     <string name="month_year_format"><xliff:g id="month" example="January">%1$s</xliff:g> <xliff:g id="year" example="2024">%2$d</xliff:g></string>
     <string name="taken_on">拍摄时间：<xliff:g id="date" example="Jan 5, 2024">%1$s</xliff:g></string>
     <string name="location">位置：<xliff:g id="place" example="Paris, France">%1$s</xliff:g></string>
     <string name="resolution">分辨率：<xliff:g id="width" example="4000">%1$d</xliff:g> × <xliff:g id="height" example="3000">%2$d</xliff:g></string>
     <string name="detecting">正在检测…</string>
     <string name="grant_image_video_permissions">授予图片/视频权限</string>
-    <string name="grant_storage_permission">授予存储权限</string>
     <string name="search_placeholder">搜索照片…</string>
     <string name="label_people">人物</string>
     <string name="people_empty">尚未找到人物。扫描正在后台进行 — 请在照片索引完成后再查看。</string>
@@ -40,8 +41,9 @@
     <string name="in_white">白场输入</string>
     <string name="tool_threshold">阈值</string>
     <string name="color_blue">蓝色</string>
-    <string name="photos_indexed_for_text_search">已为文本搜索索引 <xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> 张照片</string>
-    <string name="reset">重置</string>
+    <plurals name="photos_indexed_for_text_search">
+        <item quantity="other">已为文本搜索索引 <xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> 张照片</item>
+    </plurals>
     <string name="magentas">紫红色</string>
     <string name="tool_cat_retouch">修饰</string>
     <string name="tool_presets">预设</string>
@@ -89,7 +91,6 @@
     <string name="editor_desc_shape_line">拖动以绘制线条。</string>
     <string name="blend_hue">色相</string>
     <string name="blend_exclusion">排除</string>
-    <string name="apply">应用</string>
     <string name="tool_cat_desc_transform">裁剪、拉直和旋转。</string>
     <string name="how_close_in_color_a_pixel_must_be_to_th">像素的颜色与被点击点的接近程度决定了选择区域。值越高，选择区域越大。</string>
     <string name="strength">强度</string>
@@ -118,7 +119,6 @@
     <string name="adj_brightness">亮度</string>
     <string name="out_white">白场输出</string>
     <string name="color_orange">橙色</string>
-    <string name="open_settings">打开设置</string>
     <string name="adj_vignette">暗角</string>
     <string name="editor_desc_fill">点击以使用所选颜色填充区域。</string>
     <string name="tool_cat_desc_paint">填充、渐变和形状。</string>
@@ -127,7 +127,9 @@
     <string name="editor_desc_levels">设置黑场、白场和中间调。</string>
     <string name="editor_desc_crop">裁剪、拉直和旋转照片。</string>
     <string name="export_as_webp">导出为 WebP</string>
-    <string name="photos_indexed_for_visual_search">已为视觉搜索索引 <xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> 张照片</string>
+    <plurals name="photos_indexed_for_visual_search">
+        <item quantity="other">已为视觉搜索索引 <xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> 张照片</item>
+    </plurals>
     <string name="tool_curves">曲线</string>
     <string name="out_black">黑场输出</string>
     <string name="editor_desc_liquify">推动和扭曲像素。</string>
@@ -179,25 +181,20 @@
     <string name="editor_desc_invert">反转所有颜色（负片）。</string>
     <string name="rotate">旋转</string>
     <string name="tool_bw">黑白</string>
-    <string name="draw">绘制</string>
     <string name="adj_tint">色调</string>
     <string name="blurs_the_selection_s_edge_so_edits_fade">模糊选择区域的边缘，使编辑效果逐渐过渡。0 表示锐利清晰的边缘。</string>
     <string name="blend_lighten">变亮</string>
     <string name="thickness">厚度</string>
-    <string name="this_app_needs_permission_to_manage_medi">此应用需要管理媒体文件的权限才能正常运行。请在设置中授予“允许媒体管理”权限。</string>
     <string name="font">字体</string>
     <string name="tool_posterize">色调分离</string>
     <string name="tap_to_add_points">点击添加点（<xliff:g id="mode" example="New">%1$s</xliff:g>）</string>
-    <string name="blend_saturation">饱和度</string>
     <string name="levels">色阶</string>
     <string name="editor_desc_hsl">调整每种颜色的色相、饱和度和明度。</string>
     <string name="drag_the_four_corner_handles_to_scale_ro">拖动四个角手柄可缩放、旋转、倾斜或扭曲活动图层。应用后将永久固化。</string>
-    <string name="media_management_permission_required">需要媒体管理权限</string>
     <string name="combine">合并</string>
     <string name="colors_inverted_toggle_the_layer_s_visib">颜色已反转。切换图层可见性或删除反转图层以撤销操作。</string>
     <string name="blend_normal">正常</string>
     <string name="editor_desc_color_balance">调整阴影、中间调和高光中的颜色。</string>
-    <string name="tool_cat_filters">滤镜</string>
     <string name="locks_the_crop_to_a_fixed_width_height_s">将裁剪区域锁定为固定的宽高比例形状。“自由”允许您裁剪为任意尺寸。</string>
     <string name="add_mask">添加蒙版</string>
     <string name="draw_freehand_highlight_erase_or_tap_to">徒手绘制、突出显示、擦除或点按添加文本。再次点按工具以更改其颜色和大小。</string>
@@ -235,25 +232,18 @@
     <string name="semantic_search_unavailable">此安装不支持 AI 照片搜索。文本和文件名搜索仍可正常使用。</string>
     <string name="people_unnamed">未命名</string>
     <string name="video_trim">修剪</string>
-    <string name="video_crop_rotate">裁剪和旋转</string>
     <string name="video_crop_hint">拖动预览上的边角进行裁剪。</string>
     <string name="video_audio">音频</string>
     <string name="video_audio_on">音频已开启</string>
     <string name="video_muted">已静音</string>
-    <string name="video_filters">滤镜</string>
     <string name="video_filter_none">无</string>
     <string name="video_filter_mono">单色</string>
     <string name="video_filter_warm">暖色</string>
     <string name="video_filter_cool">冷色</string>
     <string name="video_filter_vivid">鲜艳</string>
-    <string name="video_brightness">亮度</string>
-    <string name="video_contrast">对比度</string>
-    <string name="video_saturation">饱和度</string>
     <string name="video_save_prompt">将编辑后的视频保存为新副本还是覆盖原始视频？</string>
-    <string name="video_save_copy">另存为副本</string>
     <string name="video_overwrite">覆盖</string>
     <string name="video_exporting">正在导出…</string>
-    <string name="video_export_failed">视频导出失败。</string>
     <string name="video_edit_with_label">使用我的应用编辑视频</string>
     <string name="live_wallpaper_unavailable">此设备不支持动态壁纸</string>
     <string name="live_wallpaper_description">来自您照片的动画壁纸</string>

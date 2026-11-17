@@ -8,14 +8,18 @@
     <string name="label_map">Mapa</string>
     <string name="label_trash">Kosz</string>
     <string name="label_secure_folder">Bezpieczny folder</string>
-    <string name="items_selected">%1$d wybrano</string>
+    <plurals name="items_selected">
+        <item quantity="one">%1$d wybrano</item>
+        <item quantity="few">%1$d wybrano</item>
+        <item quantity="many">%1$d wybrano</item>
+        <item quantity="other">%1$d wybrano</item>
+    </plurals>
     <string name="month_year_format">%1$s %2$d</string>
     <string name="taken_on">Zrobiono: %1$s</string>
     <string name="location">Lokalizacja: %1$s</string>
     <string name="resolution">Rozdzielczość: %1$d x %2$d</string>
     <string name="detecting">Wykrywanie…</string>
     <string name="grant_image_video_permissions">Udziel uprawnień do obrazów/wideo</string>
-    <string name="grant_storage_permission">Udziel uprawnienia do przechowywania</string>
     <string name="search_placeholder">Szukaj zdjęć…</string>
     <string name="photo_widget_description">Zmieniające się zdjęcie z Twojej galerii — stuknij, aby wylosować</string>
     <string name="label_people">Ludzie</string>

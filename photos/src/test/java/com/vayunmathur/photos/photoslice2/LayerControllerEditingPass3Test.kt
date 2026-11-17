@@ -11,7 +11,7 @@ import com.vayunmathur.photos.data.LayerMask
 import com.vayunmathur.photos.data.LayerStyle
 import com.vayunmathur.photos.data.PixelLayer
 import com.vayunmathur.photos.data.PhotosRepository
-import com.vayunmathur.photos.util.PhotoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

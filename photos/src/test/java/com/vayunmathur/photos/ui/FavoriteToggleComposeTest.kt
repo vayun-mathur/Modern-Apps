@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.ui
+import com.vayunmathur.photos.platform.workInfosOverride
 
 import android.app.Application
 import android.app.PendingIntent
@@ -35,7 +36,7 @@ class FavoriteToggleComposeTest {
 
     @BeforeTest
     fun setup() {
-        com.vayunmathur.photos.util.workInfosOverride = { _, _ -> flowOf(emptyList()) }
+        com.vayunmathur.photos.platform.workInfosOverride = { _, _ -> flowOf(emptyList()) }
         installed = TestPhotosRepository.install(app)
     }
 

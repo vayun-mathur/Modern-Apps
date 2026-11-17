@@ -15,9 +15,9 @@ import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.photos.data.Photo
-import com.vayunmathur.photos.util.GalleryActions
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.SecureFolderViewModel
+import com.vayunmathur.photos.platform.GalleryActions
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 
 /**
  * The [GalleryActions] behind a selectable photo grid: the ViewModel's own
@@ -116,14 +116,14 @@ fun rememberGalleryActions(
             }
 
             override fun addSelectionToAlbum(name: String) {
-                val album = com.vayunmathur.photos.util.AlbumMediaStore.sanitizeAlbumName(name)
+                val album = com.vayunmathur.photos.platform.AlbumMediaStore.sanitizeAlbumName(name)
                 if (album.isBlank()) return
                 val selected = currentPhotos.filter { it.id in currentSelectedIds }
                 if (selected.isEmpty()) return
                 galleryViewModel.requestAlbumMove(selected, album)
                 val pendingIntent = MediaStore.createWriteRequest(
                     context.contentResolver,
-                    com.vayunmathur.photos.util.AlbumMediaStore.urisOf(selected),
+                    com.vayunmathur.photos.platform.AlbumMediaStore.urisOf(selected),
                 )
                 mediaResultLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
             }

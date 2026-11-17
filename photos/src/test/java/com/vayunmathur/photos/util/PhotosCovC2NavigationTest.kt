@@ -1,4 +1,13 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.FaceStore
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.PhotoMapViewModel
+import com.vayunmathur.photos.platform.PhotoScanStore
+import com.vayunmathur.photos.platform.PhotoStore
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.platform.syncEnqueueHook
+import com.vayunmathur.photos.platform.syncOnceHook
+import com.vayunmathur.photos.platform.workInfosOverride
 
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
@@ -9,7 +18,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Navigation
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoDatabase

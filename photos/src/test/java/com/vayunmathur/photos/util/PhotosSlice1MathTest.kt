@@ -1,4 +1,6 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.ClipEmbedder
+import com.vayunmathur.photos.platform.FaceRecognizer
 
 import kotlin.math.sqrt
 import kotlin.test.Test

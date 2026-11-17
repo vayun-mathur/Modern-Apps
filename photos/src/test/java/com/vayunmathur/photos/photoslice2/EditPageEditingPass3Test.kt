@@ -26,8 +26,8 @@ import com.vayunmathur.photos.ui.EditPhotoEditorState
 import com.vayunmathur.photos.ui.EditPhotoPage
 import com.vayunmathur.photos.ui.EditRoute
 import com.vayunmathur.photos.ui.VideoEditPage
-import com.vayunmathur.photos.util.PhotoEditViewModel
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
 import com.vayunmathur.library.util.NavBackStack
 import kotlin.test.Test
 import kotlin.test.assertEquals

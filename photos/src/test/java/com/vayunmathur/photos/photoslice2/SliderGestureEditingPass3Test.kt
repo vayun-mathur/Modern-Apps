@@ -42,7 +42,7 @@ import com.vayunmathur.photos.ui.PosterizePanel
 import com.vayunmathur.photos.ui.SelectiveColorPanel
 import com.vayunmathur.photos.ui.ThresholdPanel
 import com.vayunmathur.photos.ui.VibrancePanel
-import com.vayunmathur.photos.util.PhotoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

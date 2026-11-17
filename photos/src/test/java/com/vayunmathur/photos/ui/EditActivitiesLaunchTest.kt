@@ -7,7 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.TestPhotosRepository
 import com.vayunmathur.photos.data.VideoData
-import com.vayunmathur.photos.util.workInfosOverride
+import com.vayunmathur.photos.platform.workInfosOverride
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith

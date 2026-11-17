@@ -52,7 +52,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_photos_util_PhotosNative_stylize<'l>(
+    pub extern "system" fn Java_com_vayunmathur_photos_platform_PhotosNative_stylize<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         pixels: JIntArray<'l>,
@@ -81,7 +81,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_photos_util_PhotosNative_unsharp<'l>(
+    pub extern "system" fn Java_com_vayunmathur_photos_platform_PhotosNative_unsharp<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         pixels: JIntArray<'l>,
@@ -112,7 +112,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_photos_util_PhotosNative_liquify<'l>(
+    pub extern "system" fn Java_com_vayunmathur_photos_platform_PhotosNative_liquify<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         pixels: JIntArray<'l>,
@@ -150,7 +150,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_photos_util_PhotosNative_blurParams<'l>(
+    pub extern "system" fn Java_com_vayunmathur_photos_platform_PhotosNative_blurParams<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         pixels: JIntArray<'l>,
@@ -188,7 +188,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_photos_util_PhotosNative_filterBlur<'l>(
+    pub extern "system" fn Java_com_vayunmathur_photos_platform_PhotosNative_filterBlur<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         pixels: JIntArray<'l>,
@@ -221,7 +221,7 @@ mod jni_bindings {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_photos_util_PhotosNative_inpaint<'l>(
+    pub extern "system" fn Java_com_vayunmathur_photos_platform_PhotosNative_inpaint<'l>(
         mut env: EnvUnowned<'l>,
         _class: JClass<'l>,
         pixels: JIntArray<'l>,

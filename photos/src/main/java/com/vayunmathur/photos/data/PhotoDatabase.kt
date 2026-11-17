@@ -17,12 +17,13 @@ interface PhotoDao {
     // Excludes the heavy clipEmbedding BLOB, ocrText and ocrBoxes, which the
     // gallery/photo UI never reads, so the first emission on cold start is fast
     // (loading those for a large library is what left the grid blank). Semantic
-    // search reads embeddings via getClipEmbeddings(); OCR text is read via
-    // getAll(); the viewer's selectable-text overlay reads geometry by id via
-    // getOcrBoxes(), because Photos from this flow always have ocrBoxes == null.
+    // search reads embeddings through its own dedicated query; OCR text is
+    // read through the full-row query; and the viewer's selectable-text
+    // overlay reads geometry by id through its own by-id query, because
+    // Photos from this flow always have ocrBoxes == null.
     //
-    // ORDER BY date DESC is served by index_Photo_date, so SQLite returns rows
-    // newest-first on its own background executor. Every consumer (gallery grid,
+    // Rows arrive newest-first: the date index lets SQLite emit them in
+    // order on its own background executor. Every consumer (gallery grid,
     // trash, people) groups/sorts by date descending anyway, so the composition
     // pass now groups pre-ordered rows instead of sorting the whole library on
     // the main thread — cutting first-load jank without changing what's shown.

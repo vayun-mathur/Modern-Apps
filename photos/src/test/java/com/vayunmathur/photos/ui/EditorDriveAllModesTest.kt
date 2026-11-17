@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.ui
+import com.vayunmathur.photos.platform.workInfosOverride
 
 import android.app.Activity
 import android.app.Application
@@ -13,7 +14,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.data.EditDocument
 import com.vayunmathur.photos.data.PhotosRepository
 import com.vayunmathur.photos.data.TestPhotosRepository
-import com.vayunmathur.photos.util.PhotoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -41,7 +42,7 @@ class EditorDriveAllModesTest {
 
     @BeforeTest
     fun setup() {
-        com.vayunmathur.photos.util.workInfosOverride = { _, _ -> flowOf(emptyList()) }
+        com.vayunmathur.photos.platform.workInfosOverride = { _, _ -> flowOf(emptyList()) }
         TestPhotosRepository.install(app)
     }
 

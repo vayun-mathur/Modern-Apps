@@ -19,7 +19,7 @@ import com.vayunmathur.photos.data.VideoEditState
 import com.vayunmathur.photos.data.VideoFilterPreset
 import com.vayunmathur.photos.ui.AbovePopupPositionProvider
 import com.vayunmathur.photos.ui.activeAdjustment
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

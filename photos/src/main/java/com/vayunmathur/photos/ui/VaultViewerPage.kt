@@ -17,8 +17,8 @@ import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
-import com.vayunmathur.photos.util.SecureFolderManager
-import com.vayunmathur.photos.util.SecureFolderViewModel
+import com.vayunmathur.photos.platform.SecureFolderManager
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

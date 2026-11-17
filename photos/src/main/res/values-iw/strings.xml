@@ -11,10 +11,7 @@
     <string name="taken_on">מועד צילום: %1$s</string>
     <string name="location">מיקום: %1$s</string>
     <string name="detecting">מתבצע זיהוי…</string>
-    <string name="grant_storage_permission">הענקת הרשאת גישה לאחסון</string>
     <string name="panorama">פנורמה</string>
-    <string name="reset">איפוס</string>
-    <string name="apply">החלה</string>
     <string name="title_edit_video">עריכת סרטון</string>
     <string name="video_muted">מושתק</string>
     <string name="video_filter_none">ללא</string>
@@ -22,9 +19,6 @@
     <string name="video_filter_warm">חמים</string>
     <string name="video_filter_cool">קריר</string>
     <string name="video_filter_vivid">מלא חיים</string>
-    <string name="video_brightness">בהירות</string>
-    <string name="video_contrast">ניגודיות</string>
-    <string name="video_save_copy">שמירה בתור עותק</string>
     <string name="video_exporting">מתבצע ייצוא…</string>
     <string name="opacity">אטימות</string>
     <string name="thickness">עובי</string>

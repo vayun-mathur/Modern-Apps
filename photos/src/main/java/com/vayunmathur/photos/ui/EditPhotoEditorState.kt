@@ -28,8 +28,8 @@ import com.vayunmathur.photos.data.Selection
 import com.vayunmathur.photos.data.SelectionCombine
 import com.vayunmathur.photos.data.SelectiveMask
 import com.vayunmathur.photos.data.TextElement
-import com.vayunmathur.photos.util.ExportFormat
-import com.vayunmathur.photos.util.PhotoEditViewModel
+import com.vayunmathur.photos.platform.ExportFormat
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt

@@ -1,4 +1,7 @@
 package com.vayunmathur.photos.photoslice2
+import com.vayunmathur.photos.ui.ChannelMixerPanel
+import com.vayunmathur.photos.ui.ColorBalancePanel
+import com.vayunmathur.photos.ui.LevelsPanel
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize

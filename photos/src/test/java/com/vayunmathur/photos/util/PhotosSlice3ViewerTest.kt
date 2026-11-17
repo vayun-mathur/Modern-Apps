@@ -1,4 +1,6 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.FaceBox
+import com.vayunmathur.photos.platform.PhotoFaceBoxes
 
 import android.app.Application
 import androidx.compose.foundation.background
@@ -325,7 +327,7 @@ class PhotosSlice3ViewerTest {
                     isSettled = true,
                     size = IntSize(400, 300),
                     currentZoom = zoom,
-                    zoomModifier = Modifier,
+                    modifier = Modifier,
                     onOpenPerson = {},
                     onSetWallpaper = {},
                     onEditPhoto = {},
@@ -380,7 +382,7 @@ class PhotosSlice3ViewerTest {
                     isSettled = isSettled,
                     size = IntSize(400, 300),
                     currentZoom = zoom,
-                    zoomModifier = Modifier,
+                    modifier = Modifier,
                     onOpenPerson = onOpenPerson,
                     onSetWallpaper = {},
                     onEditPhoto = {},

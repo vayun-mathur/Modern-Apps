@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="reset">Обнулить</string>
-    <string name="apply">Применить</string>
     <string name="rotate_90">Повернуть на 90°</string>
     <string name="tool_fill">Заполнить</string>
     <string name="recent">Последние</string>

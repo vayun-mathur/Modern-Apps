@@ -1,4 +1,6 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModelFactory
 
 import android.app.Application
 import androidx.fragment.app.FragmentActivity

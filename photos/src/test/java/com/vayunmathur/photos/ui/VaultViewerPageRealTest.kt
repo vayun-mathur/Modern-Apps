@@ -13,13 +13,13 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.TestPhotosRepository
 import com.vayunmathur.photos.data.VaultPhoto
 import com.vayunmathur.photos.data.VaultPhotoDao
-import com.vayunmathur.photos.util.SecureFolderManager
-import com.vayunmathur.photos.util.SecureFolderViewModel
+import com.vayunmathur.photos.platform.SecureFolderManager
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream

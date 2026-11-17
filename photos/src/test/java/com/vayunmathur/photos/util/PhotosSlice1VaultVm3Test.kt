@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 
 import android.app.Application
 import android.content.ContentResolver

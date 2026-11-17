@@ -1,4 +1,10 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.PhotoEditViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
+import com.vayunmathur.photos.platform.WallpaperLoadState
+import com.vayunmathur.photos.platform.WallpaperViewModel
+import com.vayunmathur.photos.ui.LocalColumnCount
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
@@ -311,7 +317,7 @@ class PhotosSlice3ExtrasTest {
         val columns = androidx.compose.runtime.mutableFloatStateOf(3f)
         composeRule.setContent {
             androidx.compose.runtime.CompositionLocalProvider(
-                com.vayunmathur.photos.LocalColumnCount provides columns,
+                com.vayunmathur.photos.ui.LocalColumnCount provides columns,
             ) {
                 SecureFolderPage(
                     backStack = NavBackStack(arrayOf(Route.SecureFolder)),

@@ -33,7 +33,7 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.VideoTool
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
 
 @OptIn(UnstableApi::class)
 @Composable

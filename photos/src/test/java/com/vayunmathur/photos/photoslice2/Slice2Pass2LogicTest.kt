@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.photoslice2
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 
 import android.app.Application
 import android.graphics.Bitmap
@@ -34,8 +35,8 @@ import com.vayunmathur.photos.ui.EditPhotoPaintOverlays
 import com.vayunmathur.photos.ui.EditPhotoToolOverlays
 import com.vayunmathur.photos.ui.EditorMode
 import com.vayunmathur.photos.ui.LayersPanel
-import com.vayunmathur.photos.util.LayerCompositor
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.LayerCompositor
+import com.vayunmathur.photos.platform.VideoEditViewModel
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -73,7 +74,7 @@ class Slice2Pass2LogicTest {
         bitmap: Bitmap? = null,
         selection: Selection? = null,
     ): EditPhotoEditorState {
-        val vm = com.vayunmathur.photos.util.PhotoEditViewModel(app, PhotosRepository.get(app))
+        val vm = com.vayunmathur.photos.platform.PhotoEditViewModel(app, PhotosRepository.get(app))
         val activity = Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
         return EditPhotoEditorState(
             vm, activity,

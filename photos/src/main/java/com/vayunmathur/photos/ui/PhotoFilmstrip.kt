@@ -45,7 +45,7 @@ internal fun FilmstripPane(photos: List<Photo>, pagerState: PagerState) {
                     )
                     .invisibleClickable { scope.launch { pagerState.animateScrollToPage(index) } },
             ) {
-                com.vayunmathur.photos.util.ImageLoader.PhotoItem(photo, Modifier.fillMaxSize())
+                com.vayunmathur.photos.platform.ImageLoader.PhotoItem(photo, Modifier.fillMaxSize())
             }
         }
     }

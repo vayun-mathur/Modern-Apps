@@ -2,16 +2,11 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="color">Färg</string>
     <string name="recent">Senaste</string>
-    <string name="apply">Tillämpa</string>
     <string name="rotate_90">Rotera 90°</string>
     <string name="app_name">Bilder</string>
     <string name="gif_badge">GIF</string>
     <string name="photo_widget_description">Ett roterande foto från galleriet – tryck för att blanda</string>
     <string name="grant_image_video_permissions">Ge behörighet till bilder och videor</string>
-    <string name="grant_storage_permission">Ge lagringsbehörighet</string>
-    <string name="media_management_permission_required">Behörighet att hantera media krävs</string>
-    <string name="this_app_needs_permission_to_manage_medi">Appen behöver behörighet att hantera mediefiler för att fungera. Ge behörigheten ”Tillåt mediehantering” i Inställningar.</string>
-    <string name="open_settings">Öppna inställningar</string>
     <string name="label_gallery">Galleri</string>
     <string name="label_map">Karta</string>
     <string name="label_people">Personer</string>
@@ -33,14 +28,23 @@
     <string name="album_delete">Ta bort album</string>
     <string name="album_delete_confirm">Ta bort albumet ”<xliff:g id="name" example="Beach">%1$s</xliff:g>”? Bilderna behålls och återgår till biblioteket.</string>
     <string name="action_cancel">Avbryt</string>
-    <string name="items_selected"><xliff:g id="count" example="5">%1$d</xliff:g> valda</string>
+    <plurals name="items_selected">
+        <item quantity="one"><xliff:g id="count" example="5">%1$d</xliff:g> valda</item>
+        <item quantity="other"><xliff:g id="count" example="5">%1$d</xliff:g> valda</item>
+    </plurals>
     <string name="vault_viewer_decrypt_failed">Kunde inte öppna objektet</string>
     <string name="vault_viewer_not_found">Objektet finns inte längre i den säkra mappen</string>
     <string name="month_year_format"><xliff:g id="month" example="January">%1$s</xliff:g> <xliff:g id="year" example="2024">%2$d</xliff:g></string>
     <string name="search_placeholder">Sök bilder…</string>
     <string name="of_photos_processed"><xliff:g id="percent" example="45">%1$d</xliff:g> %% av bilderna bearbetade</string>
-    <string name="photos_indexed_for_visual_search"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> bilder indexerade för visuell sökning</string>
-    <string name="photos_indexed_for_text_search"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> bilder indexerade för textsökning</string>
+    <plurals name="photos_indexed_for_visual_search">
+        <item quantity="one"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> bilder indexerade för visuell sökning</item>
+        <item quantity="other"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> bilder indexerade för visuell sökning</item>
+    </plurals>
+    <plurals name="photos_indexed_for_text_search">
+        <item quantity="one"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> bilder indexerade för textsökning</item>
+        <item quantity="other"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> bilder indexerade för textsökning</item>
+    </plurals>
     <string name="semantic_search_unavailable">AI-bildsökning är inte tillgänglig i den här installationen. Sökning i text och filnamn fungerar ändå.</string>
     <string name="people_empty">Inga personer hittades ännu. Genomsökning sker i bakgrunden. Titta igen när bilderna har indexerats.</string>
     <string name="people_scanning">Grupperar ansikten… personer visas här när de hittas.</string>
@@ -90,7 +94,6 @@
     <string name="video_save_prompt">Spara den redigerade videon som en ny kopia eller skriv över originalet?</string>
     <string name="video_overwrite">Skriv över</string>
     <string name="video_exporting">Exporterar…</string>
-    <string name="video_export_failed">Videoexporten misslyckades.</string>
     <string name="video_edit_with_label">Redigera video med My App</string>
     <string name="opacity">Opacitet</string>
     <string name="thickness">Tjocklek</string>

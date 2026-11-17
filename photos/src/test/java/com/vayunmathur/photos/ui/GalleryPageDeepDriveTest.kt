@@ -14,13 +14,13 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.TestPhotosRepository
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.SecureFolderViewModel
-import com.vayunmathur.photos.util.workInfosOverride
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.platform.workInfosOverride
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.runBlocking

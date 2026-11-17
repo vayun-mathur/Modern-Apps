@@ -1,4 +1,6 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.ClipTokenizer
+import com.vayunmathur.photos.platform.FaceRecognizer
 
 import android.graphics.Bitmap
 import android.graphics.Color

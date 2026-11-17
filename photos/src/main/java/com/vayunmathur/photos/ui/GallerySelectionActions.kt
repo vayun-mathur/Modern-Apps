@@ -9,7 +9,7 @@ import com.vayunmathur.library.ui.IconFavorite
 import com.vayunmathur.library.ui.IconFavoriteBorder
 import com.vayunmathur.library.ui.IconLock
 import com.vayunmathur.photos.R
-import com.vayunmathur.photos.util.GalleryActions
+import com.vayunmathur.photos.platform.GalleryActions
 
 /**
  * The multi-select top bar actions shared by the gallery and the Favorites

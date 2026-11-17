@@ -36,19 +36,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconUnarchive
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.ImageLoader
-import com.vayunmathur.photos.util.enqueueSyncWork
-import com.vayunmathur.photos.util.runSyncOnce
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.ImageLoader
+import com.vayunmathur.photos.platform.enqueueSyncWork
+import com.vayunmathur.photos.platform.runSyncOnce
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -94,7 +95,7 @@ fun TrashPage(backStack: NavBackStack<Route>, galleryViewModel: GalleryViewModel
     val closeSelection: (() -> Unit)? = if (isSelectionMode) ({ selectedIds.clear() }) else null
     AppScaffold(
         title = if (isSelectionMode) {
-            stringResource(com.vayunmathur.photos.R.string.items_selected, selectedIds.size)
+            pluralStringResource(com.vayunmathur.photos.R.plurals.items_selected, selectedIds.size, selectedIds.size)
         } else {
             stringResource(com.vayunmathur.photos.R.string.label_trash)
         },

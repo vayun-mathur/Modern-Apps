@@ -2,7 +2,7 @@ package com.vayunmathur.photos.data
 
 import android.graphics.Bitmap
 import androidx.core.graphics.createBitmap
-import com.vayunmathur.photos.util.PhotosNative
+import com.vayunmathur.photos.platform.PhotosNative
 
 private const val OP_STRIDE = 6
 private const val OP_X = 0

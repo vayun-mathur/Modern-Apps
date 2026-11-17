@@ -1,11 +1,12 @@
 package com.vayunmathur.photos.data
+import com.vayunmathur.photos.platform.drawSerializedStrokes
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import com.vayunmathur.library.image.Size
-import com.vayunmathur.photos.util.FaceCropTransformation
-import com.vayunmathur.photos.util.drawTextElement
+import com.vayunmathur.photos.platform.FaceCropTransformation
+import com.vayunmathur.photos.platform.drawTextElement
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

@@ -14,7 +14,7 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.photos.data.PanoData
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.TestPhotosRepository
-import com.vayunmathur.photos.util.workInfosOverride
+import com.vayunmathur.photos.platform.workInfosOverride
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.runner.RunWith

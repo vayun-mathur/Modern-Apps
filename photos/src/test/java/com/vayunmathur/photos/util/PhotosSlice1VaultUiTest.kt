@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
@@ -10,7 +11,7 @@ import com.vayunmathur.library.util.NavBackStack
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.PhotoDatabase
 import com.vayunmathur.photos.data.VaultPhoto

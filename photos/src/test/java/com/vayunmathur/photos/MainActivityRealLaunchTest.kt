@@ -1,4 +1,6 @@
 package com.vayunmathur.photos
+import com.vayunmathur.photos.platform.pushPhoto
+import com.vayunmathur.photos.platform.workInfosOverride
 
 import android.app.Application
 import android.content.Intent
@@ -37,7 +39,7 @@ class MainActivityRealLaunchTest {
     }
 
     private fun workInfosInstall() {
-        com.vayunmathur.photos.util.workInfosOverride = { _, _ -> kotlinx.coroutines.flow.flowOf(emptyList()) }
+        com.vayunmathur.photos.platform.workInfosOverride = { _, _ -> kotlinx.coroutines.flow.flowOf(emptyList()) }
     }
 
     @Test fun plainLaunchReachesGallery() {

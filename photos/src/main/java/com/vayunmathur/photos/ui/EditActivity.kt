@@ -19,8 +19,8 @@ import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.photos.data.PhotosRepository
-import com.vayunmathur.photos.util.PhotoEditViewModel
-import com.vayunmathur.photos.util.PhotoEditViewModelFactory
+import com.vayunmathur.photos.platform.PhotoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

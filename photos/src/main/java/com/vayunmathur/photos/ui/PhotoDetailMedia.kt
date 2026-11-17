@@ -21,7 +21,7 @@ import java.io.File
  *
  * The still branch, the motion-photo playback branch and the plain video branch
  * used to live inline in [PhotoDetailView]; they are one decisions block, so
- * they move together. Zoom/pan arrives as [zoomModifier] so a pinch updates the
+ * they move together. Zoom/pan arrives as [modifier] so a pinch updates the
  * GPU transform without recomposing this subtree.
  */
 @Composable
@@ -35,7 +35,7 @@ fun PhotoDetailMedia(
     motionFile: File?,
     isMetadataVisible: Boolean,
     isSettled: Boolean,
-    zoomModifier: Modifier,
+    modifier: Modifier,
     onSizeChanged: (IntSize) -> Unit,
 ) {
     if (photo.videoData == null && !(motionPlaying && motionFile != null)) {
@@ -44,7 +44,7 @@ fun PhotoDetailMedia(
                 .onGloballyPositioned { layoutCoordinates ->
                     onSizeChanged(layoutCoordinates.size)
                 }
-                .then(zoomModifier)
+                .then(modifier)
                 .then(
                     if (sharedKey == null) Modifier
                     else Modifier.sharedContainer("photo-image-$sharedKey")
@@ -87,7 +87,7 @@ fun PhotoDetailMedia(
             modifier =
                 Modifier.fillMaxSize()
                     .onGloballyPositioned { onSizeChanged(it.size) }
-                    .then(zoomModifier),
+                    .then(modifier),
             uri = Uri.fromFile(motionFile),
             isMetadataVisible = isMetadataVisible,
             isSettledPage = isSettled && motionPlaying
@@ -97,7 +97,7 @@ fun PhotoDetailMedia(
             modifier =
                 Modifier.fillMaxSize()
                     .onGloballyPositioned { onSizeChanged(it.size) }
-                    .then(zoomModifier),
+                    .then(modifier),
             uri = photo.uri.toUri(),
             isMetadataVisible = isMetadataVisible,
             isSettledPage = isSettled

@@ -23,7 +23,7 @@ import com.vayunmathur.photos.data.TextLayer
 import com.vayunmathur.photos.ui.EditPhotoEditorState
 import com.vayunmathur.photos.ui.EditorMode
 import com.vayunmathur.photos.ui.ToolCategory
-import com.vayunmathur.photos.util.PhotoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

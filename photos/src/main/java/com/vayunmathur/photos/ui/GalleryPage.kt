@@ -15,10 +15,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
-import com.vayunmathur.photos.util.GalleryUiState
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.SecureFolderViewModel
-import com.vayunmathur.photos.util.enqueueSyncWork
+import com.vayunmathur.photos.platform.GalleryUiState
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.platform.enqueueSyncWork
 
 /** Binds [GalleryViewModel] to the stateless [GalleryScreen]. */
 @Composable

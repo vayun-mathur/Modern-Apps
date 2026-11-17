@@ -9,13 +9,9 @@
     <!-- Permission prompt button to grant READ_MEDIA_IMAGES/VIDEO. Verb phrase -->
     <string name="grant_image_video_permissions">Grant Image/Video Permissions</string>
     <!-- Button to request storage permission. Shown on Android versions below 13. Verb phrase -->
-    <string name="grant_storage_permission">Grant Storage Permission</string>
     <!-- Title when Media Management permission required to delete/move -->
-    <string name="media_management_permission_required">Media Management Permission Required</string>
     <!-- Explanatory body when canManageMedia false, tells user to grant Allow media management in Settings -->
-    <string name="this_app_needs_permission_to_manage_medi">This app needs permission to manage media files to function properly. Please grant \'Allow media management\' permission in Settings.</string>
     <!-- Button to open system Settings from permission blocker screen. Verb phrase -->
-    <string name="open_settings">Open Settings</string>
     <!-- Navigation label: Gallery tab. Noun -->
     <string name="label_gallery">Gallery</string>
     <!-- Navigation label: Map tab. Noun -->
@@ -67,7 +63,10 @@
     <string name="action_cancel">Cancel</string>
 
     <!-- Generic selection count badge in TopAppBar of Gallery, SecureFolder, Trash. %1$d = number selected -->
-    <string name="items_selected"><xliff:g id="count" example="5">%1$d</xliff:g> selected</string>
+    <plurals name="items_selected">
+        <item quantity="one"><xliff:g id="count" example="5">%1$d</xliff:g> selected</item>
+        <item quantity="other"><xliff:g id="count" example="5">%1$d</xliff:g> selected</item>
+    </plurals>
     <!-- Vault viewer error when the encrypted file cannot be decrypted to the cache. Sentence -->
     <string name="vault_viewer_decrypt_failed">Couldn\'t open this item</string>
     <!-- Vault viewer message when the item no longer exists in the vault. Sentence -->
@@ -79,9 +78,15 @@
     <!-- Gallery progress when query empty: percent of photos processed. %1$d = percent 0-100, %% literal percent sign -->
     <string name="of_photos_processed"><xliff:g id="percent" example="45">%1$d</xliff:g>%% of photos processed</string>
     <!-- Gallery progress: visual search embedding index progress. %1$d = done, %2$d = total -->
-    <string name="photos_indexed_for_visual_search"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexed for visual search</string>
+    <plurals name="photos_indexed_for_visual_search">
+        <item quantity="one"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photo indexed for visual search</item>
+        <item quantity="other"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexed for visual search</item>
+    </plurals>
     <!-- Gallery progress: text search OCR index progress. %1$d = done, %2$d = total -->
-    <string name="photos_indexed_for_text_search"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexed for text search</string>
+    <plurals name="photos_indexed_for_text_search">
+        <item quantity="one"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photo indexed for text search</item>
+        <item quantity="other"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexed for text search</item>
+    </plurals>
     <!-- ListItem shown when the bundled AI search model could not be loaded -->
     <string name="semantic_search_unavailable">AI photo search is unavailable on this install. Text and filename search still work.</string>
     <!-- Empty state: no faces found yet, scanning happens in background background explanation -->
@@ -177,7 +182,6 @@
     <!-- Progress dialog title while exporting the video. Verb -->
     <string name="video_exporting">Exporting…</string>
     <!-- Toast/message when video export fails. Sentence -->
-    <string name="video_export_failed">Video export failed.</string>
     <!-- "Edit with" chooser label for the external video edit intent -->
     <string name="video_edit_with_label">Edit video with My App</string>
     <!-- Slider label: opacity of brush stroke. Noun -->
@@ -427,7 +431,7 @@
     <!-- Tool: filters category generic label. Noun plural -->
     <string name="tool_filters">Filters</string>
     <!-- Tool: liquify push and warp pixels. Verb, Photoshop-style name -->
-    <string name="tool_liquify">Liquify</string>
+    <string name="tool_liquify">Liquefy</string>
     <!-- Tool: heal remove blemishes by copying nearby. Verb -->
     <string name="tool_heal">Heal</string>
     <!-- Tool: red-eye removal tap each eye. Noun phrase -->

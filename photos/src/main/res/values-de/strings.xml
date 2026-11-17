@@ -5,16 +5,18 @@
     <string name="title_edit_photo">Foto bearbeiten</string>
     <string name="action_save">Speichern</string>
     <string name="action_save_as_copy">Als Kopie speichern</string>
-    <string name="label_gallery">Gallerie</string>
+    <string name="label_gallery">Galerie</string>
     <string name="label_map">Karte</string>
     <string name="label_trash">Papierkorb</string>
     <string name="label_secure_folder">Sicherer Ordner</string>
-    <string name="items_selected">%1$d ausgewählt</string>
+    <plurals name="items_selected">
+        <item quantity="one">%1$d ausgewählt</item>
+        <item quantity="other">%1$d ausgewählt</item>
+    </plurals>
     <string name="taken_on">Aufgenommen am: %1$s</string>
     <string name="location">Ort: %1$s</string>
     <string name="resolution">Auflösung: %1$d x %2$d</string>
     <string name="detecting">Erkenne…</string>
     <string name="grant_image_video_permissions">Erlaube Bild/Video Berechtigung</string>
-    <string name="grant_storage_permission">Erlaube Speicher Berechtigung</string>
     <string name="search_placeholder">Suche Fotos…</string>
 </resources>

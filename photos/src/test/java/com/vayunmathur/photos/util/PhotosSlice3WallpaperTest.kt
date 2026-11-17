@@ -1,4 +1,7 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.Album
+import com.vayunmathur.photos.platform.WallpaperLoadState
+import com.vayunmathur.photos.platform.WallpaperUtil
 
 import android.app.WallpaperManager
 import android.graphics.Rect

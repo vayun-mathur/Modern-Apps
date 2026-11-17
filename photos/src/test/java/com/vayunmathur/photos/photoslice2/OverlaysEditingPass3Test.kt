@@ -27,7 +27,7 @@ import com.vayunmathur.photos.ui.EditPhotoSelectionOverlays
 import com.vayunmathur.photos.ui.EditPhotoToolOverlays
 import com.vayunmathur.photos.ui.EditorMode
 import com.vayunmathur.photos.ui.SelectionTool
-import com.vayunmathur.photos.util.PhotoEditViewModel
+import com.vayunmathur.photos.platform.PhotoEditViewModel
 import kotlin.test.Test
 import org.junit.Rule
 import org.junit.runner.RunWith

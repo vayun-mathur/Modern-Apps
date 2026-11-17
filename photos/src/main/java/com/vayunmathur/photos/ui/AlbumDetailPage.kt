@@ -16,8 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
-import com.vayunmathur.photos.util.AlbumMediaStore
-import com.vayunmathur.photos.util.GalleryViewModel
+import com.vayunmathur.photos.platform.AlbumMediaStore
+import com.vayunmathur.photos.platform.GalleryViewModel
 
 /** Binds [GalleryViewModel] to the stateless [AlbumDetailScreen] for one album. */
 @Composable

@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.data
+import com.vayunmathur.photos.platform.FaceRecognizer
 
 import androidx.test.core.app.ApplicationProvider
 import org.junit.runner.RunWith
@@ -52,7 +53,7 @@ class PhotosRepositoriesRealDbTest {
 
     private fun face(photoId: Long, embedding: FloatArray, clusterable: Boolean = true) = PhotoFace(
         photoId = photoId, clusterId = null,
-        embedding = com.vayunmathur.photos.util.FaceRecognizer.floatsToBytes(embedding),
+        embedding = com.vayunmathur.photos.platform.FaceRecognizer.floatsToBytes(embedding),
         clusterable = clusterable,
         left = 0.1f, top = 0.1f, right = 0.5f, bottom = 0.5f, srcWidth = 100, srcHeight = 80,
     )

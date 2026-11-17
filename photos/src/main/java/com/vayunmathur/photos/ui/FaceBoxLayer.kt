@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.invisibleClickable
-import com.vayunmathur.photos.util.PhotoFaceBoxes
+import com.vayunmathur.photos.platform.PhotoFaceBoxes
 import kotlin.math.roundToInt
 
 /**

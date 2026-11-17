@@ -8,14 +8,16 @@
     <string name="label_map">Kaart</string>
     <string name="label_trash">Prügikast</string>
     <string name="label_secure_folder">Turvaline kaust</string>
-    <string name="items_selected"><xliff:g id="count" example="5">%1$d</xliff:g> on valitud</string>
+    <plurals name="items_selected">
+        <item quantity="one"><xliff:g id="count" example="5">%1$d</xliff:g> on valitud</item>
+        <item quantity="other"><xliff:g id="count" example="5">%1$d</xliff:g> on valitud</item>
+    </plurals>
     <string name="month_year_format"><xliff:g id="month" example="Jaanuar">%1$s</xliff:g> <xliff:g id="year" example="2024">%2$d</xliff:g></string>
     <string name="taken_on">Pildistatud: <xliff:g id="date" example="5. jaan. 2024">%1$s</xliff:g></string>
     <string name="location">Asukoht: <xliff:g id="place" example="Tallinn, Eesti">%1$s</xliff:g></string>
     <string name="resolution">Eraldusvõime: <xliff:g id="width" example="4000">%1$d</xliff:g> x <xliff:g id="height" example="3000">%2$d</xliff:g></string>
     <string name="detecting">Tuvastan…</string>
     <string name="grant_image_video_permissions">Luba õigused piltide ja videote vaatamiseks</string>
-    <string name="grant_storage_permission">Luba õigused andmeruumi kasutamiseks</string>
     <string name="search_placeholder">Otsi fotosid…</string>
     <string name="label_people">Inimesed</string>
     <string name="people_empty">Inimesi veel ei leidu. Skaneerimine toimub taustal - vaata uuesti peale fotode skaneerimise lõppu.</string>
@@ -38,17 +40,13 @@
     <string name="trash_is_empty">Prügikast on tühi</string>
     <string name="panorama">Panoraampilt</string>
     <string name="reset_all">Lähtesta kõik</string>
-    <string name="reset">Lähtesta suum</string>
     <string name="export_as_webp">Ekspordi WebP-failina</string>
     <string name="export_as_png">Ekspordi PNG-failina</string>
-    <string name="apply">Rakenda</string>
     <string name="opacity">Läbipaistmatus</string>
     <string name="thickness">Paksus</string>
     <string name="color">Värv</string>
-    <string name="draw">Joonista</string>
     <string name="recent">Hiljutine</string>
     <string name="aspect_ratio">Kuvasuhe</string>
-    <string name="open_settings">Ava seadistused</string>
     <string name="of_photos_processed">Töödeldud on <xliff:g id="percent" example="45">%1$d</xliff:g>%% fotot</string>
     <string name="rotate_90">Pööra 90°</string>
     <string name="rotate">Pööra</string>
@@ -81,10 +79,8 @@
     <string name="color_blue">Sinine</string>
     <string name="color_purple">Purpurpunane</string>
     <string name="blend_normal">Tavaline</string>
-    <string name="blend_saturation">Küllastus</string>
     <string name="blend_luminosity">Kirkus</string>
     <string name="tool_cat_adjust">Kohenda</string>
-    <string name="tool_cat_filters">Filtrid</string>
     <string name="tool_cat_select">Vali</string>
     <string name="tool_cat_transform">Kadreeri</string>
     <string name="tool_cat_draw">Joonista</string>
@@ -140,34 +136,31 @@
     <string name="video_muted">Summutatud</string>
     <string name="video_audio_on">Heli on sisselülitatud</string>
     <string name="video_audio">Heliriba</string>
-    <string name="video_filters">Filtrid</string>
     <string name="video_filter_none">Puudub</string>
     <string name="video_filter_mono">Monoheli</string>
     <string name="video_filter_warm">Soe</string>
     <string name="video_filter_cool">Jahe</string>
     <string name="video_filter_vivid">Ergas</string>
-    <string name="video_brightness">Eredus</string>
-    <string name="video_contrast">Kontrast</string>
-    <string name="video_saturation">Küllastus</string>
     <string name="video_save_prompt">Kas salvestad muudetud video uue failina või kirjutad algfaili üle?</string>
-    <string name="video_save_copy">Salvesta koopiana</string>
     <string name="video_overwrite">Kirjuta üle</string>
     <string name="video_exporting">Eksportimisel…</string>
-    <string name="video_export_failed">Video eksportimine ei õnnestunud.</string>
     <string name="tool_hsl">HSL</string>
     <string name="tool_bw">M/V</string>
     <string name="editor_desc_invert">Pööra värvid teistpidi (tee fotonegatiiv).</string>
     <string name="live_wallpaper_unavailable">Reaalajas toimiva taustapildid pole selles seadmes toetatud</string>
     <string name="live_wallpaper_description">Animeeritud taustapilt sinu fotodest</string>
-    <string name="video_crop_rotate">Kadreerimine ja pööramine</string>
     <string name="video_trim">Kärbi kestust</string>
     <string name="title_edit_video">Muuda videot</string>
     <string name="people_unnamed">Ilma nimeta</string>
     <string name="semantic_search_unavailable">Tehisarupõhine fotode otsing pole selles paigalduses saadaval. Teksti- ja failinimepõhine otsing on toimib jätkuvalt.</string>
-    <string name="media_management_permission_required">Vajalikud on meediumihalduse õigused</string>
-    <string name="this_app_needs_permission_to_manage_medi">Selle rakenduse nõuetekohaseks toimimiseks on vaja luba meediumifailide haldamiseks. Palun luba seadistustes „Luba meediumi haldamine“.</string>
-    <string name="photos_indexed_for_visual_search"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> fotot on indekseeritud visuaalseks otsinguks</string>
-    <string name="photos_indexed_for_text_search"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> fotot on indekseeritud tekstiotsinguks</string>
+    <plurals name="photos_indexed_for_visual_search">
+        <item quantity="one"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> fotot on indekseeritud visuaalseks otsinguks</item>
+        <item quantity="other"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> fotot on indekseeritud visuaalseks otsinguks</item>
+    </plurals>
+    <plurals name="photos_indexed_for_text_search">
+        <item quantity="one"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> fotot on indekseeritud tekstiotsinguks</item>
+        <item quantity="other"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> fotot on indekseeritud tekstiotsinguks</item>
+    </plurals>
     <string name="video_crop_hint">Kadreerimiseks sikuta eelvaate nurkadest.</string>
     <string name="drag_corners_to_distort">Moonutamiseks sikuta eelvaate nurkadest.</string>
     <string name="combine">Kombineeri</string>

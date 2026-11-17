@@ -35,12 +35,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.NavigationBar
+import com.vayunmathur.photos.ui.NavigationBar
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.ImageLoader
-import com.vayunmathur.photos.util.PhotoMapViewModel
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.ImageLoader
+import com.vayunmathur.photos.platform.PhotoMapViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.conflate

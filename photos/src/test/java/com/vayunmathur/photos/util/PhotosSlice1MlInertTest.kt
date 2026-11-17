@@ -1,4 +1,6 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.ClipEmbedder
+import com.vayunmathur.photos.platform.FaceRecognizer
 
 import android.content.Context
 import android.graphics.Bitmap

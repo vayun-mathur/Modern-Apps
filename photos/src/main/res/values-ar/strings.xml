@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="recent">الأخيرة</string>
-    <string name="apply">تطبيق</string>
-    <string name="reset">إعادة الضبط</string>
     <string name="rotate_90">تدوير ٩٠°</string>
     <string name="app_name">الصور</string>
     <string name="gif_badge">GIF</string>
     <string name="photo_widget_description">صورة دوارة من معرض صورك - اضغط للتبديل العشوائي</string>
     <string name="grant_image_video_permissions">منح أذونات الصور/الفيديو</string>
-    <string name="grant_storage_permission">منح إذن التخزين</string>
-    <string name="media_management_permission_required">إذن إدارة الوسائط مطلوب</string>
-    <string name="this_app_needs_permission_to_manage_medi">يحتاج هذا التطبيق إلى إذن لإدارة ملفات الوسائط ليعمل بشكل صحيح. يرجى منح إذن \"السماح بإدارة الوسائط\" في الإعدادات.</string>
-    <string name="open_settings">فتح الإعدادات</string>
     <string name="label_gallery">المعرض</string>
     <string name="label_map">الخريطة</string>
     <string name="label_people">الأشخاص</string>
@@ -19,15 +13,36 @@
     <string name="label_secure_folder">المجلد الآمن</string>
     <string name="secure_folder_is_empty">المجلد الآمن فارغ</string>
     <string name="trash_is_empty">سلة المهملات فارغة</string>
-    <string name="items_selected">تم تحديد <xliff:g id="count" example="5">%1$d</xliff:g></string>
+    <plurals name="items_selected">
+        <item quantity="one">تم تحديد <xliff:g id="count" example="5">%1$d</xliff:g></item>
+        <item quantity="zero">تم تحديد <xliff:g id="count" example="5">%1$d</xliff:g></item>
+        <item quantity="two">تم تحديد <xliff:g id="count" example="5">%1$d</xliff:g></item>
+        <item quantity="few">تم تحديد <xliff:g id="count" example="5">%1$d</xliff:g></item>
+        <item quantity="many">تم تحديد <xliff:g id="count" example="5">%1$d</xliff:g></item>
+        <item quantity="other">تم تحديد <xliff:g id="count" example="5">%1$d</xliff:g></item>
+    </plurals>
     <string name="month_year_format"><xliff:g id="month" example="January">%1$s</xliff:g> <xliff:g id="year" example="2024">%2$d</xliff:g></string>
     <string name="search_placeholder">البحث في الصور…</string>
     <string name="of_photos_processed">تمت معالجة <xliff:g id="percent" example="45"> %1$d</xliff:g> %% من الصور</string>
-    <string name="photos_indexed_for_visual_search">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث المرئي</string>
-    <string name="photos_indexed_for_text_search">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث النصي</string>
+    <plurals name="photos_indexed_for_visual_search">
+        <item quantity="one">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث المرئي</item>
+        <item quantity="zero">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث المرئي</item>
+        <item quantity="two">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث المرئي</item>
+        <item quantity="few">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث المرئي</item>
+        <item quantity="many">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث المرئي</item>
+        <item quantity="other">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث المرئي</item>
+    </plurals>
+    <plurals name="photos_indexed_for_text_search">
+        <item quantity="one">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث النصي</item>
+        <item quantity="zero">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث النصي</item>
+        <item quantity="two">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث النصي</item>
+        <item quantity="few">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث النصي</item>
+        <item quantity="many">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث النصي</item>
+        <item quantity="other">تم فهرسة <xliff:g id="done" example="120"> %1$d</xliff:g>/<xliff:g id="total" example="500">%2$d من</xliff:g> الصور للبحث النصي</item>
+    </plurals>
     <string name="semantic_search_unavailable">البحث عن الصور بالذكاء الاصطناعي غير متاح في هذا التثبيت. لا يزال البحث عن النص واسم الملف يعمل.</string>
     <string name="people_empty">لم يتم العثور على أشخاص بعد. يتم المسح في الخلفية — تحقق مرة أخرى بعد فهرسة صورك.</string>
-    <string name="people_scanning">تجميع الوجوه... سيظهر الأشخاص هنا عند العثور عليهم.</string>
+    <string name="people_scanning">تجميع الوجوه… سيظهر الأشخاص هنا عند العثور عليهم.</string>
     <string name="face_indexing_progress">جارٍ فهرسة <xliff:g id="processed" example="20">%1$d</xliff:g> / <xliff:g id="total" example="100">%2$d</xliff:g></string>
     <string name="people_model_missing">يتطلب تجميع الوجوه نموذج MobileFaceNet. أضف mobilefacenet.tflite المرخص بشكل متساهل إلى photos/src/main/assets (انظر FaceRecognizer).</string>
     <plurals name="people_photo_count">
@@ -63,30 +78,22 @@
     <string name="export_as_png">تصدير كـ PNG</string>
     <string name="title_edit_video">تعديل الفيديو</string>
     <string name="video_trim">قص</string>
-    <string name="video_crop_rotate">اقتصاص وتدوير</string>
     <string name="video_crop_hint">اسحب الزوايا على المعاينة للقص.</string>
     <string name="video_audio">الصوت</string>
     <string name="video_audio_on">الصوت مفعل</string>
     <string name="video_muted">مكتوم</string>
-    <string name="video_filters">عوامل التصفية</string>
     <string name="video_filter_none">لا شئ</string>
     <string name="video_filter_mono">أحادي</string>
     <string name="video_filter_warm">دافئ</string>
     <string name="video_filter_cool">بارد</string>
     <string name="video_filter_vivid">حيوي</string>
-    <string name="video_brightness">السطوع</string>
-    <string name="video_contrast">التباين</string>
-    <string name="video_saturation">التشبع</string>
     <string name="video_save_prompt">حفظ الفيديو المعدّل كنسخة جديدة أو استبدال الأصلية؟</string>
-    <string name="video_save_copy">حفظ كنسخة</string>
     <string name="video_overwrite">استبدال</string>
     <string name="video_exporting">جارٍ التصدير…</string>
-    <string name="video_export_failed">فشل تصدير الفيديو.</string>
     <string name="video_edit_with_label">تعديل الفيديو بتطبيقي</string>
     <string name="opacity">الشفافية</string>
     <string name="thickness">السماكة</string>
     <string name="color">اللون</string>
-    <string name="draw">الرسم</string>
     <string name="aspect_ratio">نسبة العرض إلى الارتفاع</string>
     <string name="drag_corners_to_distort">اسحب الزوايا لتشويه.</string>
     <string name="rotate">تدوير</string>
@@ -166,7 +173,6 @@
     <string name="blend_soft_light">ضوء ناعم</string>
     <string name="blend_difference">الاختلاف</string>
     <string name="blend_hue">درجة اللون</string>
-    <string name="blend_saturation">التشبع</string>
     <string name="blend_luminosity">اللمعان</string>
     <string name="vault_viewer_decrypt_failed">تعذّر فتح هذا العنصر</string>
     <string name="vault_viewer_not_found">لم يعد هذا العنصر موجودًا في المجلد الآمن</string>

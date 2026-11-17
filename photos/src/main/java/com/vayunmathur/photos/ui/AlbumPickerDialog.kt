@@ -22,7 +22,7 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.photos.R
-import com.vayunmathur.photos.util.Album
+import com.vayunmathur.photos.platform.Album
 
 /**
  * Picks a destination album for the current selection: either an existing album

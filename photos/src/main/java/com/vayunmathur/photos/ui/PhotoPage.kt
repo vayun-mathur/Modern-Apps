@@ -36,9 +36,9 @@ import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.LiveWallpaperLauncher
-import com.vayunmathur.photos.util.PhotoMapViewModel
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.LiveWallpaperLauncher
+import com.vayunmathur.photos.platform.PhotoMapViewModel
 import kotlinx.coroutines.launch
 
 @Composable

@@ -7,11 +7,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
-import com.vayunmathur.photos.util.AlbumsUiState
-import com.vayunmathur.photos.util.DefaultAlbum
-import com.vayunmathur.photos.util.DefaultAlbumKind
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.SecureFolderViewModel
+import com.vayunmathur.photos.platform.AlbumsUiState
+import com.vayunmathur.photos.platform.DefaultAlbum
+import com.vayunmathur.photos.platform.DefaultAlbumKind
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 
 /** Binds [GalleryViewModel] to the stateless [AlbumsScreen]. */
 @Composable

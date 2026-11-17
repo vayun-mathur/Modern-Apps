@@ -1,4 +1,8 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.setExifData
+import com.vayunmathur.photos.platform.SecureFolderManager
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.ui.VaultPhotoItem
 
 import android.app.Application
 import android.content.ContentValues
@@ -13,7 +17,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.exifinterface.media.ExifInterface
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.PhotoExifTarget
 import com.vayunmathur.photos.data.PhotoScanRepository

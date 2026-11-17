@@ -1,4 +1,13 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.Album
+import com.vayunmathur.photos.platform.AlbumsUiState
+import com.vayunmathur.photos.platform.DefaultAlbum
+import com.vayunmathur.photos.platform.DefaultAlbumKind
+import com.vayunmathur.photos.platform.GalleryUiState
+import com.vayunmathur.photos.platform.PeopleUiState
+import com.vayunmathur.photos.platform.PersonCluster
+import com.vayunmathur.photos.platform.SearchAiState
+import com.vayunmathur.photos.platform.GalleryActions
 
 import android.app.Application
 import androidx.compose.foundation.background
@@ -23,7 +32,7 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
@@ -130,7 +139,7 @@ class PhotosSlice3ScreensTest {
             initialSearchActive = true,
         )
         composeRule.onNodeWithText(str(R.string.of_photos_processed, 50)).assertIsDisplayed()
-        composeRule.onNodeWithText(str(R.string.photos_indexed_for_visual_search, 4, 8))
+        composeRule.onNodeWithText(context.resources.getQuantityString(R.plurals.photos_indexed_for_visual_search, 8, 4, 8))
             .assertIsDisplayed()
     }
 
@@ -193,7 +202,7 @@ class PhotosSlice3ScreensTest {
             initialSearchActive = true,
         )
         composeRule.onNodeWithText(str(R.string.of_photos_processed, 30)).assertIsDisplayed()
-        composeRule.onNodeWithText(str(R.string.photos_indexed_for_text_search, 3, 10))
+        composeRule.onNodeWithText(context.resources.getQuantityString(R.plurals.photos_indexed_for_text_search, 10, 3, 10))
             .assertIsDisplayed()
     }
 
@@ -216,7 +225,7 @@ class PhotosSlice3ScreensTest {
             override fun clearSelection() { cleared = true }
         }
         setGallery(GalleryUiState(selectedIds = setOf(1L, 2L)), actions)
-        composeRule.onNodeWithText(str(R.string.items_selected, 2)).assertIsDisplayed()
+        composeRule.onNodeWithText(context.resources.getQuantityString(R.plurals.items_selected, 2, 2)).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Close").performClick()
         assertTrue(cleared)
     }
@@ -473,7 +482,7 @@ class PhotosSlice3ScreensTest {
     fun albumDetailSelectionShowsCount() {
         val a = photo("a", 100L, "Trip")
         setAlbumDetail("Trip", album("Trip", a), selectedIds = setOf(a.id))
-        composeRule.onNodeWithText(str(R.string.items_selected, 1)).assertIsDisplayed()
+        composeRule.onNodeWithText(context.resources.getQuantityString(R.plurals.items_selected, 1, 1)).assertIsDisplayed()
     }
 
     @Test

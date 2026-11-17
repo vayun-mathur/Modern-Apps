@@ -36,15 +36,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
-import com.vayunmathur.photos.pushPhoto
-import com.vayunmathur.photos.util.Album
-import com.vayunmathur.photos.util.ImageLoader
+import com.vayunmathur.photos.platform.pushPhoto
+import com.vayunmathur.photos.platform.Album
+import com.vayunmathur.photos.platform.ImageLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -106,7 +107,7 @@ fun AlbumDetailScreen(
     }
 
     AppScaffold(
-        title = if (isSelectionMode) stringResource(R.string.items_selected, selectedIds.size) else title,
+        title = if (isSelectionMode) pluralStringResource(R.plurals.items_selected, selectedIds.size, selectedIds.size) else title,
         onNavigateBack = if (isSelectionMode) null else ({ backStack.pop() }),
         onClose = if (isSelectionMode) ({ onClearSelection() }) else null,
         scrollBehavior = appBarScrollBehavior(),

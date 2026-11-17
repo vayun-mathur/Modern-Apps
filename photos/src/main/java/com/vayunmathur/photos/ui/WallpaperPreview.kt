@@ -33,8 +33,8 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.photos.R
-import com.vayunmathur.photos.util.WallpaperLoadState
-import com.vayunmathur.photos.util.WallpaperUtil
+import com.vayunmathur.photos.platform.WallpaperLoadState
+import com.vayunmathur.photos.platform.WallpaperUtil
 
 internal data class PreviewSnapshot(
     val containerW: Float,

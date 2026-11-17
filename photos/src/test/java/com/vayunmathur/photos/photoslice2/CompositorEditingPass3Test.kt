@@ -13,7 +13,7 @@ import com.vayunmathur.photos.data.LayerMask
 import com.vayunmathur.photos.data.LayerStyle
 import com.vayunmathur.photos.data.PixelLayer
 import com.vayunmathur.photos.data.AdjustmentLayer
-import com.vayunmathur.photos.util.LayerCompositor
+import com.vayunmathur.photos.platform.LayerCompositor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals

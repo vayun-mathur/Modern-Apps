@@ -14,8 +14,8 @@ import com.vayunmathur.photos.data.Selection
 import com.vayunmathur.photos.data.SelectionCombine
 import com.vayunmathur.photos.data.TestPhotosRepository
 import com.vayunmathur.photos.data.TextElement
-import com.vayunmathur.photos.util.PhotoEditViewModel
-import com.vayunmathur.photos.util.workInfosOverride
+import com.vayunmathur.photos.platform.PhotoEditViewModel
+import com.vayunmathur.photos.platform.workInfosOverride
 import kotlinx.coroutines.flow.flowOf
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric

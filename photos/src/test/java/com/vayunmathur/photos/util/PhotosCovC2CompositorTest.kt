@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.LayerCompositor
 
 import android.graphics.Bitmap
 import android.graphics.Color

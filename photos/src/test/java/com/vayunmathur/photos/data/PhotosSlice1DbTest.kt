@@ -2,8 +2,8 @@ package com.vayunmathur.photos.data
 
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.photos.util.ClipEmbedder
-import com.vayunmathur.photos.util.FaceRecognizer
+import com.vayunmathur.photos.platform.ClipEmbedder
+import com.vayunmathur.photos.platform.FaceRecognizer
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals

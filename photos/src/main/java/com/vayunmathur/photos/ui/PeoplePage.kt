@@ -46,15 +46,15 @@ import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.image.ImageRequest
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.NavigationBar
+import com.vayunmathur.photos.ui.NavigationBar
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
-import com.vayunmathur.photos.pushPhoto
-import com.vayunmathur.photos.util.FaceCropTransformation
-import com.vayunmathur.photos.util.FaceRecognizer
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.PeopleUiState
-import com.vayunmathur.photos.util.PersonCluster
+import com.vayunmathur.photos.platform.pushPhoto
+import com.vayunmathur.photos.platform.FaceCropTransformation
+import com.vayunmathur.photos.platform.FaceRecognizer
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.PeopleUiState
+import com.vayunmathur.photos.platform.PersonCluster
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -116,7 +116,7 @@ fun PeoplePage(
  * The display name behind a URI from [ActivityResultContracts.PickContact], which
  * grants read access to that one contact — so this works without READ_CONTACTS.
  */
-private fun contactDisplayName(context: Context, uri: Uri): String? = try {
+internal fun contactDisplayName(context: Context, uri: Uri): String? = try {
     context.contentResolver.query(
         uri,
         arrayOf(ContactsContract.Contacts.DISPLAY_NAME),
@@ -138,74 +138,7 @@ private fun contactDisplayName(context: Context, uri: Uri): String? = try {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PeopleScreen(
-    backStack: NavBackStack<Route>,
-    state: PeopleUiState,
-    /**
-     * How a cluster paints its representative face. Previews pass a placeholder: the real
-     * one crops a MediaStore image, which Layoutlib cannot decode.
-     */
-    faceThumbnail: @Composable (PersonCluster, Modifier) -> Unit = { person, modifier -> FaceThumbnail(person, modifier) },
-    /**
-     * Name (or rename) a cluster. Opens the contact picker, which needs an
-     * activity-result launcher, so the binder owns it — a preview renders the
-     * labels fine with the no-op default.
-     */
-    onNameClick: (PersonCluster) -> Unit = {},
-) {
-    // Show progress while there are still photos left to scan (or the worker is
-    // actively running); it disappears on its own once everything is scanned.
-    val showProgress = state.faceTargetCount > 0 &&
-        (state.indexing || state.faceScannedCount < state.faceTargetCount)
-
-    // RAW SCAFFOLD EXCEPTION: main-nav page with only a bottom NavigationBar and no top
-    // app bar. AppScaffold always renders a top app bar (which would break the layout) and
-    // the body is a Column (progress + grid), not a LazyColumn.
-    Scaffold(
-        bottomBar = { NavigationBar(Route.People, backStack) },
-    ) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize()) {
-            if (!state.modelsAvailable) {
-                Text(
-                    text = stringResource(R.string.people_model_missing),
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                )
-            } else {
-                Column(Modifier.fillMaxSize()) {
-                    if (showProgress) {
-                        FaceIndexingProgress(done = state.faceScannedCount, total = state.faceTargetCount)
-                    }
-                    if (state.people.isNotEmpty()) {
-                        PeopleGrid(
-                            people = state.people,
-                            modifier = Modifier.weight(1f),
-                            faceThumbnail = faceThumbnail,
-                            onNameClick = onNameClick,
-                        ) { person ->
-                            backStack.pushPhoto(Route.PhotoPage(person.coverPhoto.id, person.photos))
-                        }
-                    } else {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(
-                                text = stringResource(
-                                    if (showProgress) R.string.people_scanning else R.string.people_empty
-                                ),
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(32.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FaceIndexingProgress(done: Int, total: Int) {
+internal fun FaceIndexingProgress(done: Int, total: Int) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Text(
             text = stringResource(R.string.face_indexing_progress, done, total),
@@ -220,7 +153,7 @@ private fun FaceIndexingProgress(done: Int, total: Int) {
 }
 
 @Composable
-private fun PeopleGrid(
+internal fun PeopleGrid(
     people: List<PersonCluster>,
     modifier: Modifier = Modifier,
     faceThumbnail: @Composable (PersonCluster, Modifier) -> Unit,
@@ -259,7 +192,7 @@ private fun PeopleGrid(
                         .invisibleClickable { onNameClick(person) },
                 )
                 Text(
-                    text = pluralStringResource(R.plurals.album_photo_count, person.photos.size, person.photos.size),
+                    text = pluralStringResource(R.plurals.people_photo_count, person.photos.size, person.photos.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -270,7 +203,7 @@ private fun PeopleGrid(
 
 /** The representative face of a cluster, cropped from its cover photo. */
 @Composable
-private fun FaceThumbnail(person: PersonCluster, modifier: Modifier) {
+internal fun FaceThumbnail(person: PersonCluster, modifier: Modifier) {
     val context = LocalContext.current
     // `size` downsamples at *decode* time and transformations run after it, so
     // asking for 256 would decode the whole photo to 256px and only then cut the

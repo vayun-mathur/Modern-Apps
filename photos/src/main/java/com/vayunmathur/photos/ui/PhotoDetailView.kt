@@ -32,8 +32,8 @@ import com.vayunmathur.photos.data.OcrLayout
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.domain.OcrBoxStore
 import com.vayunmathur.photos.platform.MotionPhotoVideo
-import com.vayunmathur.photos.util.PhotoFaceBoxes
-import com.vayunmathur.photos.util.PhotoMapViewModel
+import com.vayunmathur.photos.platform.PhotoFaceBoxes
+import com.vayunmathur.photos.platform.PhotoMapViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -210,7 +210,7 @@ fun PhotoDetailView(
             motionFile = motionFile,
             isMetadataVisible = isMetadataVisible,
             isSettled = isSettled,
-            zoomModifier = zoomModifier,
+            modifier = zoomModifier,
             onSizeChanged = { size = it },
         )
 
@@ -234,7 +234,7 @@ fun PhotoDetailView(
             isSettled = isSettled,
             size = size,
             currentZoom = currentZoom,
-            zoomModifier = zoomModifier,
+            modifier = zoomModifier,
             onOpenPerson = onOpenPerson,
             onSetWallpaper = onSetWallpaper,
             onEditPhoto = onEditPhoto,

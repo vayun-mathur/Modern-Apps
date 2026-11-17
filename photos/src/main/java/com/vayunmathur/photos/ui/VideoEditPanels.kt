@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.ui
+import androidx.annotation.OptIn
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,8 +43,10 @@ import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.VideoEditState
 import com.vayunmathur.photos.data.VideoFilterPreset
 import com.vayunmathur.photos.data.VideoTool
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
+import androidx.media3.common.util.UnstableApi
 
+@OptIn(UnstableApi::class)
 @Composable
 internal fun ToolPanel(vm: VideoEditViewModel, state: VideoEditState, tool: VideoTool) {
     Column(
@@ -60,6 +63,7 @@ internal fun ToolPanel(vm: VideoEditViewModel, state: VideoEditState, tool: Vide
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 private fun TrimPanel(vm: VideoEditViewModel, state: VideoEditState) {
     val duration = state.durationMs.coerceAtLeast(1L)
@@ -82,6 +86,7 @@ private fun TrimPanel(vm: VideoEditViewModel, state: VideoEditState) {
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 private fun CropRotatePanel(vm: VideoEditViewModel, state: VideoEditState) {
     Text(stringResource(R.string.tool_crop_rotate), color = Color.White, style = MaterialTheme.typography.titleSmall)
@@ -106,6 +111,7 @@ private fun CropRotatePanel(vm: VideoEditViewModel, state: VideoEditState) {
     )
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 private fun AudioPanel(vm: VideoEditViewModel, state: VideoEditState) {
     Text(stringResource(R.string.video_audio), color = Color.White, style = MaterialTheme.typography.titleSmall)
@@ -117,6 +123,7 @@ private fun AudioPanel(vm: VideoEditViewModel, state: VideoEditState) {
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 private fun FiltersPanel(vm: VideoEditViewModel, state: VideoEditState) {
     Row(

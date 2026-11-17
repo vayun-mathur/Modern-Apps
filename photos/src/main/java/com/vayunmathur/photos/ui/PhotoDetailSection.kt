@@ -28,7 +28,7 @@ import com.vayunmathur.library.ui.ZoomState
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.OcrLayout
 import com.vayunmathur.photos.data.Photo
-import com.vayunmathur.photos.util.PhotoFaceBoxes
+import com.vayunmathur.photos.platform.PhotoFaceBoxes
 
 @Composable
 fun BoxScope.PhotoDetailSection(
@@ -51,7 +51,7 @@ fun BoxScope.PhotoDetailSection(
     isSettled: Boolean,
     size: IntSize,
     currentZoom: State<ZoomState>,
-    zoomModifier: Modifier,
+    modifier: Modifier,
     onOpenPerson: (Long) -> Unit,
     onSetWallpaper: (Photo) -> Unit,
     onEditPhoto: () -> Unit,
@@ -74,7 +74,7 @@ fun BoxScope.PhotoDetailSection(
                 containerSize = size,
                 showOutlines = isMetadataVisible,
                 zoom = { currentZoom.value.scale },
-                modifier = Modifier.fillMaxSize().then(zoomModifier)
+                modifier = Modifier.fillMaxSize().then(modifier)
             )
         }
     }
@@ -82,7 +82,7 @@ fun BoxScope.PhotoDetailSection(
     faceBoxes?.takeIf { isSettled && size != IntSize.Zero }?.let { boxes ->
         FadeVisibility(
             visible = isMetadataVisible,
-            modifier = Modifier.fillMaxSize().then(zoomModifier)
+            modifier = Modifier.fillMaxSize().then(modifier)
         ) {
             FaceBoxLayer(
                 boxes = boxes,

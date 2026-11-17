@@ -20,12 +20,12 @@ import com.vayunmathur.photos.data.PhotosRepository
 import com.vayunmathur.photos.data.VideoEditState
 import com.vayunmathur.photos.ui.EditRoute
 import com.vayunmathur.photos.ui.FaceBoxLayer
-import com.vayunmathur.photos.util.FaceBox
-import com.vayunmathur.photos.util.PhotoFaceBoxes
+import com.vayunmathur.photos.platform.FaceBox
+import com.vayunmathur.photos.platform.PhotoFaceBoxes
 import com.vayunmathur.photos.ui.VideoEditPreview
 import com.vayunmathur.photos.ui.VideoEditRoute
 import com.vayunmathur.photos.ui.VideoPlayer
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals

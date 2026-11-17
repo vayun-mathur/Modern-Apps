@@ -1,4 +1,11 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.Album
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.PhotoMapViewModel
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.platform.workInfosOverride
+import com.vayunmathur.photos.ui.GalleryPage
+import com.vayunmathur.photos.ui.NavigationBar
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
@@ -6,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -154,7 +161,7 @@ class PhotosPagesRealRepoTest {
         val backStack = NavBackStack(arrayOf<Route>(Route.Gallery))
         setContent {
             DynamicTheme {
-                com.vayunmathur.photos.NavigationBar(Route.Gallery, backStack)
+                com.vayunmathur.photos.ui.NavigationBar(Route.Gallery, backStack)
             }
         }
         rule.waitForIdle()

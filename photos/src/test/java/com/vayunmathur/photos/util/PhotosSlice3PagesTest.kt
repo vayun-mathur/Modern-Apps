@@ -1,4 +1,19 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.ui.PhotoPage
+import com.vayunmathur.photos.platform.Album
+import com.vayunmathur.photos.platform.AlbumsUiState
+import com.vayunmathur.photos.platform.DefaultAlbum
+import com.vayunmathur.photos.platform.DefaultAlbumKind
+import com.vayunmathur.photos.platform.SyncWorker
+import com.vayunmathur.photos.platform.workInfosOverride
+import com.vayunmathur.photos.platform.syncOnceHook
+import com.vayunmathur.photos.platform.syncEnqueueHook
+import com.vayunmathur.photos.platform.SecureFolderViewModel
+import com.vayunmathur.photos.platform.PhotoStore
+import com.vayunmathur.photos.platform.PhotoScanStore
+import com.vayunmathur.photos.platform.PhotoMapViewModel
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.FaceStore
 
 import android.app.Application
 import androidx.compose.foundation.background
@@ -15,12 +30,13 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.IntSize
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.FaceGeometry
@@ -38,7 +54,6 @@ import com.vayunmathur.photos.ui.TrashPage
 import com.vayunmathur.photos.ui.WallpaperPage
 import com.vayunmathur.photos.ui.PhotoDetailMedia
 import com.vayunmathur.photos.ui.ocrLayoutOverride
-import com.vayunmathur.photos.ui.PhotoPage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -208,7 +223,7 @@ class PhotosSlice3PagesTest {
                 modifier = Modifier.testTag("flatpano"),
             )
         }
-        composeRule.onNodeWithText("", useUnmergedTree = true)
+        composeRule.onNodeWithTag("flatpano").assertExists()
         composeRule.waitForIdle()
     }
 
@@ -229,7 +244,7 @@ class PhotosSlice3PagesTest {
                     motionFile = null,
                     isMetadataVisible = true,
                     isSettled = true,
-                    zoomModifier = Modifier,
+                    modifier = Modifier,
                     onSizeChanged = { measured = it },
                 )
             }

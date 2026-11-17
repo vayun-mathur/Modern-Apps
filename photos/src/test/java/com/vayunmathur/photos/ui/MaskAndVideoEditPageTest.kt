@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.ui
+import com.vayunmathur.photos.platform.MaskBrushPainer
 
 import android.app.Application
 import androidx.compose.foundation.layout.Column
@@ -21,9 +22,9 @@ import com.vayunmathur.photos.data.SelectiveMask
 import com.vayunmathur.photos.data.TestPhotosRepository
 import com.vayunmathur.photos.data.VideoData
 import com.vayunmathur.photos.data.awaitPhotosCondition
-import com.vayunmathur.photos.util.PhotoEditViewModel
-import com.vayunmathur.photos.util.VideoEditViewModel
-import com.vayunmathur.photos.util.workInfosOverride
+import com.vayunmathur.photos.platform.PhotoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
+import com.vayunmathur.photos.platform.workInfosOverride
 import android.graphics.Bitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
@@ -66,7 +67,7 @@ class MaskAndVideoEditPageTest {
                 layers = listOf(PixelLayer(BitmapReference(bmp), name = "base")),
             )
         }
-        val painter = com.vayunmathur.photos.util.MaskBrushPainer()
+        val painter = com.vayunmathur.photos.platform.MaskBrushPainer()
         // Empty stroke is a no-op; a real stroke writes alpha into the mask.
         painter.paintOnActiveMask(vm, emptyList(), radius = 0.2f, paintValue = 0f)
         painter.paintOnActiveMask(vm, listOf(0.5f to 0.5f, 0.6f to 0.5f), radius = 0.2f, paintValue = 0f)
@@ -89,7 +90,7 @@ class MaskAndVideoEditPageTest {
             androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(200.dp) ) { MaskOverlay(mask, showMask = true) { mask = it } }
         }
         rule.waitForIdle()
-        rule.onAllNodes(hasClickAction())
+        rule.onRoot().assertExists()
         // Drag across the canvas; brush points accumulate on the mask.
         rule.onRoot().performTouchInput {
             swipe(start = centerLeft, end = centerRight, durationMillis = 100)

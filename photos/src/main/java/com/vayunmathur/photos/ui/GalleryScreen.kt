@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
@@ -55,19 +56,19 @@ import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedContainer
-import com.vayunmathur.photos.LocalColumnCount
-import com.vayunmathur.photos.NavigationBar
-import com.vayunmathur.photos.pushPhoto
+import com.vayunmathur.photos.ui.LocalColumnCount
+import com.vayunmathur.photos.ui.NavigationBar
+import com.vayunmathur.photos.platform.pushPhoto
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.domain.FavoriteRule
-import com.vayunmathur.photos.util.GalleryActions
-import com.vayunmathur.photos.util.GalleryUiState
-import com.vayunmathur.photos.util.GalleryViewModel
-import com.vayunmathur.photos.util.ImageLoader
-import com.vayunmathur.photos.util.SearchAiState
-import com.vayunmathur.photos.util.SecureFolderViewModel
+import com.vayunmathur.photos.platform.GalleryActions
+import com.vayunmathur.photos.platform.GalleryUiState
+import com.vayunmathur.photos.platform.GalleryViewModel
+import com.vayunmathur.photos.platform.ImageLoader
+import com.vayunmathur.photos.platform.SearchAiState
+import com.vayunmathur.photos.platform.SecureFolderViewModel
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -142,7 +143,7 @@ fun GalleryScreen(
             Column {
                 if (isSelectionMode) {
                     TopAppBar(
-                        title = { Text(stringResource(R.string.items_selected, state.selectedIds.size)) },
+                        title = { Text(pluralStringResource(R.plurals.items_selected, state.selectedIds.size, state.selectedIds.size)) },
                         navigationIcon = {
                             IconButton(onClick = { actions.clearSelection() }) {
                                 IconClose()
@@ -227,7 +228,7 @@ fun GalleryScreen(
                                 val pct = state.ocrCount * 100 / state.ocrTargetCount
                                 ListItem(
                                     content = { Text(stringResource(R.string.of_photos_processed, pct)) },
-                                    supportingContent = { Text(stringResource(R.string.photos_indexed_for_text_search, state.ocrCount, state.ocrTargetCount)) },
+                                    supportingContent = { Text(pluralStringResource(R.plurals.photos_indexed_for_text_search, state.ocrTargetCount, state.ocrCount, state.ocrTargetCount)) },
                                     leadingContent = {
                                         CircularProgressIndicator(
                                             progress = { state.ocrCount.toFloat() / state.ocrTargetCount },
@@ -241,7 +242,7 @@ fun GalleryScreen(
                                 val pct = state.clipCount * 100 / state.clipTargetCount
                                 ListItem(
                                     content = { Text(stringResource(R.string.of_photos_processed, pct)) },
-                                    supportingContent = { Text(stringResource(R.string.photos_indexed_for_visual_search, state.clipCount, state.clipTargetCount)) },
+                                    supportingContent = { Text(pluralStringResource(R.plurals.photos_indexed_for_visual_search, state.clipTargetCount, state.clipCount, state.clipTargetCount)) },
                                     leadingContent = {
                                         CircularProgressIndicator(
                                             progress = { state.clipCount.toFloat() / state.clipTargetCount },

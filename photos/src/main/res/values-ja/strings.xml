@@ -3,7 +3,6 @@
     <string name="app_name">写真</string>
     <string name="gif_badge">GIF</string>
     <string name="photo_widget_description">ギャラリーから写真をランダムに表示 - タップしてシャッフル</string>
-    <string name="open_settings">設定を開く</string>
     <string name="label_gallery">ギャラリー</string>
     <string name="label_map">地図</string>
     <string name="label_people">人物</string>
@@ -11,7 +10,9 @@
     <string name="label_secure_folder">安全なフォルダ</string>
     <string name="secure_folder_is_empty">安全なフォルダは空です</string>
     <string name="trash_is_empty">ゴミ箱は空です</string>
-    <string name="items_selected"><xliff:g id="count" example="5">%1$d</xliff:g> 個のアイテムを選択済</string>
+    <plurals name="items_selected">
+        <item quantity="other"><xliff:g id="count" example="5">%1$d</xliff:g> 個のアイテムを選択済</item>
+    </plurals>
     <string name="month_year_format"><xliff:g id="year" example="2024">%2$d</xliff:g>年<xliff:g id="month" example="January">%1$s</xliff:g></string>
     <string name="search_placeholder">写真を検索…</string>
     <string name="of_photos_processed"><xliff:g id="percent" example="45">%1$d</xliff:g>%% 個の写真を処理済</string>
@@ -34,14 +35,11 @@
     <string name="action_save">保存</string>
     <string name="action_save_as_copy">コピーとして保存</string>
     <string name="reset_all">全てリセット</string>
-    <string name="reset">リセット</string>
     <string name="export_as_webp">WebPとしてエクスポート</string>
     <string name="export_as_png">PNGとしてエクスポート</string>
-    <string name="apply">適用</string>
     <string name="opacity">不透明度</string>
     <string name="thickness">太さ</string>
     <string name="color">色</string>
-    <string name="draw">描く</string>
     <string name="recent">最近</string>
     <string name="aspect_ratio">アスペクト比</string>
     <string name="set_as_wallpaper">壁紙として設定</string>

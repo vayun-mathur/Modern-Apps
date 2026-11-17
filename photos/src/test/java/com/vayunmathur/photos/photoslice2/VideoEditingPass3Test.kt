@@ -15,7 +15,7 @@ import com.vayunmathur.photos.data.VideoEditState
 import com.vayunmathur.photos.ui.CropOverlay
 import com.vayunmathur.photos.ui.VideoEditPreview
 import com.vayunmathur.photos.ui.VideoPlayer
-import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.platform.VideoEditViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

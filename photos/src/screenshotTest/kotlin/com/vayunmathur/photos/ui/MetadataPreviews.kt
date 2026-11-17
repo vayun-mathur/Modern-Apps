@@ -16,18 +16,18 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.LocalColumnCount
+import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.VideoData
-import com.vayunmathur.photos.util.Album
-import com.vayunmathur.photos.util.AlbumsUiState
-import com.vayunmathur.photos.util.DefaultAlbum
-import com.vayunmathur.photos.util.DefaultAlbumKind
-import com.vayunmathur.photos.util.GalleryActions
-import com.vayunmathur.photos.util.GalleryUiState
-import com.vayunmathur.photos.util.PeopleUiState
-import com.vayunmathur.photos.util.PersonCluster
+import com.vayunmathur.photos.platform.Album
+import com.vayunmathur.photos.platform.AlbumsUiState
+import com.vayunmathur.photos.platform.DefaultAlbum
+import com.vayunmathur.photos.platform.DefaultAlbumKind
+import com.vayunmathur.photos.platform.GalleryActions
+import com.vayunmathur.photos.platform.GalleryUiState
+import com.vayunmathur.photos.platform.PeopleUiState
+import com.vayunmathur.photos.platform.PersonCluster
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"

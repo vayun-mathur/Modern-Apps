@@ -1,4 +1,9 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.runClipIndexing
+import com.vayunmathur.photos.platform.runFaceIndexing
+import com.vayunmathur.photos.platform.runOCR
+import com.vayunmathur.photos.platform.setExifData
+import com.vayunmathur.photos.platform.syncPhotos
 
 import android.content.ContentProvider
 import android.content.ContentValues

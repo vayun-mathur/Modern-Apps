@@ -1,7 +1,7 @@
 package com.vayunmathur.photos.data
 
 import android.graphics.Bitmap
-import com.vayunmathur.photos.util.PhotosNative
+import com.vayunmathur.photos.platform.PhotosNative
 
 /**
  * Content-aware fill: removes the region marked by [holeMask] (normalized, at

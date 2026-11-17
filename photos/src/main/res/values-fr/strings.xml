@@ -17,7 +17,11 @@
     <string name="people_empty">Aucune personne n\'a encore été détectée. L\'analyse s\'effectue en arrière-plan : revenez vérifier une fois que vos photos auront été indexées.</string>
     <string name="label_gallery">Galerie</string>
     <string name="label_trash">Corbeille</string>
-    <string name="items_selected"><xliff:g id="count" example="5">%1$d</xliff:g> sélectionné</string>
+    <plurals name="items_selected">
+        <item quantity="one"><xliff:g id="count" example="5">%1$d</xliff:g> sélectionné</item>
+        <item quantity="many"><xliff:g id="count" example="5">%1$d</xliff:g> sélectionné</item>
+        <item quantity="other"><xliff:g id="count" example="5">%1$d</xliff:g> sélectionné</item>
+    </plurals>
     <string name="photo_widget_description">Une photo de votre galerie qui change automatiquement - appuyez pour en afficher une autre</string>
     <string name="label_secure_folder">Dossier sécurisé</string>
     <string name="action_save">Enregistrer</string>
@@ -33,7 +37,6 @@
         <item quantity="many"><xliff:g id="count" example="3">%1$d</xliff:g> personnes</item>
         <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> personnes</item>
     </plurals>
-    <string name="grant_storage_permission">Accorder l\'autorisation d\'accès au stockage</string>
     <string name="view_panorama">Voir le panorama</string>
     <string name="size">Taille</string>
     <string name="editor_desc_gradient_tool">Faire glisser pour tracer un dégradé allant de la couleur à la transparence.</string>
@@ -44,8 +47,11 @@
     <string name="in_white">Blanc d’entrée</string>
     <string name="tool_threshold">Seuil</string>
     <string name="color_blue">Bleu</string>
-    <string name="photos_indexed_for_text_search"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexées pour la recherche textuelle</string>
-    <string name="reset">Réinitialiser</string>
+    <plurals name="photos_indexed_for_text_search">
+        <item quantity="one"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexées pour la recherche textuelle</item>
+        <item quantity="many"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexées pour la recherche textuelle</item>
+        <item quantity="other"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexées pour la recherche textuelle</item>
+    </plurals>
     <string name="magentas">Magentas</string>
     <string name="tool_cat_retouch">Retouche</string>
     <string name="tool_presets">Préréglages</string>
@@ -93,7 +99,6 @@
     <string name="editor_desc_shape_line">Faire glisser pour tracer une ligne.</string>
     <string name="blend_hue">Teinte</string>
     <string name="blend_exclusion">Exclusion</string>
-    <string name="apply">Appliquer</string>
     <string name="tool_cat_desc_transform">Recadrez, redressez et faites pivoter.</string>
     <string name="how_close_in_color_a_pixel_must_be_to_th">Détermine à quel point la couleur d’un pixel doit être proche de celle de la zone touchée pour être sélectionné. Une valeur plus élevée sélectionne davantage de pixels.</string>
     <string name="strength">Intensité</string>
@@ -122,7 +127,6 @@
     <string name="adj_brightness">Luminosité</string>
     <string name="out_white">Blanc de sortie</string>
     <string name="color_orange">Orange</string>
-    <string name="open_settings">Ouvrir les paramètres</string>
     <string name="adj_vignette">Vignettage</string>
     <string name="editor_desc_fill">Toucher une zone pour la remplir avec la couleur choisie.</string>
     <string name="tool_cat_desc_paint">Remplissages, dégradés et formes.</string>
@@ -131,7 +135,11 @@
     <string name="editor_desc_levels">Régler le point noir, le point blanc et les tons moyens.</string>
     <string name="editor_desc_crop">Recadrer, redresser et faire pivoter la photo.</string>
     <string name="export_as_webp">Exporter au format WebP</string>
-    <string name="photos_indexed_for_visual_search"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexées pour la recherche visuelle</string>
+    <plurals name="photos_indexed_for_visual_search">
+        <item quantity="one"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexées pour la recherche visuelle</item>
+        <item quantity="many"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexées pour la recherche visuelle</item>
+        <item quantity="other"><xliff:g id="done" example="120">%1$d</xliff:g> / <xliff:g id="total" example="500">%2$d</xliff:g> photos indexées pour la recherche visuelle</item>
+    </plurals>
     <string name="tool_curves">Courbes</string>
     <string name="out_black">Noir de sortie</string>
     <string name="editor_desc_liquify">Déplacer et déformer les pixels.</string>
@@ -183,25 +191,20 @@
     <string name="editor_desc_invert">Inverser toutes les couleurs pour obtenir un négatif.</string>
     <string name="rotate">Faire pivoter</string>
     <string name="tool_bw">Noir et blanc</string>
-    <string name="draw">Dessiner</string>
     <string name="adj_tint">Teinte</string>
     <string name="blurs_the_selection_s_edge_so_edits_fade">Adoucit les bords de la sélection afin que les modifications s’estompent progressivement. 0 correspond à un bord net et précis.</string>
     <string name="blend_lighten">Éclaircir</string>
     <string name="thickness">Épaisseur</string>
-    <string name="this_app_needs_permission_to_manage_medi">Cette application a besoin de l’autorisation de gérer les fichiers multimédias pour fonctionner correctement. Veuillez accorder l’autorisation « Autoriser la gestion des médias » dans les paramètres.</string>
     <string name="font">Police</string>
     <string name="tool_posterize">Postérisation</string>
     <string name="tap_to_add_points">Appuyez pour ajouter des points (<xliff:g id="mode" example="New">%1$s</xliff:g>)</string>
-    <string name="blend_saturation">Saturation</string>
     <string name="levels">Niveaux</string>
     <string name="editor_desc_hsl">Ajuster la teinte, la saturation et la luminosité de chaque couleur.</string>
     <string name="drag_the_four_corner_handles_to_scale_ro">Faites glisser les quatre poignées d’angle pour redimensionner, faire pivoter, incliner ou déformer le calque actif. Appuyez sur « Appliquer » pour valider la transformation.</string>
-    <string name="media_management_permission_required">Autorisation de gestion des médias requise</string>
     <string name="combine">Combiner</string>
     <string name="colors_inverted_toggle_the_layer_s_visib">Couleurs inversées. Activez ou désactivez la visibilité du calque, ou supprimez le calque « Inverser » pour annuler.</string>
     <string name="blend_normal">Normal</string>
     <string name="editor_desc_color_balance">Modifier les couleurs des ombres, des tons moyens et des hautes lumières.</string>
-    <string name="tool_cat_filters">Filtres</string>
     <string name="locks_the_crop_to_a_fixed_width_height_s">Verrouille le recadrage selon un rapport largeur:hauteur fixe. « Libre » permet de recadrer dans n’importe quelles proportions.</string>
     <string name="add_mask">Ajouter un masque</string>
     <string name="draw_freehand_highlight_erase_or_tap_to">Dessinez à main levée, surlignez, effacez ou appuyez pour ajouter du texte. Appuyez de nouveau sur un outil pour modifier sa couleur et sa taille.</string>

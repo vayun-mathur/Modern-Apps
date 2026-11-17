@@ -1,4 +1,5 @@
 package com.vayunmathur.photos.util
+import com.vayunmathur.photos.platform.SecureFolderManager
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
