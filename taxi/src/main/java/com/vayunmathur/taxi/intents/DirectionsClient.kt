@@ -1,4 +1,4 @@
-package com.vayunmathur.taxi.ipc
+package com.vayunmathur.taxi.intents
 
 import android.content.Context
 import com.vayunmathur.library.intents.maps.DirectionsRequest

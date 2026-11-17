@@ -80,21 +80,23 @@ fun LyftBookingFlow(
     val scope = rememberCoroutineScope()
     val provider = remember { LyftProvider(context.applicationContext) }
     var step by remember { mutableStateOf<Step>(Step.LoadingPayments) }
+    val noPaymentMessage = stringResource(R.string.booking_no_payment)
+    val connectPromptMessage = stringResource(R.string.connect_prompt, "Lyft")
 
     LaunchedEffect(request) {
         step = when (val result = provider.paymentMethods()) {
             is PaymentMethodsResult.Success ->
                 if (result.accounts.isEmpty()) {
-                    Step.Failed(context.getString(R.string.booking_no_payment))
+                    Step.Failed(noPaymentMessage)
                 } else {
                     val default = result.accounts.firstOrNull { it.isDefault } ?: result.accounts.first()
                     Step.PickPayment(result.accounts, default.id)
                 }
             is PaymentMethodsResult.NotSignedIn ->
-                Step.Failed(context.getString(R.string.connect_prompt, "Lyft"))
+                Step.Failed(connectPromptMessage)
             is PaymentMethodsResult.Failed -> Step.Failed(result.message)
             PaymentMethodsResult.Unsupported ->
-                Step.Failed(context.getString(R.string.booking_no_payment))
+                Step.Failed(noPaymentMessage)
         }
     }
 
@@ -119,7 +121,7 @@ fun LyftBookingFlow(
                 }
                 is BookingResult.Failed -> Step.Failed(result.message)
                 BookingResult.Unsupported ->
-                    Step.Failed(context.getString(R.string.booking_no_payment))
+                    Step.Failed(noPaymentMessage)
             }
         }
     }

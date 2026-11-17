@@ -30,7 +30,7 @@ import com.vayunmathur.taxi.data.RideStatusResult
 import com.vayunmathur.taxi.data.lyft.LyftTokenStore
 import com.vayunmathur.taxi.data.uber.UberSession
 import com.vayunmathur.taxi.intents.RideEstimateIntent
-import com.vayunmathur.taxi.ipc.RideHandoffContract
+import com.vayunmathur.taxi.intents.RideHandoffContract
 import com.vayunmathur.taxi.network.uber.UberProvider
 import com.vayunmathur.taxi.platform.location.LocationProvider
 import com.vayunmathur.taxi.provider.QuoteRepository

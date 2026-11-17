@@ -67,7 +67,7 @@ fun RideTrackingScreen(rideId: String) {
     var ended by remember { mutableStateOf(false) }
     var confirmingCancel by remember { mutableStateOf(false) }
     var cancelling by remember { mutableStateOf(false) }
-    var cancelMessage by remember { mutableStateOf<String?>(null) }
+    var cancelResult by remember { mutableStateOf<CancelResult?>(null) }
 
     fun isDone() = ended || ride?.status?.isTerminal == true
 
@@ -189,12 +189,7 @@ fun RideTrackingScreen(rideId: String) {
                     cancelling = true
                     scope.launch {
                         val result = provider.cancelRide(rideId)
-                        cancelMessage = when (result) {
-                            is CancelResult.Done -> context.getString(R.string.ride_cancelled)
-                            is CancelResult.Failed -> context.getString(R.string.cancel_failed, result.message)
-                            CancelResult.Unsupported ->
-                                context.getString(R.string.cancel_failed, "unsupported")
-                        }
+                        cancelResult = result
                         cancelling = false
                         // A failed cancel leaves the ride live: only a confirmed
                         // cancel ends tracking, so the user can retry after a
@@ -214,12 +209,20 @@ fun RideTrackingScreen(rideId: String) {
         )
     }
 
-    cancelMessage?.let { message ->
+    cancelResult?.let { result ->
         AlertDialog(
-            onDismissRequest = { cancelMessage = null },
-            title = { Text(message) },
+            onDismissRequest = { cancelResult = null },
+            title = {
+                Text(
+                    when (result) {
+                        is CancelResult.Done -> stringResource(R.string.ride_cancelled)
+                        is CancelResult.Failed -> stringResource(R.string.cancel_failed, result.message)
+                        CancelResult.Unsupported -> stringResource(R.string.cancel_failed, "unsupported")
+                    },
+                )
+            },
             confirmButton = {
-                TextButton(onClick = { cancelMessage = null }) { Text(stringResource(UiR.string.close)) }
+                TextButton(onClick = { cancelResult = null }) { Text(stringResource(UiR.string.close)) }
             },
         )
     }

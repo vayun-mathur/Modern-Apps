@@ -44,8 +44,8 @@ internal class LyftRidesClient(
             ?: return BookingResult.Failed("This fare has no offer id — re-quote and try again")
         val riderId = session.tokens.userId()
 
-        // CreateTripRequest (defpackage/ura): rider_id(1), offer_id(2), origin(3), destination(4),
-        // ride_segment_creation_args(5). Sent as proto-JSON, as the offers call is.
+        // The create-trip request carries the rider, the offer, the origin and
+        // destination and the ride-segment creation arguments, sent as proto-JSON.
         val request = buildJsonObject {
             riderId?.let { put("rider_id", it) } // uint64 → string in proto-JSON
             put("offer_id", offerId)

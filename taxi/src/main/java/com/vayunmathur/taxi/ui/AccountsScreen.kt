@@ -61,6 +61,7 @@ fun AccountsScreen(onConnectLyft: () -> Unit) {
     var addingCard by remember { mutableStateOf(false) }
     var addCardError by remember { mutableStateOf<String?>(null) }
     var showSignOut by remember { mutableStateOf(false) }
+    val addCardUnsupportedMessage = stringResource(R.string.add_card_unsupported)
     var signingOut by remember { mutableStateOf(false) }
 
     suspend fun loadPayments() {
@@ -231,7 +232,7 @@ fun AccountsScreen(onConnectLyft: () -> Unit) {
                             addingCard = false
                         }
                         AddCardResult.Unsupported -> {
-                            addCardError = context.getString(R.string.add_card_unsupported)
+                            addCardError = addCardUnsupportedMessage
                             addingCard = false
                         }
                     }

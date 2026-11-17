@@ -128,8 +128,8 @@ internal class LyftCardTokenizer(
     fun parseConfigProto(bytes: ByteArray): TokenizerConfig? {
         val strategies = runCatching { ProtoMessage(bytes, 0, bytes.size).messages(1) }
             .getOrDefault(emptyList())
-        // stripe_card_setup_intent_data (tag 22): api_key(1), client_secret(2), setup_intent_id(3),
-        // stripe_api_version(4).
+        // The setup-intent strategy field carries the Stripe API key, client secret,
+        // setup-intent id and Stripe API version for the card tokenizer.
         strategies.firstNotNullOfOrNull { s ->
             s.message(SETUP_INTENT_STRATEGY_FIELD)?.let { d ->
                 d.string(API_KEY_FIELD)?.let { apiKey ->

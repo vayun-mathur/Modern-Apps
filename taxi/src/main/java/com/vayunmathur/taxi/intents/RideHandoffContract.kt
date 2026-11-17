@@ -1,4 +1,4 @@
-package com.vayunmathur.taxi.ipc
+package com.vayunmathur.taxi.intents
 
 import android.net.Uri
 import androidx.core.net.toUri

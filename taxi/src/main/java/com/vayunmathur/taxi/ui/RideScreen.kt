@@ -28,7 +28,7 @@ import com.vayunmathur.taxi.data.BookingTrip
 import com.vayunmathur.taxi.data.Place
 import com.vayunmathur.taxi.data.Provider
 import com.vayunmathur.taxi.data.QuoteResult
-import com.vayunmathur.taxi.ipc.DirectionsClient
+import com.vayunmathur.taxi.intents.DirectionsClient
 import com.vayunmathur.taxi.platform.deeplink.RideDeepLinks
 import com.vayunmathur.taxi.platform.location.LocationProvider
 import com.vayunmathur.taxi.provider.QuoteRepository

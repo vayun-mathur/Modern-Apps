@@ -19,19 +19,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
-// ----------------------------------------------------------------------------------------
-// Active-ride / driver-location parsing (PassengerRide, ReadDriverLocationResponse).
-// Field tags mirror the DTOs in api-notes §4; both JSON and binary protobuf are accepted,
-// matching the codec negotiation the rest of this class uses.
-//
-//   PassengerRide: ride_id(1), status(2), driver(6), vehicle(8), stops(9 repeated),
-//                  location(11 = live DriverLocation)
-//   DriverLocation: lat(1 double), lng(2 double), bearing(3 double)
-//   Driver:  first_name(5), last_name(6), image_url(7), phone_number(8), rating(9)
-//   RideVehicle: make(1), model(2), license_plate(3), image_url(4), color(6)
-//   RideStop: location(2 PlaceDTO), kind(3), completed(4), eta_seconds(6), location_v2(7)
-//   PlaceDTO: lat(1 double), lng(2 double), address(3), place_name(5)
-// ----------------------------------------------------------------------------------------
+// Active-ride and driver-location parsing. Field tags mirror the DTO notes for the
+// passenger ride and driver-location responses; both JSON and binary protobuf are
+// accepted, matching the codec negotiation the rest of this class uses. The ride
+// carries its id, status, driver, vehicle, repeated stops and live driver location,
+// and each nested message carries the fields named in those notes.
 
 internal class LyftRideParser(private val json: Json) {
 

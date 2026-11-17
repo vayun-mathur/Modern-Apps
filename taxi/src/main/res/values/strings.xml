@@ -7,19 +7,19 @@
 
     <!-- Ride planning -->
     <string name="destination">Destination</string>
-    <string name="use_current_location">Use current location</string>
     <string name="search_placeholder">Where to?</string>
-    <string name="compare_fares">Compare fares</string>
     <string name="pickup_label">Pickup</string>
     <string name="pickup_placeholder">Pickup location</string>
-    <string name="current_location">Current location</string>
     <string name="searching">Searching…</string>
     <string name="no_places_found">No fares available for this route</string>
     <string name="choose_ride">Choose a ride</string>
     <string name="comparing_fares">Comparing fares…</string>
     <string name="enter_destination">Enter a destination to see Lyft fares</string>
     <string name="best_price">Best price</string>
-    <string name="seats">%1$d seats</string>
+    <plurals name="seats">
+        <item quantity="one">%1$d seat</item>
+        <item quantity="other">%1$d seats</item>
+    </plurals>
     <string name="surge_short">%1$s× surge</string>
     <string name="connect_prompt">Connect your %1$s account to see live fares</string>
 
@@ -54,7 +54,6 @@
     <string name="payment_methods_error">Couldn\'t load payment methods: %1$s</string>
     <string name="payment_sign_in">Sign in to Lyft to manage payment methods</string>
     <string name="payment_default">Default</string>
-    <string name="payment_action_failed">%1$s</string>
 
     <!-- Add card -->
     <string name="add_card">Add card</string>
@@ -70,7 +69,6 @@
     <string name="card_expired">This card has expired</string>
     <string name="card_invalid_cvc">Enter a valid CVC</string>
     <string name="add_card_unsupported">Adding a card isn\'t available for this account</string>
-    <string name="add_card_failed">Couldn\'t add card: %1$s</string>
 
     <!-- In-app booking -->
     <string name="choose_payment">Choose payment</string>
@@ -83,9 +81,7 @@
     <string name="booking_dry_run_notice">Dry run — the request below is shown for verification and will NOT be sent. No charge occurs.</string>
     <string name="booking_dry_run_title">Dry run: create ride</string>
     <string name="booking_dry_run_done">Dry run complete — request built, nothing sent.</string>
-    <string name="ride_status">Ride status</string>
     <string name="ride_created">Ride created%1$s</string>
-    <string name="ride_status_line">Status: %1$s</string>
     <string name="cancel_ride">Cancel ride</string>
     <string name="cancel_ride_title">Cancel this ride?</string>
     <string name="cancel_ride_message">Cancelling may incur a fee. Lyft\'s response will be shown.</string>
@@ -94,16 +90,11 @@
     <!-- Live ride tracking -->
     <string name="tracking_title">Track ride</string>
     <string name="ride_in_progress">Ride in progress</string>
-    <string name="track_ride">Track</string>
-    <string name="driver_min_away">Driver is %1$d min away</string>
     <string name="driver_arriving_now">Driver is arriving now</string>
     <string name="status_en_route">Driver is on the way</string>
     <string name="status_arrived">Your driver has arrived</string>
     <string name="status_on_trip">On the way to your destination</string>
     <string name="driver_label">Driver</string>
-    <string name="vehicle_label">Vehicle</string>
-    <string name="license_plate">Plate %1$s</string>
-    <string name="driver_rating">%1$s ★</string>
     <string name="ride_ended">This ride has ended</string>
     <string name="tracking_loading">Loading ride…</string>
     <string name="tracking_error">Couldn\'t load ride: %1$s</string>

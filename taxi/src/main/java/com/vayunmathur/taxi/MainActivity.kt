@@ -15,7 +15,7 @@ import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.util.IntentLauncher
 import com.vayunmathur.taxi.data.BookingTrip
 import com.vayunmathur.taxi.data.RemoteImageFetchers
-import com.vayunmathur.taxi.ipc.RideHandoffContract
+import com.vayunmathur.taxi.intents.RideHandoffContract
 import com.vayunmathur.taxi.notifications.RideLiveUpdate
 
 /** Main Activity: a ma activity implementation for main activity. */

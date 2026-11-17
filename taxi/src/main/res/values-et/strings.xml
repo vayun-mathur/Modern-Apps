@@ -3,16 +3,10 @@
     <string name="tracking_title">Jälgi sõitu</string>
     <string name="ride_in_progress">Sõit on pooleli</string>
     <string name="driver_label">Juht</string>
-    <string name="vehicle_label">Sõiduk</string>
-    <string name="license_plate">Numbrimärk: %1$s</string>
-    <string name="driver_rating">%1$s ★</string>
     <string name="ride_ended">Sõit on lõppenud</string>
     <string name="search_placeholder">Kuhu tahad sõita?</string>
-    <string name="current_location">Praegune asukoht</string>
     <string name="app_name">Takso</string>
     <string name="destination">Sihtpunkt</string>
-    <string name="use_current_location">Kasuta praegust asukohta</string>
-    <string name="compare_fares">Võrdle hindu</string>
     <string name="phone_number">Telefoninumber</string>
     <string name="send_code">Saada kood</string>
     <string name="verification_code">Kinnituskood</string>
@@ -23,11 +17,12 @@
     <string name="comparing_fares">Võrdlen hindu…</string>
     <string name="enter_destination">Nägemaks Lyfti hindu sisesta sihtpunkt</string>
     <string name="best_price">Parim hind</string>
-    <string name="seats">%1$d kohta</string>
+    <plurals name="seats">
+        <item quantity="one">%1$d koht</item>
+        <item quantity="other">%1$d kohta</item>
+    </plurals>
     <string name="surge_short">%1$s× lisatasu</string>
     <string name="payment_default">Vaikimisi makseviis</string>
-    <string name="payment_set_default">Määra vaikimisi valikuks</string>
-    <string name="payment_action_failed">%1$s</string>
     <string name="add_card">Lisa kaart</string>
     <string name="add_card_title">Lisa kaart</string>
     <string name="card_number">Kaardi number</string>
@@ -46,7 +41,6 @@
     <string name="card_expired">See kaart on aegunud</string>
     <string name="card_invalid_cvc">Sisesta korrektne CVC-kood</string>
     <string name="add_card_unsupported">Kaardi lisamise võimalus pole selle kasutajakonto puhul saadaval</string>
-    <string name="add_card_failed">Kaardi lisamine ei õnnestunud: %1$s</string>
     <string name="choose_payment">Vali makseviis</string>
     <string name="confirm_booking">Kinnita broneering</string>
     <string name="book">Broneeri</string>
@@ -66,12 +60,10 @@
     <string name="payment_methods_error">Makseviiside laadimine ei õnnestu: %1$s</string>
     <string name="uber_captured_calls">Tuvastasin %1$d GraphQL-päringut</string>
     <string name="eta_minutes">%1$d minuti kaugusel</string>
-    <string name="ride_status_line">Olek: %1$s</string>
     <string name="cancel_ride">Tühista sõit</string>
     <string name="cancel_ride_title">Kas tühistad selle sõidu?</string>
     <string name="cancel_ride_message">Tühistamine võib olla tasuline. Näed ka Lyfti vastust.</string>
     <string name="keep_ride">Jäta sõidutellimus alles</string>
-    <string name="driver_min_away">Auto on %1$d minuti kaugusel</string>
     <string name="driver_arriving_now">Auto on just saabumas</string>
     <string name="status_en_route">Auto on teel</string>
     <string name="status_arrived">Sinu auto on saabunud</string>
@@ -91,10 +83,8 @@
     <string name="sign_out_title">Kas logid Lyfti teenusest välja?</string>
     <string name="sign_out_message">Järgnevaga tühistatakse sellest seadmest Lyfti sessioon. Sa saad alati uuesti sisse logida.</string>
     <string name="nav_ride">Sõit</string>
-    <string name="ride_status">Sõidu olek</string>
     <string name="ride_created">Sõit on loodud %1$s</string>
     <string name="booking_dry_run_title">Test: koosta sõit</string>
-    <string name="track_ride">Jälgi</string>
     <string name="connect_prompt">Nägemaks hindu reaalajas ühenda oma kasutajakonto teenuses %1$s</string>
     <string name="booking_charge_to">Sõidu tasu on %1$s.</string>
     <string name="booking_dry_run_notice">See on test - järgnev päring on kuvatud kontrollimise mõttes, pole veel edastatud ja kulusid veel ei teki.</string>

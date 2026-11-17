@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="use_current_location">Använd aktuell plats</string>
-    <string name="current_location">Aktuell plats</string>
     <string name="searching">Söker…</string>
     <string name="phone_number">Telefonnummer</string>
     <string name="verification_code">Verifieringskod</string>
@@ -10,7 +8,6 @@
     <string name="nav_ride">Resa</string>
     <string name="destination">Destination</string>
     <string name="search_placeholder">Vart vill du åka?</string>
-    <string name="compare_fares">Jämför priser</string>
     <string name="pickup_label">Upphämtning</string>
     <string name="pickup_placeholder">Upphämtningsplats</string>
     <string name="no_places_found">Inga priser är tillgängliga för den här rutten</string>
@@ -18,7 +15,10 @@
     <string name="comparing_fares">Jämför priser…</string>
     <string name="enter_destination">Ange en destination för att se Lyfts priser</string>
     <string name="best_price">Bästa pris</string>
-    <string name="seats">%1$d platser</string>
+    <plurals name="seats">
+        <item quantity="one">%1$d plats</item>
+        <item quantity="other">%1$d platser</item>
+    </plurals>
     <string name="surge_short">%1$s× pristillägg</string>
     <string name="connect_prompt">Anslut ditt %1$s-konto för att se aktuella priser</string>
     <string name="provider_uber">Uber</string>
@@ -42,7 +42,6 @@
     <string name="payment_methods_error">Kunde inte läsa in betalningsmetoder: %1$s</string>
     <string name="payment_sign_in">Logga in på Lyft för att hantera betalningsmetoder</string>
     <string name="payment_default">Standard</string>
-    <string name="payment_action_failed">%1$s</string>
     <string name="add_card">Lägg till kort</string>
     <string name="add_card_title">Lägg till ett kort</string>
     <string name="card_number">Kortnummer</string>
@@ -56,7 +55,6 @@
     <string name="card_expired">Kortet har gått ut</string>
     <string name="card_invalid_cvc">Ange en giltig CVC</string>
     <string name="add_card_unsupported">Det går inte att lägga till kort för det här kontot</string>
-    <string name="add_card_failed">Kunde inte lägga till kort: %1$s</string>
     <string name="choose_payment">Välj betalning</string>
     <string name="confirm_booking">Bekräfta bokning</string>
     <string name="book">Boka</string>
@@ -67,25 +65,18 @@
     <string name="booking_dry_run_notice">Testkörning. Begäran nedan visas för kontroll och skickas inte. Ingen debitering sker.</string>
     <string name="booking_dry_run_title">Testkörning: skapa resa</string>
     <string name="booking_dry_run_done">Testkörningen är klar. Begäran skapades, men inget skickades.</string>
-    <string name="ride_status">Resestatus</string>
     <string name="ride_created">Resa skapad%1$s</string>
-    <string name="ride_status_line">Status: %1$s</string>
     <string name="cancel_ride">Avboka resa</string>
     <string name="cancel_ride_title">Avboka den här resan?</string>
     <string name="cancel_ride_message">Avbokning kan medföra en avgift. Lyfts svar visas.</string>
     <string name="keep_ride">Behåll resa</string>
     <string name="tracking_title">Följ resan</string>
     <string name="ride_in_progress">Resa pågår</string>
-    <string name="track_ride">Följ</string>
-    <string name="driver_min_away">Föraren är %1$d min bort</string>
     <string name="driver_arriving_now">Föraren anländer nu</string>
     <string name="status_en_route">Föraren är på väg</string>
     <string name="status_arrived">Din förare har anlänt</string>
     <string name="status_on_trip">På väg till din destination</string>
     <string name="driver_label">Förare</string>
-    <string name="vehicle_label">Fordon</string>
-    <string name="license_plate">Registreringsnummer %1$s</string>
-    <string name="driver_rating">%1$s ★</string>
     <string name="ride_ended">Resan har avslutats</string>
     <string name="tracking_loading">Läser in resa…</string>
     <string name="tracking_error">Kunde inte läsa in resan: %1$s</string>

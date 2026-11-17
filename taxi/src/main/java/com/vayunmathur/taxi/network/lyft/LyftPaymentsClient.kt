@@ -46,14 +46,9 @@ internal class LyftPaymentsClient(private val session: LyftApiSession) {
 
     suspend fun setDefaultPaymentMethod(id: String): PaymentActionResult {
         val token = session.accessToken() ?: return PaymentActionResult.Failed("Not signed in to Lyft")
-        // UpdateChargeAccountMultiProvider (fvf0). The real client (t77.b via ech0, for
-        // MakePersonalDefault + TriggerDebtCollection) always sends four fields on this PUT:
-        //   default (tag 2, BoolValue)              = true
-        //   charge_account_id (tag 4, string)       = id
-        //   skip_debt_collection (tag 8, BoolValue) = false  (TriggerDebtCollection)
-        //   skip_persisted_challenge (tag 9, ...)   = false
-        // Omitting the two skip_* wrappers makes the server reject the update with 422, so we
-        // mirror the real client exactly.
+        // The real client always sends the default flag, the charge account id and the
+        // two skip flags on this update. Omitting either skip flag makes the server
+        // reject the update, so we mirror the real client exactly.
         val body = buildJsonObject {
             put("charge_account_id", id)
             put("default", true)
