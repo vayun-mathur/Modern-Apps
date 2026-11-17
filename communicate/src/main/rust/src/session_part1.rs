@@ -39,6 +39,22 @@ pub fn decrypt<R: rand_core::Rng + rand_core::CryptoRng>(
     state: &mut SessionState,
     msg: &SignalMessage,
 ) -> Result<Vec<u8>> {
+    // Verify-then-apply: run the whole decrypt (ratchet step, chain
+    // advance, skipped-key removal) on a clone and only commit it after
+    // MAC and padding verification succeed. A failed message must not
+    // consume its counter or burn a skipped key / ratchet step, or the
+    // genuine message with the same counter would be rejected later.
+    let mut working = state.clone();
+    let plaintext = decrypt_inner(rng, &mut working, msg)?;
+    *state = working;
+    Ok(plaintext)
+}
+
+fn decrypt_inner<R: rand_core::Rng + rand_core::CryptoRng>(
+    rng: &mut R,
+    state: &mut SessionState,
+    msg: &SignalMessage,
+) -> Result<Vec<u8>> {
     // A ratchet key we have not seen starts a new receiving chain.
     if !state.receiver_chains.iter().any(|c| c.ratchet_key == msg.ratchet_key) {
         ratchet(rng, state, &msg.ratchet_key);

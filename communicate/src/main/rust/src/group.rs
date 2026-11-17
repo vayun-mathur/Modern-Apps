@@ -224,6 +224,16 @@ pub fn encrypt<R: rand_core::Rng + rand_core::CryptoRng>(
 }
 
 pub fn decrypt(state: &mut SenderKeyState, ciphertext: &[u8]) -> Result<Vec<u8>> {
+    // Verify-then-apply: advance the chain / consume skipped keys only
+    // on a clone, committing after signature and padding checks pass.
+    // A failed decrypt must not consume its iteration.
+    let mut working = state.clone();
+    let plaintext = decrypt_inner(&mut working, ciphertext)?;
+    *state = working;
+    Ok(plaintext)
+}
+
+fn decrypt_inner(state: &mut SenderKeyState, ciphertext: &[u8]) -> Result<Vec<u8>> {
     let msg = SenderKeyMessage::parse(ciphertext)?;
     if msg.key_id != state.key_id {
         return Err(CryptoError("sender key id mismatch"));

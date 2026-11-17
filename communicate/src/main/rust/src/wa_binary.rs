@@ -183,29 +183,28 @@ impl Encoder {
         };
         let (user_part, server) = (&jid[..at], &jid[at + 1..]);
 
-        let (before_colon, device) = match user_part.find(':') {
-            Some(colon) => (&user_part[..colon], user_part[colon + 1..].parse::<u8>().unwrap_or(0)),
-            None => (user_part, 0),
+        // AD_JID carries exactly `<user>.<agent>:<device>` with numeric
+        // agent/device bytes. Only that canonical form may use it: splitting
+        // at the first '.' unconditionally would truncate a dotted user such
+        // as `a.b.c`, and using AD_JID for agent-only or device-only forms
+        // would synthesise the missing `:0`/`.0` on decode. Everything else
+        // keeps the full user part in a JID_PAIR so it round-trips losslessly.
+        let ad_form = if server == "s.whatsapp.net" {
+            parse_ad_jid(user_part)
+        } else {
+            None
         };
-        let (user, agent) = match before_colon.find('.') {
-            Some(dot) => (
-                &before_colon[..dot],
-                before_colon[dot + 1..].parse::<u8>().unwrap_or(0),
-            ),
-            None => (before_colon, 0),
-        };
-
-        if (device != 0 || agent != 0) && server == "s.whatsapp.net" {
+        if let Some((user, agent, device)) = ad_form {
             self.push(AD_JID);
             self.push(agent);
             self.push(device);
             self.write_string(user);
         } else {
             self.push(JID_PAIR);
-            if user.is_empty() {
+            if user_part.is_empty() {
                 self.push(LIST_EMPTY);
             } else {
-                self.write_string(user);
+                self.write_string(user_part);
             }
             self.write_string(server);
         }
@@ -253,6 +252,21 @@ impl Encoder {
             self.push((pack(chars[chars.len() - 1]) << 4) | 15);
         }
     }
+}
+
+/// Parses `<user>.<agent>:<device>` where agent and device are decimal
+/// `u8`s. Returns `None` for any other user shape (dotted names, agent-only,
+/// device-only, out-of-range or non-numeric suffixes).
+fn parse_ad_jid(user_part: &str) -> Option<(&str, u8, u8)> {
+    let (before_colon, device) = user_part.split_once(':')?;
+    if device.is_empty() || !device.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let (user, agent) = before_colon.split_once('.')?;
+    if agent.is_empty() || !agent.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    Some((user, agent.parse().ok()?, device.parse().ok()?))
 }
 
 fn index_of_single_token(token: &str) -> Option<u8> {

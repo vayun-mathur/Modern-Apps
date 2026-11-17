@@ -140,6 +140,13 @@ impl<'a> Decoder<'a> {
     fn read_node(&mut self) -> Result<Node> {
         let list_tag = self.byte()?;
         let list_size = self.read_list_size(list_tag)?;
+        // The encoder emits LIST_8,0 for tag "0", the empty-node marker.
+        // A normal node always has list_size >= 1 (its tag), so this size
+        // can only be that marker; accept it as Node::new("0") so encode
+        // and decode round-trip. LIST_EMPTY ([0]) stays invalid here.
+        if list_tag == LIST_8 && list_size == 0 {
+            return Ok(Node::new("0"));
+        }
         let tag = self
             .read(true)?
             .into_text()
