@@ -6,7 +6,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.maps.ui.RoadsLayer
 import com.vayunmathur.maps.ui.SatelliteLayer
 import com.vayunmathur.maps.ui.TransitStopsLayer
-import com.vayunmathur.maps.util.OfflineRouterLifecycle
+import com.vayunmathur.maps.data.OfflineRouterLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.PoiIndex
+import com.vayunmathur.maps.domain.latLngToSpatial
+import com.vayunmathur.maps.domain.spatialFromE7
+import com.vayunmathur.maps.domain.spatialRangeForBbox
 
 import kotlin.random.Random
 import kotlin.test.Test

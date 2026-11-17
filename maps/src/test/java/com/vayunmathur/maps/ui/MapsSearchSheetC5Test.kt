@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.SearchActions
+import com.vayunmathur.maps.platform.SearchResult
+import com.vayunmathur.maps.platform.SearchUiState
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -6,9 +9,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.util.SearchResult
-import com.vayunmathur.maps.util.SearchUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

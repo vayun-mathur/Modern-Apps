@@ -1,4 +1,11 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.domain.WALK_LEG_PLACEHOLDER
+import com.vayunmathur.maps.util.OfflineRouter
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.domain.arriveAt
+import com.vayunmathur.maps.domain.leaveAt
+import com.vayunmathur.maps.domain.phraseWalkLegs
+import com.vayunmathur.maps.domain.walkLegMinutes
 
 import com.vayunmathur.library.map.GeoPoint
 import kotlin.test.Test

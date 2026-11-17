@@ -13,8 +13,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.minutes

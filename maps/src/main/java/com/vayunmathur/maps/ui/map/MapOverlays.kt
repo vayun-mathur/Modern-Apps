@@ -1,7 +1,8 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.platform.TripItineraryState
 
 import androidx.compose.runtime.Composable
-import com.vayunmathur.maps.SheetRoute
+import com.vayunmathur.maps.ui.SheetRoute
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.transit.TripStop
 import com.vayunmathur.maps.data.transit.Departure
@@ -9,8 +10,7 @@ import com.vayunmathur.maps.ui.DeparturesSheet
 import com.vayunmathur.maps.ui.LayersSheet
 import com.vayunmathur.maps.ui.ParkingSheet
 import com.vayunmathur.maps.ui.TripSheet
-import com.vayunmathur.maps.util.DeparturesState
-import com.vayunmathur.maps.util.TripItineraryState
+import com.vayunmathur.maps.platform.DeparturesState
 
 /** The layer toggles, grouped so the signature does not carry eight loose parameters. */
 class LayerToggles(

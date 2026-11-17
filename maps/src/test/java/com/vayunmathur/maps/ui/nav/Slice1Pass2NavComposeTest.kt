@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.nav
+import com.vayunmathur.maps.domain.NavigationProgress
 
 import android.graphics.Canvas
 import androidx.activity.ComponentActivity
@@ -11,8 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.PostedLimit
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.domain.RouteService
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

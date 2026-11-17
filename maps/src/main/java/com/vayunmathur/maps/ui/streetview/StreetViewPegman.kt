@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui.streetview
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
@@ -59,7 +61,7 @@ private val PEG_SIZE = 48.dp
  * than opening an empty viewer.
  */
 @Composable
-fun BoxScope.StreetViewPegman(camera: CameraState, onOpenStreetView: (Double, Double) -> Unit = { _, _ -> }, modifier: Modifier = Modifier) {
+fun BoxScope.StreetViewPegman(camera: CameraState, modifier: Modifier = Modifier, onOpenStreetView: (Double, Double) -> Unit = { _, _ -> }) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val messenger = rememberMessenger()

@@ -1,4 +1,10 @@
 package com.vayunmathur.maps
+import com.vayunmathur.maps.data.PoiIndex
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.intents.RideEstimate
+import com.vayunmathur.maps.platform.ParkingViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 
 import android.Manifest
 import android.content.Intent
@@ -33,16 +39,16 @@ import com.vayunmathur.maps.ui.SavedPlacesPage
 import com.vayunmathur.maps.ui.settings.MapSettingsPage
 import com.vayunmathur.maps.data.MapPreferences
 import com.vayunmathur.maps.data.ThemeMode
-import com.vayunmathur.maps.util.MapTileCache
-import com.vayunmathur.maps.util.MapOverlayWorker
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.NavigationService
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.OfflineRouterRoadRoutes
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.MapSettingsViewModel
+import com.vayunmathur.maps.data.MapTileCache
+import com.vayunmathur.maps.platform.MapOverlayWorker
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.service.NavigationService
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.data.OfflineRouterRoadRoutes
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.MapSettingsViewModel
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import kotlinx.coroutines.flow.first
@@ -283,8 +289,8 @@ class MainActivity : MaActivity() {
         // unresolvable, handled by the caller.
         val first = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
-                com.vayunmathur.maps.util.PoiIndex.initialize(applicationContext)
-                com.vayunmathur.maps.util.PoiIndex.searchByName(
+                com.vayunmathur.maps.data.PoiIndex.initialize(applicationContext)
+                com.vayunmathur.maps.data.PoiIndex.searchByName(
                     query, near.latitude, near.longitude, limit = 1,
                 ).firstOrNull()
             }.getOrNull()
@@ -319,91 +325,4 @@ class MainActivity : MaActivity() {
             name = name, phone = null, website = null, openingHours = null,
             position = GeoPoint(lng, lat),
         )
-}
-
-/** Contract for route. */
-@Serializable
-sealed interface Route: NavKey {
-    /** Singleton holding map page state and operations. */
-    @Serializable
-    data object MapPage: Route
-    /** Singleton holding settings page state and operations. */
-    @Serializable
-    data object SettingsPage: Route
-    /** Singleton holding saved places page state and operations. */
-    @Serializable
-    data object SavedPlacesPage: Route
-    /** Full-screen Street View viewer for the nearest pano to a point. */
-    @Serializable
-    data class StreetView(val lat: Double, val lon: Double): Route
-    /** Turn-by-turn UI over the map, driven by the guidance engine. */
-    @Serializable
-    data class Navigating(val destLabel: String, val mode: RouteService.TravelMode): Route
-}
-
-@Composable
-fun Navigation(
-    viewModel: SelectedFeatureViewModel = viewModel(),
-    searchViewModel: MapsSearchViewModel = viewModel(),
-    savedPlacesViewModel: SavedPlacesViewModel = viewModel(),
-    settingsViewModel: MapSettingsViewModel = viewModel(),
-    parkingViewModel: com.vayunmathur.maps.util.ParkingViewModel = viewModel(),
-    transitViewModel: com.vayunmathur.maps.util.TransitStopsViewModel = viewModel(),
-) {
-    val backStack = rememberNavBackStack<Route>(Route.MapPage)
-    // A deep-link navigation starts the engine from the Activity, before
-    // any composition can push: the request is bridged through the VM and
-    // pushed here, once, when it lands.
-    val pendingNavigating by viewModel.pendingNavigating.collectAsState()
-    androidx.compose.runtime.LaunchedEffect(pendingNavigating) {
-        val request = pendingNavigating ?: return@LaunchedEffect
-        if (backStack.last() !is Route.Navigating) backStack.add(request)
-        viewModel.consumeNavigating()
-    }
-    MainNavigation(backStack) {
-        // The map is the list pane and settings/saved-places are detail panes,
-        // so medium widths show them side by side automatically. The map itself
-        // never splits: its own expanded side panel is separate (see MapPage),
-        // and these entries carry no shared-element keys — there is nothing to
-        // morph between a map surface and a settings form.
-        entry<Route.MapPage>(metadata = ListPage()) {
-            MapPage(
-                backStack,
-                viewModel,
-                savedPlacesViewModel,
-                searchViewModel,
-                settingsViewModel,
-                parkingViewModel,
-                transitViewModel,
-                onStartNavigating = { label, mode ->
-                    if (backStack.last() !is Route.Navigating) {
-                        backStack.add(Route.Navigating(label, mode))
-                    }
-                },
-            )
-        }
-        entry<Route.Navigating>(metadata = FullscreenPage()) {
-            MapPage(
-                backStack,
-                viewModel,
-                savedPlacesViewModel,
-                searchViewModel,
-                settingsViewModel,
-                parkingViewModel,
-                transitViewModel,
-                exitNavigating = { backStack.pop() },
-            )
-        }
-        entry<Route.SettingsPage>(metadata = ListDetailPage()) {
-            MapSettingsPage(backStack, settingsViewModel)
-        }
-        entry<Route.SavedPlacesPage>(metadata = ListDetailPage()) {
-            SavedPlacesPage(backStack, savedPlacesViewModel)
-        }
-        entry<Route.StreetView>(metadata = FullscreenPage()) { route ->
-            com.vayunmathur.maps.ui.streetview.StreetViewRoute(
-                lat = route.lat, lon = route.lon, onClose = { backStack.pop() },
-            )
-        }
-    }
 }

@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.map.CameraState
-import com.vayunmathur.maps.util.MapsSearchViewModel
+import com.vayunmathur.maps.platform.MapsSearchViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -60,15 +60,15 @@ class WideLayoutSlice3Test {
     @Test
     fun `search host starts closed`() {
         // Search starts as the Browse root of the sheet stack.
-        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>(arrayOf(com.vayunmathur.maps.SheetRoute.Browse))
-        assertEquals(com.vayunmathur.maps.SheetRoute.Browse, stack.last())
+        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.ui.SheetRoute>(arrayOf(com.vayunmathur.maps.ui.SheetRoute.Browse))
+        assertEquals(com.vayunmathur.maps.ui.SheetRoute.Browse, stack.last())
     }
 
     @Test
     fun `open search records the request without a query`() {
-        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>(arrayOf(com.vayunmathur.maps.SheetRoute.Browse))
-        stack.add(com.vayunmathur.maps.SheetRoute.Search(waypointIndex = 1))
-        val request = stack.last() as com.vayunmathur.maps.SheetRoute.Search
+        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.ui.SheetRoute>(arrayOf(com.vayunmathur.maps.ui.SheetRoute.Browse))
+        stack.add(com.vayunmathur.maps.ui.SheetRoute.Search(waypointIndex = 1))
+        val request = stack.last() as com.vayunmathur.maps.ui.SheetRoute.Search
         assertEquals(1, request.waypointIndex)
     }
 

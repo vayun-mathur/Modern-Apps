@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.PoiIndex
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +19,7 @@ import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberHaptics
 import com.vayunmathur.maps.R
-import com.vayunmathur.maps.util.PoiCategories
+import com.vayunmathur.maps.data.PoiCategories
 
 /**
  * One quick category: a display label, the offline index search [query] it runs on the

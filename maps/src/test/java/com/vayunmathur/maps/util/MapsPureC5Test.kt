@@ -1,4 +1,9 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.HitTable
+import com.vayunmathur.maps.data.PoiCategories
+import com.vayunmathur.maps.platform.DurationParts
+import com.vayunmathur.maps.platform.durationParts
+import com.vayunmathur.maps.platform.formatDistance
 
 import java.util.Locale
 import kotlin.time.DurationUnit

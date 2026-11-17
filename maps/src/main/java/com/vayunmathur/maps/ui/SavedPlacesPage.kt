@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +39,7 @@ import com.vayunmathur.maps.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SavedPlace
-import com.vayunmathur.maps.util.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
 
 /**
  * Saved-places screen (P6): view / edit / remove the user's saved places. The

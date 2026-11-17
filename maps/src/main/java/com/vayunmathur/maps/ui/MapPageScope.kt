@@ -1,6 +1,11 @@
 package com.vayunmathur.maps.ui
-
 import android.content.Context
+import com.vayunmathur.maps.domain.NavigationProgress
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.platform.SearchResult
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.TripItineraryState
+
 import com.vayunmathur.library.map.CameraState
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.map.MapBody
@@ -10,7 +15,6 @@ import com.vayunmathur.library.ui.Messenger
 import com.vayunmathur.library.ui.OverlayAction
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.Route
-import com.vayunmathur.maps.SheetRoute
 import com.vayunmathur.library.util.NavBackStack as SheetBackStack
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
@@ -18,20 +22,15 @@ import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.GooglePoiInfo
 import com.vayunmathur.maps.data.google.PoiSection
 import com.vayunmathur.maps.data.transit.TransitStop
-import com.vayunmathur.maps.ipc.FamilyMember
+import com.vayunmathur.maps.intents.FamilyMember
 import com.vayunmathur.maps.ui.map.MapChromeState
-import com.vayunmathur.maps.util.DeparturesState
-import com.vayunmathur.maps.util.TripItineraryState
-import com.vayunmathur.maps.util.MapSettingsViewModel
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.ParkingViewModel
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SearchResult
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TransitStopsViewModel
+import com.vayunmathur.maps.platform.DeparturesState
+import com.vayunmathur.maps.platform.MapSettingsViewModel
+import com.vayunmathur.maps.platform.ParkingViewModel
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 import kotlinx.coroutines.CoroutineScope
 
 /**

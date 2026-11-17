@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.SearchResult
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,7 +40,7 @@ private val GLYPH_SIZE = 8.dp
  * API, so each pin is an accent circle with a white centre dot positioned via Projection.
  */
 @Composable
-fun SearchResultLayer(results: List<com.vayunmathur.maps.util.SearchResult>, cameraState: CameraState) {
+fun SearchResultLayer(results: List<com.vayunmathur.maps.platform.SearchResult>, cameraState: CameraState) {
     if (results.isEmpty()) return
     val projection = cameraState.projection ?: return
     val accent = MaterialTheme.colorScheme.primary

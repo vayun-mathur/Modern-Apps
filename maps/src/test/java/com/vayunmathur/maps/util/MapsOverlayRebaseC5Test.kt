@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.MapOverlay
+import com.vayunmathur.maps.data.MapTileCache
+import com.vayunmathur.maps.platform.MapOverlayWorker
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

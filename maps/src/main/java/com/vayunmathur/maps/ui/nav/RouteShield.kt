@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.nav
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

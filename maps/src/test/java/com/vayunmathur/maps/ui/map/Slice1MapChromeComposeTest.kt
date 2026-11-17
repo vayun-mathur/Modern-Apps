@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.DeparturesState
+import com.vayunmathur.maps.platform.TripItineraryState
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,14 +17,12 @@ import com.vayunmathur.library.map.CameraPosition
 import com.vayunmathur.library.map.CameraState
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.R as MapsR
-import com.vayunmathur.maps.SheetRoute
+import com.vayunmathur.maps.ui.SheetRoute
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.transit.TransitStop
 import com.vayunmathur.maps.ui.streetview.StreetViewArrows
 import com.vayunmathur.maps.ui.streetview.StreetViewPegman
-import com.vayunmathur.maps.util.DeparturesState
-import com.vayunmathur.maps.util.TripItineraryState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

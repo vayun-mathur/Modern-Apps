@@ -18,8 +18,8 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SavedPlaceStore
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

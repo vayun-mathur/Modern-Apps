@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.PlacePanelActions
+import com.vayunmathur.maps.platform.rememberPlacePanelState
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,12 +15,10 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.rememberPlacePanelState
+import com.vayunmathur.maps.platform.PlacePanelState
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

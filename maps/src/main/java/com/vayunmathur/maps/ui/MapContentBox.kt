@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,10 +32,9 @@ import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.ui.map.LayerToggles
 import com.vayunmathur.maps.ui.map.MapChromeState
 import com.vayunmathur.maps.ui.map.MapFabStack
-import com.vayunmathur.maps.SheetRoute
-import com.vayunmathur.maps.popSheet
-import com.vayunmathur.maps.selectFeature
-import com.vayunmathur.maps.directionsTo
+import com.vayunmathur.maps.ui.popSheet
+import com.vayunmathur.maps.ui.selectFeature
+import com.vayunmathur.maps.ui.directionsTo
 import com.vayunmathur.maps.ui.map.MapOverlays
 import com.vayunmathur.maps.ui.map.MapSurface
 import com.vayunmathur.maps.ui.map.NavigationCameraFollow

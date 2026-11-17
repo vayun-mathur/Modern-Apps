@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -83,11 +84,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:scheme="http" />
-                <data android:host="www.google.com" android:pathPrefix="/maps" />
-                <data android:host="google.com" android:pathPrefix="/maps" />
+                <data android:host="www.google.com" />
+                <data android:host="google.com" />
                 <data android:host="maps.google.com" />
                 <data android:host="maps.app.goo.gl" />
-                <data android:host="goo.gl" android:pathPrefix="/maps" />
+                <data android:host="goo.gl" />
+                <data android:pathPrefix="/maps" />
             </intent-filter>
         </activity>
 
@@ -98,12 +100,16 @@
             android:permission="com.vayunmathur.maps.permissions.ACCESS_MAPS" />
 
         <service
-            android:name=".util.NavigationService"
+            android:name=".service.NavigationService"
             android:foregroundServiceType="location"
             android:exported="false" />
 
+        <!-- CarAppService must be exported so the car host can discover and
+             bind it; the host validates the app via the car-app handshake,
+             so ExportedService is a false positive here. -->
         <service
-            android:name=".car.MapsCarAppService"
+            android:name=".platform.MapsCarAppService"
+            tools:ignore="ExportedService"
             android:exported="true"
             android:foregroundServiceType="location">
             <intent-filter>

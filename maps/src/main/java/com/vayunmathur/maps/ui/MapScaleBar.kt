@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.isImperialUnits
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -13,7 +14,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.maps.util.isImperialUnits
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor

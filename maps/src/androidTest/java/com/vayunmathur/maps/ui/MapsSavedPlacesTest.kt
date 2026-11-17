@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.row
 
 import android.app.UiAutomation
 import android.content.Intent

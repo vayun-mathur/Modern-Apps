@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.data
+import com.vayunmathur.maps.platform.ParkingViewModel
 
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.DataStoreUtils
@@ -35,7 +36,7 @@ data class ParkingSpot(
  * Persistence for parking memory (P9), mirroring [SavedPlaceStore]'s thin
  * DataStore pattern: a single **active** spot plus a small **history** of
  * previously-cleared spots. Each field is one JSON string in DataStore;
- * [com.vayunmathur.maps.util.ParkingViewModel] owns the coroutine scope and
+ * [com.vayunmathur.maps.platform.ParkingViewModel] owns the coroutine scope and
  * turns these flows into `StateFlow`s.
  */
 class ParkingStore(private val ds: DataStoreUtils) {

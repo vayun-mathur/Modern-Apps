@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.PlacePanelActions
 
 import android.app.Application
 import android.content.Context
@@ -15,10 +16,9 @@ import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.GooglePoiInfo
 import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.util.OfflineRouterRoadRoutes
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.data.OfflineRouterRoadRoutes
+import com.vayunmathur.maps.platform.PlacePanelState
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

@@ -2,15 +2,14 @@ package com.vayunmathur.maps.ui
 
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.maps.SheetRoute
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.directionsTo
-import com.vayunmathur.maps.effectiveFeature
-import com.vayunmathur.maps.parkedRoutePlan
-import com.vayunmathur.maps.popSheet
-import com.vayunmathur.maps.selectFeature
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.ui.directionsTo
+import com.vayunmathur.maps.ui.effectiveFeature
+import com.vayunmathur.maps.ui.parkedRoutePlan
+import com.vayunmathur.maps.ui.popSheet
+import com.vayunmathur.maps.ui.selectFeature
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

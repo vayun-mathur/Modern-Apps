@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.data.google
+import androidx.core.graphics.createBitmap
+import com.vayunmathur.maps.data.nearest
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -182,7 +184,7 @@ object StreetViewDataSource {
         val ts = pano.tileSize.coerceAtLeast(1)
         val cols = (w + ts - 1) / ts
         val rows = (h + ts - 1) / ts
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val bmp = createBitmap(w, h)
         val canvas = Canvas(bmp)
 
         val placed = coroutineScope {

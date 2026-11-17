@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.data.regionId
 
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpRect

@@ -1,4 +1,9 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.data.regionId
+import com.vayunmathur.maps.data.PoiSearch
+import com.vayunmathur.maps.ui.SheetRoute
 
 import androidx.compose.ui.graphics.toArgb
 import com.vayunmathur.library.map.GeoBounds
@@ -9,7 +14,7 @@ import com.vayunmathur.library.map.TrafficColorTable
 import com.vayunmathur.maps.data.Feature1
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
-import com.vayunmathur.maps.ipc.FamilyMember
+import com.vayunmathur.maps.intents.FamilyMember
 import com.vayunmathur.maps.ui.FAMILY_LOCATION_LAYER_ID
 import com.vayunmathur.maps.ui.PARKING_PIN_LAYER_ID
 import com.vayunmathur.maps.ui.SAVED_PLACE_LAYER_ID
@@ -19,11 +24,11 @@ import com.vayunmathur.maps.ui.toSelectedSavedPlace
 import com.vayunmathur.maps.ui.toSelectedSearchResult
 import com.vayunmathur.maps.ui.theme.MapTokens
 import com.vayunmathur.maps.util.OfflineRouter
-import com.vayunmathur.maps.util.OfflineRouterTraffic
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TransitStopsViewModel
-import com.vayunmathur.maps.util.PoiCategories
-import com.vayunmathur.maps.util.SearchResult
+import com.vayunmathur.maps.data.OfflineRouterTraffic
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
+import com.vayunmathur.maps.data.PoiCategories
+import com.vayunmathur.maps.platform.SearchResult
 import kotlin.math.floor
 
 /**
@@ -285,11 +290,11 @@ internal suspend fun openVehicleTrip(
     viewModel: SelectedFeatureViewModel,
     transitViewModel: TransitStopsViewModel,
     sheetState: com.vayunmathur.library.ui.FreeHeightSheetState?,
-    sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>? = null,
+    sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.ui.SheetRoute>? = null,
 ): Boolean {
     val marker = pickVehicle(vehicles, projection, offset) ?: return false
     if (sheetStack != null) {
-        sheetStack.reset(com.vayunmathur.maps.SheetRoute.Browse, com.vayunmathur.maps.SheetRoute.Trip(marker.id, marker.position.latitude, marker.position.longitude))
+        sheetStack.reset(com.vayunmathur.maps.ui.SheetRoute.Browse, com.vayunmathur.maps.ui.SheetRoute.Trip(marker.id, marker.position.latitude, marker.position.longitude))
     } else {
         transitViewModel.openTrip(marker.id, marker.position.latitude, marker.position.longitude)
     }
@@ -330,20 +335,3 @@ internal fun regionMaskFor(
  * label wires the mask into that path. Name equality (normalised, see
  * [PoiSearch]) keeps a POI inside a city from being silently replaced by it.
  */
-internal fun adminUpgradeFor(
-    place: com.vayunmathur.maps.data.SpecificFeature.GenericPlace,
-    candidates: List<com.vayunmathur.maps.data.SpecificFeature>,
-): com.vayunmathur.maps.data.SpecificFeature? {
-    val wanted = com.vayunmathur.maps.util.PoiSearch.normalize(place.name)
-    if (wanted.isEmpty()) return null
-    return candidates.firstOrNull { candidate ->
-        val name = when (candidate) {
-            is com.vayunmathur.maps.data.SpecificFeature.Admin0Label -> candidate.name
-            is com.vayunmathur.maps.data.SpecificFeature.Admin1Label -> candidate.name
-            is com.vayunmathur.maps.data.SpecificFeature.Admin2Label -> candidate.name
-            else -> return@firstOrNull false
-        }
-        com.vayunmathur.maps.util.PoiSearch.normalize(name) == wanted &&
-            regionMaskFor(candidate) != null
-    }
-}

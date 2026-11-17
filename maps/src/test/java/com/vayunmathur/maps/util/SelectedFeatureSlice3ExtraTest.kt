@@ -1,6 +1,9 @@
 package com.vayunmathur.maps.util
-import com.vayunmathur.maps.toFeature
-import com.vayunmathur.maps.toSheetRoute
+import com.vayunmathur.maps.ui.toSheetRoute
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.ui.SheetRoute
+import com.vayunmathur.maps.ui.toFeature
 
 import android.app.Application
 import android.os.Looper
@@ -51,11 +54,11 @@ class SelectedFeatureSlice3ExtraTest {
         assertEquals(place, vm.sheetRoute.value.toFeature())
         // The tab is the Place route's section: a fresh Place defaults to
         // Details, writing PHOTOS back via copy, and a new place resets.
-        assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, (vm.sheetRoute.value as com.vayunmathur.maps.SheetRoute.Place).section)
-        vm.setSheetRoute((vm.sheetRoute.value as com.vayunmathur.maps.SheetRoute.Place).copy(section = com.vayunmathur.maps.data.google.PoiSection.PHOTOS))
-        assertEquals(com.vayunmathur.maps.data.google.PoiSection.PHOTOS, (vm.sheetRoute.value as com.vayunmathur.maps.SheetRoute.Place).section)
+        assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, (vm.sheetRoute.value as com.vayunmathur.maps.ui.SheetRoute.Place).section)
+        vm.setSheetRoute((vm.sheetRoute.value as com.vayunmathur.maps.ui.SheetRoute.Place).copy(section = com.vayunmathur.maps.data.google.PoiSection.PHOTOS))
+        assertEquals(com.vayunmathur.maps.data.google.PoiSection.PHOTOS, (vm.sheetRoute.value as com.vayunmathur.maps.ui.SheetRoute.Place).section)
         vm.setSheetRoute(barePlace("Other").toSheetRoute())
-        assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, (vm.sheetRoute.value as com.vayunmathur.maps.SheetRoute.Place).section)
+        assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, (vm.sheetRoute.value as com.vayunmathur.maps.ui.SheetRoute.Place).section)
         // Enrichment runs async against the (absent) POI sidecar; give it its chance
         pumpUntil(3000) { false }
         assertEquals("Other", (vm.sheetRoute.value.toFeature() as? SpecificFeature.GenericPlace)?.name)
@@ -91,7 +94,7 @@ class SelectedFeatureSlice3ExtraTest {
         val vm = SelectedFeatureViewModel(app)
         val from = SpecificFeature.GenericPlace("From", null, null, null, GeoPoint(-122.4, 37.8))
         val to = SpecificFeature.GenericPlace("To", null, null, null, GeoPoint(-122.3, 37.9))
-        vm.setSheetRoute(com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(from, to)))
+        vm.setSheetRoute(com.vayunmathur.maps.ui.SheetRoute.RoutePlan(listOf(from, to)))
         // No road pack in the sandbox: the flow must still terminate in a map of
         // mode -> EmptyRoute/null entries rather than hang or throw here.
         val got = withTimeoutOrNull(12000) {

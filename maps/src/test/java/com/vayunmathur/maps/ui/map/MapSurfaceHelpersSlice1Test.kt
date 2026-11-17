@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.data.regionId
+import com.vayunmathur.maps.platform.SearchResult
 
 import androidx.compose.ui.graphics.toArgb
 import com.vayunmathur.library.map.GeoBounds
@@ -6,14 +8,13 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.ipc.FamilyMember
+import com.vayunmathur.maps.intents.FamilyMember
 import com.vayunmathur.maps.ui.FAMILY_LOCATION_LAYER_ID
 import com.vayunmathur.maps.ui.PARKING_PIN_LAYER_ID
 import com.vayunmathur.maps.ui.SAVED_PLACE_LAYER_ID
 import com.vayunmathur.maps.ui.SEARCH_RESULT_LAYER_ID
 import com.vayunmathur.maps.ui.theme.mapTokens
-import com.vayunmathur.maps.util.OfflineRouterTraffic
-import com.vayunmathur.maps.util.SearchResult
+import com.vayunmathur.maps.data.OfflineRouterTraffic
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

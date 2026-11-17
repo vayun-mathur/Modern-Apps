@@ -1,6 +1,15 @@
 package com.vayunmathur.maps.ui
-import com.vayunmathur.maps.toFeature
-import com.vayunmathur.maps.toSheetRoute
+import com.vayunmathur.maps.data.ParkingSpot
+import com.vayunmathur.maps.data.SavedPlace
+import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.domain.NavigationProgress
+import com.vayunmathur.maps.platform.DeparturesState
+import com.vayunmathur.maps.platform.PlacePanelActions
+import com.vayunmathur.maps.platform.SearchActions
+import com.vayunmathur.maps.platform.SearchUiState
+import com.vayunmathur.maps.platform.TripItineraryState
+import com.vayunmathur.maps.ui.toFeature
+import com.vayunmathur.maps.ui.toSheetRoute
 
 import android.app.Application
 import androidx.compose.runtime.rememberCoroutineScope
@@ -20,18 +29,15 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.util.DeparturesState
-import com.vayunmathur.maps.util.MapSettingsViewModel
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.ParkingViewModel
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SearchUiState
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TripItineraryState
-import com.vayunmathur.maps.util.TransitStopsViewModel
+import com.vayunmathur.maps.platform.MapSettingsViewModel
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.platform.ParkingViewModel
+import com.vayunmathur.maps.platform.PlacePanelState
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 import kotlin.test.Test
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -65,7 +71,7 @@ class WideHostSlice3ExtraTest {
         googleServices: Boolean = false,
         layers: Boolean = false,
         searchBarVisible: Boolean = true,
-        navProgress: com.vayunmathur.maps.util.NavigationProgress? = null,
+        navProgress: com.vayunmathur.maps.domain.NavigationProgress? = null,
         parkingSpot: com.vayunmathur.maps.data.ParkingSpot? = null,
         savedPins: List<com.vayunmathur.maps.data.SavedPlace> = emptyList(),
         route: com.vayunmathur.maps.data.SpecificFeature.Route? = null,
@@ -160,9 +166,9 @@ class WideHostSlice3ExtraTest {
                 MapSidePanel(
                     searchOpen = true,
                     searchState = SearchUiState(query = "coffee"),
-                    searchActions = com.vayunmathur.maps.util.SearchActions.Noop,
+                    searchActions = com.vayunmathur.maps.platform.SearchActions.Noop,
                     panelState = PlacePanelState(),
-                    panelActions = com.vayunmathur.maps.util.PlacePanelActions.Noop,
+                    panelActions = com.vayunmathur.maps.platform.PlacePanelActions.Noop,
                     selectedFeature = null,
                     onSelectFeature = {},
                     route = null,
@@ -202,7 +208,7 @@ class WideHostSlice3ExtraTest {
     }
 
     @Test fun contentBoxNavigatingWithPinsAndParking() {
-        val progress = com.vayunmathur.maps.util.NavigationProgress(
+        val progress = com.vayunmathur.maps.domain.NavigationProgress(
             snappedPosition = GeoPoint(-122.4, 37.8), segmentIndex = 0, currentStepIndex = 0,
             distanceAlongRoute = 10.0, distanceRemaining = 500.0, distanceToNextManeuver = 120.0,
             fractionComplete = 0.2, etaEpochMs = System.currentTimeMillis() + 300_000,

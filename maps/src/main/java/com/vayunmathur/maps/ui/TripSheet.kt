@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,7 +41,7 @@ import com.vayunmathur.library.ui.rememberBottomSheetState
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.transit.TripItinerary
 import com.vayunmathur.maps.data.transit.TripStop
-import com.vayunmathur.maps.util.TripItineraryState
+import com.vayunmathur.maps.platform.TripItineraryState
 
 /**
  * Fixed height for the sheet's status states (loading / missing trip).

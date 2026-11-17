@@ -1,6 +1,13 @@
 package com.vayunmathur.maps
-import com.vayunmathur.maps.toFeature
-import com.vayunmathur.maps.toSheetRoute
+import com.vayunmathur.maps.data.MapPreferences
+import com.vayunmathur.maps.data.PoiIndex
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.ui.toSheetRoute
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.MapOverlayWorker
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.ui.toFeature
 
 import android.content.Intent
 import android.net.Uri
@@ -13,7 +20,7 @@ import com.vayunmathur.maps.data.MapLink
 import com.vayunmathur.maps.data.MapLinkParser
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.ThemeMode
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -172,7 +179,7 @@ class MainActivitySlice3Test {
         val link = MapLinkParser.parse("google.navigation:q=37.7749,-122.4194&mode=d")
         assertNotNull(link)
         assertTrue(link.navigate)
-        assertEquals(com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE, link.mode)
+        assertEquals(com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE, link.mode)
         assertEquals(37.7749, link.lat)
     }
 
@@ -356,16 +363,16 @@ class MainActivitySlice3Test {
     private fun mapOnePoiFixture(name: String, lat: Double, lon: Double) {
         val dir = java.nio.file.Files.createTempDirectory("slice3poi").toFile()
         fixtureDir = dir
-        dir.resolve(com.vayunmathur.maps.util.PoiIndex.NAMES_FILE)
+        dir.resolve(com.vayunmathur.maps.data.PoiIndex.NAMES_FILE)
             .writeBytes((name + "\u0000").toByteArray(Charsets.UTF_8))
         val rec = java.nio.ByteBuffer.allocate(14).order(java.nio.ByteOrder.LITTLE_ENDIAN)
         rec.putInt((lat * 1e7).toInt())
         rec.putInt((lon * 1e7).toInt())
         rec.putInt(0)
         rec.putShort(0)
-        dir.resolve(com.vayunmathur.maps.util.PoiIndex.INDEX_FILE).writeBytes(rec.array())
+        dir.resolve(com.vayunmathur.maps.data.PoiIndex.INDEX_FILE).writeBytes(rec.array())
         assertTrue(
-            com.vayunmathur.maps.util.PoiIndex.reload(dir),
+            com.vayunmathur.maps.data.PoiIndex.reload(dir),
             "one-POI fixture did not map",
         )
     }
@@ -374,7 +381,7 @@ class MainActivitySlice3Test {
     private fun clearPoiIndex() {
         val empty = java.nio.file.Files.createTempDirectory("slice3empty").toFile()
         try {
-            com.vayunmathur.maps.util.PoiIndex.reload(empty)
+            com.vayunmathur.maps.data.PoiIndex.reload(empty)
         } finally {
             empty.deleteRecursively()
         }
@@ -623,7 +630,7 @@ class MainActivitySlice3Test {
             assertEquals(
                 "Pier 39",
                 ViewModelProvider(activity)
-                    [com.vayunmathur.maps.util.MapsSearchViewModel::class.java].query.value,
+                    [com.vayunmathur.maps.platform.MapsSearchViewModel::class.java].query.value,
             )
             controller.destroy()
         } finally {
@@ -686,7 +693,7 @@ class MainActivitySlice3Test {
             assertEquals(
                 "unresolvable-place-xyzzy",
                 ViewModelProvider(activity)
-                    [com.vayunmathur.maps.util.MapsSearchViewModel::class.java].query.value,
+                    [com.vayunmathur.maps.platform.MapsSearchViewModel::class.java].query.value,
             )
             assertNull(openedOf(vm))
             controller.destroy()

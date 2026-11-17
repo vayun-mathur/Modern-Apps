@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.formatDistance
+import com.vayunmathur.maps.service.formatEta
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,11 +54,8 @@ import com.vayunmathur.maps.ui.nav.ArrivalSummary
 import com.vayunmathur.maps.ui.nav.ManeuverBanner
 import com.vayunmathur.maps.ui.nav.SpeedWidget
 import com.vayunmathur.maps.ui.nav.StepsSheet
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.formatDistance
-import com.vayunmathur.maps.util.formatEta
+import com.vayunmathur.maps.domain.NavigationProgress
+import com.vayunmathur.maps.domain.RouteService
 import com.vayunmathur.library.ui.R as UiR
 
 /**
@@ -75,13 +76,13 @@ fun NavigationOverlay(
     onRecenter: () -> Unit,
     onEndTrip: () -> Unit,
     onDismissArrival: () -> Unit,
+    modifier: Modifier = Modifier,
     postedLimit: PostedLimit? = null,
     northUp: Boolean = false,
     onToggleNorthUp: () -> Unit = {},
     destinationName: String? = null,
     darkBasemap: Boolean = false,
     route: RouteService.Route? = null,
-    modifier: Modifier = Modifier,
 ) {
     if (navState is NavigationSessionManager.NavState.Idle) return
 
@@ -109,28 +110,28 @@ fun NavigationOverlay(
                 ManeuverBanner(
                     progress = navState.progress,
                     steps = steps,
-                    modifier = navTopSlot(),
+                    modifier = Modifier.align(Alignment.TopCenter).navTopSlot(),
                 )
             }
             NavigationSessionManager.NavState.Starting -> {
                 StatusCard(
                     text = stringResource(R.string.nav_status_starting),
                     showProgress = true,
-                    modifier = navTopSlot(),
+                    modifier = Modifier.align(Alignment.TopCenter).navTopSlot(),
                 )
             }
             NavigationSessionManager.NavState.Recalculating -> {
                 StatusCard(
                     text = stringResource(R.string.nav_off_route),
                     showProgress = true,
-                    modifier = navTopSlot(),
+                    modifier = Modifier.align(Alignment.TopCenter).navTopSlot(),
                 )
             }
             is NavigationSessionManager.NavState.Failed -> {
                 FailureCard(
                     reason = navState.reason,
                     onDismiss = onDismissArrival,
-                    modifier = navTopSlot(),
+                    modifier = Modifier.align(Alignment.TopCenter).navTopSlot(),
                 )
             }
             else -> {}
@@ -230,8 +231,7 @@ fun NavigationOverlay(
  * copies of the same chain, which is how they would have drifted apart.
  */
 @Composable
-private fun BoxScope.navTopSlot(): Modifier = Modifier
-    .align(Alignment.TopCenter)
+private fun Modifier.navTopSlot(): Modifier = this
     .windowInsetsPadding(WindowInsets.statusBars)
     .padding(horizontal = Spacing.md, vertical = Spacing.sm)
 

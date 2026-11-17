@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -10,7 +11,7 @@ import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.MapPreferences
-import com.vayunmathur.maps.util.MapSettingsViewModel
+import com.vayunmathur.maps.platform.MapSettingsViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

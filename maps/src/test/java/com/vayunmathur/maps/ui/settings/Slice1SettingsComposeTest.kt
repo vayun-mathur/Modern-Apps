@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.settings
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
@@ -10,7 +11,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.R as MapsR
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.ThemeMode
-import com.vayunmathur.maps.util.MapSettingsViewModel
+import com.vayunmathur.maps.platform.MapSettingsViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule

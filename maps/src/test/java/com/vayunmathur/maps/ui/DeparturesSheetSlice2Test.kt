@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.DeparturesState
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -10,7 +11,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.transit.Departure
 import com.vayunmathur.maps.data.transit.TransitStop
-import com.vayunmathur.maps.util.DeparturesState
 import com.vayunmathur.library.map.GeoPoint
 import kotlin.test.Test
 import org.junit.Rule

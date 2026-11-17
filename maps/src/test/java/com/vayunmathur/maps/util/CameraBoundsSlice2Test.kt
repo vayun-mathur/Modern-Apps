@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.domain.searchBiasPoint
+import com.vayunmathur.maps.domain.visibleBoundsOrWorld
 
 import com.vayunmathur.library.map.GeoBounds
 import com.vayunmathur.library.map.GeoPoint

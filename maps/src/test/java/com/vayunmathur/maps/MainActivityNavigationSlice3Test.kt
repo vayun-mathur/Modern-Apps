@@ -1,4 +1,5 @@
 package com.vayunmathur.maps
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed

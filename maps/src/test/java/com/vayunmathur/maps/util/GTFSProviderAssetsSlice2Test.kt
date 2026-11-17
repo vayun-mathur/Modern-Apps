@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.GTFSProvider
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4

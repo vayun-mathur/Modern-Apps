@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.readAddress
+import com.vayunmathur.maps.platform.readContactAddresses
+import com.vayunmathur.maps.platform.readSessionAddresses
 
 import android.content.ContentProvider
 import android.content.ContentValues

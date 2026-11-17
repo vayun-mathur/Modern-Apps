@@ -1,6 +1,13 @@
 package com.vayunmathur.maps.ui.map
-
 import android.app.Activity
+import com.vayunmathur.maps.ui.SheetRoute
+import kotlinx.coroutines.withContext
+import com.vayunmathur.maps.data.PoiCategories
+import com.vayunmathur.maps.data.OfflineRouterTraffic
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.data.Wikidata
+import com.vayunmathur.maps.platform.SearchResult
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,25 +34,20 @@ import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.osmPlace
 import com.vayunmathur.maps.data.transit.TransitStop
-import com.vayunmathur.maps.SheetRoute
-import com.vayunmathur.maps.selectFeature
+import com.vayunmathur.maps.ui.selectFeature
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.maps.ipc.FamilyMember
+import com.vayunmathur.maps.intents.FamilyMember
 import com.vayunmathur.maps.ui.map.MapFeaturePicker.Companion.NATIVE_LABEL_LAYER_IDS
 import com.vayunmathur.maps.ui.map.MapFeaturePicker.Companion.toFeature1
 import com.vayunmathur.maps.ui.theme.mapTokens
-import com.vayunmathur.maps.util.DeparturesState
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.OfflineRouterTraffic
-import com.vayunmathur.maps.util.PoiCategories
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SearchResult
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TransitStopsViewModel
+import com.vayunmathur.maps.platform.DeparturesState
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.domain.NavigationProgress
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * The map surface: the renderer, its overlay layers, and what a tap on it means.
@@ -88,9 +90,9 @@ fun MapSurface(
     body: MapBody,
     moonTextures: MoonTextures?,
     selectedTransitStop: TransitStop?,
-    sheetStack: NavBackStack<SheetRoute>? = null,
     darkBasemap: Boolean,
     modifier: Modifier = Modifier,
+    sheetStack: NavBackStack<SheetRoute>? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
 

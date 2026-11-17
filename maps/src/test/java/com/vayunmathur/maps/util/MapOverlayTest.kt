@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.MapOverlay
 
 import java.io.File
 import java.nio.file.Files

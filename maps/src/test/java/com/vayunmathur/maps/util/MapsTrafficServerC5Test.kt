@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.OfflineRouterTraffic
 
 import java.io.BufferedReader
 import java.io.InputStreamReader

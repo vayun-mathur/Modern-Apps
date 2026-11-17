@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.domain.AlternativeRoutes
+import com.vayunmathur.maps.domain.RouteService
 
 import com.vayunmathur.library.map.GeoPoint
 import kotlin.test.Test

@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.FrameworkLocationManager
 
 import android.Manifest
 import android.app.Application

@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.launchContactPicker
+import com.vayunmathur.maps.platform.launchPostalPicker
+import com.vayunmathur.maps.platform.readContactAddresses
+import com.vayunmathur.maps.platform.readSessionAddresses
 
 import android.app.Application
 import android.content.ActivityNotFoundException

@@ -1,8 +1,9 @@
 package com.vayunmathur.maps.car
+import com.vayunmathur.maps.platform.CarManeuvers
 
 import androidx.car.app.navigation.model.LaneDirection
 import androidx.car.app.navigation.model.Maneuver
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

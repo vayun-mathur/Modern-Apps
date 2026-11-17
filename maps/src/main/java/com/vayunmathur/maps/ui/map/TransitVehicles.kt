@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.domain.visibleBoundsOrWorld
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -16,8 +17,7 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.map.MapMarker
 import com.vayunmathur.library.map.MarkerIcon
 import com.vayunmathur.maps.data.transit.TransitStop
-import com.vayunmathur.maps.util.OfflineRouterTransit
-import com.vayunmathur.maps.util.visibleBoundsOrWorld
+import com.vayunmathur.maps.data.OfflineRouterTransit
 import kotlinx.coroutines.delay
 
 /**

@@ -1,4 +1,11 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.launchContactPicker
+import com.vayunmathur.maps.platform.launchPostalPicker
+import com.vayunmathur.maps.platform.newSystemContactPickerIntent
+import com.vayunmathur.maps.platform.readAddress
+import com.vayunmathur.maps.platform.readContactAddresses
+import com.vayunmathur.maps.platform.readSessionAddresses
 
 import android.Manifest
 import android.app.Activity
@@ -30,12 +37,6 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.ui.rememberPermissionRequest
-import com.vayunmathur.maps.util.launchContactPicker
-import com.vayunmathur.maps.util.launchPostalPicker
-import com.vayunmathur.maps.util.newSystemContactPickerIntent
-import com.vayunmathur.maps.util.readAddress
-import com.vayunmathur.maps.util.readContactAddresses
-import com.vayunmathur.maps.util.readSessionAddresses
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.maps.R as MapsR
 import kotlinx.coroutines.Dispatchers

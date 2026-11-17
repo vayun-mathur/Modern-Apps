@@ -7,7 +7,7 @@ import com.vayunmathur.library.intents.maps.DirectionsRequest
 import com.vayunmathur.library.intents.maps.DirectionsResult
 import com.vayunmathur.library.intents.maps.DirectionsSegment
 import com.vayunmathur.library.map.GeoPoint
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

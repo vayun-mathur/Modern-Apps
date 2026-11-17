@@ -1,6 +1,12 @@
 package com.vayunmathur.maps.util
-import com.vayunmathur.maps.toFeature
-import com.vayunmathur.maps.toSheetRoute
+import com.vayunmathur.maps.data.Feature
+import com.vayunmathur.maps.data.Geometry
+import com.vayunmathur.maps.data.Point
+import com.vayunmathur.maps.ui.toSheetRoute
+import com.vayunmathur.maps.data.MappedPoiBytes
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.ui.toFeature
 
 import android.app.Application
 import android.os.Looper

@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui.nav
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.formatDistance
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,8 +28,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.ui.iconContent
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.formatDistance
+import com.vayunmathur.maps.domain.RouteService
 
 /**
  * Full turn-by-turn step list. Shows every remaining

@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.DeparturesState
+import com.vayunmathur.maps.platform.TripItineraryState
 
 import android.app.Application
 import androidx.compose.runtime.mutableStateOf
@@ -21,19 +23,17 @@ import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.popSheet
+import com.vayunmathur.maps.ui.popSheet
 import com.vayunmathur.maps.data.google.PoiSection
 import com.vayunmathur.maps.ui.map.MapChromeState
-import com.vayunmathur.maps.util.DeparturesState
-import com.vayunmathur.maps.util.MapSettingsViewModel
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.ParkingViewModel
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TripItineraryState
-import com.vayunmathur.maps.util.TransitStopsViewModel
+import com.vayunmathur.maps.platform.MapSettingsViewModel
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.platform.ParkingViewModel
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -160,9 +160,9 @@ class MapsContentBoxC5Test {
             DynamicTheme { scope.MapContentBox() }
         }
         rule.waitForIdle()
-        rule.runOnUiThread { captured!!.sheetStack.add(com.vayunmathur.maps.SheetRoute.Layers) }
+        rule.runOnUiThread { captured!!.sheetStack.add(com.vayunmathur.maps.ui.SheetRoute.Layers) }
         rule.waitForIdle()
-        assertEquals(com.vayunmathur.maps.SheetRoute.Layers, captured!!.sheetTop)
+        assertEquals(com.vayunmathur.maps.ui.SheetRoute.Layers, captured!!.sheetTop)
         // The layers sheet content renders (toggle rows).
         assertTrue(
             rule.onAllNodesWithText("Traffic", substring = true).fetchSemanticsNodes().isNotEmpty() ||
@@ -171,7 +171,7 @@ class MapsContentBoxC5Test {
         )
         rule.runOnUiThread { captured!!.sheetStack.popSheet() }
         rule.waitForIdle()
-        assertEquals(com.vayunmathur.maps.SheetRoute.Browse, captured!!.sheetTop)
+        assertEquals(com.vayunmathur.maps.ui.SheetRoute.Browse, captured!!.sheetTop)
     }
 
     @Test
@@ -195,10 +195,10 @@ class MapsContentBoxC5Test {
         repeat(50) {
             rule.mainClock.advanceTimeBy(100)
             rule.waitForIdle()
-            if (capturedScope!!.sheetTop == com.vayunmathur.maps.SheetRoute.Parking) return@repeat
+            if (capturedScope!!.sheetTop == com.vayunmathur.maps.ui.SheetRoute.Parking) return@repeat
             Thread.sleep(10)
         }
-        assertEquals(com.vayunmathur.maps.SheetRoute.Parking, capturedScope!!.sheetTop)
+        assertEquals(com.vayunmathur.maps.ui.SheetRoute.Parking, capturedScope!!.sheetTop)
         assertEquals(-122.35, camera!!.position.target.longitude, 0.01)
     }
 

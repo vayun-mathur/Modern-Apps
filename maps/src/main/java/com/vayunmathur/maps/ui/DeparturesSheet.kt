@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import kotlinx.coroutines.delay
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -43,8 +45,7 @@ import com.vayunmathur.library.ui.rememberBottomSheetState
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.transit.Departure
 import com.vayunmathur.maps.data.transit.TransitStop
-import com.vayunmathur.maps.util.DeparturesState
-import kotlinx.coroutines.delay
+import com.vayunmathur.maps.platform.DeparturesState
 
 /**
  * Fixed height for the board's status states (loading / no departures).

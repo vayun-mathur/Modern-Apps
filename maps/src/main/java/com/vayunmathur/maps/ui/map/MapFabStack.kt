@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope

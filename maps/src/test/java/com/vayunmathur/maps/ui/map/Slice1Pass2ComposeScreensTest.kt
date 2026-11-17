@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.domain.RouteService
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
@@ -45,30 +47,30 @@ class Slice1Pass2ComposeScreensTest {
             when (stage.intValue) {
                 0 -> com.vayunmathur.maps.ui.nav.ElevationChart(
                     profile = listOf(
-                        com.vayunmathur.maps.util.RouteService.ElevationPoint(0.0, 100.0),
-                        com.vayunmathur.maps.util.RouteService.ElevationPoint(500.0, 180.0),
-                        com.vayunmathur.maps.util.RouteService.ElevationPoint(1000.0, 130.0),
+                        com.vayunmathur.maps.domain.RouteService.ElevationPoint(0.0, 100.0),
+                        com.vayunmathur.maps.domain.RouteService.ElevationPoint(500.0, 180.0),
+                        com.vayunmathur.maps.domain.RouteService.ElevationPoint(1000.0, 130.0),
                     ),
                     ascentMeters = 95.4,
                     descentMeters = 44.6,
                 )
                 1 -> com.vayunmathur.maps.ui.nav.ElevationChart(
                     profile = listOf(
-                        com.vayunmathur.maps.util.RouteService.ElevationPoint(0.0, 100.0),
+                        com.vayunmathur.maps.domain.RouteService.ElevationPoint(0.0, 100.0),
                     ),
                     ascentMeters = 0.0, descentMeters = 0.0,
                 )
                 2 -> com.vayunmathur.maps.ui.nav.ElevationChart(
                     profile = listOf(
-                        com.vayunmathur.maps.util.RouteService.ElevationPoint(0.0, 50.0),
-                        com.vayunmathur.maps.util.RouteService.ElevationPoint(100.0, 50.0),
+                        com.vayunmathur.maps.domain.RouteService.ElevationPoint(0.0, 50.0),
+                        com.vayunmathur.maps.domain.RouteService.ElevationPoint(100.0, 50.0),
                     ),
                     ascentMeters = 0.0, descentMeters = 0.0,
                 )
                 else -> com.vayunmathur.maps.ui.nav.ElevationChart(
                     profile = listOf(
-                        com.vayunmathur.maps.util.RouteService.ElevationPoint(0.0, 10.0),
-                        com.vayunmathur.maps.util.RouteService.ElevationPoint(0.0, 99.0),
+                        com.vayunmathur.maps.domain.RouteService.ElevationPoint(0.0, 10.0),
+                        com.vayunmathur.maps.domain.RouteService.ElevationPoint(0.0, 99.0),
                     ),
                     ascentMeters = 0.0, descentMeters = 0.0,
                 )

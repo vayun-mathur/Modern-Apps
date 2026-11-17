@@ -2,7 +2,7 @@ package com.vayunmathur.maps.ui
 
 import com.vayunmathur.maps.ui.nav.LaneComboGlyph
 import com.vayunmathur.maps.ui.nav.laneComboGlyph
-import com.vayunmathur.maps.util.RouteService.API.Maneuver
+import com.vayunmathur.maps.domain.RouteService.API.Maneuver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

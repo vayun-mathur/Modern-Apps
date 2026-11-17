@@ -2,8 +2,8 @@ package com.vayunmathur.maps.data
 
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.map.GeoPoint
-import com.vayunmathur.maps.util.PoiIndex
-import com.vayunmathur.maps.util.Wikidata
+import com.vayunmathur.maps.data.PoiIndex
+import com.vayunmathur.maps.data.Wikidata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName

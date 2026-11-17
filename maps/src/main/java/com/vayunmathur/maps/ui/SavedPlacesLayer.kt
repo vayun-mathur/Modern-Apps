@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

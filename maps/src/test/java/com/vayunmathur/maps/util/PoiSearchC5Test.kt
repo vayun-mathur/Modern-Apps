@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.domain.spatialFromE7
+import com.vayunmathur.maps.data.PoiIndex
 
 import java.io.File
 import java.nio.ByteBuffer

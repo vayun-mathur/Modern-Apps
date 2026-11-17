@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.util.OfflineRouter
+import com.vayunmathur.maps.data.OfflineRouterTransit
+import com.vayunmathur.maps.domain.TransitClock
+import com.vayunmathur.maps.domain.transitClock
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -35,7 +39,7 @@ class MapsBoardPagesC5Test {
     )
 
     private fun pagesClass(): Class<*> =
-        Class.forName("com.vayunmathur.maps.util.OfflineRouterTransit\$BoardPages")
+        Class.forName("com.vayunmathur.maps.data.OfflineRouterTransit\$BoardPages")
 
     private fun newPages(max: Int, until: Instant?): Any {
         val clazz = pagesClass()

@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.GTFSProvider
 
 import android.content.Context
 import android.content.res.AssetManager

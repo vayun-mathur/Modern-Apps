@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.PlacePanelActions
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -10,8 +11,7 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.GooglePoiInfo
 import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
+import com.vayunmathur.maps.platform.PlacePanelState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule

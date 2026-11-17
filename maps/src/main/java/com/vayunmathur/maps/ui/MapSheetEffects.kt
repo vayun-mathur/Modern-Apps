@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.string
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
@@ -18,12 +19,12 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.effectiveFeature
-import com.vayunmathur.maps.popSheet
-import com.vayunmathur.maps.replaceFeature
-import com.vayunmathur.maps.selectFeature
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.ui.effectiveFeature
+import com.vayunmathur.maps.ui.popSheet
+import com.vayunmathur.maps.ui.replaceFeature
+import com.vayunmathur.maps.ui.selectFeature
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlinx.coroutines.launch
 
 /**
@@ -44,9 +45,9 @@ internal fun MapSheetEffects(
     isNavigating: Boolean,
     sheetState: FreeHeightSheetState?,
     searchSheetState: FreeHeightSheetState?,
-    sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute> =
-        com.vayunmathur.library.util.NavBackStack(arrayOf(com.vayunmathur.maps.SheetRoute.Browse)),
-    searchRoute: com.vayunmathur.maps.SheetRoute.Search? = null,
+    sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.ui.SheetRoute> =
+        com.vayunmathur.library.util.NavBackStack(arrayOf(com.vayunmathur.maps.ui.SheetRoute.Browse)),
+    searchRoute: com.vayunmathur.maps.ui.SheetRoute.Search? = null,
 ) {
     val searchRequest = searchRoute
 
@@ -165,7 +166,7 @@ internal fun MapSheetEffects(
     // found what they were looking for by pointing at it. Guarded the same way
     // as the sheet effects below: in wide mode the panel reads this state directly.
     LaunchedEffect(selectedFeature, wide) {
-        if (!wide && selectedFeature != null && sheetStack.last() is com.vayunmathur.maps.SheetRoute.Search) {
+        if (!wide && selectedFeature != null && sheetStack.last() is com.vayunmathur.maps.ui.SheetRoute.Search) {
             sheetStack.pop()
         }
     }

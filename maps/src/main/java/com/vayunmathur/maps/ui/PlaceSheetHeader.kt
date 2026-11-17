@@ -1,4 +1,9 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.PlacePanelState
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.domain.AlternativeRoutes
+import com.vayunmathur.maps.platform.rememberPlacePanelState
 
 import android.content.Context
 import android.content.Intent
@@ -40,12 +45,9 @@ import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.GooglePoiInfo
 import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.ipc.rememberOrderDeepLink
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.rememberPlacePanelState
+import com.vayunmathur.maps.intents.rememberOrderDeepLink
+import com.vayunmathur.maps.platform.PlacePanelActions
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 
 /**
  * The fixed part of a place sheet: name, category · price, rating, open-now, the
@@ -190,8 +192,8 @@ private fun PlaceSheetHeaderContent(
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val userPos = panelState.userPosition
         val distanceText = if (userPos != null && (userPos.latitude != 0.0 || userPos.longitude != 0.0)) {
-            com.vayunmathur.maps.util.formatDistance(
-                com.vayunmathur.maps.util.AlternativeRoutes.run {
+            com.vayunmathur.maps.platform.formatDistance(
+                com.vayunmathur.maps.domain.AlternativeRoutes.run {
                     // Straight-line distance for the subtitle line; the
                     // routed distance lives on the route sheet.
                     kotlin.math.hypot(
@@ -204,7 +206,7 @@ private fun PlaceSheetHeaderContent(
         } else {
             null
         }
-        PlaceHeader(feature.name, poi, feature as? SpecificFeature.GenericPlace, distanceText)
+        PlaceHeader(feature.name, poi, feature as? SpecificFeature.GenericPlace, distanceText = distanceText)
         PlaceActionRow(
             feature = feature,
             // OSM first, Google as the fallback. These used to be handed the OSM
@@ -276,8 +278,8 @@ private fun PlaceHeader(
     name: String,
     poi: GooglePoiInfo?,
     offline: SpecificFeature.GenericPlace?,
-    distanceText: String? = null,
     modifier: Modifier = Modifier,
+    distanceText: String? = null,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(name, style = MaterialTheme.typography.headlineSmall)

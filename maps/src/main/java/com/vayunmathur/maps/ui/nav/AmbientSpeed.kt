@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.nav
+import com.vayunmathur.maps.platform.isImperialUnits
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -7,7 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.vayunmathur.maps.data.PostedLimit
-import com.vayunmathur.maps.util.isImperialUnits
 
 private const val MPH_TO_MPS = 0.44704
 private const val KMH_TO_MPS = 1.0 / 3.6

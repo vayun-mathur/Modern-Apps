@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.ui.settings
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.formatDistance
+import com.vayunmathur.maps.platform.isImperialUnits
+import com.vayunmathur.maps.service.NavigationService
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +14,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -24,8 +29,8 @@ import com.vayunmathur.maps.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.ThemeMode
-import com.vayunmathur.maps.util.MapOverlayWorker
-import com.vayunmathur.maps.util.MapSettingsViewModel
+import com.vayunmathur.maps.platform.MapOverlayWorker
+import com.vayunmathur.maps.platform.MapSettingsViewModel
 import com.vayunmathur.library.util.NavBackStack
 
 /**
@@ -35,8 +40,8 @@ import com.vayunmathur.library.util.NavBackStack
  * [MapSettingsViewModel] (DataStore).
  *
  * Distance/speed units are NOT a setting here — they follow the device's
- * regional settings via [com.vayunmathur.maps.util.formatDistance] /
- * [com.vayunmathur.maps.util.isImperialUnits].
+ * regional settings via [com.vayunmathur.maps.platform.formatDistance] /
+ * [com.vayunmathur.maps.platform.isImperialUnits].
  *
  * Wiring of the persisted values into behaviour lives at the point of use:
  *  - theme → `MainActivity` passes it to `DynamicTheme`,
@@ -153,7 +158,7 @@ private fun updateSupportingText(appliedSeq: Long, pendingBytes: Long, lastCheck
         return stringResource(R.string.settings_map_update_pending, mb)
     }
     if (appliedSeq > 0) {
-        return stringResource(R.string.settings_map_update_applied, appliedSeq)
+        return pluralStringResource(R.plurals.settings_map_update_applied, appliedSeq.toInt(), appliedSeq)
     }
     if (lastCheck > 0) {
         return stringResource(R.string.settings_map_update_current)

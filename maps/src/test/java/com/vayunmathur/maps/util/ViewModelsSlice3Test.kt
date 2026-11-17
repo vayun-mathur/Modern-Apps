@@ -1,6 +1,15 @@
 package com.vayunmathur.maps.util
-import com.vayunmathur.maps.toFeature
-import com.vayunmathur.maps.toSheetRoute
+import com.vayunmathur.maps.ui.toSheetRoute
+import com.vayunmathur.maps.platform.DeparturesState
+import com.vayunmathur.maps.platform.MapSettingsViewModel
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.ParkingViewModel
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
+import com.vayunmathur.maps.platform.TripItineraryState
+import com.vayunmathur.maps.ui.SheetRoute
+import com.vayunmathur.maps.ui.toFeature
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -9,9 +18,9 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.parkedRoutePlan
-import com.vayunmathur.maps.popSheet
-import com.vayunmathur.maps.selectFeature
+import com.vayunmathur.maps.ui.parkedRoutePlan
+import com.vayunmathur.maps.ui.popSheet
+import com.vayunmathur.maps.ui.selectFeature
 import com.vayunmathur.maps.data.ThemeMode
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -109,7 +118,7 @@ class ViewModelsSlice3Test {
     @Test
     fun `selecting resets the poi section to details`() {
         // A fresh Place route carries the Details section by default.
-        val route = place().toSheetRoute() as com.vayunmathur.maps.SheetRoute.Place
+        val route = place().toSheetRoute() as com.vayunmathur.maps.ui.SheetRoute.Place
         assertEquals(com.vayunmathur.maps.data.google.PoiSection.DETAILS, route.section)
     }
 
@@ -137,17 +146,17 @@ class ViewModelsSlice3Test {
         // The parked route is just a RoutePlan under a Place on the stack:
         // parkedRoutePlan reads it, and popping the place returns to it.
         val route = SpecificFeature.Route(waypoints = listOf(place()))
-        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>(
-            arrayOf(com.vayunmathur.maps.SheetRoute.Browse),
+        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.ui.SheetRoute>(
+            arrayOf(com.vayunmathur.maps.ui.SheetRoute.Browse),
         )
         stack.selectFeature(route)
         stack.selectFeature(place())
         assertEquals(
-            com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(place())),
+            com.vayunmathur.maps.ui.SheetRoute.RoutePlan(listOf(place())),
             stack.backStack.parkedRoutePlan(),
         )
         stack.popSheet()
-        assertEquals(com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(place())), stack.last())
+        assertEquals(com.vayunmathur.maps.ui.SheetRoute.RoutePlan(listOf(place())), stack.last())
     }
 
     // --- SavedPlacesViewModel ---

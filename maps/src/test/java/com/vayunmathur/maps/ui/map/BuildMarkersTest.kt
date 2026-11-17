@@ -1,8 +1,8 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.platform.SearchResult
 
 import com.vayunmathur.maps.data.SavedPlace
-import com.vayunmathur.maps.ipc.FamilyMember
-import com.vayunmathur.maps.util.SearchResult
+import com.vayunmathur.maps.intents.FamilyMember
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

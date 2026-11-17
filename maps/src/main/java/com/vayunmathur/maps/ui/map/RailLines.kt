@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.domain.visibleBoundsOrWorld
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.map.CameraState
@@ -16,8 +18,7 @@ import com.vayunmathur.library.map.RouteSegment
 import com.vayunmathur.library.map.RouteStyle
 import com.vayunmathur.maps.data.transit.TransitStop
 import com.vayunmathur.maps.ui.theme.MapTokens
-import com.vayunmathur.maps.util.OfflineRouterTransit
-import com.vayunmathur.maps.util.visibleBoundsOrWorld
+import com.vayunmathur.maps.data.OfflineRouterTransit
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -51,7 +52,7 @@ private const val RAIL_RECENTER_DEGREES = 0.02
  */
 private fun packHexColor(hex: String?): Color? =
     hex?.takeIf { it.length == 6 }?.let {
-        runCatching { Color(android.graphics.Color.parseColor("#$it")) }.getOrNull()
+        runCatching { Color(("#$it").toColorInt()) }.getOrNull()
     }
 
 /**

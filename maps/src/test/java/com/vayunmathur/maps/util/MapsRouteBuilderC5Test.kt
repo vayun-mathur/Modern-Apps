@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.util.OfflineRouter
+import com.vayunmathur.maps.data.OfflineRouterRouteBuilder
+import com.vayunmathur.maps.domain.RouteService
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

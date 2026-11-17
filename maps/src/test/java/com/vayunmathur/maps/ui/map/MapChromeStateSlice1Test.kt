@@ -1,9 +1,10 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.ui.SheetRoute
 
 import androidx.compose.runtime.mutableStateOf
 import com.vayunmathur.maps.data.PostedLimit
 import com.vayunmathur.maps.ui.MapCategory
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -49,8 +50,8 @@ class MapChromeStateSlice1Test {
     fun `dialog destinations are mutually exclusive as stack tops`() {
         // Layers/Parking moved to SheetRoute dialog destinations: the stack
         // top is the one sheet showing, so two can never be up at once.
-        val stack = listOf(com.vayunmathur.maps.SheetRoute.Browse, com.vayunmathur.maps.SheetRoute.Layers)
-        assertEquals(com.vayunmathur.maps.SheetRoute.Layers, stack.last())
+        val stack = listOf(com.vayunmathur.maps.ui.SheetRoute.Browse, com.vayunmathur.maps.ui.SheetRoute.Layers)
+        assertEquals(com.vayunmathur.maps.ui.SheetRoute.Layers, stack.last())
     }
 
     @Test

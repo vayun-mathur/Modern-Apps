@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.nav
+import com.vayunmathur.maps.data.string
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.formatDistance
+import com.vayunmathur.maps.platform.formatDuration
+import com.vayunmathur.maps.service.formatEta
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
@@ -11,24 +15,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.ButtonDefaults
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.IconHome
-import com.vayunmathur.library.ui.IconWork
-import androidx.compose.ui.unit.dp as dpAlias
-import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.LocalContentColor
 import com.vayunmathur.library.ui.MaterialTheme
@@ -39,19 +37,12 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.verticalShape
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.ipc.RideEstimateClient
-import com.vayunmathur.maps.ipc.RideHandoffContract
-import com.vayunmathur.maps.ipc.rememberRideEstimate
-import com.vayunmathur.maps.util.NavigationService
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.formatDistance
-import com.vayunmathur.maps.util.formatDuration
-import com.vayunmathur.maps.util.formatEta
+import com.vayunmathur.maps.intents.RideEstimateClient
+import com.vayunmathur.maps.intents.rememberRideEstimate
+import com.vayunmathur.maps.service.NavigationService
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.domain.RouteService
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 
 /**
  * The directions panel: one segment per travel mode, then the turn-by-turn step list.
@@ -71,9 +62,9 @@ fun RouteSheet(
     route: Map<RouteService.TravelMode, RouteService.RouteType?>,
     selectedRouteType: RouteService.TravelMode,
     setSelectedRouteType: (RouteService.TravelMode) -> Unit,
+    modifier: Modifier = Modifier,
     navState: NavigationSessionManager.NavState = NavigationSessionManager.NavState.Idle,
     userPosition: GeoPoint? = null,
-    modifier: Modifier = Modifier,
     onStartNavigation: ((String, RouteService.TravelMode) -> Unit)? = null,
     alternatives: List<RouteService.Route> = emptyList(),
     selectedAlternative: RouteService.Route? = null,
@@ -339,114 +330,3 @@ fun RouteSheet(
     }
 }
 
-/**
- * "Towards X · 4 stops" for a transit step, dropping whichever half the feed
- * doesn't provide (headsign is optional in GTFS; a single-hop ride has no
- * intermediate stops).
- */
-@Composable
-internal fun transitSupportingText(details: RouteService.API.TransitDetails): String {
-    val headsign = details.headsign.takeIf { it.isNotBlank() }
-        ?.let { stringResource(R.string.transit_towards, it) }
-    val stops = details.stopCount.takeIf { it > 0 }?.let {
-        pluralStringResource(R.plurals.transit_stop_count, it, it)
-    }
-    return when {
-        headsign != null && stops != null ->
-            stringResource(R.string.transit_detail_separator, headsign, stops)
-        else -> headsign ?: stops ?: ""
-    }
-}
-
-/**
- * Genuinely different alternatives for the shown mode (already gated by
- * [com.vayunmathur.maps.util.AlternativeRoutes]): duration/distance, and
- * for transit the boarded lines, so the difference is visible rather than
- * asserted. Tapping one swaps it in as the shown route; tapping the
- * selected one again returns to the primary.
- */
-@Composable
-private fun AlternativesSection(
-    alternatives: List<RouteService.Route>,
-    selected: RouteService.Route?,
-    onSelect: (RouteService.Route?) -> Unit,
-) {
-    val context = LocalContext.current
-    Column(Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm)) {
-        Text(
-            stringResource(R.string.alternative_routes_title),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        alternatives.forEach { alternative ->
-            val lines = alternative.step.mapNotNull {
-                it.transitDetails?.transitLine?.let { line -> line.nameShort ?: line.name }
-            }.distinct()
-            RouteOptionCard(
-                route = alternative,
-                selected = selected == alternative,
-                onClick = { onSelect(if (selected == alternative) null else alternative) },
-                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
-            )
-        }
-    }
-}
-
-/**
- * One selectable route option: big duration, then distance/arrival and —
- * for transit — the boarded line chips in their line colours. The shown
- * route's card is highlighted with the primary outline.
- */
-@Composable
-internal fun RouteOptionCard(
-    route: RouteService.Route,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    val lines = route.step.mapNotNull { it.transitDetails?.transitLine }.distinctBy { it.name }
-    Card(
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .then(
-                if (selected) {
-                    Modifier.border(
-                        2.dp, MaterialTheme.colorScheme.primary,
-                        androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            ),
-    ) {
-        Column(Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    formatDuration(context, route.duration),
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                route.arrivalTime?.let { arrival ->
-                    Text(
-                        " · $arrival",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = Spacing.sm),
-                    )
-                }
-            }
-            Text(
-                formatDistance(route.distanceMeters),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (lines.isNotEmpty()) {
-                Row(
-                    Modifier.padding(top = Spacing.sm),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    lines.forEach { line -> LineBadge(line.nameShort ?: line.name, line.color) }
-                }
-            }
-        }
-    }
-}

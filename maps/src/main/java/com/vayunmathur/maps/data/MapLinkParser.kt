@@ -1,6 +1,6 @@
 package com.vayunmathur.maps.data
 
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.domain.RouteService
 import java.net.URLDecoder
 
 /**

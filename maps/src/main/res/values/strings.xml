@@ -5,7 +5,7 @@
     <!-- TTS spoken: Announces next maneuver with distance. %1$s=distance string e.g. "1 kilometer", %2$s=maneuver instruction -->
     <string name="tts_in_distance">In <xliff:g id="distance" example="1 kilometer">%1$s</xliff:g>, <xliff:g id="instruction" example="Turn left onto Main St">%2$s</xliff:g></string>
     <!-- TTS spoken: Announces next maneuver within meters. %1$d=meters threshold e.g. 300, %2$s=instruction -->
-    <string name="tts_in_meters">In <xliff:g id="meters" example="300">%1$d</xliff:g> meters, <xliff:g id="instruction" example="Turn right">%2$s</xliff:g></string>
+    <plurals name="tts_in_meters"><item quantity="one">In <xliff:g id="meters" example="300">%1$d</xliff:g> meter, <xliff:g id="instruction" example="Turn right">%2$s</xliff:g></item><item quantity="other">In <xliff:g id="meters" example="300">%1$d</xliff:g> meters, <xliff:g id="instruction" example="Turn right">%2$s</xliff:g></item></plurals>
     <!-- TTS spoken: Immediate instruction. %1$s=maneuver text -->
     <string name="tts_now">Now, <xliff:g id="instruction" example="Turn left">%1$s</xliff:g></string>
     <!-- TTS distance plural: spoken distance in kilometers. %1$d=kilometer count -->
@@ -24,9 +24,7 @@
     <!-- BottomSheet: Loading state while route is calculated -->
     <string name="generating_route">Generating Route…</string>
     <string name="alternative_routes_title">Other routes</string>
-    <string name="alternative_selected">shown</string>
     <!-- MapPage: shown while the basemap style is read and patched, before the map can draw -->
-    <string name="map_loading">Loading map…</string>
 
     <!-- SearchPage: Hint in search box for places and addresses -->
     <string name="search_nearby">Search places &amp; addresses…</string>
@@ -67,7 +65,6 @@
     <!-- Place detail: Popular times section header. Noun phrase. -->
     <string name="poi_popular_times_header">Popular times</string>
     <!-- Place detail: About/overview section header. Noun. -->
-    <string name="poi_about_header">About</string>
     <!-- Place detail: Google hours section header. Noun. -->
     <string name="poi_hours_header">Hours</string>
     <!-- Place detail: badge beside the one weekday whose hours came from Google's live feed, overriding the OSM schedule for today only. -->
@@ -100,10 +97,8 @@
     <string name="menu_label">Menu</string>
     <!-- Place detail: opens the Google Street View panorama viewer. "Street View" is a
          Google product name, so it stays non-translatable. -->
-    <string name="street_view" translatable="false">Street View</string>
     <!-- Street View viewer: close button content description. -->
     <!-- Street View viewer: shown while the panorama tiles are downloading. -->
-    <string name="street_view_loading">Loading Street View…</string>
     <!-- Street View viewer: shown when no panorama could be loaded for this place. -->
     <string name="street_view_unavailable">Street View is not available here</string>
     <!-- Street View: content description of a navigation arrow lying on the road in the
@@ -117,20 +112,15 @@
     <!-- MapPage: Placeholder for map search bar -->
     <string name="search_placeholder">Search…</string>
     <!-- MapPage: Overview mode offline prompt. %1$d=zone number -->
-    <string name="download_offline_map_text_overview">You are viewing Zone <xliff:g id="zone" example="5">%1$d</xliff:g>. Would you like to download the high-detail offline map to see more than just the overview?</string>
 
     <!-- Toast shown when no app on the device can pick a contact -->
     <string name="no_contact_picker">No contacts app available</string>
     <!-- Title of the dialog that lets the user pick one of a contact's several postal addresses -->
     <string name="choose_address">Choose an address</string>
     <!-- MainActivity: Status text while navigation tiling metadata downloads -->
-    <string name="downloading_navigation_metadata">Downloading Navigation Tiling Metadata…</string>
     <!-- MainActivity: Status text while road data downloads -->
-    <string name="downloading_road_data">Downloading Road Data…</string>
     <!-- MainActivity: Status text while offline POI index downloads -->
-    <string name="downloading_poi_data">Downloading Points of Interest…</string>
     <!-- MainActivity: Status text while the offline world transit index downloads -->
-    <string name="downloading_transit_data">Downloading Transit Schedules…</string>
     <!-- MainActivity: Status text while the offline map basemap archive downloads -->
     <string name="downloading_basemap">Downloading Map Data…</string>
     <!-- MainActivity: Button to request location permission -->
@@ -204,7 +194,7 @@
     <!-- Maneuver: Transit wait at stop. %1$s=duration, %2$s=line, %3$s=stop name/code -->
     <string name="maneuver_wait_at">Wait <xliff:g id="wait_duration" example="5 min">%1$s</xliff:g> for <xliff:g id="line_name" example="N-Judah">%2$s</xliff:g> at <xliff:g id="stop_name" example="Market St">%3$s</xliff:g></string>
     <!-- Maneuver: Transit ride. %1$s=line name e.g. "N-Judah", %2$s=from stop, %3$s=to stop, %4$d=stop count -->
-    <string name="maneuver_ride_transit">Ride <xliff:g id="line_name" example="N-Judah">%1$s</xliff:g> from <xliff:g id="from_stop" example="Downtown">%2$s</xliff:g> to <xliff:g id="to_stop" example="Ocean Beach">%3$s</xliff:g> (<xliff:g id="stop_count" example="3">%4$d</xliff:g> stops)</string>
+    <plurals name="maneuver_ride_transit"><item quantity="one">Ride <xliff:g id="line_name" example="N-Judah">%1$s</xliff:g> from <xliff:g id="from_stop" example="Downtown">%2$s</xliff:g> to <xliff:g id="to_stop" example="Ocean Beach">%3$s</xliff:g> (<xliff:g id="stop_count" example="3">%4$d</xliff:g> stop)</item><item quantity="other">Ride <xliff:g id="line_name" example="N-Judah">%1$s</xliff:g> from <xliff:g id="from_stop" example="Downtown">%2$s</xliff:g> to <xliff:g id="to_stop" example="Ocean Beach">%3$s</xliff:g> (<xliff:g id="stop_count" example="3">%4$d</xliff:g> stops)</item></plurals>
 
     <!-- Travel mode: Walking. Noun. -->
     <string name="travel_mode_walk">Walk</string>
@@ -220,10 +210,8 @@
     <string name="route_taxi_book">Book ride</string>
     <!-- Route sheet: taxi pickup ETA shown inline, e.g. "4 min away". %1$d = minutes until
          pickup. -->
-    <string name="route_taxi_eta_minutes"><xliff:g id="minutes" example="4">%1$d</xliff:g> min away</string>
     <!-- Route sheet: the MA taxi app's name, shown as the ride option subtitle. Product/app
          name, so it is not translated. -->
-    <string name="route_taxi_provider" translatable="false">Taxi</string>
 
     <!-- Notification channel name for foreground nav service -->
     <string name="nav_channel_name">Navigation</string>
@@ -386,7 +374,7 @@
     <!-- Settings: update row when bytes are pending. %1$d = MB. -->
     <string name="settings_map_update_pending"><xliff:g id="mb" example="340">%1$d</xliff:g> MB update downloading</string>
     <!-- Settings: update row when an overlay is applied. %1$d = sequence. -->
-    <string name="settings_map_update_applied">Map data update <xliff:g id="seq" example="7">%1$d</xliff:g> installed</string>
+    <plurals name="settings_map_update_applied"><item quantity="one">Map data update <xliff:g id="seq" example="7">%1$d</xliff:g> installed</item><item quantity="other">Map data update <xliff:g id="seq" example="7">%1$d</xliff:g> installed</item></plurals>
     <!-- Settings: update row when the base is current. -->
     <string name="settings_map_update_current">Map data is up to date</string>
     <!-- Settings: auto-update toggle title. Noun phrase. -->
@@ -432,7 +420,6 @@
     <!-- Parking sheet: clears the saved parking spot. Verb. -->
 
     <!-- Android Auto (P12) car app strings. -->
-    <string name="car_recenter">Recenter</string>
     <string name="car_voice_hint">Tap search, then speak a place or address.</string>
     <string name="car_no_results">No results. Tap search to try again.</string>
     <string name="car_searching">Searching\u2026</string>

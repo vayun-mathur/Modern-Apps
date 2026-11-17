@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.data.google
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.platform.SearchResult
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray

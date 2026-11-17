@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.PlacePanelActions
+import com.vayunmathur.maps.data.nearest
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -8,12 +10,11 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TransitStopsViewModel
+import com.vayunmathur.maps.platform.PlacePanelState
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule

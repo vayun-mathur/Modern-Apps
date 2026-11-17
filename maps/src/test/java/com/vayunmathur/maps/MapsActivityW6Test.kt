@@ -6,7 +6,7 @@ import android.content.Intent
 import android.location.Location
 import android.location.LocationManager
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue

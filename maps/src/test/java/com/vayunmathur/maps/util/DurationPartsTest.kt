@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.DurationParts
+import com.vayunmathur.maps.platform.durationParts
+import com.vayunmathur.maps.platform.formatDistance
+import com.vayunmathur.maps.platform.formatDuration
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

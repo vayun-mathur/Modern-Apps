@@ -1,4 +1,11 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.domain.PolylineIndex
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.domain.deriveProgress
+import com.vayunmathur.maps.domain.equirectangularDistance
+import com.vayunmathur.maps.domain.projectOntoSegment
+import com.vayunmathur.maps.platform.NavigationSessionManager
 
 import com.vayunmathur.library.map.GeoPoint
 import kotlin.test.Test

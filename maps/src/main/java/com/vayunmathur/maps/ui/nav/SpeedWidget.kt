@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.nav
+import com.vayunmathur.maps.platform.isImperialUnits
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,7 +22,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.maps.data.PostedLimit
 import com.vayunmathur.maps.ui.theme.SpeedSign
-import com.vayunmathur.maps.util.isImperialUnits
 import kotlin.math.roundToInt
 
 private const val MPS_TO_KMH = 3.6

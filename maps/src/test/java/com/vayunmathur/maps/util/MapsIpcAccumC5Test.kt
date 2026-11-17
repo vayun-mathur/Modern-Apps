@@ -1,11 +1,13 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.OfflineRouterRoadRoutes
+import com.vayunmathur.maps.domain.RouteService
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.map.GeoPoint
-import com.vayunmathur.maps.ipc.OrderLookupClient
-import com.vayunmathur.maps.ipc.RideEstimateClient
-import com.vayunmathur.maps.ipc.RideHandoffContract
+import com.vayunmathur.maps.intents.OrderLookupClient
+import com.vayunmathur.maps.intents.RideEstimateClient
+import com.vayunmathur.maps.intents.RideHandoffContract
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -75,7 +77,7 @@ class MapsIpcAccumC5Test {
     @Test
     fun `combined accumulator joins legs at the shared point`() {
         val clazz = Class.forName(
-            "com.vayunmathur.maps.util.OfflineRouterRoadRoutes\$CombinedAccumulator",
+            "com.vayunmathur.maps.data.OfflineRouterRoadRoutes\$CombinedAccumulator",
         )
         val acc = clazz.getDeclaredConstructor().apply { isAccessible = true }.newInstance()
         val append = clazz.getDeclaredMethod("append", RouteService.Route::class.java)
@@ -103,7 +105,7 @@ class MapsIpcAccumC5Test {
     @Test
     fun `combined accumulator keeps disjoint leg joints`() {
         val clazz = Class.forName(
-            "com.vayunmathur.maps.util.OfflineRouterRoadRoutes\$CombinedAccumulator",
+            "com.vayunmathur.maps.data.OfflineRouterRoadRoutes\$CombinedAccumulator",
         )
         val acc = clazz.getDeclaredConstructor().apply { isAccessible = true }.newInstance()
         val append = clazz.getDeclaredMethod("append", RouteService.Route::class.java)

@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ipc
+import com.vayunmathur.maps.intents.MissingAppException
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

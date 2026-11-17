@@ -1,12 +1,14 @@
 package com.vayunmathur.maps.car
+import com.vayunmathur.maps.platform.CarSearchScreen
+import com.vayunmathur.maps.data.string
 
 import android.app.Application
 import androidx.car.app.model.ListTemplate
 import androidx.car.app.navigation.model.MapWithContentTemplate
 import androidx.car.app.testing.TestCarContext
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.maps.util.PoiCategories
-import com.vayunmathur.maps.util.PoiIndex
+import com.vayunmathur.maps.data.PoiCategories
+import com.vayunmathur.maps.data.PoiIndex
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.MappedPoiBytes
+import com.vayunmathur.maps.data.PoiBlockSection
+import com.vayunmathur.maps.data.PoiBytes
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

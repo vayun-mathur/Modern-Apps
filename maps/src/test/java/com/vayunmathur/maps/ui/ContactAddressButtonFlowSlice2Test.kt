@@ -28,7 +28,7 @@ import org.robolectric.Shadows.shadowOf
  * Robolectric runs SDK 34, so the button takes the legacy postal-row path
  * (the Android-17 system picker gate is out of reach here). The postal pick
  * is stubbed with a row URI; the row itself is served by the test provider
- * from [com.vayunmathur.maps.util.ContactLookupProvidersSlice2Test].
+ * from [com.vayunmathur.maps.platform.ContactLookupProvidersSlice2Test].
  */
 @RunWith(AndroidJUnit4::class)
 class ContactAddressButtonFlowSlice2Test {

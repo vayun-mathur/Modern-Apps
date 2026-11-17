@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.PoiMapViewModel
 
 import android.app.Application
 import android.os.Looper

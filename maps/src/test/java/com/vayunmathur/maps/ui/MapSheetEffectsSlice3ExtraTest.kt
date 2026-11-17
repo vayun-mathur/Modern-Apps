@@ -1,6 +1,6 @@
 package com.vayunmathur.maps.ui
-import com.vayunmathur.maps.toFeature
-import com.vayunmathur.maps.toSheetRoute
+import com.vayunmathur.maps.ui.toFeature
+import com.vayunmathur.maps.ui.toSheetRoute
 
 import android.app.Application
 import androidx.activity.ComponentActivity
@@ -17,8 +17,8 @@ import com.vayunmathur.library.ui.FreeHeightSheetState
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -42,12 +42,12 @@ class MapSheetEffectsSlice3ExtraTest {
     @Test fun searchHostOpenSearchVariants() {
         // Search is a SheetRoute pushed on the stack: opening search adds
         // a Search entry carrying the waypoint index and bias point.
-        val stack = NavBackStack<com.vayunmathur.maps.SheetRoute>(arrayOf(com.vayunmathur.maps.SheetRoute.Browse))
-        stack.add(com.vayunmathur.maps.SheetRoute.Search(waypointIndex = 2, nearLat = 37.8, nearLon = -122.4))
-        val top = stack.last() as com.vayunmathur.maps.SheetRoute.Search
+        val stack = NavBackStack<com.vayunmathur.maps.ui.SheetRoute>(arrayOf(com.vayunmathur.maps.ui.SheetRoute.Browse))
+        stack.add(com.vayunmathur.maps.ui.SheetRoute.Search(waypointIndex = 2, nearLat = 37.8, nearLon = -122.4))
+        val top = stack.last() as com.vayunmathur.maps.ui.SheetRoute.Search
         assertEquals(2, top.waypointIndex)
         stack.pop()
-        assertEquals(com.vayunmathur.maps.SheetRoute.Browse, stack.last())
+        assertEquals(com.vayunmathur.maps.ui.SheetRoute.Browse, stack.last())
     }
 
     @Test fun sheetEffectsCompactAndWideAndBack() {
@@ -56,9 +56,9 @@ class MapSheetEffectsSlice3ExtraTest {
         var wide by mutableStateOf(false)
         var feature: SpecificFeature? by mutableStateOf(place())
         var navigating by mutableStateOf(false)
-        var stackRef: NavBackStack<com.vayunmathur.maps.SheetRoute>? = null
+        var stackRef: NavBackStack<com.vayunmathur.maps.ui.SheetRoute>? = null
         rule.setContent {
-            val stack = androidx.compose.runtime.remember { NavBackStack<com.vayunmathur.maps.SheetRoute>(arrayOf(com.vayunmathur.maps.SheetRoute.Browse)) }
+            val stack = androidx.compose.runtime.remember { NavBackStack<com.vayunmathur.maps.ui.SheetRoute>(arrayOf(com.vayunmathur.maps.ui.SheetRoute.Browse)) }
             stackRef = stack
             MapSheetEffects(
                 wide = wide, viewModel = vm, camera = CameraState(),
@@ -67,16 +67,16 @@ class MapSheetEffectsSlice3ExtraTest {
                 sheetState = FreeHeightSheetState(SheetValue.PartiallyExpanded),
                 searchSheetState = FreeHeightSheetState(SheetValue.PartiallyExpanded),
                 sheetStack = stack,
-                searchRoute = stack.backStack.last() as? com.vayunmathur.maps.SheetRoute.Search,
+                searchRoute = stack.backStack.last() as? com.vayunmathur.maps.ui.SheetRoute.Search,
             )
             DynamicTheme { androidx.compose.foundation.layout.Box {} }
         }
         rule.waitForIdle()
         // Open then close search through the stack: a push shows the
         // search sheet, a pop hands the place sheet back.
-        rule.runOnUiThread { stackRef!!.add(com.vayunmathur.maps.SheetRoute.Search()) }
+        rule.runOnUiThread { stackRef!!.add(com.vayunmathur.maps.ui.SheetRoute.Search()) }
         rule.waitForIdle()
-        assertTrue(stackRef!!.last() is com.vayunmathur.maps.SheetRoute.Search)
+        assertTrue(stackRef!!.last() is com.vayunmathur.maps.ui.SheetRoute.Search)
         rule.runOnUiThread { stackRef!!.pop() }
         rule.waitForIdle()
         // Wide mode: effects return early, nothing breaks

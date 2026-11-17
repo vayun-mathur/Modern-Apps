@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.SavedPlace
+import com.vayunmathur.maps.platform.PlacePanelActions
 
 import android.app.Application
 import android.os.Bundle
@@ -16,8 +18,7 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.maps.data.OpeningHours
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
+import com.vayunmathur.maps.platform.PlacePanelState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.data.google
+import com.vayunmathur.maps.data.nearest
 
 import android.graphics.Bitmap
 import android.graphics.Color

@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.data
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
 
 import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +15,7 @@ import kotlinx.serialization.json.Json
  *    "Favorites"; a map of list-name → places.
  *
  * Each field is a small JSON string in DataStore. The store is deliberately thin
- * (flows + suspend setters); [com.vayunmathur.maps.util.SavedPlacesViewModel]
+ * (flows + suspend setters); [com.vayunmathur.maps.platform.SavedPlacesViewModel]
  * owns the coroutine scope and turns these into `StateFlow`s.
  */
 class SavedPlaceStore(private val ds: DataStoreUtils) {

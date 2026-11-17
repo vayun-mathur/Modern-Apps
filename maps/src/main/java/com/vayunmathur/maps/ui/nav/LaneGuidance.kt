@@ -19,8 +19,8 @@ import com.vayunmathur.library.ui.IconLaneThroughSlightLeft
 import com.vayunmathur.library.ui.IconLaneThroughSlightRight
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.maps.ui.iconContent
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.RouteService.API.Maneuver
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.domain.RouteService.API.Maneuver
 
 /**
  * Lane-guidance strip. Renders one cell per available

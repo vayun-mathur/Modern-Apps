@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.theme
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color

@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.MapSettingsViewModel
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -50,7 +51,7 @@ class GoogleConsentDialogSlice2Test {
 
     @Test
     fun `enabling dismisses the dialog and calls back`() {
-        val vm = com.vayunmathur.maps.util.MapSettingsViewModel(
+        val vm = com.vayunmathur.maps.platform.MapSettingsViewModel(
             context as android.app.Application,
         )
         var done = 0
@@ -65,7 +66,7 @@ class GoogleConsentDialogSlice2Test {
 
     @Test
     fun `dismissing dismisses the dialog and calls back`() {
-        val vm = com.vayunmathur.maps.util.MapSettingsViewModel(
+        val vm = com.vayunmathur.maps.platform.MapSettingsViewModel(
             context as android.app.Application,
         )
         var done = 0

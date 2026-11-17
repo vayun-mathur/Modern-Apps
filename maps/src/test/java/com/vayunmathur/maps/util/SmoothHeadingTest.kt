@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.smoothHeading
 
 import kotlin.math.abs
 import kotlin.test.Test

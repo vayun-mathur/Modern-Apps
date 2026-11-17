@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.service.NavigationService
 
 import android.app.Service
 import android.content.Intent

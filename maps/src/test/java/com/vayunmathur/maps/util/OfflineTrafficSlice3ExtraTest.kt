@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.OfflineRouterTraffic
+import com.vayunmathur.maps.data.OfflineRouterTrafficFetch
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

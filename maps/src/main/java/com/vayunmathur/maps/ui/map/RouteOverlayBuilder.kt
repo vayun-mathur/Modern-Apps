@@ -1,13 +1,15 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.domain.PolylineIndex
 
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.map.RouteOverlay
 import com.vayunmathur.library.map.RouteSegment
 import com.vayunmathur.library.map.RouteStyle
 import com.vayunmathur.maps.ui.theme.MapTokens
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.domain.NavigationProgress
 
 /**
  * Turns a [RouteService.Route] into the coloured-segment [RouteOverlay] the Vulkan renderer
@@ -58,7 +60,7 @@ private fun staticColorFor(step: RouteService.Step, tokens: MapTokens): Color =
 
 /** Parse a `#rrggbb`/`#aarrggbb` feed colour, or `null` when it is not valid. */
 private fun parseHexColor(hex: String): Color? =
-    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull()
+    runCatching { Color(hex.toColorInt()) }.getOrNull()
 
 /**
  * Build the coloured segment list for the route.
@@ -73,7 +75,7 @@ private fun parseHexColor(hex: String): Color? =
  *
  * Splitting at the segment level requires matching the snapped segment index (which is into
  * the FULL `route.polyline`) to the corresponding vertex inside the current step's local
- * polyline. The math here mirrors [com.vayunmathur.maps.util.PolylineIndex]'s `stepRanges`
+ * polyline. The math here mirrors [com.vayunmathur.maps.domain.PolylineIndex]'s `stepRanges`
  * construction (cursor walk; steps share endpoints).
  */
 private fun buildRouteSegments(

@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.SearchPhase
+import com.vayunmathur.maps.platform.SearchResult
+import com.vayunmathur.maps.platform.SearchUiState
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.domain.NavigationProgress
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.mutableStateOf
@@ -9,7 +10,6 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.PostedLimit
 import com.vayunmathur.maps.data.transit.TransitStop
 import com.vayunmathur.maps.ui.theme.mapTokens
-import com.vayunmathur.maps.util.NavigationProgress
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.ipc
+import com.vayunmathur.maps.intents.FamilyLocationClient
+import com.vayunmathur.maps.intents.FamilyLocationProtocol
+import com.vayunmathur.maps.intents.FamilyMember
 
 import android.app.Application
 import android.content.ComponentName

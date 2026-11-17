@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.domain.searchBiasPoint
+import com.vayunmathur.maps.domain.visibleBoundsOrWorld
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -6,8 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import com.vayunmathur.maps.ui.map.MapSearchBar
 import com.vayunmathur.maps.ui.theme.MapChromeMetrics
-import com.vayunmathur.maps.util.searchBiasPoint
-import com.vayunmathur.maps.util.visibleBoundsOrWorld
 
 /**
  * The search entry point, moved out of [MapContentBox] so no ui file exceeds

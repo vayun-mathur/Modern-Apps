@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.GTFSProvider
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

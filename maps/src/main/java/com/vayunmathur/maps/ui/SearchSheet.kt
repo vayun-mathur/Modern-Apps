@@ -1,6 +1,8 @@
 package com.vayunmathur.maps.ui
-
 import androidx.compose.foundation.clickable
+import com.vayunmathur.maps.platform.SearchResult
+import com.vayunmathur.maps.data.string
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,10 +44,9 @@ import com.vayunmathur.library.ui.TextFieldDefaults
 import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.R
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.util.SearchPhase
-import com.vayunmathur.maps.util.SearchResult
-import com.vayunmathur.maps.util.SearchUiState
+import com.vayunmathur.maps.platform.SearchActions
+import com.vayunmathur.maps.platform.SearchPhase
+import com.vayunmathur.maps.platform.SearchUiState
 
 /**
  * A fixed height for the three states that have nothing to list.
@@ -160,7 +161,7 @@ private fun ResultsList(
     LazyColumn(Modifier.fillMaxWidth()) {
         items(results, key = { it.id }) { result ->
             val distanceText = if (nearLat != 0.0 || nearLon != 0.0) {
-                com.vayunmathur.maps.util.formatDistance(
+                com.vayunmathur.maps.platform.formatDistance(
                     kotlin.math.hypot(
                         (result.lon - nearLon) * 111_320.0 * kotlin.math.cos(Math.toRadians(nearLat)),
                         (result.lat - nearLat) * 110_540.0,

@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.PoiIndex
+import com.vayunmathur.maps.data.MapTileCache
+import com.vayunmathur.maps.domain.spatialFromE7
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.Fix
+import com.vayunmathur.maps.platform.acceptsFix
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue

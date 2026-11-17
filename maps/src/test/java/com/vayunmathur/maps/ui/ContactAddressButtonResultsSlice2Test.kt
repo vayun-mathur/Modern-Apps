@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.util.ContactLookupProvidersSlice2Test
+import kotlin.test.assertEquals
+import kotlin.test.Test
 
 import android.app.Activity
 import android.content.ContentProvider
@@ -20,9 +23,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.core.app.ActivityOptionsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.maps.util.ContactLookupProvidersSlice2Test
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith

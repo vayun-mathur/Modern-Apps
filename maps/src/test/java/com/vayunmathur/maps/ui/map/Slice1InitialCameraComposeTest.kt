@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.map.GeoPoint
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

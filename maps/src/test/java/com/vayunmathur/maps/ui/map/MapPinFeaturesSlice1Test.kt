@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.platform.SearchResult
 
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.Feature1
@@ -7,8 +8,7 @@ import com.vayunmathur.maps.data.LineString
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.Point
 import com.vayunmathur.maps.data.SavedPlace
-import com.vayunmathur.maps.ipc.FamilyMember
-import com.vayunmathur.maps.util.SearchResult
+import com.vayunmathur.maps.intents.FamilyMember
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlin.test.Test

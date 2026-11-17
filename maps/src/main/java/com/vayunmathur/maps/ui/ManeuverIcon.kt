@@ -22,7 +22,7 @@ import com.vayunmathur.library.ui.IconTurnSlightRight
 import com.vayunmathur.library.ui.IconUTurn
 import com.vayunmathur.library.ui.IconUTurnRight
 import com.vayunmathur.maps.R
-import com.vayunmathur.maps.util.RouteService.API.Maneuver
+import com.vayunmathur.maps.domain.RouteService.API.Maneuver
 
 /** Composable icon for a maneuver, or null when the maneuver has no icon. */
 fun Maneuver.iconContent(): (@Composable (Modifier, Color) -> Unit)? {

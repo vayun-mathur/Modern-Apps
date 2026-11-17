@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.domain.NavigationProgress
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
@@ -8,9 +9,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds

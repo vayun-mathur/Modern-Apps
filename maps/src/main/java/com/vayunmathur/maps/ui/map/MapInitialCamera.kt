@@ -19,7 +19,7 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.map.rememberCameraState
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.maps.data.MapPreferences
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 
 /** Zoom the cold-start camera adopts once the user's position is known. */
 private const val FIRST_FIX_ZOOM = 14.0

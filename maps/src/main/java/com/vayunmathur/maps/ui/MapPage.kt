@@ -1,40 +1,29 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.R as MapsR
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.domain.searchBiasPoint
+import com.vayunmathur.maps.domain.visibleBoundsOrWorld
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.vayunmathur.library.ui.CompassCalibrationHint
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
-import com.vayunmathur.library.ui.FreeHeightBottomSheetScaffold
-import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.FreeHeightSheetState
-import com.vayunmathur.library.ui.Messenger
-import com.vayunmathur.library.ui.OverlayAction
 import com.vayunmathur.library.ui.SheetValue
-import com.vayunmathur.library.ui.Spacing
-import com.vayunmathur.library.ui.TopAppBarOverlay
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.ui.rememberFreeHeightSheetState
 import com.vayunmathur.library.ui.rememberMessenger
@@ -44,50 +33,19 @@ import com.vayunmathur.library.map.MapBody
 import com.vayunmathur.library.map.MoonTextures
 import com.vayunmathur.maps.ui.map.rememberInitialCamera
 import com.vayunmathur.maps.Route
-import com.vayunmathur.maps.SheetRoute
-import com.vayunmathur.maps.popSheet
-import com.vayunmathur.maps.effectiveFeature
-import com.vayunmathur.maps.engineRoute
-import com.vayunmathur.maps.parkedRoutePlan
-import com.vayunmathur.maps.routePlan
+import com.vayunmathur.maps.ui.popSheet
+import com.vayunmathur.maps.ui.engineRoute
 import com.vayunmathur.library.util.rememberNavBackStack
-import com.vayunmathur.maps.data.ParkingSpot
-import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.data.parse
 import com.vayunmathur.maps.data.transit.TransitStop
-import com.vayunmathur.maps.ipc.FamilyMember
-import com.vayunmathur.maps.ui.map.LayerToggles
-import com.vayunmathur.maps.ui.map.MapFabStack
-import com.vayunmathur.maps.ui.map.MapOverlays
-import com.vayunmathur.maps.ui.map.MapSearchBar
-import com.vayunmathur.maps.ui.map.MapSurface
 import com.vayunmathur.maps.ui.map.NavigationCameraFollow
-import com.vayunmathur.maps.ui.map.WaypointList
 import com.vayunmathur.maps.ui.map.rememberMapChromeState
-import com.vayunmathur.maps.ui.streetview.StreetViewPegman
-import com.vayunmathur.maps.ui.theme.MapChromeMetrics
-import com.vayunmathur.maps.ui.map.MapChromeState
-import com.vayunmathur.maps.util.DeparturesState
-import com.vayunmathur.maps.util.PoiMapViewModel
-import com.vayunmathur.maps.util.MapTileCache
-import com.vayunmathur.maps.util.OfflineRouter
-import com.vayunmathur.maps.util.MapSettingsViewModel
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.MoonAssetLoader
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.PoiIndex
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.util.SearchUiState
-import com.vayunmathur.maps.util.visibleBoundsOrWorld
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.PoiMapViewModel
+import com.vayunmathur.maps.platform.MapSettingsViewModel
+import com.vayunmathur.maps.platform.MoonAssetLoader
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.platform.SearchUiState
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlinx.coroutines.launch
-import com.vayunmathur.maps.R as MapsR
 
 
 /**
@@ -106,8 +64,8 @@ fun MapPage(
     savedPlacesViewModel: SavedPlacesViewModel,
     searchViewModel: MapsSearchViewModel,
     settingsViewModel: MapSettingsViewModel,
-    parkingViewModel: com.vayunmathur.maps.util.ParkingViewModel,
-    transitViewModel: com.vayunmathur.maps.util.TransitStopsViewModel,
+    parkingViewModel: com.vayunmathur.maps.platform.ParkingViewModel,
+    transitViewModel: com.vayunmathur.maps.platform.TransitStopsViewModel,
     onStartNavigating: (String, RouteService.TravelMode) -> Unit = { _, _ -> },
     exitNavigating: () -> Unit = {},
 ) {
@@ -144,62 +102,46 @@ fun MapPage(
         }
     }
 
-    // What is showing is the top of the sheet stack; the VM only mirrors
-    // the engine route (place to enrich / waypoints to plan) from it.
-    val selectedFeature = sheetStack.backStack.effectiveFeature()
-    val parkedRoutePlan = sheetStack.backStack.parkedRoutePlan()
-    val inactiveNavigation = parkedRoutePlan?.let { SpecificFeature.Route(it.waypoints) }
-    LaunchedEffect(sheetStack.backStack.toList()) {
-        viewModel.setSheetRoute(sheetStack.backStack.engineRoute())
-    }
-    // The visible route tab is the RoutePlan's mode: switching it writes
-    // the route back (setLast), and routes plans that mode first.
-    val activeRoutePlan = sheetStack.backStack.routePlan()
-    val selectedRouteType = activeRoutePlan?.mode ?: RouteService.TravelMode.DRIVE
-    val routesByMode by viewModel.routes.collectAsState(null)
-    val alternatives by viewModel.alternatives.collectAsState()
     var selectedAlternative by remember { mutableStateOf<RouteService.Route?>(null) }
     LaunchedEffect(sheetStack.backStack.engineRoute()) { selectedAlternative = null }
-    val route = remember(routesByMode, selectedAlternative, activeRoutePlan) {
-        val base = routesByMode ?: return@remember null
-        val alt = selectedAlternative ?: return@remember base
-        val mode = activeRoutePlan?.mode ?: return@remember base
-        base.toMutableMap().apply { this[mode] = alt }
-    }
-    // Collected here (rather than inside the sheet) so the inner place sheet's
-    // contentKey can name them: the tab switch and the late-arriving reviews
-    // each change the sheet's content height, and without them in the key the
-    // learned ceiling from Details traps the taller Reviews list.
-    val poiSection = (sheetTop as? SheetRoute.Place)?.section ?: PoiSection.DETAILS
-    val currentPoiInfo by viewModel.currentPoiInfo.collectAsState()
-    val userPosition by viewModel.userPosition.collectAsState()
-    val userBearing by viewModel.userBearing.collectAsState()
-    val userHeadingAccuracy by viewModel.userHeadingAccuracy.collectAsState()
-    val userSpeedMps by viewModel.userSpeedMps.collectAsState()
-
-    val savedList by savedPlacesViewModel.saved.collectAsState()
-    // The starred list drawn as one pin set, deduped.
-    val savedPins = remember(savedList) { savedList.distinct() }
-
-    val parkingSpot by parkingViewModel.active.collectAsState()
-    val searchResults by searchViewModel.results.collectAsState()
-    val searchQuery by searchViewModel.query.collectAsState()
-    val searchRecents by searchViewModel.recents.collectAsState()
-    val searching by searchViewModel.searching.collectAsState()
-    val selectedTransitStop by transitViewModel.selected.collectAsState()
-    val departuresState by transitViewModel.departures.collectAsState()
-    val tripItineraryState by transitViewModel.tripItinerary.collectAsState()
-
-    // The findfamily service is bound only while this screen is composed, so this is empty when
-    // findfamily is absent.
-    val familyMembers by com.vayunmathur.maps.ipc.rememberFamilyMembers()
-
-    val trafficEnabled by settingsViewModel.trafficLayer.collectAsState()
-    val satelliteEnabled by settingsViewModel.satelliteLayer.collectAsState()
-    val safetyEnabled by settingsViewModel.safetyLayer.collectAsState()
-    val transitEnabled by settingsViewModel.transitLayer.collectAsState()
-    val globeEnabled by settingsViewModel.globeEnabled.collectAsState()
-    val googleServices by settingsViewModel.googleServices.collectAsState()
+    val state = rememberMapPageState(
+        sheetStack = sheetStack,
+        sheetTop = sheetTop,
+        viewModel = viewModel,
+        savedPlacesViewModel = savedPlacesViewModel,
+        searchViewModel = searchViewModel,
+        settingsViewModel = settingsViewModel,
+        parkingViewModel = parkingViewModel,
+        transitViewModel = transitViewModel,
+        selectedAlternative = selectedAlternative,
+    )
+    val selectedFeature = state.selectedFeature
+    val inactiveNavigation = state.inactiveNavigation
+    val selectedRouteType = state.selectedRouteType
+    val route = state.route
+    val alternatives = state.alternatives
+    val poiSection = state.poiSection
+    val currentPoiInfo = state.currentPoiInfo
+    val userPosition = state.userPosition
+    val userBearing = state.userBearing
+    val userHeadingAccuracy = state.userHeadingAccuracy
+    val userSpeedMps = state.userSpeedMps
+    val savedPins = state.savedPins
+    val parkingSpot = state.parkingSpot
+    val searchResults = state.searchResults
+    val searchQuery = state.searchQuery
+    val searchRecents = state.searchRecents
+    val searching = state.searching
+    val selectedTransitStop = state.selectedTransitStop
+    val departuresState = state.departuresState
+    val tripItineraryState = state.tripItineraryState
+    val familyMembers = state.familyMembers
+    val trafficEnabled = state.trafficEnabled
+    val satelliteEnabled = state.satelliteEnabled
+    val safetyEnabled = state.safetyEnabled
+    val transitEnabled = state.transitEnabled
+    val globeEnabled = state.globeEnabled
+    val googleServices = state.googleServices
     var googleConsentDone by remember {
         mutableStateOf(
             !shouldShowGoogleConsent(
@@ -277,7 +219,7 @@ fun MapPage(
     val panelSearch = wide && searchRoute != null
     val panelPlace = wide && searchRoute == null && selectedFeature != null
     fun openSearch(query: String? = null, waypointIndex: Int? = null) {
-        val near = com.vayunmathur.maps.util.searchBiasPoint(camera.visibleBoundsOrWorld(), userPosition)
+        val near = com.vayunmathur.maps.domain.searchBiasPoint(camera.visibleBoundsOrWorld(), userPosition)
         if (!query.isNullOrBlank()) searchViewModel.setQuery(query, near.latitude, near.longitude)
         sheetStack.add(SheetRoute.Search(waypointIndex, near.latitude, near.longitude))
     }
@@ -394,14 +336,6 @@ fun MapPage(
     scope.MapSheets(
         searchActions = searchActions,
         searchState = searchState,
-    )
-}
-
-/** End the session and stop the foreground service that outlives this screen. */
-internal fun stopNavigation(context: android.content.Context) {
-    NavigationSessionManager.stop()
-    context.stopService(
-        android.content.Intent(context, com.vayunmathur.maps.util.NavigationService::class.java)
     )
 }
 

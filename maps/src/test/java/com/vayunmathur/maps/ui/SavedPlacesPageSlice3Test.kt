@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.SavedPlaceStore
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -11,7 +12,7 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import org.junit.Rule

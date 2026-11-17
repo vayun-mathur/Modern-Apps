@@ -1,71 +1,41 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.PlacePanelState
 import com.vayunmathur.library.ui.ExternalIntents
-import com.vayunmathur.library.util.DateNameStyle
-import com.vayunmathur.library.util.localizedDayOfWeekNames
-import kotlinx.datetime.isoDayNumber
-import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CardDefaults
-import com.vayunmathur.library.ui.verticalShape
-import com.vayunmathur.library.ui.IconLocationOn
 import com.vayunmathur.library.ui.IconMenuBook
 import com.vayunmathur.library.ui.IconSchedule
-import com.vayunmathur.library.ui.IconStar
-import com.vayunmathur.library.ui.IconStarBorder
-import com.vayunmathur.library.ui.ListItem
-import com.vayunmathur.library.ui.ListItemDefaults
-import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import com.vayunmathur.library.util.firstLetterUppercase
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.OpeningHours
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.GooglePoiInfo
 import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.data.timeFormat
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
-import kotlinx.datetime.toLocalDateTime
-import kotlin.collections.iterator
-import kotlin.time.Clock
 
 fun goto(context: Context, uri: String) {
     val intent = Intent(Intent.ACTION_VIEW, uri.toUri())
@@ -301,49 +271,3 @@ private fun PlaceTabPanel(
  * showed a category subtitle. Tapping copies it, which is what an address on
  * a sheet is usually for.
  */
-@Composable
-private fun AddressRow(address: String) {
-    val clipboard = LocalClipboard.current
-    val scope = rememberCoroutineScope()
-    RestaurantItem({ IconLocationOn() }, address) {
-        scope.launch {
-            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("address", address)))
-        }
-    }
-}
-
-/** The archive's short AI summary of the place's reviews, available offline. */
-@Composable
-private fun ReviewSummaryRow(summary: String) {
-    Card {
-        ListItem({
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    stringResource(R.string.review_summary_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(summary, style = MaterialTheme.typography.bodyMedium)
-            }
-        }, leadingContent = {
-            IconStar(tint = MaterialTheme.colorScheme.tertiary)
-        }, colors = ListItemDefaults.colors(Color.Transparent))
-    }
-}
-
-/**
- * Five stars, filled up to [rating].
- *
- * `Double` rather than `Int` because the archive's place rating is fractional; a review's own
- * rating is a whole number and converts. There used to be one of these per file, differing
- * only in that parameter type.
- */
-@Composable
-internal fun RatingStars(rating: Double, modifier: Modifier = Modifier) {
-    Row(modifier) {
-        repeat(5) { i ->
-            if (i < rating.toInt()) IconStar(Modifier.size(16.dp), tint = MaterialTheme.colorScheme.tertiary)
-            else IconStarBorder(Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}

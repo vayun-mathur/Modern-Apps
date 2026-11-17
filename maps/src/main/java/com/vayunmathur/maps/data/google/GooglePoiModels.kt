@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.data.google
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 
 /**
  * Clean, null-safe model of the NON-review place details fetched from Google Maps'

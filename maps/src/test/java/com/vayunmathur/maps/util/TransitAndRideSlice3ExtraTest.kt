@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.DeparturesState
+import com.vayunmathur.maps.platform.TransitStopsViewModel
+import com.vayunmathur.maps.platform.TripItineraryState
+import com.vayunmathur.maps.platform.TripSelection
 
 import android.app.Application
 import android.content.pm.ApplicationInfo
@@ -8,8 +12,8 @@ import androidx.core.net.toUri
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.maps.data.transit.Departure
 import com.vayunmathur.maps.data.transit.TransitStop
-import com.vayunmathur.maps.ipc.RideEstimateClient
-import com.vayunmathur.maps.ipc.RideHandoffContract
+import com.vayunmathur.maps.intents.RideEstimateClient
+import com.vayunmathur.maps.intents.RideHandoffContract
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

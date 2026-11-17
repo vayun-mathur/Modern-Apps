@@ -1,11 +1,11 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.domain.NavigationProgress
 
 import androidx.compose.ui.graphics.Color
 import com.vayunmathur.library.map.GeoBounds
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.ui.theme.mapTokens
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.domain.RouteService
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test

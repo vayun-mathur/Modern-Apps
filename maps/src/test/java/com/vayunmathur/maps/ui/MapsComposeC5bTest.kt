@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.intents.RideHandoffContract
+import com.vayunmathur.maps.platform.TripItineraryState
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
@@ -21,8 +24,8 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.StreetViewPano
 import com.vayunmathur.maps.ui.streetview.StreetViewScreen
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -153,23 +156,23 @@ class MapsComposeC5bTest {
     @Test
     fun routeSheet_driveMode_showsStepsTabsAndStart() {
         val pt = { lon: Double, lat: Double -> GeoPoint(lon, lat) }
-        val drive = com.vayunmathur.maps.util.RouteService.Route(
+        val drive = com.vayunmathur.maps.domain.RouteService.Route(
             kotlin.time.Duration.parse("10m"), 2_000.0,
             listOf(pt(-122.0, 37.0), pt(-122.0, 37.002)),
             listOf(
-                com.vayunmathur.maps.util.RouteService.Step(
+                com.vayunmathur.maps.domain.RouteService.Step(
                     500.0, kotlin.time.Duration.parse("1m"), listOf(pt(-122.0, 37.0)),
-                    com.vayunmathur.maps.util.RouteService.API.NavInstruction(
-                        com.vayunmathur.maps.util.RouteService.API.Maneuver.DEPART, "Head north on C5 St",
+                    com.vayunmathur.maps.domain.RouteService.API.NavInstruction(
+                        com.vayunmathur.maps.domain.RouteService.API.Maneuver.DEPART, "Head north on C5 St",
                     ),
-                    com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE,
+                    com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE,
                 ),
-                com.vayunmathur.maps.util.RouteService.Step(
+                com.vayunmathur.maps.domain.RouteService.Step(
                     1_500.0, kotlin.time.Duration.parse("9m"), listOf(pt(-122.0, 37.001)),
-                    com.vayunmathur.maps.util.RouteService.API.NavInstruction(
-                        com.vayunmathur.maps.util.RouteService.API.Maneuver.TURN_LEFT, "Turn left on C5 Ave",
+                    com.vayunmathur.maps.domain.RouteService.API.NavInstruction(
+                        com.vayunmathur.maps.domain.RouteService.API.Maneuver.TURN_LEFT, "Turn left on C5 Ave",
                     ),
-                    com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE,
+                    com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE,
                 ),
             ),
         )
@@ -179,17 +182,17 @@ class MapsComposeC5bTest {
                 SpecificFeature.GenericPlace("To", null, null, null, pt(-122.0, 37.002)),
             ),
         )
-        var selected: com.vayunmathur.maps.util.RouteService.TravelMode? = null
+        var selected: com.vayunmathur.maps.domain.RouteService.TravelMode? = null
         rule.setContent {
             DynamicTheme {
                 RouteSheet(
                     selectedFeature = feature,
                     route = mapOf(
-                        com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE to drive,
-                        com.vayunmathur.maps.util.RouteService.TravelMode.BICYCLE to drive,
-                        com.vayunmathur.maps.util.RouteService.TravelMode.WALK to drive,
+                        com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE to drive,
+                        com.vayunmathur.maps.domain.RouteService.TravelMode.BICYCLE to drive,
+                        com.vayunmathur.maps.domain.RouteService.TravelMode.WALK to drive,
                     ),
-                    selectedRouteType = com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE,
+                    selectedRouteType = com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE,
                     setSelectedRouteType = { selected = it },
                 )
             }
@@ -199,7 +202,7 @@ class MapsComposeC5bTest {
         rule.onNodeWithText("Start Navigation").assertIsDisplayed()
         // Switching to the bicycle tab reports the mode change.
         rule.onNodeWithText("Bicycle").performClick()
-        assertEquals(com.vayunmathur.maps.util.RouteService.TravelMode.BICYCLE, selected)
+        assertEquals(com.vayunmathur.maps.domain.RouteService.TravelMode.BICYCLE, selected)
     }
 
     @Test
@@ -217,10 +220,10 @@ class MapsComposeC5bTest {
                 RouteSheet(
                     selectedFeature = feature,
                     route = mapOf(
-                        com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE to
-                            com.vayunmathur.maps.util.RouteService.EmptyRoute(),
+                        com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE to
+                            com.vayunmathur.maps.domain.RouteService.EmptyRoute(),
                     ),
-                    selectedRouteType = com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE,
+                    selectedRouteType = com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE,
                     setSelectedRouteType = {},
                 )
             }
@@ -250,7 +253,7 @@ class MapsComposeC5bTest {
                 RouteSheet(
                     selectedFeature = feature,
                     route = emptyMap(),
-                    selectedRouteType = com.vayunmathur.maps.util.RouteService.TravelMode.WALK,
+                    selectedRouteType = com.vayunmathur.maps.domain.RouteService.TravelMode.WALK,
                     setSelectedRouteType = {},
                 )
             }
@@ -265,16 +268,16 @@ class MapsComposeC5bTest {
     @Test
     fun routeSheet_startNavigationButton_startsSession() {
         val pt = { lon: Double, lat: Double -> GeoPoint(lon, lat) }
-        val drive = com.vayunmathur.maps.util.RouteService.Route(
+        val drive = com.vayunmathur.maps.domain.RouteService.Route(
             kotlin.time.Duration.parse("10m"), 2_000.0,
             listOf(pt(-122.0, 37.0), pt(-122.0, 37.002)),
             listOf(
-                com.vayunmathur.maps.util.RouteService.Step(
+                com.vayunmathur.maps.domain.RouteService.Step(
                     500.0, kotlin.time.Duration.parse("1m"), listOf(pt(-122.0, 37.0)),
-                    com.vayunmathur.maps.util.RouteService.API.NavInstruction(
-                        com.vayunmathur.maps.util.RouteService.API.Maneuver.DEPART, "Head north on C5 St",
+                    com.vayunmathur.maps.domain.RouteService.API.NavInstruction(
+                        com.vayunmathur.maps.domain.RouteService.API.Maneuver.DEPART, "Head north on C5 St",
                     ),
-                    com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE,
+                    com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE,
                 ),
             ),
             departureTime = "10:00",
@@ -290,8 +293,8 @@ class MapsComposeC5bTest {
             DynamicTheme {
                 RouteSheet(
                     selectedFeature = feature,
-                    route = mapOf(com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE to drive),
-                    selectedRouteType = com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE,
+                    route = mapOf(com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE to drive),
+                    selectedRouteType = com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE,
                     setSelectedRouteType = {},
                 )
             }
@@ -305,37 +308,37 @@ class MapsComposeC5bTest {
         // Starting guidance records the session route and destination.
         val deadline = System.currentTimeMillis() + 5_000
         while (System.currentTimeMillis() < deadline) {
-            if (com.vayunmathur.maps.util.NavigationSessionManager.session.value.route != null) break
+            if (com.vayunmathur.maps.platform.NavigationSessionManager.session.value.route != null) break
             Thread.sleep(25)
         }
         assertEquals(
             "To",
-            com.vayunmathur.maps.util.NavigationSessionManager.session.value.destinationName,
+            com.vayunmathur.maps.platform.NavigationSessionManager.session.value.destinationName,
         )
-        com.vayunmathur.maps.util.NavigationSessionManager.stop()
+        com.vayunmathur.maps.platform.NavigationSessionManager.stop()
     }
 
     @Test
     fun routeSheet_rideshareTab_whenTaxiInstalled() {
         val shadowPm = org.robolectric.Shadows.shadowOf(app.packageManager)
         val info = android.content.pm.PackageInfo().apply {
-            packageName = com.vayunmathur.maps.ipc.RideHandoffContract.PACKAGE
+            packageName = com.vayunmathur.maps.intents.RideHandoffContract.PACKAGE
             versionName = "1.0"
         }
         @Suppress("DEPRECATION")
         shadowPm.addPackage(info)
         try {
             val pt = { lon: Double, lat: Double -> GeoPoint(lon, lat) }
-            val drive = com.vayunmathur.maps.util.RouteService.Route(
+            val drive = com.vayunmathur.maps.domain.RouteService.Route(
                 kotlin.time.Duration.parse("10m"), 2_000.0,
                 listOf(pt(-122.0, 37.0), pt(-122.0, 37.002)),
                 listOf(
-                    com.vayunmathur.maps.util.RouteService.Step(
+                    com.vayunmathur.maps.domain.RouteService.Step(
                         500.0, kotlin.time.Duration.parse("1m"), listOf(pt(-122.0, 37.0)),
-                        com.vayunmathur.maps.util.RouteService.API.NavInstruction(
-                            com.vayunmathur.maps.util.RouteService.API.Maneuver.DEPART, "Head north",
+                        com.vayunmathur.maps.domain.RouteService.API.NavInstruction(
+                            com.vayunmathur.maps.domain.RouteService.API.Maneuver.DEPART, "Head north",
                         ),
-                        com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE,
+                        com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE,
                     ),
                 ),
             )
@@ -345,13 +348,13 @@ class MapsComposeC5bTest {
                     SpecificFeature.GenericPlace("To", null, null, null, pt(-122.0, 37.002)),
                 ),
             )
-            var selected: com.vayunmathur.maps.util.RouteService.TravelMode? = null
+            var selected: com.vayunmathur.maps.domain.RouteService.TravelMode? = null
             rule.setContent {
                 DynamicTheme {
                     RouteSheet(
                         selectedFeature = feature,
-                        route = mapOf(com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE to drive),
-                        selectedRouteType = com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE,
+                        route = mapOf(com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE to drive),
+                        selectedRouteType = com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE,
                         setSelectedRouteType = { selected = it },
                     )
                 }
@@ -359,7 +362,7 @@ class MapsComposeC5bTest {
             rule.waitForIdle()
             rule.onNodeWithText("Get a ride", substring = true).performClick()
             rule.waitForIdle()
-            assertEquals(com.vayunmathur.maps.util.RouteService.TravelMode.DRIVE, selected)
+            assertEquals(com.vayunmathur.maps.domain.RouteService.TravelMode.DRIVE, selected)
             // The booking action replaces the step list while rideshare is up.
             assertTrue(
                 rule.onAllNodesWithText("Book", substring = true).fetchSemanticsNodes().isNotEmpty(),
@@ -367,7 +370,7 @@ class MapsComposeC5bTest {
             )
         } finally {
             @Suppress("DEPRECATION")
-            shadowPm.removePackage(com.vayunmathur.maps.ipc.RideHandoffContract.PACKAGE)
+            shadowPm.removePackage(com.vayunmathur.maps.intents.RideHandoffContract.PACKAGE)
         }
     }
 
@@ -392,7 +395,7 @@ class MapsComposeC5bTest {
         rule.setContent {
             DynamicTheme {
                 TripSheet(
-                    state = com.vayunmathur.maps.util.TripItineraryState.Loaded(itin),
+                    state = com.vayunmathur.maps.platform.TripItineraryState.Loaded(itin),
                     onDismiss = {},
                     onStopTap = { tapped = it },
                 )

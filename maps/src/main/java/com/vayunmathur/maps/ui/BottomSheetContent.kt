@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.PlacePanelState
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.data.Wikidata
+import com.vayunmathur.maps.platform.rememberPlacePanelState
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,14 +27,12 @@ import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TransitStopsViewModel
-import com.vayunmathur.maps.util.rememberPlacePanelState
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.platform.PlacePanelActions
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 
 /**
  * Everything on the map's bottom sheet below the fold — what expanding it reveals.
@@ -140,7 +142,7 @@ fun BottomSheetContent(
         is SpecificFeature.Route -> {
             val currentRoute = route
             if (currentRoute != null) {
-                RouteSheet(selectedFeature, currentRoute, selectedRouteType, setSelectedRouteType, navState, panelState.userPosition, onStartNavigation = onStartNavigation, alternatives = alternatives, selectedAlternative = selectedAlternative, onSelectAlternative = onSelectAlternative)
+                RouteSheet(selectedFeature, currentRoute, selectedRouteType, setSelectedRouteType, navState = navState, userPosition = panelState.userPosition, onStartNavigation = onStartNavigation, alternatives = alternatives, selectedAlternative = selectedAlternative, onSelectAlternative = onSelectAlternative)
             } else {
                 // Routes arrive asynchronously and start out null, so this is the state right
                 // after asking for directions. It used to render nothing at all, inside a sheet

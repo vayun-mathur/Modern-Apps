@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.data
+import com.vayunmathur.maps.platform.MapOverlayWorker
+import com.vayunmathur.maps.service.NavigationService
 
 /**
  * Central registry of the maps app's DataStore preference keys and their small

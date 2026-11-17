@@ -1,13 +1,13 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.PlacePanelState
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.google.PoiSection
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.PlacePanelActions
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 
 /**
  * The fixed top of the map's bottom sheet, for whatever is selected — the part the

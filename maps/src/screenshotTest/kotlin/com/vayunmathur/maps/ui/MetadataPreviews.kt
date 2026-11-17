@@ -1,4 +1,9 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.domain.NavigationProgress
+import com.vayunmathur.maps.platform.PlacePanelActions
+import com.vayunmathur.maps.platform.SearchActions
+import com.vayunmathur.maps.platform.SearchResult
+import com.vayunmathur.maps.platform.SearchUiState
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,14 +17,9 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.util.SearchResult
-import com.vayunmathur.maps.util.SearchUiState
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.platform.PlacePanelState
+import com.vayunmathur.maps.domain.RouteService
 import com.vayunmathur.library.map.GeoPoint
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds

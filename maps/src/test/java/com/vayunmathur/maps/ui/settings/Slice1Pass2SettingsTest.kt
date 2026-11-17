@@ -11,8 +11,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.Route
-import com.vayunmathur.maps.util.MapOverlayWorker
-import com.vayunmathur.maps.util.MapSettingsViewModel
+import com.vayunmathur.maps.platform.MapOverlayWorker
+import com.vayunmathur.maps.platform.MapSettingsViewModel
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.runner.RunWith

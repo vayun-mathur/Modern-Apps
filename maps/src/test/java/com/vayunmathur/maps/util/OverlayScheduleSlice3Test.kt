@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.MapOverlayWorker
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.WorkManager

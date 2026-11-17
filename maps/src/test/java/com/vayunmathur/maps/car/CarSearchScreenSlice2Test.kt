@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.car
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.CarMapRenderer
+import com.vayunmathur.maps.platform.CarSearchScreen
 
 import android.Manifest
 import android.app.Application

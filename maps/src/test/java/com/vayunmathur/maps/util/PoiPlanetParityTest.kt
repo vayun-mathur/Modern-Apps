@@ -1,4 +1,10 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.PoiIndex
+import com.vayunmathur.maps.data.inViewport
+import com.vayunmathur.maps.data.localityAt
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.data.regionId
+import com.vayunmathur.maps.data.PoiArchive
 
 import java.io.File
 import kotlin.random.Random

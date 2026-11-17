@@ -1,4 +1,12 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.distanceSq
+import com.vayunmathur.maps.data.PoiIndex
+import com.vayunmathur.maps.data.inViewport
+import com.vayunmathur.maps.data.localityAt
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.data.regionId
+import com.vayunmathur.maps.data.PoiArchive
+import com.vayunmathur.maps.data.PoiCategories
 
 import java.io.File
 import kotlin.test.Test
@@ -93,7 +101,7 @@ class PoiArchiveRealFileTest {
             val hits = PoiIndex.searchByName(query, lat, lon, limit = 10)
             println("search '$query' -> ${hits.take(3).map { "${it.name}(${it.type})" }}")
             assertTrue(hits.isNotEmpty(), "no hit for '$query'")
-            val d = PoiIndex.distanceSq(hits[0].lat, hits[0].lon, lat, lon)
+            val d = distanceSq(hits[0].lat, hits[0].lon, lat, lon)
             assertTrue(d < NEAR_DEG_SQ, "top hit for '$query' is far away: ${hits[0]}")
         }
         // Place labels became searchable records (type 51) in planet4.

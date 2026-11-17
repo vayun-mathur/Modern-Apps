@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.data.SpecificFeature
 
 import android.app.Application
 import androidx.compose.runtime.mutableStateOf
@@ -9,10 +10,10 @@ import com.vayunmathur.library.map.CameraState
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.map.MapBody
 import com.vayunmathur.maps.data.PostedLimit
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TransitStopsViewModel
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

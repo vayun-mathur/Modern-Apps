@@ -1,6 +1,7 @@
 package com.vayunmathur.maps.ui
-
 import androidx.compose.foundation.layout.Arrangement
+import com.vayunmathur.maps.platform.SearchActions
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,12 +18,11 @@ import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.util.SearchUiState
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.platform.PlacePanelActions
+import com.vayunmathur.maps.platform.PlacePanelState
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SearchUiState
 
 /**
  * The expanded-width side panel: the same content the compact layout shows in
@@ -51,11 +51,11 @@ fun MapSidePanel(
     inactiveNavigation: SpecificFeature.Route?,
     navState: NavigationSessionManager.NavState,
     onClosePanel: () -> Unit,
+    modifier: Modifier = Modifier,
     onStartNavigation: ((String, RouteService.TravelMode) -> Unit)? = null,
     alternatives: List<RouteService.Route> = emptyList(),
     selectedAlternative: RouteService.Route? = null,
     onSelectAlternative: (RouteService.Route?) -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).imePadding()) {

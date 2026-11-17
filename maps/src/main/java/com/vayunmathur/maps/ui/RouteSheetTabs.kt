@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +15,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.maps.R
-import com.vayunmathur.maps.ipc.RideHandoffContract
+import com.vayunmathur.maps.intents.RideHandoffContract
 
 /**
  * "Book ride": hands the trip off to the MA taxi app, pre-filled (P20).

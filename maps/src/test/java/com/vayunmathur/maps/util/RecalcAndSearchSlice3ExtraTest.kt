@@ -1,4 +1,8 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.NavigationSessionManager
 
 import android.Manifest
 import android.app.Application

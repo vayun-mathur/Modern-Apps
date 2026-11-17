@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.MaterialTheme
@@ -40,7 +41,7 @@ fun LineBadge(line: String, routeColor: String?, modifier: Modifier = Modifier) 
 fun parseHexColor(hex: String?): Color? {
     if (hex.isNullOrBlank()) return null
     return runCatching {
-        Color(android.graphics.Color.parseColor("#" + hex.removePrefix("#")))
+        Color(("#" + hex.removePrefix("#")).toColorInt())
     }.getOrNull()
 }
 

@@ -1,6 +1,8 @@
 package com.vayunmathur.maps.ui
-import com.vayunmathur.maps.toFeature
-import com.vayunmathur.maps.toSheetRoute
+import com.vayunmathur.maps.platform.SearchActions
+import com.vayunmathur.maps.platform.SearchResult
+import com.vayunmathur.maps.ui.toFeature
+import com.vayunmathur.maps.ui.toSheetRoute
 
 import android.app.Application
 import androidx.compose.runtime.rememberCoroutineScope
@@ -10,10 +12,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -43,7 +44,7 @@ class SearchActionsSlice3ExtraTest {
         rule.setContent {
             val scope = rememberCoroutineScope()
             nullActions = rememberSearchActions(null, searchVm, selectedVm, scope) { closed++ }
-            actions = rememberSearchActions(com.vayunmathur.maps.SheetRoute.Search(null, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
+            actions = rememberSearchActions(com.vayunmathur.maps.ui.SheetRoute.Search(null, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
             DynamicTheme { androidx.compose.foundation.layout.Box {} }
         }
         assertNull(nullActions)
@@ -63,10 +64,10 @@ class SearchActionsSlice3ExtraTest {
         var actions: SearchActions? = null
         rule.setContent {
             val scope = rememberCoroutineScope()
-            actions = rememberSearchActions(com.vayunmathur.maps.SheetRoute.Search(null, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
+            actions = rememberSearchActions(com.vayunmathur.maps.ui.SheetRoute.Search(null, 37.8, -122.4), searchVm, selectedVm, scope) { closed++ }
             DynamicTheme { androidx.compose.foundation.layout.Box {} }
         }
-        val result = com.vayunmathur.maps.util.SearchResult("id1", "Blue Bottle", null, 37.8, -122.4, null)
+        val result = com.vayunmathur.maps.platform.SearchResult("id1", "Blue Bottle", null, 37.8, -122.4, null)
         actions!!.selectResult(result)
         // selectResult launches on the passed scope (paused Main under Robolectric): pump + wait
         withTimeout(10000) {
@@ -96,21 +97,21 @@ class SearchActionsSlice3ExtraTest {
         // that leg on the stack and pops the search back to the plan.
         val from = SpecificFeature.GenericPlace("From", null, null, null, GeoPoint(-122.4, 37.8))
         val to = SpecificFeature.GenericPlace("To", null, null, null, GeoPoint(-122.3, 37.9))
-        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>(
+        val stack = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.ui.SheetRoute>(
             arrayOf(
-                com.vayunmathur.maps.SheetRoute.Browse,
-                com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(from, to)),
-                com.vayunmathur.maps.SheetRoute.Search(1, 37.8, -122.4),
+                com.vayunmathur.maps.ui.SheetRoute.Browse,
+                com.vayunmathur.maps.ui.SheetRoute.RoutePlan(listOf(from, to)),
+                com.vayunmathur.maps.ui.SheetRoute.Search(1, 37.8, -122.4),
             ),
         )
         rule.setContent {
             val scope = rememberCoroutineScope()
-            actions = rememberSearchActions(com.vayunmathur.maps.SheetRoute.Search(1, 37.8, -122.4), searchVm, selectedVm, scope, sheetStack = stack) { closed++ }
+            actions = rememberSearchActions(com.vayunmathur.maps.ui.SheetRoute.Search(1, 37.8, -122.4), searchVm, selectedVm, scope, sheetStack = stack) { closed++ }
             DynamicTheme { androidx.compose.foundation.layout.Box {} }
         }
-        actions!!.selectResult(com.vayunmathur.maps.util.SearchResult("id2", "Middle", null, 37.85, -122.35, null))
+        actions!!.selectResult(com.vayunmathur.maps.platform.SearchResult("id2", "Middle", null, 37.85, -122.35, null))
         withTimeout(10000) {
-            while ((stack.backStack.filterIsInstance<com.vayunmathur.maps.SheetRoute.RoutePlan>().lastOrNull())?.waypoints?.getOrNull(1)?.name != "Middle") {
+            while ((stack.backStack.filterIsInstance<com.vayunmathur.maps.ui.SheetRoute.RoutePlan>().lastOrNull())?.waypoints?.getOrNull(1)?.name != "Middle") {
                 Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
                 delay(50)
             }
@@ -131,7 +132,7 @@ class SearchActionsSlice3ExtraTest {
         val vm = SelectedFeatureViewModel(app)
         val from = SpecificFeature.GenericPlace("From", null, null, null, GeoPoint(-122.4, 37.8))
         val to = SpecificFeature.GenericPlace("To", null, null, null, GeoPoint(-122.3, 37.9))
-        vm.setSheetRoute(com.vayunmathur.maps.SheetRoute.RoutePlan(listOf(from, to)))
+        vm.setSheetRoute(com.vayunmathur.maps.ui.SheetRoute.RoutePlan(listOf(from, to)))
         // WhileSubscribed flow on viewModelScope (paused Main) + IO planning: pump both
         var latest: Map<RouteService.TravelMode, RouteService.RouteType?>? = null
         val job = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {

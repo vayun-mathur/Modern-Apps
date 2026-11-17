@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.Fix
+import com.vayunmathur.maps.platform.PositionHold
+import com.vayunmathur.maps.platform.PositionSample
 import com.vayunmathur.library.map.GeoPoint
 import kotlin.test.Test
 import kotlin.test.assertNotNull

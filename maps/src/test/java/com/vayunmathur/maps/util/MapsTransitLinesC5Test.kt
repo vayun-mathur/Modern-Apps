@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.util.OfflineRouter
+import com.vayunmathur.maps.data.OfflineRouterTransit
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,10 +1,11 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.domain.visibleBoundsOrWorld
+import com.vayunmathur.maps.platform.PoiMapViewModel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import com.vayunmathur.library.map.CameraState
-import com.vayunmathur.maps.util.visibleBoundsOrWorld
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest

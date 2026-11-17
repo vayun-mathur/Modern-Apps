@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.intents.RideEstimate
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
@@ -8,7 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.maps.ipc.rememberRideEstimate
+import com.vayunmathur.maps.intents.rememberRideEstimate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -70,7 +71,7 @@ class Slice3Pass2UiTest {
     }
 
     @Test fun rideEstimateStaysNullWhenTaxiAbsent() {
-        var observed: com.vayunmathur.maps.ipc.RideEstimate? = null
+        var observed: com.vayunmathur.maps.intents.RideEstimate? = null
         var composed = false
         rule.setContent {
             val state = rememberRideEstimate(

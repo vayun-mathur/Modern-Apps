@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ipc
+import com.vayunmathur.maps.intents.FamilyLocationProtocol
+import com.vayunmathur.maps.intents.FamilyMember
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

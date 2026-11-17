@@ -1,10 +1,10 @@
 package com.vayunmathur.maps.ui.map
+import kotlin.time.Duration.Companion.milliseconds
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.vayunmathur.library.map.CameraState
-import com.vayunmathur.maps.util.NavigationProgress
-import kotlin.time.Duration.Companion.milliseconds
+import com.vayunmathur.maps.domain.NavigationProgress
 
 /** How long the follow animation takes. Matched to the ~1s GPS cadence so it never catches up
  *  to itself and stutters. */

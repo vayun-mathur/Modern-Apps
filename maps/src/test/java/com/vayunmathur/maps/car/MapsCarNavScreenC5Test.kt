@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.car
+import com.vayunmathur.maps.domain.NavigationProgress
+import com.vayunmathur.maps.platform.NavMapScreen
 
 import android.Manifest
 import android.app.Application
@@ -8,9 +10,8 @@ import android.location.LocationManager
 import androidx.car.app.testing.TestCarContext
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.map.GeoPoint
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertNotNull

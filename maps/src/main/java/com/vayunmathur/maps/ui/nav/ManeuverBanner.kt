@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.ui.nav
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.formatDistance
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,9 +27,7 @@ import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.ui.iconContent
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.formatDistance
+import com.vayunmathur.maps.domain.NavigationProgress
 
 /**
  * Rich turn maneuver banner. Shows the upcoming

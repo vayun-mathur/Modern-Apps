@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.map
+import kotlinx.serialization.json.JsonObject
 
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpRect
@@ -7,10 +8,9 @@ import com.vayunmathur.library.map.Projection
 import com.vayunmathur.maps.data.Feature1
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
-import com.vayunmathur.maps.ipc.FamilyMember
-import com.vayunmathur.maps.util.PoiIndex
-import com.vayunmathur.maps.util.SearchResult
-import kotlinx.serialization.json.JsonObject
+import com.vayunmathur.maps.intents.FamilyMember
+import com.vayunmathur.maps.data.PoiIndex
+import com.vayunmathur.maps.platform.SearchResult
 import kotlinx.serialization.json.JsonPrimitive
 import com.vayunmathur.maps.data.Point
 

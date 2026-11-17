@@ -1,6 +1,9 @@
 package com.vayunmathur.maps.ui
-
 import androidx.compose.foundation.layout.Column
+import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.data.SavedPlace
+import com.vayunmathur.maps.platform.PlacePanelActions
+
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -9,15 +12,13 @@ import androidx.compose.ui.Modifier
 import com.vayunmathur.library.ui.FreeHeightBottomSheetScaffold
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.maps.ui.theme.MapChromeMetrics
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.directionsTo
-import com.vayunmathur.maps.popSheet
-import com.vayunmathur.maps.selectFeature
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.rememberPlacePanelState
+import com.vayunmathur.maps.platform.SearchActions
+import com.vayunmathur.maps.ui.directionsTo
+import com.vayunmathur.maps.ui.popSheet
+import com.vayunmathur.maps.ui.selectFeature
+import com.vayunmathur.maps.platform.rememberPlacePanelState
 import androidx.compose.runtime.remember
-import com.vayunmathur.maps.util.SearchUiState
-import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.platform.SearchUiState
 
 /**
  * The compact bottom sheets: search over place, both wrapping the shared map

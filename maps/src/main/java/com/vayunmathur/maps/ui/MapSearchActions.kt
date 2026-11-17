@@ -1,14 +1,14 @@
 package com.vayunmathur.maps.ui
+import kotlinx.coroutines.CoroutineScope
+import com.vayunmathur.maps.platform.SearchResult
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.selectFeature
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.util.SearchResult
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import kotlinx.coroutines.CoroutineScope
+import com.vayunmathur.maps.ui.selectFeature
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.SearchActions
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlinx.coroutines.launch
 
 /**
@@ -18,11 +18,11 @@ import kotlinx.coroutines.launch
  */
 @Composable
 internal fun rememberSearchActions(
-    searchRequest: com.vayunmathur.maps.SheetRoute.Search?,
+    searchRequest: com.vayunmathur.maps.ui.SheetRoute.Search?,
     searchViewModel: MapsSearchViewModel,
     viewModel: SelectedFeatureViewModel,
     coroutineScope: CoroutineScope,
-    sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.SheetRoute>? = null,
+    sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.ui.SheetRoute>? = null,
     onCloseSearch: () -> Unit,
 ): SearchActions? {
     val openRequest = searchRequest ?: return null
@@ -47,10 +47,10 @@ internal fun rememberSearchActions(
                     // Editing a waypoint: rewrite that leg of the plan under
                     // the search sheet, then pop back to it.
                     val planIndex = sheetStack?.backStack?.indexOfLast {
-                        it is com.vayunmathur.maps.SheetRoute.RoutePlan
+                        it is com.vayunmathur.maps.ui.SheetRoute.RoutePlan
                     } ?: -1
                     val plan = sheetStack?.backStack?.getOrNull(planIndex)
-                        as? com.vayunmathur.maps.SheetRoute.RoutePlan
+                        as? com.vayunmathur.maps.ui.SheetRoute.RoutePlan
                     if (index != null && plan != null && sheetStack != null) {
                         sheetStack.set(
                             planIndex,

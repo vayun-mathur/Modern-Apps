@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui.nav
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.domain.NavigationProgress
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -8,8 +10,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.maps.R as MapsR
 import com.vayunmathur.maps.data.PostedLimit
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.domain.RouteService
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

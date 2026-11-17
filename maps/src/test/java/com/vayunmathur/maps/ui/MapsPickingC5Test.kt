@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.SearchResult
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
@@ -22,9 +23,8 @@ import com.vayunmathur.maps.ui.map.adminUpgradeFor
 import com.vayunmathur.maps.ui.map.openVehicleTrip
 import com.vayunmathur.maps.ui.map.pickPinOnCpu
 import com.vayunmathur.maps.ui.map.pickVehicle
-import com.vayunmathur.maps.util.SearchResult
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TransitStopsViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.TransitStopsViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

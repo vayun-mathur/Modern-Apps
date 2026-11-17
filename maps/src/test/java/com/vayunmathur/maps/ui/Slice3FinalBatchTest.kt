@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.ParkingSpot
+import com.vayunmathur.maps.platform.PlacePanelActions
 
 import android.app.Application
 import androidx.compose.ui.geometry.Offset
@@ -22,10 +24,9 @@ import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.OpeningHours
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.PlacePanelState
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
+import com.vayunmathur.maps.platform.PlacePanelState
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SavedPlacesViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

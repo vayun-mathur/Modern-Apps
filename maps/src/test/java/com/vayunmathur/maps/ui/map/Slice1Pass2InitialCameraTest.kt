@@ -10,7 +10,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.map.CameraState
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.maps.data.MapPreferences
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.runner.RunWith

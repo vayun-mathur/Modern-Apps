@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.normalizeAddress
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

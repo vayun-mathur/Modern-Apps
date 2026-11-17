@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.car
+import com.vayunmathur.maps.platform.MapsSession
+import com.vayunmathur.maps.platform.NavMapScreen
 
 import android.app.Application
 import android.content.Intent

@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.data.google
+import com.vayunmathur.maps.data.nearest
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.SearchResult
 
 import com.vayunmathur.library.network.NetworkClient
 import kotlinx.coroutines.Dispatchers

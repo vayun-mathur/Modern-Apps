@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.platform.TransitStopsViewModel
+import com.vayunmathur.maps.platform.TripItineraryState
+import com.vayunmathur.maps.platform.TripSelection
 
 import android.app.Application
 import android.os.Looper

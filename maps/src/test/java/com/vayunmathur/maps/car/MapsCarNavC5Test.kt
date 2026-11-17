@@ -1,4 +1,6 @@
 package com.vayunmathur.maps.car
+import com.vayunmathur.maps.data.string
+import com.vayunmathur.maps.platform.CarSearchScreen
 
 import android.Manifest
 import android.app.Application
@@ -6,7 +8,7 @@ import android.location.Location
 import android.location.LocationManager
 import androidx.car.app.testing.TestCarContext
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.maps.util.PoiIndex
+import com.vayunmathur.maps.data.PoiIndex
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

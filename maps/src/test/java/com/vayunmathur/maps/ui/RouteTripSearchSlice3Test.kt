@@ -1,4 +1,12 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.data.ParkingSpot
+import com.vayunmathur.maps.domain.NavigationProgress
+import com.vayunmathur.maps.domain.SnapResult
+import com.vayunmathur.maps.platform.DeparturesState
+import com.vayunmathur.maps.platform.SearchActions
+import com.vayunmathur.maps.platform.SearchResult
+import com.vayunmathur.maps.platform.SearchUiState
+import com.vayunmathur.maps.platform.TripItineraryState
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
@@ -14,16 +22,9 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.transit.TripItinerary
 import com.vayunmathur.maps.data.transit.TripStop
-import com.vayunmathur.maps.util.DeparturesState
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.util.SearchResult
-import com.vayunmathur.maps.util.SearchUiState
-import com.vayunmathur.maps.util.SnapResult
-import com.vayunmathur.maps.util.TripItineraryState
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.minutes

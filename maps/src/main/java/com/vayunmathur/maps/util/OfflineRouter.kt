@@ -1,4 +1,11 @@
+// PACKAGE STRUCTURE EXCEPTION (JNI)
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.OfflineRouterLifecycle
+import com.vayunmathur.maps.data.OfflineRouterRouteBuilder
+import com.vayunmathur.maps.data.OfflineRouterTransit
+import com.vayunmathur.maps.data.OfflineRouterTrafficFetch
+import com.vayunmathur.maps.data.OfflineRouterTraffic
+import com.vayunmathur.maps.domain.RouteService
 
 import android.content.Context
 import com.vayunmathur.library.log.Log

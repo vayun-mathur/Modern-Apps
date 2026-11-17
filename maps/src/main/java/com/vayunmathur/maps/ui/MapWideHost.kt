@@ -1,4 +1,7 @@
 package com.vayunmathur.maps.ui
+import com.vayunmathur.maps.platform.SearchUiState
+import com.vayunmathur.maps.domain.visibleBoundsOrWorld
+import com.vayunmathur.maps.platform.rememberPlacePanelState
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,8 +28,7 @@ import com.vayunmathur.maps.R as MapsR
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.SheetRoute
-import com.vayunmathur.maps.popSheet
+import com.vayunmathur.maps.ui.popSheet
 import com.vayunmathur.maps.data.google.PoiSection
 import com.vayunmathur.maps.ui.map.LayerToggles
 import com.vayunmathur.maps.ui.map.MapChromeState
@@ -38,17 +40,12 @@ import com.vayunmathur.maps.ui.map.NavigationCameraFollow
 import com.vayunmathur.maps.ui.map.WaypointList
 import com.vayunmathur.maps.ui.map.rememberMapChromeState
 import com.vayunmathur.maps.ui.theme.MapChromeMetrics
-import com.vayunmathur.maps.util.MapsSearchViewModel
-import com.vayunmathur.maps.util.NavigationSessionManager
-import com.vayunmathur.maps.util.PlacePanelActions
-import com.vayunmathur.maps.util.RouteService
-import com.vayunmathur.maps.util.SavedPlacesViewModel
-import com.vayunmathur.maps.util.SearchActions
-import com.vayunmathur.maps.util.SearchUiState
-import com.vayunmathur.maps.util.SelectedFeatureViewModel
-import com.vayunmathur.maps.util.TransitStopsViewModel
-import com.vayunmathur.maps.util.rememberPlacePanelState
-import com.vayunmathur.maps.util.visibleBoundsOrWorld
+import com.vayunmathur.maps.platform.MapsSearchViewModel
+import com.vayunmathur.maps.platform.NavigationSessionManager
+import com.vayunmathur.maps.platform.PlacePanelActions
+import com.vayunmathur.maps.domain.RouteService
+import com.vayunmathur.maps.platform.SearchActions
+import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 

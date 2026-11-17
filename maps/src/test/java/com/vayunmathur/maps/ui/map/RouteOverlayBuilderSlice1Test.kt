@@ -1,9 +1,10 @@
 package com.vayunmathur.maps.ui.map
+import com.vayunmathur.maps.domain.NavigationProgress
+import com.vayunmathur.maps.domain.PolylineIndex
 
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.ui.theme.mapTokens
-import com.vayunmathur.maps.util.NavigationProgress
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.domain.RouteService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

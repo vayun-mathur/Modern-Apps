@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.intents
+import com.vayunmathur.maps.data.string
 
 import com.vayunmathur.library.intents.maps.DirectionsLatLng
 import com.vayunmathur.library.intents.maps.DirectionsRequest
@@ -7,8 +8,8 @@ import com.vayunmathur.library.intents.maps.DirectionsSegment
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.AssistantIntent
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.util.OfflineRouterRoadRoutes
-import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.data.OfflineRouterRoadRoutes
+import com.vayunmathur.maps.domain.RouteService
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 

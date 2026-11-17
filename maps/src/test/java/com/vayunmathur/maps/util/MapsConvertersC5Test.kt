@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.MapOverlay
 
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.Feature1
