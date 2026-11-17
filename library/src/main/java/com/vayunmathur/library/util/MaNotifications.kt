@@ -85,6 +85,16 @@ object MaNotifications {
         } catch (_: Exception) {
             return null
         }
+        // Re-check at the post site: lint cannot see the guard at the top of
+        // this function as dominating notify(), and the grant can be revoked
+        // between the two.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return null
+        }
         return try {
             manager.notify(notificationId, notification)
             notificationId

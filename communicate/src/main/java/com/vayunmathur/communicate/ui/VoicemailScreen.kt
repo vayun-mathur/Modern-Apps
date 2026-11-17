@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.ui
 
+import androidx.compose.runtime.mutableIntStateOf
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.padding
@@ -48,8 +49,9 @@ import kotlinx.coroutines.withContext
 @Composable
 fun VoicemailScreen() {
     val context = LocalContext.current
+    val deleteFailedMessage = stringResource(R.string.delete_failed)
     val scope = rememberCoroutineScope()
-    var tick by remember { mutableStateOf(0) }
+    var tick by remember { mutableIntStateOf(0) }
     var expandedId by remember { mutableLongStateOf(-1L) }
     // #735 (same as MessagesScreen): PermissionGate reads checkSelfPermission
     // during composition with no resume trigger, so granting from Settings
@@ -128,7 +130,7 @@ fun VoicemailScreen() {
                                             tick++
                                         } else {
                                             AppMessages.show(
-                                                context.getString(R.string.delete_failed),
+                                                deleteFailedMessage,
                                             )
                                         }
                                     }
@@ -148,7 +150,7 @@ fun VoicemailScreen() {
                                             tick++
                                         } else {
                                             AppMessages.show(
-                                                context.getString(R.string.delete_failed),
+                                                deleteFailedMessage,
                                             )
                                         }
                                     }

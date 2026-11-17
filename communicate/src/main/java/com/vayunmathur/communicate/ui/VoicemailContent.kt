@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,8 +53,8 @@ fun VoicemailContent(
     expandedId: Long?,
     onToggleExpand: (VoicemailEntry) -> Unit,
     onDelete: (VoicemailEntry) -> Unit,
-    onPlayed: (VoicemailEntry) -> Unit = {},
     modifier: Modifier = Modifier,
+    onPlayed: (VoicemailEntry) -> Unit = {},
 ) {
     var pendingDelete by remember { mutableStateOf<VoicemailEntry?>(null) }
     LazyColumn(
@@ -104,14 +105,14 @@ private fun VoicemailRow(
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = if (entry.isRead) FontWeight.Medium else FontWeight.Bold,
                 )
-                LineBadge(entry.line, entry.subscriptionId, modifier = Modifier.padding(start = 6.dp))
+                LineBadge(entry.line, modifier = Modifier.padding(start = 6.dp), subscriptionId = entry.subscriptionId)
             }
         },
         supportingContent = {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     "${formatDateTime(LocalContext.current, entry.timestampMillis)} · " +
-                        stringResource(R.string.voicemail_duration, entry.durationSeconds),
+                        pluralStringResource(R.plurals.voicemail_duration, entry.durationSeconds.toInt(), entry.durationSeconds),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

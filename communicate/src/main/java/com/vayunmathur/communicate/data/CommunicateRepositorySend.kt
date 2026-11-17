@@ -319,7 +319,7 @@ internal fun CommunicateRepository.persistOutgoingMms(
                 put("ct", "text/plain")
                 put("text", body)
             }
-            context.contentResolver.insert(Uri.parse("content://mms/$mmsId/part"), partValues)
+            context.contentResolver.insert("content://mms/$mmsId/part".toUri(), partValues)
         }
         // Address rows: TO (151) per recipient.
         for (r in recipients) {
@@ -328,7 +328,7 @@ internal fun CommunicateRepository.persistOutgoingMms(
                 put("type", MMS_ADDR_TYPE_TO)
                 put("charset", MMS_CHARSET_UTF8)
             }
-            context.contentResolver.insert(Uri.parse("content://mms/$mmsId/addr"), addrValues)
+            context.contentResolver.insert("content://mms/$mmsId/addr".toUri(), addrValues)
         }
     }
 }

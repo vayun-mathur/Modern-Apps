@@ -54,6 +54,12 @@ fun ConversationScreen(
     onOpenRcsVerify: (String) -> Unit = {}, onOpenRcsGroupMembers: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val simLineLabel = stringResource(R.string.account_sim)
+    val contactShareFailedMessage = stringResource(R.string.contact_share_failed)
+    val conversationTitleLabel = stringResource(R.string.conversation_title)
+    val gvSendFailedMessage = stringResource(R.string.gv_send_failed)
+    val pollSendFailedMessage = stringResource(R.string.poll_send_failed)
+    val safetyNumberFailedMessage = stringResource(R.string.signal_safety_number_accept_failed)
     val scope = rememberCoroutineScope()
     var draft by remember(threadId) { mutableStateOf("") }
     var selectedAttachments by remember(threadId) { mutableStateOf<List<CommunicateAttachment>>(emptyList()) }
@@ -69,7 +75,7 @@ fun ConversationScreen(
             CommunicateLine.Sim -> lineChoices
                 .filterIsInstance<LineChoice.Sim>()
                 .firstOrNull { subscriptionId == null || it.subscriptionId == subscriptionId }
-                ?: LineChoice.Sim(subscriptionId ?: -1, context.getString(R.string.account_sim))
+                ?: LineChoice.Sim(subscriptionId ?: -1, simLineLabel)
         }
     }
     // Poll composer and contact picker, offered only on lines that support them.
@@ -81,7 +87,7 @@ fun ConversationScreen(
         scope.launch {
             val shared = withContext(Dispatchers.IO) { readSharedContact(context, uri) }
             if (shared == null) {
-                AppMessages.show(context.getString(R.string.contact_share_failed))
+                AppMessages.show(contactShareFailedMessage)
                 return@launch
             }
             val ok = CommunicateRepository.shareContact(
@@ -90,7 +96,7 @@ fun ConversationScreen(
                 conversationId = remoteId ?: address,
                 contact = shared,
             )
-            if (!ok) AppMessages.show(context.getString(R.string.contact_share_failed))
+            if (!ok) AppMessages.show(contactShareFailedMessage)
         }
     }
 
@@ -122,11 +128,11 @@ fun ConversationScreen(
         )
     }
     val title = produceState(
-        initialValue = address.ifBlank { context.getString(R.string.conversation_title) },
+        initialValue = address.ifBlank { conversationTitleLabel },
         address) {
         value = withContext(Dispatchers.IO) {
             CommunicateRepository.findContactName(context, address)
-                ?: address.ifBlank { context.getString(R.string.conversation_title) }
+                ?: address.ifBlank { conversationTitleLabel }
         }
     }
     // Offer "save this number" only for an address that is genuinely an unsaved phone number.
@@ -236,7 +242,7 @@ fun ConversationScreen(
                             attachments,
                             participants = if (isGroup) participants else emptyList(),
                         )
-                        if (ok) refresh++ else AppMessages.show(context.getString(R.string.gv_send_failed))
+                        if (ok) refresh++ else AppMessages.show(gvSendFailedMessage)
                     }
                 },
             )
@@ -255,7 +261,7 @@ fun ConversationScreen(
                             question = question,
                             options = options,
                         )
-                        if (ok) refresh++ else AppMessages.show(context.getString(R.string.poll_send_failed))
+                        if (ok) refresh++ else AppMessages.show(pollSendFailedMessage)
                     }
                 },
             )
@@ -284,7 +290,7 @@ fun ConversationScreen(
                             safetyNumber = null
                             refresh++
                         } else {
-                            AppMessages.show(context.getString(R.string.signal_safety_number_accept_failed))
+                            AppMessages.show(safetyNumberFailedMessage)
                         }
                     }
                 },

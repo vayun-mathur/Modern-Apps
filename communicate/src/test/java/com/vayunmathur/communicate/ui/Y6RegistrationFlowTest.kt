@@ -15,7 +15,6 @@ import com.sun.net.httpserver.HttpServer
 import com.vayunmathur.communicate.data.signal.SignalDatabase
 import com.vayunmathur.communicate.data.whatsapp.WhatsAppDatabase
 import com.vayunmathur.communicate.Route
-import com.vayunmathur.communicate.registrationEntries
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
 import java.net.InetSocketAddress

@@ -295,8 +295,9 @@ class RegistrationHttpClient(private val context: Context) {
             body = body,
             sslSocketFactory = SignalTrust.sslSocketFactory(context),
         )
-        if (resp.status == HTTP_LOCKED) throw IllegalStateException("423 RegistrationLock (live-only: needs" +
-            "svr2Credentials/recoveryPassword)")
+        if (resp.status == HTTP_LOCKED) throw IllegalStateException(
+            "423 RegistrationLock (live-only: needs svr2Credentials/recoveryPassword)",
+        )
         if (!resp.isSuccess) throw IllegalStateException("HTTP ${resp.status}: ${resp.body.take(ERROR_BODY_MAX_CHARS)}")
         return parseSession(resp.body)
     }
@@ -471,12 +472,12 @@ class RegistrationHttpClient(private val context: Context) {
     }
 
     private fun buildAccountAttributesJson(auth: SignalAuthData): JSONObject {
-        // AccountAttributes per org.whispersystems.signalservice.api.account.AccountAttributes
-        // {signalingKey:null, registrationId, pniRegistrationId, unidentifiedAccessKey 32B, registrationLock,
-        // recoveryPassword?,
-        // fetchesMessages:true,
-        // capabilities:{storage,versionedExpirationTimer,attachmentBackfill,spqr,usernameChangeSyncMessage},
-        // discoverableByPhoneNumber, name}
+        // The account-attributes payload mirrors the signal service's
+        // AccountAttributes shape: a null signaling key, the registration and
+        // PNI registration ids, the 32-byte unidentified access key, the
+        // registration lock, an optional recovery password, message fetching
+        // enabled, the storage / timer / backfill / spqr / username-sync
+        // capabilities, phone-number discoverability, and the profile name.
         val uakB64 = auth.unidentifiedAccessKey
         val uakBytes = if (uakB64.isNotEmpty()) runCatching { Base64.decode(
             uakB64,

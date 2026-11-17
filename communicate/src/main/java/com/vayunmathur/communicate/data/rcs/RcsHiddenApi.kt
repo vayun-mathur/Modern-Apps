@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.rcs
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.telephony.ims.ImsManager
 import android.telephony.ims.ImsException
@@ -47,6 +48,10 @@ internal object RcsHiddenApi {
      * dispatch is by name (`onCapabilitiesReceived` / `onComplete` / `onError`).
      * Returns false when the bridge itself fails (caller treats as no caps).
      */
+    // Hidden @SystemApi surface (see file header): no public SDK accessor
+    // exists for this callback registration, so reflection is the only path;
+    // every call is feature-gated and failure-degrading.
+    @SuppressLint("PrivateApi")
     fun requestUceCapabilities(
         adapter: Any,
         contactUris: Collection<android.net.Uri>,
@@ -116,6 +121,10 @@ internal object RcsHiddenApi {
      * pre-check; full capabilities stay for group setup. Returns false when
      * the bridge itself fails.
      */
+    // Hidden @SystemApi surface (see file header): no public SDK accessor
+    // exists for this callback registration, so reflection is the only path;
+    // every call is feature-gated and failure-degrading.
+    @SuppressLint("PrivateApi")
     fun requestUceAvailability(
         adapter: Any,
         contactUri: android.net.Uri,

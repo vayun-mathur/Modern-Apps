@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Composable
 fun GoogleVoiceSignInScreen(onBack: () -> Unit, onSignedIn: () -> Unit) {
     val context = LocalContext.current
+    val signedInMessage = stringResource(R.string.gv_signed_in)
     val session = remember { GoogleVoiceSession.get(context) }
     val scope = rememberCoroutineScope()
     // shouldInterceptRequest runs on a background thread and can fire many times; latch
@@ -52,7 +53,7 @@ fun GoogleVoiceSignInScreen(onBack: () -> Unit, onSignedIn: () -> Unit) {
         if (!captured.compareAndSet(false, true)) return
         scope.launch {
             session.save(cookieHeader = cookies, apiKey = apiKey, authUser = authUser)
-            AppMessages.show(context.getString(R.string.gv_signed_in))
+            AppMessages.show(signedInMessage)
             onSignedIn()
         }
     }
@@ -106,6 +107,16 @@ fun GoogleVoiceSignInScreen(onBack: () -> Unit, onSignedIn: () -> Unit) {
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             CookieManager.getInstance().flush()
+                        }
+
+                        override fun onRenderProcessGone(
+                            view: WebView?,
+                            detail: android.webkit.RenderProcessGoneDetail?,
+                        ): Boolean {
+                            // The renderer died (crash/OOM): the sign-in page is
+                            // gone with it, so consume the event instead of crashing.
+                            view?.destroy()
+                            return true
                         }
                     }
                     loadUrl("https://voice.google.com/u/0/messages")

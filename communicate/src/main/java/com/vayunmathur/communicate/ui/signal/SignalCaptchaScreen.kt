@@ -40,6 +40,16 @@ fun SignalCaptchaWebView(
                     settings.javaScriptEnabled = true
                     clearCache(true)
                     webViewClient = object : WebViewClient() {
+                        override fun onRenderProcessGone(
+                            view: WebView,
+                            detail: android.webkit.RenderProcessGoneDetail?,
+                        ): Boolean {
+                            // Renderer died (crash/OOM): consume the event; the
+                            // captcha page can be re-created by recomposition.
+                            view.destroy()
+                            return true
+                        }
+
                         @Deprecated("Deprecated in Java")
                         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
                             if (url.startsWith(RegistrationHttpClient.SIGNAL_CAPTCHA_SCHEME)) {

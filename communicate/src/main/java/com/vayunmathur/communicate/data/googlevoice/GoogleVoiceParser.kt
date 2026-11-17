@@ -155,10 +155,11 @@ object GoogleVoiceParser {
     // ------------------------------------------------------------------
     // Positional wire-shape mapping (confirmed from live api2thread/list bodies)
     //
-    // record: ["t.<num>"|"c.<id>", state, [ item, item, ... ], null, [[num,...]], ...]
-    // item:   [itemId, tsMillis, ownNumber, [counterparty,...], type, read, ..,
-    //          duration@8, bodyText@9, .., counterparty@15, .., "t.<id>"|"c.<id>"]
-    // Items are newest-first.
+    // A record is a list whose head is the thread id (prefixed t. or c.),
+    // followed by its state and then the item list. Each item carries, in
+    // order, its id, timestamp in millis, the own number, the counterparties,
+    // the type and the read flag; the duration sits at index 8, the body text
+    // at index 9 and the counterparty at index 15. Items are newest-first.
     // ------------------------------------------------------------------
 
     private const val ITEMS = 2

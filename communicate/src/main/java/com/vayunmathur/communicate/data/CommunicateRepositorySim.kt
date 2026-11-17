@@ -177,7 +177,7 @@ internal fun CommunicateRepository.loadThreadRecipients(context: Context): Map<L
     // recipient_ids is a space-separated list of ids into the canonical-addresses table.
     val canonical = HashMap<String, String>()
     context.contentResolver.query(
-        Uri.parse("content://mms-sms/canonical-addresses"),
+        "content://mms-sms/canonical-addresses".toUri(),
         arrayOf("_id", "address"),
         null, null, null,
     )?.use { c ->
@@ -265,7 +265,7 @@ internal fun CommunicateRepository.loadMmsParts(
     val attachments = ArrayList<CommunicateAttachment>()
     runCatching {
         context.contentResolver.query(
-            Uri.parse("content://mms/part"),
+            "content://mms/part".toUri(),
             arrayOf("_id", "ct", "text", "_data"),
             "mid = ?", arrayOf(mmsId.toString()), null,
         )?.use { c ->
@@ -302,14 +302,14 @@ internal fun CommunicateRepository.loadMmsParts(
 }.getOrDefault("" to emptyList())
 
 internal fun CommunicateRepository.readMmsTextPart(context: Context, partId: Long): String = runCatching {
-    context.contentResolver.openInputStream(Uri.parse("content://mms/part/$partId"))?.use {
+    context.contentResolver.openInputStream("content://mms/part/$partId".toUri())?.use {
         it.readBytes().toString(Charsets.UTF_8)
     }.orEmpty()
 }.getOrDefault("")
 
 internal fun CommunicateRepository.loadMmsSender(context: Context, mmsId: Long): String? = runCatching {
     context.contentResolver.query(
-        Uri.parse("content://mms/$mmsId/addr"),
+        "content://mms/$mmsId/addr".toUri(),
         arrayOf("address", "type"),
         "type = 137", null, null,
     )?.use { c ->
@@ -422,9 +422,13 @@ internal fun CommunicateRepository.phoneAccountHandleForSub(
     if (subscriptionId < 0) return null
     if (!context.hasPermission(Manifest.permission.READ_PHONE_STATE)) return null
     val tm = context.getSystemService(TelecomManager::class.java) ?: return null
-    return runCatching {
+    return try {
         tm.callCapablePhoneAccounts.firstOrNull { it.id == subscriptionId.toString() }
-    }.getOrNull()
+    } catch (_: SecurityException) {
+        null
+    } catch (_: Exception) {
+        null
+    }
 }
 
 fun CommunicateRepository.openSmsComposer(context: Context, number: String? = null, body: String? = null) {
@@ -456,7 +460,13 @@ fun CommunicateRepository.voicemailNumber(context: Context, choice: LineChoice?)
     } else {
         base
     }
-    return runCatching { scoped.voiceMailNumber }.getOrNull()?.takeIf { it.isNotBlank() }
+    return try {
+        scoped.voiceMailNumber
+    } catch (_: SecurityException) {
+        null
+    } catch (_: Exception) {
+        null
+    }?.takeIf { it.isNotBlank() }
 }
 
 /**
@@ -566,7 +576,7 @@ fun CommunicateRepository.markVoicemailRead(
     }
     return runCatching {
         context.contentResolver.update(
-            Uri.parse(voicemail.contentUri),
+            voicemail.contentUri.toUri(),
             values,
             null,
             null,
@@ -578,7 +588,7 @@ fun CommunicateRepository.markVoicemailRead(
 fun CommunicateRepository.deleteVoicemail(context: Context, voicemail: VoicemailEntry): Boolean {
     if (!context.hasPermission(Manifest.permission.WRITE_CALL_LOG)) return false
     return runCatching {
-        context.contentResolver.delete(Uri.parse(voicemail.contentUri), null, null) >= 0
+        context.contentResolver.delete(voicemail.contentUri.toUri(), null, null) >= 0
     }.getOrDefault(false)
 }
 

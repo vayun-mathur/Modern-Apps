@@ -12,14 +12,14 @@ import com.vayunmathur.code.ui.SettingsPage
 import com.vayunmathur.code.ui.SnippetsPage
 import com.vayunmathur.code.ui.TerminalPage
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.openSettingsIfRequested
+import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
 
 @Composable
 fun Navigation(viewModel: EditorViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Editor)
     // Land on settings when opened from the system App Info page.
-    backStack.openSettingsIfRequested(Route.Settings)
+    backStack.OpenSettingsIfRequested(Route.Settings)
     MainNavigation(backStack) {
         entry<Route.Editor> {
             EditorPage(

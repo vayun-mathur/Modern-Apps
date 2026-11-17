@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.ui
 
+import androidx.core.net.toUri
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -134,7 +135,7 @@ internal fun SelectedAttachmentPreview(
         ) {
             if (attachment.mimeType.startsWith("image/")) {
                 AsyncImage(
-                    model = Uri.parse(attachment.contentUri),
+                    model = attachment.contentUri.toUri(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

@@ -61,7 +61,12 @@ object InAppCallTelecom {
             putBoolean(TelecomManager.EXTRA_START_CALL_WITH_SPEAKERPHONE, false)
         }
         val uri = Uri.fromParts(PhoneAccount.SCHEME_SIP, peerId, null)
-        runCatching { tm.placeCall(uri, extras) }
+        try {
+            tm.placeCall(uri, extras)
+        } catch (_: SecurityException) {
+            // Self-managed account not registered yet or CALL_PHONE revoked:
+            // the Telecom bind simply does not happen.
+        }
     }
 
     fun addIncoming(context: Context, peerId: String) {

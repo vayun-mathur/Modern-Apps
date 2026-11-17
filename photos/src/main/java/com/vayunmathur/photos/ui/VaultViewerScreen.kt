@@ -66,13 +66,11 @@ fun VaultViewerScreen(
                 .padding(paddingValues)
                 .background(Color.Black)
                 .onGloballyPositioned { containerSize = it.size }
-                .then(
-                    zoomGestures(
-                        zoom = zoomState,
-                        containerSize = { containerSize },
-                        onZoomChange = { zoom = it },
-                        onTap = { isChromeVisible = !isChromeVisible },
-                    )
+                .zoomGestures(
+                    zoom = zoomState,
+                    containerSize = { containerSize },
+                    onZoomChange = { zoom = it },
+                    onTap = { isChromeVisible = !isChromeVisible },
                 )
         ) {
             if (file != null) {

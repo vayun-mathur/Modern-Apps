@@ -1,5 +1,8 @@
 package com.vayunmathur.communicate
 
+import com.vayunmathur.communicate.intents.DeepLink
+import com.vayunmathur.communicate.intents.DeepLinks
+
 import android.content.Intent
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider

@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.rcs
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.net.Uri
 import android.telephony.CarrierConfigManager
@@ -128,7 +129,7 @@ object RcsGbaBootstrap {
             method.invoke(
                 tm,
                 TelephonyManager.APPTYPE_ISIM,
-                Uri.parse(nafUrl),
+                nafUrl.toUri(),
                 spId,
                 force,
                 executor,
@@ -151,9 +152,19 @@ object RcsGbaBootstrap {
         return runCatching {
             val ccm = context.getSystemService(CarrierConfigManager::class.java)
                 ?: return null
-            val bundle = runCatching {
-                ccm.getConfigForSubId(subId, KEY_ORG, KEY_PROTOCOL, KEY_CIPHER_SUITE)
-            }.getOrNull() ?: return null
+            // The keyed getter is API 34+; on 31-33 read the whole bundle.
+            val bundle = try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    ccm.getConfigForSubId(subId, KEY_ORG, KEY_PROTOCOL, KEY_CIPHER_SUITE)
+                } else {
+                    @Suppress("DEPRECATION")
+                    ccm.getConfigForSubId(subId)
+                }
+            } catch (_: SecurityException) {
+                return null
+            } catch (_: Exception) {
+                return null
+            } ?: return null
             val org = bundle.getInt(KEY_ORG, UaSecurityProtocolIdentifier.ORG_NONE)
             val protocol = bundle.getInt(
                 KEY_PROTOCOL,

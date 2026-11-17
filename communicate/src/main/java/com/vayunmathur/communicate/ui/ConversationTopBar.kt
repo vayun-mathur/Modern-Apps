@@ -104,6 +104,11 @@ internal fun ConversationActions(
     onOpenRcsGroupMembers: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val deleteFailedMessage = stringResource(R.string.delete_failed)
+    val callFailedMessage = stringResource(R.string.call_failed)
+    val gvActionFailedMessage = stringResource(R.string.gv_action_failed)
+    val rcsEncryptedStartedMessage = stringResource(R.string.rcs_encrypted_started)
+    val rcsEncryptedFailedMessage = stringResource(R.string.rcs_encrypted_failed)
     val scope = rememberCoroutineScope()
     var showDeleteConfirm by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
@@ -134,7 +139,7 @@ internal fun ConversationActions(
                             ),
                         )
                     }
-                    if (ok) onBack() else AppMessages.show(context.getString(R.string.delete_failed))
+                    if (ok) onBack() else AppMessages.show(deleteFailedMessage)
                 }
             },
             onDismiss = { showDeleteConfirm = false },
@@ -153,7 +158,7 @@ internal fun ConversationActions(
                     address = address,
                     remoteId = remoteId,
                 )
-                if (!placed) AppMessages.show(context.getString(R.string.call_failed))
+                if (!placed) AppMessages.show(callFailedMessage)
             }
         }) { com.vayunmathur.library.ui.IconCall() }
         // Only the in-app WebRTC lines can carry video; Telecom lines cannot.
@@ -167,7 +172,7 @@ internal fun ConversationActions(
                         remoteId = remoteId,
                         video = true,
                     )
-                    if (!placed) AppMessages.show(context.getString(R.string.call_failed))
+                    if (!placed) AppMessages.show(callFailedMessage)
                 }
             }) { com.vayunmathur.library.ui.IconVideoCamera() }
         }
@@ -179,7 +184,7 @@ internal fun ConversationActions(
                     context, remoteId,
                     com.vayunmathur.communicate.data.googlevoice.GoogleVoiceParser.ThreadAction.Archive,
                 )
-                if (ok) onBack() else AppMessages.show(context.getString(R.string.gv_action_failed))
+                if (ok) onBack() else AppMessages.show(gvActionFailedMessage)
             }
         }) { IconArchive() }
     }
@@ -223,9 +228,7 @@ internal fun ConversationActions(
                             }
                         }
                         AppMessages.show(
-                            context.getString(
-                                if (ok) R.string.rcs_encrypted_started else R.string.rcs_encrypted_failed,
-                            ),
+                            if (ok) rcsEncryptedStartedMessage else rcsEncryptedFailedMessage,
                         )
                     }
                 },

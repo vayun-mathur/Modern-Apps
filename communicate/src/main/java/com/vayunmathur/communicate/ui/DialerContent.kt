@@ -54,8 +54,8 @@ import kotlinx.coroutines.launch
 fun DialerContent(
     contacts: List<CommunicateContact>,
     onPlace: (String) -> Unit,
-    selectedLine: LineChoice? = null,
     modifier: Modifier = Modifier,
+    selectedLine: LineChoice? = null,
 ) {
     var number by remember { mutableStateOf("") }
     val context = LocalContext.current

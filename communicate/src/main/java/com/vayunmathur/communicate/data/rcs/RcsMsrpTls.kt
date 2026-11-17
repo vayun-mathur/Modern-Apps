@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.rcs
 
+import android.annotation.SuppressLint
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import java.io.File
@@ -255,6 +256,12 @@ object RcsMsrpTls {
         }
     }
 
+    // Chain validation would reject the self-signed carrier certs MSRP uses;
+    // the peer is instead authenticated by RFC 4572 fingerprint pinning,
+    // checked per socket in clientSocket / verifyServerSide before any data
+    // flows (and clientSocket refuses to connect without an expected
+    // fingerprint). This manager therefore intentionally accepts any chain.
+    @SuppressLint("CustomX509TrustManager")
     private object PermissiveTrustManager : X509TrustManager {
         override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) = Unit
         override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) = Unit

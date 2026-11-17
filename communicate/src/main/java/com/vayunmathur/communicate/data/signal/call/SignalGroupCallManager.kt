@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.signal.call
 
+import androidx.core.util.size
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.CoroutineScope
@@ -168,14 +169,14 @@ class SignalGroupCallManager(
         val id = groupId ?: return
         val state = try { groupCall.localDeviceState } catch (_: Throwable) { null }
         val joined = state?.joinState == GroupCall.JoinState.JOINED
-        val participants = try { groupCall.remoteDeviceStates?.size() ?: 0 } catch (_: Throwable) { 0 }
+        val participants = try { groupCall.remoteDeviceStates?.size ?: 0 } catch (_: Throwable) { 0 }
         Log.status(TAG, "group call state: joinState=${state?.joinState} participants=$participants")
         signaling.onGroupCallStateChanged(id, joined, participants)
     }
 
     override fun onRemoteDeviceStatesChanged(groupCall: GroupCall) {
         val id = groupId ?: return
-        val participants = try { groupCall.remoteDeviceStates?.size() ?: 0 } catch (_: Throwable) { 0 }
+        val participants = try { groupCall.remoteDeviceStates?.size ?: 0 } catch (_: Throwable) { 0 }
         val joined = try {
             groupCall.localDeviceState?.joinState == GroupCall.JoinState.JOINED
         } catch (_: Throwable) {

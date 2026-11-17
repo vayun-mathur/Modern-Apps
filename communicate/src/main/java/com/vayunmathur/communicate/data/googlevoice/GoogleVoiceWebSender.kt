@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.googlevoice
 
+import androidx.core.net.toUri
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.net.Uri
@@ -34,14 +35,6 @@ object GoogleVoiceWebSender {
 
     private const val TAG = "GVAUTO"
 
-    private var webView: WebView? = null
-    private var currentRecipient: String = ""
-    private var currentText: String = ""
-    private var currentAttachments: List<Uri> = emptyList()
-
-    @Volatile
-    private var pending: CompletableDeferred<String>? = null
-
     /**
      * Mint the bot-defense token by letting the GV web app build a `sendsms` request in an
      * offscreen WebView, intercepting + blocking that request, and returning just the `"!…"`
@@ -62,7 +55,7 @@ object GoogleVoiceWebSender {
         activity = activity,
         recipient = recipient,
         text = text,
-        attachments = attachments.map { Uri.parse(it.contentUri) },
+        attachments = attachments.map { it.contentUri.toUri() },
     )
 
     /** Drive the offscreen WebView to produce the exact sendsms body (with token). */
@@ -72,34 +65,42 @@ object GoogleVoiceWebSender {
         text: String,
         attachments: List<Uri> = emptyList(),
     ): String? {
+        // One session per mint: the WebView (and the Activity it is created
+        // with) is held only by this call frame and destroyed in the finally
+        // below, never by the singleton.
+        val session = MintSession(recipient, text, attachments)
+        try {
+            withContext(Dispatchers.Main) {
+                val wv = session.ensureWebView(activity)
+                wv.loadUrl("https://voice.google.com/u/0/messages")
+            }
+            return withTimeoutOrNull(if (attachments.isEmpty()) 60_000 else 120_000) {
+                session.deferred.await()
+            }
+        } finally {
+            withContext(Dispatchers.Main) { session.disposeWebView() }
+        }
+    }
+
+    /** Per-mint WebView state; see [mintBody]. */
+    private class MintSession(
+        val recipient: String,
+        val text: String,
+        val attachments: List<Uri>,
+    ) {
         val deferred = CompletableDeferred<String>()
-        withContext(Dispatchers.Main) {
-            pending = deferred
-            currentRecipient = recipient
-            currentText = text
-            currentAttachments = attachments
-            disposeWebView()
-            val wv = ensureWebView(activity)
-            wv.loadUrl("https://voice.google.com/u/0/messages")
-        }
-        val body = withTimeoutOrNull(if (attachments.isEmpty()) 60_000 else 120_000) { deferred.await() }
-        withContext(Dispatchers.Main) {
-            disposeWebView()
-            currentAttachments = emptyList()
-        }
-        return body
-    }
+        var webView: WebView? = null
 
-    private fun disposeWebView() {
-        val old = webView ?: return
-        runCatching { old.stopLoading() }
-        runCatching { (old.parent as? ViewGroup)?.removeView(old) }
-        runCatching { old.destroy() }
-        webView = null
-    }
+        fun disposeWebView() {
+            val old = webView ?: return
+            runCatching { old.stopLoading() }
+            runCatching { (old.parent as? ViewGroup)?.removeView(old) }
+            runCatching { old.destroy() }
+            webView = null
+        }
 
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun ensureWebView(activity: Activity): WebView {
+        @SuppressLint("SetJavaScriptEnabled")
+        fun ensureWebView(activity: Activity): WebView {
         webView?.let { return it }
         CookieManager.getInstance().setAcceptCookie(true)
         val wv = WebView(activity)
@@ -109,7 +110,7 @@ object GoogleVoiceWebSender {
         wv.settings.userAgentString =
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) " +
                 "Chrome/126.0.0.0 Mobile Safari/537.36"
-        wv.addJavascriptInterface(Bridge(), "AndroidGV")
+        wv.addJavascriptInterface(Bridge(deferred), "AndroidGV")
         // Install the fetch/XHR hook BEFORE any page script runs, so the GV app can't capture the
         // original fetch first (that's why onPageFinished injection missed the send).
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
@@ -124,13 +125,23 @@ object GoogleVoiceWebSender {
                 // Fallback hook injection for devices without DOCUMENT_START_SCRIPT.
                 view?.evaluateJavascript(hookScript(), null)
             }
+            override fun onRenderProcessGone(
+                view: WebView?,
+                detail: android.webkit.RenderProcessGoneDetail?,
+            ): Boolean {
+                // Renderer died (crash/OOM): fail the pending mint instead of
+                // taking the whole process down with the WebView.
+                deferred.complete("")
+                disposeWebView()
+                return true
+            }
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 if (url == null || !url.contains("voice.google.com/u/")) return
                 if (injected) return
                 injected = true
                 view?.evaluateJavascript(
-                    automationScript(currentRecipient, currentText, hasAttachments = currentAttachments.isNotEmpty()),
+                    automationScript(recipient, text, hasAttachments = attachments.isNotEmpty()),
                     null,
                 )
             }
@@ -141,8 +152,8 @@ object GoogleVoiceWebSender {
                 filePathCallback: ValueCallback<Array<Uri>>?,
                 fileChooserParams: FileChooserParams?,
             ): Boolean {
-                Log.dev(TAG, "file chooser requested for ${currentAttachments.size} attachment(s)")
-                filePathCallback?.onReceiveValue(currentAttachments.toTypedArray())
+                Log.dev(TAG, "file chooser requested for ${attachments.size} attachment(s)")
+                filePathCallback?.onReceiveValue(attachments.toTypedArray())
                 return true
             }
         }
@@ -158,16 +169,19 @@ object GoogleVoiceWebSender {
         return wv
     }
 
-    private class Bridge {
-        @JavascriptInterface
-        fun onBody(body: String) {
-            Log.dev(TAG, "captured sendsms body (${body.length} bytes)")
-            pending?.complete(body)
-        }
+        private class Bridge(
+            private val deferred: CompletableDeferred<String>,
+        ) {
+            @JavascriptInterface
+            fun onBody(body: String) {
+                Log.dev(TAG, "captured sendsms body (${body.length} bytes)")
+                deferred.complete(body)
+            }
 
-        @JavascriptInterface
-        fun log(msg: String) {
-            Log.dev(TAG, msg)
+            @JavascriptInterface
+            fun log(msg: String) {
+                Log.dev(TAG, msg)
+            }
         }
     }
 

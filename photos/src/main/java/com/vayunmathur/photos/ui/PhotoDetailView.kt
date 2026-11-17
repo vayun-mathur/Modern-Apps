@@ -179,15 +179,13 @@ fun PhotoDetailView(
     Box(
         modifier =
             Modifier.fillMaxSize()
-                .then(
-                    zoomGestures(
+                .zoomGestures(
                         zoom = currentZoom,
                         containerSize = sizeReader,
                         onZoomChange = updatedOnZoomUpdate,
                         onTap = { updatedOnToggleMetadata() },
                         acceptsTap = { tap -> metadataSize.height <= 0 || tap.y < (sizeReader().height - metadataSize.height).toFloat() },
                     )
-                )
     ) {
         // Shared by the image and the OCR text overlay so the two can't drift apart.
         // Reads currentZoom inside the layer block, so a pinch updates the GPU

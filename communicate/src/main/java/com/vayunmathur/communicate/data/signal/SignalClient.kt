@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.signal
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Base64 as AndroidBase64
 import com.vayunmathur.library.log.Log
@@ -73,6 +74,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  * GroupsV2 via SignalGroups (GroupMasterKey 32B -> GroupSecretParams, PUT /v2/groups/).
  * CDSIv2 via SignalContactSync (POST https://cdsi.signal.org/v1/{mrenclave}/discovery).
  */
+// Singleton by design (one Signal account per app). Every Context it or its
+// sockets retain is the application context (see init/SignalSocket), so no
+// activity or view can leak through these fields.
+@SuppressLint("StaticFieldLeak")
 object SignalClient {
 
     internal const val TAG = "SignalClient"

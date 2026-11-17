@@ -56,6 +56,10 @@ fun RcsGroupMembersScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val memberRemovedMessage = stringResource(R.string.rcs_member_removed)
+    val memberRemoveFailedMessage = stringResource(R.string.rcs_member_remove_failed)
+    val memberAddedMessage = stringResource(R.string.rcs_member_added)
+    val memberAddFailedMessage = stringResource(R.string.rcs_member_add_failed)
     val scope = rememberCoroutineScope()
     var refresh by remember { mutableIntStateOf(0) }
     var newMember by remember { androidx.compose.runtime.mutableStateOf("") }
@@ -91,8 +95,8 @@ fun RcsGroupMembersScreen(
                                         removeRcsMember(context, conversationId, member)
                                     }
                                     AppMessages.show(
-                                        if (ok) context.getString(R.string.rcs_member_removed)
-                                        else context.getString(R.string.rcs_member_remove_failed),
+                                        if (ok) memberRemovedMessage
+                                        else memberRemoveFailedMessage,
                                     )
                                     refresh++
                                 }
@@ -124,8 +128,8 @@ fun RcsGroupMembersScreen(
                                 addRcsMember(context, conversationId, peer)
                             }
                             AppMessages.show(
-                                if (ok) context.getString(R.string.rcs_member_added)
-                                else context.getString(R.string.rcs_member_add_failed),
+                                if (ok) memberAddedMessage
+                                else memberAddFailedMessage,
                             )
                             if (ok) newMember = ""
                             refresh++

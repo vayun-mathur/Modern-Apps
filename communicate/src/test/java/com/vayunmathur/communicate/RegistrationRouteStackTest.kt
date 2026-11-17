@@ -1,5 +1,8 @@
 package com.vayunmathur.communicate
 
+import com.vayunmathur.communicate.ui.showWhatsAppRegistrationDone
+import com.vayunmathur.communicate.ui.showSignalRegistrationDone
+
 import com.vayunmathur.library.util.NavBackStack
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

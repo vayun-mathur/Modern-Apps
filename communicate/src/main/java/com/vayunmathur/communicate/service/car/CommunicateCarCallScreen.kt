@@ -53,6 +53,8 @@ class CommunicateCarCallScreen(
         }
     }
 
+    @ExperimentalCarApi
+    @OptIn(ExperimentalCarApi::class)
     override fun onGetTemplate(): Template {
         val live = InAppCallRegistry.state.value
         if (live.phase.isLiveCall()) {
@@ -65,6 +67,7 @@ class CommunicateCarCallScreen(
     }
 
     /** Car-native in-call view (experimental). Falls back on any failure. */
+    @ExperimentalCarApi
     @OptIn(ExperimentalCarApi::class)
     private fun inCallTemplate(
         title: String,
@@ -93,6 +96,7 @@ class CommunicateCarCallScreen(
     }
 
     /** Dialpad for placing a new call (experimental). */
+    @ExperimentalCarApi
     @OptIn(ExperimentalCarApi::class)
     fun keypadTemplate(): Template {
         val callIcon = runCatching {
@@ -147,6 +151,8 @@ class CommunicateCarCallScreen(
         }
     }
 
+    @ExperimentalCarApi
+    @OptIn(ExperimentalCarApi::class)
     private fun recentCallsTemplate(): Template {
         val list = ItemList.Builder()
         list.addItem(
@@ -172,6 +178,7 @@ class CommunicateCarCallScreen(
     }
 
     /** Wrapper so the dialpad renders the keypad template directly. */
+    @ExperimentalCarApi
     @OptIn(ExperimentalCarApi::class)
     private class CommunicateCarKeypadScreen(
         carContext: CarContext,

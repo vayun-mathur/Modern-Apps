@@ -50,6 +50,9 @@ fun RcsVerifyScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val verifyDoneMessage = stringResource(R.string.rcs_verify_done)
+    val verifyNoKeyMessage = stringResource(R.string.rcs_verify_no_key)
+    val verifyClearedMessage = stringResource(R.string.rcs_verify_cleared)
     val scope = rememberCoroutineScope()
     var refresh by remember { mutableIntStateOf(0) }
     val state by produceState<Triple<String?, String?, Boolean>?>(initialValue = null, peerE164, refresh) {
@@ -101,8 +104,8 @@ fun RcsVerifyScreen(
                                     true
                                 }
                                 AppMessages.show(
-                                    if (ok) context.getString(R.string.rcs_verify_done)
-                                    else context.getString(R.string.rcs_verify_no_key),
+                                    if (ok) verifyDoneMessage
+                                    else verifyNoKeyMessage,
                                 )
                                 refresh++
                             }
@@ -117,7 +120,7 @@ fun RcsVerifyScreen(
                                 withContext(Dispatchers.IO) {
                                     RcsE2E.setVerified(context, peerE164, false)
                                 }
-                                AppMessages.show(context.getString(R.string.rcs_verify_cleared))
+                                AppMessages.show(verifyClearedMessage)
                                 refresh++
                             }
                         },

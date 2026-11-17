@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.net.Uri
 import android.telephony.TelephonyManager
@@ -163,7 +164,7 @@ internal suspend fun CommunicateRepository.sendAttachments(
     var allOk = attachments.isNotEmpty()
     for (attachment in attachments) {
         val bytes = try {
-            context.contentResolver.openInputStream(Uri.parse(attachment.contentUri))?.use { it.readBytes() }
+            context.contentResolver.openInputStream(attachment.contentUri.toUri())?.use { it.readBytes() }
         } catch (_: Throwable) {
             null
         }

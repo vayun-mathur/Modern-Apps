@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.rcs
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.LinkProperties
@@ -88,6 +89,10 @@ object RcsDirectSip {
      * TCP to the P-CSCF, REGISTER with AKA. Suspends until the first 200 OK
      * (or failure). Idempotent while running.
      */
+    // Own subscriber number as the SIP public identity (RFC 3261 REGISTER):
+    // this is the user's own line, not a device identifier, and RCS cannot
+    // register without it.
+    @SuppressLint("HardwareIds")
     suspend fun start(context: Context, subId: Int): Boolean {
         if (!RcsFeature.enabled) return false
         if (running) return true
@@ -95,8 +100,13 @@ object RcsDirectSip {
         // Public identity: derive from the line-1 number when readable, else
         // the IMSI-derived placeholder the P-CSCF will challenge anyway.
         // The 401 + AKA exchange establishes the real identity.
-        publicIdentity = runCatching { conn.tm.line1Number?.takeIf { it.isNotBlank() } }
-            .getOrNull() ?: ""
+        publicIdentity = try {
+            conn.tm.line1Number?.takeIf { it.isNotBlank() }
+        } catch (_: SecurityException) {
+            null
+        } catch (_: Exception) {
+            null
+        } ?: ""
         callIdBase = "${UUID.randomUUID()}@rcs-direct"
         running = true
         val ok = runCatching {
@@ -534,7 +544,6 @@ object RcsDirectSip {
 
     private fun pcscfAddress(app: Context, network: Network): InetSocketAddress? {
         return runCatching {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return null
             val cm = app.getSystemService(ConnectivityManager::class.java) ?: return null
             val props: LinkProperties = cm.getLinkProperties(network) ?: return null
             // `getPcscfServers()` is @SystemApi/hidden (absent from android.jar):

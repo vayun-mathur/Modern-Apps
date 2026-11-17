@@ -46,7 +46,12 @@ object GoogleVoiceTelecom {
             putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handle(context))
         }
         val uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null)
-        runCatching { tm.placeCall(uri, extras) }
+        try {
+            tm.placeCall(uri, extras)
+        } catch (_: SecurityException) {
+            // Self-managed account not registered yet or CALL_PHONE revoked:
+            // the Telecom bind simply does not happen.
+        }
     }
 
     /** Surface an inbound SIP INVITE to the system as an incoming self-managed call. */

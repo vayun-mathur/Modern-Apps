@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.service.car
 
+import androidx.core.graphics.createBitmap
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
@@ -132,7 +133,7 @@ class CommunicateCarThreadListScreen(
             .joinToString("")
             .ifBlank { "#" }
         val size = AVATAR_SIZE_PX
-        val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(size, size)
         val canvas = android.graphics.Canvas(bitmap)
         val palette = AVATAR_PALETTE
         val bg = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {

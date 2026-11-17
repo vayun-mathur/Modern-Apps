@@ -45,6 +45,7 @@ fun AccountsScreen(
     onShowRcsStatus: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val signedOutMessage = stringResource(R.string.gv_signed_out)
     val session = remember { GoogleVoiceSession.get(context) }
     val waSession = remember { com.vayunmathur.communicate.data.whatsapp.WhatsAppLineSession.get(context) }
     val waSignedIn by waSession.signedInFlow.collectAsState(initial = false)
@@ -101,7 +102,7 @@ fun AccountsScreen(
                             onClick = {
                                 scope.launch {
                                     session.signOut()
-                                    AppMessages.show(context.getString(R.string.gv_signed_out))
+                                    AppMessages.show(signedOutMessage)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),

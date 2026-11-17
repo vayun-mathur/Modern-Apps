@@ -57,7 +57,7 @@ internal fun MessageThreadRow(thread: SmsThread, onClick: () -> Unit, onDelete: 
                         .weight(1f, fill = false)
                         .sharedText("communicate-thread-title-${thread.threadId}"),
                 )
-                LineBadge(thread.line, thread.subscriptionId, modifier = Modifier.padding(start = 6.dp))
+                LineBadge(thread.line, modifier = Modifier.padding(start = 6.dp), subscriptionId = thread.subscriptionId)
                 if (thread.line == com.vayunmathur.communicate.data.CommunicateLine.Rcs &&
                     com.vayunmathur.communicate.data.rcs.RcsFeature.enabled
                 ) {

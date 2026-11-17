@@ -29,7 +29,7 @@ object SimManager {
         // that like zero SIMs rather than crashing composition.
         val sm = runCatching { context.getSystemService(SubscriptionManager::class.java) }
             .getOrNull() ?: return emptyList()
-        return runCatching {
+        return try {
             sm.activeSubscriptionInfoList?.map { info ->
                 CommunicateSim(
                     subscriptionId = info.subscriptionId,
@@ -39,7 +39,11 @@ object SimManager {
                         ?: "SIM ${info.simSlotIndex + 1}",
                 )
             }.orEmpty()
-        }.getOrDefault(emptyList())
+        } catch (_: SecurityException) {
+            emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     /** Selectable SIM lines. Falls back to a single default SIM when none can be enumerated. */

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
     <!-- This app uses no motion/environment sensors; MAOS withholds the -->
@@ -21,9 +22,15 @@
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_MMS" />
     <uses-permission android:name="android.permission.SEND_SMS" />
-    <uses-permission android:name="android.permission.WRITE_SMS" />
+    <!-- WRITE_SMS is a real (role-granted) permission for the default SMS app;
+         lint's typo suggestion (WRITE_OBB) does not apply. -->
+    <uses-permission android:name="android.permission.WRITE_SMS" tools:ignore="SystemPermissionTypo" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- ProvisioningManager capability queries (API 33+). Signature|privileged:
+         only granted to carrier-privileged builds, so call sites also check
+         it at runtime and degrade when absent. -->
+    <uses-permission android:name="android.permission.READ_PRECISE_PHONE_STATE" tools:ignore="ProtectedPermissions" />
     <!-- Granted by the SMS role (internal|role): single-reg SIP delegate + GBA bootstrap. -->
     <uses-permission android:name="android.permission.PERFORM_IMS_SINGLE_REGISTRATION" />
 
@@ -86,11 +93,12 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="wa.me" />
-                <data android:scheme="https" android:host="api.whatsapp.com" />
-                <data android:scheme="https" android:host="chat.whatsapp.com" />
-                <data android:scheme="https" android:host="signal.me" />
-                <data android:scheme="https" android:host="signal.group" />
+                <data android:scheme="https" />
+                <data android:host="wa.me" />
+                <data android:host="api.whatsapp.com" />
+                <data android:host="chat.whatsapp.com" />
+                <data android:host="signal.me" />
+                <data android:host="signal.group" />
             </intent-filter>
             <!-- The vendors' own private schemes, which are not verifiable App Links. -->
             <intent-filter>
@@ -280,9 +288,13 @@
             android:exported="false"
             android:foregroundServiceType="phoneCall|mediaProjection" />
 
+        <!-- Exported for the Android Automotive / Android Auto host, which
+             binds and validates the session itself; no binder permission can
+             be required here or the host could not connect. -->
         <service
             android:name=".service.car.CommunicateCarAppService"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.MESSAGING" />

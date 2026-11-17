@@ -1,5 +1,8 @@
 package com.vayunmathur.communicate
 
+import com.vayunmathur.communicate.intents.DeepLink
+import com.vayunmathur.communicate.intents.DeepLinks
+
 import com.vayunmathur.communicate.data.CommunicateLine
 import kotlin.test.Test
 import kotlin.test.assertEquals

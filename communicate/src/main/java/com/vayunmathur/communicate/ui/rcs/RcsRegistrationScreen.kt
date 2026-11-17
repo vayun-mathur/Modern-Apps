@@ -57,6 +57,8 @@ fun RcsRegistrationScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val rcsAvailableMessage = stringResource(R.string.rcs_available)
+    val rcsNotAvailableMessage = stringResource(R.string.rcs_not_available)
     val scope = rememberCoroutineScope()
     val transportState by RcsSipTransport.state.collectAsState()
     val provisioningState by RcsProvisioning.state.collectAsState()
@@ -121,8 +123,8 @@ fun RcsRegistrationScreen(
                                 probing = false
                                 probeRuns++
                                 AppMessages.show(
-                                    if (ok) context.getString(R.string.rcs_available)
-                                    else context.getString(R.string.rcs_not_available),
+                                    if (ok) rcsAvailableMessage
+                                    else rcsNotAvailableMessage,
                                 )
                             }
                         },

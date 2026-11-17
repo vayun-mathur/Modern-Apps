@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.whatsapp.registration
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
@@ -85,6 +86,10 @@ object RegistrationIntegrity {
      * @param encryptQueryString the ENC wrapper used for `_gi` (defaults to
      *   [RegistrationAttestation.encryptQueryString]); may return null on failure.
      */
+    // ANDROID_ID is only fed into aidOf(), which hashes it into the
+    // registration integrity signal the official client sends; the raw id
+    // never leaves the device or identifies hardware to us.
+    @SuppressLint("HardwareIds")
     fun collect(
         context: Context,
         nowSeconds: Long = System.currentTimeMillis() / MS_PER_SECOND,

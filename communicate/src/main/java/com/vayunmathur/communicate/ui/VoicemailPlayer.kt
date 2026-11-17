@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.ui
 
+import androidx.core.net.toUri
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Arrangement
@@ -73,7 +74,7 @@ fun VoicemailPlayer(
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(DefaultMediaSourceFactory(httpFactory))
             .build().apply {
-            setMediaItem(MediaItem.fromUri(Uri.parse(audioUri)))
+            setMediaItem(MediaItem.fromUri(audioUri.toUri()))
             addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     playing = isPlaying

@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.signal
 
+import androidx.core.content.edit
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -96,9 +97,9 @@ object SignalContactSync {
         try {
             val prefs = context.getSharedPreferences("communicate_signal_cdsi", Context.MODE_PRIVATE)
             if (token == null || token.isEmpty()) {
-                prefs.edit().remove("cdsi_token").apply()
+                prefs.edit { remove("cdsi_token") }
             } else {
-                prefs.edit().putString("cdsi_token", AndroidBase64.encodeToString(token, AndroidBase64.NO_WRAP)).apply()
+                prefs.edit { putString("cdsi_token", AndroidBase64.encodeToString(token, AndroidBase64.NO_WRAP)) }
             }
         } catch (_: Exception) {}
     }

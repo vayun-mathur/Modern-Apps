@@ -1,5 +1,7 @@
 package com.vayunmathur.communicate.data.rcs
 
+import android.telephony.ims.stub.ImsRegistrationImplBase
+import android.telephony.ims.feature.MmTelFeature
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -106,26 +108,37 @@ object RcsProvisioning {
     private fun readConfigServerUrl(context: Context, subscriptionId: Int): RcsRegistrationState? {
         // Carrier config is the source of truth for "does this SIM do RCS".
         // Keyed query avoids the deprecated whole-bundle getter.
-        val url = runCatching {
+        val url = try {
             val ccm = context.getSystemService(CarrierConfigManager::class.java)
                 ?: return RcsRegistrationState.Unavailable(
                     RcsUnavailableReason.ServiceUnavailable,
                 )
-            ccm.getConfigForSubId(
-                subscriptionId,
-                CarrierConfigManager.KEY_RCS_CONFIG_SERVER_URL_STRING,
-            ).getString(CarrierConfigManager.KEY_RCS_CONFIG_SERVER_URL_STRING).orEmpty()
-        }.getOrElse {
-            Log.status(TAG, "probe: carrier-config read failed: $it")
+            // The keyed getter is API 34+; on 31-33 fall back to the
+            // whole-bundle getter for the subscription and read the key.
+            val bundle = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                ccm.getConfigForSubId(
+                    subscriptionId,
+                    CarrierConfigManager.KEY_RCS_CONFIG_SERVER_URL_STRING,
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                ccm.getConfigForSubId(subscriptionId)
+            }
+            bundle?.getString(CarrierConfigManager.KEY_RCS_CONFIG_SERVER_URL_STRING).orEmpty()
+        } catch (e: SecurityException) {
+            Log.status(TAG, "probe: carrier-config read denied: $e")
+            return RcsRegistrationState.Unavailable(RcsUnavailableReason.ServiceUnavailable)
+        } catch (e: Exception) {
+            Log.status(TAG, "probe: carrier-config read failed: $e")
             return RcsRegistrationState.Unavailable(RcsUnavailableReason.ServiceUnavailable)
         }
         lastConfigServerUrl = url.ifEmpty { null }
-        // NOTE: an empty config URL no longer hard-blocks. MVNOs/Jibe-backed
-        // carriers (e.g. US Mobile) routinely leave `rcs_config_server_url`
-        // empty while still accepting a single-reg delegate; the delegate
-        // request itself is the real test (denial surfaces as
-        // TransportDenied via onFeatureTagStatusChanged). The URL is still
-        // recorded for the status screen + TS.43 entitlement.
+        // Note — an empty config URL no longer hard-blocks. MVNOs and
+        // Jibe-backed carriers (US Mobile, for one) routinely leave the
+        // rcs_config_server_url key empty while still accepting a single-reg
+        // delegate; the delegate request itself is the real test, and a denial
+        // surfaces as TransportDenied via onFeatureTagStatusChanged. The URL
+        // is still recorded for the status screen and the TS.43 entitlement.
         if (url.isBlank()) {
             Log.status(
                 "RcsProvisioning",
@@ -137,18 +150,32 @@ object RcsProvisioning {
 
     /** Provisioning-manager gate; returns a terminal state, or null to continue. */
     private fun provisioningGate(context: Context, subscriptionId: Int): RcsRegistrationState? {
-        // Secondary signal: the provisioning manager's RCS status. Capability/tech
-        // constants live in hidden ImsFeature/MmTelFeature surface, so this uses the
-        // AOSP values directly (CAPABILITY_TYPE_CALL_COMPOSER = 1 << 4, NETWORK_TYPE_LTE = 0).
-        // Any reflection failure degrades to "not required" — the carrier-config URL
-        // above is the authoritative gate.
-        val provisioningRequired = runCatching {
+        // Secondary signal: the provisioning manager's status for the
+        // call-composer capability (an MmTel capability, so the non-RCS
+        // provisioning pair is the correct query). The provisioning manager
+        // is API 33+ and needs READ_PRECISE_PHONE_STATE; without either, this
+        // gate degrades to "not required" — the carrier-config URL above is
+        // the authoritative gate.
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return null
+        // READ_PRECISE_PHONE_STATE is declared in the manifest; it is only
+        // granted to carrier-privileged builds, and the SecurityException
+        // catch below degrades to "not required" everywhere else.
+        val provisioningRequired = try {
             val ims = context.getSystemService(ImsManager::class.java)
-                ?: return@runCatching false
+                ?: return null
             val pm = ims.getProvisioningManager(subscriptionId)
-            pm.isRcsProvisioningRequiredForCapability(CAPABILITY_TYPE_CALL_COMPOSER, NETWORK_TYPE_LTE) &&
-                !pm.getRcsProvisioningStatusForCapability(CAPABILITY_TYPE_CALL_COMPOSER, NETWORK_TYPE_LTE)
-        }.getOrDefault(false)
+            pm.isProvisioningRequiredForCapability(
+                MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_CALL_COMPOSER,
+                ImsRegistrationImplBase.REGISTRATION_TECH_LTE,
+            ) && !pm.getProvisioningStatusForCapability(
+                MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_CALL_COMPOSER,
+                ImsRegistrationImplBase.REGISTRATION_TECH_LTE,
+            )
+        } catch (_: SecurityException) {
+            false
+        } catch (_: Exception) {
+            false
+        }
         if (provisioningRequired) {
             Log.status(TAG, "probe: carrier provisioning required (call-composer cap unprovisioned)")
             return RcsRegistrationState.Unavailable(RcsUnavailableReason.ProvisioningRequired)
@@ -158,10 +185,11 @@ object RcsProvisioning {
 
     /** Single-registration support gate; returns a terminal state, or null to continue. */
     private fun singleRegGate(context: Context, subscriptionId: Int): RcsRegistrationState? {
-        // Tertiary signal (TestRcsApp ProvisioningActivity): the hidden
-        // isRcsVolteSingleRegistrationCapable() on the per-sub manager. Tri-state —
-        // null (bridge failure, e.g. role not yet granted) means "unknown", not
-        // "not capable", so it never blocks on permission errors.
+        // Tertiary signal, after TestRcsApp's ProvisioningActivity: the hidden
+        // single-registration-capability query on the per-sub manager. It is
+        // tri-state — a null result (bridge failure, say the role is not yet
+        // granted) means unknown rather than not capable, so it never blocks
+        // on permission errors.
         val singleRegCapable = runCatching {
             val pm = RcsHiddenApi.provisioningManager(subscriptionId)
                 ?: return@runCatching null
@@ -242,7 +270,7 @@ object RcsProvisioning {
         context.packageManager.hasSystemFeature(FEATURE_SINGLE_REG)
 
     // AOSP values from hidden surface (verified against frameworks/base main).
-    private const val CAPABILITY_TYPE_CALL_COMPOSER = 1 shl 4
-    private const val NETWORK_TYPE_LTE = 0
+    // Call-composer is an MmTel capability (1 shl 4) and LTE the registration
+    // tech, expressed with the public provisioning constants below.
     private const val FEATURE_SINGLE_REG = "android.hardware.telephony.ims.singlereg"
 }

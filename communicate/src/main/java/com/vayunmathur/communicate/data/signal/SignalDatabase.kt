@@ -124,8 +124,9 @@ abstract class SignalDatabase : RoomDatabase() {
         private val MIGRATION_3_4 = object : androidx.room3.migration.Migration(3, 4) {
             override suspend fun migrate(connection: SQLiteConnection) {
                 connection.execSQL("ALTER TABLE signal_conversation ADD COLUMN groupMasterKey BLOB")
-                connection.execSQL("ALTER TABLE signal_conversation ADD COLUMN" +
-                    "groupRevision INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL(
+                    "ALTER TABLE signal_conversation ADD COLUMN groupRevision INTEGER NOT NULL DEFAULT 0",
+                )
                 connection.execSQL("DELETE FROM signal_cached_message WHERE conversationId LIKE 'group:%'")
                 connection.execSQL("DELETE FROM signal_conversation WHERE chatId LIKE 'group:%'")
             }

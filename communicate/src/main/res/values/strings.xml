@@ -16,7 +16,6 @@
     <string name="permission_contacts_message">Allow Contacts to show people you can call.</string>
     <string name="permission_sms_message">Allow SMS access to show conversations stored on this phone.</string>
     <string name="permission_call_logs_message">Allow Call log access to show recent calls.</string>
-    <string name="permission_all_message">Allow contacts, SMS, and call log access to use Communicate.</string>
     <string name="grant_permission">Grant permission</string>
     <string name="empty_messages">No conversations yet</string>
     <string name="empty_contacts">No contacts found</string>
@@ -24,9 +23,11 @@
     <string name="empty_call_logs">No recent calls found</string>
     <string name="empty_voicemails">No voicemails yet</string>
     <string name="empty_voicemails_setup">Your carrier hasn\'t delivered any visual voicemails here yet. If your carrier supports it, they\'ll appear here automatically.</string>
-    <!-- %1$d = seconds; voicemail row duration, e.g. "42 sec". -->
-    <string name="voicemail_duration">%1$d sec</string>
-    <string name="voicemail_transcript_title">Transcript</string>
+    <!-- Voicemail row duration in seconds, e.g. "42 sec". -->
+    <plurals name="voicemail_duration">
+        <item quantity="one">%1$d sec</item>
+        <item quantity="other">%1$d sec</item>
+    </plurals>
     <string name="voicemail_no_audio">No audio attached to this voicemail</string>
     <string name="voicemail_play_failed">Couldn\'t play this voicemail</string>
     <string name="voicemail_mark_read_failed">Couldn\'t update this voicemail</string>
@@ -35,15 +36,12 @@
     <string name="permission_voicemail_message">Allow Call log access to show your visual voicemails.</string>
     <string name="permission_write_call_log_message">Allow call-log write access to mark voicemails read and delete them.</string>
     <string name="new_message">New message</string>
-    <string name="compose_message">Compose message</string>
     <string name="phone_number">Phone number</string>
     <!-- Long-press 1 with no carrier voicemail pilot stored (issue #899). -->
     <string name="no_voicemail_number">No voicemail number set on this SIM</string>
     <!-- TalkBack action label for long-pressing the 1 key (issue #899). -->
     <string name="call_voicemail">Call voicemail</string>
     <string name="message_hint">Message</string>
-    <string name="send">Send</string>
-    <string name="delete_digit">Delete digit</string>
     <!-- Call log row: the seconds part of a call's duration, abbreviated. %1$d = whole seconds -->
     <plurals name="duration_seconds">
         <item quantity="one">%1$d sec</item>
@@ -74,7 +72,6 @@
     <string name="gv_sign_in_title">Sign in to Google Voice</string>
     <string name="gv_signed_in">Google Voice connected</string>
     <string name="gv_signed_out">Signed out of Google Voice</string>
-    <string name="gv_sign_in_failed">Google Voice sign-in failed</string>
     <string name="accounts_title">Accounts</string>
     <string name="account_sim">SIM</string>
     <string name="account_google_voice">Google Voice</string>
@@ -86,7 +83,6 @@
     <string name="choose_line">Send from</string>
     <string name="gv_send_failed">Couldn\'t send via Google Voice</string>
     <string name="gv_action_failed">Google Voice action failed</string>
-    <string name="sim_mms_unsupported">SIM MMS attachments are not supported yet</string>
     <string name="gv_sync_channel_name">Google Voice receive</string>
     <string name="gv_sync_channel_desc">Keeps Google Voice calls and messages available in the background.</string>
     <string name="gv_incoming_channel_name">Google Voice messages</string>
@@ -102,7 +98,6 @@
     <string name="media_message">Media message</string>
     <string name="you">You</string>
     <string name="call_mute">Mute</string>
-    <string name="call_unmute">Unmute</string>
     <string name="call_speaker">Speaker</string>
     <string name="call_end">End call</string>
     <string name="call_answer">Answer</string>
@@ -112,28 +107,16 @@
     <string name="call_state_on_hold">On hold</string>
     <string name="call_state_dialing">Dialing…</string>
     <string name="call_state_ringing">Ringing…</string>
-    <string name="call_state_active">Connected</string>
     <string name="call_state_ended">Call ended</string>
-    <string name="call_state_incoming">Incoming Google Voice call</string>
-    <string name="call_state_idle">Idle</string>
     <string name="gv_call_channel_name">Google Voice calls</string>
     <string name="gv_incoming_call_channel_name">Incoming Google Voice calls</string>
     <string name="gv_incoming_call_channel_desc">Full-screen alerts for incoming Google Voice calls.</string>
     <string name="gv_ongoing_call">Ongoing Google Voice call</string>
-    <string name="gv_call_failed">Google Voice call failed</string>
     <string name="regular_call_channel_name">Phone calls</string>
     <string name="regular_call_channel_desc">Call controls for regular phone calls.</string>
 
     <!-- Signal line -->
-    <string name="signal_not_signed_in">Not signed in to Signal</string>
-    <string name="signal_sign_in">Sign in to Signal</string>
-    <string name="signal_signed_in">Signal connected</string>
-    <string name="signal_sign_out">Sign out of Signal</string>
-    <string name="signal_sign_in_failed">Signal sign-in failed</string>
-    <string name="signal_import_backup">Import Signal backup</string>
     <string name="account_signal">Signal</string>
-    <string name="signal_send_failed">Couldn\'t send via Signal</string>
-    <string name="signal_action_failed">Signal action failed</string>
     <string name="delete_conversation_title">Delete conversation?</string>
     <string name="delete_conversation_message">This will delete the conversation and its messages.</string>
     <string name="delete_call_log_title">Delete call?</string>
@@ -165,7 +148,6 @@
     <string name="poll_add_option">Add option</string>
     <string name="poll_create">Create</string>
     <string name="poll_send_failed">Could not create the poll</string>
-    <string name="poll_vote_failed">Could not record your vote</string>
     <string name="account_whatsapp">WhatsApp</string>
 
     <!-- RCS single-registration line -->
@@ -174,7 +156,6 @@
     <string name="rcs_available">RCS connected</string>
     <string name="rcs_provisioning">Checking RCS availability…</string>
     <string name="rcs_fallback_sms">Contact isn\'t RCS-capable — sent via SMS instead</string>
-    <string name="rcs_send_failed">Couldn\'t send via RCS</string>
     <string name="rcs_status_title">RCS status</string>
     <string name="rcs_retry">Retry</string>
     <string name="rcs_probe">Run availability check</string>

@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.rcs.e2e
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.telephony.SubscriptionManager
 import com.vayunmathur.communicate.data.rcs.RcsDatabase
@@ -552,13 +553,20 @@ object RcsE2E {
     }
 
     /** Our own E.164 (default SMS subscription's number when readable). */
+    // Own subscriber number for MLS/SIP addressing: the user's own line, not
+    // a device identifier, and end-to-end RCS cannot address us without it.
+    @SuppressLint("HardwareIds")
     fun localE164(context: Context): String? {
         if (!RcsFeature.enabled) return null
-        return runCatching {
-            val tm = context.getSystemService(android.telephony.TelephonyManager::class.java)
-                ?: return null
+        val tm = context.getSystemService(android.telephony.TelephonyManager::class.java)
+            ?: return null
+        return try {
             tm.line1Number?.takeIf { it.isNotBlank() }
-        }.getOrNull()
+        } catch (_: SecurityException) {
+            null
+        } catch (_: Exception) {
+            null
+        }
     }
 
 

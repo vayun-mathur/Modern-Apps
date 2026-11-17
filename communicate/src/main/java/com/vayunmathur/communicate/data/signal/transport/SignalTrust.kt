@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.signal.transport
 
+import android.annotation.SuppressLint
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import java.security.KeyStore
@@ -133,6 +134,10 @@ object SignalTrust {
      * Accepts a chain trusted by EITHER the bundled Signal roots or the system roots.
      * Client auth and accepted issuers defer to the system manager (plus bundled issuers).
      */
+    // This manager does not weaken validation: every chain must pass either
+    // the bundled Signal roots or the platform system manager, both of which
+    // are default X509TrustManagers doing full chain validation.
+    @SuppressLint("CustomX509TrustManager")
     private class UnionTrustManager(
         private val bundled: X509TrustManager,
         private val system: X509TrustManager,

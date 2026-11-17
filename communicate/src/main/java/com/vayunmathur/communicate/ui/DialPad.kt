@@ -120,8 +120,8 @@ private fun DialKey(
     digit: String,
     letters: String,
     onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val haptics = rememberHaptics()
     val voicemailLabel = stringResource(R.string.call_voicemail)

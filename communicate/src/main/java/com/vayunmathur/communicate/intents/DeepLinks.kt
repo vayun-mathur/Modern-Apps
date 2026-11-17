@@ -1,4 +1,4 @@
-package com.vayunmathur.communicate
+package com.vayunmathur.communicate.intents
 
 import android.content.Intent
 import android.net.Uri

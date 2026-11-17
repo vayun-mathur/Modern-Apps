@@ -72,11 +72,7 @@ class GoogleVoiceCallForegroundService : Service() {
             buildOngoingCallNotification(state.phase, state.remoteNumber, contentIntent)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL)
     }
 
     private fun updateRinging(state: CallState) {

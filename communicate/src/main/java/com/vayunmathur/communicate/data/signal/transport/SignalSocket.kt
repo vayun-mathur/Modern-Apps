@@ -45,7 +45,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Uses :library:network WebSocketClient (binary frames).
  */
 class SignalSocket(
-    private val context: Context,
+    context: Context,
     private val authData: SignalAuthData,
     private val host: String = DEFAULT_HOST,
     private val port: Int = DEFAULT_PORT,
@@ -53,6 +53,9 @@ class SignalSocket(
     private val passwordOverride: String? = null,
     private val authenticated: Boolean = true,
 ) {
+    /** Only the application context is retained: sockets outlive any activity. */
+    private val context: Context = context.applicationContext
+
     /** Server endpoint and logging constants for [SignalSocket]. */
     companion object {
         private const val TAG = "SignalSocket"

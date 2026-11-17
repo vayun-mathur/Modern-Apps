@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.telephony
 
+import androidx.core.net.toUri
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.ContentValues
@@ -114,7 +115,7 @@ class MmsDeliverReceiver : BroadcastReceiver() {
                     put("text", p.text.orEmpty())
                 }
             }
-            val partUri = context.contentResolver.insert(Uri.parse("content://mms/$mmsId/part"), pv)
+            val partUri = context.contentResolver.insert("content://mms/$mmsId/part".toUri(), pv)
             // Write binary media bytes into the part's data stream.
             if (partUri != null && !p.contentType.startsWith("text/") && p.data.isNotEmpty()) {
                 runCatching {
@@ -137,7 +138,7 @@ class MmsDeliverReceiver : BroadcastReceiver() {
             put("type", MMS_ADDR_TYPE_FROM)
             put("charset", MMS_CHARSET_UTF8)
         }
-        context.contentResolver.insert(Uri.parse("content://mms/$mmsId/addr"), av)
+        context.contentResolver.insert("content://mms/$mmsId/addr".toUri(), av)
 
         val textBody = msg.parts.firstOrNull { it.contentType == "text/plain" }?.text
         val body = textBody?.takeIf { it.isNotBlank() } ?: context.getString(R.string.media_message)

@@ -79,8 +79,18 @@ val protocConfig: Configuration = configurations.create("protocBinary") {
     isCanBeConsumed = false
 }
 
+// Catalog coordinate (libs.protobuf.protoc) with the platform-classified
+// exe artifact selected programmatically instead of a string coordinate
+// with an appended classifier.
+val protocDependency =
+    dependencies.create(libs.protobuf.protoc.get()) as org.gradle.api.artifacts.ExternalModuleDependency
+protocDependency.artifact {
+    classifier = osClassifier
+    type = "exe"
+}
+
 dependencies {
-    "protocBinary"("${libs.protobuf.protoc.get()}:$osClassifier@exe")
+    "protocBinary"(protocDependency)
 }
 
 val protoSrcDir = layout.projectDirectory.dir("src/main/proto")

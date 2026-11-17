@@ -38,6 +38,9 @@ fun CommunicateRepository.placeCall(context: Context, choice: LineChoice?, numbe
             handle?.let { extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, it) }
             telecomManager.placeCall(uri, extras)
             return
+        } catch (_: SecurityException) {
+            // CALL_PHONE was revoked between the check above and the call:
+            // fall through to ACTION_DIAL below.
         } catch (_: Exception) {
             // Fall through to ACTION_DIAL below.
         }

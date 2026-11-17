@@ -80,11 +80,7 @@ class InAppCallForegroundService : Service() {
         } else {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, types)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        startForeground(NOTIFICATION_ID, notification, types)
     }
 
     /**

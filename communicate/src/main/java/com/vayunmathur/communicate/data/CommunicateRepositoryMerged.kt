@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.provider.CallLog
 import android.provider.Telephony
@@ -153,7 +154,7 @@ suspend fun CommunicateRepository.deleteConversation(
 private fun CommunicateRepository.deleteSimThread(context: Context, threadId: Long): Boolean = runCatching {
     // Provider deletes the thread + its SMS/MMS rows when the conversation is removed.
     val deleted = context.contentResolver.delete(
-        android.net.Uri.parse("content://mms-sms/conversations/$threadId"), null, null,
+        "content://mms-sms/conversations/$threadId".toUri(), null, null,
     )
     if (deleted > 0) return true
     // Fallback: delete SMS and MMS rows directly.

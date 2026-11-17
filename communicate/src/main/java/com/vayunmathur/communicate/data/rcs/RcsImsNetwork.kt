@@ -75,7 +75,11 @@ object RcsImsNetwork {
                 val builder = NetworkRequest.Builder()
                     .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                     .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)
+                // NET_CAPABILITY_MMTEL is API 33+; on 31-32 the IMS
+                // capability alone still matches the IMS PDN.
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)
+                }
                 if (SubscriptionManager.isValidSubscriptionId(subId)) {
                     runCatching {
                         val specClass = Class.forName(
@@ -177,7 +181,6 @@ object RcsImsNetwork {
     fun localIps(context: Context, network: Network): List<String> {
         if (!RcsFeature.enabled) return emptyList()
         return runCatching {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return emptyList()
             val cm = context.applicationContext.getSystemService(ConnectivityManager::class.java)
                 ?: return emptyList()
             val props = cm.getLinkProperties(network) ?: return emptyList()
