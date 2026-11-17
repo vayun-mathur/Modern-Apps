@@ -279,3 +279,51 @@ pub unsafe fn try_vulkan(
 ) -> Result<Renderer, String> {
     Renderer::try_vulkan_only(window, width, height, state_width, state_height)
 }
+
+#[cfg(test)]
+mod frame_tests {
+    use super::*;
+
+    fn eye_of(yaw: f32, pitch: f32, auto: bool, t: f32) -> [f32; 3] {
+        view_proj_for(512, 512, t, yaw, pitch, auto).1
+    }
+
+    #[test]
+    fn camera_eye_orbits_at_fixed_radius() {
+        let eye = eye_of(0.0, 0.0, false, 0.0);
+        assert!((eye[0]).abs() < 1e-6 && (eye[2] - 3.4).abs() < 1e-6, "{eye:?}");
+        assert!((eye[1] - 1.25).abs() < 1e-6);
+        let eye = eye_of(std::f32::consts::FRAC_PI_2, 0.0, false, 0.0);
+        assert!((eye[0] - 3.4).abs() < 1e-5 && eye[2].abs() < 1e-5, "{eye:?}");
+        // Horizontal distance from the Y axis is always the framing radius.
+        for yaw in [0.3f32, 1.7, -2.9, 12.0] {
+            let e = eye_of(yaw, 0.0, false, 0.0);
+            assert!(((e[0] * e[0] + e[2] * e[2]).sqrt() - 3.4).abs() < 1e-4, "{e:?}");
+        }
+        // Pitch raises/lowers the eye linearly; yaw is ignored while auto-rotating.
+        assert!(eye_of(0.0, 0.6, false, 0.0)[1] > eye_of(0.0, 0.0, false, 0.0)[1]);
+        assert!(eye_of(0.0, -0.6, false, 0.0)[1] < eye_of(0.0, 0.0, false, 0.0)[1]);
+        assert_eq!(eye_of(99.0, 0.0, true, 0.0), eye_of(0.0, 0.0, false, 0.0));
+        assert_ne!(eye_of(0.0, 0.0, true, 4.0), eye_of(0.0, 0.0, true, 0.0), "auto orbit advances with time");
+    }
+
+    #[test]
+    fn view_proj_is_finite_and_centres_the_avatar() {
+        for (w, h) in [(512u32, 512u32), (1280, 720), (320, 1280), (1, 1), (0, 0)] {
+            let (vp, eye) = view_proj_for(w, h, 0.0, 0.0, 0.0, false);
+            assert!(vp.iter().flatten().all(|v| v.is_finite()), "{w}x{h}");
+            assert!(eye.iter().all(|v| v.is_finite()));
+            // The look-at centre projects to NDC (0,0) with positive clip w.
+            let m = Mat4::from_cols_array_2d(&vp);
+            let clip = m * glam::Vec4::new(0.0, 0.9, 0.0, 1.0);
+            assert!(clip.w > 0.0, "{w}x{h} clip {clip:?}");
+            assert!(clip.x.abs() / clip.w < 1e-4 && clip.y.abs() / clip.w < 1e-4, "{w}x{h} ndc {clip:?}");
+        }
+        // Wider aspect changes the projection (and nothing else about the eye).
+        let (wide, _) = view_proj_for(1280, 720, 0.0, 0.0, 0.0, false);
+        let (square, _) = view_proj_for(720, 720, 0.0, 0.0, 0.0, false);
+        assert_ne!(wide, square);
+        // Deterministic for identical inputs.
+        assert_eq!(view_proj_for(512, 512, 1.0, 0.2, 0.1, false), view_proj_for(512, 512, 1.0, 0.2, 0.1, false));
+    }
+}

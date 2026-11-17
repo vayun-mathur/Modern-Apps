@@ -362,3 +362,132 @@ mod tests {
     }
 }
 
+
+#[cfg(test)]
+mod tests_extra {
+    use super::*;
+    use crate::pose::{preset_by_id, JointRotation, YuuPose};
+    use crate::traits::YuuTraits;
+    use std::collections::HashMap;
+
+    fn idle() -> YuuPose {
+        YuuPose { id: "idle".into(), name: "Idle".into(), joints: HashMap::new() }
+    }
+
+    #[test]
+    fn name_roundtrip_and_discriminants_match_ubo_order() {
+        for (i, joint) in ALL_JOINTS.iter().copied().enumerate() {
+            assert_eq!(joint as usize, i, "UBO discriminant drifted for {joint:?}");
+            assert_eq!(joint_by_name(joint_name(joint)), Some(joint));
+        }
+        assert_eq!(JOINT_COUNT, 13);
+        assert_eq!(ALL_JOINTS.len(), JOINT_COUNT);
+        assert!(MAX_BONES >= JOINT_COUNT);
+        for bad in ["", "Head", "head ", "clavicle_l", "unknown"] {
+            assert_eq!(joint_by_name(bad), None, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn parent_children_are_mutually_consistent() {
+        let mut edges = 0;
+        for joint in ALL_JOINTS {
+            for child in children_of(joint) {
+                assert_eq!(parent_of(*child), Some(joint), "{child:?}");
+                edges += 1;
+            }
+            if let Some(parent) = parent_of(joint) {
+                assert!(children_of(parent).contains(&joint), "{joint:?}");
+            }
+        }
+        assert_eq!(edges, JOINT_COUNT - 1, "skeleton must be a single tree");
+        assert_eq!(parent_of(Joint::Root), None);
+        assert!(children_of(Joint::Head).is_empty());
+        assert!(children_of(Joint::HandL).is_empty() && children_of(Joint::HandR).is_empty());
+        assert_eq!(children_of(Joint::Chest), &[Joint::Neck, Joint::ClavicleL, Joint::ClavicleR]);
+    }
+
+    #[test]
+    fn rest_offsets_are_mirror_symmetric_and_form_chains() {
+        assert_eq!(rest_offset(Joint::Root), Vec3::ZERO);
+        for (l, r) in [
+            (Joint::ClavicleL, Joint::ClavicleR),
+            (Joint::UpperArmL, Joint::UpperArmR),
+            (Joint::ForearmL, Joint::ForearmR),
+            (Joint::HandL, Joint::HandR),
+        ] {
+            let (a, b) = (rest_offset(l), rest_offset(r));
+            assert_eq!(a.x, -b.x, "{l:?}/{r:?} x must mirror");
+            assert_eq!((a.y, a.z), (b.y, b.z));
+        }
+        // Head chain accumulates upward; arms hang downward from the clavicles.
+        let torso_y: f32 = [Joint::Spine, Joint::Chest, Joint::Neck, Joint::Head]
+            .iter().map(|j| rest_offset(*j).y).sum();
+        assert!((torso_y - 1.19).abs() < 1e-6, "head joint rest height {torso_y}");
+        assert!(rest_offset(Joint::ForearmL).y < 0.0 && rest_offset(Joint::HandR).y < 0.0);
+    }
+
+    #[test]
+    fn bones_beyond_joint_count_are_identity_and_all_finite() {
+        for pose_id in ["idle", "wave", "thumbs_up", "thinking", "cheering"] {
+            let pose = preset_by_id(pose_id).expect("preset");
+            let bones = compute_bone_matrices(&YuuTraits::default(), &pose, 0.37);
+            for (i, m) in bones.iter().enumerate() {
+                assert!(m.to_cols_array().iter().all(|v| v.is_finite()), "{pose_id} bone {i}");
+                if i >= JOINT_COUNT {
+                    assert_eq!(*m, Mat4::IDENTITY, "padding bone {i} must stay identity");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn compute_is_deterministic_and_unknown_pose_joints_are_ignored() {
+        let mut pose = idle();
+        pose.joints.insert("not_a_joint".into(), JointRotation { x: 45.0, y: 0.0, z: 0.0 });
+        pose.joints.insert("head".into(), JointRotation { x: 0.0, y: 30.0, z: 0.0 });
+        let a = compute_bone_matrices(&YuuTraits::default(), &pose, 0.0);
+        let b = compute_bone_matrices(&YuuTraits::default(), &pose, 0.0);
+        assert_eq!(a, b);
+        // Head rotation actually moves the head bone vs idle.
+        let plain = compute_bone_matrices(&YuuTraits::default(), &idle(), 0.0);
+        assert_ne!(a[Joint::Head as usize], plain[Joint::Head as usize]);
+    }
+
+    #[test]
+    fn taller_traits_raise_and_heavier_traits_widen_skinning() {
+        let short = YuuTraits { body_height: 0.0, ..Default::default() };
+        let tall = YuuTraits { body_height: 1.0, ..Default::default() };
+        let head_pt = Vec3::new(0.0, 1.28, 0.0);
+        let y = |t: &YuuTraits| {
+            compute_bone_matrices(t, &idle(), 0.0)[Joint::Head as usize].transform_point3(head_pt).y
+        };
+        assert!(y(&tall) > y(&short) + 0.05, "tall {} vs short {}", y(&tall), y(&short));
+        let lean = YuuTraits { body_weight: 0.0, ..Default::default() };
+        let heavy = YuuTraits { body_weight: 1.0, ..Default::default() };
+        let hand_pt = Vec3::new(0.31, 0.34, 0.0);
+        let x = |t: &YuuTraits| {
+            compute_bone_matrices(t, &idle(), 0.0)[Joint::HandR as usize]
+                .transform_point3(hand_pt).x.abs()
+        };
+        assert!(x(&heavy) > x(&lean), "heavy {} vs lean {}", x(&heavy), x(&lean));
+    }
+
+    #[test]
+    fn head_scale_applies_and_idle_sway_is_small_and_periodic_in_effect() {
+        let wide = YuuTraits { face_shape: 7, ..Default::default() };
+        let bones = compute_bone_matrices(&wide, &idle(), 0.0);
+        let p = bones[Joint::Head as usize].transform_point3(Vec3::new(0.1, 1.28, 0.0));
+        // Head-local +x point is scaled by head_scale().x = 1.12 about the head origin.
+        assert!(p.x > 0.1, "scaled head point {p:?}");
+        // Sway at t=0 is zero; a quarter period later the root bone has rotated
+        // but a point on the rotation axis (origin) stays put.
+        let t_quarter = std::f32::consts::FRAC_PI_2 / 1.2;
+        let swayed = compute_bone_matrices(&YuuTraits::default(), &idle(), t_quarter);
+        let origin = swayed[Joint::Root as usize].transform_point3(Vec3::ZERO);
+        assert!(origin.length() < 1e-5);
+        let off_axis = swayed[Joint::Root as usize].transform_point3(Vec3::new(1.0, 0.0, 0.0));
+        assert!((off_axis - Vec3::new(1.0, 0.0, 0.0)).length() > 1e-4, "sway must rotate");
+        assert!((off_axis - Vec3::new(1.0, 0.0, 0.0)).length() < 0.05, "sway must stay gentle");
+    }
+}

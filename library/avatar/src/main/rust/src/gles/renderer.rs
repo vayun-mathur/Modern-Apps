@@ -332,3 +332,37 @@ fn normalize(v: [f32; 3]) -> [f32; 3] {
     let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-6);
     [v[0] / len, v[1] / len, v[2] / len]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn flatten_preserves_column_major_order() {
+        let m = [
+            [1.0, 2.0, 3.0, 4.0],
+            [5.0, 6.0, 7.0, 8.0],
+            [9.0, 10.0, 11.0, 12.0],
+            [13.0, 14.0, 15.0, 16.0],
+        ];
+        assert_eq!(flatten(&m), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0]);
+        // Identity stays identity under flatten (GL transpose=false path).
+        let id = glam::Mat4::IDENTITY.to_cols_array_2d();
+        let flat = flatten(&id);
+        for i in 0..16 {
+            assert_eq!(flat[i], if i % 5 == 0 { 1.0 } else { 0.0 }, "index {i}");
+        }
+    }
+
+    #[test]
+    fn normalize_and_fixed_lighting_constants() {
+        assert_eq!(normalize([0.0, 0.0, 0.0]), [0.0, 0.0, 0.0], "zero vector guarded, not NaN");
+        let n = normalize([3.0, 0.0, 4.0]);
+        assert!((n[0] - 0.6).abs() < 1e-6 && (n[2] - 0.8).abs() < 1e-6);
+        let sun = normalize(SUN_DIR);
+        assert!((sun.iter().map(|v| v * v).sum::<f32>() - 1.0).abs() < 1e-5);
+        assert!(SUN_DIR[1] < 0.0, "sun points downward onto the avatar");
+        assert!(SKY.iter().all(|v| (0.0..=1.0).contains(v)));
+        assert_eq!(AVATAR_VERT_CAP, 65_536);
+    }
+}

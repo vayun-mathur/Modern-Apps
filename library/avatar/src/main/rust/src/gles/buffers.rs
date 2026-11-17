@@ -130,3 +130,24 @@ pub unsafe fn upload_avatar_mesh(
     let n = mesh.len().min(AVATAR_VERT_CAP);
     unsafe { buf.upload(gl, &mesh[..n]) };
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn vertex_layout_and_bytes_of_match_shader_contract() {
+        // repr(C) layout: pos 12 + normal 12 + uv 8 + joints 16 + weights 16.
+        assert_eq!(mem::size_of::<YuuVertex>(), 64);
+        assert_eq!(mem::offset_of!(YuuVertex, pos), 0);
+        assert_eq!(mem::offset_of!(YuuVertex, normal), 12);
+        assert_eq!(mem::offset_of!(YuuVertex, uv), 24);
+        assert_eq!(mem::offset_of!(YuuVertex, joints), 32);
+        assert_eq!(mem::offset_of!(YuuVertex, weights), 48);
+        assert!(bytes_of(&[]).is_empty());
+        let mesh = vec![YuuVertex { pos: [1.0, 2.0, 3.0], ..Default::default() }; 3];
+        let bytes = bytes_of(&mesh);
+        assert_eq!(bytes.len(), 3 * 64);
+        assert_eq!(&bytes[0..4], &1.0f32.to_le_bytes(), "first field is pos.x in place");
+    }
+}

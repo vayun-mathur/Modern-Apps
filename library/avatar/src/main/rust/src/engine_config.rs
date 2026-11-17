@@ -103,3 +103,93 @@ pub fn is_running(surface_id: i32) -> bool {
 pub fn log_backend(name: &str) {
     android_log(name);
 }
+
+#[cfg(test)]
+mod tests_extra {
+    use super::*;
+
+    fn cleanup(id: i32) {
+        if let Ok(mut eng) = engine().lock() {
+            eng.surfaces.remove(&id);
+            eng.orbit.remove(&id);
+        }
+    }
+
+    #[test]
+    fn set_config_parses_bare_quoted_and_json_pose_ids() {
+        for (id, pose_json, want) in [
+            (91_001, "wave", "wave"),
+            (91_002, "\"cheering\"", "cheering"),
+            (91_003, r#"{"id":"thinking"}"#, "thinking"),
+        ] {
+            cleanup(id);
+            set_config(id, "{}", pose_json);
+            let got = engine().lock().expect("engine").surfaces.get(&id).expect("surface").pose.id.clone();
+            assert_eq!(got, want, "pose_json {pose_json}");
+            cleanup(id);
+        }
+        // Empty / unknown pose keeps the previous (idle) pose but still sets traits.
+        cleanup(91_004);
+        set_config(91_004, r#"{"bodyHeight":0.9}"#, "");
+        {
+            let eng = engine().lock().expect("engine");
+            let s = eng.surfaces.get(&91_004).expect("surface");
+            assert_eq!(s.pose.id, "idle");
+            assert!((s.traits.body_height - 0.9).abs() < 1e-6);
+            assert!(s.atlas_dirty && s.mesh_dirty, "trait set must dirty atlas+mesh");
+        }
+        set_config(91_004, "{}", "bogus_pose");
+        let got = engine().lock().expect("engine").surfaces.get(&91_004).expect("surface").pose.id.clone();
+        assert_eq!(got, "idle", "unknown pose must keep the old pose");
+        cleanup(91_004);
+    }
+
+    #[test]
+    fn rotate_input_clamps_pitch_accumulates_yaw_and_persists_prefs() {
+        let id = 91_010;
+        cleanup(id);
+        on_rotate_input(id, 0.5, 10.0);
+        on_rotate_input(id, 0.25, 10.0);
+        {
+            let eng = engine().lock().expect("engine");
+            let prefs = eng.orbit.get(&id).expect("prefs persist without a surface");
+            assert!((prefs.yaw - 0.75).abs() < 1e-6);
+            assert!((prefs.pitch - MAX_PITCH).abs() < 1e-6, "pitch clamps at +MAX_PITCH");
+            assert!(!eng.surfaces.contains_key(&id), "rotate input alone must not be read as surface state here");
+        }
+        on_rotate_input(id, 0.0, -100.0);
+        let pitch = engine().lock().expect("engine").orbit.get(&id).expect("prefs").pitch;
+        assert!((pitch + MAX_PITCH).abs() < 1e-6, "pitch clamps at -MAX_PITCH");
+        // Prefs survive surface removal (rotation keeps drag position).
+        set_config(id, "{}", "idle");
+        remove_surface(id);
+        let prefs = engine().lock().expect("engine").orbit.get(&id).copied();
+        assert!(prefs.is_some(), "orbit prefs must survive remove_surface");
+        cleanup(id);
+    }
+
+    #[test]
+    fn paused_auto_rotate_and_generation_state_transitions() {
+        let id = 91_020;
+        cleanup(id);
+        // set_paused on an unknown surface is a no-op and creates nothing.
+        set_paused(id, true);
+        assert!(engine().lock().expect("engine").surfaces.get(&id).is_none());
+        // set_auto_rotate records prefs without creating a phantom surface.
+        set_auto_rotate(id, false);
+        {
+            let eng = engine().lock().expect("engine");
+            assert!(!eng.surfaces.contains_key(&id));
+            assert!(!eng.orbit.get(&id).expect("prefs").auto_rotate);
+        }
+        assert!(!has_renderer(id) && !is_running(id));
+        assert_eq!(generation(id), 0, "unknown surface generation is 0");
+        let g1 = next_generation(id);
+        let g2 = next_generation(id);
+        assert_eq!(g2, g1 + 1);
+        assert_eq!(generation(id), g2);
+        // Creating state via set_config keeps the auto-rotate opt-out in prefs.
+        set_paused(id, false);
+        cleanup(id);
+    }
+}

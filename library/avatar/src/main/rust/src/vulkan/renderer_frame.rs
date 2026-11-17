@@ -192,3 +192,18 @@ fn normalize(v: [f32; 3]) -> [f32; 3] {
     let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-6);
     [v[0] / len, v[1] / len, v[2] / len]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_guards_zero_and_scales_to_unit() {
+        assert_eq!(normalize([0.0; 3]), [0.0; 3]);
+        let n = normalize([0.35, -1.0, 0.45]);
+        assert!((n.iter().map(|v| v * v).sum::<f32>() - 1.0).abs() < 1e-5, "{n:?}");
+        assert!(n[1] < 0.0, "sun direction keeps its downward sign");
+        let tiny = normalize([1e-9, 0.0, 0.0]);
+        assert!(tiny.iter().all(|v| v.is_finite()), "tiny vectors must not produce NaN: {tiny:?}");
+    }
+}

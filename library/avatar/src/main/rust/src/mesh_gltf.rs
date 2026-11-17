@@ -129,3 +129,43 @@ pub fn joint_count() -> usize {
 pub fn joint_names() -> Vec<&'static str> {
     ALL_JOINTS.iter().copied().map(crate::avatar::joint_name).collect()
 }
+
+#[cfg(test)]
+mod tests_extra {
+    use super::*;
+
+    #[test]
+    fn normalize_weights_handles_degenerate_and_scales() {
+        assert_eq!(normalize_weights([0.0; 4]), [1.0, 0.0, 0.0, 0.0]);
+        assert_eq!(normalize_weights([1e-9, 0.0, 0.0, 0.0]), [1.0, 0.0, 0.0, 0.0], "tiny sum is degenerate");
+        assert_eq!(normalize_weights([2.0, 2.0, 0.0, 0.0]), [0.5, 0.5, 0.0, 0.0]);
+        assert_eq!(normalize_weights([1.0, 1.0, 1.0, 1.0]), [0.25; 4]);
+        let w = normalize_weights([0.1, 0.2, 0.3, 0.4]);
+        assert!((w.iter().sum::<f32>() - 1.0).abs() < 1e-6);
+        assert!((w[3] - 0.4).abs() < 1e-6, "already-normalized weights unchanged");
+    }
+
+    #[test]
+    fn budget_and_joint_helpers_match_contract() {
+        assert_eq!(mesh_budgets(), (65_536, 8_192));
+        assert_eq!(joint_count(), JOINT_COUNT);
+        let names = joint_names();
+        assert_eq!(names.len(), JOINT_COUNT);
+        assert_eq!(names[0], "root");
+        assert_eq!(names[4], "head");
+        assert_eq!(names[12], "hand_R");
+        for (name, joint) in names.iter().zip(ALL_JOINTS.iter()) {
+            assert_eq!(*name, crate::avatar::joint_name(*joint));
+        }
+    }
+
+    #[test]
+    fn corrupt_and_empty_gltf_fall_back_to_procedural_mesh() {
+        let fallback = build_avatar_mesh(&crate::traits::YuuTraits::default());
+        for bytes in [&[][..], b"not a glb", b"glTF....garbagegarbage"] {
+            let mesh = load_gltf_mesh(bytes);
+            assert_eq!(mesh.len(), fallback.len(), "bytes {bytes:?}");
+            assert_eq!(mesh[0].pos, fallback[0].pos);
+        }
+    }
+}

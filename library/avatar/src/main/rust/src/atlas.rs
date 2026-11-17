@@ -237,7 +237,7 @@ pub fn generate_atlas(traits: &YuuTraits) -> Vec<u8> {
         }
     }
     // Overlays: mole / wrinkle / blush on spare brow-row cells (cols 8..11).
-    if traits.mole_style != 0 {
+    if traits.mole_style > 0 {
         let col = 8 + (traits.mole_style.max(0) as usize % 4);
         fill_ellipse(
             &mut px,
@@ -261,7 +261,7 @@ pub fn generate_atlas(traits: &YuuTraits) -> Vec<u8> {
             );
         }
     }
-    if traits.blush_style != 0 {
+    if traits.blush_style > 0 {
         let col = 8 + (traits.blush_style.max(0) as usize % 4);
         let pink = [0xE8, 0x8A, 0x7A, 0xFF];
         fill_ellipse(&mut px, FACE_X + col * cw + 4, FACE_Y + ch + ch / 2, 3, 2, pink);
@@ -309,5 +309,98 @@ mod tests {
         let varied = YuuTraits { eye_style: 7, mouth_style: 9, ..Default::default() };
         let b = generate_atlas(&varied);
         assert_ne!(a, b, "style indices must change atlas pixels");
+    }
+}
+
+#[cfg(test)]
+mod tests_extra {
+    use super::*;
+
+    #[test]
+    fn face_cell_geometry_and_uv_clamping_and_wrapping() {
+        assert_eq!(face_cell(), (21, 32), "256/12 cols, 128/4 rows (int division)");
+        // Style wraps modulo 12; negative clamps to column 0; row clamps to 3.
+        assert_eq!(face_cell_uv(0, 12), face_cell_uv(0, 0));
+        assert_eq!(face_cell_uv(0, 13), face_cell_uv(0, 1));
+        assert_eq!(face_cell_uv(0, -5), face_cell_uv(0, 0));
+        assert_eq!(face_cell_uv(99, 0), face_cell_uv(3, 0));
+        // Adjacent columns are adjacent, non-overlapping rects.
+        let (a, b) = (face_cell_uv(2, 4), face_cell_uv(2, 5));
+        assert!((a[2] - b[0]).abs() < 1e-6);
+        assert_eq!((a[1], a[3]), (b[1], b[3]));
+        // Every cell lies inside the face block (v 0.5..1.0).
+        for row in 0..FACE_ROWS {
+            for col in 0..FACE_COLS as i32 {
+                let uv = face_cell_uv(row, col);
+                assert!(uv[0] >= 0.0 && uv[2] <= 1.0 && uv[1] >= 0.5 && uv[3] <= 1.0, "{uv:?}");
+                assert!(uv[2] > uv[0] && uv[3] > uv[1]);
+            }
+        }
+    }
+
+    #[test]
+    fn overlay_cells_share_brow_row_spare_columns() {
+        for style in 0..4 {
+            let uv = overlay_cell_uv(style);
+            assert_eq!(uv, face_cell_uv(1, 8 + style), "style {style}");
+        }
+        assert_eq!(overlay_cell_uv(4), overlay_cell_uv(0), "styles wrap mod 4");
+        assert_eq!(overlay_cell_uv(-2), overlay_cell_uv(0), "negative clamps to first spare");
+        assert_eq!(overlay_cell_uv(7), overlay_cell_uv(3));
+    }
+
+    #[test]
+    fn argb_to_rgba_and_fill_helpers_clip() {
+        assert_eq!(argb_to_rgba(0, [1, 2, 3]), [1, 2, 3, 0xFF]);
+        assert_eq!(argb_to_rgba(0xFF11_2233, [1, 2, 3]), [0x11, 0x22, 0x33, 0xFF]);
+        let mut px = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
+        // Rect spilling past the right/bottom edges must clip, not panic/wrap.
+        fill_rect(&mut px, ATLAS_SIZE - 2, ATLAS_SIZE - 1, 10, 10, [9, 8, 7, 6]);
+        let o = ((ATLAS_SIZE - 1) * ATLAS_SIZE + ATLAS_SIZE - 1) * 4;
+        assert_eq!(&px[o..o + 4], &[9, 8, 7, 6]);
+        assert_eq!(px.iter().filter(|b| **b == 9).count(), 2, "only clipped pixels painted");
+        // Zero-radius ellipse still paints its centre (radii clamp to >=1).
+        fill_ellipse(&mut px, 10, 10, 0, 0, [5, 5, 5, 5]);
+        let o = (10 * ATLAS_SIZE + 10) * 4;
+        assert_eq!(&px[o..o + 4], &[5, 5, 5, 5]);
+        // Ellipse at the corner clips via saturating arithmetic.
+        fill_ellipse(&mut px, 0, 0, 3, 3, [4, 4, 4, 4]);
+        assert_eq!(&px[0..4], &[4, 4, 4, 4]);
+    }
+
+    #[test]
+    fn atlas_is_deterministic_alpha_opaque_and_trait_coloured() {
+        let t = YuuTraits { skin_tone: 0xFF20_4060, ..Default::default() };
+        let (a, b) = (generate_atlas(&t), generate_atlas(&t));
+        assert_eq!(a, b, "same traits must paint the same atlas");
+        assert!(a.chunks_exact(4).all(|p| p[3] == 0xFF), "alpha must be opaque everywhere");
+        // Unpainted corner keeps the unpacked skin colour.
+        assert_eq!(&a[0..4], &[0x20, 0x40, 0x60, 0xFF]);
+        // A different skin tone recolours the base.
+        let other = generate_atlas(&YuuTraits { skin_tone: 0xFFAA_BBCC, ..Default::default() });
+        assert_eq!(&other[0..4], &[0xAA, 0xBB, 0xCC, 0xFF]);
+        assert_ne!(a, other);
+    }
+
+    #[test]
+    fn only_selected_style_cells_are_painted() {
+        let px = generate_atlas(&YuuTraits::default());
+        let (cw, ch) = face_cell();
+        let skin = &px[0..4];
+        let cell_has_non_skin = |row: usize, col: usize| {
+            (0..ch).any(|y| {
+                (0..cw).any(|x| {
+                    let o = ((FACE_Y + row * ch + y) * ATLAS_SIZE + FACE_X + col * cw + x) * 4;
+                    &px[o..o + 4] != skin
+                })
+            })
+        };
+        assert!(cell_has_non_skin(0, 0), "selected eye cell painted");
+        assert!(!cell_has_non_skin(0, 1), "unselected eye cell stays skin");
+        assert!(!cell_has_non_skin(3, 5), "unselected mouth cell stays skin");
+        // Overlay style selects exactly its spare cell in the brow row.
+        let px = generate_atlas(&YuuTraits { mole_style: 2, ..Default::default() });
+        let o = ((FACE_Y + ch + ch / 2) * ATLAS_SIZE + FACE_X + 10 * cw + cw / 2) * 4;
+        assert_eq!(&px[o..o + 4], &[0x22, 0x1A, 0x14, 0xFF], "mole dot at spare col 10");
     }
 }
