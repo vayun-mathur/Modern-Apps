@@ -1,6 +1,7 @@
 package com.vayunmathur.vpn.data
 
 import com.vayunmathur.library.util.DatabaseItem
+import com.vayunmathur.vpn.domain.BundleFreshness
 import kotlinx.serialization.Serializable
 
 /** Immutable value describing vpn config. */
@@ -25,7 +26,24 @@ data class VpnConfig(
     val city: String = "",
     val bundleId: String = "",
     val bundleServerId: String = "",
-) : DatabaseItem
+    /** Freshness metadata from the bundle manifest; empty/-1/0 for legacy bundles. */
+    val providerId: String = "",
+    val bundleRevision: Long = -1,
+    val bundleIssuedAt: Long = 0,
+    val bundleExpiresAt: Long = 0,
+    val bundleUpdateUrl: String = "",
+) : DatabaseItem {
+
+    /** This config's bundle freshness, reconstructed from the retained columns. */
+    fun bundleFreshness(): BundleFreshness =
+        BundleFreshness(
+            providerId = providerId.takeIf { it.isNotBlank() },
+            revision = bundleRevision.takeIf { it >= 0 },
+            issuedAtEpochMs = bundleIssuedAt.takeIf { it > 0 },
+            expiresAtEpochMs = bundleExpiresAt.takeIf { it > 0 },
+            updateUrl = bundleUpdateUrl.takeIf { it.isNotBlank() },
+        )
+}
 
 /** Immutable value describing wg quick import. */
 data class WgQuickImport(

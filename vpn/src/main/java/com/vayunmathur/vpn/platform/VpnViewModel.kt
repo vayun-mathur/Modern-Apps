@@ -22,15 +22,21 @@ import com.vayunmathur.vpn.data.VpnConfigDao
 import com.vayunmathur.vpn.data.WgConfigParser
 import com.vayunmathur.vpn.data.endpointHostOf
 import com.vayunmathur.vpn.data.MavpnBundleStore
-import com.vayunmathur.vpn.data.bundleIdFor
+import com.vayunmathur.vpn.data.MavpnUpdateClient
+import com.vayunmathur.vpn.data.bundleIdForManifest
 import com.vayunmathur.vpn.data.toEntity
 import com.vayunmathur.vpn.data.toGeoServerOrNull
 import com.vayunmathur.vpn.data.toModel
 import com.vayunmathur.vpn.data.toVpnConfigs
 import com.vayunmathur.vpn.domain.GeoCountry
+import com.vayunmathur.vpn.domain.GeoProvider
 import com.vayunmathur.vpn.domain.MavpnBundle
 import com.vayunmathur.vpn.domain.MavpnParser
+import com.vayunmathur.vpn.domain.MavpnUpdateMetadata
+import com.vayunmathur.vpn.domain.UpdateComparison
 import com.vayunmathur.vpn.domain.buildGeoCountries
+import com.vayunmathur.vpn.domain.buildGeoProviders
+import com.vayunmathur.vpn.domain.compareUpdate
 import com.vayunmathur.vpn.service.AppResolver
 import com.vayunmathur.vpn.service.ConnectionTracker
 import com.vayunmathur.vpn.service.VpnTunnelService
@@ -41,6 +47,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -57,6 +64,7 @@ class VpnViewModel(
     application: Application,
     private val dao: VpnConfigDao,
     private val logDao: ConnectionLogDao,
+    private val updateClient: MavpnUpdateClient = MavpnUpdateClient(),
 ) : AndroidViewModel(application) {
 
     val configs: StateFlow<List<VpnConfig>> =
@@ -83,6 +91,21 @@ class VpnViewModel(
     val importedProviders: StateFlow<List<String>> =
         configs.map { list -> list.map { it.provider }.filter { it.isNotBlank() }.distinct().sorted() }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
+    private val _updateChecks = MutableStateFlow<Map<String, UpdateCheckOutcome>>(emptyMap())
+    val updateChecks: StateFlow<Map<String, UpdateCheckOutcome>> = _updateChecks.asStateFlow()
+
+    /** Provider bundles with freshness state, for the picker header and detail surfaces. */
+    val geoProviders: StateFlow<List<GeoProvider>> =
+        combine(configs, _updateChecks) { list, checks ->
+            buildGeoProviders(
+                list.mapNotNull { it.toGeoServerOrNull() },
+                remoteRevisions = checks.mapValues { (_, outcome) ->
+                    (outcome as? UpdateCheckOutcome.Available)?.metadata?.revision
+                },
+                failedBundleIds = checks.filterValues { it is UpdateCheckOutcome.Failed }.keys,
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
 
     /** Imported servers grouped countries → cities → servers for the geo picker routes. */
     val geoCountries: StateFlow<List<GeoCountry>> =
@@ -258,30 +281,126 @@ class VpnViewModel(
      * place (matched by bundle id + server id) instead of duplicating them.
      * Config contents are never logged; failures report only the reason.
      */
-    private suspend fun importBundle(context: Context, bytes: ByteArray) {
+    private suspend fun importBundle(
+        context: Context,
+        bytes: ByteArray,
+        preserveBundleId: String? = null,
+        expectedUpdate: MavpnUpdateMetadata? = null,
+    ) {
+        // Parse and validate everything before touching storage or the database:
+        // a rejected or mismatched bundle leaves the installed one untouched.
         val bundle = MavpnParser.parse(bytes, WgConfigParser::parse).getOrElse {
             _status.value = "Import failed: ${it.message}"
             return
         }
-        val bundleId = bundleIdFor(bundle.manifest.provider, bundle.servers.map { it.entry.id })
+        if (expectedUpdate != null) {
+            val fresh = bundle.manifest.freshness
+            if (fresh.providerId != expectedUpdate.providerId || fresh.revision != expectedUpdate.revision) {
+                _status.value = "Update failed: downloaded bundle does not match update metadata"
+                return
+            }
+        }
+        val bundleId = preserveBundleId
+            ?: bundleIdForManifest(bundle.manifest, bundle.servers.map { it.entry.id })
+        val existing = dao.getAll().map { it.toModel() }
+        val models = bundle.toVpnConfigs(bundleId, existing) { privateKey ->
+            runCatching { VpnNative.derivePublicKey(privateKey) }.getOrNull() ?: ""
+        }
         runCatching {
             MavpnBundleStore.save(context, bundleId, bundle, manifestJson(bundle))
         }.onFailure {
             _status.value = "Import failed: could not store bundle"
             return
         }
-        val existing = dao.getAll().map { it.toModel() }
-        val models = bundle.toVpnConfigs(bundleId, existing) { privateKey ->
-            runCatching { VpnNative.derivePublicKey(privateKey) }.getOrNull() ?: ""
-        }
         models.forEach { dao.upsert(it.toEntity()) }
+        // Replacing a bundle in place: drop its servers that the new revision removed.
+        val newIds = models.map { it.bundleServerId }.toSet()
+        existing.filter { it.bundleId == bundleId && it.bundleServerId !in newIds }
+            .forEach { dao.delete(it.toEntity()) }
         _status.value = "Imported ${models.size} servers from ${bundle.manifest.provider}"
+    }
+
+    /** User-triggered freshness check for one bundle; never runs in the background. */
+    fun checkForUpdate(bundleId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val representative = dao.getAll().map { it.toModel() }
+                .firstOrNull { it.bundleId == bundleId }
+            if (representative == null) {
+                _status.value = "Update check failed: bundle not found"
+                return@launch
+            }
+            val updateUrl = representative.bundleUpdateUrl
+            if (updateUrl.isBlank()) {
+                _updateChecks.value += bundleId to UpdateCheckOutcome.Failed
+                _status.value = "No update URL for ${representative.provider}"
+                return@launch
+            }
+            _updateChecks.value += bundleId to UpdateCheckOutcome.Checking
+            runCatching { updateClient.fetchMetadata(updateUrl) }
+                .onSuccess { metadata ->
+                    when (val result = compareUpdate(representative.bundleFreshness(), metadata)) {
+                        is UpdateComparison.ProviderMismatch -> {
+                            _updateChecks.value += bundleId to UpdateCheckOutcome.Failed
+                            _status.value = "Update check failed: provider mismatch"
+                        }
+                        UpdateComparison.UpToDate -> {
+                            _updateChecks.value += bundleId to UpdateCheckOutcome.UpToDate
+                            _status.value = "${representative.provider} is up to date"
+                        }
+                        is UpdateComparison.UpdateAvailable -> {
+                            _updateChecks.value += bundleId to
+                                UpdateCheckOutcome.Available(result.remote)
+                            _status.value = "Update available for ${representative.provider}"
+                        }
+                    }
+                }
+                .onFailure {
+                    _updateChecks.value += bundleId to UpdateCheckOutcome.Failed
+                    _status.value = "Update check failed: ${it.message}"
+                }
+        }
+    }
+
+    /**
+     * Downloads, SHA-256-verifies and re-imports a bundle in place. Verification
+     * and parsing both complete before any row or file is replaced, so a bad
+     * download leaves the installed bundle untouched.
+     */
+    fun applyBundleUpdate(bundleId: String) {
+        val metadata = (_updateChecks.value[bundleId] as? UpdateCheckOutcome.Available)?.metadata
+        if (metadata == null) {
+            _status.value = "Check for updates first"
+            return
+        }
+        if (metadata.downloadUrl == null || metadata.sha256 == null) {
+            _status.value = "Update has no verified download; re-import a new .mavpn file"
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { updateClient.fetchVerifiedBundle(metadata) }
+                .onSuccess { bytes ->
+                    importBundle(getApplication(), bytes, preserveBundleId = bundleId, expectedUpdate = metadata)
+                    if (_status.value?.startsWith("Imported") == true) {
+                        _updateChecks.value += bundleId to UpdateCheckOutcome.UpToDate
+                    }
+                }
+                .onFailure { _status.value = "Update failed: ${it.message}" }
+        }
     }
 
     private fun manifestJson(bundle: MavpnBundle<*>): String =
         buildJsonObject {
             put("format", bundle.manifest.format)
             put("provider", bundle.manifest.provider)
+            bundle.manifest.freshness.providerId?.let { put("providerId", it) }
+            bundle.manifest.freshness.revision?.let { put("revision", it) }
+            bundle.manifest.freshness.issuedAtEpochMs?.let {
+                put("issuedAt", java.time.Instant.ofEpochMilli(it).toString())
+            }
+            bundle.manifest.freshness.expiresAtEpochMs?.let {
+                put("expiresAt", java.time.Instant.ofEpochMilli(it).toString())
+            }
+            bundle.manifest.freshness.updateUrl?.let { put("updateUrl", it) }
             putJsonArray("servers") {
                 bundle.manifest.servers.forEach { server ->
                     addJsonObject {
@@ -317,6 +436,21 @@ class VpnViewModel(
         private const val POLL_RUNNING_MS = 500L
         private val ZIP_MAGIC = byteArrayOf('P'.code.toByte(), 'K'.code.toByte(), 3, 4)
     }
+}
+
+/** Outcome of a user-triggered update check for one bundle. */
+sealed interface UpdateCheckOutcome {
+    /** A check is in flight. */
+    data object Checking : UpdateCheckOutcome
+
+    /** The last check failed; no freshness claim is made from it. */
+    data object Failed : UpdateCheckOutcome
+
+    /** The last check found no newer revision. */
+    data object UpToDate : UpdateCheckOutcome
+
+    /** The last check found a newer revision, carried here for the update action. */
+    data class Available(val metadata: MavpnUpdateMetadata) : UpdateCheckOutcome
 }
 
 /** Creates vpn view model instances. */

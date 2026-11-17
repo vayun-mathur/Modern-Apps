@@ -25,6 +25,8 @@ data class MavpnManifest(
     val format: String,
     val provider: String,
     val servers: List<MavpnServerEntry>,
+    /** Optional freshness metadata; [BundleFreshness.EMPTY] for legacy bundles. */
+    val freshness: BundleFreshness = BundleFreshness.EMPTY,
 )
 
 /** A manifest entry together with its WireGuard config text and its parsed config. */
@@ -175,7 +177,21 @@ object MavpnParser {
         val servers = serverArray.map { element -> parseServer(element.jsonObject) }
         val duplicate = servers.groupBy { it.id }.entries.firstOrNull { it.value.size > 1 }?.key
         if (duplicate != null) throw MavpnFormatException("Duplicate server id '$duplicate'")
-        return MavpnManifest(format, provider, servers)
+        return MavpnManifest(format, provider, servers, parseFreshness(root))
+    }
+
+    /** Optional `mavpn/1` freshness fields; absent fields stay null for legacy bundles. */
+    private fun parseFreshness(root: JsonObject): BundleFreshness {
+        val issued = parseInstantEpochMs(root.optionalString("issuedAt"), "issuedAt")
+        val expires = parseInstantEpochMs(root.optionalString("expiresAt"), "expiresAt")
+        checkExpiryAfterIssue(issued, expires)
+        return BundleFreshness(
+            providerId = parseProviderId(root.optionalString("providerId"), "providerId"),
+            revision = parseRevision(root.optionalString("revision"), "revision"),
+            issuedAtEpochMs = issued,
+            expiresAtEpochMs = expires,
+            updateUrl = parseHttpsUrl(root.optionalString("updateUrl"), "updateUrl"),
+        )
     }
 
     private fun checkFormat(format: String) {

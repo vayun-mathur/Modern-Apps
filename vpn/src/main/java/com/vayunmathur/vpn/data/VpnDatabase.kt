@@ -39,6 +39,11 @@ data class VpnConfigEntity(
     val city: String = "",
     val bundleId: String = "",
     val bundleServerId: String = "",
+    val providerId: String = "",
+    val bundleRevision: Long = -1,
+    val bundleIssuedAt: Long = 0,
+    val bundleExpiresAt: Long = 0,
+    val bundleUpdateUrl: String = "",
 ) : DatabaseItem
 
 fun VpnConfigEntity.toModel() = VpnConfig(
@@ -47,7 +52,9 @@ fun VpnConfigEntity.toModel() = VpnConfig(
     peerPublicKey = peerPublicKey, peerPresharedKey = peerPresharedKey,
     peerAllowedIPs = peerAllowedIPs, peerEndpoint = peerEndpoint, peerKeepalive = peerKeepalive,
     lastUsed = lastUsed, provider = provider, countryCode = countryCode, city = city,
-    bundleId = bundleId, bundleServerId = bundleServerId,
+    bundleId = bundleId, bundleServerId = bundleServerId, providerId = providerId,
+    bundleRevision = bundleRevision, bundleIssuedAt = bundleIssuedAt,
+    bundleExpiresAt = bundleExpiresAt, bundleUpdateUrl = bundleUpdateUrl,
 )
 
 fun VpnConfig.toEntity() = VpnConfigEntity(
@@ -56,7 +63,9 @@ fun VpnConfig.toEntity() = VpnConfigEntity(
     peerPublicKey = peerPublicKey, peerPresharedKey = peerPresharedKey,
     peerAllowedIPs = peerAllowedIPs, peerEndpoint = peerEndpoint, peerKeepalive = peerKeepalive,
     lastUsed = lastUsed, provider = provider, countryCode = countryCode, city = city,
-    bundleId = bundleId, bundleServerId = bundleServerId,
+    bundleId = bundleId, bundleServerId = bundleServerId, providerId = providerId,
+    bundleRevision = bundleRevision, bundleIssuedAt = bundleIssuedAt,
+    bundleExpiresAt = bundleExpiresAt, bundleUpdateUrl = bundleUpdateUrl,
 )
 
 /** Contract for vpn config dao. */
@@ -125,6 +134,17 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        // Freshness metadata retained from the bundle manifest; legacy rows keep the defaults.
+        connection.execSQL("ALTER TABLE `VpnConfigEntity` ADD COLUMN `providerId` TEXT NOT NULL DEFAULT ''")
+        connection.execSQL("ALTER TABLE `VpnConfigEntity` ADD COLUMN `bundleRevision` INTEGER NOT NULL DEFAULT -1")
+        connection.execSQL("ALTER TABLE `VpnConfigEntity` ADD COLUMN `bundleIssuedAt` INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE `VpnConfigEntity` ADD COLUMN `bundleExpiresAt` INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE `VpnConfigEntity` ADD COLUMN `bundleUpdateUrl` TEXT NOT NULL DEFAULT ''")
+    }
+}
+
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override suspend fun migrate(connection: SQLiteConnection) {
         // `.mavpn` bundle metadata on imported configs; plain `.conf` rows keep the empty defaults.
@@ -135,14 +155,14 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 }
 
 /** Vpn Database: a room database implementation for vpn database. */
-@Database(entities = [VpnConfigEntity::class, ConnectionLogEntity::class], version = 3, exportSchema = false)
+@Database(entities = [VpnConfigEntity::class, ConnectionLogEntity::class], version = 4, exportSchema = false)
 abstract class VpnDatabase : RoomDatabase() {
     abstract fun vpnConfigDao(): VpnConfigDao
     abstract fun connectionLogDao(): ConnectionLogDao
 
     /** Shared constants and helpers for VpnDatabase. */
     companion object : DatabaseMigrations {
-        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3)
+        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
         /**
          * The process-wide database. Delegates to [VpnRepository] so the single

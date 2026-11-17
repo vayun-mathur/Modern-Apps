@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,7 +23,12 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.vpn.Route
 import com.vayunmathur.vpn.data.WgConfigParser
+import com.vayunmathur.vpn.domain.BundleFreshnessState
+import com.vayunmathur.vpn.domain.classifyFreshness
+import com.vayunmathur.vpn.platform.UpdateCheckOutcome
 import com.vayunmathur.vpn.platform.VpnViewModel
+import com.vayunmathur.vpn.ui.components.BundleFreshnessBadge
+import java.time.Instant
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedText
 
@@ -33,6 +39,7 @@ import com.vayunmathur.library.util.sharedText
 @Composable
 fun ConfigDetailPage(backStack: NavBackStack<Route>, vm: VpnViewModel, id: Long) {
     val cfg = vm.configState(id)
+    val updateChecks by vm.updateChecks.collectAsState()
     var exportText by remember { mutableStateOf<String?>(null) }
 
     DetailScaffold(
@@ -63,6 +70,48 @@ fun ConfigDetailPage(backStack: NavBackStack<Route>, vm: VpnViewModel, id: Long)
         Text(stringResource(R.string.privatekey, cfg.privateKey.take(16)), fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(stringResource(R.string.publickey, cfg.publicKey), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
         Text(stringResource(R.string.peer_publickey, cfg.peerPublicKey), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+
+        if (cfg.bundleId.isNotBlank()) {
+            val freshness = cfg.bundleFreshness()
+            val outcome = updateChecks[cfg.bundleId]
+            val state = when (outcome) {
+                is UpdateCheckOutcome.Available -> BundleFreshnessState.UPDATE_AVAILABLE
+                UpdateCheckOutcome.Failed -> BundleFreshnessState.CHECK_FAILED
+                else -> classifyFreshness(freshness, System.currentTimeMillis())
+            }
+            BundleFreshnessBadge(
+                state,
+                updateRevision = (outcome as? UpdateCheckOutcome.Available)?.metadata?.revision,
+            )
+            freshness.providerId?.let { Text(stringResource(R.string.bundle_provider_id, it), fontSize = 12.sp) }
+            freshness.revision?.let { Text(stringResource(R.string.bundle_revision, it), fontSize = 12.sp) }
+            freshness.issuedAtEpochMs?.let {
+                Text(stringResource(R.string.bundle_issued, Instant.ofEpochMilli(it).toString()), fontSize = 12.sp)
+            }
+            freshness.expiresAtEpochMs?.let {
+                Text(stringResource(R.string.bundle_expires, Instant.ofEpochMilli(it).toString()), fontSize = 12.sp)
+            }
+            if (cfg.bundleUpdateUrl.isNotBlank()) {
+                Button({ vm.checkForUpdate(cfg.bundleId) }, Modifier.fillMaxWidth()) {
+                    Text(
+                        stringResource(
+                            if (outcome is UpdateCheckOutcome.Checking) {
+                                R.string.checking_for_updates
+                            } else {
+                                R.string.check_for_updates
+                            },
+                        ),
+                    )
+                }
+            }
+            if (outcome is UpdateCheckOutcome.Available &&
+                outcome.metadata.downloadUrl != null && outcome.metadata.sha256 != null
+            ) {
+                Button({ vm.applyBundleUpdate(cfg.bundleId) }, Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.update_now))
+                }
+            }
+        }
 
         Button({ exportText = WgConfigParser.toWgQuick(cfg) }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.export_as_conf)) }
 

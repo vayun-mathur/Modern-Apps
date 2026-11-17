@@ -75,3 +75,73 @@ servers/<name>.conf
   never ship it as a real provider bundle.
 - Providers: zip the manifest and configs with any ZIP tool, e.g.
   `zip -r provider.mavpn manifest.json servers/`.
+
+## Freshness metadata (optional, `mavpn/1`)
+
+All fields below are optional top-level `manifest.json` fields. Bundles
+without them are *legacy* bundles: they import unchanged and the app reports
+their freshness as **Unknown**. Unknown extra fields remain ignored within
+major 1, so no new format major was needed.
+
+| Field | Meaning |
+|---|---|
+| `providerId` | Stable provider identity (`[A-Za-z0-9][A-Za-z0-9._-]*`). Survives catalogue/name changes; anchors bundle identity and update matching. |
+| `revision` | Provider-monotonic non-negative integer. Bump on every published bundle change. Floats and negatives are rejected. |
+| `issuedAt` | ISO-8601 UTC instant, e.g. `2026-01-01T00:00:00Z`. |
+| `expiresAt` | ISO-8601 UTC instant; must be after `issuedAt` when both are present. |
+| `updateUrl` | `https://` URL of `mavpn-update/1` metadata (below). `http://` is rejected. |
+
+### How the app classifies a bundle
+
+- **Current** — expiry metadata is in the future, or a revision is known and
+  no newer remote revision has been seen. The app never calls a bundle
+  current or outdated from its age alone.
+- **Outdated (expired)** — `expiresAt` has passed. This is a warning only:
+  servers stay connectable. (The app does not disable servers on expiry —
+  there is no safety reason to strand a user whose bundle merely aged out.)
+- **Update available** — the last manual check found a higher remote revision.
+- **Unknown freshness** — legacy bundle, or metadata too thin to judge
+  (e.g. only `issuedAt`).
+- **Check failed** — the last manual check failed (network, bad metadata, or
+  provider mismatch).
+
+Every imported server row retains `providerId`, `revision`, `issuedAt`,
+`expiresAt` and `updateUrl` (Room v4, migration `MIGRATION_3_4`; defaults keep
+legacy rows intact). Provider identity with a `providerId` is stable across
+revisions, so updates replace that provider's servers in place and drop
+servers the new revision removed.
+
+## Update metadata (`mavpn-update/1`)
+
+Serve JSON like this from the bundle's `updateUrl`:
+
+```json
+{
+  "format": "mavpn-update/1",
+  "providerId": "example-vpn",
+  "revision": 8,
+  "issuedAt": "2026-06-01T00:00:00Z",
+  "expiresAt": "2026-12-01T00:00:00Z",
+  "downloadUrl": "https://provider.example/bundle.mavpn",
+  "sha256": "<64 lower-case hex chars>"
+}
+```
+
+`format`, `providerId` and `revision` are required; the rest are optional
+and validated with the same rules as the manifest (`downloadUrl` must be
+HTTPS, expiry after issue, `sha256` must be 64 hex chars).
+
+### Publishing / rotating a bundle (provider checklist)
+
+1. Bump `revision` (never reuse one), refresh `issuedAt`/`expiresAt`, rebuild
+   the `.mavpn`, and compute its SHA-256 (`sha256sum bundle.mavpn`).
+2. Upload the bundle to `downloadUrl` first, then update the metadata JSON —
+   in that order, so a check never points at a missing or stale download.
+3. In the app: open the tunnel detail (or Browse by location), tap
+   **Check for updates**, then **Update now**. Checks are manual only; the
+   app never polls in the background.
+4. The app fetches over `NetworkClient` with system trust (provider hosts
+   are user-supplied), verifies the SHA-256 and fully parses the new bundle
+   *before* replacing anything — a failed hash or bad bundle leaves the
+   installed servers untouched. Updates without `downloadUrl`+`sha256` are
+   reported but not applied in-app; re-import a new `.mavpn` file instead.

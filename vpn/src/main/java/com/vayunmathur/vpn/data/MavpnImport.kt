@@ -1,8 +1,10 @@
 package com.vayunmathur.vpn.data
 
 import android.content.Context
+import com.vayunmathur.vpn.domain.BundleFreshness
 import com.vayunmathur.vpn.domain.GeoServer
 import com.vayunmathur.vpn.domain.MavpnBundle
+import com.vayunmathur.vpn.domain.MavpnManifest
 import com.vayunmathur.vpn.domain.ParsedMavpnServer
 import java.io.File
 import java.security.MessageDigest
@@ -23,6 +25,39 @@ fun bundleIdFor(provider: String, serverIds: List<String>): String {
 }
 
 /**
+ * Bundle identity for an imported manifest. Bundles with a stable
+ * `providerId` keep one identity across revisions and server-catalogue
+ * changes, so an update replaces its rows in place; legacy bundles keep the
+ * historic provider+server-ids digest so existing installs are unchanged.
+ */
+fun bundleIdForManifest(manifest: MavpnManifest, serverIds: List<String>): String {
+    val providerId = manifest.freshness.providerId ?: return bundleIdFor(manifest.provider, serverIds)
+    val slug = providerId.lowercase().map { char -> if (char.isLetterOrDigit()) char else '-' }
+        .joinToString("").trim('-').ifBlank { "provider" }
+    val digest = MessageDigest.getInstance("SHA-256").digest(providerId.encodeToByteArray())
+    val short = digest.take(DIGEST_BYTES).joinToString("") { "%02x".format(it) }
+    return "$slug-$short"
+}
+
+/** Freshness columns for [freshness], using the entity sentinel defaults for absent fields. */
+fun BundleFreshness.toConfigFields(): FreshnessFields = FreshnessFields(
+    providerId = providerId.orEmpty(),
+    bundleRevision = revision ?: -1,
+    bundleIssuedAt = issuedAtEpochMs ?: 0,
+    bundleExpiresAt = expiresAtEpochMs ?: 0,
+    bundleUpdateUrl = updateUrl.orEmpty(),
+)
+
+/** The five freshness columns carried on each imported config row. */
+data class FreshnessFields(
+    val providerId: String,
+    val bundleRevision: Long,
+    val bundleIssuedAt: Long,
+    val bundleExpiresAt: Long,
+    val bundleUpdateUrl: String,
+)
+
+/**
  * Maps a validated bundle to selectable configs in the app's existing tunnel
  * model. Each imported server becomes a normal [VpnConfig] (so the tunnel
  * list, detail screen and activation path work unchanged), carrying its
@@ -33,7 +68,7 @@ fun MavpnBundle<WgQuickImport>.toVpnConfigs(
     existing: List<VpnConfig> = emptyList(),
     derivePublicKey: (String) -> String = { "" },
 ): List<VpnConfig> = servers.map { server ->
-    server.toVpnConfig(bundleId, manifest.provider, existing, derivePublicKey)
+    server.toVpnConfig(bundleId, manifest.provider, existing, derivePublicKey, manifest.freshness)
 }
 
 fun ParsedMavpnServer<WgQuickImport>.toVpnConfig(
@@ -41,6 +76,7 @@ fun ParsedMavpnServer<WgQuickImport>.toVpnConfig(
     provider: String,
     existing: List<VpnConfig> = emptyList(),
     derivePublicKey: (String) -> String = { "" },
+    freshness: BundleFreshness = BundleFreshness.EMPTY,
 ): VpnConfig {
     val imp = config
     val previous = existing.firstOrNull { it.bundleId == bundleId && it.bundleServerId == entry.id }
@@ -63,6 +99,11 @@ fun ParsedMavpnServer<WgQuickImport>.toVpnConfig(
         city = entry.city,
         bundleId = bundleId,
         bundleServerId = entry.id,
+        providerId = freshness.providerId.orEmpty(),
+        bundleRevision = freshness.revision ?: -1,
+        bundleIssuedAt = freshness.issuedAtEpochMs ?: 0,
+        bundleExpiresAt = freshness.expiresAtEpochMs ?: 0,
+        bundleUpdateUrl = freshness.updateUrl.orEmpty(),
     )
 }
 
@@ -75,6 +116,8 @@ fun VpnConfig.toGeoServerOrNull(): GeoServer? =
         city = city,
         name = name,
         endpoint = peerEndpoint,
+        freshness = bundleFreshness(),
+        bundleId = bundleId,
     )
 
 private const val DIGEST_BYTES = 6

@@ -86,10 +86,12 @@ class VpnDatabaseTest {
         // getters are exercised through the in-memory database above instead.
         val repo = VpnRepository.get(ctx)
         assertTrue(VpnRepository.get(ctx) === repo)
-        assertEquals(listOf(MIGRATION_1_2, MIGRATION_2_3), VpnDatabase.migrations)
+        assertEquals(listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4), VpnDatabase.migrations)
         assertEquals(1, VpnDatabase.migrations.first().startVersion)
         assertEquals(2, VpnDatabase.migrations.first().endVersion)
         assertEquals(2, MIGRATION_2_3.startVersion)
         assertEquals(3, MIGRATION_2_3.endVersion)
+        assertEquals(3, MIGRATION_3_4.startVersion)
+        assertEquals(4, MIGRATION_3_4.endVersion)
     }
 }
