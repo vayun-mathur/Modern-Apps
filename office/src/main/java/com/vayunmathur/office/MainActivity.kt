@@ -15,6 +15,7 @@ import com.vayunmathur.office.platform.requestToJoin
 import com.vayunmathur.office.ui.OfficeAppTheme
 
 import com.vayunmathur.office.data.odf.DocumentImporter
+/** Entry activity hosting Office home, join-link handling and document editing. */
 class MainActivity : MaActivity() {
     private val viewModel: OfficeViewModel by viewModels()
     private var intentDocumentUri: Uri? = null

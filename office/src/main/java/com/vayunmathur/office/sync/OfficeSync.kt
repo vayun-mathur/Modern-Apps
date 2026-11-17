@@ -282,6 +282,7 @@ object OfficeSync {
     @Serializable private data class SeqResp(val seq: Int = 0)
     @Serializable internal data class PullResp(val actions: List<String> = emptyList(), val seq: Int = 0)
 
+    /** Document action exchanged over the sync channel; a flattened snapshot by default. */
     @Serializable data class DocAction(val type: String = "snapshot", val flat: String = "")
 
     /** A document-sharing invite: the doc, its key and the invited role. */
