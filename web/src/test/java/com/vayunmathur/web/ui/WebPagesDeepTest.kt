@@ -227,6 +227,14 @@ class WebPagesDeepTest {
         // Pick the Standard level via its radio row, then reload to apply.
         rule.onNodeWithText("Standard").performClick()
         rule.waitForIdle()
+        // updateSiteShields mirrors synchronously, but the Room-backed
+        // shieldSettings collector clears and repopulates that mirror on
+        // every emission; an in-flight (initially empty) emission can
+        // clear the just-set override until the upsert emission lands.
+        // Await the observed level instead of asserting at idle.
+        await("site shields apply") {
+            v.shieldsFor("panel.example").level == com.vayunmathur.web.domain.ShieldLevel.STANDARD
+        }
         assertEquals(
             com.vayunmathur.web.domain.ShieldLevel.STANDARD,
             v.shieldsFor("panel.example").level,
