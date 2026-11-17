@@ -160,9 +160,10 @@ object AlternativeRoutes {
             // different board/alight stops.
             val lines = signature.map { it.line }
             val otherLines = otherSignature.map { it.line }
-            if (otherSignature == signature || isSubsetOrTruncation(signature, otherSignature) ||
+            val sameServiceSequence = otherSignature == signature ||
+                isSubsetOrTruncation(signature, otherSignature) ||
                 lines == otherLines || lines.toSet().all { it in otherLines.toSet() }
-            ) {
+            if (sameServiceSequence) {
                 return@none true
             }
             // Transfer count is a cost, not a difference. A candidate with

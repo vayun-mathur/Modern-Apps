@@ -287,7 +287,6 @@ internal suspend fun openVehicleTrip(
     vehicles: List<MapMarker>,
     projection: com.vayunmathur.library.map.Projection,
     offset: androidx.compose.ui.unit.DpOffset,
-    viewModel: SelectedFeatureViewModel,
     transitViewModel: TransitStopsViewModel,
     sheetState: com.vayunmathur.library.ui.FreeHeightSheetState?,
     sheetStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.maps.ui.SheetRoute>? = null,

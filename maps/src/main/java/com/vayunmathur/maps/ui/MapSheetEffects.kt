@@ -41,7 +41,6 @@ internal fun MapSheetEffects(
     viewModel: SelectedFeatureViewModel,
     camera: CameraState,
     selectedFeature: SpecificFeature?,
-    inactiveNavigation: SpecificFeature.Route?,
     isNavigating: Boolean,
     sheetState: FreeHeightSheetState?,
     searchSheetState: FreeHeightSheetState?,

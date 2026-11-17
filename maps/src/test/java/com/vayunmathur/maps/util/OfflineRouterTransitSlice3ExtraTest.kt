@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.gtfsRouteTypeToMode
 import com.vayunmathur.maps.util.OfflineRouter
 import com.vayunmathur.maps.data.OfflineRouterLifecycle
 import com.vayunmathur.maps.data.OfflineRouterTransit
@@ -38,10 +39,10 @@ class OfflineRouterTransitSlice3ExtraTest {
 
     @Test fun gtfsRouteTypeModes() {
         // Pure mapping, independent of the native pack
-        val modes = (0..8).map { OfflineRouterTransit.gtfsRouteTypeToMode(it) }
+        val modes = (0..8).map { gtfsRouteTypeToMode(it) }
         assertTrue(modes.all { it.isNotBlank() }, "$modes")
-        assertEquals(OfflineRouterTransit.gtfsRouteTypeToMode(3), OfflineRouterTransit.gtfsRouteTypeToMode(3))
-        assertTrue(OfflineRouterTransit.gtfsRouteTypeToMode(999).isNotBlank())
+        assertEquals(gtfsRouteTypeToMode(3), gtfsRouteTypeToMode(3))
+        assertTrue(gtfsRouteTypeToMode(999).isNotBlank())
         assertTrue(OfflineRouterTransit.Overlay.EMPTY.isEmpty)
     }
 

@@ -313,7 +313,7 @@ fun MapSurface(
                 // check; vehicles sit outside the GPU pick path).
                 if (openVehicleTrip(
                         vehicles, projection, offset,
-                        viewModel, transitViewModel, sheetState, sheetStack,
+                        transitViewModel, sheetState, sheetStack,
                     )
                 ) {
                     return@launch

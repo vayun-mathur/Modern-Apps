@@ -134,14 +134,14 @@ class MapsPickingC5Test {
         val viewModel = SelectedFeatureViewModel(app)
         val transitViewModel = TransitStopsViewModel(app)
         assertTrue(
-            openVehicleTrip(listOf(marker), projection, centre, viewModel, transitViewModel, null),
+            openVehicleTrip(listOf(marker), projection, centre, transitViewModel, null),
         )
         // A miss leaves everything untouched.
         assertTrue(
             !openVehicleTrip(
                 listOf(marker), projection,
                 DpOffset(centre.x + 400.dp, centre.y + 400.dp),
-                viewModel, transitViewModel, null,
+                transitViewModel, null,
             ),
         )
     }

@@ -229,7 +229,6 @@ fun MapPage(
         viewModel = viewModel,
         camera = camera,
         selectedFeature = selectedFeature,
-        inactiveNavigation = inactiveNavigation,
         isNavigating = isNavigating,
         sheetState = wideSheetState,
         searchSheetState = wideSearchSheetState,

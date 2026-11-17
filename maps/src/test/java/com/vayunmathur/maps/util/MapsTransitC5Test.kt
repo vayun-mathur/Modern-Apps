@@ -3,6 +3,7 @@ import com.vayunmathur.maps.data.nearest
 import com.vayunmathur.maps.util.OfflineRouter
 import com.vayunmathur.maps.data.OfflineRouterLifecycle
 import com.vayunmathur.maps.data.OfflineRouterTransit
+import com.vayunmathur.maps.data.gtfsRouteTypeToMode
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -98,11 +99,11 @@ class MapsTransitC5Test {
         assertEquals(3, overlay.times.size)
         // Every GTFS route type in and out of range maps to a label.
         for (t in intArrayOf(-1, 0, 1, 2, 3, 4, 5, 6, 7, 11, 100, 900, 1500)) {
-            assertTrue(OfflineRouterTransit.gtfsRouteTypeToMode(t).isNotBlank(), "type $t")
+            assertTrue(gtfsRouteTypeToMode(t).isNotBlank(), "type $t")
         }
         assertEquals(
-            OfflineRouterTransit.gtfsRouteTypeToMode(3),
-            OfflineRouterTransit.gtfsRouteTypeToMode(3),
+            gtfsRouteTypeToMode(3),
+            gtfsRouteTypeToMode(3),
         )
     }
 }

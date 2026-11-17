@@ -687,11 +687,13 @@ internal object OfflineRouterTransit {
         }
     }
 
-    private fun departureOf(
-        d: OfflineRouter.RawDeparture,
-        clock: TransitClock,
-    ): Departure = TransitDepartures.departureOf(d, clock)
-
-    /** Map a GTFS `route_type` (base + extended ranges) to a coarse mode label. */
-    internal fun gtfsRouteTypeToMode(t: Int): String = GtfsRouteTypes.mode(t)
 }
+ 
+/** The departure for a raw native row, in the feed clock's terms. */
+private fun OfflineRouterTransit.departureOf(
+    d: OfflineRouter.RawDeparture,
+    clock: TransitClock,
+): Departure = TransitDepartures.departureOf(d, clock)
+
+/** Map a GTFS `route_type` (base + extended ranges) to a coarse mode label. */
+internal fun gtfsRouteTypeToMode(t: Int): String = GtfsRouteTypes.mode(t)

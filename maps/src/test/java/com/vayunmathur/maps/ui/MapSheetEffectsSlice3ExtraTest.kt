@@ -62,7 +62,7 @@ class MapSheetEffectsSlice3ExtraTest {
             stackRef = stack
             MapSheetEffects(
                 wide = wide, viewModel = vm, camera = CameraState(),
-                selectedFeature = feature, inactiveNavigation = null,
+                selectedFeature = feature,
                 isNavigating = navigating,
                 sheetState = FreeHeightSheetState(SheetValue.PartiallyExpanded),
                 searchSheetState = FreeHeightSheetState(SheetValue.PartiallyExpanded),

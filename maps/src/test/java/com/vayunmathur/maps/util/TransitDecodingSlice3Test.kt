@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.util
+import com.vayunmathur.maps.data.gtfsRouteTypeToMode
 import com.vayunmathur.maps.util.OfflineRouter
 import com.vayunmathur.maps.data.OfflineRouterTransit
 import com.vayunmathur.maps.data.TransitBoards
@@ -236,8 +237,8 @@ class TransitDecodingSlice3Test {
 
     @Test
     fun `gtfsRouteTypeToMode delegates to the shared table`() {
-        assertEquals(GtfsRouteTypes.mode(3), OfflineRouterTransit.gtfsRouteTypeToMode(3))
-        assertEquals(GtfsRouteTypes.mode(109), OfflineRouterTransit.gtfsRouteTypeToMode(109))
+        assertEquals(GtfsRouteTypes.mode(3), gtfsRouteTypeToMode(3))
+        assertEquals(GtfsRouteTypes.mode(109), gtfsRouteTypeToMode(109))
     }
 
     @Test

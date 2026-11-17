@@ -61,7 +61,7 @@ class MapsComposeC5bTest {
                 Box {
                     MapSheetEffects(
                         wide = false, viewModel = vm, camera = camera,
-                        selectedFeature = place, inactiveNavigation = null,
+                        selectedFeature = place,
                         isNavigating = false,
                         // No sheet states: an unmeasured sheet's expand
                         // suspends forever, which is MapPage's concern,
@@ -131,7 +131,6 @@ class MapsComposeC5bTest {
                         viewModel = viewModel,
                         camera = camera,
                         selectedFeature = null,
-                        inactiveNavigation = null,
                         isNavigating = false,
                         sheetState = null,
                         searchSheetState = null,
