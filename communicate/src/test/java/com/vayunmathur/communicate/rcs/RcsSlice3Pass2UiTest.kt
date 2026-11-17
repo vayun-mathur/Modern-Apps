@@ -80,9 +80,15 @@ class RcsSlice3Pass2UiTest {
             try { Thread.sleep(25) } catch (_: InterruptedException) { }
         }
         // Final direct check so the failure message names the missing text.
-        rule.waitUntil(1_000) {
-            rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
-        }
+        // (Not waitUntil: its compose clock starves against the paused
+        // Robolectric looper on a loaded box, so even a 1s waitUntil can
+        // time out after the step loop above already pumped the looper,
+        // masking whether the text ever arrived.)
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        assertTrue(
+            rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty(),
+            "text not found after ${timeoutMs}ms: $text",
+        )
     }
 
     // --- Registration / status screen ---

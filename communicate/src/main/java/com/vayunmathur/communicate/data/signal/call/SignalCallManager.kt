@@ -49,6 +49,14 @@ class SignalCallManager(
     enum class CallState { Ringing, Connecting, Connected, Ended }
 
     internal val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Single-threaded lane for outbound signaling: RingRTC invokes the
+     * observer sequentially (offer, answer, ICE, ...), and that order is
+     * meaningful on the wire. Launching each send on the parallel IO pool
+     * let a later message overtake an earlier one under load.
+     */
+    private val signalingLane = Dispatchers.IO.limitedParallelism(1)
     internal val initialized = AtomicBoolean(false)
 
     internal var callManager: CallManager? = null
@@ -317,7 +325,7 @@ class SignalCallManager(
         }
         // broadcast means "every device"; otherwise the message is addressed to one.
         val deviceId = if (broadcast == true) null else remoteDeviceId
-        scope.launch {
+        scope.launch(signalingLane) {
             val ok = try {
                 signaling.sendCallMessage(aci, deviceId, message, urgent)
             } catch (expected: Throwable) {
