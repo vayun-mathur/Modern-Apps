@@ -1,4 +1,4 @@
-package com.vayunmathur.speech.util
+package com.vayunmathur.speech.platform
 
 import kotlin.math.PI
 import kotlin.math.abs

@@ -9,10 +9,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.speech.SpeechSetupScreen
-import com.vayunmathur.speech.util.SpeechSetupActions
-import com.vayunmathur.speech.util.SpeechSetupUiState
-import com.vayunmathur.speech.util.TtsVoiceUiState
+import com.vayunmathur.speech.ui.SpeechSetupScreen
+import com.vayunmathur.speech.ui.SpeechSetupActions
+import com.vayunmathur.speech.ui.SpeechSetupUiState
+import com.vayunmathur.speech.ui.TtsVoiceUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

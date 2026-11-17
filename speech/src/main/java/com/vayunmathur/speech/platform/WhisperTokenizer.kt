@@ -1,4 +1,4 @@
-package com.vayunmathur.speech.util
+package com.vayunmathur.speech.platform
 
 import java.io.ByteArrayOutputStream
 import java.io.InputStream

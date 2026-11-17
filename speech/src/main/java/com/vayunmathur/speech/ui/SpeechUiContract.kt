@@ -1,12 +1,11 @@
-package com.vayunmathur.speech.util
+package com.vayunmathur.speech.ui
 
 /**
  * The UI contract for the setup screen.
  *
  * The screen takes a state value plus an actions interface rather than reading the device
  * directly, so it can be rendered by a `@Preview` — which is what the store listing images
- * are generated from. It lives in `util` so the dependency runs one way: the UI depends on
- * `util`, never the reverse.
+ * are generated from. It lives in `ui` alongside the screen it describes.
  *
  * There is no ViewModel here. Every field below is a fact about the device (a granted
  * permission, a Settings.Secure entry, a bundled model) that the binder re-reads when

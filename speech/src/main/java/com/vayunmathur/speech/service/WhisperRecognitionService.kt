@@ -11,7 +11,7 @@ import android.speech.RecognitionService
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.speech.util.WhisperEngine
+import com.vayunmathur.speech.platform.WhisperEngine
 import java.util.concurrent.Executors
 import kotlin.math.log10
 import kotlin.math.sqrt

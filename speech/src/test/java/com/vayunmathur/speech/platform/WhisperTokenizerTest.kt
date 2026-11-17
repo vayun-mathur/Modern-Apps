@@ -1,4 +1,4 @@
-package com.vayunmathur.speech.util
+package com.vayunmathur.speech.platform
 
 import java.io.ByteArrayInputStream
 import org.junit.runner.RunWith

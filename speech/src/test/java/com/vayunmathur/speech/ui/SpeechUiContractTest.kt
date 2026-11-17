@@ -1,4 +1,4 @@
-package com.vayunmathur.speech.util
+package com.vayunmathur.speech.ui
 
 import com.vayunmathur.speech.domain.SupertonicVoices
 import kotlin.test.Test

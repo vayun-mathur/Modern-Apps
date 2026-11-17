@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
     <!-- This app uses no motion/environment sensors; MAOS withholds the -->
@@ -7,7 +8,7 @@
     <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -41,10 +42,14 @@
                 android:resource="@xml/recognition_service" />
         </service>
 
+        <!-- The system TTS framework binds this service directly; Android defines
+             no BIND_* permission for TextToSpeechService, so no manifest permission
+             can be required without breaking system binding. -->
         <service
             android:name=".service.SupertonicTtsService"
             android:label="@string/tts_engine_label"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="android.intent.action.TTS_SERVICE" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -55,7 +60,7 @@
         </service>
 
         <activity
-            android:name=".tts.CheckVoiceDataActivity"
+            android:name=".service.CheckVoiceDataActivity"
             android:exported="true"
             android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>

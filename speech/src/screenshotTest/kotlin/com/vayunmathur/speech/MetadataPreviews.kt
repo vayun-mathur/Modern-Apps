@@ -4,8 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.speech.util.SpeechSetupActions
-import com.vayunmathur.speech.util.SpeechSetupUiState
+import com.vayunmathur.speech.ui.SpeechSetupActions
+import com.vayunmathur.speech.ui.SpeechSetupScreen
+import com.vayunmathur.speech.ui.SpeechSetupUiState
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"

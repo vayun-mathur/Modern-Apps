@@ -10,7 +10,7 @@ import android.speech.SpeechRecognizer
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.speech.testing.FakeAudioRecordShadow
 import com.vayunmathur.speech.testing.ThrowingDetachFdShadow
-import com.vayunmathur.speech.util.WhisperEngine
+import com.vayunmathur.speech.platform.WhisperEngine
 import java.util.concurrent.TimeUnit
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric

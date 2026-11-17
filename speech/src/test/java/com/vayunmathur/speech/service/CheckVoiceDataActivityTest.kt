@@ -1,4 +1,4 @@
-package com.vayunmathur.speech.tts
+package com.vayunmathur.speech.service
 
 import android.speech.tts.TextToSpeech
 import com.vayunmathur.speech.domain.SupertonicVoices
