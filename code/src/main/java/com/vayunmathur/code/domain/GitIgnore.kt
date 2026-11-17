@@ -46,6 +46,7 @@ class GitIgnore internal constructor(private val rules: List<Rule>) {
         return ignored
     }
 
+    /** Shared empty [GitIgnore] matcher with no rules. */
     companion object {
         val EMPTY = GitIgnore(emptyList())
     }

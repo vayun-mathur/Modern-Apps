@@ -245,12 +245,14 @@ interface CodeSettingsActions {
     fun setAutoCloseBrackets(enabled: Boolean) {}
 }
 
+/** Full editor action surface combining tab, tree, edit, search and settings actions. */
 interface CodeActions :
     CodeTabActions,
     CodeTreeActions,
     CodeEditActions,
     CodeSearchActions,
     CodeSettingsActions {
+    /** Shared no-op [CodeActions] implementation for previews and empty states. */
     companion object {
         val Noop: CodeActions = object : CodeActions {}
     }

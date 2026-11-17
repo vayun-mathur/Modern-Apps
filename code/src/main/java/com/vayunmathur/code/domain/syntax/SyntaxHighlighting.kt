@@ -50,6 +50,7 @@ class LanguageSpec(private val parts: List<Pair<TokenKind, String>>) {
     }
 }
 
+/** Languages the editor can highlight, with display label and line-comment prefix. */
 enum class Language(val label: String, val lineCommentPrefix: String? = null) {
     KOTLIN("Kotlin", "//"),
     JAVA("Java", "//"),
@@ -78,6 +79,7 @@ enum class Language(val label: String, val lineCommentPrefix: String? = null) {
     /** The tokenizer for this language, or null for languages we render without colors. */
     val spec: LanguageSpec? by lazy { specFor(this) }
 
+    /** File-name to [Language] lookup, defaulting to plain text. */
     companion object {
         /** Picks a language from a file name's extension, defaulting to plain text. */
         fun fromFileName(name: String): Language {
@@ -629,6 +631,7 @@ private fun matchingBracketIndex(text: String, index: Int): Int {
 /** A resolved colour span `[start, end)` from the native tree-sitter highlighter. */
 data class TsColorSpan(val start: Int, val end: Int, val color: Color)
 
+/** Compose transformation applying syntax, bracket and search-match spans to text. */
 class SyntaxTransformation(
     private val spec: LanguageSpec?,
     private val colors: SyntaxColors,

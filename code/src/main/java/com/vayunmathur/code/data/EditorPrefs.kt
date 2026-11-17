@@ -194,6 +194,7 @@ class EditorPrefs(context: Context) {
         appContext.editorDataStore.edit { it[GIT_AUTHOR_EMAIL_KEY] = value }
     }
 
+    /** Editor preference defaults and DataStore keys. */
     companion object {
         const val DEFAULT_FONT_SIZE = 14
         const val DEFAULT_TAB_WIDTH = 4

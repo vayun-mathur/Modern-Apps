@@ -15,6 +15,7 @@ import com.vayunmathur.library.ui.IconFolderOpen
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.PermissionRequirement
 
+/** Code editor host activity; handles VIEW/EDIT intents and applies the editor theme. */
 class MainActivity : MaActivity() {
     private val viewModel: EditorViewModel by viewModels()
 
