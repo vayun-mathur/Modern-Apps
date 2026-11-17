@@ -95,9 +95,17 @@ class ContactViewModel internal constructor(
     application: Application,
     /** Where the provider's default-account facts come from (#916); tests pass a fake. */
     internal val defaultAccountSource: DefaultAccountSource,
+    /** Per-source load timeout (issue 926); tests shrink it so a hanging fake answers fast. */
+    internal val contactSourceTimeoutMillis: Long = CONTACT_SOURCE_TIMEOUT_MILLIS,
 ) : AndroidViewModel(application), ContactsActions {
 
-    constructor(application: Application) : this(application, SystemDefaultAccountSource(application))
+    constructor(application: Application) : this(
+        application,
+        SystemDefaultAccountSource(application),
+    )
+
+    /** Isolated per-source loading (issue 926); see [ContactSourceLoader]. */
+    internal val contactSourceLoader = ContactSourceLoader()
 
     internal val dataStore = DataStoreUtils.getInstance(application)
 
@@ -194,6 +202,9 @@ class ContactViewModel internal constructor(
     }.flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT), emptyList())
 
+    // Broad catch is deliberate: a failing groups query must read as "no
+    // groups", not kill the groups flow while the contacts list is fine.
+    @Suppress("TooGenericExceptionCaught")
     private fun fetchGroups(): List<ContactGroup> {
         val resolver = getApplication<Application>().contentResolver
         val uri = ContactsContract.Groups.CONTENT_URI
@@ -201,13 +212,17 @@ class ContactViewModel internal constructor(
         val list = mutableListOf<ContactGroup>()
         val selection =
             "${ContactsContract.Groups.GROUP_VISIBLE} = 1 AND ${ContactsContract.Groups.DELETED} = 0"
-        resolver.query(uri, projection, selection, null, null)?.use { cursor ->
-            val idIdx = cursor.getColumnIndexOrThrow(ContactsContract.Groups._ID)
-            val titleIdx = cursor.getColumnIndexOrThrow(ContactsContract.Groups.TITLE)
-            while (cursor.moveToNext()) {
-                val title = cursor.getString(titleIdx) ?: "Unnamed"
-                list.add(ContactGroup(cursor.getLong(idIdx), title))
+        try {
+            resolver.query(uri, projection, selection, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndexOrThrow(ContactsContract.Groups._ID)
+                val titleIdx = cursor.getColumnIndexOrThrow(ContactsContract.Groups.TITLE)
+                while (cursor.moveToNext()) {
+                    val title = cursor.getString(titleIdx) ?: "Unnamed"
+                    list.add(ContactGroup(cursor.getLong(idIdx), title))
+                }
             }
+        } catch (e: Exception) {
+            Log.status("ContactViewModel", "Error loading groups; treating as empty", e)
         }
         return list.sortedByNameLocale { it.name }
     }
@@ -331,6 +346,7 @@ class ContactViewModel internal constructor(
     }
 
     override fun onCleared() {
+        contactSourceLoader.close()
         getApplication<Application>().contentResolver.unregisterContentObserver(contactsObserver)
         getApplication<Application>().contentResolver.unregisterContentObserver(simObserver)
         // Broad catch is deliberate: must not throw out of onCleared.
@@ -414,11 +430,27 @@ class ContactViewModel internal constructor(
         val app = getApplication<Application>()
         migrateNoYearEventDates()
         migrateBirthdayCalendarToUtc()
-        val device = com.vayunmathur.contacts.data.Contact.getAllContacts(app)
-        val sim = SimContactsDataSource.simContactsAsContacts(app)
-        allContactsState.value = device + sim
-        // Refresh SIM account labels for UI (type|name -> display)
-        val infos = SimContactsDataSource.getSimSubscriptionInfos(app)
+        // Issue 926: device and SIM are independent sources. Before this,
+        // the two ran sequentially and only the merged list was published,
+        // so a SIM query that never answered (the LineageOS IccProvider
+        // waiting on the radio for EF_ADN) blocked the device contacts
+        // too and _hasLoadedContacts never flipped — both tabs spun
+        // forever. The loader publishes the device list as soon as it
+        // lands and abandons a throwing/hanging SIM source as empty.
+        contactSourceLoader.loadContacts(
+            deviceLoader = { com.vayunmathur.contacts.data.Contact.getAllContacts(app) },
+            simLoader = { SimContactsDataSource.simContactsAsContacts(app) },
+            timeoutMillis = contactSourceTimeoutMillis,
+            publish = { allContactsState.value = it },
+        )
+        // Refresh SIM account labels for UI (type|name -> display). The
+        // subscription enumeration is itself a telephony Binder call, so
+        // it gets the same isolation/timeout, and its result is reused
+        // for the accounts list instead of being queried twice more.
+        val infos = contactSourceLoader.load(
+            sourceName = "sim-subscriptions",
+            timeoutMillis = contactSourceTimeoutMillis,
+        ) { SimContactsDataSource.getSimSubscriptionInfos(app) } ?: emptyList()
         val labels = infos.associate { info ->
             val acc = ContactAccount(SimContactsDataSource.accountNameFor(info), SIM_ACCOUNT_TYPE)
             "${acc.type}|${acc.name}" to
@@ -426,14 +458,9 @@ class ContactViewModel internal constructor(
         }
         simAccountLabelsState.value = labels
         simSlotLabelsState.value = simSlotLabelsFor(infos)
-        // Also refresh the accounts list to include current SIM accounts (in case SIM inserted/removed)
-        // Do it by launching loadAccounts() if needed; but we can update accountsState directly
-        // to avoid double query. However loadAccounts() also merges DataStore saved accounts,
-        // so we trigger it.
-        // Use a direct call to avoid extra launch overhead: we are already on IO, but
-        // loadAccounts() launches its own coroutine, so just trigger it.
-    // To keep accounts in sync, refresh directly: already on IO via syncFromSystem().
-        loadAccountsInternal()
+        // Also refresh the accounts list to include current SIM accounts
+        // (in case a SIM was inserted/removed), reusing [infos].
+        loadAccountsInternal(simInfos = infos)
     }
 
     fun getContact(contactId: Long): Contact? {

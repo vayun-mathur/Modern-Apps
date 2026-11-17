@@ -83,19 +83,29 @@ internal fun decodeHiddenKeyClean(entry: String): Pair<String, String>? {
     return type to name
 }
 
-internal suspend fun ContactViewModel.loadAccountsInternal() {
+internal suspend fun ContactViewModel.loadAccountsInternal(
+    simInfos: List<SimContactsDataSource.SimSubscriptionInfo>? = null,
+) {
     val app = getApplication<Application>()
     val accountSet = queryProviderAccounts(app)
     migrateLegacyAccounts()
     val savedAccounts = loadSavedAccounts()
     migrateHiddenAccountKeys()
-    refreshSimAccounts(app)
+    // Reuse the caller's enumeration when it already fetched one (the
+    // contact sync does); otherwise fetch it under the same per-source
+    // timeout as the contact load (issue 926) — this telephony Binder
+    // call used to be made three times per sync with no bound at all.
+    val infos = simInfos ?: contactSourceLoader.load(
+        sourceName = "sim-subscriptions",
+        timeoutMillis = contactSourceTimeoutMillis,
+    ) { SimContactsDataSource.getSimSubscriptionInfos(app) } ?: emptyList()
+    refreshSimAccounts(infos)
     val restriction = NewContactAccountPolicy.resolve(defaultAccountSource)
     newContactRestrictionState.value = restriction
     // The cloud default is where new contacts now go, so offer it even when it holds
     // no contacts yet (it would otherwise be missing from every account picker).
     val cloud = restriction?.cloudAccount?.let { ContactAccount(it.name, it.type) }
-    sortAccountsIntoState((accountSet + savedAccounts + simAccountsOf(app) + listOfNotNull(cloud)).toList())
+    sortAccountsIntoState((accountSet + savedAccounts + simAccountsOf(infos) + listOfNotNull(cloud)).toList())
 }
 
 /**
@@ -171,8 +181,10 @@ private suspend fun ContactViewModel.queryProviderAccounts(
 }
 
 // Virtual SIM accounts
-private suspend fun ContactViewModel.refreshSimAccounts(app: Application) {
-    val simInfos = SimContactsDataSource.getSimSubscriptionInfos(app)
+private fun ContactViewModel.refreshSimAccounts(
+    simInfos: List<SimContactsDataSource.SimSubscriptionInfo>,
+) {
+    val app = getApplication<Application>()
     val simLabels = simInfos.associate { info ->
         val acc = ContactAccount(SimContactsDataSource.accountNameFor(info), SIM_ACCOUNT_TYPE)
         "${acc.type}|${acc.name}" to SimContactsDataSource.getSimAccountDisplayLabel(app, info)
@@ -181,11 +193,10 @@ private suspend fun ContactViewModel.refreshSimAccounts(app: Application) {
     simSlotLabelsState.value = simSlotLabelsFor(simInfos)
 }
 
-private fun simAccountsOf(app: Application): List<ContactAccount> {
-    val simInfos = SimContactsDataSource.getSimSubscriptionInfos(app)
-    return simInfos.map { info ->
-        ContactAccount(SimContactsDataSource.accountNameFor(info), SIM_ACCOUNT_TYPE)
-    }
+private fun simAccountsOf(
+    simInfos: List<SimContactsDataSource.SimSubscriptionInfo>,
+): List<ContactAccount> = simInfos.map { info ->
+    ContactAccount(SimContactsDataSource.accountNameFor(info), SIM_ACCOUNT_TYPE)
 }
 
 private fun ContactViewModel.sortAccountsIntoState(all: List<ContactAccount>) {
