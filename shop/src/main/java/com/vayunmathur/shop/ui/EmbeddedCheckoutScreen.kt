@@ -3,12 +3,13 @@ package com.vayunmathur.shop.ui
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import android.webkit.CookieManager
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.RenderProcessGoneDetail
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -164,7 +165,7 @@ private fun CheckoutWebView(
 private fun bridgeOrigins(request: EmbeddedCheckoutRequest): Set<String> {
     val hosts = buildSet {
         MerchantUrls.domain(request.shopDomain)?.let { add(it.removePrefix("www.")) }
-        Uri.parse(request.browserUrl).host?.let { add(it.removePrefix("www.")) }
+        request.browserUrl.toUri().host?.let { add(it.removePrefix("www.")) }
     }
     return hosts.flatMap { listOf("https://$it", "https://*.$it") }.toSet() + "https://shop.app"
 }
@@ -192,6 +193,13 @@ private class CheckoutClient(private val onLoaded: () -> Unit, private val onFai
     }
 
     override fun onPageFinished(view: WebView, url: String?) = onLoaded()
+
+    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+        // Renderer died (crash/OOM): surface as a failed load and consume the event so
+        // the app process is not killed with the renderer.
+        onFailed()
+        return true
+    }
 
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
         if (request.isForMainFrame) onFailed()

@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -78,8 +79,8 @@ fun ProductScreen(
         })
     }
     var selectedVariant by remember(variantId, platformId, shopDomain) { mutableStateOf(variantId) }
-    var quantity by remember(variantId, platformId, shopDomain) { mutableStateOf(1) }
-    var retry by remember(variantId, platformId, shopDomain) { mutableStateOf(0) }
+    var quantity by remember(variantId, platformId, shopDomain) { mutableIntStateOf(1) }
+    var retry by remember(variantId, platformId, shopDomain) { mutableIntStateOf(0) }
     var refreshing by remember(variantId, platformId, shopDomain) { mutableStateOf(true) }
     var activeKey by remember(variantId, platformId, shopDomain) { mutableStateOf<Pair<String, String>?>(null) }
     var verifiedKey by remember(variantId, platformId, shopDomain) { mutableStateOf<Pair<String, String>?>(null) }
@@ -313,37 +314,3 @@ internal fun ProductDetailContent(
     }
 }
 
-@Composable
-private fun VariantPicker(
-    variants: List<ProductVariant>,
-    selectedId: String,
-    onSelect: (String) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        variants.forEach { variant ->
-            val selected = variant.id == selectedId
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(variant.title.ifBlank { "Default" }, style = MaterialTheme.typography.bodyMedium)
-                    if (!variant.available) {
-                        Text("Out of stock", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    MoneyFormat.format(variant.price),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = { onSelect(variant.id) }, enabled = variant.available && !selected) {
-                    Text(if (selected) "Selected" else "Select")
-                }
-            }
-        }
-    }
-}

@@ -1,5 +1,11 @@
 package com.vayunmathur.shop
 
+import com.vayunmathur.shop.ui.applyShopPendingRoute
+
+import com.vayunmathur.shop.ui.applyShopProfileGate
+
+import com.vayunmathur.shop.ui.shopStartRoute
+
 import com.vayunmathur.library.util.NavBackStack
 import kotlin.test.Test
 import kotlin.test.assertEquals

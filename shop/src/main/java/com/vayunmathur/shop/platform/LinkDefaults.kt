@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.verify.domain.DomainVerificationManager
 import android.content.pm.verify.domain.DomainVerificationUserState
-import android.net.Uri
+import androidx.core.net.toUri
 import android.provider.Settings
 import androidx.core.content.edit
 
@@ -27,7 +27,7 @@ object LinkDefaults {
 
     fun openSettings(context: Context) {
         dismiss(context)
-        val packageUri = Uri.parse("package:${context.packageName}")
+        val packageUri = "package:${context.packageName}".toUri()
         val openByDefault = Intent(Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS, packageUri)
         val appDetails = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri)
         try {

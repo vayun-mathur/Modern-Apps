@@ -1,7 +1,7 @@
 package com.vayunmathur.shop.ui
 
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -203,12 +203,12 @@ fun openContinueUrl(context: Context, url: String) {
             .setShowTitle(true)
             .setShareState(CustomTabsIntent.SHARE_STATE_OFF)
             .build()
-        intent.launchUrl(context, Uri.parse(url))
+        intent.launchUrl(context, url.toUri())
     }.onFailure {
         runCatching {
             val view = android.content.Intent(
                 android.content.Intent.ACTION_VIEW,
-                Uri.parse(url),
+                url.toUri(),
             ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(view)
         }.onFailure {

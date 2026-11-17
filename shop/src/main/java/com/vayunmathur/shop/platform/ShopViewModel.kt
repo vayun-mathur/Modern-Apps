@@ -3,6 +3,7 @@ package com.vayunmathur.shop.platform
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -45,7 +46,7 @@ class ShopViewModel(
         private set
     var scopeName by mutableStateOf<String?>(null)
         private set
-    var focusSearchRequest by mutableStateOf(0)
+    var focusSearchRequest by mutableIntStateOf(0)
         private set
     var refreshingTracking by mutableStateOf(false)
         private set
